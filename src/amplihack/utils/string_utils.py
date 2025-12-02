@@ -9,7 +9,8 @@ Philosophy:
 - Zero-BS implementation (no stubs or placeholders)
 
 Public API:
-    slugify: Convert text to URL-safe slug format
+    slugify: Convert text to URL-safe slug format (handles Unicode)
+    slugify_minimal: Convert text to URL-safe slug format (ASCII only, faster)
 """
 
 import re
@@ -61,4 +62,55 @@ def slugify(text: str) -> str:
     return text.strip("-")
 
 
-__all__ = ["slugify"]
+def slugify_minimal(text: str) -> str:
+    """Convert text to URL-safe slug format (minimal variant).
+
+    Transforms any string into a URL-safe slug by:
+    1. Converting to lowercase
+    2. Replacing whitespace with hyphens
+    3. Removing special characters (keeping only alphanumeric + hyphens)
+    4. Consolidating consecutive hyphens
+    5. Stripping leading/trailing hyphens
+
+    Uses no Unicode normalization - only handles ASCII input directly.
+    For international text with diacritics, use slugify() instead.
+
+    Args:
+        text: Input string with ASCII characters, spaces, and special chars.
+
+    Returns:
+        URL-safe slug with lowercase alphanumeric characters and hyphens.
+        Returns empty string if input contains no valid characters.
+
+    Examples:
+        >>> slugify_minimal("Hello World")
+        'hello-world'
+        >>> slugify_minimal("Multiple   Spaces")
+        'multiple-spaces'
+        >>> slugify_minimal("Special!@#Chars")
+        'specialchars'
+        >>> slugify_minimal("")
+        ''
+    """
+    if not text:
+        return ""
+
+    # Lowercase
+    slug = text.lower()
+
+    # Replace whitespace with hyphens
+    slug = re.sub(r"\s+", "-", slug)
+
+    # Remove non-alphanumeric (except hyphens)
+    slug = re.sub(r"[^a-z0-9-]", "", slug)
+
+    # Collapse multiple hyphens
+    slug = re.sub(r"-+", "-", slug)
+
+    # Strip leading/trailing hyphens
+    slug = slug.strip("-")
+
+    return slug
+
+
+__all__ = ["slugify", "slugify_minimal"]

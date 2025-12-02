@@ -44,6 +44,23 @@ except ImportError:
         raise NotImplementedError("slugify not yet implemented")
 
 
+# slugify_minimal function to be implemented (Issue #1809)
+try:
+    from amplihack.utils.string_utils import slugify_minimal
+except ImportError:
+    # Define placeholder so tests can be written
+    def slugify_minimal(text: str) -> str:
+        """Placeholder - to be implemented.
+
+        Args:
+            text: String to convert to slug
+
+        Returns:
+            URL-safe slug string
+        """
+        raise NotImplementedError("slugify_minimal not yet implemented")
+
+
 class TestSlugify:
     """Test slugify function for converting strings to URL-safe slugs.
 
@@ -410,3 +427,53 @@ class TestSlugify:
         """
         result = slugify("already-a-slug")
         assert result == "already-a-slug", "Already valid hyphen-separated slug should remain"
+
+
+class TestSlugifyMinimal:
+    """Test slugify_minimal function - minimal variant of slugify (Issue #1809).
+
+    The slugify_minimal function should:
+    1. Convert to lowercase
+    2. Replace spaces with hyphens
+    3. Remove non-alphanumeric characters (except hyphens)
+    4. Collapse consecutive hyphens to single hyphen
+    5. Strip leading/trailing hyphens
+
+    Unlike slugify, this function does NOT handle Unicode normalization.
+    """
+
+    def test_basic_hello_world(self):
+        """Basic conversion: 'Hello World' -> 'hello-world'"""
+        assert slugify_minimal("Hello World") == "hello-world"
+
+    def test_multiple_spaces(self):
+        """Multiple spaces collapse: 'Multiple   Spaces' -> 'multiple-spaces'"""
+        assert slugify_minimal("Multiple   Spaces") == "multiple-spaces"
+
+    def test_special_characters_removed(self):
+        """Special chars removed: 'Special!@#Chars' -> 'specialchars'"""
+        assert slugify_minimal("Special!@#Chars") == "specialchars"
+
+    def test_empty_string(self):
+        """Empty string returns empty: '' -> ''"""
+        assert slugify_minimal("") == ""
+
+    def test_camelcase_lowered(self):
+        """CamelCase lowercased: 'CamelCase' -> 'camelcase'"""
+        assert slugify_minimal("CamelCase") == "camelcase"
+
+    def test_leading_trailing_hyphens_stripped(self):
+        """Leading/trailing hyphens stripped: '---test---' -> 'test'"""
+        assert slugify_minimal("---test---") == "test"
+
+    def test_consecutive_hyphens_collapsed(self):
+        """Consecutive hyphens collapse: 'a--b' -> 'a-b'"""
+        assert slugify_minimal("a--b") == "a-b"
+
+    def test_numbers_preserved(self):
+        """Numbers preserved: 'test123' -> 'test123'"""
+        assert slugify_minimal("test123") == "test123"
+
+    def test_whitespace_only(self):
+        """Whitespace only returns empty: '   ' -> ''"""
+        assert slugify_minimal("   ") == ""
