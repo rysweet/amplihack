@@ -13,6 +13,7 @@ Public API:
 import json
 import logging
 import re
+from typing import Any
 from urllib.parse import urljoin
 
 import requests
@@ -76,6 +77,7 @@ class APIClient:
         rate_limiter: RateLimiter | None = None,
         retry_handler: RetryHandler | None = None,
         default_headers: dict[str, str] | None = None,
+        session_config: dict[str, Any] | None = None,
     ) -> None:
         """Initialize API client.
 
@@ -84,6 +86,8 @@ class APIClient:
             rate_limiter: Optional rate limiter (None = no rate limiting)
             retry_handler: Optional retry handler (None = no retries)
             default_headers: Default headers for all requests
+            session_config: Optional session configuration dict
+                           (e.g., {'verify': False, 'max_redirects': 10})
 
         Raises:
             ValueError: If base_url is empty or uses invalid scheme
@@ -102,6 +106,11 @@ class APIClient:
         self._retry_handler = retry_handler or RetryHandler(max_retries=3)
         self._default_headers = default_headers or {}
         self._session = requests.Session()
+
+        # Apply session configuration if provided
+        if session_config:
+            for key, value in session_config.items():
+                setattr(self._session, key, value)
 
         logger.info(f"APIClient initialized with base_url={base_url}")
 

@@ -85,8 +85,10 @@ class RateLimiter:
     def _refill_tokens(self) -> None:
         """Refill tokens based on elapsed time.
 
-        Must be called with self._lock held.
+        CRITICAL: This method MUST be called with self._lock held.
+        Called only from acquire() which holds the lock.
         """
+        assert self._lock.locked(), "Must be called with lock held"
         now = time.monotonic()
         elapsed = now - self._last_update
 
