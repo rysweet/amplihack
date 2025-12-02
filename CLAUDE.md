@@ -1,5 +1,3 @@
-<!-- amplihack-version: 0.9.0 -->
-
 # CLAUDE.md
 
 This file provides guidance to Claude Code when working with your codebase. It
@@ -22,6 +20,7 @@ When starting a session, import these files for context:
 
 **CRITICAL**: You MUST classify every user request into one of three workflows
 BEFORE taking action. No exceptions.
+
 
 ### Quick Classification (3 seconds max)
 
@@ -48,6 +47,7 @@ WORKFLOW: [Q&A | INVESTIGATION | DEFAULT]
 Reason: [Brief justification]
 Following: .claude/workflow/[WORKFLOW_NAME].md
 ```
+
 
 ### Rules
 
@@ -902,3 +902,37 @@ liberally, execute in parallel, and continuously learn.
 
 1. Executable tool in `.claude/scenarios/` (the program itself)
 2. Skill in `.claude/skills/` that calls the tool (convenient interface)
+
+---
+
+## 🔍 CHECKPOINT VALIDATION (After Step 5)
+
+After completing the first 5 workflow steps, STOP and verify:
+
+```
+CHECKPOINT VALIDATION:
+
+□ Steps 0-5 are ALL marked "completed" in TodoWrite
+□ NO steps were skipped
+□ ALL mandatory agent calls were made (prompt-writer, architect, etc.)
+□ Workflow file guidance was followed
+
+⚠️  IF VALIDATION FAILS: STOP and correct before continuing  ⚠️
+```
+
+If validation passes, state: **"CHECKPOINT VALIDATED - CONTINUING"**
+
+---
+
+## Workflow Progress Checklist
+
+Track completion of all 22 steps:
+[ ] 1. Classify task → [ ] 2. Create issue → [ ] 3. Create branch → 
+[ ] 4. Research → [ ] 5. Design → [ ] 6. Implement → [ ] 7. Test → 
+[ ] 8. Validate → [ ] 9. Review → [ ] 10. Feedback → [ ] 11. Document → 
+[ ] 12. Push → [ ] 13. Create PR → [ ] 14. Describe → [ ] 15. Request review → 
+[ ] 16. Review comments → [ ] 17. Address feedback → [ ] 18. CI → 
+[ ] 19. Final checks → [ ] 20. Mark ready → [ ] 21. Approval → [ ] 22. Merge
+
+After checking each box, proceed immediately to next step.
+Use this to track progress, not as validation gate.
