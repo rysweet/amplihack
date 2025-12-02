@@ -8,6 +8,7 @@ This file documents non-obvious problems, solutions, and patterns discovered dur
 
 ### Recent (December 2025)
 
+- [Mandatory User Testing Validates Its Own Value](#mandatory-user-testing-validates-value-2025-12-02)
 - [System Metadata vs User Content in Git Conflict Detection](#system-metadata-vs-user-content-git-conflict-2025-12-01)
 
 ### November 2025
@@ -1787,3 +1788,127 @@ Opus V2:
 **Pattern Identified**: Validation checkpoints can backfire - use flow language instead of interruption language
 
 **Lesson**: Always validate AI guidance changes empirically with ALL target models before deploying
+
+---
+
+## Mandatory User Testing Validates Its Own Value {#mandatory-user-testing-validates-value-2025-12-02}
+
+**Date**: 2025-12-02
+**Context**: Implementing Parallel Task Orchestrator (Issue #1783, PR #1784)
+**Impact**: HIGH - Validates mandatory testing requirement, found production-blocking bug
+
+### Problem
+
+Unit tests can achieve high coverage (86%) and 100% pass rate while missing critical real-world bugs.
+
+### Discovery
+
+Mandatory user testing (USER_PREFERENCES.md requirement) caught a **production-blocking bug** that 110 passing unit tests missed:
+
+**Bug**: `SubIssue` dataclass not hashable, but `OrchestrationConfig` uses `set()` for deduplication
+
+```python
+# This passed all unit tests but fails in real usage:
+config = OrchestrationConfig(sub_issues=[...])
+# TypeError: unhashable type: 'SubIssue'
+```
+
+### How It Was Missed
+
+**Unit Tests** (110/110 passing):
+- Mocked all `SubIssue` creation
+- Never tested real deduplication path
+- Assumed API worked without instantiation
+
+**User Testing** (mandatory requirement):
+- Tried actual config creation
+- **Bug discovered in <2 minutes**
+- Immediate TypeError on first real use
+
+### Fix
+
+```python
+# Before
+@dataclass
+class SubIssue:
+    labels: List[str] = field(default_factory=list)
+
+# After  
+@dataclass(frozen=True)
+class SubIssue:
+    labels: tuple = field(default_factory=tuple)
+```
+
+### Validation
+
+**Test Results After Fix**:
+```
+✅ Config creation works
+✅ Deduplication works (3 items → 2 unique)
+✅ Orchestrator instantiation works
+✅ Status API functional
+```
+
+### Key Insights
+
+1. **High test coverage ≠ Real-world readiness**
+   - 86% coverage, 110/110 tests, still had production blocker
+   - Mocks hide integration issues
+
+2. **User testing finds different bugs**
+   - Unit tests validate component logic
+   - User tests validate actual workflows
+   - Both are necessary
+
+3. **Mandatory requirement justified**
+   - Without user testing, would've shipped broken code
+   - CI wouldn't catch this (unit tests pass)
+   - First user would've hit TypeError
+
+4. **Time investment worthwhile**
+   - <5 minutes of user testing
+   - Found bug that could've cost hours of debugging
+   - Prevented embarrassing production failure
+
+### Implementation
+
+**Mandatory User Testing Pattern**:
+```bash
+# Test like a user would
+python -c "from module import Class; obj = Class(...)"  # Real instantiation
+config = RealConfig(real_data)  # No mocks
+result = api.actual_method()  # Real workflow
+```
+
+**NOT sufficient**:
+```python
+# Unit test approach (can miss real issues)
+@patch("module.Class")
+def test_with_mock(mock_class):  # Never tests real instantiation
+    ...
+```
+
+### Lessons Learned
+
+1. **Always test like a user** - No mocks, real instantiation, actual workflows
+2. **High coverage isn't enough** - Need real usage validation
+3. **Mocks hide bugs** - Integration issues invisible to mocked tests  
+4. **User requirements are wise** - This explicit requirement saved us from shipping broken code
+
+### Related
+
+- Issue #1783: Parallel Task Orchestrator
+- PR #1784: Implementation
+- USER_PREFERENCES.md: Mandatory E2E testing requirement
+- Commit dc90b350: Hashability fix
+
+### Recommendation
+
+**ENFORCE mandatory user testing** for ALL features:
+- Test with `uvx --from git+...` (no local state)
+- Try actual user workflows (no mocks)
+- Verify error messages and UX
+- Document test results in PR
+
+This discovery **validates the user's explicit requirement** - mandatory user testing prevents production failures that unit tests miss.
+
