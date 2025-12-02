@@ -80,6 +80,7 @@ exclude = [
     "**/venv",
     "**/.venv",
     "tests/**",
+    "src/api_client/tests/**",  # API client tests - pytest dev dependency not available to pyright
     "examples/**/*.py",  # Example/demo code may have missing dependencies
     ".claude/tools/test-utilities/**/*.py",  # Test utilities with missing dependencies
     "scripts/**/*.py",  # Exclude scripts from type checking
