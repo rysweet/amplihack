@@ -3,6 +3,10 @@
 This module defines a clear exception hierarchy for HTTP and network errors.
 All exceptions inherit from APIError for easy catching.
 
+Note: ConnectionError and TimeoutError intentionally shadow Python builtins.
+This follows the pattern used by requests and other HTTP libraries.
+Use explicit imports (from api_client import ConnectionError) to avoid conflicts.
+
 Public API (the "studs"):
     APIError: Base exception for all API errors
     ConnectionError: Network connectivity failures
