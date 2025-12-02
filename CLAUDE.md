@@ -1,5 +1,3 @@
-<!-- amplihack-version: 0.9.0 -->
-
 # CLAUDE.md
 
 This file provides guidance to Claude Code when working with your codebase. It
@@ -22,6 +20,7 @@ When starting a session, import these files for context:
 
 **CRITICAL**: You MUST classify every user request into one of three workflows
 BEFORE taking action. No exceptions.
+
 
 ### Quick Classification (3 seconds max)
 
@@ -48,6 +47,7 @@ WORKFLOW: [Q&A | INVESTIGATION | DEFAULT]
 Reason: [Brief justification]
 Following: .claude/workflow/[WORKFLOW_NAME].md
 ```
+
 
 ### Rules
 
@@ -902,3 +902,44 @@ liberally, execute in parallel, and continuously learn.
 
 1. Executable tool in `.claude/scenarios/` (the program itself)
 2. Skill in `.claude/skills/` that calls the tool (convenient interface)
+
+---
+
+## 🔍 CHECKPOINT VALIDATION (After Step 5)
+
+After completing the first 5 workflow steps, STOP and verify:
+
+```
+CHECKPOINT VALIDATION:
+
+□ Steps 0-5 are ALL marked "completed" in TodoWrite
+□ NO steps were skipped
+□ ALL mandatory agent calls were made (prompt-writer, architect, etc.)
+□ Workflow file guidance was followed
+
+⚠️  IF VALIDATION FAILS: STOP and correct before continuing  ⚠️
+```
+
+If validation passes, state: **"CHECKPOINT VALIDATED - CONTINUING"**
+
+---
+
+## Mandatory Workflow Deliverables
+
+Every workflow execution MUST produce these artifacts:
+
+**Process Artifacts** (Steps 1-3):
+- [ ] GitHub issue created (tracks requirements)
+- [ ] Feature branch created (isolates changes)
+
+**Implementation Artifacts** (Steps 4-10):
+- [ ] Tests written (validates behavior)
+- [ ] Code implemented (solves problem)
+- [ ] Code reviewed (ensures quality)
+
+**Integration Artifacts** (Steps 11-22):
+- [ ] Documentation updated (explains changes)
+- [ ] Pull request created (enables review)
+- [ ] CI passing (proves stability)
+
+Missing ANY artifact = incomplete workflow.
