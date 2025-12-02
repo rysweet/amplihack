@@ -292,6 +292,73 @@ class TestContextManager:
         assert result is None or result is False
 
 
+class TestParameterValidation:
+    """Unit tests for parameter validation (error_type='validation')."""
+
+    def test_empty_base_url_raises_validation_error(self):
+        """Empty base_url raises APIClientError with error_type='validation'."""
+        with pytest.raises(APIClientError) as exc_info:
+            APIClient(base_url="")
+        assert exc_info.value.error_type == "validation"
+        assert "base_url" in exc_info.value.message.lower()
+
+    def test_whitespace_only_base_url_raises_validation_error(self):
+        """Whitespace-only base_url raises APIClientError with error_type='validation'."""
+        with pytest.raises(APIClientError) as exc_info:
+            APIClient(base_url="   ")
+        assert exc_info.value.error_type == "validation"
+
+    def test_zero_timeout_raises_validation_error(self):
+        """Zero timeout_seconds raises APIClientError with error_type='validation'."""
+        with pytest.raises(APIClientError) as exc_info:
+            APIClient(base_url=MOCK_BASE_URL, timeout_seconds=0)
+        assert exc_info.value.error_type == "validation"
+        assert "timeout" in exc_info.value.message.lower()
+
+    def test_negative_timeout_raises_validation_error(self):
+        """Negative timeout_seconds raises APIClientError with error_type='validation'."""
+        with pytest.raises(APIClientError) as exc_info:
+            APIClient(base_url=MOCK_BASE_URL, timeout_seconds=-5.0)
+        assert exc_info.value.error_type == "validation"
+
+    def test_negative_max_retries_raises_validation_error(self):
+        """Negative max_retries raises APIClientError with error_type='validation'."""
+        with pytest.raises(APIClientError) as exc_info:
+            APIClient(base_url=MOCK_BASE_URL, max_retries=-1)
+        assert exc_info.value.error_type == "validation"
+        assert "retries" in exc_info.value.message.lower()
+
+    def test_zero_rate_limit_raises_validation_error(self):
+        """Zero rate_limit_per_second raises APIClientError with error_type='validation'."""
+        with pytest.raises(APIClientError) as exc_info:
+            APIClient(base_url=MOCK_BASE_URL, rate_limit_per_second=0)
+        assert exc_info.value.error_type == "validation"
+        assert "rate_limit" in exc_info.value.message.lower()
+
+    def test_negative_rate_limit_raises_validation_error(self):
+        """Negative rate_limit_per_second raises APIClientError with error_type='validation'."""
+        with pytest.raises(APIClientError) as exc_info:
+            APIClient(base_url=MOCK_BASE_URL, rate_limit_per_second=-1.0)
+        assert exc_info.value.error_type == "validation"
+
+    def test_valid_parameters_do_not_raise(self):
+        """Valid parameters should not raise."""
+        # Should not raise
+        client = APIClient(
+            base_url=MOCK_BASE_URL,
+            timeout_seconds=30.0,
+            max_retries=3,
+            rate_limit_per_second=10.0,
+        )
+        assert client is not None
+
+    def test_zero_retries_is_valid(self):
+        """max_retries=0 is valid (no retries)."""
+        # Should not raise - 0 means "don't retry"
+        client = APIClient(base_url=MOCK_BASE_URL, max_retries=0)
+        assert client.max_retries == 0
+
+
 # =============================================================================
 # INTEGRATION TESTS (30%) - Test multiple components together
 # =============================================================================

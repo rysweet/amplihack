@@ -90,7 +90,32 @@ class APIClient:
             timeout_seconds: Request timeout in seconds
             max_retries: Maximum retry attempts for transient failures
             rate_limit_per_second: Maximum requests per second
+
+        Raises:
+            APIClientError: With error_type="validation" for invalid parameters
         """
+        # Validate parameters
+        if not base_url or not base_url.strip():
+            raise APIClientError(
+                message="base_url cannot be empty",
+                error_type="validation",
+            )
+        if timeout_seconds <= 0:
+            raise APIClientError(
+                message="timeout_seconds must be positive",
+                error_type="validation",
+            )
+        if max_retries < 0:
+            raise APIClientError(
+                message="max_retries cannot be negative",
+                error_type="validation",
+            )
+        if rate_limit_per_second <= 0:
+            raise APIClientError(
+                message="rate_limit_per_second must be positive",
+                error_type="validation",
+            )
+
         self.base_url = base_url.rstrip("/")
         self.timeout_seconds = timeout_seconds
         self.max_retries = max_retries
