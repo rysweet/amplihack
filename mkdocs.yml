@@ -70,27 +70,27 @@ nav:
       - Multi-Agent Debate: .claude/workflow/DEBATE_WORKFLOW.md
       - Fallback Cascade: .claude/workflow/CASCADE_WORKFLOW.md
       - Investigation Workflow: .claude/workflow/INVESTIGATION_WORKFLOW.md
-      - Pre-Commit Diagnostic: .claude/agents/amplihack/workflows/pre-commit-diagnostic.md
-      - CI Diagnostic: .claude/agents/amplihack/workflows/ci-diagnostic-workflow.md
-      - Fix Workflow: .claude/agents/amplihack/workflows/fix-agent.md
+      - Pre-Commit Diagnostic: .claude/agents/amplihack/specialized/pre-commit-diagnostic.md
+      - CI Diagnostic: .claude/agents/amplihack/specialized/ci-diagnostic-workflow.md
+      - Fix Workflow: .claude/agents/amplihack/specialized/fix-agent.md
   - Agents:
-      - Overview: .claude/agents/amplihack/README.md
+      - Overview: .claude/agents/README.md
       - Core Agents:
           - Architect: .claude/agents/amplihack/core/architect.md
           - Builder: .claude/agents/amplihack/core/builder.md
           - Reviewer: .claude/agents/amplihack/core/reviewer.md
           - Tester: .claude/agents/amplihack/core/tester.md
       - Specialized Agents:
-          - API Designer: .claude/agents/amplihack/specialized/api-designer.md
+          - API Designer: .claude/agents/amplihack/core/api-designer.md
           - Security: .claude/agents/amplihack/specialized/security.md
           - Database: .claude/agents/amplihack/specialized/database.md
           - Integration: .claude/agents/amplihack/specialized/integration.md
           - Knowledge Archaeologist: .claude/agents/amplihack/specialized/knowledge-archaeologist.md
       - Workflow Agents:
-          - Ambiguity Handler: .claude/agents/amplihack/workflows/ambiguity.md
-          - Cleanup: .claude/agents/amplihack/workflows/cleanup.md
-          - Optimizer: .claude/agents/amplihack/workflows/optimizer.md
-          - Pattern Recognition: .claude/agents/amplihack/workflows/patterns.md
+          - Ambiguity Handler: .claude/agents/amplihack/specialized/ambiguity.md
+          - Cleanup: .claude/agents/amplihack/specialized/cleanup.md
+          - Optimizer: .claude/agents/amplihack/core/optimizer.md
+          - Pattern Recognition: .claude/agents/amplihack/specialized/patterns.md
   - Commands:
       - Command Guide: commands/COMMAND_SELECTION_GUIDE.md
       - /ultrathink: .claude/commands/amplihack/ultrathink.md
@@ -131,6 +131,11 @@ nav:
       - Documentation Graph: documentation_knowledge_graph.md
       - Blarify Integration: blarify_integration.md
       - Azure Integration: AZURE_INTEGRATION.md
+      - Remote Sessions:
+          - Overview: remote-sessions/index.md
+          - User Guide: remote-sessions/README.md
+          - CLI Reference: remote-sessions/CLI_REFERENCE.md
+          - Tutorial: remote-sessions/TUTORIAL.md
   - Reference:
       - Discoveries: .claude/context/DISCOVERIES.md
       - Security: SECURITY_RECOMMENDATIONS.md
