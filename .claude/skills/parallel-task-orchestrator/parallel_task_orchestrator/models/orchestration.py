@@ -19,20 +19,22 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 
 
-@dataclass
+@dataclass(frozen=True)
 class SubIssue:
     """Metadata for a sub-issue.
 
     Args:
         number: GitHub issue number
         title: Issue title (optional)
-        labels: Issue labels (optional)
+        labels: Issue labels (optional) - stored as tuple for hashability
         assignee: Assigned user (optional)
+
+    Note: frozen=True makes instances hashable for deduplication
     """
 
     number: int
     title: Optional[str] = None
-    labels: List[str] = field(default_factory=list)
+    labels: tuple = field(default_factory=tuple)
     assignee: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
