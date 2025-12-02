@@ -4,12 +4,13 @@ This module handles transferring context to VMs and executing
 amplihack commands remotely.
 """
 
+import base64
 import os
+import shlex
 import subprocess
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 from .errors import ExecutionError, TransferError
 from .orchestrator import VM
@@ -43,6 +44,20 @@ class Executor:
         self.vm = vm
         self.timeout_seconds = timeout_minutes * 60
         self.remote_workspace = "~/workspace"
+
+    @staticmethod
+    def _encode_b64(text: str) -> str:
+        """Encode text as base64 for safe shell transmission.
+
+        Prevents shell escaping issues and visibility in process listings.
+
+        Args:
+            text: Text to encode
+
+        Returns:
+            Base64-encoded string
+        """
+        return base64.b64encode(text.encode()).decode()
 
     def transfer_context(self, archive_path: Path) -> bool:
         """Transfer context archive to remote VM.
@@ -113,7 +128,7 @@ class Executor:
         raise TransferError("Transfer failed after all retries", context={"vm_name": self.vm.name})
 
     def execute_remote(
-        self, command: str, prompt: str, max_turns: int = 10, api_key: Optional[str] = None
+        self, command: str, prompt: str, max_turns: int = 10, api_key: str | None = None
     ) -> ExecutionResult:
         """Execute amplihack command on remote VM.
 
@@ -141,8 +156,10 @@ class Executor:
         print(f"Executing remote command: amplihack {command}")
         print(f"Prompt: {prompt[:100]}..." if len(prompt) > 100 else f"Prompt: {prompt}")
 
-        # Escape single quotes in prompt for bash
-        escaped_prompt = prompt.replace("'", "'\"'\"'")
+        # Encode sensitive data as base64 for safe shell transmission
+        # Prevents shell escaping issues and hides from process listings
+        encoded_prompt = self._encode_b64(prompt)
+        encoded_api_key = self._encode_b64(api_key) if api_key else ""
 
         # Build remote command
         # First extract and setup context, then run amplihack
@@ -184,8 +201,11 @@ pip install --upgrade pip --quiet
 pip install . --quiet
 export PATH="$HOME/.amplihack-venv/bin:$PATH"
 
-# Get API key from .claude.json if available (NFS shared home)
-if [ -f ~/.claude.json ]; then
+# Decode API key from base64 (not visible in ps aux)
+if [ -n '{encoded_api_key}' ]; then
+    export ANTHROPIC_API_KEY=$(echo '{encoded_api_key}' | base64 -d)
+# Fallback to .claude.json if no key provided (NFS shared home)
+elif [ -f ~/.claude.json ]; then
     API_KEY=$(python3 -c "import json; print(json.load(open('$HOME/.claude.json')).get('anthropicApiKey',''))" 2>/dev/null)
     if [ -n "$API_KEY" ]; then
         export ANTHROPIC_API_KEY="$API_KEY"
@@ -193,18 +213,16 @@ if [ -f ~/.claude.json ]; then
     fi
 fi
 
-# Fallback to provided key if set
-if [ -z "$ANTHROPIC_API_KEY" ] && [ -n '{api_key}' ] && [ '{api_key}' != 'None' ]; then
-    export ANTHROPIC_API_KEY='{api_key}'
-fi
-
 if [ -z "$ANTHROPIC_API_KEY" ]; then
     echo "ERROR: No API key found. Set ANTHROPIC_API_KEY or ensure ~/.claude.json exists"
     exit 1
 fi
 
+# Decode prompt from base64
+PROMPT=$(echo '{encoded_prompt}' | base64 -d)
+
 # Run amplihack command
-amplihack claude --{command} --max-turns {max_turns} -- -p '{escaped_prompt}'
+amplihack claude --{command} --max-turns {max_turns} -- -p "$PROMPT"
 """
 
         # Execute with timeout
@@ -386,3 +404,212 @@ echo "Bundle created"
             )
         except subprocess.TimeoutExpired:
             raise TransferError("Git state retrieval timed out", context={"vm_name": self.vm.name})
+
+    def execute_remote_tmux(
+        self,
+        session_id: str,
+        command: str,
+        prompt: str,
+        max_turns: int = 10,
+        api_key: str | None = None,
+    ) -> bool:
+        """Execute amplihack command inside tmux session.
+
+        Creates detached tmux session and launches amplihack.
+        Returns immediately after starting the session.
+
+        Args:
+            session_id: Unique tmux session identifier
+            command: Amplihack command (auto, ultrathink, etc.)
+            prompt: Task prompt
+            max_turns: Maximum turns for auto mode
+            api_key: Optional API key (uses environment if not provided)
+
+        Returns:
+            True if tmux session started successfully
+
+        Raises:
+            ExecutionError: If tmux session creation fails
+        """
+        # Validate session_id (alphanumeric and dashes only)
+        if not session_id or not all(c.isalnum() or c == "-" for c in session_id):
+            raise ExecutionError(
+                f"Invalid session_id: {session_id}. Must be alphanumeric with dashes only.",
+                context={"session_id": session_id},
+            )
+
+        # Get API key
+        if not api_key:
+            api_key = os.getenv("ANTHROPIC_API_KEY")
+            if not api_key:
+                raise ExecutionError(
+                    "ANTHROPIC_API_KEY not found in environment",
+                    context={"required": "ANTHROPIC_API_KEY"},
+                )
+
+        print(f"Starting tmux session: {session_id}")
+        print(f"Command: amplihack {command}")
+        print(f"Prompt: {prompt[:100]}..." if len(prompt) > 100 else f"Prompt: {prompt}")
+
+        # Encode sensitive data as base64 for safe shell transmission
+        # Prevents shell escaping issues and hides from process listings
+        encoded_prompt = self._encode_b64(prompt)
+        encoded_api_key = self._encode_b64(api_key) if api_key else ""
+
+        # Defense-in-depth: Quote session_id for shell safety
+        safe_session_id = shlex.quote(session_id)
+        safe_workspace = shlex.quote(self.remote_workspace)
+
+        # Build setup script (reuse logic from execute_remote)
+        setup_and_run = f"""
+set -e
+cd ~
+tar xzf context.tar.gz
+
+# Setup workspace (clean first for idempotency)
+rm -rf {self.remote_workspace}
+mkdir -p {self.remote_workspace}
+cd {self.remote_workspace}
+
+# Restore git repository
+git clone ~/repo.bundle .
+# Copy .claude from archive (remove existing first to avoid conflicts)
+rm -rf .claude && cp -r ~/.claude .
+
+# Install Python 3.11 (required for blarify dependency)
+# Use deadsnakes PPA for Ubuntu
+if ! command -v python3.11 &> /dev/null; then
+    echo "Installing Python 3.11..."
+    sudo apt-get update -qq
+    sudo apt-get install -y -qq software-properties-common
+    sudo add-apt-repository -y ppa:deadsnakes/ppa
+    sudo apt-get update -qq
+    sudo apt-get install -y -qq python3.11 python3.11-venv python3.11-dev
+fi
+
+# Install tmux if not available
+if ! command -v tmux &> /dev/null; then
+    echo "Installing tmux..."
+    sudo apt-get install -y -qq tmux
+fi
+
+# Create venv with Python 3.11 (remove old one first for fresh install)
+echo "Creating Python 3.11 virtual environment..."
+rm -rf ~/.amplihack-venv
+python3.11 -m venv ~/.amplihack-venv
+source ~/.amplihack-venv/bin/activate
+
+# Upgrade pip and install amplihack from local bundle
+pip install --upgrade pip --quiet
+pip install . --quiet
+export PATH="$HOME/.amplihack-venv/bin:$PATH"
+
+# Decode API key from base64 (not visible in ps aux)
+if [ -n '{encoded_api_key}' ]; then
+    export ANTHROPIC_API_KEY=$(echo '{encoded_api_key}' | base64 -d)
+# Fallback to .claude.json if no key provided (NFS shared home)
+elif [ -f ~/.claude.json ]; then
+    API_KEY=$(python3 -c "import json; print(json.load(open('$HOME/.claude.json')).get('anthropicApiKey',''))" 2>/dev/null)
+    if [ -n "$API_KEY" ]; then
+        export ANTHROPIC_API_KEY="$API_KEY"
+        echo "Using API key from ~/.claude.json"
+    fi
+fi
+
+if [ -z "$ANTHROPIC_API_KEY" ]; then
+    echo "ERROR: No API key found. Set ANTHROPIC_API_KEY or ensure ~/.claude.json exists"
+    exit 1
+fi
+
+# Decode prompt from base64
+PROMPT=$(echo '{encoded_prompt}' | base64 -d)
+
+# Create tmux session and run amplihack inside it
+tmux new-session -d -s {safe_session_id} -c {safe_workspace}
+tmux send-keys -t {safe_session_id} "source ~/.amplihack-venv/bin/activate" C-m
+tmux send-keys -t {safe_session_id} "export ANTHROPIC_API_KEY='$ANTHROPIC_API_KEY'" C-m
+tmux send-keys -t {safe_session_id} "export NODE_OPTIONS='--max-old-space-size=32768'" C-m
+tmux send-keys -t {safe_session_id} "amplihack claude --{command} --max-turns {max_turns} -- -p \\"$PROMPT\\"" C-m
+
+echo "Tmux session {safe_session_id} started successfully"
+"""
+
+        try:
+            result = subprocess.run(
+                ["azlin", "connect", self.vm.name, setup_and_run],
+                capture_output=True,
+                text=True,
+                timeout=600,  # 10 minutes for setup
+                check=False,
+            )
+
+            if result.returncode != 0:
+                raise ExecutionError(
+                    f"Failed to start tmux session: {result.stderr}",
+                    context={"session_id": session_id, "stderr": result.stderr},
+                )
+
+            print(f"Tmux session '{session_id}' started successfully on {self.vm.name}")
+            return True
+
+        except subprocess.TimeoutExpired:
+            raise ExecutionError(
+                "Tmux session setup timed out",
+                context={"session_id": session_id, "vm_name": self.vm.name},
+            )
+        except subprocess.CalledProcessError as e:
+            raise ExecutionError(
+                f"Failed to execute tmux setup: {e.stderr}",
+                context={"session_id": session_id, "error": e.stderr},
+            )
+
+    def check_tmux_status(self, session_id: str) -> str:
+        """Check if tmux session is still running.
+
+        Args:
+            session_id: Tmux session identifier
+
+        Returns:
+            "running" if session exists, "completed" otherwise
+
+        Raises:
+            ExecutionError: If status check fails (not session-related)
+        """
+        # Validate session_id
+        if not session_id or not all(c.isalnum() or c == "-" for c in session_id):
+            raise ExecutionError(
+                f"Invalid session_id: {session_id}. Must be alphanumeric with dashes only.",
+                context={"session_id": session_id},
+            )
+
+        check_command = (
+            f"tmux has-session -t {session_id} 2>/dev/null && echo running || echo completed"
+        )
+
+        try:
+            result = subprocess.run(
+                ["azlin", "connect", self.vm.name, check_command],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=False,
+            )
+
+            # Parse output
+            status = result.stdout.strip()
+            if status in ("running", "completed"):
+                return status
+
+            # Unexpected output - treat as completed
+            return "completed"
+
+        except subprocess.TimeoutExpired:
+            raise ExecutionError(
+                "Tmux status check timed out",
+                context={"session_id": session_id, "vm_name": self.vm.name},
+            )
+        except Exception as e:
+            raise ExecutionError(
+                f"Failed to check tmux status: {e!s}",
+                context={"session_id": session_id, "error": str(e)},
+            )

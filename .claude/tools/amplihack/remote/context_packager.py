@@ -10,7 +10,6 @@ import tarfile
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
 
 from .errors import PackagingError
 
@@ -84,9 +83,9 @@ class ContextPackager:
         self.repo_path = Path(repo_path).resolve()
         self.max_size_bytes = max_size_mb * 1024 * 1024
         self.skip_secret_scan = skip_secret_scan
-        self.temp_dir: Optional[Path] = None
+        self.temp_dir: Path | None = None
 
-    def scan_secrets(self) -> List[SecretMatch]:
+    def scan_secrets(self) -> list[SecretMatch]:
         """Scan repository for hardcoded secrets.
 
         Returns:
@@ -95,7 +94,7 @@ class ContextPackager:
         Raises:
             PackagingError: If scanning fails
         """
-        matches: List[SecretMatch] = []
+        matches: list[SecretMatch] = []
 
         try:
             # Get list of tracked files

@@ -335,6 +335,16 @@ def parse_args_with_passthrough(
         # No command and no claude args - show help
         pass
 
+    # Special handling for 'remote' command - allow unknown args for Click CLI
+    if amplihack_args and amplihack_args[0] == "remote":
+        args, unknown = parser.parse_known_args(amplihack_args)
+        # Add unknown args to remote_args
+        if hasattr(args, 'remote_args'):
+            args.remote_args = args.remote_args + unknown
+        else:
+            args.remote_args = unknown
+        return args, claude_args
+
     args = parser.parse_args(amplihack_args)
     return args, claude_args
 
@@ -585,20 +595,15 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     uvx_parser.add_argument("--info", action="store_true", help="Show UVX staging information")
 
     # Remote execution command
-    remote_parser = subparsers.add_parser("remote", help="Execute on remote Azure VMs via azlin")
-    remote_parser.add_argument("remote_command", choices=["auto", "ultrathink"], help="Command")
-    remote_parser.add_argument("prompt", help="Task prompt")
-    remote_parser.add_argument("--max-turns", type=int, default=10, help="Max turns (default: 10)")
-    remote_parser.add_argument("--vm-size", default="m", help="VM size: s/m/l/xl (default: m)")
-    remote_parser.add_argument("--vm-name", help="Use specific existing VM (skips provisioning)")
-    remote_parser.add_argument("--region", help="Azure region")
-    remote_parser.add_argument("--keep-vm", action="store_true", help="Keep VM after execution")
-    remote_parser.add_argument("--timeout", type=int, default=120, help="Timeout in minutes")
-    remote_parser.add_argument(
-        "--skip-secret-scan",
-        action="store_true",
-        help="Skip secret scanning (use with caution - for development with ephemeral VMs)",
+    # Pass through all args to Click CLI (handles both old and new syntax)
+    remote_parser = subparsers.add_parser(
+        "remote",
+        help="Execute on remote Azure VMs via azlin",
+        add_help=False,  # Disable argparse help, let Click handle it
     )
+    # Accept all remaining args - Click will parse subcommands
+    # Use '*' to consume all positional args and allow unknown flags
+    remote_parser.add_argument("remote_args", nargs='*', help=argparse.SUPPRESS)
 
     # Goal Agent Generator command
     new_parser = subparsers.add_parser(
@@ -1008,43 +1013,33 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     elif args.command == "remote":
-        # Execute remote command
+        # Execute remote command via Click CLI
         claude_dir = Path.cwd() / ".claude"
         if not claude_dir.exists():
             print("Error: .claude directory not found", file=sys.stderr)
             return 1
 
         # Add remote module to path for import
-        # Using sys.path approach - simpler and works with relative imports
         remote_tools_path = claude_dir / "tools" / "amplihack"
         if remote_tools_path not in [Path(p) for p in sys.path]:
             sys.path.insert(0, str(remote_tools_path))
 
         try:
-            # Import using standard import (works because we added to sys.path)
+            # Import Click CLI group
             # pyright: ignore[reportMissingImports] - dynamic path, module exists at runtime
-            from remote.cli import execute_remote_workflow  # type: ignore[import-not-found]
-            from remote.orchestrator import VMOptions  # type: ignore[import-not-found]
+            from remote.cli import remote_cli  # type: ignore[import-not-found]
 
-            # Note: azlin handles size mapping (s/m/l/xl -> Azure VM sizes)
-            # We pass the size directly to azlin without mapping
-            vm_options = VMOptions(
-                size=args.vm_size,
-                region=args.region,
-                vm_name=args.vm_name,
-                keep_vm=args.keep_vm,
-            )
+            # Get remaining args (everything after "remote")
+            remote_args = args.remote_args if hasattr(args, "remote_args") else []
 
-            execute_remote_workflow(
-                repo_path=Path.cwd(),
-                command=args.remote_command,
-                prompt=args.prompt,
-                max_turns=args.max_turns,
-                vm_options=vm_options,
-                timeout=args.timeout,
-                skip_secret_scan=args.skip_secret_scan,
-            )
-            return 0
+            # Invoke Click CLI with args
+            # Click handles all subcommand parsing (list/start/output/kill/status/exec)
+            try:
+                remote_cli(remote_args, standalone_mode=False)
+                return 0
+            except SystemExit as e:
+                return e.code if e.code is not None else 0
+
         except Exception as e:
             print(f"Error: {e}", file=sys.stderr)
             import traceback

@@ -39,6 +39,7 @@ from .errors import (
 from .executor import ExecutionResult, Executor
 from .integrator import BranchInfo, IntegrationSummary, Integrator
 from .orchestrator import VM, Orchestrator, VMOptions
+from .vm_pool import VMPoolEntry, VMPoolManager, VMSize
 
 __all__ = [
     # Main entry points
@@ -49,9 +50,12 @@ __all__ = [
     "Orchestrator",
     "Executor",
     "Integrator",
+    "VMPoolManager",
     # Data classes
     "VM",
     "VMOptions",
+    "VMSize",
+    "VMPoolEntry",
     "SecretMatch",
     "ExecutionResult",
     "BranchInfo",

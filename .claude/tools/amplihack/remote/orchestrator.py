@@ -9,7 +9,6 @@ import subprocess
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Optional
 
 from .errors import CleanupError, ProvisioningError
 
@@ -21,8 +20,8 @@ class VM:
     name: str
     size: str
     region: str
-    created_at: Optional[datetime] = None
-    tags: Optional[dict] = None
+    created_at: datetime | None = None
+    tags: dict | None = None
 
     @property
     def age_hours(self) -> float:
@@ -38,11 +37,11 @@ class VMOptions:
     """Options for VM provisioning/reuse."""
 
     size: str = "Standard_D2s_v3"
-    region: Optional[str] = None
-    vm_name: Optional[str] = None
+    region: str | None = None
+    vm_name: str | None = None
     no_reuse: bool = False
     keep_vm: bool = False
-    azlin_extra_args: Optional[list] = None  # Pass-through for any azlin parameters
+    azlin_extra_args: list | None = None  # Pass-through for any azlin parameters
 
 
 class Orchestrator:
@@ -52,7 +51,7 @@ class Orchestrator:
     for remote amplihack execution.
     """
 
-    def __init__(self, username: Optional[str] = None):
+    def __init__(self, username: str | None = None):
         """Initialize orchestrator.
 
         Args:
@@ -110,7 +109,7 @@ class Orchestrator:
         # Provision new VM
         return self._provision_new_vm(options)
 
-    def _find_reusable_vm(self, options: VMOptions) -> Optional[VM]:
+    def _find_reusable_vm(self, options: VMOptions) -> VM | None:
         """Find existing VM suitable for reuse.
 
         Args:
@@ -336,6 +335,13 @@ class Orchestrator:
                 return False
             raise CleanupError(error_msg, context={"vm_name": vm.name})
 
+        except subprocess.CalledProcessError as e:
+            error_msg = f"VM cleanup failed: {e.stderr}"
+            if force:
+                print(f"Warning: {error_msg}")
+                return False
+            raise CleanupError(error_msg, context={"vm_name": vm.name})
+
         except subprocess.TimeoutExpired:
             error_msg = "VM cleanup timed out"
             if force:
@@ -343,7 +349,7 @@ class Orchestrator:
                 return False
             raise CleanupError(error_msg, context={"vm_name": vm.name})
 
-    def _parse_azlin_list_json(self, output: str) -> List[VM]:
+    def _parse_azlin_list_json(self, output: str) -> list[VM]:
         """Parse JSON output from azlin list."""
         try:
             data = json.loads(output)
@@ -361,7 +367,7 @@ class Orchestrator:
         except json.JSONDecodeError:
             return []
 
-    def _parse_azlin_list_text(self, output: str) -> List[VM]:
+    def _parse_azlin_list_text(self, output: str) -> list[VM]:
         """Parse text output from azlin list.
 
         Expected format:
@@ -382,7 +388,7 @@ class Orchestrator:
 
         return vms
 
-    def _parse_timestamp(self, ts_str: Optional[str]) -> Optional[datetime]:
+    def _parse_timestamp(self, ts_str: str | None) -> datetime | None:
         """Parse timestamp string to datetime."""
         if not ts_str:
             return None

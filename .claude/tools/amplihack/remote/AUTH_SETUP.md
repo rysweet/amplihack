@@ -135,11 +135,13 @@ credential, sub_id, rg = get_azure_auth(debug=True)
 ### Git Protection
 
 The `.gitignore` already covers:
+
 - `.env` and all `.env*` files
 - `*.local` files
 - `**/credentials.json` files
 
 Verify with:
+
 ```bash
 git check-ignore -v .env
 # Output: .gitignore:10:.env	.env
@@ -203,6 +205,7 @@ ClientAuthenticationError: Authentication failed
 ```
 
 **Solutions**:
+
 1. Verify credentials are correct (check Azure Portal)
 2. Ensure Service Principal hasn't expired
 3. Check Service Principal has Contributor role
@@ -215,6 +218,7 @@ ModuleNotFoundError: No module named 'azure'
 ```
 
 **Solution**: Install Azure SDK:
+
 ```bash
 uv pip install azure-identity azure-mgmt-compute azure-mgmt-network azure-mgmt-resource
 ```
@@ -226,6 +230,7 @@ uv pip install azure-identity azure-mgmt-compute azure-mgmt-network azure-mgmt-r
 ```
 
 **Solutions**:
+
 1. Create `.env` from template: `cp .env.example .env`
 2. Run from project root directory
 3. Pass explicit path: `get_azure_auth(env_file=Path("/path/to/.env"))`
@@ -261,13 +266,13 @@ EOF
 
 ### Environment Variables
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `AZURE_TENANT_ID` | Yes | Azure AD tenant (directory) ID |
-| `AZURE_CLIENT_ID` | Yes | Service Principal application ID |
-| `AZURE_CLIENT_SECRET` | Yes | Service Principal secret value |
-| `AZURE_SUBSCRIPTION_ID` | Yes | Target Azure subscription ID |
-| `AZURE_RESOURCE_GROUP` | No | Default resource group name |
+| Variable                | Required | Description                      |
+| ----------------------- | -------- | -------------------------------- |
+| `AZURE_TENANT_ID`       | Yes      | Azure AD tenant (directory) ID   |
+| `AZURE_CLIENT_ID`       | Yes      | Service Principal application ID |
+| `AZURE_CLIENT_SECRET`   | Yes      | Service Principal secret value   |
+| `AZURE_SUBSCRIPTION_ID` | Yes      | Target Azure subscription ID     |
+| `AZURE_RESOURCE_GROUP`  | No       | Default resource group name      |
 
 ### API Documentation
 
