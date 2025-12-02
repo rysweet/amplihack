@@ -26,22 +26,7 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-
-# slugify function to be implemented
-try:
-    from amplihack.utils.string_utils import slugify
-except ImportError:
-    # Define placeholder so tests can be written
-    def slugify(text: str) -> str:
-        """Placeholder - to be implemented.
-
-        Args:
-            text: String to convert to slug
-
-        Returns:
-            URL-safe slug string
-        """
-        raise NotImplementedError("slugify not yet implemented")
+from amplihack.utils.string_utils import slugify
 
 
 class TestSlugify:
