@@ -21,7 +21,7 @@ A single `APIClient` class that wraps `urllib.request` with:
 
 ### Key Benefits
 
-- **Zero External Dependencies**: Uses only Python standard library
+- **Minimal Dependencies**: Uses only `requests` library (industry-standard HTTP client)
 - **Predictable Failure Modes**: Every error type has a specific exception
 - **Automatic Recovery**: Transient failures retry transparently
 - **Full Observability**: Comprehensive logging at every step
@@ -59,20 +59,15 @@ print(response.status_code)  # 201
 ### Advanced Usage
 
 ```python
-from api_client import APIClient, APIClientConfig
+from api_client import APIClient
 from api_client.exceptions import RateLimitError, ServerError
 
 # Configure client with custom settings
-config = APIClientConfig(
-    timeout=30,
-    max_retries=5,
-    backoff_factor=2.0,
-    retry_status_codes=[500, 502, 503, 504],
-)
-
 client = APIClient(
     base_url="https://api.example.com",
-    config=config,
+    timeout=30,
+    max_retries=5,
+    retry_delay=2.0,
     headers={"Authorization": "Bearer token123"},
 )
 
@@ -87,12 +82,14 @@ except ServerError as e:
 
 ### Parameters
 
-| Parameter  | Description              | Default | Required |
-| ---------- | ------------------------ | ------- | -------- |
-| `base_url` | API base URL             | None    | Yes      |
-| `config`   | APIClientConfig instance | Default | No       |
-| `headers`  | Default headers for all  | {}      | No       |
-| `timeout`  | Request timeout seconds  | 30      | No       |
+| Parameter     | Description                        | Default | Required |
+| ------------- | ---------------------------------- | ------- | -------- |
+| `base_url`    | API base URL                       | None    | Yes      |
+| `api_key`     | Optional API key for auth          | None    | No       |
+| `timeout`     | Request timeout seconds            | 30      | No       |
+| `headers`     | Default headers for all requests   | {}      | No       |
+| `max_retries` | Maximum retry attempts (0=disable) | 3       | No       |
+| `retry_delay` | Initial delay between retries      | 1.0     | No       |
 
 ## Examples
 
@@ -185,49 +182,40 @@ except APIClientError as e:
     print(f"API error: {e}")
 ```
 
-### Example 3: Custom Configuration
+### Example 3: Configuration for Different Use Cases
 
 ```python
-from api_client import APIClient, APIClientConfig
+from api_client import APIClient
 
 # High-reliability configuration for critical APIs
-reliable_config = APIClientConfig(
+background_client = APIClient(
+    base_url="https://analytics.example.com",
     timeout=60,              # Longer timeout for slow APIs
     max_retries=5,           # More retry attempts
-    backoff_factor=2.0,      # 1s, 2s, 4s, 8s, 16s delays
-    retry_status_codes=[500, 502, 503, 504, 429],
+    retry_delay=2.0,         # Initial delay between retries
 )
 
 # Fast-fail configuration for user-facing requests
-fast_config = APIClientConfig(
-    timeout=5,               # Short timeout
-    max_retries=1,           # One retry only
-    backoff_factor=0.5,      # Quick retry
-    retry_status_codes=[503],  # Only retry on service unavailable
-)
-
-# Use appropriate config per use case
-background_client = APIClient(
-    base_url="https://analytics.example.com",
-    config=reliable_config,
-)
-
 user_facing_client = APIClient(
     base_url="https://api.example.com",
-    config=fast_config,
+    timeout=5,               # Short timeout
+    max_retries=1,           # One retry only
+    retry_delay=0.5,         # Quick retry
 )
 ```
 
 ## Configuration
 
-### APIClientConfig Options
+### APIClient Constructor Options
 
-| Option               | Type      | Default              | Description                          |
-| -------------------- | --------- | -------------------- | ------------------------------------ |
-| `timeout`            | int       | 30                   | Request timeout in seconds           |
-| `max_retries`        | int       | 3                    | Maximum retry attempts               |
-| `backoff_factor`     | float     | 1.0                  | Exponential backoff multiplier       |
-| `retry_status_codes` | list[int] | [500, 502, 503, 504] | HTTP status codes that trigger retry |
+| Option        | Type  | Default | Description                           |
+| ------------- | ----- | ------- | ------------------------------------- |
+| `base_url`    | str   | -       | Base URL for all requests (required)  |
+| `api_key`     | str   | None    | Optional API key for Bearer auth      |
+| `timeout`     | float | 30.0    | Request timeout in seconds            |
+| `headers`     | dict  | None    | Default headers for all requests      |
+| `max_retries` | int   | 3       | Maximum retry attempts (0 to disable) |
+| `retry_delay` | float | 1.0     | Initial delay between retries         |
 
 ### Environment Variables
 
@@ -246,8 +234,12 @@ class APIClient:
     def __init__(
         self,
         base_url: str,
-        config: APIClientConfig | None = None,
+        *,
+        api_key: str | None = None,
+        timeout: float = 30.0,
         headers: dict[str, str] | None = None,
+        max_retries: int = 3,
+        retry_delay: float = 1.0,
     ) -> None: ...
 
     def get(self, path: str, params: dict | None = None) -> Response: ...
@@ -480,4 +472,4 @@ See `HOW_TO_CREATE_YOUR_OWN.md` for guidance on:
 
 ---
 
-_This tool follows amplihack's philosophy: zero dependencies, clear failure modes, automatic recovery from transient errors._
+_This tool follows amplihack's philosophy: minimal dependencies, clear failure modes, automatic recovery from transient errors._

@@ -567,7 +567,7 @@ class TestAPIClientContextManager:
             client.get("/users/1")
 
         # Verify session is closed (implementation detail)
-        assert client._session is None or client._session_closed
+        assert client._session is None
 
 
 class TestAPIClientRequest:
