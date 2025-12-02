@@ -13,7 +13,7 @@ Commands:
   output     View session output
   kill       Terminate a session
   status     Show pool status
-  prime      Pre-warm VMs (Phase 2)
+  prime      Pre-warm VMs (future enhancement)
 ```
 
 ## Commands
@@ -77,13 +77,12 @@ amplihack remote start [OPTIONS] PROMPTS...
 
 **Options:**
 
-| Option        | Type    | Default | Description                                       |
-| ------------- | ------- | ------- | ------------------------------------------------- |
-| `--vm-size`   | Choice  | l       | VM size: s, m, l, xl                              |
-| `--region`    | String  | None    | Azure region (uses default if not specified)      |
-| `--max-turns` | Integer | 10      | Maximum turns for auto mode                       |
-| `--timeout`   | Integer | 120     | Timeout in minutes                                |
-| `--command`   | Choice  | auto    | Amplihack command: auto, ultrathink, analyze, fix |
+| Option        | Type    | Default | Description                                                                             |
+| ------------- | ------- | ------- | --------------------------------------------------------------------------------------- |
+| `--size`      | Choice  | l       | VM size: s, m, l, xl (controls max concurrent sessions)                                |
+| `--region`    | String  | None    | Azure region (uses default if not specified)                                            |
+| `--max-turns` | Integer | 10      | Maximum conversation turns for Claude Code (higher = more complex tasks)                |
+| `--command`   | Choice  | auto    | Amplihack command mode: auto (standard), ultrathink (deep analysis), analyze, fix       |
 
 **Examples:**
 
@@ -95,12 +94,15 @@ amplihack remote start "implement user authentication"
 amplihack remote start "task one" "task two" "task three"
 
 # With custom options
-amplihack remote start --vm-size l --max-turns 20 "complex refactoring"
+amplihack remote start --size l --max-turns 20 "complex refactoring"
 
-# Use ultrathink mode
+# Use ultrathink mode (deep multi-agent analysis)
 amplihack remote start --command ultrathink "analyze architecture"
 
-# Specify region
+# Long-running task with higher turn limit
+amplihack remote start --max-turns 30 "comprehensive refactoring"
+
+# Specify region (useful for quota management)
 amplihack remote start --region eastus "my task"
 ```
 
@@ -140,11 +142,11 @@ amplihack remote output [OPTIONS] SESSION_ID
 
 **Options:**
 
-| Option           | Type    | Default | Description                   |
-| ---------------- | ------- | ------- | ----------------------------- |
-| `--lines`, `-n`  | Integer | 100     | Number of lines to capture    |
-| `--follow`, `-f` | Flag    | False   | Follow output (poll every 5s) |
-| `--raw`          | Flag    | False   | Output without formatting     |
+| Option           | Type    | Default | Description                                                     |
+| ---------------- | ------- | ------- | --------------------------------------------------------------- |
+| `--lines`, `-n`  | Integer | 100     | Number of lines to capture from tmux pane                       |
+| `--follow`, `-f` | Flag    | False   | Follow output in real-time (polls every 5s, like `tail -f`)    |
+| `--raw`          | Flag    | False   | Output without formatting (useful for piping to files or tools) |
 
 **Examples:**
 
@@ -301,12 +303,12 @@ amplihack remote prime --count 2 --region eastus
 
 ## Environment Variables
 
-| Variable                  | Description                      | Default                          |
-| ------------------------- | -------------------------------- | -------------------------------- |
-| `ANTHROPIC_API_KEY`       | API key for Claude (required)    | None                             |
-| `AMPLIHACK_REMOTE_STATE`  | State file location              | `~/.amplihack/remote-state.json` |
-| `AMPLIHACK_AZURE_REGIONS` | Comma-separated fallback regions | westus3,eastus,centralus         |
-| `AMPLIHACK_VM_SIZE`       | Default VM size                  | l                                |
+| Variable                  | Description                                      | Default                          |
+| ------------------------- | ------------------------------------------------ | -------------------------------- |
+| `ANTHROPIC_API_KEY`       | API key for Claude (required)                    | None                             |
+| `AMPLIHACK_REMOTE_STATE`  | State file location                              | `~/.amplihack/remote-state.json` |
+| `AZURE_REGION`            | Default Azure region for VM provisioning         | eastus                           |
+| `AMPLIHACK_AZURE_REGIONS` | Comma-separated fallback regions (for future)    | westus3,eastus,centralus         |
 
 ## Exit Codes
 
@@ -358,18 +360,18 @@ Location: `~/.amplihack/remote-state.json`
 }
 ```
 
-**Note:** VM pool tracking with capacity management is now available in Phase 2.
+**Note:** VM pool tracking with capacity management is available.
 
 ## Memory Management
 
-| VM Size | Total RAM | Max Sessions | Per Session |
-| ------- | --------- | ------------ | ----------- |
-| s       | 32GB      | 1            | 32GB        |
-| m       | 64GB      | 2            | 32GB        |
-| l       | 128GB     | 4            | 32GB        |
-| xl      | 256GB     | 8            | 32GB        |
+| VM Size | Azure VM SKU      | Total RAM | Max Sessions | Per Session |
+| ------- | ----------------- | --------- | ------------ | ----------- |
+| s       | Standard_D8s_v3   | 32GB      | 1            | 32GB        |
+| m       | Standard_E8s_v5   | 64GB      | 2            | 32GB        |
+| l       | Standard_E16s_v5  | 128GB     | 4            | 32GB        |
+| xl      | Standard_E32s_v5  | 256GB     | 8            | 32GB        |
 
-Memory is set via `NODE_OPTIONS="--max-old-space-size=32768"` in each tmux session (32GB).
+Memory allocation is set via `NODE_OPTIONS="--max-old-space-size=32768"` in each tmux session (32GB per session).
 
 ## tmux Session Structure
 

@@ -12,7 +12,7 @@ Remote Sessions allow you to run long-running amplihack tasks on powerful Azure 
 
 Sessions run in tmux on remote VMs. Close your laptop, lose network connection, or restart your terminal - the work continues uninterrupted.
 
-### Multi-Session Pooling (Phase 2)
+### Multi-Session Pooling
 
 Run up to 4 concurrent sessions on a single L-size VM (128GB RAM). Intelligent pooling automatically distributes sessions across VMs for efficient Azure quota usage.
 
@@ -120,17 +120,17 @@ amplihack remote start "generate comprehensive test suite for entire project"
 ## Architecture Overview
 
 ```
-Local Machine                  Azure VM Pool (Phase 2)
+Local Machine                  Azure VM Pool
 +------------------+           +--------------------------------+
 |  amplihack       |   SSH     | VM 1: L-size (128GB RAM)       |
-|  remote start    | --------> |  tmux session 1 (16GB)         |
-|                  |           |  tmux session 2 (16GB)         |
-+------------------+           |  tmux session 3 (16GB)         |
-        |                      |  tmux session 4 (16GB)         |
+|  remote start    | --------> |  tmux session 1 (32GB)         |
+|                  |           |  tmux session 2 (32GB)         |
++------------------+           |  tmux session 3 (32GB)         |
+        |                      |  tmux session 4 (32GB)         |
         v                      +--------------------------------+
 +------------------+           | VM 2: L-size (128GB RAM)       |
-| VMPoolManager    |   SSH     |  tmux session 5 (16GB)         |
-| - Multi-session  | --------> |  tmux session 6 (16GB)         |
+| VMPoolManager    |   SSH     |  tmux session 5 (32GB)         |
+| - Multi-session  | --------> |  tmux session 6 (32GB)         |
 | - Capacity mgmt  |           |  ... (up to 4 sessions)        |
 | - File locking   |           +--------------------------------+
 +------------------+
@@ -144,7 +144,7 @@ Local Machine                  Azure VM Pool (Phase 2)
    # Install via uvx from GitHub (not available on PyPI)
    uvx --from git+https://github.com/rysweet/azlin --python 3.11 azlin --help
 
-   # Or create persistent wrapper
+   # Or create persistent wrapper script
    cat > /usr/local/bin/azlin << 'EOF'
 #!/bin/bash
 exec uvx --from git+https://github.com/rysweet/azlin --python 3.11 azlin "$@"
@@ -169,23 +169,25 @@ EOF
 
 ## VM Capacity Tiers
 
-| Size | Azure VM          | RAM   | Max Sessions | Memory/Session | Monthly Cost |
-| ---- | ----------------- | ----- | ------------ | -------------- | ------------ |
-| s    | Standard_D8s_v3   | 32GB  | 1            | 32GB           | ~$280        |
-| m    | Standard_E8s_v5   | 64GB  | 2            | 32GB           | ~$520        |
-| l    | Standard_E16s_v5  | 128GB | 4            | 32GB           | ~$1,040      |
-| xl   | Standard_E32s_v5  | 256GB | 8            | 32GB           | ~$2,080      |
+| Size | Azure VM SKU      | RAM   | Max Sessions | Memory/Session | Estimated Cost* |
+| ---- | ----------------- | ----- | ------------ | -------------- | --------------- |
+| s    | Standard_D8s_v3   | 32GB  | 1            | 32GB           | ~$0.38/hr       |
+| m    | Standard_E8s_v5   | 64GB  | 2            | 32GB           | ~$0.50/hr       |
+| l    | Standard_E16s_v5  | 128GB | 4            | 32GB           | ~$1.01/hr       |
+| xl   | Standard_E32s_v5  | 256GB | 8            | 32GB           | ~$2.02/hr       |
 
-**Recommendation**: Use `--vm-size l` for most work (4 concurrent sessions, 32GB each). Each session gets ample RAM for complex Claude Code tasks.
+*Costs vary by region and may change. Check [Azure Pricing Calculator](https://azure.microsoft.com/pricing/calculator/) for current rates.
 
-## Phase 2 Features
+**Recommendation**: Use `--size l` for most work (4 concurrent sessions, 32GB each). Each session gets ample RAM for complex Claude Code tasks.
 
-Remote Sessions Phase 2 is complete and includes:
+## Available Features
+
+Remote Sessions includes:
 
 - **VMPoolManager**: Multi-session VM pooling with intelligent capacity management
 - **CLI Commands**: list, start, output, kill, status
 - **File Locking**: Concurrent state management with fcntl-based exclusive locks
-- **Session Isolation**: Each session runs in isolated workspace with dedicated memory
+- **Session Isolation**: Each session runs in isolated workspace with dedicated memory allocation
 - **Pool Monitoring**: Real-time capacity tracking and utilization metrics
 - **Automatic Reuse**: Sessions share VMs when capacity available in same region
 
