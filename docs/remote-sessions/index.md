@@ -141,8 +141,18 @@ Local Machine                  Azure VM Pool (Phase 2)
 1. **azlin** - Azure VM provisioning tool
 
    ```bash
-   pip install azlin
-   azlin configure
+   # Install via uvx from GitHub (not available on PyPI)
+   uvx --from git+https://github.com/rysweet/azlin --python 3.11 azlin --help
+
+   # Or create persistent wrapper
+   cat > /usr/local/bin/azlin << 'EOF'
+#!/bin/bash
+exec uvx --from git+https://github.com/rysweet/azlin --python 3.11 azlin "$@"
+EOF
+   chmod +x /usr/local/bin/azlin
+
+   # Configure Azure authentication
+   azlin auth setup
    ```
 
 2. **Azure CLI** - Authenticated with subscription access
