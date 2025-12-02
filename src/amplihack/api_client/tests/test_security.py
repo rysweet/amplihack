@@ -8,31 +8,31 @@ from amplihack.api_client.security import SecurityValidator
 
 def test_ssrf_protection_loopback():
     """Test SSRF protection blocks loopback addresses."""
-    with pytest.raises(SecurityError, match="Private IP blocked"):
+    with pytest.raises(SecurityError, match="private IP"):
         SecurityValidator.validate_url("https://127.0.0.1/admin")
 
 
 def test_ssrf_protection_private_class_a():
     """Test SSRF protection blocks private Class A."""
-    with pytest.raises(SecurityError, match="Private IP blocked"):
+    with pytest.raises(SecurityError, match="private IP"):
         SecurityValidator.validate_url("https://10.0.0.1/internal")
 
 
 def test_ssrf_protection_private_class_b():
     """Test SSRF protection blocks private Class B."""
-    with pytest.raises(SecurityError, match="Private IP blocked"):
+    with pytest.raises(SecurityError, match="private IP"):
         SecurityValidator.validate_url("https://172.16.0.1/internal")
 
 
 def test_ssrf_protection_private_class_c():
     """Test SSRF protection blocks private Class C."""
-    with pytest.raises(SecurityError, match="Private IP blocked"):
+    with pytest.raises(SecurityError, match="private IP"):
         SecurityValidator.validate_url("https://192.168.1.1/internal")
 
 
 def test_ssrf_protection_link_local():
     """Test SSRF protection blocks link-local."""
-    with pytest.raises(SecurityError, match="Private IP blocked"):
+    with pytest.raises(SecurityError, match="private IP"):
         SecurityValidator.validate_url("https://169.254.169.254/metadata")
 
 

@@ -77,12 +77,12 @@ def test_client_post_request():
 
 @pytest.mark.integration
 def test_client_retry_on_failure():
-    """Integration test for retry logic."""
+    """Integration test for retry logic - 5xx errors should trigger retries and eventually raise."""
     config = RestApiConfig(
         base_url="https://httpbin.org", timeout=10.0, max_retries=2, retry_backoff=0.1
     )
     client = RestApiClient(config)
 
-    # httpbin.org/status/500 returns 500, but client should handle it
-    response = client.get("/status/500")
-    assert response.status_code == 500  # Should get response, not exception
+    # httpbin.org/status/500 returns 500, which should trigger retries and eventually raise
+    with pytest.raises(Exception):  # Should raise RetryExhaustedError or ApiClientError
+        client.get("/status/500")

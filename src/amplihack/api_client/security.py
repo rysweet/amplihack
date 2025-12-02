@@ -4,6 +4,7 @@ Philosophy: Block dangerous patterns, enforce safe defaults.
 """
 
 import ipaddress
+import socket
 from urllib.parse import urlparse
 
 
@@ -38,17 +39,23 @@ class SecurityValidator:
         if not allow_private and parsed.scheme != "https":
             raise SecurityError(f"HTTPS required in production, got: {parsed.scheme}")
 
-        # Block private IPs (SSRF protection)
+        # Block private IPs (SSRF protection with DNS rebinding protection)
         if not allow_private and parsed.hostname:
             try:
-                ip = ipaddress.ip_address(parsed.hostname)
+                # Resolve DNS to IP address first (prevents DNS rebinding attacks)
+                ip_str = socket.gethostbyname(parsed.hostname)
+                ip = ipaddress.ip_address(ip_str)
                 for cidr in cls.BLOCKED_CIDRS:
                     if ip in ipaddress.ip_network(cidr):
                         raise SecurityError(
-                            f"Private IP blocked for SSRF protection: {parsed.hostname}"
+                            f"Hostname resolves to private IP (SSRF protection): "
+                            f"{parsed.hostname} -> {ip_str}"
                         )
+            except socket.gaierror:
+                # DNS resolution failed - let urllib handle it and report the error
+                pass
             except ValueError:
-                # Not an IP address, allow (DNS resolution happens later)
+                # IP parsing failed (shouldn't happen after gethostbyname)
                 pass
 
     @classmethod

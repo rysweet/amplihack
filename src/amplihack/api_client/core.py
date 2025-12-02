@@ -3,6 +3,7 @@
 Philosophy: Standard library only (urllib), simple and regeneratable.
 """
 
+import logging
 import ssl
 import urllib.error
 import urllib.request
@@ -13,6 +14,8 @@ from .exceptions import ApiClientError
 from .response import ApiResponse
 from .retry import RetryHandler
 from .security import SecurityValidator
+
+logger = logging.getLogger(__name__)
 
 
 class RestApiClient:
@@ -81,6 +84,13 @@ class RestApiClient:
         if headers:
             req_headers.update(headers)
 
+        # Log request with sanitized headers
+        sanitized = self.security.sanitize_headers(req_headers)
+        logger.info(
+            f"Making {method} request to {url}",
+            extra={"method": method, "url": url, "headers": sanitized}
+        )
+
         # Create SSL context
         ssl_context = ssl.create_default_context()
         if not self.config.verify_ssl:
@@ -109,17 +119,32 @@ class RestApiClient:
                     )
             except urllib.error.HTTPError as e:
                 # HTTP errors return response with error status
-                return ApiResponse(
+                response = ApiResponse(
                     status_code=e.code,
                     body=e.read() if e.fp else b"",
                     headers=dict(e.headers) if e.headers else {},
                 )
+
+                # Raise error for 5xx status codes to trigger retry
+                if 500 <= response.status_code < 600:
+                    raise ApiClientError(f"Server error {response.status_code}: {url}") from e
+
+                return response
             except urllib.error.URLError as e:
                 raise ApiClientError(f"Request failed: {e.reason}") from e
             except Exception as e:
                 raise ApiClientError(f"Unexpected error: {e}") from e
 
-        return self.retry.execute(_do_request, retry_on=(ApiClientError,))
+        # Execute request with retry
+        response = self.retry.execute(_do_request, retry_on=(ApiClientError,))
+
+        # Log successful completion
+        logger.info(
+            f"Request completed: {method} {url} -> {response.status_code}",
+            extra={"status_code": response.status_code}
+        )
+
+        return response
 
     def get(self, path: str, **kwargs: Any) -> ApiResponse:
         """Make GET request.

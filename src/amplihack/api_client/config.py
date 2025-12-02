@@ -27,7 +27,7 @@ class RestApiConfig:
     max_retries: int = 3
     retry_backoff: float = 1.0
     verify_ssl: bool = True
-    headers: dict[str, str] | None = field(default_factory=dict)
+    headers: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self):
         """Validate configuration after initialization."""
