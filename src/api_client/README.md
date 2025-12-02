@@ -217,6 +217,8 @@ for i in range(100):
     client.get(f"/items/{i}")  # Automatically rate-limited
 ```
 
+**Note**: Rate limiting is applied once per initial request. Automatic retries do not consume additional rate limit tokens, preventing compounding delays during transient failures.
+
 ### Exceptions
 
 ```python

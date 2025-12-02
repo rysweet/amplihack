@@ -38,6 +38,11 @@ class RateLimiter:
     This implementation is thread-safe and can be shared across threads.
     It supports both global rate limiting and per-host rate limiting.
 
+    Note:
+        Per-host buckets are retained indefinitely. For applications making
+        requests to many distinct hosts over time, consider using global rate
+        limiting only, or implement periodic cleanup of the host buckets.
+
     Attributes:
         requests_per_second: Maximum sustained request rate
         burst_size: Maximum number of tokens (allows bursting)

@@ -16,8 +16,10 @@ import random
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 
-# Default status codes that warrant retry
-DEFAULT_RETRYABLE_STATUS_CODES: frozenset[int] = frozenset({429, 500, 502, 503, 504})
+from .types import RETRYABLE_STATUS_CODES
+
+# Default status codes that warrant retry - sourced from types.py (single source of truth)
+DEFAULT_RETRYABLE_STATUS_CODES: frozenset[int] = frozenset(RETRYABLE_STATUS_CODES)
 
 
 class RetryPolicy:

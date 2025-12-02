@@ -17,6 +17,7 @@ Philosophy:
 import logging
 import threading
 import time
+from types import TracebackType
 from typing import Any
 
 import requests
@@ -74,6 +75,12 @@ class APIClient:
 
     Returns requests.Response objects directly for full compatibility
     with the requests library.
+
+    Thread Safety Note:
+        APIClient instances are effectively immutable after construction.
+        All configuration (base_url, timeout, headers, retry_policy, rate_limiter)
+        cannot be modified after __init__. When thread_safe=True, the underlying
+        requests.Session is protected by a lock during HTTP operations.
 
     Attributes:
         base_url: Base URL for all requests
@@ -420,7 +427,12 @@ class APIClient:
         """Enter context manager."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> None:
         """Exit context manager, close session."""
         self._session.close()
 
