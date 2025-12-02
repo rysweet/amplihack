@@ -44,6 +44,13 @@ class TestSlugifyUnicode:
         assert slugify("Zürich") == "zurich"
         assert slugify("São Paulo") == "sao-paulo"
 
+    def test_non_latin_scripts_removed(self):
+        # Non-Latin scripts are removed (only ASCII output supported)
+        assert slugify("Hello 世界") == "hello"  # Chinese removed
+        assert slugify("Привет") == ""  # Cyrillic removed completely
+        assert slugify("مرحبا") == ""  # Arabic removed completely
+        assert slugify("Hello 🚀") == "hello"  # Emoji removed
+
 
 class TestSlugifyEdgeCases:
     """Edge case handling tests."""
@@ -95,7 +102,7 @@ class TestSlugifyOutputConstraints:
         test_cases = [
             "Hello World!",
             "Test@#$%^&*()Case",
-            "Unicode: cafe",
+            "Unicode: café",  # With actual accent
             "Numbers 123 and Symbols!@#",
         ]
         valid_pattern = re.compile(r"^[a-z0-9-]*$")
