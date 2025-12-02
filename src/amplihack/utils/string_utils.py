@@ -40,6 +40,10 @@ def slugify(text: str) -> str:
         'cafe'
         >>> slugify("Rock & Roll")
         'rock-roll'
+        >>> slugify("!!!???")
+        ''
+        >>> slugify("123")
+        '123'
     """
     # Normalize Unicode and convert to ASCII
     normalized = unicodedata.normalize("NFD", text)
