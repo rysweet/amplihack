@@ -410,3 +410,43 @@ class TestSlugify:
         """
         result = slugify("already-a-slug")
         assert result == "already-a-slug", "Already valid hyphen-separated slug should remain"
+
+    def test_url_path_like_string(self):
+        """Test URL path-like strings with multiple separators.
+
+        Expected behavior:
+        - "api/v1/users/123" should become "api-v1-users-123"
+        - Multiple slashes converted to hyphens, then consolidated
+        - Numbers preserved in path-like structure
+
+        This is a common real-world case for slugifying URL paths.
+        """
+        result = slugify("api/v1/users/123")
+        assert result == "api-v1-users-123", "Should handle URL path-like strings"
+
+    def test_camel_case_not_split(self):
+        """Test that CamelCase strings are NOT split into separate words.
+
+        Expected behavior:
+        - "CamelCaseString" should become "camelcasestring"
+        - No word-boundary detection (by design)
+        - Only explicit separators (spaces, hyphens) create word breaks
+
+        Design decision: The slugify function performs simple separator-based
+        word splitting (spaces, hyphens, etc.) but does NOT attempt smart
+        word-boundary detection like splitting CamelCase. This keeps the
+        function ruthlessly simple and predictable.
+        """
+        result = slugify("CamelCaseString")
+        assert result == "camelcasestring", "CamelCase should NOT be split - just lowercased"
+
+    def test_mixed_separators(self):
+        """Test strings with multiple different separator types.
+
+        Expected behavior:
+        - "hello_world-test.file" should become "hello-world-test-file"
+        - All separator types (underscore, hyphen, dot) unified to hyphens
+        - Consecutive separators collapsed to single hyphen
+        """
+        result = slugify("hello_world-test.file")
+        assert result == "hello-world-test-file", "Should unify different separators"
