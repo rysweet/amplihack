@@ -45,7 +45,8 @@ def slugify(text: str) -> str:
     normalized = unicodedata.normalize("NFD", text)
     ascii_text = normalized.encode("ascii", "ignore").decode("ascii")
 
-    # Lowercase and remove quotes (preserve contractions)
+    # Lowercase and remove quotes
+    # Note: Quotes removed entirely so contractions like "don't" become "dont"
     text = ascii_text.lower()
     text = re.sub(r"[\'\"]+", "", text)
 
