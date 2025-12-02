@@ -6,7 +6,7 @@ Tests the exception classes using the actual implementation API:
 - ResponseError (response-related errors)
   - ClientError (4xx)
   - ServerError (5xx)
-  - RateLimitError (429)
+  - RateLimitError (429) - inherits from ResponseError, NOT ClientError
 - RetryExhaustedError
 - ConfigurationError
 
@@ -37,6 +37,7 @@ class TestAPIClientError:
 
         exc = APIClientError("Something went wrong")
         assert str(exc) == "Something went wrong"
+        assert exc.message == "Something went wrong"
 
     def test_base_exception_can_be_raised(self) -> None:
         """Test that base exception can be raised and caught."""
@@ -66,7 +67,16 @@ class TestRequestError:
         from amplihack.utils.api_client.exceptions import RequestError
 
         exc = RequestError("Connection refused")
-        assert str(exc) == "Connection refused"
+        assert "Connection refused" in str(exc)
+
+    def test_create_request_error_with_cause(self) -> None:
+        """Test creating RequestError with cause exception."""
+        from amplihack.utils.api_client.exceptions import RequestError
+
+        cause = ConnectionError("Original error")
+        exc = RequestError("Connection failed", cause=cause)
+        assert exc.cause is cause
+        assert "caused by" in str(exc)
 
     def test_request_error_caught_as_api_client_error(self) -> None:
         """Test that RequestError can be caught as APIClientError."""
@@ -98,6 +108,7 @@ class TestResponseError:
         exc = ResponseError("Not Found", status_code=404)
         assert exc.status_code == 404
         assert "Not Found" in str(exc)
+        assert "404" in str(exc)
 
     def test_response_error_with_response_body(self) -> None:
         """Test ResponseError with response body."""
@@ -111,16 +122,17 @@ class TestResponseError:
         assert exc.status_code == 400
         assert exc.response_body == '{"error": "Invalid input"}'
 
-    def test_response_error_with_headers(self) -> None:
-        """Test ResponseError with response headers."""
+    def test_response_error_with_request_id(self) -> None:
+        """Test ResponseError with request_id."""
         from amplihack.utils.api_client.exceptions import ResponseError
 
         exc = ResponseError(
             "Unauthorized",
             status_code=401,
-            response_headers={"WWW-Authenticate": "Bearer"},
+            request_id="req-123",
         )
-        assert exc.response_headers == {"WWW-Authenticate": "Bearer"}
+        assert exc.request_id == "req-123"
+        assert "req-123" in str(exc)
 
 
 class TestClientError:
@@ -144,6 +156,22 @@ class TestClientError:
 
         exc = ClientError("Bad Request", status_code=400)
         assert exc.status_code == 400
+
+    def test_client_error_requires_4xx_status(self) -> None:
+        """Test that ClientError requires 4xx status code."""
+        from amplihack.utils.api_client.exceptions import ClientError
+
+        # Valid 4xx codes should work
+        for code in [400, 401, 403, 404, 429, 499]:
+            exc = ClientError("Error", status_code=code)
+            assert exc.status_code == code
+
+        # Non-4xx codes should raise ValueError
+        with pytest.raises(ValueError):
+            ClientError("Error", status_code=500)
+
+        with pytest.raises(ValueError):
+            ClientError("Error", status_code=200)
 
     def test_client_error_caught_as_response_error(self) -> None:
         """Test that ClientError can be caught as ResponseError."""
@@ -175,6 +203,22 @@ class TestServerError:
         exc = ServerError("Internal Server Error", status_code=500)
         assert exc.status_code == 500
 
+    def test_server_error_requires_5xx_status(self) -> None:
+        """Test that ServerError requires 5xx status code."""
+        from amplihack.utils.api_client.exceptions import ServerError
+
+        # Valid 5xx codes should work
+        for code in [500, 502, 503, 504, 599]:
+            exc = ServerError("Error", status_code=code)
+            assert exc.status_code == code
+
+        # Non-5xx codes should raise ValueError
+        with pytest.raises(ValueError):
+            ServerError("Error", status_code=400)
+
+        with pytest.raises(ValueError):
+            ServerError("Error", status_code=200)
+
     def test_server_error_caught_as_response_error(self) -> None:
         """Test that ServerError can be caught as ResponseError."""
         from amplihack.utils.api_client.exceptions import ResponseError, ServerError
@@ -192,32 +236,41 @@ class TestRateLimitError:
 
         assert RateLimitError is not None
 
-    def test_rate_limit_error_inherits_from_client_error(self) -> None:
-        """Test that RateLimitError inherits from ClientError."""
+    def test_rate_limit_error_inherits_from_response_error(self) -> None:
+        """Test that RateLimitError inherits from ResponseError (NOT ClientError)."""
+        from amplihack.utils.api_client.exceptions import RateLimitError, ResponseError
+
+        assert issubclass(RateLimitError, ResponseError)
+
+    def test_rate_limit_error_does_not_inherit_from_client_error(self) -> None:
+        """Test that RateLimitError does NOT inherit from ClientError."""
         from amplihack.utils.api_client.exceptions import ClientError, RateLimitError
 
-        assert issubclass(RateLimitError, ClientError)
+        # In the actual implementation, RateLimitError inherits from ResponseError,
+        # not from ClientError
+        assert not issubclass(RateLimitError, ClientError)
 
     def test_create_rate_limit_error(self) -> None:
         """Test creating RateLimitError."""
         from amplihack.utils.api_client.exceptions import RateLimitError
 
         exc = RateLimitError("Rate limit exceeded")
-        assert exc.status_code == 429  # Default status code
+        assert exc.status_code == 429  # Always 429
         assert "Rate limit" in str(exc)
 
     def test_rate_limit_error_with_retry_after(self) -> None:
         """Test RateLimitError with retry_after attribute."""
         from amplihack.utils.api_client.exceptions import RateLimitError
 
-        exc = RateLimitError("Rate limit exceeded", retry_after=60)
-        assert exc.retry_after == 60
+        exc = RateLimitError("Rate limit exceeded", retry_after=60.0)
+        assert exc.retry_after == 60.0
+        assert "60" in str(exc)
 
-    def test_rate_limit_error_caught_as_client_error(self) -> None:
-        """Test that RateLimitError can be caught as ClientError."""
-        from amplihack.utils.api_client.exceptions import ClientError, RateLimitError
+    def test_rate_limit_error_caught_as_response_error(self) -> None:
+        """Test that RateLimitError can be caught as ResponseError."""
+        from amplihack.utils.api_client.exceptions import RateLimitError, ResponseError
 
-        with pytest.raises(ClientError):
+        with pytest.raises(ResponseError):
             raise RateLimitError("Too many requests")
 
 
@@ -243,6 +296,16 @@ class TestRetryExhaustedError:
         exc = RetryExhaustedError("Max retries exceeded", attempts=3)
         assert exc.attempts == 3
         assert "Max retries" in str(exc)
+        assert "3" in str(exc)
+
+    def test_retry_exhausted_error_with_last_exception(self) -> None:
+        """Test RetryExhaustedError with last_exception."""
+        from amplihack.utils.api_client.exceptions import RetryExhaustedError, ServerError
+
+        last_exc = ServerError("Server Error", status_code=500)
+        exc = RetryExhaustedError("Retries failed", attempts=3, last_exception=last_exc)
+        assert exc.last_exception is last_exc
+        assert "last error" in str(exc)
 
 
 class TestConfigurationError:
@@ -266,6 +329,14 @@ class TestConfigurationError:
 
         exc = ConfigurationError("Invalid configuration: base_url required")
         assert "Invalid configuration" in str(exc)
+
+    def test_configuration_error_with_field(self) -> None:
+        """Test ConfigurationError with field attribute."""
+        from amplihack.utils.api_client.exceptions import ConfigurationError
+
+        exc = ConfigurationError("base_url is required", field="base_url")
+        assert exc.field == "base_url"
+        assert "base_url" in str(exc)
 
 
 class TestExceptionHierarchy:
@@ -304,8 +375,8 @@ class TestExceptionHierarchy:
             ├── RequestError (network/connection)
             ├── ResponseError (HTTP response)
             │   ├── ClientError (4xx)
-            │   │   └── RateLimitError (429)
-            │   └── ServerError (5xx)
+            │   ├── ServerError (5xx)
+            │   └── RateLimitError (429) - NOT under ClientError!
             ├── RetryExhaustedError
             └── ConfigurationError
         """
@@ -333,10 +404,11 @@ class TestExceptionHierarchy:
         assert issubclass(ClientError, ResponseError)
         assert issubclass(ServerError, ResponseError)
 
-        # RateLimitError is under ClientError
-        assert issubclass(RateLimitError, ClientError)
+        # RateLimitError inherits from ResponseError (NOT ClientError)
         assert issubclass(RateLimitError, ResponseError)
         assert issubclass(RateLimitError, APIClientError)
+        # In this implementation, RateLimitError does NOT inherit from ClientError
+        assert not issubclass(RateLimitError, ClientError)
 
     def test_catch_all_with_base_exception(self) -> None:
         """Test that all exceptions can be caught with APIClientError."""

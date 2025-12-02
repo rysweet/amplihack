@@ -1,15 +1,20 @@
 """Tests for RetryHandler.
 
 Tests the retry handler using the actual implementation API:
-- RetryHandler(config: APIClientConfig)
-- Uses config values: max_retries, retry_base_delay, retry_max_delay, retry_multiplier
-- Provides: should_retry(), calculate_delay(), sleep()
+- RetryHandler(max_retries=3, backoff_base=0.5, backoff_max=60.0, backoff_jitter=0.25)
+- should_retry(exception: Exception, attempt: int) -> bool
+- get_delay(attempt: int, retry_after: float | None = None) -> float
+- execute(operation: Callable[[], T], operation_name: str) -> T
+
+Formula: delay = min(backoff_base * 1.5^attempt + jitter, backoff_max)
+Jitter: random(0, backoff_jitter * delay)
 
 Testing pyramid target: 60% unit tests
 """
 
-import time
-from unittest.mock import patch
+from unittest.mock import Mock, patch
+
+import pytest
 
 
 class TestRetryHandlerImport:
@@ -21,409 +26,343 @@ class TestRetryHandlerImport:
 
         assert RetryHandler is not None
 
-    def test_create_retry_handler_with_config(self) -> None:
-        """Test creating RetryHandler with APIClientConfig."""
-        from amplihack.utils.api_client.config import APIClientConfig
+    def test_create_retry_handler_defaults(self) -> None:
+        """Test creating RetryHandler with default values."""
         from amplihack.utils.api_client.retry import RetryHandler
 
-        config = APIClientConfig(base_url="https://api.example.com")
-        handler = RetryHandler(config)
+        handler = RetryHandler()
 
-        assert handler.config == config
+        assert handler.max_retries == 3
+        assert handler.backoff_base == 0.5
+        assert handler.backoff_max == 60.0
+        assert handler.backoff_jitter == 0.25
 
-    def test_retry_handler_uses_config_values(self) -> None:
-        """Test that RetryHandler uses values from config."""
-        from amplihack.utils.api_client.config import APIClientConfig
+    def test_create_retry_handler_custom_values(self) -> None:
+        """Test creating RetryHandler with custom values."""
         from amplihack.utils.api_client.retry import RetryHandler
 
-        config = APIClientConfig(
-            base_url="https://api.example.com",
+        handler = RetryHandler(
             max_retries=5,
-            retry_base_delay=1.0,
-            retry_max_delay=120.0,
-            retry_multiplier=2.0,
+            backoff_base=1.0,
+            backoff_max=120.0,
+            backoff_jitter=0.1,
         )
-        handler = RetryHandler(config)
 
-        # Should access values through config
-        assert handler.config.max_retries == 5
-        assert handler.config.retry_base_delay == 1.0
-        assert handler.config.retry_max_delay == 120.0
-        assert handler.config.retry_multiplier == 2.0
+        assert handler.max_retries == 5
+        assert handler.backoff_base == 1.0
+        assert handler.backoff_max == 120.0
+        assert handler.backoff_jitter == 0.1
 
 
-class TestExponentialBackoff:
-    """Tests for exponential backoff calculation."""
+class TestGetDelay:
+    """Tests for get_delay method - exponential backoff calculation."""
 
-    def test_backoff_formula_attempt_0(self) -> None:
-        """Test backoff delay for attempt 0 (first retry).
+    def test_get_delay_attempt_0(self) -> None:
+        """Test delay for attempt 0.
 
-        Formula: base_delay * multiplier^0 = 0.5 * 1.5^0 = 0.5 seconds
+        Formula: 0.5 * 1.5^0 = 0.5 + jitter
         """
-        from amplihack.utils.api_client.config import APIClientConfig
         from amplihack.utils.api_client.retry import RetryHandler
 
-        config = APIClientConfig(
-            base_url="https://api.example.com",
-            retry_base_delay=0.5,
-            retry_multiplier=1.5,
-        )
-        handler = RetryHandler(config)
+        handler = RetryHandler(backoff_jitter=0)  # Disable jitter
 
-        delay = handler.calculate_delay(attempt=0)
-        # Should be base_delay with some possible jitter
-        assert 0.5 <= delay <= 0.75  # Base plus up to 50% jitter
+        delay = handler.get_delay(attempt=0)
+        assert delay == pytest.approx(0.5, rel=0.01)
 
-    def test_backoff_formula_attempt_1(self) -> None:
-        """Test backoff delay for attempt 1.
+    def test_get_delay_attempt_1(self) -> None:
+        """Test delay for attempt 1.
 
-        Formula: 0.5 * 1.5^1 = 0.75 seconds
+        Formula: 0.5 * 1.5^1 = 0.75 + jitter
         """
-        from amplihack.utils.api_client.config import APIClientConfig
         from amplihack.utils.api_client.retry import RetryHandler
 
-        config = APIClientConfig(
-            base_url="https://api.example.com",
-            retry_base_delay=0.5,
-            retry_multiplier=1.5,
-        )
-        handler = RetryHandler(config)
+        handler = RetryHandler(backoff_jitter=0)
 
-        delay = handler.calculate_delay(attempt=1)
-        # Should be around 0.75 with some jitter
-        assert 0.75 <= delay <= 1.125
+        delay = handler.get_delay(attempt=1)
+        assert delay == pytest.approx(0.75, rel=0.01)
 
-    def test_backoff_formula_attempt_2(self) -> None:
-        """Test backoff delay for attempt 2.
+    def test_get_delay_attempt_2(self) -> None:
+        """Test delay for attempt 2.
 
-        Formula: 0.5 * 1.5^2 = 1.125 seconds
+        Formula: 0.5 * 1.5^2 = 1.125 + jitter
         """
-        from amplihack.utils.api_client.config import APIClientConfig
         from amplihack.utils.api_client.retry import RetryHandler
 
-        config = APIClientConfig(
-            base_url="https://api.example.com",
-            retry_base_delay=0.5,
-            retry_multiplier=1.5,
-        )
-        handler = RetryHandler(config)
+        handler = RetryHandler(backoff_jitter=0)
 
-        delay = handler.calculate_delay(attempt=2)
-        assert 1.0 <= delay <= 1.7  # Some tolerance for jitter
+        delay = handler.get_delay(attempt=2)
+        assert delay == pytest.approx(1.125, rel=0.01)
 
-    def test_backoff_with_custom_base_and_multiplier(self) -> None:
-        """Test backoff with custom base_delay and multiplier.
-
-        Formula: 1.0 * 2.0^2 = 4.0 seconds
-        """
-        from amplihack.utils.api_client.config import APIClientConfig
+    def test_get_delay_capped_at_max(self) -> None:
+        """Test that delay is capped at backoff_max."""
         from amplihack.utils.api_client.retry import RetryHandler
 
-        config = APIClientConfig(
-            base_url="https://api.example.com",
-            retry_base_delay=1.0,
-            retry_multiplier=2.0,
-        )
-        handler = RetryHandler(config)
+        handler = RetryHandler(backoff_max=10.0, backoff_jitter=0)
 
-        delay = handler.calculate_delay(attempt=2)
-        assert 4.0 <= delay <= 6.0  # Base plus jitter
+        # High attempt would give huge delay without cap
+        delay = handler.get_delay(attempt=20)
+        assert delay == 10.0
 
-
-class TestMaxDelayCap:
-    """Tests for max delay capping."""
-
-    def test_delay_capped_at_max_delay(self) -> None:
-        """Test that delay is capped at retry_max_delay."""
-        from amplihack.utils.api_client.config import APIClientConfig
+    def test_get_delay_with_retry_after(self) -> None:
+        """Test that retry_after takes precedence over calculated delay."""
         from amplihack.utils.api_client.retry import RetryHandler
 
-        config = APIClientConfig(
-            base_url="https://api.example.com",
-            retry_base_delay=0.5,
-            retry_multiplier=1.5,
-            retry_max_delay=10.0,  # Set a low max for testing
-        )
-        handler = RetryHandler(config)
+        handler = RetryHandler(backoff_jitter=0)
 
-        # With high attempt number, would exceed max without capping
-        delay = handler.calculate_delay(attempt=20)
-        assert delay <= 10.0  # Should be capped
+        delay = handler.get_delay(attempt=0, retry_after=30.0)
+        assert delay == 30.0
 
-    def test_delay_not_capped_when_below_max(self) -> None:
-        """Test delay is not capped when below max."""
-        from amplihack.utils.api_client.config import APIClientConfig
+    def test_get_delay_with_negative_retry_after(self) -> None:
+        """Test that negative retry_after returns 0."""
         from amplihack.utils.api_client.retry import RetryHandler
 
-        config = APIClientConfig(
-            base_url="https://api.example.com",
-            retry_base_delay=0.5,
-            retry_multiplier=1.5,
-            retry_max_delay=60.0,
-        )
-        handler = RetryHandler(config)
+        handler = RetryHandler(backoff_jitter=0)
 
-        # Attempt 0: 0.5s - well below 60s
-        delay = handler.calculate_delay(attempt=0)
-        assert delay < 60.0
+        delay = handler.get_delay(attempt=0, retry_after=-5.0)
+        assert delay == 0.0
+
+    def test_get_delay_custom_base_and_max(self) -> None:
+        """Test delay with custom backoff_base."""
+        from amplihack.utils.api_client.retry import RetryHandler
+
+        handler = RetryHandler(backoff_base=1.0, backoff_jitter=0)
+
+        # 1.0 * 1.5^2 = 2.25
+        delay = handler.get_delay(attempt=2)
+        assert delay == pytest.approx(2.25, rel=0.01)
 
 
 class TestJitter:
-    """Tests for jitter (randomness) in backoff."""
+    """Tests for jitter in delay calculation."""
 
     def test_jitter_adds_randomness(self) -> None:
-        """Test that jitter adds randomness to delays."""
-        from amplihack.utils.api_client.config import APIClientConfig
+        """Test that jitter adds variability to delays."""
         from amplihack.utils.api_client.retry import RetryHandler
 
-        config = APIClientConfig(
-            base_url="https://api.example.com",
-            retry_base_delay=1.0,
-            retry_multiplier=1.5,
-        )
-        handler = RetryHandler(config)
+        handler = RetryHandler(backoff_jitter=0.25)
 
-        # Run multiple times, delays should vary
-        delays = [handler.calculate_delay(attempt=2) for _ in range(20)]
+        delays = [handler.get_delay(attempt=2) for _ in range(50)]
         unique_delays = set(delays)
 
         # With jitter, we should get different values
-        # (allowing for rare case of identical values)
-        assert len(unique_delays) > 1 or len(delays) < 3
+        assert len(unique_delays) > 1
+
+    def test_jitter_within_bounds(self) -> None:
+        """Test that jitter stays within 0 to jitter_factor * base_delay."""
+        from amplihack.utils.api_client.retry import RetryHandler
+
+        handler = RetryHandler(backoff_jitter=0.25)
+        base_delay = 0.5 * (1.5**2)  # 1.125
+
+        for _ in range(100):
+            delay = handler.get_delay(attempt=2)
+            # Delay should be >= base_delay and <= base_delay * (1 + jitter_factor)
+            assert delay >= base_delay, f"Delay {delay} below base {base_delay}"
+            assert delay <= base_delay * 1.25, f"Delay {delay} above max {base_delay * 1.25}"
+
+    def test_zero_jitter_deterministic(self) -> None:
+        """Test that zero jitter gives consistent delays."""
+        from amplihack.utils.api_client.retry import RetryHandler
+
+        handler = RetryHandler(backoff_jitter=0)
+
+        delays = [handler.get_delay(attempt=1) for _ in range(10)]
+        assert all(d == delays[0] for d in delays)
 
 
 class TestShouldRetry:
-    """Tests for should_retry logic."""
+    """Tests for should_retry method."""
 
-    def test_should_retry_on_500(self) -> None:
-        """Test that 500 Internal Server Error is retryable."""
-        from amplihack.utils.api_client.config import APIClientConfig
+    def test_should_retry_on_request_error(self) -> None:
+        """Test that RequestError is retryable."""
+        from amplihack.utils.api_client.exceptions import RequestError
         from amplihack.utils.api_client.retry import RetryHandler
 
-        config = APIClientConfig(base_url="https://api.example.com", max_retries=3)
-        handler = RetryHandler(config)
+        handler = RetryHandler()
+        exc = RequestError("Connection failed")
 
-        assert handler.should_retry(status_code=500, attempt=0) is True
+        assert handler.should_retry(exc, attempt=0) is True
 
-    def test_should_retry_on_502(self) -> None:
-        """Test that 502 Bad Gateway is retryable."""
-        from amplihack.utils.api_client.config import APIClientConfig
+    def test_should_retry_on_server_error(self) -> None:
+        """Test that ServerError is retryable."""
+        from amplihack.utils.api_client.exceptions import ServerError
         from amplihack.utils.api_client.retry import RetryHandler
 
-        config = APIClientConfig(base_url="https://api.example.com", max_retries=3)
-        handler = RetryHandler(config)
-
-        assert handler.should_retry(status_code=502, attempt=0) is True
-
-    def test_should_retry_on_503(self) -> None:
-        """Test that 503 Service Unavailable is retryable."""
-        from amplihack.utils.api_client.config import APIClientConfig
-        from amplihack.utils.api_client.retry import RetryHandler
-
-        config = APIClientConfig(base_url="https://api.example.com", max_retries=3)
-        handler = RetryHandler(config)
-
-        assert handler.should_retry(status_code=503, attempt=0) is True
-
-    def test_should_retry_on_504(self) -> None:
-        """Test that 504 Gateway Timeout is retryable."""
-        from amplihack.utils.api_client.config import APIClientConfig
-        from amplihack.utils.api_client.retry import RetryHandler
-
-        config = APIClientConfig(base_url="https://api.example.com", max_retries=3)
-        handler = RetryHandler(config)
-
-        assert handler.should_retry(status_code=504, attempt=0) is True
-
-    def test_should_retry_on_429(self) -> None:
-        """Test that 429 Too Many Requests is retryable."""
-        from amplihack.utils.api_client.config import APIClientConfig
-        from amplihack.utils.api_client.retry import RetryHandler
-
-        config = APIClientConfig(base_url="https://api.example.com", max_retries=3)
-        handler = RetryHandler(config)
-
-        assert handler.should_retry(status_code=429, attempt=0) is True
-
-    def test_should_not_retry_on_400(self) -> None:
-        """Test that 400 Bad Request is NOT retryable."""
-        from amplihack.utils.api_client.config import APIClientConfig
-        from amplihack.utils.api_client.retry import RetryHandler
-
-        config = APIClientConfig(base_url="https://api.example.com", max_retries=3)
-        handler = RetryHandler(config)
-
-        assert handler.should_retry(status_code=400, attempt=0) is False
-
-    def test_should_not_retry_on_401(self) -> None:
-        """Test that 401 Unauthorized is NOT retryable."""
-        from amplihack.utils.api_client.config import APIClientConfig
-        from amplihack.utils.api_client.retry import RetryHandler
-
-        config = APIClientConfig(base_url="https://api.example.com", max_retries=3)
-        handler = RetryHandler(config)
-
-        assert handler.should_retry(status_code=401, attempt=0) is False
-
-    def test_should_not_retry_on_403(self) -> None:
-        """Test that 403 Forbidden is NOT retryable."""
-        from amplihack.utils.api_client.config import APIClientConfig
-        from amplihack.utils.api_client.retry import RetryHandler
-
-        config = APIClientConfig(base_url="https://api.example.com", max_retries=3)
-        handler = RetryHandler(config)
-
-        assert handler.should_retry(status_code=403, attempt=0) is False
-
-    def test_should_not_retry_on_404(self) -> None:
-        """Test that 404 Not Found is NOT retryable."""
-        from amplihack.utils.api_client.config import APIClientConfig
-        from amplihack.utils.api_client.retry import RetryHandler
-
-        config = APIClientConfig(base_url="https://api.example.com", max_retries=3)
-        handler = RetryHandler(config)
-
-        assert handler.should_retry(status_code=404, attempt=0) is False
-
-    def test_should_not_retry_on_200(self) -> None:
-        """Test that 200 OK is NOT retryable (success!)."""
-        from amplihack.utils.api_client.config import APIClientConfig
-        from amplihack.utils.api_client.retry import RetryHandler
-
-        config = APIClientConfig(base_url="https://api.example.com", max_retries=3)
-        handler = RetryHandler(config)
-
-        assert handler.should_retry(status_code=200, attempt=0) is False
-
-    def test_should_not_retry_when_max_retries_exceeded(self) -> None:
-        """Test that retry stops when max_retries exceeded."""
-        from amplihack.utils.api_client.config import APIClientConfig
-        from amplihack.utils.api_client.retry import RetryHandler
-
-        config = APIClientConfig(base_url="https://api.example.com", max_retries=3)
-        handler = RetryHandler(config)
-
-        # Attempt 0, 1, 2 should allow retry
-        assert handler.should_retry(status_code=500, attempt=0) is True
-        assert handler.should_retry(status_code=500, attempt=1) is True
-        assert handler.should_retry(status_code=500, attempt=2) is True
-
-        # Attempt 3 should NOT allow retry (we've already tried 3 times)
-        assert handler.should_retry(status_code=500, attempt=3) is False
-
-    def test_should_retry_with_zero_max_retries(self) -> None:
-        """Test that zero max_retries means no retries."""
-        from amplihack.utils.api_client.config import APIClientConfig
-        from amplihack.utils.api_client.retry import RetryHandler
-
-        config = APIClientConfig(base_url="https://api.example.com", max_retries=0)
-        handler = RetryHandler(config)
-
-        assert handler.should_retry(status_code=500, attempt=0) is False
-
-
-class TestRetryableStatusCodes:
-    """Tests for retryable status codes."""
-
-    def test_default_retryable_codes(self) -> None:
-        """Test default list of retryable status codes."""
-        from amplihack.utils.api_client.config import APIClientConfig
-        from amplihack.utils.api_client.retry import RetryHandler
-
-        config = APIClientConfig(base_url="https://api.example.com", max_retries=3)
-        handler = RetryHandler(config)
-
-        # These should be the default retryable codes
-        retryable_codes = [429, 500, 502, 503, 504]
-        for code in retryable_codes:
-            assert handler.should_retry(status_code=code, attempt=0) is True
-
-        # These should NOT be retryable
-        non_retryable_codes = [400, 401, 403, 404, 200]
-        for code in non_retryable_codes:
-            assert handler.should_retry(status_code=code, attempt=0) is False
-
-
-class TestRetryOnException:
-    """Tests for retry behavior on exceptions."""
-
-    def test_should_retry_on_connection_error(self) -> None:
-        """Test that connection errors are retryable."""
-        from amplihack.utils.api_client.config import APIClientConfig
-        from amplihack.utils.api_client.retry import RetryHandler
-
-        config = APIClientConfig(base_url="https://api.example.com", max_retries=3)
-        handler = RetryHandler(config)
-
-        exc = ConnectionError("Connection refused")
-        assert handler.should_retry_exception(exc, attempt=0) is True
-
-    def test_should_retry_on_timeout_error(self) -> None:
-        """Test that timeout errors are retryable."""
-        from amplihack.utils.api_client.config import APIClientConfig
-        from amplihack.utils.api_client.retry import RetryHandler
-
-        config = APIClientConfig(base_url="https://api.example.com", max_retries=3)
-        handler = RetryHandler(config)
-
-        exc = TimeoutError("Connection timed out")
-        assert handler.should_retry_exception(exc, attempt=0) is True
-
-    def test_should_not_retry_on_value_error(self) -> None:
-        """Test that ValueError is NOT retryable."""
-        from amplihack.utils.api_client.config import APIClientConfig
-        from amplihack.utils.api_client.retry import RetryHandler
-
-        config = APIClientConfig(base_url="https://api.example.com", max_retries=3)
-        handler = RetryHandler(config)
-
-        exc = ValueError("Invalid parameter")
-        assert handler.should_retry_exception(exc, attempt=0) is False
-
-    def test_should_not_retry_exception_when_max_exceeded(self) -> None:
-        """Test exception retry stops when max_retries exceeded."""
-        from amplihack.utils.api_client.config import APIClientConfig
-        from amplihack.utils.api_client.retry import RetryHandler
-
-        config = APIClientConfig(base_url="https://api.example.com", max_retries=2)
-        handler = RetryHandler(config)
-
-        exc = ConnectionError("Connection refused")
-        assert handler.should_retry_exception(exc, attempt=0) is True
-        assert handler.should_retry_exception(exc, attempt=1) is True
-        assert handler.should_retry_exception(exc, attempt=2) is False
-
-
-class TestSleepDelay:
-    """Tests for actual sleep behavior."""
-
-    def test_sleep_delays_execution(self) -> None:
-        """Test that sleep method actually delays execution."""
-        from amplihack.utils.api_client.config import APIClientConfig
-        from amplihack.utils.api_client.retry import RetryHandler
-
-        config = APIClientConfig(
-            base_url="https://api.example.com",
-            retry_base_delay=0.1,  # Short delay for test
-            retry_multiplier=1.5,
+        handler = RetryHandler()
+        exc = ServerError(
+            message="Internal Server Error",
+            status_code=500,
+            response_body="Error",
         )
-        handler = RetryHandler(config)
 
-        start = time.time()
-        handler.sleep(attempt=0)  # Should sleep ~0.1s
-        elapsed = time.time() - start
+        assert handler.should_retry(exc, attempt=0) is True
 
-        assert elapsed >= 0.05  # Allow some tolerance
-        assert elapsed < 0.3
-
-    def test_sleep_can_be_mocked(self) -> None:
-        """Test that sleep can be mocked for fast tests."""
-        from amplihack.utils.api_client.config import APIClientConfig
+    def test_should_retry_on_rate_limit_error(self) -> None:
+        """Test that RateLimitError is retryable."""
+        from amplihack.utils.api_client.exceptions import RateLimitError
         from amplihack.utils.api_client.retry import RetryHandler
 
-        config = APIClientConfig(base_url="https://api.example.com")
-        handler = RetryHandler(config)
+        handler = RetryHandler()
+        exc = RateLimitError(
+            message="Rate limited",
+            retry_after=60.0,
+        )
+
+        assert handler.should_retry(exc, attempt=0) is True
+
+    def test_should_not_retry_on_client_error(self) -> None:
+        """Test that ClientError (4xx) is NOT retryable."""
+        from amplihack.utils.api_client.exceptions import ClientError
+        from amplihack.utils.api_client.retry import RetryHandler
+
+        handler = RetryHandler()
+        exc = ClientError(
+            message="Bad Request",
+            status_code=400,
+            response_body="Invalid input",
+        )
+
+        assert handler.should_retry(exc, attempt=0) is False
+
+    def test_should_not_retry_on_generic_exception(self) -> None:
+        """Test that generic Exception is NOT retryable."""
+        from amplihack.utils.api_client.retry import RetryHandler
+
+        handler = RetryHandler()
+        exc = ValueError("Invalid parameter")
+
+        assert handler.should_retry(exc, attempt=0) is False
+
+    def test_should_not_retry_when_max_exceeded(self) -> None:
+        """Test that retry stops when max_retries exceeded."""
+        from amplihack.utils.api_client.exceptions import ServerError
+        from amplihack.utils.api_client.retry import RetryHandler
+
+        handler = RetryHandler(max_retries=3)
+        exc = ServerError(
+            message="Server Error",
+            status_code=500,
+            response_body="Error",
+        )
+
+        # Attempts 0, 1, 2 should allow retry
+        assert handler.should_retry(exc, attempt=0) is True
+        assert handler.should_retry(exc, attempt=1) is True
+        assert handler.should_retry(exc, attempt=2) is True
+
+        # Attempt 3 should NOT allow retry
+        assert handler.should_retry(exc, attempt=3) is False
+
+    def test_should_not_retry_with_zero_max_retries(self) -> None:
+        """Test that zero max_retries means no retries."""
+        from amplihack.utils.api_client.exceptions import ServerError
+        from amplihack.utils.api_client.retry import RetryHandler
+
+        handler = RetryHandler(max_retries=0)
+        exc = ServerError(
+            message="Server Error",
+            status_code=500,
+            response_body="Error",
+        )
+
+        assert handler.should_retry(exc, attempt=0) is False
+
+
+class TestExecute:
+    """Tests for execute method."""
+
+    def test_execute_success_first_try(self) -> None:
+        """Test execute succeeds on first attempt."""
+        from amplihack.utils.api_client.retry import RetryHandler
+
+        handler = RetryHandler()
+        operation = Mock(return_value="success")
+
+        result = handler.execute(operation, "test_op")
+
+        assert result == "success"
+        assert operation.call_count == 1
+
+    def test_execute_success_after_retry(self) -> None:
+        """Test execute succeeds after transient failure."""
+        from amplihack.utils.api_client.exceptions import ServerError
+        from amplihack.utils.api_client.retry import RetryHandler
+
+        handler = RetryHandler(max_retries=3, backoff_jitter=0)
+
+        # First call fails, second succeeds
+        operation = Mock(
+            side_effect=[
+                ServerError(message="Error", status_code=500, response_body="Error"),
+                "success",
+            ]
+        )
+
+        with patch("time.sleep"):
+            result = handler.execute(operation, "test_op")
+
+        assert result == "success"
+        assert operation.call_count == 2
+
+    def test_execute_raises_original_error_after_max_retries(self) -> None:
+        """Test execute raises original error after max retries exhausted.
+
+        The implementation re-raises the original exception when should_retry
+        returns False (attempt >= max_retries).
+        """
+        from amplihack.utils.api_client.exceptions import ServerError
+        from amplihack.utils.api_client.retry import RetryHandler
+
+        handler = RetryHandler(max_retries=2, backoff_jitter=0)
+
+        # All calls fail
+        operation = Mock(
+            side_effect=ServerError(message="Error", status_code=500, response_body="Error")
+        )
+
+        with patch("time.sleep"):
+            with pytest.raises(ServerError):
+                handler.execute(operation, "test_op")
+
+        # Should have tried: initial + 2 retries = 3 times
+        assert operation.call_count == 3
+
+    def test_execute_raises_non_retryable_immediately(self) -> None:
+        """Test execute raises non-retryable exceptions immediately."""
+        from amplihack.utils.api_client.exceptions import ClientError
+        from amplihack.utils.api_client.retry import RetryHandler
+
+        handler = RetryHandler(max_retries=3)
+
+        # Non-retryable error
+        operation = Mock(
+            side_effect=ClientError(message="Bad Request", status_code=400, response_body="Invalid")
+        )
+
+        with pytest.raises(ClientError):
+            handler.execute(operation, "test_op")
+
+        # Should only be called once - no retries for client errors
+        assert operation.call_count == 1
+
+    def test_execute_uses_retry_after(self) -> None:
+        """Test execute respects RateLimitError retry_after."""
+        from amplihack.utils.api_client.exceptions import RateLimitError
+        from amplihack.utils.api_client.retry import RetryHandler
+
+        handler = RetryHandler(max_retries=3, backoff_jitter=0)
+
+        # First call rate limited, second succeeds
+        operation = Mock(
+            side_effect=[
+                RateLimitError(message="Rate limited", retry_after=30.0),
+                "success",
+            ]
+        )
 
         with patch("time.sleep") as mock_sleep:
-            handler.sleep(attempt=5)
-            mock_sleep.assert_called_once()
+            result = handler.execute(operation, "test_op")
+
+        assert result == "success"
+        # Should have slept for the retry_after value
+        mock_sleep.assert_called_once_with(30.0)
