@@ -68,6 +68,7 @@ The `.version` file is a **system-generated tracking file** that stores the git 
 1. **Git Status Detection**: `GitConflictDetector._get_uncommitted_files()` correctly detects ALL uncommitted files including `.version` (status: M)
 
 2. **Filtering Logic Gap**: `_filter_conflicts()` at lines 82-97 in `git_conflict_detector.py` only checks files against ESSENTIAL_DIRS patterns:
+
    ```python
    for essential_dir in essential_dirs:
        if relative_path.startswith(essential_dir + "/"):
@@ -119,6 +120,7 @@ def _filter_conflicts(
 ```
 
 **Rationale**:
+
 - **Semantic Classification**: Filter by PURPOSE (system vs user), not just directory structure
 - **Ruthlessly Simple**: 3-line change, surgical fix
 - **Philosophy-Aligned**: Treats system files appropriately (not user content)
@@ -154,6 +156,7 @@ def _filter_conflicts(
 ### Verification
 
 Test cases added:
+
 - Uncommitted `.version` doesn't trigger conflict warning ✅
 - Uncommitted user content (`.claude/context/custom.md`) DOES trigger warning ✅
 - Deployment proceeds smoothly with modified `.version` ✅
@@ -1816,11 +1819,13 @@ config = OrchestrationConfig(sub_issues=[...])
 ### How It Was Missed
 
 **Unit Tests** (110/110 passing):
+
 - Mocked all `SubIssue` creation
 - Never tested real deduplication path
 - Assumed API worked without instantiation
 
 **User Testing** (mandatory requirement):
+
 - Tried actual config creation
 - **Bug discovered in <2 minutes**
 - Immediate TypeError on first real use
@@ -1833,7 +1838,7 @@ config = OrchestrationConfig(sub_issues=[...])
 class SubIssue:
     labels: List[str] = field(default_factory=list)
 
-# After  
+# After
 @dataclass(frozen=True)
 class SubIssue:
     labels: tuple = field(default_factory=tuple)
@@ -1842,6 +1847,7 @@ class SubIssue:
 ### Validation
 
 **Test Results After Fix**:
+
 ```
 ✅ Config creation works
 ✅ Deduplication works (3 items → 2 unique)
@@ -1873,6 +1879,7 @@ class SubIssue:
 ### Implementation
 
 **Mandatory User Testing Pattern**:
+
 ```bash
 # Test like a user would
 python -c "from module import Class; obj = Class(...)"  # Real instantiation
@@ -1881,6 +1888,7 @@ result = api.actual_method()  # Real workflow
 ```
 
 **NOT sufficient**:
+
 ```python
 # Unit test approach (can miss real issues)
 @patch("module.Class")
@@ -1892,7 +1900,7 @@ def test_with_mock(mock_class):  # Never tests real instantiation
 
 1. **Always test like a user** - No mocks, real instantiation, actual workflows
 2. **High coverage isn't enough** - Need real usage validation
-3. **Mocks hide bugs** - Integration issues invisible to mocked tests  
+3. **Mocks hide bugs** - Integration issues invisible to mocked tests
 4. **User requirements are wise** - This explicit requirement saved us from shipping broken code
 
 ### Related
@@ -1905,6 +1913,7 @@ def test_with_mock(mock_class):  # Never tests real instantiation
 ### Recommendation
 
 **ENFORCE mandatory user testing** for ALL features:
+
 - Test with `uvx --from git+...` (no local state)
 - Try actual user workflows (no mocks)
 - Verify error messages and UX
@@ -1912,3 +1921,68 @@ def test_with_mock(mock_class):  # Never tests real instantiation
 
 This discovery **validates the user's explicit requirement** - mandatory user testing prevents production failures that unit tests miss.
 
+## Discovery: GitHub Pages MkDocs Deployment Requires docs/.claude/ Copy
+
+**Date**: 2025-12-02  
+**Issue**: #1827  
+**PR**: #1829
+
+**Context**: GitHub Pages documentation deployment was failing with 133 mkdocs warnings and 305 total broken links. The mkdocs build couldn't find `.claude/` content referenced in navigation.
+
+**Problem**: MkDocs expects all content in `docs/` directory, but our `.claude/` directory (containing agents, workflows, commands, skills) was at project root. Navigation links to `.claude/` files resulted in 404s.
+
+**Solution**: Copy entire `.claude/` structure to `docs/.claude/` (776 files)
+
+**Why This Works**:
+- MkDocs site_dir scans `docs/` by default
+- All navigation references now resolve correctly
+- Cross-references between docs preserved
+- No complex symlinks or build scripts needed
+
+**Implementation**:
+```bash
+# Copy .claude/ to docs/.claude/
+cp -r .claude docs/.claude
+
+# Update mkdocs.yml navigation to reference docs/.claude/ paths
+# Example: '.claude/agents/architect.md' works in navigation
+```
+
+**Impact**:
+- ✅ mkdocs build succeeds (was failing with 133 warnings)
+- ✅ GitHub Pages deployment unblocked
+- ✅ All framework documentation accessible in docs site
+- ✅ 305 broken links resolved
+
+**Trade-offs**:
+- **Pros**: Ruthlessly simple, no build complexity, works immediately
+- **Cons**: Duplicates `.claude/` content (+776 files in docs/), increases repo size by ~1MB
+
+**Philosophy Alignment**: ✅ Ruthless Simplicity
+- Avoided complex symlink solutions
+- No custom build scripts needed
+- Zero-BS implementation (everything works)
+- Modular (can be regenerated easily)
+
+**Alternatives Considered**:
+1. **Symlinks**: Would break on Windows, adds complexity
+2. **Build script**: Adds build-time dependency, complexity
+3. **Git submodules**: Overkill, adds workflow friction
+4. **Custom MkDocs plugin**: Over-engineering for simple problem
+
+**Lessons Learned**:
+1. MkDocs `docs/` directory is the source of truth - work with it, not against it
+2. File duplication is acceptable when it eliminates build complexity
+3. For documentation systems, **copying > symlinking** for portability
+4. Always test mkdocs build locally before pushing docs changes
+
+**Prevention**:
+- Add `mkdocs build --strict` to CI/GitHub Actions
+- Catches broken navigation before deployment
+- Test with: `mkdocs build && mkdocs serve` locally
+
+**Related Patterns**: 
+- Ruthless Simplicity (PHILOSOPHY.md)
+- Zero-BS Implementation (PATTERNS.md)
+
+**Tags**: #documentation #mkdocs #github-pages #deployment #simplicity
