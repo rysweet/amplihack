@@ -212,10 +212,10 @@ class TestParseRetryAfter:
         assert result is None
 
     def test_negative_numeric(self, limiter):
-        """Should handle negative numeric values."""
+        """Negative numeric values should be clamped to 0."""
         headers = {"Retry-After": "-30"}
         result = limiter.parse_retry_after(headers)
-        assert result == -30  # Parsed as-is
+        assert result == 0  # Clamped to 0 to prevent asyncio.sleep issues
 
     def test_zero_seconds(self, limiter):
         """Should handle zero seconds."""

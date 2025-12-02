@@ -70,7 +70,7 @@ class RateLimiter:
         if not retry_after:
             return None
         try:
-            return int(retry_after)
+            return max(0, int(retry_after))
         except ValueError:
             pass
         try:
