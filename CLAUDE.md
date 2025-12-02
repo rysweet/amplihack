@@ -1,5 +1,3 @@
-<!-- amplihack-version: 0.9.0 -->
-
 # CLAUDE.md
 
 This file provides guidance to Claude Code when working with your codebase. It
@@ -902,3 +900,39 @@ liberally, execute in parallel, and continuously learn.
 
 1. Executable tool in `.claude/scenarios/` (the program itself)
 2. Skill in `.claude/skills/` that calls the tool (convenient interface)
+
+---
+
+## 🔍 CHECKPOINT VALIDATION (After Step 5)
+
+After completing the first 5 workflow steps, STOP and verify:
+
+```
+CHECKPOINT VALIDATION:
+
+□ Steps 0-5 are ALL marked "completed" in TodoWrite
+□ NO steps were skipped
+□ ALL mandatory agent calls were made (prompt-writer, architect, etc.)
+□ Workflow file guidance was followed
+
+⚠️  IF VALIDATION FAILS: STOP and correct before continuing  ⚠️
+```
+
+If validation passes, state: **"CHECKPOINT VALIDATED - CONTINUING"**
+
+---
+
+## ALL 22 Workflow Steps Are MANDATORY
+
+When executing DEFAULT_WORKFLOW, complete ALL of these steps:
+
+1. Task Classification → 2. Create GitHub Issue → 3. Create Feature Branch →
+2. Research & Design → 5. Module Specification → 6. Implementation →
+3. Testing → 8. Local Validation → 9. Code Review → 10. Implement Feedback →
+4. Documentation → 12. Push to Remote → 13. Create Pull Request →
+5. PR Description → 15. Request Reviews → 16. Review Comments →
+6. Address Feedback → 18. CI Validation → 19. Final Checks →
+7. Mark Ready → 21. Merge Approval → 22. Merge to Main
+
+**Critical**: Steps 1-3 (Issue, Branch) are NOT optional for any task. **Flow**:
+After completing step N, proceed immediately to step N+1.
