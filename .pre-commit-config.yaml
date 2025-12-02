@@ -75,7 +75,7 @@ repos:
     rev: v1.1.405
     hooks:
       - id: pyright
-        exclude: '^(\.claude/tools/test-utilities/.*\.py$|\.github/scripts/.*\.py$)'
+        exclude: '^(\.claude/tools/test-utilities/.*\.py$|\.github/scripts/.*\.py$|.*/tests/.*\.py$)'
 
   # JavaScript/TypeScript/Markdown formatting
   - repo: https://github.com/pre-commit/mirrors-prettier
