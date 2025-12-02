@@ -9,8 +9,18 @@ Before starting this tutorial, ensure you have:
 1. **azlin installed and configured**
 
    ```bash
-   pip install azlin
-   azlin configure
+   # Install via uvx from GitHub (not available on PyPI)
+   uvx --from git+https://github.com/rysweet/azlin --python 3.11 azlin --help
+
+   # Or create persistent wrapper script
+   cat > /usr/local/bin/azlin << 'EOF'
+#!/bin/bash
+exec uvx --from git+https://github.com/rysweet/azlin --python 3.11 azlin "$@"
+EOF
+   chmod +x /usr/local/bin/azlin
+
+   # Configure Azure authentication
+   azlin auth setup
    ```
 
 2. **Azure CLI authenticated**
@@ -642,10 +652,12 @@ amplihack remote list --status completed | grep sess- | cut -d' ' -f1 | xargs -n
 
 ### 4. Use Appropriate VM Sizes
 
-- **s**: Quick tests, simple tasks
-- **m**: Standard development work (default)
-- **l**: Complex tasks, multiple parallel sessions (recommended)
-- **xl**: Heavy workloads, 8+ parallel sessions
+- **s** (32GB): Quick tests, single simple task
+- **m** (64GB): Standard development work, 2 concurrent tasks
+- **l** (128GB): Complex tasks, 4 parallel sessions (recommended)
+- **xl** (256GB): Heavy workloads, 8+ parallel sessions
+
+**Cost optimization**: L-size provides best cost per session ($0.25/hr per session). Only use XL for truly parallel workloads.
 
 ## Next Steps
 
