@@ -423,8 +423,8 @@ Planned improvements fer future versions:
 
 - [Installation Prerequisites](../PREREQUISITES.md) - System requirements
 - [Interactive Installation](../INTERACTIVE_INSTALLATION.md) - Step-by-step setup
-- [Project Context](/.claude/context/PROJECT.md) - Customize project information
-- [Philosophy](/.claude/context/PHILOSOPHY.md) - Understanding amplihack principles
+- [Project Context](../../.claude/context/PROJECT.md) - Customize project information
+- [Philosophy](../../.claude/context/PHILOSOPHY.md) - Understanding amplihack principles
 
 ## Summary
 

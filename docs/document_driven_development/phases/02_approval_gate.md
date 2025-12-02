@@ -1,5 +1,7 @@
 # Phase 2: Approval Gate
 
+> [Home](../../index.md) > [Document-Driven Development](../README.md) > [Phases](README.md) > Phase 2
+
 **Human reviews and approves design. Iterate until right. THEN commit.**
 
 ---

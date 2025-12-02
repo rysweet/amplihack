@@ -1,5 +1,7 @@
 # Document-Driven Development (DDD)
 
+> [Home](../index.md) > Document-Driven Development
+
 **A systematic approach to building software where documentation leads, code follows, and AI assistance is maximized.**
 
 ---
