@@ -18,6 +18,8 @@ Test Coverage:
 - Mixed case conversion
 - Consecutive hyphens
 - Complex edge cases
+- max_length parameter (Issue #1836)
+- separator parameter (Issue #1836)
 """
 
 import sys
@@ -410,3 +412,158 @@ class TestSlugify:
         """
         result = slugify("already-a-slug")
         assert result == "already-a-slug", "Already valid hyphen-separated slug should remain"
+
+
+class TestSlugifyMaxLength:
+    """Tests for max_length parameter (Issue #1836).
+
+    The max_length parameter should:
+    1. Truncate output at word boundaries when possible
+    2. Hard truncate single long words that exceed limit
+    3. Return empty string for max_length=0
+    4. Raise ValueError for negative max_length
+    """
+
+    def test_max_length_none_no_truncation(self):
+        """Default max_length=None should not truncate."""
+        result = slugify("hello world test")
+        assert result == "hello-world-test", "No truncation with default max_length"
+
+    def test_max_length_exact_fit(self):
+        """Output exactly matching max_length should not be truncated."""
+        result = slugify("hello-world", max_length=11)
+        assert result == "hello-world", "Exact fit should not truncate"
+
+    def test_max_length_truncate_at_word_boundary(self):
+        """Should truncate at word boundary when possible."""
+        result = slugify("hello world test", max_length=11)
+        assert result == "hello-world", "Should truncate at hyphen boundary"
+
+    def test_max_length_truncate_shorter(self):
+        """Should find earlier word boundary for shorter max_length."""
+        result = slugify("hello world test", max_length=8)
+        assert result == "hello", "Should truncate at earlier boundary"
+
+    def test_max_length_single_long_word_hard_truncate(self):
+        """Single word exceeding max_length should be hard truncated."""
+        result = slugify("superlongword", max_length=5)
+        assert result == "super", "Should hard truncate single long word"
+
+    def test_max_length_zero_returns_empty(self):
+        """max_length=0 should return empty string."""
+        result = slugify("hello world", max_length=0)
+        assert result == "", "max_length=0 should return empty string"
+
+    def test_max_length_one_returns_single_char(self):
+        """max_length=1 should return single character."""
+        result = slugify("hello", max_length=1)
+        assert result == "h", "max_length=1 should return single char"
+
+    def test_max_length_negative_raises_error(self):
+        """Negative max_length should raise ValueError."""
+        import pytest
+
+        with pytest.raises(ValueError):
+            slugify("hello", max_length=-1)
+
+    def test_max_length_with_unicode(self):
+        """max_length should work with unicode input."""
+        result = slugify("Crème brûlée délicieux", max_length=12)
+        assert result == "creme-brulee", (
+            "Should truncate at word boundary after unicode normalization"
+        )
+
+    def test_max_length_output_never_exceeds_limit(self):
+        """Output should never exceed max_length."""
+        test_cases = [
+            ("hello world test example", 15),
+            ("The Quick Brown Fox", 10),
+            ("a-b-c-d-e-f", 5),
+        ]
+        for text, limit in test_cases:
+            result = slugify(text, max_length=limit)
+            assert len(result) <= limit, f"Output '{result}' exceeds max_length={limit}"
+
+
+class TestSlugifySeparator:
+    """Tests for separator parameter (Issue #1836).
+
+    The separator parameter should:
+    1. Replace default hyphen with custom separator
+    2. Work with underscore, dot, empty string, etc.
+    3. Handle special regex characters in separator
+    4. Collapse consecutive custom separators
+    """
+
+    def test_separator_default_hyphen(self):
+        """Default separator should be hyphen."""
+        result = slugify("hello world")
+        assert result == "hello-world", "Default separator should be hyphen"
+
+    def test_separator_underscore(self):
+        """Should support underscore as separator."""
+        result = slugify("hello world", separator="_")
+        assert result == "hello_world", "Should use underscore separator"
+
+    def test_separator_dot(self):
+        """Should support dot as separator."""
+        result = slugify("hello world", separator=".")
+        assert result == "hello.world", "Should use dot separator"
+
+    def test_separator_empty_string(self):
+        """Empty separator should join words directly."""
+        result = slugify("hello world", separator="")
+        assert result == "helloworld", "Empty separator should join words"
+
+    def test_separator_multi_char(self):
+        """Should support multi-character separator."""
+        result = slugify("hello world", separator="__")
+        assert result == "hello__world", "Should support multi-char separator"
+
+    def test_separator_consecutive_collapsed(self):
+        """Consecutive separators should be collapsed."""
+        result = slugify("hello   world", separator="_")
+        assert result == "hello_world", "Should collapse consecutive separators"
+
+    def test_separator_stripped_from_edges(self):
+        """Separator should be stripped from edges."""
+        result = slugify(" hello world ", separator="_")
+        assert result == "hello_world", "Should strip separator from edges"
+
+    def test_separator_with_special_chars_input(self):
+        """Should handle special chars in input with custom separator."""
+        result = slugify("Hello@World!", separator="_")
+        assert result == "hello_world", "Should handle special chars with custom separator"
+
+    def test_separator_preserves_backward_compatibility(self):
+        """Calling without separator should produce same result as before."""
+        result_default = slugify("Hello World!")
+        result_explicit = slugify("Hello World!", separator="-")
+        assert result_default == result_explicit, "Explicit hyphen should match default"
+
+
+class TestSlugifyCombined:
+    """Tests for max_length and separator used together (Issue #1836)."""
+
+    def test_combined_underscore_with_max_length(self):
+        """Should respect both parameters together."""
+        result = slugify("hello world test", max_length=11, separator="_")
+        assert result == "hello_world", "Should truncate at underscore boundary"
+
+    def test_combined_empty_separator_max_length(self):
+        """Empty separator with max_length should hard truncate."""
+        result = slugify("hello world", max_length=8, separator="")
+        assert result == "hellowor", "Should hard truncate with empty separator"
+
+    def test_combined_idempotency(self):
+        """Combined usage should still be idempotent."""
+        text = "Hello World!"
+        first = slugify(text, max_length=10, separator="_")
+        second = slugify(first, max_length=10, separator="_")
+        assert first == second, "Should be idempotent with combined params"
+
+    def test_combined_default_values_unchanged(self):
+        """Default behavior should remain unchanged with explicit defaults."""
+        result_implicit = slugify("Hello World!")
+        result_explicit = slugify("Hello World!", max_length=None, separator="-")
+        assert result_implicit == result_explicit, "Explicit defaults should match implicit"
