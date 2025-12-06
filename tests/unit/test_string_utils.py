@@ -1,9 +1,6 @@
-"""Unit tests for string utility functions - TDD approach.
+"""Unit tests for string utility functions.
 
-Tests the slugify function that converts strings to URL-safe slugs.
-Function to be implemented in amplihack/utils/string_utils.py
-
-Following TDD approach - these tests should FAIL initially as slugify is not implemented.
+Tests the slugify and slugify_safe functions that convert strings to URL-safe slugs.
 
 Test Coverage:
 - Basic text to slug conversion
@@ -18,6 +15,8 @@ Test Coverage:
 - Mixed case conversion
 - Consecutive hyphens
 - Complex edge cases
+- Type coercion (slugify_safe)
+- None handling (slugify_safe)
 """
 
 import sys
@@ -26,22 +25,7 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-
-# slugify function to be implemented
-try:
-    from amplihack.utils.string_utils import slugify
-except ImportError:
-    # Define placeholder so tests can be written
-    def slugify(text: str) -> str:
-        """Placeholder - to be implemented.
-
-        Args:
-            text: String to convert to slug
-
-        Returns:
-            URL-safe slug string
-        """
-        raise NotImplementedError("slugify not yet implemented")
+from amplihack.utils.string_utils import slugify, slugify_safe
 
 
 class TestSlugify:
@@ -410,3 +394,147 @@ class TestSlugify:
         """
         result = slugify("already-a-slug")
         assert result == "already-a-slug", "Already valid hyphen-separated slug should remain"
+
+
+class TestSlugifySafe:
+    """Test slugify_safe wrapper for type-safe slug conversion.
+
+    The slugify_safe function should:
+    1. Handle None input → return ""
+    2. Coerce non-string types using str()
+    3. Delegate to slugify() for actual transformation
+    4. Be idempotent
+    """
+
+    def test_none_returns_empty_string(self):
+        """Test that None input returns empty string.
+
+        Expected behavior:
+        - slugify_safe(None) should return ""
+        - No errors or exceptions
+        """
+        result = slugify_safe(None)
+        assert result == "", "None should return empty string"
+
+    def test_integer_coercion(self):
+        """Test that integer input is coerced to string.
+
+        Expected behavior:
+        - slugify_safe(42) should return "42"
+        - Integer converted to string then slugified
+        """
+        result = slugify_safe(42)
+        assert result == "42", "Integer 42 should return '42'"
+
+    def test_negative_integer(self):
+        """Test negative integer handling.
+
+        Expected behavior:
+        - slugify_safe(-123) should return "123"
+        - Minus sign is removed as special character
+        """
+        result = slugify_safe(-123)
+        assert result == "123", "Negative integer should have minus sign removed"
+
+    def test_float_coercion(self):
+        """Test that float input is coerced to string.
+
+        Expected behavior:
+        - slugify_safe(12.5) should return "12-5"
+        - Decimal point becomes hyphen (special char handling)
+        """
+        result = slugify_safe(12.5)
+        assert result == "12-5", "Float 12.5 should return '12-5'"
+
+    def test_boolean_true(self):
+        """Test boolean True handling.
+
+        Expected behavior:
+        - slugify_safe(True) should return "true"
+        - Boolean converted to lowercase string
+        """
+        result = slugify_safe(True)
+        assert result == "true", "Boolean True should return 'true'"
+
+    def test_boolean_false(self):
+        """Test boolean False handling.
+
+        Expected behavior:
+        - slugify_safe(False) should return "false"
+        - Boolean converted to lowercase string
+        """
+        result = slugify_safe(False)
+        assert result == "false", "Boolean False should return 'false'"
+
+    def test_string_passthrough(self):
+        """Test that string input behaves same as slugify().
+
+        Expected behavior:
+        - slugify_safe("Hello World") should return "hello-world"
+        - Same behavior as regular slugify
+        """
+        result = slugify_safe("Hello World")
+        assert result == "hello-world", "String should be slugified normally"
+
+    def test_empty_string(self):
+        """Test empty string input.
+
+        Expected behavior:
+        - slugify_safe("") should return ""
+        - Same as None handling
+        """
+        result = slugify_safe("")
+        assert result == "", "Empty string should return empty string"
+
+    def test_idempotency(self):
+        """Test that slugify_safe is idempotent.
+
+        Expected behavior:
+        - slugify_safe(slugify_safe(x)) == slugify_safe(x)
+        - Multiple applications give same result
+        """
+        original = "Test Value!"
+        first_pass = slugify_safe(original)
+        second_pass = slugify_safe(first_pass)
+        assert first_pass == second_pass, "slugify_safe should be idempotent"
+
+    def test_zero_integer(self):
+        """Test zero integer.
+
+        Expected behavior:
+        - slugify_safe(0) should return "0"
+        - Zero is a valid numeric string
+        """
+        result = slugify_safe(0)
+        assert result == "0", "Integer 0 should return '0'"
+
+    def test_large_integer(self):
+        """Test large integer handling.
+
+        Expected behavior:
+        - slugify_safe(123456789) should return "123456789"
+        - Large numbers preserved correctly
+        """
+        result = slugify_safe(123456789)
+        assert result == "123456789", "Large integer should be preserved"
+
+    def test_scientific_notation_float(self):
+        """Test scientific notation float.
+
+        Expected behavior:
+        - slugify_safe(1e10) should handle scientific notation
+        - Result should be valid slug
+        """
+        result = slugify_safe(1e10)
+        assert result.isascii(), "Scientific notation should produce ASCII result"
+        assert "--" not in result, "No consecutive hyphens"
+
+    def test_unicode_string_via_safe(self):
+        """Test unicode string through safe wrapper.
+
+        Expected behavior:
+        - slugify_safe("Café") should return "cafe"
+        - Same behavior as slugify for string input
+        """
+        result = slugify_safe("Café")
+        assert result == "cafe", "Unicode should be normalized"

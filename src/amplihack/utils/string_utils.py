@@ -10,6 +10,7 @@ Philosophy:
 
 Public API:
     slugify: Convert text to URL-safe slug format
+    slugify_safe: Type-safe wrapper with None/type coercion handling
 """
 
 import re
@@ -61,4 +62,37 @@ def slugify(text: str) -> str:
     return text.strip("-")
 
 
-__all__ = ["slugify"]
+def slugify_safe(text: str | None | float | bool) -> str:
+    """Type-safe wrapper around slugify() with None and type coercion handling.
+
+    Converts input to string, handles None → "", then delegates to slugify().
+    This is useful when dealing with user input or data that may be None or
+    non-string types.
+
+    Args:
+        text: Any type that can be coerced to string, or None.
+            - None returns empty string
+            - Integers, floats, booleans converted via str()
+            - Strings processed normally
+
+    Returns:
+        URL-safe slug. Empty string for None input.
+
+    Examples:
+        >>> slugify_safe(None)
+        ''
+        >>> slugify_safe(42)
+        '42'
+        >>> slugify_safe("Hello World")
+        'hello-world'
+        >>> slugify_safe(True)
+        'true'
+        >>> slugify_safe(12.5)
+        '12-5'
+    """
+    if text is None:
+        return ""
+    return slugify(str(text))
+
+
+__all__ = ["slugify", "slugify_safe"]
