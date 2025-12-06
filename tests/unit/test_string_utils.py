@@ -1,9 +1,6 @@
-"""Unit tests for string utility functions - TDD approach.
+"""Unit tests for string utility functions.
 
 Tests the slugify function that converts strings to URL-safe slugs.
-Function to be implemented in amplihack/utils/string_utils.py
-
-Following TDD approach - these tests should FAIL initially as slugify is not implemented.
 
 Test Coverage:
 - Basic text to slug conversion
@@ -28,22 +25,7 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-
-# slugify function to be implemented
-try:
-    from amplihack.utils.string_utils import slugify
-except ImportError:
-    # Define placeholder so tests can be written
-    def slugify(text: str) -> str:
-        """Placeholder - to be implemented.
-
-        Args:
-            text: String to convert to slug
-
-        Returns:
-            URL-safe slug string
-        """
-        raise NotImplementedError("slugify not yet implemented")
+from amplihack.utils.string_utils import slugify
 
 
 class TestSlugify:
