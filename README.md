@@ -374,11 +374,15 @@ python main.py
 | `/amplihack:uninstall`         | Uninstall amplihack tools                               |
 
 # Install with filtering
+
 amplihack install
+
 # Result: Only 9/32 agents staged (72% reduction)
 
 # Launch with filtering
+
 amplihack launch
+
 # Result: Focused environment for coding tasks
 
 | Agent            | Purpose                                  |
@@ -573,8 +577,12 @@ Real-time session information displayed at the bottom of Claude Code showing:
   - [PDF Skill](.claude/skills/pdf/README.md) - Comprehensive PDF manipulation
   - [XLSX Skill](.claude/skills/xlsx/README.md) - Spreadsheet creation with
     formulas and financial modeling
-- [Azure DevOps CLI Skill](.claude/skills/azure-devops-cli/README.md) - Expert
-  guidance for Azure DevOps automation, pipelines, boards, repos, and artifacts
+- [Azure Admin Skill](.claude/skills/azure-admin/README.md) - Azure
+  administration, identity management, RBAC, and resource orchestration
+- [Azure DevOps CLI Skill](.claude/skills/azure-devops-cli/README.md) - Azure
+  DevOps automation, pipelines, repos, and artifacts
+- **[Azure DevOps Boards Tools](docs/azure-devops/README.md) - Work item
+  management with CLI tools ([Quick Start](docs/azure-devops/quick-start.md))**
 - [Benchmarking with eval-recipes](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/BENCHMARKING/) -
   Performance measurement and comparison
 - [Profile Management](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/PROFILE_MANAGEMENT/) -
