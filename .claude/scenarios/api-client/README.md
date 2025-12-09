@@ -9,7 +9,7 @@ The Simple API Client provides GET and POST methods for interacting with JSON AP
 **Key Features**:
 
 - Standard library only (urllib, json)
-- Clean error hierarchy (APIError, TimeoutError, HTTPError)
+- Clean error hierarchy (APIError, RequestTimeoutError, HTTPError)
 - Automatic JSON encoding/decoding
 - Configurable timeouts
 - Works with any JSON API
@@ -86,7 +86,7 @@ user = client.get("/users/1")
 
 **Returns**: Parsed JSON response (dict or list)
 
-**Raises**: `HTTPError` on 4xx/5xx responses, `TimeoutError` on timeout
+**Raises**: `HTTPError` on 4xx/5xx responses, `RequestTimeoutError` on timeout
 
 #### post(endpoint: str, data: dict) -> dict
 
@@ -110,14 +110,14 @@ result = client.post("/users", {
 
 **Returns**: Parsed JSON response (dict)
 
-**Raises**: `HTTPError` on 4xx/5xx responses, `TimeoutError` on timeout
+**Raises**: `HTTPError` on 4xx/5xx responses, `RequestTimeoutError` on timeout
 
 ### Exception Classes
 
 All exceptions inherit from `APIError` for easy catching.
 
 ```python
-from api_client import APIClient, APIError, HTTPError, TimeoutError
+from api_client import APIClient, APIError, HTTPError, RequestTimeoutError
 ```
 
 #### APIError
@@ -147,7 +147,7 @@ except HTTPError as e:
 - `status_code` (int): HTTP status code
 - `message` (str): Error description
 
-#### TimeoutError
+#### RequestTimeoutError
 
 Raised when request exceeds timeout.
 
@@ -156,7 +156,7 @@ client = APIClient("https://slow-api.example.com", timeout=5)
 
 try:
     result = client.get("/slow-endpoint")
-except TimeoutError as e:
+except RequestTimeoutError as e:
     print(f"Request timed out: {e}")
 ```
 
@@ -179,7 +179,7 @@ except APIError as e:
 ### Handling Specific Errors
 
 ```python
-from api_client import APIClient, HTTPError, TimeoutError
+from api_client import APIClient, HTTPError, RequestTimeoutError
 
 client = APIClient("https://jsonplaceholder.typicode.com", timeout=10)
 
@@ -192,7 +192,7 @@ except HTTPError as e:
         print("Server error - try again later")
     else:
         print(f"HTTP error {e.status_code}: {e.message}")
-except TimeoutError:
+except RequestTimeoutError:
     print("Request timed out - check your connection")
 ```
 

@@ -8,8 +8,11 @@ Philosophy:
 Public API (studs):
     APIClient: HTTP client for JSON APIs with GET and POST support
     APIError: Base exception for all API client errors
-    TimeoutError: Raised when request times out
+    RequestTimeoutError: Raised when request times out
     HTTPError: Raised for HTTP error responses (4xx, 5xx)
+
+Scope: GET and POST methods only. Other HTTP methods (PUT, DELETE, PATCH)
+can be added when needed.
 """
 
 import builtins
@@ -19,14 +22,14 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-__all__ = ["APIClient", "APIError", "TimeoutError", "HTTPError"]
+__all__ = ["APIClient", "APIError", "RequestTimeoutError", "HTTPError"]
 
 
 class APIError(Exception):
     """Base exception for all API client errors."""
 
 
-class TimeoutError(APIError):
+class RequestTimeoutError(APIError):
     """Raised when a request times out."""
 
 
@@ -104,7 +107,7 @@ class APIClient:
 
         Raises:
             HTTPError: For HTTP error responses
-            TimeoutError: If request times out
+            RequestTimeoutError: If request times out
             APIError: For connection errors or invalid JSON
         """
         headers = {"Accept": "application/json"}
@@ -127,11 +130,11 @@ class APIClient:
             raise HTTPError(e.code, e.msg) from e
 
         except builtins.TimeoutError as e:
-            raise TimeoutError(f"Request timed out: {e}") from e
+            raise RequestTimeoutError(f"Request timed out: {e}") from e
 
         except urllib.error.URLError as e:
             if isinstance(e.reason, socket.timeout):
-                raise TimeoutError(f"Request timed out: {e.reason}") from e
+                raise RequestTimeoutError(f"Request timed out: {e.reason}") from e
             raise APIError(f"Connection error: {e.reason}") from e
 
     def get(self, endpoint: str) -> dict[str, Any] | list[Any]:
@@ -145,7 +148,7 @@ class APIClient:
 
         Raises:
             HTTPError: For HTTP error responses
-            TimeoutError: If request times out
+            RequestTimeoutError: If request times out
             APIError: For connection errors or invalid JSON
         """
         url = self._build_url(endpoint)
@@ -163,7 +166,7 @@ class APIClient:
 
         Raises:
             HTTPError: For HTTP error responses
-            TimeoutError: If request times out
+            RequestTimeoutError: If request times out
             APIError: For connection errors or invalid JSON
         """
         url = self._build_url(endpoint)

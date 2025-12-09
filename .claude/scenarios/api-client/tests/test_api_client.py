@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import builtins
 
-from api_client import APIClient, APIError, HTTPError, TimeoutError
+from api_client import APIClient, APIError, HTTPError, RequestTimeoutError
 
 
 class TestExceptionHierarchy(unittest.TestCase):
@@ -34,8 +34,8 @@ class TestExceptionHierarchy(unittest.TestCase):
         self.assertTrue(issubclass(APIError, Exception))
 
     def test_timeout_error_inherits_from_api_error(self):
-        """TimeoutError should inherit from APIError."""
-        self.assertTrue(issubclass(TimeoutError, APIError))
+        """RequestTimeoutError should inherit from APIError."""
+        self.assertTrue(issubclass(RequestTimeoutError, APIError))
 
     def test_http_error_inherits_from_api_error(self):
         """HTTPError should inherit from APIError."""
@@ -64,9 +64,9 @@ class TestExceptionHierarchy(unittest.TestCase):
             raise HTTPError(404, "Not Found")
 
     def test_catching_api_error_catches_timeout_error(self):
-        """APIError catch block should catch TimeoutError."""
+        """APIError catch block should catch RequestTimeoutError."""
         with self.assertRaises(APIError):
-            raise TimeoutError("Request timed out")
+            raise RequestTimeoutError("Request timed out")
 
 
 class TestAPIClientInitialization(unittest.TestCase):
@@ -381,26 +381,26 @@ class TestTimeoutErrorHandling(unittest.TestCase):
 
     @patch("api_client.urllib.request.urlopen")
     def test_timeout_raises_timeout_error_on_get(self, mock_urlopen):
-        """GET timeout should raise TimeoutError."""
+        """GET timeout should raise RequestTimeoutError."""
         mock_urlopen.side_effect = builtins.TimeoutError("timed out")
 
-        with self.assertRaises(TimeoutError):
+        with self.assertRaises(RequestTimeoutError):
             self.client.get("/slow-endpoint")
 
     @patch("api_client.urllib.request.urlopen")
     def test_timeout_raises_timeout_error_on_post(self, mock_urlopen):
-        """POST timeout should raise TimeoutError."""
+        """POST timeout should raise RequestTimeoutError."""
         mock_urlopen.side_effect = builtins.TimeoutError("timed out")
 
-        with self.assertRaises(TimeoutError):
+        with self.assertRaises(RequestTimeoutError):
             self.client.post("/slow-endpoint", {"data": "test"})
 
     @patch("api_client.urllib.request.urlopen")
     def test_url_error_timeout_raises_timeout_error(self, mock_urlopen):
-        """URLError with timeout reason should raise TimeoutError."""
+        """URLError with timeout reason should raise RequestTimeoutError."""
         mock_urlopen.side_effect = URLError(builtins.TimeoutError("timed out"))
 
-        with self.assertRaises(TimeoutError):
+        with self.assertRaises(RequestTimeoutError):
             self.client.get("/timeout")
 
 
@@ -553,10 +553,10 @@ class TestModuleExports(unittest.TestCase):
         self.assertIn("APIError", api_client.__all__)
 
     def test_module_exports_timeout_error(self):
-        """Module should export TimeoutError class."""
+        """Module should export RequestTimeoutError class."""
         import api_client
 
-        self.assertIn("TimeoutError", api_client.__all__)
+        self.assertIn("RequestTimeoutError", api_client.__all__)
 
     def test_module_exports_http_error(self):
         """Module should export HTTPError class."""

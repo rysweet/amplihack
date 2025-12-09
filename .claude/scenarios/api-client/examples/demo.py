@@ -21,7 +21,7 @@ from pathlib import Path
 # Add parent directory to path for import
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from api_client import APIClient, APIError, HTTPError, TimeoutError
+from api_client import APIClient, APIError, HTTPError, RequestTimeoutError
 
 
 def main():
@@ -113,7 +113,7 @@ def main():
         # This should work with a fast API
         result = short_timeout_client.get("/posts/1")
         print(f"   Fast request succeeded: {result['title'][:30]}...")
-    except TimeoutError as e:
+    except RequestTimeoutError as e:
         print(f"   Request timed out: {e}")
     except APIError as e:
         print(f"   Error: {e}")
