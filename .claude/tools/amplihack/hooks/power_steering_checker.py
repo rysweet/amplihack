@@ -69,6 +69,18 @@ try:
 except ImportError:
     TURN_STATE_AVAILABLE = False
 
+# Try to import completion evidence module
+try:
+    from completion_evidence import (
+        CompletionEvidenceChecker,
+        Evidence,
+        EvidenceType,
+    )
+
+    EVIDENCE_AVAILABLE = True
+except ImportError:
+    EVIDENCE_AVAILABLE = False
+
 # Security: Maximum transcript size to prevent memory exhaustion
 MAX_TRANSCRIPT_LINES = 50000  # Limit transcript to 50K lines (~10-20MB typical)
 
@@ -177,6 +189,7 @@ class PowerSteeringResult:
     summary: str | None = None
     analysis: Optional["ConsiderationAnalysis"] = None  # Full analysis results for visibility
     is_first_stop: bool = False  # True if this is the first stop attempt in session
+    evidence_results: list = field(default_factory=list)  # Concrete evidence from Phase 1
 
 
 class PowerSteeringChecker:
@@ -522,7 +535,11 @@ class PowerSteeringChecker:
         session_id: str,
         progress_callback: Callable | None = None,
     ) -> PowerSteeringResult:
-        """Main entry point - analyze transcript and make decision.
+        """Main entry point - analyze transcript and make decision using two-phase verification.
+
+        Phase 1: Check concrete evidence (GitHub, filesystem, user confirmation)
+        Phase 2: SDK analysis (only if no concrete evidence of completion)
+        Phase 3: Combine results (evidence can override SDK concerns)
 
         Args:
             transcript_path: Path to session transcript JSONL file
@@ -618,6 +635,48 @@ class PowerSteeringChecker:
                     continuation_prompt=None,
                     summary=None,
                 )
+
+            # 4c. PHASE 1: Evidence-based verification (fail-fast on concrete completion signals)
+            if EVIDENCE_AVAILABLE:
+                try:
+                    evidence_checker = CompletionEvidenceChecker(self.project_root)
+                    evidence_results = []
+
+                    # Check PR status (strongest evidence)
+                    pr_evidence = evidence_checker.check_pr_status()
+                    if pr_evidence:
+                        evidence_results.append(pr_evidence)
+
+                        # If PR merged, work is definitely complete
+                        if pr_evidence.evidence_type == EvidenceType.PR_MERGED and pr_evidence.verified:
+                            self._log("PR merged - work complete (concrete evidence)", "INFO")
+                            return PowerSteeringResult(
+                                decision="approve",
+                                reasons=["PR merged successfully"],
+                            )
+
+                    # Check user confirmation (escape hatch)
+                    session_dir = self.project_root / ".claude" / "runtime" / "power-steering" / session_id
+                    user_confirm = evidence_checker.check_user_confirmation(session_dir)
+                    if user_confirm and user_confirm.verified:
+                        evidence_results.append(user_confirm)
+                        self._log("User confirmed completion - allowing stop", "INFO")
+                        return PowerSteeringResult(
+                            decision="approve",
+                            reasons=["User explicitly confirmed work is complete"],
+                        )
+
+                    # Check TODO completion
+                    todo_evidence = evidence_checker.check_todo_completion(transcript_path)
+                    evidence_results.append(todo_evidence)
+
+                    # Store evidence for later use in Phase 3
+                    self._evidence_results = evidence_results
+
+                except Exception as e:
+                    # Fail-open: If evidence checking fails, continue to SDK analysis
+                    self._log(f"Evidence checking failed (non-critical): {e}", "WARNING")
+                    self._evidence_results = []
 
             # 5. Analyze against considerations (filtered by session type)
             analysis = self._analyze_considerations(
@@ -824,7 +883,7 @@ class PowerSteeringChecker:
                 "Power-steering analysis complete - all checks passed",
             )
 
-            return PowerSteeringResult(
+            result = PowerSteeringResult(
                 decision="approve",
                 reasons=["all_considerations_satisfied"],
                 continuation_prompt=None,
@@ -832,6 +891,12 @@ class PowerSteeringChecker:
                 analysis=analysis,
                 is_first_stop=False,
             )
+
+            # Add evidence to result if available
+            if hasattr(self, '_evidence_results'):
+                result.evidence_results = self._evidence_results
+
+            return result
 
         except Exception as e:
             # Fail-open: On any error, approve and log
@@ -842,6 +907,36 @@ class PowerSteeringChecker:
                 continuation_prompt=None,
                 summary=None,
             )
+
+    def _evidence_suggests_complete(self, evidence_results: list) -> bool:
+        """Check if concrete evidence suggests work is complete.
+
+        Args:
+            evidence_results: List of Evidence objects from Phase 1
+
+        Returns:
+            True if concrete evidence indicates completion
+        """
+        if not evidence_results:
+            return False
+
+        # Strong evidence types that indicate completion
+        strong_evidence = [
+            EvidenceType.PR_MERGED,
+            EvidenceType.USER_CONFIRMATION,
+            EvidenceType.CI_PASSING,
+        ]
+
+        # Check if any strong evidence is verified
+        for evidence in evidence_results:
+            if evidence.evidence_type in strong_evidence and evidence.verified:
+                return True
+
+        # Check if multiple medium evidence types are verified
+        verified_count = sum(1 for e in evidence_results if e.verified)
+
+        # If 3+ evidence types verified, trust concrete evidence
+        return verified_count >= 3
 
     def _is_disabled(self) -> bool:
         """Check if power-steering is disabled.
