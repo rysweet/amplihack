@@ -19,14 +19,28 @@ from typing import Any, Dict, Optional
 # Clean import structure
 sys.path.insert(0, str(Path(__file__).parent))
 
+# Import error protocol first for structured errors
+try:
+    from error_protocol import HookError, HookErrorSeverity, HookImportError
+except ImportError as e:
+    # Fallback if error_protocol doesn't exist
+    print(f"Failed to import error_protocol: {e}", file=sys.stderr)
+    print("Make sure error_protocol.py exists in the same directory", file=sys.stderr)
+    sys.exit(1)
+
 # Import HookProcessor - wrap in try/except for robustness
 try:
     from hook_processor import HookProcessor  # type: ignore[import]
 except ImportError as e:
-    # If import fails, provide helpful error message
-    print(f"Failed to import hook_processor: {e}", file=sys.stderr)
-    print("Make sure hook_processor.py exists in the same directory", file=sys.stderr)
-    sys.exit(1)
+    # If import fails, raise structured error
+    raise HookImportError(
+        HookError(
+            severity=HookErrorSeverity.FATAL,
+            message=f"Failed to import hook_processor: {e}",
+            context="Loading hook dependencies",
+            suggestion="Ensure hook_processor.py exists in the same directory"
+        )
+    )
 
 # Default continuation prompt when no custom prompt is provided
 DEFAULT_CONTINUATION_PROMPT = (
