@@ -227,6 +227,24 @@ class TestAPIClientDelete:
         assert result == {"deleted": True}
         mock_requests.delete.assert_called_once()
 
+    @patch("api_client.requests")
+    def test_delete_handles_204_no_content(self, mock_requests):
+        """DELETE request should handle 204 No Content response."""
+        # Arrange
+        mock_response = Mock()
+        mock_response.status_code = 204
+        mock_response.text = ""
+        mock_requests.delete.return_value = mock_response
+
+        client = APIClient(base_url="https://api.example.com")
+
+        # Act
+        result = client.delete("/items/1")
+
+        # Assert - 204 returns empty dict
+        assert result == {}
+        mock_requests.delete.assert_called_once()
+
 
 class TestAPIClientAuthentication:
     """Tests for authentication handling."""

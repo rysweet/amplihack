@@ -130,6 +130,10 @@ class APIClient:
                 response_body=response.text,
             )
 
+        # Handle 204 No Content (common for DELETE operations)
+        if response.status_code == 204:
+            return {}
+
         # Parse JSON response
         try:
             return response.json()
