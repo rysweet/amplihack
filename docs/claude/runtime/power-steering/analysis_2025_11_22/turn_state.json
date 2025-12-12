@@ -1,0 +1,33 @@
+{
+  "session_id": "analysis_2025_11_22",
+  "turn_count": 1,
+  "consecutive_blocks": 1,
+  "first_block_timestamp": "2025-12-02T20:13:15.473835",
+  "last_block_timestamp": "2025-12-02T20:13:15.473835",
+  "block_history": [
+    {
+      "block_number": 1,
+      "timestamp": "2025-12-02T20:13:15.473835",
+      "transcript_index": 0,
+      "transcript_length": 171,
+      "failed_evidence": [
+        {
+          "consideration_id": "objective_completion",
+          "reason": "SDK analysis: Was original user objective fully accomplished? not met",
+          "evidence_quote": null,
+          "timestamp": "2025-12-02T20:13:15.473823",
+          "was_claimed_complete": false
+        },
+        {
+          "consideration_id": "next_steps",
+          "reason": "SDK analysis: Is work complete with no remaining next steps? not met",
+          "evidence_quote": null,
+          "timestamp": "2025-12-02T20:13:15.473831",
+          "was_claimed_complete": false
+        }
+      ],
+      "user_claims_detected": []
+    }
+  ],
+  "last_analyzed_transcript_index": 171
+}

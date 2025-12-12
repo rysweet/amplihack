@@ -1,3 +1,5 @@
+<!-- amplihack-version: 0.9.0 -->
+
 # CLAUDE.md
 
 This file provides guidance to Claude Code when working with your codebase. It
@@ -9,38 +11,86 @@ automation and collaborative problem-solving.
 
 When starting a session, import these files for context:
 
+[@.claude/context/PHILOSOPHY.md](.claude/context/PHILOSOPHY.md)
+[@.claude/context/PROJECT.md](.claude/context/PROJECT.md)
+[@.claude/context/PATTERNS.md](.claude/context/PATTERNS.md)
+[@.claude/context/TRUST.md](.claude/context/TRUST.md)
+[@.claude/context/USER_PREFERENCES.md](.claude/context/USER_PREFERENCES.md)
+[@.claude/context/USER_REQUIREMENT_PRIORITY.md](.claude/context/USER_REQUIREMENT_PRIORITY.md)
+
+## MANDATORY: Workflow Selection (ALWAYS FIRST)
+
+**CRITICAL**: You MUST classify every user request into one of three workflows
+BEFORE taking action. No exceptions.
+
+### Quick Classification (3 seconds max)
+
+| Task Type         | Workflow               | When to Use                                            |
+| ----------------- | ---------------------- | ------------------------------------------------------ |
+| **Q&A**           | Q&A_WORKFLOW           | Simple questions, single-turn answers, no code changes |
+| **Investigation** | INVESTIGATION_WORKFLOW | Understanding code, exploring systems, research        |
+| **Development**   | DEFAULT_WORKFLOW       | Code changes, features, bugs, refactoring              |
+
+### Classification Keywords
+
+- **Q&A**: "what is", "explain briefly", "quick question", "how do I run"
+- **Investigation**: "investigate", "understand", "analyze", "research",
+  "explore", "how does X work"
+- **Development**: "implement", "add", "fix", "create", "refactor", "update",
+  "build"
+
+### Required Announcement
+
+State your classification before proceeding:
+
 ```
-@.claude/context/PHILOSOPHY.md
-@.claude/context/PROJECT.md
-@.claude/context/PATTERNS.md
-@.claude/context/TRUST.md
-@.claude/context/USER_PREFERENCES.md
-@.claude/context/USER_REQUIREMENT_PRIORITY.md
-@.claude/context/DISCOVERIES.md
-@docs/document_driven_development/overview.md
+WORKFLOW: [Q&A | INVESTIGATION | DEFAULT]
+Reason: [Brief justification]
+Following: .claude/workflow/[WORKFLOW_NAME].md
 ```
 
-**For large features or multi-file changes**, also import:
+### Rules
 
-```
-@docs/document_driven_development/README.md
-```
+1. **If keywords match multiple workflows**: Choose DEFAULT_WORKFLOW
+2. **If uncertain**: Choose DEFAULT_WORKFLOW (never skip workflow)
+3. **Q&A is for simple questions ONLY**: If answer needs exploration, use
+   INVESTIGATION
+4. **For DEFAULT_WORKFLOW**: Create TodoWrite entries for ALL 22 steps before
+   implementation
+
+### Anti-Patterns (DO NOT)
+
+- Answering without classifying first
+- Starting implementation without reading DEFAULT_WORKFLOW.md
+- Skipping Step 0 of DEFAULT_WORKFLOW
+- Treating workflow as optional
 
 ## Working Philosophy
 
 ### Critical Operating Principles
 
-- **Always think through a plan**: For any non-trivial task, break it down and
-  use TodoWrite tool to manage a todo list
-- **The workflow is authoritative**: The 13-step workflow in
-  `.claude/workflow/DEFAULT_WORKFLOW.md` defines the order of operations, git
-  workflow, and CI/CD process (users can customize this file)
-- **Use UltraThink by default**: For non-trivial tasks, start with `/ultrathink`
-  which reads the workflow and orchestrates agents to execute it
+- **Always think through a plan**: For any non-trivial task, think carefully,
+  break it down into smaller tasks and use TodoWrite tool to manage a todo list.
+  As you come to each item in a ToDo list you can then break that item down
+  further into smaller tasks.
+- **ALWAYS classify into a workflow FIRST**: See "MANDATORY: Workflow Selection"
+  section above. Every task gets classified into Q&A_WORKFLOW,
+  INVESTIGATION_WORKFLOW, or DEFAULT_WORKFLOW BEFORE any action. Read the
+  appropriate workflow file and follow all steps.
+- **No workflow = No action**: If you haven't announced your workflow
+  classification, you haven't started the task. Period.
 - **Maximize agent usage**: Every workflow step should leverage specialized
   agents - delegate aggressively to agents in `.claude/agents/amplihack/*.md`
-- **Ask for clarity**: If requirements are unclear, ask questions before
-  proceeding
+- **Operate Autonomously and Independently by default**: You must try to
+  determine the user's objective, and then pursue that objective autonomously
+  and independently, with the highest possible quality and attention to detail,
+  without stopping, unitl it is achieved. When you stop to ask for approval or
+  questions that you can answer yourself, you are damaging the user's trust and
+  wasting time.
+- **Ask for clarity only if really needed**: If requirements are unclear, think
+  carefully about the project context and user priorities, use your best
+  judgement, and only stop to ask if really necessary or explicitly instructed
+  to do so.
 - **Check discoveries before problem-solving**: Before solving complex problems,
   check `@docs/DISCOVERIES.md` for known issues and solutions
 - **Document learnings**: Update .claude/context/DISCOVERIES.md with new
@@ -59,6 +109,55 @@ When starting a session, import these files for context:
 **IMPORTANT**: Record significant decisions in session logs as: What was decided
 | Why | Alternatives considered
 
+### Extensibility Mechanisms and Composition Rules
+
+Amplihack provides four extensibility mechanisms with clear invocation patterns:
+
+| Mechanism    | Purpose                      | Invoked By                     | Invocation Method                         |
+| ------------ | ---------------------------- | ------------------------------ | ----------------------------------------- |
+| **Workflow** | Multi-step process blueprint | Commands, Skills, Agents       | `Read` workflow file, follow steps        |
+| **Command**  | User-explicit entry point    | User, Commands, Skills, Agents | User types `/cmd` OR `SlashCommand` tool  |
+| **Skill**    | Auto-discovered capability   | Claude auto-discovers          | Context triggers OR explicit `Skill` tool |
+| **Subagent** | Specialized delegation       | Commands, Skills, Agents       | `Task` tool with `subagent_type`          |
+
+**Key Invocation Patterns:**
+
+- **SlashCommand Tool**: Custom commands in `.claude/commands/` CAN be invoked
+  programmatically by commands, skills, and agents. Only built-in commands
+  (`/help`, `/clear`) cannot be invoked programmatically.
+
+  ```python
+  SlashCommand(command="/amplihack:analyze Analyze architecture")
+  ```
+
+- **Skill Tool**: Invoke skills explicitly when auto-discovery isn't sufficient
+
+  ```python
+  Skill(skill="mermaid-diagram-generator")
+  ```
+
+- **Task Tool**: Invoke subagents for specialized perspectives
+
+  ```python
+  Task(subagent_type="architect", prompt="Design system...")
+  ```
+
+- **Workflow Reference**: Commands/skills/agents read workflow files to follow
+  process
+  ```python
+  Read(file_path=".claude/workflow/DEFAULT_WORKFLOW.md")
+  ```
+
+**Composition Examples:**
+
+- Workflow classification: Reading `DEFAULT_WORKFLOW.md` based on task type
+- Command invoking command: `/improve` can invoke `/amplihack:reflect`
+- Skill invoking agent: `test-gap-analyzer` invokes `tester` agent
+- Agent invoking skill: `architect` can invoke `mermaid-diagram-generator`
+
+See `.claude/context/FRONTMATTER_STANDARDS.md` for complete invocation metadata
+in frontmatter.
+
 ### CRITICAL: User Requirement Priority
 
 **MANDATORY BEHAVIOR**: All agents must follow the priority hierarchy:
@@ -72,12 +171,21 @@ When starting a session, import these files for context:
 requirements in quotes, these CANNOT be optimized away by simplification
 agents.**
 
-See `@.claude/context/USER_REQUIREMENT_PRIORITY.md` for complete guidelines.
+See
+[`@.claude/context/USER_REQUIREMENT_PRIORITY.md`](.claude/context/USER_REQUIREMENT_PRIORITY.md)
+for complete guidelines.
 
 ### Agent Delegation Strategy
 
-**GOLDEN RULE**: You are an orchestrator, not an implementer. ALWAYS delegate to
-specialized agents when possible. **DEFAULT TO PARALLEL EXECUTION** unless
+**GOLDEN RULE**: You are an orchestrator, not an implementer. This means:
+
+1. **Follow the workflow first** - Let DEFAULT_WORKFLOW.md determine the order
+2. **Delegate within each step** - Use specialized agents to execute the work
+3. **Coordinate, don't implement** - Your role is orchestration, not direct
+   execution
+
+ALWAYS delegate to specialized agents when possible. **DEFAULT TO PARALLEL
+EXECUTION** by passing multiple tasks to the Task tool in a single call unless
 dependencies require sequential order.
 
 #### When to Use Agents (ALWAYS IF POSSIBLE)
@@ -100,14 +208,12 @@ dependencies require sequential order.
 - **Ambiguity**: Use `ambiguity.md` when requirements are unclear
 - **Fix Workflows**: Use `fix-agent.md` for rapid resolution of common error
   patterns (imports, CI, tests, config, quality, logic)
-- **Socratic Questioning**: Use `/socratic` command or pattern for challenging
-  vague requirements, exploring design trade-offs, and forcing precision in
-  architectural claims (see `.claude/context/DISCOVERIES.md` and
-  `.claude/runtime/logs/20251018_socratic_questioning/`)
 
 #### Architect Variants
 
-**Multiple specialized architects** exist for different tasks (see agent frontmatter descriptions for when to use each):
+**Multiple specialized architects** exist for different tasks (see agent
+frontmatter descriptions for when to use each):
+
 - `architect` (core) - General design, problem decomposition, module specs
 - `amplifier-cli-architect` - CLI applications, hybrid code/AI systems
 - `philosophy-guardian` - Philosophy compliance reviews, simplicity validation
@@ -183,35 +289,6 @@ agent to handle that task as an experiment. Use agents to manage context for
 granularity of tasks (eg when going off to do something specific where context
 from the whole conversation is not necessary, such as managing a git worktree or
 cleaning some data).
-
-### Workflow and UltraThink Integration
-
-**The workflow defines WHAT to do, UltraThink orchestrates HOW to do it:**
-
-```
-Example - Any Non-Trivial Task:
-
-User: "Add authentication to the API"
-
-1. Invoke /ultrathink with the task
-   → UltraThink reads DEFAULT_WORKFLOW.md
-   → Follows all 13 steps in order
-   → Orchestrates multiple agents at each step
-
-2. Workflow provides the authoritative process:
-   → Step order (1-13) must be followed
-   → Git operations (branch, commit, push)
-   → CI/CD integration points
-   → Review and merge requirements
-
-3. Agents execute the actual work:
-   → prompt-writer clarifies requirements
-   → architect designs the solution
-   → builder implements the code
-   → reviewer ensures quality
-```
-
-The workflow file is the single source of truth - edit it to change the process.
 
 ### Microsoft Amplifier Parallel Execution Engine
 
@@ -402,7 +479,7 @@ Execute comprehensive system review with all relevant agents in parallel.
 .claude/
 ├── context/          # Philosophy, patterns, project info
 ├── agents/           # Specialized AI agents
-├── commands/         # Slash commands (/ultrathink, /analyze, /improve)
+├── commands/         # Slash commands (/analyze, /improve, /fix)
 ├── scenarios/        # Production-ready user-facing tools
 │   ├── README.md     # Scenarios pattern documentation
 │   ├── tool-name/    # Each tool gets its own directory
@@ -415,7 +492,7 @@ Execute comprehensive system review with all relevant agents in parallel.
 ├── ai_working/       # Experimental tools under development
 ├── tools/            # Hooks and utilities
 ├── workflow/         # Default workflow definition
-│   └── DEFAULT_WORKFLOW.md  # Customizable 13-step workflow
+│   └── DEFAULT_WORKFLOW.md  # Customizable multi-step workflow
 └── runtime/          # Logs, metrics, analysis
 
 Specs/               # Module specifications
@@ -423,15 +500,6 @@ Makefile             # Easy access to scenario tools
 ```
 
 ## Key Commands
-
-### /ultrathink <task>
-
-Default execution mode for non-trivial tasks. UltraThink:
-
-- Reads the workflow from `.claude/workflow/DEFAULT_WORKFLOW.md`
-- Follows all steps in the exact order defined
-- Orchestrates multiple agents at each step for maximum effectiveness
-- Adapts automatically when you customize the workflow file
 
 ### /analyze <path>
 
@@ -449,7 +517,7 @@ Intelligent fix workflow optimization for common error patterns. Key features:
 - **Template-based**: Uses pre-built templates for 80% of common fixes
 - **Mode selection**: QUICK (< 5 min), DIAGNOSTIC (root cause), COMPREHENSIVE
   (full workflow)
-- **Integration**: Seamlessly works with UltraThink and existing agents
+- **Integration**: Seamlessly works with workflows and existing agents
 
 **Usage Examples:**
 
@@ -464,7 +532,9 @@ Intelligent fix workflow optimization for common error patterns. Key features:
 **Common Patterns:** import (15%), ci (20%), test (18%), config (12%), quality
 (25%), logic (10%)
 
-**For command selection guidance**, see `docs/commands/COMMAND_SELECTION_GUIDE.md` (user reference for choosing slash commands).
+**For command selection guidance**, see
+`docs/commands/COMMAND_SELECTION_GUIDE.md` (user reference for choosing slash
+commands).
 
 ### Fault Tolerance Patterns
 
@@ -513,9 +583,9 @@ pragmatic → minimal ensures reliable completion.
 /amplihack:cascade "Generate API documentation from codebase"
 ```
 
-**Integration with UltraThink:** These patterns can be combined with
-`/ultrathink` by customizing the workflow file to include consensus or fallback
-stages at specific steps.
+**Integration with Workflows:** These patterns can be combined with
+DEFAULT_WORKFLOW by customizing the workflow file to include consensus or
+fallback stages at specific steps.
 
 ### Document-Driven Development (DDD)
 
@@ -615,57 +685,14 @@ skill is:
 - **Philosophy Aligned**: Follows ruthless simplicity and brick design
 - **Production Ready**: Complete with documentation and examples
 
-### Implemented Skills (12 Total)
-
-**Phase 1: Quick Wins (4 skills)**
-
-- **decision-logger** (49.5): Structured decision recording
-- **email-drafter** (47.0): Professional email generation
-- **module-spec-generator** (50.0): Generate brick module specifications
-- **meeting-synthesizer** (50.0): Extract action items from meetings
-
-**Phase 2: Philosophy Enforcement (3 skills)**
-
-- **philosophy-guardian** (45.5): Reviews code against amplihack philosophy
-- **test-gap-analyzer** (44.5): Identifies test coverage gaps
-- **code-smell-detector** (42.5): Detects anti-patterns
-
-**Phase 3: Creative (2 skills)**
-
-- **mermaid-diagram-generator** (48.0): Converts descriptions to Mermaid
-  diagrams
-- **storytelling-synthesizer** (44.0): Technical work → compelling narratives
-
-**Phase 4: Advanced (3 skills)**
-
-- **learning-path-builder** (43.5): Personalized technology learning paths
-- **knowledge-extractor** (40.5): Auto-extracts learnings to DISCOVERIES.md
-- **pr-review-assistant** (40.0): Philosophy-aware PR reviews
-
-### Using Skills
-
-```
-Claude, use the decision-logger skill to record this architectural decision.
-Claude, analyze test coverage using test-gap-analyzer.
-Claude, generate a Mermaid diagram for this workflow.
-```
-
-### Documentation
-
-- **[Skills Overview & Documentation](.claude/skills/README.md)** - Complete
-  skills catalog with usage examples
-- **[Research Report](.claude/runtime/logs/20251108_skills_research/RESEARCH.md)** -
-  Comprehensive ecosystem analysis (357 lines)
-- **[Evaluation Matrix](.claude/runtime/logs/20251108_skills_research/EVALUATION_MATRIX_AND_IDEAS.md)** -
-  20 skills evaluated with priority scores (842 lines)
-
-All 12 skills scored 40.0-50.0 (HIGH priority) using a 6-criteria evaluation
-framework aligned with amplihack philosophy.
-
 ## Scenario Tools
 
 Amplihack includes production-ready scenario tools that follow the **Progressive
 Maturity Model**:
+
+**Note**: When users request "a tool", they typically mean an executable program
+(scenarios/), not a Claude Code skill (skills/). Build the tool first;
+optionally add a skill that calls it.
 
 ### Using Scenario Tools
 
@@ -757,16 +784,6 @@ After code changes:
 2. Check philosophy compliance
 3. Verify module boundaries
 4. Update .claude/context/DISCOVERIES.md with learnings
-
-## Common Patterns
-
-See `.claude/context/PATTERNS.md` for:
-
-- Claude Code SDK integration
-- Resilient batch processing
-- File I/O with retries
-- Async context management
-- Module regeneration structure
 
 ## Self-Improvement
 
@@ -874,16 +891,14 @@ This command uses Claude Code's native Read, Edit, and Write tools to modify
 `.claude/context/USER_PREFERENCES.md` directly - no bash scripts, no complex
 automation, just simple file operations.
 
-## Getting Help
-
-- Review `.claude/context/PHILOSOPHY.md` for principles
-- Check `.claude/agents/CATALOG.md` for agent capabilities
-- Look in `.claude/context/PATTERNS.md` for solutions
-- Update `.claude/context/DISCOVERIES.md` with new learnings
-
 ---
 
 Remember: You are the orchestrator working with specialized agents. Delegate
 liberally, execute in parallel, and continuously learn.
 
-<!-- Updated for PR #41 -->
+# tool vs skill
+
+**PREFERRED PATTERN:** When user says "create a tool" → Build BOTH:
+
+1. Executable tool in `.claude/scenarios/` (the program itself)
+2. Skill in `.claude/skills/` that calls the tool (convenient interface)

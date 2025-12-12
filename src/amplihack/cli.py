@@ -628,6 +628,26 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         return launch_command(args, claude_args)
 
+    elif args.command == "RustyClawd":
+        # Handle append mode FIRST (before any other initialization)
+        if getattr(args, "append", None):
+            return handle_append_instruction(args)
+
+        # RustyClawd is similar to claude command
+        if is_uvx_deployment():
+            original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
+            if claude_args and "--add-dir" not in claude_args:
+                claude_args = ["--add-dir", original_cwd] + claude_args
+            elif not claude_args:
+                claude_args = ["--add-dir", original_cwd]
+
+        # Handle auto mode
+        exit_code = handle_auto_mode("claude", args, claude_args)  # Reuse claude auto mode
+        if exit_code is not None:
+            return exit_code
+
+        return launch_command(args, claude_args)
+
     elif args.command == "copilot":
         from .launcher.copilot import launch_copilot
 

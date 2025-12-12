@@ -1,0 +1,90 @@
+name: Docs - Weekly Link Checker
+
+# Purpose: Automated weekly check for broken links in docs and GitHub Pages
+# Features:
+#   - Validates internal markdown links
+#   - Checks anchor references
+#   - Verifies external URLs (with rate limit handling)
+#   - Validates GitHub Pages links
+#   - Creates issue with broken links report
+# Security: Implements all 9 mandatory mitigations from SECURITY_ASSESSMENT.md
+# Type: Informational with issue creation for broken links
+
+on:
+  schedule:
+    # Run weekly on Saturday at 5 AM UTC (before Sunday docs cleanup)
+    - cron: "0 5 * * 6"
+  workflow_dispatch: # Allow manual triggering for testing
+
+# SECURITY M2.1: Minimal permissions
+permissions:
+  contents: read # Read repository contents
+  issues: write # Create issues for broken links
+
+jobs:
+  link-check:
+    name: Check Documentation Links
+    runs-on: ubuntu-latest
+    # SECURITY: Timeout limit prevents runaway execution
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install requests
+
+      - name: Run link checker
+        id: linkcheck
+        env:
+          GITHUB_PAGES_URL: ${{ vars.GITHUB_PAGES_URL }}
+        run: |
+          set +x  # Disable command echoing
+
+          # Run link checker script
+          python .github/scripts/link_checker.py
+
+          # Check if broken links were found
+          if [ -f "broken_links_report.md" ]; then
+            echo "broken_links_found=true" >> $GITHUB_OUTPUT
+            echo "## Link Check Results" >> $GITHUB_STEP_SUMMARY
+            cat broken_links_report.md >> $GITHUB_STEP_SUMMARY
+          else
+            echo "broken_links_found=false" >> $GITHUB_OUTPUT
+            echo "## Link Check Results" >> $GITHUB_STEP_SUMMARY
+            echo "All links are valid!" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Create issue for broken links
+        if: steps.linkcheck.outputs.broken_links_found == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Check if there's already an open issue for broken links
+          EXISTING_ISSUE=$(gh issue list --label "broken-links" --state open --json number --jq '.[0].number // empty')
+
+          if [ -n "$EXISTING_ISSUE" ]; then
+            # Update existing issue with new report
+            gh issue comment $EXISTING_ISSUE --body-file broken_links_report.md
+            echo "Updated existing issue #$EXISTING_ISSUE"
+          else
+            # Create new issue
+            gh issue create \
+              --title "docs: Broken links detected $(date +%Y-%m-%d)" \
+              --body-file broken_links_report.md \
+              --label "documentation,broken-links"
+            echo "Created new issue for broken links"
+          fi
+
+      # SECURITY: Error handling without exposing secrets
+      - name: Handle errors
+        if: failure()
+        run: |
+          echo "::error::Link checker workflow failed. Check logs for details."

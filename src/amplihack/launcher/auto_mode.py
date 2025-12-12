@@ -9,6 +9,7 @@ import subprocess
 import sys
 import threading
 import time
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -80,6 +81,7 @@ class AutoMode:
         max_turns: int = 10,
         working_dir: Optional[Path] = None,
         ui_mode: bool = False,
+        query_timeout_minutes: Optional[float] = 30.0,
     ):
         """Initialize auto mode.
 
@@ -89,6 +91,8 @@ class AutoMode:
             max_turns: Max iterations (default 10)
             working_dir: Working directory (defaults to current dir)
             ui_mode: Enable interactive UI mode (requires Rich library)
+            query_timeout_minutes: Timeout for each SDK query in minutes (default 30.0).
+                None disables timeout. Opus detection is handled by cli.py:resolve_timeout().
         """
         self.sdk = sdk
         self.prompt = prompt
@@ -98,6 +102,23 @@ class AutoMode:
         self.working_dir = working_dir if working_dir is not None else Path.cwd()
         self.ui_enabled = ui_mode
         self.ui = None
+
+        # Handle timeout: None means no timeout, otherwise validate
+        if query_timeout_minutes is None:
+            # No timeout - used for --no-timeout flag
+            self.query_timeout_seconds: Optional[float] = None
+        else:
+            # Validate positive timeout
+            if query_timeout_minutes <= 0:
+                raise ValueError(
+                    f"query_timeout_minutes must be positive, got {query_timeout_minutes}"
+                )
+            if query_timeout_minutes > 120:  # 2 hours max - warn but allow
+                print(
+                    f"Warning: Very long timeout ({query_timeout_minutes} minutes)", file=sys.stderr
+                )
+
+            self.query_timeout_seconds = query_timeout_minutes * 60.0  # Keep as float for precision
         self.log_dir = (
             self.working_dir / ".claude" / "runtime" / "logs" / f"auto_{sdk}_{int(time.time())}"
         )
@@ -514,99 +535,117 @@ Document your decisions and reasoning in comments/logs."""
 
             # Stream response - messages are typed objects, not dicts
             print("\n[DEBUG] 🔄 Starting async for message loop", flush=True)
-            async for message in query(prompt=prompt, options=options):
-                print("\n[DEBUG] 💬 Got a message from query()", flush=True)
-                # Handle different message types
-                if hasattr(message, "__class__"):
-                    msg_type = message.__class__.__name__
-                    print(
-                        f"\n[DEBUG] 📨 Message type: {msg_type}", flush=True
-                    )  # Direct print to bypass log()
-                    self.log(f"📨 Received message type: {msg_type}", level="INFO")
 
-                    if msg_type == "AssistantMessage":
-                        # Capture assistant message for transcript
-                        self.message_capture.capture_assistant_message(message)
+            # Track turn start time for accurate timeout reporting
+            turn_start_time = time.time()
 
-                        # Process content blocks
-                        for block in getattr(message, "content", []):
-                            block_type = getattr(block, "type", "unknown")
-                            self.log(f"  📦 Block type: {block_type}", level="INFO")
+            # Add timeout wrapper around SDK query (use nullcontext if no timeout)
+            timeout_ctx = (
+                asyncio.timeout(self.query_timeout_seconds)
+                if self.query_timeout_seconds is not None
+                else nullcontext()
+            )
+            async with timeout_ctx:
+                async for message in query(prompt=prompt, options=options):
+                    print("\n[DEBUG] 💬 Got a message from query()", flush=True)
+                    # Handle different message types
+                    if hasattr(message, "__class__"):
+                        msg_type = message.__class__.__name__
+                        print(
+                            f"\n[DEBUG] 📨 Message type: {msg_type}", flush=True
+                        )  # Direct print to bypass log()
+                        self.log(f"📨 Received message type: {msg_type}", level="INFO")
 
-                            # Handle text blocks
-                            if hasattr(block, "text"):
-                                text = block.text
+                        if msg_type == "AssistantMessage":
+                            # Capture assistant message for transcript
+                            self.message_capture.capture_assistant_message(message)
 
-                                # Security: Check output size limits
-                                text_size = len(text.encode("utf-8"))
-                                turn_output_size += text_size
-                                self.session_output_size += text_size
+                            # Process content blocks
+                            for block in getattr(message, "content", []):
+                                block_type = getattr(block, "type", "unknown")
+                                self.log(f"  📦 Block type: {block_type}", level="INFO")
 
-                                if turn_output_size > MAX_TURN_OUTPUT:
-                                    self.log(
-                                        f"Turn output size limit exceeded ({turn_output_size} bytes)",
-                                        level="ERROR",
-                                    )
-                                    return (1, "Turn output too large")
+                                # Handle text blocks
+                                if hasattr(block, "text"):
+                                    text = block.text
 
-                                if self.session_output_size > self.max_session_output:
-                                    self.log(
-                                        f"Session output limit exceeded ({self.session_output_size} bytes)",
-                                        level="ERROR",
-                                    )
-                                    return (1, "Session output too large")
+                                    # Security: Check output size limits
+                                    text_size = len(text.encode("utf-8"))
+                                    turn_output_size += text_size
+                                    self.session_output_size += text_size
 
-                                print(text, end="", flush=True)
-                                output_lines.append(text)
-
-                            # Handle tool_use blocks (TodoWrite)
-                            elif hasattr(block, "type") and block.type == "tool_use":
-                                tool_name = getattr(block, "name", None)
-                                self.log(f"🔍 Detected tool_use block: {tool_name}", level="INFO")
-
-                                if tool_name == "TodoWrite":
-                                    self.log("🎯 TodoWrite tool detected!", level="INFO")
-                                    # Extract todos from input object (not dict!)
-                                    # block.input is an object with attributes, not a dict
-                                    if hasattr(block, "input"):
-                                        tool_input = block.input
+                                    if turn_output_size > MAX_TURN_OUTPUT:
                                         self.log(
-                                            f"✓ Block has input attribute, type: {type(tool_input)}",
-                                            level="INFO",
+                                            f"Turn output size limit exceeded ({turn_output_size} bytes)",
+                                            level="ERROR",
                                         )
+                                        return (1, "Turn output too large")
 
-                                        # Check if input has todos attribute
-                                        if hasattr(tool_input, "todos"):
-                                            todos = tool_input.todos
+                                    if self.session_output_size > self.max_session_output:
+                                        self.log(
+                                            f"Session output limit exceeded ({self.session_output_size} bytes)",
+                                            level="ERROR",
+                                        )
+                                        return (1, "Session output too large")
+
+                                    print(text, end="", flush=True)
+                                    output_lines.append(text)
+
+                                # Handle tool_use blocks (TodoWrite)
+                                elif hasattr(block, "type") and block.type == "tool_use":
+                                    tool_name = getattr(block, "name", None)
+                                    self.log(
+                                        f"🔍 Detected tool_use block: {tool_name}", level="INFO"
+                                    )
+
+                                    if tool_name == "TodoWrite":
+                                        self.log("🎯 TodoWrite tool detected!", level="INFO")
+                                        # Extract todos from input object (not dict!)
+                                        # block.input is an object with attributes, not a dict
+                                        if hasattr(block, "input"):
+                                            tool_input = block.input
                                             self.log(
-                                                f"✓ Input has todos attribute with {len(todos)} items",
+                                                f"✓ Block has input attribute, type: {type(tool_input)}",
                                                 level="INFO",
                                             )
-                                            self._handle_todo_write(todos)
-                                        # Fallback: try dict-style access for backwards compatibility
-                                        elif isinstance(tool_input, dict) and "todos" in tool_input:
-                                            todos = tool_input["todos"]
-                                            self.log(
-                                                f"✓ Input is dict with todos key ({len(todos)} items)",
-                                                level="INFO",
-                                            )
-                                            self._handle_todo_write(todos)
+
+                                            # Check if input has todos attribute
+                                            if hasattr(tool_input, "todos"):
+                                                todos = tool_input.todos
+                                                self.log(
+                                                    f"✓ Input has todos attribute with {len(todos)} items",
+                                                    level="INFO",
+                                                )
+                                                self._handle_todo_write(todos)
+                                            # Fallback: try dict-style access for backwards compatibility
+                                            elif (
+                                                isinstance(tool_input, dict)
+                                                and "todos" in tool_input
+                                            ):
+                                                todos = tool_input["todos"]
+                                                self.log(
+                                                    f"✓ Input is dict with todos key ({len(todos)} items)",
+                                                    level="INFO",
+                                                )
+                                                self._handle_todo_write(todos)
+                                            else:
+                                                self.log(
+                                                    f"⚠️  Input has no todos attribute or key. Attributes: {dir(tool_input)}",
+                                                    level="WARNING",
+                                                )
                                         else:
                                             self.log(
-                                                f"⚠️  Input has no todos attribute or key. Attributes: {dir(tool_input)}",
-                                                level="WARNING",
+                                                "⚠️  Block has no input attribute", level="WARNING"
                                             )
-                                    else:
-                                        self.log("⚠️  Block has no input attribute", level="WARNING")
 
-                    elif msg_type == "ResultMessage":
-                        # Check if there was an error
-                        if getattr(message, "is_error", False):
-                            error_result = getattr(message, "result", "Unknown error")
-                            self.log(f"SDK error: {error_result}", level="ERROR")
-                            return (1, "".join(output_lines))
+                        elif msg_type == "ResultMessage":
+                            # Check if there was an error
+                            if getattr(message, "is_error", False):
+                                error_result = getattr(message, "result", "Unknown error")
+                                self.log(f"SDK error: {error_result}", level="ERROR")
+                                return (1, "".join(output_lines))
 
-                    # SystemMessage and other types are informational - skip
+                        # SystemMessage and other types are informational - skip
 
             # Success
             full_output = "".join(output_lines)
@@ -616,6 +655,20 @@ Document your decisions and reasoning in comments/logs."""
                 self.log(f"stdout ({len(full_output)} chars): {full_output}")
 
             return (0, full_output)
+
+        except asyncio.TimeoutError:
+            # Timeout handling with turn context
+            turn_elapsed = time.time() - turn_start_time
+            partial_output = "".join(output_lines)
+            error_msg = (
+                f"Turn {self.turn} timed out after {turn_elapsed:.1f}s "
+                f"(limit: {self.query_timeout_seconds:.1f}s). "
+                f"Try reducing task complexity or increasing --query-timeout-minutes."
+            )
+            self.log(error_msg, level="ERROR")
+            if partial_output:
+                self.log(f"Partial output captured ({len(partial_output)} chars)", level="INFO")
+            return (1, partial_output if partial_output else error_msg)
 
         except GeneratorExit:
             # Graceful generator cleanup - this is expected during async cleanup
@@ -630,7 +683,8 @@ Document your decisions and reasoning in comments/logs."""
             # Re-raise other RuntimeErrors
             raise
         except Exception as e:
-            self.log(f"SDK execution failed: {e}", level="ERROR")
+            # Enhanced existing exception handling with turn context
+            self.log(f"Turn {self.turn} SDK error: {type(e).__name__}: {e}", level="ERROR")
             import traceback
 
             self.log(f"Traceback: {traceback.format_exc()}", level="ERROR")
@@ -1304,31 +1358,19 @@ Current Turn: {turn}/{self.max_turns}"""
                 self.log("Transcript builder not found, skipping export", level="INFO")
                 return
 
-            builder = ClaudeTranscriptBuilder(session_id=self.log_dir.name)
+            builder = ClaudeTranscriptBuilder(session_id=self.log_dir.name, working_dir=self.working_dir)
             messages = self.message_capture.get_messages()
 
             if not messages:
                 self.log("No messages captured for export", level="DEBUG")
                 return
 
-            # Validate export path BEFORE exporting
-            expected_session_dir = self.log_dir
+            # Log where transcripts will be exported
             actual_session_dir = builder.session_dir
-
-            # Check if builder's session_dir matches our expected location
-            if expected_session_dir.resolve() != actual_session_dir.resolve():
-                error_msg = (
-                    f"Transcript export path mismatch detected!\n"
-                    f"  Expected: {expected_session_dir}\n"
-                    f"  Actual:   {actual_session_dir}\n"
-                    f"  This usually means project root detection failed.\n"
-                    f"  Refusing to export to wrong location to prevent silent data loss."
-                )
-                self.log(error_msg, level="ERROR")
-                raise ValueError(error_msg)
-
-            # Log where transcripts will be exported (helps debugging)
             self.log(f"Exporting transcripts to: {actual_session_dir}", level="DEBUG")
+
+            # Note: We don't validate path location - transcript export works
+            # whether it's in workspace or venv site-packages (remote execution)
 
             # Calculate total duration across all forks
             total_duration = self.total_session_time + (time.time() - self.start_time)

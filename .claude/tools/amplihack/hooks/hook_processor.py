@@ -21,6 +21,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from error_protocol import HookError, HookErrorSeverity, HookException, HookImportError
+from json_protocol import RobustJSONParser
+
 
 class HookProcessor(ABC):
     """Base class for Claude Code hook processors.
@@ -150,7 +153,10 @@ class HookProcessor(ABC):
         raw_input = sys.stdin.read()
         if not raw_input.strip():
             return {}
-        return json.loads(raw_input)
+
+        # Use RobustJSONParser for resilient parsing
+        parser = RobustJSONParser()
+        return parser.parse(raw_input)
 
     def write_output(self, output: Dict[str, Any]):
         """Write JSON output to stdout.
@@ -188,6 +194,34 @@ class HookProcessor(ABC):
         except Exception as e:
             self.log(f"Failed to save metric: {e}", "WARNING")
 
+    def _write_error_to_stderr(self, error: HookError):
+        """Write structured error to stderr for user visibility.
+
+        Args:
+            error: HookError containing structured error information
+        """
+        print("=" * 60, file=sys.stderr)
+        print(f"HOOK ERROR: {self.hook_name}", file=sys.stderr)
+        print("=" * 60, file=sys.stderr)
+        print(f"Severity: {error.severity.value}", file=sys.stderr)
+        print(f"Error: {error.message}", file=sys.stderr)
+
+        if error.context:
+            print(f"Context: {error.context}", file=sys.stderr)
+
+        if error.suggestion:
+            print(f"\nSuggestion: {error.suggestion}", file=sys.stderr)
+
+        # Use relative path to avoid disclosing full system paths
+        try:
+            relative_log_path = self.log_file.relative_to(self.project_root)
+            print(f"\nLog file: {relative_log_path}", file=sys.stderr)
+        except ValueError:
+            # Fallback if path is outside project root
+            print(f"\nLog file: {self.log_file.name}", file=sys.stderr)
+
+        print("=" * 60, file=sys.stderr)
+
     @abstractmethod
     def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """Process the hook input and return output.
@@ -208,7 +242,7 @@ class HookProcessor(ABC):
         1. Read input from stdin
         2. Process the input
         3. Write output to stdout
-        4. Handle any errors gracefully
+        4. Handle any errors gracefully (fail-open)
         """
         try:
             # Log start with version info
@@ -243,45 +277,59 @@ class HookProcessor(ABC):
             self.write_output(output)
             self.log(f"{self.hook_name} hook completed successfully")
 
+        except HookException as e:
+            # Structured hook error - log and fail-open
+            self.log(f"Hook error: {e.error.message}", "ERROR")
+            self.log(f"Severity: {e.error.severity.value}", "ERROR")
+
+            # Write error to stderr for user visibility
+            self._write_error_to_stderr(e.error)
+
+            # Fail-open: Return empty dict (allows default behavior)
+            self.write_output({})
+            self.log("Failed open - returning empty dict", "INFO")
+
         except json.JSONDecodeError as e:
+            # JSON parse error - log and fail-open
             self.log(f"Invalid JSON input: {e}", "ERROR")
-            self.write_output({"error": "Invalid JSON input"})
-            sys.exit(1)  # Exit with error code so Claude Code can detect failure
+
+            # Create structured error
+            error = HookError(
+                severity=HookErrorSeverity.ERROR,
+                message="Invalid JSON input from stdin",
+                context=str(e),
+                suggestion="Check hook input format"
+            )
+            self._write_error_to_stderr(error)
+
+            # Fail-open
+            self.write_output({})
 
         except Exception as e:
-            # Log full traceback for debugging
-            error_msg = f"Error in {self.hook_name}: {e}"
+            # Unexpected error - log full traceback and fail-open
+            error_msg = f"Unexpected error in {self.hook_name}: {e}"
             traceback_str = traceback.format_exc()
 
             self.log(error_msg, "ERROR")
             self.log(f"Traceback: {traceback_str}", "ERROR")
 
-            # Enhanced stderr output for visibility
-            print("=" * 60, file=sys.stderr)
-            print(f"HOOK ERROR: {self.hook_name}", file=sys.stderr)
-            print("=" * 60, file=sys.stderr)
-            print(f"Error: {e}", file=sys.stderr)
+            # Create structured error
+            error = HookError(
+                severity=HookErrorSeverity.FATAL,
+                message=str(e),
+                context=f"Hook: {self.hook_name}",
+                suggestion="Check log file for full traceback"
+            )
+            self._write_error_to_stderr(error)
 
-            # Use relative path to avoid disclosing full system paths
-            try:
-                relative_log_path = self.log_file.relative_to(self.project_root)
-                print(f"\nLog file: {relative_log_path}", file=sys.stderr)
-            except ValueError:
-                # Fallback if path is outside project root
-                print(f"\nLog file: {self.log_file.name}", file=sys.stderr)
-
-            # Only show full stack trace in debug mode for security
+            # Show stack trace in debug mode
             if os.getenv("AMPLIHACK_DEBUG"):
                 print("\nStack trace:", file=sys.stderr)
                 print(traceback_str, file=sys.stderr)
-            else:
-                print("\nFull error details available in log file", file=sys.stderr)
-            print("=" * 60, file=sys.stderr)
 
-            # Return empty dict and exit with error code
-            # Exit code 1 = non-blocking error (stderr shown to user)
+            # Fail-open: Return empty dict (allows default behavior)
             self.write_output({})
-            sys.exit(1)  # Exit with error code so Claude Code can detect failure
+            self.log("Failed open after unexpected error", "INFO")
 
     def get_session_id(self) -> str:
         """Generate or retrieve a session ID.

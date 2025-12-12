@@ -1,0 +1,27 @@
+{
+  "$schema": "./cs-validator-schema.json",
+  "enabled": true,
+  "validationLevel": 2,
+  "analyzerSeverityThreshold": "Error",
+  "skipProjects": ["Tests/**/*.csproj", "**/*.Tests.csproj"],
+  "timeoutSeconds": 30,
+  "parallel": true,
+  "cacheEnabled": true,
+  "reporting": {
+    "format": "json",
+    "verbose": false,
+    "outputFile": ".cache/cs-validator/last-run.json"
+  },
+  "description": "C# Validation Tool Configuration",
+  "levels": {
+    "1": "Syntax check only (fastest, <100ms)",
+    "2": "Syntax + Build validation (recommended, <3s)",
+    "3": "Syntax + Build + Analyzers (<5s)",
+    "4": "All checks including format verification (<5s)"
+  },
+  "severityThresholds": {
+    "Error": "Only fail on errors (recommended)",
+    "Warning": "Fail on warnings and errors (strict)",
+    "Info": "Fail on all analyzer messages (very strict)"
+  }
+}

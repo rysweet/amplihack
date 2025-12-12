@@ -10,18 +10,16 @@ Tests the complete update orchestration:
 - Version file writing
 """
 
-import shutil
 import subprocess
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
-
-import pytest
+from unittest.mock import Mock, patch
 
 # Add .claude/tools/amplihack to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent / ".claude" / "tools" / "amplihack"))
+sys.path.insert(
+    0, str(Path(__file__).parent.parent.parent.parent.parent / ".claude" / "tools" / "amplihack")
+)
 
-from file_classifier import FileCategory
 from update_engine import (
     UpdateResult,
     _copy_file_safe,
@@ -122,7 +120,9 @@ class TestGetChangedFiles:
         """Test successful retrieval of changed files."""
         mock_result = Mock()
         mock_result.returncode = 0
-        mock_result.stdout = ".claude/agents/amplihack/architect.md\n.claude/tools/amplihack/version_checker.py\n"
+        mock_result.stdout = (
+            ".claude/agents/amplihack/architect.md\n.claude/tools/amplihack/version_checker.py\n"
+        )
 
         with patch("subprocess.run", return_value=mock_result) as mock_run:
             files = get_changed_files(tmp_path, "old123", "new456")
@@ -376,9 +376,7 @@ class TestPerformUpdate:
         package_path = tmp_path / "package"
         project_path = tmp_path / "project"
 
-        with patch(
-            ".claude.tools.amplihack.update_engine.create_backup", return_value=None
-        ):
+        with patch(".claude.tools.amplihack.update_engine.create_backup", return_value=None):
             result = perform_update(package_path, project_path, "old123")
 
             assert result.success is False
@@ -423,9 +421,7 @@ class TestPerformUpdate:
                     assert result.success is True
                     assert f".claude/{framework_file}" in result.updated_files
                     # Verify file was actually updated
-                    assert (
-                        project_claude / framework_file
-                    ).read_text() == "new content"
+                    assert (project_claude / framework_file).read_text() == "new content"
 
     def test_perform_update_preserve_modified_files(self, tmp_path):
         """Test that PRESERVE_IF_MODIFIED files are preserved when modified."""
@@ -465,9 +461,7 @@ class TestPerformUpdate:
                     assert result.success is True
                     assert f".claude/{custom_file}" in result.preserved_files
                     # Verify file was NOT updated
-                    assert (
-                        project_claude / custom_file
-                    ).read_text() == "customized workflow"
+                    assert (project_claude / custom_file).read_text() == "customized workflow"
 
     def test_perform_update_never_update_files(self, tmp_path):
         """Test that NEVER_UPDATE files are never touched."""
@@ -507,9 +501,7 @@ class TestPerformUpdate:
                     assert result.success is True
                     assert f".claude/{user_file}" in result.preserved_files
                     # Verify file was NOT updated
-                    assert (
-                        project_claude / user_file
-                    ).read_text() == "user discoveries"
+                    assert (project_claude / user_file).read_text() == "user discoveries"
 
     def test_perform_update_security_path_traversal_prevention(self, tmp_path):
         """Test that path traversal attempts are blocked."""

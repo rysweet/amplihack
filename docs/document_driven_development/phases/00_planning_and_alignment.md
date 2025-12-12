@@ -1,5 +1,7 @@
 # Phase 0: Planning & Alignment
 
+> [Home](../../index.md) > [Document-Driven Development](../README.md) > [Phases](README.md) > Phase 0
+
 **Achieve shared understanding between human and AI before any work begins**
 
 ---

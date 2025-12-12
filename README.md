@@ -326,10 +326,6 @@ pytest tests/
 | From branch | Use `@branch-name` after URL          |
 | Uninstall   | `amplihack uninstall`                 |
 
-## License
-
-MIT. See [LICENSE](LICENSE).
-
 ## RustyClawd Integration
 
 Amplihack now supports RustyClawd, a high-performance Rust implementation of Claude Code.
@@ -365,3 +361,7 @@ Or install via npx:
 ```bash
 npx github:rysweet/RustyClawd --help
 ```
+
+## License
+
+MIT. See [LICENSE](LICENSE).

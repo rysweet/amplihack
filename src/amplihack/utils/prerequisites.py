@@ -6,25 +6,33 @@ This module provides comprehensive prerequisite checking for all required tools
 Philosophy:
 - Check prerequisites early and fail fast with helpful guidance
 - Provide platform-specific installation commands
-- Never auto-install (user control and security)
+- Interactive installation with user approval
 - Standard library only (no dependencies)
 - Safe subprocess error handling throughout
+- Security: No shell=True, hardcoded commands only, audit logging
 
 Public API:
     PrerequisiteChecker: Main class for checking prerequisites
+    InteractiveInstaller: Class for handling interactive installations
     safe_subprocess_call: Safe wrapper for all subprocess operations
     Platform: Enum of supported platforms
     PrerequisiteResult: Results of prerequisite checking
     ToolCheckResult: Results of individual tool checking
+    InstallationResult: Results of installation attempts
+    InstallationAuditEntry: Audit log entries for installations
 """
 
+import json
+import os
 import platform
 import shutil
 import subprocess
-from dataclasses import dataclass, field
+import sys
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 # Lazy import to avoid circular dependencies
 # claude_cli imports prerequisites, so we import it only when needed
@@ -47,6 +55,49 @@ class Platform(Enum):
 
 
 @dataclass
+class InstallationResult:
+    """Result of an installation attempt.
+
+    Attributes:
+        tool: Name of the tool being installed
+        success: Whether installation succeeded
+        command_executed: The command that was executed (as list)
+        stdout: Standard output from the command
+        stderr: Standard error from the command
+        exit_code: Process exit code
+        timestamp: ISO 8601 timestamp of installation attempt
+        user_approved: Whether user approved the installation
+    """
+
+    tool: str
+    success: bool
+    command_executed: List[str]
+    stdout: str
+    stderr: str
+    exit_code: int
+    timestamp: str
+    user_approved: bool
+
+
+@dataclass
+class InstallationAuditEntry:
+    """Audit log entry for installation attempts.
+
+    Records all installation attempts for security and debugging.
+    Logged to .claude/runtime/logs/installation_audit.jsonl
+    """
+
+    timestamp: str
+    tool: str
+    platform: str
+    command: List[str]
+    user_approved: bool
+    success: bool
+    exit_code: int
+    error_message: Optional[str] = None
+
+
+@dataclass
 class ToolCheckResult:
     """Result of checking a single tool prerequisite."""
 
@@ -64,6 +115,17 @@ class PrerequisiteResult:
     all_available: bool
     missing_tools: List[ToolCheckResult] = field(default_factory=list)
     available_tools: List[ToolCheckResult] = field(default_factory=list)
+
+
+@dataclass
+class InstallationResult:
+    """Result of attempting to install a tool."""
+
+    tool: str
+    success: bool
+    message: str
+    command_used: Optional[str] = None
+    verification_result: Optional[ToolCheckResult] = None
 
 
 def safe_subprocess_call(
@@ -147,6 +209,260 @@ def safe_subprocess_call(
         return 1, "", error_msg
 
 
+class InteractiveInstaller:
+    """Handle interactive installation of missing tools with user approval.
+
+    Security features:
+    - No shell=True (prevents shell injection)
+    - Hardcoded commands only (from INSTALL_COMMANDS)
+    - User approval required for every installation
+    - Audit logging of all attempts
+    - TTY check for interactive mode
+
+    Example:
+        >>> installer = InteractiveInstaller(Platform.MACOS)
+        >>> result = installer.install_tool("node")
+        >>> if result.success:
+        ...     print("Node.js installed successfully")
+    """
+
+    def __init__(self, platform: Platform):
+        """Initialize interactive installer for a platform.
+
+        Args:
+            platform: Target platform for installation
+        """
+        self.platform = platform
+        self.audit_log_path = (
+            Path.home() / ".claude" / "runtime" / "logs" / "installation_audit.jsonl"
+        )
+
+    def is_interactive_environment(self) -> bool:
+        """Check if running in an interactive environment.
+
+        Returns:
+            True if interactive (has TTY and not in CI), False otherwise
+        """
+        # Check if stdin is a TTY
+        if not sys.stdin.isatty():
+            return False
+
+        # Check common CI environment variables
+        ci_vars = ["CI", "CONTINUOUS_INTEGRATION", "GITHUB_ACTIONS", "GITLAB_CI", "JENKINS_HOME"]
+        if any(os.environ.get(var) for var in ci_vars):
+            return False
+
+        return True
+
+    def prompt_for_approval(self, tool: str, command: List[str]) -> bool:
+        """Prompt user for approval to install a tool.
+
+        Args:
+            tool: Name of the tool to install
+            command: Command that will be executed
+
+        Returns:
+            True if user approves, False otherwise
+        """
+        print(f"\n{'=' * 70}")
+        print(f"INSTALL {tool.upper()}")
+        print(f"{'=' * 70}")
+        print(f"\nThe following command will be executed to install {tool}:")
+        print(f"\n  {' '.join(command)}")
+        print("\nThis command may:")
+        print("  - Require sudo password for system-level installation")
+        print("  - Install dependencies automatically")
+        print("  - Modify system packages or configuration")
+        print(f"\n{'=' * 70}\n")
+
+        while True:
+            response = (
+                input(f"Do you want to proceed with installing {tool}? [y/N]: ").strip().lower()
+            )
+            if response in ["y", "yes"]:
+                return True
+            if response in ["n", "no", ""]:
+                return False
+            print("Please enter 'y' or 'n'")
+
+    def _execute_install_command(self, command: List[str]) -> subprocess.CompletedProcess:
+        """Execute installation command with interactive stdin.
+
+        Args:
+            command: Command to execute as List[str]
+
+        Returns:
+            subprocess.CompletedProcess result
+
+        Security:
+            - No shell=True (prevents shell injection)
+            - stdin=sys.stdin (allows password prompts)
+            - List[str] command (no string interpolation)
+        """
+        return subprocess.run(
+            command,
+            stdin=sys.stdin,  # Allow interactive password prompts
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,  # Don't raise exception, handle errors explicitly
+        )
+
+    def _log_audit(self, entry: InstallationAuditEntry) -> None:
+        """Log installation attempt to audit log.
+
+        Args:
+            entry: Audit entry to log
+
+        Note:
+            Silently handles I/O errors to avoid breaking installation workflow
+        """
+        try:
+            # Ensure log directory exists
+            self.audit_log_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Append entry as JSONL
+            with open(self.audit_log_path, "a") as f:
+                f.write(json.dumps(asdict(entry)) + "\n")
+        except (OSError, PermissionError):
+            # Silently ignore logging errors - don't break installation
+            # User can still see installation results in terminal output
+            pass
+
+    def install_tool(self, tool: str) -> InstallationResult:
+        """Install a tool interactively with user approval.
+
+        Args:
+            tool: Name of the tool to install
+
+        Returns:
+            InstallationResult with complete installation details
+
+        Workflow:
+            1. Check if interactive environment
+            2. Get installation command for platform
+            3. Prompt user for approval
+            4. Execute command with interactive stdin
+            5. Log attempt to audit log
+            6. Return result
+        """
+        timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+        # Check for interactive environment
+        if not self.is_interactive_environment():
+            return InstallationResult(
+                tool=tool,
+                success=False,
+                command_executed=[],
+                stdout="",
+                stderr="Non-interactive environment detected. Cannot prompt for installation.",
+                exit_code=-1,
+                timestamp=timestamp,
+                user_approved=False,
+            )
+
+        # Get installation command for platform
+        platform_commands = PrerequisiteChecker.INSTALL_COMMANDS.get(self.platform, {})
+        command = platform_commands.get(tool)
+
+        if not command:
+            error_msg = f"No installation command available for {tool} on {self.platform.value}"
+            return InstallationResult(
+                tool=tool,
+                success=False,
+                command_executed=[],
+                stdout="",
+                stderr=error_msg,
+                exit_code=-1,
+                timestamp=timestamp,
+                user_approved=False,
+            )
+
+        # Prompt for approval
+        user_approved = self.prompt_for_approval(tool, command)
+
+        if not user_approved:
+            audit_entry = InstallationAuditEntry(
+                timestamp=timestamp,
+                tool=tool,
+                platform=self.platform.value,
+                command=command,
+                user_approved=False,
+                success=False,
+                exit_code=-1,
+                error_message="User declined installation",
+            )
+            self._log_audit(audit_entry)
+
+            return InstallationResult(
+                tool=tool,
+                success=False,
+                command_executed=command,
+                stdout="",
+                stderr="User declined installation",
+                exit_code=-1,
+                timestamp=timestamp,
+                user_approved=False,
+            )
+
+        # Execute installation command
+        print(f"\nInstalling {tool}...")
+        try:
+            result = self._execute_install_command(command)
+
+            success = result.returncode == 0
+
+            # Log audit entry
+            audit_entry = InstallationAuditEntry(
+                timestamp=timestamp,
+                tool=tool,
+                platform=self.platform.value,
+                command=command,
+                user_approved=True,
+                success=success,
+                exit_code=result.returncode,
+                error_message=result.stderr if not success else None,
+            )
+            self._log_audit(audit_entry)
+
+            return InstallationResult(
+                tool=tool,
+                success=success,
+                command_executed=command,
+                stdout=result.stdout,
+                stderr=result.stderr,
+                exit_code=result.returncode,
+                timestamp=timestamp,
+                user_approved=True,
+            )
+
+        except Exception as e:
+            error_msg = f"Unexpected error during installation: {e!s}"
+
+            audit_entry = InstallationAuditEntry(
+                timestamp=timestamp,
+                tool=tool,
+                platform=self.platform.value,
+                command=command,
+                user_approved=True,
+                success=False,
+                exit_code=-1,
+                error_message=error_msg,
+            )
+            self._log_audit(audit_entry)
+
+            return InstallationResult(
+                tool=tool,
+                success=False,
+                command_executed=command,
+                stdout="",
+                stderr=error_msg,
+                exit_code=-1,
+                timestamp=timestamp,
+                user_approved=True,
+            )
+
+
 class PrerequisiteChecker:
     """Check for required prerequisites and provide installation guidance.
 
@@ -173,15 +489,18 @@ class PrerequisiteChecker:
         "npm": "--version",
         "uv": "--version",
         "git": "--version",
+        "rg": "--version",  # ripgrep - required for custom slash commands
     }
 
     # Installation commands by platform and tool
-    INSTALL_COMMANDS = {
+    # String format for display (may contain multiple options)
+    INSTALL_COMMANDS_DISPLAY = {
         Platform.MACOS: {
             "node": "brew install node",
             "npm": "brew install node  # npm comes with Node.js",
             "uv": "brew install uv",
             "git": "brew install git",
+            "rg": "brew install ripgrep",
             "claude": "npm install -g @anthropic-ai/claude-code",
         },
         Platform.LINUX: {
@@ -189,6 +508,7 @@ class PrerequisiteChecker:
             "npm": "# Ubuntu/Debian:\nsudo apt install npm\n# Fedora/RHEL:\nsudo dnf install npm\n# Arch:\nsudo pacman -S npm",
             "uv": "curl -LsSf https://astral.sh/uv/install.sh | sh",
             "git": "# Ubuntu/Debian:\nsudo apt install git\n# Fedora/RHEL:\nsudo dnf install git\n# Arch:\nsudo pacman -S git",
+            "rg": "# Ubuntu/Debian:\nsudo apt install ripgrep\n# Fedora/RHEL:\nsudo dnf install ripgrep\n# Arch:\nsudo pacman -S ripgrep",
             "claude": "npm install -g @anthropic-ai/claude-code",
         },
         Platform.WSL: {
@@ -196,6 +516,7 @@ class PrerequisiteChecker:
             "npm": "# Ubuntu/Debian:\nsudo apt install npm\n# Fedora/RHEL:\nsudo dnf install npm",
             "uv": "curl -LsSf https://astral.sh/uv/install.sh | sh",
             "git": "sudo apt install git  # or your WSL distro's package manager",
+            "rg": "sudo apt install ripgrep",
             "claude": "npm install -g @anthropic-ai/claude-code",
         },
         Platform.WINDOWS: {
@@ -203,6 +524,7 @@ class PrerequisiteChecker:
             "npm": "winget install OpenJS.NodeJS  # npm comes with Node.js\n# Or: choco install nodejs",
             "uv": 'powershell -c "irm https://astral.sh/uv/install.ps1 | iex"',
             "git": "winget install Git.Git\n# Or: choco install git",
+            "rg": "winget install BurntSushi.ripgrep.MSVC\n# Or: choco install ripgrep",
             "claude": "npm install -g @anthropic-ai/claude-code",
         },
         Platform.UNKNOWN: {
@@ -210,8 +532,47 @@ class PrerequisiteChecker:
             "npm": "Please install npm (usually comes with Node.js)",
             "uv": "Please install uv from https://docs.astral.sh/uv/",
             "git": "Please install git from https://git-scm.com/",
+            "rg": "Please install ripgrep from https://github.com/BurntSushi/ripgrep",
             "claude": "npm install -g @anthropic-ai/claude-code",
         },
+    }
+
+    # Actual executable commands (List[str] for security)
+    # These are the commands that will be executed interactively
+    INSTALL_COMMANDS = {
+        Platform.MACOS: {
+            "node": ["brew", "install", "node"],
+            "npm": ["brew", "install", "node"],  # npm comes with node
+            "uv": ["brew", "install", "uv"],
+            "git": ["brew", "install", "git"],
+            "rg": ["brew", "install", "ripgrep"],
+            "claude": ["npm", "install", "-g", "@anthropic-ai/claude-code"],
+        },
+        Platform.LINUX: {
+            "node": ["sudo", "apt", "install", "-y", "nodejs"],  # Default to apt
+            "npm": ["sudo", "apt", "install", "-y", "npm"],
+            "uv": ["sh", "-c", "curl -LsSf https://astral.sh/uv/install.sh | sh"],
+            "git": ["sudo", "apt", "install", "-y", "git"],
+            "rg": ["sudo", "apt", "install", "-y", "ripgrep"],
+            "claude": ["npm", "install", "-g", "@anthropic-ai/claude-code"],
+        },
+        Platform.WSL: {
+            "node": ["sudo", "apt", "install", "-y", "nodejs"],
+            "npm": ["sudo", "apt", "install", "-y", "npm"],
+            "uv": ["sh", "-c", "curl -LsSf https://astral.sh/uv/install.sh | sh"],
+            "git": ["sudo", "apt", "install", "-y", "git"],
+            "rg": ["sudo", "apt", "install", "-y", "ripgrep"],
+            "claude": ["npm", "install", "-g", "@anthropic-ai/claude-code"],
+        },
+        Platform.WINDOWS: {
+            "node": ["winget", "install", "OpenJS.NodeJS"],
+            "npm": ["winget", "install", "OpenJS.NodeJS"],  # npm comes with node
+            "uv": ["powershell", "-c", "irm https://astral.sh/uv/install.ps1 | iex"],
+            "git": ["winget", "install", "Git.Git"],
+            "rg": ["winget", "install", "BurntSushi.ripgrep.MSVC"],
+            "claude": ["npm", "install", "-g", "@anthropic-ai/claude-code"],
+        },
+        Platform.UNKNOWN: {},  # No automatic commands for unknown platforms
     }
 
     # Documentation links
@@ -220,6 +581,7 @@ class PrerequisiteChecker:
         "npm": "https://www.npmjs.com/",
         "uv": "https://docs.astral.sh/uv/",
         "git": "https://git-scm.com/",
+        "rg": "https://github.com/BurntSushi/ripgrep",
         "claude": "https://docs.claude.com/en/docs/claude-code/setup",
     }
 
@@ -358,16 +720,16 @@ class PrerequisiteChecker:
         )
 
     def get_install_command(self, tool: str) -> str:
-        """Get platform-specific installation command for a tool.
+        """Get platform-specific installation command for a tool (display format).
 
         Args:
             tool: Name of the tool
 
         Returns:
-            Installation command string
+            Installation command string for display
         """
-        platform_commands = self.INSTALL_COMMANDS.get(
-            self.platform, self.INSTALL_COMMANDS[Platform.UNKNOWN]
+        platform_commands = self.INSTALL_COMMANDS_DISPLAY.get(
+            self.platform, self.INSTALL_COMMANDS_DISPLAY[Platform.UNKNOWN]
         )
         return platform_commands.get(tool, f"Please install {tool} manually")
 
@@ -384,45 +746,29 @@ class PrerequisiteChecker:
             return ""
 
         lines = []
-        lines.append("=" * 70)
-        lines.append("MISSING PREREQUISITES")
-        lines.append("=" * 70)
-        lines.append("")
-        lines.append("The following required tools are not installed:")
-        lines.append("")
+        lines.append("\nMissing Prerequisites")
+        lines.append("-" * 50)
+        lines.append(f"\nPlatform: {self.platform.value}")
+        lines.append("\nRequired tools not installed:")
 
         for result in missing_tools:
-            lines.append(f"  ✗ {result.tool}")
-            if result.error:
-                lines.append(f"    Error: {result.error}")
-            lines.append("")
+            lines.append(f"  - {result.tool}")
 
-        lines.append("=" * 70)
-        lines.append("INSTALLATION INSTRUCTIONS")
-        lines.append("=" * 70)
-        lines.append("")
-        lines.append(f"Platform detected: {self.platform.value}")
-        lines.append("")
+        lines.append("\nInstallation commands:")
 
         for result in missing_tools:
             tool = result.tool
-            lines.append(f"To install {tool}:")
-            lines.append("")
             install_cmd = self.get_install_command(tool)
+            lines.append(f"\n{tool}:")
             # Indent multi-line commands
             for cmd_line in install_cmd.split("\n"):
                 lines.append(f"  {cmd_line}")
-            lines.append("")
 
             # Add documentation link
             if tool in self.DOCUMENTATION_LINKS:
-                lines.append(f"  Documentation: {self.DOCUMENTATION_LINKS[tool]}")
-                lines.append("")
+                lines.append(f"  Docs: {self.DOCUMENTATION_LINKS[tool]}")
 
-        lines.append("=" * 70)
-        lines.append("")
-        lines.append("After installing the missing tools, please run this command again.")
-        lines.append("")
+        lines.append("\nAfter installing, run this command again.\n")
 
         return "\n".join(lines)
 
@@ -444,30 +790,129 @@ class PrerequisiteChecker:
         print(self.format_missing_prerequisites(result.missing_tools))
         return False
 
+    def check_and_install(self, interactive: bool = True) -> PrerequisiteResult:
+        """Check prerequisites and optionally install missing ones interactively.
+
+        This method combines prerequisite checking with interactive installation.
+        For each missing tool, it prompts the user for approval before installing.
+
+        Args:
+            interactive: If True, prompt user to install missing tools.
+                        If False, just return missing tools (same as check_all_prerequisites)
+
+        Returns:
+            PrerequisiteResult with current status after any installations
+
+        Side Effects:
+            - May install system packages with user approval
+            - Logs all installation attempts to audit log
+            - Prints status messages during installation
+
+        Example:
+            >>> checker = PrerequisiteChecker()
+            >>> result = checker.check_and_install(interactive=True)
+            >>> if result.all_available:
+            ...     print("All prerequisites now available")
+        """
+        # First check what's missing
+        result = self.check_all_prerequisites()
+
+        if result.all_available:
+            print("All prerequisites are already available.")
+            return result
+
+        if not interactive:
+            # Non-interactive mode - just return missing tools
+            return result
+
+        # Interactive mode - attempt to install missing tools
+        print(f"\n{'=' * 70}")
+        print("MISSING PREREQUISITES DETECTED")
+        print(f"{'=' * 70}\n")
+        print(f"Found {len(result.missing_tools)} missing tool(s):")
+        for tool_result in result.missing_tools:
+            print(f"  - {tool_result.tool}")
+        print(f"\n{'=' * 70}\n")
+
+        # Create installer for this platform
+        installer = InteractiveInstaller(self.platform)
+
+        # Check if we're in an interactive environment
+        if not installer.is_interactive_environment():
+            print("Non-interactive environment detected.")
+            print("Cannot prompt for installation. Please install manually:")
+            print(self.format_missing_prerequisites(result.missing_tools))
+            return result
+
+        # Attempt to install each missing tool
+        installation_results: Dict[str, InstallationResult] = {}
+        for tool_result in result.missing_tools:
+            tool = tool_result.tool
+            install_result = installer.install_tool(tool)
+            installation_results[tool] = install_result
+
+            if install_result.success:
+                print(f"\n[SUCCESS] {tool} installed successfully")
+            elif not install_result.user_approved:
+                print(f"\n[SKIPPED] {tool} installation declined by user")
+            else:
+                print(f"\n[FAILED] {tool} installation failed")
+                if install_result.stderr:
+                    print(f"Error: {install_result.stderr}")
+
+        # Re-check prerequisites after installations
+        print(f"\n{'=' * 70}")
+        print("VERIFYING INSTALLATIONS")
+        print(f"{'=' * 70}\n")
+
+        final_result = self.check_all_prerequisites()
+
+        if final_result.all_available:
+            print("[SUCCESS] All prerequisites are now available!")
+        else:
+            print(f"[WARNING] {len(final_result.missing_tools)} tool(s) still missing:")
+            for tool_result in final_result.missing_tools:
+                print(f"  - {tool_result.tool}")
+            print("\nYou may need to:")
+            print("  1. Restart your terminal to refresh PATH")
+            print("  2. Install manually (see commands above)")
+            print("  3. Check installation logs for errors")
+
+        return final_result
+
 
 # Convenience function for quick prerequisite checking
 def check_prerequisites() -> bool:
-    """Quick prerequisite check with automatic reporting.
+    """Quick prerequisite check with automatic interactive installation.
+
+    In interactive environments (TTY), prompts user to install missing tools.
+    In non-interactive environments (CI), prints manual instructions.
 
     Returns:
         True if all prerequisites available, False otherwise
 
     Side Effects:
-        Prints detailed report to stdout if prerequisites are missing
+        - In interactive mode: Prompts for user approval and installs missing tools
+        - In non-interactive mode: Prints manual installation instructions
+        - All installation attempts are logged to ~/.amplihack/installation_audit.json
 
     Example:
         >>> if not check_prerequisites():
         ...     sys.exit(1)
     """
     checker = PrerequisiteChecker()
-    return checker.check_and_report()
+    result = checker.check_and_install(interactive=True)
+    return result.all_available
 
 
 __all__ = [
     "Platform",
     "PrerequisiteChecker",
+    "InteractiveInstaller",
     "PrerequisiteResult",
     "ToolCheckResult",
+    "InstallationResult",
+    "InstallationAuditEntry",
     "check_prerequisites",
     "safe_subprocess_call",
 ]

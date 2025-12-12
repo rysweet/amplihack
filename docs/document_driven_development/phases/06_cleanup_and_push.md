@@ -1,5 +1,7 @@
 # Phase 6: Cleanup & Push
 
+> [Home](../../index.md) > [Document-Driven Development](../README.md) > [Phases](README.md) > Phase 6
+
 **Remove temporary files, verify completeness, push changes**
 
 ---

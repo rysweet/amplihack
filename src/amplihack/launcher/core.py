@@ -348,9 +348,20 @@ class ClaudeLauncher:
             if self._target_directory and self._cached_uvx_decision:
                 cmd.extend(["--add-dir", str(self._target_directory)])
 
-            # Add model
+            # Add Azure model when using proxy
             if self.proxy_manager:
-                cmd.extend(["--model", "azure/gpt-5-codex"])
+                # UPDATED: Read model from proxy config (main's improvement)
+                proxy_config = self.proxy_manager.proxy_config
+                if proxy_config:
+                    azure_model = (
+                        proxy_config.get("BIG_MODEL")
+                        or proxy_config.get("AZURE_OPENAI_DEPLOYMENT_NAME")
+                        or "gpt-5-codex"  # Fallback default
+                    )
+                else:
+                    azure_model = "gpt-5-codex"  # Fallback if no config
+                cmd.extend(["--model", f"azure/{azure_model}"])
+            # Add default model if not using proxy and user hasn't specified one
             elif not self._has_model_arg():
                 default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "sonnet[1m]")
                 cmd.extend(["--model", default_model])

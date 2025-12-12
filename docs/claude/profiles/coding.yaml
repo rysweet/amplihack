@@ -1,0 +1,57 @@
+version: "1.0"
+name: "coding"
+description: "Development-focused profile for coding tasks"
+
+components:
+  commands:
+    include:
+      - "ultrathink"
+      - "analyze"
+      - "fix"
+      - "amplihack:modular-build"
+      - "ddd:*"
+
+  context:
+    include:
+      - "PHILOSOPHY.md"
+      - "PATTERNS.md"
+      - "TRUST.md"
+      - "PROJECT.md"
+
+  agents:
+    include:
+      - "architect"
+      - "builder"
+      - "reviewer"
+      - "tester"
+      - "api-designer"
+      - "database"
+      - "security"
+      - "cleanup"
+      - "optimizer"
+    exclude:
+      - "knowledge-archaeologist"
+      - "*-analyst"
+
+  skills:
+    include_categories:
+      - "coding"
+      - "testing"
+      - "development"
+    exclude_categories:
+      - "creative"
+      - "research"
+    include:
+      - "outside-in-testing"
+      - "design-patterns-expert"
+
+metadata:
+  author: "amplihack"
+  version: "1.0.0"
+  tags: ["development", "coding", "focused"]
+  created: "2025-11-22T00:00:00Z"
+  updated: "2025-11-22T00:00:00Z"
+
+performance:
+  lazy_load_skills: true
+  cache_ttl: 3600

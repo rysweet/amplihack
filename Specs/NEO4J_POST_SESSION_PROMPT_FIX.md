@@ -44,11 +44,13 @@ Added **secondary protection layer** at the dialog invocation point (line 360):
 **File**: `src/amplihack/memory/neo4j/container_selection.py`
 
 **Before (Vulnerable)**:
+
 ```python
 container_name = unified_container_and_credential_dialog(default_name, auto_mode=False)
 ```
 
 **After (Defense-in-Depth)**:
+
 ```python
 # Defense-in-depth: Check cleanup mode again as secondary protection
 # (Primary check at lines 336-346, this prevents prompts if that check is bypassed)
@@ -60,11 +62,11 @@ container_name = unified_container_and_credential_dialog(default_name, auto_mode
 
 ### Protection Layers
 
-| Layer | Location | Purpose |
-|-------|----------|---------|
-| **Primary** | Lines 336-346 | Early return when cleanup mode detected |
-| **Secondary** | Lines 363-365 | Force auto_mode=True when calling dialog |
-| **Tertiary** | stop.py:227 | Set AMPLIHACK_CLEANUP_MODE flag before any operations |
+| Layer         | Location      | Purpose                                               |
+| ------------- | ------------- | ----------------------------------------------------- |
+| **Primary**   | Lines 336-346 | Early return when cleanup mode detected               |
+| **Secondary** | Lines 363-365 | Force auto_mode=True when calling dialog              |
+| **Tertiary**  | stop.py:227   | Set AMPLIHACK_CLEANUP_MODE flag before any operations |
 
 ## Testing
 
@@ -84,28 +86,29 @@ Comprehensive test suite added to `tests/memory/neo4j/test_container_selection.p
 
 ### Test Coverage Matrix
 
-| cleanup_mode | context.auto_mode | Expected behavior | Test coverage |
-|--------------|-------------------|-------------------|---------------|
-| False        | False             | Interactive dialog | ✅ test_normal_mode_respects_interactive_setting |
-| False        | True              | Auto mode, no prompt | ✅ test_context_auto_mode_true_always_non_interactive |
-| True         | False             | No prompt (Layer 1 OR Layer 2) | ✅ test_cleanup_mode_forces_auto_mode |
-| True         | True              | No prompt (both layers) | ✅ test_cleanup_mode_and_auto_mode_both_true |
-| unset        | False             | Interactive dialog | ✅ test_cleanup_mode_unset_defaults_to_interactive |
+| cleanup_mode | context.auto_mode | Expected behavior              | Test coverage                                         |
+| ------------ | ----------------- | ------------------------------ | ----------------------------------------------------- |
+| False        | False             | Interactive dialog             | ✅ test_normal_mode_respects_interactive_setting      |
+| False        | True              | Auto mode, no prompt           | ✅ test_context_auto_mode_true_always_non_interactive |
+| True         | False             | No prompt (Layer 1 OR Layer 2) | ✅ test_cleanup_mode_forces_auto_mode                 |
+| True         | True              | No prompt (both layers)        | ✅ test_cleanup_mode_and_auto_mode_both_true          |
+| unset        | False             | Interactive dialog             | ✅ test_cleanup_mode_unset_defaults_to_interactive    |
 
 ## Verification
 
 ### Expected Behavior After Fix
 
-| Scenario | Before Fix | After Fix |
-|----------|------------|-----------|
-| Session exit with neo4j running | 😱 Prompts user after session ends | ✅ Silently checks/shuts down, no prompts |
-| Auto mode | ✅ No prompts | ✅ No prompts (unchanged) |
-| Interactive mode (normal startup) | ✅ Shows dialog | ✅ Shows dialog (unchanged) |
-| Cleanup mode + any code path | ❌ Could show prompts if Layer 1 bypassed | ✅ Never shows prompts (Layer 2 protection) |
+| Scenario                          | Before Fix                                | After Fix                                   |
+| --------------------------------- | ----------------------------------------- | ------------------------------------------- |
+| Session exit with neo4j running   | 😱 Prompts user after session ends        | ✅ Silently checks/shuts down, no prompts   |
+| Auto mode                         | ✅ No prompts                             | ✅ No prompts (unchanged)                   |
+| Interactive mode (normal startup) | ✅ Shows dialog                           | ✅ Shows dialog (unchanged)                 |
+| Cleanup mode + any code path      | ❌ Could show prompts if Layer 1 bypassed | ✅ Never shows prompts (Layer 2 protection) |
 
 ### User Preference Integration
 
 The fix respects the user's neo4j_auto_shutdown preference:
+
 - `always`: Auto-shutdown without prompt (already working)
 - `never`: Skip shutdown without prompt (already working)
 - `ask`: Check for cleanup mode, suppress prompt during cleanup ✅ FIXED
@@ -131,6 +134,7 @@ The fix respects the user's neo4j_auto_shutdown preference:
 ## No Breaking Changes
 
 ✅ All existing functionality preserved:
+
 - Interactive mode works normally when not in cleanup
 - Auto mode works as before
 - CLI and env var priority unchanged

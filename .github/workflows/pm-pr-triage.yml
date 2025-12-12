@@ -1,0 +1,72 @@
+name: PM - PR Triage
+
+# Purpose: Sophisticated PR triage with workflow compliance validation
+# Features:
+#   - Validates Steps 11-12 of DEFAULT_WORKFLOW.md are completed
+#   - Applies priority and complexity labels automatically
+#   - Detects unrelated changes in PR scope
+#   - Returns to draft + spawns auto-fix if non-compliant
+#   - Uses Claude Agent SDK orchestration for AI analysis
+# Security: Implements all 9 mandatory mitigations from SECURITY_ASSESSMENT.md
+# Type: Active validation with automated remediation
+
+on:
+  pull_request:
+    types: [ready_for_review]
+
+# SECURITY M2.1: Minimal permissions (read-only by default)
+permissions:
+  contents: read # Read repository contents only
+  pull-requests: write # Post triage analysis, apply labels, update status
+  issues: write # Apply labels to PRs (PRs are issues in GitHub API)
+
+jobs:
+  triage-pr:
+    name: Triage Pull Request
+    runs-on: ubuntu-latest
+    # SECURITY: Timeout limit prevents runaway execution
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Need history for PR analysis
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install -e .
+
+      # SECURITY M1.2: Mask API key to prevent exposure in logs
+      - name: Mask API key
+        run: echo "::add-mask::${{ secrets.ANTHROPIC_API_KEY }}"
+
+      # SECURITY M3.2: Use environment variables, never string interpolation
+      # SECURITY: Use PR number only, not user-controlled title/body
+      # SECURITY: Error handling filters output to prevent secret leakage
+      - name: Triage PR with Claude Agent SDK
+        id: triage
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +x  # Disable command echoing to prevent accidental exposure
+
+          # NOTE M3.1: PM scripts must sanitize user inputs from PR content
+          # NOTE M3.4: PM scripts must validate for prompt injection in PR descriptions
+
+          # Run sophisticated PR triage using Claude Agent SDK
+          python .github/scripts/pr_triage_main.py
+
+      # SECURITY: Error handling without exposing secrets
+      - name: Handle errors
+        if: failure()
+        run: |
+          echo "::error::PR triage workflow failed. Check logs for details."
+          echo "Note: Check that ANTHROPIC_API_KEY secret is configured."

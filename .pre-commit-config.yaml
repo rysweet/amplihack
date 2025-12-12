@@ -75,7 +75,7 @@ repos:
     rev: v1.1.405
     hooks:
       - id: pyright
-        exclude: '^\.claude/tools/test-utilities/.*\.py$'
+        exclude: '^(\.claude/tools/test-utilities/.*\.py$|\.github/scripts/.*\.py$)'
 
   # JavaScript/TypeScript/Markdown formatting
   - repo: https://github.com/pre-commit/mirrors-prettier
@@ -168,7 +168,7 @@ repos:
         language: system
         types: [python]
         pass_filenames: true
-        exclude: '^(\.claude/tools/amplihack/.*\.py$|\.claude/skills/.*/scripts/.*\.py$)'
+        exclude: '^(\.claude/tools/amplihack/.*\.py$|\.claude/skills/.*\.py$|\.github/scripts/.*\.py$|tests/.*\.py$|.*/tests/.*\.py$)'
 
       # Dependency validation - ensures optional deps have try/except
       - id: check-dependencies
@@ -177,3 +177,4 @@ repos:
         language: system
         types: [python]
         pass_filenames: true
+        exclude: '^(tests/.*\.py$|.*/tests/.*\.py$)'

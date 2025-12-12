@@ -1,0 +1,115 @@
+name: PM - Label-Triggered Delegation
+
+# Purpose: Trigger PM Architect delegation when pm:delegate label added to issue/PR
+# Security: Implements all 9 mandatory mitigations from SECURITY_ASSESSMENT.md
+# Type: Informational + automated response (read + comment)
+
+on:
+  issues:
+    types: [labeled]
+  pull_request:
+    types: [labeled]
+
+# SECURITY M2.1: Minimal permissions (read-only by default)
+permissions:
+  contents: read # Read repository contents only
+  issues: write # Post delegation response to issues
+  pull-requests: write # Post delegation response to PRs
+
+jobs:
+  delegate-response:
+    name: PM Delegate Response
+    # Only run if the label is pm:delegate
+    if: github.event.label.name == 'pm:delegate'
+    runs-on: ubuntu-latest
+    # SECURITY: Timeout limit prevents runaway execution
+    timeout-minutes: 30 # Auto mode may take longer than simple triage
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Need history for context
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install amplihack
+        run: |
+          pip install -e .
+          pip install pyyaml  # Required for PM state file parsing
+
+      # SECURITY M1.2: Mask API key to prevent exposure in logs
+      - name: Mask API key
+        run: echo "::add-mask::${{ secrets.ANTHROPIC_API_KEY }}"
+
+      # SECURITY M3.2: Use environment variables, never string interpolation
+      # SECURITY: Use issue/PR number only, not user-controlled content
+      - name: Determine issue/PR context
+        id: context
+        run: |
+          set +x  # Disable command echoing
+
+          if [ "${{ github.event_name }}" = "issues" ]; then
+            echo "type=issue" >> $GITHUB_OUTPUT
+            echo "number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+          else
+            echo "type=pr" >> $GITHUB_OUTPUT
+            echo "number=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+          fi
+
+      # Use PM Architect delegation script (handles everything)
+      # NOTE M3.1: PM scripts sanitize user inputs via Claude SDK
+      # NOTE M3.4: PM scripts use Claude SDK which validates for prompt injection
+      - name: Execute PM Architect delegation
+        id: delegate
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ steps.context.outputs.number }}
+          ISSUE_TYPE: ${{ steps.context.outputs.type }}
+        run: |
+          set +x  # Disable command echoing
+
+          # Run PM delegation script
+          python .claude/skills/pm-architect/scripts/delegate_response.py \
+            ${ISSUE_NUMBER} \
+            ${ISSUE_TYPE} \
+            --project-root . \
+            --output delegation_response.md \
+            --max-turns 5
+
+      # Post delegation response as comment
+      - name: Post delegation response
+        uses: peter-evans/create-or-update-comment@v4
+        if: success()
+        with:
+          issue-number: ${{ steps.context.outputs.number }}
+          body-path: delegation_response.md
+
+      # SECURITY: Error handling without exposing secrets
+      - name: Handle errors
+        if: failure()
+        run: |
+          echo "::error::PM label delegation workflow failed. Check logs for details."
+          echo "Note: Ensure ANTHROPIC_API_KEY secret is configured."
+
+          # Post error message to issue/PR
+          echo "❌ **PM Delegation Failed**" > error_comment.md
+          echo "" >> error_comment.md
+          echo "The PM Architect delegation workflow encountered an error." >> error_comment.md
+          echo "Please check the workflow logs for details." >> error_comment.md
+          echo "" >> error_comment.md
+          echo "Common issues:" >> error_comment.md
+          echo "- API key not configured" >> error_comment.md
+          echo "- Timeout exceeded" >> error_comment.md
+          echo "- Invalid issue/PR context" >> error_comment.md
+
+      - name: Post error comment
+        uses: peter-evans/create-or-update-comment@v4
+        if: failure()
+        with:
+          issue-number: ${{ steps.context.outputs.number }}
+          body-path: error_comment.md

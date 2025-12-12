@@ -1,5 +1,7 @@
 # Phase 1: Documentation Retcon
 
+> [Home](../../index.md) > [Document-Driven Development](../README.md) > [Phases](README.md) > Phase 1
+
 **Update ALL documentation to describe the target state as if it already exists**
 
 ---

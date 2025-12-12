@@ -11,12 +11,14 @@ Tests version checking functionality including:
 import subprocess
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
 # Add .claude/tools/amplihack to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent / ".claude" / "tools" / "amplihack"))
+sys.path.insert(
+    0, str(Path(__file__).parent.parent.parent.parent.parent / ".claude" / "tools" / "amplihack")
+)
 
 from version_checker import (
     VersionInfo,
