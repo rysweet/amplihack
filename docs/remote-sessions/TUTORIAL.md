@@ -664,4 +664,4 @@ amplihack remote list --status completed | grep sess- | cut -d' ' -f1 | xargs -n
 - Review [CLI Reference](CLI_REFERENCE.md) for complete command documentation
 - Read [User Guide](README.md) for architecture details
 - Check [Developer Guide](../../.claude/tools/amplihack/remote/README.md) for implementation details
-- Report issues at [GitHub Issues](https://github.com/amplihack/amplihack/issues)
+- Report issues at [GitHub Issues](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues)

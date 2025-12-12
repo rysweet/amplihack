@@ -202,6 +202,6 @@ Remote Sessions includes:
 
 For issues, questions, or feature requests, see:
 
-- [GitHub Issues](https://github.com/amplihack/amplihack/issues)
+- [GitHub Issues](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues)
 - [Troubleshooting Guide](README.md#troubleshooting)
 - [Developer Documentation](../../.claude/tools/amplihack/remote/README.md)

@@ -53,74 +53,74 @@ nav:
       - Interactive Setup: INTERACTIVE_INSTALLATION.md
       - Quick Start: README.md
   - Core Concepts:
-      - Philosophy: .claude/context/PHILOSOPHY.md
-      - Project Overview: .claude/context/PROJECT.md
-      - Patterns: .claude/context/PATTERNS.md
-      - Trust & Anti-Sycophancy: .claude/context/TRUST.md
-      - User Preferences: .claude/context/USER_PREFERENCES.md
+      - Philosophy: claude/context/PHILOSOPHY.md
+      - Project Overview: claude/context/PROJECT.md
+      - Patterns: claude/context/PATTERNS.md
+      - Trust & Anti-Sycophancy: claude/context/TRUST.md
+      - User Preferences: claude/context/USER_PREFERENCES.md
   - Workflows:
-      - Default Workflow: .claude/workflow/DEFAULT_WORKFLOW.md
+      - Default Workflow: claude/workflow/DEFAULT_WORKFLOW.md
       - Document-Driven Development:
           - Overview: document_driven_development/README.md
           - Core Concepts: document_driven_development/CORE_CONCEPTS.md
           - User Guide: document_driven_development/DDD_USER_GUIDE.md
           - Implementation Guide: document_driven_development/IMPLEMENTATION_GUIDE.md
           - Phase Guides: document_driven_development/PHASE_GUIDES.md
-      - N-Version Programming: .claude/workflow/N_VERSION_WORKFLOW.md
-      - Multi-Agent Debate: .claude/workflow/DEBATE_WORKFLOW.md
-      - Fallback Cascade: .claude/workflow/CASCADE_WORKFLOW.md
-      - Investigation Workflow: .claude/workflow/INVESTIGATION_WORKFLOW.md
-      - Pre-Commit Diagnostic: .claude/agents/amplihack/specialized/pre-commit-diagnostic.md
-      - CI Diagnostic: .claude/agents/amplihack/specialized/ci-diagnostic-workflow.md
-      - Fix Workflow: .claude/agents/amplihack/specialized/fix-agent.md
+      - N-Version Programming: claude/workflow/N_VERSION_WORKFLOW.md
+      - Multi-Agent Debate: claude/workflow/DEBATE_WORKFLOW.md
+      - Fallback Cascade: claude/workflow/CASCADE_WORKFLOW.md
+      - Investigation Workflow: claude/workflow/INVESTIGATION_WORKFLOW.md
+      - Pre-Commit Diagnostic: claude/agents/amplihack/specialized/pre-commit-diagnostic.md
+      - CI Diagnostic: claude/agents/amplihack/specialized/ci-diagnostic-workflow.md
+      - Fix Workflow: claude/agents/amplihack/specialized/fix-agent.md
   - Agents:
-      - Overview: .claude/agents/README.md
+      - Overview: claude/agents/README.md
       - Core Agents:
-          - Architect: .claude/agents/amplihack/core/architect.md
-          - Builder: .claude/agents/amplihack/core/builder.md
-          - Reviewer: .claude/agents/amplihack/core/reviewer.md
-          - Tester: .claude/agents/amplihack/core/tester.md
+          - Architect: claude/agents/amplihack/core/architect.md
+          - Builder: claude/agents/amplihack/core/builder.md
+          - Reviewer: claude/agents/amplihack/core/reviewer.md
+          - Tester: claude/agents/amplihack/core/tester.md
       - Specialized Agents:
-          - API Designer: .claude/agents/amplihack/core/api-designer.md
-          - Security: .claude/agents/amplihack/specialized/security.md
-          - Database: .claude/agents/amplihack/specialized/database.md
-          - Integration: .claude/agents/amplihack/specialized/integration.md
-          - Knowledge Archaeologist: .claude/agents/amplihack/specialized/knowledge-archaeologist.md
+          - API Designer: claude/agents/amplihack/core/api-designer.md
+          - Security: claude/agents/amplihack/specialized/security.md
+          - Database: claude/agents/amplihack/specialized/database.md
+          - Integration: claude/agents/amplihack/specialized/integration.md
+          - Knowledge Archaeologist: claude/agents/amplihack/specialized/knowledge-archaeologist.md
       - Workflow Agents:
-          - Ambiguity Handler: .claude/agents/amplihack/specialized/ambiguity.md
-          - Cleanup: .claude/agents/amplihack/specialized/cleanup.md
-          - Optimizer: .claude/agents/amplihack/core/optimizer.md
-          - Pattern Recognition: .claude/agents/amplihack/specialized/patterns.md
+          - Ambiguity Handler: claude/agents/amplihack/specialized/ambiguity.md
+          - Cleanup: claude/agents/amplihack/specialized/cleanup.md
+          - Optimizer: claude/agents/amplihack/core/optimizer.md
+          - Pattern Recognition: claude/agents/amplihack/specialized/patterns.md
   - Commands:
       - Command Guide: commands/COMMAND_SELECTION_GUIDE.md
-      - /ultrathink: .claude/commands/amplihack/ultrathink.md
-      - /analyze: .claude/commands/amplihack/analyze.md
-      - /improve: .claude/commands/amplihack/improve.md
-      - /fix: .claude/commands/amplihack/fix.md
-      - /n-version: .claude/commands/amplihack/n-version.md
-      - /debate: .claude/commands/amplihack/debate.md
-      - /cascade: .claude/commands/amplihack/cascade.md
-      - /customize: .claude/commands/amplihack/customize.md
+      - /ultrathink: claude/commands/amplihack/ultrathink.md
+      - /analyze: claude/commands/amplihack/analyze.md
+      - /improve: claude/commands/amplihack/improve.md
+      - /fix: claude/commands/amplihack/fix.md
+      - /n-version: claude/commands/amplihack/n-version.md
+      - /debate: claude/commands/amplihack/debate.md
+      - /cascade: claude/commands/amplihack/cascade.md
+      - /customize: claude/commands/amplihack/customize.md
       - DDD Commands:
-          - /ddd:0-help: .claude/commands/ddd/0-help.md
-          - /ddd:prime: .claude/commands/ddd/prime.md
-          - /ddd:1-plan: .claude/commands/ddd/1-plan.md
-          - /ddd:2-docs: .claude/commands/ddd/2-docs.md
-          - /ddd:3-code-plan: .claude/commands/ddd/3-code-plan.md
-          - /ddd:4-code: .claude/commands/ddd/4-code.md
-          - /ddd:5-finish: .claude/commands/ddd/5-finish.md
-          - /ddd:status: .claude/commands/ddd/status.md
+          - /ddd:0-help: claude/commands/ddd/0-help.md
+          - /ddd:prime: claude/commands/ddd/prime.md
+          - /ddd:1-plan: claude/commands/ddd/1-plan.md
+          - /ddd:2-docs: claude/commands/ddd/2-docs.md
+          - /ddd:3-code-plan: claude/commands/ddd/3-code-plan.md
+          - /ddd:4-code: claude/commands/ddd/4-code.md
+          - /ddd:5-finish: claude/commands/ddd/5-finish.md
+          - /ddd:status: claude/commands/ddd/status.md
   - Skills:
-      - Overview: .claude/skills/README.md
+      - Overview: claude/skills/README.md
       - Available Skills:
-          - Agent SDK: .claude/skills/agent-sdk/SKILL.md
-          - DOCX: .claude/skills/docx/SKILL.md
-          - PPTX: .claude/skills/pptx/SKILL.md
-          - XLSX: .claude/skills/xlsx/SKILL.md
-          - PDF: .claude/skills/pdf/SKILL.md
+          - Agent SDK: claude/skills/agent-sdk/SKILL.md
+          - DOCX: claude/skills/docx/SKILL.md
+          - PPTX: claude/skills/pptx/SKILL.md
+          - XLSX: claude/skills/xlsx/SKILL.md
+          - PDF: claude/skills/pdf/SKILL.md
   - Tools:
-      - Scenarios Overview: .claude/scenarios/README.md
-      - Analyze Codebase: .claude/scenarios/analyze-codebase/README.md
+      - Scenarios Overview: claude/scenarios/README.md
+      - Analyze Codebase: claude/scenarios/analyze-codebase/README.md
       - Creating Tools: CREATE_YOUR_OWN_TOOLS.md
       - Hooks Configuration: HOOK_CONFIGURATION_GUIDE.md
   - Advanced Topics:
@@ -137,7 +137,7 @@ nav:
           - CLI Reference: remote-sessions/CLI_REFERENCE.md
           - Tutorial: remote-sessions/TUTORIAL.md
   - Reference:
-      - Discoveries: .claude/context/DISCOVERIES.md
+      - Discoveries: claude/context/DISCOVERIES.md
       - Security: SECURITY_RECOMMENDATIONS.md
       - Testing: testing/README.md
       - Troubleshooting: troubleshooting/README.md
@@ -204,7 +204,7 @@ markdown_extensions:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/amplihack/amplihack
+      link: https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding
   version:
     provider: mike
   analytics:

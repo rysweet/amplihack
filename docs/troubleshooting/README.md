@@ -88,7 +88,7 @@ Still stuck? Here's what to do:
 1. **Check Discoveries** - [DISCOVERIES.md](../DISCOVERIES.md) has most known issues
 2. **Search Documentation** - Use the [Documentation Graph](../doc_graph_quick_reference.md)
 3. **Review Patterns** - Check [Development Patterns](../../.claude/context/PATTERNS.md)
-4. **Ask for Help** - [GitHub Issues](https://github.com/amplihack/amplihack/issues)
+4. **Ask for Help** - [GitHub Issues](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues)
 
 ---
 

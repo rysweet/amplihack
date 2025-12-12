@@ -59,7 +59,7 @@ from claude_skills.documentation_writing.github_pages import SiteConfig, generat
 
 config = SiteConfig(
     project_name="amplihack",
-    project_url="https://github.com/amplihack/amplihack",
+    project_url="https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding",
 )
 
 result = generate_site(config)
