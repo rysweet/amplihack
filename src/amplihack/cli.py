@@ -633,7 +633,11 @@ def main(argv: Optional[List[str]] = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
-        # RustyClawd is similar to claude command
+        # Force RustyClawd usage (Rust implementation of Claude Code)
+        os.environ["AMPLIHACK_USE_RUSTYCLAWD"] = "1"
+        print("Using RustyClawd (Rust implementation)")
+
+        # RustyClawd launcher setup (similar to claude command)
         if is_uvx_deployment():
             original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
             if claude_args and "--add-dir" not in claude_args:

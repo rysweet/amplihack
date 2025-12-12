@@ -11,38 +11,66 @@ from typing import Optional
 
 def is_rustyclawd_available() -> bool:
     """Check if RustyClawd binary is available.
-    
+
+    Checks in order:
+    1. RUSTYCLAWD_PATH environment variable
+    2. rustyclawd in system PATH
+    3. claude-code (if it's the Rust version)
+
     Returns:
         True if rustyclawd or claude-code (Rust version) is in PATH.
     """
-    # Check for rustyclawd binary
+    import os
+
+    # Check custom path from environment variable
+    custom_path = os.getenv("RUSTYCLAWD_PATH")
+    if custom_path:
+        path = Path(custom_path)
+        if path.exists() and path.is_file():
+            return True
+
+    # Check for rustyclawd binary in PATH
     if shutil.which("rustyclawd"):
         return True
-    
-    # Check for claude-code in RustyClawd installation
-    rustyclawd_path = Path.home() / "src" / "declawed" / "claude-code-rs" / "target" / "release" / "claude-code"
-    if rustyclawd_path.exists() and rustyclawd_path.is_file():
+
+    # Check for claude-code in PATH (might be Rust version)
+    if shutil.which("claude-code"):
+        # Could be Rust version - we'll detect at runtime
         return True
-    
+
     return False
 
 
 def get_rustyclawd_path() -> Optional[Path]:
     """Get path to RustyClawd binary.
-    
+
+    Checks in order:
+    1. RUSTYCLAWD_PATH environment variable
+    2. rustyclawd in system PATH
+    3. claude-code in system PATH (if available)
+
     Returns:
         Path to RustyClawd binary if available, None otherwise.
     """
+    import os
+
+    # Check custom path from environment variable
+    custom_path = os.getenv("RUSTYCLAWD_PATH")
+    if custom_path:
+        path = Path(custom_path)
+        if path.exists() and path.is_file():
+            return path
+
     # Try rustyclawd in PATH
     path = shutil.which("rustyclawd")
     if path:
         return Path(path)
-    
-    # Try claude-code in known RustyClawd location
-    rustyclawd_path = Path.home() / "src" / "declawed" / "claude-code-rs" / "target" / "release" / "claude-code"
-    if rustyclawd_path.exists():
-        return rustyclawd_path
-    
+
+    # Try claude-code in PATH (might be Rust version)
+    path = shutil.which("claude-code")
+    if path:
+        return Path(path)
+
     return None
 
 

@@ -328,17 +328,17 @@ pytest tests/
 
 ## RustyClawd Integration
 
-Amplihack now supports RustyClawd, a high-performance Rust implementation of Claude Code.
+Amplihack supports RustyClawd, a high-performance Rust implementation of Claude Code.
 
-### Installation
+### Quick Start
 
 ```bash
-# Test directly from PR branch
-uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding.git@feat/rustyclawd-integration amplihack RustyClawd -- -p "your prompt"
-
-# Or install and use
-pip install git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding.git@feat/rustyclawd-integration
+# Force RustyClawd usage explicitly
 amplihack RustyClawd -- -p "your prompt"
+
+# Or set environment variable
+export AMPLIHACK_USE_RUSTYCLAWD=1
+amplihack launch -- -p "your prompt"
 ```
 
 ### Benefits
@@ -348,19 +348,34 @@ amplihack RustyClawd -- -p "your prompt"
 - **Rust safety guarantees** - no runtime errors
 - **Same features** - drop-in compatible
 
-### Requirements
+### Installation
 
-RustyClawd must be built first:
+RustyClawd must be available in your system PATH:
+
+**Option 1: Install via cargo**
+```bash
+cargo install --git https://github.com/rysweet/RustyClawd rustyclawd
+```
+
+**Option 2: Build from source**
 ```bash
 git clone https://github.com/rysweet/RustyClawd
 cd RustyClawd
 cargo build --release
+# Add to PATH or use RUSTYCLAWD_PATH environment variable
+export RUSTYCLAWD_PATH=$PWD/target/release/rustyclawd
 ```
 
-Or install via npx:
+**Option 3: Custom binary location**
 ```bash
-npx github:rysweet/RustyClawd --help
+# Point to your custom RustyClawd build
+export RUSTYCLAWD_PATH=/path/to/your/rustyclawd
 ```
+
+### Configuration
+
+- **AMPLIHACK_USE_RUSTYCLAWD**: Force RustyClawd usage (1/true/yes)
+- **RUSTYCLAWD_PATH**: Custom path to RustyClawd binary (optional)
 
 ## License
 
