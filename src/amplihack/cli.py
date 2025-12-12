@@ -4,91 +4,15 @@ import argparse
 import os
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import List, Optional
 
 from .docker import DockerManager
 from .launcher import ClaudeLauncher
 from .proxy import ProxyConfig, ProxyManager
 from .utils import is_uvx_deployment
 
-if TYPE_CHECKING:
-    pass
 
-
-def ensure_ultrathink_command(prompt: str) -> str:
-    """Ensure prompt starts with /amplihack:ultrathink command for orchestration.
-
-    If prompt already starts with a slash command, returns unchanged.
-    Otherwise prepends /amplihack:ultrathink to enable workflow orchestration.
-
-    Args:
-        prompt: The user's prompt string.
-
-    Returns:
-        Transformed prompt with /amplihack:ultrathink prepended (or unchanged if already a slash command).
-
-    Examples:
-        >>> ensure_ultrathink_command("implement feature X")
-        "/amplihack:ultrathink implement feature X"
-        >>> ensure_ultrathink_command("/analyze src")
-        "/analyze src"
-        >>> ensure_ultrathink_command("  test  ")
-        "/amplihack:ultrathink test"
-    """
-    # Strip whitespace
-    prompt = prompt.strip()
-
-    # Return empty if prompt is empty after stripping
-    if not prompt:
-        return ""
-
-    # If starts with slash, it's already a command - return unchanged
-    if prompt.startswith("/"):
-        return prompt
-
-    # Prepend ultrathink command for orchestration
-    return f"/amplihack:ultrathink {prompt}"
-
-
-def wrap_prompt_with_ultrathink(
-    claude_args: list[str] | None, no_ultrathink: bool = False
-) -> list[str] | None:
-    """Wrap prompt in claude_args with /amplihack:ultrathink command.
-
-    Modifies the prompt passed via -p flag to use workflow orchestration.
-
-    Args:
-        claude_args: Command line arguments to pass to Claude (may contain -p prompt).
-        no_ultrathink: If True, skip wrapping (for simple tasks or opt-out).
-
-    Returns:
-        Modified claude_args with wrapped prompt, or original if no prompt or opt-out.
-    """
-    # No-op if no args or opt-out
-    if not claude_args or no_ultrathink:
-        return claude_args
-
-    # Find -p flag and wrap its value
-    try:
-        p_index = claude_args.index("-p")
-        if p_index + 1 < len(claude_args):
-            original_prompt = claude_args[p_index + 1]
-            wrapped_prompt = ensure_ultrathink_command(original_prompt)
-
-            # Only modify if transformation occurred
-            if wrapped_prompt != original_prompt:
-                # Create new list to avoid mutating original
-                new_args = claude_args.copy()
-                new_args[p_index + 1] = wrapped_prompt
-                return new_args
-    except ValueError:
-        # -p flag not found, return unchanged
-        pass
-
-    return claude_args
-
-
-def launch_command(args: argparse.Namespace, claude_args: list[str] | None = None) -> int:
+def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = None) -> int:
     """Handle the launch command.
 
     Args:
@@ -98,23 +22,10 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
     Returns:
         Exit code.
     """
-    # Handle graph backend selection (new unified approach)
-    graph_backend = getattr(args, "graph_backend", "auto")
-    enable_neo4j = getattr(args, "enable_neo4j_memory", False)
-    use_graph_mem = getattr(args, "use_graph_mem", False)  # Deprecated
-
-    # Set environment variable for graph backend selection
-    if graph_backend != "auto":
-        os.environ["AMPLIHACK_GRAPH_BACKEND"] = graph_backend
-        print(f"Graph backend set to: {graph_backend}")
-    elif enable_neo4j or use_graph_mem:
-        os.environ["AMPLIHACK_GRAPH_BACKEND"] = "neo4j"
-        os.environ["AMPLIHACK_ENABLE_NEO4J_MEMORY"] = "1"
-        if use_graph_mem:
-            print(
-                "WARNING: --use-graph-mem is deprecated. Please use --graph-backend neo4j instead."
-            )
-        print("Graph backend set to: neo4j")
+    # Set environment variable for Neo4j opt-in (Why: Makes flag accessible to session hooks)
+    if getattr(args, "use_graph_mem", False):
+        os.environ["AMPLIHACK_USE_GRAPH_MEM"] = "1"
+        print("Neo4j graph memory enabled")
 
         # Set container name if provided
         if getattr(args, "use_memory_db", None):
@@ -210,7 +121,9 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
     return launcher.launch_interactive()
 
 
-def handle_auto_mode(sdk: str, args: argparse.Namespace, cmd_args: list[str] | None) -> int | None:
+def handle_auto_mode(
+    sdk: str, args: argparse.Namespace, cmd_args: Optional[List[str]]
+) -> Optional[int]:
     """Handle auto mode for claude, copilot, or codex commands.
 
     Args:
@@ -245,22 +158,7 @@ def handle_auto_mode(sdk: str, args: argparse.Namespace, cmd_args: list[str] | N
     # Check if UI mode is enabled
     ui_mode = getattr(args, "ui", False)
 
-    # Extract model from cmd_args for timeout auto-detection
-    model = None
-    if cmd_args and "--model" in cmd_args:
-        try:
-            model_idx = cmd_args.index("--model")
-            if model_idx + 1 < len(cmd_args):
-                model = cmd_args[model_idx + 1]
-        except (ValueError, IndexError):
-            pass
-
-    # Resolve timeout using priority: --no-timeout > explicit > model auto-detect > default
-    query_timeout = resolve_timeout(args, model)
-
-    auto = AutoMode(
-        sdk, prompt, args.max_turns, ui_mode=ui_mode, query_timeout_minutes=query_timeout
-    )
+    auto = AutoMode(sdk, prompt, args.max_turns, ui_mode=ui_mode)
     return auto.run()
 
 
@@ -303,8 +201,8 @@ def handle_append_instruction(args: argparse.Namespace) -> int:
 
 
 def parse_args_with_passthrough(
-    argv: list[str] | None = None,
-) -> "tuple[argparse.Namespace, list[str]]":
+    argv: Optional[List[str]] = None,
+) -> "tuple[argparse.Namespace, List[str]]":
     """Parse arguments with support for -- separator for Claude argument forwarding.
 
     Args:
@@ -334,16 +232,6 @@ def parse_args_with_passthrough(
     elif not amplihack_args:
         # No command and no claude args - show help
         pass
-
-    # Special handling for 'remote' command - allow unknown args for Click CLI
-    if amplihack_args and amplihack_args[0] == "remote":
-        args, unknown = parser.parse_known_args(amplihack_args)
-        # Add unknown args to remote_args
-        if hasattr(args, 'remote_args'):
-            args.remote_args = args.remote_args + unknown
-        else:
-            args.remote_args = unknown
-        return args, claude_args
 
     args = parser.parse_args(amplihack_args)
     return args, claude_args
@@ -376,54 +264,6 @@ def add_auto_mode_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Enable interactive UI mode for auto mode (requires Rich library). Shows real-time execution state, logs, and allows prompt injection.",
     )
-    parser.add_argument(
-        "--query-timeout-minutes",
-        type=float,
-        default=30.0,
-        metavar="MINUTES",
-        help=(
-            "Timeout for each SDK query in minutes (default: 30). "
-            "Opus models auto-detect to 60 minutes. "
-            "Use --no-timeout to disable timeout completely."
-        ),
-    )
-    parser.add_argument(
-        "--no-timeout",
-        action="store_true",
-        help="Disable timeout for SDK queries (allows indefinite execution).",
-    )
-
-
-def resolve_timeout(args: argparse.Namespace, model: str | None = None) -> float | None:
-    """Resolve timeout value based on CLI args and model detection.
-
-    Priority order:
-    1. --no-timeout flag (returns None)
-    2. Explicit --query-timeout-minutes value (if not default 30.0)
-    3. Auto-detect Opus model (60 minutes)
-    4. Default from argparse (30 minutes)
-
-    Args:
-        args: Parsed command line arguments
-        model: Model name from --model arg (for Opus detection)
-
-    Returns:
-        Timeout in minutes, or None for no timeout
-    """
-    # Priority 1: --no-timeout flag takes precedence
-    if getattr(args, "no_timeout", False):
-        return None
-
-    # Get the timeout value (defaults to 30.0 from argparse)
-    timeout = getattr(args, "query_timeout_minutes", 30.0)
-
-    # Priority 3: Auto-detect Opus model (60 minute timeout)
-    # Only apply if timeout is the default (30.0), meaning user didn't explicitly override
-    if model and "opus" in model.lower() and timeout == 30.0:
-        return 60.0
-
-    # Return the timeout value (explicit or default)
-    return timeout
 
 
 def add_common_sdk_args(parser: argparse.ArgumentParser) -> None:
@@ -436,11 +276,6 @@ def add_common_sdk_args(parser: argparse.ArgumentParser) -> None:
         "--no-reflection",
         action="store_true",
         help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
-    )
-    parser.add_argument(
-        "--no-ultrathink",
-        action="store_true",
-        help="Skip /amplihack:ultrathink workflow orchestration for simple tasks. By default, all prompts are wrapped with /ultrathink for maximum effectiveness.",
     )
 
 
@@ -490,30 +325,6 @@ def add_neo4j_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def add_graph_backend_args(parser: argparse.ArgumentParser) -> None:
-    """Add graph backend selection arguments to a parser.
-
-    Args:
-        parser: ArgumentParser to add arguments to.
-    """
-    parser.add_argument(
-        "--graph-backend",
-        choices=["kuzu", "neo4j", "auto"],
-        default="auto",
-        metavar="BACKEND",
-        help=(
-            "Select graph database backend for memory system. "
-            "Options: kuzu (embedded, zero-config), neo4j (Docker), auto (default). "
-            "Kùzu is auto-installed if needed."
-        ),
-    )
-    parser.add_argument(
-        "--enable-neo4j-memory",
-        action="store_true",
-        help="Enable Neo4j graph memory (alias for --graph-backend neo4j).",
-    )
-
-
 def create_parser() -> argparse.ArgumentParser:
     """Create the argument parser for amplihack CLI.
 
@@ -556,28 +367,21 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     add_claude_specific_args(launch_parser)
     add_auto_mode_args(launch_parser)
     add_neo4j_args(launch_parser)
-    add_graph_backend_args(launch_parser)
     add_common_sdk_args(launch_parser)
-    launch_parser.add_argument(
-        "--profile",
-        type=str,
-        default=None,
-        help="Profile URI to use for this launch (overrides configured profile)",
-    )
 
     # Claude command (alias for launch)
     claude_parser = subparsers.add_parser("claude", help="Launch Claude Code (alias for launch)")
     add_claude_specific_args(claude_parser)
     add_auto_mode_args(claude_parser)
     add_neo4j_args(claude_parser)
-    add_graph_backend_args(claude_parser)
     add_common_sdk_args(claude_parser)
-    claude_parser.add_argument(
-        "--profile",
-        type=str,
-        default=None,
-        help="Profile URI to use for this launch (overrides configured profile)",
-    )
+
+    # RustyClawd command (Rust implementation)
+    rustyclawd_parser = subparsers.add_parser("RustyClawd", help="Launch RustyClawd (Rust implementation)")
+    add_claude_specific_args(rustyclawd_parser)
+    add_auto_mode_args(rustyclawd_parser)
+    add_neo4j_args(rustyclawd_parser)
+    add_common_sdk_args(rustyclawd_parser)
 
     # Copilot command
     copilot_parser = subparsers.add_parser("copilot", help="Launch GitHub Copilot CLI")
@@ -594,56 +398,14 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     uvx_parser.add_argument("--find-path", action="store_true", help="Find UVX installation path")
     uvx_parser.add_argument("--info", action="store_true", help="Show UVX staging information")
 
-    # Remote execution command
-    # Pass through all args to Click CLI (handles both old and new syntax)
-    remote_parser = subparsers.add_parser(
-        "remote",
-        help="Execute on remote Azure VMs via azlin",
-        add_help=False,  # Disable argparse help, let Click handle it
-    )
-    # Accept all remaining args - Click will parse subcommands
-    # Use '*' to consume all positional args and allow unknown flags
-    remote_parser.add_argument("remote_args", nargs='*', help=argparse.SUPPRESS)
-
-    # Goal Agent Generator command
-    new_parser = subparsers.add_parser(
-        "new", help="Generate a new goal-seeking agent from a prompt file"
-    )
-    new_parser.add_argument(
-        "--file", "-f", type=str, required=True, help="Path to prompt.md file containing goal"
-    )
-    new_parser.add_argument(
-        "--output",
-        "-o",
-        type=str,
-        default=None,
-        help="Output directory for goal agent (default: ./goal_agents)",
-    )
-    new_parser.add_argument(
-        "--name", "-n", type=str, default=None, help="Custom name for goal agent"
-    )
-    new_parser.add_argument(
-        "--skills-dir",
-        type=str,
-        default=None,
-        help="Custom skills directory (default: .claude/agents/amplihack)",
-    )
-    new_parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose output")
-
     # Hidden local install command
     local_install_parser = subparsers.add_parser("_local_install", help=argparse.SUPPRESS)
     local_install_parser.add_argument("repo_root", help="Repository root directory")
-    local_install_parser.add_argument(
-        "--profile",
-        type=str,
-        default=None,
-        help="Profile URI to use for this install (overrides configured profile)",
-    )
 
     return parser
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: Optional[List[str]] = None) -> int:
     """Main entry point for amplihack CLI.
 
     Args:
@@ -671,23 +433,10 @@ def main(argv: list[str] | None = None) -> int:
         copy_strategy = strategy_manager.determine_target(
             original_target=os.path.join(original_cwd, ".claude"),
             has_conflicts=conflict_result.has_conflicts,
-            conflicting_files=conflict_result.conflicting_files,
+            conflicting_files=conflict_result.conflicting_files
         )
 
-        # Check if user declined to proceed
-        if not copy_strategy.should_proceed:
-            print("\n❌ Cannot proceed without updating .claude/ directory")
-            print("   Commit your changes and try again\n")
-            sys.exit(1)
-
         temp_claude_dir = str(copy_strategy.target_dir)
-
-        # Set CLAUDE_PROJECT_DIR to help Claude Code find .claude directory
-        # Needed for both temp mode (hooks) and working mode (command discovery)
-        os.environ["CLAUDE_PROJECT_DIR"] = str(copy_strategy.target_dir.parent)
-        if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-            mode = "temp" if copy_strategy.use_temp else "working"
-            print(f"Set CLAUDE_PROJECT_DIR={copy_strategy.target_dir.parent} ({mode} mode)")
 
         # Store original_cwd for auto mode (always set, regardless of conflicts)
         os.environ["AMPLIHACK_ORIGINAL_CWD"] = original_cwd
@@ -698,121 +447,85 @@ def main(argv: list[str] | None = None) -> int:
 
         # Stage framework files to the current directory's .claude directory
         # Find the amplihack package location
+        # Find amplihack package location for .claude files
         import amplihack
 
-        from . import ESSENTIAL_DIRS, copytree_manifest
+        from . import copytree_manifest
 
         amplihack_src = os.path.dirname(os.path.abspath(amplihack.__file__))
 
-        # NEW: Create staging manifest based on profile (if available)
-        manifest = None
-        profile_uri = os.environ.get("AMPLIHACK_PROFILE")
-
-        if profile_uri:
-            try:
-                # Try to load profile for filtering
-                claude_tools_path = os.path.join(amplihack_src, ".claude", "tools", "amplihack")
-                if os.path.exists(claude_tools_path):
-                    sys.path.insert(0, claude_tools_path)
-                    from profile_management.staging import create_staging_manifest
-
-                    manifest = create_staging_manifest(ESSENTIAL_DIRS, profile_uri)
-                    if manifest.profile_name != "all" and not manifest.profile_name.endswith(
-                        "(fallback)"
-                    ):
-                        print(f"📦 Using profile: {manifest.profile_name}")
-            except Exception as e:
-                # Fall back to full staging on errors
-                print(f"ℹ️  Profile loading failed ({e}), using full staging")
-
         # Copy .claude contents to temp .claude directory
         # Note: copytree_manifest copies TO the dst, not INTO dst/.claude
-        copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude", manifest=manifest)
+        copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude")
 
-        # Handle CLAUDE.md preservation FIRST during UVX deployment (Issue #1746)
-        # Must run before PROJECT.md initialization to preserve custom content
+        # Smart PROJECT.md initialization for UVX mode
         if copied:
             try:
-                from .utils.claude_md_preserver import HandleMode, handle_claude_md
+                from .utils.project_initializer import initialize_project_md, InitMode
 
-                source_claude = Path(amplihack_src) / "CLAUDE.md"
-                result = handle_claude_md(
-                    source_claude=source_claude, target_dir=Path(original_cwd), mode=HandleMode.AUTO
-                )
-                if result.success:
-                    if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                        print(f"✅ {result.message}")
-                    if result.backup_path:
-                        print(f"💾 Your custom CLAUDE.md preserved at: {result.backup_path}")
-            except Exception as e:
-                if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                    print(f"Warning: CLAUDE.md handling failed: {e}")
-
-        # Smart PROJECT.md initialization for UVX mode (after CLAUDE.md preservation)
-        # Use AUTO mode instead of FORCE to preserve existing PROJECT.md content
-        if copied:
-            try:
-                from .utils.project_initializer import InitMode, initialize_project_md
-
-                result = initialize_project_md(Path(original_cwd), mode=InitMode.AUTO)
+                result = initialize_project_md(Path(original_cwd), mode=InitMode.FORCE)
                 if result.success and result.action_taken.value in ["initialized", "regenerated"]:
                     if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                        print(
-                            f"PROJECT.md {result.action_taken.value} for {Path(original_cwd).name}"
-                        )
+                        print(f"PROJECT.md {result.action_taken.value} for {Path(original_cwd).name}")
             except Exception as e:
                 if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                     print(f"Warning: PROJECT.md initialization failed: {e}")
 
-        # Create settings.json with appropriate paths based on staging mode
+        # Create settings.json with relative paths (Claude will resolve relative to CLAUDE_PROJECT_DIR)
+        # When CLAUDE_PROJECT_DIR is set, Claude will use settings.json from that directory only
         if copied:
             settings_path = os.path.join(temp_claude_dir, "settings.json")
             import json
 
-            # Load settings from template (includes statusLine and all hooks)
-            template_path = Path(__file__).parent / "utils" / "uvx_settings_template.json"
-            try:
-                with open(template_path) as f:
-                    settings = json.load(f)
-
-                # Always replace relative paths with $CLAUDE_PROJECT_DIR for UVX mode
-                # This ensures Claude Code can find .claude regardless of working directory
-                def replace_paths(obj):
-                    if isinstance(obj, dict):
-                        for key, value in obj.items():
-                            if (
-                                key == "command"
-                                and isinstance(value, str)
-                                and value.startswith(".claude/")
-                            ):
-                                obj[key] = value.replace(".claude/", "$CLAUDE_PROJECT_DIR/.claude/")
-                            else:
-                                replace_paths(value)
-                    elif isinstance(obj, list):
-                        for item in obj:
-                            replace_paths(item)
-
-                replace_paths(settings)
-
-            except (FileNotFoundError, json.JSONDecodeError) as e:
-                # Fallback to minimal settings if template not found
-                print(f"Warning: Could not load settings template: {e}", file=sys.stderr)
-                # Always use $CLAUDE_PROJECT_DIR in UVX mode
-                settings = {
-                    "hooks": {
-                        "SessionStart": [
-                            {
-                                "hooks": [
-                                    {
-                                        "type": "command",
-                                        "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
-                                        "timeout": 10000,
-                                    }
-                                ]
-                            }
-                        ],
-                    }
+            # Create minimal settings.json with just amplihack hooks
+            settings = {
+                "hooks": {
+                    "SessionStart": [
+                        {
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
+                                    "timeout": 10000,
+                                }
+                            ]
+                        }
+                    ],
+                    "Stop": [
+                        {
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/stop.py",
+                                    "timeout": 30000,
+                                }
+                            ]
+                        }
+                    ],
+                    "PostToolUse": [
+                        {
+                            "matcher": "*",
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/post_tool_use.py",
+                                }
+                            ],
+                        }
+                    ],
+                    "PreCompact": [
+                        {
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/pre_compact.py",
+                                    "timeout": 30000,
+                                }
+                            ]
+                        }
+                    ],
                 }
+            }
 
             # Write settings.json
             os.makedirs(temp_claude_dir, exist_ok=True)
@@ -821,14 +534,9 @@ def main(argv: list[str] | None = None) -> int:
 
             if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                 print(f"UVX staging completed to {temp_claude_dir}")
-                print("Created settings.json with $CLAUDE_PROJECT_DIR paths")
+                print("Created settings.json with relative hook paths")
 
     args, claude_args = parse_args_with_passthrough(argv)
-
-    # Wrap prompts with /amplihack:ultrathink by default (unless --no-ultrathink is set)
-    # This enables workflow orchestration for all prompts
-    no_ultrathink = getattr(args, "no_ultrathink", False)
-    claude_args = wrap_prompt_with_ultrathink(claude_args, no_ultrathink)
 
     if not args.command:
         # If we have claude_args but no command, default to launching Claude directly
@@ -856,24 +564,10 @@ def main(argv: list[str] | None = None) -> int:
     from . import _local_install, uninstall
 
     if args.command == "install":
-        # Install from the package's .claude directory (wherever uvx installed it)
-        # This ensures we use the exact version the user installed via uvx --from git+...@branch
-
-        # Find package location using __file__
-        # __file__ is amplihack/cli.py, so parent is amplihack/
-        package_dir = Path(__file__).resolve().parent
-        claude_source = package_dir / ".claude"
-
-        if claude_source.exists():
-            # Use package's .claude directory (amplihack/.claude/)
-            # _local_install expects repo root, so pass package_dir (which contains .claude/)
-            _local_install(str(package_dir))
-            return 0
-        # Fallback: Clone from GitHub (for old installations)
+        # Use the existing install logic
         import subprocess
         import tempfile
 
-        print("⚠️  Package .claude/ not found, cloning from GitHub...")
         with tempfile.TemporaryDirectory() as tmp:
             repo_url = "https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding"
             try:
@@ -889,8 +583,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     elif args.command == "_local_install":
-        profile_uri = getattr(args, "profile", None)
-        _local_install(args.repo_root, profile_uri=profile_uri)
+        _local_install(args.repo_root)
         return 0
 
     elif args.command == "launch":
@@ -930,6 +623,30 @@ def main(argv: list[str] | None = None) -> int:
 
         # Handle auto mode
         exit_code = handle_auto_mode("claude", args, claude_args)
+        if exit_code is not None:
+            return exit_code
+
+        return launch_command(args, claude_args)
+
+    elif args.command == "RustyClawd":
+        # Handle append mode FIRST (before any other initialization)
+        if getattr(args, "append", None):
+            return handle_append_instruction(args)
+
+        # Force RustyClawd usage (Rust implementation of Claude Code)
+        os.environ["AMPLIHACK_USE_RUSTYCLAWD"] = "1"
+        print("Using RustyClawd (Rust implementation)")
+
+        # RustyClawd launcher setup (similar to claude command)
+        if is_uvx_deployment():
+            original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
+            if claude_args and "--add-dir" not in claude_args:
+                claude_args = ["--add-dir", original_cwd] + claude_args
+            elif not claude_args:
+                claude_args = ["--add-dir", original_cwd]
+
+        # Handle auto mode
+        exit_code = handle_auto_mode("claude", args, claude_args)  # Reuse claude auto mode
         if exit_code is not None:
             return exit_code
 
@@ -994,58 +711,6 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         print_uvx_usage_instructions()
         return 0
-
-    elif args.command == "new":
-        from .goal_agent_generator.cli import new_goal_agent
-
-        # Convert string paths to Path objects
-        file_path = Path(args.file)
-        output_path = Path(args.output) if args.output else None
-        skills_path = Path(args.skills_dir) if args.skills_dir else None
-
-        # Call the goal agent generator CLI
-        return new_goal_agent.callback(
-            file=file_path,
-            output=output_path,
-            name=args.name,
-            skills_dir=skills_path,
-            verbose=args.verbose,
-        )
-
-    elif args.command == "remote":
-        # Execute remote command via Click CLI
-        claude_dir = Path.cwd() / ".claude"
-        if not claude_dir.exists():
-            print("Error: .claude directory not found", file=sys.stderr)
-            return 1
-
-        # Add remote module to path for import
-        remote_tools_path = claude_dir / "tools" / "amplihack"
-        if remote_tools_path not in [Path(p) for p in sys.path]:
-            sys.path.insert(0, str(remote_tools_path))
-
-        try:
-            # Import Click CLI group
-            # pyright: ignore[reportMissingImports] - dynamic path, module exists at runtime
-            from remote.cli import remote_cli  # type: ignore[import-not-found]
-
-            # Get remaining args (everything after "remote")
-            remote_args = args.remote_args if hasattr(args, "remote_args") else []
-
-            # Invoke Click CLI with args
-            # Click handles all subcommand parsing (list/start/output/kill/status/exec)
-            try:
-                remote_cli(remote_args, standalone_mode=False)
-                return 0
-            except SystemExit as e:
-                return e.code if e.code is not None else 0
-
-        except Exception as e:
-            print(f"Error: {e}", file=sys.stderr)
-            import traceback
-
-            traceback.print_exc()
-            return 1
 
     else:
         create_parser().print_help()
