@@ -410,3 +410,66 @@ class TestSlugify:
         """
         result = slugify("already-a-slug")
         assert result == "already-a-slug", "Already valid hyphen-separated slug should remain"
+
+    def test_max_length_truncates_at_word_boundary(self):
+        """Test max_length truncates at word boundary (hyphen).
+
+        Expected behavior:
+        - "this-is-a-very-long-slug" with max_length=10 should become "this-is-a"
+        - Truncates at last hyphen before max_length
+        - Avoids cutting words in the middle
+        """
+        result = slugify("This is a very long title", max_length=10)
+        assert result == "this-is-a", "Should truncate at word boundary"
+        assert len(result) <= 10, "Should not exceed max_length"
+
+    def test_max_length_no_truncation_needed(self):
+        """Test max_length when slug is already shorter.
+
+        Expected behavior:
+        - "hello" with max_length=20 should remain "hello"
+        - No truncation when under limit
+        """
+        result = slugify("Hello", max_length=20)
+        assert result == "hello", "Should not truncate when under max_length"
+
+    def test_max_length_none_default(self):
+        """Test that max_length=None (default) doesn't truncate.
+
+        Expected behavior:
+        - Long strings are not truncated by default
+        - Backward compatible with existing behavior
+        """
+        long_text = "This is a very long string that should not be truncated"
+        result = slugify(long_text)
+        expected = "this-is-a-very-long-string-that-should-not-be-truncated"
+        assert result == expected, "Should not truncate without max_length"
+
+    def test_max_length_exact_boundary(self):
+        """Test max_length when it falls exactly at a hyphen.
+
+        Expected behavior:
+        - Handles edge case where truncation point is at hyphen
+        """
+        result = slugify("hello-world", max_length=5)
+        assert result == "hello", "Should handle exact boundary at hyphen"
+
+    def test_max_length_single_word(self):
+        """Test max_length with single long word.
+
+        Expected behavior:
+        - "superlongword" with max_length=5 truncates without word boundary
+        - Falls back to simple truncation when no hyphens
+        """
+        result = slugify("superlongword", max_length=5)
+        assert len(result) <= 5, "Should truncate to max_length"
+
+    def test_max_length_zero(self):
+        """Test max_length=0 (edge case).
+
+        Expected behavior:
+        - Returns empty string or handles gracefully
+        """
+        result = slugify("Hello World", max_length=0)
+        # 0 is falsy, so max_length check won't trigger
+        assert result == "hello-world", "max_length=0 should not truncate (falsy)"
