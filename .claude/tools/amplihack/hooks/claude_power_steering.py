@@ -36,7 +36,18 @@ SUSPICIOUS_PATTERNS = [
     r"data:text/html",
     r"onerror=",
     r"onclick=",
+    r"on\w+=",  # onerror=, onload=, onmouseover=, etc.
+    r"<iframe",
+    r"<object",
+    r"<embed",
+    r"vbscript:",
+    r"data:image/svg",
+    r"&#x[0-9a-f]",  # HTML entity encoding
+    r"\\u[0-9a-f]{4}",  # Unicode escapes
 ]
+
+# Timeout for SDK calls
+CHECKER_TIMEOUT = 30  # 30 seconds per SDK call
 
 
 def _validate_sdk_response(response: str) -> bool:
@@ -166,19 +177,22 @@ async def analyze_consideration(
     try:
         options = ClaudeAgentOptions(
             cwd=str(project_root),
-            permission_mode="bypassPermissions",
         )
 
-        # Query Claude
+        # Query Claude with timeout
         response_parts = []
-        async for message in query(prompt=prompt, options=options):
-            if hasattr(message, "text"):
-                response_parts.append(message.text)
-            elif hasattr(message, "content"):
-                response_parts.append(str(message.content))
+        async with asyncio.timeout(CHECKER_TIMEOUT):
+            async for message in query(prompt=prompt, options=options):
+                if hasattr(message, "text"):
+                    response_parts.append(message.text)
+                elif hasattr(message, "content"):
+                    response_parts.append(str(message.content))
 
         # Join all parts
         response = "".join(response_parts)
+
+        # Sanitize HTML before processing
+        response = _sanitize_html(response)
 
         # Validate response before processing
         if not _validate_sdk_response(response):
@@ -362,10 +376,9 @@ def _format_conversation_summary(conversation: list[dict], max_length: int = 500
     import sys
 
     # Security check: validate conversation size before processing
-    conv_size = len(str(conversation))
-    if conv_size > 50000:
+    if len(conversation) > 100:
         sys.stderr.write(
-            f"[Power Steering Warning] Large conversation ({conv_size} chars), truncating for safety\n"
+            f"[Power Steering Warning] Large conversation ({len(conversation)} messages), truncating for safety\n"
         )
         sys.stderr.flush()
         # Truncate conversation to first 50 messages
@@ -480,17 +493,20 @@ Be direct and specific."""
     try:
         options = ClaudeAgentOptions(
             cwd=str(project_root),
-            permission_mode="bypassPermissions",
         )
 
         response_parts = []
-        async for message in query(prompt=prompt, options=options):
-            if hasattr(message, "text"):
-                response_parts.append(message.text)
-            elif hasattr(message, "content"):
-                response_parts.append(str(message.content))
+        async with asyncio.timeout(CHECKER_TIMEOUT):
+            async for message in query(prompt=prompt, options=options):
+                if hasattr(message, "text"):
+                    response_parts.append(message.text)
+                elif hasattr(message, "content"):
+                    response_parts.append(str(message.content))
 
         guidance = "".join(response_parts).strip()
+
+        # Sanitize HTML before processing
+        guidance = _sanitize_html(guidance)
 
         # Validate response before using
         if not _validate_sdk_response(guidance):
@@ -572,15 +588,15 @@ Be specific - only include actual claims about completion, not general discussio
     try:
         options = ClaudeAgentOptions(
             cwd=str(project_root),
-            permission_mode="bypassPermissions",
         )
 
         response_parts = []
-        async for message in query(prompt=prompt, options=options):
-            if hasattr(message, "text"):
-                response_parts.append(message.text)
-            elif hasattr(message, "content"):
-                response_parts.append(str(message.content))
+        async with asyncio.timeout(CHECKER_TIMEOUT):
+            async for message in query(prompt=prompt, options=options):
+                if hasattr(message, "text"):
+                    response_parts.append(message.text)
+                elif hasattr(message, "content"):
+                    response_parts.append(str(message.content))
 
         response = "".join(response_parts).strip()
 
@@ -687,20 +703,25 @@ Be conservative - only say ADDRESSED if there is clear evidence in the new conte
     try:
         options = ClaudeAgentOptions(
             cwd=str(project_root),
-            permission_mode="bypassPermissions",
         )
 
         response_parts = []
-        async for message in query(prompt=prompt, options=options):
-            if hasattr(message, "text"):
-                response_parts.append(message.text)
-            elif hasattr(message, "content"):
-                response_parts.append(str(message.content))
+        async with asyncio.timeout(CHECKER_TIMEOUT):
+            async for message in query(prompt=prompt, options=options):
+                if hasattr(message, "text"):
+                    response_parts.append(message.text)
+                elif hasattr(message, "content"):
+                    response_parts.append(str(message.content))
 
-        response = "".join(response_parts).strip().lower()
+        response = "".join(response_parts).strip()
+
+        # Sanitize HTML before processing
+        response = _sanitize_html(response)
+
+        response_lower = response.lower()
 
         # Check for ADDRESSED indicator
-        if "addressed:" in response:
+        if "addressed:" in response_lower:
             # Extract the evidence
             idx = response.find("addressed:")
             evidence = response[idx + 10 :].strip()
@@ -759,7 +780,7 @@ def analyze_if_addressed_sync(
 
 def analyze_consideration_sync(
     conversation: list[dict], consideration: dict, project_root: Path
-) -> bool:
+) -> tuple[bool, str | None]:
     """Synchronous wrapper for analyze_consideration.
 
     Args:
@@ -768,12 +789,14 @@ def analyze_consideration_sync(
         project_root: Project root
 
     Returns:
-        True if consideration satisfied, False otherwise
+        Tuple of (satisfied, reason):
+        - satisfied: True if consideration satisfied, False otherwise
+        - reason: String explanation if not satisfied, None if satisfied
     """
     try:
         return asyncio.run(analyze_consideration(conversation, consideration, project_root))
     except Exception:
-        return True  # Fail-open on any error
+        return (True, None)  # Fail-open on any error
 
 
 # For testing
