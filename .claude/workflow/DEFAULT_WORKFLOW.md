@@ -27,6 +27,17 @@ philosophy_alignment:
 customizable: true
 ---
 
+## Workflow Progress Indicators
+
+**Momentum Building**:
+
+- ✅ Each completed step builds momentum toward completion
+- ⚡ The workflow flows naturally from one step to the next
+- 🎯 Every step completed brings you closer to a mergeable PR
+- 🔄 Continuous progress maintains context and focus
+
+**Flow Pattern**: Step 0 → Step 1 → Step 2 → ... → Step 21 (PR Mergeable)
+
 # Default Coding Workflow
 
 This file defines the default workflow for all non-trivial code changes.
