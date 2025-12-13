@@ -838,9 +838,15 @@ class ClaudeLauncher:
     def _check_neo4j_credentials(self) -> None:
         """Check and sync Neo4j credentials from containers.
 
-        This method is called during prepare_launch and gracefully handles
-        all errors to ensure launcher never crashes due to Neo4j detection.
+        Neo4j is disabled by default unless AMPLIHACK_ENABLE_NEO4J_MEMORY=1 is set.
         """
+        # Check if Neo4j is enabled via environment variable (default: disabled)
+        neo4j_enabled = os.environ.get("AMPLIHACK_ENABLE_NEO4J_MEMORY") == "1"
+
+        if not neo4j_enabled:
+            # Neo4j disabled - skip credential check entirely
+            return
+
         try:
             # Create Neo4j manager (interactive mode)
             neo4j_manager = Neo4jManager()
