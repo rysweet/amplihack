@@ -73,7 +73,6 @@ except ImportError:
 try:
     from completion_evidence import (
         CompletionEvidenceChecker,
-        Evidence,
         EvidenceType,
     )
 
@@ -648,7 +647,10 @@ class PowerSteeringChecker:
                         evidence_results.append(pr_evidence)
 
                         # If PR merged, work is definitely complete
-                        if pr_evidence.evidence_type == EvidenceType.PR_MERGED and pr_evidence.verified:
+                        if (
+                            pr_evidence.evidence_type == EvidenceType.PR_MERGED
+                            and pr_evidence.verified
+                        ):
                             self._log("PR merged - work complete (concrete evidence)", "INFO")
                             return PowerSteeringResult(
                                 decision="approve",
@@ -656,7 +658,9 @@ class PowerSteeringChecker:
                             )
 
                     # Check user confirmation (escape hatch)
-                    session_dir = self.project_root / ".claude" / "runtime" / "power-steering" / session_id
+                    session_dir = (
+                        self.project_root / ".claude" / "runtime" / "power-steering" / session_id
+                    )
                     user_confirm = evidence_checker.check_user_confirmation(session_dir)
                     if user_confirm and user_confirm.verified:
                         evidence_results.append(user_confirm)
@@ -893,7 +897,7 @@ class PowerSteeringChecker:
             )
 
             # Add evidence to result if available
-            if hasattr(self, '_evidence_results'):
+            if hasattr(self, "_evidence_results"):
                 result.evidence_results = self._evidence_results
 
             return result
@@ -2034,25 +2038,32 @@ class PowerSteeringChecker:
             if SDK_AVAILABLE:
                 try:
                     # Use async SDK function directly (already awaitable)
-                    satisfied = await analyze_consideration(
+                    # Returns tuple: (satisfied, reason)
+                    satisfied, sdk_reason = await analyze_consideration(
                         conversation=transcript,
                         consideration=consideration,
                         project_root=self.project_root,
                     )
 
-                    # SDK succeeded - return result
+                    # SDK succeeded - return result with SDK-provided reason
                     return CheckerResult(
                         consideration_id=consideration["id"],
                         satisfied=satisfied,
                         reason=(
                             "SDK analysis: satisfied"
                             if satisfied
-                            else f"SDK analysis: {consideration['question']} not met"
+                            else f"SDK analysis: {sdk_reason or consideration['question'] + ' not met'}"
                         ),
                         severity=consideration["severity"],
                     )
                 except Exception as e:
-                    # SDK failed - log and fall through to fallback
+                    # SDK failed - log to stderr and fall through to fallback
+                    import sys
+
+                    error_msg = f"[Power Steering SDK Error] {consideration['id']}: {e!s}\n"
+                    sys.stderr.write(error_msg)
+                    sys.stderr.flush()
+
                     self._log(
                         f"SDK analysis failed for '{consideration['id']}': {e}",
                         "DEBUG",
@@ -2184,7 +2195,9 @@ class PowerSteeringChecker:
                 f"Message branch: CHECKS_FAILED (passed={total_passed}, failed={total_failed}, skipped={total_skipped})",
                 "DEBUG",
             )
-            lines.append(f"❌ CHECKS FAILED ({total_passed} passed, {total_failed} failed)")
+            lines.append(
+                f"❌ CHECKS FAILED ({total_passed} passed, {total_failed} failed, {total_skipped} skipped)"
+            )
             lines.append("\n📌 Address the failed checks above before stopping.")
         lines.append("=" * 60 + "\n")
 
