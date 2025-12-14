@@ -10,6 +10,12 @@ Response Protocol:
 - Return {} for default behavior (no intervention)
 - Return {"decision": "block", "reason": "..."} to intervene (Stop hooks)
 - Return {"permissionDecision": "allow"/"deny"/"ask"} for permission (PreToolUse hooks)
+
+Graceful Pipe Closure:
+- Automatically handles BrokenPipeError during output writes
+- Absorbs EPIPE (errno 32) errors on stdout flush
+- Prevents shutdown hangs when Claude Code closes pipes early
+- See HOOK_BEHAVIOR.md for detailed documentation
 """
 
 import json
@@ -159,14 +165,34 @@ class HookProcessor(ABC):
         return parser.parse(raw_input)
 
     def write_output(self, output: Dict[str, Any]):
-        """Write JSON output to stdout.
+        """Write JSON output to stdout with fail-open pipe closure handling.
+
+        Silently absorbs BrokenPipeError and EPIPE (errno 32) when Claude Code
+        closes the pipe during shutdown. This prevents hangs while maintaining
+        clean exit.
+
+        Philosophy: Fail-open gracefully - if the pipe is closed, our job is done.
 
         Args:
             output: Dictionary to write as JSON
+
+        Raises:
+            OSError: Only unexpected OS errors (non-EPIPE) are raised
         """
-        json.dump(output, sys.stdout)
-        sys.stdout.write("\n")
-        sys.stdout.flush()
+        try:
+            json.dump(output, sys.stdout)
+            sys.stdout.write("\n")
+            sys.stdout.flush()
+        except BrokenPipeError:
+            pass  # Claude Code closed pipe - our job is done
+        except OSError as e:
+            # EPIPE (errno 32) or IOError (errno None) - pipe closed during write
+            if e.errno in (32, None):
+                if e.errno is None:
+                    self.log("OSError with errno=None during pipe write (expected during shutdown)", "DEBUG")
+                pass  # Expected during normal shutdown
+            else:
+                raise  # Unexpected OS error
 
     def save_metric(self, metric_name: str, value: Any, metadata: Optional[Dict] = None):
         """Save a metric to the metrics directory.
