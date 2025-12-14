@@ -49,6 +49,16 @@ SUSPICIOUS_PATTERNS = [
 # Timeout for SDK calls
 CHECKER_TIMEOUT = 30  # 30 seconds per SDK call
 
+# Public API (the "studs" for this brick)
+__all__ = [
+    "analyze_consideration",
+    "generate_final_guidance",
+    "analyze_claims_sync",
+    "analyze_if_addressed_sync",
+    "analyze_consideration_sync",
+    "CLAUDE_SDK_AVAILABLE",
+]
+
 
 def _validate_sdk_response(response: str) -> bool:
     """Validate SDK response for security (fail-open).

@@ -90,6 +90,57 @@ CHECKER_TIMEOUT = 10
 # With parallel execution, all 22 checks should complete in ~15-20s instead of 220s
 PARALLEL_TIMEOUT = 60
 
+# Public API (the "studs" for this brick)
+__all__ = [
+    "PowerSteeringChecker",
+    "PowerSteeringResult",
+    "CheckerResult",
+    "ConsiderationAnalysis",
+]
+
+
+def _write_with_retry(filepath: Path, data: str, mode: str = "w", max_retries: int = 3) -> None:
+    """Write file with exponential backoff for cloud sync resilience.
+
+    Handles transient file I/O errors that can occur with cloud-synced directories
+    (iCloud, OneDrive, Dropbox, etc.) by retrying with exponential backoff.
+
+    Args:
+        filepath: Path to file to write
+        data: Content to write
+        mode: File mode ('w' for write, 'a' for append)
+        max_retries: Maximum retry attempts (default: 3)
+
+    Raises:
+        OSError: If all retries exhausted (fail-open: caller should handle)
+    """
+    import time
+
+    retry_delay = 0.1
+
+    for attempt in range(max_retries):
+        try:
+            filepath.parent.mkdir(parents=True, exist_ok=True)
+            if mode == "w":
+                filepath.write_text(data)
+            else:  # append mode
+                with open(filepath, mode) as f:
+                    f.write(data)
+            return  # Success!
+        except OSError as e:
+            if e.errno == 5 and attempt < max_retries - 1:  # Input/output error
+                if attempt == 0:
+                    # Only warn on first retry
+                    import sys
+
+                    sys.stderr.write(
+                        "[Power Steering] File I/O error, retrying (may be cloud sync issue)\n"
+                    )
+                time.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+            else:
+                raise  # Give up after max retries or non-transient error
+
 
 @contextmanager
 def _timeout(seconds: int):
@@ -3647,9 +3698,8 @@ class PowerSteeringChecker:
         """
         try:
             summary_dir = self.runtime_dir / session_id
-            summary_dir.mkdir(parents=True, exist_ok=True)
             summary_path = summary_dir / "summary.md"
-            summary_path.write_text(summary)
+            _write_with_retry(summary_path, summary, mode="w")
             summary_path.chmod(0o644)  # Owner read/write, others read
         except OSError:
             pass  # Fail-open: Continue even if summary writing fails
@@ -3668,8 +3718,9 @@ class PowerSteeringChecker:
             # Create with restrictive permissions if it doesn't exist
             is_new = not log_file.exists()
 
-            with open(log_file, "a") as f:
-                f.write(f"[{timestamp}] {level}: {message}\n")
+            # Use retry-enabled write for cloud sync resilience
+            log_entry = f"[{timestamp}] {level}: {message}\n"
+            _write_with_retry(log_file, log_entry, mode="a")
 
             # Set permissions on new files
             if is_new:
