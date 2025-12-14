@@ -73,7 +73,6 @@ except ImportError:
 try:
     from completion_evidence import (
         CompletionEvidenceChecker,
-        Evidence,
         EvidenceType,
     )
 
@@ -90,6 +89,57 @@ CHECKER_TIMEOUT = 10
 # Timeout for parallel execution of all checkers (seconds)
 # With parallel execution, all 22 checks should complete in ~15-20s instead of 220s
 PARALLEL_TIMEOUT = 60
+
+# Public API (the "studs" for this brick)
+__all__ = [
+    "PowerSteeringChecker",
+    "PowerSteeringResult",
+    "CheckerResult",
+    "ConsiderationAnalysis",
+]
+
+
+def _write_with_retry(filepath: Path, data: str, mode: str = "w", max_retries: int = 3) -> None:
+    """Write file with exponential backoff for cloud sync resilience.
+
+    Handles transient file I/O errors that can occur with cloud-synced directories
+    (iCloud, OneDrive, Dropbox, etc.) by retrying with exponential backoff.
+
+    Args:
+        filepath: Path to file to write
+        data: Content to write
+        mode: File mode ('w' for write, 'a' for append)
+        max_retries: Maximum retry attempts (default: 3)
+
+    Raises:
+        OSError: If all retries exhausted (fail-open: caller should handle)
+    """
+    import time
+
+    retry_delay = 0.1
+
+    for attempt in range(max_retries):
+        try:
+            filepath.parent.mkdir(parents=True, exist_ok=True)
+            if mode == "w":
+                filepath.write_text(data)
+            else:  # append mode
+                with open(filepath, mode) as f:
+                    f.write(data)
+            return  # Success!
+        except OSError as e:
+            if e.errno == 5 and attempt < max_retries - 1:  # Input/output error
+                if attempt == 0:
+                    # Only warn on first retry
+                    import sys
+
+                    sys.stderr.write(
+                        "[Power Steering] File I/O error, retrying (may be cloud sync issue)\n"
+                    )
+                time.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+            else:
+                raise  # Give up after max retries or non-transient error
 
 
 @contextmanager
@@ -648,7 +698,10 @@ class PowerSteeringChecker:
                         evidence_results.append(pr_evidence)
 
                         # If PR merged, work is definitely complete
-                        if pr_evidence.evidence_type == EvidenceType.PR_MERGED and pr_evidence.verified:
+                        if (
+                            pr_evidence.evidence_type == EvidenceType.PR_MERGED
+                            and pr_evidence.verified
+                        ):
                             self._log("PR merged - work complete (concrete evidence)", "INFO")
                             return PowerSteeringResult(
                                 decision="approve",
@@ -656,7 +709,9 @@ class PowerSteeringChecker:
                             )
 
                     # Check user confirmation (escape hatch)
-                    session_dir = self.project_root / ".claude" / "runtime" / "power-steering" / session_id
+                    session_dir = (
+                        self.project_root / ".claude" / "runtime" / "power-steering" / session_id
+                    )
                     user_confirm = evidence_checker.check_user_confirmation(session_dir)
                     if user_confirm and user_confirm.verified:
                         evidence_results.append(user_confirm)
@@ -893,7 +948,7 @@ class PowerSteeringChecker:
             )
 
             # Add evidence to result if available
-            if hasattr(self, '_evidence_results'):
+            if hasattr(self, "_evidence_results"):
                 result.evidence_results = self._evidence_results
 
             return result
@@ -2034,25 +2089,32 @@ class PowerSteeringChecker:
             if SDK_AVAILABLE:
                 try:
                     # Use async SDK function directly (already awaitable)
-                    satisfied = await analyze_consideration(
+                    # Returns tuple: (satisfied, reason)
+                    satisfied, sdk_reason = await analyze_consideration(
                         conversation=transcript,
                         consideration=consideration,
                         project_root=self.project_root,
                     )
 
-                    # SDK succeeded - return result
+                    # SDK succeeded - return result with SDK-provided reason
                     return CheckerResult(
                         consideration_id=consideration["id"],
                         satisfied=satisfied,
                         reason=(
                             "SDK analysis: satisfied"
                             if satisfied
-                            else f"SDK analysis: {consideration['question']} not met"
+                            else f"SDK analysis: {sdk_reason or consideration['question'] + ' not met'}"
                         ),
                         severity=consideration["severity"],
                     )
                 except Exception as e:
-                    # SDK failed - log and fall through to fallback
+                    # SDK failed - log to stderr and fall through to fallback
+                    import sys
+
+                    error_msg = f"[Power Steering SDK Error] {consideration['id']}: {e!s}\n"
+                    sys.stderr.write(error_msg)
+                    sys.stderr.flush()
+
                     self._log(
                         f"SDK analysis failed for '{consideration['id']}': {e}",
                         "DEBUG",
@@ -2184,7 +2246,9 @@ class PowerSteeringChecker:
                 f"Message branch: CHECKS_FAILED (passed={total_passed}, failed={total_failed}, skipped={total_skipped})",
                 "DEBUG",
             )
-            lines.append(f"❌ CHECKS FAILED ({total_passed} passed, {total_failed} failed)")
+            lines.append(
+                f"❌ CHECKS FAILED ({total_passed} passed, {total_failed} failed, {total_skipped} skipped)"
+            )
             lines.append("\n📌 Address the failed checks above before stopping.")
         lines.append("=" * 60 + "\n")
 
@@ -3634,9 +3698,8 @@ class PowerSteeringChecker:
         """
         try:
             summary_dir = self.runtime_dir / session_id
-            summary_dir.mkdir(parents=True, exist_ok=True)
             summary_path = summary_dir / "summary.md"
-            summary_path.write_text(summary)
+            _write_with_retry(summary_path, summary, mode="w")
             summary_path.chmod(0o644)  # Owner read/write, others read
         except OSError:
             pass  # Fail-open: Continue even if summary writing fails
@@ -3655,8 +3718,9 @@ class PowerSteeringChecker:
             # Create with restrictive permissions if it doesn't exist
             is_new = not log_file.exists()
 
-            with open(log_file, "a") as f:
-                f.write(f"[{timestamp}] {level}: {message}\n")
+            # Use retry-enabled write for cloud sync resilience
+            log_entry = f"[{timestamp}] {level}: {message}\n"
+            _write_with_retry(log_file, log_entry, mode="a")
 
             # Set permissions on new files
             if is_new:

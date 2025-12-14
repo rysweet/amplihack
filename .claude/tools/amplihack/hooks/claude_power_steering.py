@@ -13,8 +13,8 @@ Philosophy:
 """
 
 import asyncio
+import re
 from pathlib import Path
-from typing import Dict, List, Optional
 
 # Try to import Claude SDK
 try:
@@ -28,8 +28,102 @@ except ImportError:
 TEMPLATE_DIR = Path(__file__).parent / "templates"
 POWER_STEERING_PROMPT_TEMPLATE = TEMPLATE_DIR / "power_steering_prompt.txt"
 
+# Security constants
+MAX_SDK_RESPONSE_LENGTH = 5000
+SUSPICIOUS_PATTERNS = [
+    r"<script",
+    r"javascript:",
+    r"data:text/html",
+    r"onerror=",
+    r"onclick=",
+    r"on\w+=",  # onerror=, onload=, onmouseover=, etc.
+    r"<iframe",
+    r"<object",
+    r"<embed",
+    r"vbscript:",
+    r"data:image/svg",
+    r"&#x[0-9a-f]",  # HTML entity encoding
+    r"\\u[0-9a-f]{4}",  # Unicode escapes
+]
 
-def load_prompt_template() -> Optional[str]:
+# Timeout for SDK calls
+CHECKER_TIMEOUT = 30  # 30 seconds per SDK call
+
+# Public API (the "studs" for this brick)
+__all__ = [
+    "analyze_consideration",
+    "generate_final_guidance",
+    "analyze_claims_sync",
+    "analyze_if_addressed_sync",
+    "analyze_consideration_sync",
+    "CLAUDE_SDK_AVAILABLE",
+]
+
+
+def _validate_sdk_response(response: str) -> bool:
+    """Validate SDK response for security (fail-open).
+
+    Args:
+        response: SDK response text to validate
+
+    Returns:
+        True if response is safe or on validation error (fail-open),
+        False only if clear security issue detected
+
+    Note:
+        Checks for excessive length and suspicious patterns.
+        Returns True (allow) on any validation error to maintain fail-open behavior.
+    """
+    try:
+        # Check length
+        if len(response) > MAX_SDK_RESPONSE_LENGTH:
+            return False
+
+        # Check for suspicious patterns (case-insensitive)
+        response_lower = response.lower()
+        for pattern in SUSPICIOUS_PATTERNS:
+            if re.search(pattern, response_lower):
+                return False
+
+        return True
+    except Exception:
+        # Fail-open on validation error
+        return True
+
+
+def _sanitize_html(text: str) -> str:
+    """Remove potentially dangerous HTML tags from text.
+
+    Args:
+        text: Text that may contain HTML
+
+    Returns:
+        Text with dangerous HTML tags removed
+
+    Note:
+        Removes <script>, <img>, <iframe>, <object>, <embed> tags.
+    """
+    try:
+        # Remove dangerous HTML tags
+        dangerous_tags = [
+            r"<script[^>]*>.*?</script>",
+            r"<img[^>]*>",
+            r"<iframe[^>]*>.*?</iframe>",
+            r"<object[^>]*>.*?</object>",
+            r"<embed[^>]*>",
+        ]
+
+        sanitized = text
+        for tag_pattern in dangerous_tags:
+            sanitized = re.sub(tag_pattern, "", sanitized, flags=re.IGNORECASE | re.DOTALL)
+
+        return sanitized
+    except Exception:
+        # On error, return original text (fail-open)
+        return text
+
+
+def load_prompt_template() -> str | None:
     """Load power-steering prompt template.
 
     Returns:
@@ -48,7 +142,7 @@ def load_prompt_template() -> Optional[str]:
         return None
 
 
-def format_prompt(template: str, variables: Dict[str, str]) -> str:
+def format_prompt(template: str, variables: dict[str, str]) -> str:
     """Format prompt with variable substitution.
 
     Args:
@@ -65,8 +159,8 @@ def format_prompt(template: str, variables: Dict[str, str]) -> str:
 
 
 async def analyze_consideration(
-    conversation: List[Dict], consideration: Dict, project_root: Path
-) -> bool:
+    conversation: list[dict], consideration: dict, project_root: Path
+) -> tuple[bool, str | None]:
     """Use Claude SDK to analyze if consideration is satisfied.
 
     Args:
@@ -75,34 +169,47 @@ async def analyze_consideration(
         project_root: Project root directory
 
     Returns:
-        True if consideration satisfied, False otherwise
-        (Fail-open: returns True on SDK unavailable or errors)
+        Tuple of (satisfied, reason):
+        - satisfied: True if consideration satisfied, False otherwise
+        - reason: String explanation if not satisfied, None if satisfied
+        (Fail-open: returns (True, None) on SDK unavailable or errors)
     """
     if not CLAUDE_SDK_AVAILABLE:
-        return True  # Fail-open if SDK unavailable
+        return (True, None)  # Fail-open if SDK unavailable
 
     # Format prompt for this consideration
     try:
         prompt = _format_consideration_prompt(consideration, conversation)
-    except Exception:
-        return True  # Fail-open on prompt formatting error
+    except Exception as e:
+        _log_sdk_error(consideration["id"], e)
+        return (True, None)  # Fail-open on prompt formatting error
 
     try:
         options = ClaudeAgentOptions(
             cwd=str(project_root),
-            permission_mode="bypassPermissions",
         )
 
-        # Query Claude
+        # Query Claude with timeout
         response_parts = []
-        async for message in query(prompt=prompt, options=options):
-            if hasattr(message, "text"):
-                response_parts.append(message.text)
-            elif hasattr(message, "content"):
-                response_parts.append(str(message.content))
+        async with asyncio.timeout(CHECKER_TIMEOUT):
+            async for message in query(prompt=prompt, options=options):
+                if hasattr(message, "text"):
+                    response_parts.append(message.text)
+                elif hasattr(message, "content"):
+                    response_parts.append(str(message.content))
 
         # Join all parts
-        response = "".join(response_parts).lower()
+        response = "".join(response_parts)
+
+        # Sanitize HTML before processing
+        response = _sanitize_html(response)
+
+        # Validate response before processing
+        if not _validate_sdk_response(response):
+            # Security validation failed - fail-open (assume satisfied)
+            return (True, None)
+
+        response_lower = response.lower()
 
         # Parse response for yes/no decision
         # Look for clear indicators of satisfaction
@@ -127,23 +234,26 @@ async def analyze_consideration(
 
         # Check for unsatisfied indicators first (more specific)
         for indicator in unsatisfied_indicators:
-            if indicator in response:
-                return False
+            if indicator in response_lower:
+                # Extract reason from response
+                reason = _extract_reason_from_response(response)
+                return (False, reason)
 
         # Then check for satisfied indicators
         for indicator in satisfied_indicators:
-            if indicator in response:
-                return True
+            if indicator in response_lower:
+                return (True, None)
 
         # Ambiguous response - fail-open (assume satisfied)
-        return True
+        return (True, None)
 
-    except Exception:
-        # Fail-open on any error
-        return True
+    except Exception as e:
+        # Log error and fail-open on any error
+        _log_sdk_error(consideration["id"], e)
+        return (True, None)
 
 
-def _format_consideration_prompt(consideration: Dict, conversation: List[Dict]) -> str:
+def _format_consideration_prompt(consideration: dict, conversation: list[dict]) -> str:
     """Format analysis prompt for a consideration.
 
     Args:
@@ -183,7 +293,84 @@ If the consideration is not applicable to this session (e.g., no relevant work w
     return prompt
 
 
-def _format_conversation_summary(conversation: List[Dict], max_length: int = 5000) -> str:
+def _extract_reason_from_response(response: str) -> str | None:
+    """Extract failure reason from SDK response.
+
+    Args:
+        response: Full SDK response text
+
+    Returns:
+        Extracted reason string (truncated to 200 chars), or generic fallback
+
+    Note:
+        Looks for patterns like "NOT SATISFIED: reason" or "UNSATISFIED: reason"
+        and extracts the reason part.
+    """
+    if not response:
+        return "Check not satisfied"
+
+    response_lower = response.lower()
+
+    # Look for common failure patterns
+    patterns = [
+        "not satisfied:",
+        "unsatisfied:",
+        "not met:",
+        "incomplete:",
+        "missing:",
+        "failed:",
+    ]
+
+    for pattern in patterns:
+        idx = response_lower.find(pattern)
+        if idx != -1:
+            # Extract text after the pattern
+            reason_start = idx + len(pattern)
+            reason = response[reason_start:].strip()
+
+            # Truncate to 200 chars
+            if len(reason) > 200:
+                reason = reason[:200]
+
+            return reason if reason else "Check not satisfied"
+
+    # No specific pattern found - use generic fallback
+    return "Check not satisfied"
+
+
+def _log_sdk_error(consideration_id: str, error: Exception) -> None:
+    """Log SDK error to stderr for debugging with sensitive data scrubbed.
+
+    Args:
+        consideration_id: ID of the consideration that failed
+        error: Exception that was raised
+
+    Note:
+        Logs to stderr to avoid interfering with stdout tool output.
+        Scrubs file paths and tokens from error messages.
+        Format: [Power Steering SDK Error] {id}: {sanitized_error}
+    """
+    import sys
+
+    error_msg = str(error)
+
+    # Scrub file paths (replace with [PATH])
+    error_msg = re.sub(r"/[^\s]+", "[PATH]", error_msg)
+    error_msg = re.sub(r"[A-Z]:\\[^\s]+", "[PATH]", error_msg)  # Windows paths
+
+    # Scrub potential tokens (40+ hex characters)
+    error_msg = re.sub(r"\b[a-fA-F0-9]{40,}\b", "[REDACTED]", error_msg)
+
+    # Truncate to 200 chars
+    if len(error_msg) > 200:
+        error_msg = error_msg[:200] + "..."
+
+    sanitized_msg = f"[Power Steering SDK Error] {consideration_id}: {error_msg}\n"
+    sys.stderr.write(sanitized_msg)
+    sys.stderr.flush()
+
+
+def _format_conversation_summary(conversation: list[dict], max_length: int = 5000) -> str:
     """Format conversation summary for analysis.
 
     Args:
@@ -192,7 +379,21 @@ def _format_conversation_summary(conversation: List[Dict], max_length: int = 500
 
     Returns:
         Formatted conversation summary
+
+    Note:
+        Truncates large conversations (>50000 chars) before processing.
     """
+    import sys
+
+    # Security check: validate conversation size before processing
+    if len(conversation) > 100:
+        sys.stderr.write(
+            f"[Power Steering Warning] Large conversation ({len(conversation)} messages), truncating for safety\n"
+        )
+        sys.stderr.flush()
+        # Truncate conversation to first 50 messages
+        conversation = conversation[:50]
+
     summary_parts = []
     current_length = 0
 
@@ -249,7 +450,112 @@ def _format_conversation_summary(conversation: List[Dict], max_length: int = 500
     return "".join(summary_parts)
 
 
-async def analyze_claims(delta_text: str, project_root: Path) -> List[str]:
+async def generate_final_guidance(
+    failed_checks: list[tuple[str, str]],
+    conversation: list[dict],
+    project_root: Path,
+) -> str:
+    """Generate context-aware final guidance using Claude SDK.
+
+    Args:
+        failed_checks: List of (check_id, reason) tuples for failed checks
+        conversation: Session conversation messages
+        project_root: Project root directory
+
+    Returns:
+        Specific guidance string based on actual failures.
+        (Fail-open: returns template-based guidance on SDK unavailable or errors)
+
+    Note:
+        This provides context-aware, specific guidance rather than generic advice.
+        Falls back to template if SDK unavailable or fails.
+    """
+    if not CLAUDE_SDK_AVAILABLE:
+        return _generate_template_guidance(failed_checks)
+
+    if not failed_checks:
+        return "All checks passed. You may proceed."
+
+    # Format failed checks for prompt
+    failures_text = "\n".join([f"- {check_id}: {reason}" for check_id, reason in failed_checks])
+
+    prompt = f"""You are analyzing a Claude Code session to provide specific, actionable guidance.
+
+**Failed Checks:**
+{failures_text}
+
+**Your Task:**
+
+Provide specific, actionable guidance to address these failed checks. Be concrete and reference the actual failure reasons. Do NOT give generic advice.
+
+**Format:**
+
+Provide 1-3 sentences with specific actions based on the actual failures listed above.
+
+Example good guidance:
+"Complete the 3 incomplete TODOs shown in the task list and run pytest locally to verify your changes work."
+
+Example bad guidance:
+"Make sure to complete all tasks and test your code."
+
+Be direct and specific."""
+
+    try:
+        options = ClaudeAgentOptions(
+            cwd=str(project_root),
+        )
+
+        response_parts = []
+        async with asyncio.timeout(CHECKER_TIMEOUT):
+            async for message in query(prompt=prompt, options=options):
+                if hasattr(message, "text"):
+                    response_parts.append(message.text)
+                elif hasattr(message, "content"):
+                    response_parts.append(str(message.content))
+
+        guidance = "".join(response_parts).strip()
+
+        # Sanitize HTML before processing
+        guidance = _sanitize_html(guidance)
+
+        # Validate response before using
+        if not _validate_sdk_response(guidance):
+            # Security validation failed - use template fallback
+            return _generate_template_guidance(failed_checks)
+
+        # Return SDK-generated guidance if non-empty
+        if guidance and len(guidance) > 10:
+            return guidance
+
+        # Empty or too short - use template fallback
+        return _generate_template_guidance(failed_checks)
+
+    except Exception:
+        # Fail-open to template guidance
+        return _generate_template_guidance(failed_checks)
+
+
+def _generate_template_guidance(failed_checks: list[tuple[str, str]]) -> str:
+    """Generate template-based guidance when SDK unavailable.
+
+    Args:
+        failed_checks: List of (check_id, reason) tuples
+
+    Returns:
+        Template-based guidance string
+    """
+    if not failed_checks:
+        return "All checks passed."
+
+    # Group checks by category/type for better guidance
+    guidance_parts = ["Address the following failed checks:"]
+    for check_id, reason in failed_checks:
+        guidance_parts.append(f"- {check_id}: {reason}")
+
+    return "\n".join(guidance_parts)
+
+
+async def analyze_claims(delta_text: str, project_root: Path) -> list[str]:
     """Use Claude SDK to detect completion claims in delta text.
 
     Replaces regex-based claim detection with LLM-powered analysis.
@@ -292,41 +598,60 @@ Be specific - only include actual claims about completion, not general discussio
     try:
         options = ClaudeAgentOptions(
             cwd=str(project_root),
-            permission_mode="bypassPermissions",
         )
 
         response_parts = []
-        async for message in query(prompt=prompt, options=options):
-            if hasattr(message, "text"):
-                response_parts.append(message.text)
-            elif hasattr(message, "content"):
-                response_parts.append(str(message.content))
+        async with asyncio.timeout(CHECKER_TIMEOUT):
+            async for message in query(prompt=prompt, options=options):
+                if hasattr(message, "text"):
+                    response_parts.append(message.text)
+                elif hasattr(message, "content"):
+                    response_parts.append(str(message.content))
 
         response = "".join(response_parts).strip()
+
+        # Validate response before parsing
+        if not _validate_sdk_response(response):
+            # Security validation failed - fail-open (return empty list)
+            return []
 
         # Parse JSON array from response
         import json
 
+        claims = []
+
         # Try to extract JSON array
         if response.startswith("["):
             try:
-                claims = json.loads(response)
-                if isinstance(claims, list):
-                    return [str(c) for c in claims if c]
+                parsed = json.loads(response)
+                if isinstance(parsed, list):
+                    claims = parsed
             except json.JSONDecodeError:
                 pass
 
-        # Try to find JSON array in response
-        import re
+        # Try to find JSON array in response if direct parse failed
+        if not claims:
+            match = re.search(r"\[.*?\]", response, re.DOTALL)
+            if match:
+                try:
+                    parsed = json.loads(match.group())
+                    if isinstance(parsed, list):
+                        claims = parsed
+                except json.JSONDecodeError:
+                    pass
 
-        match = re.search(r"\[.*?\]", response, re.DOTALL)
-        if match:
-            try:
-                claims = json.loads(match.group())
-                if isinstance(claims, list):
-                    return [str(c) for c in claims if c]
-            except json.JSONDecodeError:
-                pass
+        # Validate and sanitize claims
+        if claims:
+            validated_claims = []
+            for claim in claims[:100]:  # Max 100 items (schema validation)
+                if claim and isinstance(claim, str):
+                    # Sanitize HTML tags
+                    sanitized = _sanitize_html(claim)
+                    # Truncate to 200 chars (schema validation)
+                    if len(sanitized) > 200:
+                        sanitized = sanitized[:200]
+                    validated_claims.append(sanitized)
+            return validated_claims
 
         return []
 
@@ -339,7 +664,7 @@ async def analyze_if_addressed(
     failure_reason: str,
     delta_text: str,
     project_root: Path,
-) -> Optional[str]:
+) -> str | None:
     """Use Claude SDK to check if delta content addresses a previous failure.
 
     Replaces heuristic keyword matching with LLM-powered analysis.
@@ -388,20 +713,25 @@ Be conservative - only say ADDRESSED if there is clear evidence in the new conte
     try:
         options = ClaudeAgentOptions(
             cwd=str(project_root),
-            permission_mode="bypassPermissions",
         )
 
         response_parts = []
-        async for message in query(prompt=prompt, options=options):
-            if hasattr(message, "text"):
-                response_parts.append(message.text)
-            elif hasattr(message, "content"):
-                response_parts.append(str(message.content))
+        async with asyncio.timeout(CHECKER_TIMEOUT):
+            async for message in query(prompt=prompt, options=options):
+                if hasattr(message, "text"):
+                    response_parts.append(message.text)
+                elif hasattr(message, "content"):
+                    response_parts.append(str(message.content))
 
-        response = "".join(response_parts).strip().lower()
+        response = "".join(response_parts).strip()
+
+        # Sanitize HTML before processing
+        response = _sanitize_html(response)
+
+        response_lower = response.lower()
 
         # Check for ADDRESSED indicator
-        if "addressed:" in response:
+        if "addressed:" in response_lower:
             # Extract the evidence
             idx = response.find("addressed:")
             evidence = response[idx + 10 :].strip()
@@ -417,7 +747,7 @@ Be conservative - only say ADDRESSED if there is clear evidence in the new conte
         return None  # Fail-open on any error
 
 
-def analyze_claims_sync(delta_text: str, project_root: Path) -> List[str]:
+def analyze_claims_sync(delta_text: str, project_root: Path) -> list[str]:
     """Synchronous wrapper for analyze_claims.
 
     Args:
@@ -438,7 +768,7 @@ def analyze_if_addressed_sync(
     failure_reason: str,
     delta_text: str,
     project_root: Path,
-) -> Optional[str]:
+) -> str | None:
     """Synchronous wrapper for analyze_if_addressed.
 
     Args:
@@ -459,8 +789,8 @@ def analyze_if_addressed_sync(
 
 
 def analyze_consideration_sync(
-    conversation: List[Dict], consideration: Dict, project_root: Path
-) -> bool:
+    conversation: list[dict], consideration: dict, project_root: Path
+) -> tuple[bool, str | None]:
     """Synchronous wrapper for analyze_consideration.
 
     Args:
@@ -469,12 +799,14 @@ def analyze_consideration_sync(
         project_root: Project root
 
     Returns:
-        True if consideration satisfied, False otherwise
+        Tuple of (satisfied, reason):
+        - satisfied: True if consideration satisfied, False otherwise
+        - reason: String explanation if not satisfied, None if satisfied
     """
     try:
         return asyncio.run(analyze_consideration(conversation, consideration, project_root))
     except Exception:
-        return True  # Fail-open on any error
+        return (True, None)  # Fail-open on any error
 
 
 # For testing
