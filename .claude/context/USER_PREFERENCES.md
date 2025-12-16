@@ -207,22 +207,6 @@ I always want you to test each PR like a user would, from the outside in, not ju
 
 **This is MANDATORY for Step 8 (Mandatory Local Testing) in DEFAULT_WORKFLOW.md**
 
-### 2025-12-12 19:55:00
-
-**NEVER Merge PRs or Commit Directly Without Explicit Permission**
-
-NEVER merge PRs or commit directly to main without explicit user permission. Always create PRs and wait for approval. Only the first explicitly approved merge applies - subsequent PRs require separate approval.
-
-**Implementation Requirements:**
-
-- MUST create PR and wait for user to say "merge" or "please merge"
-- MUST ask for permission for EACH PR merge separately
-- MUST NOT assume "fix it all" means "merge everything automatically"
-- MUST NOT commit directly to main without explicit permission
-- One "please merge" does NOT apply to all subsequent PRs
-
-**This is MANDATORY - violating this damages user trust and control over the codebase**
-
 ## Using Preferences
 
 Preferences are automatically loaded when:
