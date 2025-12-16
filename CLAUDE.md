@@ -79,6 +79,9 @@ Following: .claude/workflow/[WORKFLOW_NAME].md
   appropriate workflow file and follow all steps.
 - **No workflow = No action**: If you haven't announced your workflow
   classification, you haven't started the task. Period.
+- **ALWAYS use UltraThink**: For non-trivial tasks, ALWAYS start with
+  Skill(ultrathink-orchestrator) which reads the workflow and orchestrates
+  agents to execute it - this is defined in the ultrathink skill.
 - **Maximize agent usage**: Every workflow step should leverage specialized
   agents - delegate aggressively to agents in `.claude/agents/amplihack/*.md`
 - **Operate Autonomously and Independently by default**: You must try to
@@ -127,7 +130,7 @@ Amplihack provides four extensibility mechanisms with clear invocation patterns:
   (`/help`, `/clear`) cannot be invoked programmatically.
 
   ```python
-  SlashCommand(command="/amplihack:analyze Analyze architecture")
+  SlashCommand(command="/ultrathink Analyze architecture")
   ```
 
 - **Skill Tool**: Invoke skills explicitly when auto-discovery isn't sufficient
@@ -150,7 +153,7 @@ Amplihack provides four extensibility mechanisms with clear invocation patterns:
 
 **Composition Examples:**
 
-- Workflow classification: Reading `DEFAULT_WORKFLOW.md` based on task type
+- Command invoking workflow: `/ultrathink` reads `DEFAULT_WORKFLOW.md`
 - Command invoking command: `/improve` can invoke `/amplihack:reflect`
 - Skill invoking agent: `test-gap-analyzer` invokes `tester` agent
 - Agent invoking skill: `architect` can invoke `mermaid-diagram-generator`
@@ -289,6 +292,35 @@ agent to handle that task as an experiment. Use agents to manage context for
 granularity of tasks (eg when going off to do something specific where context
 from the whole conversation is not necessary, such as managing a git worktree or
 cleaning some data).
+
+### Workflow and UltraThink Integration
+
+**The workflow defines WHAT to do, UltraThink orchestrates HOW to do it:**
+
+```
+Example - Any Non-Trivial Task:
+
+User: "Add authentication to the API"
+
+1. Invoke /ultrathink with the task
+   → UltraThink reads [DEFAULT_WORKFLOW.md](.claude/workflow/DEFAULT_WORKFLOW.md)
+   → Follows all workflow steps in order
+   → Orchestrates multiple agents at each step
+
+2. Workflow provides the authoritative process:
+   → Step order must be followed
+   → Git operations (branch, commit, push)
+   → CI/CD integration points
+   → Review and merge requirements
+
+3. Agents execute the actual work:
+   → prompt-writer clarifies requirements
+   → architect designs the solution
+   → builder implements the code
+   → reviewer ensures quality
+```
+
+The workflow file is the single source of truth - edit it to change the process.
 
 ### Microsoft Amplifier Parallel Execution Engine
 
@@ -479,7 +511,7 @@ Execute comprehensive system review with all relevant agents in parallel.
 .claude/
 ├── context/          # Philosophy, patterns, project info
 ├── agents/           # Specialized AI agents
-├── commands/         # Slash commands (/analyze, /improve, /fix)
+├── commands/         # Slash commands (/ultrathink, /analyze, /improve)
 ├── scenarios/        # Production-ready user-facing tools
 │   ├── README.md     # Scenarios pattern documentation
 │   ├── tool-name/    # Each tool gets its own directory
@@ -501,6 +533,16 @@ Makefile             # Easy access to scenario tools
 
 ## Key Commands
 
+### /ultrathink <task>
+
+Default execution mode for non-trivial tasks. UltraThink:
+
+- Reads the workflow from
+  [`DEFAULT_WORKFLOW.md`](.claude/workflow/DEFAULT_WORKFLOW.md)
+- Orchestrates specialized agents through each workflow step
+- Enforces systematic execution with TodoWrite tracking
+- Ensures philosophy compliance throughout
+
 ### /analyze <path>
 
 Comprehensive code review for philosophy compliance
@@ -517,7 +559,7 @@ Intelligent fix workflow optimization for common error patterns. Key features:
 - **Template-based**: Uses pre-built templates for 80% of common fixes
 - **Mode selection**: QUICK (< 5 min), DIAGNOSTIC (root cause), COMPREHENSIVE
   (full workflow)
-- **Integration**: Seamlessly works with workflows and existing agents
+- **Integration**: Seamlessly works with UltraThink and existing agents
 
 **Usage Examples:**
 
@@ -583,9 +625,9 @@ pragmatic → minimal ensures reliable completion.
 /amplihack:cascade "Generate API documentation from codebase"
 ```
 
-**Integration with Workflows:** These patterns can be combined with
-DEFAULT_WORKFLOW by customizing the workflow file to include consensus or
-fallback stages at specific steps.
+**Integration with UltraThink:** These patterns can be combined with
+`/ultrathink` by customizing the workflow file to include consensus or fallback
+stages at specific steps.
 
 ### Document-Driven Development (DDD)
 

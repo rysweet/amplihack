@@ -2,13 +2,7 @@
 name: ultrathink-orchestrator
 version: 1.0.0
 description: Auto-invokes ultrathink workflow for any work request (default orchestrator)
-DEPRECATED: true
-deprecation_notice: |
-  This skill is DEPRECATED as of 2025-11-26.
-  Workflow selection is now handled directly in CLAUDE.md via the
-  "MANDATORY: Workflow Selection" section. The indirection through
-  skills has been eliminated to ensure consistent workflow enforcement.
-auto_activate: false
+auto_activate: true
 priority: 5
 triggers:
   - "implement"
