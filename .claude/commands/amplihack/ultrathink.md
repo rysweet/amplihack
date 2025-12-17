@@ -2,14 +2,6 @@
 name: amplihack:ultrathink
 version: 1.0.0
 description: Deep analysis mode with multi-agent orchestration
-DEPRECATED: true
-deprecation_notice: |
-  This command is DEPRECATED as of 2025-11-26.
-  Workflow selection is now handled directly in CLAUDE.md via the
-  "MANDATORY: Workflow Selection" section. Use workflow classification
-  directly instead of invoking /ultrathink.
-  For backward compatibility, this command still works but routes to
-  workflow classification in CLAUDE.md.
 triggers:
   - "Complex multi-step task"
   - "Need deep analysis"
@@ -42,16 +34,21 @@ You MUST use one of the workflow skills - either default-workflow or investigati
 When this command is invoked, you MUST:
 Execute this exact sequence for the task: `{TASK_DESCRIPTION}`
 
-1. **First, detect task type** - Check if task is investigation or development
+1. **First, detect task type** - Check if task is Q&A, investigation, or development
+   - **Q&A keywords**: what is, explain briefly, quick question, how do I run, simple question
    - **Investigation keywords**: investigate, explain, understand, how does, why does, analyze, research, explore, examine, study
    - **Development keywords**: implement, build, create, add feature, fix, refactor, deploy
-   - **If both types detected**: Use hybrid workflow (investigation first, then development)
-   - If only investigation keywords found: Use @.claude/workflow/INVESTIGATION_WORKFLOW.md
-   - If only development keywords found: Use @.claude/workflow/DEFAULT_WORKFLOW.md
+   - **Priority order**: Q&A detection first (simple questions), then Investigation, then Development
+   - **If Q&A detected**: Use @.claude/workflow/Q&A_WORKFLOW.md (simple, single-turn answers)
+   - **If Investigation keywords found**: Use @.claude/workflow/INVESTIGATION_WORKFLOW.md
+   - **If Development keywords found**: Use @.claude/workflow/DEFAULT_WORKFLOW.md
+   - **If both Investigation and Development detected**: Use hybrid workflow (investigation first, then development)
 2. Mandatory - not doing this wil require rework **Invoke the appropriate workflow skill** using the Skill tool:
+   - Q&A: Read @.claude/workflow/Q&A_WORKFLOW.md directly (no skill wrapper needed for simple Q&A)
    - Investigation: Skill(skill="investigation-workflow")`
    - Development: `Skill(skill="default-workflow")`
    - **FALLBACK**: If skill invocation fails (skill not found), fall back to reading markdown workflows:
+     - Q&A: @.claude/workflow/Q&A_WORKFLOW.md
      - Investigation: @.claude/workflow/INVESTIGATION_WORKFLOW.md
      - Development: @.claude/workflow/DEFAULT_WORKFLOW.md
 3. ALWAYS **Create a comprehensive todo list** using TodoWrite tool that includes all workflow steps/phases
@@ -117,6 +114,19 @@ Always use TodoWrite to:
 - Track workflow checklist completion
 
 ## Example Flow
+
+### Q&A Task Example
+
+```
+User: "/ultrathink what is the purpose of the workflow system?"
+
+1. Detect: Q&A task (contains "what is")
+2. Select: Q&A workflow (simple, single-turn)
+3. Read: `.claude/workflow/Q&A_WORKFLOW.md`
+4. Follow Q&A workflow steps (typically 3-4 steps)
+5. Provide concise, direct answer
+6. No complex agent orchestration needed
+```
 
 ### Development Task Example
 
