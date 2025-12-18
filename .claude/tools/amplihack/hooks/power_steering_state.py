@@ -29,6 +29,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import ClassVar
 
+from .fallback_heuristics import AddressedChecker
+
 __all__ = [
     "FailureEvidence",
     "BlockSnapshot",
@@ -267,6 +269,7 @@ class DeltaAnalyzer:
             log: Optional logging callback
         """
         self.log = log or (lambda msg: None)
+        self._fallback_checker = AddressedChecker()
 
     def analyze_delta(
         self,
@@ -408,80 +411,9 @@ class DeltaAnalyzer:
         Returns:
             Evidence string if addressed, None otherwise
         """
-        cid = failure.consideration_id
-        text_lower = delta_text.lower()
-
-        # Heuristics by consideration type
-        if "todos" in cid:
-            if "todo" in text_lower and any(
-                word in text_lower for word in ["complete", "done", "finished", "mark"]
-            ):
-                return "Delta contains TODO completion discussion"
-
-        elif "testing" in cid or "test" in cid:
-            if any(
-                phrase in text_lower
-                for phrase in [
-                    "tests pass",
-                    "test suite",
-                    "pytest",
-                    "all tests",
-                    "tests are passing",
-                    "ran tests",
-                ]
-            ):
-                return "Delta mentions test execution/results"
-
-        elif "ci" in cid:
-            if any(
-                phrase in text_lower
-                for phrase in [
-                    "ci is",
-                    "ci pass",
-                    "build is green",
-                    "checks pass",
-                    "ci green",
-                    "pipeline pass",
-                ]
-            ):
-                return "Delta mentions CI status"
-
-        elif "docs" in cid or "documentation" in cid:
-            if any(
-                phrase in text_lower
-                for phrase in ["created doc", "added doc", "updated doc", ".md", "readme"]
-            ):
-                return "Delta mentions documentation changes"
-
-        elif "investigation" in cid:
-            if any(
-                phrase in text_lower
-                for phrase in ["session summary", "investigation report", "findings", "documented"]
-            ):
-                return "Delta mentions investigation artifacts"
-
-        elif "workflow" in cid:
-            if any(
-                phrase in text_lower
-                for phrase in ["followed workflow", "workflow complete", "step", "pr ready"]
-            ):
-                return "Delta mentions workflow completion"
-
-        elif "philosophy" in cid:
-            if any(
-                phrase in text_lower
-                for phrase in ["philosophy", "compliance", "simplicity", "zero-bs", "no stubs"]
-            ):
-                return "Delta mentions philosophy compliance"
-
-        elif "review" in cid:
-            if any(
-                phrase in text_lower for phrase in ["review", "reviewed", "feedback", "approved"]
-            ):
-                return "Delta mentions review process"
-
-        # No specific evidence found
-        return None
+        return self._fallback_checker.check_if_addressed(
+            consideration_id=failure.consideration_id, delta_text=delta_text
+        )
 
     def _summarize_delta(
         self,
