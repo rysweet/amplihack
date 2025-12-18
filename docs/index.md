@@ -9,11 +9,13 @@ amplihack is a development tool built on Claude Code that leverages multiple spe
 ## Quick Navigation
 
 **New to amplihack?** Start here:
+
 - [Get Started](#-get-started) - Installation and first steps
 - [Core Concepts](#-core-concepts) - Philosophy and principles
 - [First Docs Site Tutorial](tutorials/first-docs-site.md) - Create your first documentation site
 
 **Looking for something specific?**
+
 - [Commands & Operations](#%EF%B8%8F-commands--operations) - Execute complex tasks
 - [Workflows](#-workflows) - Structured development processes
 - [Agents & Tools](#-agents--tools) - Specialized AI capabilities
@@ -236,6 +238,7 @@ Advanced graph-based memory for complex knowledge representation:
 - [Documentation Graph](doc_graph_quick_reference.md) - Navigate documentation connections
 
 **Research & Deep Dives**:
+
 - [Executive Summary](research/neo4j_memory_system/00-executive-summary/README.md)
 - [Technical Research](research/neo4j_memory_system/01-technical-research/README.md)
 - [Design Patterns](research/neo4j_memory_system/02-design-patterns/README.md)
@@ -268,6 +271,10 @@ Intelligent guidance system that prevents common mistakes:
 - [Power Steering Overview](features/power-steering/README.md) - What is Power Steering
 - [Architecture](features/power-steering/architecture.md) - How it works
 - [Configuration](features/power-steering/configuration.md) - Setup and customization
+- [Troubleshooting](features/power-steering/troubleshooting.md) - Fix infinite loop and other issues
+- [Migration Guide v0.9.1](features/power-steering/migration-v0.9.1.md) - Upgrade guide
+- [Technical Reference](features/power-steering/technical-reference.md) - Developer reference
+- [Changelog v0.9.1](features/power-steering/changelog-v0.9.1.md) - Infinite loop fix release notes
 
 ### Other Features
 
