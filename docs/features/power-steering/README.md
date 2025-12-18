@@ -230,9 +230,21 @@ If you experience slowdowns, check the logs:
 
 ## Documentation Links
 
+### User Guides
+
 - [Customization Guide](customization-guide.md) - Detailed customization instructions
+- [Troubleshooting](./troubleshooting.md) - Fix common issues including infinite loop bug
+- [Migration Guide v0.9.1](./migration-v0.9.1.md) - Upgrade from v0.9.0 to v0.9.1
+
+### Technical Reference
+
 - [Architecture](/Specs/power_steering_architecture.md) - Technical implementation details (for developers)
 - [Checker Implementation](/Specs/power_steering_checker.md) - Checker logic details (for developers)
+- [Technical Reference](./technical-reference.md) - Developer reference for state management and diagnostics
+
+### Release Notes
+
+- [Changelog v0.9.1](./changelog-v0.9.1.md) - Infinite loop fix details and release notes
 
 ## Best Practices
 

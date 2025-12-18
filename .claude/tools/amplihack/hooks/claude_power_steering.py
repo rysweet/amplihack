@@ -5,6 +5,14 @@ Claude SDK-based power-steering analysis.
 Uses Claude Agent SDK to intelligently analyze session transcripts against
 considerations, replacing heuristic pattern matching with AI-powered analysis.
 
+Optional Dependencies:
+    claude-agent-sdk: Required for AI-powered analysis
+        Install: pip install claude-agent-sdk
+
+    When unavailable, the system gracefully falls back to keyword-based
+    heuristics (see fallback_heuristics.py). This ensures power steering
+    always works, even without the SDK.
+
 Philosophy:
 - Ruthlessly Simple: Single-purpose module with clear contract
 - Fail-Open: Never block users due to bugs - always allow stop on errors

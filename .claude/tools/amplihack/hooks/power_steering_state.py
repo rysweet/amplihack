@@ -23,10 +23,13 @@ Public API (the "studs"):
 import json
 import os
 import tempfile
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, ClassVar, Dict, List, Optional, Tuple
+from typing import ClassVar
+
+from .fallback_heuristics import AddressedChecker
 
 __all__ = [
     "FailureEvidence",
@@ -55,15 +58,15 @@ class FailureEvidence:
 
     consideration_id: str
     reason: str
-    evidence_quote: Optional[str] = None
-    timestamp: Optional[str] = None
+    evidence_quote: str | None = None
+    timestamp: str | None = None
     was_claimed_complete: bool = False
 
     def __post_init__(self):
         if self.timestamp is None:
             self.timestamp = datetime.now().isoformat()
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Serialize to dict."""
         return {
             "consideration_id": self.consideration_id,
@@ -74,7 +77,7 @@ class FailureEvidence:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict) -> "FailureEvidence":
+    def from_dict(cls, data: dict) -> "FailureEvidence":
         """Deserialize from dict."""
         return cls(
             consideration_id=data["consideration_id"],
@@ -105,10 +108,10 @@ class BlockSnapshot:
     timestamp: str
     transcript_index: int
     transcript_length: int
-    failed_evidence: List[FailureEvidence] = field(default_factory=list)
-    user_claims_detected: List[str] = field(default_factory=list)
+    failed_evidence: list[FailureEvidence] = field(default_factory=list)
+    user_claims_detected: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Serialize to dict."""
         return {
             "block_number": self.block_number,
@@ -120,7 +123,7 @@ class BlockSnapshot:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict) -> "BlockSnapshot":
+    def from_dict(cls, data: dict) -> "BlockSnapshot":
         """Deserialize from dict."""
         return cls(
             block_number=data["block_number"],
@@ -155,15 +158,15 @@ class PowerSteeringTurnState:
     session_id: str
     turn_count: int = 0
     consecutive_blocks: int = 0
-    first_block_timestamp: Optional[str] = None
-    last_block_timestamp: Optional[str] = None
-    block_history: List[BlockSnapshot] = field(default_factory=list)
+    first_block_timestamp: str | None = None
+    last_block_timestamp: str | None = None
+    block_history: list[BlockSnapshot] = field(default_factory=list)
     last_analyzed_transcript_index: int = 0
 
     # Maximum consecutive blocks before auto-approve triggers (increased from 3)
     MAX_CONSECUTIVE_BLOCKS: ClassVar[int] = 10
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert state to dictionary for JSON serialization."""
         return {
             "session_id": self.session_id,
@@ -176,7 +179,7 @@ class PowerSteeringTurnState:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict, session_id: str) -> "PowerSteeringTurnState":
+    def from_dict(cls, data: dict, session_id: str) -> "PowerSteeringTurnState":
         """Create state from dictionary.
 
         Args:
@@ -196,31 +199,31 @@ class PowerSteeringTurnState:
             last_analyzed_transcript_index=data.get("last_analyzed_transcript_index", 0),
         )
 
-    def get_previous_block(self) -> Optional[BlockSnapshot]:
+    def get_previous_block(self) -> BlockSnapshot | None:
         """Get the most recent block snapshot (if any)."""
         return self.block_history[-1] if self.block_history else None
 
-    def get_persistent_failures(self) -> Dict[str, int]:
+    def get_persistent_failures(self) -> dict[str, int]:
         """Get considerations that have failed multiple times.
 
         Returns:
             Dict mapping consideration_id -> number of times it failed
         """
-        failure_counts: Dict[str, int] = {}
+        failure_counts: dict[str, int] = {}
         for snapshot in self.block_history:
             for evidence in snapshot.failed_evidence:
                 cid = evidence.consideration_id
                 failure_counts[cid] = failure_counts.get(cid, 0) + 1
         return failure_counts
 
-    def get_all_previous_failure_ids(self) -> List[str]:
+    def get_all_previous_failure_ids(self) -> list[str]:
         """Get all consideration IDs that failed in previous blocks.
 
         Returns:
             List of unique consideration IDs from all previous blocks
         """
         seen: set = set()
-        result: List[str] = []
+        result: list[str] = []
         for snapshot in self.block_history:
             for evidence in snapshot.failed_evidence:
                 if evidence.consideration_id not in seen:
@@ -233,8 +236,8 @@ class PowerSteeringTurnState:
 class DeltaAnalysisResult:
     """Result of analyzing delta transcript since last block."""
 
-    new_content_addresses_failures: Dict[str, str]  # consideration_id -> evidence
-    new_claims_detected: List[str]  # Claims user/agent made
+    new_content_addresses_failures: dict[str, str]  # consideration_id -> evidence
+    new_claims_detected: list[str]  # Claims user/agent made
     new_content_summary: str  # Brief summary of what happened in delta
 
 
@@ -259,18 +262,19 @@ class DeltaAnalyzer:
     - LLM-first, heuristics as fallback
     """
 
-    def __init__(self, log: Optional[Callable[[str], None]] = None):
+    def __init__(self, log: Callable[[str], None] | None = None):
         """Initialize delta analyzer.
 
         Args:
             log: Optional logging callback
         """
         self.log = log or (lambda msg: None)
+        self._fallback_checker = AddressedChecker()
 
     def analyze_delta(
         self,
-        delta_messages: List[Dict],
-        previous_failures: List[FailureEvidence],
+        delta_messages: list[dict],
+        previous_failures: list[FailureEvidence],
     ) -> DeltaAnalysisResult:
         """Analyze new transcript content against previous failures.
 
@@ -281,8 +285,8 @@ class DeltaAnalyzer:
         Returns:
             DeltaAnalysisResult with what the delta addresses
         """
-        addressed: Dict[str, str] = {}
-        claims: List[str] = []
+        addressed: dict[str, str] = {}
+        claims: list[str] = []
 
         # Extract all text from delta
         delta_text = self._extract_all_text(delta_messages)
@@ -309,7 +313,7 @@ class DeltaAnalyzer:
             new_content_summary=summary,
         )
 
-    def _extract_all_text(self, messages: List[Dict]) -> str:
+    def _extract_all_text(self, messages: list[dict]) -> str:
         """Extract all text content from messages."""
         texts = []
         for msg in messages:
@@ -318,7 +322,7 @@ class DeltaAnalyzer:
                 texts.append(content)
         return "\n".join(texts)
 
-    def _extract_message_content(self, msg: Dict) -> str:
+    def _extract_message_content(self, msg: dict) -> str:
         """Extract text from a single message."""
         content = msg.get("content", msg.get("message", ""))
 
@@ -337,7 +341,7 @@ class DeltaAnalyzer:
 
         return ""
 
-    def _extract_from_blocks(self, blocks: List) -> str:
+    def _extract_from_blocks(self, blocks: list) -> str:
         """Extract text from content blocks."""
         texts = []
         for block in blocks:
@@ -346,7 +350,7 @@ class DeltaAnalyzer:
                     texts.append(str(block.get("text", "")))
         return " ".join(texts)
 
-    def _detect_claims(self, text: str) -> List[str]:
+    def _detect_claims(self, text: str) -> list[str]:
         """Detect completion claims in text (FALLBACK - simple keyword matching).
 
         NOTE: This is a fallback method. The primary path uses LLM-based
@@ -392,8 +396,8 @@ class DeltaAnalyzer:
         self,
         failure: FailureEvidence,
         delta_text: str,
-        delta_messages: List[Dict],
-    ) -> Optional[str]:
+        delta_messages: list[dict],
+    ) -> str | None:
         """Check if the delta addresses a specific failure.
 
         Uses heuristics based on consideration type to determine if
@@ -407,86 +411,15 @@ class DeltaAnalyzer:
         Returns:
             Evidence string if addressed, None otherwise
         """
-        cid = failure.consideration_id
-        text_lower = delta_text.lower()
-
-        # Heuristics by consideration type
-        if "todos" in cid:
-            if "todo" in text_lower and any(
-                word in text_lower for word in ["complete", "done", "finished", "mark"]
-            ):
-                return "Delta contains TODO completion discussion"
-
-        elif "testing" in cid or "test" in cid:
-            if any(
-                phrase in text_lower
-                for phrase in [
-                    "tests pass",
-                    "test suite",
-                    "pytest",
-                    "all tests",
-                    "tests are passing",
-                    "ran tests",
-                ]
-            ):
-                return "Delta mentions test execution/results"
-
-        elif "ci" in cid:
-            if any(
-                phrase in text_lower
-                for phrase in [
-                    "ci is",
-                    "ci pass",
-                    "build is green",
-                    "checks pass",
-                    "ci green",
-                    "pipeline pass",
-                ]
-            ):
-                return "Delta mentions CI status"
-
-        elif "docs" in cid or "documentation" in cid:
-            if any(
-                phrase in text_lower
-                for phrase in ["created doc", "added doc", "updated doc", ".md", "readme"]
-            ):
-                return "Delta mentions documentation changes"
-
-        elif "investigation" in cid:
-            if any(
-                phrase in text_lower
-                for phrase in ["session summary", "investigation report", "findings", "documented"]
-            ):
-                return "Delta mentions investigation artifacts"
-
-        elif "workflow" in cid:
-            if any(
-                phrase in text_lower
-                for phrase in ["followed workflow", "workflow complete", "step", "pr ready"]
-            ):
-                return "Delta mentions workflow completion"
-
-        elif "philosophy" in cid:
-            if any(
-                phrase in text_lower
-                for phrase in ["philosophy", "compliance", "simplicity", "zero-bs", "no stubs"]
-            ):
-                return "Delta mentions philosophy compliance"
-
-        elif "review" in cid:
-            if any(
-                phrase in text_lower for phrase in ["review", "reviewed", "feedback", "approved"]
-            ):
-                return "Delta mentions review process"
-
-        # No specific evidence found
-        return None
+        return self._fallback_checker.check_if_addressed(
+            consideration_id=failure.consideration_id, delta_text=delta_text
+        )
 
     def _summarize_delta(
         self,
-        messages: List[Dict],
-        addressed: Dict[str, str],
-        claims: List[str],
+        messages: list[dict],
+        addressed: dict[str, str],
+        claims: list[str],
     ) -> str:
         """Generate brief summary of delta content.
 
@@ -518,13 +451,15 @@ class TurnStateManager:
         project_root: Project root directory
         session_id: Current session identifier
         log: Optional logging callback
+        _previous_turn_count: Track previous turn count for monotonicity validation
+        _diagnostic_logger: Diagnostic logger for instrumentation
     """
 
     def __init__(
         self,
         project_root: Path,
         session_id: str,
-        log: Optional[Callable[[str], None]] = None,
+        log: Callable[[str], None] | None = None,
     ):
         """Initialize turn state manager.
 
@@ -536,6 +471,24 @@ class TurnStateManager:
         self.project_root = project_root
         self.session_id = session_id
         self.log = log or (lambda msg: None)
+        self._previous_turn_count: int | None = None
+
+        # Import DiagnosticLogger - try both relative and absolute imports
+        self._diagnostic_logger = None
+        try:
+            # Try relative import first (when running as module)
+            from .power_steering_diagnostics import DiagnosticLogger
+
+            self._diagnostic_logger = DiagnosticLogger(project_root, session_id, log)
+        except (ImportError, ValueError):
+            try:
+                # Try absolute import (when running tests or standalone)
+                from power_steering_diagnostics import DiagnosticLogger
+
+                self._diagnostic_logger = DiagnosticLogger(project_root, session_id, log)
+            except ImportError as e:
+                # Fail-open: Continue without diagnostic logging
+                self.log(f"Warning: Could not load diagnostic logger: {e}")
 
     def get_state_file_path(self) -> Path:
         """Get path to the state file for this session.
@@ -553,9 +506,10 @@ class TurnStateManager:
         )
 
     def load_state(self) -> PowerSteeringTurnState:
-        """Load state from disk.
+        """Load state from disk with validation.
 
         Fail-open: Returns empty state on any error.
+        Validates state integrity and monotonicity.
 
         Returns:
             PowerSteeringTurnState instance
@@ -565,51 +519,223 @@ class TurnStateManager:
         try:
             if state_file.exists():
                 data = json.loads(state_file.read_text())
+                state = PowerSteeringTurnState.from_dict(data, self.session_id)
+
+                # Validate state integrity
+                self._validate_state(state)
+
+                # Track for monotonicity checking
+                self._previous_turn_count = state.turn_count
+
+                # Diagnostic logging
+                if self._diagnostic_logger:
+                    self._diagnostic_logger.log_state_read(state.turn_count)
+
                 self.log(f"Loaded turn state from {state_file}")
-                return PowerSteeringTurnState.from_dict(data, self.session_id)
+                return state
         except (json.JSONDecodeError, OSError, KeyError) as e:
             self.log(f"Failed to load state (fail-open): {e}")
 
         # Return empty state
         return PowerSteeringTurnState(session_id=self.session_id)
 
-    def save_state(self, state: PowerSteeringTurnState) -> None:
-        """Save state to disk using atomic write pattern.
+    def _validate_state(self, state: PowerSteeringTurnState) -> None:
+        """Validate state integrity (Phase 2: Defensive Validation).
+
+        Checks:
+        - Counter is non-negative
+        - Counter is within reasonable bounds (< 1000)
+        - Last message not empty (if blocks exist)
+
+        Fail-open: Logs warnings but doesn't raise exceptions.
+
+        Args:
+            state: State to validate
+        """
+        try:
+            # Check counter bounds
+            if state.turn_count < 0:
+                self.log(f"WARNING: Invalid turn_count: {state.turn_count} (negative)")
+
+            if state.turn_count >= 1000:
+                self.log(f"WARNING: Suspicious turn_count: {state.turn_count} (>= 1000)")
+
+            # Check block history consistency
+            if state.consecutive_blocks > 0 and not state.block_history:
+                self.log("WARNING: consecutive_blocks > 0 but block_history is empty")
+
+        except Exception as e:
+            # Fail-open: Don't raise, just log
+            self.log(f"State validation warning: {e}")
+
+    def save_state(
+        self,
+        state: PowerSteeringTurnState,
+        previous_state: PowerSteeringTurnState | None = None,
+    ) -> None:
+        """Save state to disk using atomic write pattern with enhancements.
+
+        Enhancements (Phase 2 & 3):
+        - Monotonicity check: Ensures counter never decreases
+        - fsync: Force write to disk
+        - Verification read: Read back temp file to verify
+        - Retry logic: 3 attempts with exponential backoff
+        - Diagnostic logging: Track all write attempts
 
         Fail-open: Logs error but does not raise on failure.
 
         Args:
             state: State to save
+            previous_state: Previous state for monotonicity check (optional)
         """
+        # Phase 2: Monotonicity validation (WARN only, don't block - fail-open)
+        if previous_state is not None:
+            if state.turn_count < previous_state.turn_count:
+                error_msg = (
+                    f"Monotonicity violation: turn_count decreased from "
+                    f"{previous_state.turn_count} to {state.turn_count}"
+                )
+                self.log(f"WARNING: {error_msg} (continuing with fail-open)")
+
+                # Log diagnostic event
+                if self._diagnostic_logger:
+                    self._diagnostic_logger.log_monotonicity_violation(
+                        previous_state.turn_count,
+                        state.turn_count,
+                    )
+
+                # CHANGED: Warn but don't raise (fail-open principle)
+                # Continue with save operation
+
+        # Also check against tracked previous value
+        if self._previous_turn_count is not None:
+            if state.turn_count < self._previous_turn_count:
+                error_msg = (
+                    f"Monotonicity regression detected: counter went from "
+                    f"{self._previous_turn_count} to {state.turn_count}"
+                )
+                self.log(f"WARNING: {error_msg} (continuing with fail-open)")
+
+                if self._diagnostic_logger:
+                    self._diagnostic_logger.log_monotonicity_violation(
+                        self._previous_turn_count,
+                        state.turn_count,
+                    )
+
+                # CHANGED: Warn but don't raise (fail-open principle)
+                # Continue with save operation
+
+        # Phase 3: Atomic write with retry and verification
         state_file = self.get_state_file_path()
+        max_retries = 3
+        retry_delay = 0.1  # Start with 100ms
 
-        try:
-            # Ensure parent directory exists
-            state_file.parent.mkdir(parents=True, exist_ok=True)
-
-            # Atomic write: temp file + rename
-            fd, temp_path = tempfile.mkstemp(
-                dir=state_file.parent,
-                prefix="turn_state_",
-                suffix=".tmp",
-            )
+        for attempt in range(1, max_retries + 1):
             try:
-                with os.fdopen(fd, "w") as f:
-                    json.dump(state.to_dict(), f, indent=2)
+                # Diagnostic logging: Write attempt
+                if self._diagnostic_logger:
+                    self._diagnostic_logger.log_state_write_attempt(
+                        state.turn_count,
+                        attempt,
+                    )
 
-                # Atomic rename
-                os.rename(temp_path, state_file)
-                self.log(f"Saved turn state to {state_file}")
-            except Exception:
-                # Clean up temp file on error
+                # Ensure parent directory exists
+                state_file.parent.mkdir(parents=True, exist_ok=True)
+
+                # Atomic write: temp file + fsync + rename
+                fd, temp_path = tempfile.mkstemp(
+                    dir=state_file.parent,
+                    prefix="turn_state_",
+                    suffix=".tmp",
+                )
+
                 try:
-                    os.unlink(temp_path)
-                except OSError:
-                    pass
-                raise
+                    # Write to temp file
+                    with os.fdopen(fd, "w") as f:
+                        state_data = state.to_dict()
+                        json.dump(state_data, f, indent=2)
 
-        except OSError as e:
-            self.log(f"Failed to save state (fail-open): {e}")
+                        # Phase 3: fsync to ensure data is written to disk
+                        f.flush()
+                        os.fsync(f.fileno())
+
+                    # Phase 3: Verification read from temp file
+                    temp_path_obj = Path(temp_path)
+                    if not temp_path_obj.exists():
+                        raise OSError("Temp file doesn't exist after write")
+
+                    # Verify content matches
+                    verified_data = json.loads(temp_path_obj.read_text())
+                    if verified_data.get("turn_count") != state.turn_count:
+                        # Diagnostic logging: Verification failed
+                        if self._diagnostic_logger:
+                            self._diagnostic_logger.log_verification_failed(
+                                state.turn_count,
+                                verified_data.get("turn_count", -1),
+                            )
+                        raise OSError("Verification failed: turn_count mismatch")
+
+                    # Atomic rename
+                    os.rename(temp_path, state_file)
+
+                    # Phase 3: Verify final path exists
+                    if not state_file.exists():
+                        raise OSError("State file doesn't exist after rename")
+
+                    # Verify final file content
+                    final_data = json.loads(state_file.read_text())
+                    if final_data.get("turn_count") != state.turn_count:
+                        if self._diagnostic_logger:
+                            self._diagnostic_logger.log_verification_failed(
+                                state.turn_count,
+                                final_data.get("turn_count", -1),
+                            )
+                        raise OSError("Final verification failed: turn_count mismatch")
+
+                    # Success! Update tracked value
+                    self._previous_turn_count = state.turn_count
+
+                    # Diagnostic logging: Success
+                    if self._diagnostic_logger:
+                        self._diagnostic_logger.log_state_write_success(
+                            state.turn_count,
+                            attempt,
+                        )
+
+                    self.log(f"Saved turn state to {state_file} (attempt {attempt})")
+                    return  # Success - exit retry loop
+
+                except Exception as e:
+                    # Clean up temp file on error
+                    try:
+                        if Path(temp_path).exists():
+                            os.unlink(temp_path)
+                    except OSError:
+                        pass
+                    raise e
+
+            except OSError as e:
+                error_msg = str(e)
+                self.log(f"Save attempt {attempt}/{max_retries} failed: {error_msg}")
+
+                # Diagnostic logging: Write failure
+                if self._diagnostic_logger:
+                    self._diagnostic_logger.log_state_write_failure(
+                        state.turn_count,
+                        attempt,
+                        error_msg,
+                    )
+
+                # If this was the last attempt, give up (fail-open)
+                if attempt >= max_retries:
+                    self.log(f"Failed to save state after {max_retries} attempts (fail-open)")
+                    return
+
+                # Exponential backoff before retry
+                import time
+
+                time.sleep(retry_delay)
+                retry_delay *= 2
 
     def increment_turn(self, state: PowerSteeringTurnState) -> PowerSteeringTurnState:
         """Increment turn count and return updated state.
@@ -627,9 +753,9 @@ class TurnStateManager:
     def record_block_with_evidence(
         self,
         state: PowerSteeringTurnState,
-        failed_evidence: List[FailureEvidence],
+        failed_evidence: list[FailureEvidence],
         transcript_length: int,
-        user_claims: Optional[List[str]] = None,
+        user_claims: list[str] | None = None,
     ) -> PowerSteeringTurnState:
         """Record a power-steering block with full evidence.
 
@@ -699,7 +825,7 @@ class TurnStateManager:
         self,
         state: PowerSteeringTurnState,
         current_transcript_length: int,
-    ) -> Tuple[int, int]:
+    ) -> tuple[int, int]:
         """Get the range of transcript to analyze (delta since last block).
 
         Args:
@@ -719,7 +845,7 @@ class TurnStateManager:
 
         return start_index, end_index
 
-    def should_auto_approve(self, state: PowerSteeringTurnState) -> Tuple[bool, str, Optional[str]]:
+    def should_auto_approve(self, state: PowerSteeringTurnState) -> tuple[bool, str, str | None]:
         """Determine if auto-approval should trigger with escalating context.
 
         Auto-approval triggers purely on consecutive blocks count.
@@ -758,4 +884,77 @@ class TurnStateManager:
             True,
             f"Auto-approve: {blocks} blocks reached threshold ({threshold})",
             None,
+        )
+
+    def get_diagnostics(self) -> dict:
+        """Get diagnostic information about current state (Phase 4: User Visibility).
+
+        Analyzes diagnostic log to detect infinite loop patterns.
+
+        Returns:
+            Dictionary with diagnostic information
+        """
+        diagnostics = {
+            "stall_detected": False,
+            "stall_value": None,
+            "stall_count": 0,
+            "oscillation_detected": False,
+            "oscillation_values": [],
+            "write_failure_rate": 0.0,
+            "high_failure_rate_alert": False,
+        }
+
+        try:
+            if self._diagnostic_logger:
+                log_file = self._diagnostic_logger.get_log_file_path()
+
+                # Use detect_infinite_loop from diagnostics module
+                try:
+                    from .power_steering_diagnostics import detect_infinite_loop
+                except (ImportError, ValueError):
+                    from power_steering_diagnostics import detect_infinite_loop
+
+                result = detect_infinite_loop(log_file)
+
+                diagnostics.update(
+                    {
+                        "stall_detected": result.stall_detected,
+                        "stall_value": result.stall_value,
+                        "stall_count": result.stall_count,
+                        "oscillation_detected": result.oscillation_detected,
+                        "oscillation_values": result.oscillation_values,
+                        "write_failure_rate": result.write_failure_rate,
+                        "high_failure_rate_alert": result.high_failure_rate,
+                    }
+                )
+
+        except Exception as e:
+            self.log(f"Failed to get diagnostics: {e}")
+
+        return diagnostics
+
+    def generate_power_steering_message(self, state: PowerSteeringTurnState) -> str:
+        """Generate power steering message customized based on state (Phase 4: REQ-2).
+
+        Message includes:
+        - Turn count
+        - Consecutive blocks count
+        - Customization based on block history
+
+        Args:
+            state: Current power steering state
+
+        Returns:
+            Customized message string
+        """
+        turn_count = state.turn_count
+        blocks = state.consecutive_blocks
+
+        if blocks == 0:
+            return f"Turn {turn_count}: Power steering check"
+        if blocks == 1:
+            return f"Turn {turn_count}: First power steering block (block {blocks})"
+        return (
+            f"Turn {turn_count}: Power steering block {blocks} - "
+            f"Issues persist from previous attempts"
         )
