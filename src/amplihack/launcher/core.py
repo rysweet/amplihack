@@ -658,6 +658,9 @@ class ClaudeLauncher:
             # Set up signal handling for graceful shutdown
             def signal_handler(sig, frame):
                 print("\nReceived interrupt signal. Shutting down...")
+                # Set shutdown flag BEFORE sys.exit to coordinate with hooks
+                # Prevents BrokenPipeError in sessionstop hook during interrupt shutdown
+                os.environ["AMPLIHACK_SHUTDOWN_IN_PROGRESS"] = "1"
                 if self.proxy_manager:
                     self.proxy_manager.stop_proxy()
                 sys.exit(0)
