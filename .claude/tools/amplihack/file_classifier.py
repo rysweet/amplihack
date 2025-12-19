@@ -14,7 +14,6 @@ sacred.
 
 from enum import Enum
 from pathlib import Path
-from typing import Union
 
 
 class FileCategory(Enum):
@@ -31,7 +30,7 @@ class FileCategory(Enum):
     NEVER_UPDATE = "never"
 
 
-def classify_file(file_path: Union[str, Path]) -> FileCategory:
+def classify_file(file_path: str | Path) -> FileCategory:
     """Categorize a file path into its update strategy.
 
     Classifies files based on their role in the amplihack framework:

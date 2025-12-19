@@ -38,7 +38,6 @@ import textwrap
 from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
 
 # Import the optimized SDK duplicate detection system
 sdk_path = Path(
@@ -73,8 +72,8 @@ class IssueInfo:
     author: str
     created_at: str
     updated_at: str
-    labels: List[str]
-    comments: Optional[List[Dict]] = None
+    labels: list[str]
+    comments: list[dict] | None = None
     unique_content: str = ""  # Extracted unique information
 
     def __post_init__(self):
@@ -87,7 +86,7 @@ class DuplicateCluster:
     """A cluster of duplicate issues."""
 
     canonical_issue: int  # Issue to keep
-    duplicate_issues: List[int]  # Issues to close
+    duplicate_issues: list[int]  # Issues to close
     cluster_type: str  # "perfect", "functional", "edge_case"
     confidence: float  # Overall confidence for the cluster
     reason: str  # Why these are considered duplicates
@@ -100,11 +99,11 @@ class CleanupAction:
 
     action_type: str  # "close_issue", "update_canonical", "add_comment"
     issue_number: int
-    details: Dict
+    details: dict
     reason: str
     executed: bool = False
-    execution_time: Optional[str] = None
-    error: Optional[str] = None
+    execution_time: str | None = None
+    error: str | None = None
 
 
 @dataclass
@@ -113,16 +112,16 @@ class CleanupSession:
 
     session_id: str
     start_time: str
-    end_time: Optional[str]
+    end_time: str | None
     mode: str  # "dry_run", "interactive", "execute"
-    phase: Optional[int]
+    phase: int | None
     total_issues_analyzed: int
-    clusters_found: List[DuplicateCluster]
-    actions_planned: List[CleanupAction]
-    actions_executed: List[CleanupAction]
-    sdk_stats: Dict
+    clusters_found: list[DuplicateCluster]
+    actions_planned: list[CleanupAction]
+    actions_executed: list[CleanupAction]
+    sdk_stats: dict
     issues_before: int
-    issues_after: Optional[int]
+    issues_after: int | None
 
 
 class SafeCleanupOrchestrator:
@@ -134,14 +133,14 @@ class SafeCleanupOrchestrator:
         self.detector = (
             SemanticDuplicateDetector() if SDK_AVAILABLE and SemanticDuplicateDetector else None
         )
-        self.issues_data: List[IssueInfo] = []
-        self.session: Optional[CleanupSession] = None
+        self.issues_data: list[IssueInfo] = []
+        self.session: CleanupSession | None = None
 
         # Create output directories
         self.output_dir = Path("cleanup_results")
         self.output_dir.mkdir(exist_ok=True)
 
-    async def load_github_issues(self) -> List[IssueInfo]:
+    async def load_github_issues(self) -> list[IssueInfo]:
         """Load GitHub issues with comprehensive information."""
         print("🔍 Loading GitHub issues with detailed information...")
 
@@ -194,7 +193,7 @@ class SafeCleanupOrchestrator:
             print(f"❌ Unexpected error: {e}")
             return []
 
-    async def fetch_issue_comments(self, issue_number: int) -> List[Dict]:
+    async def fetch_issue_comments(self, issue_number: int) -> list[dict]:
         """Fetch comments for a specific issue."""
         try:
             result = subprocess.run(
@@ -220,7 +219,7 @@ class SafeCleanupOrchestrator:
             print(f"⚠️  Could not fetch comments for issue #{issue_number}: {e}")
             return []
 
-    def extract_unique_content(self, issue: IssueInfo, duplicates: List[IssueInfo]) -> str:
+    def extract_unique_content(self, issue: IssueInfo, duplicates: list[IssueInfo]) -> str:
         """Extract unique content from an issue that's not in its duplicates."""
         unique_parts = []
 
@@ -270,7 +269,7 @@ class SafeCleanupOrchestrator:
 
         return " | ".join(unique_parts) if unique_parts else "No unique content identified"
 
-    async def analyze_duplicates_with_sdk(self) -> List[DuplicateCluster]:
+    async def analyze_duplicates_with_sdk(self) -> list[DuplicateCluster]:
         """Use SDK to identify duplicate clusters."""
         print("🤖 Analyzing duplicates using optimized SDK detection...")
 
@@ -349,7 +348,7 @@ class SafeCleanupOrchestrator:
         print(f"🎯 Found {len(clusters)} duplicate clusters")
         return clusters
 
-    def analyze_duplicates_fallback(self) -> List[DuplicateCluster]:
+    def analyze_duplicates_fallback(self) -> list[DuplicateCluster]:
         """Fallback duplicate analysis using known patterns from analysis report."""
         print("📋 Using fallback analysis based on documented duplicate patterns...")
 
@@ -428,7 +427,7 @@ class SafeCleanupOrchestrator:
 
         return clusters
 
-    async def create_cleanup_actions(self, clusters: List[DuplicateCluster]) -> List[CleanupAction]:
+    async def create_cleanup_actions(self, clusters: list[DuplicateCluster]) -> list[CleanupAction]:
         """Create specific cleanup actions for each cluster."""
         print("📝 Creating detailed cleanup actions...")
 
@@ -541,7 +540,7 @@ class SafeCleanupOrchestrator:
 
         return "\n".join(comment_parts)
 
-    def get_issue_by_number(self, number: int) -> Optional[IssueInfo]:
+    def get_issue_by_number(self, number: int) -> IssueInfo | None:
         """Get issue by number from loaded data."""
         for issue in self.issues_data:
             if issue.number == number:
@@ -642,7 +641,7 @@ class SafeCleanupOrchestrator:
 
     async def execute_cleanup_phase(
         self, phase: int, dry_run: bool = True, interactive: bool = False
-    ) -> Tuple[int, int]:
+    ) -> tuple[int, int]:
         """Execute cleanup for a specific phase."""
         phase_actions = [
             action
@@ -845,7 +844,7 @@ If any closures were incorrect, follow these steps:
         print(f"📊 Audit log saved to {log_file}")
 
     async def run_cleanup(
-        self, mode: str = "dry_run", phase: Optional[int] = None, interactive: bool = False
+        self, mode: str = "dry_run", phase: int | None = None, interactive: bool = False
     ) -> CleanupSession:
         """Main cleanup execution method."""
         # Initialize session

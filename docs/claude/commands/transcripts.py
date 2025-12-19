@@ -8,7 +8,6 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
 
 # Clean import setup - use robust path detection
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
@@ -31,7 +30,7 @@ except ImportError:
 sys.path.insert(0, str(project_root / ".claude" / "tools" / "amplihack"))
 
 
-def list_available_sessions() -> List[str]:
+def list_available_sessions() -> list[str]:
     """List available session transcripts."""
     logs_dir = project_root / ".claude" / "runtime" / "logs"
     if not logs_dir.exists():
@@ -45,7 +44,7 @@ def list_available_sessions() -> List[str]:
     return sorted(sessions, reverse=True)  # Most recent first
 
 
-def get_session_summary(session_id: str) -> Dict[str, str]:
+def get_session_summary(session_id: str) -> dict[str, str]:
     """Get summary information for a session."""
     session_dir = project_root / ".claude" / "runtime" / "logs" / session_id
 
@@ -88,7 +87,7 @@ def get_session_summary(session_id: str) -> Dict[str, str]:
     return summary
 
 
-def display_session_list(sessions: List[str]) -> None:
+def display_session_list(sessions: list[str]) -> None:
     """Display formatted list of available sessions."""
     if not sessions:
         print("🔍 No conversation transcripts found")

@@ -63,6 +63,7 @@ uv pip install pytest pytest-cov
 ### Pre-Reorganization (CURRENT)
 
 All tests SHOULD fail:
+
 - ❌ 87 broken links
 - ❌ 26 orphaned documents
 - ❌ 8 documents beyond 3-click depth
@@ -70,6 +71,7 @@ All tests SHOULD fail:
 ### Post-Reorganization (TARGET)
 
 All tests SHOULD pass:
+
 - ✅ Zero broken links
 - ✅ Zero orphaned documents
 - ✅ All docs within 3 clicks
@@ -111,6 +113,7 @@ uv pip install pytest pytest-cov
 ### Tests Pass But Should Fail
 
 Check you're in the correct directory:
+
 ```bash
 pwd
 # Should be: /home/azureuser/src/amplihack/worktrees/feat-issue-1824-gh-pages-docs-improvements
@@ -190,6 +193,7 @@ Add to `.github/workflows/test.yml`:
 ## Questions?
 
 See:
+
 - **Complete docs**: `tests/docs/README.md`
 - **Manual tests**: `tests/docs/MANUAL_TEST_PLAN.md`
 - **Baseline results**: `tests/docs/TEST_RESULTS_BASELINE.md`

@@ -7,7 +7,7 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 # Add parent directories to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -48,7 +48,7 @@ class ContextAutomation:
         self.rehydrator = ContextRehydrator()
         self.state = self._load_state()
 
-    def _load_state(self) -> Dict[str, Any]:
+    def _load_state(self) -> dict[str, Any]:
         """Load automation state from disk."""
         if STATE_FILE.exists():
             try:
@@ -76,8 +76,8 @@ class ContextAutomation:
             json.dump(self.state, f, indent=2)
 
     def process_post_tool_use(
-        self, current_tokens: int, conversation_data: Optional[list] = None
-    ) -> Dict[str, Any]:
+        self, current_tokens: int, conversation_data: list | None = None
+    ) -> dict[str, Any]:
         """Process after tool use for automatic context management.
 
         Uses adaptive frequency to minimize overhead:
@@ -114,9 +114,9 @@ class ContextAutomation:
         elif percentage < 55:
             check_every = 10  # Warming up - occasional checks
         elif percentage < 70:
-            check_every = 3   # Close to threshold - frequent checks
+            check_every = 3  # Close to threshold - frequent checks
         else:
-            check_every = 1   # Critical zone - check every time
+            check_every = 1  # Critical zone - check every time
 
         # Skip if not time to check yet
         if tool_count % check_every != 0:
@@ -213,7 +213,7 @@ class ContextAutomation:
             # Silently fail - don't interrupt user workflow
             return False
 
-    def _handle_compaction(self, result: Dict[str, Any]) -> None:
+    def _handle_compaction(self, result: dict[str, Any]) -> None:
         """Handle detected compaction by auto-rehydrating.
 
         Uses smart level selection based on last known usage.
@@ -266,7 +266,7 @@ class ContextAutomation:
             result["warnings"].append(f"⚠️  Auto-rehydration failed: {e}")
 
 
-def run_automation(current_tokens: int, conversation_data: Optional[list] = None):
+def run_automation(current_tokens: int, conversation_data: list | None = None):
     """Run context automation (called from PostToolUse hook).
 
     Args:

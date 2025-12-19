@@ -7,7 +7,7 @@ Uses unified HookProcessor for common functionality.
 # Import the base processor
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 # Clean import structure
 sys.path.insert(0, str(Path(__file__).parent))
@@ -35,7 +35,7 @@ class SessionStartHook(HookProcessor):
     def __init__(self):
         super().__init__("session_start")
 
-    def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Process session start event.
 
         Checks performed:
@@ -196,7 +196,7 @@ class SessionStartHook(HookProcessor):
 
         # Add workflow information at startup with UVX support
         context_parts.append("\n## 📝 Default Workflow")
-        context_parts.append("The 13-step workflow is automatically followed by `/ultrathink`")
+        context_parts.append("The multi-step workflow is automatically followed by `/ultrathink`")
 
         # Use FrameworkPathResolver for workflow path
         workflow_file = None
@@ -239,7 +239,7 @@ class SessionStartHook(HookProcessor):
             startup_msg_parts.extend(
                 [
                     "",
-                    "📝 Workflow: Use `/ultrathink` for the 13-step process",
+                    "📝 Workflow: Use `/ultrathink` for the multi-step process",
                     "⚙️  Customize: Edit the workflow file (use FrameworkPathResolver for UVX compatibility)",
                     "🎯 Preferences: Loaded from USER_PREFERENCES.md",
                     "",

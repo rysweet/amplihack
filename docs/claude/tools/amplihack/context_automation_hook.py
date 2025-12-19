@@ -18,7 +18,7 @@ Public API:
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent))
@@ -48,7 +48,7 @@ __all__ = [
 # ============================================================================
 
 
-def context_management_hook(input_data: Dict[str, Any]) -> "HookResult":
+def context_management_hook(input_data: dict[str, Any]) -> "HookResult":
     """Hook function for automatic context management.
 
     Called after every tool use to monitor token usage and

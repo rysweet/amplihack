@@ -15,12 +15,12 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 REPO_ROOT = Path(__file__).parent.parent.parent
 
 
-def get_workflow_runs() -> List[Dict[str, Any]]:
+def get_workflow_runs() -> list[dict[str, Any]]:
     """Fetch recent workflow runs."""
     result = subprocess.run(
         [
@@ -52,7 +52,7 @@ def get_open_issues_count() -> int:
     return len(json.loads(result.stdout))
 
 
-def get_open_prs_count() -> Dict[str, int]:
+def get_open_prs_count() -> dict[str, int]:
     """Get count of open PRs by state."""
     result = subprocess.run(
         ["gh", "pr", "list", "--json", "number,isDraft"],
@@ -69,7 +69,7 @@ def get_open_prs_count() -> Dict[str, int]:
     }
 
 
-def analyze_ci_health(workflow_runs: List[Dict[str, Any]]) -> Dict[str, Any]:
+def analyze_ci_health(workflow_runs: list[dict[str, Any]]) -> dict[str, Any]:
     """Analyze CI/CD health from recent workflow runs."""
     if not workflow_runs:
         return {
@@ -102,7 +102,7 @@ def analyze_ci_health(workflow_runs: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
-def get_failing_workflows(workflow_runs: List[Dict[str, Any]]) -> List[str]:
+def get_failing_workflows(workflow_runs: list[dict[str, Any]]) -> list[str]:
     """Get list of failing workflow names."""
     failing = []
     seen = set()
@@ -118,10 +118,10 @@ def get_failing_workflows(workflow_runs: List[Dict[str, Any]]) -> List[str]:
 
 
 def generate_status_report(
-    ci_health: Dict[str, Any],
+    ci_health: dict[str, Any],
     open_issues: int,
-    open_prs: Dict[str, int],
-    failing_workflows: List[str],
+    open_prs: dict[str, int],
+    failing_workflows: list[str],
 ) -> str:
     """Generate daily status report."""
 

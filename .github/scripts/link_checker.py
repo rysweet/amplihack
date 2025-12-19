@@ -21,7 +21,6 @@ import sys
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 from urllib.parse import urlparse
 
 import requests
@@ -139,7 +138,7 @@ def extract_links(content: str, file_path: Path) -> list[tuple[int, str, str]]:
     return links
 
 
-def check_internal_link(link_url: str, source_file: Path, repo_root: Path) -> Optional[str]:
+def check_internal_link(link_url: str, source_file: Path, repo_root: Path) -> str | None:
     """Check if internal link target exists."""
     # Handle anchor-only links
     if link_url.startswith("#"):
@@ -182,7 +181,7 @@ def check_internal_link(link_url: str, source_file: Path, repo_root: Path) -> Op
     return None
 
 
-def check_anchor_in_file(anchor: str, file_path: Path) -> Optional[str]:
+def check_anchor_in_file(anchor: str, file_path: Path) -> str | None:
     """Check if anchor exists in markdown file."""
     try:
         content = file_path.read_text(encoding="utf-8")
@@ -199,7 +198,7 @@ def check_anchor_in_file(anchor: str, file_path: Path) -> Optional[str]:
     return None
 
 
-def check_external_link(url: str) -> tuple[Optional[str], str]:
+def check_external_link(url: str) -> tuple[str | None, str]:
     """Check if external URL is accessible. Returns (error, severity)."""
     # SSRF protection: validate URL before making request
     is_safe, error_msg = is_safe_url(url)

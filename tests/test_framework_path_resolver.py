@@ -96,11 +96,13 @@ class TestFrameworkPathResolver:
             temp_path = Path(temp_dir)
 
             # Mock UVX environment
-            with patch(
-                "amplihack.utils.paths.FrameworkPathResolver.is_uvx_deployment",
-                return_value=True,
-            ), patch("amplihack.utils.uvx_staging.stage_uvx_framework", return_value=True), patch(
-                "pathlib.Path.cwd", return_value=temp_path
+            with (
+                patch(
+                    "amplihack.utils.paths.FrameworkPathResolver.is_uvx_deployment",
+                    return_value=True,
+                ),
+                patch("amplihack.utils.uvx_staging.stage_uvx_framework", return_value=True),
+                patch("pathlib.Path.cwd", return_value=temp_path),
             ):
                 # Create .claude directory to simulate successful staging
                 (temp_path / ".claude").mkdir()
@@ -114,11 +116,13 @@ class TestFrameworkPathResolver:
             temp_path = Path(temp_dir)
 
             # Mock UVX environment with staging failure
-            with patch(
-                "amplihack.utils.paths.FrameworkPathResolver.is_uvx_deployment",
-                return_value=True,
-            ), patch("amplihack.utils.uvx_staging.stage_uvx_framework", return_value=False), patch(
-                "pathlib.Path.cwd", return_value=temp_path
+            with (
+                patch(
+                    "amplihack.utils.paths.FrameworkPathResolver.is_uvx_deployment",
+                    return_value=True,
+                ),
+                patch("amplihack.utils.uvx_staging.stage_uvx_framework", return_value=False),
+                patch("pathlib.Path.cwd", return_value=temp_path),
             ):
                 result = FrameworkPathResolver.find_framework_root()
                 assert result is None

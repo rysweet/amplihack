@@ -9,7 +9,6 @@ import logging
 import re
 import subprocess
 from dataclasses import dataclass
-from typing import List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -37,8 +36,8 @@ class Neo4jContainer:
     image: str
     status: str
     ports: dict
-    username: Optional[str] = None
-    password: Optional[str] = None
+    username: str | None = None
+    password: str | None = None
 
     def is_running(self) -> bool:
         """Check if container is running.
@@ -49,7 +48,7 @@ class Neo4jContainer:
         status_lower = self.status.lower()
         return "running" in status_lower or "up" in status_lower
 
-    def get_bolt_port(self) -> Optional[str]:
+    def get_bolt_port(self) -> str | None:
         """Get the Bolt protocol port.
 
         Returns:
@@ -57,7 +56,7 @@ class Neo4jContainer:
         """
         return self._get_port(str(BOLT_PORT))
 
-    def get_http_port(self) -> Optional[str]:
+    def get_http_port(self) -> str | None:
         """Get the HTTP port.
 
         Returns:
@@ -65,7 +64,7 @@ class Neo4jContainer:
         """
         return self._get_port(str(HTTP_PORT))
 
-    def _get_port(self, port_num: str) -> Optional[str]:
+    def _get_port(self, port_num: str) -> str | None:
         """Get a specific port number from container port mappings.
 
         Args:
@@ -100,7 +99,7 @@ class Neo4jContainerDetector:
 
     def __init__(self) -> None:
         """Initialize the detector."""
-        self._docker_available: Optional[bool] = None
+        self._docker_available: bool | None = None
 
     def is_docker_available(self) -> bool:
         """Check if Docker is available and running.
@@ -121,7 +120,7 @@ class Neo4jContainerDetector:
             self._docker_available = False
             return False
 
-    def detect_containers(self) -> List[Neo4jContainer]:
+    def detect_containers(self) -> list[Neo4jContainer]:
         """Detect all amplihack Neo4j containers.
 
         Returns:
@@ -189,7 +188,7 @@ class Neo4jContainerDetector:
             re.search(pattern, combined, re.IGNORECASE) for pattern in self.AMPLIHACK_PATTERNS
         )
 
-    def _parse_container(self, container_data: dict) -> Optional[Neo4jContainer]:
+    def _parse_container(self, container_data: dict) -> Neo4jContainer | None:
         """Parse container data into Neo4jContainer object.
 
         Args:
@@ -322,7 +321,7 @@ class Neo4jContainerDetector:
                 str(e),
             )
 
-    def get_running_containers(self) -> List[Neo4jContainer]:
+    def get_running_containers(self) -> list[Neo4jContainer]:
         """Get all running amplihack Neo4j containers with credentials.
 
         Returns:

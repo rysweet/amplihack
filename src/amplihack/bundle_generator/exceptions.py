@@ -6,7 +6,7 @@ and detailed context for troubleshooting.
 """
 
 import datetime
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class BundleGeneratorError(Exception):
@@ -16,8 +16,8 @@ class BundleGeneratorError(Exception):
         self,
         message: str,
         error_code: str = "GENERAL_ERROR",
-        details: Optional[Dict[str, Any]] = None,
-        recovery_suggestion: Optional[str] = None,
+        details: dict[str, Any] | None = None,
+        recovery_suggestion: str | None = None,
     ):
         """
         Initialize bundle generator error.
@@ -34,7 +34,7 @@ class BundleGeneratorError(Exception):
         self.recovery_suggestion = recovery_suggestion
         self.timestamp = datetime.datetime.utcnow()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert exception to dictionary for logging/API responses."""
         return {
             "error": self.__class__.__name__,
@@ -57,9 +57,9 @@ class ParsingError(BundleGeneratorError):
     def __init__(
         self,
         message: str,
-        prompt_fragment: Optional[str] = None,
-        position: Optional[int] = None,
-        details: Optional[Dict[str, Any]] = None,
+        prompt_fragment: str | None = None,
+        position: int | None = None,
+        details: dict[str, Any] | None = None,
     ):
         """
         Initialize parsing error.
@@ -88,8 +88,8 @@ class ExtractionError(BundleGeneratorError):
     def __init__(
         self,
         message: str,
-        ambiguous_terms: Optional[list] = None,
-        confidence_score: Optional[float] = None,
+        ambiguous_terms: list | None = None,
+        confidence_score: float | None = None,
     ):
         """
         Initialize extraction error.
@@ -119,9 +119,9 @@ class GenerationError(BundleGeneratorError):
     def __init__(
         self,
         message: str,
-        agent_name: Optional[str] = None,
-        generation_stage: Optional[str] = None,
-        partial_content: Optional[str] = None,
+        agent_name: str | None = None,
+        generation_stage: str | None = None,
+        partial_content: str | None = None,
     ):
         """
         Initialize generation error.
@@ -155,7 +155,7 @@ class ValidationError(BundleGeneratorError):
         self,
         message: str,
         validation_type: str,
-        failures: Optional[list] = None,
+        failures: list | None = None,
     ):
         """
         Initialize validation error.
@@ -182,8 +182,8 @@ class PackagingError(BundleGeneratorError):
     def __init__(
         self,
         message: str,
-        package_format: Optional[str] = None,
-        file_path: Optional[str] = None,
+        package_format: str | None = None,
+        file_path: str | None = None,
     ):
         """
         Initialize packaging error.
@@ -213,9 +213,9 @@ class DistributionError(BundleGeneratorError):
     def __init__(
         self,
         message: str,
-        platform: Optional[str] = None,
-        repository: Optional[str] = None,
-        http_status: Optional[int] = None,
+        platform: str | None = None,
+        repository: str | None = None,
+        http_status: int | None = None,
     ):
         """
         Initialize distribution error.
@@ -249,7 +249,7 @@ class RateLimitError(BundleGeneratorError):
         self,
         message: str,
         retry_after_seconds: int,
-        endpoint: Optional[str] = None,
+        endpoint: str | None = None,
     ):
         """
         Initialize rate limit error.

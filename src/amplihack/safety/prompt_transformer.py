@@ -2,14 +2,13 @@
 
 import re
 from pathlib import Path
-from typing import Union
 
 
 class PromptTransformer:
     """Transform auto mode prompts to include directory change."""
 
     def transform_prompt(
-        self, original_prompt: str, target_directory: Union[str, Path], used_temp: bool
+        self, original_prompt: str, target_directory: str | Path, used_temp: bool
     ) -> str:
         """Transform prompt to include directory change instruction."""
         if not used_temp:

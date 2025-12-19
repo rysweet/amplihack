@@ -12,7 +12,6 @@ Usage:
 import re
 import sys
 from pathlib import Path
-from typing import Optional, Tuple
 
 try:
     import requests
@@ -30,7 +29,7 @@ GITHUB_API_URL = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
 SKILL_FILE = Path(__file__).parent.parent / "SKILL.md"
 
 
-def extract_embedded_version(skill_file: Path) -> Optional[str]:
+def extract_embedded_version(skill_file: Path) -> str | None:
     """Extract the embedded framework version from SKILL.md frontmatter."""
     try:
         content = skill_file.read_text()
@@ -46,7 +45,7 @@ def extract_embedded_version(skill_file: Path) -> Optional[str]:
         return None
 
 
-def get_latest_github_version() -> Optional[Tuple[str, str, str]]:
+def get_latest_github_version() -> tuple[str, str, str] | None:
     """
     Fetch the latest release version from GitHub.
 
@@ -79,7 +78,7 @@ def get_latest_github_version() -> Optional[Tuple[str, str, str]]:
         return None
 
 
-def parse_version(version_str: str) -> Tuple[int, int, int]:
+def parse_version(version_str: str) -> tuple[int, int, int]:
     """Parse semantic version string into tuple of integers."""
     try:
         parts = version_str.split(".")

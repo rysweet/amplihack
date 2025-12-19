@@ -6,7 +6,7 @@ import os
 import sys
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # Add src to path for XPIA Defense interface
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))  # pragma: allowlist secret
@@ -38,8 +38,8 @@ class MockXPIADefense(XPIADefenseInterface):
         self,
         content: str,
         content_type: ContentType,
-        context: Optional[ValidationContext] = None,
-        security_level: Optional[SecurityLevel] = None,
+        context: ValidationContext | None = None,
+        security_level: SecurityLevel | None = None,
     ) -> ValidationResult:
         """Mock content validation with threat detection."""
         start_time = time.time()
@@ -83,8 +83,8 @@ class MockXPIADefense(XPIADefenseInterface):
     async def validate_bash_command(
         self,
         command: str,
-        arguments: Optional[List[str]] = None,
-        context: Optional[ValidationContext] = None,
+        arguments: list[str] | None = None,
+        context: ValidationContext | None = None,
     ) -> ValidationResult:
         """Validate bash commands."""
         full_command = command
@@ -96,7 +96,7 @@ class MockXPIADefense(XPIADefenseInterface):
         self,
         source_agent: str,
         target_agent: str,
-        message: Dict[str, Any],
+        message: dict[str, Any],
         message_type: str = "task",
     ) -> ValidationResult:
         """Validate agent communication."""
@@ -121,11 +121,11 @@ class MockXPIADefense(XPIADefenseInterface):
         """Unregister hook."""
         return True
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Health check."""
         return {"status": "healthy", "validations": len(self.validation_calls)}
 
-    def _get_threat_patterns(self) -> Dict[str, tuple]:
+    def _get_threat_patterns(self) -> dict[str, tuple]:
         """Get threat detection patterns."""
         return {
             # System override patterns (CRITICAL)
@@ -190,7 +190,7 @@ class MockXPIADefense(XPIADefenseInterface):
             ),
         }
 
-    def _detect_threats(self, content: str, content_type: ContentType) -> List[ThreatDetection]:
+    def _detect_threats(self, content: str, content_type: ContentType) -> list[ThreatDetection]:
         """Detect threats in content."""
         import re
 
@@ -213,7 +213,7 @@ class MockXPIADefense(XPIADefenseInterface):
 
         return threats
 
-    def _generate_recommendations(self, threats: List[ThreatDetection]) -> List[str]:
+    def _generate_recommendations(self, threats: list[ThreatDetection]) -> list[str]:
         """Generate recommendations based on threats."""
         if not threats:
             return ["Content appears safe"]

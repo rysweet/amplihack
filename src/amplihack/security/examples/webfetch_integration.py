@@ -6,7 +6,6 @@ Demonstrates how to integrate XPIA defense with WebFetch operations.
 
 import asyncio
 import os
-from typing import Optional
 
 # Configure environment for moderate security
 os.environ["XPIA_ENABLED"] = "true"
@@ -23,7 +22,7 @@ from amplihack.security import WebFetchXPIADefender, xpia_hook
 from amplihack.security.config import get_config
 
 
-async def safe_webfetch(url: str, prompt: str) -> Optional[str]:
+async def safe_webfetch(url: str, prompt: str) -> str | None:
     """
     Safely fetch web content with XPIA validation
 

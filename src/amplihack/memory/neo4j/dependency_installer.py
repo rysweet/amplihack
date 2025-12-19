@@ -12,7 +12,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -44,11 +43,11 @@ class Dependency:
     name: str
     type: DependencyType
     why: str  # Why is this needed
-    commands: List[str]  # Commands to install
+    commands: list[str]  # Commands to install
     verify_cmd: str  # Command to verify installation
     requires_sudo: bool
     risk_level: str  # "none", "low", "medium", "high"
-    rollback_cmd: Optional[str] = None
+    rollback_cmd: str | None = None
 
 
 @dataclass
@@ -65,7 +64,7 @@ class OSDetector:
     """Detect operating system and version."""
 
     @staticmethod
-    def detect() -> Dict[str, str]:
+    def detect() -> dict[str, str]:
         """Detect OS type and version.
 
         Returns:
@@ -80,7 +79,7 @@ class OSDetector:
         return {"type": "unknown", "version": "", "name": system}
 
     @staticmethod
-    def _detect_linux() -> Dict[str, str]:
+    def _detect_linux() -> dict[str, str]:
         """Detect Linux distribution."""
         try:
             # Read /etc/os-release
@@ -104,7 +103,7 @@ class OSDetector:
         return {"type": "linux", "version": "", "name": "Linux"}
 
     @staticmethod
-    def _detect_macos() -> Dict[str, str]:
+    def _detect_macos() -> dict[str, str]:
         """Detect macOS version."""
         try:
             result = subprocess.run(["sw_vers", "-productVersion"], capture_output=True, text=True)
@@ -313,7 +312,7 @@ class DependencyInstaller:
         """Ensure log directory exists."""
         self.log_file.parent.mkdir(parents=True, exist_ok=True)
 
-    def check_missing_dependencies(self) -> List[Dependency]:
+    def check_missing_dependencies(self) -> list[Dependency]:
         """Detect missing dependencies for Neo4j.
 
         Returns:
@@ -354,7 +353,7 @@ class DependencyInstaller:
             self.logger.debug("Command execution failed (%s): %s", cmd, e)
             return False
 
-    def show_installation_plan(self, dependencies: List[Dependency]) -> None:
+    def show_installation_plan(self, dependencies: list[Dependency]) -> None:
         """Display installation plan to user.
 
         Args:
@@ -511,7 +510,7 @@ class DependencyInstaller:
             duration_seconds=duration,
         )
 
-    def install_missing(self, confirm: bool = True) -> Dict[str, any]:
+    def install_missing(self, confirm: bool = True) -> dict[str, any]:
         """Main entry point: Check, plan, confirm, install.
 
         Args:
@@ -597,7 +596,7 @@ class DependencyInstaller:
             "results": results,
         }
 
-    def _show_summary(self, results: List[InstallResult]) -> None:
+    def _show_summary(self, results: list[InstallResult]) -> None:
         """Show installation summary.
 
         Args:
@@ -670,7 +669,7 @@ def install_neo4j_dependencies(auto_confirm: bool = False) -> bool:
     return result["success"]
 
 
-def check_dependencies() -> List[str]:
+def check_dependencies() -> list[str]:
     """Check for missing dependencies (non-interactive).
 
     Returns:

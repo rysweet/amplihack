@@ -163,7 +163,19 @@ class TestNeo4jCheckIntegration:
         """
         launcher = ClaudeLauncher()
 
-        disabled_values = [None, "", "0", "false", "False", "no", "disabled", "true", "True", "yes", "enabled"]
+        disabled_values = [
+            None,
+            "",
+            "0",
+            "false",
+            "False",
+            "no",
+            "disabled",
+            "true",
+            "True",
+            "yes",
+            "enabled",
+        ]
 
         for value in disabled_values:
             with patch.dict(os.environ, {}, clear=False):
@@ -177,8 +189,10 @@ class TestNeo4jCheckIntegration:
 
                     # All non-"1" values should skip Neo4j operations
                     if value != "1":
-                        mock_manager_class.assert_not_called(), \
-                            f"Neo4jManager should not be called for value: {value!r}"
+                        (
+                            mock_manager_class.assert_not_called(),
+                            f"Neo4jManager should not be called for value: {value!r}",
+                        )
 
 
 class TestNeo4jCheckEdgeCases:
@@ -201,8 +215,10 @@ class TestNeo4jCheckEdgeCases:
                     launcher._check_neo4j_credentials()
 
                     # Should NOT match with whitespace
-                    mock_manager_class.assert_not_called(), \
-                        f"Neo4jManager should not be called for value with whitespace: {value!r}"
+                    (
+                        mock_manager_class.assert_not_called(),
+                        f"Neo4jManager should not be called for value with whitespace: {value!r}",
+                    )
 
     def test_case_sensitivity(self):
         """Test that env var check is case-sensitive.
@@ -221,8 +237,10 @@ class TestNeo4jCheckEdgeCases:
                     launcher._check_neo4j_credentials()
 
                     # Should be case-sensitive
-                    mock_manager_class.assert_not_called(), \
-                        f"Neo4jManager should not be called for case variant: {value!r}"
+                    (
+                        mock_manager_class.assert_not_called(),
+                        f"Neo4jManager should not be called for case variant: {value!r}",
+                    )
 
 
 class TestNeo4jCheckE2E:

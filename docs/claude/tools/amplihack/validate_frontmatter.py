@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
 """Validate frontmatter across amplihack components."""
 
-import yaml
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple
+
+import yaml
 
 # Required fields by type
 REQUIRED_FIELDS = {
     "workflow": ["name", "version", "description", "phases"],
     "command": ["name", "version", "description", "triggers"],
     "skill": ["name", "version", "description"],
-    "agent": ["name", "version", "description", "role"]
+    "agent": ["name", "version", "description", "role"],
 }
 
-def validate_file(path: Path, component_type: str) -> List[str]:
+
+def validate_file(path: Path, component_type: str) -> list[str]:
     """Validate frontmatter in a single file."""
     errors = []
 
@@ -23,11 +24,11 @@ def validate_file(path: Path, component_type: str) -> List[str]:
 
     # Extract frontmatter
     if not content.startswith("---"):
-        return [f"Missing frontmatter delimiter"]
+        return ["Missing frontmatter delimiter"]
 
     parts = content.split("---", 2)
     if len(parts) < 3:
-        return [f"Incomplete frontmatter"]
+        return ["Incomplete frontmatter"]
 
     # Parse YAML
     try:
@@ -48,6 +49,7 @@ def validate_file(path: Path, component_type: str) -> List[str]:
             errors.append(f"Invalid version format: {version} (expected X.Y.Z)")
 
     return errors
+
 
 def main():
     """Run validation on all components."""
@@ -107,6 +109,7 @@ def main():
     print(f"Summary: {len(all_errors)}/{total_files} files with errors")
 
     return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

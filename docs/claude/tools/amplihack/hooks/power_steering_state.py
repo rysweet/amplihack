@@ -23,10 +23,11 @@ Public API (the "studs"):
 import json
 import os
 import tempfile
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, ClassVar, Dict, List, Optional, Tuple
+from typing import ClassVar
 
 __all__ = [
     "FailureEvidence",
@@ -55,15 +56,15 @@ class FailureEvidence:
 
     consideration_id: str
     reason: str
-    evidence_quote: Optional[str] = None
-    timestamp: Optional[str] = None
+    evidence_quote: str | None = None
+    timestamp: str | None = None
     was_claimed_complete: bool = False
 
     def __post_init__(self):
         if self.timestamp is None:
             self.timestamp = datetime.now().isoformat()
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Serialize to dict."""
         return {
             "consideration_id": self.consideration_id,
@@ -74,7 +75,7 @@ class FailureEvidence:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict) -> "FailureEvidence":
+    def from_dict(cls, data: dict) -> "FailureEvidence":
         """Deserialize from dict."""
         return cls(
             consideration_id=data["consideration_id"],
@@ -105,10 +106,10 @@ class BlockSnapshot:
     timestamp: str
     transcript_index: int
     transcript_length: int
-    failed_evidence: List[FailureEvidence] = field(default_factory=list)
-    user_claims_detected: List[str] = field(default_factory=list)
+    failed_evidence: list[FailureEvidence] = field(default_factory=list)
+    user_claims_detected: list[str] = field(default_factory=list)
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Serialize to dict."""
         return {
             "block_number": self.block_number,
@@ -120,7 +121,7 @@ class BlockSnapshot:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict) -> "BlockSnapshot":
+    def from_dict(cls, data: dict) -> "BlockSnapshot":
         """Deserialize from dict."""
         return cls(
             block_number=data["block_number"],
@@ -155,15 +156,15 @@ class PowerSteeringTurnState:
     session_id: str
     turn_count: int = 0
     consecutive_blocks: int = 0
-    first_block_timestamp: Optional[str] = None
-    last_block_timestamp: Optional[str] = None
-    block_history: List[BlockSnapshot] = field(default_factory=list)
+    first_block_timestamp: str | None = None
+    last_block_timestamp: str | None = None
+    block_history: list[BlockSnapshot] = field(default_factory=list)
     last_analyzed_transcript_index: int = 0
 
     # Maximum consecutive blocks before auto-approve triggers (increased from 3)
     MAX_CONSECUTIVE_BLOCKS: ClassVar[int] = 10
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert state to dictionary for JSON serialization."""
         return {
             "session_id": self.session_id,
@@ -176,7 +177,7 @@ class PowerSteeringTurnState:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict, session_id: str) -> "PowerSteeringTurnState":
+    def from_dict(cls, data: dict, session_id: str) -> "PowerSteeringTurnState":
         """Create state from dictionary.
 
         Args:
@@ -196,31 +197,31 @@ class PowerSteeringTurnState:
             last_analyzed_transcript_index=data.get("last_analyzed_transcript_index", 0),
         )
 
-    def get_previous_block(self) -> Optional[BlockSnapshot]:
+    def get_previous_block(self) -> BlockSnapshot | None:
         """Get the most recent block snapshot (if any)."""
         return self.block_history[-1] if self.block_history else None
 
-    def get_persistent_failures(self) -> Dict[str, int]:
+    def get_persistent_failures(self) -> dict[str, int]:
         """Get considerations that have failed multiple times.
 
         Returns:
             Dict mapping consideration_id -> number of times it failed
         """
-        failure_counts: Dict[str, int] = {}
+        failure_counts: dict[str, int] = {}
         for snapshot in self.block_history:
             for evidence in snapshot.failed_evidence:
                 cid = evidence.consideration_id
                 failure_counts[cid] = failure_counts.get(cid, 0) + 1
         return failure_counts
 
-    def get_all_previous_failure_ids(self) -> List[str]:
+    def get_all_previous_failure_ids(self) -> list[str]:
         """Get all consideration IDs that failed in previous blocks.
 
         Returns:
             List of unique consideration IDs from all previous blocks
         """
         seen: set = set()
-        result: List[str] = []
+        result: list[str] = []
         for snapshot in self.block_history:
             for evidence in snapshot.failed_evidence:
                 if evidence.consideration_id not in seen:
@@ -233,8 +234,8 @@ class PowerSteeringTurnState:
 class DeltaAnalysisResult:
     """Result of analyzing delta transcript since last block."""
 
-    new_content_addresses_failures: Dict[str, str]  # consideration_id -> evidence
-    new_claims_detected: List[str]  # Claims user/agent made
+    new_content_addresses_failures: dict[str, str]  # consideration_id -> evidence
+    new_claims_detected: list[str]  # Claims user/agent made
     new_content_summary: str  # Brief summary of what happened in delta
 
 
@@ -259,7 +260,7 @@ class DeltaAnalyzer:
     - LLM-first, heuristics as fallback
     """
 
-    def __init__(self, log: Optional[Callable[[str], None]] = None):
+    def __init__(self, log: Callable[[str], None] | None = None):
         """Initialize delta analyzer.
 
         Args:
@@ -269,8 +270,8 @@ class DeltaAnalyzer:
 
     def analyze_delta(
         self,
-        delta_messages: List[Dict],
-        previous_failures: List[FailureEvidence],
+        delta_messages: list[dict],
+        previous_failures: list[FailureEvidence],
     ) -> DeltaAnalysisResult:
         """Analyze new transcript content against previous failures.
 
@@ -281,8 +282,8 @@ class DeltaAnalyzer:
         Returns:
             DeltaAnalysisResult with what the delta addresses
         """
-        addressed: Dict[str, str] = {}
-        claims: List[str] = []
+        addressed: dict[str, str] = {}
+        claims: list[str] = []
 
         # Extract all text from delta
         delta_text = self._extract_all_text(delta_messages)
@@ -309,7 +310,7 @@ class DeltaAnalyzer:
             new_content_summary=summary,
         )
 
-    def _extract_all_text(self, messages: List[Dict]) -> str:
+    def _extract_all_text(self, messages: list[dict]) -> str:
         """Extract all text content from messages."""
         texts = []
         for msg in messages:
@@ -318,7 +319,7 @@ class DeltaAnalyzer:
                 texts.append(content)
         return "\n".join(texts)
 
-    def _extract_message_content(self, msg: Dict) -> str:
+    def _extract_message_content(self, msg: dict) -> str:
         """Extract text from a single message."""
         content = msg.get("content", msg.get("message", ""))
 
@@ -337,7 +338,7 @@ class DeltaAnalyzer:
 
         return ""
 
-    def _extract_from_blocks(self, blocks: List) -> str:
+    def _extract_from_blocks(self, blocks: list) -> str:
         """Extract text from content blocks."""
         texts = []
         for block in blocks:
@@ -346,7 +347,7 @@ class DeltaAnalyzer:
                     texts.append(str(block.get("text", "")))
         return " ".join(texts)
 
-    def _detect_claims(self, text: str) -> List[str]:
+    def _detect_claims(self, text: str) -> list[str]:
         """Detect completion claims in text (FALLBACK - simple keyword matching).
 
         NOTE: This is a fallback method. The primary path uses LLM-based
@@ -392,8 +393,8 @@ class DeltaAnalyzer:
         self,
         failure: FailureEvidence,
         delta_text: str,
-        delta_messages: List[Dict],
-    ) -> Optional[str]:
+        delta_messages: list[dict],
+    ) -> str | None:
         """Check if the delta addresses a specific failure.
 
         Uses heuristics based on consideration type to determine if
@@ -484,9 +485,9 @@ class DeltaAnalyzer:
 
     def _summarize_delta(
         self,
-        messages: List[Dict],
-        addressed: Dict[str, str],
-        claims: List[str],
+        messages: list[dict],
+        addressed: dict[str, str],
+        claims: list[str],
     ) -> str:
         """Generate brief summary of delta content.
 
@@ -524,7 +525,7 @@ class TurnStateManager:
         self,
         project_root: Path,
         session_id: str,
-        log: Optional[Callable[[str], None]] = None,
+        log: Callable[[str], None] | None = None,
     ):
         """Initialize turn state manager.
 
@@ -627,9 +628,9 @@ class TurnStateManager:
     def record_block_with_evidence(
         self,
         state: PowerSteeringTurnState,
-        failed_evidence: List[FailureEvidence],
+        failed_evidence: list[FailureEvidence],
         transcript_length: int,
-        user_claims: Optional[List[str]] = None,
+        user_claims: list[str] | None = None,
     ) -> PowerSteeringTurnState:
         """Record a power-steering block with full evidence.
 
@@ -699,7 +700,7 @@ class TurnStateManager:
         self,
         state: PowerSteeringTurnState,
         current_transcript_length: int,
-    ) -> Tuple[int, int]:
+    ) -> tuple[int, int]:
         """Get the range of transcript to analyze (delta since last block).
 
         Args:
@@ -719,7 +720,7 @@ class TurnStateManager:
 
         return start_index, end_index
 
-    def should_auto_approve(self, state: PowerSteeringTurnState) -> Tuple[bool, str, Optional[str]]:
+    def should_auto_approve(self, state: PowerSteeringTurnState) -> tuple[bool, str, str | None]:
         """Determine if auto-approval should trigger with escalating context.
 
         Auto-approval triggers purely on consecutive blocks count.

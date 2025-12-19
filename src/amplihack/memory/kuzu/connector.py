@@ -9,7 +9,7 @@ Data is stored in a local directory and persists between sessions.
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 try:
     import kuzu
@@ -48,7 +48,7 @@ class KuzuConnector:
 
     def __init__(
         self,
-        db_path: Optional[str] = None,
+        db_path: str | None = None,
         read_only: bool = False,
     ):
         """Initialize Kùzu connector.
@@ -75,8 +75,8 @@ class KuzuConnector:
 
         self.db_path = Path(db_path)
         self.read_only = read_only
-        self._db: Optional[Any] = None
-        self._conn: Optional[Any] = None
+        self._db: Any | None = None
+        self._conn: Any | None = None
 
     def _find_db_path(self) -> str:
         """Find appropriate database path.
@@ -140,8 +140,8 @@ class KuzuConnector:
     def execute_query(
         self,
         query: str,
-        parameters: Optional[Dict[str, Any]] = None,
-    ) -> List[Dict[str, Any]]:
+        parameters: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
         """Execute a Cypher query and return results.
 
         Args:
@@ -176,7 +176,7 @@ class KuzuConnector:
                 # Get column names
                 col_names = result.get_column_names()
                 # Create dict from row
-                record = dict(zip(col_names, row))
+                record = dict(zip(col_names, row, strict=False))
                 records.append(record)
 
             return records
@@ -188,8 +188,8 @@ class KuzuConnector:
     def execute_write(
         self,
         query: str,
-        parameters: Optional[Dict[str, Any]] = None,
-    ) -> List[Dict[str, Any]]:
+        parameters: dict[str, Any] | None = None,
+    ) -> list[dict[str, Any]]:
         """Execute a write query (alias for execute_query).
 
         For interface parity with Neo4jConnector. In Kuzu, there's no
@@ -291,7 +291,7 @@ class KuzuConnector:
 
         logger.info("Kùzu schema initialized")
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get database statistics.
 
         Returns:

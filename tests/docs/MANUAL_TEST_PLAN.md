@@ -32,11 +32,13 @@ Run these tests to establish baseline. **These SHOULD fail** - that's why we're 
 **Expected Post-Reorg**: ✅ All links clear and functional
 
 **Actual Result (Pre)**:
+
 ```
 [Record observations here]
 ```
 
 **Actual Result (Post)**:
+
 ```
 [Record observations here]
 ```
@@ -59,11 +61,13 @@ Run these tests to establish baseline. **These SHOULD fail** - that's why we're 
 **Expected Post-Reorg**: ✅ Prominently featured with working links
 
 **Actual Result (Pre)**:
+
 ```
 [Record observations here]
 ```
 
 **Actual Result (Post)**:
+
 ```
 [Record observations here]
 ```
@@ -78,18 +82,19 @@ Run these tests to establish baseline. **These SHOULD fail** - that's why we're 
 
 1. Start at `docs/index.md`
 2. Find documentation for: `/ultrathink` command
-   - Clicks required: ___ ⬜
+   - Clicks required: \_\_\_ ⬜
 3. Find documentation for: DDD workflow
-   - Clicks required: ___ ⬜
+   - Clicks required: \_\_\_ ⬜
 4. Find documentation for: Neo4j memory system
-   - Clicks required: ___ ⬜
+   - Clicks required: \_\_\_ ⬜
 5. Find documentation for: Creating custom agents
-   - Clicks required: ___ ⬜
+   - Clicks required: \_\_\_ ⬜
 
 **Expected Pre-Reorg**: 🟨 4-5 clicks for some topics
 **Expected Post-Reorg**: ✅ ≤3 clicks for all topics
 
 **Actual Result (Pre)**:
+
 ```
 /ultrathink: ___ clicks
 DDD workflow: ___ clicks
@@ -98,6 +103,7 @@ Custom agents: ___ clicks
 ```
 
 **Actual Result (Post)**:
+
 ```
 /ultrathink: ___ clicks
 DDD workflow: ___ clicks
@@ -122,6 +128,7 @@ Custom agents: ___ clicks
 **Expected Post-Reorg**: ✅ Zero broken links
 
 **Broken Links Found (Pre)**:
+
 ```
 1.
 2.
@@ -130,6 +137,7 @@ Custom agents: ___ clicks
 ```
 
 **Broken Links Found (Post)**:
+
 ```
 [Should be empty]
 ```
@@ -159,6 +167,7 @@ Search for these features in `docs/index.md`:
 **Expected Post-Reorg**: ✅ All clearly linked
 
 **Coverage Results (Pre)**:
+
 ```
 Workflows: [✅/❌]
 Commands: [✅/❌]
@@ -173,6 +182,7 @@ Troubleshooting: [✅/❌]
 ```
 
 **Coverage Results (Post)**:
+
 ```
 Workflows: [✅/❌]
 Commands: [✅/❌]
@@ -204,11 +214,13 @@ Troubleshooting: [✅/❌]
 **Expected Post-Reorg**: ✅ Clear, logical structure
 
 **Observations (Pre)**:
+
 ```
 [Record observations here]
 ```
 
 **Observations (Post)**:
+
 ```
 [Record observations here]
 ```
@@ -235,6 +247,7 @@ Open `docs/index.md` and search for:
 **Expected Post-Reorg**: ✅ All terms findable
 
 **Search Results (Pre)**:
+
 ```
 goal-seeking: [Found/Not Found]
 workflow: [Found/Not Found]
@@ -246,6 +259,7 @@ troubleshoot: [Found/Not Found]
 ```
 
 **Search Results (Post)**:
+
 ```
 goal-seeking: [Found/Not Found]
 workflow: [Found/Not Found]
@@ -274,11 +288,12 @@ After reorganization, re-run ALL tests above and verify:
 
 ### Final Sign-Off
 
-**Tester Name**: _______________
-**Date**: _______________
+**Tester Name**: **\*\***\_\_\_**\*\***
+**Date**: **\*\***\_\_\_**\*\***
 **Overall Result**: [✅ PASS / ❌ FAIL]
 
 **Notes**:
+
 ```
 [Any additional observations or recommendations]
 ```
@@ -341,17 +356,17 @@ After initial reorganization, run these tests:
 
 ### Pre-Reorganization Run
 
-**Date**: _______________
+**Date**: **\*\***\_\_\_**\*\***
 **Automated Tests**: [✅ PASS / ❌ FAIL]
 **Manual Tests**: [✅ PASS / ❌ FAIL]
-**Failures**: _______________
+**Failures**: **\*\***\_\_\_**\*\***
 
 ### Post-Reorganization Run
 
-**Date**: _______________
+**Date**: **\*\***\_\_\_**\*\***
 **Automated Tests**: [✅ PASS / ❌ FAIL]
 **Manual Tests**: [✅ PASS / ❌ FAIL]
-**Failures**: _______________
+**Failures**: **\*\***\_\_\_**\*\***
 
 ---
 

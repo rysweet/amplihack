@@ -12,7 +12,6 @@ behavior that will fail until implementation is created.
 
 import socket
 from contextlib import contextmanager
-from typing import List
 
 import pytest
 
@@ -73,7 +72,7 @@ class PortManager:
 
 
 @contextmanager
-def occupy_ports(ports: List[int]):
+def occupy_ports(ports: list[int]):
     """Context manager to occupy multiple ports."""
     servers = []
     try:

@@ -24,7 +24,6 @@ import subprocess
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 
 class EvidenceType(Enum):
@@ -62,7 +61,7 @@ class CompletionEvidenceChecker:
         """
         self.project_root = project_root
 
-    def check_pr_status(self) -> Optional[Evidence]:
+    def check_pr_status(self) -> Evidence | None:
         """Check if PR is merged using gh CLI.
 
         Returns:
@@ -105,7 +104,7 @@ class CompletionEvidenceChecker:
             # gh CLI unavailable or failed - fail-open
             return None
 
-    def check_user_confirmation(self, session_dir: Path) -> Optional[Evidence]:
+    def check_user_confirmation(self, session_dir: Path) -> Evidence | None:
         """Check if user explicitly confirmed completion.
 
         Args:
@@ -205,7 +204,7 @@ class CompletionEvidenceChecker:
                 confidence=0.0,
             )
 
-    def check_ci_status(self) -> Optional[Evidence]:
+    def check_ci_status(self) -> Evidence | None:
         """Check if CI checks are passing using gh CLI.
 
         Returns:
@@ -255,7 +254,7 @@ class CompletionEvidenceChecker:
             # gh CLI unavailable or failed - fail-open
             return None
 
-    def check_files_committed(self) -> Optional[Evidence]:
+    def check_files_committed(self) -> Evidence | None:
         """Check if changes are committed to git.
 
         Returns:

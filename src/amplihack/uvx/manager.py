@@ -10,7 +10,6 @@ This module provides the UVXManager class that:
 import logging
 import threading
 from pathlib import Path
-from typing import Dict, List, Optional
 
 from ..utils.uvx_detection import detect_uvx_deployment, resolve_framework_paths
 from ..utils.uvx_models import (
@@ -33,8 +32,8 @@ class UVXManager:
         """
         self.force_staging = force_staging
         self._config = UVXConfiguration()
-        self._detection_state: Optional[UVXDetectionState] = None
-        self._path_resolution: Optional[PathResolutionResult] = None
+        self._detection_state: UVXDetectionState | None = None
+        self._path_resolution: PathResolutionResult | None = None
         self._lock = threading.RLock()  # Reentrant lock for thread safety
 
     def _ensure_detection(self) -> None:
@@ -67,7 +66,7 @@ class UVXManager:
         self._ensure_detection()
         return self._detection_state.is_uvx_deployment if self._detection_state else False
 
-    def get_framework_path(self) -> Optional[Path]:
+    def get_framework_path(self) -> Path | None:
         """Get the framework root path.
 
         Returns:
@@ -141,7 +140,7 @@ class UVXManager:
 
         return False
 
-    def get_add_dir_args(self) -> List[str]:
+    def get_add_dir_args(self) -> list[str]:
         """Get --add-dir arguments for Claude command.
 
         Returns:
@@ -157,7 +156,7 @@ class UVXManager:
         # Return the --add-dir argument with the framework path
         return ["--add-dir", str(framework_path)]
 
-    def validate_path_security(self, path: Optional[Path]) -> bool:
+    def validate_path_security(self, path: Path | None) -> bool:
         """Validate that a path is safe (no directory traversal).
 
         Args:
@@ -228,7 +227,7 @@ class UVXManager:
             logger.error(f"Path validation error: {e}")
             return False
 
-    def enhance_claude_command(self, base_command: List[str]) -> List[str]:
+    def enhance_claude_command(self, base_command: list[str]) -> list[str]:
         """Enhance Claude command with --add-dir parameter if appropriate.
 
         Args:
@@ -260,7 +259,7 @@ class UVXManager:
         )
         return self._detection_state
 
-    def get_environment_variables(self) -> Dict[str, str]:
+    def get_environment_variables(self) -> dict[str, str]:
         """Get environment variables to set for UVX mode.
 
         Returns:

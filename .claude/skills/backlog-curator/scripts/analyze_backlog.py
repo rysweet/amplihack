@@ -11,12 +11,12 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 import yaml
 
 
-def load_yaml(path: Path) -> Dict[str, Any]:
+def load_yaml(path: Path) -> dict[str, Any]:
     """Load YAML file safely."""
     if not path.exists():
         return {}
@@ -42,7 +42,7 @@ def categorize_item(item: dict) -> str:
     return "other"
 
 
-def extract_technical_signals(item: dict) -> Dict[str, bool]:
+def extract_technical_signals(item: dict) -> dict[str, bool]:
     """Extract technical complexity signals."""
     text = (item.get("title", "") + " " + item.get("description", "")).lower()
 
@@ -81,7 +81,7 @@ def estimate_complexity(item: dict) -> str:
     return base
 
 
-def detect_dependencies(item: dict, all_items: List[dict]) -> List[str]:
+def detect_dependencies(item: dict, all_items: list[dict]) -> list[str]:
     """Detect dependencies (simplified - checks for BL-XXX references)."""
     import re
 
@@ -98,7 +98,7 @@ def detect_dependencies(item: dict, all_items: List[dict]) -> List[str]:
     return list(set(dependencies))
 
 
-def count_blocking(item: dict, all_items: List[dict]) -> int:
+def count_blocking(item: dict, all_items: list[dict]) -> int:
     """Count how many items this item would unblock."""
     count = 0
     item_id = item["id"]
@@ -114,7 +114,7 @@ def count_blocking(item: dict, all_items: List[dict]) -> int:
     return count
 
 
-def calculate_scores(item: dict, config: dict, all_items: List[dict]) -> dict:
+def calculate_scores(item: dict, config: dict, all_items: list[dict]) -> dict:
     """Calculate multi-criteria scores."""
     # Priority score (40%)
     priority_map = {"HIGH": 1.0, "MEDIUM": 0.6, "LOW": 0.3}

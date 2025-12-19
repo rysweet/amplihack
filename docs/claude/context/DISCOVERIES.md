@@ -68,6 +68,7 @@ The `.version` file is a **system-generated tracking file** that stores the git 
 1. **Git Status Detection**: `GitConflictDetector._get_uncommitted_files()` correctly detects ALL uncommitted files including `.version` (status: M)
 
 2. **Filtering Logic Gap**: `_filter_conflicts()` at lines 82-97 in `git_conflict_detector.py` only checks files against ESSENTIAL_DIRS patterns:
+
    ```python
    for essential_dir in essential_dirs:
        if relative_path.startswith(essential_dir + "/"):
@@ -119,6 +120,7 @@ def _filter_conflicts(
 ```
 
 **Rationale**:
+
 - **Semantic Classification**: Filter by PURPOSE (system vs user), not just directory structure
 - **Ruthlessly Simple**: 3-line change, surgical fix
 - **Philosophy-Aligned**: Treats system files appropriately (not user content)
@@ -154,6 +156,7 @@ def _filter_conflicts(
 ### Verification
 
 Test cases added:
+
 - Uncommitted `.version` doesn't trigger conflict warning ✅
 - Uncommitted user content (`.claude/context/custom.md`) DOES trigger warning ✅
 - Deployment proceeds smoothly with modified `.version` ✅
@@ -1816,11 +1819,13 @@ config = OrchestrationConfig(sub_issues=[...])
 ### How It Was Missed
 
 **Unit Tests** (110/110 passing):
+
 - Mocked all `SubIssue` creation
 - Never tested real deduplication path
 - Assumed API worked without instantiation
 
 **User Testing** (mandatory requirement):
+
 - Tried actual config creation
 - **Bug discovered in <2 minutes**
 - Immediate TypeError on first real use
@@ -1833,7 +1838,7 @@ config = OrchestrationConfig(sub_issues=[...])
 class SubIssue:
     labels: List[str] = field(default_factory=list)
 
-# After  
+# After
 @dataclass(frozen=True)
 class SubIssue:
     labels: tuple = field(default_factory=tuple)
@@ -1842,6 +1847,7 @@ class SubIssue:
 ### Validation
 
 **Test Results After Fix**:
+
 ```
 ✅ Config creation works
 ✅ Deduplication works (3 items → 2 unique)
@@ -1873,6 +1879,7 @@ class SubIssue:
 ### Implementation
 
 **Mandatory User Testing Pattern**:
+
 ```bash
 # Test like a user would
 python -c "from module import Class; obj = Class(...)"  # Real instantiation
@@ -1881,6 +1888,7 @@ result = api.actual_method()  # Real workflow
 ```
 
 **NOT sufficient**:
+
 ```python
 # Unit test approach (can miss real issues)
 @patch("module.Class")
@@ -1892,7 +1900,7 @@ def test_with_mock(mock_class):  # Never tests real instantiation
 
 1. **Always test like a user** - No mocks, real instantiation, actual workflows
 2. **High coverage isn't enough** - Need real usage validation
-3. **Mocks hide bugs** - Integration issues invisible to mocked tests  
+3. **Mocks hide bugs** - Integration issues invisible to mocked tests
 4. **User requirements are wise** - This explicit requirement saved us from shipping broken code
 
 ### Related
@@ -1905,10 +1913,10 @@ def test_with_mock(mock_class):  # Never tests real instantiation
 ### Recommendation
 
 **ENFORCE mandatory user testing** for ALL features:
+
 - Test with `uvx --from git+...` (no local state)
 - Try actual user workflows (no mocks)
 - Verify error messages and UX
 - Document test results in PR
 
 This discovery **validates the user's explicit requirement** - mandatory user testing prevents production failures that unit tests miss.
-

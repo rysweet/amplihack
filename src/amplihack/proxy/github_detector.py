@@ -1,7 +1,6 @@
 """GitHub Copilot endpoint detection and validation."""
 
 import re
-from typing import Dict, Optional
 from urllib.parse import urlparse
 
 
@@ -18,7 +17,7 @@ class GitHubEndpointDetector:
     _GITHUB_API_REGEX = re.compile(r"^https://api\.github\.com/copilot")
     _GITHUB_COPILOT_REGEX = re.compile(r"^https://copilot-proxy\.githubusercontent\.com")
 
-    def is_github_endpoint(self, endpoint: Optional[str], config: Dict[str, str]) -> bool:
+    def is_github_endpoint(self, endpoint: str | None, config: dict[str, str]) -> bool:
         """Check if endpoint is a GitHub Copilot API endpoint.
 
         Args:
@@ -34,7 +33,7 @@ class GitHubEndpointDetector:
 
         return self._validate_github_endpoint_format(endpoint)
 
-    def get_endpoint_type(self, endpoint: Optional[str], config: Dict[str, str]) -> str:
+    def get_endpoint_type(self, endpoint: str | None, config: dict[str, str]) -> str:
         """Get endpoint type (github_copilot or openai).
 
         Args:
@@ -59,7 +58,7 @@ class GitHubEndpointDetector:
         """
         return self._validate_github_endpoint_format(endpoint)
 
-    def _has_github_config_indicators(self, config: Dict[str, str]) -> bool:
+    def _has_github_config_indicators(self, config: dict[str, str]) -> bool:
         """Check for GitHub configuration indicators.
 
         Args:
@@ -115,7 +114,7 @@ class GitHubEndpointDetector:
         except Exception:
             return False
 
-    def get_canonical_endpoint(self, endpoint: Optional[str]) -> str:
+    def get_canonical_endpoint(self, endpoint: str | None) -> str:
         """Get canonical GitHub Copilot endpoint.
 
         Args:
@@ -142,7 +141,7 @@ class GitHubEndpointDetector:
         # GitHub Copilot API supports streaming
         return self.validate_github_endpoint(endpoint)
 
-    def get_rate_limit_info(self, endpoint: str) -> Dict[str, int]:
+    def get_rate_limit_info(self, endpoint: str) -> dict[str, int]:
         """Get rate limit information for GitHub endpoint.
 
         Args:
@@ -161,7 +160,7 @@ class GitHubEndpointDetector:
             "tokens_per_minute": 50000,
         }
 
-    def is_litellm_provider_enabled(self, config: Dict[str, str]) -> bool:
+    def is_litellm_provider_enabled(self, config: dict[str, str]) -> bool:
         """Check if LiteLLM GitHub Copilot provider is enabled.
 
         Args:
@@ -189,7 +188,7 @@ class GitHubEndpointDetector:
         """
         return "github/"
 
-    def prepare_litellm_config(self, config: Dict[str, str]) -> Dict[str, str]:
+    def prepare_litellm_config(self, config: dict[str, str]) -> dict[str, str]:
         """Prepare configuration for LiteLLM GitHub Copilot provider.
 
         Args:

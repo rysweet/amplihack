@@ -4,10 +4,9 @@ Discovers available commands, context files, agents, and skills from the
 amplihack directory structure to enable profile-based filtering.
 """
 
-from pathlib import Path
-from dataclasses import dataclass
-from typing import Dict, List
 import json
+from dataclasses import dataclass
+from pathlib import Path
 
 
 @dataclass
@@ -21,11 +20,12 @@ class ComponentInventory:
         skills: Mapping of skill name to file path
         skill_categories: Mapping of category name to list of skill names
     """
-    commands: Dict[str, Path]
-    context: Dict[str, Path]
-    agents: Dict[str, Path]
-    skills: Dict[str, Path]
-    skill_categories: Dict[str, List[str]]
+
+    commands: dict[str, Path]
+    context: dict[str, Path]
+    agents: dict[str, Path]
+    skills: dict[str, Path]
+    skill_categories: dict[str, list[str]]
 
 
 class ComponentDiscovery:
@@ -54,10 +54,10 @@ class ComponentDiscovery:
             context=self._discover_context(),
             agents=self._discover_agents(),
             skills=self._discover_skills(),
-            skill_categories=self._discover_skill_categories()
+            skill_categories=self._discover_skill_categories(),
         )
 
-    def _discover_commands(self) -> Dict[str, Path]:
+    def _discover_commands(self) -> dict[str, Path]:
         """Discover slash commands from .claude/commands/amplihack/.
 
         Returns:
@@ -86,7 +86,7 @@ class ComponentDiscovery:
 
         return commands
 
-    def _discover_context(self) -> Dict[str, Path]:
+    def _discover_context(self) -> dict[str, Path]:
         """Discover context files from .claude/context/.
 
         Returns:
@@ -102,7 +102,7 @@ class ComponentDiscovery:
 
         return context
 
-    def _discover_agents(self) -> Dict[str, Path]:
+    def _discover_agents(self) -> dict[str, Path]:
         """Discover agents from .claude/agents/amplihack/.
 
         Returns:
@@ -123,7 +123,7 @@ class ComponentDiscovery:
 
         return agents
 
-    def _discover_skills(self) -> Dict[str, Path]:
+    def _discover_skills(self) -> dict[str, Path]:
         """Discover skills from .claude/skills/.
 
         Uses skill index if available for performance, otherwise scans
@@ -144,7 +144,7 @@ class ComponentDiscovery:
         # Fallback: scan directories (slower but works without index)
         return self._scan_skills_directories(skills_dir)
 
-    def _load_skills_from_index(self, index_file: Path) -> Dict[str, Path]:
+    def _load_skills_from_index(self, index_file: Path) -> dict[str, Path]:
         """Load skills from index file.
 
         Args:
@@ -169,7 +169,7 @@ class ComponentDiscovery:
             # If index loading fails, fallback to directory scanning
             return self._scan_skills_directories(index_file.parent)
 
-    def _scan_skills_directories(self, skills_dir: Path) -> Dict[str, Path]:
+    def _scan_skills_directories(self, skills_dir: Path) -> dict[str, Path]:
         """Scan skill directories (fallback when no index).
 
         Args:
@@ -195,7 +195,7 @@ class ComponentDiscovery:
 
         return skills
 
-    def _discover_skill_categories(self) -> Dict[str, List[str]]:
+    def _discover_skill_categories(self) -> dict[str, list[str]]:
         """Discover skill categories from directory structure.
 
         Returns:
@@ -213,7 +213,7 @@ class ComponentDiscovery:
         # Fallback: infer from directory structure
         return self._infer_categories_from_structure(skills_dir)
 
-    def _load_categories_from_index(self, index_file: Path) -> Dict[str, List[str]]:
+    def _load_categories_from_index(self, index_file: Path) -> dict[str, list[str]]:
         """Load categories from index file.
 
         Args:
@@ -237,7 +237,7 @@ class ComponentDiscovery:
         except (FileNotFoundError, json.JSONDecodeError, KeyError, PermissionError):
             return self._infer_categories_from_structure(index_file.parent)
 
-    def _infer_categories_from_structure(self, skills_dir: Path) -> Dict[str, List[str]]:
+    def _infer_categories_from_structure(self, skills_dir: Path) -> dict[str, list[str]]:
         """Infer categories from directory structure.
 
         Assumes one level of categorization: skills/category/skill-name/

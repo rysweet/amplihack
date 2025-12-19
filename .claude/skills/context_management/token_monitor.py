@@ -40,8 +40,7 @@ def get_thresholds_for_model(max_tokens: int) -> dict:
     if max_tokens >= 800_000:
         return THRESHOLDS_1M
     # Small models (< 800k): Use aggressive thresholds (top = 85%)
-    else:
-        return THRESHOLDS_SMALL
+    return THRESHOLDS_SMALL
 
 
 class TokenMonitor:

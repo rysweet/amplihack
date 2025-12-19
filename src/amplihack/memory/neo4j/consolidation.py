@@ -10,7 +10,6 @@ Handles:
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
 
 from .connector import Neo4jConnector
 from .exceptions import Neo4jConnectionError
@@ -105,7 +104,7 @@ class MemoryConsolidator:
         self.promotion_threshold = promotion_threshold
         self.decay_threshold_days = decay_threshold_days
 
-    def calculate_quality_scores(self, project_id: Optional[str] = None) -> List[QualityMetrics]:
+    def calculate_quality_scores(self, project_id: str | None = None) -> list[QualityMetrics]:
         """Calculate quality scores for memories.
 
         Args:
@@ -168,7 +167,7 @@ class MemoryConsolidator:
             logger.error("Failed to calculate quality scores: %s", e)
             raise Neo4jConnectionError(f"Query failed: {e}")
 
-    def update_quality_scores(self, metrics: List[QualityMetrics]) -> int:
+    def update_quality_scores(self, metrics: list[QualityMetrics]) -> int:
         """Update quality scores in database.
 
         Args:
@@ -208,7 +207,7 @@ class MemoryConsolidator:
             logger.error("Failed to update quality scores: %s", e)
             raise Neo4jConnectionError(f"Query failed: {e}")
 
-    def promote_to_global(self, project_id: str, min_score: Optional[float] = None) -> List[str]:
+    def promote_to_global(self, project_id: str, min_score: float | None = None) -> list[str]:
         """Promote high-quality project memories to global scope.
 
         Memories are promoted when:
@@ -269,7 +268,7 @@ class MemoryConsolidator:
             logger.error("Failed to promote memories: %s", e)
             raise Neo4jConnectionError(f"Query failed: {e}")
 
-    def apply_decay(self, dry_run: bool = False) -> List[str]:
+    def apply_decay(self, dry_run: bool = False) -> list[str]:
         """Apply decay to old/unused memories.
 
         Memories are decayed when:
@@ -341,7 +340,7 @@ class MemoryConsolidator:
 
     def detect_duplicates(
         self, project_id: str, similarity_threshold: float = 0.9
-    ) -> List[Tuple[str, str]]:
+    ) -> list[tuple[str, str]]:
         """Detect potential duplicate memories.
 
         Uses tag overlap and creation time proximity to identify duplicates.
@@ -447,7 +446,7 @@ def run_consolidation(
     connector: Neo4jConnector,
     project_id: str,
     promotion_threshold: float = 0.8,
-) -> Dict[str, int]:
+) -> dict[str, int]:
     """Run full consolidation process for a project.
 
     Args:

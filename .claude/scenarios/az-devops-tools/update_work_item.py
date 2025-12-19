@@ -29,7 +29,6 @@ Philosophy:
 
 import argparse
 import json
-import sys
 
 from common import (
     AzCliWrapper,
@@ -118,15 +117,17 @@ def update_work_item(
             )
         elif "invalid state" in result.stderr.lower():
             handle_error(
-                f"Invalid state transition",
+                "Invalid state transition",
                 exit_code=ExitCode.VALIDATION_ERROR,
-                details=result.stderr + "\n\nUse list_types.py to see valid states for this work item type",
+                details=result.stderr
+                + "\n\nUse list_types.py to see valid states for this work item type",
             )
         elif "field" in result.stderr.lower() and "does not exist" in result.stderr.lower():
             handle_error(
                 "Invalid field name",
                 exit_code=ExitCode.VALIDATION_ERROR,
-                details=result.stderr + "\n\nUse list_types.py --type <type> --fields to see valid fields",
+                details=result.stderr
+                + "\n\nUse list_types.py --type <type> --fields to see valid fields",
             )
         else:
             handle_error(
@@ -180,9 +181,7 @@ Examples:
         action="append",
         help="Custom field update (format: FieldName=Value). Can specify multiple times.",
     )
-    parser.add_argument(
-        "--comment", help="Add comment explaining changes"
-    )
+    parser.add_argument("--comment", help="Add comment explaining changes")
 
     # Config options
     parser.add_argument("--org", help="Azure DevOps organization URL")
@@ -242,7 +241,9 @@ Examples:
         print(f"Successfully updated work item #{work_item_id}")
         print(f"Title: {fields.get('System.Title', 'N/A')}")
         print(f"State: {fields.get('System.State', 'N/A')}")
-        print(f"Assigned To: {fields.get('System.AssignedTo', {}).get('displayName', 'Unassigned')}")
+        print(
+            f"Assigned To: {fields.get('System.AssignedTo', {}).get('displayName', 'Unassigned')}"
+        )
         print(f"\nView at: {updated_item.get('_links', {}).get('html', {}).get('href', 'N/A')}")
 
     except Exception as e:

@@ -6,7 +6,6 @@ including current profile selection and environment variable support.
 
 import os
 from pathlib import Path
-from typing import Optional
 
 import yaml
 
@@ -30,7 +29,7 @@ class ConfigManager:
         >>> config.set_current_profile("amplihack://profiles/coding")
     """
 
-    def __init__(self, config_path: Optional[Path] = None):
+    def __init__(self, config_path: Path | None = None):
         """Initialize config manager.
 
         Args:

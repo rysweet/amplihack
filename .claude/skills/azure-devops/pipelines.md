@@ -61,7 +61,9 @@ az pipelines build logs download --id BUILD_ID --output-dir ./logs
 Pipelines can be triggered by:
 
 ### Push Triggers
+
 Automatically run on push to specific branches:
+
 ```yaml
 trigger:
   branches:
@@ -71,7 +73,9 @@ trigger:
 ```
 
 ### Pull Request Triggers
+
 Run validation builds for PRs:
+
 ```yaml
 pr:
   branches:
@@ -80,7 +84,9 @@ pr:
 ```
 
 ### Scheduled Triggers
+
 Run on a schedule:
+
 ```yaml
 schedules:
   - cron: "0 0 * * *"
@@ -91,6 +97,7 @@ schedules:
 ```
 
 ### Manual Triggers
+
 Queue builds manually via CLI or web portal.
 
 ## Build Variables
@@ -98,6 +105,7 @@ Queue builds manually via CLI or web portal.
 ### Predefined Variables
 
 Common system variables:
+
 - `$(Build.SourceBranch)` - Source branch
 - `$(Build.BuildNumber)` - Build number
 - `$(Build.SourceVersion)` - Commit SHA
@@ -106,13 +114,15 @@ Common system variables:
 ### Custom Variables
 
 Set in pipeline YAML:
+
 ```yaml
 variables:
-  buildConfiguration: 'Release'
-  vmImage: 'ubuntu-latest'
+  buildConfiguration: "Release"
+  vmImage: "ubuntu-latest"
 ```
 
 Override at queue time:
+
 ```bash
 az pipelines run --id PIPELINE_ID --variables buildConfiguration=Debug
 ```
@@ -122,11 +132,12 @@ az pipelines run --id PIPELINE_ID --variables buildConfiguration=Debug
 ### Publish Artifacts
 
 In pipeline:
+
 ```yaml
 - task: PublishBuildArtifacts@1
   inputs:
-    pathToPublish: '$(Build.ArtifactStagingDirectory)'
-    artifactName: 'drop'
+    pathToPublish: "$(Build.ArtifactStagingDirectory)"
+    artifactName: "drop"
 ```
 
 ### Download Artifacts
@@ -243,6 +254,7 @@ fi
 ### "Pipeline not found"
 
 List available pipelines:
+
 ```bash
 az pipelines list
 ```
@@ -250,6 +262,7 @@ az pipelines list
 ### "Build failed"
 
 Download and review logs:
+
 ```bash
 az pipelines build logs download --id BUILD_ID --output-dir ./logs
 cat logs/*.log

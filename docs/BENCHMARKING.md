@@ -25,12 +25,15 @@ uv run scripts/run_benchmarks.py \
 ## Available Agents
 
 ### amplihack
+
 Baseline amplihack with full context and workflow orchestration.
 
 ### claude_code
+
 Vanilla Claude Code for baseline comparison.
 
 ### amplihack_pr1443_v2
+
 amplihack with task classification fix (proven +36.5 point improvement on LinkedIn task).
 
 ## Common Tasks
@@ -49,6 +52,7 @@ amplihack with task classification fix (proven +36.5 point improvement on Linked
 ## Command Reference
 
 ### Basic Run
+
 ```bash
 uv run scripts/run_benchmarks.py \
   --agent-filter "name=AGENT_NAME" \
@@ -57,6 +61,7 @@ uv run scripts/run_benchmarks.py \
 ```
 
 ### With Reports
+
 ```bash
 uv run scripts/run_benchmarks.py \
   --agent-filter "name=amplihack" \
@@ -66,6 +71,7 @@ uv run scripts/run_benchmarks.py \
 ```
 
 ### Compare Multiple Agents
+
 ```bash
 uv run scripts/run_benchmarks.py \
   --agent-filter "name=amplihack,claude_code" \
@@ -107,6 +113,7 @@ To test a specific PR branch:
 ## Proven Results
 
 **PR #1443 Validation** (2025-11-19):
+
 - **Baseline (main):** 6.5/100 (created skill instead of tool)
 - **With fix (PR #1443 V2):** 43.0/100 (created executable tool)
 - **Improvement:** +36.5 points proven via actual benchmark
@@ -121,15 +128,18 @@ To test a specific PR branch:
 ## Troubleshooting
 
 **"command not found: amplihack"**
+
 - Agent config uses wrong command template
 - Should use: `IS_SANDBOX=1 claude -p "{{task_instructions}}"` not `amplihack claude`
 
 **Import errors in generated code**
+
 - This is expected - eval tests both architecture and execution
 - Architecture scores (30%) award partial credit for good design
 - Execution scores (70%) require working code
 
 **Docker build fails**
+
 - Check Dockerfile syntax matches base.dockerfile patterns
 - Don't add `RUN apt-get install` (causes errors)
 - Use existing Claude Code from base image

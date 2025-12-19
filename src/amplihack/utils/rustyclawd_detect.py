@@ -6,7 +6,6 @@ and provides the appropriate binary path.
 
 import shutil
 from pathlib import Path
-from typing import Optional
 
 
 def is_rustyclawd_available() -> bool:
@@ -41,7 +40,7 @@ def is_rustyclawd_available() -> bool:
     return False
 
 
-def get_rustyclawd_path() -> Optional[Path]:
+def get_rustyclawd_path() -> Path | None:
     """Get path to RustyClawd binary.
 
     Checks in order:
@@ -81,15 +80,22 @@ def install_rustyclawd() -> bool:
         True if installation successful.
     """
     import subprocess
-    import sys
 
     print("Installing/updating RustyClawd...")
     try:
         subprocess.run(
-            ["cargo", "install", "--git", "https://github.com/rysweet/RustyClawd", "--bin", "rusty", "--force"],
+            [
+                "cargo",
+                "install",
+                "--git",
+                "https://github.com/rysweet/RustyClawd",
+                "--bin",
+                "rusty",
+                "--force",
+            ],
             check=True,
             capture_output=True,
-            text=True
+            text=True,
         )
         print("✅ RustyClawd installed successfully")
         return True
@@ -118,10 +124,9 @@ def should_use_rustyclawd() -> bool:
         # Try to use, install if not available
         if is_rustyclawd_available():
             return True
-        else:
-            print("RustyClawd not found, installing...")
-            return install_rustyclawd()
-    elif env_val in ("0", "false", "no"):
+        print("RustyClawd not found, installing...")
+        return install_rustyclawd()
+    if env_val in ("0", "false", "no"):
         return False
 
     # Auto-detect: Use if available (prefer Rust implementation)

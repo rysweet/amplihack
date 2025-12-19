@@ -8,7 +8,6 @@ import signal
 import subprocess
 import sys
 from pathlib import Path
-from typing import List, Optional
 
 from ..neo4j.manager import Neo4jManager
 from ..proxy.manager import ProxyManager
@@ -48,11 +47,11 @@ class ClaudeLauncher:
 
     def __init__(
         self,
-        proxy_manager: Optional[ProxyManager] = None,
-        append_system_prompt: Optional[Path] = None,
+        proxy_manager: ProxyManager | None = None,
+        append_system_prompt: Path | None = None,
         force_staging: bool = False,
-        checkout_repo: Optional[str] = None,
-        claude_args: Optional[List[str]] = None,
+        checkout_repo: str | None = None,
+        claude_args: list[str] | None = None,
         verbose: bool = False,
     ):
         """Initialize Claude launcher.
@@ -72,7 +71,7 @@ class ClaudeLauncher:
         self.checkout_repo = checkout_repo
         self.claude_args = claude_args or []
         self.verbose = verbose
-        self.claude_process: Optional[subprocess.Popen] = None
+        self.claude_process: subprocess.Popen | None = None
 
         # Cached computation results for performance optimization
         self._cached_resolved_paths = {}  # Cache for path resolution results
@@ -155,7 +154,7 @@ class ClaudeLauncher:
             print(f"Repository checkout failed: {e!s}")
             return False
 
-    def _find_target_directory(self) -> Optional[Path]:
+    def _find_target_directory(self) -> Path | None:
         """Find the target directory for execution.
 
         Returns:
@@ -338,7 +337,7 @@ class ClaudeLauncher:
             or "gpt-5-codex"
         )
 
-    def build_claude_command(self) -> List[str]:
+    def build_claude_command(self) -> list[str]:
         """Build the Claude command with arguments.
 
         Note: Prerequisites have already been validated before this is called,
@@ -384,7 +383,7 @@ class ClaudeLauncher:
 
             return cmd
 
-        elif claude_binary == "claude-trace":
+        if claude_binary == "claude-trace":
             # claude-trace requires --run-with before Claude arguments
             cmd = [claude_binary]
 

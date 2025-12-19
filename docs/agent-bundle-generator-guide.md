@@ -636,7 +636,7 @@ amplihack bundle generate \
 
 - [Requirements Document](./agent-bundle-generator-requirements.md) - Detailed feature requirements
 - [Design Document](./agent-bundle-generator-design.md) - Technical architecture and design decisions
-- [Amplihack Philosophy](../claude/context/PHILOSOPHY.md) - Core principles and design philosophy
+- [Amplihack Philosophy](claude/context/PHILOSOPHY.md) - Core principles and design philosophy
 - [Examples](../examples/) - Sample code and usage patterns
 
 ---

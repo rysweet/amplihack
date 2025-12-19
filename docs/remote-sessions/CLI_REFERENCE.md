@@ -77,12 +77,12 @@ amplihack remote start [OPTIONS] PROMPTS...
 
 **Options:**
 
-| Option        | Type    | Default | Description                                                                             |
-| ------------- | ------- | ------- | --------------------------------------------------------------------------------------- |
-| `--size`      | Choice  | l       | VM size: s, m, l, xl (controls max concurrent sessions)                                |
-| `--region`    | String  | None    | Azure region (uses default if not specified)                                            |
-| `--max-turns` | Integer | 10      | Maximum conversation turns for Claude Code (higher = more complex tasks)                |
-| `--command`   | Choice  | auto    | Amplihack command mode: auto (standard), ultrathink (deep analysis), analyze, fix       |
+| Option        | Type    | Default | Description                                                                       |
+| ------------- | ------- | ------- | --------------------------------------------------------------------------------- |
+| `--size`      | Choice  | l       | VM size: s, m, l, xl (controls max concurrent sessions)                           |
+| `--region`    | String  | None    | Azure region (uses default if not specified)                                      |
+| `--max-turns` | Integer | 10      | Maximum conversation turns for Claude Code (higher = more complex tasks)          |
+| `--command`   | Choice  | auto    | Amplihack command mode: auto (standard), ultrathink (deep analysis), analyze, fix |
 
 **Examples:**
 
@@ -145,7 +145,7 @@ amplihack remote output [OPTIONS] SESSION_ID
 | Option           | Type    | Default | Description                                                     |
 | ---------------- | ------- | ------- | --------------------------------------------------------------- |
 | `--lines`, `-n`  | Integer | 100     | Number of lines to capture from tmux pane                       |
-| `--follow`, `-f` | Flag    | False   | Follow output in real-time (polls every 5s, like `tail -f`)    |
+| `--follow`, `-f` | Flag    | False   | Follow output in real-time (polls every 5s, like `tail -f`)     |
 | `--raw`          | Flag    | False   | Output without formatting (useful for piping to files or tools) |
 
 **Examples:**
@@ -303,12 +303,12 @@ amplihack remote prime --count 2 --region eastus
 
 ## Environment Variables
 
-| Variable                  | Description                                      | Default                          |
-| ------------------------- | ------------------------------------------------ | -------------------------------- |
-| `ANTHROPIC_API_KEY`       | API key for Claude (required)                    | None                             |
-| `AMPLIHACK_REMOTE_STATE`  | State file location                              | `~/.amplihack/remote-state.json` |
-| `AZURE_REGION`            | Default Azure region for VM provisioning         | eastus                           |
-| `AMPLIHACK_AZURE_REGIONS` | Comma-separated fallback regions (for future)    | westus3,eastus,centralus         |
+| Variable                  | Description                                   | Default                          |
+| ------------------------- | --------------------------------------------- | -------------------------------- |
+| `ANTHROPIC_API_KEY`       | API key for Claude (required)                 | None                             |
+| `AMPLIHACK_REMOTE_STATE`  | State file location                           | `~/.amplihack/remote-state.json` |
+| `AZURE_REGION`            | Default Azure region for VM provisioning      | eastus                           |
+| `AMPLIHACK_AZURE_REGIONS` | Comma-separated fallback regions (for future) | westus3,eastus,centralus         |
 
 ## Exit Codes
 
@@ -349,10 +349,7 @@ Location: `~/.amplihack/remote-state.json`
     "amplihack-user-20251125-143000": {
       "size": "Standard_D4s_v3",
       "capacity": 4,
-      "active_sessions": [
-        "sess-20251125-143022-abc",
-        "sess-20251125-143025-def"
-      ],
+      "active_sessions": ["sess-20251125-143022-abc", "sess-20251125-143025-def"],
       "region": "westus3",
       "created_at": "2025-11-25T14:30:00Z"
     }
@@ -364,12 +361,12 @@ Location: `~/.amplihack/remote-state.json`
 
 ## Memory Management
 
-| VM Size | Azure VM SKU      | Total RAM | Max Sessions | Per Session |
-| ------- | ----------------- | --------- | ------------ | ----------- |
-| s       | Standard_D8s_v3   | 32GB      | 1            | 32GB        |
-| m       | Standard_E8s_v5   | 64GB      | 2            | 32GB        |
-| l       | Standard_E16s_v5  | 128GB     | 4            | 32GB        |
-| xl      | Standard_E32s_v5  | 256GB     | 8            | 32GB        |
+| VM Size | Azure VM SKU     | Total RAM | Max Sessions | Per Session |
+| ------- | ---------------- | --------- | ------------ | ----------- |
+| s       | Standard_D8s_v3  | 32GB      | 1            | 32GB        |
+| m       | Standard_E8s_v5  | 64GB      | 2            | 32GB        |
+| l       | Standard_E16s_v5 | 128GB     | 4            | 32GB        |
+| xl      | Standard_E32s_v5 | 256GB     | 8            | 32GB        |
 
 Memory allocation is set via `NODE_OPTIONS="--max-old-space-size=32768"` in each tmux session (32GB per session).
 

@@ -68,6 +68,7 @@ nuget push MyPackage.1.0.0.nupkg \
 #### Consume NuGet Package
 
 Add to project file:
+
 ```xml
 <PackageReference Include="MyPackage" Version="1.0.0" />
 ```
@@ -90,6 +91,7 @@ npm publish
 #### Consume npm Package
 
 Add to .npmrc:
+
 ```
 registry=https://pkgs.dev.azure.com/ORG/_packaging/FEED/npm/registry/
 always-auth=true
@@ -110,6 +112,7 @@ twine upload --repository-url https://pkgs.dev.azure.com/ORG/_packaging/FEED/pyp
 #### Consume Python Package
 
 Configure pip:
+
 ```bash
 pip install --index-url https://pkgs.dev.azure.com/ORG/_packaging/FEED/pypi/simple/ my-package
 ```
@@ -169,6 +172,7 @@ az artifacts feed upstream add \
 ```
 
 Benefits:
+
 - Cached packages for faster downloads
 - Protection against upstream deletions
 - Single source for all dependencies
@@ -185,6 +189,7 @@ az artifacts feed retention set \
 ```
 
 Keeps:
+
 - Last 100 versions
 - Packages downloaded in last 30 days
 
@@ -196,28 +201,28 @@ In azure-pipelines.yml:
 
 ```yaml
 - task: UniversalPackages@0
-  displayName: 'Publish package'
+  displayName: "Publish package"
   inputs:
     command: publish
-    publishDirectory: '$(Build.ArtifactStagingDirectory)'
-    feedsToUsePublish: 'internal'
-    vstsFeedPublish: 'my-feed'
-    vstsFeedPackagePublish: 'my-package'
-    versionOption: 'patch'
+    publishDirectory: "$(Build.ArtifactStagingDirectory)"
+    feedsToUsePublish: "internal"
+    vstsFeedPublish: "my-feed"
+    vstsFeedPackagePublish: "my-package"
+    versionOption: "patch"
 ```
 
 ### Consume in Pipeline
 
 ```yaml
 - task: UniversalPackages@0
-  displayName: 'Download package'
+  displayName: "Download package"
   inputs:
     command: download
-    downloadDirectory: '$(Build.SourcesDirectory)'
-    feedsToUse: 'internal'
-    vstsFeed: 'my-feed'
-    vstsFeedPackage: 'my-package'
-    vstsPackageVersion: '1.0.0'
+    downloadDirectory: "$(Build.SourcesDirectory)"
+    feedsToUse: "internal"
+    vstsFeed: "my-feed"
+    vstsFeedPackage: "my-package"
+    vstsPackageVersion: "1.0.0"
 ```
 
 ### Version Promotion
@@ -276,6 +281,7 @@ az artifacts feed view create \
 ### "Feed not found"
 
 List available feeds:
+
 ```bash
 az artifacts feed list
 ```
@@ -283,6 +289,7 @@ az artifacts feed list
 ### "Authentication failed"
 
 Generate PAT token with Packaging scope:
+
 1. Personal Access Tokens in Azure DevOps
 2. Create token with Packaging (Read/Write)
 3. Use as password in package manager

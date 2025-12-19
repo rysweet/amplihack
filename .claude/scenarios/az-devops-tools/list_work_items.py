@@ -32,7 +32,6 @@ Philosophy:
 
 import argparse
 import json
-import sys
 from typing import Any
 
 from common import AzCliWrapper, ExitCode, format_table, handle_error, load_config
@@ -122,9 +121,7 @@ def execute_wiql_query(
         return []  # Never reached due to sys.exit
 
 
-def format_output(
-    work_items: list[dict[str, Any]], output_format: str
-) -> str:
+def format_output(work_items: list[dict[str, Any]], output_format: str) -> str:
     """Format work items according to output format.
 
     Args:
@@ -152,7 +149,7 @@ def format_output(
             lines.append(
                 f"{item.get('id', '')},"
                 f'"{fields.get("System.Title", "")}",{fields.get("System.State", "")},'
-                f'{fields.get("System.WorkItemType", "")},'
+                f"{fields.get('System.WorkItemType', '')},"
                 f'"{fields.get("System.AssignedTo", {}).get("displayName", "")}"'
             )
         return "\n".join(lines)
@@ -213,9 +210,7 @@ Examples:
     parser.add_argument(
         "--type", dest="work_item_type", help="Filter by work item type (e.g., Bug, Task)"
     )
-    parser.add_argument(
-        "--assigned-to", help="Filter by assignee (use @me for current user)"
-    )
+    parser.add_argument("--assigned-to", help="Filter by assignee (use @me for current user)")
 
     # Output options
     parser.add_argument(
@@ -224,9 +219,7 @@ Examples:
         default="table",
         help="Output format (default: table)",
     )
-    parser.add_argument(
-        "--limit", type=int, help="Maximum number of results to return"
-    )
+    parser.add_argument("--limit", type=int, help="Maximum number of results to return")
 
     # Config options
     parser.add_argument("--org", help="Azure DevOps organization URL")

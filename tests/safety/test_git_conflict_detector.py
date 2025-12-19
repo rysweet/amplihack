@@ -289,10 +289,7 @@ class TestGitConflictDetector(unittest.TestCase):
         detector = GitConflictDetector(self.target_dir)
 
         # Only system files modified
-        git_status_output = (
-            " M .claude/.version\n"
-            " M .claude/settings.json\n"
-        )
+        git_status_output = " M .claude/.version\n M .claude/settings.json\n"
 
         with patch("subprocess.run") as mock_run:
             mock_run.side_effect = [

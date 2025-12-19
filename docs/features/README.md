@@ -7,6 +7,7 @@ Ahoy! This be the treasure map to amplihack's specific features and third-party 
 ## Quick Navigation
 
 **Looking for something specific?**
+
 - [Power Steering](#power-steering) - Intelligent session completion verification
 - [Other Features](#other-features) - Additional amplihack features
 - [Third-Party Integrations](#third-party-integrations) - External service connections
@@ -21,6 +22,7 @@ Intelligent guidance system that prevents common mistakes and ensures work compl
 - [Customization Guide](power-steering/customization-guide.md) - Configure Power Steering for your workflow
 
 **Key Benefits:**
+
 - ✅ Reduces incomplete PRs by 30+%
 - ✅ Reduces review cycles by 20+%
 - ✅ Reduces CI failures by 15+%

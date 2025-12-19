@@ -4,7 +4,6 @@ import argparse
 import os
 import sys
 from pathlib import Path
-from typing import List, Optional
 
 from .docker import DockerManager
 from .launcher import ClaudeLauncher
@@ -12,7 +11,7 @@ from .proxy import ProxyConfig, ProxyManager
 from .utils import is_uvx_deployment
 
 
-def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = None) -> int:
+def launch_command(args: argparse.Namespace, claude_args: list[str] | None = None) -> int:
     """Handle the launch command.
 
     Args:
@@ -121,9 +120,7 @@ def launch_command(args: argparse.Namespace, claude_args: Optional[List[str]] = 
     return launcher.launch_interactive()
 
 
-def handle_auto_mode(
-    sdk: str, args: argparse.Namespace, cmd_args: Optional[List[str]]
-) -> Optional[int]:
+def handle_auto_mode(sdk: str, args: argparse.Namespace, cmd_args: list[str] | None) -> int | None:
     """Handle auto mode for claude, copilot, or codex commands.
 
     Args:
@@ -201,8 +198,8 @@ def handle_append_instruction(args: argparse.Namespace) -> int:
 
 
 def parse_args_with_passthrough(
-    argv: Optional[List[str]] = None,
-) -> "tuple[argparse.Namespace, List[str]]":
+    argv: list[str] | None = None,
+) -> "tuple[argparse.Namespace, list[str]]":
     """Parse arguments with support for -- separator for Claude argument forwarding.
 
     Args:
@@ -377,7 +374,9 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     add_common_sdk_args(claude_parser)
 
     # RustyClawd command (Rust implementation)
-    rustyclawd_parser = subparsers.add_parser("RustyClawd", help="Launch RustyClawd (Rust implementation)")
+    rustyclawd_parser = subparsers.add_parser(
+        "RustyClawd", help="Launch RustyClawd (Rust implementation)"
+    )
     add_claude_specific_args(rustyclawd_parser)
     add_auto_mode_args(rustyclawd_parser)
     add_neo4j_args(rustyclawd_parser)
@@ -405,7 +404,7 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     return parser
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """Main entry point for amplihack CLI.
 
     Args:
@@ -433,7 +432,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         copy_strategy = strategy_manager.determine_target(
             original_target=os.path.join(original_cwd, ".claude"),
             has_conflicts=conflict_result.has_conflicts,
-            conflicting_files=conflict_result.conflicting_files
+            conflicting_files=conflict_result.conflicting_files,
         )
 
         temp_claude_dir = str(copy_strategy.target_dir)
@@ -461,12 +460,14 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Smart PROJECT.md initialization for UVX mode
         if copied:
             try:
-                from .utils.project_initializer import initialize_project_md, InitMode
+                from .utils.project_initializer import InitMode, initialize_project_md
 
                 result = initialize_project_md(Path(original_cwd), mode=InitMode.FORCE)
                 if result.success and result.action_taken.value in ["initialized", "regenerated"]:
                     if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                        print(f"PROJECT.md {result.action_taken.value} for {Path(original_cwd).name}")
+                        print(
+                            f"PROJECT.md {result.action_taken.value} for {Path(original_cwd).name}"
+                        )
             except Exception as e:
                 if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                     print(f"Warning: PROJECT.md initialization failed: {e}")

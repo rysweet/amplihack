@@ -84,6 +84,7 @@ pytest tests/docs/test_documentation_structure.py::TestDocumentationIntegration:
 **Purpose**: Validates all markdown links in documentation.
 
 **What it checks**:
+
 - ✅ Internal links resolve to existing files
 - ✅ Relative paths are correct
 - ✅ Absolute paths from repo root work
@@ -91,6 +92,7 @@ pytest tests/docs/test_documentation_structure.py::TestDocumentationIntegration:
 - ✅ Anchor-only links are valid
 
 **Usage**:
+
 ```python
 from test_documentation_structure import DocLinkValidator
 
@@ -100,6 +102,7 @@ print(validator.get_summary())
 ```
 
 **Expected failures before reorganization**:
+
 - Broken relative paths
 - Files moved without updating links
 - Typos in file names
@@ -112,11 +115,13 @@ print(validator.get_summary())
 **Purpose**: Finds documentation files not reachable from index.md.
 
 **What it checks**:
+
 - ✅ All docs are linked from index.md (directly or transitively)
 - ✅ No "dead" documentation files
 - ✅ Complete link graph from index
 
 **Usage**:
+
 ```python
 from test_documentation_structure import OrphanDetector
 
@@ -126,6 +131,7 @@ print(detector.get_summary())
 ```
 
 **Expected failures before reorganization**:
+
 - Old docs not linked from index
 - Documentation in subdirectories without parent links
 - Archived files not moved to archive/
@@ -137,6 +143,7 @@ print(detector.get_summary())
 **Purpose**: Verifies all major features are documented.
 
 **What it checks**:
+
 - ✅ Goal-seeking agents (user's explicit requirement!)
 - ✅ Core workflows (DEFAULT, INVESTIGATION, DDD)
 - ✅ Core agents (architect, builder, tester)
@@ -144,6 +151,7 @@ print(detector.get_summary())
 - ✅ Memory systems (Neo4j)
 
 **Usage**:
+
 ```python
 from test_documentation_structure import CoverageChecker
 
@@ -153,6 +161,7 @@ print(checker.get_summary())
 ```
 
 **Expected failures before reorganization**:
+
 - Goal-seeking agents not prominently featured
 - Some features buried in subsections
 - Missing keywords in index
@@ -164,11 +173,13 @@ print(checker.get_summary())
 **Purpose**: Ensures all docs are accessible within 3 clicks from index.
 
 **What it checks**:
+
 - ✅ All documents reachable from index.md
 - ✅ Navigation depth ≤ 3 clicks
 - ✅ No deeply buried documentation
 
 **Usage**:
+
 ```python
 from test_documentation_structure import NavigationDepthChecker
 
@@ -178,6 +189,7 @@ print(checker.get_summary())
 ```
 
 **Expected failures before reorganization**:
+
 - Some docs 4-5 clicks deep
 - Nested subdirectories without shortcuts
 - Missing direct links from index
@@ -191,6 +203,7 @@ print(checker.get_summary())
 These tests SHOULD fail initially - that proves we're solving a real problem!
 
 **Expected failures**:
+
 - ❌ 10-20 broken links
 - ❌ 15-30 orphaned documents
 - ❌ 1-2 missing major features
@@ -212,6 +225,7 @@ Automated tests catch structural issues, but human testing catches UX issues.
 **See**: `MANUAL_TEST_PLAN.md` for complete manual testing procedures.
 
 **Key manual tests**:
+
 1. New user experience (can they get started quickly?)
 2. Goal-seeking agent discoverability (user's explicit requirement)
 3. Link integrity (random clicking doesn't hit 404s)
@@ -228,6 +242,7 @@ Add to GitHub Actions or other CI:
 ```
 
 **When to run**:
+
 - On every PR that touches `docs/`
 - Before each release
 - Nightly builds (catch link rot)
@@ -237,6 +252,7 @@ Add to GitHub Actions or other CI:
 ### Tests Pass But Should Fail
 
 If tests pass before reorganization, check:
+
 1. Are you running from correct directory?
 2. Is `docs/` path correct?
 3. Are test thresholds too lenient?
@@ -246,6 +262,7 @@ If tests pass before reorganization, check:
 Common issues and fixes:
 
 **Broken Links**:
+
 ```bash
 # Run link validator to see specific failures
 pytest tests/docs/test_documentation_structure.py::TestDocumentationIntegration::test_link_validation_on_real_docs -v
@@ -254,6 +271,7 @@ pytest tests/docs/test_documentation_structure.py::TestDocumentationIntegration:
 ```
 
 **Orphans**:
+
 ```bash
 # Run orphan detector
 pytest tests/docs/test_documentation_structure.py::TestDocumentationIntegration::test_orphan_detection_on_real_docs -v
@@ -262,6 +280,7 @@ pytest tests/docs/test_documentation_structure.py::TestDocumentationIntegration:
 ```
 
 **Coverage Gaps**:
+
 ```bash
 # Run coverage checker
 pytest tests/docs/test_documentation_structure.py::TestDocumentationIntegration::test_feature_coverage -v
@@ -270,6 +289,7 @@ pytest tests/docs/test_documentation_structure.py::TestDocumentationIntegration:
 ```
 
 **Deep Navigation**:
+
 ```bash
 # Run depth checker
 pytest tests/docs/test_documentation_structure.py::TestDocumentationIntegration::test_navigation_depth -v
@@ -352,21 +372,25 @@ class CustomValidator:
 These tests follow amplihack's core principles:
 
 ✅ **Ruthless Simplicity**
+
 - No complex frameworks
 - Standard library + pytest
 - < 500 lines of test code
 
 ✅ **Zero-BS Implementation**
+
 - No stubs or placeholders
 - Every function works or doesn't exist
 - Real validation, real results
 
 ✅ **Modular Design**
+
 - Each validator is self-contained
 - Clear public API
 - Easily testable components
 
 ✅ **TDD Approach**
+
 - Tests written BEFORE implementation
 - Tests define success criteria
 - Red → Green → Refactor
@@ -374,11 +398,13 @@ These tests follow amplihack's core principles:
 ## Success Metrics
 
 **Before reorganization**:
+
 - Test suite execution time: < 10 seconds
 - Test coverage: 100% of validators
 - Expected failures: 4 major categories
 
 **After reorganization**:
+
 - All tests passing
 - Zero broken links
 - Zero orphans
@@ -388,6 +414,7 @@ These tests follow amplihack's core principles:
 ## Questions?
 
 See:
+
 - `MANUAL_TEST_PLAN.md` - Manual testing procedures
 - `test_documentation_structure.py` - Automated test implementation
 - `/home/azureuser/src/amplihack/docs/DISCOVERIES.md` - Known issues and solutions

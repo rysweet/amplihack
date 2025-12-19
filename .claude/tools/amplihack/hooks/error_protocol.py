@@ -8,7 +8,6 @@ and structured error information.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 
 class HookErrorSeverity(Enum):
@@ -32,8 +31,8 @@ class HookError:
 
     severity: HookErrorSeverity
     message: str
-    context: Optional[str] = None
-    suggestion: Optional[str] = None
+    context: str | None = None
+    suggestion: str | None = None
 
 
 class HookException(Exception):
@@ -51,19 +50,13 @@ class HookException(Exception):
 class HookImportError(HookException):
     """Specialized exception for import failures in hooks."""
 
-    pass
-
 
 class HookConfigError(HookException):
     """Specialized exception for configuration errors in hooks."""
 
-    pass
-
 
 class HookValidationError(HookException):
     """Specialized exception for validation errors in hooks."""
-
-    pass
 
 
 __all__ = [

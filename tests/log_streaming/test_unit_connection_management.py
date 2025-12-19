@@ -6,7 +6,6 @@ connection lifecycle events, and connection cleanup.
 
 import asyncio
 from dataclasses import dataclass
-from typing import Optional
 from unittest.mock import AsyncMock
 
 import pytest
@@ -18,7 +17,7 @@ class MockClient:
 
     client_id: str
     connected: bool = True
-    last_ping: Optional[float] = None
+    last_ping: float | None = None
 
     def __post_init__(self):
         self.send_event = AsyncMock()

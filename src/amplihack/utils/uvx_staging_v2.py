@@ -6,7 +6,6 @@ using the immutable data structures and proper error handling.
 
 import shutil
 from pathlib import Path
-from typing import List, Optional
 
 from .cleanup_registry import CleanupRegistry
 from .uvx_detection import detect_uvx_deployment, resolve_framework_paths
@@ -26,8 +25,8 @@ class UVXStager:
 
     def __init__(
         self,
-        config: Optional[UVXConfiguration] = None,
-        cleanup_registry: Optional[CleanupRegistry] = None,
+        config: UVXConfiguration | None = None,
+        cleanup_registry: CleanupRegistry | None = None,
     ):
         """Initialize UVX stager with configuration.
 
@@ -46,9 +45,7 @@ class UVXStager:
 
             print(f"[UVX STAGING DEBUG] {message}", file=sys.stderr)
 
-    def stage_framework_files(
-        self, session_state: Optional[UVXSessionState] = None
-    ) -> StagingResult:
+    def stage_framework_files(self, session_state: UVXSessionState | None = None) -> StagingResult:
         """Stage framework files from UVX installation to working directory.
 
         Args:
@@ -254,7 +251,7 @@ class UVXStager:
 
         return result
 
-    def _find_stageable_items(self, source_root: Path) -> List[str]:
+    def _find_stageable_items(self, source_root: Path) -> list[str]:
         """Find all items in source root that should be staged.
 
         Args:
@@ -393,7 +390,7 @@ class UVXStager:
 _default_stager = UVXStager()
 
 
-def stage_uvx_framework(config: Optional[UVXConfiguration] = None) -> bool:
+def stage_uvx_framework(config: UVXConfiguration | None = None) -> bool:
     """Stage UVX framework files using default stager.
 
     Args:

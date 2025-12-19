@@ -56,12 +56,12 @@ Understand the philosophy and architecture behind amplihack.
 - [Development Philosophy](PHILOSOPHY.md) - Ruthless simplicity and modular design
 - [This Is The Way](THIS_IS_THE_WAY.md) - Best practices and patterns
 - [Workspace Pattern](WORKSPACE_PATTERN.md) - Organize your development environment
-- [Trust & Anti-Sycophancy](../claude/context/TRUST.md) - Honest agent behavior
+- [Trust & Anti-Sycophancy](claude/context/TRUST.md) - Honest agent behavior
 
 ### Architecture
 
-- [Project Overview](../claude/context/PROJECT.md) - System architecture
-- [Development Patterns](../claude/context/PATTERNS.md) - Proven implementation patterns
+- [Project Overview](claude/context/PROJECT.md) - System architecture
+- [Development Patterns](claude/context/PATTERNS.md) - Proven implementation patterns
 - [Blarify Architecture](blarify_architecture.md) - Understanding the Blarify integration
 - [Documentation Knowledge Graph](documentation_knowledge_graph.md) - How docs connect
 
@@ -80,8 +80,8 @@ Proven methodologies for consistent, high-quality results.
 
 ### Core Workflows
 
-- [Default Workflow](../claude/workflow/DEFAULT_WORKFLOW.md) - Standard 13-step development process
-- [Investigation Workflow](../claude/workflow/INVESTIGATION_WORKFLOW.md) - Deep codebase analysis and understanding
+- [Default Workflow](claude/workflow/DEFAULT_WORKFLOW.md) - Standard multi-step development process
+- [Investigation Workflow](claude/workflow/INVESTIGATION_WORKFLOW.md) - Deep codebase analysis and understanding
 - [Document-Driven Development (DDD)](document_driven_development/README.md) - Documentation-first approach for large features
 
 ### DDD Deep Dive
@@ -113,9 +113,9 @@ Document-Driven Development is a systematic methodology where documentation come
 
 ### Advanced Workflows
 
-- [N-Version Programming](../claude/workflow/N_VERSION_WORKFLOW.md) - Multiple solutions for critical code
-- [Multi-Agent Debate](../claude/workflow/DEBATE_WORKFLOW.md) - Structured decision-making
-- [Cascade Workflow](../claude/workflow/CASCADE_WORKFLOW.md) - Graceful degradation patterns
+- [N-Version Programming](claude/workflow/N_VERSION_WORKFLOW.md) - Multiple solutions for critical code
+- [Multi-Agent Debate](claude/workflow/DEBATE_WORKFLOW.md) - Structured decision-making
+- [Cascade Workflow](claude/workflow/CASCADE_WORKFLOW.md) - Graceful degradation patterns
 - [Workflow Enforcement](workflow-enforcement.md) - Ensure process compliance
 
 ---
@@ -126,19 +126,19 @@ Specialized AI agents and tools for every development task.
 
 ### Core Agents
 
-- [Agents Overview](../claude/agents/amplihack/README.md) - Complete agent catalog
-- [Architect](../claude/agents/amplihack/core/architect.md) - System design and specifications
-- [Builder](../claude/agents/amplihack/core/builder.md) - Code implementation from specs
-- [Reviewer](../claude/agents/amplihack/core/reviewer.md) - Quality assurance and compliance
-- [Tester](../claude/agents/amplihack/core/tester.md) - Test generation and validation
+- [Agents Overview](claude/agents/amplihack/README.md) - Complete agent catalog
+- [Architect](claude/agents/amplihack/core/architect.md) - System design and specifications
+- [Builder](claude/agents/amplihack/core/builder.md) - Code implementation from specs
+- [Reviewer](claude/agents/amplihack/core/reviewer.md) - Quality assurance and compliance
+- [Tester](claude/agents/amplihack/core/tester.md) - Test generation and validation
 
 ### Specialized Agents
 
-- [API Designer](../claude/agents/amplihack/specialized/api-designer.md) - Contract definitions
-- [Security Agent](../claude/agents/amplihack/specialized/security.md) - Vulnerability assessment
-- [Database Agent](../claude/agents/amplihack/specialized/database.md) - Schema and query optimization
-- [Integration Agent](../claude/agents/amplihack/specialized/integration.md) - External service connections
-- [Cleanup Agent](../claude/agents/amplihack/specialized/cleanup.md) - Code simplification
+- [API Designer](claude/agents/amplihack/specialized/api-designer.md) - Contract definitions
+- [Security Agent](claude/agents/amplihack/specialized/security.md) - Vulnerability assessment
+- [Database Agent](claude/agents/amplihack/specialized/database.md) - Schema and query optimization
+- [Integration Agent](claude/agents/amplihack/specialized/integration.md) - External service connections
+- [Cleanup Agent](claude/agents/amplihack/specialized/cleanup.md) - Code simplification
 
 ### Goal-Seeking Agents
 
@@ -154,27 +154,35 @@ Specialized AI agents and tools for every development task.
 
 ### Workflow Agents
 
-- [Ambiguity Handler](../claude/agents/amplihack/specialized/ambiguity.md) - Clarify unclear requirements
-- [Optimizer](../claude/agents/amplihack/specialized/optimizer.md) - Performance improvements
-- [Pattern Recognition](../claude/agents/amplihack/specialized/patterns.md) - Identify reusable solutions
+- [Ambiguity Handler](claude/agents/amplihack/specialized/ambiguity.md) - Clarify unclear requirements
+- [Optimizer](claude/agents/amplihack/specialized/optimizer.md) - Performance improvements
+- [Pattern Recognition](claude/agents/amplihack/specialized/patterns.md) - Identify reusable solutions
 
 ### Claude Code Skills
 
 Modular, on-demand capabilities that extend amplihack:
 
 - [Skills Catalog](skills/SKILL_CATALOG.md) - Complete skills catalog
-- [Documentation Writing](../claude/skills/documentation-writing/README.md) - Eight Rules compliance
-- [Mermaid Diagrams](../claude/skills/mermaid-diagram-generator/SKILL.md) - Visual documentation
-- [Test Gap Analyzer](../claude/skills/test-gap-analyzer/SKILL.md) - Find untested code
-- [Code Smell Detector](../claude/skills/code-smell-detector/SKILL.md) - Identify anti-patterns
+- [Documentation Writing](claude/skills/documentation-writing/README.md) - Eight Rules compliance
+- [Mermaid Diagrams](claude/skills/mermaid-diagram-generator/SKILL.md) - Visual documentation
+- [Test Gap Analyzer](claude/skills/test-gap-analyzer/SKILL.md) - Find untested code
+- [Code Smell Detector](claude/skills/code-smell-detector/SKILL.md) - Identify anti-patterns
 
 ### Scenario Tools
 
 Production-ready executable tools following the Progressive Maturity Model:
 
-- [Scenario Tools Overview](../claude/scenarios/README.md) - Progressive maturity model
+- [Scenario Tools Overview](claude/scenarios/README.md) - Progressive maturity model
 - [Create Your Own Tools](CREATE_YOUR_OWN_TOOLS.md) - Build custom tools
 - [Agent Bundle Generator](agent-bundle-generator-guide.md) - Package agents for distribution
+
+#### Available Tools
+
+- **[check-broken-links](claude/scenarios/check-broken-links/README.md)** - Automated link checker for documentation sites and markdown files
+  - Check GitHub Pages sites or local documentation
+  - Catch broken internal links and dead external URLs
+  - Integrates with Makefile: `make check-broken-links TARGET=<url-or-path>`
+  - Returns exit codes for CI integration
 
 ---
 
@@ -322,7 +330,7 @@ Testing strategies, quality assurance, and validation patterns.
 ### Testing
 
 - [Benchmarking](BENCHMARKING.md) - Performance measurement and comparison
-- [Test Gap Analyzer](../claude/skills/test-gap-analyzer/SKILL.md) - Find untested code
+- [Test Gap Analyzer](claude/skills/test-gap-analyzer/SKILL.md) - Find untested code
 - [CS Validator](cs-validator/README.md) - Code style validation
 - [Testing Strategies](testing/README.md) - Comprehensive testing guide
 
@@ -437,7 +445,7 @@ amplihack follows three core principles:
 # UltraThink will:
 # 1. Read the default workflow
 # 2. Orchestrate multiple agents (architect, security, api-designer, database, builder, tester)
-# 3. Follow all 13 steps systematically
+# 3. Follow all workflow steps systematically
 # 4. Ensure quality and philosophy compliance
 # 5. Generate tests and documentation
 ```

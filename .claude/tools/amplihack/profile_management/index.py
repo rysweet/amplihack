@@ -4,10 +4,9 @@ Builds and maintains an index of skills for fast filtering. Basic version
 for Phase 2, with scale optimization planned for Phase 6.
 """
 
-from pathlib import Path
-from typing import Dict, Optional
 import json
 from datetime import datetime
+from pathlib import Path
 
 
 class SkillIndexBuilder:
@@ -26,7 +25,7 @@ class SkillIndexBuilder:
         self.skills_dir = skills_dir or Path(".claude/skills")
         self.index_file = self.skills_dir / "_index.json"
 
-    def build_index(self, force_rebuild: bool = False) -> Dict:
+    def build_index(self, force_rebuild: bool = False) -> dict:
         """Build skill index from directory structure.
 
         Args:
@@ -51,7 +50,7 @@ class SkillIndexBuilder:
         index_data = {
             "version": "1.0",
             "generated": datetime.utcnow().isoformat() + "Z",
-            "skills": []
+            "skills": [],
         }
 
         # Scan skills directory
@@ -78,7 +77,7 @@ class SkillIndexBuilder:
                         "name": skill_name,
                         "category": category,
                         "path": str(skill_file.relative_to(self.skills_dir.parent)),
-                        "description": self._extract_description(skill_file)
+                        "description": self._extract_description(skill_file),
                     }
                     index_data["skills"].append(skill_info)
 
@@ -101,7 +100,7 @@ class SkillIndexBuilder:
         """
         return f"Skill: {skill_file.parent.name}"
 
-    def _load_index(self) -> Dict:
+    def _load_index(self) -> dict:
         """Load existing index from file.
 
         Returns:
@@ -115,10 +114,10 @@ class SkillIndexBuilder:
                 "version": "1.0",
                 "generated": datetime.utcnow().isoformat() + "Z",
                 "skills": [],
-                "total_skills": 0
+                "total_skills": 0,
             }
 
-    def _save_index(self, index_data: Dict):
+    def _save_index(self, index_data: dict):
         """Save index to file.
 
         Args:
@@ -130,7 +129,7 @@ class SkillIndexBuilder:
         with open(self.index_file, "w") as f:
             json.dump(index_data, f, indent=2)
 
-    def refresh_index(self) -> Dict:
+    def refresh_index(self) -> dict:
         """Force rebuild of skill index.
 
         Convenience method for rebuilding index.

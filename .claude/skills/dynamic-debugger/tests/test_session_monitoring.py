@@ -5,28 +5,26 @@ Testing pyramid distribution:
 - Tests focus on resource monitoring with/without psutil, limit checking, and JSON output
 """
 
-import sys
 import json
-import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock, Mock
+import sys
 from datetime import datetime, timedelta
 from io import StringIO
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
 
 # Add scripts directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 # Import with error handling for syntax issues in the original script
 try:
-    from monitor_session import (
-        get_process_info,
-        monitor_session,
-        HAS_PSUTIL
-    )
     # Import limits safely
     import monitor_session as ms
-    MAX_MEMORY_MB = getattr(ms, 'MAX_MEMORY_MB', 4096)
-    SESSION_TIMEOUT_MIN = getattr(ms, 'SESSION_TIMEOUT_MIN', 30)
+    from monitor_session import HAS_PSUTIL, get_process_info, monitor_session
+
+    MAX_MEMORY_MB = getattr(ms, "MAX_MEMORY_MB", 4096)
+    SESSION_TIMEOUT_MIN = getattr(ms, "SESSION_TIMEOUT_MIN", 30)
 except SyntaxError:
     # If there's a syntax error, skip these tests
     pytest.skip("monitor_session.py has syntax errors", allow_module_level=True)
@@ -38,6 +36,7 @@ except ImportError as e:
 # PROCESS INFO TESTS (6 tests)
 # ============================================================================
 
+
 class TestProcessInfo:
     """Test process information gathering."""
 
@@ -45,6 +44,7 @@ class TestProcessInfo:
     def test_get_process_info_with_psutil_valid_pid(self):
         """Test getting process info with psutil for valid PID."""
         import os
+
         current_pid = os.getpid()
 
         info = get_process_info(current_pid)
@@ -77,6 +77,7 @@ class TestProcessInfo:
     def test_process_info_structure(self):
         """Test that process info has correct structure."""
         import os
+
         current_pid = os.getpid()
 
         info = get_process_info(current_pid)
@@ -93,6 +94,7 @@ class TestProcessInfo:
     def test_process_info_memory_units(self):
         """Test that memory is reported in MB."""
         import os
+
         current_pid = os.getpid()
 
         info = get_process_info(current_pid)
@@ -116,6 +118,7 @@ class TestProcessInfo:
 # ============================================================================
 # MONITORING SESSION TESTS (6 tests)
 # ============================================================================
+
 
 class TestMonitoringSession:
     """Test monitoring session functionality."""
@@ -183,6 +186,7 @@ class TestMonitoringSession:
     def test_monitor_session_memory_limit_exceeded(self, tmp_path, capsys):
         """Test monitoring with memory limit exceeded."""
         import os
+
         pid_file = tmp_path / "test.pid"
         pid_file.write_text(f"{os.getpid()}\n")
 
@@ -191,7 +195,7 @@ class TestMonitoringSession:
             "cpu_percent": 5.0,
             "memory_mb": MAX_MEMORY_MB + 1000,  # Exceed limit
             "status": "running",
-            "create_time": datetime.now() - timedelta(minutes=5)
+            "create_time": datetime.now() - timedelta(minutes=5),
         }
 
         with patch("monitor_session.get_process_info") as mock_get_info:
@@ -204,12 +208,15 @@ class TestMonitoringSession:
             outputs = [json.loads(line) for line in captured.out.strip().split("\n")]
 
             # Should have warning about memory limit
-            assert any("warnings" in output and len(output.get("warnings", [])) > 0 for output in outputs)
+            assert any(
+                "warnings" in output and len(output.get("warnings", [])) > 0 for output in outputs
+            )
 
     @pytest.mark.skipif(not HAS_PSUTIL, reason="psutil not available")
     def test_monitor_session_timeout_exceeded(self, tmp_path, capsys):
         """Test monitoring with session timeout exceeded."""
         import os
+
         pid_file = tmp_path / "test.pid"
         pid_file.write_text(f"{os.getpid()}\n")
 
@@ -218,7 +225,7 @@ class TestMonitoringSession:
             "cpu_percent": 1.0,
             "memory_mb": 100.0,
             "status": "running",
-            "create_time": datetime.now() - timedelta(minutes=SESSION_TIMEOUT_MIN + 10)
+            "create_time": datetime.now() - timedelta(minutes=SESSION_TIMEOUT_MIN + 10),
         }
 
         with patch("monitor_session.get_process_info") as mock_get_info:
@@ -230,12 +237,15 @@ class TestMonitoringSession:
             outputs = [json.loads(line) for line in captured.out.strip().split("\n")]
 
             # Should have warning about timeout
-            assert any("warnings" in output and len(output.get("warnings", [])) > 0 for output in outputs)
+            assert any(
+                "warnings" in output and len(output.get("warnings", [])) > 0 for output in outputs
+            )
 
 
 # ============================================================================
 # JSON OUTPUT FORMAT TESTS (6 tests)
 # ============================================================================
+
 
 class TestJSONOutputFormat:
     """Test JSON output format from monitoring."""
@@ -274,6 +284,7 @@ class TestJSONOutputFormat:
     def test_json_output_structure_status(self, tmp_path, capsys):
         """Test JSON structure for status updates."""
         import os
+
         pid_file = tmp_path / "test.pid"
         pid_file.write_text(f"{os.getpid()}\n")
 
@@ -281,7 +292,7 @@ class TestJSONOutputFormat:
             "cpu_percent": 5.0,
             "memory_mb": 100.0,
             "status": "running",
-            "create_time": datetime.now() - timedelta(minutes=5)
+            "create_time": datetime.now() - timedelta(minutes=5),
         }
 
         with patch("monitor_session.get_process_info") as mock_get_info:
@@ -302,6 +313,7 @@ class TestJSONOutputFormat:
     def test_json_output_numeric_precision(self, tmp_path, capsys):
         """Test that numeric values have appropriate precision."""
         import os
+
         pid_file = tmp_path / "test.pid"
         pid_file.write_text(f"{os.getpid()}\n")
 
@@ -309,7 +321,7 @@ class TestJSONOutputFormat:
             "cpu_percent": 12.3456,
             "memory_mb": 234.5678,
             "status": "running",
-            "create_time": datetime.now()
+            "create_time": datetime.now(),
         }
 
         with patch("monitor_session.HAS_PSUTIL", True):
@@ -332,6 +344,7 @@ class TestJSONOutputFormat:
     def test_json_output_warnings_list(self, tmp_path, capsys):
         """Test that warnings are output as a list."""
         import os
+
         pid_file = tmp_path / "test.pid"
         pid_file.write_text(f"{os.getpid()}\n")
 
@@ -340,7 +353,7 @@ class TestJSONOutputFormat:
             "cpu_percent": 5.0,
             "memory_mb": MAX_MEMORY_MB + 1000,
             "status": "running",
-            "create_time": datetime.now() - timedelta(minutes=SESSION_TIMEOUT_MIN + 10)
+            "create_time": datetime.now() - timedelta(minutes=SESSION_TIMEOUT_MIN + 10),
         }
 
         with patch("monitor_session.HAS_PSUTIL", True):
@@ -381,6 +394,7 @@ class TestJSONOutputFormat:
 # RESOURCE LIMIT TESTS (Bonus)
 # ============================================================================
 
+
 class TestResourceLimits:
     """Test resource limit checking and enforcement."""
 
@@ -393,6 +407,7 @@ class TestResourceLimits:
     def test_cpu_activity_tracking(self, tmp_path):
         """Test that CPU activity updates last_activity timestamp."""
         import os
+
         pid_file = tmp_path / "test.pid"
         pid_file.write_text(f"{os.getpid()}\n")
 
@@ -401,14 +416,14 @@ class TestResourceLimits:
             "cpu_percent": 0.5,  # Below threshold
             "memory_mb": 100.0,
             "status": "running",
-            "create_time": datetime.now()
+            "create_time": datetime.now(),
         }
 
         mock_info_high = {
             "cpu_percent": 5.0,  # Above threshold
             "memory_mb": 100.0,
             "status": "running",
-            "create_time": datetime.now()
+            "create_time": datetime.now(),
         }
 
         with patch("monitor_session.get_process_info") as mock_get_info:
@@ -425,6 +440,7 @@ class TestResourceLimits:
 # ============================================================================
 # CLI INTERFACE TESTS (Bonus)
 # ============================================================================
+
 
 class TestCLIInterface:
     """Test command-line interface."""

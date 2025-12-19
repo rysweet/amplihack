@@ -15,7 +15,6 @@ Exit Codes:
 import ast
 import sys
 from pathlib import Path
-from typing import List, Set, Tuple
 
 # Known optional dependencies that require try/except handling
 OPTIONAL_DEPENDENCIES = {
@@ -33,7 +32,7 @@ OPTIONAL_DEPENDENCIES = {
 }
 
 
-def extract_imports(file_path: Path) -> Tuple[Set[str], Set[str]]:
+def extract_imports(file_path: Path) -> tuple[set[str], set[str]]:
     """Extract imports and identify which are in try/except blocks.
 
     Returns:
@@ -77,7 +76,7 @@ def extract_imports(file_path: Path) -> Tuple[Set[str], Set[str]]:
         return set(), set()
 
 
-def check_optional_dependencies(file_path: Path) -> List[str]:
+def check_optional_dependencies(file_path: Path) -> list[str]:
     """Check if optional dependencies have proper try/except handling."""
     errors = []
 

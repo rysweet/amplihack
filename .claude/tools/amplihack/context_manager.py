@@ -26,7 +26,7 @@ import json
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 __all__ = [
     "ContextManager",
@@ -54,7 +54,7 @@ class ContextStatus:
     threshold_status: str  # 'ok', 'consider', 'recommended', 'urgent'
     recommendation: str
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary format."""
         return {
             "current_tokens": self.current_tokens,
@@ -70,17 +70,17 @@ class ContextSnapshot:
     """Context snapshot metadata and content."""
 
     snapshot_id: str
-    name: Optional[str]
+    name: str | None
     timestamp: datetime
     original_requirements: str
-    key_decisions: List[Dict[str, str]] = field(default_factory=list)
+    key_decisions: list[dict[str, str]] = field(default_factory=list)
     implementation_state: str = ""
-    open_items: List[str] = field(default_factory=list)
-    tools_used: List[str] = field(default_factory=list)
+    open_items: list[str] = field(default_factory=list)
+    tools_used: list[str] = field(default_factory=list)
     token_count: int = 0
-    file_path: Optional[Path] = None
+    file_path: Path | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary format for JSON serialization."""
         return {
             "snapshot_id": self.snapshot_id,
@@ -96,7 +96,7 @@ class ContextSnapshot:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ContextSnapshot":
+    def from_dict(cls, data: dict[str, Any]) -> "ContextSnapshot":
         """Create ContextSnapshot from dictionary."""
         return cls(
             snapshot_id=data["snapshot_id"],
@@ -159,9 +159,9 @@ class ContextManager:
 
     def __init__(
         self,
-        snapshot_dir: Optional[Path] = None,
+        snapshot_dir: Path | None = None,
         max_tokens: int = DEFAULT_MAX_TOKENS,
-        state_file: Optional[Path] = None,
+        state_file: Path | None = None,
     ):
         """Initialize context manager.
 
@@ -186,7 +186,7 @@ class ContextManager:
         # Load automation state
         self.state = self._load_state()
 
-    def _resolve_path(self, provided_path: Optional[Path], default_path: str) -> Path:
+    def _resolve_path(self, provided_path: Path | None, default_path: str) -> Path:
         """Resolve path relative to project root."""
         if provided_path:
             return provided_path if isinstance(provided_path, Path) else Path(provided_path)
@@ -254,7 +254,7 @@ class ContextManager:
     # ========================================================================
 
     def create_snapshot(
-        self, conversation_data: List[Dict[str, Any]], name: Optional[str] = None
+        self, conversation_data: list[dict[str, Any]], name: str | None = None
     ) -> ContextSnapshot:
         """Create intelligent context snapshot.
 
@@ -294,7 +294,7 @@ class ContextManager:
 
         return snapshot
 
-    def _extract_from_conversation(self, conversation_data: List[Dict]) -> Dict[str, Any]:
+    def _extract_from_conversation(self, conversation_data: list[dict]) -> dict[str, Any]:
         """Extract essential context from conversation history."""
         return {
             "original_requirements": self._extract_original_requirements(conversation_data),
@@ -304,7 +304,7 @@ class ContextManager:
             "tools_used": self._extract_tools_used(conversation_data),
         }
 
-    def _extract_original_requirements(self, conversation_data: List[Dict]) -> str:
+    def _extract_original_requirements(self, conversation_data: list[dict]) -> str:
         """Extract first user message as original requirements."""
         for message in conversation_data:
             if message.get("role") == "user":
@@ -312,7 +312,7 @@ class ContextManager:
                 return content[:500] + ("..." if len(content) > 500 else "")
         return "No user requirements found"
 
-    def _extract_key_decisions(self, conversation_data: List[Dict]) -> List[Dict[str, str]]:
+    def _extract_key_decisions(self, conversation_data: list[dict]) -> list[dict[str, str]]:
         """Extract key decisions from assistant messages."""
         decisions = []
         decision_keywords = ["decided", "chosen", "selected", "opted", "approach"]
@@ -337,7 +337,7 @@ class ContextManager:
 
         return decisions[:5]
 
-    def _extract_implementation_state(self, conversation_data: List[Dict]) -> str:
+    def _extract_implementation_state(self, conversation_data: list[dict]) -> str:
         """Summarize current implementation state from tool usage."""
         tool_usage_count = sum(
             1 for msg in conversation_data if msg.get("role") == "tool_use" or "tool_name" in msg
@@ -358,7 +358,7 @@ class ContextManager:
 
         return state
 
-    def _extract_open_items(self, conversation_data: List[Dict]) -> List[str]:
+    def _extract_open_items(self, conversation_data: list[dict]) -> list[str]:
         """Extract open questions and blockers."""
         open_items = []
         question_indicators = ["?", "todo", "need to", "should we", "blocker", "pending"]
@@ -384,7 +384,7 @@ class ContextManager:
 
         return list(set(open_items))[:10]
 
-    def _extract_tools_used(self, conversation_data: List[Dict]) -> List[str]:
+    def _extract_tools_used(self, conversation_data: list[dict]) -> list[str]:
         """Extract list of unique tools used."""
         tools = set()
         for message in conversation_data:
@@ -393,7 +393,7 @@ class ContextManager:
                 tools.add(tool_name)
         return sorted(list(tools))
 
-    def _estimate_tokens(self, context: Dict[str, Any]) -> int:
+    def _estimate_tokens(self, context: dict[str, Any]) -> int:
         """Rough token estimation (1 token ≈ 4 characters)."""
         total_chars = 0
         total_chars += len(context.get("original_requirements", ""))
@@ -538,7 +538,7 @@ class ContextManager:
     # Snapshot Listing
     # ========================================================================
 
-    def list_snapshots(self) -> List[Dict[str, Any]]:
+    def list_snapshots(self) -> list[dict[str, Any]]:
         """List all available context snapshots.
 
         Returns:
@@ -584,8 +584,8 @@ class ContextManager:
     # ========================================================================
 
     def run_automation(
-        self, current_tokens: int, conversation_data: Optional[List[Dict[str, Any]]] = None
-    ) -> Dict[str, Any]:
+        self, current_tokens: int, conversation_data: list[dict[str, Any]] | None = None
+    ) -> dict[str, Any]:
         """Run automatic context management.
 
         Called by post_tool_use hook for automatic monitoring,
@@ -704,7 +704,7 @@ class ContextManager:
             logging.debug(f"Auto-snapshot failed: {e}")
             return False
 
-    def _handle_compaction(self, result: Dict[str, Any]) -> None:
+    def _handle_compaction(self, result: dict[str, Any]) -> None:
         """Handle detected compaction by auto-rehydrating."""
         snapshots = self.state.get("snapshots_created", [])
         if not snapshots:
@@ -758,7 +758,7 @@ class ContextManager:
     # State Management
     # ========================================================================
 
-    def _load_state(self) -> Dict[str, Any]:
+    def _load_state(self) -> dict[str, Any]:
         """Load automation state from disk."""
         if self.state_file.exists():
             try:
@@ -801,7 +801,7 @@ def check_context_status(current_tokens: int, **kwargs) -> ContextStatus:
 
 
 def create_context_snapshot(
-    conversation_data: List[Dict[str, Any]], name: Optional[str] = None, **kwargs
+    conversation_data: list[dict[str, Any]], name: str | None = None, **kwargs
 ) -> ContextSnapshot:
     """Create context snapshot.
 
@@ -830,7 +830,7 @@ def rehydrate_from_snapshot(snapshot_id: str, level: str = "standard", **kwargs)
     return manager.rehydrate(snapshot_id, level)
 
 
-def list_context_snapshots(**kwargs) -> List[Dict[str, Any]]:
+def list_context_snapshots(**kwargs) -> list[dict[str, Any]]:
     """List all available snapshots.
 
     Returns:
@@ -841,8 +841,8 @@ def list_context_snapshots(**kwargs) -> List[Dict[str, Any]]:
 
 
 def run_automation(
-    current_tokens: int, conversation_data: Optional[List[Dict[str, Any]]] = None, **kwargs
-) -> Dict[str, Any]:
+    current_tokens: int, conversation_data: list[dict[str, Any]] | None = None, **kwargs
+) -> dict[str, Any]:
     """Run automatic context management (called from hooks).
 
     Args:

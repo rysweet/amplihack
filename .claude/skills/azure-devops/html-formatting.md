@@ -50,15 +50,19 @@ python .claude/scenarios/az-devops-tools/format_html.py story.md -o output.html
 ## Supported Markdown
 
 ### Headings
+
 **Markdown:** `# H1`, `## H2`, `### H3`
 **HTML:** `<h1>H1</h1>`, `<h2>H2</h2>`, `<h3>H3</h3>`
 
 ### Bold and Italic
+
 **Markdown:** `**bold**`, `*italic*`, `***bold italic***`
 **HTML:** `<strong>bold</strong>`, `<em>italic</em>`, `<strong><em>bold italic</em></strong>`
 
 ### Lists
+
 **Markdown:**
+
 ```markdown
 - Item 1
 - Item 2
@@ -68,6 +72,7 @@ python .claude/scenarios/az-devops-tools/format_html.py story.md -o output.html
 ```
 
 **HTML:**
+
 ```html
 <ul>
   <li>Item 1</li>
@@ -81,10 +86,12 @@ python .claude/scenarios/az-devops-tools/format_html.py story.md -o output.html
 ```
 
 ### Code
+
 **Markdown:** `` `inline code` ``
 **HTML:** `<code>inline code</code>`
 
 **Markdown:**
+
 ````markdown
 ```python
 def hello():
@@ -93,6 +100,7 @@ def hello():
 ````
 
 **HTML:**
+
 ```html
 <pre><code class="language-python">def hello():
     print("Hello!")
@@ -100,6 +108,7 @@ def hello():
 ```
 
 ### Links
+
 **Markdown:** `[Link text](https://example.com)`
 **HTML:** `<a href="https://example.com">Link text</a>`
 

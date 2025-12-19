@@ -7,10 +7,12 @@ Ahoy, matey! Welcome to the memory system documentation - where agents remember 
 ## Quick Navigation
 
 **New to memory systems?** Start here:
+
 - [Agent Memory Integration](../AGENT_MEMORY_INTEGRATION.md) - How agents share and persist knowledge
 - [Agent Memory Quickstart](../AGENT_MEMORY_QUICKSTART.md) - Get started in 5 minutes
 
 **Looking for something specific?**
+
 - [Neo4j Memory System](#neo4j-memory-system) - Graph-based memory
 - [Testing & Validation](#testing--validation) - Memory system tests
 - [External Knowledge](#external-knowledge) - Import external data

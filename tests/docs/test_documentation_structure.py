@@ -17,9 +17,9 @@ Philosophy:
 """
 
 import re
-from pathlib import Path
-from typing import Dict, List, Set, Tuple
 from collections import defaultdict
+from pathlib import Path
+
 import pytest
 
 
@@ -29,20 +29,20 @@ class DocLinkValidator:
     def __init__(self, docs_dir: Path):
         self.docs_dir = docs_dir
         self.all_docs = set(self._find_all_docs())
-        self.broken_links: List[Tuple[Path, str, str]] = []
+        self.broken_links: list[tuple[Path, str, str]] = []
 
-    def _find_all_docs(self) -> List[Path]:
+    def _find_all_docs(self) -> list[Path]:
         """Find all markdown files in docs directory."""
         return list(self.docs_dir.rglob("*.md"))
 
-    def _extract_links(self, content: str) -> List[str]:
+    def _extract_links(self, content: str) -> list[str]:
         """Extract all markdown links from content."""
         # Match [text](link) and [text]: link patterns
-        inline_links = re.findall(r'\[([^\]]+)\]\(([^)]+)\)', content)
-        reference_links = re.findall(r'^\[([^\]]+)\]:\s*(.+)$', content, re.MULTILINE)
+        inline_links = re.findall(r"\[([^\]]+)\]\(([^)]+)\)", content)
+        reference_links = re.findall(r"^\[([^\]]+)\]:\s*(.+)$", content, re.MULTILINE)
         return [link for _, link in inline_links + reference_links]
 
-    def _resolve_link(self, source_file: Path, link: str) -> Tuple[bool, str]:
+    def _resolve_link(self, source_file: Path, link: str) -> tuple[bool, str]:
         """
         Resolve a link and check if target exists.
 
@@ -50,22 +50,22 @@ class DocLinkValidator:
             Tuple of (is_valid, reason_if_invalid)
         """
         # Skip external links
-        if link.startswith(('http://', 'https://', 'mailto:', '#')):
+        if link.startswith(("http://", "https://", "mailto:", "#")):
             return (True, "")
 
         # Handle anchor-only links
-        if link.startswith('#'):
+        if link.startswith("#"):
             return (True, "")
 
         # Remove anchor fragments
-        link_without_anchor = link.split('#')[0]
+        link_without_anchor = link.split("#")[0]
         if not link_without_anchor:
             return (True, "")
 
         # Resolve relative path
-        if link.startswith('/'):
+        if link.startswith("/"):
             # Absolute path from repo root
-            target = Path(self.docs_dir.parent) / link.lstrip('/')
+            target = Path(self.docs_dir.parent) / link.lstrip("/")
         else:
             # Relative to current file
             target = (source_file.parent / link_without_anchor).resolve()
@@ -76,7 +76,7 @@ class DocLinkValidator:
 
         return (True, "")
 
-    def validate_all_links(self) -> Dict[str, List[Tuple[str, str]]]:
+    def validate_all_links(self) -> dict[str, list[tuple[str, str]]]:
         """
         Validate all links in all documentation files.
 
@@ -86,7 +86,7 @@ class DocLinkValidator:
         broken_links_by_file = defaultdict(list)
 
         for doc_file in self.all_docs:
-            content = doc_file.read_text(encoding='utf-8')
+            content = doc_file.read_text(encoding="utf-8")
             links = self._extract_links(content)
 
             for link in links:
@@ -102,10 +102,7 @@ class DocLinkValidator:
         if not self.broken_links:
             return f"✓ All links valid across {len(self.all_docs)} documents"
 
-        summary = [
-            f"✗ Found {len(self.broken_links)} broken links:",
-            ""
-        ]
+        summary = [f"✗ Found {len(self.broken_links)} broken links:", ""]
         for doc_file, link, reason in self.broken_links[:10]:  # Show first 10
             relative_path = doc_file.relative_to(self.docs_dir)
             summary.append(f"  {relative_path}")
@@ -125,26 +122,26 @@ class OrphanDetector:
     def __init__(self, docs_dir: Path):
         self.docs_dir = docs_dir
         self.index_file = docs_dir / "index.md"
-        self.reachable: Set[Path] = set()
+        self.reachable: set[Path] = set()
         self.all_docs = set(self._find_all_docs())
 
-    def _find_all_docs(self) -> List[Path]:
+    def _find_all_docs(self) -> list[Path]:
         """Find all markdown files in docs directory."""
         return list(self.docs_dir.rglob("*.md"))
 
-    def _extract_internal_links(self, content: str) -> List[str]:
+    def _extract_internal_links(self, content: str) -> list[str]:
         """Extract internal (non-http) links from content."""
-        inline_links = re.findall(r'\[([^\]]+)\]\(([^)]+)\)', content)
-        reference_links = re.findall(r'^\[([^\]]+)\]:\s*(.+)$', content, re.MULTILINE)
+        inline_links = re.findall(r"\[([^\]]+)\]\(([^)]+)\)", content)
+        reference_links = re.findall(r"^\[([^\]]+)\]:\s*(.+)$", content, re.MULTILINE)
 
         all_links = [link for _, link in inline_links + reference_links]
 
         # Filter to internal links only
         internal = []
         for link in all_links:
-            if not link.startswith(('http://', 'https://', 'mailto:')):
+            if not link.startswith(("http://", "https://", "mailto:")):
                 # Remove anchor fragments
-                link_without_anchor = link.split('#')[0]
+                link_without_anchor = link.split("#")[0]
                 if link_without_anchor:
                     internal.append(link_without_anchor)
 
@@ -152,20 +149,20 @@ class OrphanDetector:
 
     def _resolve_link_to_file(self, source_file: Path, link: str) -> Path | None:
         """Resolve a link to an actual file path."""
-        if link.startswith('/'):
+        if link.startswith("/"):
             # Absolute from docs root - handle /.claude/ prefix specially
-            if link.startswith('/.claude/'):
+            if link.startswith("/.claude/"):
                 # Links like /.claude/workflow/DEFAULT_WORKFLOW.md
-                target = Path(self.docs_dir.parent) / link.lstrip('/')
+                target = Path(self.docs_dir.parent) / link.lstrip("/")
             else:
-                target = self.docs_dir / link.lstrip('/')
+                target = self.docs_dir / link.lstrip("/")
         else:
             # Relative to current file
             target = (source_file.parent / link).resolve()
 
         return target if target.exists() else None
 
-    def build_link_graph(self) -> Set[Path]:
+    def build_link_graph(self) -> set[Path]:
         """
         Build graph of reachable documents starting from index.md.
 
@@ -188,12 +185,12 @@ class OrphanDetector:
 
             # Read content and extract links
             try:
-                content = current.read_text(encoding='utf-8')
+                content = current.read_text(encoding="utf-8")
                 links = self._extract_internal_links(content)
 
                 for link in links:
                     target = self._resolve_link_to_file(current, link)
-                    if target and target.suffix == '.md' and target not in visited:
+                    if target and target.suffix == ".md" and target not in visited:
                         to_visit.append(target)
             except Exception:
                 # Skip files that can't be read
@@ -201,7 +198,7 @@ class OrphanDetector:
 
         return self.reachable
 
-    def find_orphans(self) -> List[Path]:
+    def find_orphans(self) -> list[Path]:
         """
         Find documents not reachable from index.md.
 
@@ -226,10 +223,7 @@ class OrphanDetector:
         if not orphans:
             return f"✓ All {len(self.all_docs)} documents reachable from index.md"
 
-        summary = [
-            f"✗ Found {len(orphans)} orphaned documents:",
-            ""
-        ]
+        summary = [f"✗ Found {len(orphans)} orphaned documents:", ""]
         for orphan in orphans[:20]:  # Show first 20
             relative_path = orphan.relative_to(self.docs_dir.parent)
             summary.append(f"  {relative_path}")
@@ -249,35 +243,18 @@ class CoverageChecker:
 
         # Major features that MUST be documented
         self.required_features = {
-            'goal-seeking agents': [
-                'goal_agent_generator',
-                'GOAL_AGENT_GENERATOR',
-                'autonomous agents'
+            "goal-seeking agents": [
+                "goal_agent_generator",
+                "GOAL_AGENT_GENERATOR",
+                "autonomous agents",
             ],
-            'workflows': [
-                'DEFAULT_WORKFLOW',
-                'INVESTIGATION_WORKFLOW',
-                'workflow'
-            ],
-            'agents': [
-                'agents/amplihack',
-                'architect',
-                'builder',
-                'tester'
-            ],
-            'commands': [
-                '/ultrathink',
-                '/analyze',
-                '/improve'
-            ],
-            'memory': [
-                'neo4j',
-                'memory system',
-                'agent memory'
-            ]
+            "workflows": ["DEFAULT_WORKFLOW", "INVESTIGATION_WORKFLOW", "workflow"],
+            "agents": ["agents/amplihack", "architect", "builder", "tester"],
+            "commands": ["/ultrathink", "/analyze", "/improve"],
+            "memory": ["neo4j", "memory system", "agent memory"],
         }
 
-    def check_coverage(self) -> Dict[str, bool]:
+    def check_coverage(self) -> dict[str, bool]:
         """
         Check if all major features are documented.
 
@@ -285,9 +262,9 @@ class CoverageChecker:
             Dictionary mapping feature name to whether it's covered
         """
         if not self.index_file.exists():
-            return {feature: False for feature in self.required_features}
+            return dict.fromkeys(self.required_features, False)
 
-        index_content = self.index_file.read_text(encoding='utf-8').lower()
+        index_content = self.index_file.read_text(encoding="utf-8").lower()
 
         coverage = {}
         for feature, keywords in self.required_features.items():
@@ -305,10 +282,7 @@ class CoverageChecker:
         if not missing:
             return f"✓ All {len(self.required_features)} major features documented"
 
-        summary = [
-            f"✗ Missing documentation for {len(missing)} features:",
-            ""
-        ]
+        summary = [f"✗ Missing documentation for {len(missing)} features:", ""]
         for feature in missing:
             summary.append(f"  - {feature}")
 
@@ -321,19 +295,19 @@ class NavigationDepthChecker:
     def __init__(self, docs_dir: Path):
         self.docs_dir = docs_dir
         self.index_file = docs_dir / "index.md"
-        self.depths: Dict[Path, int] = {}
+        self.depths: dict[Path, int] = {}
 
-    def _extract_internal_links(self, content: str) -> List[str]:
+    def _extract_internal_links(self, content: str) -> list[str]:
         """Extract internal links from content."""
-        inline_links = re.findall(r'\[([^\]]+)\]\(([^)]+)\)', content)
-        reference_links = re.findall(r'^\[([^\]]+)\]:\s*(.+)$', content, re.MULTILINE)
+        inline_links = re.findall(r"\[([^\]]+)\]\(([^)]+)\)", content)
+        reference_links = re.findall(r"^\[([^\]]+)\]:\s*(.+)$", content, re.MULTILINE)
 
         all_links = [link for _, link in inline_links + reference_links]
 
         internal = []
         for link in all_links:
-            if not link.startswith(('http://', 'https://', 'mailto:')):
-                link_without_anchor = link.split('#')[0]
+            if not link.startswith(("http://", "https://", "mailto:")):
+                link_without_anchor = link.split("#")[0]
                 if link_without_anchor:
                     internal.append(link_without_anchor)
 
@@ -341,17 +315,17 @@ class NavigationDepthChecker:
 
     def _resolve_link_to_file(self, source_file: Path, link: str) -> Path | None:
         """Resolve a link to an actual file path."""
-        if link.startswith('/'):
-            if link.startswith('/.claude/'):
-                target = Path(self.docs_dir.parent) / link.lstrip('/')
+        if link.startswith("/"):
+            if link.startswith("/.claude/"):
+                target = Path(self.docs_dir.parent) / link.lstrip("/")
             else:
-                target = self.docs_dir / link.lstrip('/')
+                target = self.docs_dir / link.lstrip("/")
         else:
             target = (source_file.parent / link).resolve()
 
-        return target if target.exists() and target.suffix == '.md' else None
+        return target if target.exists() and target.suffix == ".md" else None
 
-    def calculate_depths(self, max_depth: int = 5) -> Dict[Path, int]:
+    def calculate_depths(self, max_depth: int = 5) -> dict[Path, int]:
         """
         Calculate navigation depth for each document.
 
@@ -373,7 +347,7 @@ class NavigationDepthChecker:
 
             for doc in current_level:
                 try:
-                    content = doc.read_text(encoding='utf-8')
+                    content = doc.read_text(encoding="utf-8")
                     links = self._extract_internal_links(content)
 
                     for link in links:
@@ -389,7 +363,7 @@ class NavigationDepthChecker:
 
         return self.depths
 
-    def find_deep_docs(self, threshold: int = 3) -> List[Tuple[Path, int]]:
+    def find_deep_docs(self, threshold: int = 3) -> list[tuple[Path, int]]:
         """
         Find documents deeper than threshold clicks from index.
 
@@ -401,11 +375,7 @@ class NavigationDepthChecker:
         """
         self.calculate_depths()
 
-        deep_docs = [
-            (doc, depth)
-            for doc, depth in self.depths.items()
-            if depth > threshold
-        ]
+        deep_docs = [(doc, depth) for doc, depth in self.depths.items() if depth > threshold]
 
         return sorted(deep_docs, key=lambda x: x[1], reverse=True)
 
@@ -417,10 +387,7 @@ class NavigationDepthChecker:
             total_docs = len(self.depths)
             return f"✓ All {total_docs} documents reachable within {threshold} clicks"
 
-        summary = [
-            f"✗ Found {len(deep_docs)} documents beyond {threshold} clicks:",
-            ""
-        ]
+        summary = [f"✗ Found {len(deep_docs)} documents beyond {threshold} clicks:", ""]
         for doc, depth in deep_docs[:15]:
             relative_path = doc.relative_to(self.docs_dir.parent)
             summary.append(f"  [{depth} clicks] {relative_path}")
@@ -434,6 +401,7 @@ class NavigationDepthChecker:
 # ============================================================================
 # UNIT TESTS (60% - Fast, isolated)
 # ============================================================================
+
 
 class TestLinkValidation:
     """Unit tests for link validation."""
@@ -511,6 +479,7 @@ class TestOrphanDetection:
 # INTEGRATION TESTS (30% - Multi-component)
 # ============================================================================
 
+
 class TestDocumentationIntegration:
     """Integration tests combining multiple validation components."""
 
@@ -568,6 +537,7 @@ class TestDocumentationIntegration:
 # E2E TESTS (10% - Complete workflows)
 # ============================================================================
 
+
 class TestDocumentationE2E:
     """End-to-end tests for complete documentation validation."""
 
@@ -585,26 +555,21 @@ class TestDocumentationE2E:
         3. All major features covered
         4. Navigation depth acceptable
         """
-        results = {
-            'links': None,
-            'orphans': None,
-            'coverage': None,
-            'depth': None
-        }
+        results = {"links": None, "orphans": None, "coverage": None, "depth": None}
 
         # Run all validators
         link_validator = DocLinkValidator(docs_dir)
-        results['links'] = link_validator.validate_all_links()
+        results["links"] = link_validator.validate_all_links()
 
         orphan_detector = OrphanDetector(docs_dir)
-        results['orphans'] = orphan_detector.find_orphans()
+        results["orphans"] = orphan_detector.find_orphans()
 
         coverage_checker = CoverageChecker(docs_dir)
         coverage = coverage_checker.check_coverage()
-        results['coverage'] = [f for f, c in coverage.items() if not c]
+        results["coverage"] = [f for f, c in coverage.items() if not c]
 
         depth_checker = NavigationDepthChecker(docs_dir)
-        results['depth'] = depth_checker.find_deep_docs(threshold=3)
+        results["depth"] = depth_checker.find_deep_docs(threshold=3)
 
         # Generate comprehensive report
         report = [
@@ -627,16 +592,18 @@ class TestDocumentationE2E:
 
         # All checks must pass
         failures = []
-        if results['links']:
+        if results["links"]:
             failures.append(f"Found {len(results['links'])} files with broken links")
-        if results['orphans']:
+        if results["orphans"]:
             failures.append(f"Found {len(results['orphans'])} orphaned documents")
-        if results['coverage']:
+        if results["coverage"]:
             failures.append(f"Missing coverage for: {', '.join(results['coverage'])}")
-        if results['depth']:
+        if results["depth"]:
             failures.append(f"Found {len(results['depth'])} documents beyond navigation depth")
 
-        assert not failures, "Documentation health check failed:\n" + "\n".join(f"  - {f}" for f in failures)
+        assert not failures, "Documentation health check failed:\n" + "\n".join(
+            f"  - {f}" for f in failures
+        )
 
     def test_user_journey_new_user(self, docs_dir):
         """
@@ -648,15 +615,10 @@ class TestDocumentationE2E:
         index = docs_dir / "index.md"
         assert index.exists(), "index.md must exist"
 
-        content = index.read_text(encoding='utf-8')
+        content = index.read_text(encoding="utf-8")
 
         # New user journey requirements
-        required_paths = [
-            'Get Started',
-            'Quick Start',
-            'Prerequisites',
-            'Installation'
-        ]
+        required_paths = ["Get Started", "Quick Start", "Prerequisites", "Installation"]
 
         missing = []
         for path in required_paths:
@@ -674,17 +636,19 @@ class TestDocumentationE2E:
         index = docs_dir / "index.md"
         assert index.exists(), "index.md must exist"
 
-        content = index.read_text(encoding='utf-8')
+        content = index.read_text(encoding="utf-8")
 
         # Must be directly linked from index (user's explicit requirement)
-        assert 'goal' in content.lower(), "Goal-seeking agents not mentioned in index.md"
-        assert 'autonomous' in content.lower() or 'iterate' in content.lower(), \
+        assert "goal" in content.lower(), "Goal-seeking agents not mentioned in index.md"
+        assert "autonomous" in content.lower() or "iterate" in content.lower(), (
             "Goal-seeking agent characteristics not described"
+        )
 
         # Extract links to goal-related docs
         goal_links = [
-            link for link in re.findall(r'\[([^\]]+)\]\(([^)]+)\)', content)
-            if 'goal' in link[0].lower() or 'goal' in link[1].lower()
+            link
+            for link in re.findall(r"\[([^\]]+)\]\(([^)]+)\)", content)
+            if "goal" in link[0].lower() or "goal" in link[1].lower()
         ]
 
         assert len(goal_links) > 0, "No direct links to goal-seeking agent documentation"

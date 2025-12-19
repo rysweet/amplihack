@@ -17,7 +17,6 @@ import json
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 from functools import lru_cache
-from typing import Dict, List, Optional
 
 
 @dataclass
@@ -25,11 +24,11 @@ class DuplicateDetectionResult:
     """Result of duplicate detection analysis."""
 
     is_duplicate: bool
-    similar_issues: List[Dict]
+    similar_issues: list[dict]
     confidence: float  # 0-1 similarity score
     reason: str
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Convert to dictionary format."""
         return {
             "is_duplicate": self.is_duplicate,
@@ -60,7 +59,7 @@ class SemanticDuplicateDetector:
 
     async def detect_with_llm(
         self, new_content: str, existing_content: str, timeout_seconds: int = 120
-    ) -> Optional[Dict]:
+    ) -> dict | None:
         """Use Claude SDK to semantically compare content."""
         if not self._sdk_available:
             return None
@@ -127,14 +126,14 @@ Don't consider duplicates if they:
             # Call with timeout
             return await asyncio.wait_for(_sdk_call(), timeout=timeout_seconds)
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             print(f"Claude SDK timed out after {timeout_seconds} seconds")
         except Exception as e:
             print(f"SDK detection failed: {e}")
 
         return None
 
-    def fallback_detect(self, new_content: str, existing_content: str) -> Dict:
+    def fallback_detect(self, new_content: str, existing_content: str) -> dict:
         """Fallback detection using difflib."""
         # Simple text similarity
         similarity = SequenceMatcher(None, new_content, existing_content).ratio()
@@ -154,7 +153,7 @@ Don't consider duplicates if they:
         }
 
     async def detect_semantic_duplicate(
-        self, title: str, body: str, existing_issues: List[Dict]
+        self, title: str, body: str, existing_issues: list[dict]
     ) -> DuplicateDetectionResult:
         """Main detection method."""
         if not existing_issues:
@@ -210,7 +209,7 @@ _detector = SemanticDuplicateDetector()
 
 
 def check_duplicate_issue(
-    title: str, body: str, pattern_type: Optional[str] = None, repository: str = "current"
+    title: str, body: str, pattern_type: str | None = None, repository: str = "current"
 ) -> DuplicateDetectionResult:
     """Check if an issue is a duplicate of existing issues.
 
@@ -246,7 +245,7 @@ def store_new_issue(
     issue_id: str,
     title: str,
     body: str,
-    pattern_type: Optional[str] = None,
+    pattern_type: str | None = None,
     priority: str = "medium",
     repository: str = "current",
 ) -> None:
@@ -259,7 +258,7 @@ def store_new_issue(
     # Could be extended to store in a file or database
 
 
-def get_performance_stats() -> Dict:
+def get_performance_stats() -> dict:
     """Get performance statistics for the detector."""
     return {
         "sdk_available": _detector._sdk_available,

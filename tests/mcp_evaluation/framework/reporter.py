@@ -5,7 +5,6 @@ including executive summaries, detailed scenario breakdowns, and recommendations
 """
 
 from pathlib import Path
-from typing import Dict, List
 
 from .types import ComparisonResult, EvaluationReport
 
@@ -151,7 +150,7 @@ class ReportGenerator:
         sections = ["## Capability Analysis"]
 
         # Group results by which capabilities were used
-        capability_usage: Dict[str, List[ComparisonResult]] = {}
+        capability_usage: dict[str, list[ComparisonResult]] = {}
         for result in self.report.results:
             if result.tool_value and "features_used" in result.tool_value:
                 for feature in result.tool_value["features_used"]:

@@ -2,7 +2,6 @@
 
 import os
 import re
-from typing import Dict, Optional
 
 
 class ProxyEnvironment:
@@ -10,13 +9,13 @@ class ProxyEnvironment:
 
     def __init__(self):
         """Initialize environment manager."""
-        self.original_env: Dict[str, Optional[str]] = {}
+        self.original_env: dict[str, str | None] = {}
 
     def setup(
         self,
         proxy_port: int = 8080,
-        api_key: Optional[str] = None,
-        azure_config: Optional[Dict[str, str]] = None,
+        api_key: str | None = None,
+        azure_config: dict[str, str] | None = None,
     ) -> None:
         """Set up environment variables for proxy.
 
@@ -62,8 +61,8 @@ class ProxyEnvironment:
         self.original_env.clear()
 
     def get_proxy_env(
-        self, proxy_port: int = 8080, config: Optional[Dict[str, str]] = None
-    ) -> Dict[str, str]:
+        self, proxy_port: int = 8080, config: dict[str, str] | None = None
+    ) -> dict[str, str]:
         """Get environment variables for subprocess.
 
         Args:
@@ -81,7 +80,7 @@ class ProxyEnvironment:
 
         return env
 
-    def setup_azure_environment(self, config: Dict[str, str]) -> None:
+    def setup_azure_environment(self, config: dict[str, str]) -> None:
         """Set up Azure-specific environment variables.
 
         Args:
@@ -92,7 +91,7 @@ class ProxyEnvironment:
             raise ValueError("Invalid Azure configuration - security validation failed")
         self._setup_azure_environment(config)
 
-    def _setup_azure_environment(self, config: Dict[str, str]) -> None:
+    def _setup_azure_environment(self, config: dict[str, str]) -> None:
         """Internal method to set up Azure environment variables.
 
         Args:
@@ -151,7 +150,7 @@ class ProxyEnvironment:
         """
         self.restore()
 
-    def _validate_azure_config_security(self, config: Dict[str, str]) -> bool:
+    def _validate_azure_config_security(self, config: dict[str, str]) -> bool:
         """Validate Azure configuration for security issues.
 
         Args:

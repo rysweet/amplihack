@@ -63,6 +63,7 @@ Complete Azure DevOps integration covering boards, repositories, pipelines, and 
 This skill provides comprehensive guidance for Azure DevOps automation through purpose-built Python CLI tools that handle:
 
 ### Work Items (Boards)
+
 - Work item creation with HTML-formatted descriptions
 - Work item updates (state, assignments, fields)
 - Work item deletion with confirmation
@@ -71,17 +72,20 @@ This skill provides comprehensive guidance for Azure DevOps automation through p
 - Work item type and field discovery
 
 ### Repositories
+
 - Repository listing with details
 - Pull request creation with reviewers and work items
 - Branch validation
 - Clone URL access
 
 ### Pipelines
+
 - Pipeline listing and execution
 - Build monitoring and logs
 - Deployment management
 
 ### Artifacts
+
 - Package feed management
 - Package publishing and downloading
 - Version management
@@ -103,6 +107,7 @@ See: [@authentication.md]
 ### 2. Common Operations
 
 #### Create Work Item
+
 ```bash
 python .claude/scenarios/az-devops-tools/create_work_item.py \
   --type "User Story" \
@@ -111,11 +116,13 @@ python .claude/scenarios/az-devops-tools/create_work_item.py \
 ```
 
 #### Query Work Items
+
 ```bash
 python .claude/scenarios/az-devops-tools/list_work_items.py --query mine
 ```
 
 #### Create Pull Request
+
 ```bash
 python .claude/scenarios/az-devops-tools/create_pr.py \
   --source feature/branch \
@@ -138,20 +145,20 @@ For detailed guidance on specific operations, see:
 
 ## Available Tools
 
-| Tool | Purpose | When to Use |
-|------|---------|-------------|
-| `auth_check.py` | Verify authentication | Before any operations |
-| `create_work_item.py` | Create work items | Add User Stories, Tasks, Bugs, etc. |
-| `update_work_item.py` | Update work items | Change state, assignee, fields |
-| `delete_work_item.py` | Delete work items | Remove work items (with confirmation) |
-| `get_work_item.py` | Get work item details | View complete work item info |
-| `list_work_items.py` | Query work items | Find, filter, and list work items |
-| `link_parent.py` | Link parent-child | Create Epic → Feature → Story hierarchies |
-| `query_wiql.py` | Execute WIQL queries | Complex filtering with WIQL |
-| `format_html.py` | Convert to HTML | Format rich descriptions |
-| `list_types.py` | Discover types/fields | Explore available options |
-| `list_repos.py` | List repositories | View all repositories in project |
-| `create_pr.py` | Create pull request | Submit code for review |
+| Tool                  | Purpose               | When to Use                               |
+| --------------------- | --------------------- | ----------------------------------------- |
+| `auth_check.py`       | Verify authentication | Before any operations                     |
+| `create_work_item.py` | Create work items     | Add User Stories, Tasks, Bugs, etc.       |
+| `update_work_item.py` | Update work items     | Change state, assignee, fields            |
+| `delete_work_item.py` | Delete work items     | Remove work items (with confirmation)     |
+| `get_work_item.py`    | Get work item details | View complete work item info              |
+| `list_work_items.py`  | Query work items      | Find, filter, and list work items         |
+| `link_parent.py`      | Link parent-child     | Create Epic → Feature → Story hierarchies |
+| `query_wiql.py`       | Execute WIQL queries  | Complex filtering with WIQL               |
+| `format_html.py`      | Convert to HTML       | Format rich descriptions                  |
+| `list_types.py`       | Discover types/fields | Explore available options                 |
+| `list_repos.py`       | List repositories     | View all repositories in project          |
+| `create_pr.py`        | Create pull request   | Submit code for review                    |
 
 ## Common Patterns
 
@@ -271,13 +278,13 @@ python .claude/scenarios/az-devops-tools/link_parent.py \
 
 ## Error Recovery
 
-| Error | Tool to Use | Example |
-|-------|-------------|---------|
-| Authentication failed | `auth_check.py --auto-fix` | Auto-login and configure |
-| Invalid work item type | `list_types.py` | See available types |
-| Field validation error | `list_types.py --type "Type" --fields` | See valid fields |
-| Parent link failed | Check IDs exist, verify hierarchy rules | Epic → Feature → Story → Task |
-| Branch does not exist | Verify with `git branch -a` | Push branch first |
+| Error                  | Tool to Use                             | Example                       |
+| ---------------------- | --------------------------------------- | ----------------------------- |
+| Authentication failed  | `auth_check.py --auto-fix`              | Auto-login and configure      |
+| Invalid work item type | `list_types.py`                         | See available types           |
+| Field validation error | `list_types.py --type "Type" --fields`  | See valid fields              |
+| Parent link failed     | Check IDs exist, verify hierarchy rules | Epic → Feature → Story → Task |
+| Branch does not exist  | Verify with `git branch -a`             | Push branch first             |
 
 ## Tool Implementation
 

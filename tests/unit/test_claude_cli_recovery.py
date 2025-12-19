@@ -11,7 +11,7 @@ Philosophy:
 
 import subprocess
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -22,7 +22,6 @@ from amplihack.utils.claude_cli import (
     _validate_claude_binary,
     get_claude_cli_path,
 )
-
 
 # ============================================================================
 # UNIT TESTS - Helper Functions
@@ -107,9 +106,7 @@ class TestRetryClaudeInstallation:
     @patch("amplihack.utils.claude_cli._validate_claude_binary")
     @patch("amplihack.utils.claude_cli._remove_failed_binary")
     @patch("amplihack.utils.prerequisites.safe_subprocess_call")
-    def test_retry_success(
-        self, mock_subprocess, mock_remove, mock_validate, tmp_path, capsys
-    ):
+    def test_retry_success(self, mock_subprocess, mock_remove, mock_validate, tmp_path, capsys):
         """Test successful retry after validation failure."""
         user_npm_dir = tmp_path / ".npm-global"
         expected_binary = user_npm_dir / "bin" / "claude"
@@ -120,9 +117,7 @@ class TestRetryClaudeInstallation:
         mock_subprocess.return_value = (0, "installed successfully", "")
         mock_validate.return_value = True
 
-        result = _retry_claude_installation(
-            "/usr/bin/npm", user_npm_dir, expected_binary
-        )
+        result = _retry_claude_installation("/usr/bin/npm", user_npm_dir, expected_binary)
 
         assert result is True
         mock_remove.assert_called_once_with(expected_binary)
@@ -136,9 +131,7 @@ class TestRetryClaudeInstallation:
     @patch("amplihack.utils.claude_cli._validate_claude_binary")
     @patch("amplihack.utils.claude_cli._remove_failed_binary")
     @patch("amplihack.utils.prerequisites.safe_subprocess_call")
-    def test_retry_npm_fails(
-        self, mock_subprocess, mock_remove, mock_validate, tmp_path, capsys
-    ):
+    def test_retry_npm_fails(self, mock_subprocess, mock_remove, mock_validate, tmp_path, capsys):
         """Test retry when npm install fails."""
         user_npm_dir = tmp_path / ".npm-global"
         expected_binary = user_npm_dir / "bin" / "claude"
@@ -146,9 +139,7 @@ class TestRetryClaudeInstallation:
         # Mock failed reinstallation
         mock_subprocess.return_value = (1, "", "npm ERR! network timeout")
 
-        result = _retry_claude_installation(
-            "/usr/bin/npm", user_npm_dir, expected_binary
-        )
+        result = _retry_claude_installation("/usr/bin/npm", user_npm_dir, expected_binary)
 
         assert result is False
         mock_remove.assert_called_once()
@@ -170,9 +161,7 @@ class TestRetryClaudeInstallation:
         # Mock successful npm but binary not created
         mock_subprocess.return_value = (0, "installed", "")
 
-        result = _retry_claude_installation(
-            "/usr/bin/npm", user_npm_dir, expected_binary
-        )
+        result = _retry_claude_installation("/usr/bin/npm", user_npm_dir, expected_binary)
 
         assert result is False
 
@@ -195,9 +184,7 @@ class TestRetryClaudeInstallation:
         mock_subprocess.return_value = (0, "installed", "")
         mock_validate.return_value = False
 
-        result = _retry_claude_installation(
-            "/usr/bin/npm", user_npm_dir, expected_binary
-        )
+        result = _retry_claude_installation("/usr/bin/npm", user_npm_dir, expected_binary)
 
         assert result is False
 
@@ -346,9 +333,7 @@ class TestGetClaudeCliPath:
 
     @patch("amplihack.utils.claude_cli._install_claude_cli")
     @patch("amplihack.utils.claude_cli._find_claude_in_common_locations")
-    def test_not_found_install_fails_with_recovery(
-        self, mock_find, mock_install, capsys
-    ):
+    def test_not_found_install_fails_with_recovery(self, mock_find, mock_install, capsys):
         """Test when installation and recovery both fail."""
         mock_find.return_value = None
         mock_install.return_value = False

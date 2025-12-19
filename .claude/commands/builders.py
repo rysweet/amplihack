@@ -28,7 +28,6 @@ except ImportError:
 sys.path.insert(0, str(project_root / ".claude" / "tools" / "amplihack"))
 
 import json
-from typing import Dict, List, Optional
 
 from builders import CodexTranscriptsBuilder
 
@@ -78,7 +77,7 @@ INTEGRATION:
     print(help_text)
 
 
-def list_available_sessions() -> List[Dict[str, str]]:
+def list_available_sessions() -> list[dict[str, str]]:
     """List available sessions with enhanced export information."""
     if ExportOnCompactIntegration:
         integration = ExportOnCompactIntegration()
@@ -162,7 +161,7 @@ def build_session_transcript(session_id: str, verbose: bool = False) -> str:
 
 
 def build_comprehensive_codex(
-    session_ids: Optional[List[str]] = None, output_dir: Optional[str] = None, verbose: bool = False
+    session_ids: list[str] | None = None, output_dir: str | None = None, verbose: bool = False
 ) -> str:
     """Build comprehensive codex from sessions."""
     print("🔄 Building comprehensive codex from session transcripts...")
@@ -189,7 +188,7 @@ def build_comprehensive_codex(
 
 
 def extract_learning_corpus(
-    session_ids: Optional[List[str]] = None, output_dir: Optional[str] = None, verbose: bool = False
+    session_ids: list[str] | None = None, output_dir: str | None = None, verbose: bool = False
 ) -> str:
     """Extract learning corpus from sessions."""
     print("🔄 Extracting learning corpus from session transcripts...")
@@ -214,7 +213,7 @@ def extract_learning_corpus(
 
 
 def generate_insights_report(
-    session_ids: Optional[List[str]] = None, output_dir: Optional[str] = None, verbose: bool = False
+    session_ids: list[str] | None = None, output_dir: str | None = None, verbose: bool = False
 ) -> str:
     """Generate insights report from sessions."""
     print("🔄 Generating insights report from session data...")
@@ -239,8 +238,8 @@ def generate_insights_report(
 
 def build_focused_codex(
     focus_area: str,
-    session_ids: Optional[List[str]] = None,
-    output_dir: Optional[str] = None,
+    session_ids: list[str] | None = None,
+    output_dir: str | None = None,
     verbose: bool = False,
 ) -> str:
     """Build focused codex for specific area."""
@@ -266,7 +265,7 @@ def build_focused_codex(
         return ""
 
 
-def restore_session_data(session_id: str, verbose: bool = False) -> Dict[str, str]:
+def restore_session_data(session_id: str, verbose: bool = False) -> dict[str, str]:
     """Restore and display session data."""
     if session_id == "latest":
         integration = ExportOnCompactIntegration()

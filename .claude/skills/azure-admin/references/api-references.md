@@ -7,11 +7,13 @@ Comprehensive reference for Azure REST APIs, SDKs, and programmatic access.
 ### Core Management APIs
 
 **Azure Resource Manager (ARM) REST API**
+
 - Base URL: `https://management.azure.com/`
 - Documentation: https://learn.microsoft.com/rest/api/resources/
 - API Version: 2021-04-01 (stable)
 
 **Common Operations:**
+
 ```bash
 # List subscriptions
 GET https://management.azure.com/subscriptions?api-version=2020-01-01
@@ -32,6 +34,7 @@ DELETE https://management.azure.com/subscriptions/{subscriptionId}/resourcegroup
 **Documentation:** https://learn.microsoft.com/graph/api/overview
 
 **Identity and Access:**
+
 ```bash
 # List users
 GET https://graph.microsoft.com/v1.0/users
@@ -55,7 +58,9 @@ GET https://graph.microsoft.com/v1.0/directoryRoles
 ### Service-Specific APIs
 
 **Compute (Virtual Machines)**
+
 - Documentation: https://learn.microsoft.com/rest/api/compute/
+
 ```bash
 # List VMs
 GET https://management.azure.com/subscriptions/{subscriptionId}/providers/Microsoft.Compute/virtualMachines?api-version=2023-03-01
@@ -68,7 +73,9 @@ POST https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/
 ```
 
 **Storage**
+
 - Documentation: https://learn.microsoft.com/rest/api/storageservices/
+
 ```bash
 # List storage accounts
 GET https://management.azure.com/subscriptions/{subscriptionId}/providers/Microsoft.Storage/storageAccounts?api-version=2023-01-01
@@ -84,7 +91,9 @@ PUT https://{accountName}.blob.core.windows.net/{container}/{blob}
 ```
 
 **Networking**
+
 - Documentation: https://learn.microsoft.com/rest/api/virtualnetwork/
+
 ```bash
 # List virtual networks
 GET https://management.azure.com/subscriptions/{subscriptionId}/providers/Microsoft.Network/virtualNetworks?api-version=2023-05-01
@@ -97,7 +106,9 @@ GET https://management.azure.com/subscriptions/{subscriptionId}/providers/Micros
 ```
 
 **App Service**
+
 - Documentation: https://learn.microsoft.com/rest/api/appservice/
+
 ```bash
 # List App Service plans
 GET https://management.azure.com/subscriptions/{subscriptionId}/providers/Microsoft.Web/serverfarms?api-version=2022-09-01
@@ -114,11 +125,13 @@ GET https://management.azure.com/subscriptions/{subscriptionId}/resourceGroups/{
 ### Azure AD OAuth 2.0
 
 **Token Endpoint:**
+
 ```
 https://login.microsoftonline.com/{tenant-id}/oauth2/v2.0/token
 ```
 
 **Authorization Flow (Client Credentials):**
+
 ```bash
 curl -X POST https://login.microsoftonline.com/{tenant-id}/oauth2/v2.0/token \
   -H "Content-Type: application/x-www-form-urlencoded" \
@@ -129,6 +142,7 @@ curl -X POST https://login.microsoftonline.com/{tenant-id}/oauth2/v2.0/token \
 ```
 
 **Response:**
+
 ```json
 {
   "token_type": "Bearer",
@@ -138,6 +152,7 @@ curl -X POST https://login.microsoftonline.com/{tenant-id}/oauth2/v2.0/token \
 ```
 
 **Using Token:**
+
 ```bash
 curl -H "Authorization: Bearer {access_token}" \
   https://management.azure.com/subscriptions?api-version=2020-01-01
@@ -151,6 +166,7 @@ curl -H "Authorization: Bearer {access_token}" \
 **Documentation:** https://learn.microsoft.com/python/api/overview/azure/
 
 **Installation:**
+
 ```bash
 # Core management libraries
 pip install azure-mgmt-resource
@@ -165,6 +181,7 @@ pip install azure-identity
 ```
 
 **Example Usage:**
+
 ```python
 from azure.identity import DefaultAzureCredential
 from azure.mgmt.resource import ResourceManagementClient
@@ -207,6 +224,7 @@ compute_client.virtual_machines.begin_start(
 **Documentation:** https://learn.microsoft.com/javascript/api/overview/azure/
 
 **Installation:**
+
 ```bash
 npm install @azure/identity
 npm install @azure/arm-resources
@@ -216,6 +234,7 @@ npm install @azure/arm-network
 ```
 
 **Example Usage:**
+
 ```typescript
 import { DefaultAzureCredential } from "@azure/identity";
 import { ResourceManagementClient } from "@azure/arm-resources";
@@ -234,7 +253,7 @@ for await (const rg of resourceClient.resourceGroups.list()) {
 
 // Create resource group
 await resourceClient.resourceGroups.createOrUpdate("myResourceGroup", {
-  location: "eastus"
+  location: "eastus",
 });
 
 // Compute management
@@ -255,6 +274,7 @@ await computeClient.virtualMachines.beginStartAndWait("myResourceGroup", "myVM")
 **Documentation:** https://learn.microsoft.com/dotnet/api/overview/azure/
 
 **Installation:**
+
 ```bash
 dotnet add package Azure.Identity
 dotnet add package Azure.ResourceManager
@@ -264,6 +284,7 @@ dotnet add package Azure.ResourceManager.Network
 ```
 
 **Example Usage:**
+
 ```csharp
 using Azure.Identity;
 using Azure.ResourceManager;
@@ -308,6 +329,7 @@ await vm.Value.PowerOnAsync(WaitUntil.Completed);
 **Documentation:** https://pkg.go.dev/github.com/Azure/azure-sdk-for-go
 
 **Installation:**
+
 ```bash
 go get github.com/Azure/azure-sdk-for-go/sdk/azidentity
 go get github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources
@@ -315,6 +337,7 @@ go get github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute
 ```
 
 **Example Usage:**
+
 ```go
 package main
 
@@ -370,6 +393,7 @@ func main() {
 **Documentation:** https://learn.microsoft.com/azure/governance/resource-graph/
 
 **REST API:**
+
 ```bash
 POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?api-version=2021-03-01
 
@@ -380,6 +404,7 @@ POST https://management.azure.com/providers/Microsoft.ResourceGraph/resources?ap
 ```
 
 **Python SDK:**
+
 ```python
 from azure.mgmt.resourcegraph import ResourceGraphClient
 from azure.mgmt.resourcegraph.models import QueryRequest
@@ -401,6 +426,7 @@ for row in response.data:
 **Documentation:** https://learn.microsoft.com/rest/api/cost-management/
 
 **Query Costs:**
+
 ```bash
 POST https://management.azure.com/subscriptions/{subscriptionId}/providers/Microsoft.CostManagement/query?api-version=2023-03-01
 
@@ -428,9 +454,11 @@ POST https://management.azure.com/subscriptions/{subscriptionId}/providers/Micro
 ## Monitoring and Logging APIs
 
 **Azure Monitor REST API**
+
 - Documentation: https://learn.microsoft.com/rest/api/monitor/
 
 **Log Analytics Query API:**
+
 ```bash
 POST https://api.loganalytics.io/v1/workspaces/{workspace-id}/query
 
@@ -442,16 +470,19 @@ POST https://api.loganalytics.io/v1/workspaces/{workspace-id}/query
 ## Rate Limits and Throttling
 
 **ARM API Limits:**
+
 - Read requests: 12,000 per hour
 - Write requests: 1,200 per hour
 
 **Best Practices:**
+
 - Implement exponential backoff for retries
 - Cache responses when possible
 - Use batch operations
 - Monitor for 429 (Too Many Requests) status codes
 
 **Retry Logic Example (Python):**
+
 ```python
 import time
 from azure.core.exceptions import HttpResponseError

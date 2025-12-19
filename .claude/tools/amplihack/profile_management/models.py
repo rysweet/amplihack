@@ -4,9 +4,9 @@ This module defines pydantic models for profile configuration, validation,
 and metadata management.
 """
 
-from pydantic import BaseModel, Field, field_validator
-from typing import List, Optional
 from datetime import datetime
+
+from pydantic import BaseModel, Field, field_validator
 
 
 class ComponentSpec(BaseModel):
@@ -17,13 +17,14 @@ class ComponentSpec(BaseModel):
         exclude: List of component names to explicitly exclude
         include_all: If True, include all components (overrides include/exclude)
     """
-    include: List[str] = Field(default_factory=list)
-    exclude: List[str] = Field(default_factory=list)
+
+    include: list[str] = Field(default_factory=list)
+    exclude: list[str] = Field(default_factory=list)
     include_all: bool = False
 
-    @field_validator('include', 'exclude')
+    @field_validator("include", "exclude")
     @classmethod
-    def validate_patterns(cls, v: List[str]) -> List[str]:
+    def validate_patterns(cls, v: list[str]) -> list[str]:
         """Ensure patterns are valid strings."""
         if not all(isinstance(pattern, str) for pattern in v):
             raise ValueError("All patterns must be strings")
@@ -39,12 +40,13 @@ class SkillSpec(ComponentSpec):
 
     Inherits all ComponentSpec attributes.
     """
-    include_categories: List[str] = Field(default_factory=list)
-    exclude_categories: List[str] = Field(default_factory=list)
 
-    @field_validator('include_categories', 'exclude_categories')
+    include_categories: list[str] = Field(default_factory=list)
+    exclude_categories: list[str] = Field(default_factory=list)
+
+    @field_validator("include_categories", "exclude_categories")
     @classmethod
-    def validate_categories(cls, v: List[str]) -> List[str]:
+    def validate_categories(cls, v: list[str]) -> list[str]:
         """Ensure categories are valid strings."""
         if not all(isinstance(category, str) for category in v):
             raise ValueError("All categories must be strings")
@@ -60,6 +62,7 @@ class ComponentsConfig(BaseModel):
         agents: Agent filtering specification
         skills: Skill filtering specification with category support
     """
+
     commands: ComponentSpec = Field(default_factory=ComponentSpec)
     context: ComponentSpec = Field(default_factory=ComponentSpec)
     agents: ComponentSpec = Field(default_factory=ComponentSpec)
@@ -76,15 +79,16 @@ class MetadataConfig(BaseModel):
         created: Creation timestamp
         updated: Last update timestamp
     """
+
     author: str
     version: str
-    tags: List[str] = Field(default_factory=list)
-    created: Optional[datetime] = None
-    updated: Optional[datetime] = None
+    tags: list[str] = Field(default_factory=list)
+    created: datetime | None = None
+    updated: datetime | None = None
 
-    @field_validator('tags')
+    @field_validator("tags")
     @classmethod
-    def validate_tags(cls, v: List[str]) -> List[str]:
+    def validate_tags(cls, v: list[str]) -> list[str]:
         """Ensure tags are valid strings."""
         if not all(isinstance(tag, str) for tag in v):
             raise ValueError("All tags must be strings")
@@ -98,10 +102,11 @@ class PerformanceConfig(BaseModel):
         lazy_load_skills: If True, load skills on-demand rather than at startup
         cache_ttl: Cache time-to-live in seconds
     """
+
     lazy_load_skills: bool = True
     cache_ttl: int = 3600
 
-    @field_validator('cache_ttl')
+    @field_validator("cache_ttl")
     @classmethod
     def validate_cache_ttl(cls, v: int) -> int:
         """Ensure cache_ttl is positive."""
@@ -121,6 +126,7 @@ class ProfileConfig(BaseModel):
         metadata: Profile metadata
         performance: Performance tuning options
     """
+
     version: str
     name: str
     description: str
@@ -128,7 +134,7 @@ class ProfileConfig(BaseModel):
     metadata: MetadataConfig
     performance: PerformanceConfig = Field(default_factory=PerformanceConfig)
 
-    @field_validator('version')
+    @field_validator("version")
     @classmethod
     def validate_version_format(cls, v: str) -> str:
         """Ensure version is valid format and supported.
@@ -149,11 +155,10 @@ class ProfileConfig(BaseModel):
 
         return v
 
-    @field_validator('name')
+    @field_validator("name")
     @classmethod
     def validate_name(cls, v: str) -> str:
         """Ensure name is valid."""
         if not v or not isinstance(v, str):
             raise ValueError("name must be a non-empty string")
         return v
-

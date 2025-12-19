@@ -33,8 +33,9 @@ class TestLauncherIntegration:
             mock_which.side_effect = lambda x: f"/usr/bin/{x}"
 
             # Mock other launcher dependencies
-            with patch.object(launcher, "_start_proxy_if_needed", return_value=True), patch.object(
-                launcher.detector, "find_claude_directory", return_value=None
+            with (
+                patch.object(launcher, "_start_proxy_if_needed", return_value=True),
+                patch.object(launcher.detector, "find_claude_directory", return_value=None),
             ):
                 result = launcher.prepare_launch()
 
@@ -121,9 +122,12 @@ class TestWorkflowIntegration:
         """E2E: Complete launch workflow when all prerequisites present."""
         launcher = ClaudeLauncher()
 
-        with patch("shutil.which") as mock_which, patch("subprocess.Popen") as mock_popen, patch(
-            "subprocess.run"
-        ) as mock_run, patch.object(launcher.detector, "find_claude_directory", return_value=None):
+        with (
+            patch("shutil.which") as mock_which,
+            patch("subprocess.Popen") as mock_popen,
+            patch("subprocess.run") as mock_run,
+            patch.object(launcher.detector, "find_claude_directory", return_value=None),
+        ):
             mock_which.side_effect = lambda x: f"/usr/bin/{x}"
             mock_process = Mock()
             mock_process.wait.return_value = 0
@@ -209,8 +213,9 @@ class TestPlatformSpecificIntegration:
 
     def test_linux_integration_scenario(self):
         """Test complete integration on Linux."""
-        with patch("platform.system", return_value="Linux"), patch(
-            "pathlib.Path.exists", return_value=False
+        with (
+            patch("platform.system", return_value="Linux"),
+            patch("pathlib.Path.exists", return_value=False),
         ):
             checker = PrerequisiteChecker()
 
@@ -235,9 +240,11 @@ class TestPlatformSpecificIntegration:
 
     def test_wsl_integration_scenario(self):
         """Test complete integration on WSL."""
-        with patch("platform.system", return_value="Linux"), patch(
-            "pathlib.Path.exists", return_value=True
-        ), patch("pathlib.Path.read_text", return_value="Linux version microsoft"):
+        with (
+            patch("platform.system", return_value="Linux"),
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.read_text", return_value="Linux version microsoft"),
+        ):
             checker = PrerequisiteChecker()
 
             with patch("shutil.which", return_value=None):

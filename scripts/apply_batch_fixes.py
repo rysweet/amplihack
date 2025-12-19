@@ -4,7 +4,6 @@
 import json
 import re
 from pathlib import Path
-from typing import Dict
 
 # Load issues
 issues_file = Path(__file__).parent.parent / "fixable_issues.json"
@@ -188,7 +187,7 @@ def main():
     print("Applying fixes from fixable_issues.json...\n")
 
     # Group by file
-    by_file: Dict[str, list] = {}
+    by_file: dict[str, list] = {}
     for issue in issues:
         file_path = issue["file_path"]
         by_file.setdefault(file_path, []).append(issue)

@@ -8,10 +8,9 @@ This module provides clean path resolution without conflicts with external packa
 import os
 import sys
 from pathlib import Path
-from typing import Optional
 
 # One-time path setup - executed only when package is imported
-_PROJECT_ROOT: Optional[Path] = None
+_PROJECT_ROOT: Path | None = None
 _PATHS_INITIALIZED = False
 
 

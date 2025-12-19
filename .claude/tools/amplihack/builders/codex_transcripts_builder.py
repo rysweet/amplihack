@@ -7,7 +7,7 @@ Builds structured knowledge extraction and codex from multiple session transcrip
 import json
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 try:
     from ..paths import get_project_root
@@ -60,7 +60,7 @@ except ImportError:
 class CodexTranscriptsBuilder:
     """Builds codex and knowledge extraction from multiple session transcripts."""
 
-    def __init__(self, output_dir: Optional[str] = None):
+    def __init__(self, output_dir: str | None = None):
         """Initialize codex builder.
 
         Args:
@@ -75,7 +75,7 @@ class CodexTranscriptsBuilder:
         )
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-    def build_comprehensive_codex(self, session_ids: Optional[List[str]] = None) -> str:
+    def build_comprehensive_codex(self, session_ids: list[str] | None = None) -> str:
         """Build comprehensive codex from all or specified sessions.
 
         Args:
@@ -116,7 +116,7 @@ class CodexTranscriptsBuilder:
 
         return str(codex_file)
 
-    def build_focused_codex(self, focus_area: str, session_ids: Optional[List[str]] = None) -> str:
+    def build_focused_codex(self, focus_area: str, session_ids: list[str] | None = None) -> str:
         """Build focused codex for specific area (tools, errors, patterns, etc.).
 
         Args:
@@ -149,7 +149,7 @@ class CodexTranscriptsBuilder:
 
         return str(codex_file)
 
-    def extract_learning_corpus(self, session_ids: Optional[List[str]] = None) -> str:
+    def extract_learning_corpus(self, session_ids: list[str] | None = None) -> str:
         """Extract learning corpus for training and knowledge transfer.
 
         Args:
@@ -183,7 +183,7 @@ class CodexTranscriptsBuilder:
 
         return str(corpus_file)
 
-    def generate_insights_report(self, session_ids: Optional[List[str]] = None) -> str:
+    def generate_insights_report(self, session_ids: list[str] | None = None) -> str:
         """Generate insights report from session transcripts.
 
         Args:
@@ -216,7 +216,7 @@ class CodexTranscriptsBuilder:
 
         return str(report_file)
 
-    def _get_sessions(self, session_ids: Optional[List[str]]) -> List[Dict[str, Any]]:
+    def _get_sessions(self, session_ids: list[str] | None) -> list[dict[str, Any]]:
         """Get session data for specified or all sessions."""
         if session_ids:
             available_ids = set(self._get_all_session_ids())
@@ -232,7 +232,7 @@ class CodexTranscriptsBuilder:
 
         return sessions
 
-    def _get_all_session_ids(self) -> List[str]:
+    def _get_all_session_ids(self) -> list[str]:
         """Get all available session IDs."""
         if not self.logs_dir.exists():
             return []
@@ -244,7 +244,7 @@ class CodexTranscriptsBuilder:
 
         return sorted(session_ids, reverse=True)
 
-    def _load_session_data(self, session_id: str) -> Optional[Dict[str, Any]]:
+    def _load_session_data(self, session_id: str) -> dict[str, Any] | None:
         """Load session data from various files."""
         session_dir = self.logs_dir / session_id
         if not session_dir.exists():
@@ -305,7 +305,7 @@ class CodexTranscriptsBuilder:
 
         return session_data if any(session_data.values()) else None
 
-    def _extract_knowledge_patterns(self, sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _extract_knowledge_patterns(self, sessions: list[dict[str, Any]]) -> dict[str, Any]:
         """Extract knowledge patterns across sessions."""
         patterns = {
             "recurring_topics": {},
@@ -339,7 +339,7 @@ class CodexTranscriptsBuilder:
 
         return patterns
 
-    def _analyze_tool_usage_across_sessions(self, sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _analyze_tool_usage_across_sessions(self, sessions: list[dict[str, Any]]) -> dict[str, Any]:
         """Analyze tool usage patterns across all sessions."""
         analysis = {
             "total_tool_calls": 0,
@@ -367,7 +367,7 @@ class CodexTranscriptsBuilder:
 
         return analysis
 
-    def _extract_conversation_insights(self, sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _extract_conversation_insights(self, sessions: list[dict[str, Any]]) -> dict[str, Any]:
         """Extract insights about conversation patterns."""
         insights = {
             "average_session_length": 0,
@@ -396,7 +396,7 @@ class CodexTranscriptsBuilder:
 
         return insights
 
-    def _analyze_decision_patterns(self, sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _analyze_decision_patterns(self, sessions: list[dict[str, Any]]) -> dict[str, Any]:
         """Analyze decision-making patterns across sessions."""
         patterns = {
             "decision_types": {},
@@ -428,7 +428,7 @@ class CodexTranscriptsBuilder:
 
         return patterns
 
-    def _analyze_success_patterns(self, sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _analyze_success_patterns(self, sessions: list[dict[str, Any]]) -> dict[str, Any]:
         """Analyze success patterns across sessions."""
         patterns = {"success_indicators": {}, "completion_rates": {}, "success_factors": []}
 
@@ -444,7 +444,7 @@ class CodexTranscriptsBuilder:
 
         return patterns
 
-    def _analyze_error_patterns(self, sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _analyze_error_patterns(self, sessions: list[dict[str, Any]]) -> dict[str, Any]:
         """Analyze error patterns across sessions."""
         patterns = {
             "error_types": {},
@@ -478,7 +478,7 @@ class CodexTranscriptsBuilder:
 
         return patterns
 
-    def _extract_learning_insights(self, sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _extract_learning_insights(self, sessions: list[dict[str, Any]]) -> dict[str, Any]:
         """Extract learning insights from sessions."""
         insights = {
             "knowledge_progression": [],
@@ -504,7 +504,7 @@ class CodexTranscriptsBuilder:
 
         return insights
 
-    def _extract_workflow_patterns(self, sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _extract_workflow_patterns(self, sessions: list[dict[str, Any]]) -> dict[str, Any]:
         """Extract workflow patterns from sessions."""
         patterns = {
             "common_workflows": {},
@@ -531,7 +531,7 @@ class CodexTranscriptsBuilder:
 
         return patterns
 
-    def _create_session_summaries(self, sessions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _create_session_summaries(self, sessions: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Create summaries for each session."""
         summaries = []
 
@@ -560,7 +560,7 @@ class CodexTranscriptsBuilder:
 
         return summaries
 
-    def _calculate_complexity_score(self, session: Dict[str, Any]) -> float:
+    def _calculate_complexity_score(self, session: dict[str, Any]) -> float:
         """Calculate complexity score for a session."""
         score = 0.0
 
@@ -576,7 +576,7 @@ class CodexTranscriptsBuilder:
 
         return score
 
-    def _build_tools_focused_codex(self, sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _build_tools_focused_codex(self, sessions: list[dict[str, Any]]) -> dict[str, Any]:
         """Build tools-focused codex."""
         return {
             "focus": "tools",
@@ -586,7 +586,7 @@ class CodexTranscriptsBuilder:
             "tool_learning_curve": self._analyze_tool_learning_curve(sessions),
         }
 
-    def _build_errors_focused_codex(self, sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _build_errors_focused_codex(self, sessions: list[dict[str, Any]]) -> dict[str, Any]:
         """Build errors-focused codex."""
         return {
             "focus": "errors",
@@ -595,7 +595,7 @@ class CodexTranscriptsBuilder:
             "error_prevention": self._identify_error_prevention_opportunities(sessions),
         }
 
-    def _build_patterns_focused_codex(self, sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _build_patterns_focused_codex(self, sessions: list[dict[str, Any]]) -> dict[str, Any]:
         """Build patterns-focused codex."""
         return {
             "focus": "patterns",
@@ -604,7 +604,7 @@ class CodexTranscriptsBuilder:
             "success_patterns": self._analyze_success_patterns(sessions),
         }
 
-    def _build_decisions_focused_codex(self, sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _build_decisions_focused_codex(self, sessions: list[dict[str, Any]]) -> dict[str, Any]:
         """Build decisions-focused codex."""
         return {
             "focus": "decisions",
@@ -613,7 +613,7 @@ class CodexTranscriptsBuilder:
             "decision_quality": self._assess_decision_quality(sessions),
         }
 
-    def _build_workflows_focused_codex(self, sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _build_workflows_focused_codex(self, sessions: list[dict[str, Any]]) -> dict[str, Any]:
         """Build workflows-focused codex."""
         return {
             "focus": "workflows",
@@ -623,103 +623,103 @@ class CodexTranscriptsBuilder:
         }
 
     # Additional helper methods for focused analysis
-    def _analyze_tool_effectiveness(self, sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _analyze_tool_effectiveness(self, sessions: list[dict[str, Any]]) -> dict[str, Any]:
         """Analyze tool effectiveness across sessions."""
         return {"placeholder": "Tool effectiveness analysis"}
 
-    def _extract_tool_combinations(self, sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _extract_tool_combinations(self, sessions: list[dict[str, Any]]) -> dict[str, Any]:
         """Extract effective tool combinations."""
         return {"placeholder": "Tool combinations analysis"}
 
-    def _analyze_tool_learning_curve(self, sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _analyze_tool_learning_curve(self, sessions: list[dict[str, Any]]) -> dict[str, Any]:
         """Analyze tool learning curve."""
         return {"placeholder": "Tool learning curve analysis"}
 
-    def _extract_resolution_strategies(self, sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _extract_resolution_strategies(self, sessions: list[dict[str, Any]]) -> dict[str, Any]:
         """Extract error resolution strategies."""
         return {"placeholder": "Resolution strategies"}
 
     def _identify_error_prevention_opportunities(
-        self, sessions: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, sessions: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         """Identify error prevention opportunities."""
         return {"placeholder": "Error prevention opportunities"}
 
-    def _extract_conversation_patterns(self, sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _extract_conversation_patterns(self, sessions: list[dict[str, Any]]) -> dict[str, Any]:
         """Extract conversation patterns."""
         return {"placeholder": "Conversation patterns"}
 
-    def _analyze_decision_outcomes(self, sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _analyze_decision_outcomes(self, sessions: list[dict[str, Any]]) -> dict[str, Any]:
         """Analyze decision outcomes."""
         return {"placeholder": "Decision outcomes"}
 
-    def _assess_decision_quality(self, sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _assess_decision_quality(self, sessions: list[dict[str, Any]]) -> dict[str, Any]:
         """Assess decision quality."""
         return {"placeholder": "Decision quality assessment"}
 
-    def _calculate_workflow_efficiency(self, sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _calculate_workflow_efficiency(self, sessions: list[dict[str, Any]]) -> dict[str, Any]:
         """Calculate workflow efficiency metrics."""
         return {"placeholder": "Workflow efficiency"}
 
-    def _identify_workflow_optimizations(self, sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _identify_workflow_optimizations(self, sessions: list[dict[str, Any]]) -> dict[str, Any]:
         """Identify workflow optimization opportunities."""
         return {"placeholder": "Workflow optimizations"}
 
     def _extract_problem_solution_pairs(
-        self, sessions: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+        self, sessions: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         """Extract problem-solution pairs for learning."""
         return [{"placeholder": "Problem-solution pairs"}]
 
-    def _extract_code_examples(self, sessions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _extract_code_examples(self, sessions: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Extract code examples from sessions."""
         return [{"placeholder": "Code examples"}]
 
-    def _extract_best_practices(self, sessions: List[Dict[str, Any]]) -> List[str]:
+    def _extract_best_practices(self, sessions: list[dict[str, Any]]) -> list[str]:
         """Extract best practices from sessions."""
         return ["Placeholder best practice"]
 
-    def _extract_common_mistakes(self, sessions: List[Dict[str, Any]]) -> List[str]:
+    def _extract_common_mistakes(self, sessions: list[dict[str, Any]]) -> list[str]:
         """Extract common mistakes from sessions."""
         return ["Placeholder common mistake"]
 
-    def _extract_tool_usage_examples(self, sessions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _extract_tool_usage_examples(self, sessions: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Extract tool usage examples."""
         return [{"placeholder": "Tool usage examples"}]
 
-    def _extract_workflow_templates(self, sessions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _extract_workflow_templates(self, sessions: list[dict[str, Any]]) -> list[dict[str, Any]]:
         """Extract workflow templates."""
         return [{"placeholder": "Workflow templates"}]
 
-    def _create_executive_summary(self, sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _create_executive_summary(self, sessions: list[dict[str, Any]]) -> dict[str, Any]:
         """Create executive summary of sessions."""
         return {"total_sessions": len(sessions), "summary": "Placeholder executive summary"}
 
-    def _calculate_productivity_metrics(self, sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _calculate_productivity_metrics(self, sessions: list[dict[str, Any]]) -> dict[str, Any]:
         """Calculate productivity metrics."""
         return {"placeholder": "Productivity metrics"}
 
-    def _identify_common_bottlenecks(self, sessions: List[Dict[str, Any]]) -> List[str]:
+    def _identify_common_bottlenecks(self, sessions: list[dict[str, Any]]) -> list[str]:
         """Identify common bottlenecks."""
         return ["Placeholder bottleneck"]
 
-    def _identify_success_factors(self, sessions: List[Dict[str, Any]]) -> List[str]:
+    def _identify_success_factors(self, sessions: list[dict[str, Any]]) -> list[str]:
         """Identify success factors."""
         return ["Placeholder success factor"]
 
-    def _identify_improvement_opportunities(self, sessions: List[Dict[str, Any]]) -> List[str]:
+    def _identify_improvement_opportunities(self, sessions: list[dict[str, Any]]) -> list[str]:
         """Identify improvement opportunities."""
         return ["Placeholder improvement opportunity"]
 
-    def _perform_trend_analysis(self, sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _perform_trend_analysis(self, sessions: list[dict[str, Any]]) -> dict[str, Any]:
         """Perform trend analysis on sessions."""
         return {"placeholder": "Trend analysis"}
 
-    def _generate_recommendations(self, sessions: List[Dict[str, Any]]) -> List[str]:
+    def _generate_recommendations(self, sessions: list[dict[str, Any]]) -> list[str]:
         """Generate recommendations based on analysis."""
         return ["Placeholder recommendation"]
 
-    def _create_markdown_codex_report(self, codex_data: Dict[str, Any]) -> None:
+    def _create_markdown_codex_report(self, codex_data: dict[str, Any]) -> None:
         """Create markdown version of codex report."""
         report_content = f"""# Comprehensive Codex Report
 
@@ -746,7 +746,7 @@ tool usage, and knowledge extraction across multiple sessions.
         )
         report_file.write_text(report_content)
 
-    def _create_markdown_insights_report(self, insights: Dict[str, Any]) -> None:
+    def _create_markdown_insights_report(self, insights: dict[str, Any]) -> None:
         """Create markdown version of insights report."""
         report_content = f"""# Session Insights Report
 

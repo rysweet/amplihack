@@ -6,7 +6,7 @@ allowing selective rehydration based on needs (essential, standard, comprehensiv
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .models import ContextSnapshot
 
@@ -27,7 +27,7 @@ class ContextRehydrator:
 
     LEVELS = ["essential", "standard", "comprehensive"]
 
-    def __init__(self, snapshot_dir: Optional[Path] = None):
+    def __init__(self, snapshot_dir: Path | None = None):
         """Initialize context rehydrator.
 
         Args:
@@ -186,7 +186,7 @@ class ContextRehydrator:
 
         return "\n".join(lines)
 
-    def list_snapshots(self) -> List[Dict[str, Any]]:
+    def list_snapshots(self) -> list[dict[str, Any]]:
         """List all available context snapshots.
 
         Returns:
@@ -234,7 +234,7 @@ class ContextRehydrator:
             return f"{size_bytes / 1024:.1f}KB"
         return f"{size_bytes / (1024 * 1024):.1f}MB"
 
-    def get_snapshot_path(self, snapshot_id: str) -> Optional[Path]:
+    def get_snapshot_path(self, snapshot_id: str) -> Path | None:
         """Get path to snapshot by ID.
 
         Args:

@@ -5,7 +5,7 @@ request handlers must implement.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any
 
 
 class Handler(ABC):
@@ -15,7 +15,7 @@ class Handler(ABC):
     """
 
     @abstractmethod
-    def handle(self, request: Dict[str, Any]) -> Dict[str, Any]:
+    def handle(self, request: dict[str, Any]) -> dict[str, Any]:
         """Handle an incoming request.
 
         Args:
@@ -26,7 +26,7 @@ class Handler(ABC):
         """
 
     @abstractmethod
-    def validate_request(self, request: Dict[str, Any]) -> bool:
+    def validate_request(self, request: dict[str, Any]) -> bool:
         """Validate request format and content.
 
         Args:

@@ -23,7 +23,6 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
 
 # Add the semantic duplicate detector from PR #172 worktree
 sys.path.insert(
@@ -85,7 +84,7 @@ class DuplicateDetectionTester:
         self.issues_data = []
         self.test_results = []
 
-    async def load_github_issues(self) -> List[Dict]:
+    async def load_github_issues(self) -> list[dict]:
         """Load GitHub issues using gh CLI or from existing file."""
         try:
             # First try to use existing issue_analysis.json
@@ -131,14 +130,14 @@ class DuplicateDetectionTester:
             print(f"Unexpected error: {e}")
             return []
 
-    def get_issue_by_number(self, issue_number: int) -> Optional[Dict]:
+    def get_issue_by_number(self, issue_number: int) -> dict | None:
         """Get issue by number from loaded data."""
         for issue in self.issues_data:
             if issue.get("number") == issue_number:
                 return issue
         return None
 
-    def create_test_cases(self) -> List[TestCase]:
+    def create_test_cases(self) -> list[TestCase]:
         """Create comprehensive test cases based on known duplicates."""
         return [
             # Perfect Duplicates - AI-detected error handling issues
@@ -439,7 +438,7 @@ class DuplicateDetectionTester:
         print("   - sdk_test_results.json (detailed data)")
         print("   - accuracy_report.md (summary)")
 
-    async def generate_markdown_report(self, results: Dict) -> None:
+    async def generate_markdown_report(self, results: dict) -> None:
         """Generate a markdown accuracy report."""
         report_content = f"""# SDK Duplicate Detection Accuracy Report
 

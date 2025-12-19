@@ -2,16 +2,15 @@
 
 import os
 from pathlib import Path
-from typing import Optional
 
 
 class FrameworkPathResolver:
     """Resolves framework file paths for both local and UVX deployments."""
 
-    _cached_root: Optional[Path] = None
+    _cached_root: Path | None = None
 
     @staticmethod
-    def find_framework_root() -> Optional[Path]:
+    def find_framework_root() -> Path | None:
         """Find the framework root directory.
 
         Searches in this order:
@@ -58,7 +57,7 @@ class FrameworkPathResolver:
         return None
 
     @staticmethod
-    def resolve_framework_file(relative_path: str) -> Optional[Path]:
+    def resolve_framework_file(relative_path: str) -> Path | None:
         """Resolve a framework file path relative to framework root.
 
         Validates that resolved path stays within framework root to prevent
@@ -90,12 +89,12 @@ class FrameworkPathResolver:
             return None
 
     @staticmethod
-    def resolve_preferences_file() -> Optional[Path]:
+    def resolve_preferences_file() -> Path | None:
         """Find USER_PREFERENCES.md file."""
         return FrameworkPathResolver.resolve_framework_file(".claude/context/USER_PREFERENCES.md")
 
     @staticmethod
-    def resolve_workflow_file() -> Optional[Path]:
+    def resolve_workflow_file() -> Path | None:
         """Find DEFAULT_WORKFLOW.md file."""
         return FrameworkPathResolver.resolve_framework_file(".claude/workflow/DEFAULT_WORKFLOW.md")
 

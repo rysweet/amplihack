@@ -38,6 +38,7 @@ if __name__ == "__main__":
 **User:** "Why is get_user_email failing? Debug this."
 
 **Skill Response:**
+
 ```
 🔍 Debugging intent detected (high confidence)
 🐍 Language: Python (detected from .py extension)
@@ -47,11 +48,13 @@ if __name__ == "__main__":
 ```
 
 **Set Breakpoint:**
+
 ```
 Set breakpoint at line 14
 ```
 
 **Skill Response:**
+
 ```
 ✓ Breakpoint set at user_service.py:14 (get_user_email)
 ▶ Running until breakpoint...
@@ -63,11 +66,13 @@ Set breakpoint at line 14
 ```
 
 **Inspect Variable:**
+
 ```
 What's the value of user after line 14?
 ```
 
 **Skill Response:**
+
 ```
 Variable: user
 Type: <coroutine object fetch_user>
@@ -78,11 +83,13 @@ Value: <coroutine object fetch_user at 0x7f8b3c4d5e40>
 ```
 
 **Step Into:**
+
 ```
 Show me the code around line 14
 ```
 
 **Skill Response:**
+
 ```
    13: async def get_user_email(user_id: int):
 →  14:     user = fetch_user(user_id)  # 🐛 Missing await!
@@ -102,11 +109,13 @@ async def get_user_email(user_id: int):
 ```
 
 **Verification:**
+
 ```
 Stop debugging
 ```
 
 **Skill Response:**
+
 ```
 ✓ Debugging session ended
 📊 Session summary:
@@ -126,30 +135,30 @@ Promise chain hangs because error not caught:
 
 ```javascript
 // order_processor.js
-const axios = require('axios');
+const axios = require("axios");
 
 function validateOrder(orderId) {
-  return axios.get(`https://api.example.com/orders/${orderId}`)
-    .then(response => {
-      if (response.data.status !== 'pending') {
-        throw new Error(`Order ${orderId} is not pending`);
-      }
-      return response.data;
-    });
+  return axios.get(`https://api.example.com/orders/${orderId}`).then((response) => {
+    if (response.data.status !== "pending") {
+      throw new Error(`Order ${orderId} is not pending`);
+    }
+    return response.data;
+  });
 }
 
 function processPayment(order) {
-  return axios.post('https://api.example.com/payments', {
-    orderId: order.id,
-    amount: order.total
-  })
-  .then(response => response.data);
+  return axios
+    .post("https://api.example.com/payments", {
+      orderId: order.id,
+      amount: order.total,
+    })
+    .then((response) => response.data);
 }
 
 function fulfillOrder(orderId) {
   return validateOrder(orderId)
-    .then(order => processPayment(order))
-    .then(payment => {
+    .then((order) => processPayment(order))
+    .then((payment) => {
       console.log(`Payment processed: ${payment.id}`);
       return payment;
     });
@@ -157,8 +166,8 @@ function fulfillOrder(orderId) {
 }
 
 fulfillOrder(12345)
-  .then(result => console.log('Order fulfilled:', result))
-  .catch(err => console.error('Failed:', err));
+  .then((result) => console.log("Order fulfilled:", result))
+  .catch((err) => console.error("Failed:", err));
 ```
 
 ### Debugging Session
@@ -166,6 +175,7 @@ fulfillOrder(12345)
 **User:** "fulfillOrder Promise isn't resolving. Set breakpoints."
 
 **Skill Response:**
+
 ```
 🔍 Explicit debugging trigger detected
 📜 Language: JavaScript (detected from package.json)
@@ -175,6 +185,7 @@ fulfillOrder(12345)
 ```
 
 **Set Multiple Breakpoints:**
+
 ```
 Set breakpoint at line 18
 Set breakpoint at line 25
@@ -182,6 +193,7 @@ Set breakpoint at line 29
 ```
 
 **Skill Response:**
+
 ```
 ✓ Breakpoint 1: order_processor.js:18 (validateOrder then-handler)
 ✓ Breakpoint 2: order_processor.js:25 (processPayment then-handler)
@@ -196,11 +208,13 @@ Set breakpoint at line 29
 ```
 
 **Inspect Response:**
+
 ```
 What's response.data.status?
 ```
 
 **Skill Response:**
+
 ```
 Variable: response.data.status
 Type: string
@@ -211,11 +225,13 @@ Value: "completed"
 ```
 
 **Continue:**
+
 ```
 Continue
 ```
 
 **Skill Response:**
+
 ```
 💥 Exception thrown: Error: Order 12345 is not pending
    at order_processor.js:19
@@ -234,14 +250,15 @@ Continue
 ```javascript
 function fulfillOrder(orderId) {
   return validateOrder(orderId)
-    .then(order => processPayment(order))
-    .then(payment => {
+    .then((order) => processPayment(order))
+    .then((payment) => {
       console.log(`Payment processed: ${payment.id}`);
       return payment;
     })
-    .catch(err => {  // ✅ Added catch handler
+    .catch((err) => {
+      // ✅ Added catch handler
       console.error(`Order ${orderId} failed:`, err.message);
-      throw err;  // Re-throw for caller to handle
+      throw err; // Re-throw for caller to handle
     });
 }
 ```
@@ -295,6 +312,7 @@ int main() {
 **User:** "Getting segfault in user->name access. Debug with gdb."
 
 **Skill Response:**
+
 ```
 🔍 Debugging intent detected
 ⚙️ Language: C++ (detected from .cpp extension)
@@ -305,11 +323,13 @@ int main() {
 ```
 
 **Run Until Crash:**
+
 ```
 Continue
 ```
 
 **Skill Response:**
+
 ```
 💥 Segmentation fault (SIGSEGV)
 
@@ -324,11 +344,13 @@ Program received signal SIGSEGV, Segmentation fault.
 ```
 
 **Show Call Stack:**
+
 ```
 Show call stack
 ```
 
 **Skill Response:**
+
 ```
 📚 Call stack:
    #0  main () at user_manager.cpp:30
@@ -340,11 +362,13 @@ Show call stack
 ```
 
 **Inspect Pointer:**
+
 ```
 What's the value of user?
 ```
 
 **Skill Response:**
+
 ```
 Variable: user
 Type: User*
@@ -357,11 +381,13 @@ Value: 0x7fffffffdcc0
 ```
 
 **Inspect createUser:**
+
 ```
 Show me createUser function
 ```
 
 **Skill Response:**
+
 ```
    13: User* createUser(std::string name, int id) {
    14:     User user(name, id);
@@ -378,6 +404,7 @@ Show me createUser function
 ### Solution
 
 **Option 1: Return by value (preferred):**
+
 ```cpp
 User createUser(std::string name, int id) {
     return User(name, id);  // ✅ Return by value
@@ -393,6 +420,7 @@ std::vector<User> loadUsers() {  // Store values, not pointers
 ```
 
 **Option 2: Heap allocation (if pointers needed):**
+
 ```cpp
 User* createUser(std::string name, int id) {
     return new User(name, id);  // ✅ Heap allocation
@@ -463,6 +491,7 @@ func main() {
 **User:** "Goroutines deadlocked. Need to trace execution."
 
 **Skill Response:**
+
 ```
 🔍 Debugging intent detected
 🔷 Language: Go (detected from go.mod)
@@ -472,11 +501,13 @@ func main() {
 ```
 
 **Set Breakpoint at Deadlock:**
+
 ```
 Set breakpoint at line 28
 ```
 
 **Skill Response:**
+
 ```
 ✓ Breakpoint set at worker_pool.go:28 (main function)
 
@@ -490,11 +521,13 @@ Set breakpoint at line 28
 ```
 
 **Step Into:**
+
 ```
 Step over
 ```
 
 **Skill Response:**
+
 ```
 ⏸️ Execution blocked at line 29: jobs <- j
 
@@ -509,11 +542,13 @@ Step over
 ```
 
 **Inspect Channels:**
+
 ```
 What's the state of jobs channel?
 ```
 
 **Skill Response:**
+
 ```
 Channel: jobs
 Type: chan int
@@ -539,6 +574,7 @@ Receive waiters: 3 (goroutines 2, 3, 4 - workers)
 ### Solution
 
 **Option 1: Send in separate goroutine:**
+
 ```go
 // Send jobs in background goroutine
 go func() {
@@ -558,6 +594,7 @@ wg.Wait()
 ```
 
 **Option 2: Buffered channels:**
+
 ```go
 jobs := make(chan int, 10)      // ✅ Buffer size matches job count
 results := make(chan int, 10)   // ✅ Buffer for results
@@ -624,6 +661,7 @@ fn main() {
 **User:** "Getting panic in process_payment. Set breakpoint."
 
 **Skill Response:**
+
 ```
 🔍 Explicit debugging trigger detected
 🦀 Language: Rust (detected from Cargo.toml)
@@ -634,11 +672,13 @@ fn main() {
 ```
 
 **Set Breakpoint:**
+
 ```
 Set breakpoint at line 18
 ```
 
 **Skill Response:**
+
 ```
 ✓ Breakpoint set at payment_processor.rs:18 (process_payment)
 
@@ -651,11 +691,13 @@ Set breakpoint at line 18
 ```
 
 **Inspect Method:**
+
 ```
 What's the value of method?
 ```
 
 **Skill Response:**
+
 ```
 Variable: method
 Type: PaymentMethod
@@ -668,11 +710,13 @@ Value: PaymentMethod::BankTransfer {
 ```
 
 **Step Through Match:**
+
 ```
 Step over
 ```
 
 **Skill Response:**
+
 ```
 💥 PANIC! Non-exhaustive patterns
 
@@ -697,6 +741,7 @@ thread 'main' panicked at 'non-exhaustive patterns: `BankTransfer { .. }` not co
 ### Solution
 
 **Add missing match arm:**
+
 ```rust
 fn process_payment(method: PaymentMethod, amount: f64) -> PaymentResult {
     match method {
@@ -723,6 +768,7 @@ fn process_payment(method: PaymentMethod, amount: f64) -> PaymentResult {
 ```
 
 **Compiler enforcement:**
+
 ```rust
 // Better: Let compiler enforce exhaustiveness
 fn process_payment(method: PaymentMethod, amount: f64) -> PaymentResult {
@@ -768,6 +814,7 @@ fn process_payment(method: PaymentMethod, amount: f64) -> PaymentResult {
 ---
 
 **Next Steps:**
+
 - Try these examples in yer own projects
 - Adapt patterns to yer specific bugs
 - Learn more patterns in patterns.md

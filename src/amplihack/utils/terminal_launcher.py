@@ -4,7 +4,6 @@ import platform
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Optional, Tuple
 
 
 class TerminalLauncher:
@@ -25,7 +24,7 @@ class TerminalLauncher:
         return "linux"
 
     @staticmethod
-    def launch_tail_terminal(file_path: Path) -> Tuple[bool, Optional[subprocess.Popen]]:
+    def launch_tail_terminal(file_path: Path) -> tuple[bool, subprocess.Popen | None]:
         """Launch a terminal window tailing the specified file.
 
         Args:
@@ -51,7 +50,7 @@ class TerminalLauncher:
             return False, None
 
     @staticmethod
-    def _launch_macos_terminal(file_path: Path) -> Tuple[bool, Optional[subprocess.Popen]]:
+    def _launch_macos_terminal(file_path: Path) -> tuple[bool, subprocess.Popen | None]:
         """Launch macOS Terminal with tail command."""
         script = f'tell app "Terminal" to do script "tail -f {file_path}"'
         try:
@@ -68,7 +67,7 @@ class TerminalLauncher:
             return False, None
 
     @staticmethod
-    def _launch_linux_terminal(file_path: Path) -> Tuple[bool, Optional[subprocess.Popen]]:
+    def _launch_linux_terminal(file_path: Path) -> tuple[bool, subprocess.Popen | None]:
         """Launch Linux terminal with tail command."""
         # Try different terminal emulators in order of preference
         terminals = [
@@ -100,7 +99,7 @@ class TerminalLauncher:
         return False, None
 
     @staticmethod
-    def _launch_windows_terminal(file_path: Path) -> Tuple[bool, Optional[subprocess.Popen]]:
+    def _launch_windows_terminal(file_path: Path) -> tuple[bool, subprocess.Popen | None]:
         """Launch Windows terminal with tail equivalent (Get-Content -Wait)."""
         try:
             # Convert to Windows path format

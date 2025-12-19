@@ -15,7 +15,6 @@ Usage:
 import re
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 
 class LinkFixer:
@@ -27,20 +26,20 @@ class LinkFixer:
     def fix_directory_links(self, content: str, file_path: Path) -> str:
         """Fix links that point to directories without README.md"""
         # Pattern: [text](path/to/directory)
-        pattern = r'\[([^\]]+)\]\(([^)]+)\)'
+        pattern = r"\[([^\]]+)\]\(([^)]+)\)"
 
         def replace_link(match):
             text = match.group(1)
             link = match.group(2)
 
             # Skip external links, anchors, and already-correct links
-            if link.startswith(('http://', 'https://', '#', 'mailto:')):
+            if link.startswith(("http://", "https://", "#", "mailto:")):
                 return match.group(0)
-            if link.endswith('.md'):
+            if link.endswith(".md"):
                 return match.group(0)
 
             # Check if this is a directory link
-            if not link.endswith('/'):
+            if not link.endswith("/"):
                 # Try to resolve the path relative to current file
                 current_dir = file_path.parent
                 target_path = current_dir / link
@@ -48,21 +47,21 @@ class LinkFixer:
                 # Check if it's a directory
                 if target_path.is_dir():
                     # Check if README.md exists
-                    readme_path = target_path / 'README.md'
+                    readme_path = target_path / "README.md"
                     if readme_path.exists():
                         self.fixes_applied += 1
-                        return f'[{text}]({link}/README.md)'
+                        return f"[{text}]({link}/README.md)"
                     # Check for index.md
-                    index_path = target_path / 'index.md'
+                    index_path = target_path / "index.md"
                     if index_path.exists():
                         self.fixes_applied += 1
-                        return f'[{text}]({link}/index.md)'
+                        return f"[{text}]({link}/index.md)"
 
                 # Check if adding .md makes it a valid file
-                md_path = Path(str(target_path) + '.md')
+                md_path = Path(str(target_path) + ".md")
                 if md_path.exists():
                     self.fixes_applied += 1
-                    return f'[{text}]({link}.md)'
+                    return f"[{text}]({link}.md)"
 
             return match.group(0)
 
@@ -78,7 +77,7 @@ class LinkFixer:
     def process_file(self, file_path: Path) -> bool:
         """Process a single markdown file"""
         try:
-            original_content = file_path.read_text(encoding='utf-8')
+            original_content = file_path.read_text(encoding="utf-8")
             modified_content = original_content
 
             # Apply fixes
@@ -87,7 +86,7 @@ class LinkFixer:
 
             # Write back if changed
             if modified_content != original_content:
-                file_path.write_text(modified_content, encoding='utf-8')
+                file_path.write_text(modified_content, encoding="utf-8")
                 self.files_modified += 1
                 return True
             return False
@@ -95,13 +94,13 @@ class LinkFixer:
             print(f"Error processing {file_path}: {e}", file=sys.stderr)
             return False
 
-    def process_all_files(self) -> Tuple[int, int]:
+    def process_all_files(self) -> tuple[int, int]:
         """Process all markdown files in docs directory"""
-        markdown_files = list(self.docs_root.rglob('*.md'))
+        markdown_files = list(self.docs_root.rglob("*.md"))
 
         for md_file in markdown_files:
             # Skip files in certain directories
-            if any(part in md_file.parts for part in ['.git', 'node_modules', '__pycache__']):
+            if any(part in md_file.parts for part in [".git", "node_modules", "__pycache__"]):
                 continue
 
             self.process_file(md_file)
@@ -113,15 +112,15 @@ def main():
     # Determine project root
     script_dir = Path(__file__).parent
     project_root = script_dir.parent.parent
-    docs_root = project_root / 'docs'
+    docs_root = project_root / "docs"
 
     if not docs_root.exists():
         print(f"Error: docs directory not found at {docs_root}", file=sys.stderr)
         sys.exit(1)
 
     # Check for --apply flag
-    apply_fixes = '--apply' in sys.argv
-    verify_only = '--verify' in sys.argv and not apply_fixes
+    apply_fixes = "--apply" in sys.argv
+    verify_only = "--verify" in sys.argv and not apply_fixes
 
     if verify_only:
         print("🔍 Verification mode - checking for issues without fixing...")
@@ -145,7 +144,7 @@ def main():
     # Apply fixes
     files_modified, fixes_applied = fixer.process_all_files()
 
-    print(f"\n✅ Complete!")
+    print("\n✅ Complete!")
     print(f"   Files modified: {files_modified}")
     print(f"   Fixes applied: {fixes_applied}")
 
@@ -156,5 +155,5 @@ def main():
         print("\n✨ All common link issues have been fixed!")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

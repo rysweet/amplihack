@@ -14,7 +14,6 @@ import subprocess
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Dict, List, Optional, Tuple
 
 # Import the existing CI status checker
 try:
@@ -28,7 +27,7 @@ except ImportError:
     from ci_status import check_ci_status
 
 
-def run_command(cmd: List[str], timeout: int = 30) -> Tuple[int, str, str]:
+def run_command(cmd: list[str], timeout: int = 30) -> tuple[int, str, str]:
     """
     Run a shell command with timeout.
 
@@ -50,7 +49,7 @@ def run_command(cmd: List[str], timeout: int = 30) -> Tuple[int, str, str]:
         return 1, "", f"Error running command: {e}"
 
 
-def diagnose_ci(pr_number: Optional[int] = None, branch: Optional[str] = None) -> Dict:
+def diagnose_ci(pr_number: int | None = None, branch: str | None = None) -> dict:
     """
     Run parallel CI diagnostics to gather comprehensive CI status information.
 
@@ -154,7 +153,7 @@ def diagnose_ci(pr_number: Optional[int] = None, branch: Optional[str] = None) -
     return diagnostics
 
 
-def analyze_diagnostics(diagnostics: Dict) -> str:
+def analyze_diagnostics(diagnostics: dict) -> str:
     """
     Analyze diagnostic results and provide overall status.
 
@@ -185,7 +184,7 @@ def analyze_diagnostics(diagnostics: Dict) -> str:
     return "UNKNOWN"
 
 
-def iterate_fixes(max_attempts: int = 5, pr_number: Optional[int] = None) -> Dict:
+def iterate_fixes(max_attempts: int = 5, pr_number: int | None = None) -> dict:
     """
     Iterate on CI fixes with a maximum number of attempts.
 
@@ -289,11 +288,11 @@ def iterate_fixes(max_attempts: int = 5, pr_number: Optional[int] = None) -> Dic
 
 
 def poll_status(
-    reference: Optional[str] = None,
+    reference: str | None = None,
     timeout: int = 300,
     interval: int = 10,
     exponential_backoff: bool = True,
-) -> Dict:
+) -> dict:
     """
     Poll CI status with exponential backoff until completion or timeout.
 

@@ -7,7 +7,7 @@ malformed or truncated JSON input.
 """
 
 import json
-from typing import Any, Dict
+from typing import Any
 
 
 class RobustJSONParser:
@@ -20,7 +20,7 @@ class RobustJSONParser:
     - Never crashes on bad input
     """
 
-    def parse(self, raw_input: str) -> Dict[str, Any]:
+    def parse(self, raw_input: str) -> dict[str, Any]:
         """Parse JSON with error recovery.
 
         Args:
@@ -48,7 +48,7 @@ class RobustJSONParser:
 
     def _attempt_recovery(
         self, raw_input: str, original_error: json.JSONDecodeError
-    ) -> Dict[str, Any] | None:
+    ) -> dict[str, Any] | None:
         """Attempt to recover from JSON parse errors.
 
         Args:

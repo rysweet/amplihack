@@ -40,7 +40,6 @@ This workflow implements structured multi-perspective debate for important archi
 
 > **DEPRECATION WARNING**: Markdown workflows deprecated. See `docs/WORKFLOW_TO_SKILLS_MIGRATION.md`
 
-
 ## Configuration
 
 ### Core Parameters

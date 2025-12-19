@@ -8,7 +8,6 @@ All user-facing messages are sent to stderr to keep stdout clean for programmati
 
 import sys
 from pathlib import Path
-from typing import List, Optional
 
 from .credential_sync import CredentialSync, SyncChoice
 from .detector import Neo4jContainer, Neo4jContainerDetector
@@ -26,7 +25,7 @@ class Neo4jManager:
     6. Never crashes the launcher
     """
 
-    def __init__(self, env_file: Optional[Path] = None, interactive: bool = True):
+    def __init__(self, env_file: Path | None = None, interactive: bool = True):
         """Initialize Neo4j manager.
 
         Args:
@@ -93,7 +92,7 @@ class Neo4jManager:
             logger.warning("Neo4j credential sync failed: %s", str(e), exc_info=True)
             return True
 
-    def _handle_credential_sync(self, containers: List[Neo4jContainer]) -> bool:
+    def _handle_credential_sync(self, containers: list[Neo4jContainer]) -> bool:
         """Handle credential synchronization workflow.
 
         Args:
@@ -144,7 +143,7 @@ class Neo4jManager:
 
         return success
 
-    def _handle_credential_sync_silent(self, containers: List[Neo4jContainer]) -> bool:
+    def _handle_credential_sync_silent(self, containers: list[Neo4jContainer]) -> bool:
         """Handle credential synchronization silently (for auto mode or edge cases).
 
         This is used when the unified dialog was bypassed (e.g., auto mode) and
@@ -168,7 +167,7 @@ class Neo4jManager:
 
         return success
 
-    def _select_container(self, containers: List[Neo4jContainer]) -> Optional[Neo4jContainer]:
+    def _select_container(self, containers: list[Neo4jContainer]) -> Neo4jContainer | None:
         """Prompt user to select a container from multiple options.
 
         Args:
@@ -255,7 +254,7 @@ class Neo4jManager:
             except (KeyboardInterrupt, EOFError):
                 return SyncChoice.SKIP
 
-    def _get_manual_credentials(self) -> tuple[Optional[str], Optional[str]]:
+    def _get_manual_credentials(self) -> tuple[str | None, str | None]:
         """Prompt user for manual credential entry.
 
         Returns:

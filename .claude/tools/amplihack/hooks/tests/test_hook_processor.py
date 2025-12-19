@@ -16,7 +16,7 @@ import json
 import sys
 from io import StringIO
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, call, patch
+from unittest.mock import Mock, call, patch
 
 import pytest
 
@@ -189,7 +189,7 @@ class TestWriteOutputIOError:
         test_data = {"status": "success"}
 
         mock_stdout = Mock()
-        mock_stdout.flush.side_effect = IOError("I/O error")
+        mock_stdout.flush.side_effect = OSError("I/O error")
 
         with patch("sys.stdout", mock_stdout):
             # Should NOT raise
@@ -205,7 +205,7 @@ class TestWriteOutputIOError:
 
         with patch("sys.stdout") as mock_stdout:
             with patch("json.dump") as mock_dump:
-                mock_dump.side_effect = IOError("Write failed")
+                mock_dump.side_effect = OSError("Write failed")
 
                 # Should NOT raise
                 hook.write_output(test_data)

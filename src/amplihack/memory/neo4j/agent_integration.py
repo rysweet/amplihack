@@ -20,7 +20,7 @@ Usage:
 
 import logging
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .agent_memory import AgentMemoryManager
 from .lifecycle import ensure_neo4j_running
@@ -61,7 +61,7 @@ AGENT_TYPE_MAP = {
 }
 
 
-def detect_agent_type(agent_identifier: str) -> Optional[str]:
+def detect_agent_type(agent_identifier: str) -> str | None:
     """Detect agent type from identifier (filename or type name).
 
     Args:
@@ -108,7 +108,7 @@ def detect_task_category(task: str) -> str:
 def inject_memory_context(
     agent_type: str,
     task: str,
-    task_category: Optional[str] = None,
+    task_category: str | None = None,
     min_quality: float = 0.6,
     max_memories: int = 5,
 ) -> str:
@@ -200,10 +200,10 @@ def extract_and_store_learnings(
     agent_type: str,
     output: str,
     task: str,
-    task_category: Optional[str] = None,
+    task_category: str | None = None,
     success: bool = True,
     duration_seconds: float = 0.0,
-) -> List[str]:
+) -> list[str]:
     """Extract learnings from agent output and store in Neo4j.
 
     This function parses the agent's output for patterns, decisions,
@@ -312,7 +312,7 @@ def extract_and_store_learnings(
         return []  # Non-fatal
 
 
-def _filter_by_relevance(memories: List[Dict[str, Any]], task: str) -> List[Dict[str, Any]]:
+def _filter_by_relevance(memories: list[dict[str, Any]], task: str) -> list[dict[str, Any]]:
     """Filter memories by relevance to task using keyword matching.
 
     Args:
@@ -352,8 +352,8 @@ def _filter_by_relevance(memories: List[Dict[str, Any]], task: str) -> List[Dict
 
 def _format_memory_context(
     agent_type: str,
-    memories: List[Dict[str, Any]],
-    cross_agent_memories: List[Dict[str, Any]],
+    memories: list[dict[str, Any]],
+    cross_agent_memories: list[dict[str, Any]],
     task_category: str,
 ) -> str:
     """Format memories into context string for agent prompt.

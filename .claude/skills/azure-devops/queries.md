@@ -7,31 +7,41 @@ Work Item Query Language (WIQL) guide for querying Azure DevOps work items.
 Common queries are built-in to list_work_items.py:
 
 ### mine
+
 Your assigned work items:
+
 ```bash
 python .claude/scenarios/az-devops-tools/list_work_items.py --query mine
 ```
 
 ### unassigned
+
 Open work items with no assignee:
+
 ```bash
 python .claude/scenarios/az-devops-tools/list_work_items.py --query unassigned
 ```
 
 ### recent
+
 Recently changed work items:
+
 ```bash
 python .claude/scenarios/az-devops-tools/list_work_items.py --query recent
 ```
 
 ### active
+
 Active work items:
+
 ```bash
 python .claude/scenarios/az-devops-tools/list_work_items.py --query active
 ```
 
 ### team
+
 Team's open work items:
+
 ```bash
 python .claude/scenarios/az-devops-tools/list_work_items.py --query team
 ```
@@ -71,21 +81,25 @@ python .claude/scenarios/az-devops-tools/list_work_items.py \
 ## Output Formats
 
 ### Table (Default)
+
 ```bash
 python .claude/scenarios/az-devops-tools/list_work_items.py --query mine
 ```
 
 ### JSON
+
 ```bash
 python .claude/scenarios/az-devops-tools/list_work_items.py --query mine --format json
 ```
 
 ### CSV
+
 ```bash
 python .claude/scenarios/az-devops-tools/list_work_items.py --query mine --format csv > items.csv
 ```
 
 ### IDs Only
+
 ```bash
 python .claude/scenarios/az-devops-tools/list_work_items.py --query mine --format ids-only
 ```
@@ -120,6 +134,7 @@ python .claude/scenarios/az-devops-tools/list_work_items.py --query recent --lim
 ## Operators
 
 ### Comparison
+
 - `=` - Equals
 - `<>` - Not equals
 - `<` - Less than
@@ -128,15 +143,18 @@ python .claude/scenarios/az-devops-tools/list_work_items.py --query recent --lim
 - `>=` - Greater than or equal
 
 ### Logical
+
 - `AND` - Both conditions true
 - `OR` - Either condition true
 - `NOT` - Negate condition
 
 ### String
+
 - `CONTAINS` - Field contains value
 - `LIKE` - Pattern matching
 
 ### Special
+
 - `IN` - Value in list
 - `UNDER` - Under area/iteration path
 - `@Me` - Current user
@@ -146,24 +164,28 @@ python .claude/scenarios/az-devops-tools/list_work_items.py --query recent --lim
 ## Example Queries
 
 ### Find Bugs Assigned to Me
+
 ```bash
 python .claude/scenarios/az-devops-tools/list_work_items.py \
   --wiql "SELECT [System.Id], [System.Title] FROM workitems WHERE [System.WorkItemType] = 'Bug' AND [System.AssignedTo] = @Me"
 ```
 
 ### Find Stories in Sprint
+
 ```bash
 python .claude/scenarios/az-devops-tools/list_work_items.py \
   --wiql "SELECT [System.Id], [System.Title] FROM workitems WHERE [System.WorkItemType] = 'User Story' AND [System.IterationPath] = 'MyProject\\Sprint 1'"
 ```
 
 ### Find Items with Tag
+
 ```bash
 python .claude/scenarios/az-devops-tools/list_work_items.py \
   --wiql "SELECT [System.Id], [System.Title] FROM workitems WHERE [System.Tags] CONTAINS 'security'"
 ```
 
 ### Find Items in Area
+
 ```bash
 python .claude/scenarios/az-devops-tools/list_work_items.py \
   --wiql "SELECT [System.Id], [System.Title] FROM workitems WHERE [System.AreaPath] UNDER 'MyProject\\Platform'"
