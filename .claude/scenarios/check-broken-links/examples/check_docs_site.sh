@@ -70,7 +70,7 @@ fi
 # Execute the check
 cd "$(git rev-parse --show-toplevel)" || exit 1
 
-if make check-broken-links TARGET="$DOCS_URL" OPTIONS="$OPTIONS"; then
+if python .claude/scenarios/check-broken-links/link_checker.py "$DOCS_URL" $OPTIONS; then
     EXIT_CODE=0
     if [ "$JSON_OUTPUT" = false ]; then
         echo ""

@@ -51,27 +51,27 @@ make list-scenarios | grep check-broken-links
 **Check a documentation site:**
 
 ```bash
-make check-broken-links TARGET=https://rysweet.github.io/amplihack/
+python .claude/scenarios/check-broken-links/link_checker.py https://rysweet.github.io/amplihack/
 ```
 
 **Check local markdown files:**
 
 ```bash
-make check-broken-links TARGET=./docs/
+python .claude/scenarios/check-broken-links/link_checker.py ./docs/
 ```
 
-### Via Makefile (Recommended)
+### Via Python CLI (Recommended)
 
 **Basic usage:**
 
 ```bash
-make check-broken-links TARGET=<url-or-path>
+python .claude/scenarios/check-broken-links/link_checker.py <url-or-path>
 ```
 
 **With options:**
 
 ```bash
-make check-broken-links TARGET=https://example.com OPTIONS='--timeout 10000 --recurse'
+python .claude/scenarios/check-broken-links/link_checker.py https://example.com --timeout 10000 --recurse
 ```
 
 **Common options:**
@@ -184,7 +184,7 @@ The tool returns standard exit codes for scripting:
 
 ```bash
 #!/bin/bash
-make check-broken-links TARGET=https://example.com
+python .claude/scenarios/check-broken-links/link_checker.py https://example.com
 if [ $? -ne 0 ]; then
     echo "Documentation has broken links - failing build"
     exit 1
@@ -199,10 +199,10 @@ Before finalizing PRs, check documentation:
 
 ```bash
 # Check GitHub Pages deployment
-make check-broken-links TARGET=https://rysweet.github.io/amplihack/
+python .claude/scenarios/check-broken-links/link_checker.py https://rysweet.github.io/amplihack/
 
 # Check local docs before commit
-make check-broken-links TARGET=./docs/
+python .claude/scenarios/check-broken-links/link_checker.py ./docs/
 ```
 
 **Pre-commit hook:**
@@ -212,7 +212,7 @@ make check-broken-links TARGET=./docs/
 #!/bin/bash
 if git diff --cached --name-only | grep -q "^docs/"; then
     echo "Checking documentation links..."
-    make check-broken-links TARGET=./docs/
+    python .claude/scenarios/check-broken-links/link_checker.py ./docs/
 fi
 ```
 
@@ -237,7 +237,7 @@ Or let amplihack install it automatically on first run.
 **Solution:** Increase timeout:
 
 ```bash
-make check-broken-links TARGET=https://slow-site.com OPTIONS='--timeout 10000'
+python .claude/scenarios/check-broken-links/link_checker.py https://slow-site.com --timeout 10000
 ```
 
 ### False positives for valid links
@@ -247,8 +247,7 @@ make check-broken-links TARGET=https://slow-site.com OPTIONS='--timeout 10000'
 **Solution:** Skip problematic domains:
 
 ```bash
-make check-broken-links TARGET=https://example.com \
-    OPTIONS='--skip "internal-auth.example.com/*"'
+python .claude/scenarios/check-broken-links/link_checker.py https://example.com --skip "internal-auth.example.com/*"
 ```
 
 ### Too many warnings about redirects
@@ -263,7 +262,7 @@ make check-broken-links TARGET=https://example.com \
 
 ```bash
 # Validate all docs before pushing to production
-make check-broken-links TARGET=./docs/
+python .claude/scenarios/check-broken-links/link_checker.py ./docs/
 git add docs/
 git commit -m "fix: Update broken documentation links"
 ```
@@ -272,15 +271,14 @@ git commit -m "fix: Update broken documentation links"
 
 ```bash
 # Check only external links (not internal site navigation)
-make check-broken-links TARGET=https://example.com \
-    OPTIONS='--skip "example.com/*"'
+python .claude/scenarios/check-broken-links/link_checker.py https://example.com --skip "example.com/*"
 ```
 
 ### Generate CI report
 
 ```bash
 # JSON output for parsing in CI systems
-make check-broken-links TARGET=./docs/ OPTIONS='--format json' > link-report.json
+python .claude/scenarios/check-broken-links/link_checker.py ./docs/ --format json > link-report.json
 ```
 
 ## Philosophy Alignment
@@ -294,7 +292,7 @@ make check-broken-links TARGET=./docs/ OPTIONS='--format json' > link-report.jso
 **Zero-BS Implementation:**
 
 - Real link checking from day one (no stubs)
-- Actual working Makefile integration
+- Direct Python CLI integration
 - Runnable examples that execute successfully
 
 **Brick Philosophy:**
@@ -305,7 +303,7 @@ make check-broken-links TARGET=./docs/ OPTIONS='--format json' > link-report.jso
 
 ## Next Steps
 
-1. **Run initial check:** `make check-broken-links TARGET=./docs/`
+1. **Run initial check:** `python .claude/scenarios/check-broken-links/link_checker.py ./docs/`
 2. **Fix broken links:** Update URLs in documentation files
 3. **Add to CI:** Include link checking in GitHub Actions
 4. **Regular audits:** Run monthly to catch link rot
