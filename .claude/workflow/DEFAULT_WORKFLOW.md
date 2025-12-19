@@ -274,6 +274,11 @@ After investigation completes, continue with these tasks:
 
 - [ ] **Use** pre-commit-diagnostic agent if hooks fail
 - [ ] **💡 TIP**: For test failures, use [parallel investigation](.claude/CLAUDE.md#parallel-agent-investigation-strategy) to explore issues while continuing work
+- [ ] **Pre-commit Hook Check** (run once at start of Step 12): Ensure hooks are installed before running
+  - Config exists? `test -f .pre-commit-config.yaml && echo "Config found" || echo "No config"`
+  - Hooks installed? `test -f "$(git rev-parse --git-path hooks/pre-commit)" && echo "Hooks installed" || echo "Hooks missing"`
+  - If config exists but hooks don't: `pre-commit install`
+  - This ensures fresh worktrees work without manual setup
 - [ ] Run all unit tests
 - [ ] Execute `pre-commit run --all-files`
 - [ ] Fix any linting issues
