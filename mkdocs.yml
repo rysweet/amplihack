@@ -62,10 +62,27 @@ nav:
       - Default Workflow: claude/workflow/DEFAULT_WORKFLOW.md
       - Document-Driven Development:
           - Overview: document_driven_development/README.md
-          - Core Concepts: document_driven_development/CORE_CONCEPTS.md
-          - User Guide: document_driven_development/DDD_USER_GUIDE.md
-          - Implementation Guide: document_driven_development/IMPLEMENTATION_GUIDE.md
-          - Phase Guides: document_driven_development/PHASE_GUIDES.md
+          - Getting Started: document_driven_development/overview.md
+          - Core Concepts:
+              - Overview: document_driven_development/core_concepts/README.md
+              - Context Poisoning: document_driven_development/core_concepts/context_poisoning.md
+              - File Crawling: document_driven_development/core_concepts/file_crawling.md
+              - Retcon Writing: document_driven_development/core_concepts/retcon_writing.md
+          - Phase Guides:
+              - Overview: document_driven_development/phases/README.md
+              - Phase 0 - Planning: document_driven_development/phases/00_planning_and_alignment.md
+              - Phase 1 - Documentation: document_driven_development/phases/01_documentation_retcon.md
+              - Phase 2 - Approval: document_driven_development/phases/02_approval_gate.md
+              - Phase 3 - Planning: document_driven_development/phases/03_implementation_planning.md
+              - Phase 4 - Implementation: document_driven_development/phases/04_code_implementation.md
+              - Phase 5 - Testing: document_driven_development/phases/05_testing_and_verification.md
+              - Phase 6 - Cleanup: document_driven_development/phases/06_cleanup_and_push.md
+          - Reference:
+              - Overview: document_driven_development/reference/README.md
+              - Checklists: document_driven_development/reference/checklists.md
+              - Common Pitfalls: document_driven_development/reference/common_pitfalls.md
+              - FAQ: document_driven_development/reference/faq.md
+              - Tips for Success: document_driven_development/reference/tips_for_success.md
       - N-Version Programming: claude/workflow/N_VERSION_WORKFLOW.md
       - Multi-Agent Debate: claude/workflow/DEBATE_WORKFLOW.md
       - Fallback Cascade: claude/workflow/CASCADE_WORKFLOW.md
@@ -227,7 +244,7 @@ extra_css:
 # Extra JavaScript
 extra_javascript:
   - javascripts/extra.js
-  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
 
 # Copyright
