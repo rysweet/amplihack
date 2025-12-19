@@ -5,6 +5,7 @@ Professional email generation from bullet points and conversation summaries.
 ## Quick Start
 
 Use the email-drafter skill whenever you need to:
+
 - Convert meeting notes into formal communications
 - Draft professional requests
 - Create team announcements
@@ -15,6 +16,7 @@ Use the email-drafter skill whenever you need to:
 ## Skill Invocation
 
 Provide Claude with:
+
 1. **Content**: Your bullet points or notes
 2. **Tone**: One of (formal, casual, technical)
 3. **Context**: One of (status_update, request, announcement, follow_up, response, recap)
@@ -46,11 +48,11 @@ Content:
 
 ### Three Tones
 
-| Tone | Use For | Language | Greeting |
-|------|---------|----------|----------|
-| **Formal** | Executives, external stakeholders, important announcements | Professional, complete sentences, respectful | "Dear [Name]" |
-| **Casual** | Teammates, internal communications, collaborative contexts | Friendly, conversational, approachable | "Hi [Name]" |
-| **Technical** | Technical teams, specifications, domain experts | Precise, detailed, industry terminology | "Hello [Team]" or direct opening |
+| Tone          | Use For                                                    | Language                                     | Greeting                         |
+| ------------- | ---------------------------------------------------------- | -------------------------------------------- | -------------------------------- |
+| **Formal**    | Executives, external stakeholders, important announcements | Professional, complete sentences, respectful | "Dear [Name]"                    |
+| **Casual**    | Teammates, internal communications, collaborative contexts | Friendly, conversational, approachable       | "Hi [Name]"                      |
+| **Technical** | Technical teams, specifications, domain experts            | Precise, detailed, industry terminology      | "Hello [Team]" or direct opening |
 
 ### Six Contexts
 
@@ -64,6 +66,7 @@ Content:
 ## Generated Email Characteristics
 
 Every generated email includes:
+
 - Appropriate greeting for the tone
 - Clear, logical structure
 - Professional formatting
@@ -74,6 +77,7 @@ Every generated email includes:
 ## Philosophy
 
 This skill embodies amplihack principles:
+
 - **Ruthless Simplicity**: Pure text transformation, no dependencies
 - **Self-Contained**: Works independently, needs no external services
 - **Professional Output**: Generates production-ready content
@@ -110,6 +114,7 @@ This skill embodies amplihack principles:
 ### Quick Example: Status Update (Formal)
 
 Input:
+
 ```
 Tone: formal
 Context: status_update
@@ -121,6 +126,7 @@ Content:
 ```
 
 Output:
+
 ```
 Dear Team,
 
@@ -144,6 +150,7 @@ Best regards,
 ## Documentation
 
 For complete documentation including:
+
 - All supported tones with detailed characteristics
 - All supported contexts with example structures
 - Six comprehensive examples (one per context)
@@ -155,6 +162,7 @@ See **SKILL.md** (main documentation file).
 ## Testing
 
 Test cases are available in `tests/USAGE_TEST_CASES.md`:
+
 - Tone consistency tests
 - Context structure tests
 - Combined tone + context tests
@@ -180,6 +188,7 @@ This skill is designed to work seamlessly with Claude Code as a Claude Skill. No
 ## Support
 
 If generated emails don't meet your needs:
+
 1. Review the tone and context selected
 2. Provide more specific content details
 3. Clarify any special requirements

@@ -1,10 +1,9 @@
 """Logging utilities."""
 
 import logging
-from typing import Optional
 
 
-def get_logger(name: str, level: Optional[int] = None) -> logging.Logger:
+def get_logger(name: str, level: int | None = None) -> logging.Logger:
     """Get a logger instance.
 
     Args:

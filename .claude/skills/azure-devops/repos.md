@@ -17,6 +17,7 @@ python .claude/scenarios/az-devops-tools/list_repos.py --include-details
 ```
 
 This shows:
+
 - Repository size
 - Default branch
 - Web URLs
@@ -126,6 +127,7 @@ python .claude/scenarios/az-devops-tools/create_pr.py \
 Repositories have two clone URL formats:
 
 ### HTTPS (Recommended)
+
 ```
 https://dev.azure.com/ORG/PROJECT/_git/REPO
 ```
@@ -133,6 +135,7 @@ https://dev.azure.com/ORG/PROJECT/_git/REPO
 Best for most scenarios. Uses Azure DevOps credentials or PAT tokens.
 
 ### SSH
+
 ```
 git@ssh.dev.azure.com:v3/ORG/PROJECT/REPO
 ```
@@ -144,6 +147,7 @@ Requires SSH key setup. Better for automation.
 ### Branch Naming Conventions
 
 Common patterns:
+
 - `feature/feature-name` - New features
 - `bugfix/issue-number` - Bug fixes
 - `hotfix/critical-issue` - Production hotfixes
@@ -152,6 +156,7 @@ Common patterns:
 ### Protected Branches
 
 Main/master branches typically have policies:
+
 - Require pull request reviews
 - Require build validation
 - Require work item linking
@@ -161,6 +166,7 @@ Use `create_pr.py` to work with protected branches.
 ## Repository Permissions
 
 Common permission levels:
+
 - **Reader** - Clone, pull, view code
 - **Contributor** - Clone, pull, push, create branches
 - **Project Administrator** - All permissions
@@ -178,11 +184,13 @@ Common permission levels:
 ### "Branch does not exist"
 
 Verify branch exists:
+
 ```bash
 git branch -a | grep branch-name
 ```
 
 Push if local only:
+
 ```bash
 git push -u origin branch-name
 ```
@@ -190,6 +198,7 @@ git push -u origin branch-name
 ### "Pull request already exists"
 
 Check existing PRs for these branches:
+
 ```bash
 az repos pr list --source-branch feature/branch-name
 ```

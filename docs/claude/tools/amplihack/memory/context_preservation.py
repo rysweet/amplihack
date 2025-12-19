@@ -14,7 +14,7 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 # Clean import setup
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -76,7 +76,7 @@ from amplihack.memory import MemoryManager, MemoryType
 class ContextPreserver:
     """Manages context preservation for Claude agent workflows."""
 
-    def __init__(self, session_id: Optional[str] = None):
+    def __init__(self, session_id: str | None = None):
         """Initialize context preserver.
 
         Args:
@@ -92,10 +92,10 @@ class ContextPreserver:
         self,
         agent_id: str,
         conversation_summary: str,
-        key_decisions: List[str],
-        active_tasks: List[str],
-        metadata: Optional[Dict[str, Any]] = None,
-    ) -> Optional[str]:
+        key_decisions: list[str],
+        active_tasks: list[str],
+        metadata: dict[str, Any] | None = None,
+    ) -> str | None:
         """Preserve current conversation context.
 
         Stores a comprehensive snapshot of the current conversation state
@@ -146,11 +146,11 @@ class ContextPreserver:
         self,
         workflow_name: str,
         current_step: str,
-        completed_steps: List[str],
-        pending_steps: List[str],
-        step_results: Dict[str, Any],
-        workflow_metadata: Optional[Dict[str, Any]] = None,
-    ) -> Optional[str]:
+        completed_steps: list[str],
+        pending_steps: list[str],
+        step_results: dict[str, Any],
+        workflow_metadata: dict[str, Any] | None = None,
+    ) -> str | None:
         """Preserve workflow execution state.
 
         Stores the current state of a multi-step workflow including
@@ -209,10 +209,10 @@ class ContextPreserver:
         decision_title: str,
         decision_description: str,
         reasoning: str,
-        alternatives_considered: List[str],
-        impact_assessment: Optional[str] = None,
-        related_decisions: Optional[List[str]] = None,
-    ) -> Optional[str]:
+        alternatives_considered: list[str],
+        impact_assessment: str | None = None,
+        related_decisions: list[str] | None = None,
+    ) -> str | None:
         """Preserve agent decision with full context.
 
         Stores a comprehensive record of an agent's decision including
@@ -265,9 +265,7 @@ class ContextPreserver:
             metadata={"context_type": "decision", "decision_agent": agent_id},
         )
 
-    def restore_conversation_context(
-        self, agent_id: Optional[str] = None
-    ) -> Optional[Dict[str, Any]]:
+    def restore_conversation_context(self, agent_id: str | None = None) -> dict[str, Any] | None:
         """Restore the most recent conversation context.
 
         Retrieves the latest conversation context for continued operation.
@@ -301,7 +299,7 @@ class ContextPreserver:
 
         return None
 
-    def restore_workflow_state(self, workflow_name: str) -> Optional[Dict[str, Any]]:
+    def restore_workflow_state(self, workflow_name: str) -> dict[str, Any] | None:
         """Restore workflow execution state.
 
         Retrieves the latest state for a specific workflow.
@@ -336,8 +334,8 @@ class ContextPreserver:
         return None
 
     def get_decision_history(
-        self, agent_id: Optional[str] = None, limit: int = 10
-    ) -> List[Dict[str, Any]]:
+        self, agent_id: str | None = None, limit: int = 10
+    ) -> list[dict[str, Any]]:
         """Get agent decision history.
 
         Retrieves recent decisions made by agents for context awareness.
@@ -407,10 +405,10 @@ class ContextPreserver:
 def preserve_current_context(
     agent_id: str,
     summary: str,
-    decisions: List[str],
-    tasks: List[str],
-    session_id: Optional[str] = None,
-) -> Optional[str]:
+    decisions: list[str],
+    tasks: list[str],
+    session_id: str | None = None,
+) -> str | None:
     """Convenience function to preserve current context.
 
     Args:
@@ -438,8 +436,8 @@ def preserve_current_context(
 
 
 def restore_latest_context(
-    agent_id: Optional[str] = None, session_id: Optional[str] = None
-) -> Optional[Dict[str, Any]]:
+    agent_id: str | None = None, session_id: str | None = None
+) -> dict[str, Any] | None:
     """Convenience function to restore latest context.
 
     Args:

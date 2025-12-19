@@ -9,7 +9,7 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 # Clean import setup
 sys.path.insert(0, str(Path(__file__).parent))
@@ -30,7 +30,7 @@ class PreCompactHook(HookProcessor):
         self.session_dir = self.log_dir / self.session_id
         self.session_dir.mkdir(parents=True, exist_ok=True)
 
-    def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Process pre-compact event and export conversation transcript.
 
         Args:
@@ -133,7 +133,7 @@ class PreCompactHook(HookProcessor):
 
             return {"status": "error", "message": error_msg, "error": str(e)}
 
-    def restore_conversation_from_latest(self) -> List[Dict[str, Any]]:
+    def restore_conversation_from_latest(self) -> list[dict[str, Any]]:
         """Restore conversation from the latest transcript.
 
         Returns:

@@ -8,7 +8,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Literal
 
 
 @dataclass
@@ -18,9 +18,9 @@ class GoalDefinition:
     raw_prompt: str
     goal: str  # Primary objective
     domain: str  # e.g., "data-processing", "security-analysis", "automation"
-    constraints: List[str] = field(default_factory=list)  # Technical constraints
-    success_criteria: List[str] = field(default_factory=list)  # How to measure success
-    context: Dict[str, Any] = field(default_factory=dict)  # Additional context
+    constraints: list[str] = field(default_factory=list)  # Technical constraints
+    success_criteria: list[str] = field(default_factory=list)  # How to measure success
+    context: dict[str, Any] = field(default_factory=dict)  # Additional context
     complexity: Literal["simple", "moderate", "complex"] = "moderate"
 
     def __post_init__(self):
@@ -39,11 +39,11 @@ class PlanPhase:
 
     name: str
     description: str
-    required_capabilities: List[str]
+    required_capabilities: list[str]
     estimated_duration: str  # e.g., "5 minutes", "1 hour"
-    dependencies: List[str] = field(default_factory=list)  # Names of prerequisite phases
+    dependencies: list[str] = field(default_factory=list)  # Names of prerequisite phases
     parallel_safe: bool = True  # Can execute in parallel with others
-    success_indicators: List[str] = field(default_factory=list)
+    success_indicators: list[str] = field(default_factory=list)
 
     def __post_init__(self):
         """Validate phase definition."""
@@ -58,13 +58,13 @@ class ExecutionPlan:
     """Multi-phase execution plan for achieving goal."""
 
     goal_id: uuid.UUID
-    phases: List[PlanPhase]
+    phases: list[PlanPhase]
     total_estimated_duration: str
-    required_skills: List[str] = field(default_factory=list)  # Skill names needed
-    parallel_opportunities: List[List[str]] = field(
+    required_skills: list[str] = field(default_factory=list)  # Skill names needed
+    parallel_opportunities: list[list[str]] = field(
         default_factory=list
     )  # Groups of phases that can run in parallel
-    risk_factors: List[str] = field(default_factory=list)
+    risk_factors: list[str] = field(default_factory=list)
     created_at: datetime = field(default_factory=datetime.utcnow)
 
     def __post_init__(self):
@@ -86,10 +86,10 @@ class SkillDefinition:
 
     name: str
     source_path: Path  # Path to original skill file
-    capabilities: List[str]
+    capabilities: list[str]
     description: str
     content: str  # Full skill markdown content
-    dependencies: List[str] = field(default_factory=list)  # Other skills needed
+    dependencies: list[str] = field(default_factory=list)  # Other skills needed
     match_score: float = 0.0  # How well this matches the need (0-1)
 
     def __post_init__(self):
@@ -109,11 +109,11 @@ class GoalAgentBundle:
     id: uuid.UUID = field(default_factory=uuid.uuid4)
     name: str = ""
     version: str = "1.0.0"
-    goal_definition: Optional[GoalDefinition] = None
-    execution_plan: Optional[ExecutionPlan] = None
-    skills: List[SkillDefinition] = field(default_factory=list)
-    auto_mode_config: Dict[str, Any] = field(default_factory=dict)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    goal_definition: GoalDefinition | None = None
+    execution_plan: ExecutionPlan | None = None
+    skills: list[SkillDefinition] = field(default_factory=list)
+    auto_mode_config: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     status: Literal["pending", "planning", "assembling", "ready", "failed"] = "pending"
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)

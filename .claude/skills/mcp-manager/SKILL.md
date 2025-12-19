@@ -36,47 +36,65 @@ Activates on MCP keywords within 3-message window or explicit invocation: `/mcp-
 ## Commands
 
 ### 1. List MCPs
+
 Display all configured MCP servers with status.
+
 - "List all my MCPs" / "Show me my MCP servers"
 - CLI: `python3 -m mcp-manager.cli list`
 
 ### 2. Enable MCP
+
 Activate a disabled MCP server.
+
 - "Enable the filesystem MCP" / "Turn on puppeteer"
 - CLI: `python3 -m mcp-manager.cli enable <server-name>`
 
 ### 3. Disable MCP
+
 Deactivate an MCP server without removing it. Requires confirmation.
+
 - "Disable the puppeteer MCP" / "Turn off github"
 - CLI: `python3 -m mcp-manager.cli disable <server-name>`
 
 ### 4. Add MCP
+
 Add new MCP server interactively (collects name, command, args, env vars).
+
 - "Add a new MCP server" / "Configure a database MCP"
 - CLI: `python3 -m mcp-manager.cli add <name> <command> [args...] --env KEY=VALUE`
 
 ### 5. Remove MCP
+
 Delete MCP server configuration completely. Requires confirmation with warning.
+
 - "Remove the puppeteer MCP" / "Delete the old-server"
 - CLI: `python3 -m mcp-manager.cli remove <server-name>`
 
 ### 6. Show MCP
+
 Display detailed information for specific MCP server.
+
 - "Show me the filesystem MCP" / "Details for github server"
 - CLI: `python3 -m mcp-manager.cli show <server-name>`
 
 ### 7. Validate MCPs
+
 Check all MCP configurations for errors.
+
 - "Validate my MCP configuration" / "Check for MCP errors"
 - CLI: `python3 -m mcp-manager.cli validate`
 
 ### 8. Export MCPs
+
 Export configurations to JSON file for backup.
+
 - "Export my MCP configuration" / "Back up my MCPs"
 - CLI: `python3 -m mcp-manager.cli export [output-file]`
 
 ### 9. Import MCPs
+
 Import configurations from JSON file.
+
 - "Import MCPs from backup.json" / "Restore my MCPs"
 - CLI: `python3 -m mcp-manager.cli import <input-file> [--merge]`
 
@@ -105,6 +123,7 @@ Import configurations from JSON file.
 **User:** "Add a new MCP for database access"
 
 **Interactive Collection:**
+
 1. Name: "postgres-local"
 2. Command: "node /opt/mcp-servers/postgres/index.js"
 3. Args: "--port 5432 --host localhost"
@@ -137,6 +156,7 @@ cd .claude/scenarios && python3 -m mcp-manager.cli <command> [args]
 ```
 
 **Key Commands:**
+
 - `list` - List all MCPs
 - `enable <name>` - Enable server
 - `disable <name>` - Disable server
@@ -148,6 +168,7 @@ cd .claude/scenarios && python3 -m mcp-manager.cli <command> [args]
 - `import <file> [--merge]` - Import from JSON
 
 **Output Handling:**
+
 - Success: Exit code 0, stdout with ✓ prefix
 - Error: Non-zero exit code, stderr with ❌ prefix
 - Redact sensitive info (tokens, passwords) in responses
@@ -155,6 +176,7 @@ cd .claude/scenarios && python3 -m mcp-manager.cli <command> [args]
 ## Error Handling
 
 **Common Errors:**
+
 1. **CLI Not Found**: Offer installation instructions (see README)
 2. **Server Not Found**: List available servers, suggest alternatives
 3. **Server Already Exists**: Suggest show/remove/rename

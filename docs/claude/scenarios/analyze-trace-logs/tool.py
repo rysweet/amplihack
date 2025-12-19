@@ -12,7 +12,7 @@ import sys
 from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any
 
 
 class TraceLogAnalyzer:
@@ -30,7 +30,7 @@ class TraceLogAnalyzer:
         ]
         self.system_messages = ["foo", "test", "ping", "hello", "quota"]
 
-    def parse_jsonl_file(self, file_path: Path) -> List[Dict[str, Any]]:
+    def parse_jsonl_file(self, file_path: Path) -> list[dict[str, Any]]:
         """Parse a JSONL file and return list of conversation entries."""
         entries = []
         try:
@@ -61,7 +61,7 @@ class TraceLogAnalyzer:
             return True
         return False
 
-    def extract_user_messages(self, entries: List[Dict[str, Any]]) -> List[str]:
+    def extract_user_messages(self, entries: list[dict[str, Any]]) -> list[str]:
         """Extract user messages from conversation entries."""
         user_messages = []
         for entry in entries:
@@ -98,7 +98,7 @@ class TraceLogAnalyzer:
 
         return user_messages
 
-    def categorize_request(self, message: str) -> List[str]:
+    def categorize_request(self, message: str) -> list[str]:
         """Categorize a user request into multiple categories."""
         message_lower = message.lower()
         categories = []
@@ -145,7 +145,7 @@ class TraceLogAnalyzer:
         return categories
 
     def extract_key_phrases(
-        self, messages: List[str], min_length: int = 10, max_length: int = 100
+        self, messages: list[str], min_length: int = 10, max_length: int = 100
     ) -> Counter:
         """Extract common key phrases from messages."""
         phrases = []
@@ -162,7 +162,7 @@ class TraceLogAnalyzer:
 
         return Counter(phrases)
 
-    def extract_task_verbs(self, message: str) -> List[str]:
+    def extract_task_verbs(self, message: str) -> list[str]:
         """Extract action verbs from user messages."""
         verbs = []
         msg_lower = message.lower()
@@ -208,7 +208,7 @@ class TraceLogAnalyzer:
 
         return verbs
 
-    def identify_decision_patterns(self, messages: List[str]) -> Dict[str, List[str]]:
+    def identify_decision_patterns(self, messages: list[str]) -> dict[str, list[str]]:
         """Identify patterns in user decisions and preferences."""
         patterns = defaultdict(list)
 
@@ -273,7 +273,7 @@ class TraceLogAnalyzer:
 
         return patterns
 
-    def analyze(self, log_dir: Path, sample_size: int = 15, options: dict = None) -> Dict[str, Any]:
+    def analyze(self, log_dir: Path, sample_size: int = 15, options: dict = None) -> dict[str, Any]:
         """
         Analyze a sample of log files and extract patterns.
 
@@ -360,7 +360,7 @@ class TraceLogAnalyzer:
             },
         }
 
-    def generate_report(self, analysis: Dict[str, Any], output_path: Path):
+    def generate_report(self, analysis: dict[str, Any], output_path: Path):
         """Generate a comprehensive markdown report."""
 
         with open(output_path, "w", encoding="utf-8") as f:

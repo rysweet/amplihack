@@ -309,7 +309,9 @@ class TestRequirementPreservation:
 
                 sys.path.pop(0)
 
-                for original, degraded in zip(original_requirements, degraded_requirements):
+                for original, degraded in zip(
+                    original_requirements, degraded_requirements, strict=False
+                ):
                     is_degraded = detect_requirement_degradation(original, degraded)
                     assert is_degraded, f"Should detect degradation: '{original}' -> '{degraded}'"
 

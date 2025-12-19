@@ -26,7 +26,6 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import List, Optional
 
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
@@ -71,7 +70,7 @@ LIBRARY_DOCS = {
 def import_python_docs(
     manager: ExternalKnowledgeManager,
     version: str = "latest",
-    pages: Optional[List[str]] = None,
+    pages: list[str] | None = None,
 ) -> int:
     """Import Python official documentation.
 
@@ -126,7 +125,7 @@ def import_python_docs(
 def import_ms_learn(
     manager: ExternalKnowledgeManager,
     topic: str,
-    articles: Optional[List[str]] = None,
+    articles: list[str] | None = None,
 ) -> int:
     """Import MS Learn content.
 
@@ -174,7 +173,7 @@ def import_ms_learn(
 def import_library_docs(
     manager: ExternalKnowledgeManager,
     library_name: str,
-    pages: Optional[List[str]] = None,
+    pages: list[str] | None = None,
 ) -> int:
     """Import library documentation.
 

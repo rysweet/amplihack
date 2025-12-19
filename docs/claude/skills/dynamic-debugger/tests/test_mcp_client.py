@@ -11,7 +11,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class MCPClient:
@@ -51,7 +51,7 @@ class MCPClient:
         # Send initialized notification
         self.send_notification("notifications/initialized")
 
-    def send_request(self, method: str, params: Optional[Dict] = None) -> Dict[str, Any]:
+    def send_request(self, method: str, params: dict | None = None) -> dict[str, Any]:
         """Send JSON-RPC 2.0 request to MCP server.
 
         Args:
@@ -84,7 +84,7 @@ class MCPClient:
 
         return json.loads(response_line)
 
-    def call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    def call_tool(self, tool_name: str, arguments: dict[str, Any]) -> dict[str, Any]:
         """Call an MCP tool.
 
         Args:
@@ -98,7 +98,7 @@ class MCPClient:
             method="tools/call", params={"name": tool_name, "arguments": arguments}
         )
 
-    def send_notification(self, method: str, params: Optional[Dict] = None):
+    def send_notification(self, method: str, params: dict | None = None):
         """Send JSON-RPC 2.0 notification (no response expected).
 
         Args:
@@ -118,7 +118,7 @@ class MCPClient:
         self.process.stdin.write(notification_json)
         self.process.stdin.flush()
 
-    def list_tools(self) -> Dict[str, Any]:
+    def list_tools(self) -> dict[str, Any]:
         """List available MCP tools."""
         return self.send_request(method="tools/list")
 

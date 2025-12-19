@@ -9,7 +9,7 @@ Provides validation, error handling, and structured output.
 import re
 import shutil
 import subprocess
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class GitHubIssueCreator:
@@ -39,13 +39,13 @@ class GitHubIssueCreator:
     def create_issue(
         self,
         title: str,
-        body: Optional[str] = None,
-        labels: Optional[List[str]] = None,
-        assignees: Optional[List[str]] = None,
-        milestone: Optional[str] = None,
-        project: Optional[str] = None,
-        repo: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        body: str | None = None,
+        labels: list[str] | None = None,
+        assignees: list[str] | None = None,
+        milestone: str | None = None,
+        project: str | None = None,
+        repo: str | None = None,
+    ) -> dict[str, Any]:
         """
         Create a GitHub issue.
 
@@ -144,13 +144,13 @@ class GitHubIssueCreator:
 
 def create_issue(
     title: str,
-    body: Optional[str] = None,
-    labels: Optional[List[str]] = None,
-    assignees: Optional[List[str]] = None,
-    milestone: Optional[str] = None,
-    project: Optional[str] = None,
-    repo: Optional[str] = None,
-) -> Dict[str, Any]:
+    body: str | None = None,
+    labels: list[str] | None = None,
+    assignees: list[str] | None = None,
+    milestone: str | None = None,
+    project: str | None = None,
+    repo: str | None = None,
+) -> dict[str, Any]:
     """
     Convenience function to create a GitHub issue.
 

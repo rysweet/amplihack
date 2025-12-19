@@ -20,6 +20,7 @@ See `.claude/skills/azure-devops/SKILL.md` for complete skill definition with pr
 ### Quick Setup
 
 1. **Install Azure CLI**
+
    ```bash
    # macOS
    brew install azure-cli
@@ -32,11 +33,13 @@ See `.claude/skills/azure-devops/SKILL.md` for complete skill definition with pr
    ```
 
 2. **Install DevOps Extension**
+
    ```bash
    az extension add --name azure-devops
    ```
 
 3. **Login and Configure**
+
    ```bash
    az login
    az devops configure --defaults \
@@ -54,6 +57,7 @@ See `.claude/skills/azure-devops/SKILL.md` for complete skill definition with pr
 All tools are in `.claude/scenarios/az-devops-tools/`. Run any tool with `--help` for usage.
 
 #### Work Item Tools
+
 - `list_work_items.py` - Query and filter work items
 - `get_work_item.py` - Get single work item details
 - `create_work_item.py` - Create new work items
@@ -64,16 +68,19 @@ All tools are in `.claude/scenarios/az-devops-tools/`. Run any tool with `--help
 - `list_types.py` - Discover work item types and fields
 
 #### Utility Tools
+
 - `auth_check.py` - Verify authentication and configuration
 - `format_html.py` - Convert markdown to HTML
 
 #### Repository Tools
+
 - `list_repos.py` - List repositories in project
 - `create_pr.py` - Create pull requests
 
 ### Quick Examples
 
 #### Create Work Item
+
 ```bash
 python .claude/scenarios/az-devops-tools/create_work_item.py \
   --type "User Story" \
@@ -82,11 +89,13 @@ python .claude/scenarios/az-devops-tools/create_work_item.py \
 ```
 
 #### List My Work Items
+
 ```bash
 python .claude/scenarios/az-devops-tools/list_work_items.py --query mine
 ```
 
 #### Create Pull Request
+
 ```bash
 python .claude/scenarios/az-devops-tools/create_pr.py \
   --source feature/auth \
@@ -161,14 +170,17 @@ python .claude/scenarios/az-devops-tools/create_pr.py \
 ## Troubleshooting
 
 ### "az: command not found"
+
 Install Azure CLI. See Quick Setup above.
 
 ### "DevOps extension not installed"
+
 ```bash
 az extension add --name azure-devops
 ```
 
 ### "Authentication failed"
+
 ```bash
 az logout
 az login
@@ -176,6 +188,7 @@ python .claude/scenarios/az-devops-tools/auth_check.py --auto-fix
 ```
 
 ### "Invalid work item type"
+
 ```bash
 python .claude/scenarios/az-devops-tools/list_types.py
 ```
@@ -183,6 +196,7 @@ python .claude/scenarios/az-devops-tools/list_types.py
 ## Documentation
 
 For detailed AI-facing documentation, see:
+
 - `.claude/skills/azure-devops/authentication.md` - Auth setup
 - `.claude/skills/azure-devops/work-items.md` - Work item operations
 - `.claude/skills/azure-devops/queries.md` - WIQL query patterns

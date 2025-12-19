@@ -7,7 +7,7 @@ communication with the UI.
 
 import threading
 import time
-from typing import Callable, Optional
+from collections.abc import Callable
 
 from .auto_mode_state import AutoModeState
 
@@ -30,7 +30,7 @@ class AutoModeCoordinator:
         self,
         auto_mode,
         state: AutoModeState,
-        state_callback: Optional[Callable[[AutoModeState], None]] = None,
+        state_callback: Callable[[AutoModeState], None] | None = None,
     ):
         """Initialize coordinator.
 
@@ -42,7 +42,7 @@ class AutoModeCoordinator:
         self.auto_mode = auto_mode
         self.state = state
         self.state_callback = state_callback
-        self.execution_thread: Optional[threading.Thread] = None
+        self.execution_thread: threading.Thread | None = None
 
     def start(self) -> None:
         """Start auto mode execution in background thread.
@@ -104,7 +104,7 @@ class AutoModeCoordinator:
         finally:
             self._notify_callback()
 
-    def wait(self, timeout: Optional[float] = None) -> None:
+    def wait(self, timeout: float | None = None) -> None:
         """Wait for execution thread to complete.
 
         Args:

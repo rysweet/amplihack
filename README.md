@@ -545,10 +545,10 @@ amplihack launch
 pytest tests/
 ```
 
-
 ## RustyClawd Integration
 
-Amplihack supports RustyClawd, a high-performance Rust implementation of Claude Code.
+Amplihack supports RustyClawd, a high-performance Rust implementation of Claude
+Code.
 
 ### Quick Start
 
@@ -573,11 +573,13 @@ amplihack launch -- -p "your prompt"
 RustyClawd must be available in your system PATH:
 
 **Option 1: Install via cargo**
+
 ```bash
 cargo install --git https://github.com/rysweet/RustyClawd rusty
 ```
 
 **Option 2: Build from source**
+
 ```bash
 git clone https://github.com/rysweet/RustyClawd
 cd RustyClawd
@@ -587,6 +589,7 @@ export RUSTYCLAWD_PATH=$PWD/target/release/rusty
 ```
 
 **Option 3: Custom binary location**
+
 ```bash
 # Point to your custom RustyClawd build
 export RUSTYCLAWD_PATH=/path/to/your/rusty

@@ -2,12 +2,12 @@
 
 import subprocess
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 REPO_ROOT = Path(__file__).parent.parent.parent.parent
 
 
-def run_claude(prompt: str, timeout: int = 300) -> Dict[str, Any]:
+def run_claude(prompt: str, timeout: int = 300) -> dict[str, Any]:
     """Run Claude CLI with prompt and return result.
 
     Args:

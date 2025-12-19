@@ -252,6 +252,7 @@ az resource list \
 ARM templates are JSON files that define infrastructure declaratively.
 
 **Basic template structure:**
+
 ```json
 {
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
@@ -284,6 +285,7 @@ ARM templates are JSON files that define infrastructure declaratively.
 ```
 
 **Deploy ARM template:**
+
 ```bash
 az deployment group create \
   --resource-group myResourceGroup \
@@ -312,6 +314,7 @@ az deployment group what-if \
 Bicep is a domain-specific language (DSL) for deploying Azure resources with cleaner syntax than ARM templates.
 
 **Basic Bicep file:**
+
 ```bicep
 param location string = resourceGroup().location
 param storageAccountName string = 'mystorageaccount'
@@ -334,6 +337,7 @@ output primaryEndpoint string = storageAccount.properties.primaryEndpoints.blob
 ```
 
 **Multi-resource Bicep example:**
+
 ```bicep
 param location string = resourceGroup().location
 param vmName string
@@ -424,6 +428,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2023-07-01' = {
 ```
 
 **Bicep CLI operations:**
+
 ```bash
 # Install/update Bicep
 az bicep install
@@ -453,6 +458,7 @@ az deployment group validate \
 Organize reusable infrastructure patterns:
 
 **storage-module.bicep:**
+
 ```bicep
 param location string
 param storageAccountName string
@@ -471,6 +477,7 @@ output storageAccountId string = storageAccount.id
 ```
 
 **main.bicep (using module):**
+
 ```bicep
 param location string = resourceGroup().location
 
@@ -493,6 +500,7 @@ Tags enable organization, cost tracking, and automation.
 ### Tagging Strategy
 
 **Common tag schemas:**
+
 ```json
 {
   "Environment": "Production|Development|Test",
@@ -624,6 +632,7 @@ az resource move \
 ### Move Limitations
 
 Not all resources support move operations. Check compatibility:
+
 ```bash
 az rest --method POST \
   --url "https://management.azure.com/subscriptions/{sub}/resourceGroups/{rg}/validateMoveResources?api-version=2021-04-01" \

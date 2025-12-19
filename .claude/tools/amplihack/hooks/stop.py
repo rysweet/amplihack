@@ -14,7 +14,7 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 # Clean import structure
 sys.path.insert(0, str(Path(__file__).parent))
@@ -38,7 +38,7 @@ except ImportError as e:
             severity=HookErrorSeverity.FATAL,
             message=f"Failed to import hook_processor: {e}",
             context="Loading hook dependencies",
-            suggestion="Ensure hook_processor.py exists in the same directory"
+            suggestion="Ensure hook_processor.py exists in the same directory",
         )
     )
 
@@ -60,7 +60,7 @@ class StopHook(HookProcessor):
             self.project_root / ".claude" / "runtime" / "locks" / ".continuation_prompt"
         )
 
-    def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Check lock flag and block stop if active.
         Run synchronous reflection analysis if enabled.
         Execute Neo4j cleanup if appropriate.
@@ -672,7 +672,7 @@ class StopHook(HookProcessor):
         # Generate timestamp-based ID
         return datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    def _run_reflection_sync(self, transcript_path: Optional[str] = None) -> Optional[str]:
+    def _run_reflection_sync(self, transcript_path: str | None = None) -> str | None:
         """Run Claude SDK-based reflection synchronously.
 
         Args:
@@ -821,7 +821,7 @@ class StopHook(HookProcessor):
 
         return f"reflection-{task_slug}-{timestamp}.md"
 
-    def _block_with_findings(self, filled_template: str, reflection_file_path: str) -> Dict:
+    def _block_with_findings(self, filled_template: str, reflection_file_path: str) -> dict:
         """Block stop with instructions to read and present reflection.
 
         Args:

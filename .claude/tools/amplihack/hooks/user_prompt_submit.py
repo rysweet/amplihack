@@ -7,7 +7,7 @@ Ensures preferences persist across all conversation turns in REPL mode.
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 # Clean import structure
 sys.path.insert(0, str(Path(__file__).parent))
@@ -27,10 +27,10 @@ class UserPromptSubmitHook(HookProcessor):
     def __init__(self):
         super().__init__("user_prompt_submit")
         # Cache preferences to avoid repeated file reads
-        self._preferences_cache: Optional[Dict[str, str]] = None
-        self._cache_timestamp: Optional[float] = None
+        self._preferences_cache: dict[str, str] | None = None
+        self._cache_timestamp: float | None = None
 
-    def find_user_preferences(self) -> Optional[Path]:
+    def find_user_preferences(self) -> Path | None:
         """Find USER_PREFERENCES.md file using FrameworkPathResolver or fallback."""
         # Try FrameworkPathResolver first (handles UVX and installed packages)
         if FrameworkPathResolver:
@@ -52,7 +52,7 @@ class UserPromptSubmitHook(HookProcessor):
 
         return None
 
-    def extract_preferences(self, content: str) -> Dict[str, str]:
+    def extract_preferences(self, content: str) -> dict[str, str]:
         """Extract preferences from USER_PREFERENCES.md content.
 
         Args:
@@ -95,7 +95,7 @@ class UserPromptSubmitHook(HookProcessor):
 
         return preferences
 
-    def build_preference_context(self, preferences: Dict[str, str]) -> str:
+    def build_preference_context(self, preferences: dict[str, str]) -> str:
         """Build concise preference enforcement context for injection.
 
         This must be brief but clear enough to enforce preferences.
@@ -152,7 +152,7 @@ class UserPromptSubmitHook(HookProcessor):
 
         return "\n".join(lines)
 
-    def get_cached_preferences(self, pref_file: Path) -> Dict[str, str]:
+    def get_cached_preferences(self, pref_file: Path) -> dict[str, str]:
         """Get preferences with simple caching to improve performance.
 
         Args:
@@ -185,7 +185,7 @@ class UserPromptSubmitHook(HookProcessor):
             self.log(f"Error reading preferences: {e}", "WARNING")
             return {}
 
-    def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Process user prompt submit event.
 
         Args:

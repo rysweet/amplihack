@@ -8,7 +8,7 @@ import threading
 import time
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Any, Deque, Dict, List, Optional
+from typing import Any
 
 
 @dataclass
@@ -40,9 +40,9 @@ class AutoModeState:
     objective: str = ""
 
     # Dynamic state
-    todos: List[Dict[str, str]] = field(default_factory=list)
-    logs: Deque[str] = field(default_factory=lambda: deque(maxlen=1000))
-    costs: Dict[str, Any] = field(default_factory=dict)
+    todos: list[dict[str, str]] = field(default_factory=list)
+    logs: deque[str] = field(default_factory=lambda: deque(maxlen=1000))
+    costs: dict[str, Any] = field(default_factory=dict)
 
     # Control state
     status: str = "running"  # running, paused, stopped, completed, error
@@ -57,7 +57,7 @@ class AutoModeState:
         if not hasattr(self, "_lock") or self._lock is None:
             object.__setattr__(self, "_lock", threading.Lock())
 
-    def snapshot(self) -> Dict[str, Any]:
+    def snapshot(self) -> dict[str, Any]:
         """Get a thread-safe snapshot of current state.
 
         Returns:
@@ -100,7 +100,7 @@ class AutoModeState:
         with self._lock:
             self.turn = turn
 
-    def update_todos(self, todos: List[Dict[str, str]]) -> None:
+    def update_todos(self, todos: list[dict[str, str]]) -> None:
         """Update todo list.
 
         Args:
@@ -195,7 +195,7 @@ class AutoModeState:
             elapsed = time.time() - self.start_time
             return max(0, elapsed)  # Clamp to 0 for clock skew
 
-    def get_logs(self, n: Optional[int] = None) -> List[str]:
+    def get_logs(self, n: int | None = None) -> list[str]:
         """Get recent log messages.
 
         Args:
@@ -209,7 +209,7 @@ class AutoModeState:
                 return list(self.logs)
             return list(self.logs)[-n:]
 
-    def get_todos(self) -> List[Dict[str, str]]:
+    def get_todos(self) -> list[dict[str, str]]:
         """Get current todo list.
 
         Returns:
@@ -218,7 +218,7 @@ class AutoModeState:
         with self._lock:
             return list(self.todos)
 
-    def get_costs(self) -> Dict[str, Any]:
+    def get_costs(self) -> dict[str, Any]:
         """Get cost tracking information.
 
         Returns:

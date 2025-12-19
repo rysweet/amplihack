@@ -14,9 +14,9 @@ Before starting this tutorial, ensure you have:
 
    # Or create persistent wrapper script
    cat > /usr/local/bin/azlin << 'EOF'
-#!/bin/bash
-exec uvx --from git+https://github.com/rysweet/azlin --python 3.11 azlin "$@"
-EOF
+   #!/bin/bash
+   exec uvx --from git+https://github.com/rysweet/azlin --python 3.11 azlin "$@"
+   EOF
    chmod +x /usr/local/bin/azlin
 
    # Configure Azure authentication

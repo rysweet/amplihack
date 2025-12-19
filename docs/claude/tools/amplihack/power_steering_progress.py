@@ -23,7 +23,7 @@ import sys
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 class VerbosityMode(Enum):
@@ -40,7 +40,7 @@ class ProgressEvent:
 
     event_type: str  # "start", "category", "consideration", "complete"
     message: str
-    details: Optional[Dict] = None
+    details: dict | None = None
 
 
 class ProgressTracker:
@@ -59,8 +59,8 @@ class ProgressTracker:
 
     def __init__(
         self,
-        verbosity: Optional[str] = None,
-        project_root: Optional[Path] = None,
+        verbosity: str | None = None,
+        project_root: Path | None = None,
     ):
         """Initialize progress tracker.
 
@@ -69,7 +69,7 @@ class ProgressTracker:
             project_root: Project root directory (auto-detected if None)
         """
         self.project_root = project_root or self._detect_project_root()
-        self.events: List[ProgressEvent] = []
+        self.events: list[ProgressEvent] = []
 
         # Auto-detect verbosity from preferences if not provided
         if verbosity is None:
@@ -85,7 +85,7 @@ class ProgressTracker:
         # Counters for summary
         self.total_considerations = 0
         self.checked_considerations = 0
-        self.categories_processed: List[str] = []
+        self.categories_processed: list[str] = []
 
     def _detect_project_root(self) -> Path:
         """Auto-detect project root by finding .claude marker.
@@ -106,7 +106,7 @@ class ProgressTracker:
 
         raise ValueError("Could not find project root with .claude marker")
 
-    def _read_preferences(self) -> Dict:
+    def _read_preferences(self) -> dict:
         """Read user preferences from USER_PREFERENCES.md.
 
         Returns:
@@ -146,7 +146,7 @@ class ProgressTracker:
             # Fail-safe: Return empty dict on any error
             return {}
 
-    def emit(self, event_type: str, message: str, details: Optional[Dict] = None) -> None:
+    def emit(self, event_type: str, message: str, details: dict | None = None) -> None:
         """Emit a progress event (called by checker).
 
         Args:
@@ -240,7 +240,7 @@ class ProgressTracker:
     def display_all_results(
         self,
         analysis: Any,
-        considerations: List[Dict],
+        considerations: list[dict],
         is_first_stop: bool = True,
     ) -> None:
         """Display all consideration results for visibility (first stop feature).
@@ -259,7 +259,7 @@ class ProgressTracker:
             print("=" * 70 + "\n", file=sys.stderr, flush=True)
 
             # Group considerations by category
-            by_category: Dict[str, List[tuple]] = {}
+            by_category: dict[str, list[tuple]] = {}
             for consideration in considerations:
                 category = consideration.get("category", "Unknown")
                 cid = consideration["id"]

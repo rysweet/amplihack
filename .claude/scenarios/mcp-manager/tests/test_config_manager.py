@@ -1,10 +1,8 @@
 """Tests for config_manager module."""
 
 import json
-from pathlib import Path
 
 import pytest
-
 from config_manager import backup_config, read_config, restore_config, write_config
 
 
@@ -78,7 +76,7 @@ def test_write_config_atomic(tmp_path):
     write_config(config_path, config)
 
     # Ensure no .tmp file remains
-    temp_path = config_path.with_suffix('.tmp')
+    temp_path = config_path.with_suffix(".tmp")
     assert not temp_path.exists()
 
     # Verify content
@@ -168,4 +166,3 @@ def test_restore_config_not_found(tmp_path):
 
     with pytest.raises(FileNotFoundError):
         restore_config(backup_path, config_path)
-

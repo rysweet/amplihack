@@ -6,7 +6,7 @@ Follows the API designer agent specification for minimal, clear contracts.
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 from .core import MemoryBackend
 
@@ -22,8 +22,8 @@ class AgentMemory:
     def __init__(
         self,
         agent_name: str,
-        session_id: Optional[str] = None,
-        db_path: Optional[Path] = None,
+        session_id: str | None = None,
+        db_path: Path | None = None,
         enabled: bool = True,
     ):
         """
@@ -68,7 +68,7 @@ class AgentMemory:
         unique_id = str(uuid.uuid4())[:8]
         return f"{self.agent_name}_{timestamp}_{unique_id}"
 
-    def store(self, key: str, value: Union[str, dict], memory_type: str = "markdown") -> bool:
+    def store(self, key: str, value: str | dict, memory_type: str = "markdown") -> bool:
         """
         Store memory with key-value pair.
 
@@ -100,7 +100,7 @@ class AgentMemory:
 
         return self.backend.store(self.session_id, key, value, memory_type)
 
-    def retrieve(self, key: str) -> Optional[Union[str, dict]]:
+    def retrieve(self, key: str) -> str | dict | None:
         """
         Retrieve memory by key.
 
@@ -121,7 +121,7 @@ class AgentMemory:
 
         return self.backend.retrieve(self.session_id, key)
 
-    def list_keys(self, pattern: Optional[str] = None) -> List[str]:
+    def list_keys(self, pattern: str | None = None) -> list[str]:
         """
         List available memory keys.
 
@@ -177,7 +177,7 @@ class AgentMemory:
 
         return self.backend.clear_session(self.session_id)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """
         Get memory statistics for monitoring.
 

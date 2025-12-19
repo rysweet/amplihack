@@ -8,9 +8,7 @@ Testing pyramid:
 """
 
 import json
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-from urllib.parse import urljoin
+from unittest.mock import Mock, patch
 
 import pytest
 import requests
@@ -18,10 +16,10 @@ import requests
 # Import the module under test (will implement after tests)
 import validate_gh_pages_links as validator
 
-
 # ============================================================================
 # UNIT TESTS (60%) - Fast, heavily mocked
 # ============================================================================
+
 
 class TestURLParsing:
     """Test URL parsing and normalization"""
@@ -196,6 +194,7 @@ class TestReportGeneration:
 # INTEGRATION TESTS (30%) - Multiple components
 # ============================================================================
 
+
 class TestCrawlAndValidate:
     """Test crawler and validator integration"""
 
@@ -281,6 +280,7 @@ class TestEndToEnd:
 # E2E TESTS (10%) - Complete scenarios with minimal mocking
 # ============================================================================
 
+
 class TestRealWorldScenarios:
     """Test realistic scenarios (can be slow)"""
 
@@ -289,15 +289,12 @@ class TestRealWorldScenarios:
         """Test against a simple HTML file (no external calls)"""
         # This would use a local test server or fixture HTML
         # Skipped in fast test runs
-        pass
 
     def test_cli_argument_parsing(self):
         """Test CLI argument parsing"""
-        args = validator.parse_args([
-            "--site-url", "https://example.com",
-            "--output", "results.json",
-            "--timeout", "30"
-        ])
+        args = validator.parse_args(
+            ["--site-url", "https://example.com", "--output", "results.json", "--timeout", "30"]
+        )
 
         assert args.site_url == "https://example.com"
         assert args.output == "results.json"
@@ -325,6 +322,7 @@ class TestRealWorldScenarios:
 # ============================================================================
 # FIXTURES
 # ============================================================================
+
 
 @pytest.fixture
 def sample_html():

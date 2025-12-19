@@ -22,7 +22,7 @@ import json
 import os
 import tempfile
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 __all__ = ["WorkflowState", "WorkflowStateMachine", "ValidationResult"]
@@ -61,8 +61,8 @@ class WorkflowState:
     mandatory_steps: set[int] = field(default_factory=lambda: set(MANDATORY_STEPS))
     todos_initialized: bool = False
     user_overrides: dict[int, str] = field(default_factory=dict)
-    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    updated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    created_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
+    updated_at: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
 
     def to_dict(self) -> dict:
         """Convert state to a JSON-serializable dictionary."""
@@ -97,8 +97,8 @@ class WorkflowState:
             mandatory_steps=set(data.get("mandatory_steps", list(MANDATORY_STEPS))),
             todos_initialized=data.get("todos_initialized", False),
             user_overrides={int(k): v for k, v in data.get("user_overrides", {}).items()},
-            created_at=data.get("created_at", datetime.now(timezone.utc).isoformat()),
-            updated_at=data.get("updated_at", datetime.now(timezone.utc).isoformat()),
+            created_at=data.get("created_at", datetime.now(UTC).isoformat()),
+            updated_at=data.get("updated_at", datetime.now(UTC).isoformat()),
         )
 
 
@@ -211,7 +211,7 @@ class WorkflowStateMachine:
         Args:
             state: WorkflowState to save
         """
-        state.updated_at = datetime.now(timezone.utc).isoformat()
+        state.updated_at = datetime.now(UTC).isoformat()
         state_path = self._get_state_path(state.session_id)
 
         # Atomic write: write to temp file, then rename
@@ -411,7 +411,7 @@ class WorkflowStateMachine:
         log_file = self.state_dir / "workflow_state.log"
         try:
             with open(log_file, "a") as f:
-                timestamp = datetime.now(timezone.utc).isoformat()
+                timestamp = datetime.now(UTC).isoformat()
                 f.write(f"[{timestamp}] ERROR: {message}\n")
         except OSError:
             pass  # Fail silently if we can't log

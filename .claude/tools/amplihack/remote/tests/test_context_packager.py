@@ -183,6 +183,7 @@ class TestContextPackager(unittest.TestCase):
         large_file = self.repo_path / "large.bin"
         # Use random-ish data that compresses poorly
         import random
+
         random.seed(42)
         large_content = bytes([random.randint(0, 255) for _ in range(50000)])  # 50KB random
         large_file.write_bytes(large_content)

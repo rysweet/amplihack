@@ -9,7 +9,6 @@ Public API:
 
 import logging
 from abc import ABC, abstractmethod
-from typing import List
 
 from .config import get_config
 from .connector import Neo4jConnector
@@ -41,7 +40,7 @@ class BaseGraphManager(ABC):
         self.config = get_config()
 
     @abstractmethod
-    def _get_constraints(self) -> List[str]:
+    def _get_constraints(self) -> list[str]:
         """Get constraint definitions for this graph type.
 
         Returns:
@@ -57,7 +56,7 @@ class BaseGraphManager(ABC):
         """
 
     @abstractmethod
-    def _get_indexes(self) -> List[str]:
+    def _get_indexes(self) -> list[str]:
         """Get index definitions for this graph type.
 
         Returns:

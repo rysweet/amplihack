@@ -14,7 +14,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .connector import Neo4jConnector
 
@@ -49,10 +49,10 @@ class OperationMetric:
     status: OperationStatus
     duration_ms: float
     timestamp: datetime
-    error: Optional[str] = None
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    error: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for logging."""
         return {
             "operation_type": self.operation_type.value,
@@ -70,16 +70,16 @@ class SystemHealth:
 
     is_healthy: bool
     neo4j_available: bool
-    neo4j_version: Optional[str]
+    neo4j_version: str | None
     container_status: str
     response_time_ms: float
     total_memories: int
     total_projects: int
     total_agents: int
-    issues: List[str]
+    issues: list[str]
     timestamp: datetime
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "is_healthy": self.is_healthy,
@@ -108,15 +108,15 @@ class MetricsCollector:
             max_history: Maximum number of metrics to keep in memory
         """
         self.max_history = max_history
-        self.metrics: List[OperationMetric] = []
+        self.metrics: list[OperationMetric] = []
 
     def record_operation(
         self,
         operation_type: OperationType,
         status: OperationStatus,
         duration_ms: float,
-        error: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        error: str | None = None,
+        metadata: dict[str, Any] | None = None,
     ):
         """Record an operation metric.
 
@@ -150,7 +150,7 @@ class MetricsCollector:
             metric.to_dict(),
         )
 
-    def get_statistics(self, operation_type: Optional[OperationType] = None) -> Dict[str, Any]:
+    def get_statistics(self, operation_type: OperationType | None = None) -> dict[str, Any]:
         """Get aggregated statistics.
 
         Args:
@@ -185,7 +185,7 @@ class MetricsCollector:
             "p95_duration_ms": round(sorted(durations)[int(len(durations) * 0.95)], 2),
         }
 
-    def get_recent_errors(self, limit: int = 10) -> List[OperationMetric]:
+    def get_recent_errors(self, limit: int = 10) -> list[OperationMetric]:
         """Get recent failed operations.
 
         Args:
@@ -212,7 +212,7 @@ class MonitoredConnector:
     def __init__(
         self,
         connector: Neo4jConnector,
-        metrics_collector: Optional[MetricsCollector] = None,
+        metrics_collector: MetricsCollector | None = None,
     ):
         """Initialize monitored connector.
 
@@ -225,7 +225,7 @@ class MonitoredConnector:
 
     @contextmanager
     def _monitor_operation(
-        self, operation_type: OperationType, metadata: Optional[Dict[str, Any]] = None
+        self, operation_type: OperationType, metadata: dict[str, Any] | None = None
     ):
         """Context manager for monitoring operations.
 
@@ -265,7 +265,7 @@ class MonitoredConnector:
         """Close connection."""
         self.connector.close()
 
-    def execute_query(self, query: str, parameters: Optional[Dict[str, Any]] = None):
+    def execute_query(self, query: str, parameters: dict[str, Any] | None = None):
         """Execute query with monitoring."""
         with self._monitor_operation(
             OperationType.QUERY,
@@ -273,7 +273,7 @@ class MonitoredConnector:
         ):
             return self.connector.execute_query(query, parameters)
 
-    def execute_write(self, query: str, parameters: Optional[Dict[str, Any]] = None):
+    def execute_write(self, query: str, parameters: dict[str, Any] | None = None):
         """Execute write with monitoring."""
         with self._monitor_operation(
             OperationType.WRITE,
@@ -388,7 +388,7 @@ class HealthMonitor:
             timestamp=datetime.now(),
         )
 
-    def get_memory_usage(self) -> Dict[str, Any]:
+    def get_memory_usage(self) -> dict[str, Any]:
         """Get memory usage statistics from Neo4j.
 
         Returns:
@@ -435,7 +435,7 @@ def get_global_metrics() -> MetricsCollector:
 def log_structured(
     level: str,
     message: str,
-    operation: Optional[str] = None,
+    operation: str | None = None,
     **kwargs: Any,
 ):
     """Log structured message with context.

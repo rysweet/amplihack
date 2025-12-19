@@ -16,6 +16,7 @@ Comprehensive guide to managing users, groups, service principals, and managed i
 ### Creating Users
 
 **Interactive Creation:**
+
 ```bash
 # Basic user creation
 az ad user create \
@@ -40,6 +41,7 @@ az ad user create \
 **Bulk User Creation from CSV:**
 
 Create a CSV file (`users.csv`):
+
 ```csv
 DisplayName,UserPrincipalName,Password,Department,JobTitle
 Jane Doe,jane.doe@contoso.com,TempPass123!,Engineering,Senior Engineer
@@ -48,6 +50,7 @@ Alice Johnson,alice.johnson@contoso.com,TempPass789!,Sales,Sales Representative
 ```
 
 Bash script to process CSV:
+
 ```bash
 #!/bin/bash
 # bulk-user-create.sh
@@ -318,12 +321,14 @@ Managed identities provide Azure resources with an identity in Entra ID without 
 ### Types of Managed Identities
 
 **System-Assigned Identity:**
+
 - Tied to resource lifecycle
 - Deleted automatically when resource is deleted
 - Cannot be shared across resources
 - Simple to enable
 
 **User-Assigned Identity:**
+
 - Independent lifecycle
 - Can be shared across multiple resources
 - Survives resource deletion
@@ -422,6 +427,7 @@ az sql server ad-admin set \
 ### Using Managed Identities in Code
 
 **Azure SDK (Python):**
+
 ```python
 from azure.identity import DefaultAzureCredential
 from azure.keyvault.secrets import SecretClient
@@ -435,6 +441,7 @@ print(secret.value)
 ```
 
 **Azure CLI within Azure resource:**
+
 ```bash
 # Automatically uses managed identity when run from Azure VM/App Service
 az login --identity
@@ -464,6 +471,7 @@ az rest --method GET \
 Conditional access policies control access based on conditions (location, device, risk level).
 
 **Common Policies:**
+
 - Require MFA for all users
 - Block legacy authentication
 - Require compliant devices
@@ -489,18 +497,21 @@ az ad user update \
 ## Security Best Practices
 
 ### Principle of Least Privilege
+
 - Assign minimum required permissions
 - Use built-in roles before creating custom roles
 - Regularly review and revoke unnecessary access
 - Implement just-in-time (JIT) access for administrative tasks
 
 ### Identity Lifecycle Management
+
 1. **Onboarding**: Provision accounts, assign groups, grant access
 2. **Ongoing**: Regular access reviews, permission audits
 3. **Role Changes**: Update permissions based on job changes
 4. **Offboarding**: Disable accounts immediately, revoke access, backup data
 
 ### Monitoring and Auditing
+
 ```bash
 # View sign-in logs (requires appropriate permissions)
 az rest --method GET \
@@ -512,6 +523,7 @@ az rest --method GET \
 ```
 
 ### Credential Management
+
 - Never store credentials in code
 - Use Azure Key Vault for secrets
 - Rotate service principal credentials every 90 days
@@ -520,7 +532,9 @@ az rest --method GET \
 - Use certificate-based authentication over secrets
 
 ### Emergency Access Accounts
+
 Create "break-glass" accounts for emergency access:
+
 - Cloud-only accounts (not synchronized from on-premises)
 - Excluded from conditional access policies
 - Credentials stored securely offline

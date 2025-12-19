@@ -11,14 +11,15 @@ Checks:
 import sys
 from pathlib import Path
 
+
 def check_file_exists(path: Path, description: str) -> bool:
     """Check if a file exists and report."""
     if path.exists():
         print(f"✅ {description}: {path.name}")
         return True
-    else:
-        print(f"❌ MISSING {description}: {path}")
-        return False
+    print(f"❌ MISSING {description}: {path}")
+    return False
+
 
 def check_content_contains(path: Path, search_term: str, description: str) -> bool:
     """Check if file contains specific content."""
@@ -30,9 +31,9 @@ def check_content_contains(path: Path, search_term: str, description: str) -> bo
     if search_term.lower() in content.lower():
         print(f"✅ {description}")
         return True
-    else:
-        print(f"❌ MISSING: {description}")
-        return False
+    print(f"❌ MISSING: {description}")
+    return False
+
 
 def main():
     docs_dir = Path(__file__).parent.parent / "docs"
@@ -120,11 +121,11 @@ def main():
         print()
         print("Documentation is properly organized and discoverable.")
         return 0
-    else:
-        print("❌ SOME CHECKS FAILED")
-        print()
-        print("Please review the failures above.")
-        return 1
+    print("❌ SOME CHECKS FAILED")
+    print()
+    print("Please review the failures above.")
+    return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

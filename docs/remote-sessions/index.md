@@ -28,37 +28,37 @@ Check session output, status, and pool capacity at any time without reconnecting
 
 <div class="grid cards" markdown>
 
--   :material-book-open-variant:{ .lg .middle } **User Guide**
+- :material-book-open-variant:{ .lg .middle } **User Guide**
 
-    ---
+  ***
 
-    Complete guide to using remote sessions including architecture, prerequisites, and common workflows.
+  Complete guide to using remote sessions including architecture, prerequisites, and common workflows.
 
-    [:octicons-arrow-right-24: Read the User Guide](README.md)
+  [:octicons-arrow-right-24: Read the User Guide](README.md)
 
--   :material-console:{ .lg .middle } **CLI Reference**
+- :material-console:{ .lg .middle } **CLI Reference**
 
-    ---
+  ***
 
-    Complete command reference for all `amplihack remote` commands with examples and options.
+  Complete command reference for all `amplihack remote` commands with examples and options.
 
-    [:octicons-arrow-right-24: Browse CLI Reference](CLI_REFERENCE.md)
+  [:octicons-arrow-right-24: Browse CLI Reference](CLI_REFERENCE.md)
 
--   :material-school:{ .lg .middle } **Tutorial**
+- :material-school:{ .lg .middle } **Tutorial**
 
-    ---
+  ***
 
-    Step-by-step walkthrough of common workflows with real examples and expected outputs.
+  Step-by-step walkthrough of common workflows with real examples and expected outputs.
 
-    [:octicons-arrow-right-24: Start the Tutorial](TUTORIAL.md)
+  [:octicons-arrow-right-24: Start the Tutorial](TUTORIAL.md)
 
--   :material-cog:{ .lg .middle } **Developer Guide**
+- :material-cog:{ .lg .middle } **Developer Guide**
 
-    ---
+  ***
 
-    Internal architecture, component design, and implementation details for contributors.
+  Internal architecture, component design, and implementation details for contributors.
 
-    [:octicons-arrow-right-24: View Developer Guide](../../.claude/tools/amplihack/remote/README.md)
+  [:octicons-arrow-right-24: View Developer Guide](../../.claude/tools/amplihack/remote/README.md)
 
 </div>
 
@@ -146,9 +146,9 @@ Local Machine                  Azure VM Pool
 
    # Or create persistent wrapper script
    cat > /usr/local/bin/azlin << 'EOF'
-#!/bin/bash
-exec uvx --from git+https://github.com/rysweet/azlin --python 3.11 azlin "$@"
-EOF
+   #!/bin/bash
+   exec uvx --from git+https://github.com/rysweet/azlin --python 3.11 azlin "$@"
+   EOF
    chmod +x /usr/local/bin/azlin
 
    # Configure Azure authentication
@@ -169,14 +169,14 @@ EOF
 
 ## VM Capacity Tiers
 
-| Size | Azure VM SKU      | RAM   | Max Sessions | Memory/Session | Estimated Cost* |
-| ---- | ----------------- | ----- | ------------ | -------------- | --------------- |
-| s    | Standard_D8s_v3   | 32GB  | 1            | 32GB           | ~$0.38/hr       |
-| m    | Standard_E8s_v5   | 64GB  | 2            | 32GB           | ~$0.50/hr       |
-| l    | Standard_E16s_v5  | 128GB | 4            | 32GB           | ~$1.01/hr       |
-| xl   | Standard_E32s_v5  | 256GB | 8            | 32GB           | ~$2.02/hr       |
+| Size | Azure VM SKU     | RAM   | Max Sessions | Memory/Session | Estimated Cost\* |
+| ---- | ---------------- | ----- | ------------ | -------------- | ---------------- |
+| s    | Standard_D8s_v3  | 32GB  | 1            | 32GB           | ~$0.38/hr        |
+| m    | Standard_E8s_v5  | 64GB  | 2            | 32GB           | ~$0.50/hr        |
+| l    | Standard_E16s_v5 | 128GB | 4            | 32GB           | ~$1.01/hr        |
+| xl   | Standard_E32s_v5 | 256GB | 8            | 32GB           | ~$2.02/hr        |
 
-*Costs vary by region and may change. Check [Azure Pricing Calculator](https://azure.microsoft.com/pricing/calculator/) for current rates.
+\*Costs vary by region and may change. Check [Azure Pricing Calculator](https://azure.microsoft.com/pricing/calculator/) for current rates.
 
 **Recommendation**: Use `--size l` for most work (4 concurrent sessions, 32GB each). Each session gets ample RAM for complex Claude Code tasks.
 

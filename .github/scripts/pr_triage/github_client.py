@@ -2,10 +2,10 @@
 
 import json
 import subprocess
-from typing import Any, Dict
+from typing import Any
 
 
-def get_pr_data(pr_number: int) -> Dict[str, Any]:
+def get_pr_data(pr_number: int) -> dict[str, Any]:
     """Fetch PR data using gh CLI.
 
     Args:

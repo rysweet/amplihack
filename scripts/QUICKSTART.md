@@ -25,6 +25,7 @@ python validate_gh_pages_links.py --site-url https://rysweet.github.io/Microsoft
 ## Output
 
 You'll get:
+
 - **Console output**: Human-readable summary
 - **JSON file**: `broken_links.json` with complete results
 
@@ -62,6 +63,7 @@ python validate_gh_pages_links.py --site-url https://example.com --output my_res
 ## CI Integration
 
 The script returns:
+
 - **Exit code 0**: All links valid
 - **Exit code 1**: Broken links found
 

@@ -7,6 +7,7 @@
 ## Skill Description
 
 This skill orchestrates end-to-end model evaluation benchmarks that measure:
+
 - **Efficiency**: Duration, turns, cost, tool calls
 - **Quality**: Code quality scores via reviewer agents
 - **Workflow Adherence**: Subagent calls, skills used, workflow step compliance
@@ -17,12 +18,14 @@ The skill automates the entire benchmark workflow from execution through cleanup
 ## When to Use
 
 ✅ **Use when**:
+
 - Comparing AI models (Opus vs Sonnet, etc.)
 - Measuring workflow adherence
 - Generating comprehensive benchmark reports
 - Need reproducible benchmarking
 
 ❌ **Don't use when**:
+
 - Simple code reviews (use `reviewer`)
 - Performance profiling (use `optimizer`)
 - Architecture decisions (use `architect`)
@@ -32,18 +35,22 @@ The skill automates the entire benchmark workflow from execution through cleanup
 When this skill is invoked, follow these steps:
 
 ### Phase 1: Setup
+
 1. Read `tests/benchmarks/benchmark_suite_v3/BENCHMARK_TASKS.md`
 2. Identify models to benchmark (default: Opus 4.5, Sonnet 4.5)
 3. Create TodoWrite list with all phases
 
 ### Phase 2: Execute Benchmarks
+
 For each task × model:
+
 ```bash
 cd tests/benchmarks/benchmark_suite_v3
 python run_benchmarks.py --model {opus|sonnet} --tasks 1,2,3,4
 ```
 
 ### Phase 3: Analyze Results
+
 1. Read all result files: `.claude/runtime/benchmarks/suite_v3/*/result.json`
 2. Launch parallel Task tool calls with `subagent_type="reviewer"` to:
    - Analyze trace logs for tool/agent/skill usage
@@ -51,12 +58,14 @@ python run_benchmarks.py --model {opus|sonnet} --tasks 1,2,3,4
 3. Synthesize findings
 
 ### Phase 4: Generate Report
+
 1. Create markdown report following `BENCHMARK_REPORT_V3.md` structure
 2. Create GitHub issue with report
 3. Archive artifacts to GitHub release
 4. Update issue with release link
 
 ### Phase 5: Cleanup (MANDATORY)
+
 1. Close all benchmark PRs: `gh pr close {numbers}`
 2. Close all benchmark issues: `gh issue close {numbers}`
 3. Remove worktrees: `git worktree remove worktrees/bench-*`

@@ -5,15 +5,14 @@ strategies. Handles coordination, error handling, and result collection.
 """
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Optional
 
 from .claude_process import ClaudeProcess, ProcessResult
 
 
 def run_parallel(
-    processes: List[ClaudeProcess],
-    max_workers: Optional[int] = None,
-) -> List[ProcessResult]:
+    processes: list[ClaudeProcess],
+    max_workers: int | None = None,
+) -> list[ProcessResult]:
     """Run multiple Claude processes in parallel.
 
     Executes processes concurrently using ThreadPoolExecutor. Returns results
@@ -67,10 +66,10 @@ def run_parallel(
 
 
 def run_sequential(
-    processes: List[ClaudeProcess],
+    processes: list[ClaudeProcess],
     pass_output: bool = False,
     stop_on_failure: bool = False,
-) -> List[ProcessResult]:
+) -> list[ProcessResult]:
     """Run Claude processes sequentially.
 
     Executes processes one at a time in order. Optionally passes output from
@@ -126,8 +125,8 @@ def run_sequential(
 
 
 def run_with_fallback(
-    processes: List[ClaudeProcess],
-    timeout: Optional[int] = None,
+    processes: list[ClaudeProcess],
+    timeout: int | None = None,
 ) -> ProcessResult:
     """Run processes with fallback strategy.
 
@@ -187,10 +186,10 @@ def run_with_fallback(
 
 
 def run_batched(
-    processes: List[ClaudeProcess],
+    processes: list[ClaudeProcess],
     batch_size: int,
     pass_output: bool = False,
-) -> List[ProcessResult]:
+) -> list[ProcessResult]:
     """Run processes in batches with parallel execution within each batch.
 
     Useful when you want some parallelism but need to control resource usage

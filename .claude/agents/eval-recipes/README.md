@@ -20,17 +20,21 @@ uv run eval_recipes/main.py --agent claude_code --task email_drafting
 ## Available Agents
 
 ### amplihack
+
 Benchmarks amplihack framework with full agent orchestration, workflow execution, and multi-agent collaboration.
 
 **Config files:**
+
 - `agent.yaml` - Environment requirements
 - `install.dockerfile` - Installation steps
 - `command_template.txt` - How to invoke amplihack
 
 ### claude_code
+
 Benchmarks vanilla Claude Code for baseline comparison.
 
 **Config files:**
+
 - `agent.yaml` - Environment requirements
 - `install.dockerfile` - Installation steps
 - `command_template.txt` - How to invoke Claude Code

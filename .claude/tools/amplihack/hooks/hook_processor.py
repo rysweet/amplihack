@@ -25,9 +25,9 @@ import traceback
 from abc import ABC, abstractmethod
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
-from error_protocol import HookError, HookErrorSeverity, HookException, HookImportError
+from error_protocol import HookError, HookErrorSeverity, HookException
 from json_protocol import RobustJSONParser
 
 
@@ -59,7 +59,7 @@ class HookProcessor(ABC):
         except ImportError:
             # Fallback: try to find project root by looking for .claude marker
             current = Path(__file__).resolve().parent
-            found_root: Optional[Path] = None
+            found_root: Path | None = None
 
             for _ in range(10):  # Max 10 levels up
                 # Check old location (repo root)
@@ -142,7 +142,7 @@ class HookProcessor(ABC):
             # If we can't log, at least try stderr
             print(f"Logging error: {e}", file=sys.stderr)
 
-    def read_input(self) -> Dict[str, Any]:
+    def read_input(self) -> dict[str, Any]:
         """Read and parse JSON input from stdin.
 
         Returns:
@@ -164,7 +164,7 @@ class HookProcessor(ABC):
         parser = RobustJSONParser()
         return parser.parse(raw_input)
 
-    def write_output(self, output: Dict[str, Any]):
+    def write_output(self, output: dict[str, Any]):
         """Write JSON output to stdout with fail-open pipe closure handling.
 
         Silently absorbs BrokenPipeError and EPIPE (errno 32) when Claude Code
@@ -189,12 +189,15 @@ class HookProcessor(ABC):
             # EPIPE (errno 32) or IOError (errno None) - pipe closed during write
             if e.errno in (32, None):
                 if e.errno is None:
-                    self.log("OSError with errno=None during pipe write (expected during shutdown)", "DEBUG")
-                pass  # Expected during normal shutdown
+                    self.log(
+                        "OSError with errno=None during pipe write (expected during shutdown)",
+                        "DEBUG",
+                    )
+                # Expected during normal shutdown
             else:
                 raise  # Unexpected OS error
 
-    def save_metric(self, metric_name: str, value: Any, metadata: Optional[Dict] = None):
+    def save_metric(self, metric_name: str, value: Any, metadata: dict | None = None):
         """Save a metric to the metrics directory.
 
         Args:
@@ -249,7 +252,7 @@ class HookProcessor(ABC):
         print("=" * 60, file=sys.stderr)
 
     @abstractmethod
-    def process(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
+    def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Process the hook input and return output.
 
         This method must be implemented by subclasses.
@@ -324,7 +327,7 @@ class HookProcessor(ABC):
                 severity=HookErrorSeverity.ERROR,
                 message="Invalid JSON input from stdin",
                 context=str(e),
-                suggestion="Check hook input format"
+                suggestion="Check hook input format",
             )
             self._write_error_to_stderr(error)
 
@@ -344,7 +347,7 @@ class HookProcessor(ABC):
                 severity=HookErrorSeverity.FATAL,
                 message=str(e),
                 context=f"Hook: {self.hook_name}",
-                suggestion="Check log file for full traceback"
+                suggestion="Check log file for full traceback",
             )
             self._write_error_to_stderr(error)
 

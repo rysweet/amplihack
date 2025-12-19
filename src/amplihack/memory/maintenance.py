@@ -4,7 +4,7 @@ import json
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 from .database import MemoryDatabase
 from .models import MemoryQuery
@@ -13,7 +13,7 @@ from .models import MemoryQuery
 class MemoryMaintenance:
     """Handles memory system maintenance, cleanup, and optimization."""
 
-    def __init__(self, db_path: Optional[Path] = None):
+    def __init__(self, db_path: Path | None = None):
         """Initialize maintenance system.
 
         Args:
@@ -21,7 +21,7 @@ class MemoryMaintenance:
         """
         self.db = MemoryDatabase(db_path)
 
-    def cleanup_expired(self) -> Dict[str, Any]:
+    def cleanup_expired(self) -> dict[str, Any]:
         """Remove expired memories and return cleanup report.
 
         Returns:
@@ -37,7 +37,7 @@ class MemoryMaintenance:
             "timestamp": datetime.now().isoformat(),
         }
 
-    def cleanup_old_sessions(self, older_than_days: int = 30) -> Dict[str, Any]:
+    def cleanup_old_sessions(self, older_than_days: int = 30) -> dict[str, Any]:
         """Remove sessions and their memories older than specified days.
 
         Args:
@@ -98,7 +98,7 @@ class MemoryMaintenance:
             "timestamp": datetime.now().isoformat(),
         }
 
-    def vacuum_database(self) -> Dict[str, Any]:
+    def vacuum_database(self) -> dict[str, Any]:
         """Vacuum database to reclaim space and optimize performance.
 
         Returns:
@@ -132,7 +132,7 @@ class MemoryMaintenance:
             "timestamp": datetime.now().isoformat(),
         }
 
-    def analyze_memory_usage(self) -> Dict[str, Any]:
+    def analyze_memory_usage(self) -> dict[str, Any]:
         """Analyze memory usage patterns and generate recommendations.
 
         Returns:
@@ -210,7 +210,7 @@ class MemoryMaintenance:
             "timestamp": datetime.now().isoformat(),
         }
 
-    def optimize_indexes(self) -> Dict[str, Any]:
+    def optimize_indexes(self) -> dict[str, Any]:
         """Analyze and optimize database indexes.
 
         Returns:
@@ -250,7 +250,7 @@ class MemoryMaintenance:
         old_session_days: int = 30,
         vacuum: bool = False,
         optimize: bool = True,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Run comprehensive maintenance procedures.
 
         Args:
@@ -264,7 +264,7 @@ class MemoryMaintenance:
             Dictionary with all maintenance results
         """
         start_time = time.time()
-        results: Dict[str, Any] = {"maintenance_start": datetime.now().isoformat()}
+        results: dict[str, Any] = {"maintenance_start": datetime.now().isoformat()}
 
         if cleanup_expired:
             results["expired_cleanup"] = self.cleanup_expired()
@@ -287,7 +287,7 @@ class MemoryMaintenance:
 
         return results
 
-    def export_session_memories(self, session_id: str, output_path: Path) -> Dict[str, Any]:
+    def export_session_memories(self, session_id: str, output_path: Path) -> dict[str, Any]:
         """Export all memories from a session to JSON file.
 
         Args:

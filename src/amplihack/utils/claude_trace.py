@@ -4,7 +4,6 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Optional
 
 
 def should_use_trace() -> bool:
@@ -34,7 +33,7 @@ def get_claude_command() -> str:
         May attempt to install claude-trace via npm if not found
     """
     # Check for RustyClawd (Rust implementation) first
-    from .rustyclawd_detect import should_use_rustyclawd, get_rustyclawd_path
+    from .rustyclawd_detect import get_rustyclawd_path, should_use_rustyclawd
 
     if should_use_rustyclawd():
         rustyclawd = get_rustyclawd_path()
@@ -96,7 +95,7 @@ def _configure_user_local_npm() -> dict[str, str]:
     return env
 
 
-def _find_valid_claude_trace() -> Optional[str]:
+def _find_valid_claude_trace() -> str | None:
     """Find a valid claude-trace binary using smart detection.
 
     Searches for claude-trace binaries in order of preference:

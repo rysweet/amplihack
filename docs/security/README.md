@@ -7,6 +7,7 @@ Ahoy! This be where ye learn to keep yer ship secure from digital pirates.
 ## Quick Navigation
 
 **Essential Security Practices:**
+
 - [Security Recommendations](../SECURITY_RECOMMENDATIONS.md) - START HERE for security basics
 - [Security Context Preservation](../SECURITY_CONTEXT_PRESERVATION.md) - Maintain security through sessions
 

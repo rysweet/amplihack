@@ -12,7 +12,7 @@ import time
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 from unittest.mock import Mock
 
 import pytest
@@ -26,7 +26,7 @@ class LogEvent:
     level: str
     logger: str
     message: str
-    extra: Optional[Dict[str, Any]] = None
+    extra: dict[str, Any] | None = None
 
 
 @pytest.fixture
@@ -71,7 +71,7 @@ def sample_log_record():
 
 
 @pytest.fixture
-def sample_log_events() -> List[LogEvent]:
+def sample_log_events() -> list[LogEvent]:
     """Fixture that provides sample log events for testing."""
     timestamp = datetime.now().isoformat()
     return [
@@ -115,9 +115,7 @@ def mock_sse_client():
 def sse_event_formatter():
     """Fixture that provides SSE event formatting utilities."""
 
-    def format_sse_event(
-        event_type: str, data: Dict[str, Any], event_id: Optional[str] = None
-    ) -> str:
+    def format_sse_event(event_type: str, data: dict[str, Any], event_id: str | None = None) -> str:
         """Format data as Server-Sent Event."""
         lines = []
         if event_id:
@@ -128,7 +126,7 @@ def sse_event_formatter():
         lines.append("")  # Empty line to end event
         return "\n".join(lines)
 
-    def parse_sse_event(sse_text: str) -> Dict[str, str]:
+    def parse_sse_event(sse_text: str) -> dict[str, str]:
         """Parse SSE event text into components."""
         lines = sse_text.strip().split("\n")
         event = {}
@@ -150,7 +148,7 @@ def sse_event_formatter():
 def log_formatter():
     """Fixture that provides log formatting utilities for testing."""
 
-    def format_log_event(record: logging.LogRecord) -> Dict[str, Any]:
+    def format_log_event(record: logging.LogRecord) -> dict[str, Any]:
         """Format log record as JSON event."""
         return {
             "timestamp": datetime.fromtimestamp(record.created).isoformat(),
@@ -162,7 +160,7 @@ def log_formatter():
             "lineno": record.lineno,
         }
 
-    def validate_log_event_format(event: Dict[str, Any]) -> bool:
+    def validate_log_event_format(event: dict[str, Any]) -> bool:
         """Validate log event has required fields."""
         required_fields = ["timestamp", "level", "logger", "message"]
         return all(field in event for field in required_fields)
@@ -198,7 +196,7 @@ def mock_log_streaming_server():
             """Remove a client connection."""
             self.clients.discard(client_id)
 
-        async def broadcast_log_event(self, log_event: Dict[str, Any]):
+        async def broadcast_log_event(self, log_event: dict[str, Any]):
             """Broadcast log event to all clients."""
             self.log_events.append(log_event)
             # In real implementation, this would send SSE events to clients
@@ -273,7 +271,7 @@ def security_validator():
         """Validate that binding is localhost-only."""
         return host in ("127.0.0.1", "localhost", "::1")
 
-    def validate_log_content_safety(log_data: Dict[str, Any]) -> bool:
+    def validate_log_content_safety(log_data: dict[str, Any]) -> bool:
         """Validate that log content doesn't contain sensitive information."""
         sensitive_patterns = [
             "password",
@@ -389,7 +387,7 @@ class LogStreamingTestAssertions:
         assert sse_data.endswith("\n\n") or sse_data.endswith("\n"), "SSE must end with newline"
 
     @staticmethod
-    def assert_log_event_format(log_event: Dict[str, Any]):
+    def assert_log_event_format(log_event: dict[str, Any]):
         """Assert that log event has required format."""
         required_fields = ["timestamp", "level", "logger", "message"]
         for field in required_fields:

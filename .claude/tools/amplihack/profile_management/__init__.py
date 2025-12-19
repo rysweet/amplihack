@@ -13,22 +13,22 @@ Usage:
     >>> components = filter.filter(profile, inventory)
 """
 
-from .models import (
-    ProfileConfig,
-    ComponentsConfig,
-    ComponentSpec,
-    SkillSpec,
-    MetadataConfig,
-    PerformanceConfig
-)
-
-from .loader import ProfileLoader
-from .parser import ProfileParser
+from .cli import ProfileCLI
+from .cli import main as cli_main
+from .config import ConfigManager
 from .discovery import ComponentDiscovery, ComponentInventory
 from .filter import ComponentFilter
 from .index import SkillIndexBuilder
-from .cli import ProfileCLI, main as cli_main
-from .config import ConfigManager
+from .loader import ProfileLoader
+from .models import (
+    ComponentsConfig,
+    ComponentSpec,
+    MetadataConfig,
+    PerformanceConfig,
+    ProfileConfig,
+    SkillSpec,
+)
+from .parser import ProfileParser
 
 __all__ = [
     # Models

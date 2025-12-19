@@ -58,7 +58,11 @@ class TestEvidenceBasedCompletion:
                 "role": "assistant",
                 "content": [
                     {"type": "text", "text": "I'll fix the authentication bug"},
-                    {"type": "tool_use", "name": "Write", "input": {"file_path": "/path/to/file.py"}},
+                    {
+                        "type": "tool_use",
+                        "name": "Write",
+                        "input": {"file_path": "/path/to/file.py"},
+                    },
                 ],
             }
             f.write(json.dumps(entry) + "\n")
@@ -108,7 +112,9 @@ class TestEvidenceBasedCompletion:
         assert "User explicitly confirmed work is complete" in result.reasons
 
     @patch("subprocess.run")
-    def test_evidence_available_flag_respected(self, mock_run, checker, transcript_path, temp_project):
+    def test_evidence_available_flag_respected(
+        self, mock_run, checker, transcript_path, temp_project
+    ):
         """Test that evidence checking only runs when EVIDENCE_AVAILABLE is True."""
         # Mock gh CLI to simulate unavailable
         mock_run.side_effect = FileNotFoundError()
@@ -120,7 +126,9 @@ class TestEvidenceBasedCompletion:
         assert result.decision in ["approve", "block"]
 
     @patch("power_steering_checker.PowerSteeringChecker._is_qa_session", return_value=False)
-    def test_evidence_results_attached_to_result(self, mock_qa, checker, transcript_path, temp_project):
+    def test_evidence_results_attached_to_result(
+        self, mock_qa, checker, transcript_path, temp_project
+    ):
         """Test that evidence results are attached to PowerSteeringResult."""
         # Create transcript with completed TODOs
         with open(transcript_path, "w") as f:
@@ -138,7 +146,9 @@ class TestEvidenceBasedCompletion:
         assert isinstance(result.evidence_results, list)
 
     @patch("subprocess.run")
-    def test_evidence_checking_fails_gracefully(self, mock_run, checker, transcript_path, temp_project):
+    def test_evidence_checking_fails_gracefully(
+        self, mock_run, checker, transcript_path, temp_project
+    ):
         """Test that evidence checking failures don't break the checker."""
         # Mock subprocess to raise an unexpected exception
         mock_run.side_effect = RuntimeError("Unexpected error")

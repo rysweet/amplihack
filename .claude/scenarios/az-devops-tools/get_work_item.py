@@ -29,7 +29,6 @@ Philosophy:
 
 import argparse
 import json
-import sys
 from typing import Any
 
 from common import (
@@ -169,7 +168,7 @@ def format_summary(work_item: dict[str, Any]) -> str:
         lines.append("")
 
     # Show relations if available
-    if "relations" in work_item and work_item["relations"]:
+    if work_item.get("relations"):
         lines.append("Relations:")
         lines.append("-" * 60)
         for relation in work_item["relations"]:
@@ -239,12 +238,8 @@ Examples:
     )
 
     parser.add_argument("--id", required=True, help="Work item ID")
-    parser.add_argument(
-        "--fields", help="Comma-separated list of fields to retrieve"
-    )
-    parser.add_argument(
-        "--relations", action="store_true", help="Include work item relations"
-    )
+    parser.add_argument("--fields", help="Comma-separated list of fields to retrieve")
+    parser.add_argument("--relations", action="store_true", help="Include work item relations")
     parser.add_argument(
         "--format",
         choices=["summary", "detailed", "json"],
@@ -284,9 +279,7 @@ Examples:
     wrapper = AzCliWrapper(org=org, project=project)
 
     try:
-        work_item = get_work_item_details(
-            wrapper, work_item_id, fields, args.relations
-        )
+        work_item = get_work_item_details(wrapper, work_item_id, fields, args.relations)
 
         # Format output
         if args.format == "json":

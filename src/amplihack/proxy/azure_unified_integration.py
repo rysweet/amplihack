@@ -12,14 +12,13 @@ Performance Optimizations:
 - Performance metrics collection
 """
 
-import asyncio
 import hashlib
 import json
 import logging
 import ssl
 import time
 from functools import lru_cache
-from typing import Any, Dict, List
+from typing import Any
 
 import aiohttp  # type: ignore[import-untyped]
 import certifi  # type: ignore[import-untyped]
@@ -153,8 +152,8 @@ class AzureUnifiedProvider:
         return result
 
     def get_cached_chat_transform(
-        self, request_hash: str, request: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, request_hash: str, request: dict[str, Any]
+    ) -> dict[str, Any]:
         """Get cached Chat API transformation or compute and cache it."""
         if request_hash in _TRANSFORM_CACHE:
             return _TRANSFORM_CACHE[request_hash].copy()
@@ -188,7 +187,7 @@ class AzureUnifiedProvider:
         _TRANSFORM_CACHE[request_hash] = chat_request.copy()
         return chat_request
 
-    def transform_request_to_chat_api(self, request: Dict[str, Any]) -> Dict[str, Any]:
+    def transform_request_to_chat_api(self, request: dict[str, Any]) -> dict[str, Any]:
         """
         Transform request to Azure Chat API format with caching optimization.
 
@@ -212,8 +211,8 @@ class AzureUnifiedProvider:
         return self.get_cached_chat_transform(request_hash, request)
 
     def get_cached_responses_transform(
-        self, request_hash: str, request: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, request_hash: str, request: dict[str, Any]
+    ) -> dict[str, Any]:
         """Get cached Responses API transformation or compute and cache it."""
         if request_hash in _TRANSFORM_CACHE:
             return _TRANSFORM_CACHE[request_hash].copy()
@@ -262,7 +261,7 @@ class AzureUnifiedProvider:
         _TRANSFORM_CACHE[request_hash] = responses_request.copy()
         return responses_request
 
-    def transform_request_to_responses_api(self, request: Dict[str, Any]) -> Dict[str, Any]:
+    def transform_request_to_responses_api(self, request: dict[str, Any]) -> dict[str, Any]:
         """
         Transform request to Azure Responses API format with caching optimization.
 
@@ -285,14 +284,14 @@ class AzureUnifiedProvider:
 
         return self.get_cached_responses_transform(request_hash, request)
 
-    def transform_chat_api_response(self, response: Dict[str, Any]) -> Dict[str, Any]:
+    def transform_chat_api_response(self, response: dict[str, Any]) -> dict[str, Any]:
         """
         Transform Azure Chat API response to standard OpenAI format.
         Chat API already returns standard OpenAI format, so minimal processing.
         """
         return response
 
-    def transform_responses_api_response(self, response: Dict[str, Any]) -> Dict[str, Any]:
+    def transform_responses_api_response(self, response: dict[str, Any]) -> dict[str, Any]:
         """
         Transform Azure Responses API response to standard OpenAI format.
         Optimized for memory efficiency and speed.
@@ -358,7 +357,7 @@ class AzureUnifiedProvider:
 
         return openai_response
 
-    async def make_request(self, request: Dict[str, Any], stream: bool = False) -> Dict[str, Any]:
+    async def make_request(self, request: dict[str, Any], stream: bool = False) -> dict[str, Any]:
         """
         Make unified request to appropriate Azure API with performance optimizations.
 
@@ -411,7 +410,7 @@ class AzureUnifiedProvider:
                     }
                 }
 
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.error("❌ Azure API timeout")
             return {
                 "error": {"message": "Request timeout", "type": "timeout_error", "code": "timeout"}
@@ -420,7 +419,7 @@ class AzureUnifiedProvider:
             logger.error(f"❌ Azure API request failed: {e}")
             return {"error": {"message": str(e), "type": "request_error", "code": "request_failed"}}
 
-    def get_performance_metrics(self) -> Dict[str, Any]:
+    def get_performance_metrics(self) -> dict[str, Any]:
         """Get performance metrics for monitoring."""
         return {
             "request_count": self._request_count,
@@ -440,7 +439,7 @@ def _get_cached_model_list_template(
     big_model: str = "gpt-5-codex",
     middle_model: str = "gpt-5-codex",
     small_model: str = "gpt-5-codex",
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """Get cached model list template for router creation."""
 
     # Determine if this is a Responses API endpoint
@@ -655,7 +654,7 @@ def validate_azure_unified_config_cached(
     return True
 
 
-def validate_azure_unified_config(config: Dict[str, str]) -> bool:
+def validate_azure_unified_config(config: dict[str, str]) -> bool:
     """
     Legacy interface for configuration validation with caching optimization.
 
@@ -689,7 +688,7 @@ async def cleanup_cached_sessions() -> None:
         logger.debug(f"🧹 Cleaned up {len(closed_sessions)} closed sessions from cache")
 
 
-def get_global_performance_metrics() -> Dict[str, Any]:
+def get_global_performance_metrics() -> dict[str, Any]:
     """Get global performance metrics across all providers."""
     return {
         "total_cached_sessions": len(_SESSION_CACHE),

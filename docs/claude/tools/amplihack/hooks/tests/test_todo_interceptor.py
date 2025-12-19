@@ -8,24 +8,21 @@ Testing pyramid:
 - 10% E2E tests (complete interception flows)
 """
 
+# Import from parent directory
+import sys
 import tempfile
 from pathlib import Path
 
 import pytest
 
-# Import from parent directory
-import sys
-
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from todo_interceptor import (
-    EXPECTED_WORKFLOW_TODOS,
     InterceptResult,
     TodoInterceptor,
     intercept_todo_write,
 )
 from workflow_state import WorkflowState, WorkflowStateMachine
-
 
 # =============================================================================
 # UNIT TESTS (60%)
@@ -315,9 +312,7 @@ class TestConvenienceFunction:
         machine = WorkflowStateMachine(temp_project)
         machine.create_state("conv-test")
 
-        todo_input = {
-            "todos": [{"content": "Step 8: Task", "status": "completed"}]
-        }
+        todo_input = {"todos": [{"content": "Step 8: Task", "status": "completed"}]}
 
         result = intercept_todo_write(todo_input, "conv-test", temp_project)
 
@@ -348,16 +343,17 @@ class TestEndToEndInterception:
         interceptor = TodoInterceptor(machine)
 
         # Phase 1: Initialize 22 todos (Step 0 compliance)
-        init_todos = [
-            {"content": f"Step {i}: Task {i}", "status": "pending"} for i in range(22)
-        ]
+        init_todos = [{"content": f"Step {i}: Task {i}", "status": "pending"} for i in range(22)]
         result = interceptor.intercept({"todos": init_todos}, state)
         assert result.step0_compliant is True
 
         # Phase 2: Complete steps one by one
         for step in range(22):
             todos = [
-                {"content": f"Step {i}: Task {i}", "status": "completed" if i <= step else "pending"}
+                {
+                    "content": f"Step {i}: Task {i}",
+                    "status": "completed" if i <= step else "pending",
+                }
                 for i in range(22)
             ]
             state = machine.load_state("e2e-intercept")

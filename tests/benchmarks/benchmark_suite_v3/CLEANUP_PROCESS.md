@@ -5,6 +5,7 @@
 ## What Gets Created During Benchmarks
 
 Each benchmark task creates:
+
 - **GitHub Issue** - Feature request for the task
 - **Git Branch** - Feature branch for implementation
 - **Pull Request** - PR with the implemented code

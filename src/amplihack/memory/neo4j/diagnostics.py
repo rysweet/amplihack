@@ -4,12 +4,12 @@ Shows clear evidence that Neo4j is running and has data.
 """
 
 import logging
-from typing import Any, Dict
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
 
-def get_neo4j_stats(conn) -> Dict[str, Any]:
+def get_neo4j_stats(conn) -> dict[str, Any]:
     """Get Neo4j database statistics.
 
     Args:

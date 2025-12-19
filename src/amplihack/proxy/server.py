@@ -8,7 +8,7 @@ import sys
 import time
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import Any, Literal
 
 import httpx  # type: ignore
 import litellm  # type: ignore
@@ -155,7 +155,7 @@ def generate_request_id() -> str:
     return f"req_{uuid.uuid4().hex[:12]}"
 
 
-def log_request_lifecycle(request_id: str, event: str, details: Optional[Dict[str, Any]] = None):
+def log_request_lifecycle(request_id: str, event: str, details: dict[str, Any] | None = None):
     """Log request lifecycle with context for debugging hung requests."""
     log_data = {
         "request_id": request_id,
@@ -310,20 +310,20 @@ class ContentBlockText(BaseModel):
 
 class ContentBlockImage(BaseModel):
     type: Literal["image"]
-    source: Dict[str, Any]
+    source: dict[str, Any]
 
 
 class ContentBlockToolUse(BaseModel):
     type: Literal["tool_use"]
     id: str
     name: str
-    input: Dict[str, Any]
+    input: dict[str, Any]
 
 
 class ContentBlockToolResult(BaseModel):
     type: Literal["tool_result"]
     tool_use_id: str
-    content: Union[str, List[Dict[str, Any]], Dict[str, Any], List[Any], Any]
+    content: str | list[dict[str, Any]] | dict[str, Any] | list[Any] | Any
 
 
 class SystemContent(BaseModel):
@@ -333,26 +333,22 @@ class SystemContent(BaseModel):
 
 class Message(BaseModel):
     role: Literal["user", "assistant"]
-    content: Union[
-        str,
-        List[
-            Union[
-                ContentBlockText,
-                ContentBlockImage,
-                ContentBlockToolUse,
-                ContentBlockToolResult,
-                Dict[
-                    str, Any
-                ],  # Allow unknown block types (e.g., "thinking" blocks) to pass validation
-            ]
-        ],
-    ]
+    content: (
+        str
+        | list[
+            ContentBlockText
+            | ContentBlockImage
+            | ContentBlockToolUse
+            | ContentBlockToolResult
+            | dict[str, Any]
+        ]
+    )
 
 
 class Tool(BaseModel):
     name: str
-    description: Optional[str] = None
-    input_schema: Dict[str, Any]
+    description: str | None = None
+    input_schema: dict[str, Any]
 
 
 class ThinkingConfig(BaseModel):
@@ -362,18 +358,18 @@ class ThinkingConfig(BaseModel):
 class MessagesRequest(BaseModel):
     model: str
     max_tokens: int
-    messages: List[Message]
-    system: Optional[Union[str, List[SystemContent]]] = None
-    stop_sequences: Optional[List[str]] = None
-    stream: Optional[bool] = False
-    temperature: Optional[float] = 1.0
-    top_p: Optional[float] = None
-    top_k: Optional[int] = None
-    metadata: Optional[Dict[str, Any]] = None
-    tools: Optional[List[Tool]] = None
-    tool_choice: Optional[Dict[str, Any]] = None
-    thinking: Optional[ThinkingConfig] = None
-    original_model: Optional[str] = None  # Will store the original model name
+    messages: list[Message]
+    system: str | list[SystemContent] | None = None
+    stop_sequences: list[str] | None = None
+    stream: bool | None = False
+    temperature: float | None = 1.0
+    top_p: float | None = None
+    top_k: int | None = None
+    metadata: dict[str, Any] | None = None
+    tools: list[Tool] | None = None
+    tool_choice: dict[str, Any] | None = None
+    thinking: ThinkingConfig | None = None
+    original_model: str | None = None  # Will store the original model name
 
     @field_validator("model")
     def validate_model_field(cls, v, info):  # Renamed to avoid conflict
@@ -444,12 +440,12 @@ class MessagesRequest(BaseModel):
 
 class TokenCountRequest(BaseModel):
     model: str
-    messages: List[Message]
-    system: Optional[Union[str, List[SystemContent]]] = None
-    tools: Optional[List[Tool]] = None
-    thinking: Optional[ThinkingConfig] = None
-    tool_choice: Optional[Dict[str, Any]] = None
-    original_model: Optional[str] = None  # Will store the original model name
+    messages: list[Message]
+    system: str | list[SystemContent] | None = None
+    tools: list[Tool] | None = None
+    thinking: ThinkingConfig | None = None
+    tool_choice: dict[str, Any] | None = None
+    original_model: str | None = None  # Will store the original model name
 
     @field_validator("model")
     def validate_model_token_count(cls, v, info):  # Renamed to avoid conflict
@@ -540,10 +536,10 @@ class MessagesResponse(BaseModel):
     id: str
     model: str
     role: Literal["assistant"] = "assistant"
-    content: List[Union[ContentBlockText, ContentBlockToolUse]]
+    content: list[ContentBlockText | ContentBlockToolUse]
     type: Literal["message"] = "message"
-    stop_reason: Optional[Literal["end_turn", "max_tokens", "stop_sequence", "tool_use"]] = None
-    stop_sequence: Optional[str] = None
+    stop_reason: Literal["end_turn", "max_tokens", "stop_sequence", "tool_use"] | None = None
+    stop_sequence: str | None = None
     usage: Usage
 
 
@@ -608,8 +604,8 @@ def parse_tool_result_content(content):
 
 
 def sanitize_message_content(
-    messages: List[Message], allowed_types: Optional[set] = None
-) -> List[Message]:
+    messages: list[Message], allowed_types: set | None = None
+) -> list[Message]:
     """
     Remove unsupported content block types from messages.
 
@@ -690,7 +686,7 @@ def sanitize_message_content(
     return sanitized_messages
 
 
-def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str, Any]:
+def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> dict[str, Any]:
     """Convert Anthropic API request format to LiteLLM format (which follows OpenAI)."""
     # LiteLLM already handles Anthropic models when using the format model="anthropic/claude-3-opus-20240229"
     # So we just need to convert our Pydantic model to a dict in the expected format
@@ -858,7 +854,7 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
                             )
                         elif block_type == "tool_result":
                             # Handle different formats of tool result content
-                            processed_content_block: Dict[str, Any] = {
+                            processed_content_block: dict[str, Any] = {
                                 "type": "tool_result",
                                 "tool_use_id": getattr(block, "tool_use_id", "")
                                 if hasattr(block, "tool_use_id")
@@ -999,7 +995,7 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> Dict[str
 
 
 def convert_litellm_to_anthropic(
-    litellm_response: Union[Dict[str, Any], Any], original_request: MessagesRequest
+    litellm_response: dict[str, Any] | Any, original_request: MessagesRequest
 ) -> MessagesResponse:
     """Convert LiteLLM (OpenAI format) response to Anthropic API response format."""
 
@@ -1964,7 +1960,7 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                     timeout=PROXY_TIMEOUT + 5.0,  # Add 5s buffer for cleanup
                 )
                 log_request_lifecycle(request_id, "request_complete")
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 log_request_lifecycle(request_id, "request_timeout", {"timeout": PROXY_TIMEOUT})
                 raise HTTPException(
                     status_code=504,
@@ -2018,7 +2014,7 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                 timeout=PROXY_TIMEOUT + 5.0,
             )
             log_request_lifecycle(request_id, "request_complete")
-        except asyncio.TimeoutError:
+        except TimeoutError:
             log_request_lifecycle(request_id, "request_timeout", {"timeout": PROXY_TIMEOUT})
             raise HTTPException(
                 status_code=504, detail=f"Request {request_id} timed out after {PROXY_TIMEOUT}s"

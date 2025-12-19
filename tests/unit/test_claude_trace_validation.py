@@ -137,11 +137,14 @@ class TestClaudeTraceValidation:
         mock_result.stderr = ""
 
         # Create a mock Path object for homebrew location
-        with patch("pathlib.Path.is_symlink", return_value=True), patch(
-            "pathlib.Path.resolve",
-            return_value=Path("/opt/homebrew/lib/node_modules/claude-trace.js"),
-        ), patch("pathlib.Path.exists", return_value=True), patch(
-            "subprocess.run", return_value=mock_result
+        with (
+            patch("pathlib.Path.is_symlink", return_value=True),
+            patch(
+                "pathlib.Path.resolve",
+                return_value=Path("/opt/homebrew/lib/node_modules/claude-trace.js"),
+            ),
+            patch("pathlib.Path.exists", return_value=True),
+            patch("subprocess.run", return_value=mock_result),
         ):
             # The homebrew path should still be validated via the new logic
             result = _test_claude_trace_execution("/opt/homebrew/bin/claude-trace")
@@ -155,9 +158,12 @@ class TestClaudeTraceValidation:
         mock_result.stdout = "Usage: claude-trace [options]\nTrace claude execution"
         mock_result.stderr = ""
 
-        with patch("subprocess.run", return_value=mock_result), patch(
-            "pathlib.Path.exists", return_value=True
-        ), patch("pathlib.Path.is_file", return_value=True), patch("os.access", return_value=True):
+        with (
+            patch("subprocess.run", return_value=mock_result),
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.is_file", return_value=True),
+            patch("os.access", return_value=True),
+        ):
             result = _is_valid_claude_trace_binary("/usr/bin/claude-trace")
             assert result is True
 

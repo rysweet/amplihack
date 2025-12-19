@@ -5,7 +5,6 @@ import os
 import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Optional
 
 
 @dataclass
@@ -21,7 +20,7 @@ class LockData:
 class ReflectionLock:
     """File-based semaphore to prevent reflection loops."""
 
-    def __init__(self, runtime_dir: Optional[Path] = None):
+    def __init__(self, runtime_dir: Path | None = None):
         """Initialize lock with runtime directory."""
         if runtime_dir is None:
             # Find .claude/runtime/ directory
@@ -90,7 +89,7 @@ class ReflectionLock:
         age = time.time() - lock_data.timestamp
         return age > self.stale_timeout
 
-    def read_lock(self) -> Optional[LockData]:
+    def read_lock(self) -> LockData | None:
         """Read lock data from file."""
         if not self.is_locked():
             return None

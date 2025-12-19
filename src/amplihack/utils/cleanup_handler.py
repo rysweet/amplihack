@@ -10,7 +10,6 @@ import signal
 import sys
 import tempfile
 from pathlib import Path
-from typing import Optional
 
 from .cleanup_registry import CleanupRegistry
 from .uvx_models import UVXConfiguration
@@ -160,7 +159,7 @@ class CleanupHandler:
 
 def initialize_cleanup_system(
     config: UVXConfiguration, session_id: str, working_dir: Path
-) -> Optional[CleanupHandler]:
+) -> CleanupHandler | None:
     """Initialize cleanup system for UVX deployment.
 
     Args:

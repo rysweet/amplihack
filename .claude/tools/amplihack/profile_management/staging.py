@@ -6,15 +6,13 @@ profile configuration.
 """
 
 import os
-from pathlib import Path
-from typing import Callable, List, Optional
+from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 
 from .config import ConfigManager
 from .loader import ProfileLoader
 from .parser import ProfileParser
-from .filter import ComponentFilter
-from .discovery import ComponentDiscovery
 
 
 @dataclass
@@ -26,14 +24,14 @@ class StagingManifest:
         file_filter: Optional per-file filter function (None = copy all files)
         profile_name: Name of the profile that was used
     """
-    dirs_to_stage: List[str]
-    file_filter: Optional[Callable[[Path], bool]]
+
+    dirs_to_stage: list[str]
+    file_filter: Callable[[Path], bool] | None
     profile_name: str
 
 
 def create_staging_manifest(
-    base_dirs: List[str],
-    profile_uri: Optional[str] = None
+    base_dirs: list[str], profile_uri: str | None = None
 ) -> StagingManifest:
     """
     Create filtered staging manifest based on active profile.
@@ -77,11 +75,7 @@ def create_staging_manifest(
 
         # If "all" profile, return full manifest (no filtering)
         if profile.name == "all":
-            return StagingManifest(
-                dirs_to_stage=base_dirs,
-                file_filter=None,
-                profile_name="all"
-            )
+            return StagingManifest(dirs_to_stage=base_dirs, file_filter=None, profile_name="all")
 
         # Create file filter function using profile configuration directly
         # Don't use ComponentDiscovery - it requires .claude to exist already
@@ -99,10 +93,10 @@ def create_staging_manifest(
             import fnmatch
 
             filename = file_path.name
-            file_path_str = str(file_path).replace(os.sep, '/')
+            file_path_str = str(file_path).replace(os.sep, "/")
 
             # Helper to check include/exclude patterns
-            def matches_pattern(filename: str, patterns: List[str]) -> bool:
+            def matches_pattern(filename: str, patterns: list[str]) -> bool:
                 """Check if filename matches any pattern in list.
 
                 Handles patterns like "architect" matching "architect.md"
@@ -116,9 +110,11 @@ def create_staging_manifest(
 
                 for pattern in patterns:
                     # Extract just the filename part if pattern has path
-                    pattern_name = pattern.split('/')[-1]
+                    pattern_name = pattern.split("/")[-1]
                     # Try matching against both full filename and stem
-                    if fnmatch.fnmatch(filename, pattern_name) or fnmatch.fnmatch(stem, pattern_name):
+                    if fnmatch.fnmatch(filename, pattern_name) or fnmatch.fnmatch(
+                        stem, pattern_name
+                    ):
                         return True
                 return False
 
@@ -169,16 +165,12 @@ def create_staging_manifest(
             return True
 
         return StagingManifest(
-            dirs_to_stage=base_dirs,
-            file_filter=should_copy_file,
-            profile_name=profile.name
+            dirs_to_stage=base_dirs, file_filter=should_copy_file, profile_name=profile.name
         )
 
     except Exception as e:
         # Fail-open: Return full manifest on any errors
         print(f"Warning: Profile loading failed ({e}), using 'all' profile")
         return StagingManifest(
-            dirs_to_stage=base_dirs,
-            file_filter=None,
-            profile_name="all (fallback)"
+            dirs_to_stage=base_dirs, file_filter=None, profile_name="all (fallback)"
         )

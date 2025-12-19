@@ -1,7 +1,6 @@
 """Azure OpenAI endpoint detection and validation."""
 
 import re
-from typing import Dict, Optional
 from urllib.parse import urlparse
 
 
@@ -35,7 +34,7 @@ class AzureEndpointDetector:
         self._cache_size = 1000  # Limit cache size to prevent memory leaks
 
     def is_azure_endpoint(
-        self, base_url: Optional[str] = None, config: Optional[Dict[str, str]] = None
+        self, base_url: str | None = None, config: dict[str, str] | None = None
     ) -> bool:
         """Check if endpoint is Azure OpenAI.
 
@@ -57,7 +56,7 @@ class AzureEndpointDetector:
         return False
 
     def get_endpoint_type(
-        self, base_url: Optional[str] = None, config: Optional[Dict[str, str]] = None
+        self, base_url: str | None = None, config: dict[str, str] | None = None
     ) -> str:
         """Get endpoint type (azure or openai).
 
@@ -107,7 +106,7 @@ class AzureEndpointDetector:
         self._validation_cache[endpoint] = result
         return result
 
-    def extract_azure_resource_name(self, endpoint: str) -> Optional[str]:
+    def extract_azure_resource_name(self, endpoint: str) -> str | None:
         """Extract Azure resource name from endpoint URL.
 
         Args:
@@ -143,7 +142,7 @@ class AzureEndpointDetector:
         """Check if URL matches OpenAI patterns."""
         return any(regex.match(url) for regex in self._openai_regex)
 
-    def _has_azure_config_vars(self, config: Dict[str, str]) -> bool:
+    def _has_azure_config_vars(self, config: dict[str, str]) -> bool:
         """Check if config has Azure-specific variables."""
         azure_vars = [
             "AZURE_OPENAI_ENDPOINT",

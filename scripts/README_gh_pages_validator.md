@@ -5,6 +5,7 @@ Automated link validation tool fer GitHub Pages sites. Crawls yer deployed site,
 ## Purpose
 
 This tool validates all links on a deployed GitHub Pages site by:
+
 1. Crawling the entire site starting from base URL
 2. Following all internal links recursively
 3. Testing both internal and external links
@@ -32,6 +33,7 @@ python scripts/validate_gh_pages_links.py --site-url https://example.com --max-d
 The tool generates two types of output:
 
 ### 1. JSON Report (`broken_links.json`)
+
 ```json
 {
   "summary": {
@@ -55,6 +57,7 @@ The tool generates two types of output:
 ```
 
 ### 2. Human-Readable Summary (stdout)
+
 ```
 GitHub Pages Link Validation Report
 =====================================
@@ -95,7 +98,7 @@ name: Validate GitHub Pages Links
 
 on:
   schedule:
-    - cron: '0 0 * * 0'  # Weekly on Sundays
+    - cron: "0 0 * * 0" # Weekly on Sundays
   workflow_dispatch:
 
 jobs:
@@ -107,7 +110,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
@@ -139,14 +142,14 @@ jobs:
 
 ## Error Types
 
-| Status | Severity | Description |
-|--------|----------|-------------|
-| 404    | Error    | Page not found |
-| 500    | Error    | Server error |
-| Timeout | Warning | Request timed out |
-| 301/302 | Warning | Redirect detected |
-| 403    | Warning | Access forbidden (may require auth) |
-| SSL Error | Warning | Certificate issue |
+| Status    | Severity | Description                         |
+| --------- | -------- | ----------------------------------- |
+| 404       | Error    | Page not found                      |
+| 500       | Error    | Server error                        |
+| Timeout   | Warning  | Request timed out                   |
+| 301/302   | Warning  | Redirect detected                   |
+| 403       | Warning  | Access forbidden (may require auth) |
+| SSL Error | Warning  | Certificate issue                   |
 
 ## Configuration
 
@@ -185,6 +188,7 @@ When broken links are found:
 - `beautifulsoup4`: HTML parsing for link extraction
 
 Install with:
+
 ```bash
 pip install requests beautifulsoup4
 ```

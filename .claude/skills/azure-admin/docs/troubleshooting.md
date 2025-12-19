@@ -18,6 +18,7 @@ Common issues and solutions for Azure administration tasks.
 **Problem**: `az login` fails or times out
 
 **Solutions**:
+
 ```bash
 # 1. Use device code flow
 az login --use-device-code
@@ -43,6 +44,7 @@ export HTTPS_PROXY=http://proxy.company.com:8080
 **Problem**: "Insufficient privileges" or "Authorization failed"
 
 **Diagnosis**:
+
 ```bash
 # Check your role assignments
 az role assignment list \
@@ -58,6 +60,7 @@ az provider list --query "[?registrationState=='NotRegistered']" --output table
 ```
 
 **Solutions**:
+
 ```bash
 # 1. Register required resource providers
 az provider register --namespace Microsoft.Compute
@@ -78,6 +81,7 @@ az account set --subscription "My Subscription"
 **Problem**: "Authentication token has expired"
 
 **Solution**:
+
 ```bash
 # Refresh authentication
 az login --use-device-code
@@ -94,6 +98,7 @@ az login --service-principal \
 **Problem**: Cannot access resources in different tenants
 
 **Solution**:
+
 ```bash
 # List available tenants
 az account tenant list
@@ -112,6 +117,7 @@ az account set --subscription {subscription-in-other-tenant}
 **Problem**: "Resource not found" or "ResourceGroupNotFound"
 
 **Diagnosis**:
+
 ```bash
 # Check if resource exists
 az resource show --ids {resource-id}
@@ -135,6 +141,7 @@ done
 **Problem**: "Cannot delete resource due to lock"
 
 **Diagnosis and Solution**:
+
 ```bash
 # List locks on resource
 az lock list --resource-group myRG
@@ -158,6 +165,7 @@ az lock delete \
 **Problem**: "QuotaExceeded" or "OperationNotAllowed"
 
 **Diagnosis**:
+
 ```bash
 # Check current quota usage
 az vm list-usage --location eastus --output table
@@ -168,6 +176,7 @@ az network vnet list-usage \
 ```
 
 **Solution**:
+
 - Request quota increase via Azure Portal > Subscription > Usage + quotas
 - Or create support ticket for quota increase
 - Consider using different VM sizes or regions with available capacity
@@ -177,6 +186,7 @@ az network vnet list-usage \
 **Problem**: "ResourceProviderNotRegistered"
 
 **Solution**:
+
 ```bash
 # List all resource providers and their registration status
 az provider list --query "[].{Namespace:namespace, State:registrationState}" --output table
@@ -206,6 +216,7 @@ az provider show --namespace Microsoft.Compute --query registrationState -o tsv 
 **Problem**: SSH or RDP connection fails
 
 **Diagnosis**:
+
 ```bash
 # Check VM is running
 az vm show --resource-group myRG --name myVM --query powerState
@@ -223,6 +234,7 @@ nc -zv {public-ip} 3389  # RDP
 ```
 
 **Solutions**:
+
 ```bash
 # 1. Verify VM is running
 az vm start --resource-group myRG --name myVM
@@ -250,6 +262,7 @@ az network bastion list --resource-group myRG
 **Problem**: Cannot resolve Azure DNS names
 
 **Diagnosis**:
+
 ```bash
 # Test DNS resolution
 nslookup myresource.azurewebsites.net
@@ -260,6 +273,7 @@ ipconfig /all  # Windows
 ```
 
 **Solution**:
+
 ```bash
 # Verify private DNS zone configuration
 az network private-dns zone list --output table
@@ -277,6 +291,7 @@ az network private-dns record-set list \
 **Problem**: Template deployment fails
 
 **Diagnosis**:
+
 ```bash
 # View deployment operations
 az deployment group show \
@@ -301,6 +316,7 @@ az deployment operation group list \
 **Common Issues and Solutions**:
 
 **1. Validation Errors:**
+
 ```bash
 # Validate template before deploying
 az deployment group validate \
@@ -313,6 +329,7 @@ az bicep build --file main.bicep
 ```
 
 **2. Resource Name Conflicts:**
+
 ```bash
 # Check if resource name already exists
 az resource list --name {resource-name}
@@ -323,15 +340,16 @@ name: 'mystorage${uniqueSuffix}'
 ```
 
 **3. Parameter Type Mismatches:**
+
 ```json
 // Ensure parameters match expected types
 {
   "parameters": {
     "vmSize": {
-      "value": "Standard_B2s"  // String, not number
+      "value": "Standard_B2s" // String, not number
     },
     "instanceCount": {
-      "value": 3  // Number, not string
+      "value": 3 // Number, not string
     }
   }
 }
@@ -342,6 +360,7 @@ name: 'mystorage${uniqueSuffix}'
 **Problem**: Deployment times out
 
 **Diagnosis**:
+
 ```bash
 # Check deployment status
 az deployment group show \
@@ -351,6 +370,7 @@ az deployment group show \
 ```
 
 **Solution**:
+
 ```bash
 # Use --no-wait for long-running deployments
 az deployment group create \
@@ -371,6 +391,7 @@ az deployment group show \
 **Problem**: `az` command returns errors or unexpected results
 
 **Diagnosis**:
+
 ```bash
 # Check Azure CLI version
 az --version
@@ -384,6 +405,7 @@ az --version  # Note version
 ```
 
 **Solutions**:
+
 ```bash
 # 1. Update Azure CLI
 az upgrade
@@ -406,6 +428,7 @@ python -m json.tool params.json  # Validate JSON
 **Problem**: `--query` returns unexpected results or errors
 
 **Diagnosis**:
+
 ```bash
 # Test query incrementally
 az vm list --query "[]"  # All items
@@ -417,6 +440,7 @@ az vm list --output json | jq '.[] | select(.location=="eastus")'
 ```
 
 **Common Issues**:
+
 - Incorrect syntax: `[?location=eastus]` should be `[?location=='eastus']`
 - Wrong operator: `&&` (and) vs `||` (or)
 - Nested property access: Use `.` notation
@@ -426,6 +450,7 @@ az vm list --output json | jq '.[] | select(.location=="eastus")'
 **Problem**: `az bicep` commands fail
 
 **Solutions**:
+
 ```bash
 # Install/update Bicep
 az bicep install
@@ -449,6 +474,7 @@ az bicep install
 **Problem**: Azure CLI commands are slow
 
 **Solutions**:
+
 ```bash
 # 1. Use specific queries to reduce data transfer
 az vm list --query "[].{Name:name, Location:location}"  # Faster
@@ -473,6 +499,7 @@ az vm list --query "[].id" -o tsv | xargs -P 5 -I {} az vm start --ids {}
 **Problem**: Operations timeout
 
 **Solutions**:
+
 ```bash
 # Use --no-wait for long operations
 az vm create --no-wait
@@ -489,12 +516,14 @@ az vm show --resource-group myRG --name myVM --query provisioningState
 When encountering issues, follow this systematic approach:
 
 1. **Identify the Error**:
+
    ```bash
    # Capture full error message
    az vm create ... 2>&1 | tee error.log
    ```
 
 2. **Enable Debug Mode**:
+
    ```bash
    az vm create --debug ... 2>&1 | tee debug.log
    ```

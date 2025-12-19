@@ -2,7 +2,7 @@
 
 import re
 from functools import lru_cache
-from typing import Any, Dict, List
+from typing import Any
 
 
 class ContentSanitizer:
@@ -93,7 +93,7 @@ class ContentSanitizer:
 
         return sanitized
 
-    def sanitize_message(self, message: Dict[str, Any]) -> Dict[str, Any]:
+    def sanitize_message(self, message: dict[str, Any]) -> dict[str, Any]:
         """Sanitize a single message object.
 
         Args:
@@ -120,8 +120,8 @@ class ContentSanitizer:
         return sanitized
 
     def sanitize_messages(
-        self, messages: List[Dict[str, Any]], max_messages: int = 50
-    ) -> List[Dict[str, Any]]:
+        self, messages: list[dict[str, Any]], max_messages: int = 50
+    ) -> list[dict[str, Any]]:
         """Sanitize a list of messages with batch optimization.
 
         Args:
@@ -195,7 +195,7 @@ def sanitize_content(content: str, max_length: int = 200) -> str:
     return _sanitizer.sanitize_content(content, max_length)
 
 
-def sanitize_messages(messages: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def sanitize_messages(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Sanitize messages using global sanitizer."""
     return _sanitizer.sanitize_messages(messages)
 

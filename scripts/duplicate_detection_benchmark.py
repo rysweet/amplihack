@@ -5,7 +5,6 @@ import random
 import sys
 import time
 from pathlib import Path
-from typing import Dict, List
 
 # Add .claude to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / ".claude"))
@@ -25,7 +24,7 @@ class DuplicateDetectionBenchmark:
         self.results = {}
         self.test_issues = []
 
-    def generate_test_data(self, num_issues: int = 1000) -> List[Dict]:
+    def generate_test_data(self, num_issues: int = 1000) -> list[dict]:
         """Generate test issue data for benchmarking."""
         print(f"📝 Generating {num_issues} test issues...")
 
@@ -94,7 +93,7 @@ class DuplicateDetectionBenchmark:
 
         return test_data
 
-    def benchmark_hash_generation(self, test_data: List[Dict]) -> Dict:
+    def benchmark_hash_generation(self, test_data: list[dict]) -> dict:
         """Benchmark hash generation performance."""
         print("🔢 Benchmarking hash generation...")
 
@@ -117,7 +116,7 @@ class DuplicateDetectionBenchmark:
             "hash_rate_per_second": len(times) / sum(times) if sum(times) > 0 else 0,
         }
 
-    def benchmark_cache_operations(self, test_data: List[Dict]) -> Dict:
+    def benchmark_cache_operations(self, test_data: list[dict]) -> dict:
         """Benchmark cache storage and retrieval performance."""
         print("💾 Benchmarking cache operations...")
 
@@ -154,7 +153,7 @@ class DuplicateDetectionBenchmark:
             "cached_issues": len(cache_manager.get_all_issues()),
         }
 
-    def benchmark_duplicate_detection(self, test_data: List[Dict]) -> Dict:
+    def benchmark_duplicate_detection(self, test_data: list[dict]) -> dict:
         """Benchmark full duplicate detection performance."""
         print("🔍 Benchmarking duplicate detection...")
 
@@ -204,7 +203,7 @@ class DuplicateDetectionBenchmark:
             "meets_2s_target": avg_time < 2.0,
         }
 
-    def benchmark_text_similarity(self, test_data: List[Dict]) -> Dict:
+    def benchmark_text_similarity(self, test_data: list[dict]) -> dict:
         """Benchmark text similarity performance (the main bottleneck)."""
         print("📝 Benchmarking text similarity algorithm...")
 
@@ -239,7 +238,7 @@ class DuplicateDetectionBenchmark:
             else 0,
         }
 
-    def run_comprehensive_benchmark(self, num_issues: int = 1000) -> Dict:
+    def run_comprehensive_benchmark(self, num_issues: int = 1000) -> dict:
         """Run comprehensive performance benchmark."""
         print("🏁 Starting Duplicate Detection Performance Benchmark")
         print("=" * 60)
@@ -276,7 +275,7 @@ class DuplicateDetectionBenchmark:
 
         return results
 
-    def analyze_bottlenecks(self, results: Dict) -> Dict:
+    def analyze_bottlenecks(self, results: dict) -> dict:
         """Analyze results to identify performance bottlenecks."""
         print("\n🔬 Bottleneck Analysis:")
 

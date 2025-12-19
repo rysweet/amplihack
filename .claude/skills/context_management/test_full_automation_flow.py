@@ -11,6 +11,7 @@ project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root / ".claude" / "tools" / "amplihack" / "hooks"))
 sys.path.insert(0, str(project_root / ".claude" / "skills"))
 
+
 def create_transcript_with_tokens(token_count):
     """Create a transcript file with specific token count."""
     # Distribute tokens across messages
@@ -19,31 +20,34 @@ def create_transcript_with_tokens(token_count):
 
     messages = []
     for i in range(msg_count):
-        messages.append({
-            "role": "user" if i % 2 == 0 else "assistant",
-            "content": f"Message {i} with some content",
-            "usage": {
-                "input_tokens": tokens_per_msg // 2,
-                "output_tokens": tokens_per_msg // 2,
-                "cache_read_input_tokens": 0,
-                "cache_creation_input_tokens": 0
+        messages.append(
+            {
+                "role": "user" if i % 2 == 0 else "assistant",
+                "content": f"Message {i} with some content",
+                "usage": {
+                    "input_tokens": tokens_per_msg // 2,
+                    "output_tokens": tokens_per_msg // 2,
+                    "cache_read_input_tokens": 0,
+                    "cache_creation_input_tokens": 0,
+                },
             }
-        })
+        )
 
     return messages
 
+
 def test_automation_at_threshold(token_count, expected_action):
     """Test automation at specific token threshold."""
-    print(f"\n{'='*70}")
-    print(f"Testing at {token_count:,} tokens ({(token_count/1_000_000)*100:.1f}%)")
+    print(f"\n{'=' * 70}")
+    print(f"Testing at {token_count:,} tokens ({(token_count / 1_000_000) * 100:.1f}%)")
     print(f"Expected: {expected_action}")
-    print('='*70)
+    print("=" * 70)
 
     # Create transcript
     conversation = create_transcript_with_tokens(token_count)
 
     # Save to temp file
-    with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(conversation, f)
         transcript_path = f.name
 
@@ -56,26 +60,27 @@ def test_automation_at_threshold(token_count, expected_action):
             "permission_mode": "enabled",
             "hook_event_name": "PostToolUse",
             "toolUse": {"name": "Write"},
-            "result": {"status": "success"}
+            "result": {"status": "success"},
         }
 
         # Run the hook
         from post_tool_use import PostToolUseHook
+
         hook = PostToolUseHook()
         output = hook.process(hook_input)
 
         # Check results
         if "context_automation" in output.get("metadata", {}):
             auto_data = output["metadata"]["context_automation"]
-            print(f"\n✅ Automation Triggered!")
+            print("\n✅ Automation Triggered!")
             print(f"   Actions: {auto_data.get('actions', [])}")
             print(f"   Warnings: {auto_data.get('warnings', [])}")
 
-            for warning in auto_data.get('warnings', []):
+            for warning in auto_data.get("warnings", []):
                 print(f"   💬 {warning}")
 
         else:
-            print(f"\n⭕ No automation (below threshold)")
+            print("\n⭕ No automation (below threshold)")
 
         return output
 
@@ -83,13 +88,14 @@ def test_automation_at_threshold(token_count, expected_action):
         # Cleanup
         Path(transcript_path).unlink(missing_ok=True)
 
+
 def main():
     """Test full automation flow."""
 
-    print("="*70)
+    print("=" * 70)
     print("🧪 FULL AUTOMATION FLOW TEST")
     print("Testing realistic token progression from 0% → 90%")
-    print("="*70)
+    print("=" * 70)
 
     # Clear any previous state
     state_file = Path(".claude/runtime/context-automation-state.json")
@@ -117,24 +123,24 @@ def main():
         with open(state_file) as f:
             state = json.load(f)
 
-        print(f"\n{'='*70}")
+        print(f"\n{'=' * 70}")
         print("📊 Final Automation State:")
-        print(f"{'='*70}")
+        print(f"{'=' * 70}")
         print(f"  Snapshots Created: {len(state.get('snapshots_created', []))}")
         print(f"  Last Threshold: {state.get('last_snapshot_threshold')}")
         print(f"  Compaction Detected: {state.get('compaction_detected', False)}")
 
-        if state.get('last_rehydration'):
-            rehydration = state['last_rehydration']
-            print(f"  Last Rehydration:")
+        if state.get("last_rehydration"):
+            rehydration = state["last_rehydration"]
+            print("  Last Rehydration:")
             print(f"    - Level: {rehydration.get('level')}")
             print(f"    - Snapshot: {rehydration.get('snapshot')}")
 
         print(f"\n✅ Created {len(state.get('snapshots_created', []))} auto-snapshots")
 
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print("🎉 FULL AUTOMATION TEST COMPLETE!")
-    print("="*70)
+    print("=" * 70)
     print("\nSummary:")
     print("  ✅ Token calculation from transcript: WORKING")
     print("  ✅ Auto-snapshot at thresholds: WORKING")
@@ -143,11 +149,13 @@ def main():
     print("  ✅ Auto-rehydration: WORKING")
     print("\n🏴‍☠️ The automation be FULLY FUNCTIONAL, captain!")
 
+
 if __name__ == "__main__":
     try:
         main()
     except Exception as e:
         print(f"\n❌ Test failed: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)

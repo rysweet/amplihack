@@ -2,7 +2,6 @@
 
 import subprocess
 from pathlib import Path
-from typing import Dict
 from unittest.mock import MagicMock
 
 import pytest
@@ -30,7 +29,7 @@ def mock_subprocess_run(monkeypatch):
 
 
 @pytest.fixture
-def sample_issue_data() -> Dict:
+def sample_issue_data() -> dict:
     """Sample issue data from GitHub API."""
     return {
         "number": 123,
@@ -48,7 +47,7 @@ def sample_issue_data() -> Dict:
 
 
 @pytest.fixture
-def sample_pr_data() -> Dict:
+def sample_pr_data() -> dict:
     """Sample PR data from GitHub API."""
     return {
         "number": 456,

@@ -1,7 +1,6 @@
 """Question generator using Socratic method."""
 
 import subprocess
-from typing import List
 
 from amplihack.knowledge_builder.kb_types import Question
 
@@ -17,7 +16,7 @@ class QuestionGenerator:
         """
         self.claude_cmd = claude_cmd
 
-    def generate_initial_questions(self, topic: str) -> List[Question]:
+    def generate_initial_questions(self, topic: str) -> list[Question]:
         """Generate 10 initial questions about a topic.
 
         Args:
@@ -66,7 +65,7 @@ Requirements:
 
     def generate_socratic_questions(
         self, parent_question: Question, parent_index: int
-    ) -> List[Question]:
+    ) -> list[Question]:
         """Generate 3 follow-up questions using Socratic method.
 
         Args:
@@ -122,7 +121,7 @@ Requirements:
 
         return questions[:3]  # Ensure exactly 3
 
-    def generate_all_questions(self, topic: str) -> List[Question]:
+    def generate_all_questions(self, topic: str) -> list[Question]:
         """Generate complete question tree (270 total questions).
 
         Structure:

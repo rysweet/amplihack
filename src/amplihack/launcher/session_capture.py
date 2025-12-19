@@ -6,7 +6,7 @@ for export via ClaudeTranscriptBuilder.
 
 import threading
 from datetime import datetime
-from typing import Any, Dict, List
+from typing import Any
 
 
 class MessageCapture:
@@ -20,11 +20,11 @@ class MessageCapture:
 
     def __init__(self) -> None:
         """Initialize empty message buffer."""
-        self._messages: List[Dict[str, Any]] = []
+        self._messages: list[dict[str, Any]] = []
         self._current_phase: str = "initializing"
         self._current_turn: int = 0
         self._lock = threading.RLock()  # Thread safety for concurrent access
-        self.todos: List[Dict[str, Any]] = []  # TodoWrite state tracking
+        self.todos: list[dict[str, Any]] = []  # TodoWrite state tracking
 
     def set_phase(self, phase: str, turn: int) -> None:
         """Set current execution phase and turn number.
@@ -113,7 +113,7 @@ class MessageCapture:
         }
         self._messages.append(message)
 
-    def get_messages(self) -> List[Dict[str, Any]]:
+    def get_messages(self) -> list[dict[str, Any]]:
         """Get all captured messages.
 
         Returns:
@@ -145,7 +145,7 @@ class MessageCapture:
         """
         return len(self._messages)
 
-    def update_todos(self, todos: List[Dict[str, Any]]) -> None:
+    def update_todos(self, todos: list[dict[str, Any]]) -> None:
         """Update todos with thread safety.
 
         Args:

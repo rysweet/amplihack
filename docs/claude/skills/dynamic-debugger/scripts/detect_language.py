@@ -17,7 +17,6 @@ import json
 import sys
 from collections import Counter
 from pathlib import Path
-from typing import Tuple
 
 # Public API
 __all__ = ["detect_language", "get_debugger_for_language"]
@@ -63,7 +62,7 @@ EXTENSION_MAP = {
 }
 
 
-def detect_language(project_dir: str = ".") -> Tuple[str, float]:
+def detect_language(project_dir: str = ".") -> tuple[str, float]:
     """Detect project language with confidence score.
 
     Returns:

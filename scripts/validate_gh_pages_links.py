@@ -24,7 +24,6 @@ import time
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional, Set, Tuple
 from urllib.parse import urljoin, urlparse, urlunparse
 
 import requests
@@ -41,9 +40,11 @@ MAX_RETRIES = 2
 # Data Models
 # ============================================================================
 
+
 @dataclass
 class BrokenLink:
     """Represents a broken link found during validation."""
+
     page_url: str
     link_url: str
     link_text: str
@@ -54,16 +55,18 @@ class BrokenLink:
 @dataclass
 class ValidationResults:
     """Results of link validation operation."""
+
     total_pages: int = 0
     total_links: int = 0
-    broken_links: List[BrokenLink] = field(default_factory=list)
-    warnings: List[BrokenLink] = field(default_factory=list)
+    broken_links: list[BrokenLink] = field(default_factory=list)
+    warnings: list[BrokenLink] = field(default_factory=list)
     scan_date: str = field(default_factory=lambda: datetime.utcnow().isoformat() + "Z")
 
 
 # ============================================================================
 # URL Utilities
 # ============================================================================
+
 
 def parse_url(url: str) -> urlparse:
     """Parse URL into components."""
@@ -74,14 +77,16 @@ def normalize_url(url: str) -> str:
     """Normalize URL by removing fragments and trailing slashes."""
     parsed = urlparse(url)
     # Remove fragment
-    normalized = urlunparse((
-        parsed.scheme,
-        parsed.netloc,
-        parsed.path.rstrip("/"),
-        parsed.params,
-        parsed.query,
-        ""  # Remove fragment
-    ))
+    normalized = urlunparse(
+        (
+            parsed.scheme,
+            parsed.netloc,
+            parsed.path.rstrip("/"),
+            parsed.params,
+            parsed.query,
+            "",  # Remove fragment
+        )
+    )
     return normalized
 
 
@@ -101,7 +106,8 @@ def resolve_url(base_url: str, relative_url: str) -> str:
 # HTML Parsing
 # ============================================================================
 
-def extract_links(html: str, base_url: str) -> List[Dict[str, str]]:
+
+def extract_links(html: str, base_url: str) -> list[dict[str, str]]:
     """Extract all links from HTML content.
 
     Args:
@@ -125,10 +131,12 @@ def extract_links(html: str, base_url: str) -> List[Dict[str, str]]:
         # Resolve relative URLs
         absolute_url = resolve_url(base_url, href)
 
-        links.append({
-            "url": absolute_url,
-            "text": text or "(no text)",
-        })
+        links.append(
+            {
+                "url": absolute_url,
+                "text": text or "(no text)",
+            }
+        )
 
     return links
 
@@ -136,6 +144,7 @@ def extract_links(html: str, base_url: str) -> List[Dict[str, str]]:
 # ============================================================================
 # Crawler
 # ============================================================================
+
 
 class Crawler:
     """Web crawler for GitHub Pages sites."""
@@ -145,7 +154,7 @@ class Crawler:
         base_url: str,
         timeout: int = DEFAULT_TIMEOUT,
         rate_limit: float = DEFAULT_RATE_LIMIT,
-        max_depth: Optional[int] = None,
+        max_depth: int | None = None,
     ):
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
@@ -153,10 +162,10 @@ class Crawler:
         self.max_depth = max_depth
 
         # State
-        self.visited: Set[str] = set()
+        self.visited: set[str] = set()
         self.queue: deque = deque([(self.base_url, 0)])  # (url, depth)
-        self.all_links: Dict[str, List[Dict]] = {}  # page_url -> list of links
-        self.link_cache: Dict[str, Tuple[Optional[str], str]] = {}  # url -> (error, severity)
+        self.all_links: dict[str, list[dict]] = {}  # page_url -> list of links
+        self.link_cache: dict[str, tuple[str | None, str]] = {}  # url -> (error, severity)
 
     def is_visited(self, url: str) -> bool:
         """Check if URL has been visited."""
@@ -172,13 +181,13 @@ class Crawler:
         if normalized not in self.visited and is_same_domain(self.base_url, url):
             self.queue.append((url, depth))
 
-    def get_next_url(self) -> Optional[Tuple[str, int]]:
+    def get_next_url(self) -> tuple[str, int] | None:
         """Get next URL from queue."""
         if self.queue:
             return self.queue.popleft()
         return None
 
-    def fetch_page(self, url: str) -> Optional[str]:
+    def fetch_page(self, url: str) -> str | None:
         """Fetch HTML content of page.
 
         Returns:
@@ -259,7 +268,7 @@ class Crawler:
 
         return results
 
-    def validate_link_cached(self, url: str) -> Tuple[Optional[str], str]:
+    def validate_link_cached(self, url: str) -> tuple[str | None, str]:
         """Validate link with caching.
 
         Returns:
@@ -279,7 +288,8 @@ class Crawler:
 # Link Validation
 # ============================================================================
 
-def validate_link(url: str, timeout: int = DEFAULT_TIMEOUT) -> Tuple[Optional[str], str]:
+
+def validate_link(url: str, timeout: int = DEFAULT_TIMEOUT) -> tuple[str | None, str]:
     """Validate a single link.
 
     Args:
@@ -301,19 +311,18 @@ def validate_link(url: str, timeout: int = DEFAULT_TIMEOUT) -> Tuple[Optional[st
 
         if response.status_code == 200:
             return None, "ok"
-        elif response.status_code in (301, 302, 307, 308):
+        if response.status_code in (301, 302, 307, 308):
             location = response.headers.get("Location", "unknown")
             return f"Redirects to: {location}", "warning"
-        elif response.status_code == 403:
+        if response.status_code == 403:
             return "Access forbidden (may require authentication)", "warning"
-        elif response.status_code == 404:
+        if response.status_code == 404:
             return "Page not found (404)", "error"
-        elif response.status_code == 429:
+        if response.status_code == 429:
             return "Rate limited", "warning"
-        elif response.status_code >= 500:
+        if response.status_code >= 500:
             return f"Server error ({response.status_code})", "error"
-        else:
-            return f"HTTP {response.status_code}", "error"
+        return f"HTTP {response.status_code}", "error"
 
     except requests.exceptions.Timeout:
         return "Request timed out", "warning"
@@ -328,6 +337,7 @@ def validate_link(url: str, timeout: int = DEFAULT_TIMEOUT) -> Tuple[Optional[st
 # ============================================================================
 # Reporting
 # ============================================================================
+
 
 def generate_report(results: ValidationResults) -> str:
     """Generate human-readable report.
@@ -355,12 +365,14 @@ def generate_report(results: ValidationResults) -> str:
         lines.append("Broken Links (Errors):")
         lines.append("-" * 60)
         for i, link in enumerate(results.broken_links, 1):
-            lines.extend([
-                f"{i}. Page: {link.page_url}",
-                f"   Link: {link.link_url} ({link.link_text})",
-                f"   Error: {link.error}",
-                "",
-            ])
+            lines.extend(
+                [
+                    f"{i}. Page: {link.page_url}",
+                    f"   Link: {link.link_url} ({link.link_text})",
+                    f"   Error: {link.error}",
+                    "",
+                ]
+            )
 
     if results.warnings:
         lines.append("Warnings:")
@@ -368,12 +380,14 @@ def generate_report(results: ValidationResults) -> str:
         # Limit warnings to 20
         displayed_warnings = results.warnings[:20]
         for i, link in enumerate(displayed_warnings, 1):
-            lines.extend([
-                f"{i}. Page: {link.page_url}",
-                f"   Link: {link.link_url} ({link.link_text})",
-                f"   Warning: {link.error}",
-                "",
-            ])
+            lines.extend(
+                [
+                    f"{i}. Page: {link.page_url}",
+                    f"   Link: {link.link_url} ({link.link_text})",
+                    f"   Warning: {link.error}",
+                    "",
+                ]
+            )
         if len(results.warnings) > 20:
             lines.append(f"... and {len(results.warnings) - 20} more warnings")
             lines.append("")
@@ -444,10 +458,11 @@ def get_exit_code(results: ValidationResults) -> int:
 # Main Entry Point
 # ============================================================================
 
+
 def validate_site(
     site_url: str,
     timeout: int = DEFAULT_TIMEOUT,
-    max_depth: Optional[int] = None,
+    max_depth: int | None = None,
 ) -> ValidationResults:
     """Validate all links on a site.
 

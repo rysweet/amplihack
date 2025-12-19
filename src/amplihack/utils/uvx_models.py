@@ -12,10 +12,10 @@ Design Philosophy:
 """
 
 import os
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Set, Union
 
 
 class UVXDetectionResult(Enum):
@@ -41,9 +41,9 @@ class PathResolutionStrategy(Enum):
 class UVXEnvironmentInfo:
     """Information about the UVX environment."""
 
-    uv_python_path: Optional[str] = None
-    amplihack_root: Optional[str] = None
-    sys_path_entries: List[str] = field(default_factory=list)
+    uv_python_path: str | None = None
+    amplihack_root: str | None = None
+    sys_path_entries: list[str] = field(default_factory=list)
     working_directory: Path = field(default_factory=Path.cwd)
     python_executable: str = field(default_factory=str)
 
@@ -79,7 +79,7 @@ class UVXDetectionState:
 
     result: UVXDetectionResult
     environment: UVXEnvironmentInfo
-    detection_reasons: List[str] = field(default_factory=list)
+    detection_reasons: list[str] = field(default_factory=list)
 
     @property
     def is_uvx_deployment(self) -> bool:
@@ -113,7 +113,7 @@ class FrameworkLocation:
 
     root_path: Path
     strategy: PathResolutionStrategy
-    validation_errors: List[str] = field(default_factory=list)
+    validation_errors: list[str] = field(default_factory=list)
 
     @property
     def is_valid(self) -> bool:
@@ -146,7 +146,7 @@ class FrameworkLocation:
             root_path=self.root_path, strategy=self.strategy, validation_errors=errors
         )
 
-    def resolve_file(self, relative_path: str) -> Optional[Path]:
+    def resolve_file(self, relative_path: str) -> Path | None:
         """Resolve a file path relative to framework root.
 
         Args:
@@ -182,8 +182,8 @@ class FrameworkLocation:
 class PathResolutionResult:
     """Result of framework path resolution."""
 
-    location: Optional[FrameworkLocation]
-    attempts: List[Dict[str, Union[str, Path, bool]]] = field(default_factory=list)
+    location: FrameworkLocation | None
+    attempts: list[dict[str, str | Path | bool]] = field(default_factory=list)
 
     @property
     def is_successful(self) -> bool:
@@ -228,7 +228,7 @@ class UVXConfiguration:
     cleanup_on_exit: bool = True  # Default to cleanup for UVX deployments
 
     # Debug settings
-    debug_enabled: Optional[bool] = None
+    debug_enabled: bool | None = None
 
     @property
     def is_debug_enabled(self) -> bool:
@@ -273,10 +273,10 @@ class StagingOperation:
 class StagingResult:
     """Result of file staging operations."""
 
-    operations: List[StagingOperation] = field(default_factory=list)
-    successful: Set[Path] = field(default_factory=set)
-    failed: Dict[Path, str] = field(default_factory=dict)
-    skipped: Dict[Path, str] = field(default_factory=dict)
+    operations: list[StagingOperation] = field(default_factory=list)
+    successful: set[Path] = field(default_factory=set)
+    failed: dict[Path, str] = field(default_factory=dict)
+    skipped: dict[Path, str] = field(default_factory=dict)
 
     @property
     def is_successful(self) -> bool:
@@ -306,11 +306,11 @@ class StagingResult:
 class UVXSessionState:
     """Mutable session state for UVX operations."""
 
-    detection_state: Optional[UVXDetectionState] = None
-    path_resolution: Optional[PathResolutionResult] = None
+    detection_state: UVXDetectionState | None = None
+    path_resolution: PathResolutionResult | None = None
     configuration: UVXConfiguration = field(default_factory=UVXConfiguration)
-    staging_result: Optional[StagingResult] = None
-    session_id: Optional[str] = None
+    staging_result: StagingResult | None = None
+    session_id: str | None = None
     initialized: bool = False
 
     @property
@@ -325,7 +325,7 @@ class UVXSessionState:
         )
 
     @property
-    def framework_root(self) -> Optional[Path]:
+    def framework_root(self) -> Path | None:
         """Current framework root path if available."""
         if (
             self.path_resolution
@@ -352,7 +352,7 @@ class UVXSessionState:
         self.session_id = session_id
         self.initialized = True
 
-    def to_debug_dict(self) -> Dict[str, Union[str, bool, int, None]]:
+    def to_debug_dict(self) -> dict[str, str | bool | int | None]:
         """Convert session state to dictionary for debugging."""
         return {
             "session_id": self.session_id,

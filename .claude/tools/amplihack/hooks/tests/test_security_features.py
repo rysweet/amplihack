@@ -78,11 +78,7 @@ class TestPathValidation:
 
         # Simulate Claude Code's typical transcript location
         claude_projects_path = (
-            Path.home()
-            / ".claude"
-            / "projects"
-            / "-home-user-project"
-            / "session-id.jsonl"
+            Path.home() / ".claude" / "projects" / "-home-user-project" / "session-id.jsonl"
         )
 
         # This is the primary fix - Claude Code transcripts should be allowed

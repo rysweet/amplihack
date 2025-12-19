@@ -9,7 +9,6 @@ import os
 import sys
 import time
 import traceback
-from typing import Dict
 
 import psutil  # type: ignore[import-untyped]
 import requests  # type: ignore[import-untyped]
@@ -20,9 +19,9 @@ class ProxyBenchmark:
 
     def __init__(self, proxy_url: str = "http://127.0.0.1:9001"):
         self.proxy_url = proxy_url
-        self.results: Dict = {}
+        self.results: dict = {}
 
-    def benchmark_startup_performance(self) -> Dict:
+    def benchmark_startup_performance(self) -> dict:
         """Benchmark proxy startup time and initialization."""
         print("🚀 Benchmarking startup performance...")
 
@@ -49,7 +48,7 @@ class ProxyBenchmark:
 
         return startup_metrics
 
-    def benchmark_memory_usage(self) -> Dict:
+    def benchmark_memory_usage(self) -> dict:
         """Benchmark memory usage patterns."""
         print("🧠 Benchmarking memory usage...")
 
@@ -100,7 +99,7 @@ class ProxyBenchmark:
 
         return memory_metrics
 
-    def benchmark_response_times(self, num_requests: int = 10) -> Dict:
+    def benchmark_response_times(self, num_requests: int = 10) -> dict:
         """Benchmark request/response latency."""
         print(f"⚡ Benchmarking response times ({num_requests} requests)...")
 
@@ -172,7 +171,7 @@ class ProxyBenchmark:
 
         return response_metrics
 
-    def benchmark_concurrent_performance(self, num_concurrent: int = 10) -> Dict:
+    def benchmark_concurrent_performance(self, num_concurrent: int = 10) -> dict:
         """Benchmark concurrent request handling."""
         print(f"🔄 Benchmarking concurrent performance ({num_concurrent} concurrent requests)...")
 
@@ -187,7 +186,7 @@ class ProxyBenchmark:
             "errors": [],
         }
 
-        def make_request(request_id: int) -> Dict:
+        def make_request(request_id: int) -> dict:
             test_request = {
                 "model": "gpt-5",
                 "messages": [{"role": "user", "content": f"Concurrent test {request_id}"}],
@@ -257,7 +256,7 @@ class ProxyBenchmark:
 
         return concurrent_metrics
 
-    def analyze_configuration_opportunities(self) -> Dict:
+    def analyze_configuration_opportunities(self) -> dict:
         """Analyze current configuration for optimization opportunities."""
         print("🔍 Analyzing configuration opportunities...")
 
@@ -369,7 +368,7 @@ class ProxyBenchmark:
         except requests.RequestException:
             return False
 
-    def run_full_benchmark(self) -> Dict:
+    def run_full_benchmark(self) -> dict:
         """Run complete performance benchmark suite."""
         print("🎯 Starting comprehensive performance benchmark...")
 
