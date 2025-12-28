@@ -4,7 +4,7 @@ This document captures proven patterns and solutions for clean design and robust
 
 ## Pattern Curation Philosophy
 
-This document maintains **14 foundational patterns** that apply across most amplihack development.
+This document maintains **16 foundational patterns** that apply across most amplihack development.
 
 **Patterns are kept when they:**
 
@@ -797,10 +797,6 @@ After creating the issue, create a feature branch...
 **Related**: Issue #1755, DISCOVERIES.md (2025-12-01)
 **Validation**: 75% complete (6/8 benchmarks), both models tested
 **Impact**: $20K-$406K annual savings from removing STOP gates
-
----
-
-## Multi-Model AI Patterns
 
 ### Pattern: AI-Optimized Workflows (No Human Psychology)
 
