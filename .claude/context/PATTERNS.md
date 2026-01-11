@@ -4,7 +4,7 @@ This document captures proven patterns and solutions for clean design and robust
 
 ## Pattern Curation Philosophy
 
-This document maintains **14 foundational patterns** that apply across most amplihack development.
+This document maintains **16 foundational patterns** that apply across most amplihack development.
 
 **Patterns are kept when they:**
 
@@ -22,7 +22,7 @@ This document maintains **14 foundational patterns** that apply across most ampl
 
 **Trust in Emergence**: Removed patterns can re-emerge when needed. See git history for context: `git log -p .claude/context/PATTERNS.md`
 
-**This refactoring (2024-11):** Reduced from 24 to 14 patterns (74% reduction) based on usage analysis and philosophy compliance. Removed patterns include: CI Failure Rapid Diagnosis, Incremental Processing, Configuration Single Source of Truth, Parallel Task Execution (covered in CLAUDE.md), Multi-Layer Security Sanitization, Reflection-Driven Self-Improvement, Unified Validation Flow, Modular User Visibility, and others that were either too specific or better documented elsewhere.
+**This refactoring (2026-01):** Added 2 proven multi-model AI patterns from DISCOVERIES.md based on usage validation and broad applicability.
 
 ## Core Architecture Patterns
 
@@ -797,10 +797,6 @@ After creating the issue, create a feature branch...
 **Related**: Issue #1755, DISCOVERIES.md (2025-12-01)
 **Validation**: 75% complete (6/8 benchmarks), both models tested
 **Impact**: $20K-$406K annual savings from removing STOP gates
-
----
-
-## Multi-Model AI Patterns
 
 ### Pattern: AI-Optimized Workflows (No Human Psychology)
 
