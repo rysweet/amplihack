@@ -71,6 +71,13 @@ class StopHook(HookProcessor):
         Returns:
             Dict with decision to block or allow stop
         """
+        from shutdown_context import is_shutdown_in_progress
+
+        # Skip expensive operations during shutdown
+        if is_shutdown_in_progress():
+            self.log("=== STOP HOOK: Shutdown detected - skipping all operations ===")
+            return {"decision": "approve"}
+
         self.log("=== STOP HOOK STARTED ===")
         self.log(f"Input keys: {list(input_data.keys())}")
 

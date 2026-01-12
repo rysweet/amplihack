@@ -18,6 +18,10 @@ Ahoy, matey! Hit a snag? This be yer map to fix common issues and get back on co
 
 - [Auto Mode Permission Error](AUTO_MODE_PERMISSION_ERROR.md) - Permission denied errors in auto mode
 
+### Exit & Shutdown Issues
+
+- [Stop Hook Exit Hang](stop-hook-exit-hang.md) - Fix 10-13 second hang on exit (resolved in v0.9.1)
+
 ### Configuration Problems
 
 - [Config Analysis Report](../config-analysis-report.md) - Configuration problem diagnosis
