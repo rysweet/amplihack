@@ -71,20 +71,11 @@ class StopHook(HookProcessor):
         Returns:
             Dict with decision to block or allow stop
         """
-        import time
-
         from shutdown_context import is_shutdown_in_progress
-
-        process_start = time.time()
-        print("[TIMING] StopHook.process() started", file=sys.stderr)
 
         # Skip expensive operations during shutdown
         if is_shutdown_in_progress():
             self.log("=== STOP HOOK: Shutdown detected - skipping all operations ===")
-            print(
-                f"[TIMING] StopHook.process() TOTAL (shutdown path): {time.time() - process_start:.3f}s",
-                file=sys.stderr,
-            )
             return {"decision": "approve"}
 
         self.log("=== STOP HOOK STARTED ===")
@@ -885,19 +876,8 @@ After presenting the findings and getting the user's decision, you may proceed a
 
 def stop():
     """Entry point for the stop hook (called by Claude Code)."""
-    import time
-
-    start = time.time()
-    print(f"[TIMING] stop() started at {start}", file=sys.stderr)
-
     hook = StopHook()
-    before_run = time.time()
-    print(f"[TIMING] StopHook created in {before_run - start:.3f}s", file=sys.stderr)
-
     hook.run()
-    after_run = time.time()
-    print(f"[TIMING] hook.run() took {after_run - before_run:.3f}s", file=sys.stderr)
-    print(f"[TIMING] stop() total: {after_run - start:.3f}s", file=sys.stderr)
 
 
 def main():

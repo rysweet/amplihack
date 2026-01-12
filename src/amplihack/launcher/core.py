@@ -912,34 +912,13 @@ class ClaudeLauncher:
         This is a fail-safe that runs when the process exits normally
         without receiving signals. Executes stop hook silently.
         """
-        import time
-
-        cleanup_start = time.time()
-        print("[TIMING] _cleanup_on_exit() started", file=sys.stderr)
-
         try:
             # Set shutdown flag BEFORE executing stop hook to prevent stdin blocking
             os.environ["AMPLIHACK_SHUTDOWN_IN_PROGRESS"] = "1"
 
-            before_import = time.time()
             from amplihack.hooks.manager import execute_stop_hook
 
-            after_import = time.time()
-            print(
-                f"[TIMING] Import manager took {after_import - before_import:.3f}s", file=sys.stderr
-            )
-
-            before_hook = time.time()
             execute_stop_hook()
-            after_hook = time.time()
-            print(
-                f"[TIMING] execute_stop_hook() took {after_hook - before_hook:.3f}s",
-                file=sys.stderr,
-            )
-            print(
-                f"[TIMING] _cleanup_on_exit() TOTAL: {after_hook - cleanup_start:.3f}s",
-                file=sys.stderr,
-            )
-        except Exception as e:
+        except Exception:
             # Fail silently in atexit - cleanup is best-effort
-            print(f"[TIMING] _cleanup_on_exit() failed: {e}", file=sys.stderr)
+            pass
