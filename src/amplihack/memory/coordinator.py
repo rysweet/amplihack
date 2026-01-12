@@ -207,6 +207,16 @@ class MemoryCoordinator:
 
             # Note: memories use old MemoryType from models.py
             # New memory type is stored in metadata["new_memory_type"]
+            # Restore new memory type from metadata (for API compatibility)
+            for memory in memories:
+                if "new_memory_type" in memory.metadata:
+                    new_type_str = memory.metadata["new_memory_type"]
+                    # Convert string back to NEW MemoryType enum
+                    new_type = MemoryType(new_type_str)
+                    # Use object.__setattr__ to bypass type checking
+                    # (MemoryEntry.memory_type uses OLD enum, but we need NEW enum)
+                    object.__setattr__(memory, "memory_type", new_type)
+
             # Filter by new memory types if specified
             if query.memory_types:
                 memories = [
