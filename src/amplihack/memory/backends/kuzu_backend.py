@@ -184,95 +184,121 @@ class KuzuBackend:
 
             content_hash = hashlib.sha256(memory.content.encode("utf-8")).hexdigest()
 
-            # Prepare values (Kùzu doesn't support NULL in some cases, use empty string)
+            # Prepare values
             tags_str = json.dumps(memory.tags) if memory.tags else ""
-            # For expires_at: use NULL for None values (Kùzu requires proper NULL, not empty string fer TIMESTAMP)
-            expires_clause = (
-                f"timestamp('{memory.expires_at.isoformat()}')" if memory.expires_at else "NULL"
-            )
             parent_id_str = memory.parent_id if memory.parent_id else ""
             importance_val = memory.importance if memory.importance is not None else 0
 
-            # Create or update Memory node using CREATE
+            # Create or update Memory node using parameterized query
             self.connection.execute(
-                f"""
-                CREATE (m:Memory {{
-                    id: '{memory.id}',
-                    session_id: '{memory.session_id}',
-                    agent_id: '{memory.agent_id}',
-                    memory_type: '{memory.memory_type.value}',
+                """
+                CREATE (m:Memory {
+                    id: $id,
+                    session_id: $session_id,
+                    agent_id: $agent_id,
+                    memory_type: $memory_type,
                     title: $title,
                     content: $content,
-                    content_hash: '{content_hash}',
+                    content_hash: $content_hash,
                     metadata: $metadata,
-                    tags: '{tags_str}',
-                    importance: {importance_val},
-                    created_at: timestamp('{memory.created_at.isoformat()}'),
-                    accessed_at: timestamp('{memory.accessed_at.isoformat()}'),
-                    expires_at: {expires_clause},
-                    parent_id: '{parent_id_str}'
-                }})
+                    tags: $tags,
+                    importance: $importance,
+                    created_at: $created_at,
+                    accessed_at: $accessed_at,
+                    expires_at: $expires_at,
+                    parent_id: $parent_id
+                })
             """,
                 {
+                    "id": memory.id,
+                    "session_id": memory.session_id,
+                    "agent_id": memory.agent_id,
+                    "memory_type": memory.memory_type.value,
                     "title": memory.title,
                     "content": memory.content,
+                    "content_hash": content_hash,
                     "metadata": json.dumps(memory.metadata),
+                    "tags": tags_str,
+                    "importance": importance_val,
+                    "created_at": memory.created_at,
+                    "accessed_at": memory.accessed_at,
+                    "expires_at": memory.expires_at,
+                    "parent_id": parent_id_str,
                 },
             )
 
             # Create Session node if not exists (use MERGE to avoid duplicates)
-            now_str = datetime.now().isoformat()
+            now = datetime.now()
             self.connection.execute(
-                f"""
-                MERGE (s:Session {{session_id: '{memory.session_id}'}})
+                """
+                MERGE (s:Session {session_id: $session_id})
                 ON CREATE SET
-                    s.created_at = timestamp('{now_str}'),
-                    s.last_accessed = timestamp('{now_str}'),
-                    s.metadata = '{{}}'
+                    s.created_at = $created_at,
+                    s.last_accessed = $last_accessed,
+                    s.metadata = $metadata
                 ON MATCH SET
-                    s.last_accessed = timestamp('{now_str}')
-            """
+                    s.last_accessed = $last_accessed
+            """,
+                {
+                    "session_id": memory.session_id,
+                    "created_at": now,
+                    "last_accessed": now,
+                    "metadata": "{}",
+                },
             )
 
             # Create Agent node if not exists (use MERGE to avoid duplicates)
             self.connection.execute(
-                f"""
-                MERGE (a:Agent {{agent_id: '{memory.agent_id}'}})
+                """
+                MERGE (a:Agent {agent_id: $agent_id})
                 ON CREATE SET
-                    a.name = '{memory.agent_id}',
-                    a.first_used = timestamp('{now_str}'),
-                    a.last_used = timestamp('{now_str}')
+                    a.name = $name,
+                    a.first_used = $first_used,
+                    a.last_used = $last_used
                 ON MATCH SET
-                    a.last_used = timestamp('{now_str}')
-            """
+                    a.last_used = $last_used
+            """,
+                {
+                    "agent_id": memory.agent_id,
+                    "name": memory.agent_id,
+                    "first_used": now,
+                    "last_used": now,
+                },
             )
 
             # Create HAS_MEMORY relationship
             self.connection.execute(
-                f"""
+                """
                 MATCH (s:Session), (m:Memory)
-                WHERE s.session_id = '{memory.session_id}' AND m.id = '{memory.id}'
+                WHERE s.session_id = $session_id AND m.id = $memory_id
                 CREATE (s)-[:HAS_MEMORY]->(m)
-            """
+            """,
+                {"session_id": memory.session_id, "memory_id": memory.id},
             )
 
             # Create CREATED relationship
             self.connection.execute(
-                f"""
+                """
                 MATCH (a:Agent), (m:Memory)
-                WHERE a.agent_id = '{memory.agent_id}' AND m.id = '{memory.id}'
-                CREATE (a)-[:CREATED {{created_at: timestamp('{memory.created_at.isoformat()}')}}]->(m)
-            """
+                WHERE a.agent_id = $agent_id AND m.id = $memory_id
+                CREATE (a)-[:CREATED {created_at: $created_at}]->(m)
+            """,
+                {
+                    "agent_id": memory.agent_id,
+                    "memory_id": memory.id,
+                    "created_at": memory.created_at,
+                },
             )
 
             # Create CHILD_OF relationship if parent_id specified
             if memory.parent_id:
                 self.connection.execute(
-                    f"""
+                    """
                     MATCH (parent:Memory), (child:Memory)
-                    WHERE parent.id = '{memory.parent_id}' AND child.id = '{memory.id}'
+                    WHERE parent.id = $parent_id AND child.id = $child_id
                     CREATE (child)-[:CHILD_OF]->(parent)
-                """
+                """,
+                    {"parent_id": memory.parent_id, "child_id": memory.id},
                 )
 
             return True
@@ -330,7 +356,7 @@ class KuzuBackend:
             # Build WHERE clause
             where_clause = " AND ".join(where_conditions) if where_conditions else "TRUE"
 
-            # Build Cypher query
+            # Build Cypher query (use parameterized LIMIT/SKIP)
             cypher = f"""
                 MATCH (m:Memory)
                 WHERE {where_clause}
@@ -339,9 +365,11 @@ class KuzuBackend:
             """
 
             if query.limit:
-                cypher += f" LIMIT {query.limit}"
+                cypher += " LIMIT $limit"
+                params["limit"] = query.limit
                 if query.offset:
-                    cypher += f" SKIP {query.offset}"
+                    cypher += " SKIP $offset"
+                    params["offset"] = query.offset
 
             # Execute query
             result = self.connection.execute(cypher, params)
@@ -565,10 +593,12 @@ class KuzuBackend:
                 ORDER BY s.last_accessed DESC
             """
 
+            params = {}
             if limit:
-                cypher += f" LIMIT {limit}"
+                cypher += " LIMIT $limit"
+                params["limit"] = limit
 
-            result = self.connection.execute(cypher)
+            result = self.connection.execute(cypher, params)
 
             sessions = []
             while result.has_next():
