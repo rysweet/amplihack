@@ -1,9 +1,20 @@
 #!/usr/bin/env python3
 """
-Claude SDK-based power-steering analysis.
+Claude SDK-based power-steering analysis with graceful shutdown support.
 
 Uses Claude Agent SDK to intelligently analyze session transcripts against
 considerations, replacing heuristic pattern matching with AI-powered analysis.
+
+Shutdown Behavior:
+    During application shutdown (AMPLIHACK_SHUTDOWN_IN_PROGRESS=1), all sync
+    wrapper functions immediately return safe defaults to prevent asyncio
+    event loop hangs. This enables clean 2-3 second exits without Ctrl-C.
+
+    Fail-Open Philosophy: If shutdown is in progress, bypass async operations
+    and return values that never block users:
+    - analyze_claims_sync() → [] (no claims detected)
+    - analyze_if_addressed_sync() → None (no evidence found)
+    - analyze_consideration_sync() → (True, None) (assume satisfied)
 
 Optional Dependencies:
     claude-agent-sdk: Required for AI-powered analysis
@@ -18,9 +29,11 @@ Philosophy:
 - Fail-Open: Never block users due to bugs - always allow stop on errors
 - Zero-BS: No stubs, every function works or doesn't exist
 - Modular: Self-contained brick that plugs into power_steering_checker
+- Clean Shutdown: Detect shutdown in progress, bypass async, return safe defaults
 """
 
 import asyncio
+import os
 import re
 from pathlib import Path
 
@@ -66,6 +79,30 @@ __all__ = [
     "analyze_consideration_sync",
     "CLAUDE_SDK_AVAILABLE",
 ]
+
+
+def is_shutting_down() -> bool:
+    """Check if application shutdown is in progress.
+
+    Returns:
+        True if AMPLIHACK_SHUTDOWN_IN_PROGRESS environment variable is set,
+        False otherwise
+
+    Note:
+        This function enables graceful shutdown by allowing sync wrapper
+        functions to detect shutdown state and return safe defaults instead
+        of starting new async operations that may hang during event loop
+        teardown.
+
+    Example:
+        >>> os.environ["AMPLIHACK_SHUTDOWN_IN_PROGRESS"] = "1"
+        >>> is_shutting_down()
+        True
+        >>> del os.environ["AMPLIHACK_SHUTDOWN_IN_PROGRESS"]
+        >>> is_shutting_down()
+        False
+    """
+    return os.environ.get("AMPLIHACK_SHUTDOWN_IN_PROGRESS") == "1"
 
 
 def _validate_sdk_response(response: str) -> bool:
@@ -756,15 +793,39 @@ Be conservative - only say ADDRESSED if there is clear evidence in the new conte
 
 
 def analyze_claims_sync(delta_text: str, project_root: Path) -> list[str]:
-    """Synchronous wrapper for analyze_claims.
+    """Synchronous wrapper for analyze_claims with shutdown detection.
+
+    During shutdown, returns empty list immediately to prevent asyncio hang.
+    Otherwise, runs async analysis to detect completion claims in transcript.
 
     Args:
         delta_text: New transcript content since last block
         project_root: Project root directory
 
     Returns:
-        List of detected completion claims
+        List of detected completion claims, or [] if shutting down
+
+    Shutdown Behavior:
+        When AMPLIHACK_SHUTDOWN_IN_PROGRESS=1, immediately returns [] without
+        starting async operation. This prevents asyncio event loop hangs during
+        application teardown.
+
+    Example:
+        >>> # Normal operation - runs full analysis
+        >>> claims = analyze_claims_sync("Task complete!", Path.cwd())
+        >>> len(claims) > 0
+        True
+
+        >>> # During shutdown - returns empty list immediately
+        >>> os.environ["AMPLIHACK_SHUTDOWN_IN_PROGRESS"] = "1"
+        >>> claims = analyze_claims_sync("Task complete!", Path.cwd())
+        >>> claims
+        []
     """
+    # Shutdown check: bypass async operation during teardown
+    if is_shutting_down():
+        return []  # Fail-open: no claims detected during shutdown
+
     try:
         return asyncio.run(analyze_claims(delta_text, project_root))
     except Exception:
@@ -777,7 +838,10 @@ def analyze_if_addressed_sync(
     delta_text: str,
     project_root: Path,
 ) -> str | None:
-    """Synchronous wrapper for analyze_if_addressed.
+    """Synchronous wrapper for analyze_if_addressed with shutdown detection.
+
+    During shutdown, returns None immediately to prevent asyncio hang.
+    Otherwise, runs async analysis to check if failure was addressed.
 
     Args:
         failure_id: ID of the failed consideration
@@ -786,8 +850,35 @@ def analyze_if_addressed_sync(
         project_root: Project root directory
 
     Returns:
-        Evidence string if addressed, None otherwise
+        Evidence string if addressed, None if not addressed or shutting down
+
+    Shutdown Behavior:
+        When AMPLIHACK_SHUTDOWN_IN_PROGRESS=1, immediately returns None without
+        starting async operation. This prevents asyncio event loop hangs during
+        application teardown.
+
+    Example:
+        >>> # Normal operation - runs full analysis
+        >>> evidence = analyze_if_addressed_sync(
+        ...     "todos_complete", "3 TODOs incomplete",
+        ...     "Completed all TODOs", Path.cwd()
+        ... )
+        >>> evidence is not None
+        True
+
+        >>> # During shutdown - returns None immediately
+        >>> os.environ["AMPLIHACK_SHUTDOWN_IN_PROGRESS"] = "1"
+        >>> evidence = analyze_if_addressed_sync(
+        ...     "todos_complete", "3 TODOs incomplete",
+        ...     "Completed all TODOs", Path.cwd()
+        ... )
+        >>> evidence is None
+        True
     """
+    # Shutdown check: bypass async operation during teardown
+    if is_shutting_down():
+        return None  # Fail-open: no evidence found during shutdown
+
     try:
         return asyncio.run(
             analyze_if_addressed(failure_id, failure_reason, delta_text, project_root)
@@ -799,7 +890,10 @@ def analyze_if_addressed_sync(
 def analyze_consideration_sync(
     conversation: list[dict], consideration: dict, project_root: Path
 ) -> tuple[bool, str | None]:
-    """Synchronous wrapper for analyze_consideration.
+    """Synchronous wrapper for analyze_consideration with shutdown detection.
+
+    During shutdown, returns (True, None) immediately to prevent asyncio hang.
+    Otherwise, runs async analysis to check if consideration is satisfied.
 
     Args:
         conversation: Session messages
@@ -810,7 +904,40 @@ def analyze_consideration_sync(
         Tuple of (satisfied, reason):
         - satisfied: True if consideration satisfied, False otherwise
         - reason: String explanation if not satisfied, None if satisfied
+        Returns (True, None) during shutdown
+
+    Shutdown Behavior:
+        When AMPLIHACK_SHUTDOWN_IN_PROGRESS=1, immediately returns (True, None)
+        without starting async operation. This prevents asyncio event loop hangs
+        during application teardown.
+
+        Fail-open philosophy: Assumes consideration is satisfied during shutdown
+        to never block the user from exiting.
+
+    Example:
+        >>> # Normal operation - runs full analysis
+        >>> conversation = [{"role": "user", "content": "Hello"}]
+        >>> consideration = {"id": "tests_passing", "question": "Tests pass?"}
+        >>> satisfied, reason = analyze_consideration_sync(
+        ...     conversation, consideration, Path.cwd()
+        ... )
+        >>> isinstance(satisfied, bool)
+        True
+
+        >>> # During shutdown - returns satisfied immediately
+        >>> os.environ["AMPLIHACK_SHUTDOWN_IN_PROGRESS"] = "1"
+        >>> satisfied, reason = analyze_consideration_sync(
+        ...     conversation, consideration, Path.cwd()
+        ... )
+        >>> satisfied
+        True
+        >>> reason is None
+        True
     """
+    # Shutdown check: bypass async operation during teardown
+    if is_shutting_down():
+        return (True, None)  # Fail-open: assume satisfied during shutdown
+
     try:
         return asyncio.run(analyze_consideration(conversation, consideration, project_root))
     except Exception:
