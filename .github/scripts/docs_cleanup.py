@@ -71,6 +71,9 @@ DISCOVERIES_PATH = Path(".claude/context/DISCOVERIES.md")
 ARCHIVE_PATH = Path(".claude/context/DISCOVERIES_ARCHIVE.md")
 OUTPUT_PATH = Path("cleanup_changes.md")
 
+# Configuration constants
+DEFAULT_CUTOFF_MONTHS = 6  # Conservative default: entries older than 6 months
+
 
 def parse_discoveries_file(file_path: Path) -> list[dict]:
     """Parse DISCOVERIES.md file into structured entry dictionaries.
@@ -204,7 +207,10 @@ def filter_entries_by_age(
 
 
 def run_cleanup(
-    path: Path, cutoff_months: int = 6, dry_run: bool = True, reference_date: datetime | None = None
+    path: Path,
+    cutoff_months: int = DEFAULT_CUTOFF_MONTHS,
+    dry_run: bool = True,
+    reference_date: datetime | None = None,
 ) -> CleanupResult:
     """Run complete cleanup workflow on a DISCOVERIES.md file.
 
@@ -335,18 +341,44 @@ def run_cleanup(
 def main() -> int:
     """Main entry point for documentation cleanup."""
     # Parse command line arguments
-    parser = argparse.ArgumentParser(description="Clean up DISCOVERIES.md by removing old entries")
-    parser.add_argument(
-        "--dry-run", action="store_true", help="Run in dry-run mode (no file modifications)"
+    parser = argparse.ArgumentParser(
+        description="Clean up DISCOVERIES.md by removing old entries",
+        epilog="""
+Examples:
+  # Dry-run (preview changes, no modifications)
+  %(prog)s --dry-run
+
+  # Remove entries older than 6 months (default)
+  %(prog)s
+
+  # Remove entries older than 12 months
+  %(prog)s --cutoff-months 12
+
+  # Clean specific file with 3-month cutoff
+  %(prog)s --file docs/notes.md --cutoff-months 3
+
+  # Preview changes for custom file
+  %(prog)s --file docs/notes.md --dry-run
+        """,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument(
-        "--cutoff-months", type=int, default=6, help="Age cutoff in months (default: 6)"
+        "--dry-run",
+        action="store_true",
+        help="Run in dry-run mode (no file modifications). Use this to preview changes.",
+    )
+    parser.add_argument(
+        "--cutoff-months",
+        type=int,
+        default=DEFAULT_CUTOFF_MONTHS,
+        help=f"Age cutoff in months (default: {DEFAULT_CUTOFF_MONTHS}). "
+        "Entries older than this will be removed.",
     )
     parser.add_argument(
         "--file",
         type=Path,
         default=DISCOVERIES_PATH,
-        help="Path to DISCOVERIES.md file (default: .claude/context/DISCOVERIES.md)",
+        help=f"Path to DISCOVERIES.md file (default: {DISCOVERIES_PATH})",
     )
 
     args = parser.parse_args()
