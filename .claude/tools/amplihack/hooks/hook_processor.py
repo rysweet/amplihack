@@ -152,25 +152,9 @@ class HookProcessor(ABC):
         Raises:
             json.JSONDecodeError: If input is not valid JSON
         """
-        import time
-
-        read_start = time.time()
-
         # Skip stdin read during shutdown to avoid blocking on closed/detached stdin
-        shutdown_check_start = time.time()
-        is_shutdown = is_shutdown_in_progress()
-        shutdown_check_time = time.time() - shutdown_check_start
-        print(
-            f"[TIMING] is_shutdown_in_progress() took {shutdown_check_time:.3f}s, result={is_shutdown}",
-            file=sys.stderr,
-        )
-
-        if is_shutdown:
+        if is_shutdown_in_progress():
             self.log("Skipping stdin read during shutdown", "DEBUG")
-            print(
-                f"[TIMING] read_input() TOTAL (shutdown path): {time.time() - read_start:.3f}s",
-                file=sys.stderr,
-            )
             return {}
 
         # Try to read from stdin
@@ -296,20 +280,12 @@ class HookProcessor(ABC):
         3. Write output to stdout
         4. Handle any errors gracefully (fail-open)
         """
-        import time
-
-        run_start = time.time()
-        print("[TIMING] HookProcessor.run() started", file=sys.stderr)
-
         try:
             # Log start with version info
             self.log(f"{self.hook_name} hook starting (Python {sys.version.split()[0]})")
 
             # Read input
-            before_read = time.time()
             input_data = self.read_input()
-            after_read = time.time()
-            print(f"[TIMING] read_input() took {after_read - before_read:.3f}s", file=sys.stderr)
             self.log(f"Received input with keys: {list(input_data.keys())}")
 
             # Log hook event name if available for debugging
@@ -317,10 +293,7 @@ class HookProcessor(ABC):
                 self.log(f"Event type: {input_data['hook_event_name']}")
 
             # Process
-            before_process = time.time()
             output = self.process(input_data)
-            after_process = time.time()
-            print(f"[TIMING] process() took {after_process - before_process:.3f}s", file=sys.stderr)
 
             # Ensure output is a dict
             if output is None:
@@ -337,15 +310,7 @@ class HookProcessor(ABC):
                 self.log("Returning empty output (allows default behavior)")
 
             # Write output
-            before_write = time.time()
             self.write_output(output)
-            after_write = time.time()
-            print(
-                f"[TIMING] write_output() took {after_write - before_write:.3f}s", file=sys.stderr
-            )
-
-            total_time = after_write - run_start
-            print(f"[TIMING] HookProcessor.run() TOTAL: {total_time:.3f}s", file=sys.stderr)
             self.log(f"{self.hook_name} hook completed successfully")
 
         except HookException as e:
