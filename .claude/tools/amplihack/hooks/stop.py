@@ -869,8 +869,19 @@ After presenting the findings and getting the user's decision, you may proceed a
 
 def stop():
     """Entry point for the stop hook (called by Claude Code)."""
+    import time
+
+    start = time.time()
+    print(f"[TIMING] stop() started at {start}", file=sys.stderr)
+
     hook = StopHook()
+    before_run = time.time()
+    print(f"[TIMING] StopHook created in {before_run - start:.3f}s", file=sys.stderr)
+
     hook.run()
+    after_run = time.time()
+    print(f"[TIMING] hook.run() took {after_run - before_run:.3f}s", file=sys.stderr)
+    print(f"[TIMING] stop() total: {after_run - start:.3f}s", file=sys.stderr)
 
 
 def main():
