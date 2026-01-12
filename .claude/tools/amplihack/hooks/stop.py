@@ -71,6 +71,22 @@ class StopHook(HookProcessor):
         Returns:
             Dict with decision to block or allow stop
         """
+        import time
+
+        from shutdown_context import is_shutdown_in_progress
+
+        process_start = time.time()
+        print("[TIMING] StopHook.process() started", file=sys.stderr)
+
+        # Skip expensive operations during shutdown
+        if is_shutdown_in_progress():
+            self.log("=== STOP HOOK: Shutdown detected - skipping all operations ===")
+            print(
+                f"[TIMING] StopHook.process() TOTAL (shutdown path): {time.time() - process_start:.3f}s",
+                file=sys.stderr,
+            )
+            return {"decision": "approve"}
+
         self.log("=== STOP HOOK STARTED ===")
         self.log(f"Input keys: {list(input_data.keys())}")
 
