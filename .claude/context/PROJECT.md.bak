@@ -10,11 +10,11 @@ Replace the sections below with information about your project.
 
 ---
 
-## Project: feat-issue-1902-5-type-memory-system
+## Project: [Your Project Name]
 
 ## Overview
 
-Development framework for Claude Code with specialized agents and automated workflows.
+[Brief description of what your project does]
 
 ## Architecture
 
@@ -26,11 +26,10 @@ Development framework for Claude Code with specialized agents and automated work
 
 ### Technology Stack
 
-- **Language**: Python
-- **Language**: JavaScript/TypeScript
-- **Language**: Rust
+- **Language**: [Primary language(s)]
 - **Framework**: [Main framework if applicable]
 - **Database**: [Database system if applicable]
+- **Other Tools**: [Key dependencies or tools]
 
 ## Development Guidelines
 

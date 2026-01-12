@@ -55,7 +55,7 @@ scenario:
     # Test Case 2: Focus on First Window
     - action: window_action
       window: 1
-      action: focus
+      type: focus
       description: "Focus on first window (0-indexed)"
 
     - action: verify_window
@@ -97,7 +97,7 @@ scenario:
     # Test Case 3: Switch to Second Window
     - action: window_action
       window: 2
-      action: focus
+      type: focus
       description: "Focus on second window"
 
     - action: verify_window
@@ -147,7 +147,7 @@ scenario:
     # Test Case 6: Verify Sync Back to Window 1
     - action: window_action
       window: 1
-      action: focus
+      type: focus
       description: "Switch back to window 1"
 
     - action: wait_for_element
@@ -169,7 +169,7 @@ scenario:
 
     - action: window_action
       window: 3
-      action: focus
+      type: focus
 
     - action: click
       text: "${chat_room_2}"
@@ -204,7 +204,7 @@ scenario:
     # Test Case 9: Close One Window
     - action: window_action
       window: 3
-      action: close
+      type: close
       description: "Close third window"
 
     - action: wait_for_window

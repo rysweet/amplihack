@@ -98,7 +98,6 @@ class FreshnessChecker:
 
     def check_github_version(self, metadata: dict) -> bool:
         """Check if framework version matches latest GitHub release."""
-        github_info = metadata.get("sources", {}).get("github_repository", {})
         current_version = metadata.get("framework_version", "unknown")
 
         print(f"✓ Framework version: {current_version}")
@@ -156,9 +155,9 @@ class FreshnessChecker:
         # Run checks
         age_ok = self.check_documentation_age(metadata)
         urls_ok = self.check_source_urls(metadata)
-        version_ok = self.check_github_version(metadata)
-        changes_ok = self.check_breaking_changes(metadata)
-        schedule_ok = self.check_next_verification(metadata)
+        self.check_github_version(metadata)
+        self.check_breaking_changes(metadata)
+        self.check_next_verification(metadata)
 
         # Report results
         print()

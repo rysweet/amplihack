@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from .database import MemoryDatabase
+from .backends import MemoryBackend, create_backend
 from .models import MemoryEntry
 from .types import MemoryType
 
@@ -75,14 +75,39 @@ class MemoryCoordinator:
     - Performance monitoring (<50ms retrieval, <500ms storage)
     """
 
-    def __init__(self, database: MemoryDatabase | None = None, session_id: str | None = None):
+    def __init__(
+        self,
+        backend: MemoryBackend | None = None,
+        session_id: str | None = None,
+        backend_type: str | None = None,
+        **backend_config: Any,
+    ):
         """Initialize coordinator.
 
         Args:
-            database: Database instance (creates default if None)
+            backend: Backend instance (creates default if None)
             session_id: Session identifier (generates if None)
+            backend_type: Backend type to create ('sqlite', 'kuzu', 'neo4j')
+            **backend_config: Backend-specific configuration (e.g., db_path)
+
+        Examples:
+            >>> # Use default backend (Kùzu or SQLite)
+            >>> coordinator = MemoryCoordinator()
+
+            >>> # Use specific backend
+            >>> coordinator = MemoryCoordinator(backend_type="sqlite")
+
+            >>> # Use custom backend instance
+            >>> from .backends import SQLiteBackend
+            >>> backend = SQLiteBackend(db_path="/tmp/memory.db")
+            >>> coordinator = MemoryCoordinator(backend=backend)
         """
-        self.database = database or MemoryDatabase()
+        # Create or use provided backend
+        if backend is None:
+            self.backend = create_backend(backend_type=backend_type, **backend_config)
+        else:
+            self.backend = backend
+
         self.session_id = session_id or f"session-{uuid.uuid4().hex[:8]}"
 
         # Statistics tracking
@@ -159,7 +184,7 @@ class MemoryCoordinator:
                 importance=importance_score,
             )
 
-            success = self.database.store_memory(memory_entry)
+            success = self.backend.store_memory(memory_entry)
             if success:
                 self._stats["total_stored"] += 1
                 logger.info(f"Stored memory {memory_id} (type={request.memory_type.value})")
@@ -203,7 +228,7 @@ class MemoryCoordinator:
             )
 
             # Retrieve from database
-            memories = self.database.retrieve_memories(db_query)
+            memories = self.backend.retrieve_memories(db_query)
 
             # Note: memories use old MemoryType from models.py
             # New memory type is stored in metadata["new_memory_type"]
@@ -219,10 +244,16 @@ class MemoryCoordinator:
 
             # Filter by new memory types if specified
             if query.memory_types:
+                # Handle both string and enum types robustly
+                memory_type_values = []
+                for t in query.memory_types:
+                    if isinstance(t, str):
+                        memory_type_values.append(t)
+                    else:
+                        memory_type_values.append(t.value)
+
                 memories = [
-                    m
-                    for m in memories
-                    if m.metadata.get("new_memory_type") in [t.value for t in query.memory_types]
+                    m for m in memories if m.metadata.get("new_memory_type") in memory_type_values
                 ]
 
             # Filter by time range if specified
@@ -269,7 +300,7 @@ class MemoryCoordinator:
                 limit=1000,  # Get all
             )
 
-            memories = self.database.retrieve_memories(query)
+            memories = self.backend.retrieve_memories(query)
 
             # Filter fer WORKING type (stored in metadata)
             working_memories = [
@@ -278,7 +309,7 @@ class MemoryCoordinator:
 
             # Delete each working memory
             for memory in working_memories:
-                self.database.delete_memory(memory.id)
+                self.backend.delete_memory(memory.id)
 
             logger.info(
                 f"Cleared {len(working_memories)} working memories fer session {target_session}"
@@ -313,7 +344,7 @@ class MemoryCoordinator:
                 limit=10000,  # Get all
             )
 
-            memories = self.database.retrieve_memories(query)
+            memories = self.backend.retrieve_memories(query)
 
             # Verify all memories belong to target session before deletion
             for memory in memories:
@@ -322,7 +353,7 @@ class MemoryCoordinator:
                         f"Session isolation violation: Found memory {memory.id} "
                         f"from session {memory.session_id} when clearing {target_session}"
                     )
-                self.database.delete_memory(memory.id)
+                self.backend.delete_memory(memory.id)
 
             logger.info(f"Cleared all {len(memories)} memories fer session {target_session}")
 
@@ -344,7 +375,7 @@ class MemoryCoordinator:
                 limit=1000,
             )
 
-            memories = self.database.retrieve_memories(query)
+            memories = self.backend.retrieve_memories(query)
 
             # Filter fer WORKING type with matching task_id
             task_memories = [
@@ -356,7 +387,7 @@ class MemoryCoordinator:
 
             # Delete task-specific working memories
             for memory in task_memories:
-                self.database.delete_memory(memory.id)
+                self.backend.delete_memory(memory.id)
 
             logger.info(f"Cleared {len(task_memories)} working memories fer task {task_id}")
 
@@ -370,10 +401,27 @@ class MemoryCoordinator:
         Returns:
             Statistics dictionary
         """
-        db_stats = self.database.get_stats()
+        db_stats = self.backend.get_stats()
         return {
             **self._stats,
             "total_memories": db_stats.get("total_memories", 0),
+        }
+
+    def get_backend_info(self) -> dict[str, Any]:
+        """Get backend information and capabilities.
+
+        Returns:
+            Dictionary with backend name, version, and capabilities
+        """
+        capabilities = self.backend.get_capabilities()
+        return {
+            "backend_name": capabilities.backend_name,
+            "backend_version": capabilities.backend_version,
+            "supports_graph_queries": capabilities.supports_graph_queries,
+            "supports_vector_search": capabilities.supports_vector_search,
+            "supports_transactions": capabilities.supports_transactions,
+            "supports_fulltext_search": capabilities.supports_fulltext_search,
+            "max_concurrent_connections": capabilities.max_concurrent_connections,
         }
 
     def _is_trivial(self, content: str) -> bool:
@@ -424,36 +472,35 @@ class MemoryCoordinator:
             True if duplicate exists
         """
         # Compute composite fingerprint
-        content_hash = self.database._compute_content_hash(content)
+        import hashlib
+
+        content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
         content_length = len(content)
         content_prefix = content[:100] if len(content) >= 100 else content
         content_suffix = content[-100:] if len(content) >= 100 else content
 
-        # Check for duplicates using composite fingerprint
-        with self.database._lock:
-            conn = self.database._get_connection()
-            cursor = conn.execute(
-                """
-                SELECT content FROM memory_entries
-                WHERE session_id = ? AND content_hash = ?
-                """,
-                (self.session_id, content_hash),
-            )
+        # Query backend fer potential duplicates
+        from .models import MemoryQuery
 
-            # Verify exact match if hash collision found
-            for row in cursor.fetchall():
-                existing_content = row[0]
+        # For now, retrieve all memories from current session and check manually
+        # TODO: Add content_hash to MemoryQuery fer more efficient duplicate detection
+        query = MemoryQuery(session_id=self.session_id, limit=1000)
+        memories = self.backend.retrieve_memories(query)
 
-                # Composite verification
-                if (
-                    len(existing_content) == content_length
-                    and existing_content[:100] == content_prefix
-                    and existing_content[-100:] == content_suffix
-                    and existing_content == content  # Final exact match
-                ):
-                    return True
+        # Check fer exact duplicates
+        for memory in memories:
+            existing_content = memory.content
 
-            return False
+            # Composite verification
+            if (
+                len(existing_content) == content_length
+                and existing_content[:100] == content_prefix
+                and existing_content[-100:] == content_suffix
+                and existing_content == content  # Final exact match
+            ):
+                return True
+
+        return False
 
     async def _invoke_agent(self, prompt: str) -> dict[str, Any]:
         """Invoke agent fer review (can be mocked in tests).
