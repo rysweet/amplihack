@@ -1,5 +1,6 @@
 """SQLite database implementation for Agent Memory System."""
 
+import hashlib
 import json
 import logging
 import os
@@ -12,6 +13,24 @@ from typing import Any
 from .models import MemoryEntry, MemoryQuery, MemoryType, SessionInfo
 
 logger = logging.getLogger(__name__)
+
+
+def _sanitize_error(error: Exception, operation: str) -> str:
+    """Sanitize error messages to prevent information leakage.
+
+    Args:
+        error: Original exception
+        operation: Operation that failed (e.g., "store_memory", "retrieve_memories")
+
+    Returns:
+        Sanitized error message safe for external use
+    """
+    # Log full error internally for debugging
+    logger.debug(f"Internal error in {operation}: {type(error).__name__}: {error}", exc_info=True)
+
+    # Return generic error message externally
+    error_type = type(error).__name__
+    return f"Database operation failed: {operation} ({error_type})"
 
 
 class MemoryDatabase:
@@ -48,7 +67,12 @@ class MemoryDatabase:
         # Initialize schema using pooled connection
         conn = self._get_connection()
         self._create_tables(conn)
+        self._migrate_schema(conn)
         self._create_indexes(conn)
+
+    def initialize(self) -> None:
+        """Public method to initialize database (alias for _init_database)."""
+        self._init_database()
 
     def _get_connection(self) -> sqlite3.Connection:
         """Get or create pooled database connection with proper configuration.
@@ -99,6 +123,7 @@ class MemoryDatabase:
                 memory_type TEXT NOT NULL,
                 title TEXT NOT NULL,
                 content TEXT NOT NULL,
+                content_hash TEXT NOT NULL,
                 metadata TEXT NOT NULL DEFAULT '{}',
                 tags TEXT DEFAULT NULL,
                 importance INTEGER DEFAULT NULL,
@@ -134,6 +159,33 @@ class MemoryDatabase:
 
         conn.commit()
 
+    def _migrate_schema(self, conn: sqlite3.Connection) -> None:
+        """Migrate existing schema to add new columns.
+
+        Adds content_hash column if it doesn't exist and computes hashes for existing entries.
+        """
+        # Check if content_hash column exists
+        cursor = conn.execute("PRAGMA table_info(memory_entries)")
+        columns = {row[1] for row in cursor.fetchall()}
+
+        if "content_hash" not in columns:
+            logger.info("Migrating schema: adding content_hash column")
+
+            # Add column (SQLite doesn't support adding NOT NULL columns with data)
+            conn.execute("ALTER TABLE memory_entries ADD COLUMN content_hash TEXT")
+
+            # Compute hashes for existing entries
+            cursor = conn.execute("SELECT id, content FROM memory_entries")
+            for row_id, content in cursor.fetchall():
+                content_hash = self._compute_content_hash(content)
+                conn.execute(
+                    "UPDATE memory_entries SET content_hash = ? WHERE id = ?",
+                    (content_hash, row_id),
+                )
+
+            logger.info("Schema migration complete")
+            conn.commit()
+
     def _create_indexes(self, conn: sqlite3.Connection) -> None:
         """Create indexes for efficient queries."""
         indexes = [
@@ -149,6 +201,7 @@ class MemoryDatabase:
             "CREATE INDEX IF NOT EXISTS idx_session_agents_used ON session_agents(last_used)",
             # Content search indexes
             "CREATE INDEX IF NOT EXISTS idx_memory_title ON memory_entries(title)",
+            "CREATE INDEX IF NOT EXISTS idx_memory_content_hash ON memory_entries(session_id, content_hash)",
             # Hierarchy support
             "CREATE INDEX IF NOT EXISTS idx_memory_parent ON memory_entries(parent_id)",
         ]
@@ -178,6 +231,18 @@ class MemoryDatabase:
                 finally:
                     self._connection = None
 
+    @staticmethod
+    def _compute_content_hash(content: str) -> str:
+        """Compute SHA256 hash of content for O(1) duplicate detection.
+
+        Args:
+            content: Content to hash
+
+        Returns:
+            Hex-encoded SHA256 hash
+        """
+        return hashlib.sha256(content.encode("utf-8")).hexdigest()
+
     def store_memory(self, memory: MemoryEntry) -> bool:
         """Store a memory entry.
 
@@ -194,14 +259,17 @@ class MemoryDatabase:
                 # Update session tracking
                 self._update_session(conn, memory.session_id, memory.agent_id)
 
+                # Compute content hash for O(1) duplicate detection
+                content_hash = self._compute_content_hash(memory.content)
+
                 # Store memory entry
                 conn.execute(
                     """
                     INSERT OR REPLACE INTO memory_entries (
-                        id, session_id, agent_id, memory_type, title, content,
+                        id, session_id, agent_id, memory_type, title, content, content_hash,
                         metadata, tags, importance, created_at, accessed_at,
                         expires_at, parent_id
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                     (
                         memory.id,
@@ -210,6 +278,7 @@ class MemoryDatabase:
                         memory.memory_type.value,
                         memory.title,
                         memory.content,
+                        content_hash,
                         json.dumps(memory.metadata),
                         json.dumps(memory.tags) if memory.tags else None,
                         memory.importance,
@@ -226,11 +295,10 @@ class MemoryDatabase:
             except sqlite3.Error as e:
                 if conn:
                     conn.rollback()
-                logger.error(f"Database error storing memory {memory.id}: {e}")
+                # Log sanitized error (internal details logged in _sanitize_error)
+                sanitized_msg = _sanitize_error(e, "store_memory")
+                logger.error(sanitized_msg)
                 return False
-            finally:
-                if conn:
-                    conn.close()
 
     def retrieve_memories(self, query: MemoryQuery) -> list[MemoryEntry]:
         """Retrieve memories matching the query.
@@ -257,9 +325,11 @@ class MemoryDatabase:
                 """
 
                 if query.limit:
-                    sql += f" LIMIT {query.limit}"
+                    sql += " LIMIT ?"
+                    params.append(query.limit)
                     if query.offset:
-                        sql += f" OFFSET {query.offset}"
+                        sql += " OFFSET ?"
+                        params.append(query.offset)
 
                 cursor = conn.execute(sql, params)
                 rows = cursor.fetchall()
@@ -289,11 +359,9 @@ class MemoryDatabase:
             except sqlite3.Error as e:
                 if conn:
                     conn.rollback()
-                logger.error(f"Database error retrieving memories: {e}")
+                sanitized_msg = _sanitize_error(e, "retrieve_memories")
+                logger.error(sanitized_msg)
                 return []
-            finally:
-                if conn:
-                    conn.close()
 
     def get_memory_by_id(self, memory_id: str) -> MemoryEntry | None:
         """Get a specific memory by ID.
@@ -338,10 +406,8 @@ class MemoryDatabase:
             except sqlite3.Error as e:
                 if conn:
                     conn.rollback()
-                logger.error(f"Database error retrieving memory {memory_id}: {e}")
-            finally:
-                if conn:
-                    conn.close()
+                sanitized_msg = _sanitize_error(e, "get_memory_by_id")
+                logger.error(sanitized_msg)
 
         return None
 
@@ -365,11 +431,9 @@ class MemoryDatabase:
             except sqlite3.Error as e:
                 if conn:
                     conn.rollback()
-                logger.error(f"Database error deleting memory {memory_id}: {e}")
+                sanitized_msg = _sanitize_error(e, "delete_memory")
+                logger.error(sanitized_msg)
                 return False
-            finally:
-                if conn:
-                    conn.close()
 
     def cleanup_expired(self) -> int:
         """Remove expired memory entries.
@@ -394,11 +458,9 @@ class MemoryDatabase:
             except sqlite3.Error as e:
                 if conn:
                     conn.rollback()
-                logger.error(f"Database error during cleanup: {e}")
+                sanitized_msg = _sanitize_error(e, "cleanup_expired")
+                logger.error(sanitized_msg)
                 return 0
-            finally:
-                if conn:
-                    conn.close()
 
     def get_session_info(self, session_id: str) -> SessionInfo | None:
         """Get information about a session.
@@ -458,10 +520,8 @@ class MemoryDatabase:
             except sqlite3.Error as e:
                 if conn:
                     conn.rollback()
-                logger.error(f"Database error getting session info: {e}")
-            finally:
-                if conn:
-                    conn.close()
+                sanitized_msg = _sanitize_error(e, "get_session_info")
+                logger.error(sanitized_msg)
 
         return None
 
@@ -483,10 +543,13 @@ class MemoryDatabase:
                     FROM sessions
                     ORDER BY last_accessed DESC
                 """
-                if limit:
-                    sql += f" LIMIT {limit}"
 
-                cursor = conn.execute(sql)
+                params = []
+                if limit:
+                    sql += " LIMIT ?"
+                    params.append(limit)
+
+                cursor = conn.execute(sql, params)
                 sessions = []
 
                 for row in cursor.fetchall():
@@ -528,11 +591,9 @@ class MemoryDatabase:
             except sqlite3.Error as e:
                 if conn:
                     conn.rollback()
-                logger.error(f"Database error listing sessions: {e}")
+                sanitized_msg = _sanitize_error(e, "list_sessions")
+                logger.error(sanitized_msg)
                 return []
-            finally:
-                if conn:
-                    conn.close()
 
     def get_stats(self) -> dict[str, Any]:
         """Get database statistics.
@@ -580,11 +641,9 @@ class MemoryDatabase:
             except sqlite3.Error as e:
                 if conn:
                     conn.rollback()
-                logger.error(f"Database error getting stats: {e}")
+                sanitized_msg = _sanitize_error(e, "get_stats")
+                logger.error(sanitized_msg)
                 return {}
-            finally:
-                if conn:
-                    conn.close()
 
     def _update_session(self, conn: sqlite3.Connection, session_id: str, agent_id: str) -> None:
         """Update session and agent tracking."""
@@ -629,3 +688,6 @@ class MemoryDatabase:
         except (ValueError, TypeError, json.JSONDecodeError) as e:
             logger.error(f"Error converting row to memory: {e}")
             return None
+
+
+__all__ = ["MemoryDatabase"]

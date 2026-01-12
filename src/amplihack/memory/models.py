@@ -131,6 +131,46 @@ class MemoryQuery:
     offset: int | None = None
     include_expired: bool = False
 
+    def __post_init__(self):
+        """Validate query parameters to prevent SQL injection and logic errors."""
+        # Validate limit
+        if self.limit is not None:
+            if not isinstance(self.limit, int):
+                raise ValueError(f"limit must be an integer, got {type(self.limit).__name__}")
+            if self.limit < 0:
+                raise ValueError(f"limit must be non-negative, got {self.limit}")
+            if self.limit > 10000:
+                raise ValueError(f"limit must be <= 10000, got {self.limit}")
+
+        # Validate offset
+        if self.offset is not None:
+            if not isinstance(self.offset, int):
+                raise ValueError(f"offset must be an integer, got {type(self.offset).__name__}")
+            if self.offset < 0:
+                raise ValueError(f"offset must be non-negative, got {self.offset}")
+
+        # Validate min_importance
+        if self.min_importance is not None:
+            if not isinstance(self.min_importance, int):
+                raise ValueError(
+                    f"min_importance must be an integer, got {type(self.min_importance).__name__}"
+                )
+            if not 1 <= self.min_importance <= 10:
+                raise ValueError(f"min_importance must be 1-10, got {self.min_importance}")
+
+        # Validate time range
+        if self.created_after and self.created_before:
+            if self.created_after > self.created_before:
+                raise ValueError("created_after must be before created_before")
+
+        # Validate session_id format (alphanumeric + dash/underscore only)
+        if self.session_id and not self.session_id.replace("-", "").replace("_", "").isalnum():
+            raise ValueError(f"session_id contains invalid characters: {self.session_id}")
+
+        # Validate agent_id format (alphanumeric + dash/underscore only)
+        if self.agent_id and not self.agent_id.replace("-", "").replace("_", "").isalnum():
+            raise ValueError(f"agent_id contains invalid characters: {self.agent_id}")
+
     def to_sql_where(self) -> tuple[str, list[Any]]:
         """Convert to SQL WHERE clause and parameters."""
         conditions = []
@@ -179,3 +219,6 @@ class MemoryQuery:
 
         where_clause = " AND ".join(conditions) if conditions else "1=1"
         return where_clause, params
+
+
+__all__ = ["MemoryType", "MemoryEntry", "SessionInfo", "MemoryQuery"]
