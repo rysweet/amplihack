@@ -174,6 +174,26 @@ def check_internal_link(link_url: str, source_file: Path, repo_root: Path) -> st
         else:
             return f"File not found: {path_part}"
 
+    # Case-sensitive check: verify the resolved path matches exactly
+    # On case-insensitive filesystems (macOS), we need to check the actual directory listing
+    if target_path.exists():
+        parent_dir = target_path.parent
+        expected_name = Path(path_part).name
+
+        # Get actual files in directory
+        try:
+            actual_files = {f.name for f in parent_dir.iterdir() if f.is_file()}
+
+            # Check if the exact case matches
+            if expected_name not in actual_files:
+                # Find case-insensitive match
+                for actual_name in actual_files:
+                    if actual_name.lower() == expected_name.lower():
+                        return f"Case mismatch: found {actual_name}, link says {expected_name}"
+        except (OSError, PermissionError):
+            # If we can't read the directory, just continue
+            pass
+
     # Check anchor if present
     if anchor and target_path.suffix in MARKDOWN_EXTENSIONS:
         return check_anchor_in_file(anchor, target_path)
@@ -381,6 +401,34 @@ def generate_report(result: LinkCheckResult) -> str:
     )
 
     return "\n".join(lines)
+
+
+class LinkChecker:
+    """Wrapper class for link checking functionality."""
+
+    def __init__(self, repo_path: Path | None = None):
+        """Initialize with repository path."""
+        self.repo_path = repo_path or Path.cwd()
+
+    def check_all(self) -> list[dict]:
+        """Check all links and return broken links as list of dicts."""
+        result = check_all_links(self.repo_path)
+
+        # Convert BrokenLink dataclasses to dicts for test compatibility
+        broken_links = []
+        for link in result.broken_links:
+            broken_links.append(
+                {
+                    "file": link.file,
+                    "line": link.line,
+                    "text": link.link_text,
+                    "path": link.link_url,
+                    "error": link.error,
+                    "severity": link.severity,
+                }
+            )
+
+        return broken_links
 
 
 def main() -> int:
