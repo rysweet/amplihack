@@ -35,7 +35,7 @@ PATTERN_THRESHOLD = 4  # 4+ patterns = comprehensive review
 # structured reviews. Validated by PR #1595 which had 7 patterns.
 
 COMPREHENSIVE_REVIEW_BOOST = 10  # Equivalent to 2 formal approvals
-# (Formal approval = +5 score, so 2 × 5 = 10)
+# (Formal approval = +5 score, so 2 x 5 = 10)
 # Ensures comprehensive comment reviews have equal weight to formal reviews
 
 
@@ -196,7 +196,6 @@ def detect_priority_complexity(pr_data: dict[str, Any]) -> dict[str, str]:
     title = pr_data.get("title", "").lower()
     body = pr_data.get("body", "").lower()
     files = pr_data.get("files", [])
-    diff = pr_data.get("diff", "")
 
     # Calculate metrics
     num_files = len(files)
@@ -272,7 +271,6 @@ def detect_unrelated_changes(pr_data: dict[str, Any]) -> dict[str, Any]:
         Dictionary with unrelated changes detection results
     """
     title = pr_data.get("title", "").lower()
-    body = pr_data.get("body", "").lower()
     files = pr_data.get("files", [])
 
     # Categorize files by type
