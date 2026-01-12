@@ -422,7 +422,7 @@ Quick references, guides, and additional resources.
 
 - [GitHub Repository](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding) - Source code
 - [Issue Tracker](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues) - Report bugs or request features
-- [GitHub Pages](https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/) - Online documentation
+- [GitHub Pages](https://rysweet.github.io/amplihack/) - Online documentation
 
 ---
 
