@@ -29,8 +29,18 @@ class GitHistoryFix(FixStrategy):
     Uses `git log --follow --name-status` to track file movements.
     """
 
+    def __init__(self, repo_path: Path, git_timeout: int = 10):
+        """Initialize git history fix strategy.
+
+        Args:
+            repo_path: Path to repository root
+            git_timeout: Timeout in seconds for git commands (default: 10)
+        """
+        super().__init__(repo_path)
+        self.git_timeout = git_timeout
+
     def attempt_fix(
-        self, source_file: Path, broken_path: str, line_number: int = 0
+        self, source_file: Path, broken_path: str | None, line_number: int = 0
     ) -> FixResult | None:
         """Attempt to fix using git history.
 
@@ -72,7 +82,7 @@ class GitHistoryFix(FixStrategy):
                 cwd=self.repo_path,
                 capture_output=True,
                 text=True,
-                timeout=10,
+                timeout=self.git_timeout,
             )
 
             if result.returncode != 0:

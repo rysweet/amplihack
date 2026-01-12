@@ -108,13 +108,13 @@ class FixStrategy(ABC):
 
     @abstractmethod
     def attempt_fix(
-        self, source_file: Path, broken_path: str, line_number: int = 0
+        self, source_file: Path, broken_path: str | None, line_number: int = 0
     ) -> FixResult | None:
         """Attempt to fix a broken link.
 
         Args:
             source_file: File containing the broken link
-            broken_path: The broken link path
+            broken_path: The broken link path (None if path missing from JSON)
             line_number: Line number (for context)
 
         Returns:

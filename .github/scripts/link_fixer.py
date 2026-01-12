@@ -449,7 +449,10 @@ def main() -> int:
     import argparse
 
     parser = argparse.ArgumentParser(description="Automatically fix broken links in documentation")
-    parser.add_argument("broken_links_file", help="JSON file with broken links from link_checker")
+    parser.add_argument(
+        "broken_links_file",
+        help='JSON file with broken links from link_checker (format: [{"file": "path/to/file.md", "path": "broken/link.md", "line": 42}])',
+    )
     parser.add_argument(
         "--repo-path",
         type=Path,
