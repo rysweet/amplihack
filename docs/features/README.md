@@ -37,6 +37,10 @@ Additional amplihack capabilities:
 
 - [Claude.md Preservation](claude-md-preservation.md) - Preserve custom instructions during updates
 - [Neo4j Session Cleanup](neo4j-session-cleanup.md) - Automatic resource management for memory system
+- [Shutdown Detection](shutdown-detection.md) - Graceful exit handling (prevents 10-13s hang on exit)
+  - [Technical Explanation](../concepts/shutdown-detection.md) - How and why it works
+  - [API Reference](../reference/shutdown-detection-api.md) - Complete API documentation
+  - [Developer How-To](../howto/add-shutdown-detection-to-hooks.md) - Add to custom hooks
 
 ---
 
