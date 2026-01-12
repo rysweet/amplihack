@@ -39,9 +39,16 @@ def temp_db(tmp_path):
 
 
 @pytest.fixture
-def coordinator(temp_db):
-    """Create memory coordinator with test database."""
-    return MemoryCoordinator(database=temp_db, session_id="test-session")
+def coordinator(tmp_path):
+    """Create memory coordinator with isolated Kùzu backend fer each test."""
+    from amplihack.memory.backends import create_backend
+
+    # Create isolated Kùzu backend with unique temp path fer each test
+    kuzu_db_path = tmp_path / "test_kuzu.db"
+    backend = create_backend(backend_type="kuzu", db_path=kuzu_db_path)
+
+    # Create coordinator with isolated backend
+    return MemoryCoordinator(backend=backend, session_id="test-session")
 
 
 @pytest.fixture
@@ -225,13 +232,14 @@ class TestMemoryPersistence:
     @pytest.mark.asyncio
     async def test_memories_persist_across_sessions(self, db_path, mock_agents):
         """Memories persist when coordinator is recreated."""
+        from amplihack.memory.backends import create_backend
+
         # Use same session ID fer both coordinators to test persistence
         test_session_id = "persistence-test-session"
 
         # Session 1: Store memory
-        db1 = MemoryDatabase(db_path)
-        db1.initialize()
-        coordinator1 = MemoryCoordinator(database=db1, session_id=test_session_id)
+        backend1 = create_backend(backend_type="kuzu", db_path=db_path)
+        coordinator1 = MemoryCoordinator(backend=backend1, session_id=test_session_id)
 
         with patch.object(coordinator1, "_invoke_agent", mock_agents):
             request = StorageRequest(
@@ -242,12 +250,12 @@ class TestMemoryPersistence:
             memory_id = await coordinator1.store(request)
             assert memory_id is not None
 
-        # Close session 1
-        db1.close()
+        # Close session 1 (not needed fer Kùzu, but good practice)
+        # backend1 doesn't have close() method currently
 
-        # Session 2: Retrieve memory (new coordinator, same DB, same session ID)
-        db2 = MemoryDatabase(db_path)
-        coordinator2 = MemoryCoordinator(database=db2, session_id=test_session_id)
+        # Session 2: Retrieve memory (new coordinator, same DB path, same session ID)
+        backend2 = create_backend(backend_type="kuzu", db_path=db_path)
+        coordinator2 = MemoryCoordinator(backend=backend2, session_id=test_session_id)
 
         query = RetrievalQuery(
             query_text="architect",
@@ -259,8 +267,6 @@ class TestMemoryPersistence:
         # Should retrieve memory from previous session
         assert len(memories) > 0
         assert any("architect" in m.content for m in memories)
-
-        db2.close()
 
 
 class TestMemoryQualityGate:

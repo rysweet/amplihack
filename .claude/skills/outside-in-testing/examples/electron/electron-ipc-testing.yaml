@@ -8,7 +8,6 @@ scenario:
     Verifies IPC communication between main and renderer processes, including
     request/response patterns, event broadcasting, and data serialization.
   type: electron
-
   level: 3
 
   tags: [electron, ipc, advanced, main-process, renderer-process]
@@ -68,7 +67,7 @@ scenario:
     - action: verify_ipc_payload
       contains:
         success: true
-        data: "{}"  # Some JSON content
+        data: "{}" # Some JSON content
 
     # Test Case 4: Event Broadcasting (Main → Renderer)
     - action: wait_for_element
@@ -119,7 +118,7 @@ scenario:
     # Send IPC from first window
     - action: window_action
       window: 1
-      action: focus
+      type: focus
 
     - action: ipc_send
       channel: "broadcast-message"
@@ -129,7 +128,7 @@ scenario:
     # Verify received in second window
     - action: window_action
       window: 2
-      action: focus
+      type: focus
 
     - action: wait_for_element
       selector: ".broadcast-message"
@@ -141,7 +140,7 @@ scenario:
       channel: "show-open-dialog"
       data:
         title: "Select File"
-        filters: [{name: "Text Files", extensions: ["txt"]}]
+        filters: [{ name: "Text Files", extensions: ["txt"] }]
 
     # Simulate dialog interaction (in test mode)
     - action: dialog_action
@@ -166,7 +165,6 @@ scenario:
   cleanup:
     - action: stop_application
       force: false
-
 # IPC Communication Patterns:
 
 # Main Process                    Renderer Process

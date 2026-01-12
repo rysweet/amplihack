@@ -145,7 +145,7 @@ class TestWriteOutputBrokenPipeError:
         hook = TestHook()
         test_data = {"status": "success"}
 
-        with patch("sys.stdout") as mock_stdout:
+        with patch("sys.stdout"):
             with patch("json.dump") as mock_dump:
                 mock_dump.side_effect = BrokenPipeError("Broken pipe")
 
@@ -203,7 +203,7 @@ class TestWriteOutputIOError:
         hook = TestHook()
         test_data = {"key": "value"}
 
-        with patch("sys.stdout") as mock_stdout:
+        with patch("sys.stdout"):
             with patch("json.dump") as mock_dump:
                 mock_dump.side_effect = OSError("Write failed")
 

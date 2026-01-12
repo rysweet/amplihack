@@ -28,7 +28,7 @@ import platform
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Union
+from typing import Any
 
 from PIL import Image, ImageDraw, ImageFont
 from pptx import Presentation
@@ -36,7 +36,7 @@ from pptx.enum.text import PP_ALIGN
 from pptx.shapes.base import BaseShape
 
 # Type aliases for cleaner signatures
-JsonValue = Union[str, int, float, bool, None]
+JsonValue = str | int | float | bool | None
 ParagraphDict = dict[str, JsonValue]
 ShapeDict = dict[str, str | float | bool | list[ParagraphDict] | list[str] | dict[str, Any] | None]
 InventoryData = dict[str, dict[str, "ShapeData"]]  # Dict of slide_id -> {shape_id -> ShapeData}

@@ -66,7 +66,7 @@ AZURE_RESOURCE_GROUP=test-rg
         with patch.dict(os.environ, {}, clear=True):
             with patch.object(Path, "exists", return_value=True):
                 auth = AzureAuthenticator(debug=True)
-                creds = auth.get_credentials()
+                auth.get_credentials()
 
                 # Note: This is a simplified test - in real scenario the file
                 # loading would work properly

@@ -8,7 +8,6 @@ scenario:
     Verifies Electron desktop application launches correctly, displays a single window
     with expected properties, and handles basic menu interactions.
   type: electron
-
   level: 1
 
   tags: [electron, desktop, single-window, basic]
@@ -110,7 +109,7 @@ scenario:
 
     # Test Case 6: Test Window Controls
     - action: window_action
-      action: minimize
+      type: minimize
       description: "Minimize window"
 
     - action: wait_for_screen
@@ -122,7 +121,7 @@ scenario:
       description: "Window should not be visible when minimized"
 
     - action: window_action
-      action: restore
+      type: restore
       description: "Restore window"
 
     - action: wait_for_screen
@@ -225,7 +224,6 @@ scenario:
     - action: stop_application
       force: false
       description: "Ensure application is terminated"
-
 # Expected Application Structure:
 
 # ┌─────────────────────────────────────────────────────┐
