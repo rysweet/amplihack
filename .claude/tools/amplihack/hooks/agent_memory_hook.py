@@ -93,7 +93,7 @@ def detect_slash_command_agent(prompt: str) -> str | None:
     return SLASH_COMMAND_AGENTS.get(command)
 
 
-def inject_memory_for_agents(
+async def inject_memory_for_agents(
     prompt: str, agent_types: list[str], session_id: str | None = None
 ) -> tuple[str, dict[str, Any]]:
     """Inject memory context for detected agents into prompt.
@@ -111,7 +111,7 @@ def inject_memory_for_agents(
 
     try:
         # Import memory coordinator (lazy import to avoid startup overhead)
-        from amplihack.memory.coordinator import MemoryCoordinator
+        from amplihack.memory.coordinator import MemoryCoordinator, RetrievalQuery
         from amplihack.memory.types import MemoryType
 
         # Initialize coordinator with session_id
@@ -128,15 +128,16 @@ def inject_memory_for_agents(
             # Get memory context for this agent
             try:
                 # Retrieve relevant memories using query
-                query = prompt[:500]  # Use first 500 chars as query
+                query_text = prompt[:500]  # Use first 500 chars as query
 
-                # Retrieve from multiple memory types for comprehensive context
-                memories = coordinator.retrieve(
-                    query=query,
-                    limit=5,
+                # Build retrieval query with comprehensive context
+                query = RetrievalQuery(
+                    query_text=query_text,
+                    token_budget=2000,
                     memory_types=[MemoryType.EPISODIC, MemoryType.SEMANTIC, MemoryType.PROCEDURAL],
-                    agent_type=normalized_type,
                 )
+
+                memories = await coordinator.retrieve(query)
 
                 if memories:
                     # Format memories for injection
@@ -167,7 +168,7 @@ def inject_memory_for_agents(
         return prompt, {"memory_available": False, "error": str(e)}
 
 
-def extract_learnings_from_conversation(
+async def extract_learnings_from_conversation(
     conversation_text: str, agent_types: list[str], session_id: str | None = None
 ) -> dict[str, Any]:
     """Extract and store learnings from conversation after agent execution.
@@ -185,7 +186,7 @@ def extract_learnings_from_conversation(
 
     try:
         # Import memory coordinator (lazy import)
-        from amplihack.memory.coordinator import MemoryCoordinator
+        from amplihack.memory.coordinator import MemoryCoordinator, StorageRequest
         from amplihack.memory.types import MemoryType
 
         # Initialize coordinator with session_id
@@ -209,13 +210,19 @@ def extract_learnings_from_conversation(
                 # In production, you might want more sophisticated extraction
                 learning_content = f"Agent {normalized_type}: {conversation_text[:500]}"
 
-                memory_id = coordinator.store(
+                # Build storage request with context and metadata
+                request = StorageRequest(
                     content=learning_content,
                     memory_type=MemoryType.SEMANTIC,
-                    agent_type=normalized_type,
-                    tags=["learning", "conversation"],
-                    metadata={"task": "Conversation with user", "success": True},
+                    context={"agent_type": normalized_type},
+                    metadata={
+                        "tags": ["learning", "conversation"],
+                        "task": "Conversation with user",
+                        "success": True,
+                    },
                 )
+
+                memory_id = await coordinator.store(request)
 
                 if memory_id:
                     metadata["learnings_stored"] += 1
