@@ -23,6 +23,10 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+# Minimum similarity score for fuzzy anchor matching (0.0-1.0)
+# Lower values allow more matches but with less confidence
+MIN_FUZZY_SIMILARITY = 0.60
+
 
 class BrokenAnchorsFix(FixStrategy):
     """Fixes broken anchor references in links.
@@ -88,7 +92,7 @@ class BrokenAnchorsFix(FixStrategy):
                 best_match = anchor_slug
 
         # Only return if similarity is reasonable
-        if best_similarity >= 0.60:
+        if best_similarity >= MIN_FUZZY_SIMILARITY:
             return (best_match, best_similarity)
 
         return None
