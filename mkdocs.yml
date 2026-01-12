@@ -4,9 +4,9 @@
 site_name: amplihack
 site_description: Agentic coding framework that uses specialized AI agents to accelerate software development
 site_author: amplihack contributors
-site_url: https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/
-repo_name: rysweet/MicrosoftHackathon2025-AgenticCoding
-repo_url: https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding
+site_url: https://rysweet.github.io/amplihack/
+repo_name: rysweet/amplihack
+repo_url: https://github.com/rysweet/amplihack
 edit_uri: edit/main/docs/
 
 # Theme Configuration
@@ -221,7 +221,7 @@ markdown_extensions:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding
+      link: https://github.com/rysweet/amplihack
   version:
     provider: mike
   analytics:
