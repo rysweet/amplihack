@@ -913,6 +913,9 @@ class ClaudeLauncher:
         without receiving signals. Executes stop hook silently.
         """
         try:
+            # Set shutdown flag BEFORE executing stop hook to prevent stdin blocking
+            os.environ["AMPLIHACK_SHUTDOWN_IN_PROGRESS"] = "1"
+
             from amplihack.hooks.manager import execute_stop_hook
 
             execute_stop_hook()

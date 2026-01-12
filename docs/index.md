@@ -288,6 +288,7 @@ Intelligent guidance system that prevents common mistakes:
 
 - [Claude.md Preservation](features/claude-md-preservation.md) - Preserve custom instructions
 - [Neo4j Session Cleanup](features/neo4j-session-cleanup.md) - Automatic resource management
+- [Shutdown Detection](concepts/shutdown-detection.md) - Graceful exit handling (prevents 10-13s hang)
 
 ### Third-Party Integrations
 
@@ -367,6 +368,7 @@ Fix common issues and learn from past solutions.
 
 - [Discoveries](DISCOVERIES.md) - Known issues and solutions (CHECK HERE FIRST!)
 - [Troubleshooting Guides](troubleshooting/README.md) - Common problems and fixes
+- [Stop Hook Exit Hang](troubleshooting/stop-hook-exit-hang.md) - Fix 10-13s hang on exit (resolved v0.9.1)
 - [Tool Null Name Analysis](TOOL_NULL_NAME_ANALYSIS.md) - Debugging tool name issues
 - [Config Analysis Report](config-analysis-report.md) - Configuration problem diagnosis
 
