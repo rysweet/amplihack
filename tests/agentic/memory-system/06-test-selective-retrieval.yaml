@@ -1,0 +1,104 @@
+scenario:
+  name: "Memory System - Selective Retrieval with Token Budget"
+  description: "Verifies retrieval respects token budgets and returns only relevant memories"
+  type: cli
+  tags: [quality, memory, retrieval]
+
+  prerequisites:
+    - "Branch feat/issue-1902-5-type-memory-system exists"
+
+  environment:
+    variables:
+      AMPLIHACK_BRANCH: "feat/issue-1902-5-type-memory-system"
+      GITHUB_REPO: "https://github.com/rysweet/amplihack"
+
+  steps:
+    # Store multiple memories and test selective retrieval
+    - action: launch
+      target: "uvx"
+      args:
+        - "--from"
+        - "git+${GITHUB_REPO}@${AMPLIHACK_BRANCH}"
+        - "python"
+        - "-c"
+        - |
+          import asyncio
+          from amplihack.memory.coordinator import MemoryCoordinator, StorageRequest, RetrievalQuery
+          from amplihack.memory.types import MemoryType
+
+          async def test():
+              c = MemoryCoordinator(session_id='retrieval-test')
+
+              # Store 5 memories with different content
+              memories = [
+                  "User discussed authentication using JWT tokens",
+                  "User discussed database schema design",
+                  "User discussed API endpoint security",
+                  "User discussed frontend React components",
+                  "User discussed Docker deployment configuration",
+              ]
+
+              for content in memories:
+                  r = StorageRequest(
+                      content=content,
+                      memory_type=MemoryType.EPISODIC,
+                      context={'agent_id': 'test'}
+                  )
+                  await c.store(r)
+
+              print("STORED:5_memories")
+
+              # Retrieve with specific query - should be selective
+              q = RetrievalQuery(
+                  query_text="authentication security JWT",
+                  memory_types=[MemoryType.EPISODIC],
+                  token_budget=500  # Small budget - forces selectivity
+              )
+
+              retrieved = await c.retrieve(q)
+              print(f"RETRIEVED:count={len(retrieved)}")
+
+              # Should prioritize auth and security related memories
+              relevant_count = 0
+              for mem in retrieved:
+                  if any(word in mem.content.lower() for word in ["authentication", "security", "jwt"]):
+                      relevant_count += 1
+                      print(f"RELEVANT:{mem.content[:40]}")
+
+              print(f"RELEVANT_COUNT:{relevant_count}")
+
+              # Token budget test
+              total_tokens = sum(len(m.content) // 4 for m in retrieved)
+              print(f"TOTAL_TOKENS:{total_tokens}")
+
+              if total_tokens <= 525:  # 500 + 5% tolerance
+                  print("TOKEN_BUDGET:respected")
+              else:
+                  print("TOKEN_BUDGET:exceeded")
+
+          asyncio.run(test())
+      description: "Test selective retrieval with token budget"
+      timeout: 120s
+
+    # Verify memories stored
+    - action: verify_output
+      contains: "STORED:5_memories"
+      description: "Should store all 5 test memories"
+
+    # Verify selective retrieval (not all 5 returned)
+    - action: verify_output
+      matches: "RETRIEVED:count=[1-3]"
+      description: "Should return 1-3 memories (selective, not all 5)"
+
+    # Verify relevance - at least 1 relevant memory
+    - action: verify_output
+      matches: "RELEVANT_COUNT:[1-9]"
+      description: "Should find at least 1 relevant memory"
+
+    # Verify token budget respected
+    - action: verify_output
+      contains: "TOKEN_BUDGET:respected"
+      description: "Should stay within token budget (500 tokens)"
+
+    - action: verify_exit_code
+      expected: 0
