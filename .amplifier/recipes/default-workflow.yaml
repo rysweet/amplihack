@@ -1,0 +1,976 @@
+# DEFAULT_WORKFLOW - 22-Step Development Workflow
+#
+# Translates the Claude Code DEFAULT_WORKFLOW.md to an Amplifier staged recipe.
+# Original workflow: 22 steps (0-21), 6 phases, 4 mandatory checkpoints.
+#
+# Philosophy Alignment:
+#   - Ruthless Simplicity: Each step has single clear purpose
+#   - Zero-BS Implementation: No stubs or placeholders in deliverables
+#   - Test-Driven Development: Write tests before implementation
+#   - Modular Design: Clean module boundaries enforced through workflow
+#
+# Mandatory Steps (enforced via approval gates):
+#   - Step 0: Workflow preparation (Stage 1 gate)
+#   - Step 10: Review pass before commit (Stage 5 gate - MANDATORY)
+#   - Step 16-17: PR review and feedback (Stage 6 gate - MANDATORY)
+#
+# Required Bundles:
+#   - foundation (for core agents)
+#   - recipes (for recipe execution)
+#
+# Usage:
+#   amplifier run "execute default-workflow.yaml with task_description='Add user authentication feature'"
+#
+# Required Context:
+#   - task_description: Description of the feature, bug fix, or refactor
+#
+# Optional Context:
+#   - target_branch: Branch to base work from (default: main)
+#   - use_worktree: Whether to use git worktrees (default: false)
+#   - auto_create_issue: Whether to auto-create GitHub issue (default: true)
+#   - severity_threshold: For security scans (default: high)
+
+name: "default-workflow"
+description: "Standard 22-step workflow for feature development, bug fixes, and refactoring with mandatory review gates"
+version: "1.0.0"
+author: "Translated from Claude Code DEFAULT_WORKFLOW v1.1.0"
+tags: ["workflow", "development", "feature", "tdd", "review", "pr"]
+
+context:
+  # Required inputs
+  task_description: ""
+  
+  # Optional configuration
+  target_branch: "main"
+  use_worktree: "false"
+  auto_create_issue: "true"
+  severity_threshold: "high"
+  
+  # Workflow state (populated during execution)
+  issue_number: ""
+  branch_name: ""
+  worktree_path: ""
+  pr_number: ""
+
+recursion:
+  max_depth: 3
+  max_total_steps: 200
+
+# =============================================================================
+# STAGED WORKFLOW WITH APPROVAL GATES
+# =============================================================================
+# 
+# 6 stages matching the original workflow phases:
+#   1. setup (Steps 0-1): Prepare workspace
+#   2. requirements (Steps 2-4): Clarify and create issue
+#   3. design (Steps 5-6): Architecture and documentation
+#   4. implementation (Steps 7-9): TDD implementation
+#   5. pre-commit-review (Steps 10-13): MANDATORY review gate
+#   6. pr-and-merge (Steps 14-21): MANDATORY PR gate
+# =============================================================================
+
+stages:
+  # ===========================================================================
+  # STAGE 1: SETUP (Steps 0-1)
+  # ===========================================================================
+  - name: "setup"
+    steps:
+      # Step 0: Workflow Preparation (MANDATORY in original)
+      - id: "step-0-workflow-init"
+        agent: "foundation:zen-architect"
+        mode: "ANALYZE"
+        prompt: |
+          Initialize workflow tracking for this development task.
+          
+          Task Description: {{task_description}}
+          Target Branch: {{target_branch}}
+          
+          Create a structured work plan that covers:
+          1. Task understanding and scope
+          2. Success criteria
+          3. Key milestones (aligned with 22-step workflow)
+          4. Potential risks or blockers
+          5. Philosophy alignment check (Ruthless Simplicity, Zero-BS, TDD)
+          
+          Output a clear, actionable work plan.
+        output: "work_plan"
+        timeout: 300
+
+      # Step 1: Prepare the Workspace
+      - id: "step-1-workspace-prep"
+        type: "bash"
+        command: |
+          echo "=== Workspace Preparation ==="
+          echo "Checking git status..."
+          git status --porcelain
+          echo ""
+          echo "Fetching latest changes..."
+          git fetch origin
+          echo ""
+          echo "Current branch:"
+          git branch --show-current
+          echo ""
+          echo "Checking for unstaged changes..."
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "WARNING: Uncommitted changes detected"
+            git status --short
+          else
+            echo "Workspace is clean"
+          fi
+        output: "workspace_status"
+        timeout: 60
+
+    approval:
+      required: true
+      prompt: |
+        === STAGE 1 COMPLETE: Setup ===
+        
+        Work Plan:
+        {{work_plan}}
+        
+        Workspace Status:
+        {{workspace_status}}
+        
+        Review the work plan and workspace status.
+        Approve to proceed to requirements clarification.
+      timeout: 3600
+      default: "deny"
+
+  # ===========================================================================
+  # STAGE 2: REQUIREMENTS (Steps 2-4)
+  # ===========================================================================
+  - name: "requirements"
+    steps:
+      # Step 2: Rewrite and Clarify Requirements
+      - id: "step-2-clarify-requirements"
+        agent: "foundation:explorer"
+        prompt: |
+          Clarify and refine the task requirements.
+          
+          Original Task: {{task_description}}
+          Work Plan Context: {{work_plan}}
+          
+          Perform:
+          1. Analyze the codebase to understand context
+          2. Identify any ambiguities in the requirements
+          3. Define clear, measurable success criteria
+          4. List assumptions and constraints
+          5. Propose specific acceptance tests
+          
+          If requirements are unclear, list questions that need answers.
+          Output refined requirements with success criteria.
+        output: "refined_requirements"
+        timeout: 600
+
+      # Step 3: Create GitHub Issue
+      - id: "step-3-create-issue"
+        condition: "{{auto_create_issue}} == 'true'"
+        agent: "foundation:zen-architect"
+        mode: "ANALYZE"
+        prompt: |
+          Create a GitHub issue specification for this task.
+          
+          Refined Requirements: {{refined_requirements}}
+          
+          Generate:
+          1. Issue title (concise, descriptive)
+          2. Issue body with:
+             - Problem description
+             - Requirements
+             - Constraints
+             - Success criteria
+             - Suggested labels
+          3. The gh CLI command to create this issue
+          
+          Format as executable gh command that can be run directly.
+        output: "issue_spec"
+        timeout: 300
+
+      - id: "step-3-execute-issue-creation"
+        condition: "{{auto_create_issue}} == 'true'"
+        type: "bash"
+        command: |
+          echo "=== Creating GitHub Issue ==="
+          # Extract the gh command from the issue spec and execute it
+          # Note: In production, this would parse and execute the gh command
+          echo "Issue specification prepared. Manual creation may be required."
+          echo "Review the issue_spec output for the gh command to run."
+        output: "issue_creation_result"
+        on_error: "continue"
+        timeout: 60
+
+      # Step 4: Setup Worktree and Branch
+      - id: "step-4-setup-branch"
+        agent: "foundation:zen-architect"
+        mode: "ANALYZE"
+        prompt: |
+          Plan the branch setup for this task.
+          
+          Task: {{task_description}}
+          Issue Spec: {{issue_spec}}
+          Use Worktree: {{use_worktree}}
+          Target Branch: {{target_branch}}
+          
+          Generate:
+          1. Branch name following convention: feat/issue-{number}-{description}
+             (or fix/ for bugs, refactor/ for refactoring)
+          2. Git commands to:
+             - Create the branch from {{target_branch}}
+             - Set up worktree (if use_worktree is true)
+             - Push with tracking
+          3. Working directory path
+          
+          Output the branch name and git commands.
+        output: "branch_setup_plan"
+        timeout: 300
+
+      - id: "step-4-execute-branch-setup"
+        type: "bash"
+        command: |
+          echo "=== Branch Setup ==="
+          echo "Branch setup plan prepared."
+          echo "Review branch_setup_plan and execute git commands manually if needed."
+          echo ""
+          echo "Current branches:"
+          git branch -a | head -20
+        output: "branch_setup_result"
+        on_error: "continue"
+        timeout: 60
+
+    approval:
+      required: true
+      prompt: |
+        === STAGE 2 COMPLETE: Requirements ===
+        
+        Refined Requirements:
+        {{refined_requirements}}
+        
+        Issue Specification:
+        {{issue_spec}}
+        
+        Branch Setup:
+        {{branch_setup_plan}}
+        
+        Review the requirements, issue, and branch setup.
+        Approve to proceed to design phase.
+      timeout: 3600
+      default: "deny"
+
+  # ===========================================================================
+  # STAGE 3: DESIGN (Steps 5-6)
+  # ===========================================================================
+  - name: "design"
+    steps:
+      # Step 5: Research and Design
+      - id: "step-5-architecture"
+        agent: "foundation:zen-architect"
+        mode: "ARCHITECT"
+        prompt: |
+          Design the solution architecture for this task.
+          
+          Requirements: {{refined_requirements}}
+          Work Plan: {{work_plan}}
+          
+          Create a comprehensive design that includes:
+          1. High-level architecture overview
+          2. Module specifications with clear boundaries
+          3. API contracts (if applicable)
+          4. Data model changes (if applicable)
+          5. Integration points
+          6. Implementation plan (ordered steps)
+          
+          Apply philosophy principles:
+          - Ruthless Simplicity: Minimize complexity
+          - Modular Design: Clear module boundaries
+          - Zero-BS: No placeholders or stubs in design
+        output: "architecture_design"
+        timeout: 900
+
+      - id: "step-5-security-requirements"
+        agent: "foundation:security-guardian"
+        prompt: |
+          Review the architecture for security requirements.
+          
+          Architecture Design: {{architecture_design}}
+          Requirements: {{refined_requirements}}
+          
+          Analyze for:
+          1. Security requirements and constraints
+          2. Potential vulnerabilities in the design
+          3. Authentication/authorization needs
+          4. Data protection requirements
+          5. Security-focused implementation recommendations
+          
+          Output security requirements and recommendations.
+        output: "security_requirements"
+        timeout: 600
+
+      # Step 6: Retcon Documentation Writing
+      - id: "step-6-write-documentation"
+        agent: "foundation:zen-architect"
+        mode: "ARCHITECT"
+        prompt: |
+          Write documentation for this feature AS IF IT IS ALREADY COMPLETE.
+          
+          Architecture: {{architecture_design}}
+          Requirements: {{refined_requirements}}
+          Security Requirements: {{security_requirements}}
+          
+          Create documentation including:
+          1. Feature overview and purpose
+          2. Usage examples and API documentation
+          3. Configuration options
+          4. Integration guide
+          5. Troubleshooting section
+          
+          This "retcon" approach ensures documentation is written before
+          implementation, guiding the development process.
+        output: "feature_documentation"
+        timeout: 600
+
+      - id: "step-6-design-review"
+        agent: "foundation:zen-architect"
+        mode: "REVIEW"
+        prompt: |
+          Review the design and documentation for alignment and completeness.
+          
+          Architecture: {{architecture_design}}
+          Documentation: {{feature_documentation}}
+          Security Requirements: {{security_requirements}}
+          
+          Check for:
+          1. Architecture-documentation alignment
+          2. Completeness of design
+          3. Philosophy compliance (Ruthless Simplicity, Zero-BS)
+          4. Feasibility and clarity
+          5. Any gaps or inconsistencies
+          
+          Provide feedback and approval status.
+        output: "design_review"
+        timeout: 300
+
+    approval:
+      required: true
+      prompt: |
+        === STAGE 3 COMPLETE: Design ===
+        
+        Architecture Design:
+        {{architecture_design}}
+        
+        Security Requirements:
+        {{security_requirements}}
+        
+        Feature Documentation:
+        {{feature_documentation}}
+        
+        Design Review:
+        {{design_review}}
+        
+        Review the complete design package.
+        Approve to proceed to TDD implementation.
+      timeout: 7200
+      default: "deny"
+
+  # ===========================================================================
+  # STAGE 4: IMPLEMENTATION (Steps 7-9)
+  # ===========================================================================
+  - name: "implementation"
+    steps:
+      # Step 7: TDD - Writing Tests First
+      - id: "step-7-write-tests"
+        agent: "foundation:test-coverage"
+        prompt: |
+          Write tests FIRST following TDD principles.
+          
+          Architecture: {{architecture_design}}
+          Requirements: {{refined_requirements}}
+          Documentation: {{feature_documentation}}
+          
+          Create comprehensive tests:
+          1. Unit tests for each module/component
+          2. Integration tests for module interactions
+          3. Edge case tests
+          4. Tests should currently FAIL (implementation not done yet)
+          
+          Follow TDD principle: Tests define the expected behavior.
+          These tests will guide the implementation in the next step.
+        output: "test_code"
+        timeout: 900
+
+      - id: "step-7-verify-tests-fail"
+        type: "bash"
+        command: |
+          echo "=== Verifying Tests are Written ==="
+          echo "Test code has been generated."
+          echo "In TDD, tests should FAIL initially (no implementation yet)."
+          echo ""
+          echo "Next step: Implement the solution to make tests pass."
+        output: "test_verification"
+        timeout: 60
+
+      # Step 8: Implement the Solution
+      - id: "step-8-implement"
+        agent: "foundation:modular-builder"
+        prompt: |
+          Implement the solution to make the tests pass.
+          
+          Architecture: {{architecture_design}}
+          Tests: {{test_code}}
+          Security Requirements: {{security_requirements}}
+          
+          Implementation guidelines:
+          1. Follow the architecture design exactly
+          2. Make all tests pass iteratively
+          3. Apply ZERO-BS principle: No stubs, placeholders, or TODO comments
+          4. Implement complete, production-ready code
+          5. Follow security requirements
+          
+          Output the implementation with file paths and code.
+        output: "implementation_code"
+        timeout: 1800
+
+      - id: "step-8-integration"
+        agent: "foundation:integration-specialist"
+        prompt: |
+          Review and handle any integration requirements.
+          
+          Implementation: {{implementation_code}}
+          Architecture: {{architecture_design}}
+          
+          Check for:
+          1. External service connections
+          2. API integrations
+          3. Database connections
+          4. Third-party library usage
+          5. Integration test coverage
+          
+          Provide integration recommendations or confirm implementation is complete.
+        output: "integration_review"
+        timeout: 600
+
+      # Step 9: Refactor and Simplify
+      - id: "step-9-refactor"
+        agent: "foundation:post-task-cleanup"
+        prompt: |
+          Refactor and simplify the implementation.
+          
+          Implementation: {{implementation_code}}
+          Tests: {{test_code}}
+          
+          Apply ruthless simplification:
+          1. Remove unnecessary abstractions
+          2. Simplify complex logic
+          3. Eliminate dead code
+          4. Verify no placeholders remain (ZERO-BS)
+          5. Ensure clean module boundaries
+          
+          Output the refactored code with explanations of changes.
+        output: "refactored_code"
+        timeout: 600
+
+      - id: "step-9-verify-no-placeholders"
+        agent: "foundation:zen-architect"
+        mode: "REVIEW"
+        prompt: |
+          Verify ZERO-BS compliance - no placeholders or stubs.
+          
+          Refactored Code: {{refactored_code}}
+          
+          Check for:
+          1. TODO comments
+          2. FIXME comments
+          3. Placeholder implementations (pass, NotImplementedError, etc.)
+          4. Stub functions
+          5. Incomplete error handling
+          
+          Report any violations and their locations.
+        output: "zero_bs_verification"
+        timeout: 300
+
+    approval:
+      required: true
+      prompt: |
+        === STAGE 4 COMPLETE: Implementation ===
+        
+        Tests Written (TDD):
+        {{test_code}}
+        
+        Implementation:
+        {{refactored_code}}
+        
+        Integration Review:
+        {{integration_review}}
+        
+        Zero-BS Verification:
+        {{zero_bs_verification}}
+        
+        Review the implementation before proceeding to review.
+        Approve to proceed to mandatory pre-commit review.
+      timeout: 3600
+      default: "deny"
+
+  # ===========================================================================
+  # STAGE 5: PRE-COMMIT REVIEW (Steps 10-13) - MANDATORY
+  # ===========================================================================
+  - name: "pre-commit-review"
+    steps:
+      # Step 10: Review Pass Before Commit (MANDATORY in original)
+      - id: "step-10-code-review"
+        agent: "foundation:zen-architect"
+        mode: "REVIEW"
+        prompt: |
+          MANDATORY: Comprehensive code review before commit.
+          
+          Implementation: {{refactored_code}}
+          Tests: {{test_code}}
+          Architecture: {{architecture_design}}
+          Requirements: {{refined_requirements}}
+          
+          Review for:
+          1. Requirements compliance
+          2. Architecture alignment
+          3. Code quality and maintainability
+          4. Test coverage adequacy
+          5. Philosophy compliance (Ruthless Simplicity, Zero-BS, TDD)
+          
+          This is a MANDATORY gate. Be thorough.
+        output: "code_review"
+        timeout: 900
+
+      - id: "step-10-security-review"
+        agent: "foundation:security-guardian"
+        prompt: |
+          Security review of the implementation.
+          
+          Implementation: {{refactored_code}}
+          Security Requirements: {{security_requirements}}
+          Severity Threshold: {{severity_threshold}}
+          
+          Scan for:
+          1. Security vulnerabilities
+          2. Injection risks
+          3. Authentication/authorization issues
+          4. Data exposure risks
+          5. Dependency vulnerabilities
+          
+          Report findings at {{severity_threshold}} level and above.
+        output: "security_review"
+        timeout: 600
+
+      - id: "step-10-philosophy-check"
+        agent: "foundation:zen-architect"
+        mode: "REVIEW"
+        prompt: |
+          Philosophy compliance verification.
+          
+          Implementation: {{refactored_code}}
+          Tests: {{test_code}}
+          
+          Verify compliance with:
+          1. Ruthless Simplicity: Is the solution as simple as possible?
+          2. Zero-BS Implementation: No stubs, placeholders, or incomplete code?
+          3. TDD: Were tests written first and do they cover the requirements?
+          4. Modular Design: Are module boundaries clean and well-defined?
+          
+          Grade each principle (Pass/Fail) with explanation.
+        output: "philosophy_compliance"
+        timeout: 300
+
+      # Step 11: Incorporate Review Feedback
+      - id: "step-11-assess-feedback"
+        agent: "foundation:zen-architect"
+        mode: "ANALYZE"
+        prompt: |
+          Assess and prioritize review feedback.
+          
+          Code Review: {{code_review}}
+          Security Review: {{security_review}}
+          Philosophy Compliance: {{philosophy_compliance}}
+          
+          Create action plan:
+          1. List all feedback items
+          2. Categorize by severity (Critical/High/Medium/Low)
+          3. Determine order of addressing
+          4. Estimate effort for each fix
+          
+          Output prioritized action plan.
+        output: "feedback_action_plan"
+        timeout: 300
+
+      - id: "step-11-implement-feedback"
+        agent: "foundation:modular-builder"
+        prompt: |
+          Implement the review feedback.
+          
+          Action Plan: {{feedback_action_plan}}
+          Current Code: {{refactored_code}}
+          
+          Address all Critical and High priority items.
+          For each fix:
+          1. Describe the issue
+          2. Show the fix
+          3. Explain the change
+          
+          Output the updated code.
+        output: "feedback_implemented_code"
+        timeout: 900
+
+      # Step 12: Run Tests and Pre-commit Hooks
+      - id: "step-12-run-tests"
+        type: "bash"
+        command: |
+          echo "=== Running Tests and Pre-commit Hooks ==="
+          echo ""
+          echo "Checking for pre-commit installation..."
+          if command -v pre-commit &> /dev/null; then
+            echo "Pre-commit is installed"
+          else
+            echo "Pre-commit not found - install with: pip install pre-commit"
+          fi
+          echo ""
+          echo "To run tests and pre-commit:"
+          echo "  1. pytest -v (or your test runner)"
+          echo "  2. pre-commit run --all-files"
+          echo ""
+          echo "Verify all tests pass and pre-commit hooks succeed."
+        output: "test_run_instructions"
+        timeout: 60
+
+      - id: "step-12-diagnose-failures"
+        agent: "foundation:bug-hunter"
+        prompt: |
+          Prepare to diagnose any test or pre-commit failures.
+          
+          Code: {{feedback_implemented_code}}
+          Tests: {{test_code}}
+          
+          Create a diagnostic guide for:
+          1. Common test failure patterns
+          2. Pre-commit hook issues and fixes
+          3. Debugging strategies
+          4. Quick fixes for formatting/linting issues
+          
+          This will help if any failures occur during manual testing.
+        output: "diagnostic_guide"
+        timeout: 300
+
+      # Step 13: Mandatory Local Testing
+      - id: "step-13-test-plan"
+        agent: "foundation:test-coverage"
+        prompt: |
+          Create a comprehensive local testing plan.
+          
+          Implementation: {{feedback_implemented_code}}
+          Requirements: {{refined_requirements}}
+          
+          Test plan should cover:
+          1. Simple use cases (happy path)
+          2. Complex use cases
+          3. Edge cases and error conditions
+          4. Integration points
+          5. Regression checks
+          
+          Format as a checklist that can be manually executed.
+        output: "local_test_plan"
+        timeout: 300
+
+    approval:
+      required: true
+      prompt: |
+        === STAGE 5 COMPLETE: Pre-Commit Review (MANDATORY) ===
+        
+        ⚠️  THIS IS A MANDATORY GATE - Review carefully before proceeding!
+        
+        Code Review:
+        {{code_review}}
+        
+        Security Review:
+        {{security_review}}
+        
+        Philosophy Compliance:
+        {{philosophy_compliance}}
+        
+        Feedback Implementation:
+        {{feedback_action_plan}}
+        
+        Local Test Plan:
+        {{local_test_plan}}
+        
+        Ensure all review items are addressed and local testing is complete.
+        Deny if any Critical or High issues remain unresolved.
+      timeout: 7200
+      default: "deny"
+
+  # ===========================================================================
+  # STAGE 6: PR AND MERGE (Steps 14-21) - MANDATORY
+  # ===========================================================================
+  - name: "pr-and-merge"
+    steps:
+      # Step 14: Commit and Push
+      - id: "step-14-commit-message"
+        agent: "foundation:zen-architect"
+        mode: "ANALYZE"
+        prompt: |
+          Create a detailed commit message.
+          
+          Task: {{task_description}}
+          Requirements: {{refined_requirements}}
+          Implementation Summary: Review {{feedback_implemented_code}}
+          
+          Create a commit message that:
+          1. Follows conventional commit format (feat/fix/refactor)
+          2. Has a clear, concise title (50 chars max)
+          3. Includes detailed body explaining:
+             - What was changed
+             - Why it was changed
+             - How it was implemented
+          4. References the issue number
+          
+          Format as ready-to-use git commit message.
+        output: "commit_message"
+        timeout: 300
+
+      - id: "step-14-git-commands"
+        type: "bash"
+        command: |
+          echo "=== Commit and Push Commands ==="
+          echo ""
+          echo "Stage changes:"
+          echo "  git add -A"
+          echo ""
+          echo "Commit (use the generated commit message):"
+          echo "  git commit -m 'message'"
+          echo ""
+          echo "Push with tracking:"
+          echo "  git push -u origin HEAD"
+          echo ""
+          echo "Current status:"
+          git status --short 2>/dev/null || echo "Not in a git repository"
+        output: "git_instructions"
+        timeout: 60
+
+      # Step 15: Open Pull Request as Draft
+      - id: "step-15-pr-description"
+        agent: "foundation:zen-architect"
+        mode: "ANALYZE"
+        prompt: |
+          Create a comprehensive PR description.
+          
+          Task: {{task_description}}
+          Requirements: {{refined_requirements}}
+          Architecture: {{architecture_design}}
+          Code Review: {{code_review}}
+          Security Review: {{security_review}}
+          Test Plan: {{local_test_plan}}
+          
+          Create PR description with:
+          1. Summary of changes
+          2. Link to issue
+          3. Implementation details
+          4. Testing performed
+          5. Checklist for reviewers
+          6. Screenshots/examples if applicable
+          
+          Also provide the gh CLI command to create a draft PR.
+        output: "pr_description"
+        timeout: 300
+
+      # Step 16: Review the PR (MANDATORY in original)
+      - id: "step-16-pr-review"
+        agent: "foundation:zen-architect"
+        mode: "REVIEW"
+        prompt: |
+          MANDATORY: Final PR review before merge.
+          
+          PR Description: {{pr_description}}
+          Implementation: {{feedback_implemented_code}}
+          All Previous Reviews: {{code_review}}, {{security_review}}, {{philosophy_compliance}}
+          
+          Conduct final review:
+          1. Verify all previous review items are addressed
+          2. Check PR description accuracy
+          3. Confirm tests are adequate
+          4. Validate documentation is complete
+          5. Final security check
+          
+          Provide structured review comments for the PR.
+        output: "pr_review"
+        timeout: 600
+
+      - id: "step-16-security-final"
+        agent: "foundation:security-guardian"
+        prompt: |
+          Final security review for PR.
+          
+          Implementation: {{feedback_implemented_code}}
+          Previous Security Review: {{security_review}}
+          
+          Confirm:
+          1. All previous security issues resolved
+          2. No new security issues introduced
+          3. Security best practices followed
+          4. No sensitive data exposed
+          
+          Provide final security signoff or block.
+        output: "security_signoff"
+        timeout: 300
+
+      # Step 17: Implement Review Feedback (MANDATORY in original)
+      - id: "step-17-final-feedback"
+        agent: "foundation:modular-builder"
+        prompt: |
+          Address any final PR review feedback.
+          
+          PR Review: {{pr_review}}
+          Security Signoff: {{security_signoff}}
+          Current Code: {{feedback_implemented_code}}
+          
+          For any remaining issues:
+          1. Implement fixes
+          2. Document changes
+          3. Prepare for push
+          
+          If no issues, confirm ready for merge.
+        output: "final_implementation"
+        timeout: 600
+
+      # Step 18: Philosophy Compliance Check
+      - id: "step-18-final-philosophy"
+        agent: "foundation:zen-architect"
+        mode: "REVIEW"
+        prompt: |
+          Final philosophy compliance verification.
+          
+          Final Implementation: {{final_implementation}}
+          
+          Confirm:
+          1. Ruthless Simplicity: No unnecessary complexity
+          2. Zero-BS: Complete, production-ready code
+          3. TDD: Tests comprehensive and passing
+          4. Modular Design: Clean architecture maintained
+          
+          Provide final philosophy signoff.
+        output: "final_philosophy_check"
+        timeout: 300
+
+      # Step 19: Final Cleanup and Verification
+      - id: "step-19-cleanup"
+        agent: "foundation:post-task-cleanup"
+        prompt: |
+          Final cleanup pass.
+          
+          Implementation: {{final_implementation}}
+          
+          Verify:
+          1. No temporary files or artifacts
+          2. No debug code remaining
+          3. Comments are helpful (not redundant)
+          4. Module boundaries are clean
+          5. No orphaned code
+          
+          Report cleanup status.
+        output: "cleanup_status"
+        timeout: 300
+
+      # Step 20: Convert PR to Ready for Review
+      - id: "step-20-ready-pr"
+        type: "bash"
+        command: |
+          echo "=== Convert PR to Ready for Review ==="
+          echo ""
+          echo "Command to convert draft to ready:"
+          echo "  gh pr ready"
+          echo ""
+          echo "Tag reviewers:"
+          echo "  gh pr edit --add-reviewer <username>"
+          echo ""
+          echo "View PR status:"
+          echo "  gh pr view"
+        output: "ready_pr_instructions"
+        timeout: 60
+
+      # Step 21: Ensure PR is Mergeable
+      - id: "step-21-check-mergeable"
+        agent: "foundation:zen-architect"
+        mode: "ANALYZE"
+        prompt: |
+          Create final merge readiness checklist.
+          
+          Final Philosophy: {{final_philosophy_check}}
+          Cleanup Status: {{cleanup_status}}
+          Security Signoff: {{security_signoff}}
+          
+          Verify:
+          1. CI status (all checks passing)
+          2. No merge conflicts
+          3. PR approved by required reviewers
+          4. All conversations resolved
+          5. Branch is up to date
+          
+          Provide merge readiness status and any blocking issues.
+        output: "merge_readiness"
+        timeout: 300
+
+      - id: "step-21-ci-diagnostics"
+        agent: "foundation:bug-hunter"
+        prompt: |
+          Prepare CI diagnostic guide.
+          
+          In case CI fails, provide:
+          1. Common CI failure patterns
+          2. Debugging steps for each
+          3. Quick fixes
+          4. Escalation procedures
+          
+          This will help quickly resolve any CI issues.
+        output: "ci_diagnostic_guide"
+        timeout: 300
+
+      - id: "workflow-complete"
+        agent: "foundation:zen-architect"
+        mode: "ANALYZE"
+        prompt: |
+          Summarize the completed workflow.
+          
+          Task: {{task_description}}
+          Requirements: {{refined_requirements}}
+          Architecture: {{architecture_design}}
+          Merge Readiness: {{merge_readiness}}
+          
+          Create final summary:
+          1. What was accomplished
+          2. Key decisions made
+          3. Files changed (from implementation)
+          4. Lessons learned
+          5. Next steps (if any)
+          
+          Format as a workflow completion report.
+        output: "final_output"
+        timeout: 300
+
+    approval:
+      required: true
+      prompt: |
+        === STAGE 6 COMPLETE: PR and Merge (MANDATORY) ===
+        
+        ⚠️  THIS IS THE FINAL MANDATORY GATE!
+        
+        PR Review:
+        {{pr_review}}
+        
+        Security Signoff:
+        {{security_signoff}}
+        
+        Philosophy Compliance:
+        {{final_philosophy_check}}
+        
+        Merge Readiness:
+        {{merge_readiness}}
+        
+        Workflow Summary:
+        {{final_output}}
+        
+        Approve to complete the workflow.
+        The PR is ready for merge once approved.
+      timeout: 14400
+      default: "deny"

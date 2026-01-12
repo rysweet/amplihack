@@ -1,0 +1,228 @@
+# WORKFLOW SELECTOR - Meta-Recipe Entry Point
+#
+# Routes ALL requests through classification before action.
+# This is the MAIN entry point - all requests should flow through this selector.
+#
+# Philosophy:
+#   Every request MUST be classified into one of three workflows BEFORE action:
+#   - Q&A_WORKFLOW: Simple questions, single-turn answers, no code changes
+#   - INVESTIGATION_WORKFLOW: Understanding code, exploring systems, research
+#   - DEFAULT_WORKFLOW: Code changes, features, bugs, refactoring
+#
+# Classification Keywords:
+#   Q&A: "what is", "explain briefly", "quick question", "how do I run"
+#   Investigation: "investigate", "understand", "analyze", "research", "explore", "how does X work"
+#   Development: "implement", "add", "fix", "create", "refactor", "update", "build"
+#
+# Rules:
+#   1. If keywords match multiple workflows -> DEFAULT
+#   2. If uncertain -> DEFAULT (never skip workflow)
+#   3. Q&A only for simple questions -> If answer needs exploration, use INVESTIGATION
+#
+# Usage:
+#   amplifier recipes execute workflow-selector.yaml \
+#     --context '{"user_request": "Add user authentication to the API"}'
+#
+# Required Bundles:
+#   - foundation (for core agents)
+#   - recipes (for recipe execution)
+
+name: "workflow-selector"
+description: "Meta-recipe that classifies requests and routes to appropriate workflow (Q&A, Investigation, or Default)"
+version: "1.0.0"
+author: "Amplihack Team"
+tags: ["meta", "router", "workflow", "classifier", "entry-point"]
+
+context:
+  # Required inputs
+  user_request: ""          # The original user request to classify and route
+  
+  # Optional inputs
+  context: ""               # Additional context about the request
+  
+  # Internal state (populated during execution)
+  workflow_type: ""         # qa | investigation | default
+  classification_reason: "" # Why this workflow was chosen
+
+recursion:
+  max_depth: 5              # Allow sub-recipes to have their own sub-recipes
+  max_total_steps: 250      # Default workflow is ~22 steps, allow headroom
+
+steps:
+  # =============================================================================
+  # STEP 1: CLASSIFY THE REQUEST
+  # =============================================================================
+  # Determines which workflow is appropriate based on request analysis
+  
+  - id: "classify-request"
+    agent: "foundation:zen-architect"
+    mode: "ANALYZE"
+    prompt: |
+      You are a WORKFLOW CLASSIFIER. Your job is to route requests to the correct workflow.
+      
+      USER REQUEST:
+      {{user_request}}
+      
+      ADDITIONAL CONTEXT:
+      {{context}}
+      
+      AVAILABLE WORKFLOWS:
+      
+      1. **Q&A_WORKFLOW** (workflow_type: "qa")
+         - Simple questions with single-turn answers
+         - No code changes needed
+         - No exploration or investigation required
+         - Quick factual answers, explanations, or clarifications
+         - KEYWORDS: "what is", "explain briefly", "quick question", "how do I run", "where is"
+         - Examples:
+           - "What is the default timeout value?"
+           - "How do I run the tests?"
+           - "Explain briefly how the auth module works"
+      
+      2. **INVESTIGATION_WORKFLOW** (workflow_type: "investigation")
+         - Understanding code, exploring systems, research
+         - May require reading multiple files, tracing execution paths
+         - No code changes, but deep analysis needed
+         - KEYWORDS: "investigate", "understand", "analyze", "research", "explore", "how does X work", "trace", "find out why"
+         - Examples:
+           - "How does the authentication flow work end-to-end?"
+           - "Investigate why this function is slow"
+           - "Analyze the dependency chain for module X"
+           - "Research best practices for caching strategies"
+      
+      3. **DEFAULT_WORKFLOW** (workflow_type: "default")
+         - Code changes, feature development, bug fixes, refactoring
+         - Creates, modifies, or deletes files
+         - Full development workflow with TDD, reviews, and PR
+         - KEYWORDS: "implement", "add", "fix", "create", "refactor", "update", "build", "change", "modify", "delete", "remove"
+         - Examples:
+           - "Add user authentication feature"
+           - "Fix the bug in the login handler"
+           - "Refactor the database connection code"
+           - "Create a new API endpoint for users"
+      
+      CLASSIFICATION RULES (STRICT):
+      1. If keywords match MULTIPLE workflows -> DEFAULT (safety first)
+      2. If UNCERTAIN about classification -> DEFAULT (never skip workflow)
+      3. If Q&A but answer needs code exploration -> INVESTIGATION
+      4. If investigation reveals need for changes -> DEFAULT
+      5. NEVER skip classification - every request gets a workflow
+      
+      ANALYZE the request and respond with JSON ONLY:
+      {
+        "workflow_type": "qa" | "investigation" | "default",
+        "classification_reason": "Brief explanation of why this workflow was chosen",
+        "matched_keywords": ["list", "of", "matched", "keywords"],
+        "confidence": "high" | "medium" | "low",
+        "fallback_applied": true | false
+      }
+      
+      If confidence is "low" or "medium", set workflow_type to "default" (safety fallback).
+      If fallback_applied is true, explain why in classification_reason.
+    output: "classification"
+    parse_json: true
+    timeout: 120
+
+  # =============================================================================
+  # STEP 2: ROUTE TO Q&A WORKFLOW (Conditional)
+  # =============================================================================
+  
+  - id: "route-qa"
+    condition: "{{classification.workflow_type}} == 'qa'"
+    type: "recipe"
+    recipe: "qa-workflow.yaml"
+    context:
+      question: "{{user_request}}"
+      context: "{{context}}"
+    output: "qa_result"
+    timeout: 300
+    on_error: "continue"
+
+  # =============================================================================
+  # STEP 3: ROUTE TO INVESTIGATION WORKFLOW (Conditional)
+  # =============================================================================
+  
+  - id: "route-investigation"
+    condition: "{{classification.workflow_type}} == 'investigation'"
+    type: "recipe"
+    recipe: "investigation-workflow.yaml"
+    context:
+      investigation_request: "{{user_request}}"
+      context: "{{context}}"
+    output: "investigation_result"
+    timeout: 3600
+    on_error: "continue"
+
+  # =============================================================================
+  # STEP 4: ROUTE TO DEFAULT WORKFLOW (Conditional)
+  # =============================================================================
+  
+  - id: "route-default"
+    condition: "{{classification.workflow_type}} == 'default'"
+    type: "recipe"
+    recipe: "default-workflow-autonomous.yaml"
+    context:
+      task_description: "{{user_request}}"
+      context: "{{context}}"
+    output: "default_result"
+    timeout: 14400  # 4 hours for full dev workflow
+    on_error: "continue"
+
+  # =============================================================================
+  # STEP 5: SYNTHESIZE FINAL OUTPUT
+  # =============================================================================
+  # Combines results from whichever workflow ran
+  
+  - id: "synthesize-output"
+    agent: "foundation:zen-architect"
+    mode: "ANALYZE"
+    prompt: |
+      Synthesize the workflow results into a final output.
+      
+      CLASSIFICATION:
+      {{classification}}
+      
+      WORKFLOW RESULTS:
+      - Q&A Result: {{qa_result}}
+      - Investigation Result: {{investigation_result}}
+      - Default Result: {{default_result}}
+      
+      ORIGINAL REQUEST:
+      {{user_request}}
+      
+      Create a structured final output as JSON:
+      {
+        "workflow_used": "qa" | "investigation" | "default",
+        "classification_reason": "Why this workflow was selected",
+        "result_summary": "Brief summary of what was accomplished",
+        "result": "The actual result/output from the workflow",
+        "escalation_needed": true | false,
+        "escalation_reason": "If escalation needed, explain why"
+      }
+      
+      Notes:
+      - Only ONE of the results will be populated (the workflow that ran)
+      - Extract the meaningful result from whichever workflow executed
+      - If a workflow failed or returned empty, note that in result_summary
+      - Set escalation_needed if the workflow indicated further action needed
+    output: "final_output"
+    parse_json: true
+    timeout: 120
+
+# =============================================================================
+# OUTPUT STRUCTURE
+# =============================================================================
+#
+# final_output:
+#   workflow_used: Which workflow was selected and executed
+#   classification_reason: Why that workflow was chosen
+#   result_summary: Brief summary of accomplishments
+#   result: The actual output from the selected workflow
+#   escalation_needed: Whether further action is required
+#   escalation_reason: Explanation if escalation needed
+#
+# Available intermediate outputs:
+#   classification: The workflow classification analysis
+#   qa_result: Output from Q&A workflow (if selected)
+#   investigation_result: Output from Investigation workflow (if selected)
+#   default_result: Output from Default workflow (if selected)
