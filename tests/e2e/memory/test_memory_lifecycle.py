@@ -16,10 +16,12 @@ import pytest
 
 # These imports will fail until implementation exists (TDD)
 try:
-    from amplihack.memory.coordinator import MemoryCoordinator
+    from amplihack.memory.coordinator import (
+        MemoryCoordinator,
+        RetrievalQuery,
+        StorageRequest,
+    )
     from amplihack.memory.database import MemoryDatabase
-    from amplihack.memory.retrieval_pipeline import RetrievalQuery
-    from amplihack.memory.storage_pipeline import StorageRequest
     from amplihack.memory.types import MemoryType
 except ImportError:
     pytest.skip("Memory system not implemented yet", allow_module_level=True)
