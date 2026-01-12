@@ -1,0 +1,121 @@
+scenario:
+  name: "Memory System - Hook Integration"
+  description: "Verifies memory hooks are present and can be imported in installed package"
+  type: cli
+  tags: [integration, memory, hooks]
+
+  prerequisites:
+    - "Branch feat/issue-1902-5-type-memory-system exists"
+
+  environment:
+    variables:
+      AMPLIHACK_BRANCH: "feat/issue-1902-5-type-memory-system"
+      GITHUB_REPO: "https://github.com/rysweet/amplihack"
+
+  steps:
+    # Verify hooks are packaged
+    - action: launch
+      target: "uvx"
+      args:
+        - "--from"
+        - "git+${GITHUB_REPO}@${AMPLIHACK_BRANCH}"
+        - "python"
+        - "-c"
+        - |
+          import json
+          from pathlib import Path
+          import amplihack
+
+          install_path = Path(amplihack.__file__).parent
+
+          # Check .claude directory exists
+          claude_dir = install_path / ".claude"
+          if claude_dir.exists():
+              print("CLAUDE_DIR:exists")
+          else:
+              print("CLAUDE_DIR:missing")
+              exit(1)
+
+          # Check hooks directory exists
+          hooks_dir = claude_dir / "tools" / "amplihack" / "hooks"
+          if hooks_dir.exists():
+              print("HOOKS_DIR:exists")
+          else:
+              print("HOOKS_DIR:missing")
+              exit(1)
+
+          # Check agent_memory_hook.py exists
+          agent_hook = hooks_dir / "agent_memory_hook.py"
+          if agent_hook.exists():
+              print("AGENT_HOOK:exists")
+
+              # Check if it uses new MemoryCoordinator
+              content = agent_hook.read_text()
+              if "MemoryCoordinator" in content:
+                  print("AGENT_HOOK:uses_new_system")
+              else:
+                  print("AGENT_HOOK:uses_old_system")
+          else:
+              print("AGENT_HOOK:missing")
+
+          # Check session_stop.py exists
+          session_stop = hooks_dir / "session_stop.py"
+          if session_stop.exists():
+              print("SESSION_STOP:exists")
+
+              content = session_stop.read_text()
+              if "MemoryCoordinator" in content:
+                  print("SESSION_STOP:uses_new_system")
+              else:
+                  print("SESSION_STOP:uses_old_system")
+          else:
+              print("SESSION_STOP:missing")
+
+          # Test hook can import memory system
+          import sys
+          sys.path.insert(0, str(install_path / ".claude" / "tools"))
+
+          try:
+              from amplihack.memory.coordinator import MemoryCoordinator
+              print("HOOK_IMPORT:success")
+          except ImportError as e:
+              print(f"HOOK_IMPORT:failed:{e}")
+              exit(1)
+      description: "Verify hooks are packaged and can import memory system"
+      timeout: 120s
+
+    # Verify .claude directory packaged
+    - action: verify_output
+      contains: "CLAUDE_DIR:exists"
+      description: ".claude directory should be in package"
+
+    # Verify hooks directory packaged
+    - action: verify_output
+      contains: "HOOKS_DIR:exists"
+      description: "Hooks directory should exist"
+
+    # Verify agent_memory_hook.py uses new system
+    - action: verify_output
+      contains: "AGENT_HOOK:exists"
+      description: "agent_memory_hook.py should exist"
+
+    - action: verify_output
+      contains: "AGENT_HOOK:uses_new_system"
+      description: "agent_memory_hook.py should use MemoryCoordinator"
+
+    # Verify session_stop.py uses new system
+    - action: verify_output
+      contains: "SESSION_STOP:exists"
+      description: "session_stop.py should exist"
+
+    - action: verify_output
+      contains: "SESSION_STOP:uses_new_system"
+      description: "session_stop.py should use MemoryCoordinator"
+
+    # Verify hooks can import memory system
+    - action: verify_output
+      contains: "HOOK_IMPORT:success"
+      description: "Hooks should be able to import MemoryCoordinator"
+
+    - action: verify_exit_code
+      expected: 0

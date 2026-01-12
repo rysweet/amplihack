@@ -1,0 +1,96 @@
+scenario:
+  name: "Memory System - Cross-Session Recall"
+  description: "Verifies memories stored in one session can be recalled in another session"
+  type: cli
+  tags: [integration, memory, cross-session]
+
+  prerequisites:
+    - "Branch feat/issue-1902-5-type-memory-system exists"
+
+  environment:
+    variables:
+      AMPLIHACK_BRANCH: "feat/issue-1902-5-type-memory-system"
+      GITHUB_REPO: "https://github.com/rysweet/amplihack"
+      SESSION_1: "cross-test-session-1"
+      SESSION_2: "cross-test-session-2"
+
+  steps:
+    # Session 1: Store a semantic memory
+    - action: launch
+      target: "uvx"
+      args:
+        - "--from"
+        - "git+${GITHUB_REPO}@${AMPLIHACK_BRANCH}"
+        - "python"
+        - "-c"
+        - |
+          import asyncio
+          from amplihack.memory.coordinator import MemoryCoordinator, StorageRequest
+          from amplihack.memory.types import MemoryType
+
+          async def session1():
+              c = MemoryCoordinator(session_id='cross-test-session-1')
+              r = StorageRequest(
+                  content="IMPORTANT LEARNING: Always use parameterized SQL queries for security",
+                  memory_type=MemoryType.SEMANTIC,
+                  context={'agent_id': 'security', 'confidence': 0.95}
+              )
+              mem_id = await c.store(r)
+              print(f"SESSION_1_STORED:{mem_id}")
+
+          asyncio.run(session1())
+      description: "Session 1: Store semantic memory"
+      timeout: 120s
+
+    - action: verify_output
+      contains: "SESSION_1_STORED:"
+      description: "Session 1 should store memory successfully"
+
+    # Session 2: Retrieve the memory from different session
+    - action: launch
+      target: "uvx"
+      args:
+        - "--from"
+        - "git+${GITHUB_REPO}@${AMPLIHACK_BRANCH}"
+        - "python"
+        - "-c"
+        - |
+          import asyncio
+          from amplihack.memory.coordinator import MemoryCoordinator, RetrievalQuery
+          from amplihack.memory.types import MemoryType
+
+          async def session2():
+              # Different session ID but same database
+              c = MemoryCoordinator(session_id='cross-test-session-2')
+
+              # Try to retrieve semantic memory from session 1
+              q = RetrievalQuery(
+                  query_text="SQL security parameterized",
+                  memory_types=[MemoryType.SEMANTIC],
+                  token_budget=2000
+              )
+              memories = await c.retrieve(q)
+
+              if len(memories) > 0:
+                  for mem in memories:
+                      if "parameterized SQL" in mem.content:
+                          print(f"SESSION_2_RECALLED:{mem.memory_type.value}")
+                          print(f"CONTENT:{mem.content[:50]}")
+                          break
+              else:
+                  print("SESSION_2_NO_MEMORIES")
+
+          asyncio.run(session2())
+      description: "Session 2: Retrieve memory from session 1"
+      timeout: 120s
+
+    - action: verify_output
+      contains: "SESSION_2_RECALLED:semantic"
+      description: "Session 2 should recall semantic memory from session 1"
+
+    - action: verify_output
+      contains: "CONTENT:IMPORTANT LEARNING"
+      description: "Retrieved content should match what was stored"
+
+    - action: verify_exit_code
+      expected: 0
