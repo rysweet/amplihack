@@ -58,27 +58,29 @@ def _find_stop_hook() -> Path | None:
     """Find the stop.py hook file.
 
     Searches in multiple locations:
-    1. .claude/tools/amplihack/hooks/stop.py (relative to project root)
-    2. Standard amplihack installation locations
+    1. Bundled hooks in installed package (site-packages/amplihack/.claude/)
+    2. Local .claude directory (for development)
 
     Returns:
         Path to stop.py if found, None otherwise
     """
-    # Try to find project root by looking for .claude directory
+    # PRIORITY 1: Try bundled hooks in installed package FIRST
+    # This ensures installed versions use the hooks that were bundled with them
+    module_dir = Path(__file__).parent.parent.parent.parent
+    bundled_hook = module_dir / ".claude" / "tools" / "amplihack" / "hooks" / "stop.py"
+    if bundled_hook.exists():
+        logger.debug(f"Using bundled stop hook from package: {bundled_hook}")
+        return bundled_hook
+
+    # PRIORITY 2: Fall back to local .claude directory (for development)
     current = Path.cwd()
     for parent in [current] + list(current.parents):
         claude_dir = parent / ".claude"
         if claude_dir.exists() and claude_dir.is_dir():
             stop_hook = claude_dir / "tools" / "amplihack" / "hooks" / "stop.py"
             if stop_hook.exists():
+                logger.debug(f"Using local stop hook: {stop_hook}")
                 return stop_hook
-
-    # Fallback: Try relative to this module's location
-    # This handles development/testing scenarios
-    module_dir = Path(__file__).parent.parent.parent.parent
-    stop_hook = module_dir / ".claude" / "tools" / "amplihack" / "hooks" / "stop.py"
-    if stop_hook.exists():
-        return stop_hook
 
     logger.debug("Stop hook not found in standard locations")
     return None
