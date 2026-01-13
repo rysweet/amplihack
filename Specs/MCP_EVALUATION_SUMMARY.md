@@ -417,7 +417,7 @@ Adding new tools doesn't require framework changes. Adding new scenarios works w
 | `MCP_TOOL_CONFIGURATION_SCHEMA.md`      | How to describe any MCP tool      |
 | `SERENA_TOOL_CONFIGURATION.yaml`        | Serena-specific configuration     |
 | `MCP_EVALUATION_IMPLEMENTATION_PLAN.md` | Detailed implementation plan      |
-| `MCP_EVALUATION_SUMMARY.md`             | This document (executive summary) |
+| `docs/memory/evaluation-summary.md`     | This document (executive summary) |
 
 **Files Created**: 5 specifications
 **Total Lines**: ~1400 lines of detailed design documentation
