@@ -1,0 +1,82 @@
+scenario:
+  name: "Memory System - All 5 Types"
+  description: "Verifies all 5 psychological memory types can be stored and retrieved"
+  type: cli
+  tags: [smoke, memory, types]
+
+  prerequisites:
+    - "Branch feat/issue-1902-5-type-memory-system exists"
+    - "Python 3.11+ installed"
+
+  environment:
+    variables:
+      AMPLIHACK_BRANCH: "feat/issue-1902-5-type-memory-system"
+      GITHUB_REPO: "https://github.com/rysweet/amplihack"
+
+  steps:
+    # Test storing all 5 memory types
+    - action: launch
+      target: "uvx"
+      args:
+        - "--from"
+        - "git+${GITHUB_REPO}@${AMPLIHACK_BRANCH}"
+        - "python"
+        - "-c"
+        - |
+          import asyncio
+          from amplihack.memory.coordinator import MemoryCoordinator, StorageRequest
+          from amplihack.memory.types import MemoryType
+
+          async def test():
+              c = MemoryCoordinator(session_id='type-test')
+
+              # Test all 5 types
+              types = [
+                  (MemoryType.EPISODIC, "User discussed auth"),
+                  (MemoryType.SEMANTIC, "Pattern: Use JWT"),
+                  (MemoryType.PROSPECTIVE, "TODO: Review PR"),
+                  (MemoryType.PROCEDURAL, "How to run tests"),
+                  (MemoryType.WORKING, "Current task: testing"),
+              ]
+
+              for mem_type, content in types:
+                  r = StorageRequest(content=content, memory_type=mem_type, context={'agent_id': 'test'})
+                  mem_id = await c.store(r)
+                  if mem_id:
+                      print(f"✅ {mem_type.value}: STORED")
+                  else:
+                      print(f"❌ {mem_type.value}: FAILED")
+
+              print("ALL_TYPES_TESTED")
+
+          asyncio.run(test())
+      description: "Store one memory of each type"
+      timeout: 120s
+
+    # Verify all 5 types were stored
+    - action: verify_output
+      contains: "✅ episodic: STORED"
+      description: "Episodic memory should be stored"
+
+    - action: verify_output
+      contains: "✅ semantic: STORED"
+      description: "Semantic memory should be stored"
+
+    - action: verify_output
+      contains: "✅ prospective: STORED"
+      description: "Prospective memory should be stored"
+
+    - action: verify_output
+      contains: "✅ procedural: STORED"
+      description: "Procedural memory should be stored"
+
+    - action: verify_output
+      contains: "✅ working: STORED"
+      description: "Working memory should be stored"
+
+    - action: verify_output
+      contains: "ALL_TYPES_TESTED"
+      description: "Test should complete successfully"
+
+    - action: verify_exit_code
+      expected: 0

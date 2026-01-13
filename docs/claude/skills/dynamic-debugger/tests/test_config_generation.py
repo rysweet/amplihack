@@ -271,8 +271,6 @@ class TestRealConfigFiles:
 
     def test_all_configs_have_required_fields(self, configs_dir):
         """Test that all config templates have required structure."""
-        required_template_keys = ["config"]
-
         for config_file in configs_dir.glob("*.json"):
             with open(config_file) as f:
                 template = json.load(f)

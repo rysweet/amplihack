@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Shared logic for integrating Neo4j memory with agent execution.
+"""Shared logic for integrating memory system with agent execution.
 
 This module provides utilities for:
 1. Detecting agent references in prompts (@.claude/agents/*.md)
@@ -9,6 +9,8 @@ This module provides utilities for:
 Integration Points:
 - user_prompt_submit: Inject memory context when agent detected
 - stop: Extract learnings from conversation after agent execution
+
+Uses MemoryCoordinator for storage (SQLite or Neo4j backend).
 """
 
 import logging
@@ -91,7 +93,7 @@ def detect_slash_command_agent(prompt: str) -> str | None:
     return SLASH_COMMAND_AGENTS.get(command)
 
 
-def inject_memory_for_agents(
+async def inject_memory_for_agents(
     prompt: str, agent_types: list[str], session_id: str | None = None
 ) -> tuple[str, dict[str, Any]]:
     """Inject memory context for detected agents into prompt.
@@ -108,42 +110,43 @@ def inject_memory_for_agents(
         return prompt, {}
 
     try:
-        # Import memory integration (lazy import to avoid startup overhead)
-        from amplihack.memory.neo4j.agent_integration import (
-            detect_agent_type,
-            inject_memory_context,
-        )
-        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
+        # Import memory coordinator (lazy import to avoid startup overhead)
+        from amplihack.memory.coordinator import MemoryCoordinator, RetrievalQuery
+        from amplihack.memory.types import MemoryType
 
-        # Check if Neo4j is available
-        if not ensure_neo4j_running(blocking=False):
-            logger.warning("Neo4j not available for memory injection")
-            return prompt, {"neo4j_available": False}
+        # Initialize coordinator with session_id
+        coordinator = MemoryCoordinator(session_id=session_id or "hook_session")
 
         # Inject memory for each agent type
         memory_sections = []
-        metadata = {"agents": agent_types, "memories_injected": 0, "neo4j_available": True}
+        metadata = {"agents": agent_types, "memories_injected": 0, "memory_available": True}
 
         for agent_type in agent_types:
-            # Normalize agent type
-            normalized_type = detect_agent_type(agent_type)
-            if not normalized_type:
-                logger.debug(f"Unknown agent type: {agent_type}")
-                continue
+            # Normalize agent type (lowercase, replace spaces with hyphens)
+            normalized_type = agent_type.lower().replace(" ", "-")
 
             # Get memory context for this agent
             try:
-                memory_context = inject_memory_context(
-                    agent_type=normalized_type,
-                    task=prompt[:500],  # Use first 500 chars as task description
-                    max_memories=5,
+                # Retrieve relevant memories using query
+                query_text = prompt[:500]  # Use first 500 chars as query
+
+                # Build retrieval query with comprehensive context
+                query = RetrievalQuery(
+                    query_text=query_text,
+                    token_budget=2000,
+                    memory_types=[MemoryType.EPISODIC, MemoryType.SEMANTIC, MemoryType.PROCEDURAL],
                 )
 
-                if memory_context:
-                    memory_sections.append(
-                        f"\n## Memory for {normalized_type} Agent\n{memory_context}"
-                    )
-                    metadata["memories_injected"] += 1
+                memories = await coordinator.retrieve(query)
+
+                if memories:
+                    # Format memories for injection
+                    memory_lines = [f"\n## Memory for {normalized_type} Agent\n"]
+                    for mem in memories:
+                        memory_lines.append(f"- {mem.content} (relevance: {mem.score:.2f})")
+
+                    memory_sections.append("\n".join(memory_lines))
+                    metadata["memories_injected"] += len(memories)
 
             except Exception as e:
                 logger.warning(f"Failed to inject memory for {normalized_type}: {e}")
@@ -157,15 +160,15 @@ def inject_memory_for_agents(
         return prompt, metadata
 
     except ImportError as e:
-        logger.warning(f"Memory integration not available: {e}")
-        return prompt, {"neo4j_available": False, "error": "import_failed"}
+        logger.warning(f"Memory system not available: {e}")
+        return prompt, {"memory_available": False, "error": "import_failed"}
 
     except Exception as e:
         logger.error(f"Failed to inject memory: {e}")
-        return prompt, {"neo4j_available": False, "error": str(e)}
+        return prompt, {"memory_available": False, "error": str(e)}
 
 
-def extract_learnings_from_conversation(
+async def extract_learnings_from_conversation(
     conversation_text: str, agent_types: list[str], session_id: str | None = None
 ) -> dict[str, Any]:
     """Extract and store learnings from conversation after agent execution.
@@ -182,47 +185,49 @@ def extract_learnings_from_conversation(
         return {"learnings_stored": 0, "agents": []}
 
     try:
-        # Import memory integration (lazy import)
-        from amplihack.memory.neo4j.agent_integration import (
-            detect_agent_type,
-            extract_and_store_learnings,
-        )
-        from amplihack.memory.neo4j.lifecycle import ensure_neo4j_running
+        # Import memory coordinator (lazy import)
+        from amplihack.memory.coordinator import MemoryCoordinator, StorageRequest
+        from amplihack.memory.types import MemoryType
 
-        # Check if Neo4j is available
-        if not ensure_neo4j_running(blocking=False):
-            logger.warning("Neo4j not available for learning extraction")
-            return {"neo4j_available": False, "learnings_stored": 0}
+        # Initialize coordinator with session_id
+        coordinator = MemoryCoordinator(session_id=session_id or "hook_session")
 
         # Extract and store learnings for each agent
         metadata = {
             "agents": agent_types,
             "learnings_stored": 0,
-            "neo4j_available": True,
+            "memory_available": True,
             "memory_ids": [],
         }
 
         for agent_type in agent_types:
-            # Normalize agent type
-            normalized_type = detect_agent_type(agent_type)
-            if not normalized_type:
-                continue
+            # Normalize agent type (lowercase, replace spaces with hyphens)
+            normalized_type = agent_type.lower().replace(" ", "-")
 
             try:
-                # Extract and store learnings
-                memory_ids = extract_and_store_learnings(
-                    agent_type=normalized_type,
-                    output=conversation_text,
-                    task="Conversation with user",  # Generic task description
-                    success=True,
+                # Store learning as SEMANTIC memory (reusable knowledge)
+                # Extract key learnings from conversation text (simplified extraction)
+                # In production, you might want more sophisticated extraction
+                learning_content = f"Agent {normalized_type}: {conversation_text[:500]}"
+
+                # Build storage request with context and metadata
+                request = StorageRequest(
+                    content=learning_content,
+                    memory_type=MemoryType.SEMANTIC,
+                    context={"agent_type": normalized_type},
+                    metadata={
+                        "tags": ["learning", "conversation"],
+                        "task": "Conversation with user",
+                        "success": True,
+                    },
                 )
 
-                if memory_ids:
-                    metadata["learnings_stored"] += len(memory_ids)
-                    metadata["memory_ids"].extend(memory_ids)
-                    logger.info(
-                        f"Stored {len(memory_ids)} learnings from {normalized_type} conversation"
-                    )
+                memory_id = await coordinator.store(request)
+
+                if memory_id:
+                    metadata["learnings_stored"] += 1
+                    metadata["memory_ids"].append(memory_id)
+                    logger.info(f"Stored 1 learning from {normalized_type} conversation")
 
             except Exception as e:
                 logger.warning(f"Failed to extract learnings for {normalized_type}: {e}")
@@ -231,12 +236,12 @@ def extract_learnings_from_conversation(
         return metadata
 
     except ImportError as e:
-        logger.warning(f"Memory integration not available: {e}")
-        return {"neo4j_available": False, "error": "import_failed"}
+        logger.warning(f"Memory system not available: {e}")
+        return {"memory_available": False, "error": "import_failed"}
 
     except Exception as e:
         logger.error(f"Failed to extract learnings: {e}")
-        return {"neo4j_available": False, "error": str(e)}
+        return {"memory_available": False, "error": str(e)}
 
 
 def format_memory_injection_notice(metadata: dict[str, Any]) -> str:
@@ -248,7 +253,7 @@ def format_memory_injection_notice(metadata: dict[str, Any]) -> str:
     Returns:
         Formatted notice string
     """
-    if not metadata.get("neo4j_available"):
+    if not metadata.get("memory_available"):
         return ""
 
     agents = metadata.get("agents", [])
@@ -270,7 +275,7 @@ def format_learning_extraction_notice(metadata: dict[str, Any]) -> str:
     Returns:
         Formatted notice string
     """
-    if not metadata.get("neo4j_available"):
+    if not metadata.get("memory_available"):
         return ""
 
     count = metadata.get("learnings_stored", 0)
