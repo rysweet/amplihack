@@ -8,8 +8,32 @@ from typing import Any
 
 
 class MemoryType(Enum):
-    """Types of memory entries."""
+    """Types of memory entries.
 
+    Psychological memory types (primary):
+    - EPISODIC: Session-specific events and experiences
+    - SEMANTIC: Cross-session knowledge and facts
+    - PROCEDURAL: How-to knowledge and workflows
+    - PROSPECTIVE: Future intentions and reminders
+    - WORKING: Active task state and temporary context
+
+    Legacy types (for backward compatibility):
+    - CONVERSATION: General conversation memories
+    - DECISION: Decision-making records
+    - PATTERN: Identified patterns
+    - CONTEXT: Contextual information
+    - LEARNING: Learning outcomes
+    - ARTIFACT: Generated artifacts
+    """
+
+    # Psychological memory types (preferred)
+    EPISODIC = "episodic"
+    SEMANTIC = "semantic"
+    PROCEDURAL = "procedural"
+    PROSPECTIVE = "prospective"
+    WORKING = "working"
+
+    # Legacy types (backward compatibility)
     CONVERSATION = "conversation"
     DECISION = "decision"
     PATTERN = "pattern"
