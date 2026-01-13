@@ -1,0 +1,474 @@
+# Cascade Workflow - 7-Step Fallback Cascade
+#
+# A workflow that tries progressively simpler/different approaches,
+# falling back to alternatives when primary methods fail or are insufficient.
+#
+# Philosophy Alignment:
+#   - Primary approach gets full attempt
+#   - Graceful degradation to alternatives
+#   - Guaranteed output via final fallback
+#   - Clear escalation path
+#
+# Usage:
+#   amplifier recipes execute cascade-workflow.yaml \
+#     --context '{"task": "Generate API documentation", "source": "src/api/", "quality_threshold": "high"}'
+#
+# Required Context:
+#   - task: The task to accomplish
+#
+# Optional Context:
+#   - source: Source material/location
+#   - quality_threshold: Required quality level (high, medium, low)
+#   - max_retries: Retries per tier (default: 1)
+
+name: "cascade-workflow"
+description: "7-step fallback cascade with primary, secondary, and tertiary approaches ensuring guaranteed output"
+version: "1.0.0"
+author: "Amplifier Amplihack Bundle"
+tags: ["cascade", "fallback", "resilience", "graceful-degradation"]
+
+context:
+  task: ""
+  source: ""
+  quality_threshold: "high"
+  max_retries: "1"
+
+recursion:
+  max_depth: 2
+  max_total_steps: 40
+
+steps:
+  # ===========================================================================
+  # STEP 1: TASK ANALYSIS & STRATEGY PLANNING
+  # Understand the task and plan the cascade
+  # ===========================================================================
+  - id: "step-1-analysis"
+    agent: "foundation:zen-architect"
+    mode: "ANALYZE"
+    prompt: |
+      # Step 1: Task Analysis & Cascade Planning
+      
+      Analyze the task and plan a multi-tier approach strategy.
+      
+      **Task:** {{task}}
+      **Source:** {{source}}
+      **Quality Threshold:** {{quality_threshold}}
+      
+      ## Analysis Required:
+      
+      ### 1. Task Understanding
+      - What exactly needs to be accomplished?
+      - What does success look like?
+      - What are the quality requirements?
+      
+      ### 2. Complexity Assessment
+      - Is this straightforward or complex?
+      - What are potential failure points?
+      - What resources are needed?
+      
+      ### 3. Cascade Strategy
+      Design three tiers of approaches:
+      
+      **Primary (Tier 1)**: Best approach if conditions are ideal
+      - Most sophisticated method
+      - Highest quality output
+      - May have more dependencies/requirements
+      
+      **Secondary (Tier 2)**: Reliable fallback
+      - Simpler but solid approach
+      - Fewer dependencies
+      - Good quality, maybe not optimal
+      
+      **Tertiary (Tier 3)**: Guaranteed baseline
+      - Simplest possible approach
+      - Always works
+      - Minimum viable output
+      
+      ### 4. Success Criteria
+      For each tier, what determines success or failure?
+      
+      ### 5. Quality Mapping
+      For quality_threshold="{{quality_threshold}}":
+      - Which tier is required minimum?
+      - When should we accept lower tier output?
+      
+      Output a clear cascade strategy with three defined tiers.
+    output: "cascade_strategy"
+    timeout: 450
+
+  # ===========================================================================
+  # STEP 2: PRIMARY ATTEMPT (TIER 1)
+  # Try the best/most sophisticated approach
+  # ===========================================================================
+  - id: "step-2-primary-attempt"
+    agent: "foundation:modular-builder"
+    prompt: |
+      # Step 2: Primary Attempt (Tier 1)
+      
+      Execute the primary (most sophisticated) approach.
+      
+      **Task:** {{task}}
+      **Source:** {{source}}
+      
+      **Cascade Strategy:**
+      {{cascade_strategy}}
+      
+      ## Execute Primary Approach:
+      
+      Follow the Tier 1 strategy defined in the cascade plan.
+      
+      ### Requirements:
+      1. Attempt the full sophisticated approach
+      2. Use all available resources and methods
+      3. Aim for highest quality output
+      4. Document any issues encountered
+      
+      ### Output Format:
+      
+      ```
+      Tier: 1 (Primary)
+      Status: SUCCESS | PARTIAL | FAILURE
+      
+      Result:
+      [Your output here]
+      
+      Quality Assessment:
+      - Completeness: X/10
+      - Accuracy: X/10
+      - Quality: X/10
+      
+      Issues Encountered:
+      [List any problems]
+      
+      Recommendation:
+      ACCEPT | FALLBACK_TO_TIER_2
+      ```
+      
+      Be honest about the quality achieved.
+    output: "primary_result"
+    timeout: 900
+
+  # ===========================================================================
+  # STEP 3: PRIMARY EVALUATION
+  # Evaluate if primary attempt succeeded
+  # ===========================================================================
+  - id: "step-3-primary-evaluation"
+    agent: "foundation:zen-architect"
+    mode: "REVIEW"
+    prompt: |
+      # Step 3: Primary Attempt Evaluation
+      
+      Evaluate the primary attempt against quality requirements.
+      
+      **Task:** {{task}}
+      **Quality Threshold:** {{quality_threshold}}
+      
+      **Primary Result:**
+      {{primary_result}}
+      
+      **Cascade Strategy:**
+      {{cascade_strategy}}
+      
+      ## Evaluation:
+      
+      ### 1. Success Assessment
+      Did the primary attempt fully succeed?
+      - All requirements met?
+      - Quality threshold achieved?
+      - No critical issues?
+      
+      ### 2. Quality Gap Analysis
+      If not fully successful:
+      - What's missing?
+      - How far from threshold?
+      - Is partial result usable?
+      
+      ### 3. Decision
+      Based on quality_threshold="{{quality_threshold}}":
+      
+      ```json
+      {
+        "decision": "ACCEPT | FALLBACK",
+        "tier_achieved": 1,
+        "quality_score": 0-10,
+        "meets_threshold": true/false,
+        "reason": "explanation",
+        "fallback_guidance": "what secondary should focus on (if FALLBACK)"
+      }
+      ```
+      
+      Be strict about quality requirements. Don't accept subpar output
+      just to avoid fallback.
+    output: "primary_evaluation"
+    parse_json: true
+    timeout: 300
+
+  # ===========================================================================
+  # STEP 4: SECONDARY ATTEMPT (TIER 2)
+  # Fallback to simpler but reliable approach
+  # ===========================================================================
+  - id: "step-4-secondary-attempt"
+    condition: "{{primary_evaluation.decision}} == 'FALLBACK'"
+    agent: "foundation:modular-builder"
+    prompt: |
+      # Step 4: Secondary Attempt (Tier 2)
+      
+      Execute the secondary (simpler but reliable) approach.
+      
+      **Task:** {{task}}
+      **Source:** {{source}}
+      
+      **Why Primary Failed:**
+      {{primary_evaluation.reason}}
+      
+      **Fallback Guidance:**
+      {{primary_evaluation.fallback_guidance}}
+      
+      **Cascade Strategy:**
+      {{cascade_strategy}}
+      
+      ## Execute Secondary Approach:
+      
+      Follow the Tier 2 strategy. Learn from primary's issues.
+      
+      ### Requirements:
+      1. Use the simpler, more reliable approach
+      2. Avoid whatever caused primary to fail
+      3. Focus on completeness over perfection
+      4. Incorporate any usable parts from primary
+      
+      ### What You Can Use From Primary:
+      {{primary_result}}
+      
+      ### Output Format:
+      
+      ```
+      Tier: 2 (Secondary)
+      Status: SUCCESS | PARTIAL | FAILURE
+      
+      Result:
+      [Your output here]
+      
+      Quality Assessment:
+      - Completeness: X/10
+      - Accuracy: X/10
+      - Quality: X/10
+      
+      Issues Encountered:
+      [List any problems]
+      
+      Recommendation:
+      ACCEPT | FALLBACK_TO_TIER_3
+      ```
+    output: "secondary_result"
+    timeout: 900
+
+  # ===========================================================================
+  # STEP 5: SECONDARY EVALUATION
+  # Evaluate if secondary attempt succeeded
+  # ===========================================================================
+  - id: "step-5-secondary-evaluation"
+    condition: "{{primary_evaluation.decision}} == 'FALLBACK'"
+    agent: "foundation:zen-architect"
+    mode: "REVIEW"
+    prompt: |
+      # Step 5: Secondary Attempt Evaluation
+      
+      Evaluate the secondary attempt.
+      
+      **Task:** {{task}}
+      **Quality Threshold:** {{quality_threshold}}
+      
+      **Secondary Result:**
+      {{secondary_result}}
+      
+      **Cascade Strategy:**
+      {{cascade_strategy}}
+      
+      ## Evaluation:
+      
+      ### 1. Improvement Over Primary
+      Did secondary improve on primary's issues?
+      
+      ### 2. Quality Assessment
+      Does it meet the (possibly adjusted) quality bar?
+      
+      ### 3. Decision
+      
+      ```json
+      {
+        "decision": "ACCEPT | FALLBACK",
+        "tier_achieved": 2,
+        "quality_score": 0-10,
+        "meets_threshold": true/false,
+        "reason": "explanation",
+        "fallback_guidance": "what tertiary should focus on (if FALLBACK)"
+      }
+      ```
+      
+      Note: For quality_threshold="low", Tier 2 should almost always be accepted.
+    output: "secondary_evaluation"
+    parse_json: true
+    timeout: 300
+
+  # ===========================================================================
+  # STEP 6: TERTIARY ATTEMPT (TIER 3)
+  # Guaranteed baseline - always produces something
+  # ===========================================================================
+  - id: "step-6-tertiary-attempt"
+    condition: "{{secondary_evaluation.decision}} == 'FALLBACK'"
+    agent: "foundation:modular-builder"
+    prompt: |
+      # Step 6: Tertiary Attempt (Tier 3) - GUARANTEED BASELINE
+      
+      Execute the simplest possible approach that MUST succeed.
+      
+      **Task:** {{task}}
+      **Source:** {{source}}
+      
+      **Why Previous Tiers Failed:**
+      Primary: {{primary_evaluation.reason}}
+      Secondary: {{secondary_evaluation.reason}}
+      
+      **Fallback Guidance:**
+      {{secondary_evaluation.fallback_guidance}}
+      
+      **Cascade Strategy:**
+      {{cascade_strategy}}
+      
+      ## Execute Guaranteed Baseline:
+      
+      This tier MUST produce usable output. Use the simplest possible approach.
+      
+      ### Requirements:
+      1. Absolute simplest approach that works
+      2. Prioritize "something" over "perfect"
+      3. Minimum viable output
+      4. This CANNOT fail - find a way
+      
+      ### Fallback Strategies:
+      - Use templates if generation fails
+      - Use approximations if precision fails
+      - Use manual steps if automation fails
+      - Describe what would be done if you can't do it
+      
+      ### Output Format:
+      
+      ```
+      Tier: 3 (Tertiary/Baseline)
+      Status: SUCCESS (required)
+      
+      Result:
+      [Your minimum viable output]
+      
+      Quality Assessment:
+      - Completeness: X/10
+      - Accuracy: X/10
+      - Quality: X/10
+      
+      Limitations:
+      [What this baseline output lacks]
+      
+      Upgrade Path:
+      [How to improve this output manually]
+      ```
+      
+      Do not report failure. Find SOME way to provide value.
+    output: "tertiary_result"
+    timeout: 600
+
+  # ===========================================================================
+  # STEP 7: FINAL RESULT COMPILATION
+  # Compile the best result achieved
+  # ===========================================================================
+  - id: "step-7-final-compilation"
+    agent: "foundation:zen-architect"
+    mode: "ANALYZE"
+    prompt: |
+      # Step 7: Final Result Compilation
+      
+      Compile the final result from the cascade.
+      
+      **Original Task:** {{task}}
+      **Quality Threshold:** {{quality_threshold}}
+      
+      **Cascade Results:**
+      
+      Primary (Tier 1):
+      {{primary_result}}
+      Evaluation: {{primary_evaluation}}
+      
+      Secondary (Tier 2):
+      {{secondary_result}}
+      Evaluation: {{secondary_evaluation}}
+      
+      Tertiary (Tier 3):
+      {{tertiary_result}}
+      
+      ## Final Compilation:
+      
+      ### 1. Tier Achieved
+      Which tier provided the final output?
+      
+      ### 2. Final Output
+      Present the best result achieved.
+      
+      ### 3. Quality Summary
+      - Requested threshold: {{quality_threshold}}
+      - Achieved quality: [assessment]
+      - Gap (if any): [what's missing]
+      
+      ### 4. Cascade Journey
+      Brief summary of what was tried and why fallbacks occurred.
+      
+      ### 5. Recommendations
+      If output is below threshold:
+      - What would be needed to achieve higher quality?
+      - Manual steps that could improve the result?
+      - Different approaches for next time?
+      
+      ### 6. Artifacts
+      List all usable outputs from the cascade (even from failed tiers).
+      
+      ## Output:
+      
+      ```
+      FINAL RESULT
+      ============
+      Tier: [1/2/3]
+      Quality: [achieved level]
+      Threshold Met: [yes/no]
+      
+      [Final output content]
+      
+      Notes:
+      [Any important caveats or recommendations]
+      ```
+    output: "final_result"
+    timeout: 450
+
+# =============================================================================
+# Recipe Outputs Summary
+# =============================================================================
+#
+# Outputs:
+#   - cascade_strategy: Three-tier approach plan
+#   - primary_result: Tier 1 attempt output
+#   - primary_evaluation: Tier 1 success/failure decision
+#   - secondary_result: Tier 2 attempt output (if needed)
+#   - secondary_evaluation: Tier 2 success/failure decision (if needed)
+#   - tertiary_result: Tier 3 guaranteed output (if needed)
+#   - final_result: Best achieved result with quality assessment
+#
+# Features:
+#   - 7 steps with conditional execution
+#   - Three-tier fallback (Primary → Secondary → Tertiary)
+#   - Guaranteed output via Tier 3 baseline
+#   - Quality-aware decision making
+#   - Clear escalation criteria
+#   - No approval gates (autonomous execution)
+#
+# Quality Threshold Behavior:
+#   - "high": Strict acceptance, may use all three tiers
+#   - "medium": Moderate acceptance, usually stops at Tier 2
+#   - "low": Lenient acceptance, often accepts Tier 1

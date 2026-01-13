@@ -1,0 +1,393 @@
+# Debate Workflow - 8-Step Structured Debate
+#
+# A workflow for exploring ideas through structured adversarial debate.
+# Two positions engage in formal debate with challenges, responses, and synthesis.
+#
+# Philosophy Alignment:
+#   - Adversarial testing strengthens ideas
+#   - Structured format ensures fair engagement
+#   - Synthesis captures value from both sides
+#
+# Usage:
+#   amplifier recipes execute debate-workflow.yaml \
+#     --context '{"proposition": "We should rewrite the system in Rust", "context": "Current Python codebase has performance issues"}'
+#
+# Required Context:
+#   - proposition: The statement to debate
+#
+# Optional Context:
+#   - context: Background information
+#   - rounds: Number of challenge/response rounds (default: 2)
+
+name: "debate-workflow"
+description: "8-step structured debate workflow with position formation, challenges, responses, and synthesis"
+version: "1.0.0"
+author: "Amplifier Amplihack Bundle"
+tags: ["debate", "adversarial", "reasoning", "synthesis"]
+
+context:
+  proposition: ""
+  context: ""
+  rounds: "2"
+
+recursion:
+  max_depth: 2
+  max_total_steps: 50
+
+steps:
+  # ===========================================================================
+  # STEP 1: PROPOSITION FORMATION
+  # The "For" side develops their position
+  # ===========================================================================
+  - id: "step-1-proposition"
+    agent: "foundation:zen-architect"
+    mode: "ARCHITECT"
+    prompt: |
+      # Step 1: Proposition Formation
+      
+      You are arguing FOR the following proposition.
+      
+      **Proposition:** {{proposition}}
+      **Context:** {{context}}
+      
+      Develop a strong, well-reasoned argument FOR this position.
+      
+      ## Your Argument Must Include:
+      
+      ### 1. Core Thesis
+      State your position clearly and precisely.
+      
+      ### 2. Primary Arguments (3-5)
+      Each argument should:
+      - Make a specific claim
+      - Provide supporting evidence or reasoning
+      - Connect logically to the thesis
+      
+      ### 3. Anticipated Objections
+      What will the opposition likely say? Pre-emptively address 2-3 concerns.
+      
+      ### 4. Key Evidence
+      What facts, data, or precedents support your position?
+      
+      ### 5. Conclusion
+      Why should rational observers accept this position?
+      
+      Argue as if you genuinely believe this position is correct.
+    output: "proposition_argument"
+    timeout: 600
+
+  # ===========================================================================
+  # STEP 2: OPPOSITION FORMATION
+  # The "Against" side develops their position
+  # ===========================================================================
+  - id: "step-2-opposition"
+    agent: "foundation:zen-architect"
+    mode: "ARCHITECT"
+    prompt: |
+      # Step 2: Opposition Formation
+      
+      You are arguing AGAINST the following proposition.
+      
+      **Proposition:** {{proposition}}
+      **Context:** {{context}}
+      
+      Develop a strong, well-reasoned argument AGAINST this position.
+      
+      ## Your Argument Must Include:
+      
+      ### 1. Core Counter-Thesis
+      State why the proposition is wrong or problematic.
+      
+      ### 2. Primary Counter-Arguments (3-5)
+      Each argument should:
+      - Challenge a specific aspect of the proposition
+      - Provide supporting evidence or reasoning
+      - Demonstrate why the alternative is better
+      
+      ### 3. Alternative Proposal
+      If not this, then what? Provide a constructive alternative.
+      
+      ### 4. Key Evidence
+      What facts, data, or precedents undermine the proposition?
+      
+      ### 5. Conclusion
+      Why should rational observers reject this position?
+      
+      Argue as if you genuinely believe this position is wrong.
+    output: "opposition_argument"
+    timeout: 600
+
+  # ===========================================================================
+  # STEP 3: CHALLENGE ROUND 1 - Opposition Challenges Proposition
+  # ===========================================================================
+  - id: "step-3-challenge-1"
+    agent: "foundation:bug-hunter"
+    prompt: |
+      # Step 3: Challenge Round 1
+      
+      You represent the OPPOSITION. Challenge the Proposition's argument.
+      
+      **Proposition Argument:**
+      {{proposition_argument}}
+      
+      **Your Opposition Position:**
+      {{opposition_argument}}
+      
+      ## Issue Specific Challenges:
+      
+      For each of the Proposition's main arguments:
+      1. Identify the weakest points
+      2. Challenge the evidence or logic
+      3. Present counter-examples
+      4. Expose hidden assumptions
+      
+      ## Challenge Format:
+      
+      For each challenge:
+      - **Target**: Which argument you're challenging
+      - **Challenge**: Your specific critique
+      - **Evidence**: Why your challenge is valid
+      - **Question**: A pointed question for the Proposition to answer
+      
+      Be rigorous but fair. Attack arguments, not strawmen.
+    output: "challenge_round_1"
+    timeout: 450
+
+  # ===========================================================================
+  # STEP 4: RESPONSE ROUND 1 - Proposition Responds to Challenges
+  # ===========================================================================
+  - id: "step-4-response-1"
+    agent: "foundation:zen-architect"
+    mode: "REVIEW"
+    prompt: |
+      # Step 4: Response Round 1
+      
+      You represent the PROPOSITION. Respond to the Opposition's challenges.
+      
+      **Your Original Argument:**
+      {{proposition_argument}}
+      
+      **Challenges to Address:**
+      {{challenge_round_1}}
+      
+      ## Response Requirements:
+      
+      For each challenge:
+      1. Acknowledge what is valid in the critique (if anything)
+      2. Defend your position where the challenge is flawed
+      3. Provide additional evidence if needed
+      4. Answer any direct questions posed
+      5. Strengthen your argument based on the challenge
+      
+      ## Response Format:
+      
+      For each response:
+      - **Challenge Addressed**: Which challenge
+      - **Acknowledgment**: Valid points (if any)
+      - **Defense**: Why your position still holds
+      - **Strengthened Argument**: How this improves your case
+      
+      Be intellectually honest. Concede weak points, strengthen valid ones.
+    output: "response_round_1"
+    timeout: 450
+
+  # ===========================================================================
+  # STEP 5: CHALLENGE ROUND 2 - Proposition Challenges Opposition
+  # ===========================================================================
+  - id: "step-5-challenge-2"
+    agent: "foundation:bug-hunter"
+    prompt: |
+      # Step 5: Challenge Round 2
+      
+      You represent the PROPOSITION. Challenge the Opposition's argument.
+      
+      **Opposition Argument:**
+      {{opposition_argument}}
+      
+      **Your Proposition Position (strengthened):**
+      {{proposition_argument}}
+      Updated by: {{response_round_1}}
+      
+      ## Issue Specific Challenges:
+      
+      For each of the Opposition's main arguments:
+      1. Identify the weakest points
+      2. Challenge the evidence or logic
+      3. Present counter-examples
+      4. Expose hidden assumptions
+      5. Challenge their alternative proposal's feasibility
+      
+      ## Challenge Format:
+      
+      For each challenge:
+      - **Target**: Which argument you're challenging
+      - **Challenge**: Your specific critique
+      - **Evidence**: Why your challenge is valid
+      - **Question**: A pointed question for the Opposition to answer
+      
+      Be rigorous but fair. Attack arguments, not strawmen.
+    output: "challenge_round_2"
+    timeout: 450
+
+  # ===========================================================================
+  # STEP 6: RESPONSE ROUND 2 - Opposition Responds to Challenges
+  # ===========================================================================
+  - id: "step-6-response-2"
+    agent: "foundation:zen-architect"
+    mode: "REVIEW"
+    prompt: |
+      # Step 6: Response Round 2
+      
+      You represent the OPPOSITION. Respond to the Proposition's challenges.
+      
+      **Your Original Argument:**
+      {{opposition_argument}}
+      
+      **Challenges to Address:**
+      {{challenge_round_2}}
+      
+      ## Response Requirements:
+      
+      For each challenge:
+      1. Acknowledge what is valid in the critique (if anything)
+      2. Defend your position where the challenge is flawed
+      3. Provide additional evidence if needed
+      4. Answer any direct questions posed
+      5. Strengthen your argument based on the challenge
+      
+      ## Response Format:
+      
+      For each response:
+      - **Challenge Addressed**: Which challenge
+      - **Acknowledgment**: Valid points (if any)
+      - **Defense**: Why your position still holds
+      - **Strengthened Argument**: How this improves your case
+      
+      Be intellectually honest. Concede weak points, strengthen valid ones.
+    output: "response_round_2"
+    timeout: 450
+
+  # ===========================================================================
+  # STEP 7: JUDGE'S ANALYSIS
+  # Neutral evaluation of the debate
+  # ===========================================================================
+  - id: "step-7-judge-analysis"
+    agent: "foundation:explorer"
+    prompt: |
+      # Step 7: Judge's Analysis
+      
+      You are a NEUTRAL JUDGE evaluating this debate.
+      
+      **Proposition:** {{proposition}}
+      
+      **Proposition's Case:**
+      Original: {{proposition_argument}}
+      After challenges: {{response_round_1}}
+      
+      **Opposition's Case:**
+      Original: {{opposition_argument}}
+      After challenges: {{response_round_2}}
+      
+      **Challenge Rounds:**
+      Opposition challenged: {{challenge_round_1}}
+      Proposition challenged: {{challenge_round_2}}
+      
+      ## Evaluation Criteria:
+      
+      ### 1. Argument Strength
+      - Logical coherence
+      - Evidence quality
+      - Completeness of reasoning
+      
+      ### 2. Challenge Response
+      - How well did each side handle challenges?
+      - Were concessions appropriate?
+      - Were defenses convincing?
+      
+      ### 3. Key Points Decided
+      Which specific arguments were "won" by each side?
+      
+      ### 4. Remaining Uncertainties
+      What questions remain unresolved?
+      
+      ### 5. Overall Assessment
+      Without declaring a "winner," assess the state of the debate.
+      What has been learned? What remains contested?
+    output: "judge_analysis"
+    timeout: 600
+
+  # ===========================================================================
+  # STEP 8: SYNTHESIS
+  # Extract wisdom from both positions
+  # ===========================================================================
+  - id: "step-8-synthesis"
+    agent: "foundation:zen-architect"
+    mode: "ANALYZE"
+    prompt: |
+      # Step 8: Synthesis
+      
+      Create a synthesis that captures the best insights from both positions.
+      
+      **Original Proposition:** {{proposition}}
+      **Context:** {{context}}
+      
+      **Judge's Analysis:**
+      {{judge_analysis}}
+      
+      **All Arguments:**
+      - Proposition: {{proposition_argument}}, {{response_round_1}}
+      - Opposition: {{opposition_argument}}, {{response_round_2}}
+      
+      ## Synthesis Requirements:
+      
+      ### 1. Common Ground
+      What did both sides actually agree on?
+      
+      ### 2. Valid Points from Proposition
+      What insights from the FOR position should be retained?
+      
+      ### 3. Valid Points from Opposition
+      What insights from the AGAINST position should be retained?
+      
+      ### 4. Resolved Questions
+      What questions were definitively answered by this debate?
+      
+      ### 5. Unresolved Questions
+      What requires further investigation or different approaches?
+      
+      ### 6. Synthesized Position
+      Articulate a nuanced position that incorporates the best of both sides.
+      This should be more sophisticated than either original position.
+      
+      ### 7. Recommended Action
+      Based on the debate, what should be done?
+      - Proceed with proposition (with modifications)?
+      - Reject proposition (with alternative)?
+      - Further investigation needed?
+      
+      ### 8. Key Takeaways
+      What are the 3-5 most important insights from this debate?
+    output: "synthesis"
+    timeout: 600
+
+# =============================================================================
+# Recipe Outputs Summary
+# =============================================================================
+#
+# Outputs:
+#   - proposition_argument: Initial FOR argument
+#   - opposition_argument: Initial AGAINST argument
+#   - challenge_round_1: Opposition's challenges
+#   - response_round_1: Proposition's responses
+#   - challenge_round_2: Proposition's challenges
+#   - response_round_2: Opposition's responses
+#   - judge_analysis: Neutral evaluation
+#   - synthesis: Final integrated wisdom
+#
+# Features:
+#   - 8 structured steps
+#   - Adversarial testing of ideas
+#   - Multiple challenge/response rounds
+#   - Neutral judge evaluation
+#   - Synthesis captures best of both sides
+#   - No approval gates (autonomous execution)

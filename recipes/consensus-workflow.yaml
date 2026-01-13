@@ -1,0 +1,629 @@
+# Consensus Workflow - 21-Step Multi-Perspective Consensus Building
+#
+# A structured workflow for gathering diverse perspectives, identifying agreements
+# and disagreements, and synthesizing them into a final consensus position.
+#
+# Philosophy Alignment:
+#   - Multi-perspective analysis ensures thorough exploration
+#   - Structured disagreement surfacing prevents groupthink
+#   - Explicit synthesis creates actionable outcomes
+#
+# Usage:
+#   amplifier recipes execute consensus-workflow.yaml \
+#     --context '{"topic": "Should we migrate to microservices?", "stakeholders": "engineering,ops,product"}'
+#
+# Required Context:
+#   - topic: The subject requiring consensus
+#
+# Optional Context:
+#   - stakeholders: Comma-separated stakeholder groups
+#   - constraints: Known constraints or requirements
+#   - deadline: Decision deadline context
+
+name: "consensus-workflow"
+description: "21-step workflow for multi-perspective consensus building with disagreement surfacing and synthesis"
+version: "1.0.0"
+author: "Amplifier AmplihackBundle"
+tags: ["consensus", "multi-perspective", "decision-making", "synthesis"]
+
+context:
+  topic: ""
+  stakeholders: "technical,business,user"
+  constraints: ""
+  deadline: ""
+  depth: "thorough"
+
+recursion:
+  max_depth: 2
+  max_total_steps: 100
+
+stages:
+  # ===========================================================================
+  # STAGE 1: FRAMING (Steps 1-3)
+  # Define the decision space and stakeholder landscape
+  # ===========================================================================
+  - name: "framing"
+    steps:
+      # Step 1: Topic Analysis
+      - id: "step-1-topic-analysis"
+        agent: "foundation:zen-architect"
+        mode: "ANALYZE"
+        prompt: |
+          Analyze the consensus topic to frame the discussion properly.
+          
+          Topic: {{topic}}
+          Constraints: {{constraints}}
+          Deadline Context: {{deadline}}
+          
+          Provide:
+          1. Clear statement of the decision to be made
+          2. Key questions that must be answered
+          3. Scope boundaries (what's in/out of scope)
+          4. Success criteria for a good consensus
+          5. Potential risks of poor consensus
+        output: "topic_analysis"
+        timeout: 300
+
+      # Step 2: Stakeholder Mapping
+      - id: "step-2-stakeholder-mapping"
+        agent: "foundation:explorer"
+        prompt: |
+          Map the stakeholder landscape for this consensus process.
+          
+          Topic: {{topic}}
+          Topic Analysis: {{topic_analysis}}
+          Stakeholder Groups: {{stakeholders}}
+          
+          For each stakeholder group, identify:
+          1. Their primary concerns and interests
+          2. What success looks like for them
+          3. Potential areas of conflict with other groups
+          4. Information they can uniquely contribute
+          5. Their decision-making influence
+          
+          Output a stakeholder map with relationships and tensions.
+        output: "stakeholder_map"
+        timeout: 300
+
+      # Step 3: Decision Framework
+      - id: "step-3-decision-framework"
+        agent: "foundation:zen-architect"
+        mode: "ARCHITECT"
+        prompt: |
+          Create a decision framework for evaluating positions.
+          
+          Topic Analysis: {{topic_analysis}}
+          Stakeholder Map: {{stakeholder_map}}
+          
+          Define:
+          1. Evaluation criteria (weighted by importance)
+          2. Must-have vs nice-to-have requirements
+          3. Trade-off dimensions
+          4. Consensus threshold (unanimity, majority, etc.)
+          5. Escalation path if consensus fails
+          
+          Output a structured decision framework.
+        output: "decision_framework"
+        timeout: 300
+
+    approval:
+      required: true
+      prompt: |
+        === STAGE 1 COMPLETE: Framing ===
+        
+        Topic Analysis:
+        {{topic_analysis}}
+        
+        Stakeholder Map:
+        {{stakeholder_map}}
+        
+        Decision Framework:
+        {{decision_framework}}
+        
+        Review the framing before gathering perspectives.
+        Approve to proceed to perspective gathering.
+      timeout: 1800
+      default: "deny"
+
+  # ===========================================================================
+  # STAGE 2: PERSPECTIVE GATHERING (Steps 4-10)
+  # Collect viewpoints from multiple angles
+  # ===========================================================================
+  - name: "perspective-gathering"
+    steps:
+      # Step 4-6: Stakeholder Perspectives (parallel)
+      - id: "step-4-stakeholder-perspectives"
+        agent: "foundation:explorer"
+        foreach: "{{stakeholder_map.stakeholder_groups}}"
+        parallel: true
+        prompt: |
+          Generate the perspective of a specific stakeholder group.
+          
+          Topic: {{topic}}
+          Stakeholder Group: {{item.name}}
+          Group Concerns: {{item.concerns}}
+          Decision Framework: {{decision_framework}}
+          
+          From this stakeholder's viewpoint:
+          1. What is your position on the topic?
+          2. What evidence supports your position?
+          3. What are your key requirements?
+          4. What trade-offs are acceptable/unacceptable?
+          5. What risks concern you most?
+          
+          Be authentic to this stakeholder's interests.
+        output: "stakeholder_perspectives"
+        timeout: 600
+
+      # Step 7: Technical Analysis
+      - id: "step-7-technical-analysis"
+        agent: "foundation:zen-architect"
+        mode: "ANALYZE"
+        prompt: |
+          Provide objective technical analysis of the options.
+          
+          Topic: {{topic}}
+          Decision Framework: {{decision_framework}}
+          Stakeholder Perspectives: {{stakeholder_perspectives}}
+          
+          Analyze:
+          1. Technical feasibility of each position
+          2. Implementation complexity
+          3. Maintenance burden
+          4. Performance implications
+          5. Security considerations
+          6. Technical debt impact
+          
+          Be objective - don't advocate for any position.
+        output: "technical_analysis"
+        timeout: 600
+
+      # Step 8: Risk Assessment
+      - id: "step-8-risk-assessment"
+        agent: "foundation:security-guardian"
+        prompt: |
+          Assess risks for each potential decision path.
+          
+          Topic: {{topic}}
+          Stakeholder Perspectives: {{stakeholder_perspectives}}
+          Technical Analysis: {{technical_analysis}}
+          
+          For each major position/option:
+          1. Implementation risks
+          2. Operational risks
+          3. Security risks
+          4. Business continuity risks
+          5. Reputational risks
+          
+          Rate each risk: Likelihood x Impact
+          Identify mitigation strategies.
+        output: "risk_assessment"
+        timeout: 450
+
+      # Step 9: Precedent Research
+      - id: "step-9-precedent-research"
+        agent: "foundation:explorer"
+        prompt: |
+          Research precedents and external perspectives.
+          
+          Topic: {{topic}}
+          
+          Find:
+          1. Similar decisions made by comparable organizations
+          2. Industry best practices
+          3. Academic or expert opinions
+          4. Case studies (successes and failures)
+          5. Emerging trends affecting this decision
+          
+          Summarize relevant precedents and lessons learned.
+        output: "precedent_research"
+        timeout: 450
+
+      # Step 10: Constraint Validation
+      - id: "step-10-constraint-validation"
+        agent: "foundation:zen-architect"
+        mode: "REVIEW"
+        prompt: |
+          Validate all positions against known constraints.
+          
+          Topic: {{topic}}
+          Constraints: {{constraints}}
+          Stakeholder Perspectives: {{stakeholder_perspectives}}
+          Technical Analysis: {{technical_analysis}}
+          
+          For each position:
+          1. Does it satisfy all hard constraints?
+          2. Which soft constraints does it satisfy/violate?
+          3. Are there hidden constraints not yet surfaced?
+          4. What constraints could be relaxed if needed?
+          
+          Flag any positions that violate hard constraints.
+        output: "constraint_validation"
+        timeout: 300
+
+    approval:
+      required: true
+      prompt: |
+        === STAGE 2 COMPLETE: Perspective Gathering ===
+        
+        Stakeholder Perspectives:
+        {{stakeholder_perspectives}}
+        
+        Technical Analysis:
+        {{technical_analysis}}
+        
+        Risk Assessment:
+        {{risk_assessment}}
+        
+        Precedent Research:
+        {{precedent_research}}
+        
+        Constraint Validation:
+        {{constraint_validation}}
+        
+        Review all perspectives before disagreement analysis.
+        Approve to proceed to disagreement surfacing.
+      timeout: 3600
+      default: "deny"
+
+  # ===========================================================================
+  # STAGE 3: DISAGREEMENT SURFACING (Steps 11-14)
+  # Explicitly identify and analyze disagreements
+  # ===========================================================================
+  - name: "disagreement-surfacing"
+    steps:
+      # Step 11: Disagreement Identification
+      - id: "step-11-disagreement-identification"
+        agent: "foundation:zen-architect"
+        mode: "ANALYZE"
+        prompt: |
+          Identify all disagreements across perspectives.
+          
+          Stakeholder Perspectives: {{stakeholder_perspectives}}
+          Technical Analysis: {{technical_analysis}}
+          Risk Assessment: {{risk_assessment}}
+          
+          Identify:
+          1. Factual disagreements (different data/interpretations)
+          2. Value disagreements (different priorities)
+          3. Predictive disagreements (different forecasts)
+          4. Process disagreements (different approaches)
+          
+          For each disagreement:
+          - State the disagreement clearly
+          - Identify parties on each side
+          - Rate importance (Critical/High/Medium/Low)
+        output: "disagreement_list"
+        timeout: 450
+
+      # Step 12: Root Cause Analysis
+      - id: "step-12-root-cause-analysis"
+        agent: "foundation:bug-hunter"
+        prompt: |
+          Analyze the root causes of each major disagreement.
+          
+          Disagreements: {{disagreement_list}}
+          Stakeholder Map: {{stakeholder_map}}
+          
+          For critical and high-importance disagreements:
+          1. What is the underlying cause?
+             - Information asymmetry?
+             - Different mental models?
+             - Conflicting incentives?
+             - Historical tensions?
+          2. What would change each party's position?
+          3. Are there hidden common interests?
+          
+          Provide root cause analysis for each major disagreement.
+        output: "root_cause_analysis"
+        timeout: 450
+
+      # Step 13: Common Ground Mapping
+      - id: "step-13-common-ground"
+        agent: "foundation:explorer"
+        prompt: |
+          Identify all areas of common ground.
+          
+          Stakeholder Perspectives: {{stakeholder_perspectives}}
+          Disagreement List: {{disagreement_list}}
+          Root Cause Analysis: {{root_cause_analysis}}
+          
+          Find:
+          1. Shared goals and values
+          2. Agreed-upon facts
+          3. Common concerns
+          4. Aligned interests (even if unstated)
+          5. Points where positions can be bridged
+          
+          Map the common ground that can serve as foundation for consensus.
+        output: "common_ground"
+        timeout: 300
+
+      # Step 14: Bridging Options
+      - id: "step-14-bridging-options"
+        agent: "foundation:zen-architect"
+        mode: "ARCHITECT"
+        prompt: |
+          Generate bridging options to resolve disagreements.
+          
+          Disagreements: {{disagreement_list}}
+          Root Causes: {{root_cause_analysis}}
+          Common Ground: {{common_ground}}
+          Decision Framework: {{decision_framework}}
+          
+          For each major disagreement, propose:
+          1. Compromise positions
+          2. Integrative solutions (expand the pie)
+          3. Sequencing options (do X first, then Y)
+          4. Conditional approaches (if X, then Y)
+          5. Pilot/experiment approaches
+          
+          Rate each bridging option's viability.
+        output: "bridging_options"
+        timeout: 450
+
+    approval:
+      required: true
+      prompt: |
+        === STAGE 3 COMPLETE: Disagreement Surfacing ===
+        
+        Disagreements Identified:
+        {{disagreement_list}}
+        
+        Root Cause Analysis:
+        {{root_cause_analysis}}
+        
+        Common Ground:
+        {{common_ground}}
+        
+        Bridging Options:
+        {{bridging_options}}
+        
+        Review disagreement analysis before synthesis.
+        Approve to proceed to position synthesis.
+      timeout: 3600
+      default: "deny"
+
+  # ===========================================================================
+  # STAGE 4: POSITION SYNTHESIS (Steps 15-18)
+  # Synthesize perspectives into candidate consensus positions
+  # ===========================================================================
+  - name: "position-synthesis"
+    steps:
+      # Step 15: Candidate Position Generation
+      - id: "step-15-candidate-positions"
+        agent: "foundation:zen-architect"
+        mode: "ARCHITECT"
+        prompt: |
+          Generate candidate consensus positions.
+          
+          Topic: {{topic}}
+          All Perspectives: {{stakeholder_perspectives}}
+          Common Ground: {{common_ground}}
+          Bridging Options: {{bridging_options}}
+          Decision Framework: {{decision_framework}}
+          
+          Generate 3-5 candidate consensus positions:
+          1. Each should be actionable and specific
+          2. Each should address key stakeholder concerns
+          3. Each should satisfy hard constraints
+          4. Include trade-offs explicitly
+          
+          Format each as a clear position statement with rationale.
+        output: "candidate_positions"
+        timeout: 600
+
+      # Step 16: Position Evaluation
+      - id: "step-16-position-evaluation"
+        agent: "foundation:zen-architect"
+        mode: "REVIEW"
+        prompt: |
+          Evaluate each candidate position systematically.
+          
+          Candidate Positions: {{candidate_positions}}
+          Decision Framework: {{decision_framework}}
+          Risk Assessment: {{risk_assessment}}
+          Constraint Validation: {{constraint_validation}}
+          
+          For each candidate position:
+          1. Score against each decision criterion
+          2. Assess stakeholder acceptability
+          3. Evaluate implementation feasibility
+          4. Identify residual risks
+          5. Note required compromises
+          
+          Provide a scoring matrix with justifications.
+        output: "position_evaluation"
+        timeout: 450
+
+      # Step 17: Stakeholder Acceptability Check
+      - id: "step-17-acceptability-check"
+        agent: "foundation:explorer"
+        prompt: |
+          Assess stakeholder acceptability of each position.
+          
+          Candidate Positions: {{candidate_positions}}
+          Position Evaluation: {{position_evaluation}}
+          Stakeholder Map: {{stakeholder_map}}
+          Original Perspectives: {{stakeholder_perspectives}}
+          
+          For each stakeholder group, for each position:
+          1. Would they accept this position? (Accept/Tolerate/Reject)
+          2. What would make it more acceptable?
+          3. What's their walk-away threshold?
+          4. Are there face-saving elements needed?
+          
+          Identify positions that achieve minimum acceptability across all groups.
+        output: "acceptability_check"
+        timeout: 450
+
+      # Step 18: Position Refinement
+      - id: "step-18-position-refinement"
+        agent: "foundation:zen-architect"
+        mode: "ARCHITECT"
+        prompt: |
+          Refine the most promising positions based on feedback.
+          
+          Candidate Positions: {{candidate_positions}}
+          Evaluation: {{position_evaluation}}
+          Acceptability: {{acceptability_check}}
+          
+          For the top 2-3 positions:
+          1. Incorporate feedback to improve acceptability
+          2. Address identified gaps or concerns
+          3. Strengthen implementation clarity
+          4. Add necessary qualifications or conditions
+          
+          Output refined consensus position candidates.
+        output: "refined_positions"
+        timeout: 450
+
+    approval:
+      required: true
+      prompt: |
+        === STAGE 4 COMPLETE: Position Synthesis ===
+        
+        Candidate Positions:
+        {{candidate_positions}}
+        
+        Position Evaluation:
+        {{position_evaluation}}
+        
+        Acceptability Check:
+        {{acceptability_check}}
+        
+        Refined Positions:
+        {{refined_positions}}
+        
+        Review synthesized positions before final consensus.
+        Approve to proceed to final consensus formation.
+      timeout: 3600
+      default: "deny"
+
+  # ===========================================================================
+  # STAGE 5: FINAL CONSENSUS (Steps 19-21)
+  # Finalize and document the consensus
+  # ===========================================================================
+  - name: "final-consensus"
+    steps:
+      # Step 19: Consensus Selection
+      - id: "step-19-consensus-selection"
+        agent: "foundation:zen-architect"
+        mode: "ANALYZE"
+        prompt: |
+          Select and justify the final consensus position.
+          
+          Refined Positions: {{refined_positions}}
+          Decision Framework: {{decision_framework}}
+          All Prior Analysis: Review {{position_evaluation}}, {{acceptability_check}}
+          
+          Determine:
+          1. Which position best meets the decision criteria?
+          2. Does it achieve the required consensus threshold?
+          3. What minority concerns remain?
+          4. Is the position actionable as stated?
+          
+          Select the consensus position with full justification.
+        output: "consensus_selection"
+        timeout: 300
+
+      # Step 20: Implementation Planning
+      - id: "step-20-implementation-plan"
+        agent: "foundation:zen-architect"
+        mode: "ARCHITECT"
+        prompt: |
+          Create an implementation plan for the consensus.
+          
+          Consensus Selection: {{consensus_selection}}
+          Technical Analysis: {{technical_analysis}}
+          Risk Assessment: {{risk_assessment}}
+          
+          Plan:
+          1. Immediate actions (next 7 days)
+          2. Short-term milestones (30 days)
+          3. Medium-term goals (90 days)
+          4. Success metrics and checkpoints
+          5. Rollback criteria if needed
+          6. Communication plan for stakeholders
+          
+          Make the implementation concrete and trackable.
+        output: "implementation_plan"
+        timeout: 450
+
+      # Step 21: Consensus Documentation
+      - id: "step-21-consensus-document"
+        agent: "foundation:zen-architect"
+        mode: "ANALYZE"
+        prompt: |
+          Document the consensus for future reference.
+          
+          Topic: {{topic}}
+          Consensus Selection: {{consensus_selection}}
+          Implementation Plan: {{implementation_plan}}
+          Key Disagreements: {{disagreement_list}}
+          Bridging Used: {{bridging_options}}
+          
+          Create a consensus document including:
+          
+          ## Consensus Statement
+          [Clear, actionable statement of the decision]
+          
+          ## Rationale
+          [Why this position was selected]
+          
+          ## Key Trade-offs
+          [What was given up to reach consensus]
+          
+          ## Dissenting Views
+          [Acknowledged minority positions]
+          
+          ## Implementation Summary
+          [Key next steps]
+          
+          ## Review Criteria
+          [When/how to revisit this decision]
+          
+          ## Participants
+          [Stakeholder groups involved]
+        output: "consensus_document"
+        timeout: 450
+
+    approval:
+      required: true
+      prompt: |
+        === STAGE 5 COMPLETE: Final Consensus ===
+        
+        Consensus Selection:
+        {{consensus_selection}}
+        
+        Implementation Plan:
+        {{implementation_plan}}
+        
+        Consensus Document:
+        {{consensus_document}}
+        
+        Review the final consensus before completion.
+        Approve to finalize the consensus workflow.
+      timeout: 3600
+      default: "deny"
+
+# =============================================================================
+# Recipe Outputs Summary
+# =============================================================================
+#
+# Key Outputs:
+#   - topic_analysis: Framing of the decision
+#   - stakeholder_map: Map of stakeholder interests
+#   - stakeholder_perspectives: Individual group viewpoints
+#   - disagreement_list: All identified disagreements
+#   - common_ground: Shared interests and agreements
+#   - bridging_options: Ways to resolve disagreements
+#   - refined_positions: Candidate consensus positions
+#   - consensus_document: Final documented consensus
+#
+# Features:
+#   - 21 steps across 5 stages
+#   - Parallel perspective gathering
+#   - Explicit disagreement surfacing
+#   - Structured synthesis process
+#   - Approval gates between stages
