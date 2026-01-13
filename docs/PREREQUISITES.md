@@ -189,6 +189,42 @@ uv --version     # Should show version info
 git --version    # Should show 2.x or higher
 ```
 
+#### Configure PowerShell UTF-8 Encoding (Required for Windows)
+
+AmplihHack uses Unicode characters (emojis, checkmarks) in output. Windows PowerShell defaults to Code Page 437, which causes these characters to display incorrectly as garbled text (e.g., `âœ…` instead of ✅).
+
+**Fix this by adding UTF-8 configuration to your PowerShell profile:**
+
+```powershell
+# Create PowerShell profile if it doesn't exist
+if (!(Test-Path $PROFILE)) {
+    New-Item -ItemType File -Path $PROFILE -Force
+}
+
+# Add UTF-8 configuration
+Add-Content $PROFILE @"
+# Set console to UTF-8 to properly display Unicode characters (emojis, special characters)
+[console]::OutputEncoding = [System.Text.Encoding]::UTF8
+`$OutputEncoding = [System.Text.Encoding]::UTF8
+"@
+
+# Reload profile
+. $PROFILE
+```
+
+**To temporarily enable UTF-8 in the current session:**
+
+```powershell
+chcp 65001
+```
+
+**Verify encoding:**
+
+```powershell
+[console]::OutputEncoding
+# Should show: BodyName: utf-8, CodePage: 65001
+```
+
 ---
 
 ## Tool-Specific Documentation

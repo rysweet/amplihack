@@ -2,6 +2,7 @@
 
 import argparse
 import os
+import platform
 import sys
 from pathlib import Path
 
@@ -9,6 +10,12 @@ from .docker import DockerManager
 from .launcher import ClaudeLauncher
 from .proxy import ProxyConfig, ProxyManager
 from .utils import is_uvx_deployment
+
+# Platform-specific emoji support
+IS_WINDOWS = platform.system() == "Windows"
+EMOJI = {
+    "check": "[OK]" if IS_WINDOWS else "✓",
+}
 
 
 def launch_command(args: argparse.Namespace, claude_args: list[str] | None = None) -> int:
@@ -179,7 +186,7 @@ def handle_append_instruction(args: argparse.Namespace) -> int:
         result = append_instructions(instruction)
 
         # Print success message
-        print(f"✓ Instruction appended to session: {result.session_id}")
+        print(f"{EMOJI['check']} Instruction appended to session: {result.session_id}")
         print(f"  File: {result.filename}")
         print("  The auto mode session will process this on its next turn.")
         return 0
