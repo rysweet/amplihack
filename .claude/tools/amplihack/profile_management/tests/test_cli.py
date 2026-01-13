@@ -111,7 +111,7 @@ class TestProfileCLI:
         cli.loader.load = Mock(return_value="yaml_content")
         cli.parser.parse = Mock(return_value=mock_profile)
 
-        with patch("profile_management.cli.console") as mock_console:
+        with patch("profile_management.cli.console"):
             cli.show_profile()
 
             # Verify it loaded from config
@@ -150,7 +150,7 @@ class TestProfileCLI:
         """Test that switch validates profile before saving."""
         cli.loader.load = Mock(side_effect=Exception("Invalid profile"))
 
-        with patch("profile_management.cli.console") as mock_console:
+        with patch("profile_management.cli.console"):
             with pytest.raises(SystemExit):
                 cli.switch_profile("amplihack://profiles/invalid")
 
@@ -174,7 +174,7 @@ class TestProfileCLI:
         cli.loader.load = Mock(return_value="yaml_content")
         cli.parser.parse = Mock(return_value=mock_profile)
 
-        with patch("profile_management.cli.console") as mock_console:
+        with patch("profile_management.cli.console"):
             cli.current_profile()
 
             # Verify it loaded current profile
@@ -244,7 +244,7 @@ class TestProfileCLI:
         """Test that validate exits on profile error."""
         cli.loader.load = Mock(side_effect=Exception("Invalid YAML"))
 
-        with patch("profile_management.cli.console") as mock_console:
+        with patch("profile_management.cli.console"):
             with pytest.raises(SystemExit):
                 cli.validate_profile("amplihack://profiles/invalid")
 

@@ -2,8 +2,9 @@
 """
 Memory System Session Stop Hook
 
-Captures learnings from the session and stores them in Neo4j memory.
+Captures learnings from the session and stores them using MemoryCoordinator.
 Extracts patterns, decisions, and outcomes for future agent use.
+Works with SQLite or Neo4j backend.
 """
 
 import json
@@ -26,16 +27,11 @@ sys.path.insert(0, str(project_root / "src"))
 
 
 def main():
-    """Capture session learnings and store in Neo4j."""
+    """Capture session learnings and store using MemoryCoordinator."""
     try:
-        # Import memory system
-        from amplihack.memory.neo4j import lifecycle
-        from amplihack.memory.neo4j.agent_integration import extract_and_store_learnings
-
-        # Check if Neo4j is available
-        if not lifecycle.is_neo4j_running():
-            # Graceful degradation - no memory available
-            return
+        # Import memory coordinator
+        from amplihack.memory.coordinator import MemoryCoordinator
+        from amplihack.memory.types import MemoryType
 
         # Get session context from environment or stdin
         session_context = json.loads(sys.stdin.read()) if not sys.stdin.isatty() else {}
@@ -45,22 +41,33 @@ def main():
         agent_output = session_context.get("output", "")
         task_description = session_context.get("task", "")
         success = session_context.get("success", True)
+        session_id = session_context.get("session_id", "hook_session")
 
         if not agent_output:
             # Nothing to learn from
             return
 
-        # Extract and store learnings
-        memory_ids = extract_and_store_learnings(
+        # Initialize coordinator with session_id
+        coordinator = MemoryCoordinator(session_id=session_id)
+
+        # Store learning as SEMANTIC memory (reusable knowledge)
+        # Extract key learnings (simplified - production would use more sophisticated extraction)
+        learning_content = f"Agent {agent_type}: {agent_output[:500]}"
+
+        memory_id = coordinator.store(
+            content=learning_content,
+            memory_type=MemoryType.SEMANTIC,
             agent_type=agent_type,
-            output=agent_output,
-            task=task_description,
-            success=success,
-            project_id=os.getenv("AMPLIHACK_PROJECT_ID", "amplihack"),
+            tags=["learning", "session_end"],
+            metadata={
+                "task": task_description,
+                "success": success,
+                "project_id": os.getenv("AMPLIHACK_PROJECT_ID", "amplihack"),
+            },
         )
 
-        if memory_ids:
-            print(f"[INFO] Stored {len(memory_ids)} learnings in Neo4j", file=sys.stderr)
+        if memory_id:
+            print("[INFO] Stored 1 learning in memory system", file=sys.stderr)
 
     except Exception as e:
         # Don't fail session stop if memory capture fails

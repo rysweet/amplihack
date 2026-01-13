@@ -18,7 +18,6 @@ try:
         ContextExtractor,
         ContextRehydrator,
         TokenMonitor,
-        check_status,
     )
 except ImportError:
     # Fallback for when running from hooks
@@ -246,7 +245,7 @@ class ContextAutomation:
 
         try:
             # Rehydrate context
-            rehydrated = self.rehydrator.rehydrate(snapshot_path, level)
+            self.rehydrator.rehydrate(snapshot_path, level)
 
             result["actions_taken"].append(f"auto_rehydrated_at_{level}_level")
             result["warnings"].append(

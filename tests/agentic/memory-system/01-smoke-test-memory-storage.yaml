@@ -1,0 +1,47 @@
+scenario:
+  name: "Memory System Smoke Test - Storage"
+  description: "Verifies memory system can store memories when Claude Code runs"
+  type: cli
+  tags: [smoke, memory, critical]
+
+  prerequisites:
+    - "Branch feat/issue-1902-5-type-memory-system exists"
+    - "Python 3.11+ installed"
+    - "uv package manager available"
+
+  environment:
+    variables:
+      AMPLIHACK_BRANCH: "feat/issue-1902-5-type-memory-system"
+      GITHUB_REPO: "https://github.com/rysweet/amplihack"
+
+  steps:
+    # Step 1: Install from branch
+    - action: launch
+      target: "uvx"
+      args:
+        - "--from"
+        - "git+${GITHUB_REPO}@${AMPLIHACK_BRANCH}"
+        - "python"
+        - "-c"
+        - "from amplihack.memory.coordinator import MemoryCoordinator; import asyncio; async def test(): c = MemoryCoordinator(session_id='smoke-test'); from amplihack.memory.coordinator import StorageRequest; from amplihack.memory.types import MemoryType; r = StorageRequest(content='Smoke test memory', memory_type=MemoryType.EPISODIC, context={'agent_id': 'test'}); mem_id = await c.store(r); print(f'STORED:{mem_id}'); asyncio.run(test())"
+      description: "Install and test basic memory storage"
+      timeout: 120s
+
+    # Step 2: Verify memory was stored
+    - action: verify_output
+      contains: "STORED:"
+      description: "Should print memory ID"
+
+    - action: verify_output
+      matches: "STORED:[a-f0-9-]{36}"
+      description: "Memory ID should be valid UUID"
+
+    # Step 3: Verify no errors
+    - action: verify_exit_code
+      expected: 0
+      description: "Should exit cleanly"
+
+  cleanup:
+    - action: send_signal
+      signal: SIGTERM
+      continue_on_failure: true
