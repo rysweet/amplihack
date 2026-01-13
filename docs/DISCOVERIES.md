@@ -2,6 +2,60 @@
 
 This file documents non-obvious problems, solutions, and patterns discovered during amplihack development. Review and update this regularly, removing outdated entries or those replaced by better practices, code, or tools. Update entries where best practices have evolved.
 
+## Cleanup Agent Gap: Root Directory Organization (2026-01-12)
+
+### Issue
+
+Root directory accumulated documentation files that belonged in `docs/` subdirectories. Files like `EVALUATION_SUMMARY.md` and `gh_pages_link_validation.txt` cluttered the root when they should be organized by category.
+
+### Root Cause
+
+1. **Cleanup agent scope limitation**: The cleanup agent focuses on code quality (dead code, complexity) but doesn't enforce documentation organization
+2. **No proactive file placement checking**: No automated check for misplaced documentation in root
+3. **Unclear guidelines**: File organization guidelines existed but weren't centralized or easily discoverable
+4. **No prevention mechanism**: Nothing stops documentation from being created in root
+
+### Solution
+
+**Three-part documentation system:**
+
+1. **File Organization Guidelines** (`docs/contributing/file-organization.md`):
+   - Clear decision tree fer file placement
+   - Examples of proper organization
+   - Integration with cleanup agent (future)
+
+2. **Archive Directory Structure** (`archive/legacy/README.md`):
+   - Standard location fer superseded files
+   - Clear policy on what goes there
+   - Example: `setup.py` archived when superseded by `pyproject.toml`
+
+3. **Moved Misplaced Files**:
+   - `EVALUATION_SUMMARY.md` → `docs/memory/evaluation-summary.md`
+   - `gh_pages_link_validation.txt` → `docs/testing/gh-pages-link-validation.txt`
+   - `setup.py` → `archive/legacy/setup.py`
+
+### Key Learnings
+
+1. **Cleanup spans more than code**: File organization and documentation structure matter fer discoverability
+2. **Guidelines need centralization**: Scattered advice in multiple docs isn't enforced
+3. **Prevention better than cleanup**: Catch misplaced files before they be committed
+4. **Archive preserves history**: Don't delete superseded files if they might have reference value
+
+### Prevention
+
+- Create `docs/contributing/file-organization.md` with clear guidelines (✅ done)
+- Update cleanup agent to suggest documentation moves (tracked as enhancement)
+- Add pre-commit hook to flag documentation files in root (future)
+- Reference file organization guidelines in CONTRIBUTING.md
+- Use `make check-broken-links` after movin' files to verify references
+
+### Enhancement Opportunities
+
+1. **Cleanup Agent Extension**: Add documentation organization to cleanup agent responsibilities
+2. **Pre-commit Check**: Warn when documentation be created outside `docs/`
+3. **Link Validation**: Automatically update and validate internal links when movin' files
+4. **Documentation Index**: Keep `docs/index.md` automatically updated with new files
+
 ## Workflow Enforcement via CLAUDE.md (2025-11-26)
 
 ### Issue
