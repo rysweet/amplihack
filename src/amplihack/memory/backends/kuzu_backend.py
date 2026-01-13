@@ -90,37 +90,25 @@ class KuzuBackend:
         )
 
     def initialize(self) -> None:
-        """Initialize Kùzu schema.
+        """Initialize Kùzu schema with 5 memory node types.
 
-        Creates node and relationship tables if needed.
+        Creates node and relationship tables for the new schema:
+        - 5 memory node types (Episodic, Semantic, Procedural, Prospective, Working)
+        - Session and Agent nodes
+        - 11 relationship types for memory interactions
+
         Idempotent - safe to call multiple times.
         """
         try:
-            # Create Memory node table
-            self.connection.execute("""
-                CREATE NODE TABLE IF NOT EXISTS Memory(
-                    id STRING,
-                    session_id STRING,
-                    agent_id STRING,
-                    memory_type STRING,
-                    title STRING,
-                    content STRING,
-                    content_hash STRING,
-                    metadata STRING,
-                    tags STRING,
-                    importance INT64,
-                    created_at TIMESTAMP,
-                    accessed_at TIMESTAMP,
-                    expires_at TIMESTAMP,
-                    parent_id STRING,
-                    PRIMARY KEY (id)
-                )
-            """)
-
-            # Create Session node table
+            # Create Session node table (first-class citizen)
             self.connection.execute("""
                 CREATE NODE TABLE IF NOT EXISTS Session(
                     session_id STRING,
+                    start_time TIMESTAMP,
+                    end_time TIMESTAMP,
+                    user_id STRING,
+                    context STRING,
+                    status STRING,
                     created_at TIMESTAMP,
                     last_accessed TIMESTAMP,
                     metadata STRING,
@@ -139,36 +127,224 @@ class KuzuBackend:
                 )
             """)
 
-            # Create relationship tables
+            # Create EpisodicMemory node table (session-specific events)
             self.connection.execute("""
-                CREATE REL TABLE IF NOT EXISTS HAS_MEMORY(
-                    FROM Session TO Memory
+                CREATE NODE TABLE IF NOT EXISTS EpisodicMemory(
+                    memory_id STRING,
+                    timestamp TIMESTAMP,
+                    content STRING,
+                    event_type STRING,
+                    emotional_valence DOUBLE,
+                    importance_score DOUBLE,
+                    title STRING,
+                    metadata STRING,
+                    tags STRING,
+                    created_at TIMESTAMP,
+                    accessed_at TIMESTAMP,
+                    expires_at TIMESTAMP,
+                    agent_id STRING,
+                    PRIMARY KEY (memory_id)
+                )
+            """)
+
+            # Create SemanticMemory node table (cross-session knowledge)
+            self.connection.execute("""
+                CREATE NODE TABLE IF NOT EXISTS SemanticMemory(
+                    memory_id STRING,
+                    concept STRING,
+                    content STRING,
+                    category STRING,
+                    confidence_score DOUBLE,
+                    last_updated TIMESTAMP,
+                    version INT64,
+                    title STRING,
+                    metadata STRING,
+                    tags STRING,
+                    created_at TIMESTAMP,
+                    accessed_at TIMESTAMP,
+                    agent_id STRING,
+                    PRIMARY KEY (memory_id)
+                )
+            """)
+
+            # Create ProceduralMemory node table (how-to knowledge)
+            self.connection.execute("""
+                CREATE NODE TABLE IF NOT EXISTS ProceduralMemory(
+                    memory_id STRING,
+                    procedure_name STRING,
+                    description STRING,
+                    steps STRING,
+                    preconditions STRING,
+                    postconditions STRING,
+                    success_rate DOUBLE,
+                    usage_count INT64,
+                    last_used TIMESTAMP,
+                    title STRING,
+                    content STRING,
+                    metadata STRING,
+                    tags STRING,
+                    created_at TIMESTAMP,
+                    accessed_at TIMESTAMP,
+                    agent_id STRING,
+                    PRIMARY KEY (memory_id)
+                )
+            """)
+
+            # Create ProspectiveMemory node table (future intentions)
+            self.connection.execute("""
+                CREATE NODE TABLE IF NOT EXISTS ProspectiveMemory(
+                    memory_id STRING,
+                    intention STRING,
+                    trigger_condition STRING,
+                    priority STRING,
+                    due_date TIMESTAMP,
+                    status STRING,
+                    scope STRING,
+                    completion_criteria STRING,
+                    title STRING,
+                    content STRING,
+                    metadata STRING,
+                    tags STRING,
+                    created_at TIMESTAMP,
+                    accessed_at TIMESTAMP,
+                    expires_at TIMESTAMP,
+                    agent_id STRING,
+                    PRIMARY KEY (memory_id)
+                )
+            """)
+
+            # Create WorkingMemory node table (active task state)
+            self.connection.execute("""
+                CREATE NODE TABLE IF NOT EXISTS WorkingMemory(
+                    memory_id STRING,
+                    content STRING,
+                    memory_type STRING,
+                    priority INT64,
+                    created_at TIMESTAMP,
+                    ttl_seconds INT64,
+                    title STRING,
+                    metadata STRING,
+                    tags STRING,
+                    accessed_at TIMESTAMP,
+                    expires_at TIMESTAMP,
+                    agent_id STRING,
+                    PRIMARY KEY (memory_id)
+                )
+            """)
+
+            # Create Session → Memory relationship tables
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS CONTAINS_EPISODIC(
+                    FROM Session TO EpisodicMemory,
+                    sequence_number INT64
                 )
             """)
 
             self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS CONTAINS_WORKING(
+                    FROM Session TO WorkingMemory,
+                    activation_level DOUBLE
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS CONTRIBUTES_TO_SEMANTIC(
+                    FROM Session TO SemanticMemory,
+                    contribution_type STRING,
+                    timestamp TIMESTAMP,
+                    delta STRING
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS USES_PROCEDURE(
+                    FROM Session TO ProceduralMemory,
+                    timestamp TIMESTAMP,
+                    success BOOL,
+                    notes STRING
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS CREATES_INTENTION(
+                    FROM Session TO ProspectiveMemory,
+                    timestamp TIMESTAMP
+                )
+            """)
+
+            # Create cross-memory relationship tables
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS DERIVES_FROM(
+                    FROM SemanticMemory TO EpisodicMemory,
+                    extraction_method STRING,
+                    confidence DOUBLE
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS REFERENCES(
+                    FROM ProceduralMemory TO SemanticMemory,
+                    reference_type STRING,
+                    context STRING
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS TRIGGERS(
+                    FROM ProspectiveMemory TO WorkingMemory,
+                    trigger_time TIMESTAMP,
+                    condition_met BOOL
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS ACTIVATES(
+                    FROM WorkingMemory TO SemanticMemory,
+                    activation_strength DOUBLE,
+                    timestamp TIMESTAMP
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS RECALLS(
+                    FROM EpisodicMemory TO EpisodicMemory,
+                    similarity_score DOUBLE,
+                    recall_reason STRING
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS BUILDS_ON(
+                    FROM ProceduralMemory TO ProceduralMemory,
+                    relationship_type STRING
+                )
+            """)
+
+            # Keep Agent relationships
+            self.connection.execute("""
                 CREATE REL TABLE IF NOT EXISTS CREATED(
-                    FROM Agent TO Memory,
+                    FROM Agent TO EpisodicMemory,
                     created_at TIMESTAMP
                 )
             """)
 
-            self.connection.execute("""
-                CREATE REL TABLE IF NOT EXISTS CHILD_OF(
-                    FROM Memory TO Memory
-                )
-            """)
-
-            logger.info("Kùzu schema initialized successfully")
+            logger.info("Kùzu schema initialized successfully with 5 memory node types")
 
         except Exception as e:
             logger.error(f"Error initializing Kùzu schema: {e}")
             raise
 
     def store_memory(self, memory: MemoryEntry) -> bool:
-        """Store a memory entry in graph database.
+        """Store a memory entry in appropriate node type based on memory_type.
 
-        Creates Memory node and relationships to Session and Agent.
+        Routes to one of 5 node types:
+        - EPISODIC → EpisodicMemory (session-specific events)
+        - SEMANTIC → SemanticMemory (cross-session knowledge)
+        - PROCEDURAL → ProceduralMemory (how-to knowledge)
+        - PROSPECTIVE → ProspectiveMemory (future intentions)
+        - WORKING → WorkingMemory (active task state)
+
+        Creates appropriate relationships to Session and Agent.
 
         Args:
             memory: Memory entry to store
@@ -179,127 +355,291 @@ class KuzuBackend:
         Performance: <500ms (node + edge creation)
         """
         try:
-            # Compute content hash (same logic as SQLite)
-            import hashlib
-
-            content_hash = hashlib.sha256(memory.content.encode("utf-8")).hexdigest()
-
-            # Prepare values
+            # Prepare common values
             tags_str = json.dumps(memory.tags) if memory.tags else ""
-            parent_id_str = memory.parent_id if memory.parent_id else ""
             importance_val = memory.importance if memory.importance is not None else 0
-
-            # Create or update Memory node using parameterized query
-            self.connection.execute(
-                """
-                CREATE (m:Memory {
-                    id: $id,
-                    session_id: $session_id,
-                    agent_id: $agent_id,
-                    memory_type: $memory_type,
-                    title: $title,
-                    content: $content,
-                    content_hash: $content_hash,
-                    metadata: $metadata,
-                    tags: $tags,
-                    importance: $importance,
-                    created_at: $created_at,
-                    accessed_at: $accessed_at,
-                    expires_at: $expires_at,
-                    parent_id: $parent_id
-                })
-            """,
-                {
-                    "id": memory.id,
-                    "session_id": memory.session_id,
-                    "agent_id": memory.agent_id,
-                    "memory_type": memory.memory_type.value,
-                    "title": memory.title,
-                    "content": memory.content,
-                    "content_hash": content_hash,
-                    "metadata": json.dumps(memory.metadata),
-                    "tags": tags_str,
-                    "importance": importance_val,
-                    "created_at": memory.created_at,
-                    "accessed_at": memory.accessed_at,
-                    "expires_at": memory.expires_at,
-                    "parent_id": parent_id_str,
-                },
-            )
-
-            # Create Session node if not exists (use MERGE to avoid duplicates)
             now = datetime.now()
-            self.connection.execute(
-                """
-                MERGE (s:Session {session_id: $session_id})
-                ON CREATE SET
-                    s.created_at = $created_at,
-                    s.last_accessed = $last_accessed,
-                    s.metadata = $metadata
-                ON MATCH SET
-                    s.last_accessed = $last_accessed
-            """,
-                {
-                    "session_id": memory.session_id,
-                    "created_at": now,
-                    "last_accessed": now,
-                    "metadata": "{}",
-                },
-            )
 
-            # Create Agent node if not exists (use MERGE to avoid duplicates)
-            self.connection.execute(
-                """
-                MERGE (a:Agent {agent_id: $agent_id})
-                ON CREATE SET
-                    a.name = $name,
-                    a.first_used = $first_used,
-                    a.last_used = $last_used
-                ON MATCH SET
-                    a.last_used = $last_used
-            """,
-                {
-                    "agent_id": memory.agent_id,
-                    "name": memory.agent_id,
-                    "first_used": now,
-                    "last_used": now,
-                },
-            )
-
-            # Create HAS_MEMORY relationship
-            self.connection.execute(
-                """
-                MATCH (s:Session), (m:Memory)
-                WHERE s.session_id = $session_id AND m.id = $memory_id
-                CREATE (s)-[:HAS_MEMORY]->(m)
-            """,
-                {"session_id": memory.session_id, "memory_id": memory.id},
-            )
-
-            # Create CREATED relationship
-            self.connection.execute(
-                """
-                MATCH (a:Agent), (m:Memory)
-                WHERE a.agent_id = $agent_id AND m.id = $memory_id
-                CREATE (a)-[:CREATED {created_at: $created_at}]->(m)
-            """,
-                {
-                    "agent_id": memory.agent_id,
-                    "memory_id": memory.id,
-                    "created_at": memory.created_at,
-                },
-            )
-
-            # Create CHILD_OF relationship if parent_id specified
-            if memory.parent_id:
+            # Route to appropriate node type based on memory_type
+            if memory.memory_type == MemoryType.EPISODIC:
+                # Create EpisodicMemory node
                 self.connection.execute(
                     """
-                    MATCH (parent:Memory), (child:Memory)
-                    WHERE parent.id = $parent_id AND child.id = $child_id
-                    CREATE (child)-[:CHILD_OF]->(parent)
+                    CREATE (m:EpisodicMemory {
+                        memory_id: $memory_id,
+                        timestamp: $timestamp,
+                        content: $content,
+                        event_type: $event_type,
+                        emotional_valence: $emotional_valence,
+                        importance_score: $importance_score,
+                        title: $title,
+                        metadata: $metadata,
+                        tags: $tags,
+                        created_at: $created_at,
+                        accessed_at: $accessed_at,
+                        expires_at: $expires_at,
+                        agent_id: $agent_id
+                    })
                 """,
-                    {"parent_id": memory.parent_id, "child_id": memory.id},
+                    {
+                        "memory_id": memory.id,
+                        "timestamp": memory.created_at,
+                        "content": memory.content,
+                        "event_type": memory.metadata.get("event_type", "general"),
+                        "emotional_valence": memory.metadata.get("emotional_valence", 0.0),
+                        "importance_score": float(importance_val),
+                        "title": memory.title,
+                        "metadata": json.dumps(memory.metadata),
+                        "tags": tags_str,
+                        "created_at": memory.created_at,
+                        "accessed_at": memory.accessed_at,
+                        "expires_at": memory.expires_at,
+                        "agent_id": memory.agent_id,
+                    },
                 )
+
+                # Create CONTAINS_EPISODIC relationship
+                self._create_session_node(memory.session_id, now)
+                self.connection.execute(
+                    """
+                    MATCH (s:Session {session_id: $session_id}), (m:EpisodicMemory {memory_id: $memory_id})
+                    CREATE (s)-[:CONTAINS_EPISODIC {sequence_number: $sequence_number}]->(m)
+                """,
+                    {
+                        "session_id": memory.session_id,
+                        "memory_id": memory.id,
+                        "sequence_number": 0,  # TODO: track sequence
+                    },
+                )
+
+            elif memory.memory_type == MemoryType.SEMANTIC:
+                # Create SemanticMemory node
+                self.connection.execute(
+                    """
+                    CREATE (m:SemanticMemory {
+                        memory_id: $memory_id,
+                        concept: $concept,
+                        content: $content,
+                        category: $category,
+                        confidence_score: $confidence_score,
+                        last_updated: $last_updated,
+                        version: $version,
+                        title: $title,
+                        metadata: $metadata,
+                        tags: $tags,
+                        created_at: $created_at,
+                        accessed_at: $accessed_at,
+                        agent_id: $agent_id
+                    })
+                """,
+                    {
+                        "memory_id": memory.id,
+                        "concept": memory.title,  # Use title as concept
+                        "content": memory.content,
+                        "category": memory.metadata.get("category", "general"),
+                        "confidence_score": memory.metadata.get("confidence_score", 1.0),
+                        "last_updated": memory.created_at,
+                        "version": memory.metadata.get("version", 1),
+                        "title": memory.title,
+                        "metadata": json.dumps(memory.metadata),
+                        "tags": tags_str,
+                        "created_at": memory.created_at,
+                        "accessed_at": memory.accessed_at,
+                        "agent_id": memory.agent_id,
+                    },
+                )
+
+                # Create CONTRIBUTES_TO_SEMANTIC relationship
+                self._create_session_node(memory.session_id, now)
+                self.connection.execute(
+                    """
+                    MATCH (s:Session {session_id: $session_id}), (m:SemanticMemory {memory_id: $memory_id})
+                    CREATE (s)-[:CONTRIBUTES_TO_SEMANTIC {
+                        contribution_type: $contribution_type,
+                        timestamp: $timestamp,
+                        delta: $delta
+                    }]->(m)
+                """,
+                    {
+                        "session_id": memory.session_id,
+                        "memory_id": memory.id,
+                        "contribution_type": "created",
+                        "timestamp": now,
+                        "delta": "initial_creation",
+                    },
+                )
+
+            elif memory.memory_type == MemoryType.PROCEDURAL:
+                # Create ProceduralMemory node
+                self.connection.execute(
+                    """
+                    CREATE (m:ProceduralMemory {
+                        memory_id: $memory_id,
+                        procedure_name: $procedure_name,
+                        description: $description,
+                        steps: $steps,
+                        preconditions: $preconditions,
+                        postconditions: $postconditions,
+                        success_rate: $success_rate,
+                        usage_count: $usage_count,
+                        last_used: $last_used,
+                        title: $title,
+                        content: $content,
+                        metadata: $metadata,
+                        tags: $tags,
+                        created_at: $created_at,
+                        accessed_at: $accessed_at,
+                        agent_id: $agent_id
+                    })
+                """,
+                    {
+                        "memory_id": memory.id,
+                        "procedure_name": memory.title,
+                        "description": memory.content,
+                        "steps": json.dumps(memory.metadata.get("steps", [])),
+                        "preconditions": json.dumps(memory.metadata.get("preconditions", [])),
+                        "postconditions": json.dumps(memory.metadata.get("postconditions", [])),
+                        "success_rate": memory.metadata.get("success_rate", 1.0),
+                        "usage_count": memory.metadata.get("usage_count", 0),
+                        "last_used": memory.created_at,
+                        "title": memory.title,
+                        "content": memory.content,
+                        "metadata": json.dumps(memory.metadata),
+                        "tags": tags_str,
+                        "created_at": memory.created_at,
+                        "accessed_at": memory.accessed_at,
+                        "agent_id": memory.agent_id,
+                    },
+                )
+
+                # Create USES_PROCEDURE relationship
+                self._create_session_node(memory.session_id, now)
+                self.connection.execute(
+                    """
+                    MATCH (s:Session {session_id: $session_id}), (m:ProceduralMemory {memory_id: $memory_id})
+                    CREATE (s)-[:USES_PROCEDURE {
+                        timestamp: $timestamp,
+                        success: $success,
+                        notes: $notes
+                    }]->(m)
+                """,
+                    {
+                        "session_id": memory.session_id,
+                        "memory_id": memory.id,
+                        "timestamp": now,
+                        "success": True,
+                        "notes": "",
+                    },
+                )
+
+            elif memory.memory_type == MemoryType.PROSPECTIVE:
+                # Create ProspectiveMemory node
+                self.connection.execute(
+                    """
+                    CREATE (m:ProspectiveMemory {
+                        memory_id: $memory_id,
+                        intention: $intention,
+                        trigger_condition: $trigger_condition,
+                        priority: $priority,
+                        due_date: $due_date,
+                        status: $status,
+                        scope: $scope,
+                        completion_criteria: $completion_criteria,
+                        title: $title,
+                        content: $content,
+                        metadata: $metadata,
+                        tags: $tags,
+                        created_at: $created_at,
+                        accessed_at: $accessed_at,
+                        expires_at: $expires_at,
+                        agent_id: $agent_id
+                    })
+                """,
+                    {
+                        "memory_id": memory.id,
+                        "intention": memory.content,
+                        "trigger_condition": memory.metadata.get("trigger_condition", ""),
+                        "priority": memory.metadata.get("priority", "medium"),
+                        "due_date": memory.expires_at,
+                        "status": memory.metadata.get("status", "pending"),
+                        "scope": memory.metadata.get("scope", "session"),
+                        "completion_criteria": memory.metadata.get("completion_criteria", ""),
+                        "title": memory.title,
+                        "content": memory.content,
+                        "metadata": json.dumps(memory.metadata),
+                        "tags": tags_str,
+                        "created_at": memory.created_at,
+                        "accessed_at": memory.accessed_at,
+                        "expires_at": memory.expires_at,
+                        "agent_id": memory.agent_id,
+                    },
+                )
+
+                # Create CREATES_INTENTION relationship
+                self._create_session_node(memory.session_id, now)
+                self.connection.execute(
+                    """
+                    MATCH (s:Session {session_id: $session_id}), (m:ProspectiveMemory {memory_id: $memory_id})
+                    CREATE (s)-[:CREATES_INTENTION {timestamp: $timestamp}]->(m)
+                """,
+                    {
+                        "session_id": memory.session_id,
+                        "memory_id": memory.id,
+                        "timestamp": now,
+                    },
+                )
+
+            elif memory.memory_type == MemoryType.WORKING:
+                # Create WorkingMemory node
+                self.connection.execute(
+                    """
+                    CREATE (m:WorkingMemory {
+                        memory_id: $memory_id,
+                        content: $content,
+                        memory_type: $memory_type,
+                        priority: $priority,
+                        created_at: $created_at,
+                        ttl_seconds: $ttl_seconds,
+                        title: $title,
+                        metadata: $metadata,
+                        tags: $tags,
+                        accessed_at: $accessed_at,
+                        expires_at: $expires_at,
+                        agent_id: $agent_id
+                    })
+                """,
+                    {
+                        "memory_id": memory.id,
+                        "content": memory.content,
+                        "memory_type": memory.metadata.get("memory_type", "goal"),
+                        "priority": memory.metadata.get("priority", 0),
+                        "created_at": memory.created_at,
+                        "ttl_seconds": memory.metadata.get("ttl_seconds", 3600),
+                        "title": memory.title,
+                        "metadata": json.dumps(memory.metadata),
+                        "tags": tags_str,
+                        "accessed_at": memory.accessed_at,
+                        "expires_at": memory.expires_at,
+                        "agent_id": memory.agent_id,
+                    },
+                )
+
+                # Create CONTAINS_WORKING relationship
+                self._create_session_node(memory.session_id, now)
+                self.connection.execute(
+                    """
+                    MATCH (s:Session {session_id: $session_id}), (m:WorkingMemory {memory_id: $memory_id})
+                    CREATE (s)-[:CONTAINS_WORKING {activation_level: $activation_level}]->(m)
+                """,
+                    {
+                        "session_id": memory.session_id,
+                        "memory_id": memory.id,
+                        "activation_level": 1.0,
+                    },
+                )
+
+            # Create Agent node if not exists
+            self._create_agent_node(memory.agent_id, now)
 
             return True
 
@@ -307,10 +647,54 @@ class KuzuBackend:
             logger.error(f"Error storing memory in Kùzu: {e}", exc_info=True)
             return False
 
+    def _create_session_node(self, session_id: str, timestamp: datetime) -> None:
+        """Create or update Session node."""
+        self.connection.execute(
+            """
+            MERGE (s:Session {session_id: $session_id})
+            ON CREATE SET
+                s.start_time = $start_time,
+                s.created_at = $created_at,
+                s.last_accessed = $last_accessed,
+                s.status = $status,
+                s.metadata = $metadata
+            ON MATCH SET
+                s.last_accessed = $last_accessed
+        """,
+            {
+                "session_id": session_id,
+                "start_time": timestamp,
+                "created_at": timestamp,
+                "last_accessed": timestamp,
+                "status": "active",
+                "metadata": "{}",
+            },
+        )
+
+    def _create_agent_node(self, agent_id: str, timestamp: datetime) -> None:
+        """Create or update Agent node."""
+        self.connection.execute(
+            """
+            MERGE (a:Agent {agent_id: $agent_id})
+            ON CREATE SET
+                a.name = $name,
+                a.first_used = $first_used,
+                a.last_used = $last_used
+            ON MATCH SET
+                a.last_used = $last_used
+        """,
+            {
+                "agent_id": agent_id,
+                "name": agent_id,
+                "first_used": timestamp,
+                "last_used": timestamp,
+            },
+        )
+
     def retrieve_memories(self, query: MemoryQuery) -> list[MemoryEntry]:
         """Retrieve memories matching the query.
 
-        Uses Cypher queries fer graph traversal.
+        Uses Cypher queries fer graph traversal across all 5 memory node types.
 
         Args:
             query: Query parameters
@@ -321,94 +705,33 @@ class KuzuBackend:
         Performance: <50ms (indexed lookups)
         """
         try:
-            # Build WHERE conditions
-            where_conditions = []
-            params = {}
-
-            if query.session_id:
-                where_conditions.append("m.session_id = $session_id")
-                params["session_id"] = query.session_id
-
-            if query.agent_id:
-                where_conditions.append("m.agent_id = $agent_id")
-                params["agent_id"] = query.agent_id
-
-            if query.memory_type:
-                where_conditions.append("m.memory_type = $memory_type")
-                params["memory_type"] = query.memory_type.value
-
-            if query.min_importance:
-                where_conditions.append("m.importance >= $min_importance")
-                params["min_importance"] = query.min_importance
-
-            if query.created_after:
-                where_conditions.append("m.created_at >= $created_after")
-                params["created_after"] = query.created_after
-
-            if query.created_before:
-                where_conditions.append("m.created_at <= $created_before")
-                params["created_before"] = query.created_before
-
-            if not query.include_expired:
-                where_conditions.append("(m.expires_at IS NULL OR m.expires_at > $now)")
-                params["now"] = datetime.now()
-
-            # Build WHERE clause
-            where_clause = " AND ".join(where_conditions) if where_conditions else "TRUE"
-
-            # Build Cypher query (use parameterized LIMIT/SKIP)
-            cypher = f"""
-                MATCH (m:Memory)
-                WHERE {where_clause}
-                RETURN m
-                ORDER BY m.accessed_at DESC, m.importance DESC
-            """
-
-            if query.limit:
-                cypher += " LIMIT $limit"
-                params["limit"] = query.limit
-                if query.offset:
-                    cypher += " SKIP $offset"
-                    params["offset"] = query.offset
-
-            # Execute query
-            result = self.connection.execute(cypher, params)
-
-            # Convert to MemoryEntry objects
             memories = []
-            while result.has_next():
-                row = result.get_next()
-                memory_node = row[0]
 
-                # Parse node properties
-                memory = MemoryEntry(
-                    id=memory_node["id"],
-                    session_id=memory_node["session_id"],
-                    agent_id=memory_node["agent_id"],
-                    memory_type=MemoryType(memory_node["memory_type"]),
-                    title=memory_node["title"],
-                    content=memory_node["content"],
-                    metadata=json.loads(memory_node["metadata"]) if memory_node["metadata"] else {},
-                    tags=json.loads(memory_node["tags"]) if memory_node.get("tags") else None,
-                    importance=memory_node.get("importance"),
-                    created_at=memory_node["created_at"],
-                    accessed_at=memory_node["accessed_at"],
-                    expires_at=memory_node.get("expires_at"),
-                    parent_id=memory_node.get("parent_id"),
-                )
-                memories.append(memory)
+            # If memory_type specified, query only that node type
+            if query.memory_type:
+                node_label = self._get_node_label_for_type(query.memory_type)
+                memories = self._query_memories_by_type(query, node_label)
+            else:
+                # Query all 5 node types and combine results
+                for memory_type in [
+                    MemoryType.EPISODIC,
+                    MemoryType.SEMANTIC,
+                    MemoryType.PROCEDURAL,
+                    MemoryType.PROSPECTIVE,
+                    MemoryType.WORKING,
+                ]:
+                    node_label = self._get_node_label_for_type(memory_type)
+                    type_memories = self._query_memories_by_type(query, node_label)
+                    memories.extend(type_memories)
 
-            # Update access times
-            if memories:
-                memory_ids = [m.id for m in memories]
-                for memory_id in memory_ids:
-                    self.connection.execute(
-                        """
-                        MATCH (m:Memory {id: $id})
-                        SET m.accessed_at = $now
-                    """,
-                        {"id": memory_id, "now": datetime.now()},
-                    )
+                # Sort combined results
+                memories.sort(key=lambda m: (m.accessed_at, m.importance or 0), reverse=True)
+
+                # Apply limit/offset after combining
+                if query.offset:
+                    memories = memories[query.offset :]
+                if query.limit:
+                    memories = memories[: query.limit]
 
             return memories
 
@@ -416,8 +739,123 @@ class KuzuBackend:
             logger.error(f"Error retrieving memories from Kùzu: {e}")
             return []
 
+    def _get_node_label_for_type(self, memory_type: MemoryType) -> str:
+        """Map MemoryType to node label."""
+        type_to_label = {
+            MemoryType.EPISODIC: "EpisodicMemory",
+            MemoryType.SEMANTIC: "SemanticMemory",
+            MemoryType.PROCEDURAL: "ProceduralMemory",
+            MemoryType.PROSPECTIVE: "ProspectiveMemory",
+            MemoryType.WORKING: "WorkingMemory",
+        }
+        return type_to_label.get(memory_type, "Memory")  # Fallback to legacy
+
+    def _query_memories_by_type(self, query: MemoryQuery, node_label: str) -> list[MemoryEntry]:
+        """Query memories from a specific node type."""
+        # Build WHERE conditions
+        where_conditions = []
+        params = {}
+
+        if query.agent_id:
+            where_conditions.append("m.agent_id = $agent_id")
+            params["agent_id"] = query.agent_id
+
+        if query.min_importance:
+            where_conditions.append("m.importance >= $min_importance")
+            params["min_importance"] = query.min_importance
+
+        if query.created_after:
+            where_conditions.append("m.created_at >= $created_after")
+            params["created_after"] = query.created_after
+
+        if query.created_before:
+            where_conditions.append("m.created_at <= $created_before")
+            params["created_before"] = query.created_before
+
+        if not query.include_expired:
+            where_conditions.append("(m.expires_at IS NULL OR m.expires_at > $now)")
+            params["now"] = datetime.now()
+
+        # Build WHERE clause
+        where_clause = " AND ".join(where_conditions) if where_conditions else "TRUE"
+
+        # Build Cypher query
+        cypher = f"""
+            MATCH (m:{node_label})
+            WHERE {where_clause}
+            RETURN m
+            ORDER BY m.accessed_at DESC
+        """
+
+        # Only apply limit/offset if querying single type
+        if query.memory_type and query.limit:
+            cypher += " LIMIT $limit"
+            params["limit"] = query.limit
+            if query.offset:
+                cypher += " SKIP $offset"
+                params["offset"] = query.offset
+
+        # Execute query
+        result = self.connection.execute(cypher, params)
+
+        # Convert to MemoryEntry objects
+        memories = []
+        while result.has_next():
+            row = result.get_next()
+            memory_node = row[0]
+
+            # Determine memory type from node label
+            memory_type = self._get_memory_type_from_label(node_label)
+
+            # Parse node properties
+            memory = MemoryEntry(
+                id=memory_node["memory_id"],
+                session_id=memory_node.get("session_id", "unknown"),
+                agent_id=memory_node["agent_id"],
+                memory_type=memory_type,
+                title=memory_node["title"],
+                content=memory_node["content"],
+                metadata=json.loads(memory_node["metadata"]) if memory_node.get("metadata") else {},
+                tags=json.loads(memory_node["tags"]) if memory_node.get("tags") else None,
+                importance=memory_node.get("importance"),
+                created_at=memory_node["created_at"],
+                accessed_at=memory_node["accessed_at"],
+                expires_at=memory_node.get("expires_at"),
+                parent_id=memory_node.get("parent_id"),
+            )
+            memories.append(memory)
+
+        # Update access times for retrieved memories
+        now = datetime.now()
+        for memory in memories:
+            try:
+                self.connection.execute(
+                    f"""
+                    MATCH (m:{node_label} {{memory_id: $memory_id}})
+                    SET m.accessed_at = $now
+                """,
+                    {"memory_id": memory.id, "now": now},
+                )
+            except Exception as e:
+                logger.warning(f"Could not update access time for {memory.id}: {e}")
+
+        return memories
+
+    def _get_memory_type_from_label(self, node_label: str) -> MemoryType:
+        """Map node label back to MemoryType."""
+        label_to_type = {
+            "EpisodicMemory": MemoryType.EPISODIC,
+            "SemanticMemory": MemoryType.SEMANTIC,
+            "ProceduralMemory": MemoryType.PROCEDURAL,
+            "ProspectiveMemory": MemoryType.PROSPECTIVE,
+            "WorkingMemory": MemoryType.WORKING,
+        }
+        return label_to_type.get(node_label, MemoryType.EPISODIC)  # Default fallback
+
     def get_memory_by_id(self, memory_id: str) -> MemoryEntry | None:
         """Get a specific memory by ID.
+
+        Searches across all 5 node types to find the memory.
 
         Args:
             memory_id: Unique memory identifier
@@ -428,45 +866,59 @@ class KuzuBackend:
         Performance: <50ms (primary key lookup)
         """
         try:
-            result = self.connection.execute(
-                """
-                MATCH (m:Memory {id: $id})
-                RETURN m
-            """,
-                {"id": memory_id},
-            )
+            # Try each node type until we find the memory
+            for memory_type in [
+                MemoryType.EPISODIC,
+                MemoryType.SEMANTIC,
+                MemoryType.PROCEDURAL,
+                MemoryType.PROSPECTIVE,
+                MemoryType.WORKING,
+            ]:
+                node_label = self._get_node_label_for_type(memory_type)
 
-            if not result.has_next():
-                return None
+                result = self.connection.execute(
+                    f"""
+                    MATCH (m:{node_label} {{memory_id: $memory_id}})
+                    RETURN m
+                """,
+                    {"memory_id": memory_id},
+                )
 
-            row = result.get_next()
-            memory_node = row[0]
+                if result.has_next():
+                    row = result.get_next()
+                    memory_node = row[0]
 
-            # Update access time
-            self.connection.execute(
-                """
-                MATCH (m:Memory {id: $id})
-                SET m.accessed_at = $now
-            """,
-                {"id": memory_id, "now": datetime.now()},
-            )
+                    # Update access time
+                    now = datetime.now()
+                    self.connection.execute(
+                        f"""
+                        MATCH (m:{node_label} {{memory_id: $memory_id}})
+                        SET m.accessed_at = $now
+                    """,
+                        {"memory_id": memory_id, "now": now},
+                    )
 
-            # Parse to MemoryEntry
-            return MemoryEntry(
-                id=memory_node["id"],
-                session_id=memory_node["session_id"],
-                agent_id=memory_node["agent_id"],
-                memory_type=MemoryType(memory_node["memory_type"]),
-                title=memory_node["title"],
-                content=memory_node["content"],
-                metadata=json.loads(memory_node["metadata"]) if memory_node["metadata"] else {},
-                tags=json.loads(memory_node["tags"]) if memory_node.get("tags") else None,
-                importance=memory_node.get("importance"),
-                created_at=memory_node["created_at"],
-                accessed_at=memory_node["accessed_at"],
-                expires_at=memory_node.get("expires_at"),
-                parent_id=memory_node.get("parent_id"),
-            )
+                    # Parse to MemoryEntry
+                    return MemoryEntry(
+                        id=memory_node["memory_id"],
+                        session_id=memory_node.get("session_id", "unknown"),
+                        agent_id=memory_node["agent_id"],
+                        memory_type=memory_type,
+                        title=memory_node["title"],
+                        content=memory_node["content"],
+                        metadata=json.loads(memory_node["metadata"])
+                        if memory_node.get("metadata")
+                        else {},
+                        tags=json.loads(memory_node["tags"]) if memory_node.get("tags") else None,
+                        importance=memory_node.get("importance"),
+                        created_at=memory_node["created_at"],
+                        accessed_at=memory_node["accessed_at"],
+                        expires_at=memory_node.get("expires_at"),
+                        parent_id=memory_node.get("parent_id"),
+                    )
+
+            # Memory not found in any node type
+            return None
 
         except Exception as e:
             logger.error(f"Error getting memory by ID from Kùzu: {e}")
@@ -474,6 +926,8 @@ class KuzuBackend:
 
     def delete_memory(self, memory_id: str) -> bool:
         """Delete a memory entry and its relationships.
+
+        Searches across all 5 node types to find and delete the memory.
 
         Args:
             memory_id: Unique memory identifier
@@ -484,16 +938,38 @@ class KuzuBackend:
         Performance: <100ms (node + edge deletion)
         """
         try:
-            # Delete memory node and its relationships (DETACH DELETE removes edges first)
-            result = self.connection.execute(
-                """
-                MATCH (m:Memory {id: $id})
-                DETACH DELETE m
-            """,
-                {"id": memory_id},
-            )
+            # Try to delete from each node type
+            for memory_type in [
+                MemoryType.EPISODIC,
+                MemoryType.SEMANTIC,
+                MemoryType.PROCEDURAL,
+                MemoryType.PROSPECTIVE,
+                MemoryType.WORKING,
+            ]:
+                node_label = self._get_node_label_for_type(memory_type)
 
-            return True
+                # Check if node exists in this type
+                result = self.connection.execute(
+                    f"""
+                    MATCH (m:{node_label} {{memory_id: $memory_id}})
+                    RETURN COUNT(m) AS count
+                """,
+                    {"memory_id": memory_id},
+                )
+
+                if result.has_next() and result.get_next()[0] > 0:
+                    # Delete memory node and its relationships (DETACH DELETE removes edges first)
+                    self.connection.execute(
+                        f"""
+                        MATCH (m:{node_label} {{memory_id: $memory_id}})
+                        DETACH DELETE m
+                    """,
+                        {"memory_id": memory_id},
+                    )
+                    return True
+
+            # Memory not found in any node type
+            return False
 
         except Exception as e:
             logger.error(f"Error deleting memory from Kùzu: {e}")
@@ -629,6 +1105,8 @@ class KuzuBackend:
     def get_stats(self) -> dict[str, Any]:
         """Get database statistics.
 
+        Counts across all 5 memory node types.
+
         Returns:
             Dictionary with backend statistics
 
@@ -637,43 +1115,66 @@ class KuzuBackend:
         try:
             stats = {}
 
-            # Total memories
-            result = self.connection.execute("MATCH (m:Memory) RETURN COUNT(m) AS count")
-            if result.has_next():
-                stats["total_memories"] = result.get_next()[0]
+            # Count memories by type across all 5 node types
+            memory_types = {}
+            total_memories = 0
+
+            for memory_type in [
+                MemoryType.EPISODIC,
+                MemoryType.SEMANTIC,
+                MemoryType.PROCEDURAL,
+                MemoryType.PROSPECTIVE,
+                MemoryType.WORKING,
+            ]:
+                node_label = self._get_node_label_for_type(memory_type)
+
+                result = self.connection.execute(f"MATCH (m:{node_label}) RETURN COUNT(m) AS count")
+
+                if result.has_next():
+                    count = result.get_next()[0]
+                    memory_types[memory_type.value] = count
+                    total_memories += count
+
+            stats["total_memories"] = total_memories
+            stats["memory_types"] = memory_types
 
             # Total sessions
             result = self.connection.execute("MATCH (s:Session) RETURN COUNT(s) AS count")
             if result.has_next():
                 stats["total_sessions"] = result.get_next()[0]
 
-            # Memory types breakdown
-            result = self.connection.execute(
-                """
-                MATCH (m:Memory)
-                RETURN m.memory_type AS type, COUNT(m) AS count
-            """
-            )
-            memory_types = {}
-            while result.has_next():
-                row = result.get_next()
-                memory_types[row[0]] = row[1]
-            stats["memory_types"] = memory_types
+            # Total agents
+            result = self.connection.execute("MATCH (a:Agent) RETURN COUNT(a) AS count")
+            if result.has_next():
+                stats["total_agents"] = result.get_next()[0]
 
-            # Top agents
-            result = self.connection.execute(
-                """
-                MATCH (a:Agent)-[:CREATED]->(m:Memory)
-                RETURN a.agent_id AS agent, COUNT(m) AS count
-                ORDER BY count DESC
-                LIMIT 10
-            """
-            )
+            # Top agents by memory count (across all types)
             top_agents = {}
-            while result.has_next():
-                row = result.get_next()
-                top_agents[row[0]] = row[1]
-            stats["top_agents"] = top_agents
+            for memory_type in [
+                MemoryType.EPISODIC,
+                MemoryType.SEMANTIC,
+                MemoryType.PROCEDURAL,
+                MemoryType.PROSPECTIVE,
+                MemoryType.WORKING,
+            ]:
+                node_label = self._get_node_label_for_type(memory_type)
+
+                result = self.connection.execute(
+                    f"""
+                    MATCH (m:{node_label})
+                    RETURN m.agent_id AS agent, COUNT(m) AS count
+                """
+                )
+
+                while result.has_next():
+                    row = result.get_next()
+                    agent_id = row[0]
+                    count = row[1]
+                    top_agents[agent_id] = top_agents.get(agent_id, 0) + count
+
+            # Sort and limit to top 10
+            sorted_agents = sorted(top_agents.items(), key=lambda x: x[1], reverse=True)[:10]
+            stats["top_agents"] = dict(sorted_agents)
 
             # Approximate database size
             import os
@@ -711,6 +1212,54 @@ class KuzuBackend:
         """Context manager exit with proper cleanup."""
         self.close()
         return False
+
+    def _has_old_schema(self) -> bool:
+        """Check if old Memory table exists in database.
+
+        Returns:
+            True if old schema exists, False otherwise
+        """
+        try:
+            # Try to query old Memory table
+            result = self.connection.execute(
+                """
+                MATCH (m:Memory)
+                RETURN COUNT(m) AS count
+                LIMIT 1
+            """
+            )
+            # If query succeeds, old schema exists
+            return result.has_next()
+        except Exception:
+            # If query fails, old schema doesn't exist
+            return False
+
+    def migrate_to_new_schema(self) -> bool:
+        """Migrate data from old Memory table to new 5-node schema.
+
+        This is a stub for future migration implementation.
+
+        Returns:
+            True if migration successful, False otherwise
+        """
+        try:
+            if not self._has_old_schema():
+                logger.info("No old schema detected, skipping migration")
+                return True
+
+            logger.warning("Migration from old schema not yet implemented")
+            # TODO: Implement migration logic
+            # 1. Query all nodes from old Memory table
+            # 2. Route each to appropriate new node type based on memory_type
+            # 3. Create proper relationships (Session, Agent)
+            # 4. Verify data integrity
+            # 5. Optionally remove old Memory table
+
+            return False
+
+        except Exception as e:
+            logger.error(f"Error during schema migration: {e}")
+            return False
 
 
 __all__ = ["KuzuBackend"]

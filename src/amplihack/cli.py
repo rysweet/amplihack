@@ -401,6 +401,24 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     local_install_parser = subparsers.add_parser("_local_install", help=argparse.SUPPRESS)
     local_install_parser.add_argument("repo_root", help="Repository root directory")
 
+    # Memory tree visualization command
+    memory_parser = subparsers.add_parser("memory", help="Memory system commands")
+    memory_subparsers = memory_parser.add_subparsers(
+        dest="memory_command", help="Memory subcommands"
+    )
+
+    tree_parser = memory_subparsers.add_parser("tree", help="Visualize memory graph as tree")
+    tree_parser.add_argument("--session", help="Filter by session ID")
+    tree_parser.add_argument(
+        "--type",
+        choices=["conversation", "decision", "pattern", "context", "learning", "artifact"],
+        help="Filter by memory type",
+    )
+    tree_parser.add_argument("--depth", type=int, help="Maximum tree depth")
+    tree_parser.add_argument(
+        "--backend", choices=["kuzu", "sqlite"], default="kuzu", help="Memory backend to use"
+    )
+
     return parser
 
 
@@ -712,6 +730,52 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         print_uvx_usage_instructions()
         return 0
+
+    elif args.command == "memory":
+        if args.memory_command == "tree":
+            from .memory.cli_visualize import visualize_memory_tree
+            from .memory.models import MemoryType
+
+            # Select backend
+            if args.backend == "kuzu":
+                try:
+                    from .memory.backends.kuzu_backend import KuzuBackend
+
+                    backend = KuzuBackend()
+                    backend.initialize()
+                except ImportError:
+                    print("Error: Kùzu backend not available. Install with: pip install kuzu")
+                    print("Falling back to SQLite backend...")
+                    from .memory.database import MemoryDatabase
+
+                    backend = MemoryDatabase()
+                    backend.initialize()
+            else:
+                from .memory.database import MemoryDatabase
+
+                backend = MemoryDatabase()
+                backend.initialize()
+
+            # Convert type string to enum if provided
+            memory_type = None
+            if args.type:
+                memory_type = MemoryType(args.type)
+
+            # Visualize
+            visualize_memory_tree(
+                backend=backend,
+                session_id=args.session,
+                memory_type=memory_type,
+                depth=args.depth,
+            )
+
+            # Cleanup
+            if hasattr(backend, "close"):
+                backend.close()
+
+            return 0
+        create_parser().print_help()
+        return 1
 
     else:
         create_parser().print_help()
