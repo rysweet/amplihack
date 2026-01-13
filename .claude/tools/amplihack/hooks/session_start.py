@@ -122,6 +122,34 @@ class SessionStartHook(HookProcessor):
         except ImportError:
             pass
 
+        # Settings.json initialization/merge with UVX template
+        # Ensures statusLine and other critical configurations are present
+        try:
+            from amplihack.utils.uvx_settings_manager import UVXSettingsManager
+
+            settings_path = self.project_root / ".claude" / "settings.json"
+            manager = UVXSettingsManager()
+
+            # Check if settings need updating (empty, missing statusLine, etc.)
+            if manager.should_use_uvx_template(settings_path):
+                success = manager.create_uvx_settings(settings_path, preserve_existing=True)
+                if success:
+                    self.log("✅ Settings.json updated with UVX template (includes statusLine)")
+                    self.save_metric("settings_updated", True)
+                else:
+                    self.log("⚠️ Failed to update settings.json with template", "WARNING")
+                    self.save_metric("settings_updated", False)
+            else:
+                self.log("Settings.json already complete")
+                self.save_metric("settings_updated", False)
+        except ImportError as e:
+            self.log(f"UVXSettingsManager not available: {e}", "WARNING")
+            self.save_metric("settings_updated", False)
+        except Exception as e:
+            # Fail gracefully - don't break session start
+            self.log(f"Settings merge failed (non-critical): {e}", "WARNING")
+            self.save_metric("settings_update_error", True)
+
         # Neo4j Startup (Conditional - Opt-In Only)
         # Why opt-in: Neo4j requires Docker, external dependencies (Blarify), and adds complexity
         # Most users don't need advanced graph memory features
