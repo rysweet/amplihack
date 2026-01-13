@@ -418,6 +418,10 @@ Quick references, guides, and additional resources.
 - [Create Your Own Tools](CREATE_YOUR_OWN_TOOLS.md) - Build custom tools
 - [Workflow to Skills Migration](WORKFLOW_TO_SKILLS_MIGRATION.md) - Migration guide
 
+### Contributing
+
+- [File Organization](contributing/file-organization.md) - Where different file types belong in the repository
+
 ### GitHub & Community
 
 - [GitHub Repository](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding) - Source code
