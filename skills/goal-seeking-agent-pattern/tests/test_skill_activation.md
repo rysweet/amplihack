@@ -295,14 +295,14 @@ def test_real_examples_references():
 
 ```python
 def test_example_files_exist():
-    examples_dir = Path(".claude/skills/goal-seeking-agent-pattern/examples")
+    examples_dir = Path("amplihack:skills/goal-seeking-agent-pattern/examples")
 
     assert (examples_dir / "workflow_automation.md").exists()
     assert (examples_dir / "data_pipeline.md").exists()
     assert (examples_dir / "adaptive_testing.md").exists()
 
 def test_example_files_content():
-    examples_dir = Path(".claude/skills/goal-seeking-agent-pattern/examples")
+    examples_dir = Path("amplihack:skills/goal-seeking-agent-pattern/examples")
 
     # Each example should have key sections
     for example_file in examples_dir.glob("*.md"):
@@ -325,7 +325,7 @@ def test_example_files_content():
 
 ```python
 def test_examples_use_framework():
-    examples_dir = Path(".claude/skills/goal-seeking-agent-pattern/examples")
+    examples_dir = Path("amplihack:skills/goal-seeking-agent-pattern/examples")
 
     for example_file in examples_dir.glob("*.md"):
         content = example_file.read_text()
@@ -386,13 +386,13 @@ def test_all_sections_present():
 
 ```python
 def test_template_files_exist():
-    templates_dir = Path(".claude/skills/goal-seeking-agent-pattern/templates")
+    templates_dir = Path("amplihack:skills/goal-seeking-agent-pattern/templates")
 
     assert (templates_dir / "goal_prompt_template.md").exists()
     assert (templates_dir / "integration_guide.md").exists()
 
 def test_goal_prompt_template_sections():
-    template_file = Path(".claude/skills/goal-seeking-agent-pattern/templates/goal_prompt_template.md")
+    template_file = Path("amplihack:skills/goal-seeking-agent-pattern/templates/goal_prompt_template.md")
     content = template_file.read_text()
 
     # Template should have all sections
@@ -402,7 +402,7 @@ def test_goal_prompt_template_sections():
     assert "## Context" in content
 
 def test_integration_guide_sections():
-    guide_file = Path(".claude/skills/goal-seeking-agent-pattern/templates/integration_guide.md")
+    guide_file = Path("amplihack:skills/goal-seeking-agent-pattern/templates/integration_guide.md")
     content = guide_file.read_text()
 
     # Guide should cover all APIs
@@ -423,11 +423,11 @@ def test_integration_guide_sections():
 
 ```python
 def test_readme_exists():
-    readme_file = Path(".claude/skills/goal-seeking-agent-pattern/README.md")
+    readme_file = Path("amplihack:skills/goal-seeking-agent-pattern/README.md")
     assert readme_file.exists()
 
 def test_readme_has_quickstart():
-    readme_file = Path(".claude/skills/goal-seeking-agent-pattern/README.md")
+    readme_file = Path("amplihack:skills/goal-seeking-agent-pattern/README.md")
     content = readme_file.read_text()
 
     # Should have quick start section
@@ -435,7 +435,7 @@ def test_readme_has_quickstart():
     assert "5-question" in content.lower()
 
 def test_readme_has_examples():
-    readme_file = Path(".claude/skills/goal-seeking-agent-pattern/README.md")
+    readme_file = Path("amplihack:skills/goal-seeking-agent-pattern/README.md")
     content = readme_file.read_text()
 
     # Should reference all 4 real examples
@@ -563,7 +563,7 @@ def test_runnable_examples():
 
 ```python
 def test_simple_example_first():
-    readme_content = read_file(".claude/skills/goal-seeking-agent-pattern/README.md")
+    readme_content = read_file("amplihack:skills/goal-seeking-agent-pattern/README.md")
 
     # Quick Start should come before advanced topics
     quick_start_pos = readme_content.find("Quick Start")
@@ -572,7 +572,7 @@ def test_simple_example_first():
     assert quick_start_pos < advanced_pos
 
 def test_examples_ordered_by_complexity():
-    examples_dir = Path(".claude/skills/goal-seeking-agent-pattern/examples")
+    examples_dir = Path("amplihack:skills/goal-seeking-agent-pattern/examples")
 
     workflow = (examples_dir / "workflow_automation.md").read_text()
     pipeline = (examples_dir / "data_pipeline.md").read_text()
@@ -596,7 +596,7 @@ def test_examples_ordered_by_complexity():
 ```python
 def test_skill_loads_successfully():
     """Test that skill YAML frontmatter is valid"""
-    skill_file = Path(".claude/skills/goal-seeking-agent-pattern/SKILL.md")
+    skill_file = Path("amplihack:skills/goal-seeking-agent-pattern/SKILL.md")
     content = skill_file.read_text()
 
     # Extract YAML frontmatter
@@ -621,7 +621,7 @@ def test_skill_loads_successfully():
 
 def test_skill_file_structure():
     """Test that all required files exist"""
-    skill_dir = Path(".claude/skills/goal-seeking-agent-pattern")
+    skill_dir = Path("amplihack:skills/goal-seeking-agent-pattern")
 
     # Core files
     assert (skill_dir / "SKILL.md").exists()
@@ -662,13 +662,13 @@ def test_skill_file_structure():
 
 ```bash
 # Run all tests
-python -m pytest .claude/skills/goal-seeking-agent-pattern/tests/test_skill_activation.md
+python -m pytest amplihack:skills/goal-seeking-agent-pattern/tests/test_skill_activation.md
 
 # Run specific category
-python -m pytest .claude/skills/goal-seeking-agent-pattern/tests/test_skill_activation.md -k "auto_detection"
+python -m pytest amplihack:skills/goal-seeking-agent-pattern/tests/test_skill_activation.md -k "auto_detection"
 
 # Run with verbose output
-python -m pytest .claude/skills/goal-seeking-agent-pattern/tests/test_skill_activation.md -v
+python -m pytest amplihack:skills/goal-seeking-agent-pattern/tests/test_skill_activation.md -v
 ```
 
 ### Automated Testing (CI/CD)
@@ -691,7 +691,7 @@ jobs:
         run: pip install pytest pyyaml
       - name: Test goal-seeking-agent-pattern skill
         run: |
-          pytest .claude/skills/goal-seeking-agent-pattern/tests/test_skill_activation.md -v
+          pytest amplihack:skills/goal-seeking-agent-pattern/tests/test_skill_activation.md -v
 ```
 
 ## Success Criteria

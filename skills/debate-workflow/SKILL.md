@@ -349,7 +349,7 @@ Counter: [Additional evidence or reasoning]
 - Document full debate transcript
 - Include all perspective arguments
 - Record synthesis and final decision
-- Add to `.claude/context/DISCOVERIES.md`
+- Add to `.amplifier/context/DISCOVERIES.md`
 - Update relevant architecture docs
 
 **Decision Record Template:**

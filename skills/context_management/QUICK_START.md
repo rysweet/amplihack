@@ -175,9 +175,9 @@ result = list_snapshots()
 
 | What         | Where                                                          |
 | ------------ | -------------------------------------------------------------- |
-| Snapshots    | `.claude/runtime/context-snapshots/*.json`                     |
-| Transcripts  | `.claude/runtime/logs/<session_id>/CONVERSATION_TRANSCRIPT.md` |
-| Session logs | `.claude/runtime/logs/<session_id>/`                           |
+| Snapshots    | `.amplifier/context-snapshots/*.json`                     |
+| Transcripts  | `.amplifier/logs/<session_id>/CONVERSATION_TRANSCRIPT.md` |
+| Session logs | `.amplifier/logs/<session_id>/`                           |
 
 ## Integration
 
@@ -211,7 +211,7 @@ context_management_skill(
 
 ```bash
 # Run all tests
-pytest .claude/skills/context-management/tests/
+pytest amplihack:skills/context-management/tests/
 
 # Run with coverage
 pytest --cov=context_management tests/

@@ -203,9 +203,9 @@ Estimate material behavior:
 
 ## Links
 
-- [Agent Implementation](/Users/ryan/src/Fritmp/amplihack/.claude/skills/chemist-analyst/chemist-analyst.md)
-- [Quick Reference](/Users/ryan/src/Fritmp/amplihack/.claude/skills/chemist-analyst/QUICK_REFERENCE.md)
-- [All Skills](/Users/ryan/src/Fritmp/amplihack/.claude/skills/README.md)
+- [Agent Implementation](/Users/ryan/src/Fritmp/amplihack/amplihack:skills/chemist-analyst/chemist-analyst.md)
+- [Quick Reference](/Users/ryan/src/Fritmp/amplihack/amplihack:skills/chemist-analyst/QUICK_REFERENCE.md)
+- [All Skills](/Users/ryan/src/Fritmp/amplihack/amplihack:skills/README.md)
 
 ## Best Practices
 

@@ -122,7 +122,7 @@ REGENERATABLE = Can rebuild without breaking connections
 
 ```
 
-.claude/skills/module-spec-generator/
+amplihack:skills/module-spec-generator/
 ├── SKILL.md # Full skill documentation
 ├── README.md # Skill overview and philosophy
 ├── QUICK_REFERENCE.md # This file

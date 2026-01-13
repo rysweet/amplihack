@@ -122,7 +122,7 @@ workflow.add_edge(["security", "performance", "ux"], "synthesize")
 
 ```python
 # amplihack - stateless
-reviewer = Agent(".claude/agents/amplihack/reviewer.md")
+reviewer = Agent(".amplifier/agents/amplihack/reviewer.md")
 result = reviewer.process({"files": ["src/module.py"]})
 ```
 

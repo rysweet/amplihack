@@ -816,7 +816,7 @@ for attempt in range(max_retries):
 ### Integration with Amplihack Agents
 
 ```python
-# .claude/agents/amplihack/specialized/data_analyzer.md
+# .amplifier/agents/amplihack/specialized/data_analyzer.md
 """
 You are a data analysis specialist.
 Use the Agent SDK to perform multi-step data analysis.

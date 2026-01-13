@@ -130,7 +130,7 @@ The PPTX skill emphasizes thoughtful design:
 Run tests to verify the skill:
 
 ```bash
-cd .claude/skills/pptx
+cd amplihack:skills/pptx
 pytest tests/ -v
 ```
 

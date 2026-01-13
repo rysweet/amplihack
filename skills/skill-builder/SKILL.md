@@ -54,10 +54,10 @@ I orchestrate the skill creation process using amplihack's specialized agents:
 
 ## Skill Types Supported
 
-- **skill**: Claude Code skills in `.claude/skills/` (auto-discovery)
-- **agent**: Specialized agents in `.claude/agents/amplihack/specialized/`
-- **command**: Slash commands in `.claude/commands/amplihack/`
-- **scenario**: Production tools in `.claude/scenarios/`
+- **skill**: Claude Code skills in `amplihack:skills/` (auto-discovery)
+- **agent**: Specialized agents in `.amplifier/agents/amplihack/specialized/`
+- **command**: Slash commands in `.amplifier/commands/amplihack/`
+- **scenario**: Production tools in `.amplifier/scenarios/`
 
 See [examples.md](./examples.md) for detailed examples of each type.
 

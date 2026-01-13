@@ -7,13 +7,13 @@ Guide for working with Azure DevOps repositories using CLI tools.
 ### Basic List
 
 ```bash
-python .claude/scenarios/az-devops-tools/list_repos.py
+python .amplifier/scenarios/az-devops-tools/list_repos.py
 ```
 
 ### With Details
 
 ```bash
-python .claude/scenarios/az-devops-tools/list_repos.py --include-details
+python .amplifier/scenarios/az-devops-tools/list_repos.py --include-details
 ```
 
 This shows:
@@ -26,7 +26,7 @@ This shows:
 ### JSON Output
 
 ```bash
-python .claude/scenarios/az-devops-tools/list_repos.py --format json
+python .amplifier/scenarios/az-devops-tools/list_repos.py --format json
 ```
 
 ## Creating Pull Requests
@@ -34,7 +34,7 @@ python .claude/scenarios/az-devops-tools/list_repos.py --format json
 ### Basic PR
 
 ```bash
-python .claude/scenarios/az-devops-tools/create_pr.py \
+python .amplifier/scenarios/az-devops-tools/create_pr.py \
   --source feature/auth \
   --target main \
   --title "Add authentication"
@@ -43,7 +43,7 @@ python .claude/scenarios/az-devops-tools/create_pr.py \
 ### PR with Description from File
 
 ```bash
-python .claude/scenarios/az-devops-tools/create_pr.py \
+python .amplifier/scenarios/az-devops-tools/create_pr.py \
   --source feature/auth \
   --target main \
   --title "Add authentication" \
@@ -53,7 +53,7 @@ python .claude/scenarios/az-devops-tools/create_pr.py \
 ### PR with Reviewers and Work Items
 
 ```bash
-python .claude/scenarios/az-devops-tools/create_pr.py \
+python .amplifier/scenarios/az-devops-tools/create_pr.py \
   --source feature/bug-fix \
   --target main \
   --title "Fix critical bug" \
@@ -64,7 +64,7 @@ python .claude/scenarios/az-devops-tools/create_pr.py \
 ### Draft PR
 
 ```bash
-python .claude/scenarios/az-devops-tools/create_pr.py \
+python .amplifier/scenarios/az-devops-tools/create_pr.py \
   --source feature/wip \
   --target main \
   --title "WIP: New feature" \
@@ -74,7 +74,7 @@ python .claude/scenarios/az-devops-tools/create_pr.py \
 ### PR with Auto-Complete
 
 ```bash
-python .claude/scenarios/az-devops-tools/create_pr.py \
+python .amplifier/scenarios/az-devops-tools/create_pr.py \
   --source feature/done \
   --target main \
   --title "Complete feature" \
@@ -96,7 +96,7 @@ git checkout -b feature/new-feature main
 git push -u origin feature/new-feature
 
 # Create PR
-python .claude/scenarios/az-devops-tools/create_pr.py \
+python .amplifier/scenarios/az-devops-tools/create_pr.py \
   --source feature/new-feature \
   --target main \
   --title "Add new feature" \
@@ -115,7 +115,7 @@ git checkout -b bugfix/issue-123 main
 # Push and create PR
 git push -u origin bugfix/issue-123
 
-python .claude/scenarios/az-devops-tools/create_pr.py \
+python .amplifier/scenarios/az-devops-tools/create_pr.py \
   --source bugfix/issue-123 \
   --target main \
   --title "Fix: Issue #123 login button" \

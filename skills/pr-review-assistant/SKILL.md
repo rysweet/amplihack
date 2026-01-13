@@ -249,12 +249,12 @@ This aligns with ruthless simplicity: don't add complexity until proven necessar
 
 **PR**: Add new authentication module
 
-**Code Changed**: New file `.claude/tools/auth/auth.py`
+**Code Changed**: New file `amplihack:modules/auth/auth.py`
 
 **Review Comment**:
 ```
 
-FILE: .claude/tools/auth/ (new module)
+FILE: amplihack:modules/auth/ (new module)
 
 Good: Module has clear responsibilities (JWT validation, token refresh).
 Issue: Missing specification documentation for module regeneration.
@@ -272,7 +272,7 @@ ACTION NEEDED:
 
 This enables future rebuilding if requirements change.
 
-See .claude/skills/pr-review-assistant/ for specification template.
+See amplihack:skills/pr-review-assistant/ for specification template.
 
 ````
 
@@ -565,10 +565,10 @@ The skill produces:
 
 All reviews anchor in these documents:
 
-- `.claude/context/PHILOSOPHY.md` - Core development philosophy
-- `.claude/context/PATTERNS.md` - Approved patterns and anti-patterns
+- `.amplifier/context/PHILOSOPHY.md` - Core development philosophy
+- `.amplifier/context/PATTERNS.md` - Approved patterns and anti-patterns
 - `Specs/` - Module specifications for architecture verification
-- `.claude/context/DISCOVERIES.md` - Known issues and solutions
+- `.amplifier/context/DISCOVERIES.md` - Known issues and solutions
 
 ## Tips for Effective Reviews
 
@@ -600,4 +600,4 @@ This skill should evolve based on usage:
 - What philosophy principles are most violated?
 - How can we catch issues earlier?
 
-Document learnings in `.claude/context/DISCOVERIES.md`.
+Document learnings in `.amplifier/context/DISCOVERIES.md`.

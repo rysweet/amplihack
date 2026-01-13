@@ -19,9 +19,7 @@ recursion:
 
 steps:
   - id: "phase-1-scope"
-    name: "Phase 1: Scope Definition"
-    type: agent
-    agent: "amplihack:prompt-writer"
+    agent: "foundation:zen-architect"
     prompt: |
       PHASE 1: SCOPE DEFINITION
 
@@ -44,17 +42,14 @@ steps:
         - Success criteria
         - Scope boundaries
         - Estimated depth and timeline
-    outputs:
-      scope_document: "{{result}}"
+    output: "scope_document"
 
   - id: "phase-2-strategy"
-    name: "Phase 2: Exploration Strategy"
-    type: agent
     agent: "foundation:zen-architect"
     prompt: |
       PHASE 2: EXPLORATION STRATEGY
 
-      Scope: {{steps.phase-1-scope.scope_document}}
+      Scope: {{scope_document}}
 
       Plan which agents to deploy and what to investigate.
 
@@ -79,18 +74,15 @@ steps:
         - Investigation roadmap
         - Agent deployment plan
         - Priority order
-    outputs:
-      strategy_document: "{{result}}"
+    output: "strategy_document"
 
   - id: "phase-3-deep-dives"
-    name: "Phase 3: Parallel Deep Dives"
-    type: agent
     agent: "foundation:explorer"
     prompt: |
       PHASE 3: PARALLEL DEEP DIVES
 
-      Strategy: {{steps.phase-2-strategy.strategy_document}}
-      Scope: {{steps.phase-1-scope.scope_document}}
+      Strategy: {{strategy_document}}
+      Scope: {{scope_document}}
 
       Execute the exploration strategy with parallel investigations.
 
@@ -106,18 +98,15 @@ steps:
       - Then synthesize findings (extract patterns and insights)
 
       Output comprehensive findings from all investigation areas.
-    outputs:
-      findings: "{{result}}"
+    output: "findings"
 
   - id: "phase-4-verification"
-    name: "Phase 4: Verification"
-    type: agent
-    agent: "amplihack:tester"
+    agent: "foundation:zen-architect"
     prompt: |
       PHASE 4: VERIFICATION
 
-      Findings: {{steps.phase-3-deep-dives.findings}}
-      Original Questions: {{steps.phase-1-scope.scope_document}}
+      Findings: {{findings}}
+      Original Questions: {{scope_document}}
 
       Test understanding through practical application.
 
@@ -132,19 +121,16 @@ steps:
       - Verification results
       - Remaining gaps in understanding
       - Confidence level in findings
-    outputs:
-      verification_results: "{{result}}"
+    output: "verification_results"
 
   - id: "phase-5-synthesis"
-    name: "Phase 5: Synthesis"
-    type: agent
-    agent: "amplihack:insight-synthesizer"
+    agent: "foundation:zen-architect"
     prompt: |
       PHASE 5: SYNTHESIS
 
-      Findings: {{steps.phase-3-deep-dives.findings}}
-      Verification: {{steps.phase-4-verification.verification_results}}
-      Original Scope: {{steps.phase-1-scope.scope_document}}
+      Findings: {{findings}}
+      Verification: {{verification_results}}
+      Original Scope: {{scope_document}}
 
       Combine all findings into coherent understanding.
 
@@ -156,19 +142,16 @@ steps:
       5. Formulate recommendations
 
       Output comprehensive synthesis of all learnings.
-    outputs:
-      synthesis: "{{result}}"
+    output: "synthesis"
 
   - id: "phase-6-capture"
-    name: "Phase 6: Knowledge Capture"
-    type: agent
-    agent: "amplihack:documentation-writer"
+    agent: "foundation:zen-architect"
     prompt: |
       PHASE 6: KNOWLEDGE CAPTURE
 
-      Synthesis: {{steps.phase-5-synthesis.synthesis}}
-      Findings: {{steps.phase-3-deep-dives.findings}}
-      Scope: {{steps.phase-1-scope.scope_document}}
+      Synthesis: {{synthesis}}
+      Findings: {{findings}}
+      Scope: {{scope_document}}
 
       Document learnings for future reference.
 
@@ -181,5 +164,4 @@ steps:
       6. Related areas for further investigation
 
       Format for easy future retrieval and reuse.
-    outputs:
-      knowledge_document: "{{result}}"
+    output: "knowledge_document"

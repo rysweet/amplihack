@@ -76,7 +76,7 @@ import subprocess
 def analyze_code(code_path: str) -> str:
     """Use amplihack code analyzer agent."""
     result = subprocess.run(
-        ["claude", "--agent", ".claude/agents/amplihack/analyzer.md", code_path],
+        ["claude", "--agent", ".amplifier/agents/amplihack/analyzer.md", code_path],
         capture_output=True,
         text=True
     )
@@ -178,7 +178,7 @@ async def sequential_handoff(user_query):
 # amplihack reviews code
 from claude import Agent as ClaudeAgent
 
-reviewer = ClaudeAgent(".claude/agents/amplihack/reviewer.md")
+reviewer = ClaudeAgent(".amplifier/agents/amplihack/reviewer.md")
 review = reviewer.process({"files": ["src/module.py"]})
 
 # Agent Framework discusses with developer
@@ -218,7 +218,7 @@ conversation = await support_agent.run(
 # If escalation needed, use amplihack for analysis
 if conversation.requires_escalation:
     from claude import Agent as ClaudeAgent
-    analyzer = ClaudeAgent(".claude/agents/amplihack/issue-analyzer.md")
+    analyzer = ClaudeAgent(".amplifier/agents/amplihack/issue-analyzer.md")
     analysis = analyzer.process({"conversation": thread.messages})
 
     # Back to Agent Framework with analysis
@@ -244,7 +244,7 @@ workflow.add_node("research", researcher)
 @function_tool
 def analyze_findings(findings: str) -> str:
     from claude import Agent as ClaudeAgent
-    analyzer = ClaudeAgent(".claude/agents/amplihack/analyzer.md")
+    analyzer = ClaudeAgent(".amplifier/agents/amplihack/analyzer.md")
     return analyzer.process({"data": findings})
 
 analyst = Agent(model=model, tools=[analyze_findings])
@@ -271,14 +271,14 @@ pip install agent-framework --pre
 
 # Environment variables
 export OPENAI_API_KEY=sk-...
-export AMPLIHACK_AGENTS_PATH=./.claude/agents/amplihack
+export AMPLIHACK_AGENTS_PATH=./.amplifier/agents/amplihack
 ```
 
 ### Project Structure
 
 ```
 project/
-├── .claude/
+├── .amplifier/
 │   ├── agents/
 │   │   └── amplihack/          # amplihack agents
 │   └── skills/

@@ -440,20 +440,20 @@ cp goal_prompt_template.md my-goal.md
 ```bash
 amplihack goal-agent-generator create \
   --prompt my-goal.md \
-  --output .claude/agents/goal-driven/my-agent
+  --output .amplifier/agents/goal-driven/my-agent
 ```
 
 **Step 5**: Review generated plan
 
 ```bash
-cat .claude/agents/goal-driven/my-agent/plan.yaml
+cat .amplifier/agents/goal-driven/my-agent/plan.yaml
 ```
 
 **Step 6**: Execute agent
 
 ```bash
 amplihack goal-agent-generator execute \
-  --agent-path .claude/agents/goal-driven/my-agent \
+  --agent-path .amplifier/agents/goal-driven/my-agent \
   --auto-mode
 ```
 

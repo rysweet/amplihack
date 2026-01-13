@@ -73,7 +73,7 @@ def generate_content_hash(url: str) -> str:
 
 ### check_drift.py Script
 
-Location: `.claude/skills/agent-sdk/scripts/check_drift.py`
+Location: `amplihack:skills/agent-sdk/scripts/check_drift.py`
 
 **Core Functionality:**
 
@@ -304,7 +304,7 @@ When drift is detected, follow this systematic workflow:
 **Step 1: Verify Drift**
 
 ```bash
-cd .claude/skills/agent-sdk
+cd amplihack:skills/agent-sdk
 python scripts/check_drift.py
 ```
 

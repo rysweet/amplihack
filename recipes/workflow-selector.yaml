@@ -56,7 +56,7 @@ steps:
   
   - id: "classify-request"
     agent: "foundation:zen-architect"
-    mode: "ANALYZE"
+    
     prompt: |
       You are a WORKFLOW CLASSIFIER. Your job is to route requests to the correct workflow.
       
@@ -120,8 +120,8 @@ steps:
       If confidence is "low" or "medium", set workflow_type to "default" (safety fallback).
       If fallback_applied is true, explain why in classification_reason.
     output: "classification"
-    parse_json: true
-    timeout: 120
+    
+    
 
   # =============================================================================
   # STEP 2: ROUTE TO Q&A WORKFLOW (Conditional)
@@ -135,7 +135,7 @@ steps:
       question: "{{user_request}}"
       context: "{{context}}"
     output: "qa_result"
-    timeout: 300
+    
     on_error: "continue"
 
   # =============================================================================
@@ -150,7 +150,7 @@ steps:
       investigation_request: "{{user_request}}"
       context: "{{context}}"
     output: "investigation_result"
-    timeout: 3600
+    
     on_error: "continue"
 
   # =============================================================================
@@ -165,7 +165,7 @@ steps:
       task_description: "{{user_request}}"
       context: "{{context}}"
     output: "default_result"
-    timeout: 14400  # 4 hours for full dev workflow
+      # 4 hours for full dev workflow
     on_error: "continue"
 
   # =============================================================================
@@ -175,7 +175,7 @@ steps:
   
   - id: "synthesize-output"
     agent: "foundation:zen-architect"
-    mode: "ANALYZE"
+    
     prompt: |
       Synthesize the workflow results into a final output.
       
@@ -206,8 +206,8 @@ steps:
       - If a workflow failed or returned empty, note that in result_summary
       - Set escalation_needed if the workflow indicated further action needed
     output: "final_output"
-    parse_json: true
-    timeout: 120
+    
+    
 
 # =============================================================================
 # OUTPUT STRUCTURE
@@ -221,7 +221,7 @@ steps:
 #   escalation_needed: Whether further action is required
 #   escalation_reason: Explanation if escalation needed
 #
-# Available intermediate outputs:
+# Available intermediate output:
 #   classification: The workflow classification analysis
 #   qa_result: Output from Q&A workflow (if selected)
 #   investigation_result: Output from Investigation workflow (if selected)

@@ -156,7 +156,7 @@ A PR adds a new authentication module for JWT token handling.
 ### Structure
 ```
 
-.claude/tools/auth/
+amplihack:modules/auth/
 ├── **init**.py
 ├── jwt_handler.py
 ├── tokens.py
@@ -167,7 +167,7 @@ A PR adds a new authentication module for JWT token handling.
 
 ### Review Comment
 ```markdown
-**FILE**: .claude/tools/auth/ (new module)
+**FILE**: amplihack:modules/auth/ (new module)
 
 **ISSUE**: Module added without specification documentation
 

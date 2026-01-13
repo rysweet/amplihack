@@ -23,7 +23,7 @@ This guide covers migration scenarios between amplihack and Microsoft Agent Fram
 **Inventory your amplihack agents**:
 
 ```bash
-ls .claude/agents/amplihack/
+ls .amplifier/agents/amplihack/
 # Example output:
 # - reviewer.md
 # - analyzer.md
@@ -50,7 +50,7 @@ mkdir -p src/tools
 
 ### Step 3: Convert Agents
 
-**amplihack agent** (`.claude/agents/amplihack/reviewer.md`):
+**amplihack agent** (`.amplifier/agents/amplihack/reviewer.md`):
 
 ```markdown
 # Code Reviewer Agent
@@ -197,7 +197,7 @@ def analyze_files(path: str) -> str:
     """Use amplihack for file analysis."""
     import subprocess
     result = subprocess.run(
-        ["claude", "--agent", ".claude/agents/amplihack/analyzer.md", path],
+        ["claude", "--agent", ".amplifier/agents/amplihack/analyzer.md", path],
         capture_output=True,
         text=True
     )
@@ -253,7 +253,7 @@ response = await reviewer.run(thread=thread, message="Review: [code]")
 **amplihack** (stateless):
 
 ```markdown
-# .claude/agents/amplihack/reviewer.md
+# .amplifier/agents/amplihack/reviewer.md
 
 You are a code reviewer. Analyze the provided code and return feedback.
 ```
@@ -261,7 +261,7 @@ You are a code reviewer. Analyze the provided code and return feedback.
 ```python
 # Simple invocation
 from claude import Agent
-reviewer = Agent(".claude/agents/amplihack/reviewer.md")
+reviewer = Agent(".amplifier/agents/amplihack/reviewer.md")
 result = reviewer.process({"code": code})
 ```
 
@@ -317,7 +317,7 @@ agent = Agent(tools=[read_file])
 
 ```python
 # Direct file operations in agent context
-reviewer = Agent(".claude/agents/amplihack/reviewer.md")
+reviewer = Agent(".amplifier/agents/amplihack/reviewer.md")
 result = reviewer.process({"files": ["src/module.py"]})
 # Agent uses Read tool directly
 ```
@@ -381,8 +381,8 @@ from claude import Agent as ClaudeAgent
 class HybridOrchestrator:
     def __init__(self):
         self.amplihack_agents = {
-            "reviewer": ClaudeAgent(".claude/agents/amplihack/reviewer.md"),
-            "analyzer": ClaudeAgent(".claude/agents/amplihack/analyzer.md")
+            "reviewer": ClaudeAgent(".amplifier/agents/amplihack/reviewer.md"),
+            "analyzer": ClaudeAgent(".amplifier/agents/amplihack/analyzer.md")
         }
 
         self.af_agents = {

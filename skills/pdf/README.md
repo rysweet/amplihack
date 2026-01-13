@@ -76,7 +76,7 @@ See [DEPENDENCIES.md](DEPENDENCIES.md) for detailed installation instructions.
 Run tests to verify the skill:
 
 ```bash
-cd .claude/skills/pdf
+cd amplihack:skills/pdf
 pytest tests/ -v
 ```
 

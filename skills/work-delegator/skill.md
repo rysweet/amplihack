@@ -321,7 +321,7 @@ def estimate_complexity(item: dict) -> str:
 Find relevant files using:
 
 1. **Keyword extraction**: Extract significant words from title/description
-2. **Path search**: Search common locations (src/, tests/, .claude/tools/)
+2. **Path search**: Search common locations (src/, tests/, amplihack:modules/)
 3. **Filename matching**: Match keywords against file/directory names
 4. **Limit**: Return top 10 most relevant files
 
@@ -334,7 +334,7 @@ Keywords: ["implement", "config", "parser"]
 Search paths:
 - src/config/ → config.py, parser.py
 - tests/ → test_config.py
-- .claude/tools/ → (none)
+- amplihack:modules/ → (none)
 
 Relevant files (3 found):
 1. src/config/loader.py (matches "config")

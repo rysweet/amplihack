@@ -166,7 +166,7 @@ tesseract --version
 Use the verification script to check all dependencies:
 
 ```bash
-cd .claude/skills
+cd .amplifier/skills
 python common/verification/verify_skill.py pdf
 ```
 

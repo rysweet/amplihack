@@ -223,7 +223,7 @@ agent_bundle = assembler.assemble(
 packager = GoalAgentPackager()
 packager.package(
     bundle=agent_bundle,
-    output_dir=Path(".claude/agents/goal-driven/data-pipeline")
+    output_dir=Path(".amplifier/agents/goal-driven/data-pipeline")
 )
 ```
 

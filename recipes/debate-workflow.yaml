@@ -20,8 +20,6 @@ recursion:
 
 steps:
   - id: "step-1-frame"
-    name: "Step 1: Frame the Decision"
-    type: agent
     agent: "foundation:zen-architect"
     prompt: |
       STEP 1: FRAME THE DECISION
@@ -42,54 +40,48 @@ steps:
       - Evaluation criteria (weighted)
       - Constraints and boundaries
       - Success metrics
-    outputs:
-      decision_frame: "{{result}}"
+    output: "decision_frame"
 
   - id: "step-2-perspectives"
-    name: "Step 2: Initialize Perspectives"
-    type: agent
-    agent: "amplihack:multi-agent-debate"
+    agent: "foundation:zen-architect"
     prompt: |
       STEP 2: INITIALIZE PERSPECTIVES
 
-      Decision: {{steps.step-1-frame.decision_frame}}
+      Decision: {{decision_frame}}
       Number of perspectives: {{num_perspectives}}
 
       Standard perspectives to consider:
 
-      SECURITY (security agent):
+      SECURITY:
       - Focus: Vulnerabilities, attack vectors, data protection
       - Questions: "What could go wrong? How prevent breaches?"
 
-      PERFORMANCE (optimizer agent):
+      PERFORMANCE:
       - Focus: Speed, scalability, resource efficiency
       - Questions: "Will this scale? What are bottlenecks?"
 
-      SIMPLICITY (cleanup + reviewer agents):
+      SIMPLICITY:
       - Focus: Minimal complexity, ruthless simplification
       - Questions: "Is this simplest? Can we remove abstractions?"
 
-      MAINTAINABILITY (reviewer + architect agents):
+      MAINTAINABILITY:
       - Focus: Long-term evolution, technical debt
       - Questions: "Can future devs understand? How hard to change?"
 
-      USER EXPERIENCE (api-designer agent):
+      USER EXPERIENCE:
       - Focus: API design, usability, developer experience
       - Questions: "Is this intuitive? How will users interact?"
 
       Select {{num_perspectives}} most relevant perspectives for this decision.
-    outputs:
-      perspectives: "{{result}}"
+    output: "perspectives"
 
   - id: "step-3-positions"
-    name: "Step 3: Initial Positions"
-    type: agent
-    agent: "amplihack:multi-agent-debate"
+    agent: "foundation:zen-architect"
     prompt: |
       STEP 3: INITIAL POSITIONS
 
-      Decision: {{steps.step-1-frame.decision_frame}}
-      Perspectives: {{steps.step-2-perspectives.perspectives}}
+      Decision: {{decision_frame}}
+      Perspectives: {{perspectives}}
 
       Each perspective provides independent analysis:
 
@@ -101,17 +93,14 @@ steps:
       5. List concerns about other approaches
 
       CRITICAL: Arguments must be evidence-based, not opinion-based.
-    outputs:
-      initial_positions: "{{result}}"
+    output: "initial_positions"
 
   - id: "step-4-challenge"
-    name: "Step 4: Challenge and Respond"
-    type: agent
-    agent: "amplihack:multi-agent-debate"
+    agent: "foundation:zen-architect"
     prompt: |
       STEP 4: CHALLENGE AND RESPOND
 
-      Positions: {{steps.step-3-positions.initial_positions}}
+      Positions: {{initial_positions}}
       Rounds: {{debate_rounds}}
 
       Execute debate rounds:
@@ -127,17 +116,14 @@ steps:
       - Points of genuine disagreement
       - Areas where positions evolved
       - Strongest arguments from each side
-    outputs:
-      debate_results: "{{result}}"
+    output: "debate_results"
 
   - id: "step-5-common-ground"
-    name: "Step 5: Common Ground Synthesis"
-    type: agent
-    agent: "amplihack:insight-synthesizer"
+    agent: "foundation:zen-architect"
     prompt: |
       STEP 5: COMMON GROUND SYNTHESIS
 
-      Debate Results: {{steps.step-4-challenge.debate_results}}
+      Debate Results: {{debate_results}}
 
       Identify areas of agreement:
 
@@ -148,19 +134,16 @@ steps:
       5. Remaining genuine disagreements
 
       Output synthesis of common ground and remaining disputes.
-    outputs:
-      common_ground: "{{result}}"
+    output: "common_ground"
 
   - id: "step-6-facilitator"
-    name: "Step 6: Facilitator Synthesis"
-    type: agent
     agent: "foundation:zen-architect"
     prompt: |
       STEP 6: FACILITATOR SYNTHESIS
 
-      Decision Frame: {{steps.step-1-frame.decision_frame}}
-      Common Ground: {{steps.step-5-common-ground.common_ground}}
-      Debate Results: {{steps.step-4-challenge.debate_results}}
+      Decision Frame: {{decision_frame}}
+      Common Ground: {{common_ground}}
+      Debate Results: {{debate_results}}
       Convergence Criteria: {{convergence}}
 
       As neutral facilitator, synthesize the debate:
@@ -177,18 +160,15 @@ steps:
       - How each perspective is addressed
       - Trade-offs accepted
       - Dissenting views and why overruled
-    outputs:
-      synthesis: "{{result}}"
+    output: "synthesis"
 
   - id: "step-7-document"
-    name: "Step 7: Decision Documentation"
-    type: agent
-    agent: "amplihack:documentation-writer"
+    agent: "foundation:zen-architect"
     prompt: |
       STEP 7: DECISION DOCUMENTATION
 
-      Synthesis: {{steps.step-6-facilitator.synthesis}}
-      Decision Frame: {{steps.step-1-frame.decision_frame}}
+      Synthesis: {{synthesis}}
+      Decision Frame: {{decision_frame}}
 
       Document the decision for future reference:
 
@@ -203,26 +183,22 @@ steps:
       8. Implementation recommendations
 
       This becomes an ADR (Architecture Decision Record).
-    outputs:
-      decision_document: "{{result}}"
+    output: "decision_document"
 
   - id: "step-8-implementation"
-    name: "Step 8: Implementation Planning"
-    type: agent
     agent: "foundation:modular-builder"
     prompt: |
       STEP 8: IMPLEMENTATION PLANNING
 
-      Decision: {{steps.step-7-document.decision_document}}
+      Decision: {{decision_document}}
 
       Create implementation plan based on the decision:
 
       1. Break decision into actionable tasks
       2. Identify dependencies
       3. Estimate effort
-      4. Assign to appropriate workflow (DEFAULT_WORKFLOW)
+      4. Assign to appropriate workflow
       5. Define checkpoints to verify decision working
 
       Output ready-to-execute implementation plan.
-    outputs:
-      implementation_plan: "{{result}}"
+    output: "implementation_plan"

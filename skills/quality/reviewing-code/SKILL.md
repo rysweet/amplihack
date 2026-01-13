@@ -339,7 +339,7 @@ This is wrong. Fix the password check.
 
 ### Invokes
 
-- **Reviewer Agent**: Core review logic from `.claude/agents/reviewer.md`
+- **Reviewer Agent**: Core review logic from `.amplifier/agents/reviewer.md`
 - **Security Agent**: For security-specific analysis
 - **Tester Agent**: To suggest test improvements
 

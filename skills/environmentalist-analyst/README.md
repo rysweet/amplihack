@@ -155,9 +155,9 @@ Evaluate probability and severity of environmental harm from activities, substan
 
 ## Links
 
-- [Agent Implementation](/Users/ryan/src/Fritmp/amplihack/.claude/skills/environmentalist-analyst/environmentalist-analyst.md)
-- [Quick Reference](/Users/ryan/src/Fritmp/amplihack/.claude/skills/environmentalist-analyst/QUICK_REFERENCE.md)
-- [All Skills](/Users/ryan/src/Fritmp/amplihack/.claude/skills/README.md)
+- [Agent Implementation](/Users/ryan/src/Fritmp/amplihack/amplihack:skills/environmentalist-analyst/environmentalist-analyst.md)
+- [Quick Reference](/Users/ryan/src/Fritmp/amplihack/amplihack:skills/environmentalist-analyst/QUICK_REFERENCE.md)
+- [All Skills](/Users/ryan/src/Fritmp/amplihack/amplihack:skills/README.md)
 
 ## Best Practices
 

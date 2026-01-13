@@ -100,7 +100,7 @@ Common components have minimal interdependencies:
 ## Directory Structure
 
 ```
-.claude/skills/common/
+amplihack:skills/common/
 ├── README.md                # This file
 ├── dependencies.txt         # Shared dependencies tracker
 ├── ooxml/                   # OOXML manipulation scripts
@@ -119,7 +119,7 @@ Common components have minimal interdependencies:
 
 ```bash
 # Check if DOCX skill dependencies are installed
-cd .claude/skills
+cd .amplifier/skills
 python common/verification/verify_skill.py docx
 
 # Check all skills
@@ -196,7 +196,7 @@ grep "LibreOffice" common/dependencies.txt
 
 **Rationale**:
 
-- Keeps all skills infrastructure in .claude/skills/
+- Keeps all skills infrastructure in amplihack:skills/
 - Clear namespace (common/ signals shared code)
 - Easy to find and maintain
 - Follows brick philosophy (clear boundaries)
@@ -282,7 +282,7 @@ test -f repacked.docx && echo "Pack OK"
 **Solution**:
 
 ```bash
-cd .claude/skills/docx
+cd amplihack:skills/docx
 ln -s ../common/ooxml ooxml
 ls -la ooxml  # Verify
 ```

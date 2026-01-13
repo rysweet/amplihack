@@ -388,7 +388,7 @@ from context_management import list_snapshots
 snapshots = list_snapshots()
 print(f"You have {snapshots['count']} snapshots using {snapshots['total_size']}")
 
-# Manually delete old snapshots from .claude/runtime/context-snapshots/
+# Manually delete old snapshots from .amplifier/context-snapshots/
 # Keep only active work and important milestones
 ```
 

@@ -86,7 +86,7 @@ az devops configure --list
 Use the auth_check tool:
 
 ```bash
-python .claude/scenarios/az-devops-tools/auth_check.py
+python .amplifier/scenarios/az-devops-tools/auth_check.py
 ```
 
 Expected output:
@@ -104,7 +104,7 @@ Expected output:
 ## Auto-Fix Common Issues
 
 ```bash
-python .claude/scenarios/az-devops-tools/auth_check.py --auto-fix
+python .amplifier/scenarios/az-devops-tools/auth_check.py --auto-fix
 ```
 
 This attempts to:

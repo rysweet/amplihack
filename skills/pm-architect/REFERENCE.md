@@ -686,7 +686,7 @@ def start_workstream_with_process(
 
     # Create process
     process = ClaudeProcess(
-        agent_path=f".claude/agents/amplihack/core/{agent}.md",
+        agent_path=f".amplifier/agents/amplihack/core/{agent}.md",
         context=delegation_package,
         project_root=Path.cwd()
     )

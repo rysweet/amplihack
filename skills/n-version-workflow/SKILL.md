@@ -195,7 +195,7 @@ Selection Criteria Applied:
 - Document all N implementations generated
 - Explain selection rationale in detail
 - Capture insights from rejected versions
-- Update `.claude/context/DISCOVERIES.md` with patterns learned
+- Update `.amplifier/context/DISCOVERIES.md` with patterns learned
 - Include comparison matrix for future reference
 
 ## Trade-Offs

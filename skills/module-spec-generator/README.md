@@ -100,7 +100,7 @@ Max Score: 50 points
 Skills are automatically discovered from:
 
 - User settings: `~/.config/claude/skills/`
-- Project settings: `.claude/skills/`
+- Project settings: `amplihack:skills/`
 - Plugin-provided skills
 - Built-in skills
 
@@ -193,7 +193,7 @@ brew install tesseract poppler  # macOS
 Use the verification script to check dependencies:
 
 ```bash
-cd .claude/skills
+cd .amplifier/skills
 python common/verification/verify_skill.py pdf
 ```
 
@@ -214,7 +214,7 @@ Claude: [Uses PDF skill to generate formatted report]
 ### Directory Structure
 
 ```
-.claude/skills/
+amplihack:skills/
 ├── README.md                    # This file
 ├── INTEGRATION_STATUS.md        # Office skills integration tracker
 ├── common/                      # Shared infrastructure for Office skills

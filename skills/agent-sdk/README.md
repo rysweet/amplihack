@@ -60,7 +60,7 @@ agent-sdk/
 
 ```python
 # In Claude Code conversations
-@.claude/skills/agent-sdk/SKILL.md
+@amplihack:skills/agent-sdk/SKILL.md
 ```
 
 ## Usage Patterns
@@ -133,7 +133,7 @@ The skill includes automated drift detection:
 ### Running Drift Detection
 
 ```bash
-cd .claude/skills/agent-sdk
+cd amplihack:skills/agent-sdk
 
 # Check for drift
 python scripts/check_drift.py
@@ -232,7 +232,7 @@ Token calculation: words × 1.3 (conservative estimate)
 The skill ships with placeholder content hashes. Generate real hashes:
 
 ```bash
-cd .claude/skills/agent-sdk
+cd amplihack:skills/agent-sdk
 python scripts/check_drift.py --update
 ```
 
@@ -279,7 +279,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check for drift
         run: |
-          cd .claude/skills/agent-sdk
+          cd amplihack:skills/agent-sdk
           python scripts/check_drift.py
 ```
 

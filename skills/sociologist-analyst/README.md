@@ -201,9 +201,9 @@ Understand social life through immersion:
 
 ## Links
 
-- [Agent Implementation](/Users/ryan/src/Fritmp/amplihack/.claude/skills/sociologist-analyst/sociologist-analyst.md)
-- [Quick Reference](/Users/ryan/src/Fritmp/amplihack/.claude/skills/sociologist-analyst/QUICK_REFERENCE.md)
-- [All Skills](/Users/ryan/src/Fritmp/amplihack/.claude/skills/README.md)
+- [Agent Implementation](/Users/ryan/src/Fritmp/amplihack/amplihack:skills/sociologist-analyst/sociologist-analyst.md)
+- [Quick Reference](/Users/ryan/src/Fritmp/amplihack/amplihack:skills/sociologist-analyst/QUICK_REFERENCE.md)
+- [All Skills](/Users/ryan/src/Fritmp/amplihack/amplihack:skills/README.md)
 
 ## Best Practices
 

@@ -104,7 +104,7 @@ Import configurations from JSON file.
 
 **User:** "List all my MCPs"
 
-[Executes: `cd .claude/scenarios && python3 -m mcp-manager.cli list`]
+[Executes: `cd .amplifier/scenarios && python3 -m mcp-manager.cli list`]
 
 **Response:**
 "You have 3 MCP servers configured:
@@ -149,10 +149,10 @@ Server is currently disabled. Enable with: 'enable postgres-local'"
 
 ## Tool Invocation
 
-All commands execute from `.claude/scenarios/` directory:
+All commands execute from `.amplifier/scenarios/` directory:
 
 ```bash
-cd .claude/scenarios && python3 -m mcp-manager.cli <command> [args]
+cd .amplifier/scenarios && python3 -m mcp-manager.cli <command> [args]
 ```
 
 **Key Commands:**
@@ -184,7 +184,7 @@ cd .claude/scenarios && python3 -m mcp-manager.cli <command> [args]
 5. **Malformed settings.json**: Validate JSON, offer backup restore
 6. **Invalid Command**: Show common command patterns
 
-For detailed error scenarios and troubleshooting, see `.claude/scenarios/mcp-manager/README.md`
+For detailed error scenarios and troubleshooting, see `.amplifier/scenarios/mcp-manager/README.md`
 
 ## Best Practices
 
@@ -196,10 +196,10 @@ For detailed error scenarios and troubleshooting, see `.claude/scenarios/mcp-man
 
 ## See Also
 
-- Full documentation: `.claude/scenarios/mcp-manager/README.md`
-- Tool creation guide: `.claude/scenarios/mcp-manager/HOW_TO_CREATE_YOUR_OWN.md`
+- Full documentation: `.amplifier/scenarios/mcp-manager/README.md`
+- Tool creation guide: `.amplifier/scenarios/mcp-manager/HOW_TO_CREATE_YOUR_OWN.md`
 - MCP Protocol: https://modelcontextprotocol.io/
-- Claude Code Settings: `.claude/settings.json`
+- Claude Code Settings: `.amplifier/settings.json`
 
 ---
 

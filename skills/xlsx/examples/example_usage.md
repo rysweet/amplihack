@@ -50,7 +50,7 @@ wb.save('expenses.xlsx')
 **Recalculate formulas**:
 
 ```bash
-python .claude/skills/xlsx/scripts/recalc.py expenses.xlsx
+python amplihack:skills/xlsx/scripts/recalc.py expenses.xlsx
 ```
 
 **Result**: Excel file with expense categories and a SUM formula for total expenses.
@@ -118,7 +118,7 @@ wb.save('revenue_projection.xlsx')
 **Recalculate**:
 
 ```bash
-python .claude/skills/xlsx/scripts/recalc.py revenue_projection.xlsx
+python amplihack:skills/xlsx/scripts/recalc.py revenue_projection.xlsx
 ```
 
 **Result**: Professional financial model with blue inputs, black formulas, and currency formatting.
@@ -253,7 +253,7 @@ wb.save('income_statement.xlsx')
 **Recalculate**:
 
 ```bash
-python .claude/skills/xlsx/scripts/recalc.py income_statement.xlsx
+python amplihack:skills/xlsx/scripts/recalc.py income_statement.xlsx
 ```
 
 **Result**: Professional income statement with proper color coding (blue inputs, black formulas, yellow highlighting for key assumptions).
@@ -340,7 +340,7 @@ wb.save('budget_model.xlsx')
 **Recalculate**:
 
 ```bash
-python .claude/skills/xlsx/scripts/recalc.py budget_model.xlsx
+python amplihack:skills/xlsx/scripts/recalc.py budget_model.xlsx
 ```
 
 **Result**: Comprehensive budget model with quarterly projections and automatic totals.
@@ -467,7 +467,7 @@ wb.save('dcf_model.xlsx')
 **Recalculate**:
 
 ```bash
-python .claude/skills/xlsx/scripts/recalc.py dcf_model.xlsx
+python amplihack:skills/xlsx/scripts/recalc.py dcf_model.xlsx
 ```
 
 **Result**: Professional DCF valuation model with discounted cash flows and terminal value calculation.
@@ -567,7 +567,7 @@ wb.save('dashboard.xlsx')
 **Recalculate**:
 
 ```bash
-python .claude/skills/xlsx/scripts/recalc.py dashboard.xlsx
+python amplihack:skills/xlsx/scripts/recalc.py dashboard.xlsx
 ```
 
 **Result**: Professional executive dashboard with formatted KPI displays and underlying data.
@@ -672,7 +672,7 @@ wb.save('formulas_test.xlsx')
 
 # Recalculate and verify
 result = subprocess.run(
-    ['python', '.claude/skills/xlsx/scripts/recalc.py', 'formulas_test.xlsx'],
+    ['python', 'amplihack:skills/xlsx/scripts/recalc.py', 'formulas_test.xlsx'],
     capture_output=True,
     text=True
 )
@@ -822,7 +822,7 @@ wb.save('integrated_model.xlsx')
 **Recalculate**:
 
 ```bash
-python .claude/skills/xlsx/scripts/recalc.py integrated_model.xlsx
+python amplihack:skills/xlsx/scripts/recalc.py integrated_model.xlsx
 ```
 
 **Result**: Comprehensive multi-sheet financial model with proper linking (green color for cross-sheet references) and integration between statements.
@@ -850,7 +850,7 @@ To run any example:
 
 1. Copy the code to a Python file (e.g., `example_1.py`)
 2. Run: `python example_1.py`
-3. Recalculate formulas: `python .claude/skills/xlsx/scripts/recalc.py output.xlsx`
+3. Recalculate formulas: `python amplihack:skills/xlsx/scripts/recalc.py output.xlsx`
 4. Verify zero errors in the JSON output
 5. Open the Excel file to see results
 

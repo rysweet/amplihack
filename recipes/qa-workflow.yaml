@@ -22,7 +22,7 @@ steps:
 
       Determine if this is TRUE Q&A (answer in one response, no code changes, no exploration needed).
 
-      Return JSON only:
+      Return JSON:
       {
         "is_qa": true/false,
         "reason": "brief reason",
@@ -32,31 +32,27 @@ steps:
       Escalate to "investigation" if: needs code exploration, tracing, or deep analysis
       Escalate to "default" if: needs implementation, file changes, or creation
     output: "classification"
-    parse_json: true
-    timeout: 60
 
   # Step 2: Provide response (runs regardless - either answer or escalation notice)
   - id: "respond"
     agent: "foundation:zen-architect"
-    mode: "ANALYZE"
     prompt: |
       Classification: {{classification}}
       Question: {{question}}
       Context: {{context}}
 
-      If classification.is_qa is true:
+      If classification shows is_qa is true:
         - Answer directly and concisely
         - Include code examples only if helpful
         - Keep response appropriately sized
 
-      If classification.is_qa is false:
+      If classification shows is_qa is false:
         - Briefly acknowledge the question
         - Explain why it needs a different workflow
         - State which workflow is recommended
 
       Provide your response as the answer.
     output: "response"
-    timeout: 120
 
   # Step 3: Final escalation check - structured output
   - id: "finalize"
@@ -66,26 +62,17 @@ steps:
       Classification: {{classification}}
       Response given: {{response}}
 
-      Produce final structured output as JSON only:
-      {
-        "answer": "the response text (copy from response above)",
-        "escalation_needed": true/false,
-        "escalation_target": null | "investigation" | "default"
-      }
+      Produce final structured output:
+      - answer: the response text (copy from response above)
+      - escalation_needed: true/false
+      - escalation_target: null | "investigation" | "default"
 
       Rules:
       - escalation_needed = true if classification showed this isn't Q&A
       - escalation_target = classification.escalate_to value
       - answer = the response provided above
     output: "result"
-    parse_json: true
-    timeout: 60
 
 # Usage:
 #   amplifier recipes execute qa-workflow.yaml \
 #     --context '{"question": "What is the default timeout?", "context": "Looking at config options"}'
-#
-# Output structure:
-#   result.answer - The response to the question
-#   result.escalation_needed - Whether a different workflow is needed
-#   result.escalation_target - "investigation" | "default" | null

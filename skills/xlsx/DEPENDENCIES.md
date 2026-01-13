@@ -184,7 +184,7 @@ LibreOffice 7.5.3.2 10(Build:2)
 Use the provided verification script:
 
 ```bash
-cd .claude/skills
+cd .amplifier/skills
 python common/verification/verify_skill.py xlsx
 ```
 
@@ -270,7 +270,7 @@ pip install pandas openpyxl
 python -c "from openpyxl import Workbook; wb = Workbook(); wb.save('test.xlsx')"
 
 # Run recalc.py - this will set up the macro
-python .claude/skills/xlsx/scripts/recalc.py test.xlsx
+python amplihack:skills/xlsx/scripts/recalc.py test.xlsx
 
 # Clean up
 rm test.xlsx
@@ -283,7 +283,7 @@ rm test.xlsx
 **Solution**:
 
 ```bash
-chmod +x .claude/skills/xlsx/scripts/recalc.py
+chmod +x amplihack:skills/xlsx/scripts/recalc.py
 ```
 
 ## Platform-Specific Notes
@@ -323,7 +323,7 @@ RUN apt-get update && apt-get install -y \
 RUN pip install pandas openpyxl
 
 # Copy skill files
-COPY .claude/skills/xlsx /app/xlsx
+COPY amplihack:skills/xlsx /app/xlsx
 
 WORKDIR /app
 ```
@@ -358,7 +358,7 @@ For automated testing in CI environments:
     sudo apt-get install -y libreoffice
 
 - name: Test XLSX skill
-  run: pytest .claude/skills/xlsx/tests/
+  run: pytest amplihack:skills/xlsx/tests/
 ```
 
 **Note**: Tests skip gracefully if LibreOffice is not available.
@@ -383,4 +383,4 @@ For automated testing in CI environments:
 - **pandas documentation**: https://pandas.pydata.org/docs/
 - **openpyxl documentation**: https://openpyxl.readthedocs.io/
 - **LibreOffice documentation**: https://documentation.libreoffice.org/
-- **Verification script**: `.claude/skills/common/verification/verify_skill.py`
+- **Verification script**: `amplihack:skills/common/verification/verify_skill.py`

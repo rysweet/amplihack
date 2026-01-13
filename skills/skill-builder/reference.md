@@ -387,7 +387,7 @@ Every skill with supporting documents MUST include a "Navigation Guide" section 
 - [Security patterns]
 ```
 
-**Good Example:** `.claude/skills/agent-sdk/SKILL.md` lines 376-408
+**Good Example:** `amplihack:skills/agent-sdk/SKILL.md` lines 376-408
 
 - Lists each supporting file
 - Clearly states WHEN to read it
@@ -427,14 +427,14 @@ skill-name/
 
 ### Storage Locations
 
-**Personal Skills** (`~/.claude/skills/`):
+**Personal Skills** (`~/amplihack:skills/`):
 
 - Available across all projects
 - User-specific workflows
 - Experimental capabilities
-- Installation: `git clone <repo> ~/.claude/skills/skill-name`
+- Installation: `git clone <repo> ~/amplihack:skills/skill-name`
 
-**Project Skills** (`.claude/skills/`):
+**Project Skills** (`amplihack:skills/`):
 
 - Shared with team via git
 - Project-specific expertise

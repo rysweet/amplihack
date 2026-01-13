@@ -11,7 +11,7 @@ Common queries are built-in to list_work_items.py:
 Your assigned work items:
 
 ```bash
-python .claude/scenarios/az-devops-tools/list_work_items.py --query mine
+python .amplifier/scenarios/az-devops-tools/list_work_items.py --query mine
 ```
 
 ### unassigned
@@ -19,7 +19,7 @@ python .claude/scenarios/az-devops-tools/list_work_items.py --query mine
 Open work items with no assignee:
 
 ```bash
-python .claude/scenarios/az-devops-tools/list_work_items.py --query unassigned
+python .amplifier/scenarios/az-devops-tools/list_work_items.py --query unassigned
 ```
 
 ### recent
@@ -27,7 +27,7 @@ python .claude/scenarios/az-devops-tools/list_work_items.py --query unassigned
 Recently changed work items:
 
 ```bash
-python .claude/scenarios/az-devops-tools/list_work_items.py --query recent
+python .amplifier/scenarios/az-devops-tools/list_work_items.py --query recent
 ```
 
 ### active
@@ -35,7 +35,7 @@ python .claude/scenarios/az-devops-tools/list_work_items.py --query recent
 Active work items:
 
 ```bash
-python .claude/scenarios/az-devops-tools/list_work_items.py --query active
+python .amplifier/scenarios/az-devops-tools/list_work_items.py --query active
 ```
 
 ### team
@@ -43,7 +43,7 @@ python .claude/scenarios/az-devops-tools/list_work_items.py --query active
 Team's open work items:
 
 ```bash
-python .claude/scenarios/az-devops-tools/list_work_items.py --query team
+python .amplifier/scenarios/az-devops-tools/list_work_items.py --query team
 ```
 
 ## Custom WIQL Queries
@@ -60,21 +60,21 @@ ORDER BY [Field] ASC/DESC
 ### Example: Active Tasks
 
 ```bash
-python .claude/scenarios/az-devops-tools/list_work_items.py \
+python .amplifier/scenarios/az-devops-tools/list_work_items.py \
   --wiql "SELECT [System.Id], [System.Title] FROM workitems WHERE [System.WorkItemType] = 'Task' AND [System.State] = 'Active'"
 ```
 
 ### Example: High Priority Bugs
 
 ```bash
-python .claude/scenarios/az-devops-tools/list_work_items.py \
+python .amplifier/scenarios/az-devops-tools/list_work_items.py \
   --wiql "SELECT [System.Id], [System.Title], [Microsoft.VSTS.Common.Priority] FROM workitems WHERE [System.WorkItemType] = 'Bug' AND [Microsoft.VSTS.Common.Priority] = 1"
 ```
 
 ### Example: Recently Created
 
 ```bash
-python .claude/scenarios/az-devops-tools/list_work_items.py \
+python .amplifier/scenarios/az-devops-tools/list_work_items.py \
   --wiql "SELECT [System.Id], [System.Title] FROM workitems WHERE [System.CreatedDate] >= @Today - 7 ORDER BY [System.CreatedDate] DESC"
 ```
 
@@ -83,31 +83,31 @@ python .claude/scenarios/az-devops-tools/list_work_items.py \
 ### Table (Default)
 
 ```bash
-python .claude/scenarios/az-devops-tools/list_work_items.py --query mine
+python .amplifier/scenarios/az-devops-tools/list_work_items.py --query mine
 ```
 
 ### JSON
 
 ```bash
-python .claude/scenarios/az-devops-tools/list_work_items.py --query mine --format json
+python .amplifier/scenarios/az-devops-tools/list_work_items.py --query mine --format json
 ```
 
 ### CSV
 
 ```bash
-python .claude/scenarios/az-devops-tools/list_work_items.py --query mine --format csv > items.csv
+python .amplifier/scenarios/az-devops-tools/list_work_items.py --query mine --format csv > items.csv
 ```
 
 ### IDs Only
 
 ```bash
-python .claude/scenarios/az-devops-tools/list_work_items.py --query mine --format ids-only
+python .amplifier/scenarios/az-devops-tools/list_work_items.py --query mine --format ids-only
 ```
 
 ## Limit Results
 
 ```bash
-python .claude/scenarios/az-devops-tools/list_work_items.py --query recent --limit 10
+python .amplifier/scenarios/az-devops-tools/list_work_items.py --query recent --limit 10
 ```
 
 ## Common Fields
@@ -166,28 +166,28 @@ python .claude/scenarios/az-devops-tools/list_work_items.py --query recent --lim
 ### Find Bugs Assigned to Me
 
 ```bash
-python .claude/scenarios/az-devops-tools/list_work_items.py \
+python .amplifier/scenarios/az-devops-tools/list_work_items.py \
   --wiql "SELECT [System.Id], [System.Title] FROM workitems WHERE [System.WorkItemType] = 'Bug' AND [System.AssignedTo] = @Me"
 ```
 
 ### Find Stories in Sprint
 
 ```bash
-python .claude/scenarios/az-devops-tools/list_work_items.py \
+python .amplifier/scenarios/az-devops-tools/list_work_items.py \
   --wiql "SELECT [System.Id], [System.Title] FROM workitems WHERE [System.WorkItemType] = 'User Story' AND [System.IterationPath] = 'MyProject\\Sprint 1'"
 ```
 
 ### Find Items with Tag
 
 ```bash
-python .claude/scenarios/az-devops-tools/list_work_items.py \
+python .amplifier/scenarios/az-devops-tools/list_work_items.py \
   --wiql "SELECT [System.Id], [System.Title] FROM workitems WHERE [System.Tags] CONTAINS 'security'"
 ```
 
 ### Find Items in Area
 
 ```bash
-python .claude/scenarios/az-devops-tools/list_work_items.py \
+python .amplifier/scenarios/az-devops-tools/list_work_items.py \
   --wiql "SELECT [System.Id], [System.Title] FROM workitems WHERE [System.AreaPath] UNDER 'MyProject\\Platform'"
 ```
 

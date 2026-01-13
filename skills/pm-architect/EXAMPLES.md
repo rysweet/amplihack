@@ -293,7 +293,7 @@ I create a workstream file (.pm/workstreams/ws-NNN.yaml) tracking:
 from orchestration.claude_process import ClaudeProcess
 
 process = ClaudeProcess(
-    agent_path=".claude/agents/amplihack/core/builder.md",
+    agent_path=".amplifier/agents/amplihack/core/builder.md",
     context=delegation_package,
     project_root=Path.cwd()
 )

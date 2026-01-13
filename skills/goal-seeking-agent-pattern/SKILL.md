@@ -499,7 +499,7 @@ agent_bundle = assembler.assemble(
 packager = GoalAgentPackager()
 packager.package(
     bundle=agent_bundle,
-    output_dir=".claude/agents/goal-driven/aks-readiness-checker"
+    output_dir=".amplifier/agents/goal-driven/aks-readiness-checker"
 )
 ```
 
@@ -509,19 +509,19 @@ packager.package(
 # Generate agent from prompt file
 amplihack goal-agent-generator create \
   --prompt ./prompts/aks-readiness.md \
-  --output .claude/agents/goal-driven/aks-readiness-checker
+  --output .amplifier/agents/goal-driven/aks-readiness-checker
 
 # Generate agent from inline prompt
 amplihack goal-agent-generator create \
   --inline "Automate CI failure diagnosis and fix iteration" \
-  --output .claude/agents/goal-driven/ci-fixer
+  --output .amplifier/agents/goal-driven/ci-fixer
 
 # List generated agents
 amplihack goal-agent-generator list
 
 # Test agent execution
 amplihack goal-agent-generator test \
-  --agent-path .claude/agents/goal-driven/ci-fixer \
+  --agent-path .amplifier/agents/goal-driven/ci-fixer \
   --dry-run
 ```
 
@@ -681,11 +681,11 @@ from pathlib import Path
 packager = GoalAgentPackager()
 packager.package(
     bundle=agent_bundle,
-    output_dir=Path(".claude/agents/goal-driven/my-agent")
+    output_dir=Path(".amplifier/agents/goal-driven/my-agent")
 )
 
 # Creates:
-# .claude/agents/goal-driven/my-agent/
+# .amplifier/agents/goal-driven/my-agent/
 # ├── agent.md           # Agent definition
 # ├── prompt.md          # Initial prompt
 # ├── metadata.json      # Bundle metadata
@@ -738,8 +738,8 @@ Generate actionable report with recommendations.
 **Implementation**:
 
 ```python
-# Located in: .claude/agents/amplihack/specialized/azure-kubernetes-expert.md
-# Uses knowledge base: .claude/data/azure_aks_expert/
+# Located in: .amplifier/agents/amplihack/specialized/azure-kubernetes-expert.md
+# Uses knowledge base: .amplifier/data/azure_aks_expert/
 
 # Integrates with goal_agent_generator:
 from amplihack.goal_agent_generator import (
@@ -802,7 +802,7 @@ Stop at mergeable state without auto-merging.
 **Implementation**:
 
 ```python
-# Located in: .claude/agents/amplihack/specialized/ci-diagnostic-workflow.md
+# Located in: .amplifier/agents/amplihack/specialized/ci-diagnostic-workflow.md
 
 # Fix iteration loop:
 MAX_ITERATIONS = 5
@@ -878,7 +878,7 @@ Ensure all hooks pass before allowing commit.
 **Implementation**:
 
 ```python
-# Located in: .claude/agents/amplihack/specialized/pre-commit-diagnostic.md
+# Located in: .amplifier/agents/amplihack/specialized/pre-commit-diagnostic.md
 
 # Hook failure patterns:
 HOOK_FIXES = {
@@ -942,7 +942,7 @@ Analyze issue and select fix mode:
 **Implementation**:
 
 ```python
-# Located in: .claude/agents/amplihack/specialized/fix-agent.md
+# Located in: .amplifier/agents/amplihack/specialized/fix-agent.md
 
 # Mode selection logic:
 def select_fix_mode(issue: Issue) -> FixMode:
@@ -1531,11 +1531,11 @@ from pathlib import Path
 packager = GoalAgentPackager()
 packager.package(
     bundle=agent_bundle,
-    output_dir=Path(".claude/agents/goal-driven/multi-source-data-pipeline")
+    output_dir=Path(".amplifier/agents/goal-driven/multi-source-data-pipeline")
 )
 
 # Creates agent package:
-# .claude/agents/goal-driven/multi-source-data-pipeline/
+# .amplifier/agents/goal-driven/multi-source-data-pipeline/
 # ├── agent.md           # Agent definition
 # ├── prompt.md          # Execution prompt
 # ├── metadata.json      # Bundle metadata
@@ -1548,7 +1548,7 @@ packager.package(
 ```bash
 # Execute via CLI
 amplihack goal-agent-generator execute \
-  --agent-path .claude/agents/goal-driven/multi-source-data-pipeline \
+  --agent-path .amplifier/agents/goal-driven/multi-source-data-pipeline \
   --auto-mode \
   --max-turns 12
 
@@ -1974,20 +1974,20 @@ EOF
 ```bash
 amplihack goal-agent-generator create \
   --prompt my-goal.md \
-  --output .claude/agents/goal-driven/security-auditor
+  --output .amplifier/agents/goal-driven/security-auditor
 ```
 
 **Step 4**: Review generated plan
 
 ```bash
-cat .claude/agents/goal-driven/security-auditor/plan.yaml
+cat .amplifier/agents/goal-driven/security-auditor/plan.yaml
 ```
 
 **Step 5**: Execute agent
 
 ```bash
 amplihack goal-agent-generator execute \
-  --agent-path .claude/agents/goal-driven/security-auditor \
+  --agent-path .amplifier/agents/goal-driven/security-auditor \
   --auto-mode
 ```
 
@@ -1998,7 +1998,7 @@ amplihack goal-agent-generator execute \
 ```bash
 # Create release automation agent
 echo "Automate release workflow: tag, build, test, deploy to staging" | \
-  amplihack goal-agent-generator create --inline --output .claude/agents/goal-driven/release-automator
+  amplihack goal-agent-generator create --inline --output .amplifier/agents/goal-driven/release-automator
 ```
 
 **Use Case 2: Data Pipeline**
@@ -2006,7 +2006,7 @@ echo "Automate release workflow: tag, build, test, deploy to staging" | \
 ```bash
 # Create ETL pipeline agent
 echo "Extract from sources, transform to schema, validate quality, load to warehouse" | \
-  amplihack goal-agent-generator create --inline --output .claude/agents/goal-driven/etl-pipeline
+  amplihack goal-agent-generator create --inline --output .amplifier/agents/goal-driven/etl-pipeline
 ```
 
 **Use Case 3: Diagnostic Workflow**
@@ -2014,16 +2014,16 @@ echo "Extract from sources, transform to schema, validate quality, load to wareh
 ```bash
 # Create performance diagnostic agent
 echo "Diagnose application performance issues, identify bottlenecks, suggest optimizations" | \
-  amplihack goal-agent-generator create --inline --output .claude/agents/goal-driven/perf-diagnostic
+  amplihack goal-agent-generator create --inline --output .amplifier/agents/goal-driven/perf-diagnostic
 ```
 
 ### Learning Resources
 
 **Documentation**:
 
-- Review examples in `.claude/skills/goal-seeking-agent-pattern/examples/`
-- Read real agent implementations in `.claude/agents/amplihack/specialized/`
-- Check integration guide in `.claude/skills/goal-seeking-agent-pattern/templates/integration_guide.md`
+- Review examples in `amplihack:skills/goal-seeking-agent-pattern/examples/`
+- Read real agent implementations in `.amplifier/agents/amplihack/specialized/`
+- Check integration guide in `amplihack:skills/goal-seeking-agent-pattern/templates/integration_guide.md`
 
 **Practice**:
 

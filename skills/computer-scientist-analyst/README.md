@@ -194,9 +194,9 @@ Evaluate algorithm/data structure choices:
 
 ## Links
 
-- [Agent Implementation](/Users/ryan/src/Fritmp/amplihack/.claude/skills/computer-scientist-analyst/computer-scientist-analyst.md)
-- [Quick Reference](/Users/ryan/src/Fritmp/amplihack/.claude/skills/computer-scientist-analyst/QUICK_REFERENCE.md)
-- [All Skills](/Users/ryan/src/Fritmp/amplihack/.claude/skills/README.md)
+- [Agent Implementation](/Users/ryan/src/Fritmp/amplihack/amplihack:skills/computer-scientist-analyst/computer-scientist-analyst.md)
+- [Quick Reference](/Users/ryan/src/Fritmp/amplihack/amplihack:skills/computer-scientist-analyst/QUICK_REFERENCE.md)
+- [All Skills](/Users/ryan/src/Fritmp/amplihack/amplihack:skills/README.md)
 
 ## Best Practices
 

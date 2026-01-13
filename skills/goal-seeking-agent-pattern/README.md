@@ -50,11 +50,11 @@ EOF
 # 2. Generate agent
 amplihack goal-agent-generator create \
   --prompt my-goal.md \
-  --output .claude/agents/goal-driven/security-auditor
+  --output .amplifier/agents/goal-driven/security-auditor
 
 # 3. Execute agent
 amplihack goal-agent-generator execute \
-  --agent-path .claude/agents/goal-driven/security-auditor \
+  --agent-path .amplifier/agents/goal-driven/security-auditor \
   --auto-mode
 ```
 
@@ -166,7 +166,7 @@ bundle = assembler.assemble(goal_def, plan, skills, bundle_name="my-agent")
 
 # Step 5: Package for deployment
 packager = GoalAgentPackager()
-packager.package(bundle, output_dir=".claude/agents/goal-driven/my-agent")
+packager.package(bundle, output_dir=".amplifier/agents/goal-driven/my-agent")
 ```
 
 ### CLI Usage
@@ -175,19 +175,19 @@ packager.package(bundle, output_dir=".claude/agents/goal-driven/my-agent")
 # Create agent from prompt file
 amplihack goal-agent-generator create \
   --prompt ./prompts/my-goal.md \
-  --output .claude/agents/goal-driven/my-agent
+  --output .amplifier/agents/goal-driven/my-agent
 
 # Create agent from inline prompt
 amplihack goal-agent-generator create \
   --inline "Automate CI failure diagnosis" \
-  --output .claude/agents/goal-driven/ci-fixer
+  --output .amplifier/agents/goal-driven/ci-fixer
 
 # List generated agents
 amplihack goal-agent-generator list
 
 # Execute agent
 amplihack goal-agent-generator execute \
-  --agent-path .claude/agents/goal-driven/my-agent \
+  --agent-path .amplifier/agents/goal-driven/my-agent \
   --auto-mode \
   --max-turns 15
 ```
@@ -213,7 +213,7 @@ amplihack goal-agent-generator execute \
 - Adaptive investigation depth based on findings
 - Automated remediation suggestions
 
-**Location**: `.claude/agents/amplihack/specialized/azure-kubernetes-expert.md`
+**Location**: `.amplifier/agents/amplihack/specialized/azure-kubernetes-expert.md`
 
 ### Example 2: CI Diagnostic Workflow
 
@@ -234,7 +234,7 @@ amplihack goal-agent-generator execute \
 - Smart waiting with exponential backoff
 - Never auto-merges (stops at mergeable state)
 
-**Location**: `.claude/agents/amplihack/specialized/ci-diagnostic-workflow.md`
+**Location**: `.amplifier/agents/amplihack/specialized/ci-diagnostic-workflow.md`
 
 ### Example 3: Pre-Commit Diagnostic
 
@@ -255,7 +255,7 @@ amplihack goal-agent-generator execute \
 - Hook-specific fix templates
 - 80% automated resolution
 
-**Location**: `.claude/agents/amplihack/specialized/pre-commit-diagnostic.md`
+**Location**: `.amplifier/agents/amplihack/specialized/pre-commit-diagnostic.md`
 
 ### Example 4: Fix-Agent Pattern Matching
 
@@ -275,7 +275,7 @@ amplihack goal-agent-generator execute \
 - Pattern recognition from usage data
 - Right-sized approach (no over-engineering)
 
-**Location**: `.claude/agents/amplihack/specialized/fix-agent.md`
+**Location**: `.amplifier/agents/amplihack/specialized/fix-agent.md`
 
 ## Design Checklist
 
@@ -365,10 +365,10 @@ When designing goal-seeking agents, verify:
 
 ### Documentation
 
-- **Full Skill**: `.claude/skills/goal-seeking-agent-pattern/SKILL.md` (comprehensive guide)
-- **Examples**: `.claude/skills/goal-seeking-agent-pattern/examples/` (3 detailed scenarios)
-- **Templates**: `.claude/skills/goal-seeking-agent-pattern/templates/` (goal prompt, integration guide)
-- **Tests**: `.claude/skills/goal-seeking-agent-pattern/tests/` (validation test suite)
+- **Full Skill**: `amplihack:skills/goal-seeking-agent-pattern/SKILL.md` (comprehensive guide)
+- **Examples**: `amplihack:skills/goal-seeking-agent-pattern/examples/` (3 detailed scenarios)
+- **Templates**: `amplihack:skills/goal-seeking-agent-pattern/templates/` (goal prompt, integration guide)
+- **Tests**: `amplihack:skills/goal-seeking-agent-pattern/tests/` (validation test suite)
 
 ### Code
 
@@ -378,10 +378,10 @@ When designing goal-seeking agents, verify:
 
 ### Real Agents
 
-- **AKS Expert**: `.claude/agents/amplihack/specialized/azure-kubernetes-expert.md`
-- **CI Diagnostic**: `.claude/agents/amplihack/specialized/ci-diagnostic-workflow.md`
-- **Pre-Commit**: `.claude/agents/amplihack/specialized/pre-commit-diagnostic.md`
-- **Fix Agent**: `.claude/agents/amplihack/specialized/fix-agent.md`
+- **AKS Expert**: `.amplifier/agents/amplihack/specialized/azure-kubernetes-expert.md`
+- **CI Diagnostic**: `.amplifier/agents/amplihack/specialized/ci-diagnostic-workflow.md`
+- **Pre-Commit**: `.amplifier/agents/amplihack/specialized/pre-commit-diagnostic.md`
+- **Fix Agent**: `.amplifier/agents/amplihack/specialized/fix-agent.md`
 
 ## Getting Help
 

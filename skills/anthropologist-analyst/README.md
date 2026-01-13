@@ -197,9 +197,9 @@ Learn from cultural diversity:
 
 ## Links
 
-- [Agent Implementation](/Users/ryan/src/Fritmp/amplihack/.claude/skills/anthropologist-analyst/anthropologist-analyst.md)
-- [Quick Reference](/Users/ryan/src/Fritmp/amplihack/.claude/skills/anthropologist-analyst/QUICK_REFERENCE.md)
-- [All Skills](/Users/ryan/src/Fritmp/amplihack/.claude/skills/README.md)
+- [Agent Implementation](/Users/ryan/src/Fritmp/amplihack/amplihack:skills/anthropologist-analyst/anthropologist-analyst.md)
+- [Quick Reference](/Users/ryan/src/Fritmp/amplihack/amplihack:skills/anthropologist-analyst/QUICK_REFERENCE.md)
+- [All Skills](/Users/ryan/src/Fritmp/amplihack/amplihack:skills/README.md)
 
 ## Best Practices
 

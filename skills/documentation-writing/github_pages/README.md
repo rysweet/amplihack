@@ -259,7 +259,7 @@ jobs:
 Run the test suite:
 
 ```bash
-cd .claude/skills/documentation-writing
+cd amplihack:skills/documentation-writing
 PYTHONPATH=. python -m pytest github_pages/tests/ -v
 ```
 

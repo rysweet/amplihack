@@ -29,10 +29,10 @@ This skill acts as a thin wrapper around the canonical ultrathink command, follo
 
 **This skill is a thin wrapper that references canonical sources:**
 
-- **Primary Command**: `.claude/commands/amplihack/ultrathink.md` (278 lines)
+- **Primary Command**: `.amplifier/commands/amplihack/ultrathink.md` (278 lines)
 - **Workflow Sources**:
-  - Development: `.claude/workflow/DEFAULT_WORKFLOW.md`
-  - Investigation: `.claude/workflow/INVESTIGATION_WORKFLOW.md`
+  - Development: `.amplifier/workflow/DEFAULT_WORKFLOW.md`
+  - Investigation: `.amplifier/workflow/INVESTIGATION_WORKFLOW.md`
 
 The canonical command contains complete task detection logic, complexity estimation, and orchestration patterns for both investigation and development workflows.
 
@@ -43,7 +43,7 @@ When this skill is activated, you MUST:
 1. **Read the canonical command** for task detection logic:
 
    ```
-   Read(file_path=".claude/commands/amplihack/ultrathink.md")
+   Read(file_path=".amplifier/commands/amplihack/ultrathink.md")
    ```
 
    Note: Path is relative to project root. Claude Code resolves this automatically.
@@ -60,8 +60,8 @@ When this skill is activated, you MUST:
 
 4. **Fallback** if skill not found:
    - Read workflow markdown files directly
-   - Investigation: `.claude/workflow/INVESTIGATION_WORKFLOW.md`
-   - Development: `.claude/workflow/DEFAULT_WORKFLOW.md`
+   - Investigation: `.amplifier/workflow/INVESTIGATION_WORKFLOW.md`
+   - Development: `.amplifier/workflow/DEFAULT_WORKFLOW.md`
    - Follow workflow steps as specified
 
 ## Why This Pattern
@@ -82,9 +82,9 @@ This pattern aligns with amplihack philosophy: ruthless simplicity through elimi
 
 ## Related Files
 
-- **Canonical Command**: `.claude/commands/amplihack/ultrathink.md`
-- **Development Workflow Skill**: `.claude/skills/default-workflow/`
-- **Investigation Workflow Skill**: `.claude/skills/investigation-workflow/`
+- **Canonical Command**: `.amplifier/commands/amplihack/ultrathink.md`
+- **Development Workflow Skill**: `amplihack:skills/default-workflow/`
+- **Investigation Workflow Skill**: `amplihack:skills/investigation-workflow/`
 - **Canonical Workflows**:
-  - `.claude/workflow/DEFAULT_WORKFLOW.md`
-  - `.claude/workflow/INVESTIGATION_WORKFLOW.md`
+  - `.amplifier/workflow/DEFAULT_WORKFLOW.md`
+  - `.amplifier/workflow/INVESTIGATION_WORKFLOW.md`

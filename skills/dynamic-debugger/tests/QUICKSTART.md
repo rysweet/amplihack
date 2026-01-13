@@ -5,7 +5,7 @@ Ahoy! Get yer tests runnin' in 5 minutes flat! 🏴‍☠️
 ## 1. Install Dependencies (30 seconds)
 
 ```bash
-cd /home/azureuser/src/amplihack2/.claude/skills/dynamic-debugger/tests
+cd /home/azureuser/src/amplihack2/amplihack:skills/dynamic-debugger/tests
 uv pip install pytest pytest-cov pytest-mock pytest-timeout coverage psutil
 ```
 

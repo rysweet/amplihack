@@ -77,7 +77,7 @@ wb.save('model.xlsx')
 ### Recalculate Formulas
 
 ```bash
-python .claude/skills/xlsx/scripts/recalc.py model.xlsx
+python amplihack:skills/xlsx/scripts/recalc.py model.xlsx
 ```
 
 Returns JSON with error details:
@@ -105,7 +105,7 @@ See [examples/example_usage.md](examples/example_usage.md) for comprehensive exa
 Run the test suite to verify the skill works correctly:
 
 ```bash
-cd .claude/skills/xlsx
+cd amplihack:skills/xlsx
 pytest tests/ -v
 ```
 
@@ -221,4 +221,4 @@ For issues or questions:
 - **DOCX Skill**: For Word document creation (planned)
 - **PPTX Skill**: For PowerPoint presentations (planned)
 
-See `.claude/skills/INTEGRATION_STATUS.md` for current integration status.
+See `amplihack:skills/INTEGRATION_STATUS.md` for current integration status.

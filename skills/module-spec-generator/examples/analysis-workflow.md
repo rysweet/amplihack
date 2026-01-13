@@ -4,12 +4,12 @@ This document walks through the step-by-step process of analyzing an existing mo
 
 ## Example: Analyzing the String Utils Module
 
-Suppose we have an existing module at `.claude/tools/amplihack/string_utils/` and we want to generate its specification.
+Suppose we have an existing module at `amplihack:modules/string_utils/` and we want to generate its specification.
 
 ### Step 1: Explore Module Structure
 
 ```bash
-ls -la .claude/tools/amplihack/string_utils/
+ls -la amplihack:modules/string_utils/
 
 Output:
 ├── __init__.py
@@ -34,7 +34,7 @@ Output:
 ### Step 2: Read the Public Interface (**init**.py)
 
 ```python
-# .claude/tools/amplihack/string_utils/__init__.py
+# amplihack:modules/string_utils/__init__.py
 from .core import truncate, normalize, slugify
 from .utils import TextMetrics, COMMON_STOPWORDS
 
@@ -50,7 +50,7 @@ __all__ = ["truncate", "normalize", "slugify", "TextMetrics", "COMMON_STOPWORDS"
 ### Step 3: Analyze Core Functions
 
 ```python
-# .claude/tools/amplihack/string_utils/core.py
+# amplihack:modules/string_utils/core.py
 
 def truncate(text: str, max_length: int, suffix: str = "...") -> str:
     """Truncate text to maximum length, appending suffix if truncated.
@@ -128,7 +128,7 @@ def slugify(text: str, max_length: int = None) -> str:
 ### Step 4: Analyze Utilities
 
 ```python
-# .claude/tools/amplihack/string_utils/utils.py
+# amplihack:modules/string_utils/utils.py
 
 class TextMetrics:
     """Analyze and report string metrics."""
@@ -166,7 +166,7 @@ COMMON_STOPWORDS = {
 ### Step 5: Check Test Coverage
 
 ```python
-# .claude/tools/amplihack/string_utils/tests/test_core.py
+# amplihack:modules/string_utils/tests/test_core.py
 
 class TestTruncate:
     def test_truncate_longer_string(self):
@@ -213,7 +213,7 @@ class TestSlugify:
 ### Step 6: Review Examples
 
 ```python
-# .claude/tools/amplihack/string_utils/examples/usage.py
+# amplihack:modules/string_utils/examples/usage.py
 
 from string_utils import truncate, normalize, slugify, TextMetrics
 

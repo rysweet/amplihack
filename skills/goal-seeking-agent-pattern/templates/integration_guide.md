@@ -46,11 +46,11 @@ print("goal_agent_generator installed successfully")
 # Create agent from inline prompt
 amplihack goal-agent-generator create \
   --inline "Automate CI failure diagnosis and fix iteration" \
-  --output .claude/agents/goal-driven/ci-fixer
+  --output .amplifier/agents/goal-driven/ci-fixer
 
 # Execute agent
 amplihack goal-agent-generator execute \
-  --agent-path .claude/agents/goal-driven/ci-fixer \
+  --agent-path .amplifier/agents/goal-driven/ci-fixer \
   --auto-mode \
   --max-turns 10
 ```
@@ -100,7 +100,7 @@ agent_bundle = assembler.assemble(
 packager = GoalAgentPackager()
 packager.package(
     bundle=agent_bundle,
-    output_dir=Path(".claude/agents/goal-driven/data-pipeline-agent")
+    output_dir=Path(".amplifier/agents/goal-driven/data-pipeline-agent")
 )
 
 print(f"Agent created: {agent_bundle.name}")
@@ -334,7 +334,7 @@ output_dir/
 packager = GoalAgentPackager()
 packager.package(
     bundle=bundle,
-    output_dir=Path(".claude/agents/goal-driven/my-agent")
+    output_dir=Path(".amplifier/agents/goal-driven/my-agent")
 )
 ```
 
@@ -359,12 +359,12 @@ Options:
 # From file
 amplihack goal-agent-generator create \
   --prompt ./prompts/data-pipeline.md \
-  --output .claude/agents/goal-driven/data-pipeline
+  --output .amplifier/agents/goal-driven/data-pipeline
 
 # Inline prompt
 amplihack goal-agent-generator create \
   --inline "Automate security audits" \
-  --output .claude/agents/goal-driven/security-auditor \
+  --output .amplifier/agents/goal-driven/security-auditor \
   --bundle-name security-auditor
 ```
 
@@ -387,23 +387,23 @@ Options:
 ```bash
 # Basic execution
 amplihack goal-agent-generator execute \
-  --agent-path .claude/agents/goal-driven/data-pipeline \
+  --agent-path .amplifier/agents/goal-driven/data-pipeline \
   --auto-mode
 
 # Custom max turns
 amplihack goal-agent-generator execute \
-  --agent-path .claude/agents/goal-driven/ci-fixer \
+  --agent-path .amplifier/agents/goal-driven/ci-fixer \
   --auto-mode \
   --max-turns 15
 
 # Dry run (show plan)
 amplihack goal-agent-generator execute \
-  --agent-path .claude/agents/goal-driven/security-auditor \
+  --agent-path .amplifier/agents/goal-driven/security-auditor \
   --dry-run
 
 # Resume from phase 3
 amplihack goal-agent-generator execute \
-  --agent-path .claude/agents/goal-driven/release-workflow \
+  --agent-path .amplifier/agents/goal-driven/release-workflow \
   --resume-from-phase 3
 ```
 
@@ -413,7 +413,7 @@ amplihack goal-agent-generator execute \
 amplihack goal-agent-generator list [OPTIONS]
 
 Options:
-  --directory PATH       Directory to search (default: .claude/agents/goal-driven)
+  --directory PATH       Directory to search (default: .amplifier/agents/goal-driven)
   --format [table|json]  Output format
   --help                 Show help message
 ```
@@ -480,7 +480,7 @@ jobs:
       - name: Execute deployment agent
         run: |
           amplihack goal-agent-generator execute \
-            --agent-path .claude/agents/goal-driven/deployment-agent \
+            --agent-path .amplifier/agents/goal-driven/deployment-agent \
             --auto-mode \
             --max-turns 10
 ```
@@ -643,7 +643,7 @@ phase.required_capabilities = [
 ```bash
 # Increase max turns
 amplihack goal-agent-generator execute \
-  --agent-path .claude/agents/goal-driven/my-agent \
+  --agent-path .amplifier/agents/goal-driven/my-agent \
   --auto-mode \
   --max-turns 20  # Default is based on complexity
 
@@ -659,7 +659,7 @@ amplihack goal-agent-generator execute \
 ```bash
 # Fix issue manually, then resume
 amplihack goal-agent-generator execute \
-  --agent-path .claude/agents/goal-driven/my-agent \
+  --agent-path .amplifier/agents/goal-driven/my-agent \
   --resume-from-phase 3  # Resume from phase 3
 ```
 
@@ -677,7 +677,7 @@ amplihack goal-agent-generator execute \
 
 **Module Issues**:
 
-- Check logs: `.claude/runtime/logs/<session_id>/`
+- Check logs: `.amplifier/logs/<session_id>/`
 - Review agent bundle: `<agent-path>/metadata.json`
 
 **Integration Issues**:

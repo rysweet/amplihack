@@ -11,7 +11,7 @@ Azure DevOps displays work item descriptions as HTML. Plain text looks unprofess
 The create_work_item tool automatically converts markdown to HTML:
 
 ```bash
-python .claude/scenarios/az-devops-tools/create_work_item.py \
+python .amplifier/scenarios/az-devops-tools/create_work_item.py \
   --type "User Story" \
   --title "My Story" \
   --description "# Title
@@ -25,7 +25,7 @@ This is **bold** and this is *italic*.
 Disable with `--no-format`:
 
 ```bash
-python .claude/scenarios/az-devops-tools/create_work_item.py \
+python .amplifier/scenarios/az-devops-tools/create_work_item.py \
   --type Task \
   --title "My Task" \
   --description "<p>Already HTML</p>" \
@@ -38,13 +38,13 @@ Convert markdown files to HTML:
 
 ```bash
 # From file
-python .claude/scenarios/az-devops-tools/format_html.py story.md
+python .amplifier/scenarios/az-devops-tools/format_html.py story.md
 
 # From stdin
-echo "# Title" | python .claude/scenarios/az-devops-tools/format_html.py
+echo "# Title" | python .amplifier/scenarios/az-devops-tools/format_html.py
 
 # Save to file
-python .claude/scenarios/az-devops-tools/format_html.py story.md -o output.html
+python .amplifier/scenarios/az-devops-tools/format_html.py story.md -o output.html
 ```
 
 ## Supported Markdown

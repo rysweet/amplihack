@@ -140,7 +140,7 @@ This skill provides a systematic 6-phase workflow for investigating and understa
 
 ```
 Investigation: "How does the reflection system work?"
-→ [analyzer(.claude/tools/amplihack/hooks/), patterns(reflection), integration(logging)]
+→ [analyzer(amplihack:modules/hooks/), patterns(reflection), integration(logging)]
 
 Investigation: "Why is CI failing?"
 → [analyzer(ci-config), patterns(ci-failures), integration(github-actions)]
@@ -250,8 +250,8 @@ Verification: Examine reflection logs, trace message processing
 
 **Tasks**:
 
-- **Update .claude/context/DISCOVERIES.md** with key insights
-- **Update .claude/context/PATTERNS.md** if reusable patterns found
+- **Update .amplifier/context/DISCOVERIES.md** with key insights
+- **Update .amplifier/context/PATTERNS.md** if reusable patterns found
 - Create or update relevant documentation files
 - Add inline code comments for critical understanding
 - **Optional**: Create GitHub issue for follow-up improvements
@@ -286,7 +286,7 @@ Verification: Examine reflection logs, trace message processing
 - Updated PATTERNS.md (if applicable)
 - Updated project documentation
 - Optional: GitHub issues for improvements
-- Investigation session log in `.claude/runtime/logs/`
+- Investigation session log in `.amplifier/logs/`
 
 ## Transitioning to Development Workflow
 
@@ -385,7 +385,7 @@ Both workflows share core principles:
 User: "/ultrathink investigate how authentication works"
 
 UltraThink: Detected investigation task. Using INVESTIGATION_WORKFLOW.md
-→ Reading workflow from .claude/workflow/INVESTIGATION_WORKFLOW.md
+→ Reading workflow from .amplifier/workflow/INVESTIGATION_WORKFLOW.md
 → Following 6-phase investigation workflow
 → Starting Phase 1: Scope Definition
 ```
@@ -394,7 +394,7 @@ UltraThink: Detected investigation task. Using INVESTIGATION_WORKFLOW.md
 
 To customize this workflow:
 
-1. Edit `.claude/workflow/INVESTIGATION_WORKFLOW.md` to modify, add, or remove phases
+1. Edit `.amplifier/workflow/INVESTIGATION_WORKFLOW.md` to modify, add, or remove phases
 2. Adjust agent deployment strategies for your needs
 3. Add project-specific investigation patterns
 4. Update efficiency targets based on your metrics
@@ -426,7 +426,7 @@ When in doubt about investigation vs. development:
 
 ## Related Resources
 
-- **Source Workflow**: `.claude/workflow/INVESTIGATION_WORKFLOW.md` (complete 436-line specification)
+- **Source Workflow**: `.amplifier/workflow/INVESTIGATION_WORKFLOW.md` (complete 436-line specification)
 - **Knowledge Extraction**: Use knowledge-extractor skill after investigations to capture learnings
-- **Agent Catalog**: `.claude/agents/CATALOG.md` for all available agents
-- **Pattern Library**: `.claude/context/PATTERNS.md` for reusable investigation patterns
+- **Agent Catalog**: `.amplifier/agents/CATALOG.md` for all available agents
+- **Pattern Library**: `.amplifier/context/PATTERNS.md` for reusable investigation patterns

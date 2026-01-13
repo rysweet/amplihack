@@ -16,18 +16,18 @@ auto_activate_keywords:
   - azure pipelines
   - azure artifacts
 tools_required:
-  - .claude/scenarios/az-devops-tools/auth_check.py
-  - .claude/scenarios/az-devops-tools/create_work_item.py
-  - .claude/scenarios/az-devops-tools/update_work_item.py
-  - .claude/scenarios/az-devops-tools/delete_work_item.py
-  - .claude/scenarios/az-devops-tools/get_work_item.py
-  - .claude/scenarios/az-devops-tools/list_work_items.py
-  - .claude/scenarios/az-devops-tools/link_parent.py
-  - .claude/scenarios/az-devops-tools/query_wiql.py
-  - .claude/scenarios/az-devops-tools/format_html.py
-  - .claude/scenarios/az-devops-tools/list_types.py
-  - .claude/scenarios/az-devops-tools/list_repos.py
-  - .claude/scenarios/az-devops-tools/create_pr.py
+  - .amplifier/scenarios/az-devops-tools/auth_check.py
+  - .amplifier/scenarios/az-devops-tools/create_work_item.py
+  - .amplifier/scenarios/az-devops-tools/update_work_item.py
+  - .amplifier/scenarios/az-devops-tools/delete_work_item.py
+  - .amplifier/scenarios/az-devops-tools/get_work_item.py
+  - .amplifier/scenarios/az-devops-tools/list_work_items.py
+  - .amplifier/scenarios/az-devops-tools/link_parent.py
+  - .amplifier/scenarios/az-devops-tools/query_wiql.py
+  - .amplifier/scenarios/az-devops-tools/format_html.py
+  - .amplifier/scenarios/az-devops-tools/list_types.py
+  - .amplifier/scenarios/az-devops-tools/list_repos.py
+  - .amplifier/scenarios/az-devops-tools/create_pr.py
 references:
   - name: "Azure DevOps CLI Documentation"
     url: "https://learn.microsoft.com/en-us/cli/azure/devops"
@@ -97,7 +97,7 @@ This skill provides comprehensive guidance for Azure DevOps automation through p
 **ALWAYS start by checking authentication:**
 
 ```bash
-python .claude/scenarios/az-devops-tools/auth_check.py --auto-fix
+python .amplifier/scenarios/az-devops-tools/auth_check.py --auto-fix
 ```
 
 This verifies Azure CLI is installed, you're logged in, org/project are configured, and you have access.
@@ -109,7 +109,7 @@ See: [@authentication.md]
 #### Create Work Item
 
 ```bash
-python .claude/scenarios/az-devops-tools/create_work_item.py \
+python .amplifier/scenarios/az-devops-tools/create_work_item.py \
   --type "User Story" \
   --title "Implement feature" \
   --description @story.md
@@ -118,13 +118,13 @@ python .claude/scenarios/az-devops-tools/create_work_item.py \
 #### Query Work Items
 
 ```bash
-python .claude/scenarios/az-devops-tools/list_work_items.py --query mine
+python .amplifier/scenarios/az-devops-tools/list_work_items.py --query mine
 ```
 
 #### Create Pull Request
 
 ```bash
-python .claude/scenarios/az-devops-tools/create_pr.py \
+python .amplifier/scenarios/az-devops-tools/create_pr.py \
   --source feature/branch \
   --target main \
   --title "Add feature"
@@ -166,7 +166,7 @@ For detailed guidance on specific operations, see:
 
 ```bash
 # Create parent work item
-python .claude/scenarios/az-devops-tools/create_work_item.py \
+python .amplifier/scenarios/az-devops-tools/create_work_item.py \
   --type "Epic" \
   --title "Q1 Planning Initiative" \
   --description @epic_desc.md
@@ -174,7 +174,7 @@ python .claude/scenarios/az-devops-tools/create_work_item.py \
 # Output: Created work item #12345
 
 # Create child and link to parent
-python .claude/scenarios/az-devops-tools/create_work_item.py \
+python .amplifier/scenarios/az-devops-tools/create_work_item.py \
   --type "Feature" \
   --title "Authentication System" \
   --description @feature_desc.md \
@@ -187,12 +187,12 @@ python .claude/scenarios/az-devops-tools/create_work_item.py \
 
 ```bash
 # Find your active work items
-python .claude/scenarios/az-devops-tools/list_work_items.py \
+python .amplifier/scenarios/az-devops-tools/list_work_items.py \
   --query mine \
   --format ids-only
 
 # Update work item state
-python .claude/scenarios/az-devops-tools/update_work_item.py \
+python .amplifier/scenarios/az-devops-tools/update_work_item.py \
   --id 12345 \
   --state "Active" \
   --comment "Starting work on this"
@@ -202,10 +202,10 @@ python .claude/scenarios/az-devops-tools/update_work_item.py \
 
 ```bash
 # List repositories
-python .claude/scenarios/az-devops-tools/list_repos.py
+python .amplifier/scenarios/az-devops-tools/list_repos.py
 
 # Create pull request
-python .claude/scenarios/az-devops-tools/create_pr.py \
+python .amplifier/scenarios/az-devops-tools/create_pr.py \
   --source feature/auth \
   --target main \
   --title "Add authentication" \
@@ -218,10 +218,10 @@ python .claude/scenarios/az-devops-tools/create_pr.py \
 
 ```bash
 # List all work item types in your project
-python .claude/scenarios/az-devops-tools/list_types.py
+python .amplifier/scenarios/az-devops-tools/list_types.py
 
 # Show fields for specific type
-python .claude/scenarios/az-devops-tools/list_types.py \
+python .amplifier/scenarios/az-devops-tools/list_types.py \
   --type "User Story" \
   --fields
 ```
@@ -249,7 +249,7 @@ You cannot specify a parent during work item creation via CLI (Azure limitation)
 **Option A:** Use `--parent-id` flag (recommended):
 
 ```bash
-python .claude/scenarios/az-devops-tools/create_work_item.py \
+python .amplifier/scenarios/az-devops-tools/create_work_item.py \
   --type "Task" \
   --title "My Task" \
   --parent-id 12345
@@ -259,13 +259,13 @@ python .claude/scenarios/az-devops-tools/create_work_item.py \
 
 ```bash
 # Step 1: Create
-TASK_ID=$(python .claude/scenarios/az-devops-tools/create_work_item.py \
+TASK_ID=$(python .amplifier/scenarios/az-devops-tools/create_work_item.py \
   --type "Task" \
   --title "My Task" \
   --json | jq -r '.id')
 
 # Step 2: Link
-python .claude/scenarios/az-devops-tools/link_parent.py \
+python .amplifier/scenarios/az-devops-tools/link_parent.py \
   --child $TASK_ID \
   --parent 12345
 ```
@@ -288,14 +288,14 @@ python .claude/scenarios/az-devops-tools/link_parent.py \
 
 ## Tool Implementation
 
-All tools are in `.claude/scenarios/az-devops-tools/`:
+All tools are in `.amplifier/scenarios/az-devops-tools/`:
 
 - Standalone Python programs (can run independently)
 - Importable modules (can use in other scripts)
 - Comprehensive error handling
 - Tests in `tests/` directory
 
-See: [Tool README](.claude/scenarios/az-devops-tools/README.md)
+See: [Tool README](.amplifier/scenarios/az-devops-tools/README.md)
 
 ## Philosophy
 
@@ -311,28 +311,28 @@ These tools follow amplihack principles:
 
 ```bash
 # Setup (first time)
-python .claude/scenarios/az-devops-tools/auth_check.py --auto-fix
+python .amplifier/scenarios/az-devops-tools/auth_check.py --auto-fix
 
 # Create work item
-python .claude/scenarios/az-devops-tools/create_work_item.py \
+python .amplifier/scenarios/az-devops-tools/create_work_item.py \
   --type "User Story" \
   --title "Title" \
   --description @desc.md
 
 # Update work item
-python .claude/scenarios/az-devops-tools/update_work_item.py \
+python .amplifier/scenarios/az-devops-tools/update_work_item.py \
   --id 12345 \
   --state "Active"
 
 # Query work items
-python .claude/scenarios/az-devops-tools/list_work_items.py --query mine
+python .amplifier/scenarios/az-devops-tools/list_work_items.py --query mine
 
 # Create pull request
-python .claude/scenarios/az-devops-tools/create_pr.py \
+python .amplifier/scenarios/az-devops-tools/create_pr.py \
   --source feature/branch \
   --target main \
   --title "Add feature"
 
 # Discover types
-python .claude/scenarios/az-devops-tools/list_types.py
+python .amplifier/scenarios/az-devops-tools/list_types.py
 ```

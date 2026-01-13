@@ -444,7 +444,7 @@ The Agent SDK skill integrates with the Amplihack framework:
 **Creating Amplihack Agents with SDK:**
 
 ```python
-# In .claude/agents/amplihack/specialized/my_agent.md
+# In .amplifier/agents/amplihack/specialized/my_agent.md
 # Use Agent SDK patterns for tool-using agents
 from claude_agents import Agent
 from claude_agents.tools import Tool

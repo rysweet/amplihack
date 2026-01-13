@@ -63,7 +63,7 @@ This skill uses a tiered approach to balance comprehensive knowledge with token 
 ## Directory Structure
 
 ```
-.claude/skills/microsoft-agent-framework/
+amplihack:skills/microsoft-agent-framework/
 ├── skill.md                     # Tier 1+2: Core skill content (4,800 tokens)
 ├── README.md                    # This file - skill documentation
 ├── reference/                   # Tier 3: Detailed technical documentation
@@ -329,7 +329,7 @@ This skill follows amplihack philosophy:
 
 ### Amplihack Integration
 
-- Skills Catalog: `.claude/skills/README.md`
+- Skills Catalog: `amplihack:skills/README.md`
 - Decision Framework: `@integration/decision-framework.md`
 - Integration Patterns: `@integration/amplihack-integration.md`
 

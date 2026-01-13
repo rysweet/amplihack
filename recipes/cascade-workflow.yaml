@@ -20,8 +20,6 @@ recursion:
 
 steps:
   - id: "step-1-define-levels"
-    name: "Step 1: Define Cascade Levels"
-    type: agent
     agent: "foundation:zen-architect"
     prompt: |
       STEP 1: DEFINE CASCADE LEVELS
@@ -55,17 +53,14 @@ steps:
       CRITICAL: Ensure tertiary ALWAYS succeeds.
 
       Output cascade level definitions with timeouts.
-    outputs:
-      cascade_levels: "{{result}}"
+    output: "cascade_levels"
 
   - id: "step-2-primary"
-    name: "Step 2: Primary Attempt"
-    type: agent
     agent: "foundation:modular-builder"
     prompt: |
       STEP 2: PRIMARY ATTEMPT
 
-      Cascade Levels: {{steps.step-1-define-levels.cascade_levels}}
+      Cascade Levels: {{cascade_levels}}
       Operation: {{operation}}
 
       Execute the PRIMARY approach:
@@ -80,19 +75,16 @@ steps:
       If PRIMARY fails or times out:
       - Report failure reason
       - Proceed to SECONDARY
-    outputs:
-      primary_result: "{{result}}"
+    output: "primary_result"
     on_error: continue
 
   - id: "step-3-secondary"
-    name: "Step 3: Secondary Fallback"
-    type: agent
     agent: "foundation:modular-builder"
     prompt: |
       STEP 3: SECONDARY FALLBACK
 
-      Cascade Levels: {{steps.step-1-define-levels.cascade_levels}}
-      Primary Result: {{steps.step-2-primary.primary_result}}
+      Cascade Levels: {{cascade_levels}}
+      Primary Result: {{primary_result}}
 
       Execute SECONDARY approach (acceptable degradation):
       1. Use fallback approach
@@ -107,19 +99,16 @@ steps:
       If SECONDARY fails:
       - Report failure reason
       - Proceed to TERTIARY
-    outputs:
-      secondary_result: "{{result}}"
+    output: "secondary_result"
     on_error: continue
 
   - id: "step-4-tertiary"
-    name: "Step 4: Tertiary Guarantee"
-    type: agent
     agent: "foundation:modular-builder"
     prompt: |
       STEP 4: TERTIARY GUARANTEE
 
-      Cascade Levels: {{steps.step-1-define-levels.cascade_levels}}
-      Secondary Result: {{steps.step-3-secondary.secondary_result}}
+      Cascade Levels: {{cascade_levels}}
+      Secondary Result: {{secondary_result}}
 
       Execute TERTIARY approach (guaranteed completion):
       1. Use simplest possible approach
@@ -132,19 +121,16 @@ steps:
       - Return minimal but functional result
 
       Report SUCCESS at TERTIARY level with degradation details.
-    outputs:
-      tertiary_result: "{{result}}"
+    output: "tertiary_result"
 
   - id: "step-5-report"
-    name: "Step 5: Degradation Reporting"
-    type: agent
-    agent: "amplihack:documentation-writer"
+    agent: "foundation:zen-architect"
     prompt: |
       STEP 5: DEGRADATION REPORTING
 
-      Primary: {{steps.step-2-primary.primary_result}}
-      Secondary: {{steps.step-3-secondary.secondary_result}}
-      Tertiary: {{steps.step-4-tertiary.tertiary_result}}
+      Primary: {{primary_result}}
+      Secondary: {{secondary_result}}
+      Tertiary: {{tertiary_result}}
       Notification Level: {{notification}}
 
       Report degradation to user based on notification level:
@@ -154,31 +140,24 @@ steps:
       - explicit: Detailed explanation of what degraded and why
 
       Output user-appropriate degradation report.
-    outputs:
-      degradation_report: "{{result}}"
+    output: "degradation_report"
 
   - id: "step-6-metrics"
-    name: "Step 6: Metrics Logging"
     type: bash
     command: |
-      echo "=== Step 6: Metrics Logging ==="
-      echo "Cascade execution metrics:"
-      echo "- Operation: {{operation}}"
-      echo "- Timeout Strategy: {{timeout_strategy}}"
-      echo "- Fallback Type: {{fallback_type}}"
-      echo "- Final Level: Check results above"
-      echo ""
+      echo "=== Cascade Metrics ==="
+      echo "Operation: {{operation}}"
+      echo "Timeout Strategy: {{timeout_strategy}}"
+      echo "Fallback Type: {{fallback_type}}"
       echo "Metrics logged for optimization analysis"
 
   - id: "step-7-optimize"
-    name: "Step 7: Continuous Optimization"
-    type: agent
-    agent: "amplihack:optimizer"
+    agent: "foundation:zen-architect"
     prompt: |
       STEP 7: CONTINUOUS OPTIMIZATION
 
-      Degradation Report: {{steps.step-5-report.degradation_report}}
-      Cascade Levels: {{steps.step-1-define-levels.cascade_levels}}
+      Degradation Report: {{degradation_report}}
+      Cascade Levels: {{cascade_levels}}
 
       Analyze cascade performance for optimization:
 
@@ -189,5 +168,4 @@ steps:
       5. Should cascade levels be adjusted?
 
       Output recommendations for future cascade optimization.
-    outputs:
-      optimization_recommendations: "{{result}}"
+    output: "optimization_recommendations"

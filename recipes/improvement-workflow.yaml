@@ -89,12 +89,12 @@ stages:
           
           Provide a thorough problem analysis.
         output: "problem_analysis"
-        timeout: 600
+        
 
       # Step 1.2: Measurement Baseline
       - id: "step-1-2-measurement-baseline"
         agent: "foundation:zen-architect"
-        mode: "ANALYZE"
+        
         prompt: |
           # Stage 1.2: Measurement Baseline
           
@@ -139,12 +139,12 @@ stages:
           
           Output clear, measurable criteria.
         output: "measurement_baseline"
-        timeout: 450
+        
 
       # Step 1.3: Problem Validation Check
       - id: "step-1-3-validation-check"
         agent: "foundation:zen-architect"
-        mode: "REVIEW"
+        
         prompt: |
           # Stage 1.3: Problem Validation Gate
           
@@ -182,8 +182,8 @@ stages:
           
           Be rigorous. Don't proceed to design if the problem isn't validated.
         output: "problem_validation"
-        parse_json: true
-        timeout: 300
+        
+        
 
     approval:
       required: true
@@ -201,7 +201,7 @@ stages:
         
         Review problem validation before proceeding to solution design.
         Approve to proceed to solution design stage.
-      timeout: 1800
+      
       default: "deny"
 
   # ===========================================================================
@@ -213,7 +213,7 @@ stages:
       # Step 2.1: Solution Options
       - id: "step-2-1-solution-options"
         agent: "foundation:zen-architect"
-        mode: "ARCHITECT"
+        
         prompt: |
           # Stage 2.1: Solution Options Generation
           
@@ -259,12 +259,12 @@ stages:
           
           Generate genuinely different approaches, not variations of one idea.
         output: "solution_options"
-        timeout: 600
+        
 
       # Step 2.2: Solution Selection
       - id: "step-2-2-solution-selection"
         agent: "foundation:zen-architect"
-        mode: "ANALYZE"
+        
         prompt: |
           # Stage 2.2: Solution Selection
           
@@ -304,12 +304,12 @@ stages:
           **Fallback Plan:**
           If this doesn't work, what's Plan B?
         output: "selected_solution"
-        timeout: 450
+        
 
       # Step 2.3: Detailed Design
       - id: "step-2-3-detailed-design"
         agent: "foundation:zen-architect"
-        mode: "ARCHITECT"
+        
         prompt: |
           # Stage 2.3: Detailed Design
           
@@ -360,7 +360,7 @@ stages:
           
           Provide enough detail to implement without guessing.
         output: "detailed_design"
-        timeout: 600
+        
 
     approval:
       required: true
@@ -378,7 +378,7 @@ stages:
         
         Review the design before implementation.
         Approve to proceed to implementation stage.
-      timeout: 3600
+      
       default: "deny"
 
   # ===========================================================================
@@ -432,12 +432,12 @@ stages:
           
           Implement completely. No partial implementations.
         output: "implementation"
-        timeout: 1200
+        
 
       # Step 3.2: Self-Review
       - id: "step-3-2-self-review"
         agent: "foundation:zen-architect"
-        mode: "REVIEW"
+        
         prompt: |
           # Stage 3.2: Implementation Self-Review
           
@@ -490,8 +490,8 @@ stages:
           }
           ```
         output: "self_review"
-        parse_json: true
-        timeout: 450
+        
+        
 
     approval:
       required: true
@@ -506,7 +506,7 @@ stages:
         
         Review the implementation before validation.
         Approve to proceed to review stage.
-      timeout: 3600
+      
       default: "deny"
 
   # ===========================================================================
@@ -573,8 +573,8 @@ stages:
           }
           ```
         output: "code_review"
-        parse_json: true
-        timeout: 600
+        
+        
 
       # Step 4.2: Fix Review Issues
       - id: "step-4-2-fix-issues"
@@ -611,7 +611,7 @@ stages:
           
           Address all blocking issues. Output the updated implementation.
         output: "fixed_implementation"
-        timeout: 600
+        
 
     approval:
       required: true
@@ -626,7 +626,7 @@ stages:
         
         Review the review results before final validation.
         Approve to proceed to final validation.
-      timeout: 3600
+      
       default: "deny"
 
   # ===========================================================================
@@ -684,13 +684,13 @@ stages:
           }
           ```
         output: "verification_results"
-        parse_json: true
-        timeout: 600
+        
+        
 
       # Step 5.2: Final Summary
       - id: "step-5-2-final-summary"
         agent: "foundation:zen-architect"
-        mode: "ANALYZE"
+        
         prompt: |
           # Stage 5.2: Final Summary
           
@@ -739,7 +739,7 @@ stages:
           Ready for Deployment: Yes / No
           ```
         output: "final_summary"
-        timeout: 450
+        
 
     approval:
       required: true
@@ -754,7 +754,7 @@ stages:
         
         Review the final validation before completing.
         Approve to complete the improvement workflow.
-      timeout: 1800
+      
       default: "deny"
 
 # =============================================================================

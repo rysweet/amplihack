@@ -114,7 +114,7 @@ dynamic-debugger/
 ## Testing
 
 ```bash
-cd .claude/skills/dynamic-debugger/tests
+cd amplihack:skills/dynamic-debugger/tests
 
 # Run unit + integration tests
 pytest

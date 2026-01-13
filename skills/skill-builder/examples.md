@@ -21,7 +21,7 @@ Comprehensive examples of creating Claude Code skills using the skill-builder.
 **Expected Output**:
 
 ```
-.claude/skills/json-validator/
+amplihack:skills/json-validator/
 └── SKILL.md
 ```
 
@@ -79,7 +79,7 @@ Skill: _activates automatically_
 **Expected Output**:
 
 ```
-.claude/commands/amplihack/test-coverage.md
+.amplifier/commands/amplihack/test-coverage.md
 ```
 
 **Generated File Structure**:
@@ -118,7 +118,7 @@ Identifies gaps in test coverage and recommends additional test cases.
 **Expected Output**:
 
 ```
-.claude/agents/amplihack/specialized/dependency-analyzer.md
+.amplifier/agents/amplihack/specialized/dependency-analyzer.md
 ```
 
 ### Example 4: Scenario Tool Skill
@@ -134,7 +134,7 @@ Identifies gaps in test coverage and recommends additional test cases.
 **Expected Output**:
 
 ```
-.claude/scenarios/code-reviewer/
+.amplifier/scenarios/code-reviewer/
 ├── README.md
 ├── HOW_TO_CREATE_YOUR_OWN.md
 ├── code_reviewer.py
@@ -161,7 +161,7 @@ skill-builder: *activates automatically*
 **Generated Structure**:
 
 ```
-.claude/skills/financial-analyzer/
+amplihack:skills/financial-analyzer/
 ├── SKILL.md              # Core instructions (<5K tokens)
 ├── reference.md          # Detailed formulas and methodologies
 ├── examples.md           # Sample analyses
@@ -315,7 +315,7 @@ Design decisions:
 
 ```
 Generated files:
-.claude/skills/data-transformer/
+amplihack:skills/data-transformer/
 ├── SKILL.md           (core instructions)
 └── scripts/
     ├── parse.py       (format parsing)
@@ -338,7 +338,7 @@ Validation results:
 ```
 ✅ Skill created successfully!
 
-**Location**: .claude/skills/data-transformer/SKILL.md
+**Location**: amplihack:skills/data-transformer/SKILL.md
 **Type**: Claude Code Skill (auto-discovery)
 **Token Budget**: 4,500 / 5,000 tokens (90%)
 **Philosophy Score**: 92/100
@@ -411,19 +411,19 @@ Expected: Error - "Description exceeds 1,024 character limit"
 ```bash
 # Skill type → creates directory with SKILL.md
 /amplihack:skill-builder test-skill skill "Test skill"
-Expected: .claude/skills/test-skill/SKILL.md
+Expected: amplihack:skills/test-skill/SKILL.md
 
 # Agent type → creates .md file directly
 /amplihack:skill-builder test-agent agent "Test agent"
-Expected: .claude/agents/amplihack/specialized/test-agent.md
+Expected: .amplifier/agents/amplihack/specialized/test-agent.md
 
 # Command type → creates .md file in commands
 /amplihack:skill-builder test-cmd command "Test command"
-Expected: .claude/commands/amplihack/test-cmd.md
+Expected: .amplifier/commands/amplihack/test-cmd.md
 
 # Scenario type → creates directory with README.md
 /amplihack:skill-builder test-scenario scenario "Test scenario"
-Expected: .claude/scenarios/test-scenario/README.md
+Expected: .amplifier/scenarios/test-scenario/README.md
 ```
 
 ---
@@ -468,10 +468,10 @@ Expected: .claude/scenarios/test-scenario/README.md
 ```python
 def check_name_conflict(skill_name, skill_type):
     paths = {
-        "skill": f".claude/skills/{skill_name}/SKILL.md",
-        "agent": f".claude/agents/amplihack/specialized/{skill_name}.md",
-        "command": f".claude/commands/amplihack/{skill_name}.md",
-        "scenario": f".claude/scenarios/{skill_name}/README.md"
+        "skill": f"amplihack:skills/{skill_name}/SKILL.md",
+        "agent": f".amplifier/agents/amplihack/specialized/{skill_name}.md",
+        "command": f".amplifier/commands/amplihack/{skill_name}.md",
+        "scenario": f".amplifier/scenarios/{skill_name}/README.md"
     }
     target_path = paths[skill_type]
     if Path(target_path).exists():
@@ -616,7 +616,7 @@ Orchestrates agents:
   4. reviewer: Validates philosophy compliance
   5. tester: Creates test cases
   ↓
-Delivers complete skill in .claude/skills/api-tester/
+Delivers complete skill in amplihack:skills/api-tester/
 ```
 
 ---
@@ -631,7 +631,7 @@ Delivers complete skill in .claude/skills/api-tester/
 
 ```python
 # Check 1: Description keywords
-skill_md = Path(".claude/skills/my-skill/SKILL.md").read_text()
+skill_md = Path("amplihack:skills/my-skill/SKILL.md").read_text()
 frontmatter = parse_yaml_frontmatter(skill_md)
 print(f"Description: {frontmatter['description']}")
 # Does it include keywords users would say?
@@ -649,7 +649,7 @@ yaml.safe_load(frontmatter_text)  # Should not error
 1. Enhance description with trigger keywords
 2. Restart Claude Code
 3. Fix YAML syntax errors
-4. Check file location (.claude/skills/skill-name/SKILL.md)
+4. Check file location (amplihack:skills/skill-name/SKILL.md)
 
 ### Issue: Token Budget Exceeded
 
@@ -661,7 +661,7 @@ yaml.safe_load(frontmatter_text)  # Should not error
 import tiktoken
 
 encoding = tiktoken.encoding_for_model("claude-sonnet-4-5")
-skill_content = Path(".claude/skills/my-skill/SKILL.md").read_text()
+skill_content = Path("amplihack:skills/my-skill/SKILL.md").read_text()
 tokens = len(encoding.encode(skill_content))
 print(f"Token count: {tokens}")
 ```
@@ -875,7 +875,7 @@ Enterprise-grade log analysis with ML-powered anomaly detection.
 
 4. **Commit Changes**:
    ```bash
-   git add .claude/skills/skill-builder/
+   git add amplihack:skills/skill-builder/
    git commit -m "docs: Update skill-builder reference documentation"
    ```
 

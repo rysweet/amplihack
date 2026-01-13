@@ -53,7 +53,7 @@ print(f"File: {result['snapshot']['file_path']}")
 Snapshot ID: 20251116_143522
 Name: auth-implementation
 Token count: 1250
-File: .claude/runtime/context-snapshots/20251116_143522.json
+File: .amplifier/context-snapshots/20251116_143522.json
 ```
 
 ## Example 3: List All Snapshots

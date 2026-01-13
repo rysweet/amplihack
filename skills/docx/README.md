@@ -135,7 +135,7 @@ See [DEPENDENCIES.md](DEPENDENCIES.md) for detailed installation instructions.
 Run tests to verify the skill:
 
 ```bash
-cd .claude/skills/docx
+cd amplihack:skills/docx
 pytest tests/ -v
 ```
 

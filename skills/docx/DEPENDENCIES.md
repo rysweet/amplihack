@@ -176,7 +176,7 @@ npm list -g docx
 Use the pytest test suite to check all dependencies:
 
 ```bash
-cd .claude/skills/docx
+cd amplihack:skills/docx
 python tests/test_docx_skill.py
 ```
 
@@ -516,7 +516,7 @@ The DOCX skill shares some dependencies with other Office skills:
 
 - poppler-utils (PDF processing)
 
-See `.claude/skills/common/dependencies.txt` for complete shared dependency information.
+See `amplihack:skills/common/dependencies.txt` for complete shared dependency information.
 
 ## Advanced Installation
 

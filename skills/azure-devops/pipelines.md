@@ -201,7 +201,7 @@ When you create a PR, pipeline validation builds run automatically if configured
 
 ```bash
 # Create PR (automatically triggers build)
-python .claude/scenarios/az-devops-tools/create_pr.py \
+python .amplifier/scenarios/az-devops-tools/create_pr.py \
   --source feature/branch \
   --target main \
   --title "My feature"

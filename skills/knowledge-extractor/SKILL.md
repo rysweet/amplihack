@@ -253,7 +253,7 @@ Place knowledge in correct locations:
 ```
 DISCOVERIES.md → New discovery at end of file
 PATTERNS.md → New pattern in appropriate section
-Agent → Create in .claude/agents/amplihack/specialized/
+Agent → Create in .amplifier/agents/amplihack/specialized/
 ```
 
 ### Step 5: Validation (2 minutes)
@@ -353,7 +353,7 @@ Claude:
    - Value: Reduce diagnosis time from 45 min → 15 min
 
 3. Proposes creating:
-   - .claude/agents/amplihack/ci-diagnostic-workflow.md
+   - .amplifier/agents/amplihack/ci-diagnostic-workflow.md
    - Can delegate to: fix-agent for implementation
 ```
 
@@ -582,4 +582,4 @@ This skill should grow based on:
 - What knowledge sources are underutilized?
 - How can we better surface relevant knowledge?
 
-Document learnings in `.claude/context/DISCOVERIES.md`.
+Document learnings in `.amplifier/context/DISCOVERIES.md`.

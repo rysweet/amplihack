@@ -258,7 +258,7 @@ agent_bundle = assembler.assemble(
 packager = GoalAgentPackager()
 packager.package(
     bundle=agent_bundle,
-    output_dir=Path(".claude/agents/goal-driven/release-workflow-agent")
+    output_dir=Path(".amplifier/agents/goal-driven/release-workflow-agent")
 )
 
 print(f"Agent created: {agent_bundle.name}")
@@ -528,7 +528,7 @@ Phase 4: ✗ FAILED (5 minutes, automatic rollback completed)
 │                                                                 │
 │ Resume command:                                                 │
 │ amplihack goal-agent-generator execute \                       │
-│   --agent-path .claude/agents/goal-driven/release-workflow-agent \
+│   --agent-path .amplifier/agents/goal-driven/release-workflow-agent \
 │   --resume-from-phase 4                                        │
 └─────────────────────────────────────────────────────────────────┘
 ```

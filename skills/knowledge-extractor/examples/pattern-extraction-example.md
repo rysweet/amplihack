@@ -176,9 +176,9 @@ Update CLAUDE.md builder agent instructions to reference this pattern.
 
 See real implementations:
 
-- `.claude/tools/amplihack/prerequisites.py` (428 lines)
-- `.claude/tools/amplihack/session/` (multi-file module)
-- `.claude/tools/amplihack/caching/` (advanced caching)
+- `amplihack:modules/prerequisites.py` (428 lines)
+- `amplihack:modules/session/` (multi-file module)
+- `amplihack:modules/caching/` (advanced caching)
 
 ```
 

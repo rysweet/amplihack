@@ -539,5 +539,5 @@ Potential automation opportunities:
 ## References
 
 - [Azure DevOps CLI Testing Guide](https://learn.microsoft.com/en-us/cli/azure/devops)
-- [amplihack Philosophy](../../.claude/context/PHILOSOPHY.md)
-- [amplihack Patterns](../../.claude/context/PATTERNS.md)
+- [amplihack Philosophy](../../.amplifier/context/PHILOSOPHY.md)
+- [amplihack Patterns](../../.amplifier/context/PATTERNS.md)

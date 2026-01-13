@@ -209,7 +209,7 @@ User: Generate a spec for the existing caching module.
 
 Claude:
 
-1. Analyzes .claude/tools/amplihack/caching/ directory
+1. Analyzes amplihack:modules/caching/ directory
 2. Extracts **all** exports
 3. Documents public functions with signatures
 4. Maps dependencies
@@ -229,7 +229,7 @@ accurately describes the implementation.
 Claude:
 
 1. Reads Specs/session-management.md
-2. Analyzes actual code in .claude/tools/amplihack/session/
+2. Analyzes actual code in amplihack:modules/session/
 3. Compares:
    - Public contract (functions, signatures)
    - Dependencies listed

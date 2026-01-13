@@ -143,7 +143,7 @@ context = rehydrate_context(snapshot_a_id, level='standard')
 
 - **What**: Automatically saves full conversation before compaction
 - **When**: Triggered by Claude Code
-- **Where**: `.claude/runtime/logs/<session_id>/CONVERSATION_TRANSCRIPT.md`
+- **Where**: `.amplifier/logs/<session_id>/CONVERSATION_TRANSCRIPT.md`
 - **Relationship**: Safety net for complete recovery
 
 ### /transcripts Command (Reactive Recovery)
@@ -157,7 +157,7 @@ context = rehydrate_context(snapshot_a_id, level='standard')
 
 - **What**: Intelligent context extraction and selective rehydration
 - **When**: User invoked at threshold warnings
-- **Where**: `.claude/runtime/context-snapshots/*.json`
+- **Where**: `.amplifier/context-snapshots/*.json`
 - **Relationship**: Proactive optimization tool
 
 **All three are complementary, not competing.**
@@ -179,7 +179,7 @@ THRESHOLDS = {
 
 ### Snapshot Storage
 
-Default location: `.claude/runtime/context-snapshots/`
+Default location: `.amplifier/context-snapshots/`
 
 Can be customized:
 
@@ -211,13 +211,13 @@ Comprehensive test suite with 85%+ coverage:
 
 ```bash
 # Run all tests
-pytest .claude/skills/context-management/tests/
+pytest amplihack:skills/context-management/tests/
 
 # Run specific test file
-pytest .claude/skills/context-management/tests/test_token_monitor.py
+pytest amplihack:skills/context-management/tests/test_token_monitor.py
 
 # Run with coverage
-pytest --cov=context_management .claude/skills/context-management/tests/
+pytest --cov=context_management amplihack:skills/context-management/tests/
 ```
 
 Test organization:
@@ -263,7 +263,7 @@ Each brick has ONE job:
 ## File Structure
 
 ```
-.claude/skills/context-management/
+amplihack:skills/context-management/
 ├── SKILL.md                    # Claude Code skill definition
 ├── README.md                   # This file
 ├── QUICK_START.md              # Quick reference guide
@@ -336,7 +336,7 @@ Part of the amplihack framework. See project LICENSE.
 
 For issues, questions, or contributions:
 
-- See: `.claude/context/PHILOSOPHY.md` for principles
+- See: `.amplifier/context/PHILOSOPHY.md` for principles
 - See: `Specs/context-management-skill.md` for specification
 - See: `SKILL.md` for complete skill documentation
 - See: `QUICK_START.md` for quick reference

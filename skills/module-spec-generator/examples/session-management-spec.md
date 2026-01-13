@@ -105,7 +105,7 @@ class SessionManager:
         registry_file (Path): JSON file tracking all sessions
     """
 
-    def __init__(self, session_dir: str = ".claude/runtime/sessions"):
+    def __init__(self, session_dir: str = ".amplifier/sessions"):
         """Initialize session manager.
 
         Args:
@@ -408,7 +408,7 @@ from session_management import (
 )
 
 # Create manager
-manager = SessionManager(".claude/runtime/sessions")
+manager = SessionManager(".amplifier/sessions")
 
 # Create new session
 session = manager.create_session(timeout_seconds=3600)
@@ -433,7 +433,7 @@ active_sessions = manager.list_sessions(status="active")
 print(f"Active sessions: {len(active_sessions)}")
 
 # Logging
-logger = ToolkitLogger(__name__, ".claude/runtime/logs/toolkit.log")
+logger = ToolkitLogger(__name__, ".amplifier/logs/toolkit.log")
 logger.log_session_event(session.session_id, "completed")
 logger.log_decision(
     what="Archive session",
@@ -447,7 +447,7 @@ logger.log_decision(
 Sessions persist in this structure:
 
 ```
-.claude/runtime/
+.amplifier/
 ├── sessions/
 │   ├── registry.json           # All session metadata
 │   ├── session_abc123.json     # Individual session files

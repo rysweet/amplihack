@@ -113,7 +113,7 @@ Claude:
 ### Type 3: Agents
 
 **What**: Automated workflows for repeated tasks
-**Where**: .claude/agents/amplihack/specialized/
+**Where**: .amplifier/agents/amplihack/specialized/
 **When to extract**: Workflow repeated 2+ times, saves 30+ minutes
 **Format**: Problem → Scope → Process → Value
 

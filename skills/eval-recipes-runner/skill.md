@@ -31,7 +31,7 @@ git clone https://github.com/microsoft/eval-recipes.git ~/eval-recipes
 cd ~/eval-recipes
 
 # Copy our agent configs
-cp -r $(pwd)/.claude/agents/eval-recipes/* data/agents/
+cp -r $(pwd)/.amplifier/agents/eval-recipes/* data/agents/
 
 # Install dependencies
 uv sync
@@ -77,7 +77,7 @@ When user says "test this change with eval-recipes":
 1. **Identify the branch/PR** to test
 2. **Update agent config** to use that branch:
    ```dockerfile
-   # In .claude/agents/eval-recipes/amplihack/install.dockerfile
+   # In .amplifier/agents/eval-recipes/amplihack/install.dockerfile
    RUN git clone https://github.com/rysweet/...git /tmp/amplihack && \
        cd /tmp/amplihack && \
        git checkout BRANCH_NAME && \
@@ -85,7 +85,7 @@ When user says "test this change with eval-recipes":
    ```
 3. **Copy to eval-recipes:**
    ```bash
-   cp -r .claude/agents/eval-recipes/* ~/eval-recipes/data/agents/
+   cp -r .amplifier/agents/eval-recipes/* ~/eval-recipes/data/agents/
    ```
 4. **Run benchmark:**
    ```bash
@@ -115,7 +115,7 @@ When user says "test this change with eval-recipes":
 **I do:**
 
 1. Update install.dockerfile to checkout `feat/issue-1435-task-classification`
-2. Copy to eval-recipes: `cp -r .claude/agents/eval-recipes/* ~/eval-recipes/data/agents/`
+2. Copy to eval-recipes: `cp -r .amplifier/agents/eval-recipes/* ~/eval-recipes/data/agents/`
 3. Run: `cd ~/eval-recipes && uv run eval_recipes/main.py --agent amplihack --task linkedin_drafting --trials 3`
 4. Report results: "Score: 35.2/100 (up from 6.5 baseline)"
 

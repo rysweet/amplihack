@@ -24,8 +24,6 @@ recursion:
 
 steps:
   - id: "step-1-context"
-    name: "Step 1: Common Context Preparation"
-    type: agent
     agent: "foundation:zen-architect"
     prompt: |
       STEP 1: COMMON CONTEXT PREPARATION
@@ -48,12 +46,10 @@ steps:
       CRITICAL: All implementations must be INDEPENDENT - no sharing of implementation details between versions.
 
       Output shared specification and test cases.
-    outputs:
-      shared_context: "{{result}}"
+    output:
+      shared_context
 
   - id: "step-2-implementations"
-    name: "Step 2: N Independent Implementations"
-    type: agent
     agent: "amplihack:n-version-validator"
     prompt: |
       STEP 2: N INDEPENDENT IMPLEMENTATIONS
@@ -73,12 +69,10 @@ steps:
       CRITICAL: Each implementation must be developed independently without knowledge of other versions.
 
       Output all {{n_versions}} implementations with their approach profiles.
-    outputs:
-      implementations: "{{result}}"
+    output:
+      implementations
 
   - id: "step-3-compare"
-    name: "Step 3: Collection and Comparison"
-    type: agent
     agent: "amplihack:analyzer"
     prompt: |
       STEP 3: COLLECTION AND COMPARISON
@@ -96,12 +90,10 @@ steps:
       6. Benchmark performance
 
       Create comparison matrix with scores for each criterion.
-    outputs:
-      comparison: "{{result}}"
+    output:
+      comparison
 
   - id: "step-4-evaluate"
-    name: "Step 4: Review and Evaluation"
-    type: agent
     agent: "amplihack:reviewer"
     prompt: |
       STEP 4: REVIEW AND EVALUATION
@@ -122,12 +114,10 @@ steps:
       - Weaknesses
       - Unique insights
       - Recommendation score (1-10)
-    outputs:
-      evaluation: "{{result}}"
+    output:
+      evaluation
 
   - id: "step-5-select"
-    name: "Step 5: Selection or Synthesis"
-    type: agent
     agent: "foundation:zen-architect"
     prompt: |
       STEP 5: SELECTION OR SYNTHESIS
@@ -150,12 +140,10 @@ steps:
       - Selected approach (single or hybrid)
       - Rationale for selection
       - What was learned from rejected versions
-    outputs:
-      selection: "{{result}}"
+    output:
+      selection
 
   - id: "step-6-finalize"
-    name: "Step 6: Final Implementation"
-    type: agent
     agent: "foundation:modular-builder"
     prompt: |
       STEP 6: FINAL IMPLEMENTATION
@@ -172,12 +160,10 @@ steps:
       5. Verify philosophy compliance
 
       Output production-ready implementation.
-    outputs:
-      final_implementation: "{{result}}"
+    output:
+      final_implementation
 
   - id: "step-7-document"
-    name: "Step 7: Learning Documentation"
-    type: agent
     agent: "amplihack:documentation-writer"
     prompt: |
       STEP 7: LEARNING DOCUMENTATION
@@ -196,5 +182,5 @@ steps:
       6. When to use each approach profile
 
       This becomes a knowledge artifact for future N-version decisions.
-    outputs:
-      learnings: "{{result}}"
+    output:
+      learnings

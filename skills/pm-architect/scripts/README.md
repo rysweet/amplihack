@@ -214,15 +214,15 @@ When Claude uses the pm-architect skill, it calls these scripts via the Bash too
 
 ```python
 # Example: Claude analyzes backlog
-result = bash("python .claude/skills/pm-architect/scripts/analyze_backlog.py")
+result = bash("python amplihack:skills/pm-architect/scripts/analyze_backlog.py")
 recommendations = json.loads(result)
 
 # Example: Claude creates delegation package
-result = bash("python .claude/skills/pm-architect/scripts/create_delegation.py BL-001 --agent builder")
+result = bash("python amplihack:skills/pm-architect/scripts/create_delegation.py BL-001 --agent builder")
 package = json.loads(result)
 
 # Example: Claude coordinates workstreams
-result = bash("python .claude/skills/pm-architect/scripts/coordinate.py")
+result = bash("python amplihack:skills/pm-architect/scripts/coordinate.py")
 status = json.loads(result)
 ```
 
