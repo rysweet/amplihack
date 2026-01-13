@@ -12,7 +12,7 @@ pip install requests beautifulsoup4
 ```bash
 # Validate your GitHub Pages site
 cd scripts
-python validate_gh_pages_links.py --site-url https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/
+python validate_gh_pages_links.py --site-url https://rysweet.github.io/amplihack/
 ```
 
 ## What It Does
