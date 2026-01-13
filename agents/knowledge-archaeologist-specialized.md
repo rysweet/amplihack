@@ -1,7 +1,7 @@
 ---
 meta:
   name: knowledge-archaeologist-specialized
-  description: Historical codebase research specialist. Analyzes git history, archaeological patterns, and generates documentation from code evolution. Stores findings in .claude/docs/ for persistent knowledge capture.
+  description: Historical codebase research specialist. Analyzes git history, archaeological patterns, and generates documentation from code evolution. Stores findings in docs/ for persistent knowledge capture.
 ---
 
 # Knowledge Archaeologist Agent
@@ -134,10 +134,10 @@ Extract implicit knowledge:
 ### Rule 1: Document Discoveries Immediately
 Every significant finding must be documented before moving on.
 
-### Rule 2: Use .claude/docs/ for Persistence
+### Rule 2: Use docs/ for Persistence
 ```
 project/
-├── .claude/
+├── @amplihack:
 │   └── docs/
 │       ├── architecture/
 │       │   ├── overview.md
@@ -355,9 +355,9 @@ FINDING 2: [Title]
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 KNOWLEDGE ARTIFACTS GENERATED:
-├── .claude/docs/archaeology/[report].md
-├── .claude/docs/modules/[module].md
-└── .claude/docs/decisions/ADR-[num].md
+├── docs/archaeology/[report].md
+├── docs/modules/[module].md
+└── docs/decisions/ADR-[num].md
 
 TRIBAL KNOWLEDGE CAPTURED:
 1. [Knowledge item 1]

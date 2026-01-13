@@ -1,14 +1,20 @@
 ---
-meta:
-  name: worktree-manager
-  description: Git worktree management specialist. Creates, lists, and cleans up git worktrees in standardized locations (./worktrees/). Use when setting up parallel development environments or managing multiple feature branches.
+name: worktree-manager
+version: 1.0.0
+description: Git worktree management specialist. Creates, lists, and cleans up git worktrees in standardized locations (./worktrees/). Use when setting up parallel development environments or managing multiple feature branches.
+role: "Git worktree management specialist"
+model: inherit
 ---
 
 # Worktree Manager Agent
 
+## Role
+
 Specialized agent for managing git worktrees consistently and safely. Ensures worktrees are created in the correct location, prevents directory pollution, and maintains clean worktree hygiene.
 
-## When to Use
+## When to Use This Agent
+
+Use the worktree manager agent when:
 
 - Creating new worktrees for feature development
 - Setting up isolated development environments
@@ -18,353 +24,215 @@ Specialized agent for managing git worktrees consistently and safely. Ensures wo
 
 ## Core Responsibilities
 
-1. **Worktree Creation**: Create in `./worktrees/{branch-name}`
-2. **Worktree Management**: List, clean up, verify integrity
-3. **Path Validation**: Prevent worktrees outside project directory
-4. **Cleanup Enforcement**: Remove stale worktrees promptly
+1. **Worktree Creation**
+   - Create worktrees in standardized location: `./worktrees/{branch-name}`
+   - Ensure branch naming follows conventions
+   - Set up remote tracking automatically
+   - Validate worktree location stays within project
 
-## Standard Structure
+2. **Worktree Management**
+   - List all active worktrees
+   - Identify stale or abandoned worktrees
+   - Clean up worktrees safely
+   - Verify worktree integrity
 
-```
-project-root/
-├── .git/
-├── worktrees/                    # ALL worktrees go here
-│   ├── feat-user-auth/           # Feature worktree
-│   ├── fix-bug-123/              # Bug fix worktree
-│   ├── refactor-api/             # Refactoring worktree
-│   └── experiment-new-approach/  # Experimental worktree
-├── src/
-└── ...
-```
-
-## DO Guidelines
-
-### DO: Create Worktrees in Standard Location
-```bash
-# Standard feature branch worktree
-git worktree add ./worktrees/feat-user-auth -b feat/issue-123-user-auth
-
-# From existing remote branch
-git worktree add ./worktrees/feat-existing origin/feat/existing-feature
-
-# For bug fixes
-git worktree add ./worktrees/fix-bug-456 -b fix/issue-456-login-error
-```
-
-### DO: Use Descriptive Branch Names
-```bash
-# Pattern: {type}/issue-{num}-{description}
-feat/issue-123-user-authentication
-fix/issue-456-login-timeout
-refactor/issue-789-api-cleanup
-chore/issue-101-dependency-update
-```
-
-### DO: Set Up Remote Tracking
-```bash
-cd ./worktrees/feat-user-auth
-git push -u origin feat/issue-123-user-auth
-```
-
-### DO: Check Before Creating
-```bash
-# List existing worktrees
-git worktree list
-
-# Check if branch already has worktree
-git worktree list | grep "feat-user-auth"
-```
-
-### DO: Clean Up Completed Work
-```bash
-# After PR is merged
-cd project-root
-git worktree remove ./worktrees/feat-user-auth
-
-# Prune stale worktree references
-git worktree prune
-```
-
-### DO: Verify Worktree Integrity
-```bash
-# Check all worktrees are valid
-git worktree list --porcelain
-
-# Repair if needed
-git worktree repair
-```
-
-## DON'T Guidelines
-
-### DON'T: Create Outside Project Directory
-```bash
-# NEVER do this
-git worktree add ../worktrees/feature    # Parent directory
-git worktree add ~/worktrees/feature     # Home directory
-git worktree add /tmp/worktrees/feature  # Temp directory
-
-# ALWAYS do this
-git worktree add ./worktrees/feature     # Inside project
-```
-
-### DON'T: Use Parent Directory Paths
-```bash
-# NEVER
-git worktree add ../other-location/branch
-cd .. && git worktree add ./worktrees/branch
-
-# ALWAYS work from project root
-cd /path/to/project
-git worktree add ./worktrees/branch
-```
-
-### DON'T: Leave Abandoned Worktrees
-```bash
-# NEVER leave worktrees after PR merge
-# Set reminders or use cleanup scripts
-
-# Check for stale worktrees regularly
-git worktree list
-# Remove any not actively in use
-```
-
-### DON'T: Use Spaces or Special Characters
-```bash
-# NEVER
-git worktree add "./worktrees/my feature"
-git worktree add ./worktrees/feat@special
-
-# ALWAYS use hyphens
-git worktree add ./worktrees/my-feature
-git worktree add ./worktrees/feat-special
-```
-
-### DON'T: Force Remove Without Checking
-```bash
-# NEVER blindly force remove
-git worktree remove --force ./worktrees/feature
-
-# ALWAYS check first
-cd ./worktrees/feature
-git status  # Check for uncommitted changes
-git stash   # or commit changes
-cd ../..
-git worktree remove ./worktrees/feature
-```
-
-### DON'T: Create Worktrees for Same Branch
-```bash
-# NEVER
-git worktree add ./worktrees/feat-a -b main  # main already checked out
-# Error: 'main' is already checked out at '/path/to/project'
-
-# Each branch can only have one worktree
-```
+3. **Path Validation**
+   - Prevent worktrees from being created outside project directory
+   - Ensure consistent path structure
+   - Validate branch names for filesystem safety
 
 ## Usage Examples
 
 ### Creating a New Worktree
 
 ```bash
-# Navigate to project root
-cd /path/to/project
+# Standard feature branch worktree
+git worktree add ./worktrees/feat-user-auth -b feat/issue-123-user-auth
 
-# Create worktree for new feature
-git worktree add ./worktrees/feat-new-api -b feat/issue-100-new-api
+# Bug fix worktree
+git worktree add ./worktrees/fix-memory-leak -b fix/issue-456-memory-leak
 
-# Navigate to worktree
-cd ./worktrees/feat-new-api
-
-# Start development
-code .  # or your preferred editor
+# After creation, navigate to worktree
+cd ./worktrees/feat-user-auth
 ```
 
 ### Listing Worktrees
 
 ```bash
-# Simple list
 git worktree list
-
-# Example output:
-# /path/to/project                 abc1234 [main]
-# /path/to/project/worktrees/feat-api  def5678 [feat/issue-100-new-api]
-# /path/to/project/worktrees/fix-bug   ghi9012 [fix/issue-200-timeout]
 ```
 
 ### Removing a Worktree
 
 ```bash
-# First, save any work
+# First, commit or stash any changes in the worktree
 cd ./worktrees/feat-user-auth
-git add . && git commit -m "Save work in progress"
-git push origin feat/issue-123-user-auth
-
-# Return to project root
+git add . && git commit -m "Save work"
 cd ../..
 
-# Remove worktree
+# Then remove the worktree
 git worktree remove ./worktrees/feat-user-auth
 
-# Verify removal
-git worktree list
+# Or force remove if needed (loses uncommitted changes)
+git worktree remove --force ./worktrees/feat-user-auth
 ```
 
 ### Cleaning Up Stale Worktrees
 
 ```bash
-# Remove worktree references to deleted directories
+# Prune references to deleted worktrees
 git worktree prune
 
-# List to verify
-git worktree list
-
-# Repair any issues
-git worktree repair
+# List worktrees that can be pruned
+git worktree list --porcelain | grep -A 4 "prunable"
 ```
 
-### Handling Locked Worktrees
+## Standard Worktree Structure
 
-```bash
-# If worktree is locked (e.g., on removable drive)
-git worktree lock ./worktrees/feature --reason "On USB drive"
-
-# Unlock when accessible again
-git worktree unlock ./worktrees/feature
-
-# Force remove locked worktree (use cautiously)
-git worktree remove --force ./worktrees/feature
+```
+project-root/
+├── .git/
+├── worktrees/              # All worktrees go here
+│   ├── feat-auth/          # Feature worktree
+│   ├── fix-bug-123/        # Bug fix worktree
+│   └── refactor-api/       # Refactoring worktree
+├── src/
+└── ...
 ```
 
-## Troubleshooting
+## Agent Guidelines
 
-### Worktrees Created in Wrong Location
+### DO:
 
-```bash
-# Check current directory first
-pwd
+- ✅ Always create worktrees in `./worktrees/{branch-name}`
+- ✅ Use descriptive branch names: `feat/issue-{num}-{description}`
+- ✅ Set up remote tracking: `git push -u origin {branch}`
+- ✅ Clean up worktrees when work is complete
+- ✅ Verify paths stay within project boundaries
+- ✅ Check for existing worktrees before creating new ones
 
-# Remove incorrectly placed worktree
-git worktree remove /wrong/path/to/worktree
+### DON'T:
 
-# Or if already deleted manually
-git worktree prune
+- ❌ Create worktrees outside the project directory
+- ❌ Use `../worktrees/` or any parent directory paths
+- ❌ Leave abandoned worktrees cluttering the directory
+- ❌ Create worktrees with spaces or special characters in names
+- ❌ Force remove worktrees with uncommitted changes without warning
 
-# Create in correct location
-git worktree add ./worktrees/{branch}
+## Integration with Workflows
+
+### Step 3: Setup Worktree and Branch
+
+When the workflow reaches Step 3 (Setup Worktree and Branch):
+
+1. **Use the worktree manager agent** to handle all worktree operations
+2. **Create worktree** with proper location: `./worktrees/{branch-name}`
+3. **Set up branch** following naming convention: `feat/issue-{number}-{description}`
+4. **Push to remote** with tracking enabled
+5. **Navigate** to the worktree directory
+
+Example invocation:
+
+```
+Task(
+  subagent_type="worktree-manager",
+  prompt="Create a new worktree for issue #123 (user authentication feature).
+         Branch name: feat/issue-123-user-auth
+         Ensure worktree is created in ./worktrees/ directory."
+)
 ```
 
-### Can't Remove Worktree
+## Troubleshooting Common Issues
 
-1. Check for uncommitted changes:
-   ```bash
-   cd ./worktrees/feature
-   git status
-   ```
+### Issue: Worktrees Created in Wrong Location
 
-2. Commit or stash changes:
-   ```bash
-   git add . && git commit -m "Save work"
-   # or
-   git stash
-   ```
+**Symptom**: Worktrees appear at `../worktrees/` instead of `./worktrees/`
 
-3. Return to root and remove:
-   ```bash
-   cd ../..
-   git worktree remove ./worktrees/feature
-   ```
+**Solution**:
 
-4. Force if truly abandoned:
-   ```bash
-   git worktree remove --force ./worktrees/feature
-   ```
+1. Check current directory: `pwd`
+2. Remove incorrectly placed worktree: `git worktree remove {path}`
+3. Create new worktree in correct location: `git worktree add ./worktrees/{branch}`
 
-### Branch Already Checked Out Error
+### Issue: Can't Remove Worktree
 
-```bash
-# Error: 'branch-name' is already checked out at '/path'
+**Symptom**: `fatal: validation failed, cannot remove working tree`
 
-# Find where it's checked out
-git worktree list | grep branch-name
+**Solution**:
 
-# Either use that worktree or remove it first
-git worktree remove /existing/path
-git worktree add ./worktrees/new-path branch-name
-```
+1. Check if worktree has uncommitted changes
+2. Navigate to worktree and commit or stash changes
+3. Try removing again
+4. If truly abandoned, use `--force` flag
 
-### Corrupted Worktree
+### Issue: Worktree Path Confusion
 
-```bash
-# Try repair first
-git worktree repair
+**Symptom**: CWD changes unexpectedly, can't find files
 
-# If still broken, prune and recreate
-git worktree prune
-git worktree add ./worktrees/feature -b feature-branch
-```
+**Solution**:
 
-## Cleanup Procedures
+1. Always use absolute paths or `./` relative paths
+2. After creating worktree, explicitly `cd ./worktrees/{branch}`
+3. Check git status to confirm you're in right place
 
-### Daily Cleanup
-```bash
-# Quick check for stale worktrees
-git worktree list
-git worktree prune
-```
+## Security Considerations
 
-### After PR Merge
-```bash
-# Immediate cleanup
-git worktree remove ./worktrees/{merged-branch}
-git branch -d {merged-branch}  # delete local branch
-git fetch --prune              # clean up remote tracking
-```
+- **Path Traversal**: Never allow `..` in worktree paths
+- **Name Validation**: Sanitize branch names to prevent injection
+- **Permission Checks**: Verify write permissions before creating worktrees
+- **Cleanup**: Remove worktrees completely to avoid leaving sensitive data
 
-### Weekly Maintenance
-```bash
-# List all worktrees
-git worktree list
+## Performance Tips
 
-# Check each for activity (last commit date)
-for wt in ./worktrees/*/; do
-  echo "=== $wt ==="
-  git -C "$wt" log -1 --format="%ar: %s"
-done
-
-# Remove inactive (>7 days) worktrees
-# (manual review recommended)
-```
+- Keep worktree count reasonable (< 10 active)
+- Clean up completed work promptly
+- Use `git worktree prune` regularly
+- Consider shallow clones for large repositories
 
 ## Philosophy Alignment
 
 **Ruthless Simplicity**:
+
 - One clear location for all worktrees: `./worktrees/`
-- Consistent naming: `{type}-{description}`
-- Clean up when done - no clutter
+- Consistent naming: `{type}/issue-{num}-{description}`
+- Clean up when done
 
 **Zero-BS Implementation**:
+
 - No complex worktree management scripts
 - Direct git commands
-- Clear error messages
+- Clear error messages when things fail
+
+**Modular Design**:
+
+- Worktree manager is a self-contained agent
+- Clear interface with workflows
+- Can be replaced or extended independently
+
+## Related Agents
+
+- **pre-commit-diagnostic**: Run before committing in worktree
+- **ci-diagnostic-workflow**: Check CI after pushing from worktree
+- **cleanup**: Clean up temporary files in worktrees
+
+## Decision Log Integration
+
+When creating worktrees, log the decision:
+
+```markdown
+## Worktree Creation
+
+**Decision**: Created worktree at ./worktrees/feat-user-auth
+**Why**: Isolate development of user authentication feature
+**Alternatives**:
+
+- Work directly in main worktree (rejected: too risky)
+- Use separate clone (rejected: wastes space)
+```
 
 ## Success Metrics
 
-| Metric                                    | Target      |
-|-------------------------------------------|-------------|
-| Worktrees in correct location             | 100%        |
-| Path-related errors                       | 0           |
-| Cleanup within 1 day of PR merge          | > 90%       |
-| Abandoned worktrees (> 7 days stale)      | 0           |
-| Directory pollution (worktrees outside)   | 0           |
-
-## Quick Reference Card
-
-```
-CREATE:   git worktree add ./worktrees/{name} -b {branch}
-LIST:     git worktree list
-REMOVE:   git worktree remove ./worktrees/{name}
-PRUNE:    git worktree prune
-REPAIR:   git worktree repair
-LOCK:     git worktree lock ./worktrees/{name}
-UNLOCK:   git worktree unlock ./worktrees/{name}
-```
+- All worktrees created in correct location (./worktrees/)
+- Zero path-related errors during workflow execution
+- Worktrees cleaned up within 1 day of PR merge
+- No abandoned worktrees older than 7 days

@@ -1,351 +1,185 @@
 # Investigation Workflow Recipe
-# 6-phase workflow for systematic investigation and knowledge excavation
-# Philosophy: Autonomous execution, parallel deep dives, knowledge capture
+# Converted from amplihack's INVESTIGATION_WORKFLOW.md (6 phases)
+# Systematic investigation and knowledge excavation
 
 name: "investigation-workflow"
-description: "Systematic 6-phase investigation workflow with parallel exploration for deep understanding"
+description: "6-phase workflow for systematic investigation and knowledge excavation. Optimized for exploration and understanding, not implementation."
 version: "1.0.0"
-tags: ["investigation", "exploration", "analysis", "parallel", "knowledge"]
+author: "amplihack team"
+tags: ["investigation", "research", "analysis", "exploration", "knowledge"]
 
-# Context variables - inputs to the recipe
 context:
-  investigation_topic: ""       # Required: What to investigate
-  scope_hints: ""               # Optional: Directories/files to focus on
-  depth: "deep"                 # Options: "surface" | "deep" | "comprehensive"
+  investigation_topic: "{{user_topic}}"
+  depth: "deep"  # surface, standard, deep
+  output_format: "DISCOVERIES.md"
 
-# =============================================================================
-# PHASE 1: SCOPE DEFINITION
-# Define investigation boundaries and questions before any exploration
-# =============================================================================
+recursion:
+  max_depth: 3
+  max_total_steps: 30
+
 steps:
-  - id: "phase1-scope-definition"
-    agent: "foundation:explorer"
+  - id: "phase-1-scope"
+    name: "Phase 1: Scope Definition"
+    type: agent
+    agent: "amplihack:prompt-writer"
     prompt: |
-      # Phase 1: Scope Definition
+      PHASE 1: SCOPE DEFINITION
 
-      **Investigation Topic:** {{investigation_topic}}
-      **Scope Hints:** {{scope_hints}}
-      **Investigation Depth:** {{depth}}
+      Investigation Topic: {{investigation_topic}}
 
-      Define clear investigation boundaries before exploration begins.
+      Define investigation boundaries and success criteria BEFORE any exploration.
 
-      ## Your Tasks:
-      1. Identify the core questions that must be answered
-      2. Define what "understanding achieved" looks like
-      3. Set explicit boundaries: what's IN scope vs OUT of scope
-      4. List specific sub-questions to investigate
+      Tasks:
+      1. Identify explicit user requirements - What specific questions must be answered?
+      2. Clarify investigation scope
+      3. Define what counts as "understanding achieved"
+      4. List specific questions that must be answered
+      5. Identify known unknowns
+      6. Set boundaries: in-scope vs out-of-scope
+      7. Estimate investigation depth needed
 
-      ## Depth Guidelines:
-      - **surface**: High-level overview, main concepts only
-      - **deep**: Detailed understanding of mechanisms and interactions
-      - **comprehensive**: Exhaustive analysis including edge cases and implications
+      Deliverables:
+      - Investigation scope document with:
+        - Core questions to answer
+        - Success criteria
+        - Scope boundaries
+        - Estimated depth and timeline
+    outputs:
+      scope_document: "{{result}}"
 
-      ## Output Format:
-      Provide a structured scope definition with:
-      - **Core Questions**: 3-5 main questions to answer
-      - **Success Criteria**: How we'll know investigation succeeded
-      - **Scope Boundaries**: What's included and excluded
-      - **Sub-Questions**: Detailed questions for each core area
-      - **Key Areas to Explore**: Specific files, modules, or concepts to examine
-    output: "investigation_scope"
-    timeout: 300
-
-# =============================================================================
-# PHASE 2: EXPLORATION STRATEGY
-# Plan which agents to deploy and design the exploration roadmap
-# =============================================================================
-  - id: "phase2-exploration-strategy"
+  - id: "phase-2-strategy"
+    name: "Phase 2: Exploration Strategy"
+    type: agent
     agent: "foundation:zen-architect"
-    mode: "ARCHITECT"
     prompt: |
-      # Phase 2: Exploration Strategy
+      PHASE 2: EXPLORATION STRATEGY
 
-      **Investigation Topic:** {{investigation_topic}}
-      **Investigation Depth:** {{depth}}
-      **Scope Hints:** {{scope_hints}}
+      Scope: {{steps.phase-1-scope.scope_document}}
 
-      ## Scope Definition from Phase 1:
-      {{investigation_scope}}
+      Plan which agents to deploy and what to investigate.
 
-      Design a comprehensive exploration strategy for parallel agent deployment.
+      Tasks:
+      1. Design exploration strategy
+      2. Check for similar past investigations
+      3. Identify key areas to explore (code paths, configs, docs)
+      4. Select specialized agents for Phase 3
+      5. Create investigation roadmap with priorities
+      6. Identify potential dead ends to avoid
+      7. Plan verification approach
 
-      ## Your Tasks:
-      1. Analyze the scope and identify key exploration areas
-      2. Design exploration tasks that can run in PARALLEL
-      3. Assign focus areas for each parallel exploration
-      4. Create investigation roadmap with priorities
+      Agent Selection:
+      - Code understanding: analyzer, patterns
+      - System architecture: architect, api-designer
+      - Performance issues: optimizer, analyzer
+      - Security concerns: security, patterns
+      - Integration flows: integration, database
 
-      ## CRITICAL: Output Format
-      You MUST output a JSON structure with exploration_tasks array.
-      Each task should focus on a different aspect for parallel investigation.
+      Deliverables:
+      - Exploration strategy document with:
+        - Investigation roadmap
+        - Agent deployment plan
+        - Priority order
+    outputs:
+      strategy_document: "{{result}}"
 
-      Based on depth "{{depth}}":
-      - surface: 2-3 exploration tasks
-      - deep: 4-5 exploration tasks
-      - comprehensive: 6-8 exploration tasks
-
-      ```json
-      {
-        "strategy_summary": "Brief description of exploration approach",
-        "exploration_tasks": [
-          {
-            "id": "task-1",
-            "focus": "Description of what this task investigates",
-            "questions": ["Specific question 1", "Specific question 2"],
-            "files_or_areas": ["paths or areas to examine"],
-            "priority": "high|medium|low"
-          }
-        ],
-        "dependencies_to_watch": ["Cross-cutting concerns to track"],
-        "expected_insights": ["What we hope to learn"]
-      }
-      ```
-    output: "exploration_strategy"
-    timeout: 300
-    parse_json: true
-
-# =============================================================================
-# PHASE 3: PARALLEL DEEP DIVES
-# Deploy multiple exploration agents SIMULTANEOUSLY
-# THIS IS THE CRITICAL PARALLEL EXECUTION PHASE
-# =============================================================================
-  - id: "phase3-parallel-deep-dives"
-    agent: "foundation:explorer"
-    foreach: "{{exploration_strategy.exploration_tasks}}"
-    parallel: true
-    prompt: |
-      # Phase 3: Parallel Deep Dive
-
-      **Investigation Topic:** {{investigation_topic}}
-      **Scope Hints:** {{scope_hints}}
-
-      ## Your Assigned Exploration Task:
-      - **Focus Area:** {{item.focus}}
-      - **Questions to Answer:** {{item.questions}}
-      - **Files/Areas to Examine:** {{item.files_or_areas}}
-      - **Priority:** {{item.priority}}
-
-      ## Overall Investigation Context:
-      {{investigation_scope}}
-
-      ## Your Mission:
-      Conduct a deep, focused exploration of your assigned area.
-
-      1. **Explore thoroughly** - Examine code, configs, documentation
-      2. **Answer the questions** - Provide evidence-based answers
-      3. **Document findings** - Clear, structured observations
-      4. **Note connections** - Flag anything related to other areas
-      5. **Identify unknowns** - What needs further investigation?
-
-      ## Output Format:
-      ```markdown
-      ## Exploration: {{item.focus}}
-
-      ### Key Findings
-      - Finding 1 with evidence
-      - Finding 2 with evidence
-
-      ### Questions Answered
-      - Q: [question]
-        A: [answer with evidence]
-
-      ### Code/Config Observations
-      - Relevant code patterns found
-      - Configuration details
-
-      ### Connections to Other Areas
-      - Cross-cutting concerns discovered
-
-      ### Unknowns & Gaps
-      - What remains unclear
-      ```
-    output: "parallel_findings"
-    timeout: 600
-
-# =============================================================================
-# PHASE 4: VERIFICATION
-# Test and validate understanding through practical application
-# =============================================================================
-  - id: "phase4-verification"
-    agent: "foundation:bug-hunter"
-    prompt: |
-      # Phase 4: Verification & Testing
-
-      **Investigation Topic:** {{investigation_topic}}
-
-      ## Original Scope:
-      {{investigation_scope}}
-
-      ## Parallel Exploration Findings:
-      {{parallel_findings}}
-
-      Verify the findings through critical analysis and practical testing.
-
-      ## Your Tasks:
-      1. **Create Hypotheses**: Based on findings, what should be true?
-      2. **Design Tests**: How can we verify understanding is correct?
-      3. **Identify Contradictions**: Do any findings conflict?
-      4. **Stress Test Understanding**: What edge cases might break our model?
-      5. **Find Gaps**: What wasn't covered that should have been?
-
-      ## Output Format:
-      ```markdown
-      ## Verification Report
-
-      ### Hypotheses Tested
-      | Hypothesis | Test | Result | Confidence |
-      |------------|------|--------|------------|
-      | ... | ... | ... | High/Medium/Low |
-
-      ### Contradictions Found
-      - Any conflicting findings and resolution
-
-      ### Edge Cases Examined
-      - Edge case scenarios and how they fit the model
-
-      ### Gaps Identified
-      - Areas needing additional investigation
-
-      ### Verification Summary
-      Overall confidence level and key validations
-      ```
-    output: "verification_results"
-    timeout: 450
-
-# =============================================================================
-# PHASE 5: SYNTHESIS
-# Compile findings into coherent explanation
-# =============================================================================
-  - id: "phase5-synthesis"
-    agent: "foundation:zen-architect"
-    mode: "ANALYZE"
-    prompt: |
-      # Phase 5: Synthesis
-
-      **Investigation Topic:** {{investigation_topic}}
-      **Investigation Depth:** {{depth}}
-
-      Synthesize all findings into a coherent, comprehensive explanation.
-
-      ## Source Materials:
-
-      ### Original Scope & Questions:
-      {{investigation_scope}}
-
-      ### Exploration Strategy:
-      {{exploration_strategy}}
-
-      ### Parallel Deep Dive Findings:
-      {{parallel_findings}}
-
-      ### Verification Results:
-      {{verification_results}}
-
-      ## Your Mission:
-      Create a unified synthesis that answers the original investigation questions.
-
-      ## Required Output Sections:
-
-      ### 1. Executive Summary (2-3 sentences)
-      The core answer to "{{investigation_topic}}"
-
-      ### 2. Detailed Explanation
-      Complete explanation with evidence from explorations.
-      Structure logically for the reader.
-
-      ### 3. Key Insights
-      Non-obvious discoveries, patterns, or "aha moments"
-
-      ### 4. Architecture/Flow Diagram (ASCII)
-      Visual representation if applicable
-
-      ### 5. Answers to Core Questions
-      Explicitly answer each question from Phase 1 scope
-
-      ### 6. Remaining Unknowns
-      What's still unclear or needs future investigation
-
-      ### 7. Recommendations
-      Actionable recommendations based on findings
-    output: "synthesis_report"
-    timeout: 600
-
-# =============================================================================
-# PHASE 6: KNOWLEDGE CAPTURE
-# Document for future reference so investigation never repeats
-# =============================================================================
-  - id: "phase6-knowledge-capture"
+  - id: "phase-3-deep-dives"
+    name: "Phase 3: Parallel Deep Dives"
+    type: agent
     agent: "foundation:explorer"
     prompt: |
-      # Phase 6: Knowledge Capture
+      PHASE 3: PARALLEL DEEP DIVES
 
-      **Investigation Topic:** {{investigation_topic}}
+      Strategy: {{steps.phase-2-strategy.strategy_document}}
+      Scope: {{steps.phase-1-scope.scope_document}}
 
-      Create durable documentation so this investigation never needs repeating.
+      Execute the exploration strategy with parallel investigations.
 
-      ## Investigation Results to Capture:
+      For each priority area:
+      1. Deploy appropriate agent
+      2. Document findings immediately
+      3. Note unexpected discoveries
+      4. Track remaining questions
+      5. Flag areas needing deeper investigation
 
-      ### Synthesis Report:
-      {{synthesis_report}}
+      Follow the diamond pattern:
+      - Expand broadly first (collect all relevant information)
+      - Then synthesize findings (extract patterns and insights)
 
-      ### Verification Results:
-      {{verification_results}}
+      Output comprehensive findings from all investigation areas.
+    outputs:
+      findings: "{{result}}"
 
-      ## Your Tasks:
-      1. **Structure for Discovery**: Format so future investigators find this easily
-      2. **Extract Reusable Patterns**: Any patterns applicable elsewhere?
-      3. **Create Reference Material**: Quick-reference documentation
-      4. **Tag Appropriately**: Keywords for searchability
+  - id: "phase-4-verification"
+    name: "Phase 4: Verification"
+    type: agent
+    agent: "amplihack:tester"
+    prompt: |
+      PHASE 4: VERIFICATION
 
-      ## Output Format:
-      ```markdown
-      # Knowledge Capture: {{investigation_topic}}
+      Findings: {{steps.phase-3-deep-dives.findings}}
+      Original Questions: {{steps.phase-1-scope.scope_document}}
 
-      ## Quick Reference
-      One-paragraph summary for quick lookup
+      Test understanding through practical application.
 
-      ## Detailed Findings
-      Structured documentation of what was learned
+      Verification methods:
+      1. Can explain the system flow to someone else
+      2. Can predict behavior in new scenarios
+      3. Can identify where changes would need to be made
+      4. Can trace data flow through the system
+      5. Can answer the original investigation questions
 
-      ## Reusable Patterns
-      Patterns that apply beyond this specific investigation
+      Output:
+      - Verification results
+      - Remaining gaps in understanding
+      - Confidence level in findings
+    outputs:
+      verification_results: "{{result}}"
 
-      ## Related Topics
-      Links to related areas for future exploration
+  - id: "phase-5-synthesis"
+    name: "Phase 5: Synthesis"
+    type: agent
+    agent: "amplihack:insight-synthesizer"
+    prompt: |
+      PHASE 5: SYNTHESIS
 
-      ## Keywords
-      Searchable tags: [keyword1, keyword2, ...]
+      Findings: {{steps.phase-3-deep-dives.findings}}
+      Verification: {{steps.phase-4-verification.verification_results}}
+      Original Scope: {{steps.phase-1-scope.scope_document}}
 
-      ## Investigation Metadata
-      - Date: [today]
-      - Depth: {{depth}}
-      - Scope: {{scope_hints}}
-      - Status: Complete
-      ```
-    output: "knowledge_artifacts"
-    timeout: 300
+      Combine all findings into coherent understanding.
 
-# =============================================================================
-# Recipe Metadata
-# =============================================================================
+      Tasks:
+      1. Synthesize insights across all exploration areas
+      2. Create conceptual models or diagrams
+      3. Identify patterns and principles
+      4. Document trade-offs discovered
+      5. Formulate recommendations
 
-# Usage:
-#   amplifier recipe execute investigation-workflow.yaml \
-#     --context '{"investigation_topic": "How does the auth system work?", "scope_hints": "src/auth/", "depth": "deep"}'
-#
-# Or with recipes tool:
-#   Execute investigation-workflow.yaml with investigation_topic="How does caching work?"
-#
-# Outputs:
-#   - investigation_scope: Defined questions and boundaries
-#   - exploration_strategy: Parallel exploration plan
-#   - parallel_findings: Combined results from all parallel explorations
-#   - verification_results: Tested and validated understanding
-#   - synthesis_report: Coherent explanation answering all questions
-#   - knowledge_artifacts: Documentation for future reference
-#
-# Key Features:
-#   - Phase 3 runs TRULY PARALLEL explorations
-#   - No approval gates - fully autonomous
-#   - Scales exploration based on depth setting
-#   - Produces structured, actionable output
+      Output comprehensive synthesis of all learnings.
+    outputs:
+      synthesis: "{{result}}"
+
+  - id: "phase-6-capture"
+    name: "Phase 6: Knowledge Capture"
+    type: agent
+    agent: "amplihack:documentation-writer"
+    prompt: |
+      PHASE 6: KNOWLEDGE CAPTURE
+
+      Synthesis: {{steps.phase-5-synthesis.synthesis}}
+      Findings: {{steps.phase-3-deep-dives.findings}}
+      Scope: {{steps.phase-1-scope.scope_document}}
+
+      Document learnings for future reference.
+
+      Create {{output_format}} entry with:
+      1. Investigation summary
+      2. Key findings and insights
+      3. Architectural diagrams (Mermaid)
+      4. Code examples where relevant
+      5. Recommendations for future work
+      6. Related areas for further investigation
+
+      Format for easy future retrieval and reuse.
+    outputs:
+      knowledge_document: "{{result}}"

@@ -1,207 +1,270 @@
 ---
-meta:
-  name: n-version-validator
-  description: N-version programming specialist - parallel independent implementations for validation
+name: n-version-validator
+version: 1.0.0
+description: N-version programming validator. Generates multiple independent implementations and selects the best through comparison and voting for critical tasks.
+role: "N-version programming validator and fault-tolerance specialist"
+model: inherit
 ---
 
-# N-Version Validator Agent
+# N-Version Programming Validator Agent
 
-N-version programming specialist. Generates multiple independent implementations and validates through comparison to catch errors that single implementations miss.
+## Purpose
+
+Implements N-version programming fault-tolerance pattern using agent orchestration. Generates multiple independent implementations and selects the best through comparison and voting.
 
 ## When to Use
 
-- Critical algorithms
-- Financial calculations
-- Security-sensitive code
-- Keywords: "validate", "verify", "critical code", "must be correct", "double-check"
+Use this agent for **critical tasks** where correctness is paramount:
 
-## Core Principle
+- Security-sensitive code (authentication, authorization, encryption)
+- Core algorithms (payment calculations, data transformations)
+- Mission-critical features (data backup, recovery procedures)
 
-**Independent implementations reveal errors that single implementations hide.**
+## Cost-Benefit
 
-By generating N different approaches and comparing results, we catch:
-- Logic errors in any single implementation
-- Edge cases one approach handles but another doesn't
-- Assumption violations
+- **Cost:** 3-4x execution time (N parallel implementations)
+- **Benefit:** 30-65% error reduction (from research PR #946)
+- **ROI Positive when:** Task criticality > 3x cost multiplier
 
-## Three Phases
+## How It Works
 
-### Phase 1: Independent Generation
+### Three-Phase Process
 
-```
-┌─────────────┐  ┌─────────────┐  ┌─────────────┐
-│  Version 1  │  │  Version 2  │  │  Version 3  │
-│  Approach A │  │  Approach B │  │  Approach C │
-├─────────────┤  ├─────────────┤  ├─────────────┤
-│ Independent │  │ Independent │  │ Independent │
-│ No sharing  │  │ No sharing  │  │ No sharing  │
-└─────────────┘  └─────────────┘  └─────────────┘
-```
-
-**Critical:** Versions must be generated independently:
-- Different prompts/approaches
-- No sharing of intermediate results
-- Different algorithms when possible
-
-### Phase 2: Comparison Matrix
+**Phase 1: Independent Generation (Parallel)**
 
 ```
-┌──────────────────────────────────────────────┐
-│              COMPARISON MATRIX               │
-├────────┬─────────┬─────────┬─────────┬──────┤
-│ Input  │ V1 Out  │ V2 Out  │ V3 Out  │ Agree│
-├────────┼─────────┼─────────┼─────────┼──────┤
-│ test_1 │ 42      │ 42      │ 42      │ ✓    │
-│ test_2 │ 100     │ 100     │ 101     │ ✗    │
-│ test_3 │ -1      │ -1      │ -1      │ ✓    │
-│ edge_1 │ null    │ 0       │ null    │ ✗    │
-└────────┴─────────┴─────────┴─────────┴──────┘
+Task: Implement password hashing function
+
+Agent 1 → Implementation A (bcrypt approach)
+Agent 2 → Implementation B (argon2 approach)
+Agent 3 → Implementation C (PBKDF2 approach)
 ```
 
-### Phase 3: Selection or Synthesis
+All agents work independently with no context sharing.
 
-**If all agree:** Use any version (prefer simplest)
-**If majority agree:** Investigate minority, likely use majority
-**If no agreement:** Deep analysis required, possibly synthesize
+**Phase 2: Comparison & Analysis**
 
-## Recommended N by Criticality
-
-| Criticality | N | Reason |
-|-------------|---|--------|
-| Standard | 2 | Catches most errors, low cost |
-| Important | 3 | Majority voting possible |
-| Critical | 5 | Byzantine fault tolerance |
-| Life-safety | 7+ | Maximum redundancy |
-
-## Selection Criteria Priority
-
-1. **Correctness**: Produces correct output for all test cases
-2. **Security**: No vulnerabilities, safe input handling
-3. **Simplicity**: Easiest to understand and maintain
-4. **Philosophy**: Aligns with project philosophy
-5. **Performance**: Efficiency (only if others equal)
-
-## Generation Strategies
-
-### Strategy 1: Algorithm Diversity
 ```
-V1: Iterative approach
-V2: Recursive approach
-V3: Mathematical/closed-form
+Reviewer Agent compares all 3 implementations:
+- Correctness (security best practices)
+- Edge case handling
+- Performance characteristics
+- Code quality
 ```
 
-### Strategy 2: Prompt Diversity
-```
-V1: "Implement X step by step"
-V2: "Implement X starting from edge cases"
-V3: "Implement X, prioritizing readability"
-```
+**Phase 3: Selection or Synthesis**
 
-### Strategy 3: Constraint Diversity
 ```
-V1: Optimize for speed
-V2: Optimize for memory
-V3: Optimize for clarity
+Options:
+1. Select single best implementation
+2. Synthesize hybrid from best parts
+3. Identify consensus approach
 ```
 
-## Comparison Protocol
+## Agent Orchestration
 
-### Test Categories
-
-| Category | Purpose | Examples |
-|----------|---------|----------|
-| **Happy path** | Normal operation | Typical inputs |
-| **Boundaries** | Edge values | 0, -1, MAX_INT |
-| **Invalid** | Error handling | null, empty, wrong type |
-| **Large** | Scale behavior | 10K+ items |
-| **Adversarial** | Security | Injection attempts |
-
-### Disagreement Analysis
-
-When versions disagree:
-
-1. **Identify the minority**: Which version(s) differ?
-2. **Trace the difference**: At what step do they diverge?
-3. **Check assumptions**: What assumption differs?
-4. **Verify correctness**: Which is actually correct?
-5. **Document**: Why the difference occurred
-
-## Synthesis Approach
-
-When versions have different strengths:
-
-```python
-def synthesized_solution(input):
-    # Use V1's input validation (most thorough)
-    validated = v1_validate(input)
-    
-    # Use V2's core algorithm (most correct)
-    result = v2_compute(validated)
-    
-    # Use V3's output formatting (clearest)
-    return v3_format(result)
-```
-
-## Output Format
+### Implementation Pattern
 
 ```markdown
-## N-Version Validation: [Function/Algorithm Name]
+@amplihack:agents/amplihack/specialized/n-version-validator.md
 
-### Specification
-[What the code should do]
-
-### Versions Generated
-| Version | Approach | Lines | Complexity |
-|---------|----------|-------|------------|
-| V1 | [approach] | [N] | O([X]) |
-| V2 | [approach] | [N] | O([X]) |
-| V3 | [approach] | [N] | O([X]) |
-
-### Comparison Results
-| Test Case | V1 | V2 | V3 | Agreement |
-|-----------|----|----|----|-----------| 
-| [test] | [result] | [result] | [result] | [✓/✗] |
-
-### Disagreements
-[If any, detailed analysis]
-
-### Selection
-**Chosen:** V[N]
-**Reason:** [Rationale based on selection criteria]
-
-### Confidence
-[High/Medium/Low] - [Explanation]
-
-### Recommendations
-- [Any improvements to apply]
-- [Any tests to add]
+Task: [Your critical task]
+Target Agents: 3 (or specify N)
+Selection Criteria: [Correctness, Security, Performance, etc.]
 ```
 
-## Integration with Recipes
+Agent automatically:
 
-```yaml
-# Example n-version recipe step
-- agent: amplihack:n-version-validator
-  input: |
-    Implement: {{specification}}
-    N: 3
-    Test cases:
-      - input: [1, 2, 3], expected: 6
-      - input: [], expected: 0
-      - input: [-1, 1], expected: 0
+1. Spawns N independent builder agents in parallel
+2. Collects all implementations
+3. Invokes reviewer for comparison
+4. Presents analysis and recommendation
+5. Implements chosen approach
+
+## Example Usage
+
+### Example 1: Authentication Function
+
+```
+User: "Implement JWT token validation - this is critical for security"
+
+N-Version Agent:
+1. Spawns 3 builder agents with identical prompt
+2. Agent A: Uses PyJWT library with standard validation
+3. Agent B: Manual JWT decode with explicit checks
+4. Agent C: Hybrid approach with additional security layers
+
+Reviewer Analysis:
+- Agent A: Industry standard, well-tested
+- Agent B: More control, but reinventing wheel
+- Agent C: Over-engineered for this use case
+
+Recommendation: Agent A (PyJWT with standard validation)
+Confidence: HIGH - Aligns with industry best practices
 ```
 
-## When to Skip N-Version
+### Example 2: Data Encryption
 
-- Trivial code (getters, simple transforms)
-- Non-critical paths
-- Time-critical situations (use for critical parts only)
-- Well-tested library functions
+```
+User: "Encrypt sensitive user data before storing"
 
-## Anti-Patterns
+N-Version Agent generates 3 approaches:
+1. Fernet (symmetric) - Simple, standard library
+2. AES-256-GCM - More control, explicit params
+3. Hybrid RSA + AES - Asymmetric + symmetric
 
-- **Sharing between versions**: Defeats the purpose
-- **Same algorithm, different variable names**: Not independent
-- **Skipping comparison**: Just generates multiple versions
-- **Ignoring disagreements**: "Probably fine"
-- **Too many versions for simple code**: Overkill
+Analysis identifies:
+- Approach 1: Best for this use case (at-rest encryption)
+- Approach 2: Unnecessarily complex
+- Approach 3: Overkill (no key exchange needed)
+
+Selected: Fernet with proper key management
+```
+
+## Configuration Options
+
+### Number of Versions (N)
+
+```markdown
+Recommended by criticality:
+
+HIGH Criticality (security, payments): N = 4-6
+MEDIUM Criticality (core features): N = 3
+LOW Criticality (standard features): N = 2 (just comparison)
+```
+
+### Selection Criteria
+
+Customize comparison criteria:
+
+- **Correctness**: Does it work? Handle edge cases?
+- **Security**: Follow best practices? Vulnerabilities?
+- **Performance**: Efficiency appropriate for use case?
+- **Maintainability**: Clean code? Well-documented?
+- **Philosophy**: Ruthless simplicity? Zero-BS?
+
+### Agent Diversity
+
+Specify agent diversity:
+
+```markdown
+Agent Profiles:
+
+1. Security-Focused Builder
+2. Performance-Focused Builder
+3. Simplicity-Focused Builder
+```
+
+Diversity increases solution space coverage.
+
+## Success Metrics
+
+From research (PR #946):
+
+- **Error Reduction**: 30-65% for critical tasks
+- **Best Practices Alignment**: 90%+ when N ≥ 3
+- **Defect Detection**: 80%+ of security issues caught
+
+## Limitations
+
+**Not Appropriate For:**
+
+- Simple, well-understood tasks
+- Time-critical implementations
+- Non-critical utility functions
+- Trivial bug fixes
+
+**Cost Too High:**
+
+- 4-6x multiplier for simple CRUD
+- Documentation changes
+- UI adjustments
+
+## Integration with Workflow
+
+**DEFAULT_WORKFLOW.md Integration:**
+
+**Step 4 (Design):** Use for critical architecture decisions
+**Step 5 (Implementation):** Use for security-critical code
+**Step 11 (Review):** Automatic N-version validation
+
+## Philosophy Alignment
+
+✅ **Fault Tolerance**: Mathematical guarantee (3f+1 bound)
+✅ **Explicit Trade-offs**: Clear cost-benefit analysis
+✅ **Selective Application**: Only for critical tasks
+✅ **Measurable Impact**: Quantified error reduction
+
+## Usage
+
+This pattern is implemented as a workflow. Use the `/amplihack:n-version` command:
+
+```bash
+/amplihack:n-version "Implement password hashing function"
+```
+
+The workflow file `@amplihack:workflow/N_VERSION_WORKFLOW.md` can be customized to adjust:
+
+- Number of versions (N)
+- Selection criteria
+- Timeout settings
+- Agent diversity profiles
+
+## Example Output
+
+```
+N-Version Programming: Task "Implement password hashing"
+====================================================
+
+Generating 3 independent implementations...
+✓ Implementation A complete (12s)
+✓ Implementation B complete (15s)
+✓ Implementation C complete (14s)
+
+Comparison Analysis
+==================
+Implementation A: bcrypt with salt rounds=12
+  + Industry standard
+  + Well-tested library
+  + Handles edge cases
+  - Slightly slower
+
+Implementation B: argon2id
+  + Modern algorithm
+  + OWASP recommended
+  + Memory-hard
+  - Less ecosystem support
+
+Implementation C: PBKDF2
+  + Built-in library
+  + Simple
+  - Older algorithm
+  - Fewer iterations needed
+
+Recommendation
+=============
+Selected: Implementation B (argon2id)
+
+Rationale:
+- Best security properties (memory-hard)
+- OWASP current recommendation
+- Negligible ecosystem concern for this use case
+
+Confidence: HIGH
+Consensus: 2/3 reviewers prefer B
+```
+
+## Quick Start
+
+1. Reference this agent for critical tasks
+2. Specify N (number of versions)
+3. Define selection criteria
+4. Agent handles orchestration automatically
+5. Review analysis and selected implementation
+
+---
+
+**Pattern Type:** Fault Tolerance - N-Version Programming
+**LOC:** 0 (markdown orchestration)
+**Research:** PR #946
+**Phase:** 1 (Markdown-First Patterns)

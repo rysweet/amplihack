@@ -1,6 +1,6 @@
-# Amplihack Development Philosophy
+# Development Philosophy
 
-This document outlines the core development philosophy that guides our approach to building software with AI assistance.
+This document outlines the core development philosophy that guides our approach to building software with AI assistance. It combines principles of ruthless simplicity with modular design for AI-powered development.
 
 ## Core Philosophy
 
@@ -18,7 +18,7 @@ Our development philosophy embodies a Zen-like minimalism that values simplicity
 
 _"We provide the blueprint, and AI builds the product, one modular piece at a time."_
 
-Like a brick model, our software is built from small, clear modules. Each module is a self-contained "brick" of functionality with defined connectors (interfaces) to the rest of the system.
+Like a brick model, our software is built from small, clear modules. Each module is a self-contained "brick" of functionality with defined connectors (interfaces) to the rest of the system. Because these connection points are standard and stable, we can generate or regenerate any single module independently without breaking the whole.
 
 **Key concepts:**
 
@@ -45,14 +45,90 @@ Like a brick model, our software is built from small, clear modules. Each module
 - **End-to-end thinking**: Focus on complete flows rather than perfect components
 - **Regeneration-ready**: Every module can be rebuilt from its specification
 
-### 3. Zero-BS Implementations
+### 3. Zero-BS Implementations - Quality over Speed of Implementation
 
 - **Focus on quality**: Prioritize robust, well-tested implementations over quick fixes
 - **Avoid technical debt**: Don't sacrifice long-term maintainability for short-term gains
-- **No shortcuts**: Every function must work or not exist
-- **No stubs or placeholders**: No dead code, unimplemented functions, or TODOs in code
-- **No faked APIs or mock implementations**: Implement real functionality from the start (except in tests)
-- **No swallowed exceptions**: Handle errors transparently
+- **Iterate with purpose**: Make incremental improvements that enhance quality
+- **No shortcuts**: Every function must work or not exist; no stubs or placeholders, no dead code, unimplemented functions, or TODOs in code
+- **Do not compromise**: Always choose quality over speed of implementation
+- **No faked APIs or mock implementations**: Implement real functionality from the start, do not create fake data or mock services (except in tests)
+- **No swallowed exceptions**: Handle errors transparently and ensure they are visible during development
+
+### 4. Library vs Custom Code
+
+Choosing between custom code and external libraries is a judgment call that evolves with requirements:
+
+#### When Custom Code Makes Sense
+
+- The need is simple and well-understood
+- You want code perfectly tuned to your exact requirements
+- Libraries would require significant "hacking" or workarounds
+- The problem is unique to your domain
+- You need full control over the implementation
+
+#### When Libraries Make Sense
+
+- They solve complex problems you'd rather not tackle (auth, crypto, video encoding)
+- They align well with your needs without major modifications
+- The problem is well-solved with mature, battle-tested solutions
+- Configuration alone can adapt them to your requirements
+- The complexity they handle far exceeds the integration cost
+
+#### Stay Flexible
+
+Keep library integration points minimal and isolated so you can switch approaches when needed. There's no shame in moving from custom to library or library to custom. Requirements change, understanding deepens, and the right answer today might not be the right answer tomorrow.
+
+## The Human-AI Partnership
+
+### Humans as Architects, AI as Builders
+
+In this approach, humans step back from being code mechanics and instead take on the role of architects and quality inspectors:
+
+- **Humans define**: Vision, specifications, contracts, and quality standards
+- **AI builds**: Code implementation according to specifications
+- **Humans validate**: Testing behavior, not reviewing every line of code
+- **AI regenerates**: Modules can be rebuilt when requirements change
+
+### Building in Parallel
+
+Our AI builders can spawn multiple versions of software in parallel:
+
+- Generate and test multiple variants of a feature simultaneously
+- Try different algorithms or approaches side by side
+- Build for multiple platforms from the same specifications
+- Learn from parallel experiments to refine specifications
+
+## Development Approach
+
+### Vertical Slices
+
+- Implement complete end-to-end functionality slices
+- Start with core user journeys
+- Get data flowing through all layers early
+- Add features horizontally only after core flows work
+
+### Iterative Implementation
+
+- 80/20 principle: Focus on high-value, low-effort features first
+- One working feature > multiple partial features
+- Validate with real usage before enhancing
+- Be willing to refactor early work as patterns emerge
+
+### Testing Strategy
+
+- Emphasis on behavior testing at module boundaries
+- Manual testability as a design goal
+- Focus on critical path testing initially
+- Add unit tests for complex logic and edge cases
+- Testing pyramid: 60% unit, 30% integration, 10% end-to-end
+
+### Error Handling
+
+- Handle common errors robustly
+- Log detailed information for debugging
+- Provide clear error messages to users
+- Fail fast and visibly during development
 
 ## Decision-Making Framework
 
@@ -92,3 +168,5 @@ Push for extreme simplicity in:
 - **The best code is often the simplest**
 - **Trust AI to handle the details while you guide the vision**
 - **Modules should be bricks: self-contained and regeneratable**
+
+This philosophy serves as the foundational guide for all development decisions in the project.

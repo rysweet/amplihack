@@ -4,7 +4,7 @@ bundle:
   version: 1.0.0
   description: |
     Amplihack development framework - systematic AI-powered development workflows
-    with 38 specialized agents, 66 skills, 10 workflow recipes, and philosophy-driven design.
+    with 40 specialized agents, 73 skills, 10 workflow recipes, and philosophy-driven design.
 
 includes:
   # Inherit foundation capabilities (tools, hooks, core agents)
@@ -12,7 +12,31 @@ includes:
   # Include recipes behavior for workflow execution
   - bundle: git+https://github.com/microsoft/amplifier-bundle-recipes@main
   # Amplihack-specific behavior (agents, context)
-  - bundle: amplihack:behaviors/amplihack
+  - bundle: amplihack:behaviors/amplihack.yaml
+
+# Provider configuration (defaults to Anthropic, user can override in settings)
+providers:
+  - module: provider-anthropic
+    source: git+https://github.com/microsoft/amplifier-module-provider-anthropic@main
+    config:
+      api_key: ${ANTHROPIC_API_KEY}
+      default_model: claude-sonnet-4-20250514
+
+# Amplihack Custom Modules
+# These modules are in modules/ directory and provide advanced capabilities:
+#
+# Tools:
+#   - tool-lock: File locking with multi-model debate resolution
+#   - tool-memory: SQLite-backed agent memory system
+#   - tool-session-utils: Fork management and instruction appending
+#   - tool-workflow: Workflow tracking and transcript management
+#
+# Hooks:
+#   - hook-power-steering: 6,466 lines of advanced session quality checks
+#   - hook-agent-memory: Automatic memory injection into agent context
+#   - hook-xpia-defense: Prompt injection detection and defense
+#
+# To use locally, install with: pip install -e modules/<module-name>/
 
 # Spawn configuration for sub-agents
 spawn:
@@ -84,6 +108,12 @@ agents:
   improvement-workflow:
     path: amplihack:agents/improvement-workflow.md
     description: 5-stage progressive validation
+  amplihack-improvement-workflow:
+    path: amplihack:agents/amplihack-improvement-workflow.md
+    description: Amplihack-specific improvement workflow
+  ci-diagnostic-workflow:
+    path: amplihack:agents/ci-diagnostic-workflow.md
+    description: CI/CD diagnostic workflow with full context
   prompt-review-workflow:
     path: amplihack:agents/prompt-review-workflow.md
     description: Prompt optimization workflow
@@ -165,91 +195,106 @@ You are configured with the Amplihack development framework - a systematic appro
 
 @amplihack:context/special-modes.md
 
-## Skills Reference
+## Auto Mode & CLI
 
-### Development Skills (10)
-Load with `@amplihack:skills/development/<skill>.md`:
-- `code-quality` - Linting, formatting, type checking
-- `dependency-management` - Package management best practices
-- `error-handling` - Exception handling patterns
-- `git` - Git workflow and operations
-- `logging` - Structured logging patterns
-- `python` - Python development standards
-- `refactoring` - Code improvement patterns
-- `testing` - Test strategy and implementation
-- `tdd` - Test-driven development methodology
-- `debugging` - Systematic debugging approaches
+@amplihack:context/auto-mode.md
+@amplihack:context/cli-reference.md
 
-### Workflow Skills (8)
-Load with `@amplihack:skills/workflow/<skill>.md`:
-- `investigation` - Problem investigation methodology
-- `progressive-validation` - 5-stage validation pattern
-- `reasoning-modes` - Different reasoning approaches
-- `structured-debate` - Multi-perspective analysis
-- `task-detection` - Automatic task type identification
-- `ultrathink-default` - Deep analysis workflow
-- `verification-patterns` - Output verification methods
-- `workflow-states` - State machine for workflows
+## Skills Reference (73 Skills)
 
-### Fix Templates (6)
-Load with `@amplihack:skills/fix-templates/<template>.md`:
-- `build-fix` - Build failure resolution
-- `ci-fix` - CI pipeline troubleshooting
-- `dependency-fix` - Dependency conflict resolution
-- `lint-fix` - Linting error fixes
-- `test-fix` - Test failure diagnosis
-- `type-fix` - Type error resolution
+Load skills with `@amplihack:skills/<skill-name>/SKILL.md`
+
+### Workflow Skills (11)
+- `cascade-workflow` - Graceful degradation workflow
+- `consensus-voting` - Multi-agent consensus building
+- `debate-workflow` - Structured multi-perspective debate
+- `default-workflow` - Standard development workflow
+- `goal-seeking-agent-pattern` - Goal-driven agent generation
+- `investigation-workflow` - Systematic investigation
+- `n-version-workflow` - N-version programming
+- `philosophy-compliance-workflow` - Philosophy adherence checks
+- `quality-audit-workflow` - Quality assessment
+- `ultrathink-orchestrator` - Deep analysis orchestration
+- `eval-recipes-runner` - Recipe evaluation runner
 
 ### Domain Analyst Skills (20)
-Load with `@amplihack:skills/domain-analysts/<analyst>.md`:
-- Multi-disciplinary analysis perspectives
-- Each provides theoretical frameworks, methodology, core questions
-- Available: anthropologist, economist, ethicist, futurist, game-theorist, geopolitical, historian, journalist, legal, military-strategist, philosopher, political-scientist, psychologist, public-health, religious-studies, science-studies, sociologist, systems-theorist, urban-planner, environmental
+Multi-disciplinary analysis perspectives with theoretical frameworks:
+- `anthropologist-analyst`, `biologist-analyst`, `chemist-analyst`
+- `computer-scientist-analyst`, `cybersecurity-analyst`, `economist-analyst`
+- `engineer-analyst`, `environmentalist-analyst`, `epidemiologist-analyst`
+- `ethicist-analyst`, `futurist-analyst`, `historian-analyst`
+- `indigenous-leader-analyst`, `journalist-analyst`, `lawyer-analyst`
+- `novelist-analyst`, `philosopher-analyst`, `physicist-analyst`
+- `poet-analyst`, `political-scientist-analyst`, `psychologist-analyst`
+- `sociologist-analyst`, `urban-planner-analyst`
 
-### Azure Cloud Skills (9)
-Load with `@amplihack:skills/azure/<skill>.md`:
-- `azure-ai` - Azure OpenAI, Cognitive Services
-- `azure-kubernetes` - AKS deployment and management
-- `azure-functions` - Serverless compute
-- `azure-identity` - Entra ID, managed identities
-- `azure-storage` - Blob, files, queues, tables
-- `azure-networking` - VNets, NSGs, Private Link
-- `azure-devops` - Pipelines, repos, boards
-- `azure-container-apps` - Serverless containers
-- `azure-cosmos-db` - Globally distributed NoSQL
-
-### Document Processing Skills (4)
-Load with `@amplihack:skills/documents/<skill>.md`:
-- `pdf` - PDF creation, merging, extraction
-- `xlsx` - Excel workbook operations
-- `docx` - Word document operations
-- `pptx` - PowerPoint operations
-
-### Communication Skills (4)
-Load with `@amplihack:skills/communication/<skill>.md`:
-- `storytelling-synthesizer` - Technical narratives
-- `technical-writer` - Documentation best practices
-- `prompt-writer` - Prompt engineering patterns
-- `presentation-designer` - Visual presentation design
-
-### Infrastructure Skills (2)
-Load with `@amplihack:skills/infrastructure/<skill>.md`:
+### Technical Skills (22)
+- `agent-sdk` - Agent SDK patterns
+- `azure-admin` - Azure administration
+- `azure-devops` - Azure DevOps pipelines
+- `azure-devops-cli` - Azure DevOps CLI
+- `code-smell-detector` - Code quality detection
+- `context_management` - Context window management
+- `design-patterns-expert` - Software design patterns
+- `docx` - Word document processing
+- `documentation-writing` - Technical documentation
+- `dynamic-debugger` - Dynamic debugging
+- `email-drafter` - Professional email composition
 - `mcp-manager` - MCP server management
-- `infrastructure` - IaC and deployment automation
+- `mermaid-diagram-generator` - Diagram generation
+- `microsoft-agent-framework` - Microsoft AI agents
+- `module-spec-generator` - Module specification
+- `outside-in-testing` - Integration testing patterns
+- `pdf` - PDF document processing
+- `pptx` - PowerPoint processing
+- `xlsx` - Excel processing
+- `remote-work` - Remote execution patterns
+- `test-gap-analyzer` - Test coverage analysis
+- `skill-builder` - Skill creation patterns
+
+### Meta/Collaboration Skills (16)
+- `backlog-curator` - Backlog management
+- `collaboration` - Team collaboration patterns
+- `common` - Shared utilities
+- `development` - Development workflow skills
+- `knowledge-extractor` - Knowledge mining
+- `learning-path-builder` - Learning paths
+- `meeting-synthesizer` - Meeting summaries
+- `meta-cognitive` - Meta-cognition patterns
+- `model-evaluation-benchmark` - Model evaluation
+- `pm-architect` - Project management
+- `pr-review-assistant` - PR review automation
+- `quality` - Quality assurance
+- `research` - Research methodology
+- `roadmap-strategist` - Strategic planning
+- `storytelling-synthesizer` - Narrative construction
+- `work-delegator` - Task delegation
+- `workstream-coordinator` - Workstream management
 
 ## Workflow Recipes (10)
 
-Execute with `recipes` tool:
-- `default-workflow.yaml` - Standard 22-step development workflow
-- `consensus-workflow.yaml` - 21-step consensus building
-- `debate-workflow.yaml` - 8-step structured debate
-- `n-version-workflow.yaml` - 7-step N-version validation
-- `cascade-workflow.yaml` - 7-step fallback cascade
-- `investigation-workflow.yaml` - 6-phase investigation
-- `qa-workflow.yaml` - 3-step Q&A
+Execute with `recipes` tool using `amplihack:recipes/<recipe>.yaml`:
+
+### Core Workflows
+- `default-workflow.yaml` - Standard 22-step development workflow (staged with approval gates)
+- `default-workflow-autonomous.yaml` - Autonomous version (no approval gates)
 - `improvement-workflow.yaml` - 5-stage progressive validation
-- `fix-workflow.yaml` - Fix template-based resolution
-- `exploration-workflow.yaml` - Codebase exploration
+
+### Investigation & Research
+- `investigation-workflow.yaml` - 6-phase systematic investigation
+- `qa-workflow.yaml` - 3-step Q&A pattern
+
+### Multi-Agent Patterns
+- `debate-workflow.yaml` - 8-step structured multi-perspective debate
+- `consensus-workflow.yaml` - 21-step consensus building (combines debate + n-version)
+- `n-version-workflow.yaml` - 7-step N-version programming for critical code
+- `cascade-workflow.yaml` - 7-step graceful degradation fallback
+
+### Meta Workflows
+- `workflow-selector.yaml` - Automatic workflow selection based on task analysis
+
+### Documentation
+- `DEFAULT_WORKFLOW_TRANSLATION.md` - Translation guide from amplihack to Amplifier
 
 ## Hooks
 

@@ -1,430 +1,200 @@
-# N-Version Workflow - 7-Step N-Version Programming
-#
-# Generate multiple independent solutions in parallel, compare them,
-# and select or synthesize the best approach.
-#
-# Philosophy Alignment:
-#   - Independent generation prevents groupthink
-#   - Parallel execution maximizes efficiency
-#   - Comparison surfaces trade-offs
-#   - Selection based on clear criteria
-#
-# Usage:
-#   amplifier recipes execute n-version-workflow.yaml \
-#     --context '{"problem": "Implement a rate limiter", "versions": "3", "language": "python"}'
-#
-# Required Context:
-#   - problem: The problem to solve
-#
-# Optional Context:
-#   - versions: Number of independent solutions (default: 3)
-#   - language: Programming language
-#   - constraints: Technical constraints
-#   - selection_criteria: How to choose the winner
+# N-Version Programming Workflow Recipe
+# Converted from amplihack's N_VERSION_WORKFLOW.md (7 steps)
+# Generate multiple independent implementations and select best
 
 name: "n-version-workflow"
-description: "7-step N-version programming workflow with parallel generation, comparison, and selection"
+description: "N-version programming for critical code - generate multiple independent implementations and select best through systematic comparison."
 version: "1.0.0"
-author: "Amplifier Amplihack Bundle"
-tags: ["n-version", "parallel", "comparison", "diversity", "selection"]
+author: "amplihack team"
+tags: ["n-version", "critical", "parallel", "comparison", "selection"]
 
 context:
-  problem: ""
-  versions: "3"
-  language: "python"
-  constraints: ""
-  selection_criteria: "simplicity, correctness, performance, maintainability"
+  task: "{{user_task}}"
+  n_versions: 3  # 2-6
+  selection_criteria:
+    - correctness
+    - security
+    - simplicity
+    - philosophy
+    - performance
 
 recursion:
-  max_depth: 2
-  max_total_steps: 50
+  max_depth: 3
+  max_total_steps: 40
 
 steps:
-  # ===========================================================================
-  # STEP 1: PROBLEM SPECIFICATION
-  # Create a clear, unambiguous specification
-  # ===========================================================================
-  - id: "step-1-specification"
+  - id: "step-1-context"
+    name: "Step 1: Common Context Preparation"
+    type: agent
     agent: "foundation:zen-architect"
-    mode: "ARCHITECT"
     prompt: |
-      # Step 1: Problem Specification
-      
-      Create a precise specification for this problem.
-      
-      **Problem:** {{problem}}
-      **Language:** {{language}}
-      **Constraints:** {{constraints}}
-      
-      ## Specification Requirements:
-      
-      ### 1. Problem Statement
-      Clear, unambiguous description of what must be solved.
-      
-      ### 2. Input Specification
-      - Input types and formats
-      - Valid input ranges
-      - Edge cases to handle
-      
-      ### 3. Output Specification
-      - Expected output format
-      - Success criteria
-      - Error handling requirements
-      
-      ### 4. Constraints
-      - Performance requirements
-      - Memory constraints
-      - Dependencies allowed/prohibited
-      
-      ### 5. Test Cases
-      Provide 5-10 test cases covering:
-      - Normal cases
-      - Edge cases
-      - Error cases
-      
-      ### 6. Evaluation Criteria
-      How will solutions be judged?
-      {{selection_criteria}}
-      
-      This specification will be given to multiple independent implementers.
-      Make it complete enough that no clarification is needed.
-    output: "specification"
-    timeout: 450
+      STEP 1: COMMON CONTEXT PREPARATION
 
-  # ===========================================================================
-  # STEP 2: PARALLEL INDEPENDENT GENERATION
-  # Generate N independent solutions in parallel
-  # ===========================================================================
-  - id: "step-2-generate-versions"
+      Task: {{task}}
+      Number of versions: {{n_versions}}
+
+      Prepare shared context for all implementations:
+
+      1. Define clear specification all versions must meet
+      2. Create shared test cases for validation
+      3. Document constraints and requirements
+      4. Define evaluation criteria (in priority order):
+         - Correctness: Meets all requirements and passes tests
+         - Security: No vulnerabilities or anti-patterns
+         - Simplicity: Ruthless simplicity, minimal complexity
+         - Philosophy: Follows project principles
+         - Performance: Efficiency and resource usage
+
+      CRITICAL: All implementations must be INDEPENDENT - no sharing of implementation details between versions.
+
+      Output shared specification and test cases.
+    outputs:
+      shared_context: "{{result}}"
+
+  - id: "step-2-implementations"
+    name: "Step 2: N Independent Implementations"
+    type: agent
+    agent: "amplihack:n-version-validator"
+    prompt: |
+      STEP 2: N INDEPENDENT IMPLEMENTATIONS
+
+      Shared Context: {{steps.step-1-context.shared_context}}
+      N = {{n_versions}}
+
+      Generate {{n_versions}} INDEPENDENT implementations:
+
+      For each version, use a different approach profile:
+      - conservative: Proven patterns and safety
+      - innovative: Novel approaches and optimizations
+      - minimalist: Ruthless simplicity
+      - pragmatic: Balanced trade-offs
+      - performance-focused: Speed and efficiency
+
+      CRITICAL: Each implementation must be developed independently without knowledge of other versions.
+
+      Output all {{n_versions}} implementations with their approach profiles.
+    outputs:
+      implementations: "{{result}}"
+
+  - id: "step-3-compare"
+    name: "Step 3: Collection and Comparison"
+    type: agent
+    agent: "amplihack:analyzer"
+    prompt: |
+      STEP 3: COLLECTION AND COMPARISON
+
+      Implementations: {{steps.step-2-implementations.implementations}}
+      Shared Context: {{steps.step-1-context.shared_context}}
+
+      Compare all implementations:
+
+      1. Run shared test cases against each version
+      2. Measure correctness (tests passed)
+      3. Analyze security (vulnerabilities found)
+      4. Score simplicity (complexity metrics)
+      5. Check philosophy compliance
+      6. Benchmark performance
+
+      Create comparison matrix with scores for each criterion.
+    outputs:
+      comparison: "{{result}}"
+
+  - id: "step-4-evaluate"
+    name: "Step 4: Review and Evaluation"
+    type: agent
+    agent: "amplihack:reviewer"
+    prompt: |
+      STEP 4: REVIEW AND EVALUATION
+
+      Comparison: {{steps.step-3-compare.comparison}}
+      Implementations: {{steps.step-2-implementations.implementations}}
+
+      Expert review of each implementation:
+
+      1. Code quality assessment
+      2. Edge case handling
+      3. Error handling robustness
+      4. Maintainability analysis
+      5. Philosophy compliance deep-dive
+
+      For each implementation, provide:
+      - Strengths
+      - Weaknesses
+      - Unique insights
+      - Recommendation score (1-10)
+    outputs:
+      evaluation: "{{result}}"
+
+  - id: "step-5-select"
+    name: "Step 5: Selection or Synthesis"
+    type: agent
+    agent: "foundation:zen-architect"
+    prompt: |
+      STEP 5: SELECTION OR SYNTHESIS
+
+      Evaluation: {{steps.step-4-evaluate.evaluation}}
+      Comparison: {{steps.step-3-compare.comparison}}
+
+      Make final selection decision:
+
+      Option A: SELECT BEST
+      - Choose the implementation with best overall score
+      - Prioritize: correctness > security > simplicity > philosophy > performance
+
+      Option B: SYNTHESIZE HYBRID
+      - If multiple versions have complementary strengths
+      - Combine best aspects into hybrid solution
+      - Ensure hybrid passes all tests
+
+      Output:
+      - Selected approach (single or hybrid)
+      - Rationale for selection
+      - What was learned from rejected versions
+    outputs:
+      selection: "{{result}}"
+
+  - id: "step-6-finalize"
+    name: "Step 6: Final Implementation"
+    type: agent
     agent: "foundation:modular-builder"
-    parallel: true
-    foreach: "[{\"version\": 1, \"approach\": \"Focus on simplicity and readability\"}, {\"version\": 2, \"approach\": \"Focus on performance and efficiency\"}, {\"version\": 3, \"approach\": \"Focus on extensibility and maintainability\"}]"
     prompt: |
-      # Step 2: Independent Solution Generation
-      
-      Generate Solution Version {{item.version}}.
-      
-      **Specification:**
-      {{specification}}
-      
-      **Your Approach Emphasis:** {{item.approach}}
-      
-      ## Requirements:
-      
-      1. **Work Independently**: Do not reference other solutions
-      2. **Follow Specification**: Meet all requirements exactly
-      3. **Apply Your Emphasis**: Let {{item.approach}} guide design decisions
-      4. **Complete Solution**: No stubs or placeholders
-      5. **Include Tests**: Unit tests for your implementation
-      
-      ## Solution Format:
-      
-      ### Design Rationale
-      Explain your approach and key design decisions.
-      
-      ### Implementation
-      ```{{language}}
-      # Full implementation code
-      ```
-      
-      ### Tests
-      ```{{language}}
-      # Test code
-      ```
-      
-      ### Complexity Analysis
-      - Time complexity
-      - Space complexity
-      
-      ### Trade-offs
-      What did you optimize for? What did you sacrifice?
-    output: "generated_versions"
-    timeout: 900
+      STEP 6: FINAL IMPLEMENTATION
 
-  # ===========================================================================
-  # STEP 3: SOLUTION VERIFICATION
-  # Verify each solution against specification
-  # ===========================================================================
-  - id: "step-3-verification"
-    agent: "foundation:test-coverage"
+      Selection: {{steps.step-5-select.selection}}
+      Shared Context: {{steps.step-1-context.shared_context}}
+
+      Finalize the selected implementation:
+
+      1. Apply any refinements from evaluation insights
+      2. Ensure all tests pass
+      3. Add any edge case handling identified during comparison
+      4. Polish code quality
+      5. Verify philosophy compliance
+
+      Output production-ready implementation.
+    outputs:
+      final_implementation: "{{result}}"
+
+  - id: "step-7-document"
+    name: "Step 7: Learning Documentation"
+    type: agent
+    agent: "amplihack:documentation-writer"
     prompt: |
-      # Step 3: Solution Verification
-      
-      Verify each generated solution against the specification.
-      
-      **Specification:**
-      {{specification}}
-      
-      **Generated Solutions:**
-      {{generated_versions}}
-      
-      ## For Each Solution:
-      
-      ### 1. Correctness Check
-      - Does it handle all specified inputs?
-      - Does it produce correct outputs?
-      - Does it handle edge cases?
-      - Does it handle errors appropriately?
-      
-      ### 2. Specification Compliance
-      - Does it meet all constraints?
-      - Does it follow the input/output format?
-      - Are all requirements addressed?
-      
-      ### 3. Test Results
-      Run the provided test cases against each solution.
-      
-      ### 4. Issues Found
-      List any bugs, gaps, or specification violations.
-      
-      ## Output Format:
-      
-      For each version:
-      ```
-      Version N:
-        Correctness: PASS/FAIL
-        Compliance: PASS/FAIL
-        Test Results: X/Y passing
-        Issues: [list of issues]
-        Verdict: VALID/INVALID
-      ```
-      
-      Only VALID solutions proceed to comparison.
-    output: "verification_results"
-    timeout: 600
+      STEP 7: LEARNING DOCUMENTATION
 
-  # ===========================================================================
-  # STEP 4: COMPARATIVE ANALYSIS
-  # Compare solutions across multiple dimensions
-  # ===========================================================================
-  - id: "step-4-comparison"
-    agent: "foundation:zen-architect"
-    mode: "REVIEW"
-    prompt: |
-      # Step 4: Comparative Analysis
-      
-      Compare all valid solutions across multiple dimensions.
-      
-      **Specification:**
-      {{specification}}
-      
-      **Solutions:**
-      {{generated_versions}}
-      
-      **Verification:**
-      {{verification_results}}
-      
-      **Selection Criteria:** {{selection_criteria}}
-      
-      ## Comparison Dimensions:
-      
-      ### 1. Simplicity
-      - Lines of code
-      - Cognitive complexity
-      - Readability
-      
-      ### 2. Correctness
-      - Test pass rate
-      - Edge case handling
-      - Error handling quality
-      
-      ### 3. Performance
-      - Time complexity
-      - Space complexity
-      - Practical performance characteristics
-      
-      ### 4. Maintainability
-      - Code organization
-      - Extensibility
-      - Documentation quality
-      
-      ### 5. Robustness
-      - Error handling
-      - Input validation
-      - Failure modes
-      
-      ## Output Format:
-      
-      Create a comparison matrix:
-      
-      | Criterion | Version 1 | Version 2 | Version 3 |
-      |-----------|-----------|-----------|-----------|
-      | Simplicity | X/10 | X/10 | X/10 |
-      | ... | ... | ... | ... |
-      
-      Then provide detailed analysis for each dimension.
-    output: "comparison_analysis"
-    timeout: 600
+      Selection: {{steps.step-5-select.selection}}
+      Evaluation: {{steps.step-4-evaluate.evaluation}}
+      All Implementations: {{steps.step-2-implementations.implementations}}
 
-  # ===========================================================================
-  # STEP 5: TRADE-OFF ANALYSIS
-  # Deep dive into trade-offs between approaches
-  # ===========================================================================
-  - id: "step-5-tradeoffs"
-    agent: "foundation:explorer"
-    prompt: |
-      # Step 5: Trade-off Analysis
-      
-      Analyze the trade-offs between different approaches.
-      
-      **Solutions:**
-      {{generated_versions}}
-      
-      **Comparison:**
-      {{comparison_analysis}}
-      
-      ## Trade-off Analysis:
-      
-      ### 1. Key Trade-offs Identified
-      What are the fundamental trade-offs between approaches?
-      - Simplicity vs Performance
-      - Flexibility vs Complexity
-      - Memory vs Speed
-      - etc.
-      
-      ### 2. Context-Dependent Recommendations
-      For different use cases, which solution is best?
-      - High-traffic production system
-      - Rapid prototyping
-      - Long-term maintenance
-      - Resource-constrained environment
-      
-      ### 3. Combinable Insights
-      Are there elements from different solutions that could be combined?
-      
-      ### 4. Missing Approaches
-      Are there approaches none of the solutions explored that might be valuable?
-      
-      ### 5. Risk Assessment
-      What risks does each approach carry?
-    output: "tradeoff_analysis"
-    timeout: 450
+      Document learnings for future reference:
 
-  # ===========================================================================
-  # STEP 6: SELECTION OR SYNTHESIS
-  # Choose best solution or create hybrid
-  # ===========================================================================
-  - id: "step-6-selection"
-    agent: "foundation:zen-architect"
-    mode: "ANALYZE"
-    prompt: |
-      # Step 6: Selection or Synthesis
-      
-      Select the best solution or synthesize a hybrid.
-      
-      **Specification:**
-      {{specification}}
-      
-      **Solutions:**
-      {{generated_versions}}
-      
-      **Comparison:**
-      {{comparison_analysis}}
-      
-      **Trade-offs:**
-      {{tradeoff_analysis}}
-      
-      **Selection Criteria:** {{selection_criteria}}
-      
-      ## Decision Process:
-      
-      ### 1. Apply Selection Criteria
-      Weight each criterion and score solutions.
-      
-      ### 2. Determine Approach
-      Choose one of:
-      - **SELECT**: Pick the best single solution
-      - **SYNTHESIZE**: Combine best elements from multiple solutions
-      - **ITERATE**: None are sufficient, need new approach
-      
-      ### 3. Justify Decision
-      Explain why this choice is optimal given the criteria.
-      
-      ### 4. Selected/Synthesized Solution
-      Provide the final solution code.
-      
-      ### 5. Implementation Notes
-      Any notes for someone implementing this solution.
-      
-      ## Output:
-      
-      ```
-      Decision: SELECT/SYNTHESIZE/ITERATE
-      Chosen: Version N (if SELECT) or "Hybrid" (if SYNTHESIZE)
-      Justification: [explanation]
-      
-      Final Solution:
-      [complete code]
-      ```
-    output: "selection_result"
-    timeout: 600
+      1. Why selected approach was chosen
+      2. Insights from rejected versions
+      3. Trade-offs discovered
+      4. Patterns to reuse
+      5. Anti-patterns to avoid
+      6. When to use each approach profile
 
-  # ===========================================================================
-  # STEP 7: FINAL DOCUMENTATION
-  # Document the outcome and learnings
-  # ===========================================================================
-  - id: "step-7-documentation"
-    agent: "foundation:zen-architect"
-    mode: "ANALYZE"
-    prompt: |
-      # Step 7: Final Documentation
-      
-      Document the N-version programming outcome.
-      
-      **Problem:** {{problem}}
-      
-      **Selection Result:**
-      {{selection_result}}
-      
-      **All Analysis:**
-      - Comparison: {{comparison_analysis}}
-      - Trade-offs: {{tradeoff_analysis}}
-      
-      ## Documentation:
-      
-      ### 1. Executive Summary
-      What problem was solved and what solution was chosen?
-      
-      ### 2. Solution Overview
-      Brief description of the selected approach.
-      
-      ### 3. Key Design Decisions
-      Why was this approach chosen over alternatives?
-      
-      ### 4. Trade-offs Accepted
-      What was sacrificed for the chosen benefits?
-      
-      ### 5. Alternative Approaches
-      Brief description of other valid approaches for future reference.
-      
-      ### 6. Lessons Learned
-      What insights came from generating multiple versions?
-      
-      ### 7. Future Considerations
-      When might a different approach be better?
-      
-      ### 8. Final Implementation
-      The complete, production-ready code with documentation.
-    output: "final_documentation"
-    timeout: 450
-
-# =============================================================================
-# Recipe Outputs Summary
-# =============================================================================
-#
-# Outputs:
-#   - specification: Clear problem specification
-#   - generated_versions: N independent solutions
-#   - verification_results: Correctness verification
-#   - comparison_analysis: Multi-dimensional comparison
-#   - tradeoff_analysis: Trade-off deep dive
-#   - selection_result: Chosen/synthesized solution
-#   - final_documentation: Complete documentation
-#
-# Features:
-#   - 7 steps
-#   - Parallel independent generation (Step 2)
-#   - Systematic comparison and selection
-#   - Supports synthesis of hybrid solutions
-#   - No approval gates (autonomous execution)
-#   - Captures learnings from diversity
+      This becomes a knowledge artifact for future N-version decisions.
+    outputs:
+      learnings: "{{result}}"
