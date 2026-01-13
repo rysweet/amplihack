@@ -265,9 +265,45 @@ After investigation completes, continue with these tasks:
 - [ ] Identify potential improvements
 - [ ] Ensure there are no TODOs, faked apis or faked data, stubs, or swallowed exceptions, no unimplemented functions - follow the zero-BS principle.
 
+#### PR Cleanliness Check (Pre-Commit)
+
+**CRITICAL: Review staged changes for cleanliness BEFORE committing to git history.**
+
+- [ ] **Unrelated Changes Review**: Check `git diff --staged` - all changes directly related to issue?
+  - Remove any files modified for testing/debugging unrelated to the feature
+  - Remove any experimental code not required for the feature
+  - Remove any "while I'm here" improvements not in the issue scope
+
+- [ ] **Temporary Files Check**: Scan for temporary/test artifacts
+  - Pattern: `test_*.py`, `temp_*.js`, `scratch_*.md`, `debug_*.log`, `*.tmp`
+  - Pattern: `experiment_*.py`, `test_manual_*.sh`, `playground_*.ts`
+  - Remove all temporary files unless explicitly part of the feature requirements
+
+- [ ] **Debugging Code Detection**: Search codebase for debugging statements
+  - JavaScript/TypeScript: `console.log`, `console.debug`, `debugger;`
+  - Python: `print()` for debugging (keep intentional logging), `breakpoint()`, `pdb.set_trace()`, `import pdb`
+  - Remove all debugging code unless it's intentional logging/observability
+
+- [ ] **Point-in-Time Documents Check**: Identify analysis/investigation documents
+  - Pattern: `ANALYSIS_YYYYMMDD.md`, `INVESTIGATION_*.md`, `NOTES_*.txt`
+  - Pattern: Date-stamped reports not intended as permanent documentation
+  - Move to `.claude/runtime/logs/` or delete unless required for issue
+
+- [ ] **Git Hygiene Verification**:
+  - `.gitignore` properly configured for new file types introduced?
+  - No large files (>500KB) added without justification? (Valid: test fixtures, vendored deps, binary assets)
+  - No sensitive data or credentials in commits?
+
+**Why This Matters:**
+
+- Prevents clutter from entering git history
+- Easier to review PRs with only relevant changes
+- Maintains clean, professional codebase
+- Reduces noise in git blame and history
+
 ### Step 11: Incorporate Any Review Feedback
 
-- [ ] Use the architect agent to assess the reviewer feedback and then handoff to the builder agent to implement any changes
+- [ ] Use the architect agent to assess the reviewer feedback and then hand off to the builder agent to implement any changes
 - [ ] Update documentation as needed
 
 ### Step 12: Run Tests and Pre-commit Hooks
@@ -411,6 +447,45 @@ This ensures you see success messages, error details, and PR URLs.
 - [ ] Verify module boundaries remain clean
 - [ ] Ensure zero dead code or stub implementations (unless explicitly requested)
 - [ ] **FINAL CHECK: All explicit user requirements preserved**
+
+#### PR Cleanliness Check (Final Verification)
+
+**CRITICAL: Final scan for any temporary/debugging artifacts before marking PR ready.**
+
+- [ ] **Full Diff Review**: Run `git diff main...HEAD` and verify all changes are intentional
+  - Every changed file serves the feature's purpose
+  - No leftover experimental branches or testing code
+  - No accidentally committed local configuration changes
+
+- [ ] **Comprehensive File Scan**: Check entire PR changeset for temporary patterns
+  - Pattern: `test_*.py`, `temp_*.js`, `scratch_*.md`, `debug_*.log`, `*.tmp`
+  - Pattern: `experiment_*.py`, `test_manual_*.sh`, `playground_*.ts`
+  - Pattern: `ANALYSIS_YYYYMMDD.md`, `INVESTIGATION_*.md`, `NOTES_*.txt`
+  - Remove or move to `.claude/runtime/logs/` as appropriate
+
+- [ ] **Debugging Code Sweep**: Final search for debugging statements across all modified files
+  - JavaScript/TypeScript: `console.log`, `console.debug`, `debugger;`
+  - Python: `print()` for debugging (keep intentional logging), `breakpoint()`, `pdb.set_trace()`, `import pdb`
+  - Rust: `dbg!()` macros used during development
+  - Remove all debugging artifacts
+
+- [ ] **Documentation Audit**: Verify only permanent documentation is included
+  - Point-in-time analysis docs moved to `.claude/runtime/logs/`
+  - Investigation notes not required for feature understanding removed
+  - Only architectural/design docs that serve ongoing maintenance included
+
+- [ ] **Git Hygiene Final Check**:
+  - No large files without justification (check `git diff --stat`) - (Valid: test fixtures, vendored deps, binary assets)
+  - `.gitignore` comprehensive for new file types
+  - No sensitive data exposed (run `detect-secrets` if available)
+
+**Why This Matters:**
+
+- Last chance to catch cleanliness issues before marking PR ready
+- Ensures professional, maintainable codebase
+- Prevents embarrassing temporary artifacts in production branches
+- Maintains git history integrity
+
 - [ ] Ensure any cleanup agent changes get committed, validated by pre-commit, pushed to remote
 - [ ] Add a comment to the PR about any work the Cleanup agent did
 

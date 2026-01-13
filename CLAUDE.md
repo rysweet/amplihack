@@ -265,7 +265,7 @@ Example - CI failure after push:
 Example - General fix request:
 "This import error is blocking me"
 → Use /fix import or fix-agent
-→ Auto-detects and applies import-fix-template
+→ Auto-detects pattern and applies appropriate fix
 → Resolves dependency and path issues quickly
 
 Example - Complex issue:

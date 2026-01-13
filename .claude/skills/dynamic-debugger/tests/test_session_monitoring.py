@@ -430,7 +430,7 @@ class TestResourceLimits:
             # Start, low CPU, high CPU, then stop
             mock_get_info.side_effect = [mock_info_low, mock_info_low, mock_info_high, None]
 
-            with patch("sys.stdout", new=StringIO()) as fake_out:
+            with patch("sys.stdout", new=StringIO()):
                 monitor_session(str(pid_file), interval=0.1)
 
                 # Should complete without error

@@ -8,14 +8,83 @@ Ahoy, matey! Welcome to the memory system documentation - where agents remember 
 
 **New to memory systems?** Start here:
 
+- [5-Type Memory Guide](5-TYPE-MEMORY-GUIDE.md) - **NEW!** Understand the 5 psychological memory types
+- [Quick Reference](5-TYPE-MEMORY-QUICKREF.md) - **NEW!** One-page cheat sheet for memory system
 - [Agent Memory Integration](../AGENT_MEMORY_INTEGRATION.md) - How agents share and persist knowledge
 - [Agent Memory Quickstart](../AGENT_MEMORY_QUICKSTART.md) - Get started in 5 minutes
 
 **Looking for something specific?**
 
+- [5-Type Memory System](#5-type-memory-system) - **NEW!** Episodic, Semantic, Procedural, Prospective, Working
+- [Terminal Visualization](#terminal-visualization) - **NEW!** View memory graph in terminal
+- [Kùzu Backend](#kùzu-backend) - **NEW!** Graph database schema
 - [Neo4j Memory System](#neo4j-memory-system) - Graph-based memory
 - [Testing & Validation](#testing--validation) - Memory system tests
 - [External Knowledge](#external-knowledge) - Import external data
+
+---
+
+## 5-Type Memory System
+
+**NEW!** Psychological memory model with 5 types, pluggable backends, and automatic hooks.
+
+### Core Documentation
+
+- [5-Type Memory Guide](5-TYPE-MEMORY-GUIDE.md) - Complete user guide for all 5 memory types
+- [Developer Reference](5-TYPE-MEMORY-DEVELOPER.md) - Architecture, API reference, integration patterns
+- [Quick Reference](5-TYPE-MEMORY-QUICKREF.md) - One-page cheat sheet and decision tree
+
+### Architecture & Schema
+
+- [Kùzu Memory Schema](KUZU_MEMORY_SCHEMA.md) - Graph database schema with 5 node types
+- [Backend Architecture](../backend-architecture.md) - Pluggable backend design (SQLite, Kùzu, Neo4j)
+- [Evaluation Framework](../evaluation-framework.md) - Compare backend quality and performance
+
+### Features
+
+**Memory Types**:
+
+- **Episodic**: Session-specific events and conversations
+- **Semantic**: Cross-session knowledge and patterns
+- **Prospective**: Future intentions and reminders
+- **Procedural**: How-to workflows and procedures
+- **Working**: Active task state (auto-cleared on completion)
+
+**Backends**:
+
+- **Kùzu** (default): Embedded graph database, zero infrastructure
+- **SQLite**: Relational storage, fast and simple
+- **Neo4j**: External graph database (optional)
+
+**Quality Gates**:
+
+- Multi-agent review (3 agents: analyzer, patterns, knowledge-archaeologist)
+- Trivial content filtering
+- Selective retrieval with token budgets
+
+---
+
+## Terminal Visualization
+
+**NEW!** View memory graph directly in your terminal with beautiful Rich-powered trees.
+
+- [Memory Tree Visualization Guide](MEMORY_TREE_VISUALIZATION.md) - How to use `amplihack memory tree`
+- Command: `amplihack memory tree [--session SESSION] [--type TYPE]`
+- Color-coded by memory type with emoji indicators
+- Star ratings for importance scores
+- Filter by session, type, or agent
+
+---
+
+## Kùzu Backend
+
+**NEW!** Embedded graph database as default memory backend.
+
+- [Kùzu Memory Schema](KUZU_MEMORY_SCHEMA.md) - Complete schema documentation
+- 5 separate node types (EpisodicMemory, SemanticMemory, etc.)
+- 11 semantic relationships (CONTAINS_EPISODIC, CONTRIBUTES_TO_SEMANTIC, etc.)
+- Sessions as first-class entities
+- Zero Docker overhead (embedded database)
 
 ---
 

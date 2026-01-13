@@ -11,12 +11,12 @@ from collections.abc import Callable
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
-from typing import Any, TypeVar, Union
+from typing import Any, TypeVar
 
 logger = logging.getLogger(__name__)
 
 # Type alias for JSON-serializable data
-JSONType = Union[dict[str, Any], list[Any], str, int, float, bool, None]
+JSONType = dict[str, Any] | list[Any] | str | int | float | bool | None
 
 # TypeVar for preserving default parameter type in safe_read_json
 T = TypeVar("T")

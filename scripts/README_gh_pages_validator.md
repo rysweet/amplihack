@@ -16,7 +16,7 @@ This tool validates all links on a deployed GitHub Pages site by:
 
 ```bash
 # Basic usage - validate entire site
-python scripts/validate_gh_pages_links.py --site-url https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/
+python scripts/validate_gh_pages_links.py --site-url https://rysweet.github.io/amplihack/
 
 # Save results to specific file
 python scripts/validate_gh_pages_links.py --site-url https://example.github.io/project/ --output results.json
@@ -62,7 +62,7 @@ The tool generates two types of output:
 GitHub Pages Link Validation Report
 =====================================
 Scan Date: 2025-12-12 19:30:00 UTC
-Base URL: https://rysweet.github.io/MicrosoftHackathon2025-AgenticCoding/
+Base URL: https://rysweet.github.io/amplihack/
 
 Summary:
   Total pages crawled: 42

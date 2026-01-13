@@ -149,10 +149,9 @@ def mock_context_packager():
 
     # Mock package (returns temp archive path)
     def package_side_effect(*args, **kwargs):
-        temp_file = tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False)
-        temp_file.write(b"fake archive content")
-        temp_file.close()
-        return Path(temp_file.name)
+        with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as temp_file:
+            temp_file.write(b"fake archive content")
+            return Path(temp_file.name)
 
     mock_instance.package = Mock(side_effect=package_side_effect)
 

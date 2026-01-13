@@ -1,0 +1,95 @@
+scenario:
+  name: "Memory System - Trivial Content Filtering"
+  description: "Verifies that trivial content is automatically rejected and not stored"
+  type: cli
+  tags: [quality, memory, filtering]
+
+  prerequisites:
+    - "Branch feat/issue-1902-5-type-memory-system exists"
+
+  environment:
+    variables:
+      AMPLIHACK_BRANCH: "feat/issue-1902-5-type-memory-system"
+      GITHUB_REPO: "https://github.com/rysweet/amplihack"
+
+  steps:
+    # Test trivial content filtering
+    - action: launch
+      target: "uvx"
+      args:
+        - "--from"
+        - "git+${GITHUB_REPO}@${AMPLIHACK_BRANCH}"
+        - "python"
+        - "-c"
+        - |
+          import asyncio
+          from amplihack.memory.coordinator import MemoryCoordinator, StorageRequest
+          from amplihack.memory.types import MemoryType
+
+          async def test():
+              c = MemoryCoordinator(session_id='filter-test')
+
+              # Test trivial content (should be rejected)
+              trivial_examples = [
+                  "ok",
+                  "thanks",
+                  "yes",
+                  "done",
+              ]
+
+              stored_count = 0
+              rejected_count = 0
+
+              for content in trivial_examples:
+                  r = StorageRequest(
+                      content=content,
+                      memory_type=MemoryType.EPISODIC,
+                      context={'agent_id': 'test'}
+                  )
+                  mem_id = await c.store(r)
+                  if mem_id:
+                      stored_count += 1
+                      print(f"STORED:{content}")
+                  else:
+                      rejected_count += 1
+                      print(f"REJECTED:{content}")
+
+              # Test substantive content (should be stored)
+              r = StorageRequest(
+                  content="User asked about implementing authentication using JWT tokens for the REST API",
+                  memory_type=MemoryType.EPISODIC,
+                  context={'agent_id': 'test'}
+              )
+              mem_id = await c.store(r)
+              if mem_id:
+                  print(f"SUBSTANTIVE_STORED:yes")
+              else:
+                  print(f"SUBSTANTIVE_STORED:no")
+
+              print(f"FILTER_RESULTS:rejected={rejected_count},stored={stored_count}")
+
+          asyncio.run(test())
+      description: "Test trivial filtering and substantive storage"
+      timeout: 120s
+
+    # Verify trivial content was rejected
+    - action: verify_output
+      contains: "REJECTED:ok"
+      description: "Simple 'ok' should be rejected as trivial"
+
+    - action: verify_output
+      contains: "REJECTED:thanks"
+      description: "Simple 'thanks' should be rejected as trivial"
+
+    # Verify substantive content was stored
+    - action: verify_output
+      contains: "SUBSTANTIVE_STORED:yes"
+      description: "Substantive content should be stored"
+
+    # Verify filter statistics
+    - action: verify_output
+      matches: "FILTER_RESULTS:rejected=[3-4]"
+      description: "Most trivial content should be rejected"
+
+    - action: verify_exit_code
+      expected: 0

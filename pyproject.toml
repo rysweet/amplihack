@@ -33,6 +33,11 @@ tui-testing = [
 kuzu = [
     "kuzu>=0.11.0",  # Embedded graph database alternative to Neo4j Docker
 ]
+test = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "pytest-asyncio>=0.21.0",
+]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
@@ -56,7 +61,7 @@ include = ["amplihack*"]
 
 [tool.setuptools.package-data]
 # Include prompts and framework files
-# .claude/ is handled by custom build command in setup.py
+# .claude/ is handled by custom build command (see archive/legacy/setup.py for historical implementation)
 amplihack = [
     "prompts/*.md",
     "utils/uvx_settings_template.json",

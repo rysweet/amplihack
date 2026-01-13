@@ -23,8 +23,6 @@ philosophy:
   - principle: Analysis First
     application: Auto-detects pattern before applying fix
 dependencies:
-  required:
-    - .claude/workflow/FIX_WORKFLOW.md
   optional:
     - .claude/tools/ci_status.py
 examples:

@@ -350,7 +350,7 @@ def test_end_to_end_skill_index_rebuild(complete_amplihack_env):
 
     # Build initial index
     index_builder = SkillIndexBuilder(skills_dir=skills_dir)
-    index_data1 = index_builder.build_index()
+    index_builder.build_index()
 
     # Add new skill
     new_category = skills_dir / "new-category"
@@ -387,7 +387,7 @@ def test_end_to_end_performance(complete_amplihack_env):
     inventory = discovery.discover_all()
 
     filter_instance = ComponentFilter()
-    components = filter_instance.filter(profile, inventory)
+    filter_instance.filter(profile, inventory)
 
     elapsed = time.time() - start
 
