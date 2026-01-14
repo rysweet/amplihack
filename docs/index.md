@@ -193,6 +193,7 @@ Execute complex tasks with simple slash commands.
 ### Command Reference
 
 - [Command Selection Guide](commands/COMMAND_SELECTION_GUIDE.md) - Choose the right command for your task
+- [Amplifier Command](reference/amplifier-command.md) - Launch Amplifier with amplihack bundle
 
 ### Core Commands
 

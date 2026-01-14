@@ -839,7 +839,6 @@ def main(argv: list[str] | None = None) -> int:
         # Normal amplifier launch
         return launch_amplifier(
             args=extra_args + (claude_args or []),
-            interactive=not prompt,
             prompt=prompt,
             resume=getattr(args, "resume", None),
             print_only=getattr(args, "print_mode", False),
