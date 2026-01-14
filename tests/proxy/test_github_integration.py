@@ -562,6 +562,66 @@ class TestFilePermissions:
             # Restore umask
             os.umask(old_umask)
 
+    def test_set_secure_permissions_file(self, tmp_path):
+        """Test _set_secure_permissions helper method for files."""
+        from amplihack.proxy.github_auth import GitHubAuthManager
+        import os
+        import stat
+
+        auth_manager = GitHubAuthManager()
+        test_file = tmp_path / "test_file.txt"
+        test_file.write_text("test content")
+
+        # Set secure permissions for file
+        auth_manager._set_secure_permissions(test_file, is_dir=False)
+
+        # Verify permissions are 0600
+        file_stat = os.stat(test_file)
+        mode = file_stat.st_mode
+        assert stat.S_IMODE(mode) == 0o600, f"Expected 0600, got {oct(stat.S_IMODE(mode))}"
+
+    def test_set_secure_permissions_directory(self, tmp_path):
+        """Test _set_secure_permissions helper method for directories."""
+        from amplihack.proxy.github_auth import GitHubAuthManager
+        import os
+        import stat
+
+        auth_manager = GitHubAuthManager()
+        test_dir = tmp_path / "test_dir"
+        test_dir.mkdir()
+
+        # Set secure permissions for directory
+        auth_manager._set_secure_permissions(test_dir, is_dir=True)
+
+        # Verify permissions are 0700
+        dir_stat = os.stat(test_dir)
+        mode = dir_stat.st_mode
+        assert stat.S_IMODE(mode) == 0o700, f"Expected 0700, got {oct(stat.S_IMODE(mode))}"
+
+    def test_set_secure_permissions_error_handling(self, tmp_path):
+        """Test _set_secure_permissions error handling."""
+        from amplihack.proxy.github_auth import GitHubAuthManager
+        import os
+
+        auth_manager = GitHubAuthManager()
+
+        # Create read-only directory
+        readonly_dir = tmp_path / "readonly"
+        readonly_dir.mkdir()
+        test_file = readonly_dir / "test_file.txt"
+        test_file.write_text("test")
+
+        # Make directory read-only
+        os.chmod(readonly_dir, 0o444)
+
+        try:
+            # Attempting to change permissions should raise PermissionError
+            with pytest.raises(PermissionError, match="Unable to set secure permissions"):
+                auth_manager._set_secure_permissions(test_file, is_dir=False)
+        finally:
+            # Cleanup - restore permissions
+            os.chmod(readonly_dir, 0o755)
+
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
