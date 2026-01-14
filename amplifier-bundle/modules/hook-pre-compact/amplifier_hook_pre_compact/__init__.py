@@ -5,11 +5,14 @@ the full session history.
 """
 
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from amplifier_core.protocols import Hook, HookResult
+
+logger = logging.getLogger(__name__)
 
 
 class PreCompactHook(Hook):
@@ -32,40 +35,40 @@ class PreCompactHook(Hook):
             # Get messages before compaction
             messages = data.get("messages", [])
             session_id = data.get("session_id", "unknown")
-            
+
             if not messages:
                 return None
 
             # Create output directory
             self.output_dir.mkdir(parents=True, exist_ok=True)
-            
+
             # Generate transcript filename
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             transcript_file = self.output_dir / f"transcript_{session_id}_{timestamp}.json"
-            
+
             # Export transcript
             transcript = {
                 "session_id": session_id,
                 "exported_at": datetime.now().isoformat(),
                 "message_count": len(messages),
                 "messages": messages,
-                "compaction_reason": data.get("reason", "unknown")
+                "compaction_reason": data.get("reason", "unknown"),
             }
-            
+
             transcript_file.write_text(json.dumps(transcript, indent=2, default=str))
-            
+
             return HookResult(
                 modified_data=data,
                 metadata={
                     "transcript_exported": True,
                     "transcript_file": str(transcript_file),
-                    "message_count": len(messages)
-                }
+                    "message_count": len(messages),
+                },
             )
 
-        except Exception:
-            # Fail open
-            pass
+        except Exception as e:
+            # Fail open - log but don't block
+            logger.debug(f"Pre-compact transcript export failed (continuing): {e}")
 
         return None
 

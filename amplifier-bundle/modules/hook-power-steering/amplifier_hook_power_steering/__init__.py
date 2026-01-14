@@ -4,14 +4,23 @@ Verifies session completeness before allowing stop, checking against
 21 considerations to ensure work is properly finished.
 """
 
+import logging
 import sys
 from pathlib import Path
 from typing import Any
 
 from amplifier_core.protocols import Hook, HookResult
 
+logger = logging.getLogger(__name__)
+
 # Add Claude Code hooks to path for imports
-_CLAUDE_HOOKS = Path(__file__).parent.parent.parent.parent.parent.parent / ".claude" / "tools" / "amplihack" / "hooks"
+_CLAUDE_HOOKS = (
+    Path(__file__).parent.parent.parent.parent.parent.parent
+    / ".claude"
+    / "tools"
+    / "amplihack"
+    / "hooks"
+)
 if _CLAUDE_HOOKS.exists():
     sys.path.insert(0, str(_CLAUDE_HOOKS.parent.parent))
 
@@ -29,6 +38,7 @@ class PowerSteeringHook(Hook):
         if self._checker is None:
             try:
                 from hooks.power_steering_checker import PowerSteeringChecker
+
                 self._checker = PowerSteeringChecker()
             except ImportError:
                 self._checker = False  # Mark as unavailable
@@ -60,13 +70,13 @@ class PowerSteeringHook(Hook):
                         "power_steering": {
                             "complete": False,
                             "incomplete_considerations": result.get("incomplete", []),
-                            "message": "Session may have incomplete work"
+                            "message": "Session may have incomplete work",
                         }
-                    }
+                    },
                 )
-        except Exception:
-            # Fail open
-            pass
+        except Exception as e:
+            # Fail open - log but don't block
+            logger.debug(f"Power steering check failed (continuing): {e}")
 
         return None
 

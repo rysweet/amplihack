@@ -12,7 +12,7 @@ workflow_selection:
     - name: Q&A
       triggers: ["what is", "explain briefly", "quick question", "how do I run"]
       doc: ../.claude/workflow/Q&A_WORKFLOW.md
-    - name: INVESTIGATION  
+    - name: INVESTIGATION
       triggers: ["investigate", "understand", "analyze", "research", "explore", "how does"]
       doc: ../.claude/workflow/INVESTIGATION_WORKFLOW.md
     - name: DEFAULT
@@ -40,14 +40,20 @@ patterns:
   enforce: true
   context: ../.claude/context/PATTERNS.md
 
-# Hooks configuration
+# Hooks configuration - references modules in amplifier-bundle/modules/
 hooks:
   power_steering:
     enabled: true
     module: hook-power-steering
-  xpia_defense:
+  memory:
     enabled: true
-    module: hook-xpia-defense
-  agent_memory:
+    module: hook-memory
+  pre_tool_use:
     enabled: true
-    module: hook-agent-memory
+    module: hook-pre-tool-use
+  pre_compact:
+    enabled: true
+    module: hook-pre-compact
+  user_prompt:
+    enabled: true
+    module: hook-user-prompt
