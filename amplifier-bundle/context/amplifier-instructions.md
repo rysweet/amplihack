@@ -27,7 +27,7 @@ includes:
 
 | Component | Location | Count |
 |-----------|----------|-------|
-| Skills | `../.claude/skills/` | 62 |
+| Skills | `../.claude/skills/` | 74 |
 | Agents | `../.claude/agents/` | 36 |
 | Context | `../.claude/context/` | 3 files |
 | Workflows | `../.claude/workflow/` | 7 docs |

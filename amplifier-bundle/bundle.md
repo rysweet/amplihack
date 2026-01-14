@@ -39,15 +39,19 @@ skills:
   sociologist-analyst: { path: ../.claude/skills/sociologist-analyst/SKILL.md }
   urban-planner-analyst: { path: ../.claude/skills/urban-planner-analyst/SKILL.md }
   
-  # Workflow skills (6)
+  # Workflow skills (11)
   cascade-workflow: { path: ../.claude/skills/cascade-workflow/SKILL.md }
   consensus-voting: { path: ../.claude/skills/consensus-voting/SKILL.md }
   debate-workflow: { path: ../.claude/skills/debate-workflow/SKILL.md }
   default-workflow: { path: ../.claude/skills/default-workflow/SKILL.md }
+  eval-recipes-runner: { path: ../.claude/skills/eval-recipes-runner/SKILL.md }
   investigation-workflow: { path: ../.claude/skills/investigation-workflow/SKILL.md }
   n-version-workflow: { path: ../.claude/skills/n-version-workflow/SKILL.md }
+  philosophy-compliance-workflow: { path: ../.claude/skills/philosophy-compliance-workflow/SKILL.md }
+  quality-audit-workflow: { path: ../.claude/skills/quality-audit-workflow/SKILL.md }
+  ultrathink-orchestrator: { path: ../.claude/skills/ultrathink-orchestrator/SKILL.md }
   
-  # Technical skills (18)
+  # Technical skills (19)
   agent-sdk: { path: ../.claude/skills/agent-sdk/SKILL.md }
   azure-admin: { path: ../.claude/skills/azure-admin/SKILL.md }
   azure-devops: { path: ../.claude/skills/azure-devops/SKILL.md }
@@ -64,6 +68,7 @@ skills:
   microsoft-agent-framework: { path: ../.claude/skills/microsoft-agent-framework/skill.md }
   module-spec-generator: { path: ../.claude/skills/module-spec-generator/SKILL.md }
   outside-in-testing: { path: ../.claude/skills/outside-in-testing/SKILL.md }
+  remote-work: { path: ../.claude/skills/remote-work/SKILL.md }
   skill-builder: { path: ../.claude/skills/skill-builder/SKILL.md }
   test-gap-analyzer: { path: ../.claude/skills/test-gap-analyzer/SKILL.md }
   
@@ -85,6 +90,23 @@ skills:
   storytelling-synthesizer: { path: ../.claude/skills/storytelling-synthesizer/SKILL.md }
   work-delegator: { path: ../.claude/skills/work-delegator/skill.md }
   workstream-coordinator: { path: ../.claude/skills/workstream-coordinator/skill.md }
+  
+  # Nested skills - collaboration (1)
+  creating-pull-requests: { path: ../.claude/skills/collaboration/creating-pull-requests/SKILL.md }
+  
+  # Nested skills - development (2)
+  architecting-solutions: { path: ../.claude/skills/development/architecting-solutions/SKILL.md }
+  setting-up-projects: { path: ../.claude/skills/development/setting-up-projects/SKILL.md }
+  
+  # Nested skills - meta-cognitive (1)
+  analyzing-deeply: { path: ../.claude/skills/meta-cognitive/analyzing-deeply/SKILL.md }
+  
+  # Nested skills - quality (2)
+  reviewing-code: { path: ../.claude/skills/quality/reviewing-code/SKILL.md }
+  testing-code: { path: ../.claude/skills/quality/testing-code/SKILL.md }
+  
+  # Nested skills - research (1)
+  researching-topics: { path: ../.claude/skills/research/researching-topics/SKILL.md }
 
 agents:
   # Top-level agents (3)
@@ -170,7 +192,7 @@ This bundle provides a thin Amplifier packaging layer that references the existi
 ## What's Included
 
 ### From Claude Code (referenced, not duplicated)
-- **62 Skills** - Domain expertise, workflow patterns, technical capabilities
+- **74 Skills** - Domain expertise, workflow patterns, technical capabilities
 - **36 Agents** - Core, specialized, and workflow agents
 - **Context** - Philosophy, patterns, trust guidelines
 - **Workflows** - Q&A, Investigation, Default development workflows
