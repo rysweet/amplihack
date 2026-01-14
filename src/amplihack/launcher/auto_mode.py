@@ -3,7 +3,7 @@
 import asyncio
 import json
 import os
-import pty
+import platform
 import re
 import subprocess
 import sys
@@ -12,6 +12,12 @@ import time
 from contextlib import nullcontext
 from pathlib import Path
 
+# pty is Unix-only, not available on Windows
+if platform.system() != "Windows":
+    import pty
+else:
+    pty = None
+
 # Try to import Claude SDK, fall back gracefully
 try:
     from claude_agent_sdk import ClaudeAgentOptions, query  # type: ignore
@@ -19,6 +25,17 @@ try:
     CLAUDE_SDK_AVAILABLE = True
 except ImportError:
     CLAUDE_SDK_AVAILABLE = False
+
+# Try to import Rich for markdown rendering
+try:
+    from rich.console import Console
+    from rich.markdown import Markdown
+
+    RICH_AVAILABLE = True
+except ImportError:
+    RICH_AVAILABLE = False
+    Console = None
+    Markdown = None
 
 # Import session management components
 from amplihack.launcher.fork_manager import ForkManager
@@ -93,6 +110,13 @@ class AutoMode:
             query_timeout_minutes: Timeout for each SDK query in minutes (default 30.0).
                 None disables timeout. Opus detection is handled by cli.py:resolve_timeout().
         """
+        # Ensure UTF-8 encoding for stdout/stderr on Windows
+        if sys.platform == 'win32':
+            if hasattr(sys.stdout, 'reconfigure'):
+                sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+            if hasattr(sys.stderr, 'reconfigure'):
+                sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+
         self.sdk = sdk
         self.prompt = prompt
         self.max_turns = max_turns
@@ -148,6 +172,20 @@ class AutoMode:
         self.session_output_size = 0
         self.max_session_output = 50 * 1024 * 1024  # 50MB total session output
 
+        # Initialize Rich console for markdown rendering
+        if RICH_AVAILABLE:
+            # Create console with UTF-8 encoding and markup enabled
+            self.console = Console(
+                file=sys.stdout,
+                force_terminal=True,
+                markup=True,
+                force_interactive=False,
+                no_color=False,
+                legacy_windows=False
+            )
+        else:
+            self.console = None
+
         # Safety: Detect if we're using temp staging directory (safety feature)
         self.staged_dir = os.environ.get("AMPLIHACK_STAGED_DIR")
         self.original_cwd_from_env = os.environ.get("AMPLIHACK_ORIGINAL_CWD")
@@ -200,7 +238,7 @@ class AutoMode:
                 self.state.add_log(msg, timestamp=False)
 
         # Always write to file (including DEBUG)
-        with open(self.log_dir / "auto.log", "a") as f:
+        with open(self.log_dir / "auto.log", "a", encoding="utf-8") as f:
             f.write(f"[{time.strftime('%H:%M:%S')}] [{level}] {msg}\n")
 
     def _format_elapsed(self, seconds: float) -> str:
@@ -269,22 +307,31 @@ class AutoMode:
 
         self.log(f"Running: {cmd[0]} ...")
 
-        # Create a pseudo-terminal for stdin
+        # Create a pseudo-terminal for stdin on Unix (not available on Windows)
         # This allows any subprocess (including children) to read from it
-        master_fd, slave_fd = pty.openpty()
+        if pty is not None:
+            master_fd, slave_fd = pty.openpty()
+            stdin_fd = slave_fd
+        else:
+            # On Windows, use PIPE instead
+            master_fd = None
+            stdin_fd = subprocess.PIPE
 
         # Use Popen to capture and mirror output in real-time
         process = subprocess.Popen(
             cmd,
-            stdin=slave_fd,  # Use slave side of pty as stdin
+            stdin=stdin_fd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
+            encoding='utf-8',  # Explicit UTF-8 encoding for proper emoji/unicode support
+            errors='replace',  # Replace decode errors instead of crashing
             cwd=self.working_dir,
         )
 
-        # Close slave_fd in parent process (child has a copy)
-        os.close(slave_fd)
+        # Close slave_fd in parent process (child has a copy) - Unix only
+        if pty is not None:
+            os.close(slave_fd)
 
         # Capture output while mirroring to stdout/stderr
         stdout_lines = []
@@ -299,6 +346,9 @@ class AutoMode:
 
         def feed_pty_stdin(fd, proc):
             """Auto-feed pty master with newlines to prevent any stdin blocking."""
+            # Only run this on Unix where pty is available
+            if fd is None:
+                return
             try:
                 while proc.poll() is None:
                     time.sleep(0.1)  # Check every 100ms
@@ -587,7 +637,18 @@ Document your decisions and reasoning in comments/logs."""
                                         )
                                         return (1, "Session output too large")
 
-                                    print(text, end="", flush=True)
+                                    # Render markdown for Claude SDK output if Rich is available
+                                    if self.console is not None:
+                                        try:
+                                            md = Markdown(text)
+                                            self.console.print(md, end="")
+                                            sys.stdout.flush()
+                                        except Exception:
+                                            # Fallback to plain text if markdown rendering fails
+                                            print(text, end="", flush=True)
+                                    else:
+                                        # No Rich available, print plain text
+                                        print(text, end="", flush=True)
                                     output_lines.append(text)
 
                                 # Handle tool_use blocks (TodoWrite)

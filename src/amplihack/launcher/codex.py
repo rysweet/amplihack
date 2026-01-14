@@ -140,12 +140,7 @@ def launch_codex(args: list[str] | None = None, interactive: bool = True) -> int
             # No -p flag, pass args as-is
             cmd.extend(args)
 
-    # Launch
-    if interactive and not args:
-        # Interactive mode with no args - replace process
-        os.execvp(cmd[0], cmd)
-        return 0  # pragma: no cover
-
-    # Non-interactive mode or with args
+    # Launch using subprocess.run() for proper terminal handling
+    # Note: os.execvp() doesn't work properly on Windows - it corrupts stdin/terminal state
     result = subprocess.run(cmd, check=False)
     return result.returncode

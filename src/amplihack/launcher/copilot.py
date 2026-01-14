@@ -33,10 +33,10 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
 
     Args:
         args: Arguments to pass to copilot
-        interactive: If True, exec to replace process
+        interactive: If True, use subprocess for proper terminal handling on Windows
 
     Returns:
-        Exit code (only for non-interactive mode)
+        Exit code
     """
     # Ensure copilot is installed
     if not check_copilot():
@@ -54,12 +54,7 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
     if args:
         cmd.extend(args)
 
-    # Launch
-    if interactive:
-        os.execvp(cmd[0], cmd)  # Replace process - never returns
-        # This line is unreachable but helps type checkers
-        return 0  # pragma: no cover
-
-    # Non-interactive mode
+    # Launch using subprocess.run() for proper terminal handling
+    # Note: os.execvp() doesn't work properly on Windows - it corrupts stdin/terminal state
     result = subprocess.run(cmd, check=False)
     return result.returncode
