@@ -74,30 +74,33 @@ def get_bundle_path() -> Path | None:
 
     Searches in order:
     1. ./amplifier-bundle/bundle.md (relative to cwd)
-    2. Relative to this package's location (for installed amplihack)
+    2. Bounded upward search from package location (for installed amplihack)
 
     Returns:
-        Path to bundle.md or None if not found
+        Path to bundle directory or None if not found
     """
-    # Check relative to current directory first
+    # Check relative to current directory first (development mode)
     cwd_bundle = Path.cwd() / "amplifier-bundle" / "bundle.md"
     if cwd_bundle.exists():
         return cwd_bundle.parent
 
-    # Check relative to package location (for pip/uv installed amplihack)
-    # The bundle is at the repo root, which is 4 levels up from this file
-    # src/amplihack/launcher/amplifier.py -> repo_root/amplifier-bundle
-    package_dir = Path(__file__).parent.parent.parent.parent
-    package_bundle = package_dir / "amplifier-bundle" / "bundle.md"
-    if package_bundle.exists():
-        return package_bundle.parent
+    # Bounded upward search from package location (installed mode)
+    # Search up to 5 levels to find amplifier-bundle directory
+    pkg_dir = Path(__file__).resolve().parent
+    for _ in range(5):
+        candidate = pkg_dir / "amplifier-bundle" / "bundle.md"
+        if candidate.exists():
+            return candidate.parent
+        # Validate we're still in a sensible location
+        if not (pkg_dir / "pyproject.toml").exists() and pkg_dir == pkg_dir.parent:
+            break  # Hit filesystem root
+        pkg_dir = pkg_dir.parent
 
     return None
 
 
 def launch_amplifier(
     args: list[str] | None = None,
-    interactive: bool = True,
     prompt: str | None = None,
     resume: str | None = None,
     print_only: bool = False,
@@ -105,8 +108,7 @@ def launch_amplifier(
     """Launch Amplifier CLI with the amplihack bundle.
 
     Args:
-        args: Additional arguments to pass to amplifier
-        interactive: If True, launch in interactive mode (default)
+        args: Additional arguments to pass to amplifier (--model, --provider, etc.)
         prompt: Initial prompt for non-interactive mode
         resume: Session ID to resume
         print_only: If True, use --print mode (single response, no tools)
@@ -125,15 +127,14 @@ def launch_amplifier(
     if not bundle_path:
         print("Warning: amplihack bundle not found. Running Amplifier without bundle.")
         print("  Expected location: ./amplifier-bundle/bundle.md")
-        bundle_args = []
+        bundle_args: list[str] = []
     else:
         print(f"Using amplihack bundle: {bundle_path}")
         bundle_args = ["--bundle", str(bundle_path)]
 
-    # Build command
+    # Build command - simple and direct
     cmd = ["amplifier"]
 
-    # Add subcommand based on mode
     if resume:
         cmd.extend(["resume", resume])
     elif print_only and prompt:
@@ -144,48 +145,34 @@ def launch_amplifier(
         # Interactive mode
         cmd.extend(["run"] + bundle_args)
 
-    # Add any additional args
+    # Pass through any extra args (model, provider, etc.)
     if args:
-        # Handle -p flag conversion for compatibility with other tools
-        if "-p" in args:
-            idx = args.index("-p")
-            if idx + 1 < len(args):
-                prompt_arg = args[idx + 1]
-                # Remove -p and prompt from args, add prompt to cmd
-                remaining = args[:idx] + args[idx + 2 :]
-                if not prompt:  # Don't override if already set
-                    cmd.extend(bundle_args if not bundle_args else [])
-                    # Insert prompt after 'run' if using run command
-                    if "run" in cmd and prompt_arg:
-                        run_idx = cmd.index("run")
-                        # Add bundle args after run if not already added
-                        if bundle_args and bundle_args[0] not in cmd:
-                            cmd = cmd[: run_idx + 1] + bundle_args + [prompt_arg]
-                        else:
-                            cmd.insert(run_idx + 1 + len(bundle_args), prompt_arg)
-                args = remaining
         cmd.extend(args)
 
-    # Launch
+    # Debug output to stderr
     if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-        print(f"Launching: {' '.join(cmd)}")
+        print(f"Launching: {' '.join(cmd)}", file=sys.stderr)
 
-    result = subprocess.run(cmd, check=False)
-    return result.returncode
+    # Launch with error handling
+    try:
+        result = subprocess.run(cmd, check=False)
+        return result.returncode
+    except FileNotFoundError:
+        print("Error: amplifier command not found. Try reinstalling.")
+        return 1
+    except OSError as e:
+        print(f"Error launching amplifier: {e}")
+        return 1
 
 
-def launch_amplifier_auto(prompt: str, max_turns: int = 10) -> int:
-    """Launch Amplifier in autonomous mode.
-
-    Note: Amplifier doesn't have a built-in auto mode like amplihack's AutoMode.
-    This launches Amplifier with the prompt and lets it run until completion.
+def launch_amplifier_auto(prompt: str) -> int:
+    """Launch Amplifier with a prompt (Amplifier manages its own execution loop).
 
     Args:
         prompt: The task prompt
-        max_turns: Maximum turns (informational, Amplifier manages its own loop)
 
     Returns:
         Exit code
     """
-    print("Starting Amplifier with task (max context managed by Amplifier)...")
-    return launch_amplifier(prompt=prompt, interactive=False)
+    print("Starting Amplifier with task...")
+    return launch_amplifier(prompt=prompt)
