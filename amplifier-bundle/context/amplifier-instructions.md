@@ -32,28 +32,55 @@ includes:
 | Context | `../.claude/context/` | 3 files |
 | Workflows | `../.claude/workflow/` | 7 docs |
 
-## Hook Modules
+## Hook Modules (8 Total)
 
-These Amplifier modules wrap existing Claude Code hooks:
+All hook modules wrap existing Claude Code hooks via lazy imports, delegating to the original implementations while providing Amplifier compatibility.
+
+### Session Lifecycle Hooks
 
 | Module | Wraps | Purpose |
 |--------|-------|---------|
-| `hook-power-steering` | `power_steering_*.py` | Session completion verification |
-| `hook-memory` | `agent_memory_hook.py` | Persistent memory injection/extraction |
-| `hook-pre-tool-use` | `pre_tool_use.py` | Block dangerous operations |
-| `hook-pre-compact` | `pre_compact.py` | Export transcript before compaction |
-| `hook-user-prompt` | `user_prompt_submit.py` | Inject user preferences |
+| `hook-session-start` | `session_start.py` | Version mismatch detection, auto-update, global hook migration, preferences injection, Neo4j startup, context injection |
+| `hook-session-stop` | `session_stop.py` | Learning capture, memory storage via MemoryCoordinator (SQLite/Neo4j) |
+| `hook-post-tool-use` | `post_tool_use.py` | Tool registry execution, metrics tracking, error detection for file ops |
 
-### Already Covered by Amplifier
+### Feature Hooks
 
-These Claude Code hooks have Amplifier equivalents in foundation:
+| Module | Wraps | Purpose |
+|--------|-------|---------|
+| `hook-power-steering` | `power_steering_*.py` | Session completion verification (21 considerations) |
+| `hook-memory` | `agent_memory_hook.py` | Persistent memory injection on prompt, extraction on session end |
+| `hook-pre-tool-use` | `pre_tool_use.py` | Block dangerous operations (--no-verify, rm -rf) |
+| `hook-pre-compact` | `pre_compact.py` | Export transcript before context compaction |
+| `hook-user-prompt` | `user_prompt_submit.py` | Inject user preferences on every prompt |
 
-| Claude Code | Amplifier Module | Notes |
-|-------------|------------------|-------|
-| `session_start.py` | `hooks-logging` | Session lifecycle logging |
-| `session_stop.py` | `hooks-logging` | Session end logging |
-| `post_tool_use.py` | `hooks-logging`, `hooks-streaming-ui` | Tool execution tracking |
-| `workflow_tracker.py` | `hooks-todo-reminder` | Workflow state injection |
+### Foundation Coverage
+
+The `workflow_tracker` functionality is covered by `hooks-todo-reminder` from Amplifier foundation.
+
+## Design Principles
+
+### Thin Wrapper Pattern
+
+Each hook module follows the same pattern:
+1. Lazy load the Claude Code implementation on first use
+2. Delegate to the original implementation
+3. Fail open - never block user workflow on hook errors
+4. Log failures at debug level for diagnostics
+
+### Path Resolution
+
+Wrappers resolve Claude Code paths relative to the bundle location:
+```
+amplifier-bundle/modules/hook-*/  →  .claude/tools/amplihack/hooks/
+```
+
+### Fail-Open Philosophy
+
+All hooks are designed to fail gracefully:
+- Missing dependencies → skip functionality
+- Exceptions → log and continue
+- Never block the user's workflow
 
 ## Compatibility
 
@@ -61,4 +88,4 @@ This bundle maintains compatibility with both:
 - **Claude Code** - Via the `.claude/` directory structure
 - **Amplifier** - Via this bundle packaging with hook wrappers
 
-The same skills, agents, and context work in both environments. Hook modules delegate to the existing Claude Code implementations, avoiding duplication while providing Amplifier compatibility.
+The same skills, agents, and context work in both environments.
