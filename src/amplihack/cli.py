@@ -801,42 +801,38 @@ def main(argv: list[str] | None = None) -> int:
         return launch_codex(claude_args, interactive=not has_prompt)
 
     elif args.command == "amplifier":
-        from .launcher.amplifier import launch_amplifier
+        from .launcher.amplifier import launch_amplifier, launch_amplifier_auto
 
-        # Handle append mode FIRST (before any other initialization)
+        # Early exit: append mode
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
-        # Handle --no-reflection flag (disable always wins priority)
+        # Environment setup
         if getattr(args, "no_reflection", False):
             os.environ["AMPLIHACK_SKIP_REFLECTION"] = "1"
 
-        # Extract prompt from claude_args if provided via -p
+        # Extract prompt from -p flag (used by both auto mode and normal launch)
         prompt = None
         if claude_args and "-p" in claude_args:
             idx = claude_args.index("-p")
             if idx + 1 < len(claude_args):
                 prompt = claude_args[idx + 1]
 
-        # Handle auto mode - Amplifier manages its own loop
+        # Auto mode - Amplifier manages its own execution loop
         if getattr(args, "auto", False):
             if not prompt:
-                print(
-                    'Error: --auto requires a prompt. Use: amplihack amplifier --auto -- -p "your prompt"'
-                )
+                print('Error: --auto requires a prompt via -- -p "prompt"')
                 return 1
-            from .launcher.amplifier import launch_amplifier_auto
-
             return launch_amplifier_auto(prompt)
 
-        # Build additional args for amplifier
+        # Build extra args for model/provider selection
         extra_args = []
-        if getattr(args, "model", None):
-            extra_args.extend(["--model", args.model])
-        if getattr(args, "provider", None):
-            extra_args.extend(["--provider", args.provider])
+        if args.model:
+            extra_args += ["--model", args.model]
+        if args.provider:
+            extra_args += ["--provider", args.provider]
 
-        # Normal amplifier launch
+        # Normal launch
         return launch_amplifier(
             args=extra_args + (claude_args or []),
             prompt=prompt,
