@@ -1,5 +1,7 @@
 """GitHub OAuth device flow authentication for Copilot API."""
 
+import os
+import stat
 import subprocess
 import time
 from pathlib import Path
@@ -149,32 +151,82 @@ class GitHubAuthManager:
 
         raise RuntimeError("Authorization timed out")
 
-    def save_token(self, token: str, config_path: Path | None = None) -> None:
-        """Save GitHub token to configuration.
+    def _set_secure_permissions(self, path: Path, is_dir: bool = False) -> None:
+        """Set secure permissions on file or directory.
+
+        Args:
+            path: Path to secure
+            is_dir: True for directories (0700), False for files (0600)
+
+        Raises:
+            PermissionError: If permissions cannot be set
+        """
+        try:
+            mode = stat.S_IRWXU if is_dir else (stat.S_IRUSR | stat.S_IWUSR)
+            os.chmod(path, mode)
+        except PermissionError as e:
+            raise PermissionError(f"Unable to set secure permissions on {path}: {e}")
+
+    def save_token(self, token: str, config_path: str | Path | None = None) -> None:
+        """Save GitHub token to configuration with secure permissions.
+
+        Sets file permissions to 0600 (read/write for owner only) and
+        directory permissions to 0700 (rwx for owner only).
 
         Args:
             token: GitHub access token
-            config_path: Path to save token (optional)
+            config_path: Path to save token (optional, can be string or Path)
+
+        Raises:
+            PermissionError: If unable to set secure permissions
         """
+        # Convert string path to Path object if needed
+        if isinstance(config_path, str):
+            config_path = Path(config_path)
+
         if config_path and config_path.exists():
             # Add token to existing config file
             try:
                 with open(config_path, "a") as f:
                     f.write(f"\nGITHUB_TOKEN={token}\n")
-            except Exception as e:
+
+                # Set secure file permissions (0600 - owner read/write only)
+                self._set_secure_permissions(config_path, is_dir=False)
+            except (IOError, OSError) as e:
+                # File I/O and OS-level errors are warnings (disk full, network issues, filesystem issues)
                 print(f"Warning: Failed to save token to {config_path}: {e}")
         else:
             # Save to default location
             config_dir = Path.home() / ".amplihack"
-            config_dir.mkdir(exist_ok=True)
 
-            github_config = config_dir / "github.env"
+            # Create directory with secure permissions (0700 - owner rwx only)
+            if not config_dir.exists():
+                config_dir.mkdir(exist_ok=True)
+            # Set secure directory permissions regardless of whether it was just created
+            self._set_secure_permissions(config_dir, is_dir=True)
+
+            # Determine target file
+            if config_path:
+                # User specified a path that doesn't exist yet - create parent dirs
+                github_config = Path(config_path)
+                github_config.parent.mkdir(parents=True, exist_ok=True)
+                # Set secure directory permissions
+                self._set_secure_permissions(github_config.parent, is_dir=True)
+            else:
+                github_config = config_dir / "github.env"
+
             try:
+                # Write token file
                 with open(github_config, "w") as f:
                     f.write(f"GITHUB_TOKEN={token}\n")
                     f.write("GITHUB_COPILOT_ENABLED=true\n")
+
+                # Set secure file permissions (0600 - owner read/write only)
+                self._set_secure_permissions(github_config, is_dir=False)
+
                 print(f"GitHub token saved to {github_config}")
-            except Exception as e:
+            except (IOError, OSError) as e:
+                # File I/O and OS-level errors are warnings (disk full, network issues, filesystem issues)
                 print(f"Warning: Failed to save token: {e}")
 
     def _verify_copilot_access(self, token: str) -> bool:
