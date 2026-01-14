@@ -827,7 +827,7 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
             from .launcher.amplifier import launch_amplifier_auto
 
-            return launch_amplifier_auto(prompt, getattr(args, "max_turns", 10))
+            return launch_amplifier_auto(prompt)
 
         # Build additional args for amplifier
         extra_args = []
