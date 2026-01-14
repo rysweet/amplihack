@@ -4,14 +4,23 @@ Injects relevant memory context before agent execution and extracts
 learnings after session completion for persistent storage.
 """
 
+import logging
 import sys
 from pathlib import Path
 from typing import Any
 
 from amplifier_core.protocols import Hook, HookResult
 
+logger = logging.getLogger(__name__)
+
 # Add Claude Code hooks to path for imports
-_CLAUDE_HOOKS = Path(__file__).parent.parent.parent.parent.parent.parent / ".claude" / "tools" / "amplihack" / "hooks"
+_CLAUDE_HOOKS = (
+    Path(__file__).parent.parent.parent.parent.parent.parent
+    / ".claude"
+    / "tools"
+    / "amplihack"
+    / "hooks"
+)
 if _CLAUDE_HOOKS.exists():
     sys.path.insert(0, str(_CLAUDE_HOOKS.parent.parent))
 
@@ -29,6 +38,7 @@ class AgentMemoryHook(Hook):
         if self._memory_hook is None:
             try:
                 from hooks import agent_memory_hook
+
                 self._memory_hook = agent_memory_hook
             except ImportError:
                 self._memory_hook = False
@@ -48,7 +58,7 @@ class AgentMemoryHook(Hook):
                 # Inject memory context before processing
                 prompt = data.get("prompt", "")
                 agent_ref = memory_hook.detect_agent_reference(prompt)
-                
+
                 if agent_ref:
                     memories = memory_hook.get_relevant_memories(agent_ref)
                     if memories:
@@ -56,24 +66,24 @@ class AgentMemoryHook(Hook):
                         injected = memory_hook.format_memory_context(memories)
                         return HookResult(
                             modified_data={**data, "injected_context": injected},
-                            metadata={"memory_injected": True, "agent": agent_ref}
+                            metadata={"memory_injected": True, "agent": agent_ref},
                         )
 
             elif event == "session:end":
                 # Extract learnings from session
                 session_data = data.get("session_state", {})
                 learnings = memory_hook.extract_learnings(session_data)
-                
+
                 if learnings:
                     memory_hook.store_learnings(learnings)
                     return HookResult(
                         modified_data=data,
-                        metadata={"learnings_stored": len(learnings)}
+                        metadata={"learnings_stored": len(learnings)},
                     )
 
-        except Exception:
-            # Fail open
-            pass
+        except Exception as e:
+            # Fail open - log but don't block
+            logger.debug(f"Memory hook failed (continuing): {e}")
 
         return None
 

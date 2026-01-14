@@ -4,17 +4,9 @@ Blocks dangerous operations like `git commit --no-verify` and other
 potentially harmful commands before they execute.
 """
 
-import sys
-from pathlib import Path
 from typing import Any
 
 from amplifier_core.protocols import Hook, HookResult
-
-# Add Claude Code hooks to path for imports
-_CLAUDE_HOOKS = Path(__file__).parent.parent.parent.parent.parent.parent / ".claude" / "tools" / "amplihack" / "hooks"
-if _CLAUDE_HOOKS.exists():
-    sys.path.insert(0, str(_CLAUDE_HOOKS.parent.parent))
-
 
 # Dangerous patterns to block
 DANGEROUS_PATTERNS = [
@@ -55,10 +47,7 @@ class PreToolUseHook(Hook):
         # Check against dangerous patterns
         for pattern_start, pattern_contains, reason in self.patterns:
             if pattern_start in command and pattern_contains in command:
-                return HookResult(
-                    cancel=True,
-                    cancel_reason=f"Blocked: {reason}"
-                )
+                return HookResult(cancel=True, cancel_reason=f"Blocked: {reason}")
 
         return None
 
