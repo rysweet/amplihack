@@ -24,6 +24,13 @@ _CLAUDE_HOOKS = (
 if _CLAUDE_HOOKS.exists():
     sys.path.insert(0, str(_CLAUDE_HOOKS.parent.parent))
 
+# Import shared utilities
+try:
+    from amplifier_bundle.modules._shared import load_user_preferences
+except ImportError:
+    # Fallback for standalone use
+    load_user_preferences = None
+
 
 class UserPromptHook(Hook):
     """Preprocesses user prompts with preferences and context injection."""
@@ -41,25 +48,9 @@ class UserPromptHook(Hook):
 
                 self._prompt_hook = user_prompt_submit
             except ImportError:
+                logger.debug("user_prompt_submit hook not available")
                 self._prompt_hook = False
         return self._prompt_hook if self._prompt_hook else None
-
-    def _load_user_preferences(self) -> str | None:
-        """Load user preferences from standard location."""
-        prefs_paths = [
-            Path.cwd() / "USER_PREFERENCES.md",
-            Path.cwd() / ".claude" / "USER_PREFERENCES.md",
-            Path.home() / ".claude" / "USER_PREFERENCES.md",
-        ]
-
-        for path in prefs_paths:
-            if path.exists():
-                try:
-                    return path.read_text()
-                except Exception as e:
-                    logger.debug(f"Failed to read preferences from {path}: {e}")
-                    continue
-        return None
 
     async def __call__(self, event: str, data: dict[str, Any]) -> HookResult | None:
         """Handle prompt:submit events to inject context."""
@@ -83,8 +74,8 @@ class UserPromptHook(Hook):
                     logger.debug(f"Claude Code prompt hook failed: {e}")
 
             # Fallback: inject user preferences directly
-            if not injections:
-                prefs = self._load_user_preferences()
+            if not injections and load_user_preferences:
+                prefs = load_user_preferences()
                 if prefs:
                     injections.append(f"<user-preferences>\n{prefs}\n</user-preferences>")
 

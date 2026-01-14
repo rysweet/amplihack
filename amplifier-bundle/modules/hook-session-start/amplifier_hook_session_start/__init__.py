@@ -30,6 +30,14 @@ if _CLAUDE_HOOKS.exists():
     sys.path.insert(0, str(_CLAUDE_HOOKS))
     sys.path.insert(0, str(_CLAUDE_HOOKS.parent))
 
+# Import shared utilities
+try:
+    from amplifier_bundle.modules._shared import load_project_context, load_user_preferences
+except ImportError:
+    # Fallback for standalone use
+    load_user_preferences = None
+    load_project_context = None
+
 
 class SessionStartHook(Hook):
     """Comprehensive session initialization hook."""
@@ -50,41 +58,6 @@ class SessionStartHook(Hook):
                 logger.debug(f"Claude Code session_start hook not available: {e}")
                 self._session_start_hook = False
         return self._session_start_hook if self._session_start_hook else None
-
-    def _load_user_preferences(self) -> str | None:
-        """Load user preferences from standard locations."""
-        prefs_paths = [
-            Path.cwd() / "USER_PREFERENCES.md",
-            Path.cwd() / ".claude" / "context" / "USER_PREFERENCES.md",
-            Path.home() / ".claude" / "USER_PREFERENCES.md",
-        ]
-
-        for path in prefs_paths:
-            if path.exists():
-                try:
-                    return path.read_text()
-                except Exception as e:
-                    logger.debug(f"Failed to read preferences from {path}: {e}")
-        return None
-
-    def _load_project_context(self) -> str | None:
-        """Load project-specific context if available."""
-        context_paths = [
-            Path.cwd() / ".claude" / "context" / "PHILOSOPHY.md",
-            Path.cwd() / ".claude" / "context" / "PATTERNS.md",
-            Path.cwd() / "CLAUDE.md",
-        ]
-
-        context_parts = []
-        for path in context_paths:
-            if path.exists():
-                try:
-                    content = path.read_text()
-                    context_parts.append(f"## {path.name}\n{content}")
-                except Exception as e:
-                    logger.debug(f"Failed to read context from {path}: {e}")
-
-        return "\n\n".join(context_parts) if context_parts else None
 
     async def __call__(self, event: str, data: dict[str, Any]) -> HookResult | None:
         """Handle session:start events for comprehensive initialization."""
@@ -117,18 +90,18 @@ class SessionStartHook(Hook):
             # Fallback: inject essentials if Claude Code hook unavailable
             if not injections:
                 # Load user preferences
-                prefs = self._load_user_preferences()
-                if prefs:
-                    injections.append(
-                        f"## USER PREFERENCES (MANDATORY)\n\n{prefs}"
-                    )
-                    metadata["preferences_injected"] = True
+                if load_user_preferences:
+                    prefs = load_user_preferences()
+                    if prefs:
+                        injections.append(f"## USER PREFERENCES (MANDATORY)\n\n{prefs}")
+                        metadata["preferences_injected"] = True
 
                 # Load project context
-                project_context = self._load_project_context()
-                if project_context:
-                    injections.append(f"## PROJECT CONTEXT\n\n{project_context}")
-                    metadata["project_context_injected"] = True
+                if load_project_context:
+                    project_context = load_project_context()
+                    if project_context:
+                        injections.append(f"## PROJECT CONTEXT\n\n{project_context}")
+                        metadata["project_context_injected"] = True
 
             if injections:
                 return HookResult(

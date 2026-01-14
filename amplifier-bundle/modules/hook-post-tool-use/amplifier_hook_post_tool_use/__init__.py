@@ -54,7 +54,7 @@ class PostToolUseHook(Hook):
                     register_context_hook()
                     logger.debug("Context management hook registered")
                 except ImportError:
-                    pass
+                    logger.debug("context_automation_hook not available")
 
             except ImportError as e:
                 logger.debug(f"Tool registry not available: {e}")
@@ -88,9 +88,7 @@ class PostToolUseHook(Hook):
             # Check for errors in file operations
             if tool_name in ["write_file", "edit_file"]:
                 if isinstance(result, dict) and result.get("error"):
-                    warnings.append(
-                        f"Tool {tool_name} encountered an error: {result.get('error')}"
-                    )
+                    warnings.append(f"Tool {tool_name} encountered an error: {result.get('error')}")
                     metadata["has_error"] = True
 
             # Execute registered tool hooks via registry

@@ -41,6 +41,7 @@ class PowerSteeringHook(Hook):
 
                 self._checker = PowerSteeringChecker()
             except ImportError:
+                logger.debug("PowerSteeringChecker not available")
                 self._checker = False  # Mark as unavailable
         return self._checker if self._checker else None
 
