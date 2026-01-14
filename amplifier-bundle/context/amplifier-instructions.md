@@ -7,8 +7,8 @@ This document provides Amplifier-specific guidance for the amplihack bundle.
 This is a **thin bundle** that references existing Claude Code components without duplication:
 
 - Skills, agents, and context are in `../.claude/`
-- Amplifier-specific modules are in `./modules/`
 - This bundle provides the packaging layer for Amplifier compatibility
+- No code duplication - same components work in both environments
 
 ## Using with Amplifier
 
@@ -23,20 +23,14 @@ includes:
   - bundle: git+https://github.com/rysweet/amplihack@main#amplifier-bundle
 ```
 
-## Module Integration
+## What's Referenced
 
-The following Amplifier modules are included:
-
-| Module | Type | Purpose |
-|--------|------|---------|
-| `tool-memory` | Tool | SQLite-backed agent memory |
-| `tool-lock` | Tool | File locking with debate resolution |
-| `tool-session-utils` | Tool | Fork management, instruction append |
-| `tool-workflow` | Tool | Workflow tracking and transcripts |
-| `tool-goal-agent-generator` | Tool | Goal-driven agent generation |
-| `hook-power-steering` | Hook | Session completion verification |
-| `hook-agent-memory` | Hook | Memory injection into context |
-| `hook-xpia-defense` | Hook | Prompt injection defense |
+| Component | Location | Count |
+|-----------|----------|-------|
+| Skills | `../.claude/skills/` | 73 |
+| Agents | `../.claude/agents/` | 3 |
+| Context | `../.claude/context/` | 3 files |
+| Workflows | `../.claude/workflow/` | 7 docs |
 
 ## Compatibility
 
@@ -45,3 +39,7 @@ This bundle maintains compatibility with both:
 - **Amplifier** - Via this bundle packaging
 
 The same skills, agents, and context work in both environments.
+
+## Future: Amplifier Modules
+
+Amplifier-specific tools and hooks will be added in future updates when properly ported from the existing Claude Code implementations in `.claude/tools/amplihack/`. These require conversion to Amplifier's module format with `mount()` entry points and `pyproject.toml` entry point registration.
