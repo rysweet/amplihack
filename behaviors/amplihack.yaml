@@ -1,0 +1,31 @@
+# Amplihack Behavior
+# Provides specialized agents and context for amplihack development workflows
+
+bundle:
+  name: amplihack-behavior
+  version: 1.0.0
+  description: |
+    Core amplihack behavior providing specialized development agents and
+    philosophy-driven context injection.
+
+# Amplihack-specific agents (unique to this bundle)
+agents:
+  include:
+    - amplihack:reviewer          # Code review specialist
+    - amplihack:tester            # Testing pyramid expert
+    - amplihack:optimizer         # Performance optimization
+    - amplihack:api-designer      # API contract specialist
+    - amplihack:analyzer          # TRIAGE/DEEP/SYNTHESIS analysis
+    - amplihack:ambiguity         # Requirements clarification
+    - amplihack:documentation-writer  # Diataxis framework docs
+    - amplihack:database          # Schema design expert
+    - amplihack:patterns          # Pattern recognition
+    - amplihack:diagnostics       # Pre-commit + CI failure resolver
+    - amplihack:worktree-manager  # Git worktree management
+    - amplihack:prompt-writer     # Requirements clarification
+
+# Context injection
+context:
+  include:
+    - amplihack:context/philosophy.md
+    - amplihack:context/instructions.md

@@ -1,0 +1,204 @@
+# Debate Workflow Recipe
+# Converted from amplihack's DEBATE_WORKFLOW.md (8 steps)
+# Multi-agent structured debate for complex decisions
+
+name: "debate-workflow"
+description: "Multi-agent structured debate for complex decisions requiring diverse perspectives. Uses thesis/antithesis/synthesis pattern with 3-7 perspectives."
+version: "1.0.0"
+author: "amplihack team"
+tags: ["debate", "decision", "multi-agent", "perspectives", "consensus"]
+
+context:
+  decision_topic: "{{user_decision}}"
+  num_perspectives: 3  # 3, 5, or 7
+  debate_rounds: 3     # 2-5
+  convergence: "synthesis"  # 100%, 2/3, synthesis, evidence
+
+recursion:
+  max_depth: 3
+  max_total_steps: 40
+
+steps:
+  - id: "step-1-frame"
+    agent: "foundation:zen-architect"
+    prompt: |
+      STEP 1: FRAME THE DECISION
+
+      Decision Topic: {{decision_topic}}
+
+      Frame the decision clearly before debate begins.
+
+      Tasks:
+      1. Define the decision to be made
+      2. Identify evaluation criteria
+      3. List known constraints
+      4. Define what "good decision" looks like
+      5. Identify stakeholders affected
+
+      Output:
+      - Decision statement
+      - Evaluation criteria (weighted)
+      - Constraints and boundaries
+      - Success metrics
+    output: "decision_frame"
+
+  - id: "step-2-perspectives"
+    agent: "foundation:zen-architect"
+    prompt: |
+      STEP 2: INITIALIZE PERSPECTIVES
+
+      Decision: {{decision_frame}}
+      Number of perspectives: {{num_perspectives}}
+
+      Standard perspectives to consider:
+
+      SECURITY:
+      - Focus: Vulnerabilities, attack vectors, data protection
+      - Questions: "What could go wrong? How prevent breaches?"
+
+      PERFORMANCE:
+      - Focus: Speed, scalability, resource efficiency
+      - Questions: "Will this scale? What are bottlenecks?"
+
+      SIMPLICITY:
+      - Focus: Minimal complexity, ruthless simplification
+      - Questions: "Is this simplest? Can we remove abstractions?"
+
+      MAINTAINABILITY:
+      - Focus: Long-term evolution, technical debt
+      - Questions: "Can future devs understand? How hard to change?"
+
+      USER EXPERIENCE:
+      - Focus: API design, usability, developer experience
+      - Questions: "Is this intuitive? How will users interact?"
+
+      Select {{num_perspectives}} most relevant perspectives for this decision.
+    output: "perspectives"
+
+  - id: "step-3-positions"
+    agent: "foundation:zen-architect"
+    prompt: |
+      STEP 3: INITIAL POSITIONS
+
+      Decision: {{decision_frame}}
+      Perspectives: {{perspectives}}
+
+      Each perspective provides independent analysis:
+
+      For each perspective:
+      1. State position on the decision
+      2. Provide evidence supporting position
+      3. Identify risks from their viewpoint
+      4. Propose approach they favor
+      5. List concerns about other approaches
+
+      CRITICAL: Arguments must be evidence-based, not opinion-based.
+    output: "initial_positions"
+
+  - id: "step-4-challenge"
+    agent: "foundation:zen-architect"
+    prompt: |
+      STEP 4: CHALLENGE AND RESPOND
+
+      Positions: {{initial_positions}}
+      Rounds: {{debate_rounds}}
+
+      Execute debate rounds:
+
+      For each round:
+      1. Each perspective challenges others' positions
+      2. Identify weaknesses in other arguments
+      3. Present counter-evidence
+      4. Respond to challenges against own position
+      5. Refine position based on valid challenges
+
+      Track:
+      - Points of genuine disagreement
+      - Areas where positions evolved
+      - Strongest arguments from each side
+    output: "debate_results"
+
+  - id: "step-5-common-ground"
+    agent: "foundation:zen-architect"
+    prompt: |
+      STEP 5: COMMON GROUND SYNTHESIS
+
+      Debate Results: {{debate_results}}
+
+      Identify areas of agreement:
+
+      1. Points all perspectives agree on
+      2. Non-negotiable requirements (security, performance, etc.)
+      3. Trade-offs everyone acknowledges
+      4. Approaches that satisfy multiple perspectives
+      5. Remaining genuine disagreements
+
+      Output synthesis of common ground and remaining disputes.
+    output: "common_ground"
+
+  - id: "step-6-facilitator"
+    agent: "foundation:zen-architect"
+    prompt: |
+      STEP 6: FACILITATOR SYNTHESIS
+
+      Decision Frame: {{decision_frame}}
+      Common Ground: {{common_ground}}
+      Debate Results: {{debate_results}}
+      Convergence Criteria: {{convergence}}
+
+      As neutral facilitator, synthesize the debate:
+
+      Based on convergence criteria ({{convergence}}):
+      - 100%: Identify unanimous agreement
+      - 2/3: Determine majority position
+      - synthesis: Create best hybrid approach
+      - evidence: Follow strongest arguments
+
+      Output:
+      - Recommended decision
+      - Rationale for recommendation
+      - How each perspective is addressed
+      - Trade-offs accepted
+      - Dissenting views and why overruled
+    output: "synthesis"
+
+  - id: "step-7-document"
+    agent: "foundation:zen-architect"
+    prompt: |
+      STEP 7: DECISION DOCUMENTATION
+
+      Synthesis: {{synthesis}}
+      Decision Frame: {{decision_frame}}
+
+      Document the decision for future reference:
+
+      Include:
+      1. Decision made
+      2. Full rationale
+      3. Perspectives considered
+      4. Arguments for and against
+      5. Trade-offs accepted
+      6. Dissenting views (preserve minority opinions)
+      7. Conditions that might change this decision
+      8. Implementation recommendations
+
+      This becomes an ADR (Architecture Decision Record).
+    output: "decision_document"
+
+  - id: "step-8-implementation"
+    agent: "foundation:modular-builder"
+    prompt: |
+      STEP 8: IMPLEMENTATION PLANNING
+
+      Decision: {{decision_document}}
+
+      Create implementation plan based on the decision:
+
+      1. Break decision into actionable tasks
+      2. Identify dependencies
+      3. Estimate effort
+      4. Assign to appropriate workflow
+      5. Define checkpoints to verify decision working
+
+      Output ready-to-execute implementation plan.
+    output: "implementation_plan"

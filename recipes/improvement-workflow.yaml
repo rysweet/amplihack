@@ -1,0 +1,783 @@
+# Improvement Workflow - 5-Stage Progressive Validation
+#
+# A workflow for implementing improvements with validation at each stage,
+# ensuring problems are understood, solutions are sound, and implementations work.
+#
+# Philosophy Alignment:
+#   - Validate problems before solving them
+#   - Design before implementing
+#   - Test before declaring done
+#   - Multiple validation gates prevent wasted effort
+#
+# Usage:
+#   amplifier recipes execute improvement-workflow.yaml \
+#     --context '{"improvement": "Reduce API response time", "target": "src/api/handlers.py", "success_metric": "<100ms p95 latency"}'
+#
+# Required Context:
+#   - improvement: The improvement to make
+#
+# Optional Context:
+#   - target: Target file/module/system
+#   - success_metric: How to measure success
+#   - constraints: Technical or business constraints
+
+name: "improvement-workflow"
+description: "5-stage progressive validation workflow for implementing improvements with gates at each stage"
+version: "1.0.0"
+author: "Amplifier Amplihack Bundle"
+tags: ["improvement", "validation", "progressive", "quality-gates"]
+
+context:
+  improvement: ""
+  target: ""
+  success_metric: ""
+  constraints: ""
+
+recursion:
+  max_depth: 2
+  max_total_steps: 60
+
+stages:
+  # ===========================================================================
+  # STAGE 1: PROBLEM VALIDATION
+  # Ensure we understand and can measure the problem
+  # ===========================================================================
+  - name: "problem-validation"
+    steps:
+      # Step 1.1: Problem Analysis
+      - id: "step-1-1-problem-analysis"
+        agent: "foundation:explorer"
+        prompt: |
+          # Stage 1.1: Problem Analysis
+          
+          Deeply understand the problem before attempting to solve it.
+          
+          **Proposed Improvement:** {{improvement}}
+          **Target:** {{target}}
+          **Success Metric:** {{success_metric}}
+          **Constraints:** {{constraints}}
+          
+          ## Investigation:
+          
+          ### 1. Problem Statement
+          What exactly is the problem?
+          - Current state description
+          - Pain points
+          - Who is affected
+          
+          ### 2. Evidence Gathering
+          What evidence confirms this is a real problem?
+          - Metrics or measurements
+          - User feedback
+          - Code analysis
+          
+          ### 3. Root Cause Analysis
+          What is the root cause (not just symptoms)?
+          - Why does this problem exist?
+          - When did it start/get worse?
+          - What contributes to it?
+          
+          ### 4. Scope Definition
+          - What's in scope for this improvement?
+          - What's explicitly out of scope?
+          - What are the boundaries?
+          
+          ### 5. Impact Assessment
+          - How important is this problem?
+          - What's the cost of not fixing it?
+          - Who benefits from the fix?
+          
+          Provide a thorough problem analysis.
+        output: "problem_analysis"
+        
+
+      # Step 1.2: Measurement Baseline
+      - id: "step-1-2-measurement-baseline"
+        agent: "foundation:zen-architect"
+        
+        prompt: |
+          # Stage 1.2: Measurement Baseline
+          
+          Establish how we'll measure improvement success.
+          
+          **Problem Analysis:**
+          {{problem_analysis}}
+          
+          **Proposed Success Metric:** {{success_metric}}
+          
+          ## Measurement Plan:
+          
+          ### 1. Current Baseline
+          What is the current measurable state?
+          - Quantitative metrics
+          - Qualitative assessments
+          - Benchmark data
+          
+          ### 2. Target State
+          What should the metrics be after improvement?
+          - Specific targets
+          - Acceptable ranges
+          - Stretch goals
+          
+          ### 3. Measurement Method
+          How will we measure?
+          - Tools/techniques
+          - Measurement frequency
+          - Data collection approach
+          
+          ### 4. Success Criteria
+          What constitutes success?
+          - Minimum viable improvement
+          - Good improvement
+          - Excellent improvement
+          
+          ### 5. Validation Plan
+          How will we know the improvement worked?
+          - Before/after comparison
+          - A/B testing approach
+          - Regression detection
+          
+          Output clear, measurable criteria.
+        output: "measurement_baseline"
+        
+
+      # Step 1.3: Problem Validation Check
+      - id: "step-1-3-validation-check"
+        agent: "foundation:zen-architect"
+        
+        prompt: |
+          # Stage 1.3: Problem Validation Gate
+          
+          Validate that the problem is worth solving.
+          
+          **Problem Analysis:**
+          {{problem_analysis}}
+          
+          **Measurement Baseline:**
+          {{measurement_baseline}}
+          
+          ## Validation Checklist:
+          
+          | Check | Pass/Fail | Evidence |
+          |-------|-----------|----------|
+          | Problem is clearly defined | | |
+          | Root cause identified | | |
+          | Problem is measurable | | |
+          | Baseline established | | |
+          | Success criteria defined | | |
+          | Impact justifies effort | | |
+          | Problem is solvable | | |
+          
+          ## Validation Decision:
+          
+          ```json
+          {
+            "validated": true/false,
+            "confidence": "high/medium/low",
+            "proceed": true/false,
+            "concerns": ["list of concerns if any"],
+            "recommendations": ["adjustments needed"]
+          }
+          ```
+          
+          Be rigorous. Don't proceed to design if the problem isn't validated.
+        output: "problem_validation"
+        
+        
+
+    approval:
+      required: true
+      prompt: |
+        === STAGE 1 COMPLETE: Problem Validation ===
+        
+        Problem Analysis:
+        {{problem_analysis}}
+        
+        Measurement Baseline:
+        {{measurement_baseline}}
+        
+        Validation Result:
+        {{problem_validation}}
+        
+        Review problem validation before proceeding to solution design.
+        Approve to proceed to solution design stage.
+      
+      default: "deny"
+
+  # ===========================================================================
+  # STAGE 2: SOLUTION DESIGN
+  # Design the solution before implementing
+  # ===========================================================================
+  - name: "solution-design"
+    steps:
+      # Step 2.1: Solution Options
+      - id: "step-2-1-solution-options"
+        agent: "foundation:zen-architect"
+        
+        prompt: |
+          # Stage 2.1: Solution Options Generation
+          
+          Generate multiple solution options.
+          
+          **Problem Analysis:**
+          {{problem_analysis}}
+          
+          **Measurement Baseline:**
+          {{measurement_baseline}}
+          
+          **Constraints:** {{constraints}}
+          
+          ## Generate 3 Solution Options:
+          
+          For each option:
+          
+          ### Option N: [Name]
+          
+          **Approach:**
+          High-level description of the approach.
+          
+          **How It Solves the Problem:**
+          Specific mechanism by which this addresses root cause.
+          
+          **Implementation Complexity:**
+          Low / Medium / High - with justification.
+          
+          **Risk Assessment:**
+          - What could go wrong?
+          - What are the unknowns?
+          
+          **Pros:**
+          - Advantage 1
+          - Advantage 2
+          
+          **Cons:**
+          - Disadvantage 1
+          - Disadvantage 2
+          
+          **Estimated Effort:**
+          Time/resources required.
+          
+          Generate genuinely different approaches, not variations of one idea.
+        output: "solution_options"
+        
+
+      # Step 2.2: Solution Selection
+      - id: "step-2-2-solution-selection"
+        agent: "foundation:zen-architect"
+        
+        prompt: |
+          # Stage 2.2: Solution Selection
+          
+          Select the best solution option.
+          
+          **Solution Options:**
+          {{solution_options}}
+          
+          **Problem Analysis:**
+          {{problem_analysis}}
+          
+          **Constraints:** {{constraints}}
+          
+          ## Selection Criteria:
+          
+          | Criterion | Weight | Option 1 | Option 2 | Option 3 |
+          |-----------|--------|----------|----------|----------|
+          | Effectiveness | 30% | | | |
+          | Simplicity | 25% | | | |
+          | Risk | 20% | | | |
+          | Effort | 15% | | | |
+          | Maintainability | 10% | | | |
+          
+          ## Analysis:
+          
+          ### Best Option: [Name]
+          
+          **Justification:**
+          Why this option is superior given the criteria.
+          
+          **Key Trade-offs Accepted:**
+          What we're giving up by choosing this option.
+          
+          **Risks to Monitor:**
+          Specific risks of this approach to watch for.
+          
+          **Fallback Plan:**
+          If this doesn't work, what's Plan B?
+        output: "selected_solution"
+        
+
+      # Step 2.3: Detailed Design
+      - id: "step-2-3-detailed-design"
+        agent: "foundation:zen-architect"
+        
+        prompt: |
+          # Stage 2.3: Detailed Design
+          
+          Create detailed design for the selected solution.
+          
+          **Selected Solution:**
+          {{selected_solution}}
+          
+          **Target:** {{target}}
+          
+          ## Detailed Design:
+          
+          ### 1. Architecture/Approach
+          - High-level structure
+          - Key components
+          - Interaction patterns
+          
+          ### 2. Implementation Steps
+          Ordered list of specific implementation steps.
+          
+          ### 3. Code Changes
+          - Files to modify
+          - New files to create
+          - Files to delete (if any)
+          
+          ### 4. Interface Changes
+          - API changes
+          - Function signature changes
+          - Configuration changes
+          
+          ### 5. Data Changes
+          - Schema changes
+          - Migration needs
+          - Data transformation
+          
+          ### 6. Testing Strategy
+          - Unit tests needed
+          - Integration tests
+          - Manual verification steps
+          
+          ### 7. Rollback Plan
+          How to undo this change if needed.
+          
+          ### 8. Dependencies
+          - External dependencies
+          - Internal dependencies
+          - Ordering constraints
+          
+          Provide enough detail to implement without guessing.
+        output: "detailed_design"
+        
+
+    approval:
+      required: true
+      prompt: |
+        === STAGE 2 COMPLETE: Solution Design ===
+        
+        Solution Options:
+        {{solution_options}}
+        
+        Selected Solution:
+        {{selected_solution}}
+        
+        Detailed Design:
+        {{detailed_design}}
+        
+        Review the design before implementation.
+        Approve to proceed to implementation stage.
+      
+      default: "deny"
+
+  # ===========================================================================
+  # STAGE 3: IMPLEMENTATION
+  # Execute the design
+  # ===========================================================================
+  - name: "implementation"
+    steps:
+      # Step 3.1: Implementation Execution
+      - id: "step-3-1-implementation"
+        agent: "foundation:modular-builder"
+        prompt: |
+          # Stage 3.1: Implementation
+          
+          Implement the designed solution.
+          
+          **Detailed Design:**
+          {{detailed_design}}
+          
+          **Target:** {{target}}
+          
+          ## Implementation Requirements:
+          
+          1. Follow the detailed design exactly
+          2. No stubs or placeholders (Zero-BS)
+          3. Include all necessary tests
+          4. Handle error cases
+          5. Add appropriate documentation
+          
+          ## For Each Change:
+          
+          ### File: [path]
+          
+          **Purpose:** Why this change is needed.
+          
+          **Before:** (if modifying)
+          ```
+          existing code
+          ```
+          
+          **After:**
+          ```
+          new/modified code
+          ```
+          
+          ### Tests:
+          
+          ```
+          test code for this change
+          ```
+          
+          Implement completely. No partial implementations.
+        output: "implementation"
+        
+
+      # Step 3.2: Self-Review
+      - id: "step-3-2-self-review"
+        agent: "foundation:zen-architect"
+        
+        prompt: |
+          # Stage 3.2: Implementation Self-Review
+          
+          Review the implementation for quality and completeness.
+          
+          **Design:**
+          {{detailed_design}}
+          
+          **Implementation:**
+          {{implementation}}
+          
+          ## Review Checklist:
+          
+          ### Design Compliance
+          - [ ] Follows detailed design
+          - [ ] All components implemented
+          - [ ] No design deviations without justification
+          
+          ### Code Quality
+          - [ ] No stubs or placeholders
+          - [ ] Error handling complete
+          - [ ] Edge cases handled
+          - [ ] Code is readable
+          
+          ### Testing
+          - [ ] Unit tests provided
+          - [ ] Tests cover key scenarios
+          - [ ] Tests are meaningful (not just coverage)
+          
+          ### Documentation
+          - [ ] Changes documented
+          - [ ] API docs updated (if applicable)
+          - [ ] Comments where needed
+          
+          ## Issues Found:
+          
+          List any issues with severity:
+          - CRITICAL: Must fix before proceeding
+          - MAJOR: Should fix before proceeding
+          - MINOR: Can fix later
+          
+          ## Verdict:
+          
+          ```json
+          {
+            "quality": "high/medium/low",
+            "issues_count": {"critical": 0, "major": 0, "minor": 0},
+            "ready_for_review": true/false,
+            "required_fixes": ["list if not ready"]
+          }
+          ```
+        output: "self_review"
+        
+        
+
+    approval:
+      required: true
+      prompt: |
+        === STAGE 3 COMPLETE: Implementation ===
+        
+        Implementation:
+        {{implementation}}
+        
+        Self-Review:
+        {{self_review}}
+        
+        Review the implementation before validation.
+        Approve to proceed to review stage.
+      
+      default: "deny"
+
+  # ===========================================================================
+  # STAGE 4: REVIEW
+  # External review and testing
+  # ===========================================================================
+  - name: "review"
+    steps:
+      # Step 4.1: Code Review
+      - id: "step-4-1-code-review"
+        agent: "foundation:security-guardian"
+        prompt: |
+          # Stage 4.1: Security and Quality Review
+          
+          Review the implementation for security and quality issues.
+          
+          **Implementation:**
+          {{implementation}}
+          
+          **Original Problem:**
+          {{problem_analysis}}
+          
+          ## Security Review:
+          
+          ### 1. Vulnerability Check
+          - Input validation issues
+          - Injection vulnerabilities
+          - Authentication/authorization gaps
+          - Data exposure risks
+          
+          ### 2. Security Best Practices
+          - Secure defaults
+          - Least privilege
+          - Defense in depth
+          
+          ## Quality Review:
+          
+          ### 1. Performance Impact
+          - Any performance regressions?
+          - Scalability concerns?
+          
+          ### 2. Maintainability
+          - Is this easy to understand?
+          - Is it easy to modify?
+          
+          ### 3. Compatibility
+          - Breaking changes?
+          - Backward compatibility?
+          
+          ## Issues Found:
+          
+          | Severity | Category | Issue | Location | Recommendation |
+          |----------|----------|-------|----------|----------------|
+          | | | | | |
+          
+          ## Review Verdict:
+          
+          ```json
+          {
+            "security_passed": true/false,
+            "quality_passed": true/false,
+            "blocking_issues": ["list"],
+            "recommendations": ["list"]
+          }
+          ```
+        output: "code_review"
+        
+        
+
+      # Step 4.2: Fix Review Issues
+      - id: "step-4-2-fix-issues"
+        condition: "{{code_review.blocking_issues}} != []"
+        agent: "foundation:modular-builder"
+        prompt: |
+          # Stage 4.2: Fix Review Issues
+          
+          Address blocking issues from code review.
+          
+          **Original Implementation:**
+          {{implementation}}
+          
+          **Blocking Issues:**
+          {{code_review.blocking_issues}}
+          
+          **Recommendations:**
+          {{code_review.recommendations}}
+          
+          ## For Each Blocking Issue:
+          
+          ### Issue: [description]
+          
+          **Root Cause:**
+          Why this issue exists.
+          
+          **Fix:**
+          ```
+          fixed code
+          ```
+          
+          **Verification:**
+          How to verify the fix works.
+          
+          Address all blocking issues. Output the updated implementation.
+        output: "fixed_implementation"
+        
+
+    approval:
+      required: true
+      prompt: |
+        === STAGE 4 COMPLETE: Review ===
+        
+        Code Review:
+        {{code_review}}
+        
+        Fixed Implementation (if applicable):
+        {{fixed_implementation}}
+        
+        Review the review results before final validation.
+        Approve to proceed to final validation.
+      
+      default: "deny"
+
+  # ===========================================================================
+  # STAGE 5: FINAL VALIDATION
+  # Verify the improvement achieved its goals
+  # ===========================================================================
+  - name: "final-validation"
+    steps:
+      # Step 5.1: Verification Testing
+      - id: "step-5-1-verification"
+        agent: "foundation:test-coverage"
+        prompt: |
+          # Stage 5.1: Verification Testing
+          
+          Verify the implementation meets the success criteria.
+          
+          **Measurement Baseline:**
+          {{measurement_baseline}}
+          
+          **Final Implementation:**
+          {{fixed_implementation}}
+          (or {{implementation}} if no fixes needed)
+          
+          ## Verification:
+          
+          ### 1. Test Execution
+          Run all tests and report results.
+          
+          ### 2. Success Metric Validation
+          Verify against defined success criteria:
+          - Baseline: [before]
+          - Target: [goal]
+          - Achieved: [after]
+          
+          ### 3. Regression Check
+          Ensure no regressions introduced.
+          
+          ### 4. Edge Case Testing
+          Test identified edge cases.
+          
+          ## Results:
+          
+          | Metric | Baseline | Target | Achieved | Pass/Fail |
+          |--------|----------|--------|----------|-----------|
+          | | | | | |
+          
+          ## Verification Verdict:
+          
+          ```json
+          {
+            "tests_passed": true/false,
+            "metrics_met": true/false,
+            "regressions_found": [],
+            "improvement_validated": true/false
+          }
+          ```
+        output: "verification_results"
+        
+        
+
+      # Step 5.2: Final Summary
+      - id: "step-5-2-final-summary"
+        agent: "foundation:zen-architect"
+        
+        prompt: |
+          # Stage 5.2: Final Summary
+          
+          Summarize the improvement outcome.
+          
+          **Original Improvement Request:** {{improvement}}
+          
+          **Problem Analysis:**
+          {{problem_analysis}}
+          
+          **Solution Selected:**
+          {{selected_solution}}
+          
+          **Verification Results:**
+          {{verification_results}}
+          
+          ## Improvement Summary:
+          
+          ### 1. What Was Accomplished
+          Brief summary of what was done.
+          
+          ### 2. Metrics Improvement
+          Before vs After comparison.
+          
+          ### 3. Key Changes Made
+          List of significant changes.
+          
+          ### 4. Validation Status
+          Did the improvement meet its goals?
+          
+          ### 5. Lessons Learned
+          What was learned during this improvement?
+          
+          ### 6. Future Recommendations
+          Any follow-up improvements suggested.
+          
+          ### 7. Documentation Updates Needed
+          What docs should be updated to reflect this change?
+          
+          ## Final Status:
+          
+          ```
+          Improvement: {{improvement}}
+          Status: SUCCESS / PARTIAL / NEEDS_WORK
+          Metrics Met: Yes / No / Partially
+          Ready for Deployment: Yes / No
+          ```
+        output: "final_summary"
+        
+
+    approval:
+      required: true
+      prompt: |
+        === STAGE 5 COMPLETE: Final Validation ===
+        
+        Verification Results:
+        {{verification_results}}
+        
+        Final Summary:
+        {{final_summary}}
+        
+        Review the final validation before completing.
+        Approve to complete the improvement workflow.
+      
+      default: "deny"
+
+# =============================================================================
+# Recipe Outputs Summary
+# =============================================================================
+#
+# Outputs:
+#   - problem_analysis: Deep problem understanding
+#   - measurement_baseline: Success metrics and baseline
+#   - problem_validation: Validation that problem is worth solving
+#   - solution_options: Multiple solution approaches
+#   - selected_solution: Chosen solution with justification
+#   - detailed_design: Implementation design
+#   - implementation: Actual code changes
+#   - self_review: Implementation self-assessment
+#   - code_review: Security and quality review
+#   - fixed_implementation: Issues addressed (if needed)
+#   - verification_results: Success metric validation
+#   - final_summary: Complete improvement summary
+#
+# Features:
+#   - 5 stages with approval gates
+#   - Progressive validation at each stage
+#   - Multiple review checkpoints
+#   - Metrics-driven success validation
+#   - Prevents wasted effort on wrong problems

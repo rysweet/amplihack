@@ -1,0 +1,17 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "amplifier-tool-lock"
+version = "0.1.0"
+description = "Lock tool for continuous work mode in Amplifier"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+
+[project.entry-points."amplifier.tools"]
+tool-lock = "amplifier_tool_lock:mount"
+
+[tool.hatch.build.targets.wheel]
+packages = ["amplifier_tool_lock"]

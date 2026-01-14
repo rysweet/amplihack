@@ -1,0 +1,118 @@
+# Power-Steering Considerations Configuration
+# ============================================
+#
+# Defines considerations for verifying session completeness.
+# Each consideration checks a specific aspect of the work.
+
+# Session Completion & Progress
+- id: todos_complete
+  category: Session Completion & Progress
+  question: Were all TODO items completed?
+  description: Verifies all TodoWrite items are marked as completed
+  severity: blocker
+  checker: _check_todos_complete
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT"]
+
+- id: objective_completion
+  category: Session Completion & Progress
+  question: Was original user objective fully accomplished?
+  description: Checks if the stated goal from first user message was achieved
+  severity: blocker
+  checker: _check_objective_completion
+  enabled: true
+  applicable_session_types: ["*"]
+
+- id: next_steps
+  category: Session Completion & Progress
+  question: Is work complete with no remaining next steps?
+  description: Blocks stopping if agent mentions "next steps" or "remaining work"
+  severity: blocker
+  checker: _check_next_steps
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT", "INVESTIGATION"]
+
+- id: documentation_updates
+  category: Session Completion & Progress
+  question: Were relevant documentation files updated?
+  description: Verifies README, docs, and inline documentation reflect changes
+  severity: warning
+  checker: _check_documentation_updates
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT", "MAINTENANCE", "INVESTIGATION"]
+
+# Workflow Process Adherence
+- id: dev_workflow_complete
+  category: Workflow Process Adherence
+  question: Was full development workflow followed?
+  description: Checks for evidence of workflow steps (design, implement, test, review)
+  severity: blocker
+  checker: _check_dev_workflow_complete
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT"]
+
+- id: investigation_docs
+  category: Workflow Process Adherence
+  question: Were investigation findings documented?
+  description: Ensures exploration work is captured in persistent documentation
+  severity: warning
+  checker: _check_investigation_docs
+  enabled: true
+  applicable_session_types: ["INVESTIGATION"]
+
+# Code Quality & Philosophy Compliance
+- id: philosophy_compliance
+  category: Code Quality & Philosophy Compliance
+  question: PHILOSOPHY adherence (zero-BS, no TODOs, no stubs)?
+  description: Detects anti-patterns like TODO comments, NotImplementedError, stub functions
+  severity: blocker
+  checker: _check_philosophy_compliance
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT", "MAINTENANCE"]
+
+- id: shortcuts
+  category: Code Quality & Philosophy Compliance
+  question: Were any quality shortcuts taken?
+  description: Identifies compromises like skipped error handling
+  severity: warning
+  checker: _check_shortcuts
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT"]
+
+# Testing & Local Validation
+- id: local_testing
+  category: Testing & Local Validation
+  question: Were tests executed locally?
+  description: Verifies tests were executed and passed locally
+  severity: blocker
+  checker: _check_local_testing
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT"]
+
+- id: interactive_testing
+  category: Testing & Local Validation
+  question: Did agent test interactively beyond automated tests?
+  description: Checks for manual verification, edge case testing
+  severity: warning
+  checker: _check_interactive_testing
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT"]
+
+# CI/CD & Mergeability Status
+- id: ci_status
+  category: CI/CD & Mergeability Status
+  question: CI passing/mergeable?
+  description: Verifies CI checks are passing
+  severity: blocker
+  checker: _check_ci_status
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT"]
+
+- id: branch_rebase
+  category: CI/CD & Mergeability Status
+  question: Does branch need rebase on main?
+  description: Checks if branch is behind main
+  severity: warning
+  checker: _check_branch_rebase
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT"]

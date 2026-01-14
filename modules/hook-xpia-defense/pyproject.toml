@@ -1,0 +1,17 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "amplifier-hook-xpia-defense"
+version = "0.1.0"
+description = "Cross-Prompt Injection Attack (XPIA) defense hook for Amplifier"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+
+[project.entry-points."amplifier.hooks"]
+hook-xpia-defense = "amplifier_hook_xpia_defense:mount"
+
+[tool.hatch.build.targets.wheel]
+packages = ["amplifier_hook_xpia_defense"]

@@ -1,0 +1,171 @@
+# Cascade Workflow Recipe
+# Converted from amplihack's CASCADE_WORKFLOW.md (7 steps)
+# Graceful degradation with 3-level fallback cascade
+
+name: "cascade-workflow"
+description: "Graceful degradation workflow with 3-level fallback cascade (primary → secondary → tertiary). System never completely fails."
+version: "1.0.0"
+author: "amplihack team"
+tags: ["cascade", "fallback", "resilience", "degradation", "reliability"]
+
+context:
+  operation: "{{user_operation}}"
+  timeout_strategy: "balanced"  # aggressive, balanced, patient, custom
+  fallback_type: "quality"      # service, quality, freshness, completeness, accuracy
+  notification: "warning"       # silent, warning, explicit
+
+recursion:
+  max_depth: 3
+  max_total_steps: 20
+
+steps:
+  - id: "step-1-define-levels"
+    agent: "foundation:zen-architect"
+    prompt: |
+      STEP 1: DEFINE CASCADE LEVELS
+
+      Operation: {{operation}}
+      Timeout Strategy: {{timeout_strategy}}
+      Fallback Type: {{fallback_type}}
+
+      Define the three cascade levels:
+
+      PRIMARY (Optimal):
+      - Best possible outcome
+      - May depend on external services
+      - Can fail or timeout
+
+      SECONDARY (Acceptable):
+      - Reduced quality but functional
+      - More reliable than primary
+      - Acceptable for users
+
+      TERTIARY (Guaranteed):
+      - ALWAYS succeeds, NEVER fails
+      - No external dependencies
+      - Minimal but functional
+
+      Timeout values based on strategy:
+      - aggressive: 5s / 2s / 1s
+      - balanced: 30s / 10s / 5s
+      - patient: 120s / 30s / 10s
+
+      CRITICAL: Ensure tertiary ALWAYS succeeds.
+
+      Output cascade level definitions with timeouts.
+    output: "cascade_levels"
+
+  - id: "step-2-primary"
+    agent: "foundation:modular-builder"
+    prompt: |
+      STEP 2: PRIMARY ATTEMPT
+
+      Cascade Levels: {{cascade_levels}}
+      Operation: {{operation}}
+
+      Execute the PRIMARY approach:
+      1. Attempt optimal solution
+      2. Monitor for timeout
+      3. Track success/failure
+
+      If PRIMARY succeeds:
+      - Report SUCCESS at PRIMARY level
+      - Skip to Step 5 (reporting)
+
+      If PRIMARY fails or times out:
+      - Report failure reason
+      - Proceed to SECONDARY
+    output: "primary_result"
+    on_error: continue
+
+  - id: "step-3-secondary"
+    agent: "foundation:modular-builder"
+    prompt: |
+      STEP 3: SECONDARY FALLBACK
+
+      Cascade Levels: {{cascade_levels}}
+      Primary Result: {{primary_result}}
+
+      Execute SECONDARY approach (acceptable degradation):
+      1. Use fallback approach
+      2. Accept reduced quality/freshness/completeness
+      3. Track what degraded
+
+      If SECONDARY succeeds:
+      - Report SUCCESS at SECONDARY level
+      - Document what degraded
+      - Skip to Step 5
+
+      If SECONDARY fails:
+      - Report failure reason
+      - Proceed to TERTIARY
+    output: "secondary_result"
+    on_error: continue
+
+  - id: "step-4-tertiary"
+    agent: "foundation:modular-builder"
+    prompt: |
+      STEP 4: TERTIARY GUARANTEE
+
+      Cascade Levels: {{cascade_levels}}
+      Secondary Result: {{secondary_result}}
+
+      Execute TERTIARY approach (guaranteed completion):
+      1. Use simplest possible approach
+      2. No external dependencies
+      3. MUST succeed
+
+      CRITICAL: This level CANNOT fail.
+      - Use cached data if needed
+      - Use static defaults if needed
+      - Return minimal but functional result
+
+      Report SUCCESS at TERTIARY level with degradation details.
+    output: "tertiary_result"
+
+  - id: "step-5-report"
+    agent: "foundation:zen-architect"
+    prompt: |
+      STEP 5: DEGRADATION REPORTING
+
+      Primary: {{primary_result}}
+      Secondary: {{secondary_result}}
+      Tertiary: {{tertiary_result}}
+      Notification Level: {{notification}}
+
+      Report degradation to user based on notification level:
+
+      - silent: Log only, no user notification
+      - warning: Inform user of degradation
+      - explicit: Detailed explanation of what degraded and why
+
+      Output user-appropriate degradation report.
+    output: "degradation_report"
+
+  - id: "step-6-metrics"
+    type: bash
+    command: |
+      echo "=== Cascade Metrics ==="
+      echo "Operation: {{operation}}"
+      echo "Timeout Strategy: {{timeout_strategy}}"
+      echo "Fallback Type: {{fallback_type}}"
+      echo "Metrics logged for optimization analysis"
+
+  - id: "step-7-optimize"
+    agent: "foundation:zen-architect"
+    prompt: |
+      STEP 7: CONTINUOUS OPTIMIZATION
+
+      Degradation Report: {{degradation_report}}
+      Cascade Levels: {{cascade_levels}}
+
+      Analyze cascade performance for optimization:
+
+      1. Was timeout appropriate?
+      2. Could PRIMARY succeed with more time?
+      3. Is SECONDARY too aggressive?
+      4. Are there patterns in failures?
+      5. Should cascade levels be adjusted?
+
+      Output recommendations for future cascade optimization.
+    output: "optimization_recommendations"
