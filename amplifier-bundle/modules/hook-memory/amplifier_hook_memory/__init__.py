@@ -41,6 +41,7 @@ class AgentMemoryHook(Hook):
 
                 self._memory_hook = agent_memory_hook
             except ImportError:
+                logger.debug("agent_memory_hook not available")
                 self._memory_hook = False
         return self._memory_hook if self._memory_hook else None
 
