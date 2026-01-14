@@ -151,6 +151,22 @@ class GitHubAuthManager:
 
         raise RuntimeError("Authorization timed out")
 
+    def _set_secure_permissions(self, path: Path, is_dir: bool = False) -> None:
+        """Set secure permissions on file or directory.
+
+        Args:
+            path: Path to secure
+            is_dir: True for directories (0700), False for files (0600)
+
+        Raises:
+            PermissionError: If permissions cannot be set
+        """
+        try:
+            mode = stat.S_IRWXU if is_dir else (stat.S_IRUSR | stat.S_IWUSR)
+            os.chmod(path, mode)
+        except PermissionError as e:
+            raise PermissionError(f"Unable to set secure permissions on {path}: {e}")
+
     def save_token(self, token: str, config_path: str | Path | None = None) -> None:
         """Save GitHub token to configuration with secure permissions.
 
@@ -175,9 +191,7 @@ class GitHubAuthManager:
                     f.write(f"\nGITHUB_TOKEN={token}\n")
 
                 # Set secure file permissions (0600 - owner read/write only)
-                os.chmod(config_path, stat.S_IRUSR | stat.S_IWUSR)
-            except PermissionError as e:
-                raise PermissionError(f"Unable to set secure permissions on {config_path}: {e}")
+                self._set_secure_permissions(config_path, is_dir=False)
             except IOError as e:
                 # File I/O errors are warnings (disk full, network issues)
                 print(f"Warning: Failed to save token to {config_path}: {e}")
@@ -191,10 +205,8 @@ class GitHubAuthManager:
             # Create directory with secure permissions (0700 - owner rwx only)
             if not config_dir.exists():
                 config_dir.mkdir(exist_ok=True)
-                os.chmod(config_dir, stat.S_IRWXU)
-            else:
-                # Update permissions on existing directory
-                os.chmod(config_dir, stat.S_IRWXU)
+            # Set secure directory permissions regardless of whether it was just created
+            self._set_secure_permissions(config_dir, is_dir=True)
 
             # Determine target file
             if config_path:
@@ -202,7 +214,7 @@ class GitHubAuthManager:
                 github_config = Path(config_path)
                 github_config.parent.mkdir(parents=True, exist_ok=True)
                 # Set secure directory permissions
-                os.chmod(github_config.parent, stat.S_IRWXU)
+                self._set_secure_permissions(github_config.parent, is_dir=True)
             else:
                 github_config = config_dir / "github.env"
 
@@ -213,11 +225,9 @@ class GitHubAuthManager:
                     f.write("GITHUB_COPILOT_ENABLED=true\n")
 
                 # Set secure file permissions (0600 - owner read/write only)
-                os.chmod(github_config, stat.S_IRUSR | stat.S_IWUSR)
+                self._set_secure_permissions(github_config, is_dir=False)
 
                 print(f"GitHub token saved to {github_config}")
-            except PermissionError as e:
-                raise PermissionError(f"Unable to set secure permissions on {github_config}: {e}")
             except IOError as e:
                 # File I/O errors are warnings (disk full, network issues)
                 print(f"Warning: Failed to save token: {e}")
