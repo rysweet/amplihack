@@ -93,6 +93,9 @@ class GitHubModelMapper:
             "copilot-gpt-3.5-turbo",
             "github-copilot-gpt-4",
             "github-copilot-gpt-3.5-turbo",
+            "claude-sonnet-4",
+            "claude-sonnet-4.5",
+            "claude-opus-4",
         ]
 
     def get_model_capabilities(self, model: str) -> dict[str, Any]:
@@ -193,7 +196,10 @@ class GitHubModelMapper:
             "gpt-4o": "copilot-gpt-4",
             "gpt-4o-mini": "copilot-gpt-3.5-turbo",
             "gpt-3.5-turbo": "copilot-gpt-3.5-turbo",
-            "claude-3-5-sonnet-20241022": "copilot-gpt-4",  # Fallback mapping
+            "claude-3-5-sonnet-20241022": "claude-sonnet-4",  # Legacy mapping
+            "claude-sonnet-4": "claude-sonnet-4",  # Pass through
+            "claude-sonnet-4.5": "claude-sonnet-4.5",  # Pass through
+            "claude-opus-4": "claude-opus-4",  # Pass through
         }
 
         return default_mappings.get(openai_model)
@@ -232,6 +238,15 @@ class GitHubModelMapper:
                     "context_window": 16384,
                     "max_output_tokens": 4096,
                     "function_calling": True,
+                }
+            )
+        elif "claude" in model.lower():
+            capabilities.update(
+                {
+                    "context_window": 200000,
+                    "max_output_tokens": 8192,
+                    "function_calling": True,
+                    "supports_images": True,  # Claude supports vision
                 }
             )
 
