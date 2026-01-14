@@ -352,6 +352,13 @@ Auto Mode Examples:
   amplihack claude --auto --max-turns 20 -- -p "refactor the API module"
   amplihack copilot --auto -- -p "add logging to all services"
   amplihack codex --auto -- -p "optimize database queries"
+  amplihack amplifier --auto -- -p "build a REST API"
+
+Amplifier Examples:
+  amplihack amplifier                              # Launch Amplifier with amplihack bundle
+  amplihack amplifier -- -p "explain this code"   # Non-interactive with prompt
+  amplihack amplifier --resume SESSION_ID         # Resume a session
+  amplihack amplifier --model gpt-4o              # Use specific model
 
 For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -399,6 +406,34 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     codex_parser = subparsers.add_parser("codex", help="Launch OpenAI Codex CLI")
     add_auto_mode_args(codex_parser)
     add_common_sdk_args(codex_parser)
+
+    # Amplifier command
+    amplifier_parser = subparsers.add_parser(
+        "amplifier", help="Launch Microsoft Amplifier with amplihack bundle"
+    )
+    amplifier_parser.add_argument(
+        "--resume",
+        metavar="SESSION_ID",
+        help="Resume an existing Amplifier session",
+    )
+    amplifier_parser.add_argument(
+        "--print",
+        action="store_true",
+        dest="print_mode",
+        help="Single response mode (no tool use, no conversation)",
+    )
+    amplifier_parser.add_argument(
+        "--model",
+        metavar="MODEL",
+        help="Model to use (e.g., claude-sonnet-4-20250514, gpt-4o)",
+    )
+    amplifier_parser.add_argument(
+        "--provider",
+        metavar="PROVIDER",
+        help="Provider to use (e.g., anthropic, openai, azure)",
+    )
+    add_auto_mode_args(amplifier_parser)
+    add_common_sdk_args(amplifier_parser)
 
     # UVX helper command
     uvx_parser = subparsers.add_parser("uvx-help", help="Get help with UVX deployment")
@@ -764,6 +799,51 @@ def main(argv: list[str] | None = None) -> int:
         # Normal codex launch
         has_prompt = claude_args and "-p" in claude_args
         return launch_codex(claude_args, interactive=not has_prompt)
+
+    elif args.command == "amplifier":
+        from .launcher.amplifier import launch_amplifier
+
+        # Handle append mode FIRST (before any other initialization)
+        if getattr(args, "append", None):
+            return handle_append_instruction(args)
+
+        # Handle --no-reflection flag (disable always wins priority)
+        if getattr(args, "no_reflection", False):
+            os.environ["AMPLIHACK_SKIP_REFLECTION"] = "1"
+
+        # Extract prompt from claude_args if provided via -p
+        prompt = None
+        if claude_args and "-p" in claude_args:
+            idx = claude_args.index("-p")
+            if idx + 1 < len(claude_args):
+                prompt = claude_args[idx + 1]
+
+        # Handle auto mode - Amplifier manages its own loop
+        if getattr(args, "auto", False):
+            if not prompt:
+                print(
+                    'Error: --auto requires a prompt. Use: amplihack amplifier --auto -- -p "your prompt"'
+                )
+                return 1
+            from .launcher.amplifier import launch_amplifier_auto
+
+            return launch_amplifier_auto(prompt, getattr(args, "max_turns", 10))
+
+        # Build additional args for amplifier
+        extra_args = []
+        if getattr(args, "model", None):
+            extra_args.extend(["--model", args.model])
+        if getattr(args, "provider", None):
+            extra_args.extend(["--provider", args.provider])
+
+        # Normal amplifier launch
+        return launch_amplifier(
+            args=extra_args + (claude_args or []),
+            interactive=not prompt,
+            prompt=prompt,
+            resume=getattr(args, "resume", None),
+            print_only=getattr(args, "print_mode", False),
+        )
 
     elif args.command == "uvx-help":
         from .commands.uvx_helper import find_uvx_installation_path, print_uvx_usage_instructions
