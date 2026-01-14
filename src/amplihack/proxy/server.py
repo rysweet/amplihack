@@ -120,6 +120,7 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
+GITHUB_API_KEY = os.environ.get("GITHUB_API_KEY") or GITHUB_TOKEN  # LiteLLM expects GITHUB_API_KEY
 
 # Get preferred provider (default to openai)
 PREFERRED_PROVIDER = os.environ.get("PREFERRED_PROVIDER", "openai").lower()
@@ -344,6 +345,9 @@ if not GITHUB_TOKEN:
 if GITHUB_TOKEN and GITHUB_COPILOT_ENABLED:
     # Set up LiteLLM environment variables for GitHub Copilot provider
     os.environ["GITHUB_TOKEN"] = GITHUB_TOKEN
+    # LiteLLM expects GITHUB_API_KEY for github_copilot provider
+    if GITHUB_API_KEY:
+        os.environ["GITHUB_API_KEY"] = GITHUB_API_KEY
     if not os.environ.get("GITHUB_API_BASE"):
         os.environ["GITHUB_API_BASE"] = "https://api.github.com"
     logger.info("GitHub Copilot LiteLLM integration enabled")
@@ -475,12 +479,16 @@ class MessagesRequest(BaseModel):
         # --- Mapping Logic --- START ---
         mapped = False
         # Determine provider based on configuration
-        # Use azure/ prefix for Azure models (LiteLLM requires this for Azure routing)
-        provider_prefix = "azure/"
-        if PREFERRED_PROVIDER == "google" and (
+        # Check if we should use GitHub Copilot for Claude models
+        if GITHUB_COPILOT_ENABLED and ("claude" in clean_v.lower() or clean_v in ["claude-sonnet-4", "claude-sonnet-4.5", "claude-opus-4"]):
+            provider_prefix = "github_copilot/"
+        elif PREFERRED_PROVIDER == "google" and (
             BIG_MODEL in GEMINI_MODELS or SMALL_MODEL in GEMINI_MODELS
         ):
             provider_prefix = "gemini/"
+        else:
+            # Use azure/ prefix for Azure models (LiteLLM requires this for Azure routing)
+            provider_prefix = "azure/"
 
         # Map Haiku to SMALL_MODEL based on provider preference
         if "haiku" in clean_v.lower():
@@ -497,8 +505,8 @@ class MessagesRequest(BaseModel):
             if clean_v in GEMINI_MODELS and not v.startswith("gemini/"):
                 new_model = f"gemini/{clean_v}"
                 mapped = True  # Technically mapped to add prefix
-            elif clean_v in GITHUB_COPILOT_MODELS and not v.startswith("github/"):
-                new_model = f"github/{clean_v}"
+            elif clean_v in GITHUB_COPILOT_MODELS and not (v.startswith("github/") or v.startswith("github_copilot/")):
+                new_model = f"github_copilot/{clean_v}"
                 mapped = True  # Technically mapped to add prefix
             elif clean_v in OPENAI_MODELS_FULL and not v.startswith("openai/"):
                 new_model = f"openai/{clean_v}"
@@ -509,7 +517,7 @@ class MessagesRequest(BaseModel):
             logger.debug(f"📌 MODEL MAPPING: '{original_model}' ➡️ '{new_model}'")
         else:
             # If no mapping occurred and no prefix exists, log warning or decide default
-            if not v.startswith(("openai/", "gemini/", "github/", "anthropic/")):
+            if not v.startswith(("openai/", "gemini/", "github/", "github_copilot/", "anthropic/")):
                 logger.warning(
                     f"⚠️ No prefix or mapping rule for model: '{original_model}'. Using as is."
                 )
@@ -554,12 +562,16 @@ class TokenCountRequest(BaseModel):
         # --- Mapping Logic --- START ---
         mapped = False
         # Determine provider based on configuration
-        # Use azure/ prefix for Azure models (LiteLLM requires this for Azure routing)
-        provider_prefix = "azure/"
-        if PREFERRED_PROVIDER == "google" and (
+        # Check if we should use GitHub Copilot for Claude models
+        if GITHUB_COPILOT_ENABLED and ("claude" in clean_v.lower() or clean_v in ["claude-sonnet-4", "claude-sonnet-4.5", "claude-opus-4"]):
+            provider_prefix = "github_copilot/"
+        elif PREFERRED_PROVIDER == "google" and (
             BIG_MODEL in GEMINI_MODELS or SMALL_MODEL in GEMINI_MODELS
         ):
             provider_prefix = "gemini/"
+        else:
+            # Use azure/ prefix for Azure models (LiteLLM requires this for Azure routing)
+            provider_prefix = "azure/"
 
         # Map Haiku to SMALL_MODEL based on provider preference
         if "haiku" in clean_v.lower():
@@ -576,8 +588,8 @@ class TokenCountRequest(BaseModel):
             if clean_v in GEMINI_MODELS and not v.startswith("gemini/"):
                 new_model = f"gemini/{clean_v}"
                 mapped = True  # Technically mapped to add prefix
-            elif clean_v in GITHUB_COPILOT_MODELS and not v.startswith("github/"):
-                new_model = f"github/{clean_v}"
+            elif clean_v in GITHUB_COPILOT_MODELS and not (v.startswith("github/") or v.startswith("github_copilot/")):
+                new_model = f"github_copilot/{clean_v}"
                 mapped = True  # Technically mapped to add prefix
             elif clean_v in OPENAI_MODELS_FULL and not v.startswith("openai/"):
                 new_model = f"openai/{clean_v}"
@@ -587,7 +599,7 @@ class TokenCountRequest(BaseModel):
         if mapped:
             logger.debug(f"📌 TOKEN COUNT MAPPING: '{original_model}' ➡️ '{new_model}'")
         else:
-            if not v.startswith(("openai/", "gemini/", "anthropic/")):
+            if not v.startswith(("openai/", "gemini/", "github/", "github_copilot/", "anthropic/")):
                 logger.warning(
                     f"⚠️ No prefix or mapping rule for token count model: '{original_model}'. Using as is."
                 )
@@ -828,8 +840,22 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> dict[str
     )
 
     # Initialize the LiteLLM request dict first to ensure we always return the right structure
+    # Check if we should route Claude models to GitHub Copilot
+    model_name = anthropic_request.model
+    
+    # If GitHub Copilot is enabled and this is a Claude model without a provider prefix
+    logger.warning(f"🔍 Model routing check: model='{model_name}', GITHUB_COPILOT_ENABLED={GITHUB_COPILOT_ENABLED}")
+    if (
+        GITHUB_COPILOT_ENABLED
+        and "/" not in model_name
+        and ("claude" in model_name.lower() or model_name in ["claude-sonnet-4", "claude-sonnet-4.5", "claude-opus-4"])
+    ):
+        logger.warning(f"🔀 Routing Claude model '{model_name}' to GitHub Copilot")
+        # Use github_copilot/ prefix with underscore (not github/)
+        model_name = f"github_copilot/{model_name}"
+    
     litellm_request = {
-        "model": anthropic_request.model,  # it understands "anthropic/claude-x" format
+        "model": model_name,  # it understands "anthropic/claude-x" and "github/model-x" format
         "messages": [],
         "max_tokens": max_tokens_value,
         "temperature": temperature,
@@ -1831,8 +1857,14 @@ async def create_message(request: MessagesRequest, raw_request: Request):
         elif request.model.startswith("gemini/"):
             litellm_request["api_key"] = GEMINI_API_KEY
             logger.debug(f"Using Gemini API key for model: {request.model}")
-        elif request.model.startswith("github/"):
+        elif request.model.startswith("github/") or request.model.startswith("github_copilot/"):
             litellm_request["api_key"] = GITHUB_TOKEN
+            # Add GitHub Copilot specific headers
+            if request.model.startswith("github_copilot/"):
+                litellm_request["extra_headers"] = {
+                    "editor-version": "vscode/1.95.0",
+                    "editor-plugin-version": "copilot-chat/0.26.7"
+                }
             logger.debug(f"Using GitHub token for model: {request.model}")
         else:
             litellm_request["api_key"] = ANTHROPIC_API_KEY
