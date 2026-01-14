@@ -101,17 +101,9 @@ context:
     # Amplifier-specific context
     - context/amplifier-instructions.md
 
-modules:
-  tools:
-    - modules/tool-memory
-    - modules/tool-lock
-    - modules/tool-session-utils
-    - modules/tool-workflow
-    - modules/tool-goal-agent-generator
-  hooks:
-    - modules/hook-power-steering
-    - modules/hook-agent-memory
-    - modules/hook-xpia-defense
+# NOTE: Amplifier-specific modules (tools/hooks) will be added in a future PR
+# when properly ported to Amplifier module format with mount() entry points.
+# Existing implementations in .claude/tools/amplihack/ are Claude Code format.
 ---
 
 # Amplihack - Amplifier Bundle
@@ -126,12 +118,12 @@ This bundle provides a thin Amplifier packaging layer that references the existi
 
 ### From Claude Code (referenced, not duplicated)
 - **73 Skills** - Domain expertise, workflow patterns, technical capabilities
-- **Agents** - Specialized agents for concept extraction, insight synthesis, archaeology
+- **3 Agents** - Concept extraction, insight synthesis, knowledge archaeology
 - **Context** - Philosophy, patterns, trust guidelines
+- **Workflows** - Q&A, Investigation, Default development workflows
 
 ### Amplifier-Specific (in this bundle)
-- **8 Modules** - Tools and hooks for memory, locking, sessions, workflows, XPIA defense
-- **Behaviors** - Amplihack behavior configuration
+- **Behaviors** - Amplihack behavior configuration with workflow selection
 - **Context** - Amplifier-specific instructions
 
 ## Usage
@@ -147,4 +139,12 @@ includes:
 
 ## Philosophy
 
-This bundle follows the "thin bundle" pattern - it's a lightweight overlay that enables Amplifier compatibility while reusing existing Claude Code components. No duplication, clean separation.
+This bundle follows the "thin bundle" pattern:
+- Lightweight overlay enabling Amplifier compatibility
+- References existing Claude Code components (no duplication)
+- Clean separation of concerns
+- Same components work in both Claude Code and Amplifier
+
+## Future Work
+
+Amplifier-specific modules (tools/hooks) will be added when properly ported to Amplifier module format. The existing implementations in `.claude/tools/amplihack/` use Claude Code format and require conversion to Amplifier's `mount()` entry point pattern.
