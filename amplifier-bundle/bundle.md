@@ -14,7 +14,7 @@ behaviors:
 
 # Reference existing Claude Code components via relative paths - NO DUPLICATION
 skills:
-  # Domain analyst skills
+  # Domain analyst skills (23)
   anthropologist-analyst: { path: ../.claude/skills/anthropologist-analyst/SKILL.md }
   biologist-analyst: { path: ../.claude/skills/biologist-analyst/SKILL.md }
   chemist-analyst: { path: ../.claude/skills/chemist-analyst/SKILL.md }
@@ -39,7 +39,7 @@ skills:
   sociologist-analyst: { path: ../.claude/skills/sociologist-analyst/SKILL.md }
   urban-planner-analyst: { path: ../.claude/skills/urban-planner-analyst/SKILL.md }
   
-  # Workflow skills
+  # Workflow skills (6)
   cascade-workflow: { path: ../.claude/skills/cascade-workflow/SKILL.md }
   consensus-voting: { path: ../.claude/skills/consensus-voting/SKILL.md }
   debate-workflow: { path: ../.claude/skills/debate-workflow/SKILL.md }
@@ -47,7 +47,7 @@ skills:
   investigation-workflow: { path: ../.claude/skills/investigation-workflow/SKILL.md }
   n-version-workflow: { path: ../.claude/skills/n-version-workflow/SKILL.md }
   
-  # Technical skills
+  # Technical skills (18)
   agent-sdk: { path: ../.claude/skills/agent-sdk/SKILL.md }
   azure-admin: { path: ../.claude/skills/azure-admin/SKILL.md }
   azure-devops: { path: ../.claude/skills/azure-devops/SKILL.md }
@@ -67,13 +67,13 @@ skills:
   skill-builder: { path: ../.claude/skills/skill-builder/SKILL.md }
   test-gap-analyzer: { path: ../.claude/skills/test-gap-analyzer/SKILL.md }
   
-  # Document processing
+  # Document processing (4)
   docx: { path: ../.claude/skills/docx/SKILL.md }
   pdf: { path: ../.claude/skills/pdf/SKILL.md }
   pptx: { path: ../.claude/skills/pptx/SKILL.md }
   xlsx: { path: ../.claude/skills/xlsx/SKILL.md }
   
-  # Meta skills
+  # Meta skills (11)
   backlog-curator: { path: ../.claude/skills/backlog-curator/skill.md }
   knowledge-extractor: { path: ../.claude/skills/knowledge-extractor/SKILL.md }
   learning-path-builder: { path: ../.claude/skills/learning-path-builder/SKILL.md }
@@ -87,10 +87,49 @@ skills:
   workstream-coordinator: { path: ../.claude/skills/workstream-coordinator/skill.md }
 
 agents:
-  # Reference existing Claude Code agents
+  # Top-level agents (3)
   concept-extractor: { path: ../.claude/agents/concept-extractor.md }
   insight-synthesizer: { path: ../.claude/agents/insight-synthesizer.md }
   knowledge-archaeologist: { path: ../.claude/agents/knowledge-archaeologist.md }
+  
+  # Core agents (6)
+  api-designer: { path: ../.claude/agents/amplihack/core/api-designer.md }
+  architect: { path: ../.claude/agents/amplihack/core/architect.md }
+  builder: { path: ../.claude/agents/amplihack/core/builder.md }
+  optimizer: { path: ../.claude/agents/amplihack/core/optimizer.md }
+  reviewer: { path: ../.claude/agents/amplihack/core/reviewer.md }
+  tester: { path: ../.claude/agents/amplihack/core/tester.md }
+  
+  # Specialized agents (25)
+  ambiguity: { path: ../.claude/agents/amplihack/specialized/ambiguity.md }
+  amplifier-cli-architect: { path: ../.claude/agents/amplihack/specialized/amplifier-cli-architect.md }
+  analyzer: { path: ../.claude/agents/amplihack/specialized/analyzer.md }
+  azure-kubernetes-expert: { path: ../.claude/agents/amplihack/specialized/azure-kubernetes-expert.md }
+  ci-diagnostic-workflow: { path: ../.claude/agents/amplihack/specialized/ci-diagnostic-workflow.md }
+  cleanup: { path: ../.claude/agents/amplihack/specialized/cleanup.md }
+  database: { path: ../.claude/agents/amplihack/specialized/database.md }
+  documentation-writer: { path: ../.claude/agents/amplihack/specialized/documentation-writer.md }
+  fallback-cascade: { path: ../.claude/agents/amplihack/specialized/fallback-cascade.md }
+  fix-agent: { path: ../.claude/agents/amplihack/specialized/fix-agent.md }
+  integration: { path: ../.claude/agents/amplihack/specialized/integration.md }
+  knowledge-archaeologist-specialized: { path: ../.claude/agents/amplihack/specialized/knowledge-archaeologist.md }
+  memory-manager: { path: ../.claude/agents/amplihack/specialized/memory-manager.md }
+  multi-agent-debate: { path: ../.claude/agents/amplihack/specialized/multi-agent-debate.md }
+  n-version-validator: { path: ../.claude/agents/amplihack/specialized/n-version-validator.md }
+  patterns: { path: ../.claude/agents/amplihack/specialized/patterns.md }
+  philosophy-guardian: { path: ../.claude/agents/amplihack/specialized/philosophy-guardian.md }
+  pre-commit-diagnostic: { path: ../.claude/agents/amplihack/specialized/pre-commit-diagnostic.md }
+  preference-reviewer: { path: ../.claude/agents/amplihack/specialized/preference-reviewer.md }
+  prompt-writer: { path: ../.claude/agents/amplihack/specialized/prompt-writer.md }
+  rust-programming-expert: { path: ../.claude/agents/amplihack/specialized/rust-programming-expert.md }
+  security: { path: ../.claude/agents/amplihack/specialized/security.md }
+  visualization-architect: { path: ../.claude/agents/amplihack/specialized/visualization-architect.md }
+  worktree-manager: { path: ../.claude/agents/amplihack/specialized/worktree-manager.md }
+  xpia-defense: { path: ../.claude/agents/amplihack/specialized/xpia-defense.md }
+  
+  # Workflow agents (2)
+  amplihack-improvement-workflow: { path: ../.claude/agents/amplihack/workflows/amplihack-improvement-workflow.md }
+  prompt-review-workflow: { path: ../.claude/agents/amplihack/workflows/prompt-review-workflow.md }
 
 context:
   include:
@@ -101,9 +140,20 @@ context:
     # Amplifier-specific context
     - context/amplifier-instructions.md
 
-# NOTE: Amplifier-specific modules (tools/hooks) will be added in a future PR
-# when properly ported to Amplifier module format with mount() entry points.
-# Existing implementations in .claude/tools/amplihack/ are Claude Code format.
+# Amplifier hook modules (wrappers around Claude Code hooks)
+# These wrap existing .claude/tools/amplihack/hooks/ implementations
+modules:
+  hooks:
+    - modules/hook-power-steering    # Session completion verification
+    - modules/hook-memory            # Agent memory injection/extraction
+    - modules/hook-pre-tool-use      # Dangerous operation blocking
+    - modules/hook-pre-compact       # Transcript export before compaction
+    - modules/hook-user-prompt       # User preferences injection
+
+# Hooks already covered by Amplifier foundation (no wrapper needed):
+# - session_start/stop → hooks-logging
+# - post_tool_use → hooks-logging, hooks-streaming-ui  
+# - workflow_tracker → hooks-todo-reminder
 ---
 
 # Amplihack - Amplifier Bundle
@@ -117,14 +167,30 @@ This bundle provides a thin Amplifier packaging layer that references the existi
 ## What's Included
 
 ### From Claude Code (referenced, not duplicated)
-- **73 Skills** - Domain expertise, workflow patterns, technical capabilities
-- **3 Agents** - Concept extraction, insight synthesis, knowledge archaeology
+- **62 Skills** - Domain expertise, workflow patterns, technical capabilities
+- **36 Agents** - Core, specialized, and workflow agents
 - **Context** - Philosophy, patterns, trust guidelines
 - **Workflows** - Q&A, Investigation, Default development workflows
 
 ### Amplifier-Specific (in this bundle)
+- **5 Hook Modules** - Wrappers around Claude Code hooks for Amplifier compatibility
 - **Behaviors** - Amplihack behavior configuration with workflow selection
 - **Context** - Amplifier-specific instructions
+
+## Hook Mapping
+
+| Amplifier Module | Wraps Claude Code Hook | Purpose |
+|------------------|----------------------|---------|
+| `hook-power-steering` | `power_steering_*.py` | Session completion verification |
+| `hook-memory` | `agent_memory_hook.py` | Persistent memory across sessions |
+| `hook-pre-tool-use` | `pre_tool_use.py` | Block dangerous operations |
+| `hook-pre-compact` | `pre_compact.py` | Export transcript before compaction |
+| `hook-user-prompt` | `user_prompt_submit.py` | Inject user preferences |
+
+**Already covered by Amplifier foundation** (no wrapper needed):
+- `session_start/stop` → `hooks-logging`
+- `post_tool_use` → `hooks-logging`, `hooks-streaming-ui`
+- `workflow_tracker` → `hooks-todo-reminder`
 
 ## Usage
 
@@ -142,9 +208,5 @@ includes:
 This bundle follows the "thin bundle" pattern:
 - Lightweight overlay enabling Amplifier compatibility
 - References existing Claude Code components (no duplication)
-- Clean separation of concerns
+- Wrapper modules delegate to existing Claude Code implementations
 - Same components work in both Claude Code and Amplifier
-
-## Future Work
-
-Amplifier-specific modules (tools/hooks) will be added when properly ported to Amplifier module format. The existing implementations in `.claude/tools/amplihack/` use Claude Code format and require conversion to Amplifier's `mount()` entry point pattern.
