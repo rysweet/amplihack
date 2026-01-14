@@ -1,5 +1,7 @@
 """GitHub OAuth device flow authentication for Copilot API."""
 
+import os
+import stat
 import subprocess
 import time
 from pathlib import Path
@@ -149,32 +151,78 @@ class GitHubAuthManager:
 
         raise RuntimeError("Authorization timed out")
 
-    def save_token(self, token: str, config_path: Path | None = None) -> None:
-        """Save GitHub token to configuration.
+    def save_token(self, token: str, config_path: str | Path | None = None) -> None:
+        """Save GitHub token to configuration with secure permissions.
+
+        Sets file permissions to 0600 (read/write for owner only) and
+        directory permissions to 0700 (rwx for owner only).
 
         Args:
             token: GitHub access token
-            config_path: Path to save token (optional)
+            config_path: Path to save token (optional, can be string or Path)
+
+        Raises:
+            PermissionError: If unable to set secure permissions
         """
+        # Convert string path to Path object if needed
+        if isinstance(config_path, str):
+            config_path = Path(config_path)
+
         if config_path and config_path.exists():
             # Add token to existing config file
             try:
                 with open(config_path, "a") as f:
                     f.write(f"\nGITHUB_TOKEN={token}\n")
-            except Exception as e:
+
+                # Set secure file permissions (0600 - owner read/write only)
+                os.chmod(config_path, stat.S_IRUSR | stat.S_IWUSR)
+            except PermissionError as e:
+                raise PermissionError(f"Unable to set secure permissions on {config_path}: {e}")
+            except IOError as e:
+                # File I/O errors are warnings (disk full, network issues)
+                print(f"Warning: Failed to save token to {config_path}: {e}")
+            except OSError as e:
+                # OS-level errors are warnings (filesystem issues)
                 print(f"Warning: Failed to save token to {config_path}: {e}")
         else:
             # Save to default location
             config_dir = Path.home() / ".amplihack"
-            config_dir.mkdir(exist_ok=True)
 
-            github_config = config_dir / "github.env"
+            # Create directory with secure permissions (0700 - owner rwx only)
+            if not config_dir.exists():
+                config_dir.mkdir(exist_ok=True)
+                os.chmod(config_dir, stat.S_IRWXU)
+            else:
+                # Update permissions on existing directory
+                os.chmod(config_dir, stat.S_IRWXU)
+
+            # Determine target file
+            if config_path:
+                # User specified a path that doesn't exist yet - create parent dirs
+                github_config = Path(config_path)
+                github_config.parent.mkdir(parents=True, exist_ok=True)
+                # Set secure directory permissions
+                os.chmod(github_config.parent, stat.S_IRWXU)
+            else:
+                github_config = config_dir / "github.env"
+
             try:
+                # Write token file
                 with open(github_config, "w") as f:
                     f.write(f"GITHUB_TOKEN={token}\n")
                     f.write("GITHUB_COPILOT_ENABLED=true\n")
+
+                # Set secure file permissions (0600 - owner read/write only)
+                os.chmod(github_config, stat.S_IRUSR | stat.S_IWUSR)
+
                 print(f"GitHub token saved to {github_config}")
-            except Exception as e:
+            except PermissionError as e:
+                raise PermissionError(f"Unable to set secure permissions on {github_config}: {e}")
+            except IOError as e:
+                # File I/O errors are warnings (disk full, network issues)
+                print(f"Warning: Failed to save token: {e}")
+            except OSError as e:
+                # OS-level errors are warnings (filesystem issues)
                 print(f"Warning: Failed to save token: {e}")
 
     def _verify_copilot_access(self, token: str) -> bool:
