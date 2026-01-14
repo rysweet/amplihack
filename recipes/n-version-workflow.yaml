@@ -1,0 +1,186 @@
+# N-Version Programming Workflow Recipe
+# Converted from amplihack's N_VERSION_WORKFLOW.md (7 steps)
+# Generate multiple independent implementations and select best
+
+name: "n-version-workflow"
+description: "N-version programming for critical code - generate multiple independent implementations and select best through systematic comparison."
+version: "1.0.0"
+author: "amplihack team"
+tags: ["n-version", "critical", "parallel", "comparison", "selection"]
+
+context:
+  task: "{{user_task}}"
+  n_versions: 3  # 2-6
+  selection_criteria:
+    - correctness
+    - security
+    - simplicity
+    - philosophy
+    - performance
+
+recursion:
+  max_depth: 3
+  max_total_steps: 40
+
+steps:
+  - id: "step-1-context"
+    agent: "foundation:zen-architect"
+    prompt: |
+      STEP 1: COMMON CONTEXT PREPARATION
+
+      Task: {{task}}
+      Number of versions: {{n_versions}}
+
+      Prepare shared context for all implementations:
+
+      1. Define clear specification all versions must meet
+      2. Create shared test cases for validation
+      3. Document constraints and requirements
+      4. Define evaluation criteria (in priority order):
+         - Correctness: Meets all requirements and passes tests
+         - Security: No vulnerabilities or anti-patterns
+         - Simplicity: Ruthless simplicity, minimal complexity
+         - Philosophy: Follows project principles
+         - Performance: Efficiency and resource usage
+
+      CRITICAL: All implementations must be INDEPENDENT - no sharing of implementation details between versions.
+
+      Output shared specification and test cases.
+    output:
+      shared_context
+
+  - id: "step-2-implementations"
+    agent: "amplihack:n-version-validator"
+    prompt: |
+      STEP 2: N INDEPENDENT IMPLEMENTATIONS
+
+      Shared Context: {{steps.step-1-context.shared_context}}
+      N = {{n_versions}}
+
+      Generate {{n_versions}} INDEPENDENT implementations:
+
+      For each version, use a different approach profile:
+      - conservative: Proven patterns and safety
+      - innovative: Novel approaches and optimizations
+      - minimalist: Ruthless simplicity
+      - pragmatic: Balanced trade-offs
+      - performance-focused: Speed and efficiency
+
+      CRITICAL: Each implementation must be developed independently without knowledge of other versions.
+
+      Output all {{n_versions}} implementations with their approach profiles.
+    output:
+      implementations
+
+  - id: "step-3-compare"
+    agent: "amplihack:analyzer"
+    prompt: |
+      STEP 3: COLLECTION AND COMPARISON
+
+      Implementations: {{steps.step-2-implementations.implementations}}
+      Shared Context: {{steps.step-1-context.shared_context}}
+
+      Compare all implementations:
+
+      1. Run shared test cases against each version
+      2. Measure correctness (tests passed)
+      3. Analyze security (vulnerabilities found)
+      4. Score simplicity (complexity metrics)
+      5. Check philosophy compliance
+      6. Benchmark performance
+
+      Create comparison matrix with scores for each criterion.
+    output:
+      comparison
+
+  - id: "step-4-evaluate"
+    agent: "amplihack:reviewer"
+    prompt: |
+      STEP 4: REVIEW AND EVALUATION
+
+      Comparison: {{steps.step-3-compare.comparison}}
+      Implementations: {{steps.step-2-implementations.implementations}}
+
+      Expert review of each implementation:
+
+      1. Code quality assessment
+      2. Edge case handling
+      3. Error handling robustness
+      4. Maintainability analysis
+      5. Philosophy compliance deep-dive
+
+      For each implementation, provide:
+      - Strengths
+      - Weaknesses
+      - Unique insights
+      - Recommendation score (1-10)
+    output:
+      evaluation
+
+  - id: "step-5-select"
+    agent: "foundation:zen-architect"
+    prompt: |
+      STEP 5: SELECTION OR SYNTHESIS
+
+      Evaluation: {{steps.step-4-evaluate.evaluation}}
+      Comparison: {{steps.step-3-compare.comparison}}
+
+      Make final selection decision:
+
+      Option A: SELECT BEST
+      - Choose the implementation with best overall score
+      - Prioritize: correctness > security > simplicity > philosophy > performance
+
+      Option B: SYNTHESIZE HYBRID
+      - If multiple versions have complementary strengths
+      - Combine best aspects into hybrid solution
+      - Ensure hybrid passes all tests
+
+      Output:
+      - Selected approach (single or hybrid)
+      - Rationale for selection
+      - What was learned from rejected versions
+    output:
+      selection
+
+  - id: "step-6-finalize"
+    agent: "foundation:modular-builder"
+    prompt: |
+      STEP 6: FINAL IMPLEMENTATION
+
+      Selection: {{steps.step-5-select.selection}}
+      Shared Context: {{steps.step-1-context.shared_context}}
+
+      Finalize the selected implementation:
+
+      1. Apply any refinements from evaluation insights
+      2. Ensure all tests pass
+      3. Add any edge case handling identified during comparison
+      4. Polish code quality
+      5. Verify philosophy compliance
+
+      Output production-ready implementation.
+    output:
+      final_implementation
+
+  - id: "step-7-document"
+    agent: "amplihack:documentation-writer"
+    prompt: |
+      STEP 7: LEARNING DOCUMENTATION
+
+      Selection: {{steps.step-5-select.selection}}
+      Evaluation: {{steps.step-4-evaluate.evaluation}}
+      All Implementations: {{steps.step-2-implementations.implementations}}
+
+      Document learnings for future reference:
+
+      1. Why selected approach was chosen
+      2. Insights from rejected versions
+      3. Trade-offs discovered
+      4. Patterns to reuse
+      5. Anti-patterns to avoid
+      6. When to use each approach profile
+
+      This becomes a knowledge artifact for future N-version decisions.
+    output:
+      learnings

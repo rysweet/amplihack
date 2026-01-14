@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "amplifier-tool-goal-agent-generator"
+version = "1.0.0"
+description = "Goal Agent Generator - Create specialized agents from natural language goals"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+keywords = ["amplifier", "tool", "goal", "agent", "generator"]
+authors = [
+    { name = "amplihack team" }
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "amplifier-core>=0.1.0",
+]
+
+[project.entry-points."amplifier.tools"]
+goal-agent-generator = "tool_goal_agent_generator.tool:GoalAgentGeneratorTool"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tool_goal_agent_generator"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+ignore = ["E501"]
+
+[tool.pyright]
+pythonVersion = "3.11"
+typeCheckingMode = "basic"

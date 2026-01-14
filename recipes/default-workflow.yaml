@@ -1,0 +1,322 @@
+# Default Workflow Recipe - FLAT VERSION
+# Standard 22-step workflow for feature development, bug fixes, and refactoring
+# Autonomous execution without approval gates
+
+name: "default-workflow"
+description: "Standard 22-step workflow for feature development. Follows amplihack philosophy: ruthless simplicity, zero-BS implementation, test-driven development."
+version: "1.1.0"
+author: "amplihack team"
+tags: ["development", "workflow", "feature", "bugfix", "refactoring"]
+
+context:
+  task_description: "{{user_task}}"
+  branch_prefix: "feat"
+
+recursion:
+  max_depth: 5
+  max_total_steps: 50
+
+steps:
+  # Phase 1: Requirements & Planning
+  - id: "step-0-preparation"
+    agent: "foundation:zen-architect"
+    prompt: |
+      MANDATORY WORKFLOW PREPARATION
+
+      Task: {{task_description}}
+
+      You MUST:
+      1. Understand all 22 steps before starting
+      2. Create detailed todos for ALL steps (0-21)
+      3. Identify which steps need which specialized agents
+      4. Mark each step complete ONLY when truly done
+      5. Task is NOT complete until Step 21 is marked complete
+
+      Anti-patterns to avoid:
+      - DO NOT skip to implementation after reading requirements
+      - DO NOT consider "PR created" as completion
+      - DO NOT omit mandatory review steps (10, 16-17)
+
+      Output your understanding and the complete todo list.
+    output: "preparation"
+
+  - id: "step-1-workspace"
+    type: bash
+    command: |
+      echo "=== Step 1: Prepare Workspace ==="
+      git fetch --all
+      git status
+      echo "Workspace ready for development"
+
+  - id: "step-2-clarify"
+    agent: "foundation:zen-architect"
+    prompt: |
+      STEP 2: Rewrite and Clarify Requirements
+
+      Original task: {{task_description}}
+
+      You must:
+      1. Identify explicit user requirements that CANNOT be optimized away
+      2. Clarify task requirements with automatic task classification
+      3. Remove ambiguity from the task description
+      4. Define clear success criteria
+      5. Document acceptance criteria
+
+      Output a clarified requirements document.
+    output: "clarified_requirements"
+
+  # Phase 2: Design
+  - id: "step-5-research"
+    agent: "foundation:zen-architect"
+    prompt: |
+      STEP 5: Research and Design
+
+      Task: {{task_description}}
+      Clarified Requirements: {{clarified_requirements}}
+
+      Design the solution:
+      1. Review existing codebase patterns
+      2. Design solution architecture
+      3. Identify API contracts needed
+      4. Consider security requirements
+      5. Document module specifications
+      6. Create detailed implementation plan
+      7. Identify risks and dependencies
+
+      Output a comprehensive design document.
+    output: "design_document"
+
+  - id: "step-6-documentation"
+    agent: "foundation:zen-architect"
+    prompt: |
+      STEP 6: Retcon Documentation Writing
+
+      Design: {{design_document}}
+
+      Write documentation for the finished feature AS IF IT ALREADY EXISTS.
+      This is "retcon documentation" - documentation for the feature as we want it to be.
+
+      Write ONLY the documentation, not the code.
+    output: "documentation"
+
+  - id: "step-7-tests"
+    agent: "foundation:zen-architect"
+    prompt: |
+      STEP 7: Test Driven Development - Write Tests First
+
+      Design: {{design_document}}
+      Documentation: {{documentation}}
+
+      Following TDD methodology, write FAILING tests based on the design.
+      These tests define the expected behavior before implementation.
+
+      Output test specifications that will guide the implementation.
+    output: "test_specs"
+
+  # Phase 3: Implementation
+  - id: "step-8-implement"
+    agent: "foundation:modular-builder"
+    prompt: |
+      STEP 8: Implement the Solution
+
+      Design: {{design_document}}
+      Documentation: {{documentation}}
+      Test Specs: {{test_specs}}
+
+      Implement from specifications:
+      1. Follow the architecture design
+      2. Make failing tests pass iteratively
+      3. Ensure all requirements are met
+      4. Update documentation as needed
+
+      CRITICAL: No stubs, no TODOs, no placeholders. Zero-BS implementation.
+    output: "implementation"
+
+  - id: "step-9-refactor"
+    agent: "foundation:zen-architect"
+    prompt: |
+      STEP 9: Refactor and Simplify
+
+      Implementation: {{implementation}}
+      Original Requirements: {{clarified_requirements}}
+
+      CRITICAL: Preserve original user requirements while simplifying.
+
+      1. Remove unnecessary abstractions (not explicitly requested)
+      2. Eliminate dead code
+      3. Simplify complex logic
+      4. Ensure single responsibility principle
+      5. Verify NO placeholders remain
+
+      VALIDATE: All explicit user requirements still preserved.
+    output: "refactored_code"
+
+  - id: "step-10-review-precommit"
+    agent: "foundation:zen-architect"
+    prompt: |
+      STEP 10: Review Pass Before Commit - MANDATORY
+
+      Code: {{refactored_code}}
+
+      Comprehensive code review:
+      1. Check code quality and standards
+      2. Verify philosophy compliance
+      3. Ensure adequate test coverage
+      4. Identify potential improvements
+      5. Verify ZERO: TODOs, stubs, swallowed exceptions, unimplemented functions
+
+      Output detailed review findings.
+    output: "review_findings"
+
+  - id: "step-11-feedback"
+    agent: "foundation:modular-builder"
+    prompt: |
+      STEP 11: Incorporate Review Feedback
+
+      Review Findings: {{review_findings}}
+      Current Code: {{refactored_code}}
+
+      Address all review feedback and update documentation as needed.
+    output: "updated_code"
+
+  # Phase 4: Testing
+  - id: "step-12-precommit"
+    type: bash
+    command: |
+      echo "=== Step 12: Run Tests and Pre-commit Hooks ==="
+      if [ -f .pre-commit-config.yaml ]; then
+        echo "Pre-commit config found"
+        pre-commit run --all-files || echo "Pre-commit checks need attention"
+      fi
+      pytest --tb=short || echo "Tests need attention"
+
+  - id: "step-13-local-testing"
+    agent: "foundation:zen-architect"
+    prompt: |
+      STEP 13: Mandatory Local Testing - NOT in CI
+
+      CRITICAL: Test all changes locally in realistic scenarios BEFORE committing.
+      Test like a user would use the feature - outside-in.
+
+      Test checklist:
+      1. Simple use cases - Basic functionality
+      2. Complex use cases - Edge cases, longer operations
+      3. Integration points - External dependencies
+      4. No regressions - Existing functionality still works
+
+      Document test results for the PR description.
+    output: "test_results"
+
+  # Phase 5: PR Creation
+  - id: "step-14-commit"
+    agent: "foundation:git-ops"
+    prompt: |
+      STEP 14: Commit and Push
+
+      Task: {{task_description}}
+      Test Results: {{test_results}}
+
+      Create a detailed commit:
+      1. Stage all changes
+      2. Write detailed commit message
+      3. Reference issue number
+      4. Describe what changed and why
+      5. Push to remote branch
+    output: "commit_info"
+
+  - id: "step-15-draft-pr"
+    type: bash
+    command: |
+      echo "=== Step 15: Open Pull Request as Draft ==="
+      echo "Create draft PR with comprehensive description"
+      echo "Link to GitHub issue, include test plan and results"
+
+  # Phase 6: Review
+  - id: "step-16-pr-review"
+    agent: "foundation:zen-architect"
+    prompt: |
+      STEP 16: Review the PR - MANDATORY DO NOT SKIP
+
+      Comprehensive PR review:
+      1. Code quality and standards
+      2. Security review
+      3. Philosophy compliance
+      4. Test coverage
+      5. Post review comments on PR
+      6. Identify improvements
+      7. ZERO: TODOs, stubs, swallowed exceptions
+
+      This step is REQUIRED FOR ALL PRs.
+    output: "pr_review"
+
+  - id: "step-17-pr-feedback"
+    agent: "foundation:modular-builder"
+    prompt: |
+      STEP 17: Implement Review Feedback - MANDATORY DO NOT SKIP
+
+      PR Review: {{pr_review}}
+
+      Address ALL review feedback:
+      1. Review all feedback comments carefully
+      2. Implement changes
+      3. Push updates to PR
+      4. Respond to review comments
+      5. Ensure all tests still pass
+
+      Unaddressed feedback means the review process was pointless.
+    output: "feedback_implementation"
+
+  - id: "step-18-philosophy"
+    agent: "foundation:zen-architect"
+    prompt: |
+      STEP 18: Philosophy Compliance Check
+
+      Final philosophy verification:
+      1. Ruthless simplicity achieved?
+      2. Bricks & studs pattern followed?
+      3. Zero-BS implementation?
+      4. All tests passing?
+      5. Documentation complete and accurate?
+    output: "philosophy_check"
+
+  - id: "step-19-final-cleanup"
+    agent: "foundation:zen-architect"
+    prompt: |
+      STEP 19: Final Cleanup and Verification
+
+      Original Requirements: {{clarified_requirements}}
+
+      Final quality pass:
+      1. Review all changes for philosophy compliance
+      2. Remove temporary artifacts
+      3. Eliminate unnecessary complexity
+      4. Verify module boundaries clean
+      5. ZERO dead code or stubs
+
+      FINAL CHECK: All explicit user requirements preserved.
+    output: "final_cleanup"
+
+  # Phase 7: Merge
+  - id: "step-20-ready"
+    type: bash
+    command: |
+      echo "=== Step 20: Convert PR to Ready for Review ==="
+      echo "Convert when: all feedback addressed, philosophy verified, truly ready"
+
+  - id: "step-21-mergeable"
+    agent: "foundation:zen-architect"
+    prompt: |
+      STEP 21: Ensure PR is Mergeable - TASK COMPLETION POINT
+
+      Final checks:
+      1. CI status - all checks passing?
+      2. Merge conflicts resolved?
+      3. All review comments addressed?
+      4. PR approved?
+
+      If CI fails, diagnose and fix.
+      
+      Notify that PR is ready to merge.
+
+      THIS IS THE COMPLETION POINT. Task is NOT done until this step completes.
+    output: "merge_status"

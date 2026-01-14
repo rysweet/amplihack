@@ -1,0 +1,167 @@
+# Investigation Workflow Recipe
+# Converted from amplihack's INVESTIGATION_WORKFLOW.md (6 phases)
+# Systematic investigation and knowledge excavation
+
+name: "investigation-workflow"
+description: "6-phase workflow for systematic investigation and knowledge excavation. Optimized for exploration and understanding, not implementation."
+version: "1.0.0"
+author: "amplihack team"
+tags: ["investigation", "research", "analysis", "exploration", "knowledge"]
+
+context:
+  investigation_topic: "{{user_topic}}"
+  depth: "deep"  # surface, standard, deep
+  output_format: "DISCOVERIES.md"
+
+recursion:
+  max_depth: 3
+  max_total_steps: 30
+
+steps:
+  - id: "phase-1-scope"
+    agent: "foundation:zen-architect"
+    prompt: |
+      PHASE 1: SCOPE DEFINITION
+
+      Investigation Topic: {{investigation_topic}}
+
+      Define investigation boundaries and success criteria BEFORE any exploration.
+
+      Tasks:
+      1. Identify explicit user requirements - What specific questions must be answered?
+      2. Clarify investigation scope
+      3. Define what counts as "understanding achieved"
+      4. List specific questions that must be answered
+      5. Identify known unknowns
+      6. Set boundaries: in-scope vs out-of-scope
+      7. Estimate investigation depth needed
+
+      Deliverables:
+      - Investigation scope document with:
+        - Core questions to answer
+        - Success criteria
+        - Scope boundaries
+        - Estimated depth and timeline
+    output: "scope_document"
+
+  - id: "phase-2-strategy"
+    agent: "foundation:zen-architect"
+    prompt: |
+      PHASE 2: EXPLORATION STRATEGY
+
+      Scope: {{scope_document}}
+
+      Plan which agents to deploy and what to investigate.
+
+      Tasks:
+      1. Design exploration strategy
+      2. Check for similar past investigations
+      3. Identify key areas to explore (code paths, configs, docs)
+      4. Select specialized agents for Phase 3
+      5. Create investigation roadmap with priorities
+      6. Identify potential dead ends to avoid
+      7. Plan verification approach
+
+      Agent Selection:
+      - Code understanding: analyzer, patterns
+      - System architecture: architect, api-designer
+      - Performance issues: optimizer, analyzer
+      - Security concerns: security, patterns
+      - Integration flows: integration, database
+
+      Deliverables:
+      - Exploration strategy document with:
+        - Investigation roadmap
+        - Agent deployment plan
+        - Priority order
+    output: "strategy_document"
+
+  - id: "phase-3-deep-dives"
+    agent: "foundation:explorer"
+    prompt: |
+      PHASE 3: PARALLEL DEEP DIVES
+
+      Strategy: {{strategy_document}}
+      Scope: {{scope_document}}
+
+      Execute the exploration strategy with parallel investigations.
+
+      For each priority area:
+      1. Deploy appropriate agent
+      2. Document findings immediately
+      3. Note unexpected discoveries
+      4. Track remaining questions
+      5. Flag areas needing deeper investigation
+
+      Follow the diamond pattern:
+      - Expand broadly first (collect all relevant information)
+      - Then synthesize findings (extract patterns and insights)
+
+      Output comprehensive findings from all investigation areas.
+    output: "findings"
+
+  - id: "phase-4-verification"
+    agent: "foundation:zen-architect"
+    prompt: |
+      PHASE 4: VERIFICATION
+
+      Findings: {{findings}}
+      Original Questions: {{scope_document}}
+
+      Test understanding through practical application.
+
+      Verification methods:
+      1. Can explain the system flow to someone else
+      2. Can predict behavior in new scenarios
+      3. Can identify where changes would need to be made
+      4. Can trace data flow through the system
+      5. Can answer the original investigation questions
+
+      Output:
+      - Verification results
+      - Remaining gaps in understanding
+      - Confidence level in findings
+    output: "verification_results"
+
+  - id: "phase-5-synthesis"
+    agent: "foundation:zen-architect"
+    prompt: |
+      PHASE 5: SYNTHESIS
+
+      Findings: {{findings}}
+      Verification: {{verification_results}}
+      Original Scope: {{scope_document}}
+
+      Combine all findings into coherent understanding.
+
+      Tasks:
+      1. Synthesize insights across all exploration areas
+      2. Create conceptual models or diagrams
+      3. Identify patterns and principles
+      4. Document trade-offs discovered
+      5. Formulate recommendations
+
+      Output comprehensive synthesis of all learnings.
+    output: "synthesis"
+
+  - id: "phase-6-capture"
+    agent: "foundation:zen-architect"
+    prompt: |
+      PHASE 6: KNOWLEDGE CAPTURE
+
+      Synthesis: {{synthesis}}
+      Findings: {{findings}}
+      Scope: {{scope_document}}
+
+      Document learnings for future reference.
+
+      Create {{output_format}} entry with:
+      1. Investigation summary
+      2. Key findings and insights
+      3. Architectural diagrams (Mermaid)
+      4. Code examples where relevant
+      5. Recommendations for future work
+      6. Related areas for further investigation
+
+      Format for easy future retrieval and reuse.
+    output: "knowledge_document"

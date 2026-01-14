@@ -1,0 +1,348 @@
+# Level 3: Custom Reporter Integration
+# This test demonstrates custom reporting formats including integration with
+# external systems, custom HTML templates, and automated notifications.
+
+scenario:
+  name: "Custom Reporter - Comprehensive Test Reporting"
+  description: |
+    Demonstrates custom test reporting with HTML templates, metrics tracking,
+    external system integration, and automated notifications on test completion.
+  type: web
+  level: 3
+
+  tags: [custom-reporter, reporting, integration, advanced]
+
+  prerequisites:
+    - "Application running at http://localhost:3000"
+    - "Reporting webhook endpoint available (optional)"
+    - "Email service configured (optional)"
+
+  # Custom reporting configuration
+  reporting:
+    # Primary report format
+    format: custom
+    template: "./report-templates/detailed-report.html"
+
+    # Additional output formats
+    outputs:
+      - format: json
+        file: "test-results.json"
+      - format: junit
+        file: "junit-results.xml"
+      - format: html
+        file: "test-report.html"
+
+    # What to include in reports
+    include:
+      - screenshots
+      - timing_data
+      - network_logs
+      - console_logs
+      - video_recording
+      - coverage_data
+
+    # Metrics to track
+    metrics:
+      - test_duration
+      - page_load_times
+      - action_response_times
+      - screenshot_count
+      - error_count
+      - network_request_count
+
+    # External integrations
+    integrations:
+      # Webhook notification
+      - type: webhook
+        url: "https://hooks.example.com/test-results"
+        on: completion
+        payload:
+          scenario: "${scenario.name}"
+          status: "${result.status}"
+          duration: "${result.duration}"
+          timestamp: "${result.timestamp}"
+
+      # Slack notification
+      - type: slack
+        webhook_url: "${SLACK_WEBHOOK_URL}"
+        on: failure
+        message: |
+          ❌ Test Failed: ${scenario.name}
+          Duration: ${result.duration}
+          Failed Step: ${result.failed_step}
+          See report: ${result.report_url}
+
+      # Email notification
+      - type: email
+        recipients: ["team@example.com"]
+        on: failure
+        subject: "Test Failure: ${scenario.name}"
+        template: "./email-templates/failure-notification.html"
+
+      # TestRail integration
+      - type: testrail
+        enabled: false
+        project_id: 123
+        suite_id: 456
+        run_name: "Automated Run ${timestamp}"
+
+      # Jira integration (create ticket on failure)
+      - type: jira
+        enabled: false
+        on: failure
+        project: "TEST"
+        issue_type: "Bug"
+        summary: "Test Failure: ${scenario.name}"
+        description: |
+          Automated test failed: ${scenario.name}
+
+          Failed Step: ${result.failed_step}
+          Error: ${result.error_message}
+
+          Report: ${result.report_url}
+          Screenshots: ${result.screenshot_urls}
+
+    # Report customization
+    custom_data:
+      build_number: "${BUILD_NUMBER}"
+      commit_sha: "${GIT_COMMIT}"
+      branch: "${GIT_BRANCH}"
+      environment: "staging"
+      tester: "automated"
+
+  steps:
+    # Test Case 1: Basic Page Load with Timing
+    - action: navigate
+      url: "http://localhost:3000"
+      measure_timing: true
+      description: "Load homepage and measure timing"
+
+    - action: wait_for_element
+      selector: ".page-loaded"
+      timeout: 10s
+
+    - action: screenshot
+      save_as: "01-homepage.png"
+      annotate:
+        title: "Homepage Load"
+        timestamp: true
+
+    # Test Case 2: User Interaction Flow
+    - action: click
+      selector: "button.get-started"
+      measure_timing: true
+
+    - action: wait_for_element
+      selector: ".onboarding"
+      timeout: 5s
+
+    - action: screenshot
+      save_as: "02-onboarding.png"
+
+    # Test Case 3: Form Submission with Network Monitoring
+    - action: start_network_monitoring
+      description: "Monitor network requests during form submission"
+
+    - action: type
+      selector: "input[name='email']"
+      value: "test@example.com"
+
+    - action: click
+      selector: "button[type='submit']"
+
+    - action: wait_for_element
+      selector: ".success-message"
+      timeout: 10s
+
+    - action: stop_network_monitoring
+      description: "Stop monitoring and capture network data"
+
+    # Test Case 4: Performance Metrics
+    - action: measure_performance
+      metrics:
+        - first_contentful_paint
+        - largest_contentful_paint
+        - cumulative_layout_shift
+        - time_to_interactive
+
+    # Test Case 5: Intentional Failure for Demo
+    - action: verify_element
+      selector: ".nonexistent-element"
+      exists: true
+      continue_on_failure: true
+      description: "This will fail to demonstrate failure reporting"
+
+    # Final screenshot
+    - action: screenshot
+      save_as: "03-final-state.png"
+      full_page: true
+
+  # Cleanup and report generation
+  cleanup:
+    # Generate custom HTML report
+    - action: generate_report
+      template: detailed
+      include_traces: true
+      description: "Generate comprehensive HTML report"
+
+    # Export metrics to database
+    - action: export_metrics
+      destination: "postgres://metrics-db"
+      table: "test_results"
+      continue_on_failure: true
+
+    # Upload artifacts to S3
+    - action: upload_artifacts
+      destination: "s3://test-reports/${date}/"
+      files:
+        - "*.png"
+        - "*.json"
+        - "*.html"
+      continue_on_failure: true
+# Custom Report Template Structure (detailed-report.html):
+
+# <!DOCTYPE html>
+# <html>
+# <head>
+#   <title>Test Report: {{scenario.name}}</title>
+#   <style>
+#     /* Custom styling */
+#   </style>
+# </head>
+# <body>
+#   <header>
+#     <h1>{{scenario.name}}</h1>
+#     <div class="metadata">
+#       <span>Status: {{result.status}}</span>
+#       <span>Duration: {{result.duration}}s</span>
+#       <span>Timestamp: {{result.timestamp}}</span>
+#     </div>
+#   </header>
+#
+#   <section class="summary">
+#     <h2>Summary</h2>
+#     <ul>
+#       <li>Total Steps: {{steps.total}}</li>
+#       <li>Passed: {{steps.passed}}</li>
+#       <li>Failed: {{steps.failed}}</li>
+#       <li>Skipped: {{steps.skipped}}</li>
+#     </ul>
+#   </section>
+#
+#   <section class="metrics">
+#     <h2>Performance Metrics</h2>
+#     <table>
+#       <tr><th>Metric</th><th>Value</th></tr>
+#       {{#each metrics}}
+#       <tr><td>{{name}}</td><td>{{value}}</td></tr>
+#       {{/each}}
+#     </table>
+#   </section>
+#
+#   <section class="steps">
+#     <h2>Test Steps</h2>
+#     {{#each steps}}
+#     <div class="step {{status}}">
+#       <h3>Step {{number}}: {{action}}</h3>
+#       <p>{{description}}</p>
+#       <div class="timing">Duration: {{duration}}ms</div>
+#       {{#if screenshot}}
+#       <img src="{{screenshot}}" alt="Screenshot">
+#       {{/if}}
+#       {{#if error}}
+#       <div class="error">{{error}}</div>
+#       {{/if}}
+#     </div>
+#     {{/each}}
+#   </section>
+#
+#   <section class="network">
+#     <h2>Network Activity</h2>
+#     {{#each network_requests}}
+#     <div class="request">
+#       <span class="method">{{method}}</span>
+#       <span class="url">{{url}}</span>
+#       <span class="status">{{status}}</span>
+#       <span class="duration">{{duration}}ms</span>
+#     </div>
+#     {{/each}}
+#   </section>
+#
+#   <section class="console">
+#     <h2>Console Logs</h2>
+#     <pre>{{console_logs}}</pre>
+#   </section>
+# </body>
+# </html>
+
+# Run Command:
+# gadugi-agentic-test run examples/custom-agents/custom-reporter-integration.yaml
+
+# With environment variables:
+# SLACK_WEBHOOK_URL=https://hooks.slack.com/... \
+# BUILD_NUMBER=123 \
+# GIT_COMMIT=abc123 \
+# gadugi-agentic-test run examples/custom-agents/custom-reporter-integration.yaml
+
+# Key Learning Points (Level 3):
+# 1. Custom report templates for branded/detailed reports
+# 2. Multiple output formats (JSON, JUnit, HTML)
+# 3. External system integrations (Slack, email, webhooks)
+# 4. Performance metrics tracking and reporting
+# 5. Network monitoring and request logging
+# 6. Artifact upload to cloud storage
+# 7. Database integration for metrics
+# 8. Conditional notifications (on failure, on completion)
+
+# Report Outputs Generated:
+# - test-report.html (custom template with all details)
+# - test-results.json (machine-readable results)
+# - junit-results.xml (for CI/CD integration)
+# - Screenshots (01-homepage.png, 02-onboarding.png, etc.)
+# - Network logs (HTTP requests/responses)
+# - Console logs (browser console output)
+# - Performance metrics (timing data)
+
+# Integration Patterns:
+
+# 1. Continuous Integration:
+#    - JUnit XML for Jenkins/GitHub Actions/GitLab CI
+#    - Exit code for build pass/fail
+#    - Artifacts uploaded to CI storage
+
+# 2. Test Management:
+#    - TestRail integration for test case tracking
+#    - Jira integration for bug creation
+#    - Custom webhooks for proprietary systems
+
+# 3. Notifications:
+#    - Slack for team alerts
+#    - Email for stakeholder reports
+#    - PagerDuty for critical failures (not shown)
+
+# 4. Metrics & Analytics:
+#    - Database export for trending
+#    - Grafana dashboards (query database)
+#    - Custom analytics platforms
+
+# Template Variables Available:
+# - ${scenario.name} - Test scenario name
+# - ${result.status} - PASSED/FAILED/SKIPPED
+# - ${result.duration} - Total duration in seconds
+# - ${result.timestamp} - ISO timestamp
+# - ${result.failed_step} - First failed step
+# - ${result.error_message} - Error details
+# - ${steps.total} - Total step count
+# - ${steps.passed} - Passed step count
+# - ${metrics.*} - Any collected metric
+# - ${BUILD_NUMBER} - From environment
+# - ${GIT_COMMIT} - From environment
+
+# Best Practices:
+# - Keep reports self-contained (embed screenshots)
+# - Include context (build number, commit, branch)
+# - Add timing data for performance tracking
+# - Use conditional notifications (don't spam)
+# - Store reports in versioned storage
+# - Include logs for debugging failures
+# - Generate multiple formats for different audiences

@@ -1,0 +1,197 @@
+# Consensus Workflow Recipe
+# Converted from amplihack's CONSENSUS_WORKFLOW.md (21 steps)
+# Enhanced workflow with multi-agent consensus at critical decision points
+
+name: "consensus-workflow"
+description: "Enhanced workflow with multi-agent consensus at critical decision points. Combines debate, n-version, and expert panel patterns for maximum quality."
+version: "1.0.0"
+author: "amplihack team"
+tags: ["consensus", "multi-agent", "quality", "critical", "expert-panel"]
+
+context:
+  task: "{{user_task}}"
+  require_debate: true
+  require_n_version: true
+  require_expert_panel: true
+
+recursion:
+  max_depth: 5
+  max_total_steps: 100
+
+steps:
+  # Phase 1: Requirements with Consensus
+  - id: "clarify-requirements"
+    agent: "foundation:zen-architect"
+    prompt: |
+      STEP 1: CLARIFY REQUIREMENTS
+
+      Task: {{task}}
+
+      Identify and clarify all requirements:
+      1. Explicit user requirements (CANNOT be optimized away)
+      2. Implicit requirements (inferred from context)
+      3. Ambiguous areas needing debate
+
+      Output:
+      - Clear requirements
+      - List of ambiguous items for debate
+    output: "requirements"
+
+  - id: "debate-ambiguous"
+    type: recipe
+    recipe: "amplihack:recipes/debate-workflow.yaml"
+    context:
+      user_decision: "Resolve ambiguous requirements: {{requirements}}"
+      num_perspectives: 3
+      convergence: "synthesis"
+    output: "resolved_requirements"
+
+  # Phase 2: Design with Consensus
+  - id: "architecture-design"
+    agent: "foundation:zen-architect"
+    prompt: |
+      DESIGN ARCHITECTURE
+
+      Requirements: {{requirements}}
+      Resolved Ambiguities: {{resolved_requirements}}
+
+      Design the solution architecture:
+      1. High-level architecture
+      2. Component breakdown
+      3. Integration points
+      4. Security considerations
+      5. Performance considerations
+
+      Output comprehensive design document.
+    output: "design"
+
+  - id: "design-consensus"
+    agent: "foundation:zen-architect"
+    prompt: |
+      EXPERT PANEL DESIGN REVIEW
+
+      Design: {{design}}
+
+      Convene expert panel (architect, security, optimizer, reviewer):
+      1. Each expert evaluates design from their perspective
+      2. Identify risks and concerns
+      3. Propose improvements
+      4. Reach consensus on final design
+
+      Output consensus design with expert approval.
+    output: "consensus_design"
+
+  # Phase 3: N-Version Implementation
+  - id: "n-version-implement"
+    type: recipe
+    recipe: "amplihack:recipes/n-version-workflow.yaml"
+    context:
+      user_task: "Implement: {{consensus_design}}"
+      n_versions: 3
+    output: "implementation"
+
+  # Phase 4: Expert Panel Refactoring
+  - id: "refactor"
+    agent: "foundation:zen-architect"
+    prompt: |
+      EXPERT PANEL REFACTORING
+
+      Implementation: {{implementation}}
+      Original Requirements: {{requirements}}
+
+      Refactor with expert guidance:
+      1. Security expert: Remove vulnerabilities
+      2. Simplicity expert: Remove unnecessary complexity
+      3. Performance expert: Optimize hot paths
+      4. Maintainability expert: Improve code clarity
+
+      CRITICAL: Preserve ALL explicit user requirements.
+    output: "refactored"
+
+  # Phase 5: Expert Panel Review
+  - id: "expert-review"
+    agent: "foundation:zen-architect"
+    prompt: |
+      EXPERT PANEL CODE REVIEW
+
+      Code: {{refactored}}
+      Requirements: {{requirements}}
+
+      Expert panel comprehensive review:
+
+      SECURITY EXPERT:
+      - Vulnerability scan
+      - Attack vector analysis
+      - Data protection verification
+
+      SIMPLICITY EXPERT:
+      - Complexity assessment
+      - Abstraction justification
+      - Dead code detection
+
+      PHILOSOPHY EXPERT:
+      - Ruthless simplicity achieved?
+      - Zero-BS implementation?
+      - Bricks & studs pattern?
+
+      QUALITY EXPERT:
+      - Test coverage
+      - Edge case handling
+      - Error handling
+
+      Output unanimous approval or specific concerns.
+    output: "expert_review"
+
+  - id: "address-concerns"
+    agent: "foundation:modular-builder"
+    prompt: |
+      ADDRESS EXPERT CONCERNS
+
+      Review: {{expert_review}}
+      Code: {{refactored}}
+
+      Address all expert concerns:
+      1. Fix security issues
+      2. Reduce complexity
+      3. Improve philosophy compliance
+      4. Enhance quality
+
+      Output updated implementation.
+    output: "updated_code"
+
+  # Phase 6: Final Validation
+  - id: "final-validation"
+    agent: "foundation:zen-architect"
+    prompt: |
+      FINAL CONSENSUS VALIDATION
+
+      Code: {{updated_code}}
+      Requirements: {{requirements}}
+
+      Final validation checklist:
+      1. All requirements met
+      2. All tests passing
+      3. Security approved
+      4. Philosophy compliant
+      5. Expert panel unanimous approval
+
+      If ALL checks pass: APPROVED FOR MERGE
+      If ANY check fails: List remaining issues
+    output: "validation_result"
+
+  - id: "completion"
+    agent: "foundation:zen-architect"
+    prompt: |
+      WORKFLOW COMPLETION
+
+      Validation: {{validation_result}}
+      
+      Document the consensus workflow results:
+      1. Final implementation summary
+      2. Expert panel decisions
+      3. Requirements traceability
+      4. Learnings captured
+      5. PR ready status
+
+      Output completion report.
+    output: "completion_report"
