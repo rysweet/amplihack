@@ -1,0 +1,13 @@
+[project]
+name = "amplifier-hook-session-start"
+version = "0.1.0"
+description = "Session start hook - comprehensive session initialization"
+requires-python = ">=3.11"
+dependencies = ["amplifier-core"]
+
+[project.entry-points."amplifier.modules"]
+hook-session-start = "amplifier_hook_session_start"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -144,16 +144,19 @@ context:
 # These wrap existing .claude/tools/amplihack/hooks/ implementations
 modules:
   hooks:
+    # Session lifecycle hooks
+    - modules/hook-session-start     # Version check, preferences, context injection
+    - modules/hook-session-stop      # Learning capture, memory storage
+    - modules/hook-post-tool-use     # Tool registry, metrics, error detection
+    
+    # Feature hooks
     - modules/hook-power-steering    # Session completion verification
     - modules/hook-memory            # Agent memory injection/extraction
     - modules/hook-pre-tool-use      # Dangerous operation blocking
     - modules/hook-pre-compact       # Transcript export before compaction
     - modules/hook-user-prompt       # User preferences injection
 
-# Hooks already covered by Amplifier foundation (no wrapper needed):
-# - session_start/stop → hooks-logging
-# - post_tool_use → hooks-logging, hooks-streaming-ui  
-# - workflow_tracker → hooks-todo-reminder
+# Note: workflow_tracker functionality is covered by hooks-todo-reminder from foundation
 ---
 
 # Amplihack - Amplifier Bundle
@@ -173,7 +176,7 @@ This bundle provides a thin Amplifier packaging layer that references the existi
 - **Workflows** - Q&A, Investigation, Default development workflows
 
 ### Amplifier-Specific (in this bundle)
-- **5 Hook Modules** - Wrappers around Claude Code hooks for Amplifier compatibility
+- **8 Hook Modules** - Wrappers around Claude Code hooks for Amplifier compatibility
 - **Behaviors** - Amplihack behavior configuration with workflow selection
 - **Context** - Amplifier-specific instructions
 
@@ -181,16 +184,16 @@ This bundle provides a thin Amplifier packaging layer that references the existi
 
 | Amplifier Module | Wraps Claude Code Hook | Purpose |
 |------------------|----------------------|---------|
-| `hook-power-steering` | `power_steering_*.py` | Session completion verification |
-| `hook-memory` | `agent_memory_hook.py` | Persistent memory across sessions |
-| `hook-pre-tool-use` | `pre_tool_use.py` | Block dangerous operations |
-| `hook-pre-compact` | `pre_compact.py` | Export transcript before compaction |
-| `hook-user-prompt` | `user_prompt_submit.py` | Inject user preferences |
+| `hook-session-start` | `session_start.py` | Version check, preferences, context injection, Neo4j startup |
+| `hook-session-stop` | `session_stop.py` | Learning capture, memory storage via MemoryCoordinator |
+| `hook-post-tool-use` | `post_tool_use.py` | Tool registry, metrics tracking, error detection |
+| `hook-power-steering` | `power_steering_*.py` | Session completion verification (21 considerations) |
+| `hook-memory` | `agent_memory_hook.py` | Persistent memory injection/extraction across sessions |
+| `hook-pre-tool-use` | `pre_tool_use.py` | Block dangerous operations (--no-verify, rm -rf) |
+| `hook-pre-compact` | `pre_compact.py` | Export transcript before context compaction |
+| `hook-user-prompt` | `user_prompt_submit.py` | Inject user preferences on every prompt |
 
-**Already covered by Amplifier foundation** (no wrapper needed):
-- `session_start/stop` → `hooks-logging`
-- `post_tool_use` → `hooks-logging`, `hooks-streaming-ui`
-- `workflow_tracker` → `hooks-todo-reminder`
+**Note:** `workflow_tracker` functionality is covered by `hooks-todo-reminder` from foundation.
 
 ## Usage
 

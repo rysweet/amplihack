@@ -42,6 +42,18 @@ patterns:
 
 # Hooks configuration - references modules in amplifier-bundle/modules/
 hooks:
+  # Session lifecycle hooks
+  session_start:
+    enabled: true
+    module: hook-session-start
+  session_stop:
+    enabled: true
+    module: hook-session-stop
+  post_tool_use:
+    enabled: true
+    module: hook-post-tool-use
+  
+  # Feature hooks
   power_steering:
     enabled: true
     module: hook-power-steering
