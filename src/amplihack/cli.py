@@ -6,6 +6,7 @@ import platform
 import sys
 from pathlib import Path
 
+from . import copytree_manifest
 from .docker import DockerManager
 from .launcher import ClaudeLauncher
 from .proxy import ProxyConfig, ProxyManager
@@ -490,6 +491,14 @@ def main(argv: list[str] | None = None) -> int:
             conflicting_files=conflict_result.conflicting_files,
         )
 
+        # Bug #1 Fix: Respect user cancellation (Issue #1940)
+        # When user responds 'n' to conflict prompt, should_proceed=False
+        # Exit gracefully with code 0 (user-initiated cancellation, not an error)
+        if not copy_strategy.should_proceed:
+            print("\n❌ Operation cancelled - cannot proceed without updating .claude/ directory")
+            print("   Commit your changes and try again\n")
+            sys.exit(0)
+
         temp_claude_dir = str(copy_strategy.target_dir)
 
         # Store original_cwd for auto mode (always set, regardless of conflicts)
@@ -504,13 +513,21 @@ def main(argv: list[str] | None = None) -> int:
         # Find amplihack package location for .claude files
         import amplihack
 
-        from . import copytree_manifest
-
         amplihack_src = os.path.dirname(os.path.abspath(amplihack.__file__))
 
         # Copy .claude contents to temp .claude directory
         # Note: copytree_manifest copies TO the dst, not INTO dst/.claude
         copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude")
+
+        # Bug #2 Fix: Detect empty copy results (Issue #1940)
+        # When copytree_manifest returns empty list, no files were copied
+        # This indicates a package installation problem - exit with clear error
+        if not copied:
+            print("\n❌ Failed to copy .claude files - cannot proceed")
+            print(f"   Package location: {amplihack_src}")
+            print(f"   Looking for .claude/ at: {amplihack_src}/.claude/")
+            print("   This may indicate a package installation problem\n")
+            sys.exit(1)
 
         # Smart PROJECT.md initialization for UVX mode
         if copied:
