@@ -1,36 +1,38 @@
 ---
 name: amplihack:fix
-version: 1.0.0
-description: Rapid diagnosis and fix for common issues
+version: 2.0.0
+description: Fix command that integrates with DEFAULT_WORKFLOW for quality-focused issue resolution
 triggers:
   - "fix this error"
   - "CI failing"
   - "tests broken"
   - "import error"
   - "something's broken"
-invokes:
+invokes: DEFAULT_WORKFLOW
+invokes_details:
+  - type: workflow
+    path: .claude/workflow/DEFAULT_WORKFLOW.md
   - type: subagent
     path: .claude/agents/amplihack/specialized/fix-agent.md
   - type: subagent
     path: .claude/agents/amplihack/specialized/pre-commit-diagnostic.md
   - type: subagent
     path: .claude/agents/amplihack/specialized/ci-diagnostic-workflow.md
-  - type: command
-    name: /ultrathink
 philosophy:
   - principle: Ruthless Simplicity
-    application: Templates handle 80% of common fixes in under 5 minutes
-  - principle: Analysis First
-    application: Auto-detects pattern before applying fix
+    application: Single workflow path - no branching logic
+  - principle: Quality Over Speed
+    application: Follow all 22 steps of DEFAULT_WORKFLOW for robust fixes
 dependencies:
+  required:
+    - .claude/workflow/DEFAULT_WORKFLOW.md
   optional:
     - .claude/tools/ci_status.py
 examples:
   - "/fix"
   - "/fix import"
   - "/fix ci"
-  - "/fix test diagnostic"
-  - "/fix logic comprehensive"
+  - "/fix test"
 ---
 
 # Fix Command
@@ -41,15 +43,15 @@ examples:
 
 ## Usage
 
-`/fix [PATTERN] [SCOPE]`
+`/fix [PATTERN]`
 
 ## Purpose
 
-Intelligent fix workflow optimization that automatically selects the best fix approach based on error patterns, scope, and context. Integrates with UltraThink for complex issues and provides rapid resolution for common patterns.
+Intelligent fix workflow that executes all 22 steps of DEFAULT_WORKFLOW with pattern-specific context. No shortcuts - every fix follows the standard workflow to ensure quality, testing, and proper integration.
 
 ## Parameters
 
-- **PATTERN** (optional): Fix pattern type or error description
+- **PATTERN** (optional): Error pattern type that provides context to specialized agents
   - `import` - Import and dependency issues
   - `ci` - CI/CD pipeline failures
   - `test` - Test failures and assertion errors
@@ -58,27 +60,32 @@ Intelligent fix workflow optimization that automatically selects the best fix ap
   - `logic` - Algorithm bugs and business logic
   - `auto` - Automatic pattern detection (default)
 
-- **SCOPE** (optional): Fix scope and complexity
-  - `quick` - Rapid fixes (< 5 minutes)
-  - `diagnostic` - Root cause analysis
-  - `comprehensive` - Full workflow integration
-  - `auto` - Automatic scope detection (default)
+## Core Philosophy
+
+### Single Workflow Path
+
+Following ruthless simplicity, there is ONE workflow path for all fixes:
+
+```
+/fix [pattern] → DEFAULT_WORKFLOW (Steps 0-21) → Complete, tested fix
+```
+
+No branching logic. Just the standard 22-step workflow executed with pattern-specific context.
+
+### Patterns As Context (Not Modes)
+
+Patterns don't create different workflows - they provide context:
+
+- **Pattern detection** identifies the error type (import, ci, test, etc.)
+- **Context** informs which specialized agents to invoke within workflow steps
+- **Workflow** remains the same 22 steps regardless of pattern
+- **Templates** are tools used in Step 8 (Mandatory Local Testing), not alternatives
 
 ## Process
 
-### Step 1: Context Analysis
+### Pattern Detection
 
-```bash
-# Automatic context detection
-- Check current error state (CI logs, test output, linting)
-- Analyze recent commit history for regression patterns
-- Scan for common error indicators in codebase
-- Determine fix pattern and scope automatically
-```
-
-### Step 2: Pattern Recognition
-
-**Automatic Pattern Detection**:
+Automatic pattern recognition from error messages and context:
 
 ```bash
 # Error pattern matching
@@ -96,339 +103,150 @@ ERROR_PATTERNS = {
 }
 ```
 
-### Step 3: Fix Mode Selection
+Pattern detection happens in Step 1 (Clarify Requirements) of DEFAULT_WORKFLOW.
 
-**Intelligent Mode Selection**:
+### Workflow Execution
 
-```markdown
-## QUICK Mode (Rapid Fixes)
+All fixes follow the complete DEFAULT_WORKFLOW:
 
-**Auto-triggers when**:
+1. **Step 0**: Prime UltraThink with workflow context
+2. **Step 1**: Clarify requirements (includes pattern detection)
+3. **Step 2**: Create GitHub issue
+4. **Step 3**: Create feature branch
+5. **Step 4**: Design solution (pattern-specific agent selection)
+6. **Step 5**: Specify modules
+7. **Step 6**: Implement changes
+8. **Step 7**: Verify implementation
+9. **Step 8**: Mandatory local testing (use fix templates here)
+10. **Step 9**: Run tests
+11. **Step 10**: Fix test failures
+12. **Step 11**: Commit changes
+13. **Step 12**: Push to remote
+14. **Step 13**: Create pull request
+15. **Step 14**: Monitor CI status
+16. **Step 15**: Fix CI failures
+17. **Step 16**: Code review
+18. **Step 17**: Address feedback
+19. **Step 18**: Verify standards
+20. **Step 19**: Final validation
+21. **Step 20**: Merge preparation
+22. **Step 21**: Documentation updates
 
-- Single file/function affected
-- Clear error message with obvious solution
-- Standard linting/formatting issues
-- Known pattern with template available
+### Pattern-Specific Agent Selection
 
-**Process**:
+Patterns inform which specialized agents to invoke within workflow steps:
 
-1. Apply relevant fix template
-2. Validate fix works
-3. Run minimal tests
-4. Ready for commit
+**Step 4 (Design Solution)**:
 
-## DIAGNOSTIC Mode (Root Cause Analysis)
+- `import` pattern → Invoke dependency analyzer
+- `ci` pattern → Invoke ci-diagnostic-workflow agent
+- `test` pattern → Invoke tester agent
+- `config` pattern → Invoke environment agent
+- `quality` pattern → Invoke reviewer agent
+- `logic` pattern → Invoke architect agent
 
-**Auto-triggers when**:
+**Step 8 (Mandatory Local Testing)**:
 
-- Unclear error messages
-- Multiple related failures
-- Intermittent/flaky issues
-- No obvious template match
-
-**Process**:
-
-1. Use fix-agent for investigation
-2. Apply systematic debugging
-3. Document findings
-4. Implement targeted solution
-
-## COMPREHENSIVE Mode (Full Workflow)
-
-**Auto-triggers when**:
-
-- Multiple components affected
-- Architecture changes needed
-- Breaking changes required
-- Security vulnerabilities
-
-**Process**:
-
-1. Integrate with UltraThink workflow
-2. Follow full DEFAULT_WORKFLOW.md process
-3. Multi-agent coordination
-4. Complete documentation and testing
-```
-
-### Step 4: Fix Execution
-
-**Template-Based Execution**:
-
-```bash
-# Quick template application
-if fix_pattern in ["import", "config", "quality"]:
-    apply_fix_template(pattern=fix_pattern, context=error_context)
-    validate_fix()
-
-# Agent-based execution
-elif scope == "diagnostic":
-    delegate_to_fix_agent(mode="DIAGNOSTIC", context=full_context)
-
-# Workflow integration
-elif scope == "comprehensive":
-    integrate_with_ultrathink(task=f"Fix {fix_pattern} issue", context=error_context)
-```
+- Use pattern-specific fix templates as validation tools
+- Templates verify the fix works correctly
+- Not shortcuts - verification tools within standard workflow
 
 ## Command Examples
 
 ### Basic Usage
 
 ```bash
-# Automatic detection and fixing
+# Automatic pattern detection
 /fix
 
-# Specific pattern
+# Specific pattern for context
 /fix import
 /fix ci
 /fix test
-
-# Specific scope
-/fix quick
-/fix diagnostic
-/fix comprehensive
-
-# Combined
-/fix import quick
-/fix logic diagnostic
-/fix ci comprehensive
+/fix config
+/fix quality
+/fix logic
 ```
+
+All commands execute the same 22-step workflow with pattern-specific context.
 
 ### Context-Aware Examples
 
 ```bash
-# When CI is failing
-/fix ci
-→ Automatically detects CI failure type
-→ Applies ci-fix-template
-→ Monitors CI re-run
-
-# When tests are failing
-/fix test
-→ Analyzes test failure output
-→ Applies test-fix-template
-→ Validates test passes
-
-# When imports are broken
+# Import error fix
 /fix import
-→ Identifies missing/incorrect imports
-→ Applies import-fix-template
-→ Verifies import resolution
+→ Step 1: Detects import pattern
+→ Steps 2-3: GitHub issue + branch
+→ Step 4: Dependency analyzer designs solution
+→ Steps 5-7: Implement fix
+→ Step 8: Use import-fix-template for validation
+→ Steps 9-21: Complete standard workflow
 
-# Complex logic issue
-/fix logic diagnostic
-→ Uses fix-agent DIAGNOSTIC mode
-→ Systematic debugging approach
-→ Documents root cause analysis
+# CI failure fix
+/fix ci
+→ Step 1: Detects CI pattern
+→ Steps 2-3: GitHub issue + branch
+→ Step 4: CI-diagnostic agent analyzes failure
+→ Steps 5-7: Implement fix
+→ Step 8: Use ci-fix-template for validation
+→ Steps 9-21: Complete standard workflow
 ```
 
 ## Integration Points
 
 ### With Fix Agent
 
-```markdown
-The fix command automatically delegates to the fix-agent based on complexity:
+The fix-agent is the workflow orchestrator that:
 
-**QUICK fixes** → Direct template application
-**DIAGNOSTIC fixes** → fix-agent DIAGNOSTIC mode
-**COMPREHENSIVE fixes** → fix-agent COMPREHENSIVE mode + UltraThink
-```
+- Reads DEFAULT_WORKFLOW.md
+- Executes all 22 steps in order
+- Uses pattern context to select specialized agents
+- Ensures 100% workflow compliance
 
-### With UltraThink Workflow
+### With Specialized Agents
 
-```markdown
-For comprehensive fixes, automatically integrates with UltraThink:
+Pattern-specific agents are invoked within workflow steps:
 
-1. /fix comprehensive [pattern]
-2. → Calls /ultrathink with fix task
-3. → UltraThink reads DEFAULT_WORKFLOW.md
-4. → Follows full multi-step process
-5. → Uses fix-agent and templates as needed
-```
+- **pre-commit-diagnostic**: For pre-commit hook fixes (Step 4)
+- **ci-diagnostic-workflow**: For CI failure analysis (Step 4/15)
+- **tester**: For test-related fixes (Step 4/10)
+- **reviewer**: For code quality issues (Step 4/18)
+- **architect**: For complex logic fixes (Step 4)
 
-### With Existing Agents
+### With Fix Templates
 
-```markdown
-**Pre-commit failures** → Integrates with pre-commit-diagnostic agent
-**CI failures** → Integrates with ci-diagnostic-workflow agent
-**Complex architecture** → Escalates to architect agent
-**Security issues** → Involves security agent
-```
+Templates are validation tools used in Step 8:
 
-## Workflow Integration
+- **import-fix-template**: Validates import resolution
+- **ci-fix-template**: Validates CI configuration
+- **test-fix-template**: Validates test fixes
+- **config-fix-template**: Validates configuration
+- **quality-fix-template**: Validates code quality
 
-### Standard Development Workflow
+Templates don't replace workflow steps - they're tools within Step 8.
 
-```bash
-# During development when issues arise:
-/fix                    # Quick automatic fix
-git add . && git commit # If fix successful
+## Success Criteria
 
-# During CI failures:
-/fix ci                 # Target CI-specific issues
-                        # Auto-monitors CI status
+Fix is complete when all 22 workflow steps execute successfully:
 
-# During code review:
-/fix quality           # Address review feedback
-                       # Focus on code quality
-```
-
-### Emergency Fix Workflow
-
-```bash
-# Production issue detected:
-/fix comprehensive     # Full workflow approach
-                       # Includes rollback planning
-                       # Complete testing required
-
-# Critical security fix:
-/fix security comprehensive
-                       # Escalates to security agent
-                       # Full vulnerability assessment
-```
-
-## Success Metrics
-
-### Performance Tracking
-
-- **Fix Success Rate**: % of issues resolved completely
-- **Time to Resolution**: Average fix implementation time
-- **Pattern Recognition Accuracy**: Correct pattern identification rate
-- **Mode Selection Accuracy**: Optimal mode selection rate
-
-### Usage Analytics
-
-- **Most Common Patterns**: Track frequency of fix types
-- **Template Effectiveness**: Success rate by template
-- **Escalation Patterns**: When quick fixes escalate
-- **User Satisfaction**: Fix quality and completeness
-
-## Error Handling
-
-### Graceful Degradation
-
-```bash
-# If automatic detection fails:
-/fix → Prompts for manual pattern selection
-
-# If template fails:
-/fix pattern → Escalates to diagnostic mode
-
-# If diagnostic fails:
-/fix diagnostic → Escalates to comprehensive + UltraThink
-```
-
-### Fallback Strategies
-
-```bash
-# No clear pattern detected
-→ Use analyzer agent for investigation
-→ Present options to user
-
-# Multiple patterns detected
-→ Prioritize by impact and complexity
-→ Show disambiguation options
-
-# Fix attempt fails
-→ Rollback changes
-→ Escalate to next mode level
-```
-
-## Quick Reference
-
-### Most Common Usage Patterns
-
-```bash
-/fix                 # Auto-detect and fix (90% of cases)
-/fix import          # Import/dependency issues (15% of cases)
-/fix ci              # CI/CD problems (20% of cases)
-/fix test            # Test failures (18% of cases)
-/fix quality         # Code quality issues (25% of cases)
-```
-
-### Escalation Path
-
-```bash
-/fix quick          # Template-based (< 5 min)
-    ↓ (if fails)
-/fix diagnostic     # Agent investigation (< 30 min)
-    ↓ (if fails)
-/fix comprehensive  # Full workflow (> 30 min)
-```
-
-## Advanced Features
-
-### Context Learning
-
-```markdown
-The fix command learns from usage patterns:
-
-- Tracks successful fix strategies
-- Improves pattern recognition over time
-- Suggests fixes based on historical success
-- Adapts templates based on project specifics
-```
-
-### Integration with Claude-Trace
-
-```markdown
-When AMPLIHACK_USE_TRACE=1:
-
-- Enhanced error context from trace analysis
-- Pattern recognition from historical data
-- Success rate tracking and optimization
-- Detailed fix attempt logging
-```
-
-### Custom Fix Patterns
-
-```markdown
-Projects can define custom fix patterns:
-
-1. Add pattern to .claude/workflow/fix/custom/
-2. Follow template format
-3. Register in fix command configuration
-4. Automatically available via /fix custom_pattern
-```
-
-## Configuration
-
-### Project-Specific Settings
-
-```json
-// .claude/config/fix-command.json
-{
-  "default_mode": "auto",
-  "pattern_priorities": {
-    "quality": 1,
-    "test": 2,
-    "import": 3,
-    "ci": 4,
-    "config": 5,
-    "logic": 6
-  },
-  "escalation_timeout": 300,
-  "enable_learning": true
-}
-```
-
-### Environment Integration
-
-```bash
-# Pre-commit hook integration
-export AMPLIHACK_FIX_MODE=quick
-
-# CI environment detection
-export CI=true  # Automatically prioritizes CI fixes
-```
+- GitHub issue created and tracked
+- Feature branch created and pushed
+- Solution designed by pattern-specific agents
+- Implementation complete and verified
+- Local tests pass (using fix templates)
+- CI passes all checks
+- Code review approved
+- PR merged to main branch
+- Documentation updated
 
 ## Remember
 
-The fix command is designed to be the primary entry point for issue resolution:
+The fix command prioritizes quality over speed:
 
-- Start with `/fix` for automatic detection
-- Use specific patterns when you know the issue type
-- Escalate complexity as needed
-- Trust the automatic mode selection
-- Let the system learn from your usage patterns
+- **No shortcuts**: All 22 steps execute for every fix
+- **Single workflow**: No mode branching or alternative paths
+- **Pattern as context**: Informs agent selection, doesn't change workflow
+- **Templates as tools**: Used in Step 8 for validation, not alternatives
+- **Quality focus**: Robust, tested, documented fixes every time
 
-The goal is to resolve 80% of common issues in under 5 minutes, while providing clear escalation paths for complex problems.
+The goal is not speed - it's reliable, high-quality fixes that follow best practices and integrate properly with the codebase.
