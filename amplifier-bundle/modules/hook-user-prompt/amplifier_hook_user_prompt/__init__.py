@@ -24,12 +24,22 @@ _CLAUDE_HOOKS = (
 if _CLAUDE_HOOKS.exists():
     sys.path.insert(0, str(_CLAUDE_HOOKS.parent.parent))
 
-# Import shared utilities
-try:
-    from amplifier_bundle.modules._shared import load_user_preferences
-except ImportError:
-    # Fallback for standalone use
-    load_user_preferences = None
+
+# Inline shared utility (hooks are installed as separate packages)
+def load_user_preferences() -> str | None:
+    """Load user preferences from standard locations."""
+    prefs_paths = [
+        Path.cwd() / "USER_PREFERENCES.md",
+        Path.cwd() / ".claude" / "context" / "USER_PREFERENCES.md",
+        Path.home() / ".claude" / "USER_PREFERENCES.md",
+    ]
+    for path in prefs_paths:
+        if path.exists():
+            try:
+                return path.read_text()
+            except Exception as e:
+                logger.debug(f"Failed to read preferences from {path}: {e}")
+    return None
 
 
 class UserPromptHook(Hook):
