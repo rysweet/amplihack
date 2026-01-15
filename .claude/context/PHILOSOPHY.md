@@ -141,6 +141,67 @@ When faced with implementation decisions, ask:
 5. **Value**: "Does the complexity add proportional value?"
 6. **Maintenance**: "How easy will this be to understand and change later?"
 
+## Proportionality Principle
+
+### Effort Must Match Complexity
+
+**Core Tenet**: The effort invested in any aspect of development (design, testing, documentation) must be proportional to the complexity and criticality of the change.
+
+### Proportionality in Practice
+
+**Testing Proportionality**:
+
+```
+Test Ratio = (Lines of Test Code) / (Lines of Implementation Code)
+
+Target Ratios by Change Type:
+- Config changes: 1:1 to 2:1 (verification only)
+- Simple functions: 2:1 to 4:1 (basic coverage)
+- Business logic: 3:1 to 8:1 (comprehensive)
+- Critical paths: 5:1 to 15:1 (exhaustive)
+
+RED FLAG: Ratio > 20:1 indicates likely over-testing
+```
+
+**Design Proportionality**:
+
+- 2-line config change → No architecture document needed
+- 50-line feature → Brief design outline
+- 500-line system → Comprehensive architecture
+
+**Documentation Proportionality**:
+
+- Internal function → Docstring only
+- Public API → API docs + examples
+- Major feature → Guide + reference + examples
+
+### Proportionality Anti-Patterns
+
+❌ **Over-Engineering Indicators**:
+
+1. Writing 58 tests for 2 lines of code (ratio 14,628:1)
+2. Creating architecture diagrams for config changes
+3. Writing more test code than implementation code for simple utilities
+4. Elaborate abstractions for one-time operations
+
+✅ **Proportional Engineering**:
+
+1. Match test coverage to criticality and complexity
+2. Design depth matches implementation scope
+3. Documentation matches audience needs (internal vs external)
+4. Abstractions justify their own complexity (3:1 benefit-to-cost minimum)
+
+### When to Question Proportionality
+
+Stop and reassess if:
+
+- Test code > 10x implementation code (for non-critical paths)
+- Architecture doc > 5 pages for < 100 lines of code
+- Spent > 1 hour on a "simple fix"
+- Created > 5 abstraction layers for a single feature
+
+**Remember**: Complexity must always justify itself. Default to simplicity.
+
 ## Areas to Embrace Complexity
 
 Some areas justify additional complexity:
