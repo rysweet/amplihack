@@ -4,13 +4,15 @@
 
 This file provides guidance to GitHub Copilot CLI when working with your codebase. It configures the amplihack agentic coding framework - a development tool that uses specialized AI agents to accelerate software development through intelligent automation and collaborative problem-solving.
 
-**Architecture Note**: GitHub Copilot CLI uses a push model where context is provided to the AI through `@` file references, unlike Claude Code's pull model. See `@docs/architecture/COPILOT_VS_CLAUDE.md` for detailed comparison.
+**Architecture Note**: GitHub Copilot CLI uses a push model where context is provided to the AI through `@` file references, unlike Claude Code's pull model. See `@docs/architecture/COPILOT_CLI_VS_CLAUDE_CODE.md` for detailed comparison.
 
 ## Important Files to Reference
 
 When starting a session, reference these files for context using `@` notation:
 
 - `@.github/copilot-instructions.md` - Main instructions file
+- `@docs/COPILOT_SETUP.md` - Setup and integration guide
+- `@docs/architecture/COPILOT_CLI_VS_CLAUDE_CODE.md` - Architecture comparison
 - `@.claude/context/PHILOSOPHY.md` - Core development philosophy
 - `@.claude/context/PROJECT.md` - Project-specific context
 - `@.claude/context/PATTERNS.md` - Development patterns and solutions
