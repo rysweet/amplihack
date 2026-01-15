@@ -289,44 +289,46 @@ class TestLaunchAmplifier:
     @patch("src.amplihack.launcher.amplifier.check_amplifier")
     @patch("subprocess.run")
     def test_launch_amplifier_with_prompt(self, mock_run, mock_check, mock_bundle_path, tmp_path):
-        """Test launching amplifier with a prompt (non-interactive)."""
+        """Test launching amplifier with a prompt via args."""
         mock_check.return_value = True
         mock_bundle_path.return_value = tmp_path / "amplifier-bundle"
         mock_run.return_value = MagicMock(returncode=0)
 
-        result = launch_amplifier(prompt="explain this code")
+        result = launch_amplifier(args=["-p", "explain this code"])
 
         assert result == 0
         cmd = mock_run.call_args[0][0]
         assert "run" in cmd
+        assert "-p" in cmd
         assert "explain this code" in cmd
 
     @patch("src.amplihack.launcher.amplifier.get_bundle_path")
     @patch("src.amplihack.launcher.amplifier.check_amplifier")
     @patch("subprocess.run")
     def test_launch_amplifier_print_mode(self, mock_run, mock_check, mock_bundle_path, tmp_path):
-        """Test launching amplifier in print mode."""
+        """Test launching amplifier in print mode via args."""
         mock_check.return_value = True
         mock_bundle_path.return_value = tmp_path / "amplifier-bundle"
         mock_run.return_value = MagicMock(returncode=0)
 
-        result = launch_amplifier(prompt="what is 2+2", print_only=True)
+        result = launch_amplifier(args=["--print", "-p", "what is 2+2"])
 
         assert result == 0
         cmd = mock_run.call_args[0][0]
-        assert "print" in cmd
+        assert "--print" in cmd
+        assert "-p" in cmd
         assert "what is 2+2" in cmd
 
     @patch("src.amplihack.launcher.amplifier.get_bundle_path")
     @patch("src.amplihack.launcher.amplifier.check_amplifier")
     @patch("subprocess.run")
     def test_launch_amplifier_resume_session(self, mock_run, mock_check, mock_bundle_path):
-        """Test resuming an existing amplifier session."""
+        """Test resuming an existing amplifier session via args."""
         mock_check.return_value = True
         mock_bundle_path.return_value = None
         mock_run.return_value = MagicMock(returncode=0)
 
-        result = launch_amplifier(resume="session-123")
+        result = launch_amplifier(args=["resume", "session-123"])
 
         assert result == 0
         cmd = mock_run.call_args[0][0]
@@ -451,13 +453,13 @@ class TestLaunchAmplifierAuto:
 
     @patch("src.amplihack.launcher.amplifier.launch_amplifier")
     def test_launch_amplifier_auto_calls_launch(self, mock_launch):
-        """Test that auto mode calls launch_amplifier with prompt."""
+        """Test that auto mode calls launch_amplifier with args containing prompt."""
         mock_launch.return_value = 0
 
         result = launch_amplifier_auto("build a REST API")
 
         assert result == 0
-        mock_launch.assert_called_once_with(prompt="build a REST API")
+        mock_launch.assert_called_once_with(args=["-p", "build a REST API"])
 
     @patch("src.amplihack.launcher.amplifier.launch_amplifier")
     def test_launch_amplifier_auto_propagates_exit_code(self, mock_launch):
@@ -485,7 +487,10 @@ class TestLaunchAmplifierAuto:
 
 
 class TestAmplifierCLIIntegration:
-    """Integration tests for CLI amplifier command handling."""
+    """Integration tests for CLI amplifier command handling.
+
+    The new API passes all amplifier args via the -- separator.
+    """
 
     @patch("src.amplihack.launcher.amplifier.launch_amplifier")
     def test_cli_amplifier_basic_launch(self, mock_launch):
@@ -501,63 +506,69 @@ class TestAmplifierCLIIntegration:
         mock_launch.assert_called_once()
 
     @patch("src.amplihack.launcher.amplifier.launch_amplifier")
-    def test_cli_amplifier_with_model(self, mock_launch):
-        """Test amplifier command with --model flag."""
+    def test_cli_amplifier_with_passthrough_model(self, mock_launch):
+        """Test amplifier command with --model passed through via -- separator."""
         from src.amplihack.cli import main
 
         mock_launch.return_value = 0
 
         with patch("src.amplihack.utils.is_uvx_deployment", return_value=False):
-            result = main(["amplifier", "--model", "gpt-4o"])
+            result = main(["amplifier", "--", "--model", "gpt-4o"])
 
         assert result == 0
         call_kwargs = mock_launch.call_args
-        # Check args contain the model
-        assert "--model" in call_kwargs.kwargs.get("args", []) or "--model" in str(call_kwargs)
+        args = call_kwargs.kwargs.get("args", [])
+        assert "--model" in args
+        assert "gpt-4o" in args
 
     @patch("src.amplihack.launcher.amplifier.launch_amplifier")
-    def test_cli_amplifier_with_provider(self, mock_launch):
-        """Test amplifier command with --provider flag."""
+    def test_cli_amplifier_with_passthrough_provider(self, mock_launch):
+        """Test amplifier command with --provider passed through via -- separator."""
         from src.amplihack.cli import main
 
         mock_launch.return_value = 0
 
         with patch("src.amplihack.utils.is_uvx_deployment", return_value=False):
-            result = main(["amplifier", "--provider", "anthropic"])
+            result = main(["amplifier", "--", "--provider", "anthropic"])
 
         assert result == 0
         call_kwargs = mock_launch.call_args
-        assert "--provider" in call_kwargs.kwargs.get("args", []) or "--provider" in str(
-            call_kwargs
-        )
+        args = call_kwargs.kwargs.get("args", [])
+        assert "--provider" in args
+        assert "anthropic" in args
 
     @patch("src.amplihack.launcher.amplifier.launch_amplifier")
-    def test_cli_amplifier_with_resume(self, mock_launch):
-        """Test amplifier command with --resume flag."""
+    def test_cli_amplifier_with_passthrough_resume(self, mock_launch):
+        """Test amplifier command with resume passed through via -- separator."""
         from src.amplihack.cli import main
 
         mock_launch.return_value = 0
 
         with patch("src.amplihack.utils.is_uvx_deployment", return_value=False):
-            result = main(["amplifier", "--resume", "session-abc123"])
+            result = main(["amplifier", "--", "resume", "session-abc123"])
 
         assert result == 0
         call_kwargs = mock_launch.call_args
-        assert call_kwargs.kwargs.get("resume") == "session-abc123"
+        args = call_kwargs.kwargs.get("args", [])
+        assert "resume" in args
+        assert "session-abc123" in args
 
     @patch("src.amplihack.launcher.amplifier.launch_amplifier")
-    def test_cli_amplifier_with_print_mode(self, mock_launch):
-        """Test amplifier command with --print flag."""
+    def test_cli_amplifier_with_passthrough_print(self, mock_launch):
+        """Test amplifier command with --print passed through via -- separator."""
         from src.amplihack.cli import main
 
         mock_launch.return_value = 0
 
         with patch("src.amplihack.utils.is_uvx_deployment", return_value=False):
-            result = main(["amplifier", "--print", "--", "-p", "what is 2+2"])
+            result = main(["amplifier", "--", "--print", "-p", "what is 2+2"])
 
         assert result == 0
         call_kwargs = mock_launch.call_args
-        assert call_kwargs.kwargs.get("print_only") is True
+        args = call_kwargs.kwargs.get("args", [])
+        assert "--print" in args
+        assert "-p" in args
+        assert "what is 2+2" in args
 
     @patch("src.amplihack.launcher.amplifier.launch_amplifier")
     def test_cli_amplifier_with_prompt(self, mock_launch):
@@ -571,7 +582,9 @@ class TestAmplifierCLIIntegration:
 
         assert result == 0
         call_kwargs = mock_launch.call_args
-        assert call_kwargs.kwargs.get("prompt") == "explain this code"
+        args = call_kwargs.kwargs.get("args", [])
+        assert "-p" in args
+        assert "explain this code" in args
 
     @patch("src.amplihack.launcher.amplifier.launch_amplifier_auto")
     def test_cli_amplifier_auto_mode(self, mock_auto):
@@ -619,7 +632,7 @@ class TestAmplifierCLIIntegration:
 
     @patch("src.amplihack.launcher.amplifier.launch_amplifier")
     def test_cli_amplifier_passthrough_args(self, mock_launch):
-        """Test that extra args are passed through to amplifier."""
+        """Test that extra args after -- are passed through to amplifier."""
         from src.amplihack.cli import main
 
         mock_launch.return_value = 0
@@ -630,8 +643,39 @@ class TestAmplifierCLIIntegration:
         assert result == 0
         call_kwargs = mock_launch.call_args
         args = call_kwargs.kwargs.get("args", [])
-        # The passthrough args should be included
-        assert "--verbose" in args or "--verbose" in str(call_kwargs)
+        assert "--verbose" in args
+        assert "--debug" in args
+
+    @patch("src.amplihack.launcher.amplifier.launch_amplifier")
+    def test_cli_amplifier_combined_passthrough_args(self, mock_launch):
+        """Test multiple args passed through together."""
+        from src.amplihack.cli import main
+
+        mock_launch.return_value = 0
+
+        with patch("src.amplihack.utils.is_uvx_deployment", return_value=False):
+            result = main(
+                [
+                    "amplifier",
+                    "--",
+                    "--model",
+                    "claude-sonnet-4-20250514",
+                    "--provider",
+                    "anthropic",
+                    "-p",
+                    "write tests",
+                ]
+            )
+
+        assert result == 0
+        call_kwargs = mock_launch.call_args
+        args = call_kwargs.kwargs.get("args", [])
+        assert "--model" in args
+        assert "claude-sonnet-4-20250514" in args
+        assert "--provider" in args
+        assert "anthropic" in args
+        assert "-p" in args
+        assert "write tests" in args
 
 
 # =============================================================================
@@ -672,30 +716,28 @@ class TestAmplifierEdgeCases:
     @patch("src.amplihack.launcher.amplifier.check_amplifier")
     @patch("subprocess.run")
     def test_launch_amplifier_empty_prompt(self, mock_run, mock_check, mock_bundle_path):
-        """Test launch with empty string prompt."""
+        """Test launch with empty string prompt via args."""
         mock_check.return_value = True
         mock_bundle_path.return_value = None
         mock_run.return_value = MagicMock(returncode=0)
 
-        # Empty string is truthy for prompt parameter
-        result = launch_amplifier(prompt="")
+        result = launch_amplifier(args=["-p", ""])
 
         assert result == 0
         cmd = mock_run.call_args[0][0]
-        # Empty prompt should trigger run mode without the prompt
-        assert "run" in cmd
+        assert "-p" in cmd
 
     @patch("src.amplihack.launcher.amplifier.get_bundle_path")
     @patch("src.amplihack.launcher.amplifier.check_amplifier")
     @patch("subprocess.run")
     def test_launch_amplifier_special_chars_in_prompt(self, mock_run, mock_check, mock_bundle_path):
-        """Test launch with special characters in prompt."""
+        """Test launch with special characters in prompt via args."""
         mock_check.return_value = True
         mock_bundle_path.return_value = None
         mock_run.return_value = MagicMock(returncode=0)
 
         special_prompt = "explain \"this\" and 'that' with $variables"
-        result = launch_amplifier(prompt=special_prompt)
+        result = launch_amplifier(args=["-p", special_prompt])
 
         assert result == 0
         cmd = mock_run.call_args[0][0]
@@ -705,13 +747,13 @@ class TestAmplifierEdgeCases:
     @patch("src.amplihack.launcher.amplifier.check_amplifier")
     @patch("subprocess.run")
     def test_launch_amplifier_unicode_prompt(self, mock_run, mock_check, mock_bundle_path):
-        """Test launch with unicode characters in prompt."""
+        """Test launch with unicode characters in prompt via args."""
         mock_check.return_value = True
         mock_bundle_path.return_value = None
         mock_run.return_value = MagicMock(returncode=0)
 
         unicode_prompt = "解释这段代码 🚀 émoji test"
-        result = launch_amplifier(prompt=unicode_prompt)
+        result = launch_amplifier(args=["-p", unicode_prompt])
 
         assert result == 0
         cmd = mock_run.call_args[0][0]
@@ -801,13 +843,13 @@ class TestAmplifierBoundaryConditions:
     @patch("src.amplihack.launcher.amplifier.check_amplifier")
     @patch("subprocess.run")
     def test_launch_amplifier_very_long_prompt(self, mock_run, mock_check, mock_bundle_path):
-        """Test launch with very long prompt."""
+        """Test launch with very long prompt via args."""
         mock_check.return_value = True
         mock_bundle_path.return_value = None
         mock_run.return_value = MagicMock(returncode=0)
 
         long_prompt = "a" * 10000
-        result = launch_amplifier(prompt=long_prompt)
+        result = launch_amplifier(args=["-p", long_prompt])
 
         assert result == 0
         cmd = mock_run.call_args[0][0]
