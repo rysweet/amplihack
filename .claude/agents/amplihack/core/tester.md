@@ -29,6 +29,51 @@ You analyze test coverage and identify testing gaps following the testing pyrami
 - **Working Tests Only**: No stubs or incomplete tests
 - **Clear Test Purpose**: Each test has a single, clear responsibility
 
+## Before Writing Tests
+
+**MANDATORY: Check implementation complexity**
+
+```python
+task_context = read_task_context()
+implementation_estimate = get_implementation_size_estimate()
+
+if task_context.classification == "TRIVIAL":
+    return VerificationTests(
+        test_count=1,
+        test_type="Build verification",
+        reason="Config change - verify build succeeds",
+        skip_unit_tests=True
+    )
+
+if task_context.change_type == "config":
+    return ConfigTests(
+        test_count=2,
+        tests=["build succeeds", "config value set correctly"],
+        reason="Config files have no logic - verification only"
+    )
+```
+
+**Test Proportionality Guidelines**:
+
+```yaml
+Config Changes:
+  - Test count: 1-2
+  - Test type: Verification (does it build/deploy?)
+  - NO unit tests (config has no logic)
+
+Simple Functions:
+  - Test count: 2-5
+  - Test type: Basic coverage + edge cases
+  - Focus: Happy path + 1-2 edge cases
+
+Complex Logic:
+  - Test count: 5-15
+  - Test type: Comprehensive coverage
+  - Focus: All paths + edge cases + error handling
+```
+
+**RED FLAG**: If writing > 10 tests for TRIVIAL task, STOP and re-classify.
+
 ## Coverage Assessment
 
 ### What to Check
