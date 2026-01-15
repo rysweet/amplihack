@@ -355,10 +355,11 @@ Auto Mode Examples:
   amplihack amplifier --auto -- -p "build a REST API"
 
 Amplifier Examples:
-  amplihack amplifier                              # Launch Amplifier with amplihack bundle
-  amplihack amplifier -- -p "explain this code"   # Non-interactive with prompt
-  amplihack amplifier --resume SESSION_ID         # Resume a session
-  amplihack amplifier --model gpt-4o              # Use specific model
+  amplihack amplifier                                        # Launch Amplifier with amplihack bundle
+  amplihack amplifier -- -p "explain this code"              # Non-interactive with prompt
+  amplihack amplifier -- resume SESSION_ID                   # Resume a session
+  amplihack amplifier -- --model gpt-4o                      # Use specific model
+  amplihack amplifier -- --model gpt-4o -p "explain this"    # Model + prompt
 
 For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -408,29 +409,10 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     add_common_sdk_args(codex_parser)
 
     # Amplifier command
+    # Note: All amplifier-specific args (--model, --provider, --resume, etc.) should be
+    # passed after "--" separator, just like other CLI tools (claude, codex, copilot)
     amplifier_parser = subparsers.add_parser(
         "amplifier", help="Launch Microsoft Amplifier with amplihack bundle"
-    )
-    amplifier_parser.add_argument(
-        "--resume",
-        metavar="SESSION_ID",
-        help="Resume an existing Amplifier session",
-    )
-    amplifier_parser.add_argument(
-        "--print",
-        action="store_true",
-        dest="print_mode",
-        help="Single response mode (no tool use, no conversation)",
-    )
-    amplifier_parser.add_argument(
-        "--model",
-        metavar="MODEL",
-        help="Model to use (e.g., claude-sonnet-4-20250514, gpt-4o)",
-    )
-    amplifier_parser.add_argument(
-        "--provider",
-        metavar="PROVIDER",
-        help="Provider to use (e.g., anthropic, openai, azure)",
     )
     add_auto_mode_args(amplifier_parser)
     add_common_sdk_args(amplifier_parser)
@@ -811,7 +793,8 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "no_reflection", False):
             os.environ["AMPLIHACK_SKIP_REFLECTION"] = "1"
 
-        # Extract prompt from -p flag (used by both auto mode and normal launch)
+        # All amplifier args come after -- separator (claude_args)
+        # Extract prompt from args if present (for auto mode check)
         prompt = None
         if claude_args and "-p" in claude_args:
             idx = claude_args.index("-p")
@@ -825,20 +808,8 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
             return launch_amplifier_auto(prompt)
 
-        # Build extra args for model/provider selection
-        extra_args = []
-        if args.model:
-            extra_args += ["--model", args.model]
-        if args.provider:
-            extra_args += ["--provider", args.provider]
-
-        # Normal launch
-        return launch_amplifier(
-            args=extra_args + (claude_args or []),
-            prompt=prompt,
-            resume=getattr(args, "resume", None),
-            print_only=getattr(args, "print_mode", False),
-        )
+        # Normal launch - pass all args after -- directly to amplifier
+        return launch_amplifier(args=claude_args or [])
 
     elif args.command == "uvx-help":
         from .commands.uvx_helper import find_uvx_installation_path, print_uvx_usage_instructions

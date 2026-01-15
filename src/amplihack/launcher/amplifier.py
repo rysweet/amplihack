@@ -99,19 +99,14 @@ def get_bundle_path() -> Path | None:
     return None
 
 
-def launch_amplifier(
-    args: list[str] | None = None,
-    prompt: str | None = None,
-    resume: str | None = None,
-    print_only: bool = False,
-) -> int:
+def launch_amplifier(args: list[str] | None = None) -> int:
     """Launch Amplifier CLI with the amplihack bundle.
 
+    All amplifier args (--model, --provider, --resume, -p, etc.) should be passed
+    via the args parameter, which comes from everything after the "--" separator.
+
     Args:
-        args: Additional arguments to pass to amplifier (--model, --provider, etc.)
-        prompt: Initial prompt for non-interactive mode
-        resume: Session ID to resume
-        print_only: If True, use --print mode (single response, no tools)
+        args: Arguments to pass to amplifier CLI (everything after --)
 
     Returns:
         Exit code
@@ -132,22 +127,16 @@ def launch_amplifier(
         print(f"Using amplihack bundle: {bundle_path}")
         bundle_args = ["--bundle", str(bundle_path)]
 
-    # Build command - simple and direct
-    cmd = ["amplifier"]
+    # Parse args to determine mode (resume, run, etc.)
+    args = args or []
 
-    if resume:
-        cmd.extend(["resume", resume])
-    elif print_only and prompt:
-        cmd.extend(["print", prompt])
-    elif prompt:
-        cmd.extend(["run"] + bundle_args + [prompt])
+    # Check for resume mode: amplihack amplifier -- resume <session_id>
+    if args and args[0] == "resume":
+        # Resume mode: amplifier resume <session_id> [other args]
+        cmd = ["amplifier"] + args
     else:
-        # Interactive mode
-        cmd.extend(["run"] + bundle_args)
-
-    # Pass through any extra args (model, provider, etc.)
-    if args:
-        cmd.extend(args)
+        # Default to run mode with bundle
+        cmd = ["amplifier", "run"] + bundle_args + args
 
     # Debug output to stderr
     if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
@@ -175,4 +164,4 @@ def launch_amplifier_auto(prompt: str) -> int:
         Exit code
     """
     print("Starting Amplifier with task...")
-    return launch_amplifier(prompt=prompt)
+    return launch_amplifier(args=["-p", prompt])
