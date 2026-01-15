@@ -1,6 +1,7 @@
 [build-system]
 requires = ["setuptools>=45", "wheel"]
-build-backend = "setuptools.build_meta"
+build-backend = "build_hooks"
+backend-path = ["."]
 
 [project]
 name = "microsofthackathon2025-agenticcoding"
@@ -59,12 +60,13 @@ include = ["amplihack*"]
 
 [tool.setuptools.package-data]
 # Include prompts and framework files
-# .claude/ directory now included directly (custom build command no longer used)
+# .claude/ directory is copied into package by build_hooks.py before wheel build
 amplihack = [
     "prompts/*.md",
     "utils/uvx_settings_template.json",
     ".claude/**/*",
     ".claude/**/.gitkeep",
+    ".claude/**/.*",  # Include hidden files like .version
 ]
 
 [tool.ruff]
