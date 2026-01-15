@@ -29,10 +29,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-try:
-    import kuzu
-except ImportError:
-    kuzu = None  # type: ignore
+import kuzu
 
 from ..models import MemoryEntry, MemoryQuery, MemoryType, SessionInfo
 from .base import BackendCapabilities
@@ -54,16 +51,7 @@ class KuzuBackend:
 
         Args:
             db_path: Path to Kùzu database directory. Defaults to ~/.amplihack/memory_kuzu/
-
-        Raises:
-            ImportError: If kuzu package not installed
         """
-        if kuzu is None:
-            raise ImportError(
-                "Kùzu not installed. Install with: pip install kuzu\n"
-                "This is required fer the graph backend."
-            )
-
         if db_path is None:
             db_path = Path.home() / ".amplihack" / "memory_kuzu.db"
         elif isinstance(db_path, str):
@@ -1101,6 +1089,59 @@ class KuzuBackend:
         except Exception as e:
             logger.error(f"Error listing sessions from Kùzu: {e}")
             return []
+
+    def delete_session(self, session_id: str) -> bool:
+        """Delete a session and all its associated memories.
+
+        Args:
+            session_id: Session identifier to delete
+
+        Returns:
+            True if session was deleted, False otherwise
+
+        Performance: <500ms (cascading delete of session + all memories)
+        """
+        try:
+            # Delete all memories associated with this session across all memory types
+            for memory_type in [
+                MemoryType.EPISODIC,
+                MemoryType.SEMANTIC,
+                MemoryType.PROCEDURAL,
+                MemoryType.PROSPECTIVE,
+                MemoryType.WORKING,
+            ]:
+                node_label = self._get_node_label_for_type(memory_type)
+
+                # Find and delete memories for this session
+                # This uses relationship patterns to find memories belonging to the session
+                self.connection.execute(
+                    f"""
+                    MATCH (s:Session {{session_id: $session_id}})-[r]->(m:{node_label})
+                    DETACH DELETE m
+                """,
+                    {"session_id": session_id},
+                )
+
+            # Delete the session node itself
+            result = self.connection.execute(
+                """
+                MATCH (s:Session {session_id: $session_id})
+                DETACH DELETE s
+                RETURN COUNT(s) AS deleted
+            """,
+                {"session_id": session_id},
+            )
+
+            # Check if session was deleted
+            if result.has_next():
+                deleted_count = result.get_next()[0]
+                return deleted_count > 0
+
+            return False
+
+        except Exception as e:
+            logger.error(f"Error deletin' session from Kùzu: {e}")
+            return False
 
     def get_stats(self) -> dict[str, Any]:
         """Get database statistics.
