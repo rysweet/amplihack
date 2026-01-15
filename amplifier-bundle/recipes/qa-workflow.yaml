@@ -94,6 +94,7 @@ steps:
   # Verify answer fully addresses question or suggest escalation
   # ==========================================================================
   - id: "escalation-check"
+    condition: "{{classification.is_qa}} == 'true'"
     agent: "foundation:zen-architect"
     mode: "REVIEW"
     prompt: |
@@ -138,9 +139,9 @@ steps:
       {
         "workflow": "qa-workflow",
         "question": "{{question}}",
+        "is_qa": "{{classification.is_qa}}",
         "classification": {{classification}},
-        "answer": "See answer field",
-        "escalation": {{escalation_result}},
+        {% if escalation_result %}"escalation": {{escalation_result}},{% endif %}
         "status": "complete"
       }
       EOF
