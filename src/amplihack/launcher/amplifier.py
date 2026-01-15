@@ -99,6 +99,49 @@ def get_bundle_path() -> Path | None:
     return None
 
 
+def ensure_bundle_registered(bundle_path: Path) -> bool:
+    """Ensure the amplihack bundle is registered with Amplifier.
+
+    Args:
+        bundle_path: Path to the bundle directory
+
+    Returns:
+        True if bundle is registered (or was successfully registered), False otherwise
+    """
+    # Check if already registered by looking for 'amplihack' in bundle list
+    try:
+        result = subprocess.run(
+            ["amplifier", "bundle", "list"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+        if result.returncode == 0 and "amplihack" in result.stdout:
+            return True
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+
+    # Not registered, add it
+    print("Registering amplihack bundle with Amplifier...")
+    try:
+        result = subprocess.run(
+            ["amplifier", "bundle", "add", str(bundle_path)],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        if result.returncode == 0:
+            print("\u2713 Bundle registered")
+            return True
+        print(f"Warning: Failed to register bundle: {result.stderr[:200]}")
+        return False
+    except (FileNotFoundError, subprocess.TimeoutExpired) as e:
+        print(f"Warning: Failed to register bundle: {e}")
+        return False
+
+
 def launch_amplifier(args: list[str] | None = None) -> int:
     """Launch Amplifier CLI with the amplihack bundle.
 
@@ -117,15 +160,20 @@ def launch_amplifier(args: list[str] | None = None) -> int:
             print("Failed to install Amplifier CLI")
             return 1
 
-    # Find the bundle path
+    # Find the bundle path and ensure it's registered
     bundle_path = get_bundle_path()
     if not bundle_path:
         print("Warning: amplihack bundle not found. Running Amplifier without bundle.")
         print("  Expected location: ./amplifier-bundle/bundle.md")
         bundle_args: list[str] = []
     else:
-        print(f"Using amplihack bundle: {bundle_path}")
-        bundle_args = ["--bundle", str(bundle_path)]
+        # Ensure bundle is registered with Amplifier (uses bundle name, not path)
+        if ensure_bundle_registered(bundle_path):
+            print(f"Using amplihack bundle: {bundle_path}")
+            bundle_args = ["--bundle", "amplihack"]
+        else:
+            print("Warning: Could not register bundle. Running without it.")
+            bundle_args = []
 
     # Parse args to determine mode (resume, run, etc.)
     args = args or []
