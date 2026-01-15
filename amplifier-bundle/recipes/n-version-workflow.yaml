@@ -277,7 +277,13 @@ steps:
     type: "bash"
     parse_json: true
     command: |
-      mkdir -p "{{output_dir}}"
+      # Validate output_dir - reject dangerous patterns
+      OUTPUT_DIR='{{output_dir}}'
+      case "$OUTPUT_DIR" in
+        *'$('*|*'`'*|*';'*|*'|'*|*'&'*)
+          echo '{"error": "Invalid characters in output_dir"}' && exit 1 ;;
+      esac
+      mkdir -p "$OUTPUT_DIR"
       
       cat << 'EOF'
       {
