@@ -19,6 +19,7 @@ from src.amplihack.launcher.amplifier import (
     install_amplifier,
     launch_amplifier,
     launch_amplifier_auto,
+    sync_agents_md,
 )
 
 # =============================================================================
@@ -240,6 +241,231 @@ class TestGetBundlePath:
 
         # Should not find it since bundle.md doesn't exist
         assert result is None or result != bundle_dir
+
+
+# =============================================================================
+# Tests for sync_agents_md()
+# =============================================================================
+
+
+class TestSyncAgentsMd:
+    """Tests for sync_agents_md function.
+
+    This function syncs AGENTS.md from CLAUDE.md:
+    - On Unix: creates a symlink AGENTS.md -> CLAUDE.md
+    - On Windows: copies CLAUDE.md to AGENTS.md
+    """
+
+    def test_sync_skips_when_claude_md_missing(self, tmp_path):
+        """Test that sync returns True (success) when CLAUDE.md doesn't exist."""
+        # No CLAUDE.md in the directory
+        result = sync_agents_md(tmp_path)
+
+        assert result is True
+        assert not (tmp_path / "AGENTS.md").exists()
+
+    def test_sync_creates_symlink_on_unix(self, tmp_path, monkeypatch):
+        """Test that sync creates symlink on Unix systems."""
+        monkeypatch.setattr("sys.platform", "linux")
+
+        # Create CLAUDE.md
+        claude_md = tmp_path / "CLAUDE.md"
+        claude_md.write_text("# Claude Instructions\nDo stuff.")
+
+        result = sync_agents_md(tmp_path)
+
+        assert result is True
+        agents_md = tmp_path / "AGENTS.md"
+        assert agents_md.exists()
+        assert agents_md.is_symlink()
+        assert agents_md.resolve() == claude_md.resolve()
+        # Verify content is accessible through symlink
+        assert agents_md.read_text() == "# Claude Instructions\nDo stuff."
+
+    def test_sync_creates_symlink_on_darwin(self, tmp_path, monkeypatch):
+        """Test that sync creates symlink on macOS."""
+        monkeypatch.setattr("sys.platform", "darwin")
+
+        claude_md = tmp_path / "CLAUDE.md"
+        claude_md.write_text("# Instructions")
+
+        result = sync_agents_md(tmp_path)
+
+        assert result is True
+        agents_md = tmp_path / "AGENTS.md"
+        assert agents_md.is_symlink()
+
+    def test_sync_copies_file_on_windows(self, tmp_path, monkeypatch):
+        """Test that sync copies file on Windows (symlinks require admin)."""
+        monkeypatch.setattr("sys.platform", "win32")
+
+        claude_md = tmp_path / "CLAUDE.md"
+        claude_md.write_text("# Windows Instructions")
+
+        result = sync_agents_md(tmp_path)
+
+        assert result is True
+        agents_md = tmp_path / "AGENTS.md"
+        assert agents_md.exists()
+        assert not agents_md.is_symlink()  # Should be a copy, not symlink
+        assert agents_md.read_text() == "# Windows Instructions"
+
+    def test_sync_handles_existing_correct_symlink_noop(self, tmp_path, monkeypatch):
+        """Test that sync is a no-op when correct symlink already exists."""
+        monkeypatch.setattr("sys.platform", "linux")
+
+        claude_md = tmp_path / "CLAUDE.md"
+        claude_md.write_text("# Instructions")
+
+        # Create correct symlink manually
+        agents_md = tmp_path / "AGENTS.md"
+        agents_md.symlink_to("CLAUDE.md")
+        original_inode = agents_md.lstat().st_ino
+
+        result = sync_agents_md(tmp_path)
+
+        assert result is True
+        # Symlink should be unchanged (same inode)
+        assert agents_md.is_symlink()
+        assert agents_md.lstat().st_ino == original_inode
+
+    def test_sync_handles_existing_wrong_symlink_recreates(self, tmp_path, monkeypatch):
+        """Test that sync recreates symlink when it points to wrong target."""
+        monkeypatch.setattr("sys.platform", "linux")
+
+        claude_md = tmp_path / "CLAUDE.md"
+        claude_md.write_text("# Instructions")
+
+        # Create a different file and wrong symlink
+        other_file = tmp_path / "OTHER.md"
+        other_file.write_text("# Other")
+        agents_md = tmp_path / "AGENTS.md"
+        agents_md.symlink_to("OTHER.md")
+
+        result = sync_agents_md(tmp_path)
+
+        assert result is True
+        assert agents_md.is_symlink()
+        # Should now point to CLAUDE.md
+        assert agents_md.resolve() == claude_md.resolve()
+
+    def test_sync_handles_existing_uptodate_file_noop(self, tmp_path, monkeypatch):
+        """Test that sync is a no-op when AGENTS.md already has same content."""
+        monkeypatch.setattr("sys.platform", "win32")
+
+        content = "# Shared Instructions"
+        claude_md = tmp_path / "CLAUDE.md"
+        claude_md.write_text(content)
+
+        # Create AGENTS.md with same content
+        agents_md = tmp_path / "AGENTS.md"
+        agents_md.write_text(content)
+
+        result = sync_agents_md(tmp_path)
+
+        assert result is True
+        # File should be unchanged (same content means no overwrite)
+        assert agents_md.read_text() == content
+
+    def test_sync_handles_existing_outdated_file_overwrites(self, tmp_path, monkeypatch):
+        """Test that sync overwrites AGENTS.md when content differs from CLAUDE.md."""
+        monkeypatch.setattr("sys.platform", "win32")
+
+        claude_md = tmp_path / "CLAUDE.md"
+        claude_md.write_text("# Updated Instructions")
+
+        # Create AGENTS.md with old content
+        agents_md = tmp_path / "AGENTS.md"
+        agents_md.write_text("# Old Instructions")
+
+        result = sync_agents_md(tmp_path)
+
+        assert result is True
+        # Should have new content
+        assert agents_md.read_text() == "# Updated Instructions"
+
+    def test_sync_handles_oserror_gracefully(self, tmp_path, monkeypatch, capsys):
+        """Test that sync returns False and prints warning on OSError."""
+        monkeypatch.setattr("sys.platform", "linux")
+
+        claude_md = tmp_path / "CLAUDE.md"
+        claude_md.write_text("# Instructions")
+
+        # Make the directory read-only to cause OSError
+        # Use mock instead for reliability across platforms
+        from unittest.mock import patch
+
+        with patch("pathlib.Path.symlink_to") as mock_symlink:
+            mock_symlink.side_effect = OSError("Permission denied")
+            result = sync_agents_md(tmp_path)
+
+        assert result is False
+        captured = capsys.readouterr()
+        assert "Warning" in captured.out
+        assert "AGENTS.md" in captured.out
+
+    def test_sync_handles_oserror_on_copy(self, tmp_path, monkeypatch, capsys):
+        """Test that sync handles OSError during Windows copy operation."""
+        monkeypatch.setattr("sys.platform", "win32")
+
+        claude_md = tmp_path / "CLAUDE.md"
+        claude_md.write_text("# Instructions")
+
+        from unittest.mock import patch
+
+        with patch("shutil.copy2") as mock_copy:
+            mock_copy.side_effect = OSError("Disk full")
+            result = sync_agents_md(tmp_path)
+
+        assert result is False
+        captured = capsys.readouterr()
+        assert "Warning" in captured.out
+
+    def test_sync_with_subdirectory_project_root(self, tmp_path, monkeypatch):
+        """Test sync works with nested project directory."""
+        monkeypatch.setattr("sys.platform", "linux")
+
+        project = tmp_path / "myproject" / "subdir"
+        project.mkdir(parents=True)
+
+        claude_md = project / "CLAUDE.md"
+        claude_md.write_text("# Nested Instructions")
+
+        result = sync_agents_md(project)
+
+        assert result is True
+        agents_md = project / "AGENTS.md"
+        assert agents_md.is_symlink()
+        assert agents_md.read_text() == "# Nested Instructions"
+
+    def test_sync_large_file(self, tmp_path, monkeypatch):
+        """Test sync handles large CLAUDE.md files."""
+        monkeypatch.setattr("sys.platform", "win32")
+
+        # Create a reasonably large file
+        large_content = "# Instructions\n" + ("x" * 100000)
+        claude_md = tmp_path / "CLAUDE.md"
+        claude_md.write_text(large_content)
+
+        result = sync_agents_md(tmp_path)
+
+        assert result is True
+        agents_md = tmp_path / "AGENTS.md"
+        assert agents_md.read_text() == large_content
+
+    def test_sync_unicode_content(self, tmp_path, monkeypatch):
+        """Test sync handles unicode content in CLAUDE.md."""
+        monkeypatch.setattr("sys.platform", "win32")
+
+        unicode_content = "# 说明 🚀\n日本語テスト\nÉmoji: 🎉"
+        claude_md = tmp_path / "CLAUDE.md"
+        claude_md.write_text(unicode_content, encoding="utf-8")
+
+        result = sync_agents_md(tmp_path)
+
+        assert result is True
+        agents_md = tmp_path / "AGENTS.md"
+        assert agents_md.read_text(encoding="utf-8") == unicode_content
 
 
 # =============================================================================

@@ -4,6 +4,7 @@ Launches Amplifier with the amplihack bundle enabled for enhanced development wo
 """
 
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -66,6 +67,54 @@ def install_amplifier() -> bool:
         return False
     except Exception as e:
         print(f"Error during installation: {e}")
+        return False
+
+
+def sync_agents_md(project_root: Path) -> bool:
+    """Sync AGENTS.md from CLAUDE.md for Amplifier compatibility.
+
+    CLAUDE.md is the single source of truth. This function creates AGENTS.md
+    as a symlink (Unix) or copy (Windows) so Amplifier can read the same instructions.
+
+    Args:
+        project_root: Root directory containing CLAUDE.md
+
+    Returns:
+        True if sync succeeded or wasn't needed, False on error
+    """
+    claude_md = project_root / "CLAUDE.md"
+    agents_md = project_root / "AGENTS.md"
+
+    # Nothing to sync if CLAUDE.md doesn't exist
+    if not claude_md.exists():
+        return True
+
+    # Handle symlinks first (including broken symlinks)
+    # Note: is_symlink() returns True even for broken symlinks, but exists() returns False
+    if agents_md.is_symlink():
+        if agents_md.exists() and agents_md.resolve() == claude_md.resolve():
+            return True
+        # Wrong target or broken symlink - remove and recreate
+        agents_md.unlink()
+
+    # Handle regular files
+    if agents_md.is_file():
+        if agents_md.read_text(encoding="utf-8") == claude_md.read_text(encoding="utf-8"):
+            return True
+        # Outdated - remove and recreate
+        agents_md.unlink()
+
+    # Create AGENTS.md
+    try:
+        if sys.platform == "win32":
+            # Windows: copy the file (symlinks require admin privileges)
+            shutil.copy2(claude_md, agents_md)
+        else:
+            # Unix: create symlink
+            agents_md.symlink_to(claude_md.name)
+        return True
+    except OSError as e:
+        print(f"Warning: Could not sync AGENTS.md from CLAUDE.md: {e}")
         return False
 
 
@@ -167,6 +216,11 @@ def launch_amplifier(args: list[str] | None = None) -> int:
         print("  Expected location: ./amplifier-bundle/bundle.md")
         bundle_args: list[str] = []
     else:
+        # Sync AGENTS.md from CLAUDE.md (CLAUDE.md is source of truth)
+        # This ensures Amplifier sees the same instructions as Claude Code
+        project_root = bundle_path.parent
+        sync_agents_md(project_root)
+
         # Ensure bundle is registered with Amplifier (uses bundle name, not path)
         if ensure_bundle_registered(bundle_path):
             print(f"Using amplihack bundle: {bundle_path}")
