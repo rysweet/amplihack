@@ -237,7 +237,7 @@ steps:
       **Requirements:** {{requirements}}
       **Implementation:** {{implementation}}
       **Review:** {{review}}
-      **Refinements:** {{refined_implementation}}
+      {% if refined_implementation %}**Refinements:** {{refined_implementation}}{% endif %}
 
       Final checklist:
       1. All requirements met?
