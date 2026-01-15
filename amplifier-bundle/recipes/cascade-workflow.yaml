@@ -263,10 +263,10 @@ steps:
       fi
       
       # Secondary was run, check its result
-      SECONDARY_EXIT="${{secondary_exit_code}}"
+      SECONDARY_EXIT="{% if secondary_exit_code %}{{secondary_exit_code}}{% else %}1{% endif %}"
       
       cat << 'SECONDARY_EOF' > /tmp/secondary_result_$$.txt
-      {{secondary_result}}
+      {% if secondary_result %}{{secondary_result}}{% else %}NO_RESULT{% endif %}
       SECONDARY_EOF
       
       if [ "$SECONDARY_EXIT" = "0" ] && grep -qi "SUCCESS" /tmp/secondary_result_$$.txt 2>/dev/null; then
@@ -298,7 +298,7 @@ steps:
 
       **Previous Attempts**:
       - PRIMARY: {{primary_result}}
-      - SECONDARY: {{secondary_result}}
+      {% if secondary_result %}- SECONDARY: {{secondary_result}}{% endif %}
 
       **Cascade Context**:
       {{cascade_config}}
@@ -597,12 +597,12 @@ steps:
           ;;
         SECONDARY)
           cat << 'RESULT_EOF'
-      {{secondary_result}}
+      {% if secondary_result %}{{secondary_result}}{% else %}Secondary level completed{% endif %}
       RESULT_EOF
           ;;
         TERTIARY)
           cat << 'RESULT_EOF'
-      {{tertiary_result}}
+      {% if tertiary_result %}{{tertiary_result}}{% else %}Tertiary level completed{% endif %}
       RESULT_EOF
           ;;
       esac
