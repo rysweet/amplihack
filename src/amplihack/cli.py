@@ -426,6 +426,27 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         "--backend", choices=["kuzu", "sqlite"], default="kuzu", help="Memory backend to use"
     )
 
+    # Clean subcommand
+    clean_parser = memory_subparsers.add_parser("clean", help="Clean up test sessions")
+    clean_parser.add_argument(
+        "--pattern",
+        default="test_*",
+        help="Session ID pattern to match (supports * wildcards, default: test_*)",
+    )
+    clean_parser.add_argument(
+        "--backend", choices=["kuzu", "sqlite"], default="kuzu", help="Memory backend to use"
+    )
+    clean_parser.add_argument(
+        "--no-dry-run",
+        action="store_true",
+        help="Actually delete sessions (default is dry-run mode)",
+    )
+    clean_parser.add_argument(
+        "--confirm",
+        action="store_true",
+        help="Skip confirmation prompt (use with --no-dry-run)",
+    )
+
     return parser
 
 
@@ -781,6 +802,41 @@ def main(argv: list[str] | None = None) -> int:
                 backend.close()
 
             return 0
+
+        if args.memory_command == "clean":
+            from .memory.cli_cleanup import cleanup_memory_sessions
+
+            # Select backend
+            if args.backend == "kuzu":
+                try:
+                    from .memory.backends.kuzu_backend import KuzuBackend
+
+                    backend = KuzuBackend()
+                    backend.initialize()
+                except ImportError:
+                    print("Error: Kùzu backend not available. Install with: pip install amplihack")
+                    return 1
+            else:
+                from .memory.database import MemoryDatabase
+
+                backend = MemoryDatabase()
+                backend.initialize()
+
+            # Run cleanup
+            result = cleanup_memory_sessions(
+                backend=backend,
+                pattern=args.pattern,
+                dry_run=not args.no_dry_run,
+                confirm=args.confirm,
+            )
+
+            # Cleanup backend
+            if hasattr(backend, "close"):
+                backend.close()
+
+            # Return non-zero if there were errors
+            return 1 if result["errors"] > 0 else 0
+
         create_parser().print_help()
         return 1
 

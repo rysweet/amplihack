@@ -142,6 +142,19 @@ class SQLiteBackend:
         """
         return self.database.list_sessions(limit)
 
+    def delete_session(self, session_id: str) -> bool:
+        """Delete a session and all its associated memories.
+
+        Args:
+            session_id: Session identifier to delete
+
+        Returns:
+            True if session was deleted, False otherwise
+
+        Performance: <500ms (cascading delete)
+        """
+        return self.database.delete_session(session_id)
+
     def get_stats(self) -> dict[str, Any]:
         """Get database statistics.
 

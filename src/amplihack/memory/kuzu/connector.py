@@ -63,9 +63,8 @@ class KuzuConnector:
         if not KUZU_AVAILABLE:
             raise ImportError(
                 "kuzu package not installed. Install with:\n"
-                "  pip install kuzu\n"
-                "  # or\n"
-                "  pip install amplihack[kuzu]"
+                "  pip install amplihack\n"
+                "  # (kuzu is now a required dependency)"
             )
 
         # Resolve database path

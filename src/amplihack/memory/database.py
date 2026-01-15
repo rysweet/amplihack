@@ -595,6 +595,50 @@ class MemoryDatabase:
                 logger.error(sanitized_msg)
                 return []
 
+    def delete_session(self, session_id: str) -> bool:
+        """Delete a session and all its associated memories.
+
+        Args:
+            session_id: Session identifier to delete
+
+        Returns:
+            True if session was deleted, False otherwise
+        """
+        with self._lock:
+            conn = None
+            try:
+                conn = self._get_connection()
+
+                # Delete all memories for this session
+                conn.execute(
+                    "DELETE FROM memory_entries WHERE session_id = ?",
+                    (session_id,),
+                )
+
+                # Delete session agents
+                conn.execute(
+                    "DELETE FROM session_agents WHERE session_id = ?",
+                    (session_id,),
+                )
+
+                # Delete the session itself
+                cursor = conn.execute(
+                    "DELETE FROM sessions WHERE session_id = ?",
+                    (session_id,),
+                )
+
+                conn.commit()
+
+                # Check if session was deleted
+                return cursor.rowcount > 0
+
+            except sqlite3.Error as e:
+                if conn:
+                    conn.rollback()
+                sanitized_msg = _sanitize_error(e, "delete_session")
+                logger.error(sanitized_msg)
+                return False
+
     def get_stats(self) -> dict[str, Any]:
         """Get database statistics.
 
