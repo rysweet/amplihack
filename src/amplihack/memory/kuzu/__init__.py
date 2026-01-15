@@ -17,9 +17,8 @@ Example:
         results = conn.execute_query("MATCH (p:Person) RETURN p.name")
 
 Installation:
-    pip install amplihack[kuzu]
-    # or
-    pip install kuzu
+    pip install amplihack
+    # (kuzu is now a required dependency)
 """
 
 from .connector import KUZU_AVAILABLE, KuzuConnector
