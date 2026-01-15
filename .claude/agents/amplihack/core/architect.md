@@ -52,6 +52,11 @@ These patterns inform architectural decisions and code review evaluations.
 **MANDATORY: Read task_context.json first**
 
 ```python
+# NOTE: This pseudocode represents a PROPOSED future implementation.
+# task_context.json and read_task_context() are conceptual examples
+# showing how complexity context could be passed between agents.
+# These are NOT currently implemented features.
+
 task_context = read_task_context()
 
 if task_context.classification == "TRIVIAL":
