@@ -1,0 +1,298 @@
+name: "consensus-workflow"
+description: "Enhanced workflow with multi-agent consensus at critical decision points for maximum quality"
+version: "1.0.0"
+author: "Amplihack Team"
+tags: ["consensus", "quality", "multi-agent", "critical", "validation"]
+
+# CONSENSUS_WORKFLOW: Multi-Agent Consensus for Critical Work
+#
+# This workflow extends default development with consensus mechanisms:
+#   - Multi-Agent Debate for ambiguous requirements
+#   - N-Version Programming for critical code paths
+#   - Expert Panel reviews for quality gates
+#
+# Use this workflow for:
+#   - Complex features with architectural implications
+#   - Mission-critical code requiring high reliability
+#   - Ambiguous requirements needing clarification
+#   - Security-sensitive implementations
+#   - Public APIs with long-term commitments
+#
+# Trade-off: Slower but higher quality output
+#
+# Usage:
+#   amplifier recipes execute consensus-workflow.yaml --context '{
+#     "task_description": "Implement user authentication with JWT",
+#     "requirements": "Must support refresh tokens, rate limiting",
+#     "criticality": "high"
+#   }'
+
+recursion:
+  max_depth: 5
+  max_total_steps: 60
+
+context:
+  # Description of the task
+  task_description: ""
+  
+  # Specific requirements
+  requirements: ""
+  
+  # Criticality level: low, medium, high, critical
+  criticality: "high"
+  
+  # Output directory for artifacts
+  output_dir: "./ai_working/consensus"
+
+steps:
+  # ==========================================================================
+  # PHASE 1: REQUIREMENTS CONSENSUS
+  # Multi-agent debate to clarify and validate requirements
+  # ==========================================================================
+  - id: "requirements-clarification"
+    agent: "foundation:zen-architect"
+    mode: "ANALYZE"
+    prompt: |
+      Clarify and validate the requirements for this task:
+
+      **Task:** {{task_description}}
+      **Requirements:** {{requirements}}
+      **Criticality:** {{criticality}}
+
+      Analyze from multiple perspectives:
+      1. What are the EXPLICIT requirements that cannot be changed?
+      2. What IMPLICIT requirements should be considered?
+      3. Are there any AMBIGUITIES that need resolution?
+      4. What CONSTRAINTS apply?
+
+      Return as JSON:
+      ```json
+      {
+        "explicit_requirements": ["list of must-have requirements"],
+        "implicit_requirements": ["derived requirements"],
+        "ambiguities": [
+          {"issue": "the ambiguity", "suggested_resolution": "how to resolve"}
+        ],
+        "constraints": ["technical and business constraints"],
+        "success_criteria": ["measurable success criteria"],
+        "risks": ["potential risks to consider"]
+      }
+      ```
+    output: "requirements_analysis"
+    parse_json: true
+
+  # ==========================================================================
+  # PHASE 2: ARCHITECTURE CONSENSUS
+  # Multi-perspective architecture design
+  # ==========================================================================
+  - id: "architecture-design"
+    agent: "foundation:zen-architect"
+    mode: "ARCHITECT"
+    prompt: |
+      Design the architecture with multi-perspective analysis:
+
+      **Task:** {{task_description}}
+      **Requirements:** {{requirements_analysis}}
+      **Criticality:** {{criticality}}
+
+      Analyze from these perspectives:
+      1. **Architect**: System design, module boundaries, patterns
+      2. **Security**: Threat model, security requirements
+      3. **Tester**: Testability analysis, test strategy
+
+      Provide architecture design:
+
+      ## System Architecture
+      [Component design and boundaries]
+
+      ## Security Considerations
+      [Threat model and mitigations]
+
+      ## Test Strategy
+      [How this will be tested]
+
+      ## Design Decisions
+      ```json
+      {
+        "components": [
+          {"name": "...", "responsibility": "...", "interfaces": ["..."]}
+        ],
+        "patterns_used": ["list of design patterns"],
+        "security_measures": ["security implementations"],
+        "test_approach": "TDD/integration/e2e strategy",
+        "trade_offs": [
+          {"decision": "...", "rationale": "...", "alternatives_rejected": ["..."]}
+        ]
+      }
+      ```
+    output: "architecture"
+    parse_json: true
+
+  # ==========================================================================
+  # PHASE 3: IMPLEMENTATION WITH VALIDATION
+  # Build with continuous validation
+  # ==========================================================================
+  - id: "implementation"
+    agent: "foundation:modular-builder"
+    prompt: |
+      Implement the solution following the architecture:
+
+      **Task:** {{task_description}}
+      **Requirements:** {{requirements_analysis}}
+      **Architecture:** {{architecture}}
+
+      Implementation guidelines:
+      1. Follow the architecture design exactly
+      2. Write tests alongside implementation (TDD)
+      3. No stubs, no TODOs, no placeholders
+      4. Comprehensive error handling
+      5. Clear documentation
+
+      Provide:
+      1. Complete implementation code
+      2. Unit tests
+      3. Integration points documentation
+      4. Any deviations from architecture (with justification)
+    output: "implementation"
+
+  # ==========================================================================
+  # PHASE 4: EXPERT PANEL REVIEW
+  # Multi-agent review for quality assurance
+  # ==========================================================================
+  - id: "security-review"
+    agent: "foundation:security-guardian"
+    prompt: |
+      Conduct a security review of this implementation:
+
+      **Task:** {{task_description}}
+      **Requirements:** {{requirements_analysis}}
+      **Implementation:** {{implementation}}
+
+      Review for:
+      1. OWASP Top 10 vulnerabilities
+      2. Authentication/authorization issues
+      3. Data validation and sanitization
+      4. Secure defaults
+      5. Error handling that doesn't leak information
+
+      Return findings as JSON:
+      ```json
+      {
+        "security_score": "1-10",
+        "critical_issues": ["must fix before deploy"],
+        "warnings": ["should fix"],
+        "recommendations": ["nice to have"],
+        "approved": true/false
+      }
+      ```
+    output: "security_review"
+    parse_json: true
+
+  - id: "code-quality-review"
+    agent: "foundation:zen-architect"
+    mode: "REVIEW"
+    prompt: |
+      Review the implementation for code quality and philosophy compliance:
+
+      **Implementation:** {{implementation}}
+      **Architecture:** {{architecture}}
+      **Requirements:** {{requirements_analysis}}
+
+      Review against:
+      1. Ruthless simplicity - Is this as simple as possible?
+      2. Zero-BS - No stubs, TODOs, or placeholders?
+      3. Single responsibility - Clear module boundaries?
+      4. Testability - Can this be easily tested?
+      5. Maintainability - Will this be easy to change?
+
+      Return as JSON:
+      ```json
+      {
+        "quality_score": "1-10",
+        "simplicity_assessment": "assessment",
+        "issues": [
+          {"severity": "high/medium/low", "issue": "...", "fix": "..."}
+        ],
+        "philosophy_compliance": true/false,
+        "approved": true/false
+      }
+      ```
+    output: "quality_review"
+    parse_json: true
+
+  # ==========================================================================
+  # PHASE 5: CONSENSUS VALIDATION
+  # Ensure all reviewers approve
+  # ==========================================================================
+  - id: "consensus-validation"
+    agent: "foundation:zen-architect"
+    mode: "ANALYZE"
+    prompt: |
+      Validate consensus across all reviews:
+
+      **Security Review:** {{security_review}}
+      **Quality Review:** {{quality_review}}
+
+      Determine if we have consensus to proceed:
+
+      ```json
+      {
+        "security_approved": {{security_review.approved}},
+        "quality_approved": {{quality_review.approved}},
+        "overall_consensus": true/false,
+        "blocking_issues": ["issues that must be resolved"],
+        "recommendations": ["non-blocking improvements"],
+        "final_verdict": "approved/needs_work/rejected",
+        "next_steps": ["what to do next"]
+      }
+      ```
+
+      Consensus requires:
+      - Security score >= 7
+      - Quality score >= 7
+      - No critical issues
+      - Philosophy compliance
+    output: "consensus"
+    parse_json: true
+
+  # ==========================================================================
+  # PHASE 6: FINAL REFINEMENT (if needed)
+  # Address any issues found in review
+  # ==========================================================================
+  - id: "refinement"
+    condition: "{{consensus.final_verdict}} == 'needs_work'"
+    agent: "foundation:modular-builder"
+    prompt: |
+      Refine the implementation to address review findings:
+
+      **Original Implementation:** {{implementation}}
+      **Security Issues:** {{security_review.critical_issues}}
+      **Quality Issues:** {{quality_review.issues}}
+      **Blocking Issues:** {{consensus.blocking_issues}}
+
+      Address ALL blocking issues and critical findings.
+      Maintain all original requirements.
+
+      Provide the refined implementation with notes on what changed.
+    output: "refined_implementation"
+
+  # ==========================================================================
+  # FINAL OUTPUT
+  # ==========================================================================
+  - id: "final-output"
+    type: "bash"
+    parse_json: true
+    command: |
+      cat << 'EOF'
+      {
+        "workflow": "consensus-workflow",
+        "task": "{{task_description}}",
+        "criticality": "{{criticality}}",
+        "consensus_achieved": "{{consensus.overall_consensus}}",
+        "security_score": "{{security_review.security_score}}",
+        "quality_score": "{{quality_review.quality_score}}",
+        "final_verdict": "{{consensus.final_verdict}}",
+        "status": "complete"
+      }
+      EOF
+    output: "final_result"

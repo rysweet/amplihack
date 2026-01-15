@@ -2,15 +2,11 @@
 bundle:
   name: amplihack
   version: 1.0.0
-  description: "Amplihack development framework - Amplifier bundle packaging"
+  description: "A set of recipes, agents, tools, hooks, and skills from the amplihack toolset which are designed to provide a more complete engineering system on top of Amplifier."
 
 includes:
   - bundle: git+https://github.com/microsoft/amplifier-foundation@main
   - bundle: git+https://github.com/microsoft/amplifier-bundle-recipes@main
-
-behaviors:
-  amplihack:
-    path: behaviors/amplihack.yaml
 
 # Reference existing Claude Code components via relative paths - NO DUPLICATION
 skills:
@@ -153,6 +149,16 @@ agents:
   amplihack-improvement-workflow: { path: ../.claude/agents/amplihack/workflows/amplihack-improvement-workflow.md }
   prompt-review-workflow: { path: ../.claude/agents/amplihack/workflows/prompt-review-workflow.md }
 
+# Amplifier recipes (converted from Claude Code workflows)
+recipes:
+  qa-workflow: { path: recipes/qa-workflow.yaml }
+  cascade-workflow: { path: recipes/cascade-workflow.yaml }
+  consensus-workflow: { path: recipes/consensus-workflow.yaml }
+  debate-workflow: { path: recipes/debate-workflow.yaml }
+  default-workflow: { path: recipes/default-workflow.yaml }
+  investigation-workflow: { path: recipes/investigation-workflow.yaml }
+  n-version-workflow: { path: recipes/n-version-workflow.yaml }
+
 context:
   include:
     # Reference existing Claude Code context
@@ -195,12 +201,38 @@ This bundle provides a thin Amplifier packaging layer that references the existi
 - **74 Skills** - Domain expertise, workflow patterns, technical capabilities
 - **36 Agents** - Core, specialized, and workflow agents
 - **Context** - Philosophy, patterns, trust guidelines
-- **Workflows** - Q&A, Investigation, Default development workflows
 
 ### Amplifier-Specific (in this bundle)
+- **7 Recipes** - Workflow recipes converted from Claude Code workflows
 - **8 Hook Modules** - Wrappers around Claude Code hooks for Amplifier compatibility
 - **Behaviors** - Amplihack behavior configuration with workflow selection
 - **Context** - Amplifier-specific instructions
+
+## Recipes
+
+The following workflow recipes are available:
+
+| Recipe | Description | Use When |
+|--------|-------------|----------|
+| `qa-workflow` | Minimal 3-step Q&A | Simple questions, no code changes needed |
+| `investigation-workflow` | 6-phase systematic investigation | Understanding code/systems, research |
+| `default-workflow` | Standard development workflow | Features, bug fixes, refactoring |
+| `cascade-workflow` | Graceful degradation (3-level fallback) | Resilient operations with fallbacks |
+| `consensus-workflow` | Multi-agent consensus | Critical code requiring high quality |
+| `debate-workflow` | Multi-perspective debate | Complex architectural decisions |
+| `n-version-workflow` | N-version programming | Critical code, multiple implementations |
+
+### Running Recipes
+
+```bash
+# Run a recipe
+amplifier run "run the qa-workflow recipe with question='How does auth work?'"
+
+# Or via tool invoke
+amplifier tool invoke recipes operation=execute \
+  recipe_path=amplihack:recipes/default-workflow.yaml \
+  context='{"task_description": "Add user profile page"}'
+```
 
 ## Hook Mapping
 

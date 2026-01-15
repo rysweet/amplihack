@@ -1,0 +1,292 @@
+name: "n-version-workflow"
+description: "N-version programming for critical code - generate multiple independent implementations and select best"
+version: "1.0.0"
+author: "Amplihack Team"
+tags: ["n-version", "critical", "validation", "multi-implementation", "safety"]
+
+# N_VERSION_WORKFLOW: Multiple Independent Implementations
+#
+# Use this workflow for:
+#   - Critical security features (authentication, authorization)
+#   - Complex algorithms with multiple valid approaches
+#   - High-risk refactoring of core components
+#   - Architecture decisions with significant long-term impact
+#   - When correctness is paramount over speed
+#
+# NOT for:
+#   - Simple CRUD operations
+#   - Straightforward bug fixes
+#   - Documentation updates
+#   - Time-sensitive quick fixes
+#
+# Process:
+#   1. Prepare specification (crystal-clear requirements)
+#   2. Generate N independent implementations
+#   3. Collect and compare implementations
+#   4. Evaluate against criteria
+#   5. Select or synthesize best solution
+#   6. Document learnings
+#
+# Selection Criteria (priority order):
+#   1. Correctness - Meets all requirements
+#   2. Security - No vulnerabilities
+#   3. Simplicity - Ruthless simplicity
+#   4. Philosophy - Follows project principles
+#   5. Performance - Efficiency
+#
+# Usage:
+#   amplifier recipes execute n-version-workflow.yaml --context '{
+#     "task_description": "Implement JWT token validation",
+#     "requirements": "Must validate signature, expiry, issuer",
+#     "num_versions": "3"
+#   }'
+
+recursion:
+  max_depth: 3
+  max_total_steps: 40
+
+context:
+  # Clear description of what to implement
+  task_description: ""
+  
+  # Specific requirements that MUST be met
+  requirements: ""
+  
+  # Number of versions to generate (2-5)
+  num_versions: "3"
+  
+  # Output directory
+  output_dir: "./ai_working/n-version"
+
+steps:
+  # ==========================================================================
+  # STEP 1: PREPARE SPECIFICATION
+  # Create crystal-clear specification for all versions
+  # ==========================================================================
+  - id: "prepare-specification"
+    agent: "foundation:zen-architect"
+    mode: "ARCHITECT"
+    prompt: |
+      Create a crystal-clear specification for N-version implementation:
+
+      **Task:** {{task_description}}
+      **Requirements:** {{requirements}}
+      **Number of Versions:** {{num_versions}}
+
+      Create a specification that will be given to {{num_versions}} independent implementers.
+      The specification must be:
+      - Unambiguous (no room for interpretation differences)
+      - Complete (all requirements clearly stated)
+      - Testable (clear success criteria)
+
+      Return as JSON:
+      ```json
+      {
+        "task_name": "short name",
+        "specification": "detailed specification text",
+        "requirements": ["list of specific requirements"],
+        "constraints": ["technical constraints"],
+        "success_criteria": ["measurable criteria"],
+        "test_cases": [
+          {"input": "...", "expected_output": "...", "description": "..."}
+        ],
+        "evaluation_criteria": {
+          "correctness": "how to evaluate",
+          "security": "how to evaluate", 
+          "simplicity": "how to evaluate",
+          "philosophy": "how to evaluate",
+          "performance": "how to evaluate"
+        }
+      }
+      ```
+    output: "specification"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 2: VERSION 1 - Conservative Approach
+  # ==========================================================================
+  - id: "version-1-conservative"
+    agent: "foundation:modular-builder"
+    prompt: |
+      Implement this task using a CONSERVATIVE approach:
+
+      **Specification:** {{specification.specification}}
+      **Requirements:** {{specification.requirements}}
+      **Test Cases:** {{specification.test_cases}}
+
+      Conservative approach guidelines:
+      - Use proven design patterns
+      - Comprehensive error handling
+      - Defensive programming
+      - Prioritize safety over cleverness
+
+      Provide your implementation with:
+      1. The code implementation
+      2. Brief explanation of your approach
+      3. How it meets each requirement
+      4. Any trade-offs made
+
+      Format your response clearly with code blocks.
+    output: "version_1"
+
+  # ==========================================================================
+  # STEP 3: VERSION 2 - Pragmatic Approach
+  # ==========================================================================
+  - id: "version-2-pragmatic"
+    agent: "foundation:modular-builder"
+    prompt: |
+      Implement this task using a PRAGMATIC approach:
+
+      **Specification:** {{specification.specification}}
+      **Requirements:** {{specification.requirements}}
+      **Test Cases:** {{specification.test_cases}}
+
+      Pragmatic approach guidelines:
+      - Balance simplicity and robustness
+      - Use standard library solutions where possible
+      - Make practical trade-offs
+      - Focus on maintainability
+
+      Provide your implementation with:
+      1. The code implementation
+      2. Brief explanation of your approach
+      3. How it meets each requirement
+      4. Any trade-offs made
+
+      Format your response clearly with code blocks.
+    output: "version_2"
+
+  # ==========================================================================
+  # STEP 4: VERSION 3 - Minimalist Approach
+  # ==========================================================================
+  - id: "version-3-minimalist"
+    agent: "foundation:modular-builder"
+    prompt: |
+      Implement this task using a MINIMALIST approach:
+
+      **Specification:** {{specification.specification}}
+      **Requirements:** {{specification.requirements}}
+      **Test Cases:** {{specification.test_cases}}
+
+      Minimalist approach guidelines:
+      - Ruthless simplification
+      - Minimal dependencies
+      - Direct implementation
+      - Remove all unnecessary abstraction
+
+      Provide your implementation with:
+      1. The code implementation
+      2. Brief explanation of your approach
+      3. How it meets each requirement
+      4. Any trade-offs made
+
+      Format your response clearly with code blocks.
+    output: "version_3"
+
+  # ==========================================================================
+  # STEP 5: COMPARE AND EVALUATE
+  # ==========================================================================
+  - id: "compare-evaluate"
+    agent: "foundation:zen-architect"
+    mode: "REVIEW"
+    prompt: |
+      Compare and evaluate the {{num_versions}} implementations:
+
+      **Specification:** {{specification}}
+
+      **Version 1 (Conservative):**
+      {{version_1}}
+
+      **Version 2 (Pragmatic):**
+      {{version_2}}
+
+      **Version 3 (Minimalist):**
+      {{version_3}}
+
+      Evaluate each version against the criteria (in priority order):
+      1. Correctness - Does it meet all requirements?
+      2. Security - Any vulnerabilities or anti-patterns?
+      3. Simplicity - How complex is it? (lower is better)
+      4. Philosophy - Does it follow project principles?
+      5. Performance - How efficient is it?
+
+      Return comparison as JSON:
+      ```json
+      {
+        "comparison_matrix": [
+          {
+            "version": "1-conservative",
+            "correctness": {"pass": true/false, "notes": "..."},
+            "security": {"pass": true/false, "notes": "..."},
+            "simplicity": {"score": 1-10, "notes": "..."},
+            "philosophy": {"score": 1-10, "notes": "..."},
+            "performance": {"score": 1-10, "notes": "..."},
+            "strengths": ["..."],
+            "weaknesses": ["..."]
+          }
+        ],
+        "recommendation": {
+          "selected": "version number or 'hybrid'",
+          "rationale": "why this was selected",
+          "if_hybrid": {
+            "components_from": {"v1": ["..."], "v2": ["..."], "v3": ["..."]}
+          }
+        },
+        "learnings": ["insights from rejected versions"]
+      }
+      ```
+    output: "evaluation"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 6: SYNTHESIZE FINAL SOLUTION
+  # ==========================================================================
+  - id: "synthesize-solution"
+    agent: "foundation:modular-builder"
+    prompt: |
+      Create the final implementation based on the evaluation:
+
+      **Specification:** {{specification}}
+      **Evaluation:** {{evaluation}}
+
+      **Version 1:** {{version_1}}
+      **Version 2:** {{version_2}}
+      **Version 3:** {{version_3}}
+
+      Based on the evaluation recommendation ({{evaluation.recommendation.selected}}):
+
+      If a single version was selected:
+      - Present that version as the final solution
+      - Note any minor improvements to make
+
+      If hybrid was recommended:
+      - Synthesize the best parts from each version
+      - Explain which parts came from where
+
+      Provide:
+      1. The final implementation code
+      2. Documentation comments explaining key decisions
+      3. How this meets all requirements
+      4. What was learned from the N-version process
+    output: "final_solution"
+
+  # ==========================================================================
+  # STEP 7: DOCUMENT LEARNINGS
+  # ==========================================================================
+  - id: "document-learnings"
+    type: "bash"
+    parse_json: true
+    command: |
+      mkdir -p "{{output_dir}}"
+      
+      cat << 'EOF'
+      {
+        "workflow": "n-version-workflow",
+        "task": "{{task_description}}",
+        "versions_generated": {{num_versions}},
+        "selected": "{{evaluation.recommendation.selected}}",
+        "status": "complete",
+        "learnings": {{evaluation.learnings}}
+      }
+      EOF
+    output: "documentation"
