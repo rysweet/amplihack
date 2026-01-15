@@ -30,13 +30,40 @@ if _CLAUDE_HOOKS.exists():
     sys.path.insert(0, str(_CLAUDE_HOOKS))
     sys.path.insert(0, str(_CLAUDE_HOOKS.parent))
 
-# Import shared utilities
-try:
-    from amplifier_bundle.modules._shared import load_project_context, load_user_preferences
-except ImportError:
-    # Fallback for standalone use
-    load_user_preferences = None
-    load_project_context = None
+
+# Inline shared utilities (hooks are installed as separate packages)
+def load_user_preferences() -> str | None:
+    """Load user preferences from standard locations."""
+    prefs_paths = [
+        Path.cwd() / "USER_PREFERENCES.md",
+        Path.cwd() / ".claude" / "context" / "USER_PREFERENCES.md",
+        Path.home() / ".claude" / "USER_PREFERENCES.md",
+    ]
+    for path in prefs_paths:
+        if path.exists():
+            try:
+                return path.read_text()
+            except Exception as e:
+                logger.debug(f"Failed to read preferences from {path}: {e}")
+    return None
+
+
+def load_project_context() -> str | None:
+    """Load project-specific context files."""
+    context_paths = [
+        Path.cwd() / ".claude" / "context" / "PHILOSOPHY.md",
+        Path.cwd() / ".claude" / "context" / "PATTERNS.md",
+        Path.cwd() / "CLAUDE.md",
+    ]
+    context_parts = []
+    for path in context_paths:
+        if path.exists():
+            try:
+                content = path.read_text()
+                context_parts.append(f"## {path.name}\n{content}")
+            except Exception as e:
+                logger.debug(f"Failed to read context from {path}: {e}")
+    return "\n\n".join(context_parts) if context_parts else None
 
 
 class SessionStartHook(Hook):
