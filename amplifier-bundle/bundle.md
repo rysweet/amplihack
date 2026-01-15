@@ -8,7 +8,18 @@ includes:
   - bundle: git+https://github.com/microsoft/amplifier-foundation@main
   - bundle: git+https://github.com/microsoft/amplifier-bundle-recipes@main
 
+# Configure tool-skills to find skills in .claude/skills directory
+tools:
+  - module: tool-skills
+    config:
+      skills_dirs:
+        - ../.claude/skills  # Amplihack skills (relative to bundle)
+        - .amplifier/skills  # Standard workspace location
+        - ~/.amplifier/skills  # User skills
+
 # Reference existing Claude Code components via relative paths - NO DUPLICATION
+# Note: The skills section below documents what's available but tool-skills
+# discovers them via skills_dirs config above
 skills:
   # Domain analyst skills (23)
   anthropologist-analyst: { path: ../.claude/skills/anthropologist-analyst/SKILL.md }
