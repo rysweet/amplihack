@@ -61,8 +61,8 @@ CONTEXT_PARTS=()
 
 # Add project context
 CONTEXT_PARTS+=("## Project Context")
-CONTEXT_PARTS+=("This be the Microsoft Hackathon 2025 Agentic Coding project, matey!")
-CONTEXT_PARTS+=("Focus on buildin' AI-powered development tools.")
+CONTEXT_PARTS+=("This is the Microsoft Hackathon 2025 Agentic Coding project.")
+CONTEXT_PARTS+=("Focus on building AI-powered development tools.")
 CONTEXT_PARTS+=("")
 
 # Check for recent discoveries

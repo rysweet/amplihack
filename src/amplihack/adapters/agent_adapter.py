@@ -237,8 +237,9 @@ def _adapt_command_references(body: str) -> str:
     # This is subtle - commands don't exist in Copilot, so we guide to agents
     # BUT: Preserve @.claude/ and other @ prefixed paths
 
-    # Find /command patterns (but not in URLs like https:// or @.claude/)
-    pattern = r'(?<!:)(?<!@\.claude)\/([a-z-]+)'
+    # Find /command patterns (but not in URLs or @ references)
+    # Negative lookbehind for : (URLs) or @ (file references)
+    pattern = r'(?<![@:])\/([a-z-]+)'
 
     def replace_command(match):
         command_name = match.group(1)
