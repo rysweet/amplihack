@@ -1,0 +1,66 @@
+{
+  "$schema": "https://copilot.microsoft.com/schemas/hooks/v1",
+  "description": "Amplihack hooks for GitHub Copilot CLI - provides session management, validation, and error tracking",
+  "hooks": {
+    "sessionStart": [
+      {
+        "description": "Initialize session state and inject user preferences",
+        "command": "bash",
+        "args": [
+          ".github/hooks/scripts/session-start.sh"
+        ]
+      }
+    ],
+    "sessionEnd": [
+      {
+        "description": "Cleanup session resources and persist state",
+        "command": "bash",
+        "args": [
+          ".github/hooks/scripts/session-end.sh"
+        ]
+      }
+    ],
+    "userPromptSubmitted": [
+      {
+        "description": "Log user prompts for audit trail",
+        "command": "bash",
+        "args": [
+          ".github/hooks/scripts/user-prompt-submitted.sh"
+        ]
+      }
+    ],
+    "preToolUse": [
+      {
+        "description": "Validate tool execution and enforce safety policies",
+        "command": "bash",
+        "args": [
+          ".github/hooks/scripts/pre-tool-use.sh"
+        ]
+      }
+    ],
+    "postToolUse": [
+      {
+        "description": "Log tool execution results and collect metrics",
+        "command": "bash",
+        "args": [
+          ".github/hooks/scripts/post-tool-use.sh"
+        ]
+      }
+    ],
+    "errorOccurred": [
+      {
+        "description": "Track and log errors for debugging",
+        "command": "bash",
+        "args": [
+          ".github/hooks/scripts/error-occurred.sh"
+        ]
+      }
+    ]
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "author": "Amplihack Team",
+    "source": "https://github.com/rysweet/amplihack",
+    "documentation": "https://github.com/rysweet/amplihack/tree/main/.github/hooks"
+  }
+}

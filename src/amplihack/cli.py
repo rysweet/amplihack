@@ -1,6 +1,7 @@
 """Enhanced CLI for amplihack with proxy and launcher support."""
 
 import argparse
+import json
 import os
 import platform
 import sys
@@ -457,6 +458,48 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         help="Skip confirmation prompt (use with --no-dry-run)",
     )
 
+    # Sync agents command
+    sync_agents_parser = subparsers.add_parser(
+        "sync-agents",
+        help="Sync .claude/agents/ to .github/agents/ for Copilot CLI",
+        epilog="Examples:\n"
+        "  amplihack sync-agents                  # Sync agents with status check\n"
+        "  amplihack sync-agents --force          # Force overwrite existing agents\n"
+        "  amplihack sync-agents --dry-run        # Show what would be converted\n"
+        "  amplihack sync-agents --verbose        # Show detailed output",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    sync_agents_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be converted without making changes"
+    )
+    sync_agents_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite existing agents in .github/agents/"
+    )
+    sync_agents_parser.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Show detailed conversion output"
+    )
+
+    # Setup Copilot command
+    setup_copilot_parser = subparsers.add_parser(
+        "setup-copilot",
+        help="Set up Copilot CLI integration with agent mirroring",
+        epilog="Examples:\n"
+        "  amplihack setup-copilot                # Complete Copilot setup\n"
+        "  amplihack setup-copilot --skip-sync    # Set up without syncing agents",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    setup_copilot_parser.add_argument(
+        "--skip-sync",
+        action="store_true",
+        help="Skip agent synchronization during setup"
+    )
+
     return parser
 
 
@@ -867,6 +910,158 @@ def main(argv: list[str] | None = None) -> int:
 
         create_parser().print_help()
         return 1
+
+    elif args.command == "sync-agents":
+        from pathlib import Path
+        from .adapters.copilot_agent_converter import convert_agents
+
+        # Check if dry-run
+        if args.dry_run:
+            print("Dry-run mode: No files will be modified")
+            print()
+
+        # Convert agents
+        try:
+            report = convert_agents(
+                source_dir=Path(".claude/agents"),
+                target_dir=Path(".github/agents"),
+                force=args.force
+            )
+
+            # Display summary
+            print(f"\nAgent Conversion Summary:")
+            print(f"  Total agents: {report.total}")
+            print(f"  {EMOJI['check']} Succeeded: {report.succeeded}")
+            if report.failed > 0:
+                print(f"  ✗ Failed: {report.failed}")
+            if report.skipped > 0:
+                print(f"  ⊘ Skipped: {report.skipped}")
+
+            # Show errors if any
+            if report.errors:
+                print(f"\nErrors:")
+                for error in report.errors:
+                    print(f"  {error}")
+
+            # Show detailed conversions if verbose
+            if args.verbose:
+                print(f"\nDetailed Results:")
+                for conversion in report.conversions:
+                    status_icon = {
+                        "success": EMOJI['check'],
+                        "failed": "✗",
+                        "skipped": "⊘"
+                    }[conversion.status]
+                    print(f"  {status_icon} {conversion.agent_name} - {conversion.status}")
+                    if conversion.reason:
+                        print(f"     Reason: {conversion.reason}")
+
+            # Show next steps
+            if report.succeeded > 0:
+                print(f"\nNext steps:")
+                print(f"  1. Review converted agents in .github/agents/")
+                print(f"  2. Check .github/agents/REGISTRY.json for agent catalog")
+                print(f"  3. Use agents in Copilot CLI: copilot -p \"Include @.github/agents/core/architect.md -- Your task\"")
+
+            # Return based on results
+            return 0 if report.failed == 0 else 1
+
+        except FileNotFoundError as e:
+            print(f"Error: {str(e)}")
+            return 1
+        except PermissionError as e:
+            print(f"Error: {str(e)}")
+            return 1
+        except Exception as e:
+            print(f"Unexpected error: {str(e)}")
+            if args.verbose:
+                import traceback
+                traceback.print_exc()
+            return 1
+
+    elif args.command == "setup-copilot":
+        from pathlib import Path
+
+        print("\n" + "=" * 70)
+        print("🚀 Copilot CLI Setup")
+        print("=" * 70 + "\n")
+
+        # Step 1: Create .github/ directory structure
+        print("Step 1: Creating .github/ directory structure...")
+        github_dir = Path(".github")
+        github_dir.mkdir(exist_ok=True)
+        agents_dir = github_dir / "agents"
+        agents_dir.mkdir(exist_ok=True)
+        hooks_dir = github_dir / "hooks"
+        hooks_dir.mkdir(exist_ok=True)
+        print(f"  {EMOJI['check']} Created {github_dir}/")
+        print(f"  {EMOJI['check']} Created {agents_dir}/")
+        print(f"  {EMOJI['check']} Created {hooks_dir}/")
+
+        # Step 2: Sync agents (unless skipped)
+        if not args.skip_sync:
+            print("\nStep 2: Syncing agents from .claude/agents/ to .github/agents/...")
+            try:
+                sys.path.insert(0, str(Path(__file__).parent.parent / ".claude" / "tools" / "amplihack"))
+                from sync_agents import sync_agents
+
+                result = sync_agents(Path(".claude/agents"), agents_dir)
+
+                if result["success"]:
+                    print(f"  {EMOJI['check']} Synced {result['synced_count']} agents")
+                    print(f"  {EMOJI['check']} Generated registry: {result['registry_path']}")
+                else:
+                    print(f"  ✗ Sync failed: {result.get('error')}")
+                    return 1
+
+            except Exception as e:
+                print(f"  ✗ Sync failed: {e}")
+                return 1
+        else:
+            print("\nStep 2: Skipped agent synchronization (--skip-sync)")
+
+        # Step 3: Copy sample hook configurations (if they don't exist)
+        print("\nStep 3: Setting up hook configurations...")
+        sample_hooks = {
+            "pre-commit.json": {
+                "name": "pre-commit-review",
+                "trigger": "pre-commit",
+                "agent": "reviewer",
+                "prompt": "Review staged changes for philosophy compliance",
+                "files": [
+                    "@.claude/context/PHILOSOPHY.md",
+                    "@.claude/context/PATTERNS.md"
+                ]
+            },
+            "amplihack-hooks.json": {
+                "copilot_auto_sync_agents": "ask",
+                "copilot_sync_on_startup": True
+            }
+        }
+
+        for hook_file, content in sample_hooks.items():
+            hook_path = hooks_dir / hook_file
+            if not hook_path.exists():
+                hook_path.write_text(json.dumps(content, indent=2))
+                print(f"  {EMOJI['check']} Created {hook_path}")
+            else:
+                print(f"  ⊘ Skipped {hook_path} (already exists)")
+
+        # Step 4: Print completion message with next steps
+        print("\n" + "=" * 70)
+        print("✅ Setup complete!")
+        print("=" * 70)
+        print("\nNext steps:")
+        print("  1. Review .github/copilot-instructions.md")
+        print("  2. Test agent invocation:")
+        print("     copilot -p \"Your task\" -f @.github/agents/amplihack/core/architect.md")
+        print("  3. Configure hooks in .github/hooks/amplihack-hooks.json")
+        print("\nDocumentation:")
+        print("  Full guide: COPILOT_CLI.md")
+        print("  Agent reference: .github/agents/REGISTRY.json")
+        print()
+
+        return 0
 
     else:
         create_parser().print_help()
