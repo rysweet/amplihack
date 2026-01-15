@@ -1,0 +1,118 @@
+# GitHub Copilot CLI Custom Agent
+# Generated from amplihack skill: /home/azureuser/src/amplihack/.claude/skills/cascade-workflow/SKILL.md
+
+name: cascade-workflow
+description: |
+  Graceful degradation through cascading fallback strategies - ensures system always completes while maintaining acceptable functionality
+
+model: claude-sonnet-4.5
+
+tools:
+  []
+
+activation_keywords:
+  []
+
+instructions: |
+  # Cascade Workflow with Graceful Degradation Skill
+  
+  ## Purpose
+  
+  Implement graceful degradation through cascading fallback strategies. When optimal approaches fail or timeout, the system automatically falls back to simpler, more reliable alternatives while maintaining acceptable functionality.
+  
+  ## When to Use This Skill
+  
+  **USE FOR:**
+  
+  - External service dependencies (APIs, databases)
+  - Time-sensitive operations with acceptable degraded modes
+  - Operations where partial results are better than no results
+  - High-availability requirements (system must always respond)
+  - Scenarios where waiting for perfect solution is worse than good-enough solution
+  
+  **AVOID FOR:**
+  
+  - Operations requiring exact correctness (no acceptable degradation)
+  - Security-critical operations (authentication, authorization)
+  - Financial transactions (no room for "approximate")
+  - When failures must surface to user (diagnostic operations)
+  - Simple operations with no meaningful fallback
+  
+  ## Configuration
+  
+  ### Core Parameters
+  
+  **Timeout Strategy:**
+  
+  - `aggressive` - Fast failures, quick degradation (5s / 2s / 1s)
+  - `balanced` - Reasonable attempts (30s / 10s / 5s) - **DEFAULT**
+  - `patient` - Thorough attempts before fallback (120s / 30s / 10s)
+  - `custom` - Define your own timeouts
+  
+  **Fallback Types:**
+  
+  - `service` - External API → Cached data → Static defaults
+  - `quality` - Comprehensive → Standard → Minimal analysis
+  - `freshness` - Real-time → Recent → Historical data
+  - `completeness` - Full dataset → Sample → Summary
+  - `accuracy` - Precise → Approximate → Estimate
+  
+  **Degradation Notification:**
+  
+  - `silent` - Log only, no user notification
+  - `warning` - Inform user of degradation
+  - `explicit` - Detailed explanation of what degraded and why
+  
+  ## Cascade Level Requirements
+  
+  **PRIMARY (Optimal):**
+  
+  - Best possible outcome
+  - May depend on external services
+  - May be slow or resource-intensive
+  - Can fail or timeout
+  
+  **SECONDARY (Acceptable):**
+  
+  - Reduced quality but functional
+  - More reliable than primary
+  - Faster or fewer dependencies
+  - Acceptable for users
+  
+  **TERTIARY (Guaranteed):**
+  
+  - Always succeeds, never fails
+  - No external dependencies
+  - Fast and reliable
+  - Minimal but functional
+  - **CRITICAL: Must be designed to never fail**
+  
+  ## Execution Process
+  
+  ### Step 1: Define Cascade Levels
+  
+  - **Use architect agent** to identify cascade levels
+  - Define PRIMARY approach (optimal solution)
+  - Define SECONDARY approach (acceptable degradation)
+  - Define TERTIARY approach (guaranteed completion)
+  - Set timeout for each level
+  - Document what degrades at each level
+  - **CRITICAL: Ensure tertiary ALWAYS succeeds**
+  
+  **Example Cascade Definitions:**
+  
+  **Code Analysis with AI:**
+  
+  - PRIMARY: GPT-4 comprehensive analysis (timeout: 30s)
+  - SECONDARY: GPT-3.5 standard analysis (timeout: 10s)
+  - TERTIARY: Static analysis with regex (timeout: 5s)
+  
+  **External API Data Fetch:**
+  
+  - PRIMARY: Live API call (timeout: 10s)
+  - SECONDARY: Cached data (timeout: 2s)
+  - TERTIARY: Default values (timeout: 0s)
+  
+  **Test Execution:**
+
+# Source: /home/azureuser/src/amplihack/.claude/skills/cascade-workflow/SKILL.md

@@ -1,0 +1,118 @@
+# GitHub Copilot CLI Custom Agent
+# Generated from amplihack skill: /home/azureuser/src/amplihack/.claude/skills/test-gap-analyzer/SKILL.md
+
+name: test-gap-analyzer
+description: |
+  |
+
+model: claude-sonnet-4.5
+
+tools:
+  []
+
+activation_keywords:
+  []
+
+instructions: |
+  # Test Gap Analyzer Skill
+  
+  ## Purpose
+  
+  This skill automatically analyzes codebases to identify untested functions, low coverage areas, and missing edge case tests. It generates actionable test suggestions organized by priority and risk impact, following amplihack's testing pyramid (60% unit, 30% integration, 10% E2E).
+  
+  ## When to Use This Skill
+  
+  - **Code review**: Before merging PRs, identify test gaps
+  - **Test planning**: Prioritize what to test next based on risk
+  - **Coverage improvement**: Target low-coverage areas systematically
+  - **Edge case discovery**: Find untested failure modes and boundaries
+  - **New modules**: Ensure comprehensive test coverage before release
+  - **Legacy code**: Incrementally improve test coverage
+  - **Refactoring**: Verify coverage before and after changes
+  
+  ## Core Concepts
+  
+  ### Testing Pyramid in Amplihack
+  
+  Tests should follow this distribution:
+  
+  - **60% Unit Tests**: Individual function/method behavior with mocked dependencies
+  - **30% Integration Tests**: Multiple components working together
+  - **10% E2E Tests**: Full user workflows end-to-end
+  
+  This skill helps balance tests across these layers while prioritizing coverage.
+  
+  ### Gap Analysis Categories
+  
+  The skill identifies gaps in these areas:
+  
+  1. **Untested Functions/Methods**: Functions with zero test coverage
+  2. **Low Coverage Areas**: Modules/functions below target threshold (85%+)
+  3. **Missing Edge Cases**: Boundary conditions, error paths, null checks
+  4. **Integration Gaps**: Component interactions not tested
+  5. **Error Path Coverage**: Exception handling and failure modes
+  
+  ## Analysis Process
+  
+  ### Step 1: Codebase Scanning
+  
+  The analyzer:
+  
+  1. Discovers all source code files in specified directory
+  2. Identifies all functions, methods, and classes
+  3. Maps code structure and dependencies
+  4. Determines current test coverage (if available)
+  
+  ### Step 2: Coverage Analysis
+  
+  For each function/method:
+  
+  1. Check if tests exist
+  2. Calculate line coverage if coverage data available
+  3. Identify untested branches and paths
+  4. Note error handling coverage
+  
+  ### Step 3: Gap Identification
+  
+  Classify gaps by:
+  
+  1. **Risk Level**: High/Medium/Low based on function complexity and criticality
+  2. **Type**: Untested, partial coverage, missing edge cases
+  3. **Effort**: Estimate time to write adequate tests
+  4. **Impact**: How important this function is to system reliability
+  
+  ### Step 4: Test Suggestion Generation
+  
+  For each gap, generate:
+  
+  1. Specific test case descriptions
+  2. Test templates with example code
+  3. Edge cases to cover
+  4. Expected behaviors
+  5. Error conditions to test
+  
+  ### Step 5: Prioritization
+  
+  Organize suggestions by:
+  
+  1. Risk impact (critical functions first)
+  2. Test pyramid distribution
+  3. Effort required
+  4. Dependency relationships
+  
+  ## Skill Capabilities
+  
+  ### Code Analysis
+  
+  - Scans Python, JavaScript, TypeScript, Go codebases
+  - Identifies all public and private functions
+  - Detects complex functions needing more tests
+  - Maps function dependencies
+  - Finds unused parameters and dead code paths
+  
+  ### Coverage Detection
+  
+  - Parses `.coverage` files (Python)
+  - Analyzes coverage.json reports
+
+# Source: /home/azureuser/src/amplihack/.claude/skills/test-gap-analyzer/SKILL.md

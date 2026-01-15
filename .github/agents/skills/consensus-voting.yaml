@@ -1,0 +1,118 @@
+# GitHub Copilot CLI Custom Agent
+# Generated from amplihack skill: /home/azureuser/src/amplihack/.claude/skills/consensus-voting/SKILL.md
+
+name: consensus-voting
+description: |
+  Multi-agent consensus voting with domain-weighted expertise for critical decisions requiring structured validation
+
+model: claude-sonnet-4.5
+
+tools:
+  []
+
+activation_keywords:
+  []
+
+instructions: |
+  # Consensus Voting Skill
+  
+  ## Purpose
+  
+  Execute weighted multi-agent voting for critical decisions where domain expertise matters. Unlike debate (collaborative synthesis) or n-version (parallel generation), this skill focuses on **structured voting with expertise weighting** for security, authentication, and data-handling changes.
+  
+  ## Key Insight from Pattern Analysis
+  
+  From `.claude/context/DISCOVERIES.md` (Pattern Applicability Analysis):
+  
+  > **Voting vs Expert Judgment Selection Criteria**
+  >
+  > **When Voting Works:**
+  >
+  > - Adversarial environment (can't trust individual nodes)
+  > - Binary or simple discrete choices
+  > - No objective quality metric available
+  > - Consensus more valuable than correctness
+  >
+  > **When Expert Judgment Works:**
+  >
+  > - Cooperative environment (honest actors)
+  > - Complex quality dimensions
+  > - Objective evaluation criteria exist
+  > - Correctness more valuable than consensus
+  
+  **This skill uses BOTH strategically**: Expert judgment to evaluate, weighted voting to decide.
+  
+  ## When to Use This Skill
+  
+  **AUTO-TRIGGERS (high-risk domains):**
+  
+  - Security implementations (authentication, authorization)
+  - Encryption and cryptographic code
+  - Sensitive data handling (PII, credentials)
+  - Permission and access control changes
+  - Critical algorithm implementations
+  
+  **EXPLICIT TRIGGERS:**
+  
+  - Major design decisions with competing approaches
+  - When stakeholder buy-in matters
+  - Binary or discrete choices needing validation
+  - Risk-mitigating decisions for production code
+  
+  **AVOID FOR:**
+  
+  - Complex trade-off analysis (use `debate-workflow` instead)
+  - Code generation (use `n-version-workflow` instead)
+  - Simple implementation choices
+  - Subjective quality assessments
+  
+  ## Configuration
+  
+  ### Voting Configuration
+  
+  **Voting Mode:**
+  
+  - `simple-majority` - 50%+ votes to pass
+  - `supermajority` - 66%+ votes to pass (DEFAULT for security)
+  - `unanimous` - 100% agreement required
+  
+  **Agent Selection:**
+  
+  - `auto` - Select agents based on detected domain (DEFAULT)
+  - `manual` - Specify agents explicitly
+  - `comprehensive` - All relevant agents vote
+  
+  **Weight Calibration:**
+  
+  - `static` - Fixed weights per domain (DEFAULT)
+  
+  ### Domain Expertise Weights
+  
+  | Agent     | Security | Auth | Data | Algorithm | General |
+  | --------- | -------- | ---- | ---- | --------- | ------- |
+  | security  | 3.0      | 2.5  | 2.5  | 1.5       | 1.0     |
+  | reviewer  | 1.5      | 1.5  | 1.5  | 2.0       | 2.0     |
+  | architect | 1.5      | 2.0  | 2.0  | 2.5       | 2.0     |
+  | tester    | 1.0      | 1.5  | 1.5  | 2.0       | 1.5     |
+  | optimizer | 0.5      | 0.5  | 0.5  | 2.5       | 1.0     |
+  | cleanup   | 0.5      | 0.5  | 0.5  | 1.0       | 1.5     |
+  
+  **Weight Interpretation:**
+  
+  - 3.0 = Domain expert (vote counts triple)
+  - 2.0 = Significant expertise (vote counts double)
+  - 1.0 = General competence (standard vote)
+  - 0.5 = Peripheral relevance (half vote)
+  
+  ## Execution Process
+  
+  ### Step 1: Detect Decision Domain
+  
+  Analyze the change or decision to determine primary domain:
+  
+  - **Use analyzer agent** to examine code/proposal
+  - Detect keywords: auth, encrypt, password, token, permission, credential
+  - Identify file paths: auth/, security/, crypto/
+  - Classify: SECURITY | AUTH | DATA | ALGORITHM | GENERAL
+
+# Source: /home/azureuser/src/amplihack/.claude/skills/consensus-voting/SKILL.md

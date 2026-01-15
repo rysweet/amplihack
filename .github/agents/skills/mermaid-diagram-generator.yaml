@@ -1,0 +1,118 @@
+# GitHub Copilot CLI Custom Agent
+# Generated from amplihack skill: /home/azureuser/src/amplihack/.claude/skills/mermaid-diagram-generator/SKILL.md
+
+name: mermaid-diagram-generator
+description: |
+  |
+
+model: claude-sonnet-4.5
+
+tools:
+  []
+
+activation_keywords:
+  []
+
+instructions: |
+  # Mermaid Diagram Generator Skill
+  
+  ## Purpose
+  
+  This skill automatically converts text descriptions of system architectures, module specifications, workflow documentation, and design concepts into valid Mermaid diagram syntax. It enables clear visual communication of complex systems, ensuring diagrams are production-ready and embeddable in markdown documentation.
+  
+  ## When to Use This Skill
+  
+  - **Architecture Visualization**: Convert architecture descriptions into flowcharts or block diagrams
+  - **Module Relationships**: Create diagrams showing how brick modules connect via their studs (public contracts)
+  - **Workflow Documentation**: Visualize workflow states, decisions, and transitions (DDD phases, investigation stages)
+  - **System Design**: Display system components, data flow, and interactions
+  - **Sequence Diagrams**: Show agent interactions, request/response patterns, or call sequences
+  - **Class Hierarchies**: Document module structure and class relationships
+  - **State Machines**: Model workflow states and valid transitions
+  - **Entity Relationships**: Display data model structures and relationships
+  - **Timeline Planning**: Create Gantt charts for project phases or milestones
+  
+  ## Supported Diagram Types
+  
+  ### 1. Flowcharts (Default)
+  
+  Best for: workflow sequences, decision trees, process flows, module relationships
+  
+  ```mermaid
+  flowchart TD
+      A[Start] --> B{Decision}
+      B -->|Yes| C[Action A]
+      B -->|No| D[Action B]
+      C --> E[End]
+      D --> E
+  ```
+  
+  ### 2. Sequence Diagrams
+  
+  Best for: agent interactions, API calls, multi-step processes, request/response patterns
+  
+  ```mermaid
+  sequenceDiagram
+      participant User
+      participant API
+      participant Service
+      User->>API: Request
+      API->>Service: Process
+      Service-->>API: Response
+      API-->>User: Result
+  ```
+  
+  ### 3. Class Diagrams
+  
+  Best for: module structure, inheritance hierarchies, data models, component relationships
+  
+  ```mermaid
+  classDiagram
+      class Brick {
+          +String responsibility
+          +PublicContract studs
+      }
+      class Module {
+          +init()
+          +process()
+      }
+      Brick <|-- Module
+  ```
+  
+  ### 4. State Diagrams
+  
+  Best for: workflow states, state machines, workflow phases, condition-based transitions
+  
+  ```mermaid
+  stateDiagram-v2
+      [*] --> Planning
+      Planning --> Design
+      Design --> Implementation
+      Implementation --> Testing
+      Testing --> [*]
+  ```
+  
+  ### 5. Entity Relationship Diagrams
+  
+  Best for: data models, database schemas, entity relationships
+  
+  ```mermaid
+  erDiagram
+      MODULE ||--o{ FUNCTION : exports
+      MODULE ||--o{ DEPENDENCY : requires
+      FUNCTION }o--|| CONTRACT : implements
+  ```
+  
+  ### 6. Gantt Charts
+  
+  Best for: project timelines, workflow phases, milestone planning
+  
+  ```mermaid
+  gantt
+      title Project Timeline
+      section Phase 1
+      Planning :p1, 0, 30d
+      Design :p2, after p1, 20d
+      section Phase 2
+
+# Source: /home/azureuser/src/amplihack/.claude/skills/mermaid-diagram-generator/SKILL.md

@@ -1,0 +1,118 @@
+# GitHub Copilot CLI Custom Agent
+# Generated from amplihack skill: /home/azureuser/src/amplihack/.claude/skills/meeting-synthesizer/SKILL.md
+
+name: meeting-synthesizer
+description: |
+  |
+
+model: claude-sonnet-4.5
+
+tools:
+  []
+
+activation_keywords:
+  []
+
+instructions: |
+  # Meeting Synthesizer Skill
+  
+  Transform raw meeting notes and transcripts into actionable intelligence. This skill extracts critical information from unstructured meeting data and organizes it into structured formats that drive follow-through and accountability.
+  
+  ## Overview
+  
+  The Meeting Synthesizer processes meeting notes or transcripts to produce:
+  
+  - **Action Items**: Clear tasks with owners, due dates, and context
+  - **Decisions Made**: Key decisions with justification and implications
+  - **Discussion Points**: Important topics, debates, and consensus areas
+  - **Follow-up Tasks**: Prioritized task list with next steps
+  - **Key Insights**: Patterns, concerns, and emerging themes
+  
+  ## When to Use This Skill
+  
+  - After team meetings, standups, or planning sessions
+  - When converting transcript/notes into structured action items
+  - When you need to quickly extract decisions and assign accountability
+  - When synthesizing notes for stakeholders who missed the meeting
+  - When creating task lists from meeting discussions
+  
+  ## How to Use This Skill
+  
+  ### Basic Workflow
+  
+  1. **Provide the Meeting Content**
+     - Share meeting notes (typed or pasted)
+     - Share a transcript (from Zoom, Teams, or other platform)
+     - Share a voice-to-text transcription
+  
+  2. **Request Processing**
+     - Ask the skill to synthesize the meeting
+     - Optionally specify which elements to focus on
+     - Optionally provide format preferences (markdown, JSON, etc.)
+  
+  3. **Review & Act**
+     - Review the extracted information
+     - Assign owners and deadlines
+     - Create tickets or calendar items
+     - Share results with team
+  
+  ### Example Prompts
+  
+  #### Comprehensive Synthesis
+  
+  ```
+  Synthesize this meeting:
+  [paste meeting notes/transcript]
+  
+  Extract all action items, decisions, and key points.
+  Organize by priority and due date.
+  ```
+  
+  #### Focused on Action Items
+  
+  ```
+  Extract action items from this meeting:
+  [paste meeting notes]
+  
+  For each action item, provide:
+  - Task description
+  - Owner/responsible person
+  - Due date (if mentioned)
+  - Context/why it matters
+  - Dependencies
+  ```
+  
+  #### Decision Extraction
+  
+  ```
+  What decisions were made in this meeting?
+  [paste meeting notes]
+  
+  For each decision, provide:
+  - What was decided
+  - Why (reasoning/justification)
+  - Who made the decision
+  - Who is affected
+  - Any dissent or concerns
+  ```
+  
+  #### Priority Ordering
+  
+  ```
+  Synthesize this meeting with priority ordering:
+  [paste meeting notes]
+  
+  Order action items by urgency and impact.
+  Identify any blocking items or critical path items.
+  Flag any decisions that need follow-up or clarification.
+  ```
+  
+  ## Processing Instructions
+  
+  ### 1. Parse Meeting Content
+  
+  **Input Recognition:**
+  
+  - Detect format: structured notes, transcript, bullet points, freeform text
+
+# Source: /home/azureuser/src/amplihack/.claude/skills/meeting-synthesizer/SKILL.md

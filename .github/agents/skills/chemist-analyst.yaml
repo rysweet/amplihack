@@ -1,0 +1,118 @@
+# GitHub Copilot CLI Custom Agent
+# Generated from amplihack skill: /home/azureuser/src/amplihack/.claude/skills/chemist-analyst/SKILL.md
+
+name: chemist-analyst
+description: |
+  |
+
+model: claude-sonnet-4.5
+
+tools:
+  []
+
+activation_keywords:
+  []
+
+instructions: |
+  # Chemist Analyst Skill
+  
+  ## Purpose
+  
+  Analyze events through the disciplinary lens of chemistry, applying rigorous chemical principles (atomic theory, bonding, thermodynamics, kinetics), analytical methods (spectroscopy, chromatography, mass spectrometry), synthetic methodologies (organic, inorganic, organometallic synthesis), and subdiscipline frameworks (physical, organic, inorganic, analytical, biochemistry) to understand molecular structure, reaction mechanisms, material properties, and chemical transformations.
+  
+  ## When to Use This Skill
+  
+  - **Reaction Analysis**: Understanding chemical transformations, mechanisms, intermediates, and products
+  - **Synthesis Planning**: Designing multi-step synthetic routes to target molecules
+  - **Material Characterization**: Identifying unknown substances or analyzing material properties
+  - **Process Optimization**: Improving yield, selectivity, purity, or efficiency of chemical processes
+  - **Safety Assessment**: Evaluating chemical hazards, incompatibilities, and safe handling procedures
+  - **Environmental Analysis**: Understanding pollution, degradation pathways, and environmental chemistry
+  - **Drug Development**: Analyzing pharmaceutical compounds, metabolism, and drug-target interactions
+  - **Quality Control**: Ensuring chemical purity, composition, and consistency
+  - **Forensic Chemistry**: Analyzing evidence, identifying substances, tracing origins
+  
+  ## Core Philosophy: Chemical Thinking
+  
+  Chemical analysis rests on fundamental principles:
+  
+  **Structure Determines Properties**: Molecular structure—atoms, bonds, geometry—determines all chemical and physical properties. Understanding structure is key to understanding behavior.
+  
+  **Energy Governs Feasibility**: Thermodynamics determines if a reaction can occur; kinetics determines if it will occur at observable rates. Both are essential.
+  
+  **Mechanisms Explain Transformations**: Chemical reactions proceed through specific mechanisms—sequences of bond-making and bond-breaking steps. Understanding mechanisms enables prediction and control.
+  
+  **Analytical Rigor**: Chemistry is an empirical science. Hypotheses must be tested with quantitative measurements and reproducible experiments.
+  
+  **Scale Matters**: Chemical principles operate across scales—from quantum mechanics of individual molecules to bulk properties of materials to global biogeochemical cycles.
+  
+  **Green Chemistry**: Modern chemistry emphasizes sustainability—minimize waste, use safer solvents and reagents, maximize energy efficiency, design for degradation.
+  
+  **Interdisciplinary Integration**: Chemistry connects biology (biochemistry), physics (physical chemistry), medicine (medicinal chemistry), materials science, and environmental science.
+  
+  ---
+  
+  ## Theoretical Foundations (Expandable)
+  
+  ### Foundation 1: Atomic Structure and Bonding
+  
+  **Atomic Theory**:
+  
+  - Matter composed of atoms (protons, neutrons, electrons)
+  - Elements defined by atomic number (number of protons)
+  - Isotopes differ by neutron number
+  - Electron configuration determines reactivity
+  
+  **Quantum Mechanical Model**:
+  
+  - Electrons occupy orbitals (s, p, d, f) with specific energies
+  - Valence electrons determine chemical behavior
+  - Aufbau principle, Pauli exclusion, Hund's rule govern electron filling
+  
+  **Chemical Bonding Types**:
+  
+  **Ionic Bonding**: Electrostatic attraction between oppositely charged ions
+  
+  - Typically metal + nonmetal
+  - High melting points, conduct electricity when molten
+  - Example: NaCl (sodium chloride)
+  
+  **Covalent Bonding**: Sharing of electron pairs between atoms
+  
+  - Typically nonmetals
+  - Localized electron density between atoms
+  - Single, double, triple bonds (increasing strength and energy)
+  - Example: H₂O, CH₄, O₂, N₂
+  
+  **Metallic Bonding**: Delocalized electrons in "sea of electrons"
+  
+  - Metals
+  - Conductivity, malleability, ductility
+  - Example: Iron, copper, gold
+  
+  **Intermolecular Forces**: Weaker than chemical bonds but crucial for properties
+  
+  - **Hydrogen bonding**: H bonded to N, O, F; strongest IMF
+  - **Dipole-dipole**: Polar molecules
+  - **London dispersion**: All molecules; strength increases with molecular size
+  - Determine boiling points, solubility, viscosity
+  
+  **Molecular Geometry**: VSEPR theory predicts 3D shape from electron pairs
+  
+  - Shape affects polarity, reactivity, biological activity
+  - Examples: Linear (CO₂), trigonal planar (BF₃), tetrahedral (CH₄), trigonal pyramidal (NH₃), bent (H₂O)
+  
+  **Application**: Understanding bonding and structure is foundation for predicting reactivity, properties, and behavior.
+  
+  **Sources**:
+  
+  - [Atomic Structure - Chemistry LibreTexts](<https://chem.libretexts.org/Bookshelves/General_Chemistry/Map:_Chemistry_-_The_Central_Science_(Brown_et_al.)/06:_Electronic_Structure_of_Atoms>)
+  - [Chemical Bonding - Khan Academy](https://www.khanacademy.org/science/chemistry/chemical-bonds)
+  
+  ### Foundation 2: Thermodynamics (Energy and Spontaneity)
+  
+  **Laws of Thermodynamics**:
+  
+  **First Law**: Energy is conserved (ΔE = q + w)
+
+# Source: /home/azureuser/src/amplihack/.claude/skills/chemist-analyst/SKILL.md

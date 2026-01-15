@@ -1,0 +1,117 @@
+# GitHub Copilot CLI Custom Agent
+# Generated from amplihack skill: /home/azureuser/src/amplihack/.claude/skills/investigation-workflow/SKILL.md
+
+name: investigation-workflow
+description: |
+  |
+
+model: claude-sonnet-4.5
+
+tools:
+  []
+
+activation_keywords:
+  []
+
+instructions: |
+  # Investigation Workflow Skill
+  
+  ## Purpose
+  
+  This skill provides a systematic 6-phase workflow for investigating and understanding existing systems, codebases, and architectures. Unlike development workflows optimized for implementation, this workflow is optimized for exploration, understanding, and knowledge capture.
+  
+  ## When to Use This Skill
+  
+  **Investigation Tasks** (use this workflow):
+  
+  - "Investigate how the authentication system works"
+  - "Explain the neo4j memory integration"
+  - "Understand why CI is failing consistently"
+  - "Analyze the reflection system architecture"
+  - "Research what hooks are triggered during session start"
+  
+  **Development Tasks** (use DEFAULT_WORKFLOW.md instead):
+  
+  - "Implement OAuth support"
+  - "Build a new API endpoint"
+  - "Add feature X"
+  - "Fix bug Y"
+  
+  ## Core Philosophy
+  
+  **Exploration First**: Define scope and strategy before diving into code
+  **Parallel Deep Dives**: Deploy multiple agents simultaneously for efficient information gathering
+  **Verification Required**: Test understanding through practical application
+  **Knowledge Capture**: Document findings to prevent repeat investigations
+  
+  ## The 6-Phase Investigation Workflow
+  
+  ### Phase 1: Scope Definition
+  
+  **Purpose**: Define investigation boundaries and success criteria before any exploration.
+  
+  **Tasks**:
+  
+  - **FIRST**: Identify explicit user requirements - What specific questions must be answered?
+  - **Use** prompt-writer agent to clarify investigation scope
+  - **Use** ambiguity agent if questions are unclear
+  - Define what counts as "understanding achieved"
+  - List specific questions that must be answered
+  - Set boundaries: What's in scope vs. out of scope
+  - Estimate investigation depth needed (surface-level vs. deep dive)
+  
+  **Success Criteria**:
+  
+  - Clear list of questions to answer
+  - Defined scope boundaries
+  - Measurable success criteria (e.g., "can explain system flow", "can diagram architecture")
+  
+  **Deliverables**:
+  
+  - Investigation scope document with:
+    - Core questions to answer
+    - Success criteria
+    - Scope boundaries (what's included/excluded)
+    - Estimated depth and timeline
+  
+  ### Phase 2: Exploration Strategy
+  
+  **Purpose**: Plan which agents to deploy and what to investigate, preventing inefficient random exploration.
+  
+  **Tasks**:
+  
+  - **Use** architect agent to design exploration strategy
+  - **Use** patterns agent to check for similar past investigations
+  - Identify key areas to explore (code paths, configurations, documentation)
+  - Select specialized agents for parallel deployment in Phase 3
+  - Create investigation roadmap with priorities
+  - Identify potential dead ends to avoid
+  - Plan verification approach (how to test understanding)
+  
+  **Agent Selection Guidelines**:
+  
+  - **For code understanding**: analyzer, patterns agents
+  - **For system architecture**: architect, api-designer agents
+  - **For performance issues**: optimizer, analyzer agents
+  - **For security concerns**: security, patterns agents
+  - **For integration flows**: integration, database agents
+  
+  **Success Criteria**:
+  
+  - Clear exploration roadmap
+  - List of agents to deploy in Phase 3
+  - Prioritized investigation areas
+  
+  **Deliverables**:
+  
+  - Exploration strategy document with:
+    - Investigation roadmap
+    - Agent deployment plan for Phase 3
+    - Priority order for exploration
+    - Expected outputs from each exploration
+  
+  ### Phase 3: Parallel Deep Dives
+  
+  **Purpose**: Deploy multiple exploration agents simultaneously to gather information efficiently.
+
+# Source: /home/azureuser/src/amplihack/.claude/skills/investigation-workflow/SKILL.md

@@ -1,0 +1,117 @@
+# GitHub Copilot CLI Custom Agent
+# Generated from amplihack skill: /home/azureuser/src/amplihack/.claude/skills/knowledge-extractor/SKILL.md
+
+name: knowledge-extractor
+description: |
+  |
+
+model: claude-sonnet-4.5
+
+tools:
+  []
+
+activation_keywords:
+  []
+
+instructions: |
+  # Knowledge Extractor Skill
+  
+  ## Purpose
+  
+  This skill automatically extracts, synthesizes, and preserves knowledge from conversations, debugging sessions, failed attempts, and solved problems. It converts ephemeral interactions into persistent organizational knowledge that improves future performance.
+  
+  ## When to Use This Skill
+  
+  - **Session End Analysis**: Extract learnings before session context is lost
+  - **After Complex Debugging**: Capture root causes and solutions while fresh
+  - **Following Failed Attempts**: Document what didn't work and why
+  - **Successful Problem Solving**: Preserve solutions for future reuse
+  - **New Pattern Discovery**: Identify patterns that should be documented
+  - **Repeated Workflows**: Recognize when to create new specialized agents
+  - **Cross-Session Learning**: Build organizational memory from individual sessions
+  
+  ## Core Philosophy: Knowledge Preservation
+  
+  **Session Context**: Ephemeral conversation context that will be lost without active preservation
+  **Persistent Knowledge**: Structured learnings that improve future performance
+  **Pattern Recognition**: Identifying when solutions are repeated and should be automated
+  **Organizational Growth**: Converting individual learning into system-wide improvement
+  
+  ## Knowledge Extraction Framework
+  
+  ### Three Types of Knowledge Extraction
+  
+  #### 1. Discoveries - Novel Insights and Root Causes
+  
+  **What it captures**: Problems encountered, root causes identified, solutions implemented
+  
+  **When to extract**:
+  
+  - After solving a complex bug
+  - When debugging reveals unexpected behavior
+  - When discovering wrong assumptions
+  - After identifying missing functionality
+  - When learning why something failed
+  
+  **Format for DISCOVERIES.md**:
+  
+  ```markdown
+  ## [Brief Title] (YYYY-MM-DD)
+  
+  ### Issue
+  
+  What problem or challenge was encountered?
+  
+  ### Root Cause
+  
+  Why did this happen? What was the underlying issue?
+  
+  ### Solution
+  
+  How was it resolved? Include code examples if relevant.
+  
+  ### Key Learnings
+  
+  What insights were gained? What should be remembered?
+  
+  ### Prevention
+  
+  How can this be avoided in the future?
+  ```
+  
+  **Quality Criteria**:
+  
+  - ✅ Specific problem, not generic advice
+  - ✅ Root cause clearly identified
+  - ✅ Working solution included
+  - ✅ Learning generalized for reuse
+  - ✅ Prevention strategy documented
+  
+  #### 2. Patterns - Reusable Solutions
+  
+  **What it captures**: Proven solutions to recurring problems, architectural approaches, design patterns
+  
+  **When to extract**:
+  
+  - After solving a problem similar to known patterns
+  - When recognizing a repeated problem type
+  - When implementing a proven solution
+  - When discovering a best practice that works
+  - When solution applies across multiple contexts
+  
+  **Format for PATTERNS.md**:
+  
+  ```markdown
+  ## Pattern: [Name]
+  
+  ### Challenge
+  
+  What problem does this pattern solve?
+  
+  ### Solution
+  
+  How does the pattern work? Include code/examples.
+  
+  ### Key Points
+
+# Source: /home/azureuser/src/amplihack/.claude/skills/knowledge-extractor/SKILL.md

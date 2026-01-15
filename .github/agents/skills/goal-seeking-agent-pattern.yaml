@@ -1,0 +1,118 @@
+# GitHub Copilot CLI Custom Agent
+# Generated from amplihack skill: /home/azureuser/src/amplihack/.claude/skills/goal-seeking-agent-pattern/SKILL.md
+
+name: goal-seeking-agent-pattern
+description: |
+  |
+
+model: claude-sonnet-4.5
+
+tools:
+  []
+
+activation_keywords:
+  []
+
+instructions: |
+  # Goal-Seeking Agent Pattern Skill
+  
+  ## 1. What Are Goal-Seeking Agents?
+  
+  Goal-seeking agents are autonomous AI agents that execute multi-phase objectives by:
+  
+  1. **Understanding High-Level Goals**: Accept natural language objectives without explicit step-by-step instructions
+  2. **Planning Execution**: Break goals into phases with dependencies and success criteria
+  3. **Autonomous Execution**: Make decisions and adapt behavior based on intermediate results
+  4. **Self-Assessment**: Evaluate progress against success criteria and adjust approach
+  5. **Resilient Operation**: Handle failures gracefully and explore alternative solutions
+  
+  ### Core Characteristics
+  
+  **Autonomy**: Agents decide HOW to achieve goals, not just follow prescriptive steps
+  
+  **Adaptability**: Adjust strategy based on runtime conditions and intermediate results
+  
+  **Goal-Oriented**: Focus on outcomes (what to achieve) rather than procedures (how to achieve)
+  
+  **Multi-Phase**: Complex objectives decomposed into manageable phases with dependencies
+  
+  **Self-Monitoring**: Track progress, detect failures, and course-correct autonomously
+  
+  ### Distinction from Traditional Agents
+  
+  | Traditional Agent             | Goal-Seeking Agent            |
+  | ----------------------------- | ----------------------------- |
+  | Follows fixed workflow        | Adapts workflow to context    |
+  | Prescriptive steps            | Outcome-oriented objectives   |
+  | Human intervention on failure | Autonomous recovery attempts  |
+  | Single-phase execution        | Multi-phase with dependencies |
+  | Rigid decision tree           | Dynamic strategy adjustment   |
+  
+  ### When Goal-Seeking Makes Sense
+  
+  Goal-seeking agents excel when:
+  
+  - **Problem space is large**: Many possible paths to success
+  - **Context varies**: Runtime conditions affect optimal approach
+  - **Failures are expected**: Need autonomous recovery without human intervention
+  - **Objectives are clear**: Success criteria well-defined but path is flexible
+  - **Multi-step complexity**: Requires coordination across phases with dependencies
+  
+  ### When to Avoid Goal-Seeking
+  
+  Use traditional agents or scripts when:
+  
+  - **Single deterministic path**: Only one way to achieve goal
+  - **Latency-critical**: Need fastest possible execution (no decision overhead)
+  - **Safety-critical**: Human verification required at each step
+  - **Simple workflow**: Complexity of goal-seeking exceeds benefit
+  - **Audit requirements**: Need deterministic, reproducible execution
+  
+  ## 2. When to Use This Pattern
+  
+  ### Problem Indicators
+  
+  Use goal-seeking agents when you observe these patterns:
+  
+  #### Pattern 1: Workflow Variability
+  
+  **Indicators**:
+  
+  - Same objective requires different approaches based on context
+  - Manual decisions needed at multiple points
+  - "It depends" answers when mapping workflow
+  
+  **Example**: Release workflow that varies by:
+  
+  - Environment (staging vs production)
+  - Change type (hotfix vs feature)
+  - Current system state (healthy vs degraded)
+  
+  **Solution**: Goal-seeking agent evaluates context and adapts workflow
+  
+  #### Pattern 2: Multi-Phase Complexity
+  
+  **Indicators**:
+  
+  - Objective requires 3-5+ distinct phases
+  - Phases have dependencies (output of phase N feeds phase N+1)
+  - Parallel execution opportunities exist
+  - Success criteria differ per phase
+  
+  **Example**: Data pipeline with phases:
+  
+  1. Data collection (multiple sources, parallel)
+  2. Transformation (depends on collection results)
+  3. Validation (depends on transformation output)
+  4. Publishing (conditional on validation pass)
+  
+  **Solution**: Goal-seeking agent orchestrates phases, handles dependencies
+  
+  #### Pattern 3: Autonomous Recovery Needed
+  
+  **Indicators**:
+  
+  - Failures are expected and recoverable
+  - Multiple retry/fallback strategies exist
+
+# Source: /home/azureuser/src/amplihack/.claude/skills/goal-seeking-agent-pattern/SKILL.md

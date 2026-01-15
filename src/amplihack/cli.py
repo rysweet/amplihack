@@ -500,6 +500,182 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         help="Skip agent synchronization during setup"
     )
 
+    # Copilot agent invocation
+    copilot_agent_parser = subparsers.add_parser(
+        "copilot-agent",
+        help="Invoke a Copilot agent from .github/agents/",
+        epilog="Examples:\n"
+        "  amplihack copilot-agent architect 'Design authentication system'\n"
+        "  amplihack copilot-agent builder 'Implement the login feature'\n"
+        "  amplihack copilot-agent --list        # List available agents",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    copilot_agent_parser.add_argument(
+        "agent_name",
+        nargs="?",
+        help="Agent name (e.g., architect, builder, tester)"
+    )
+    copilot_agent_parser.add_argument(
+        "task",
+        nargs="?",
+        help="Task description for the agent"
+    )
+    copilot_agent_parser.add_argument(
+        "--list",
+        action="store_true",
+        help="List all available agents"
+    )
+    copilot_agent_parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Show detailed invocation output"
+    )
+    copilot_agent_parser.add_argument(
+        "--files",
+        nargs="+",
+        help="Additional files to include (e.g., --files PHILOSOPHY.md PATTERNS.md)"
+    )
+
+    # List Copilot agents (alias for copilot-agent --list)
+    list_copilot_agents_parser = subparsers.add_parser(
+        "list-copilot-agents",
+        help="List all available Copilot agents",
+        epilog="Examples:\n"
+        "  amplihack list-copilot-agents           # Show all agents\n"
+        "  amplihack list-copilot-agents --verbose # Show detailed info",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    list_copilot_agents_parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Show detailed agent information"
+    )
+
+    # Copilot workflow orchestration commands
+    copilot_workflow_parser = subparsers.add_parser(
+        "copilot-workflow",
+        help="Execute amplihack workflows via Copilot CLI",
+        epilog="Examples:\n"
+        "  amplihack copilot-workflow DEFAULT_WORKFLOW \"Add authentication\"\n"
+        "  amplihack copilot-workflow INVESTIGATION_WORKFLOW \"Understand auth flow\"\n"
+        "  amplihack copilot-workflow --list      # List available workflows\n"
+        "  amplihack copilot-workflow --sessions  # List active sessions",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    copilot_workflow_parser.add_argument(
+        "workflow_name",
+        nargs="?",
+        help="Workflow name (e.g., DEFAULT_WORKFLOW, INVESTIGATION_WORKFLOW)"
+    )
+    copilot_workflow_parser.add_argument(
+        "task_description",
+        nargs="?",
+        help="Task description for workflow execution"
+    )
+    copilot_workflow_parser.add_argument(
+        "--list",
+        action="store_true",
+        help="List available workflows"
+    )
+    copilot_workflow_parser.add_argument(
+        "--sessions",
+        action="store_true",
+        help="List active workflow sessions"
+    )
+    copilot_workflow_parser.add_argument(
+        "--start-step",
+        type=int,
+        default=0,
+        help="Step number to start from (default: 0)"
+    )
+
+    # Copilot workflow resume command
+    copilot_resume_parser = subparsers.add_parser(
+        "copilot-resume",
+        help="Resume workflow execution from checkpoint",
+        epilog="Examples:\n"
+        "  amplihack copilot-resume 20240115-143052\n"
+        "  amplihack copilot-resume --list        # List resumable sessions",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    copilot_resume_parser.add_argument(
+        "session_id",
+        nargs="?",
+        help="Session ID to resume (format: YYYYMMDD-HHMMSS)"
+    )
+    copilot_resume_parser.add_argument(
+        "--list",
+        action="store_true",
+        help="List resumable sessions"
+    )
+
+    # Sync commands command
+    sync_commands_parser = subparsers.add_parser(
+        "sync-commands",
+        help="Sync .claude/commands/ to .github/commands/ for Copilot CLI",
+        epilog="Examples:\n"
+        "  amplihack sync-commands                  # Sync commands with status check\n"
+        "  amplihack sync-commands --force          # Force overwrite existing commands\n"
+        "  amplihack sync-commands --dry-run        # Show what would be converted\n"
+        "  amplihack sync-commands --verbose        # Show detailed output",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    sync_commands_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be converted without making changes"
+    )
+    sync_commands_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite existing commands in .github/commands/"
+    )
+    sync_commands_parser.add_argument(
+        "--verbose", "-v",
+        action="store_true",
+        help="Show detailed conversion output"
+    )
+
+    # Copilot command invocation
+    copilot_command_parser = subparsers.add_parser(
+        "copilot-command",
+        help="Invoke a Copilot CLI command from .github/commands/",
+        epilog="Examples:\n"
+        "  amplihack copilot-command amplihack/ultrathink 'analyze this'\n"
+        "  amplihack copilot-command ddd/1-plan\n"
+        "  amplihack copilot-command amplihack/fix import",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    copilot_command_parser.add_argument(
+        "command_name",
+        help="Command name (e.g., amplihack/ultrathink, ddd/1-plan)"
+    )
+    copilot_command_parser.add_argument(
+        "args",
+        nargs="*",
+        help="Arguments to pass to the command"
+    )
+    copilot_command_parser.add_argument(
+        "--timeout",
+        type=int,
+        default=300,
+        help="Command timeout in seconds (default: 300)"
+    )
+
+    # List commands
+    list_commands_parser = subparsers.add_parser(
+        "list-commands",
+        help="List all available Copilot commands",
+        epilog="Examples:\n"
+        "  amplihack list-commands                  # Show all commands\n"
+        "  amplihack list-commands --category core  # Filter by category",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    list_commands_parser.add_argument(
+        "--category",
+        help="Filter by category (core, ddd, custom)"
+    )
+
     return parser
 
 
@@ -992,33 +1168,62 @@ def main(argv: list[str] | None = None) -> int:
         github_dir.mkdir(exist_ok=True)
         agents_dir = github_dir / "agents"
         agents_dir.mkdir(exist_ok=True)
+        commands_dir = github_dir / "commands"
+        commands_dir.mkdir(exist_ok=True)
         hooks_dir = github_dir / "hooks"
         hooks_dir.mkdir(exist_ok=True)
         print(f"  {EMOJI['check']} Created {github_dir}/")
         print(f"  {EMOJI['check']} Created {agents_dir}/")
+        print(f"  {EMOJI['check']} Created {commands_dir}/")
         print(f"  {EMOJI['check']} Created {hooks_dir}/")
 
         # Step 2: Sync agents (unless skipped)
         if not args.skip_sync:
             print("\nStep 2: Syncing agents from .claude/agents/ to .github/agents/...")
             try:
-                sys.path.insert(0, str(Path(__file__).parent.parent / ".claude" / "tools" / "amplihack"))
-                from sync_agents import sync_agents
+                from .adapters.copilot_agent_converter import convert_agents
 
-                result = sync_agents(Path(".claude/agents"), agents_dir)
+                report = convert_agents(
+                    source_dir=Path(".claude/agents"),
+                    target_dir=agents_dir,
+                    force=True
+                )
 
-                if result["success"]:
-                    print(f"  {EMOJI['check']} Synced {result['synced_count']} agents")
-                    print(f"  {EMOJI['check']} Generated registry: {result['registry_path']}")
+                if report.succeeded > 0:
+                    print(f"  {EMOJI['check']} Synced {report.succeeded} agents")
+                    print(f"  {EMOJI['check']} Generated registry: {agents_dir}/REGISTRY.json")
                 else:
-                    print(f"  ✗ Sync failed: {result.get('error')}")
+                    print(f"  ✗ Sync failed: {report.errors}")
                     return 1
 
             except Exception as e:
                 print(f"  ✗ Sync failed: {e}")
                 return 1
+
+            # Step 2.5: Sync commands
+            print("\nStep 2.5: Syncing commands from .claude/commands/ to .github/commands/...")
+            try:
+                from .adapters.copilot_command_converter import convert_commands
+
+                report = convert_commands(
+                    source_dir=Path(".claude/commands"),
+                    target_dir=commands_dir,
+                    force=True
+                )
+
+                if report.succeeded > 0:
+                    print(f"  {EMOJI['check']} Synced {report.succeeded} commands")
+                    print(f"  {EMOJI['check']} Generated registry: {commands_dir}/COMMANDS_REGISTRY.json")
+                else:
+                    print(f"  ✗ Sync failed: {report.errors}")
+                    return 1
+
+            except Exception as e:
+                print(f"  ✗ Sync failed: {e}")
+                return 1
+
         else:
-            print("\nStep 2: Skipped agent synchronization (--skip-sync)")
+            print("\nStep 2: Skipped synchronization (--skip-sync)")
 
         # Step 3: Copy sample hook configurations (if they don't exist)
         print("\nStep 3: Setting up hook configurations...")
@@ -1062,6 +1267,255 @@ def main(argv: list[str] | None = None) -> int:
         print()
 
         return 0
+
+    elif args.command == "sync-commands":
+        from pathlib import Path
+        from .adapters.copilot_command_converter import convert_commands
+
+        if args.dry_run:
+            print("Dry-run mode: No files will be modified\n")
+
+        try:
+            report = convert_commands(
+                source_dir=Path(".claude/commands"),
+                target_dir=Path(".github/commands"),
+                force=args.force
+            )
+
+            print(f"\nCommand Conversion Summary:")
+            print(f"  Total commands: {report.total}")
+            print(f"  {EMOJI['check']} Succeeded: {report.succeeded}")
+            if report.failed > 0:
+                print(f"  ✗ Failed: {report.failed}")
+            if report.skipped > 0:
+                print(f"  ⊘ Skipped: {report.skipped}")
+
+            if report.errors:
+                print(f"\nErrors:")
+                for error in report.errors:
+                    print(f"  {error}")
+
+            if args.verbose:
+                print(f"\nDetailed Results:")
+                for conversion in report.conversions:
+                    status_icon = {
+                        "success": EMOJI['check'],
+                        "failed": "✗",
+                        "skipped": "⊘"
+                    }[conversion.status]
+                    print(f"  {status_icon} {conversion.command_name} - {conversion.status}")
+                    if conversion.reason:
+                        print(f"     Reason: {conversion.reason}")
+
+            if report.succeeded > 0:
+                print(f"\nNext steps:")
+                print(f"  1. Review converted commands in .github/commands/")
+                print(f"  2. Check .github/commands/COMMANDS_REGISTRY.json")
+                print(f"  3. Use: amplihack copilot-command amplihack/ultrathink 'task'")
+
+            return 0 if report.failed == 0 else 1
+
+        except (FileNotFoundError, PermissionError) as e:
+            print(f"Error: {str(e)}")
+            return 1
+        except Exception as e:
+            print(f"Unexpected error: {str(e)}")
+            if args.verbose:
+                import traceback
+                traceback.print_exc()
+            return 1
+
+    elif args.command == "copilot-command":
+        from .copilot.command_wrapper import invoke_copilot_command
+
+        try:
+            result = invoke_copilot_command(
+                command_name=args.command_name,
+                args=args.args,
+                timeout=args.timeout
+            )
+
+            if result.stdout:
+                print(result.stdout)
+            if result.stderr:
+                print(result.stderr, file=sys.stderr)
+
+            return result.returncode
+
+        except FileNotFoundError as e:
+            print(f"Error: {str(e)}")
+            return 1
+        except Exception as e:
+            print(f"Unexpected error: {str(e)}")
+            return 1
+
+    elif args.command == "list-commands":
+        from pathlib import Path
+        from .copilot.command_wrapper import list_available_commands
+        import json
+
+        try:
+            commands = list_available_commands()
+
+            if not commands:
+                print("No commands found. Run 'amplihack sync-commands' first.")
+                return 1
+
+            registry_path = Path(".github/commands/COMMANDS_REGISTRY.json")
+            registry = {}
+            if registry_path.exists():
+                registry_data = json.loads(registry_path.read_text())
+                registry = {cmd['name']: cmd for cmd in registry_data['commands']}
+
+            if args.category:
+                commands = [
+                    cmd for cmd in commands
+                    if registry.get(cmd, {}).get('category') == args.category
+                ]
+
+            print(f"\nAvailable Copilot Commands ({len(commands)} total):")
+            print("=" * 70)
+
+            by_category = {}
+            for cmd in commands:
+                cmd_data = registry.get(cmd, {})
+                category = cmd_data.get('category', 'unknown')
+                if category not in by_category:
+                    by_category[category] = []
+                by_category[category].append((cmd, cmd_data.get('description', '')))
+
+            for category in sorted(by_category.keys()):
+                print(f"\n{category.upper()}:")
+                for cmd, desc in sorted(by_category[category]):
+                    print(f"  {cmd}")
+                    if desc:
+                        print(f"    {desc}")
+
+            print("\nUsage:")
+            print("  amplihack copilot-command <command-name> [args...]")
+            print("\nExample:")
+            print("  amplihack copilot-command amplihack/ultrathink 'analyze code'")
+
+            return 0
+
+        except Exception as e:
+            print(f"Error: {str(e)}")
+            return 1
+
+    elif args.command == "copilot-workflow":
+        from pathlib import Path
+        from .copilot import WorkflowOrchestrator
+
+        orchestrator = WorkflowOrchestrator()
+
+        # Handle --list flag
+        if args.list:
+            workflows_dir = Path(".claude/workflow")
+            if not workflows_dir.exists():
+                print("No workflows directory found")
+                return 1
+
+            workflows = [f.stem for f in workflows_dir.glob("*.md") if f.stem not in ["README", "templates"]]
+            print("\nAvailable Workflows:")
+            for workflow in sorted(workflows):
+                print(f"  - {workflow}")
+            return 0
+
+        # Handle --sessions flag
+        if args.sessions:
+            sessions = orchestrator.list_sessions()
+            if not sessions:
+                print("No active workflow sessions")
+                return 0
+
+            print("\nActive Workflow Sessions:")
+            for session in sessions:
+                print(f"\n  Session: {session['session_id']}")
+                print(f"  Workflow: {session['workflow']}")
+                print(f"  Progress: {session['steps_completed']}/{session['total_steps']} steps")
+                print(f"  Current step: {session['current_step']}")
+                print(f"  Created: {session['created']}")
+            return 0
+
+        # Execute workflow
+        if not args.workflow_name or not args.task_description:
+            print("Error: workflow_name and task_description are required")
+            print("Usage: amplihack copilot-workflow WORKFLOW_NAME \"task description\"")
+            return 1
+
+        print(f"\n{'=' * 70}")
+        print(f"Executing Workflow: {args.workflow_name}")
+        print(f"{'=' * 70}")
+        print(f"Task: {args.task_description}\n")
+
+        result = orchestrator.execute_workflow(
+            workflow_name=args.workflow_name,
+            task_description=args.task_description,
+            start_step=args.start_step,
+        )
+
+        if result.success:
+            print(f"\n{EMOJI['check']} Workflow completed successfully!")
+            print(f"  Session: {result.session_id}")
+            print(f"  Steps completed: {result.steps_completed}/{result.total_steps}")
+            print(f"  State saved: {result.state_path}")
+            return 0
+        else:
+            print(f"\n✗ Workflow failed")
+            print(f"  Session: {result.session_id}")
+            print(f"  Steps completed: {result.steps_completed}/{result.total_steps}")
+            print(f"  Failed at step: {result.current_step}")
+            print(f"  Error: {result.error}")
+            print(f"\nTo resume: amplihack copilot-resume {result.session_id}")
+            return 1
+
+    elif args.command == "copilot-resume":
+        from .copilot import WorkflowOrchestrator
+
+        orchestrator = WorkflowOrchestrator()
+
+        # Handle --list flag
+        if args.list:
+            sessions = orchestrator.list_sessions()
+            if not sessions:
+                print("No resumable workflow sessions")
+                return 0
+
+            print("\nResumable Workflow Sessions:")
+            for session in sessions:
+                print(f"\n  Session: {session['session_id']}")
+                print(f"  Workflow: {session['workflow']}")
+                print(f"  Progress: {session['steps_completed']}/{session['total_steps']} steps")
+                print(f"  Current step: {session['current_step']}")
+                print(f"  Created: {session['created']}")
+            return 0
+
+        # Resume workflow
+        if not args.session_id:
+            print("Error: session_id is required")
+            print("Usage: amplihack copilot-resume SESSION_ID")
+            print("Use --list to see available sessions")
+            return 1
+
+        print(f"\n{'=' * 70}")
+        print(f"Resuming Workflow Session: {args.session_id}")
+        print(f"{'=' * 70}\n")
+
+        result = orchestrator.resume_workflow(args.session_id)
+
+        if result.success:
+            print(f"\n{EMOJI['check']} Workflow completed successfully!")
+            print(f"  Session: {result.session_id}")
+            print(f"  Steps completed: {result.steps_completed}/{result.total_steps}")
+            print(f"  State saved: {result.state_path}")
+            return 0
+        else:
+            print(f"\n✗ Workflow resume failed")
+            print(f"  Session: {result.session_id}")
+            print(f"  Steps completed: {result.steps_completed}/{result.total_steps}")
+            print(f"  Failed at step: {result.current_step}")
+            print(f"  Error: {result.error}")
+            return 1
 
     else:
         create_parser().print_help()

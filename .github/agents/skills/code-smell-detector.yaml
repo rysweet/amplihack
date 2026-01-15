@@ -1,0 +1,118 @@
+# GitHub Copilot CLI Custom Agent
+# Generated from amplihack skill: /home/azureuser/src/amplihack/.claude/skills/code-smell-detector/SKILL.md
+
+name: code-smell-detector
+description: |
+  |
+
+model: claude-sonnet-4.5
+
+tools:
+  []
+
+activation_keywords:
+  []
+
+instructions: |
+  # Code Smell Detector Skill
+  
+  ## Purpose
+  
+  This skill identifies anti-patterns that violate amplihack's development philosophy and provides constructive, specific fixes. It ensures code maintains ruthless simplicity, modular design, and zero-BS implementations.
+  
+  ## When to Use This Skill
+  
+  - **Code review**: Identify violations before merging
+  - **Refactoring**: Find opportunities to simplify and improve code quality
+  - **New module creation**: Catch issues early in development
+  - **Philosophy compliance**: Ensure code aligns with amplihack principles
+  - **Learning**: Understand why patterns are problematic and how to fix them
+  - **Mentoring**: Educate team members on philosophy-aligned code patterns
+  
+  ## Core Philosophy Reference
+  
+  **Amplihack Development Philosophy focuses on:**
+  
+  - **Ruthless Simplicity**: Every abstraction must justify its existence
+  - **Modular Design (Bricks & Studs)**: Self-contained modules with clear connection points
+  - **Zero-BS Implementation**: No stubs, no placeholders, only working code
+  - **Single Responsibility**: Each module/function has ONE clear job
+  
+  ## Code Smells Detected
+  
+  ### 1. Over-Abstraction
+  
+  **What It Is**: Unnecessary layers of abstraction, generic base classes, or interfaces that don't provide clear value.
+  
+  **Why It's Bad**: Violates "ruthless simplicity" - adds complexity without proportional benefit. Makes code harder to understand and maintain.
+  
+  **Red Flags**:
+  
+  - Abstract base classes with only one implementation
+  - Generic helper classes that do very little
+  - Deep inheritance hierarchies (3+ levels)
+  - Interfaces for single implementations
+  - Over-parameterized functions
+  
+  **Example - SMELL**:
+  
+  ```python
+  # BAD: Over-abstracted
+  class DataProcessor(ABC):
+      @abstractmethod
+      def process(self, data):
+          pass
+  
+  class SimpleDataProcessor(DataProcessor):
+      def process(self, data):
+          return data * 2
+  ```
+  
+  **Example - FIXED**:
+  
+  ```python
+  # GOOD: Direct implementation
+  def process_data(data):
+      """Process data by doubling it."""
+      return data * 2
+  ```
+  
+  **Detection Checklist**:
+  
+  - [ ] Abstract classes with only 1-2 concrete implementations
+  - [ ] Generic utility classes that don't encapsulate state
+  - [ ] Type hierarchies deeper than 2 levels
+  - [ ] Mixins solving single problems
+  
+  **Fix Strategy**:
+  
+  1. Identify what the abstraction solves
+  2. Check if you really need multiple implementations now
+  3. Delete the abstraction - use direct implementation
+  4. If multiple implementations needed later, refactor then
+  5. Principle: Avoid future-proofing
+  
+  ---
+  
+  ### 2. Complex Inheritance
+  
+  **What It Is**: Deep inheritance chains, multiple inheritance, or convoluted class hierarchies that obscure code flow.
+  
+  **Why It's Bad**: Makes code hard to follow, creates tight coupling, violates simplicity principle. Who does what becomes unclear.
+  
+  **Red Flags**:
+  
+  - 3+ levels of inheritance (GrandparentClass -> ParentClass -> ChildClass)
+  - Multiple inheritance from non-interface classes
+  - Inheritance used for code reuse instead of composition
+  - Overriding multiple levels of methods
+  - "Mixin" classes for cross-cutting concerns
+  
+  **Example - SMELL**:
+  
+  ```python
+  # BAD: Complex inheritance
+  class Entity:
+      def save(self): pass
+
+# Source: /home/azureuser/src/amplihack/.claude/skills/code-smell-detector/SKILL.md
