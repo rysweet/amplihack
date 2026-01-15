@@ -1,0 +1,279 @@
+name: "default-workflow"
+description: "Standard workflow for feature development, bug fixes, and refactoring with quality gates"
+version: "1.0.0"
+author: "Amplihack Team"
+tags: ["development", "feature", "bugfix", "refactoring", "standard"]
+
+# DEFAULT_WORKFLOW: Standard Development Workflow
+#
+# This is the primary workflow for all non-trivial code changes:
+#   - New features
+#   - Bug fixes
+#   - Refactoring
+#   - Any changes requiring review
+#
+# Phases:
+#   1. Requirements - Clarify and document requirements
+#   2. Design - Architecture and test strategy
+#   3. Implementation - Build with TDD approach
+#   4. Review - Quality and philosophy check
+#   5. Refinement - Address review feedback
+#   6. Validation - Final quality gate
+#
+# For simpler tasks, use qa-workflow or investigation-workflow.
+# For critical code, use consensus-workflow or n-version-workflow.
+#
+# Usage:
+#   amplifier recipes execute default-workflow.yaml --context '{
+#     "task_description": "Add user profile page",
+#     "requirements": "Display name, email, avatar; allow editing",
+#     "issue_number": "123"
+#   }'
+
+recursion:
+  max_depth: 4
+  max_total_steps: 40
+
+context:
+  # Description of the task
+  task_description: ""
+  
+  # Specific requirements
+  requirements: ""
+  
+  # GitHub issue number (optional)
+  issue_number: ""
+  
+  # Branch name prefix
+  branch_prefix: "feat"
+
+steps:
+  # ==========================================================================
+  # PHASE 1: REQUIREMENTS CLARIFICATION
+  # ==========================================================================
+  - id: "clarify-requirements"
+    agent: "foundation:zen-architect"
+    mode: "ANALYZE"
+    prompt: |
+      Clarify and structure the requirements for this task:
+
+      **Task:** {{task_description}}
+      **Requirements:** {{requirements}}
+      **Issue:** {{issue_number}}
+
+      Provide structured requirements:
+
+      ```json
+      {
+        "task_summary": "one-line summary",
+        "explicit_requirements": ["must-have features"],
+        "acceptance_criteria": ["how to verify completion"],
+        "out_of_scope": ["what this does NOT include"],
+        "assumptions": ["assumptions we're making"],
+        "questions": ["clarifications needed, if any"],
+        "estimated_complexity": "low/medium/high"
+      }
+      ```
+
+      Focus on removing ambiguity and defining clear success criteria.
+    output: "requirements"
+    parse_json: true
+
+  # ==========================================================================
+  # PHASE 2: DESIGN
+  # ==========================================================================
+  - id: "design-solution"
+    agent: "foundation:zen-architect"
+    mode: "ARCHITECT"
+    prompt: |
+      Design the solution architecture:
+
+      **Task:** {{task_description}}
+      **Requirements:** {{requirements}}
+
+      Provide:
+
+      ## Solution Design
+
+      ### Components
+      [What modules/components are involved]
+
+      ### Changes Required
+      [What files need to be created or modified]
+
+      ### Test Strategy
+      [What tests will verify this works]
+
+      ### Implementation Plan
+      ```json
+      {
+        "components": [
+          {"name": "...", "action": "create/modify", "purpose": "..."}
+        ],
+        "files_to_change": ["list of file paths"],
+        "new_files": ["files to create"],
+        "test_files": ["test files to create/modify"],
+        "implementation_order": ["ordered steps"],
+        "risks": ["potential issues to watch for"]
+      }
+      ```
+
+      Keep the design as simple as possible while meeting requirements.
+    output: "design"
+    parse_json: true
+
+  # ==========================================================================
+  # PHASE 3: IMPLEMENTATION
+  # ==========================================================================
+  - id: "implement-solution"
+    agent: "foundation:modular-builder"
+    prompt: |
+      Implement the solution following the design:
+
+      **Task:** {{task_description}}
+      **Requirements:** {{requirements}}
+      **Design:** {{design}}
+
+      Implementation rules:
+      1. Follow the design closely
+      2. Write tests for new functionality
+      3. NO stubs, TODOs, or placeholder code
+      4. NO swallowed exceptions
+      5. Clear error messages
+      6. Appropriate logging
+
+      Provide:
+      1. Complete implementation code (all files)
+      2. Unit tests
+      3. Brief explanation of key decisions
+      4. Any deviations from design (with justification)
+
+      Format with clear file headers:
+      ```python
+      # File: path/to/file.py
+      [code]
+      ```
+    output: "implementation"
+
+  # ==========================================================================
+  # PHASE 4: REVIEW
+  # ==========================================================================
+  - id: "code-review"
+    agent: "foundation:zen-architect"
+    mode: "REVIEW"
+    prompt: |
+      Review the implementation for quality and philosophy compliance:
+
+      **Requirements:** {{requirements}}
+      **Design:** {{design}}
+      **Implementation:** {{implementation}}
+
+      Review checklist:
+      - [ ] Meets all requirements
+      - [ ] Follows the design
+      - [ ] No stubs/TODOs/placeholders
+      - [ ] Proper error handling
+      - [ ] Adequate test coverage
+      - [ ] Code is as simple as possible
+      - [ ] Clear naming and documentation
+
+      Provide review:
+
+      ## Review Summary
+      [Overall assessment]
+
+      ## Issues Found
+      | Severity | Issue | Location | Fix |
+      |----------|-------|----------|-----|
+      | ... | ... | ... | ... |
+
+      ## Recommendations
+      [Improvements to consider]
+
+      ```json
+      {
+        "approved": true/false,
+        "issues_count": {"critical": 0, "high": 0, "medium": 0, "low": 0},
+        "blocking_issues": ["issues that must be fixed"],
+        "recommendations": ["nice-to-have improvements"],
+        "philosophy_score": "1-10",
+        "test_coverage_adequate": true/false
+      }
+      ```
+    output: "review"
+    parse_json: true
+
+  # ==========================================================================
+  # PHASE 5: REFINEMENT (conditional)
+  # ==========================================================================
+  - id: "refine-implementation"
+    condition: "{{review.approved}} == 'false'"
+    agent: "foundation:modular-builder"
+    prompt: |
+      Address the review feedback:
+
+      **Original Implementation:** {{implementation}}
+      **Review Feedback:** {{review}}
+      **Blocking Issues:** {{review.blocking_issues}}
+
+      Fix ALL blocking issues.
+      Consider the recommendations.
+
+      Provide the refined implementation with:
+      1. Updated code
+      2. Updated tests if needed
+      3. Summary of changes made
+    output: "refined_implementation"
+
+  # ==========================================================================
+  # PHASE 6: FINAL VALIDATION
+  # ==========================================================================
+  - id: "final-validation"
+    agent: "foundation:zen-architect"
+    mode: "REVIEW"
+    prompt: |
+      Final validation before completion:
+
+      **Requirements:** {{requirements}}
+      **Implementation:** {{implementation}}
+      **Review:** {{review}}
+      **Refinements:** {{refined_implementation}}
+
+      Final checklist:
+      1. All requirements met?
+      2. All blocking issues addressed?
+      3. Tests pass (assumed)?
+      4. Ready for PR?
+
+      ```json
+      {
+        "validation_passed": true/false,
+        "requirements_met": true/false,
+        "issues_resolved": true/false,
+        "ready_for_pr": true/false,
+        "pr_description": "suggested PR description",
+        "remaining_concerns": ["any concerns"]
+      }
+      ```
+    output: "validation"
+    parse_json: true
+
+  # ==========================================================================
+  # FINAL OUTPUT
+  # ==========================================================================
+  - id: "final-output"
+    type: "bash"
+    parse_json: true
+    command: |
+      cat << 'EOF'
+      {
+        "workflow": "default-workflow",
+        "task": "{{task_description}}",
+        "issue": "{{issue_number}}",
+        "status": "complete",
+        "validation_passed": "{{validation.validation_passed}}",
+        "ready_for_pr": "{{validation.ready_for_pr}}",
+        "phases_completed": ["requirements", "design", "implementation", "review", "validation"]
+      }
+      EOF
+    output: "final_result"

@@ -1,0 +1,315 @@
+name: "debate-workflow"
+description: "Multi-agent structured debate for complex decisions requiring diverse perspectives"
+version: "1.0.0"
+author: "Amplihack Team"
+tags: ["debate", "decision", "consensus", "multi-agent", "architecture"]
+
+# DEBATE_WORKFLOW: Multi-Perspective Decision Making
+#
+# Use this workflow for:
+#   - Major architectural decisions (framework selection, system design)
+#   - Complex trade-offs with no clear winner
+#   - Controversial changes affecting multiple areas
+#   - High-impact decisions requiring buy-in
+#   - When perspectives genuinely conflict
+#
+# NOT for:
+#   - Simple implementation choices
+#   - Decisions with obvious correct answer
+#   - Time-sensitive hot fixes
+#   - Minor refactoring
+#
+# Process:
+#   1. Frame the Decision - Define question, constraints, criteria
+#   2. Gather Perspectives - Multiple viewpoints analyze independently
+#   3. Challenge Round - Cross-examination of positions
+#   4. Find Common Ground - Identify agreements and hybrid approaches
+#   5. Facilitator Synthesis - Neutral synthesis and recommendation
+#   6. Document Decision - Create decision record
+#
+# Usage:
+#   amplifier recipes execute debate-workflow.yaml --context '{
+#     "decision_question": "Should we use PostgreSQL or MongoDB for user analytics?",
+#     "constraints": "Must handle 10M events/day, budget $5K/month",
+#     "perspectives": "performance,simplicity,cost,maintainability"
+#   }'
+
+recursion:
+  max_depth: 3
+  max_total_steps: 30
+
+context:
+  # The decision question to debate
+  decision_question: ""
+  
+  # Non-negotiable constraints
+  constraints: ""
+  
+  # Perspectives to include (comma-separated)
+  # Options: security, performance, simplicity, maintainability, cost, scalability, ux
+  perspectives: "performance,simplicity,maintainability"
+  
+  # Number of debate rounds (2-4)
+  debate_rounds: "2"
+  
+  # Convergence criteria: consensus, majority, synthesis, evidence
+  convergence: "synthesis"
+
+steps:
+  # ==========================================================================
+  # STEP 1: FRAME THE DECISION
+  # Define question, constraints, and evaluation criteria
+  # ==========================================================================
+  - id: "frame-decision"
+    agent: "foundation:zen-architect"
+    mode: "ANALYZE"
+    prompt: |
+      Frame this decision for structured debate:
+
+      **Question:** {{decision_question}}
+      **Constraints:** {{constraints}}
+      **Perspectives to include:** {{perspectives}}
+
+      Create a decision framing document as JSON:
+      ```json
+      {
+        "question": "one-sentence question to debate",
+        "context": "why this decision matters",
+        "constraints": ["list of non-negotiable requirements"],
+        "evaluation_criteria": [
+          {"criterion": "name", "weight": "high/medium/low", "description": "how to judge"}
+        ],
+        "options_to_consider": ["known options to evaluate"],
+        "perspectives_needed": ["list of perspectives"],
+        "out_of_scope": ["what this decision does NOT cover"]
+      }
+      ```
+    output: "framing"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 2: GATHER PERSPECTIVES - Performance
+  # ==========================================================================
+  - id: "perspective-performance"
+    agent: "foundation:zen-architect"
+    mode: "ANALYZE"
+    prompt: |
+      Analyze this decision from a **PERFORMANCE** perspective:
+
+      **Decision:** {{framing.question}}
+      **Context:** {{framing.context}}
+      **Constraints:** {{framing.constraints}}
+      **Options:** {{framing.options_to_consider}}
+
+      As the Performance advocate, provide your analysis:
+
+      ```json
+      {
+        "perspective": "performance",
+        "recommendation": "your recommended option",
+        "arguments": [
+          {"point": "argument", "evidence": "supporting data"}
+        ],
+        "concerns_about_alternatives": [
+          {"option": "alternative", "concern": "specific issue"}
+        ],
+        "assumptions": ["assumptions you're making"],
+        "confidence": "high/medium/low"
+      }
+      ```
+
+      Focus on: speed, scalability, resource efficiency, throughput, latency.
+    output: "perf_perspective"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 3: GATHER PERSPECTIVES - Simplicity
+  # ==========================================================================
+  - id: "perspective-simplicity"
+    agent: "foundation:zen-architect"
+    mode: "ANALYZE"
+    prompt: |
+      Analyze this decision from a **SIMPLICITY** perspective:
+
+      **Decision:** {{framing.question}}
+      **Context:** {{framing.context}}
+      **Constraints:** {{framing.constraints}}
+      **Options:** {{framing.options_to_consider}}
+
+      As the Simplicity advocate, provide your analysis:
+
+      ```json
+      {
+        "perspective": "simplicity",
+        "recommendation": "your recommended option",
+        "arguments": [
+          {"point": "argument", "evidence": "supporting data"}
+        ],
+        "concerns_about_alternatives": [
+          {"option": "alternative", "concern": "specific issue"}
+        ],
+        "assumptions": ["assumptions you're making"],
+        "confidence": "high/medium/low"
+      }
+      ```
+
+      Focus on: minimal complexity, ruthless simplification, fewer moving parts, ease of understanding.
+    output: "simplicity_perspective"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 4: GATHER PERSPECTIVES - Maintainability
+  # ==========================================================================
+  - id: "perspective-maintainability"
+    agent: "foundation:zen-architect"
+    mode: "ANALYZE"
+    prompt: |
+      Analyze this decision from a **MAINTAINABILITY** perspective:
+
+      **Decision:** {{framing.question}}
+      **Context:** {{framing.context}}
+      **Constraints:** {{framing.constraints}}
+      **Options:** {{framing.options_to_consider}}
+
+      As the Maintainability advocate, provide your analysis:
+
+      ```json
+      {
+        "perspective": "maintainability",
+        "recommendation": "your recommended option",
+        "arguments": [
+          {"point": "argument", "evidence": "supporting data"}
+        ],
+        "concerns_about_alternatives": [
+          {"option": "alternative", "concern": "specific issue"}
+        ],
+        "assumptions": ["assumptions you're making"],
+        "confidence": "high/medium/low"
+      }
+      ```
+
+      Focus on: long-term evolution, technical debt, team expertise, documentation, debugging ease.
+    output: "maintain_perspective"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 5: CHALLENGE ROUND
+  # Cross-examination of positions
+  # ==========================================================================
+  - id: "challenge-round"
+    agent: "foundation:zen-architect"
+    mode: "REVIEW"
+    prompt: |
+      Conduct a challenge round where perspectives cross-examine each other:
+
+      **Decision:** {{framing.question}}
+
+      **Performance Perspective:**
+      {{perf_perspective}}
+
+      **Simplicity Perspective:**
+      {{simplicity_perspective}}
+
+      **Maintainability Perspective:**
+      {{maintain_perspective}}
+
+      Identify:
+      1. Where do perspectives AGREE?
+      2. Where do they CONFLICT?
+      3. What CHALLENGES would each perspective raise against the others?
+      4. What CONCESSIONS might each make?
+
+      Return as JSON:
+      ```json
+      {
+        "agreements": ["points all perspectives agree on"],
+        "conflicts": [
+          {
+            "issue": "the conflict",
+            "positions": {"performance": "...", "simplicity": "...", "maintainability": "..."}
+          }
+        ],
+        "strongest_arguments": [
+          {"perspective": "name", "argument": "their strongest point"}
+        ],
+        "weakest_arguments": [
+          {"perspective": "name", "argument": "their weakest point"}
+        ],
+        "potential_compromises": ["possible middle-ground positions"]
+      }
+      ```
+    output: "challenge_results"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 6: FACILITATOR SYNTHESIS
+  # Neutral synthesis and recommendation
+  # ==========================================================================
+  - id: "facilitator-synthesis"
+    agent: "foundation:zen-architect"
+    mode: "ARCHITECT"
+    prompt: |
+      As a neutral facilitator, synthesize the debate and make a recommendation:
+
+      **Decision:** {{framing.question}}
+      **Evaluation Criteria:** {{framing.evaluation_criteria}}
+      **Convergence Mode:** {{convergence}}
+
+      **Perspectives:**
+      - Performance: {{perf_perspective}}
+      - Simplicity: {{simplicity_perspective}}
+      - Maintainability: {{maintain_perspective}}
+
+      **Challenge Results:** {{challenge_results}}
+
+      Provide your synthesis:
+
+      ## Recommendation
+      [Clear statement of recommended approach]
+
+      ## Confidence Level
+      [High/Medium/Low] based on:
+      - Consensus level among perspectives
+      - Evidence quality
+      - Risk level if wrong
+
+      ## Rationale
+      [Why this recommendation - which arguments won]
+
+      ## Key Arguments That Won
+      1. [Argument that swayed decision]
+      2. [Argument that swayed decision]
+
+      ## Dissenting Views (Important to Document)
+      1. [Strongest counter-argument]
+      2. [Remaining concern]
+
+      ## Implementation Guidance
+      [How to execute this decision]
+
+      ## Success Metrics
+      [How we'll know if this was right]
+
+      ## Revisit Triggers
+      [Conditions that would require reconsidering]
+    output: "synthesis"
+
+  # ==========================================================================
+  # STEP 7: DOCUMENT DECISION
+  # Create decision record
+  # ==========================================================================
+  - id: "document-decision"
+    type: "bash"
+    parse_json: true
+    command: |
+      cat << 'EOF'
+      {
+        "workflow": "debate-workflow",
+        "decision": "{{framing.question}}",
+        "perspectives_consulted": ["performance", "simplicity", "maintainability"],
+        "convergence_mode": "{{convergence}}",
+        "status": "complete",
+        "recommendation": "See synthesis output"
+      }
+      EOF
+    output: "decision_record"

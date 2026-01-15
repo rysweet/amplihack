@@ -1,0 +1,295 @@
+name: "investigation-workflow"
+description: "6-phase systematic investigation workflow for understanding code, systems, and behavior"
+version: "1.0.0"
+author: "Amplihack Team"
+tags: ["investigation", "exploration", "understanding", "analysis", "research"]
+
+# INVESTIGATION_WORKFLOW: Systematic Investigation
+#
+# Use this workflow for tasks involving:
+#   - "investigate", "explain", "understand", "how does", "why does"
+#   - "analyze", "research", "explore", "examine", "study"
+#
+# NOT for development tasks - use default-workflow for "implement", "build", "create", "add feature"
+#
+# 6 Phases:
+#   1. Scope Definition - Define boundaries and success criteria
+#   2. Exploration Strategy - Plan which agents to deploy
+#   3. Parallel Deep Dives - Deploy multiple agents simultaneously
+#   4. Verification - Test and validate understanding
+#   5. Synthesis - Compile findings into coherent explanation
+#   6. Knowledge Capture - Document learnings
+#
+# Usage:
+#   amplifier recipes execute investigation-workflow.yaml --context '{
+#     "investigation_question": "How does the authentication system work?",
+#     "codebase_path": "src/auth",
+#     "depth": "deep"
+#   }'
+
+recursion:
+  max_depth: 5
+  max_total_steps: 50
+
+context:
+  # The main question to investigate
+  investigation_question: ""
+  
+  # Path to focus investigation on (optional)
+  codebase_path: ""
+  
+  # Investigation depth: surface, standard, deep
+  depth: "standard"
+  
+  # Output directory for findings
+  output_dir: "./ai_working/investigation"
+
+steps:
+  # ==========================================================================
+  # PHASE 1: SCOPE DEFINITION
+  # Define investigation boundaries and success criteria
+  # ==========================================================================
+  - id: "scope-definition"
+    agent: "foundation:zen-architect"
+    mode: "ANALYZE"
+    prompt: |
+      Define the scope for this investigation:
+
+      **Question:** {{investigation_question}}
+      **Codebase Focus:** {{codebase_path}}
+      **Depth:** {{depth}}
+
+      Provide a scope definition as JSON:
+      ```json
+      {
+        "core_questions": ["list of specific questions to answer"],
+        "success_criteria": ["how we know understanding is achieved"],
+        "in_scope": ["what's included"],
+        "out_of_scope": ["what's excluded"],
+        "known_unknowns": ["what we know we don't know"],
+        "estimated_complexity": "low/medium/high",
+        "suggested_agents": ["list of agent types needed"]
+      }
+      ```
+
+      Be specific and measurable in success criteria.
+    output: "scope"
+    parse_json: true
+
+  # ==========================================================================
+  # PHASE 2: EXPLORATION STRATEGY
+  # Plan which agents to deploy and what to investigate
+  # ==========================================================================
+  - id: "exploration-strategy"
+    agent: "foundation:zen-architect"
+    mode: "ARCHITECT"
+    prompt: |
+      Design an exploration strategy based on the scope:
+
+      **Investigation Question:** {{investigation_question}}
+      **Scope:** {{scope}}
+
+      Create an exploration plan as JSON:
+      ```json
+      {
+        "exploration_areas": [
+          {
+            "area": "area name",
+            "agent": "agent to use",
+            "focus": "what to look for",
+            "expected_output": "what we expect to learn"
+          }
+        ],
+        "priority_order": ["ordered list of areas"],
+        "parallel_candidates": ["areas that can run in parallel"],
+        "potential_dead_ends": ["areas to avoid"],
+        "verification_approach": "how to test understanding"
+      }
+      ```
+
+      Agent options: foundation:explorer, foundation:zen-architect, foundation:security-guardian
+    output: "strategy"
+    parse_json: true
+
+  # ==========================================================================
+  # PHASE 3: PARALLEL DEEP DIVES
+  # Deploy exploration agents to gather information
+  # ==========================================================================
+  - id: "deep-dive-primary"
+    agent: "foundation:explorer"
+    prompt: |
+      Explore the primary area of investigation:
+
+      **Question:** {{investigation_question}}
+      **Focus Path:** {{codebase_path}}
+      **Strategy:** {{strategy}}
+
+      Conduct a thorough exploration:
+      1. Map the relevant code structure
+      2. Identify key files and functions
+      3. Trace data flows and dependencies
+      4. Note any patterns or anomalies
+
+      Provide findings in a structured format with:
+      - File paths and line numbers for key discoveries
+      - Code snippets for important sections
+      - Dependency relationships
+      - Open questions that emerged
+    output: "primary_findings"
+
+  - id: "deep-dive-architecture"
+    agent: "foundation:zen-architect"
+    mode: "ANALYZE"
+    prompt: |
+      Analyze the architectural aspects:
+
+      **Question:** {{investigation_question}}
+      **Primary Findings:** {{primary_findings}}
+      **Strategy:** {{strategy}}
+
+      Provide architectural analysis:
+      1. Component boundaries and responsibilities
+      2. Design patterns in use
+      3. Integration points
+      4. Potential architectural concerns
+
+      Focus on understanding the "why" behind the design choices.
+    output: "architecture_findings"
+
+  # ==========================================================================
+  # PHASE 4: VERIFICATION
+  # Test and validate understanding
+  # ==========================================================================
+  - id: "verification"
+    agent: "foundation:zen-architect"
+    mode: "REVIEW"
+    prompt: |
+      Verify our understanding by testing hypotheses:
+
+      **Original Question:** {{investigation_question}}
+      **Scope:** {{scope}}
+      **Primary Findings:** {{primary_findings}}
+      **Architecture Findings:** {{architecture_findings}}
+
+      For each core question in the scope, verify:
+      1. Do we have evidence to answer it?
+      2. Are there contradictions in our findings?
+      3. What assumptions are we making?
+      4. What gaps remain?
+
+      Return verification results as JSON:
+      ```json
+      {
+        "verified_understanding": [
+          {
+            "question": "the question",
+            "answer": "our answer",
+            "confidence": "high/medium/low",
+            "evidence": ["supporting evidence"]
+          }
+        ],
+        "remaining_gaps": ["unanswered questions"],
+        "contradictions": ["any conflicting findings"],
+        "assumptions": ["assumptions we're making"]
+      }
+      ```
+    output: "verification"
+    parse_json: true
+
+  # ==========================================================================
+  # PHASE 5: SYNTHESIS
+  # Compile findings into coherent explanation
+  # ==========================================================================
+  - id: "synthesis"
+    agent: "foundation:zen-architect"
+    mode: "ARCHITECT"
+    prompt: |
+      Synthesize all findings into a coherent explanation:
+
+      **Original Question:** {{investigation_question}}
+      **Scope:** {{scope}}
+      **Primary Findings:** {{primary_findings}}
+      **Architecture Findings:** {{architecture_findings}}
+      **Verification:** {{verification}}
+
+      Create a comprehensive synthesis:
+
+      ## Executive Summary
+      (2-3 sentence answer to the main question)
+
+      ## Detailed Explanation
+      (Complete explanation with supporting evidence)
+
+      ## Key Insights
+      (Non-obvious discoveries or patterns)
+
+      ## Visual Model
+      (Text-based diagram showing system flow or architecture)
+
+      ## Remaining Unknowns
+      (What's still unclear or uncertain)
+
+      ## Recommendations
+      (Suggestions for next steps or improvements)
+    output: "synthesis"
+
+  # ==========================================================================
+  # PHASE 6: KNOWLEDGE CAPTURE
+  # Document learnings for future reference
+  # ==========================================================================
+  - id: "knowledge-capture"
+    type: "bash"
+    command: |
+      mkdir -p "{{output_dir}}"
+      
+      # Create the investigation report
+      cat << 'REPORT_EOF' > "{{output_dir}}/investigation_report.md"
+      # Investigation Report
+      
+      **Question:** {{investigation_question}}
+      **Date:** $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+      **Status:** Complete
+      
+      ## Scope
+      {{scope}}
+      
+      ## Strategy
+      {{strategy}}
+      
+      ## Findings
+      
+      ### Primary Exploration
+      {{primary_findings}}
+      
+      ### Architecture Analysis
+      {{architecture_findings}}
+      
+      ## Verification
+      {{verification}}
+      
+      ## Synthesis
+      {{synthesis}}
+      REPORT_EOF
+      
+      echo "Report saved to {{output_dir}}/investigation_report.md"
+      echo "{\"report_path\": \"{{output_dir}}/investigation_report.md\", \"status\": \"complete\"}"
+    output: "knowledge_capture"
+    parse_json: true
+
+  # ==========================================================================
+  # FINAL OUTPUT
+  # ==========================================================================
+  - id: "final-output"
+    type: "bash"
+    parse_json: true
+    command: |
+      cat << 'EOF'
+      {
+        "workflow": "investigation-workflow",
+        "question": "{{investigation_question}}",
+        "status": "complete",
+        "phases_completed": 6,
+        "report_location": "{{output_dir}}/investigation_report.md"
+      }
+      EOF
+    output: "final_result"
