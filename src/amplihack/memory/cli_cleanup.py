@@ -75,7 +75,7 @@ def cleanup_memory_sessions(
 
     if dry_run:
         print("\nDry-run mode: No sessions were deleted.")
-        print("Use --no-dry-run to actually delete these sessions.")
+        print("Use --no-dry-run to actually be deletin' these sessions.")
         return {
             "matched": len(matched_sessions),
             "deleted": 0,
@@ -87,7 +87,7 @@ def cleanup_memory_sessions(
     if not confirm:
         response = input("\nAre ye sure ye want to delete these sessions? [y/N]: ")
         if response.lower() not in ("y", "yes"):
-            print("Cleanup cancelled.")
+            print("Cleanup be cancelled.")
             return {
                 "matched": len(matched_sessions),
                 "deleted": 0,
@@ -109,7 +109,7 @@ def cleanup_memory_sessions(
                 print(f"Deleted: {session.session_id}")
             else:
                 error_count += 1
-                print(f"Failed to delete: {session.session_id}", file=sys.stderr)
+                print(f"Failed to be deletin': {session.session_id}", file=sys.stderr)
         except Exception as e:
             error_count += 1
             print(f"Error deletin' {session.session_id}: {e}", file=sys.stderr)
