@@ -427,7 +427,16 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     )
 
     # Clean subcommand
-    clean_parser = memory_subparsers.add_parser("clean", help="Clean up test sessions")
+    clean_parser = memory_subparsers.add_parser(
+        "clean",
+        help="Clean up test sessions",
+        epilog="Examples:\n"
+        "  amplihack memory clean --pattern 'test_*'     # Clean test sessions\n"
+        "  amplihack memory clean --pattern 'demo_*'     # Clean demo sessions\n"
+        "  amplihack memory clean --pattern '*_temp'     # Clean temporary sessions\n"
+        "  amplihack memory clean --pattern 'dev_*' --no-dry-run  # Actually delete dev sessions",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
     clean_parser.add_argument(
         "--pattern",
         default="test_*",
@@ -772,8 +781,10 @@ def main(argv: list[str] | None = None) -> int:
                     backend = KuzuBackend()
                     backend.initialize()
                 except ImportError:
-                    print("Error: Kùzu backend not available. Install with: pip install kuzu")
-                    print("Falling back to SQLite backend...")
+                    print(
+                        "Error: Kùzu backend not available. Kuzu should be installed automatically with amplihack."
+                    )
+                    print("Fallin' back to SQLite backend...")
                     from .memory.database import MemoryDatabase
 
                     backend = MemoryDatabase()
