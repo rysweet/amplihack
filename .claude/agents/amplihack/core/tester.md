@@ -34,6 +34,11 @@ You analyze test coverage and identify testing gaps following the testing pyrami
 **MANDATORY: Check implementation complexity**
 
 ```python
+# NOTE: This pseudocode represents a PROPOSED future implementation.
+# read_task_context() and related functions are conceptual examples
+# showing how complexity context could guide test generation.
+# These are NOT currently implemented features.
+
 task_context = read_task_context()
 implementation_estimate = get_implementation_size_estimate()
 
