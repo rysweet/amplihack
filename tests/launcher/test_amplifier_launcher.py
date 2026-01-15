@@ -250,15 +250,17 @@ class TestGetBundlePath:
 class TestLaunchAmplifier:
     """Tests for launch_amplifier function."""
 
+    @patch("src.amplihack.launcher.amplifier.ensure_bundle_registered")
     @patch("src.amplihack.launcher.amplifier.get_bundle_path")
     @patch("src.amplihack.launcher.amplifier.check_amplifier")
     @patch("subprocess.run")
     def test_launch_amplifier_interactive_with_bundle(
-        self, mock_run, mock_check, mock_bundle_path, tmp_path
+        self, mock_run, mock_check, mock_bundle_path, mock_ensure_registered, tmp_path
     ):
         """Test launching amplifier in interactive mode with bundle."""
         mock_check.return_value = True
         mock_bundle_path.return_value = tmp_path / "amplifier-bundle"
+        mock_ensure_registered.return_value = True
         mock_run.return_value = MagicMock(returncode=0)
 
         result = launch_amplifier()
@@ -269,6 +271,7 @@ class TestLaunchAmplifier:
         assert cmd[0] == "amplifier"
         assert "run" in cmd
         assert "--bundle" in cmd
+        assert "amplihack" in cmd  # Uses bundle name, not path
 
     @patch("src.amplihack.launcher.amplifier.get_bundle_path")
     @patch("src.amplihack.launcher.amplifier.check_amplifier")
@@ -855,21 +858,24 @@ class TestAmplifierBoundaryConditions:
         cmd = mock_run.call_args[0][0]
         assert long_prompt in cmd
 
+    @patch("src.amplihack.launcher.amplifier.ensure_bundle_registered")
     @patch("src.amplihack.launcher.amplifier.get_bundle_path")
     @patch("src.amplihack.launcher.amplifier.check_amplifier")
     @patch("subprocess.run")
     def test_launch_amplifier_path_with_spaces(
-        self, mock_run, mock_check, mock_bundle_path, tmp_path
+        self, mock_run, mock_check, mock_bundle_path, mock_ensure_registered, tmp_path
     ):
         """Test launch with bundle path containing spaces."""
         mock_check.return_value = True
         path_with_spaces = tmp_path / "path with spaces" / "amplifier-bundle"
         mock_bundle_path.return_value = path_with_spaces
+        mock_ensure_registered.return_value = True
         mock_run.return_value = MagicMock(returncode=0)
 
         result = launch_amplifier()
 
         assert result == 0
         cmd = mock_run.call_args[0][0]
-        # Path should be converted to string
-        assert str(path_with_spaces) in cmd
+        # Now uses bundle name instead of path
+        assert "amplihack" in cmd
+        assert "--bundle" in cmd
