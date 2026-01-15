@@ -240,10 +240,16 @@ steps:
   - id: "knowledge-capture"
     type: "bash"
     command: |
-      mkdir -p "{{output_dir}}"
+      # Validate output_dir - reject dangerous patterns
+      OUTPUT_DIR='{{output_dir}}'
+      case "$OUTPUT_DIR" in
+        *'$('*|*'`'*|*';'*|*'|'*|*'&'*)
+          echo '{"error": "Invalid characters in output_dir"}' && exit 1 ;;
+      esac
+      mkdir -p "$OUTPUT_DIR"
       
       # Create the investigation report
-      cat << 'REPORT_EOF' > "{{output_dir}}/investigation_report.md"
+      cat << 'REPORT_EOF' > "$OUTPUT_DIR/investigation_report.md"
       # Investigation Report
       
       **Question:** {{investigation_question}}
@@ -271,8 +277,8 @@ steps:
       {{synthesis}}
       REPORT_EOF
       
-      echo "Report saved to {{output_dir}}/investigation_report.md"
-      echo "{\"report_path\": \"{{output_dir}}/investigation_report.md\", \"status\": \"complete\"}"
+      echo "Report saved to $OUTPUT_DIR/investigation_report.md"
+      echo "{\"report_path\": \"$OUTPUT_DIR/investigation_report.md\", \"status\": \"complete\"}"
     output: "knowledge_capture"
     parse_json: true
 

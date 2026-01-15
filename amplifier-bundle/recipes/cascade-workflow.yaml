@@ -69,10 +69,18 @@ steps:
     parse_json: true
     command: |
       set -euo pipefail
-      mkdir -p "{{working_dir}}"
+      
+      # Validate inputs - reject dangerous patterns
+      WORKING_DIR='{{working_dir}}'
+      TIMEOUT_STRATEGY='{{timeout_strategy}}'
+      case "$WORKING_DIR" in
+        *'$('*|*'`'*|*';'*|*'|'*|*'&'*)
+          echo '{"error": "Invalid characters in working_dir"}' && exit 1 ;;
+      esac
+      mkdir -p "$WORKING_DIR"
       
       # Define timeout values based on strategy
-      case "{{timeout_strategy}}" in
+      case "$TIMEOUT_STRATEGY" in
         aggressive)
           PRIMARY_TIMEOUT=5
           SECONDARY_TIMEOUT=2
@@ -90,8 +98,8 @@ steps:
           ;;
       esac
       
-      # Generate session ID if not provided
-      SESSION_ID="{{session_id}}"
+      # Generate session ID if not provided (use single quotes for safety)
+      SESSION_ID='{{session_id}}'
       if [ -z "$SESSION_ID" ]; then
         SESSION_ID="cascade_$(date +%Y%m%d_%H%M%S)_$$"
       fi
@@ -368,9 +376,10 @@ steps:
   - id: "degradation-reporting"
     type: "bash"
     command: |
-      FINAL_LEVEL="{{final_level_info.final_level}}"
-      DEGRADATION="{{final_level_info.degradation}}"
-      NOTIFICATION_MODE="{{notification_mode}}"
+      # Use single quotes for safety against command injection
+      FINAL_LEVEL='{{final_level_info.final_level}}'
+      DEGRADATION='{{final_level_info.degradation}}'
+      NOTIFICATION_MODE='{{notification_mode}}'
       
       # Build report based on notification mode
       case "$NOTIFICATION_MODE" in
@@ -433,7 +442,13 @@ steps:
     command: |
       set -euo pipefail
       
-      METRICS_FILE="{{working_dir}}/cascade_metrics.jsonl"
+      # Validate working_dir and use single quotes for safety
+      WORKING_DIR='{{working_dir}}'
+      case "$WORKING_DIR" in
+        *'$('*|*'`'*|*';'*|*'|'*|*'&'*)
+          echo '{"error": "Invalid characters in working_dir"}' && exit 1 ;;
+      esac
+      METRICS_FILE="$WORKING_DIR/cascade_metrics.jsonl"
       
       # Extract session ID from config
       cat << 'CONFIG_EOF' > /tmp/cascade_config_$$.txt
@@ -443,8 +458,9 @@ steps:
       STARTED_AT=$(grep -o '"started_at":\s*"[^"]*"' /tmp/cascade_config_$$.txt | sed 's/.*"\([^"]*\)"$/\1/' || echo "unknown")
       rm -f /tmp/cascade_config_$$.txt
       
-      COMPLETED_AT="{{final_level_info.completed_at}}"
-      FINAL_LEVEL="{{final_level_info.final_level}}"
+      # Use single quotes for safety
+      COMPLETED_AT='{{final_level_info.completed_at}}'
+      FINAL_LEVEL='{{final_level_info.final_level}}'
       
       # Create metrics entry
       METRICS_ENTRY=$(cat << EOF
@@ -486,7 +502,13 @@ steps:
     command: |
       set -euo pipefail
       
-      METRICS_FILE="{{working_dir}}/cascade_metrics.jsonl"
+      # Validate working_dir and use single quotes for safety
+      WORKING_DIR='{{working_dir}}'
+      case "$WORKING_DIR" in
+        *'$('*|*'`'*|*';'*|*'|'*|*'&'*)
+          echo '{"error": "Invalid characters in working_dir"}' && exit 1 ;;
+      esac
+      METRICS_FILE="$WORKING_DIR/cascade_metrics.jsonl"
       
       # Check if we have enough data for analysis
       if [ ! -f "$METRICS_FILE" ]; then
@@ -554,7 +576,8 @@ steps:
   - id: "assemble-final-output"
     type: "bash"
     command: |
-      FINAL_LEVEL="{{final_level_info.final_level}}"
+      # Use single quotes for safety
+      FINAL_LEVEL='{{final_level_info.final_level}}'
       
       echo "═══════════════════════════════════════════════════════════════"
       echo "CASCADE WORKFLOW COMPLETE"
