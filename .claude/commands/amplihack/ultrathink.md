@@ -1,7 +1,9 @@
 ---
 name: amplihack:ultrathink
-version: 1.0.0
-description: Deep analysis mode with multi-agent orchestration
+version: 2.0.0
+description: Systematic workflow orchestration - default for development and investigation tasks
+default_for: [development, investigation]
+trigger_keywords: [orchestrate, systematic, workflow]
 triggers:
   - "Complex multi-step task"
   - "Need deep analysis"
@@ -28,6 +30,15 @@ invokes:
 
 Deep analysis mode for complex tasks. Invokes workflow skills (default-workflow or investigation-workflow) based on task type, with automatic fallback to markdown workflows if skills are not yet available.
 You MUST use one of the workflow skills - either default-workflow or investigation-workflow or both or its possible the user could pass in additional workflow skills like cascade or debate.
+
+## Default Behavior
+
+Claude invokes this skill for non-trivial development and investigation tasks:
+- Development: "implement", "add", "fix", "create", "refactor"
+- Investigation: "investigate", "analyze", "explore", "understand"
+- Q&A: Responds directly (no orchestration needed)
+
+**Bypass**: Use explicit commands (`/fix`, `/analyze`) or request "without ultrathink"
 
 ## EXECUTION INSTRUCTIONS FOR CLAUDE
 
