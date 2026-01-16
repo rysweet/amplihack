@@ -10,7 +10,7 @@ Replace the sections below with information about your project.
 
 ---
 
-## Project: feat-issue-1902-5-type-memory-system
+## Project: amplihack
 
 ## Overview
 

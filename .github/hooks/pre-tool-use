@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# GitHub Copilot compatible pre-tool-use hook
+# Wrapper that calls Python implementation in .claude/tools/amplihack/hooks/
+#
+# This hook runs before tool execution to:
+# - Validate tool parameters
+# - Check permissions
+# - Log tool invocation
+
+set -e
+
+# Get the root directory of the repository
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+# Call Python implementation
+python3 "${REPO_ROOT}/.claude/tools/amplihack/hooks/pre_tool_use.py" "$@"
