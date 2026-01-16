@@ -1,0 +1,1 @@
+../../.claude/agents/knowledge-archaeologist.md
