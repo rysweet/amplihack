@@ -122,8 +122,9 @@ def get_bundle_path() -> Path | None:
     """Get the path to the amplihack bundle.
 
     Searches in order:
-    1. ./amplifier-bundle/bundle.md (relative to cwd)
-    2. Bounded upward search from package location (for installed amplihack)
+    1. ./amplifier-bundle/bundle.md (relative to cwd - development mode)
+    2. Inside the installed amplihack package (uvx/pip installed mode)
+    3. Bounded upward search from package location (editable install)
 
     Returns:
         Path to bundle directory or None if not found
@@ -133,17 +134,24 @@ def get_bundle_path() -> Path | None:
     if cwd_bundle.exists():
         return cwd_bundle.parent
 
-    # Bounded upward search from package location (installed mode)
+    # Check inside the installed package (uvx installed mode)
+    # The bundle is copied into src/amplihack/amplifier-bundle/ during wheel build
+    pkg_dir = Path(__file__).resolve().parent.parent  # Go up from launcher/ to amplihack/
+    pkg_bundle = pkg_dir / "amplifier-bundle" / "bundle.md"
+    if pkg_bundle.exists():
+        return pkg_bundle.parent
+
+    # Bounded upward search from package location (editable install)
     # Search up to 5 levels to find amplifier-bundle directory
-    pkg_dir = Path(__file__).resolve().parent
+    search_dir = Path(__file__).resolve().parent
     for _ in range(5):
-        candidate = pkg_dir / "amplifier-bundle" / "bundle.md"
+        candidate = search_dir / "amplifier-bundle" / "bundle.md"
         if candidate.exists():
             return candidate.parent
         # Validate we're still in a sensible location
-        if not (pkg_dir / "pyproject.toml").exists() and pkg_dir == pkg_dir.parent:
+        if not (search_dir / "pyproject.toml").exists() and search_dir == search_dir.parent:
             break  # Hit filesystem root
-        pkg_dir = pkg_dir.parent
+        search_dir = search_dir.parent
 
     return None
 
@@ -236,6 +244,9 @@ def launch_amplifier(args: list[str] | None = None) -> int:
     if args and args[0] == "resume":
         # Resume mode: amplifier resume <session_id> [other args]
         cmd = ["amplifier"] + args
+    elif args and args[0] == "run":
+        # User explicitly passed 'run', insert bundle args after 'run'
+        cmd = ["amplifier", "run"] + bundle_args + args[1:]
     else:
         # Default to run mode with bundle
         cmd = ["amplifier", "run"] + bundle_args + args

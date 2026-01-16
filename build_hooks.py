@@ -1,15 +1,14 @@
-"""Build hooks for setuptools to include .claude/ directory in wheels.
+"""Build hooks for setuptools to include .claude/ and amplifier-bundle/ in wheels.
 
-This module provides custom build hooks that copy the .claude/ directory
-from the repository root into src/amplihack/.claude/ before building the wheel.
-This ensures the framework files are included in the wheel distribution for
-UVX deployment.
+This module provides custom build hooks that copy directories from the repository
+root into src/amplihack/ before building the wheel. This ensures the framework
+files are included in the wheel distribution for UVX deployment.
 
 Why this is needed:
 - MANIFEST.in only controls sdist, not wheels
 - Wheels only include files inside Python packages
-- .claude/ is at repo root (outside src/amplihack/)
-- Solution: Copy .claude/ into package before build
+- .claude/ and amplifier-bundle/ are at repo root (outside src/amplihack/)
+- Solution: Copy them into package before build
 
 NOTE: This file is only used during package building (not runtime),
 so missing setuptools import at runtime is expected and not an error.
@@ -19,59 +18,76 @@ import shutil
 from pathlib import Path
 
 from setuptools import build_meta as _orig
-from setuptools.build_meta import *  # noqa: F403
+from setuptools.build_meta import (  # noqa: F401
+    build_editable,
+    get_requires_for_build_editable,
+    get_requires_for_build_sdist,
+    get_requires_for_build_wheel,
+    prepare_metadata_for_build_editable,
+    prepare_metadata_for_build_wheel,
+)
 
 
 class _CustomBuildBackend:
-    """Custom build backend that copies .claude/ before building."""
+    """Custom build backend that copies .claude/ and amplifier-bundle/ before building."""
 
     def __init__(self):
         self.repo_root = Path(__file__).parent
-        self.claude_src = self.repo_root / ".claude"
-        self.claude_dest = self.repo_root / "src" / "amplihack" / ".claude"
+        # Directories to copy into the package
+        self.copy_dirs = [
+            (".claude", ".claude"),
+            ("amplifier-bundle", "amplifier-bundle"),
+        ]
+        self.pkg_dest = self.repo_root / "src" / "amplihack"
 
-    def _copy_claude_directory(self):
-        """Copy .claude/ from repo root to src/amplihack/ if needed."""
-        if not self.claude_src.exists():
-            print(f"Warning: .claude/ not found at {self.claude_src}")
-            return
+    def _copy_directories(self):
+        """Copy directories from repo root to src/amplihack/."""
+        for src_name, dest_name in self.copy_dirs:
+            src_path = self.repo_root / src_name
+            dest_path = self.pkg_dest / dest_name
 
-        # Remove existing .claude/ in package to ensure clean copy
-        if self.claude_dest.exists():
-            print(f"Removing existing {self.claude_dest}")
-            shutil.rmtree(self.claude_dest)
+            if not src_path.exists():
+                print(f"Warning: {src_name}/ not found at {src_path}")
+                continue
 
-        # Copy .claude/ into package
-        print(f"Copying {self.claude_src} -> {self.claude_dest}")
-        shutil.copytree(
-            self.claude_src,
-            self.claude_dest,
-            ignore=shutil.ignore_patterns(
-                # Exclude runtime data (logs, metrics, analysis)
-                "runtime",
-                # Exclude Python cache
-                "__pycache__",
-                "*.pyc",
-                "*.pyo",
-                # Exclude temp files
-                "*~",
-                ".DS_Store",
-                "*.swp",
-                "*.swo",
-            ),
-        )
-        print("Successfully copied .claude/ to package")
+            # Remove existing directory in package to ensure clean copy
+            if dest_path.exists():
+                print(f"Removing existing {dest_path}")
+                shutil.rmtree(dest_path)
 
-    def _cleanup_claude_directory(self):
-        """Remove .claude/ from package after build."""
-        if self.claude_dest.exists():
-            print(f"Cleaning up {self.claude_dest}")
-            shutil.rmtree(self.claude_dest)
+            # Copy directory into package
+            print(f"Copying {src_path} -> {dest_path}")
+            shutil.copytree(
+                src_path,
+                dest_path,
+                ignore=shutil.ignore_patterns(
+                    # Exclude runtime data (logs, metrics, analysis)
+                    "runtime",
+                    # Exclude Python cache
+                    "__pycache__",
+                    "*.pyc",
+                    "*.pyo",
+                    # Exclude temp files
+                    "*~",
+                    ".DS_Store",
+                    "*.swp",
+                    "*.swo",
+                ),
+            )
+            print(f"Successfully copied {src_name}/ to package")
+
+    def _cleanup_directories(self):
+        """Remove copied directories from package after build."""
+        for _, dest_name in self.copy_dirs:
+            dest_path = self.pkg_dest / dest_name
+            if dest_path.exists():
+                print(f"Cleaning up {dest_path}")
+                shutil.rmtree(dest_path)
 
     def build_wheel(self, wheel_directory, config_settings=None, metadata_directory=None):
-        """Build wheel with .claude/ directory included."""
+        """Build wheel with .claude/ and amplifier-bundle/ directories included."""
         try:
-            self._copy_claude_directory()
+            self._copy_directories()
             result = _orig.build_wheel(
                 wheel_directory,
                 config_settings=config_settings,
@@ -80,7 +96,7 @@ class _CustomBuildBackend:
             return result
         finally:
             # Always cleanup, even if build fails
-            self._cleanup_claude_directory()
+            self._cleanup_directories()
 
     def build_sdist(self, sdist_directory, config_settings=None):
         """Build sdist (MANIFEST.in handles .claude/ for sdist)."""
