@@ -48,8 +48,9 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
     cmd = [
         "copilot",
         "--allow-all-tools",
+        "--model", "claude-opus-4.5",  # Use Opus for best performance
         "--add-dir",
-        "/",
+        os.getcwd(),  # Add current directory for .github/agents/ access
     ]
     if args:
         cmd.extend(args)
