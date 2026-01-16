@@ -172,65 +172,9 @@ variables or secure key management systems.
 
 ### GitHub Copilot CLI
 
-Use amplihack with GitHub Copilot CLI to access 37+ specialized agents, 14 foundational patterns, and philosophy-driven development.
-
-#### Quick Start
-
-```sh
-# Install Copilot CLI and amplihack
-npm install -g @github/copilot
-pip install git+https://github.com/rysweet/amplihack
-
-# Initialize in your project
-cd /path/to/project
-amplihack init
-amplihack convert-agents
-
-# Launch with amplihack context
-amplihack copilot
-```
-
-#### Use Agents with @ Notation
-
-```
-> @architect: Design authentication module following amplihack philosophy
-> @builder: Implement from spec with Zero-BS principles
-> @tester: Generate tests following TDD pyramid (60/30/10)
-> @reviewer: Check philosophy compliance
-```
-
-#### Key Features
-
-- **37+ Specialized Agents** - Architecture, security, testing, optimization, and more
-- **14 Foundational Patterns** - Proven solutions for common problems
-- **Philosophy-Driven** - Ruthless simplicity + modular design + zero-BS implementation
-- **Full Context Access** - Philosophy, patterns, workflows, and tools
-- **Python Tools** - Code analysis, MCP management, test generation
-
-#### Complete Documentation
-
-- **[Getting Started](docs/copilot/GETTING_STARTED.md)** - Installation, first session, quick wins
-- **[Complete User Guide](docs/copilot/USER_GUIDE.md)** - All features, agents, patterns, workflows
-- **[Migration from Claude](docs/copilot/MIGRATION_FROM_CLAUDE.md)** - Feature parity, translations, dual usage
-- **[Troubleshooting](docs/copilot/TROUBLESHOOTING.md)** - Common issues and solutions
-- **[FAQ](docs/copilot/FAQ.md)** - Frequently asked questions
-- **[API Reference](docs/copilot/API_REFERENCE.md)** - CLI commands, Python API, agent reference
-
-#### Feature Comparison
-
-| Feature                | Claude Code          | Copilot CLI              |
-| ---------------------- | -------------------- | ------------------------ |
-| **Agent Invocation**   | Native Task tool     | @ notation               |
-| **Command Execution**  | Direct (/ultrathink) | Reference-based          |
-| **Cost Model**         | API usage            | Subscription             |
-| **Model**              | Claude Opus/Sonnet   | GPT-4 variants           |
-| **Philosophy Access**  | ✓ Full               | ✓ Full                   |
-| **Pattern Library**    | ✓ Full               | ✓ Full                   |
-| **Python Tools**       | ✓ All                | ✓ All                    |
-
-**Recommendation:** Use both! They access the same resources and complement each other.
-
-For complete documentation, see [docs/copilot/](docs/copilot/).
+amplihack also supports GitHub Copilot CLI integration. See
+[docs/github-copilot-litellm-integration.md](https://rysweet.github.io/amplihack/github-copilot-litellm-integration/)
+for setup instructions.
 
 ### Custom Workflows
 

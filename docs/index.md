@@ -38,7 +38,6 @@ Everything you need to install and configure amplihack.
 - [Profile Management](PROFILE_MANAGEMENT.md) - Multiple environment configurations
 - [Proxy Configuration](PROXY_CONFIG_GUIDE.md) - Network proxy setup
 - [Hook Configuration](HOOK_CONFIGURATION_GUIDE.md) - Customize framework behavior
-- [Copilot CLI Setup](COPILOT_SETUP.md) - Setup and integration for GitHub Copilot CLI
 
 ### Deployment
 
@@ -65,7 +64,6 @@ Understand the philosophy and architecture behind amplihack.
 - [Development Patterns](claude/context/PATTERNS.md) - Proven implementation patterns
 - [Blarify Architecture](blarify_architecture.md) - Understanding the Blarify integration
 - [Documentation Knowledge Graph](documentation_knowledge_graph.md) - How docs connect
-- [Copilot CLI vs Claude Code](architecture/COPILOT_CLI_VS_CLAUDE_CODE.md) - Architecture comparison
 
 ### Key Features
 

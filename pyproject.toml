@@ -50,9 +50,6 @@ dev = [
 
 [project.scripts]
 amplihack = "amplihack:main"
-amplihack-mcp-agents = "amplihack.mcp.agents_server:main"
-amplihack-mcp-workflows = "amplihack.mcp.workflows_server:main"
-amplihack-mcp-hooks = "amplihack.mcp.hooks_server:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
