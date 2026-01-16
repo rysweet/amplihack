@@ -32,7 +32,7 @@ This directory contains GitHub Copilot CLI integration files for amplihack.
 **Agents**: Changes immediately visible (symlinks)
 **Skills**: Changes immediately visible (symlinks)  
 **Hooks**: Changes immediately active (wrappers call Python)
-**Commands**: Run `amplihack sync-commands` to regenerate
+**Commands**: Automatically synced via pre-commit hook! (or run `amplihack sync-commands` manually)
 
 ### Auto-Sync
 

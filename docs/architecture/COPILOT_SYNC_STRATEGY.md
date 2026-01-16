@@ -67,7 +67,7 @@ python3 "$PROJECT_ROOT/.claude/tools/amplihack/hooks/session_start.py" "$@"
 # 67+ symlinks total
 ```
 
-### 4. Commands: CONVERTED COPIES (Necessary)
+### 4. Commands: CONVERTED COPIES (Automated Sync) 🤖
 
 **Why Copies?**
 - Commands may need adaptation for Copilot CLI invocation patterns
@@ -77,10 +77,15 @@ python3 "$PROJECT_ROOT/.claude/tools/amplihack/hooks/session_start.py" "$@"
 **Approach**:
 - `.claude/commands/` = Source
 - `.github/commands/` = Generated (adapted)
-- `amplihack sync-commands` converts
-- Auto-sync at setup
+- **Automatic sync via pre-commit hook** 🆕
+- Manual sync: `amplihack sync-commands`
 
-**Trade-off**: Like agents, these are generated artifacts.
+**Auto-Sync**: Pre-commit hook automatically runs sync when `.claude/commands/` changes!
+- Edit command → commit → hook auto-syncs → both files committed
+- CI validation ensures sync happened
+- See `docs/architecture/AUTO_SYNC.md` for details
+
+**Trade-off**: Like agents, these are generated artifacts, but sync is now automatic!
 
 ## Duplication Summary
 
