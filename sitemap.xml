@@ -2073,6 +2073,10 @@
          <lastmod>2026-01-16</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/howto/platform-bridge-workflows/</loc>
+         <lastmod>2026-01-16</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/mcp_evaluation/</loc>
          <lastmod>2026-01-16</lastmod>
     </url>
@@ -2153,6 +2157,10 @@
          <lastmod>2026-01-16</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/platform-bridge/</loc>
+         <lastmod>2026-01-16</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/reference/LAUNCHER_MODEL_CONFIGURATION/</loc>
          <lastmod>2026-01-16</lastmod>
     </url>
@@ -2162,6 +2170,10 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/reference/github-pages-api/</loc>
+         <lastmod>2026-01-16</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/reference/platform-bridge-api/</loc>
          <lastmod>2026-01-16</lastmod>
     </url>
     <url>
@@ -2305,6 +2317,10 @@
          <lastmod>2026-01-16</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/security/platform-bridge-security/</loc>
+         <lastmod>2026-01-16</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/skills/SKILL_BUILDER_EXAMPLES/</loc>
          <lastmod>2026-01-16</lastmod>
     </url>
@@ -2345,11 +2361,19 @@
          <lastmod>2026-01-16</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/troubleshooting/platform-bridge/</loc>
+         <lastmod>2026-01-16</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/troubleshooting/stop-hook-exit-hang/</loc>
          <lastmod>2026-01-16</lastmod>
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/tutorials/first-docs-site/</loc>
+         <lastmod>2026-01-16</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/tutorials/platform-bridge-quickstart/</loc>
          <lastmod>2026-01-16</lastmod>
     </url>
 </urlset>
