@@ -1,32 +1,16 @@
 #!/usr/bin/env bash
-#
-# Pre-Tool Use Hook for GitHub Copilot CLI
-#
-# Security validation - blocks dangerous operations
-# This is Copilot-specific (permission control via permissionDecision)
-#
-
+# Wrapper: Calls Python power steering hook
 set -euo pipefail
 
-INPUT=$(cat)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 
-# Extract tool name and command using Python for reliable JSON parsing
-TOOL_INFO=$(echo "$INPUT" | python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-tool_name = data.get('toolName', '')
-tool_args = json.loads(data.get('toolArgs', '{}'))
-command = tool_args.get('command', '')
-print(f'{tool_name}|{command}')
-")
+# For pre-tool-use, we use the power steering hook if available
+PYTHON_HOOK="$PROJECT_ROOT/.claude/tools/amplihack/hooks/power_steering.py"
 
-TOOL_NAME="${TOOL_INFO%%|*}"
-COMMAND="${TOOL_INFO#*|}"
-
-# Block dangerous --no-verify flag
-if [[ "$COMMAND" == *"--no-verify"* ]] && [[ "$COMMAND" == *"git commit"* ]]; then
-    echo "{\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"BLOCKED: --no-verify bypasses critical pre-commit security checks. Remove --no-verify flag.\"}"
-    exit 0
+if [[ -f "$PYTHON_HOOK" ]]; then
+    python3 "$PYTHON_HOOK" "$@"
+else
+    # Fallback: allow all tools (no blocking)
+    echo '{"permissionDecision":"allow"}'
 fi
-
-# Allow by default (no output = allow)

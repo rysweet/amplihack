@@ -1,23 +1,15 @@
 #!/usr/bin/env bash
-#
-# Session Start Hook Wrapper for GitHub Copilot CLI
-#
-# This is a thin wrapper that calls the amplihack Python hook.
-# Single source of truth: .claude/tools/amplihack/hooks/session_start.py
-#
-
+# Wrapper: Calls Python hook from .claude/tools/amplihack/hooks/
 set -euo pipefail
 
-# Locate project root (where .claude/ directory exists)
-PROJECT_ROOT="${CLAUDE_PROJECT_DIR:-$(pwd)}"
-
-# Find the Python hook
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 PYTHON_HOOK="$PROJECT_ROOT/.claude/tools/amplihack/hooks/session_start.py"
 
-if [ ! -f "$PYTHON_HOOK" ]; then
-    echo "ERROR: Python hook not found at $PYTHON_HOOK" >&2
+if [[ ! -f "$PYTHON_HOOK" ]]; then
+    echo "Error: Python hook not found: $PYTHON_HOOK" >&2
     exit 1
 fi
 
-# Call the Python hook with stdin/stdout passthrough
-python3 "$PYTHON_HOOK"
+# Call Python hook, passing stdin through
+python3 "$PYTHON_HOOK" "$@"
