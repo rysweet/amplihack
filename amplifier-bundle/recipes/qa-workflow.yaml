@@ -23,15 +23,16 @@ tags: ["questions", "simple", "quick", "minimal"]
 context:
   # The question to answer
   question: ""
-  
+
   # Optional context about the current work
   context_info: ""
-  
+
   # Escalation thresholds
   escalate_if_complex: "true"
-  
+
   # Escalation result (set by conditional step, needs default for templates)
-  escalation_result: ""
+  # Must be valid JSON since compile-output embeds it directly
+  escalation_result: "{}"
 
 steps:
   # ==========================================================================
@@ -144,7 +145,7 @@ steps:
         "question": "{{question}}",
         "is_qa": "{{classification.is_qa}}",
         "classification": {{classification}},
-        "escalation": "{{escalation_result}}",
+        "escalation": {{escalation_result}},
         "status": "complete"
       }
       EOF

@@ -46,23 +46,23 @@ context:
   primary_approach: ""
   secondary_approach: ""
   tertiary_approach: ""
-  
+
   # Timeout strategy: aggressive, balanced, patient
   timeout_strategy: "balanced"
-  
+
   # Notification mode: silent, warning, explicit
   notification_mode: "warning"
-  
+
   # Working directory for metrics and state
   working_dir: "./ai_working/cascade"
-  
+
   # Session identifier for metrics correlation
   session_id: ""
-  
+
   # Exit code tracking (set by output_exit_code, need defaults for validator)
   primary_exit_code: "1"
   secondary_exit_code: "1"
-  
+
   # Result tracking (set by conditional steps, need defaults for templates)
   secondary_result: ""
   tertiary_result: ""
@@ -77,7 +77,7 @@ steps:
     parse_json: true
     command: |
       set -euo pipefail
-      
+
       # Validate inputs - reject dangerous patterns
       WORKING_DIR='{{working_dir}}'
       TIMEOUT_STRATEGY='{{timeout_strategy}}'
@@ -86,7 +86,7 @@ steps:
           echo '{"error": "Invalid characters in working_dir"}' && exit 1 ;;
       esac
       mkdir -p "$WORKING_DIR"
-      
+
       # Define timeout values based on strategy
       case "$TIMEOUT_STRATEGY" in
         aggressive)
@@ -105,13 +105,13 @@ steps:
           TERTIARY_TIMEOUT=5
           ;;
       esac
-      
+
       # Generate session ID if not provided (use single quotes for safety)
       SESSION_ID='{{session_id}}'
       if [ -z "$SESSION_ID" ]; then
         SESSION_ID="cascade_$(date +%Y%m%d_%H%M%S)_$$"
       fi
-      
+
       # Output cascade configuration as JSON
       cat << EOF
       {
@@ -191,13 +191,13 @@ steps:
     parse_json: true
     command: |
       # Check if primary succeeded
-      PRIMARY_EXIT="${{primary_exit_code}}"
-      
+      PRIMARY_EXIT='{{primary_exit_code}}'
+
       # Use heredoc to safely handle result text with special characters
       cat << 'PRIMARY_EOF' > /tmp/primary_result_$$.txt
       {{primary_result}}
       PRIMARY_EOF
-      
+
       # Check for success indicators in the result
       if [ "$PRIMARY_EXIT" = "0" ] && grep -qi "SUCCESS" /tmp/primary_result_$$.txt 2>/dev/null; then
         echo '{"primary_succeeded": true, "cascade_level": "PRIMARY", "needs_fallback": false}'
@@ -260,23 +260,23 @@ steps:
       cat << 'EVAL_EOF' > /tmp/primary_eval_$$.txt
       {{primary_evaluation}}
       EVAL_EOF
-      
+
       NEEDS_FALLBACK=$(cat /tmp/primary_eval_$$.txt | grep -o '"needs_fallback":\s*\w*' | grep -o 'true\|false' || echo "false")
       rm -f /tmp/primary_eval_$$.txt
-      
+
       if [ "$NEEDS_FALLBACK" != "true" ]; then
         # Primary succeeded, no secondary was run
         echo '{"cascade_level": "PRIMARY", "secondary_run": false, "needs_tertiary": false, "final_level": "PRIMARY"}'
         exit 0
       fi
-      
+
       # Secondary was run, check its result
       SECONDARY_EXIT="{{secondary_exit_code}}"
-      
+
       cat << 'SECONDARY_EOF' > /tmp/secondary_result_$$.txt
       {{secondary_result}}
       SECONDARY_EOF
-      
+
       if [ "$SECONDARY_EXIT" = "0" ] && grep -qi "SUCCESS" /tmp/secondary_result_$$.txt 2>/dev/null; then
         echo '{"cascade_level": "SECONDARY", "secondary_run": true, "secondary_succeeded": true, "needs_tertiary": false, "final_level": "SECONDARY"}'
       else
@@ -351,11 +351,11 @@ steps:
       cat << 'SEC_EVAL_EOF' > /tmp/sec_eval_$$.txt
       {{secondary_evaluation}}
       SEC_EVAL_EOF
-      
+
       NEEDS_TERTIARY=$(cat /tmp/sec_eval_$$.txt | grep -o '"needs_tertiary":\s*\w*' | grep -o 'true\|false' || echo "false")
       SECONDARY_RUN=$(cat /tmp/sec_eval_$$.txt | grep -o '"secondary_run":\s*\w*' | grep -o 'true\|false' || echo "false")
       rm -f /tmp/sec_eval_$$.txt
-      
+
       if [ "$NEEDS_TERTIARY" = "true" ]; then
         FINAL_LEVEL="TERTIARY"
         DEGRADATION="maximum"
@@ -366,7 +366,7 @@ steps:
         FINAL_LEVEL="PRIMARY"
         DEGRADATION="none"
       fi
-      
+
       cat << EOF
       {
         "final_level": "$FINAL_LEVEL",
@@ -388,7 +388,7 @@ steps:
       FINAL_LEVEL='{{final_level_info.final_level}}'
       DEGRADATION='{{final_level_info.degradation}}'
       NOTIFICATION_MODE='{{notification_mode}}'
-      
+
       # Build report based on notification mode
       case "$NOTIFICATION_MODE" in
         silent)
@@ -449,7 +449,7 @@ steps:
     parse_json: true
     command: |
       set -euo pipefail
-      
+
       # Validate working_dir and use single quotes for safety
       WORKING_DIR='{{working_dir}}'
       case "$WORKING_DIR" in
@@ -457,7 +457,7 @@ steps:
           echo '{"error": "Invalid characters in working_dir"}' && exit 1 ;;
       esac
       METRICS_FILE="$WORKING_DIR/cascade_metrics.jsonl"
-      
+
       # Extract session ID from config
       cat << 'CONFIG_EOF' > /tmp/cascade_config_$$.txt
       {{cascade_config}}
@@ -465,20 +465,20 @@ steps:
       SESSION_ID=$(grep -o '"session_id":\s*"[^"]*"' /tmp/cascade_config_$$.txt | sed 's/.*"\([^"]*\)"$/\1/' || echo "unknown")
       STARTED_AT=$(grep -o '"started_at":\s*"[^"]*"' /tmp/cascade_config_$$.txt | sed 's/.*"\([^"]*\)"$/\1/' || echo "unknown")
       rm -f /tmp/cascade_config_$$.txt
-      
+
       # Use single quotes for safety
       COMPLETED_AT='{{final_level_info.completed_at}}'
       FINAL_LEVEL='{{final_level_info.final_level}}'
-      
+
       # Create metrics entry
       METRICS_ENTRY=$(cat << EOF
       {"session_id": "$SESSION_ID", "task": "{{task_description}}", "strategy": "{{timeout_strategy}}", "final_level": "$FINAL_LEVEL", "degradation": "{{final_level_info.degradation}}", "started_at": "$STARTED_AT", "completed_at": "$COMPLETED_AT", "notification_mode": "{{notification_mode}}"}
       EOF
       )
-      
+
       # Append to metrics log
       echo "$METRICS_ENTRY" >> "$METRICS_FILE"
-      
+
       # Output metrics summary
       cat << EOF
       {
@@ -509,7 +509,7 @@ steps:
     parse_json: true
     command: |
       set -euo pipefail
-      
+
       # Validate working_dir and use single quotes for safety
       WORKING_DIR='{{working_dir}}'
       case "$WORKING_DIR" in
@@ -517,33 +517,33 @@ steps:
           echo '{"error": "Invalid characters in working_dir"}' && exit 1 ;;
       esac
       METRICS_FILE="$WORKING_DIR/cascade_metrics.jsonl"
-      
+
       # Check if we have enough data for analysis
       if [ ! -f "$METRICS_FILE" ]; then
         echo '{"has_recommendations": false, "reason": "No historical data yet"}'
         exit 0
       fi
-      
+
       TOTAL_RUNS=$(wc -l < "$METRICS_FILE" | tr -d ' ')
-      
+
       if [ "$TOTAL_RUNS" -lt 5 ]; then
         echo "{\"has_recommendations\": false, \"reason\": \"Insufficient data - need 5+ runs, have $TOTAL_RUNS\"}"
         exit 0
       fi
-      
+
       # Analyze cascade patterns
       PRIMARY_COUNT=$(grep -c '"final_level":\s*"PRIMARY"' "$METRICS_FILE" || echo 0)
       SECONDARY_COUNT=$(grep -c '"final_level":\s*"SECONDARY"' "$METRICS_FILE" || echo 0)
       TERTIARY_COUNT=$(grep -c '"final_level":\s*"TERTIARY"' "$METRICS_FILE" || echo 0)
-      
+
       # Calculate percentages
       PRIMARY_PCT=$((PRIMARY_COUNT * 100 / TOTAL_RUNS))
       SECONDARY_PCT=$((SECONDARY_COUNT * 100 / TOTAL_RUNS))
       TERTIARY_PCT=$((TERTIARY_COUNT * 100 / TOTAL_RUNS))
-      
+
       # Generate recommendations
       RECOMMENDATIONS="[]"
-      
+
       if [ "$TERTIARY_PCT" -gt 30 ]; then
         RECOMMENDATIONS="[\"High TERTIARY rate (${TERTIARY_PCT}%) - consider 'patient' timeout strategy\", \"Review PRIMARY approach reliability\"]"
       elif [ "$SECONDARY_PCT" -gt 50 ]; then
@@ -551,7 +551,7 @@ steps:
       elif [ "$PRIMARY_PCT" -gt 90 ]; then
         RECOMMENDATIONS="[\"Excellent PRIMARY success rate (${PRIMARY_PCT}%) - consider 'aggressive' strategy for faster failures\"]"
       fi
-      
+
       cat << EOF
       {
         "has_recommendations": true,
@@ -586,7 +586,7 @@ steps:
     command: |
       # Use single quotes for safety
       FINAL_LEVEL='{{final_level_info.final_level}}'
-      
+
       echo "═══════════════════════════════════════════════════════════════"
       echo "CASCADE WORKFLOW COMPLETE"
       echo "═══════════════════════════════════════════════════════════════"
@@ -596,7 +596,7 @@ steps:
       echo ""
       echo "RESULT:"
       echo "-------"
-      
+
       case "$FINAL_LEVEL" in
         PRIMARY)
           cat << 'RESULT_EOF'
@@ -614,7 +614,7 @@ steps:
       RESULT_EOF
           ;;
       esac
-      
+
       echo ""
       echo "═══════════════════════════════════════════════════════════════"
       echo "Optimization Insights:"
@@ -622,7 +622,6 @@ steps:
       echo "═══════════════════════════════════════════════════════════════"
     output: "final_output"
     timeout: 30
-
 # Expected workflow execution:
 #
 # 1. cascade-level-definition → Configures timeouts and session
