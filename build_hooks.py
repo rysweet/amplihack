@@ -29,12 +29,14 @@ from setuptools.build_meta import *  # noqa: F403
 
 
 class _CustomBuildBackend:
-    """Custom build backend that copies .claude/ before building."""
+    """Custom build backend that copies .claude/ and .github/ before building."""
 
     def __init__(self):
         self.repo_root = Path(__file__).parent
         self.claude_src = self.repo_root / ".claude"
         self.claude_dest = self.repo_root / "src" / "amplihack" / ".claude"
+        self.github_src = self.repo_root / ".github"
+        self.github_dest = self.repo_root / "src" / "amplihack" / ".github"
 
     def _copy_claude_directory(self):
         """Copy .claude/ from repo root to src/amplihack/ if needed."""
@@ -69,16 +71,54 @@ class _CustomBuildBackend:
         )
         print("Successfully copied .claude/ to package")
 
+    def _copy_github_directory(self):
+        """Copy .github/ from repo root to src/amplihack/ for Copilot CLI integration."""
+        if not self.github_src.exists():
+            print(f"Info: .github/ not found at {self.github_src} (optional for Copilot CLI)")
+            return
+
+        # Remove existing .github/ in package to ensure clean copy
+        if self.github_dest.exists():
+            print(f"Removing existing {self.github_dest}")
+            shutil.rmtree(self.github_dest)
+
+        # Copy .github/ into package
+        print(f"Copying {self.github_src} -> {self.github_dest}")
+        shutil.copytree(
+            self.github_src,
+            self.github_dest,
+            symlinks=True,  # Preserve symlinks (agents, skills point to .claude/)
+            ignore=shutil.ignore_patterns(
+                # Exclude CI/CD workflows (not needed in package)
+                "workflows",
+                # Exclude Python cache
+                "__pycache__",
+                "*.pyc",
+                "*.pyo",
+                # Exclude temp files
+                "*~",
+                ".DS_Store",
+            ),
+        )
+        print("Successfully copied .github/ to package")
+
     def _cleanup_claude_directory(self):
         """Remove .claude/ from package after build."""
         if self.claude_dest.exists():
             print(f"Cleaning up {self.claude_dest}")
             shutil.rmtree(self.claude_dest)
 
+    def _cleanup_github_directory(self):
+        """Remove .github/ from package after build."""
+        if self.github_dest.exists():
+            print(f"Cleaning up {self.github_dest}")
+            shutil.rmtree(self.github_dest)
+
     def build_wheel(self, wheel_directory, config_settings=None, metadata_directory=None):
-        """Build wheel with .claude/ directory included."""
+        """Build wheel with .claude/ and .github/ directories included."""
         try:
             self._copy_claude_directory()
+            self._copy_github_directory()
             result = _orig.build_wheel(
                 wheel_directory,
                 config_settings=config_settings,
@@ -88,6 +128,7 @@ class _CustomBuildBackend:
         finally:
             # Always cleanup, even if build fails
             self._cleanup_claude_directory()
+            self._cleanup_github_directory()
 
     def build_sdist(self, sdist_directory, config_settings=None):
         """Build sdist (MANIFEST.in handles .claude/ for sdist)."""
