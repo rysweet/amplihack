@@ -77,28 +77,12 @@ context:
 steps:
   # ==========================================================================
   # STEP 0: WORKFLOW PREPARATION (MANDATORY - DO NOT SKIP)
+  # Creates tracking structure for all 22 workflow steps.
+  # CRITICAL: Must complete before ANY implementation work begins.
+  # Prevents "completion bias" - ensures mandatory review steps (10, 16-17) not skipped.
   # ==========================================================================
   - id: "step-00-workflow-preparation"
     type: "bash"
-    prompt: |
-      # Step 0: Workflow Preparation (MANDATORY)
-      
-      This step creates the tracking structure for all 22 workflow steps.
-      
-      **CRITICAL**: This step MUST be completed before ANY implementation work begins.
-      
-      **Why This Step Exists:**
-      - Prevents "completion bias" where agents feel done after implementation
-      - Ensures mandatory review steps (10, 16-17) are not skipped
-      - Maintains context and focus through the entire workflow
-      
-      **Anti-Pattern Prevention:**
-      - DO NOT skip to implementation after reading requirements
-      - DO NOT consider "PR created" as completion (Step 21 is the completion point)
-      - DO NOT omit Steps 10, 16-17 (mandatory review steps)
-      
-      Task: {{task_description}}
-      Requirements: {{requirements}}
     command: |
       echo "=== WORKFLOW PREPARATION COMPLETE ==="
       echo ""
@@ -132,18 +116,11 @@ steps:
 
   # ==========================================================================
   # STEP 1: PREPARE THE WORKSPACE
+  # Ensure a clean local environment that is up to date.
+  # Actions: verify no unstashed changes, git fetch, check git status
   # ==========================================================================
   - id: "step-01-prepare-workspace"
     type: "bash"
-    prompt: |
-      # Step 1: Prepare the Workspace
-      
-      Ensure a clean local environment that is up to date.
-      
-      Actions:
-      - Verify no unstashed changes
-      - Run git fetch to get latest
-      - Check git status
     command: |
       cd "{{repo_path}}" && \
       echo "=== Step 1: Preparing Workspace ===" && \
@@ -242,17 +219,11 @@ steps:
 
   # ==========================================================================
   # STEP 3: CREATE GITHUB ISSUE
+  # Create a GitHub issue documenting the task with problem description,
+  # requirements, constraints, success criteria, and appropriate labels.
   # ==========================================================================
   - id: "step-03-create-issue"
     type: "bash"
-    prompt: |
-      # Step 3: Create GitHub Issue
-      
-      Create a GitHub issue documenting the task with:
-      - Clear problem description
-      - Requirements and constraints
-      - Success criteria
-      - Appropriate labels
     command: |
       cd "{{repo_path}}" && \
       echo "=== Step 3: Creating GitHub Issue ===" && \
@@ -753,18 +724,11 @@ steps:
 
   # ==========================================================================
   # STEP 13: MANDATORY LOCAL TESTING
+  # Manual testing gate - document tests, suggest scenarios, wait for confirmation.
+  # Test like a user would - outside-in, not just unit tests.
   # ==========================================================================
   - id: "step-13-local-testing"
     type: "bash"
-    prompt: |
-      # Step 13: Mandatory Local Testing (Manual Gate)
-      
-      This is a manual testing gate. The agent should:
-      1. Document what tests should be run
-      2. Suggest test scenarios
-      3. Wait for confirmation before proceeding
-      
-      Test like a user would - outside-in, not just unit tests.
     command: |
       echo "=== Step 13: Local Testing Gate ===" && \
       echo "" && \
@@ -785,13 +749,10 @@ steps:
 
   # ==========================================================================
   # STEP 14: COMMIT AND PUSH
+  # Stage all changes, write detailed commit message, and push.
   # ==========================================================================
   - id: "step-14-commit-push"
     type: "bash"
-    prompt: |
-      # Step 14: Commit and Push
-      
-      Stage all changes, write detailed commit message, and push.
     command: |
       cd "{{repo_path}}" && \
       echo "=== Step 14: Commit and Push ===" && \
@@ -819,13 +780,10 @@ steps:
 
   # ==========================================================================
   # STEP 15: OPEN PULL REQUEST AS DRAFT
+  # Create a draft PR with comprehensive description.
   # ==========================================================================
   - id: "step-15-create-draft-pr"
     type: "bash"
-    prompt: |
-      # Step 15: Open Pull Request as Draft
-      
-      Create a draft PR with comprehensive description.
     command: |
       cd "{{repo_path}}" && \
       echo "=== Step 15: Creating Draft PR ===" && \
@@ -1031,13 +989,10 @@ steps:
 
   # ==========================================================================
   # STEP 20: CONVERT PR TO READY FOR REVIEW
+  # Convert draft PR to ready-for-review.
   # ==========================================================================
   - id: "step-20-pr-ready"
     type: "bash"
-    prompt: |
-      # Step 20: Convert PR to Ready for Review
-      
-      Convert draft PR to ready-for-review.
     command: |
       cd "{{repo_path}}" && \
       echo "=== Step 20: Converting PR to Ready ===" && \
