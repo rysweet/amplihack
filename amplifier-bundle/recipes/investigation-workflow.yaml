@@ -34,13 +34,13 @@ recursion:
 context:
   # The main question to investigate
   investigation_question: ""
-  
+
   # Path to focus investigation on (optional)
   codebase_path: ""
-  
+
   # Investigation depth: surface, standard, deep
   depth: "standard"
-  
+
   # Output directory for findings
   output_dir: "./ai_working/investigation"
 
@@ -247,36 +247,36 @@ steps:
           echo '{"error": "Invalid characters in output_dir"}' && exit 1 ;;
       esac
       mkdir -p "$OUTPUT_DIR"
-      
-      # Create the investigation report
-      cat << 'REPORT_EOF' > "$OUTPUT_DIR/investigation_report.md"
+
+      # Create the investigation report (unquoted delimiter allows $(date) expansion)
+      cat << REPORT_EOF > "$OUTPUT_DIR/investigation_report.md"
       # Investigation Report
-      
+
       **Question:** {{investigation_question}}
       **Date:** $(date -u +"%Y-%m-%dT%H:%M:%SZ")
       **Status:** Complete
-      
+
       ## Scope
       {{scope}}
-      
+
       ## Strategy
       {{strategy}}
-      
+
       ## Findings
-      
+
       ### Primary Exploration
       {{primary_findings}}
-      
+
       ### Architecture Analysis
       {{architecture_findings}}
-      
+
       ## Verification
       {{verification}}
-      
+
       ## Synthesis
       {{synthesis}}
       REPORT_EOF
-      
+
       echo "Report saved to $OUTPUT_DIR/investigation_report.md"
       echo "{\"report_path\": \"$OUTPUT_DIR/investigation_report.md\", \"status\": \"complete\"}"
     output: "knowledge_capture"
