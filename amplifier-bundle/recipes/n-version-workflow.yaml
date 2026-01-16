@@ -253,7 +253,7 @@ steps:
       **Version 2:** {{version_2}}
       **Version 3:** {{version_3}}
 
-      Based on the evaluation recommendation ({{evaluation.recommendation.selected}}):
+      Based on the evaluation recommendation:
 
       If a single version was selected:
       - Present that version as the final solution
@@ -290,9 +290,8 @@ steps:
         "workflow": "n-version-workflow",
         "task": "{{task_description}}",
         "versions_generated": {{num_versions}},
-        "selected": "{{evaluation.recommendation.selected}}",
         "status": "complete",
-        "learnings": {{evaluation.learnings}}
+        "evaluation_summary": "See evaluation output for details"
       }
       EOF
     output: "documentation"

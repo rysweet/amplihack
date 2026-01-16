@@ -46,6 +46,9 @@ context:
   
   # Branch name prefix
   branch_prefix: "feat"
+  
+  # Refinement output (set by conditional step, needs default for validation)
+  refined_implementation: ""
 
 steps:
   # ==========================================================================
@@ -237,7 +240,7 @@ steps:
       **Requirements:** {{requirements}}
       **Implementation:** {{implementation}}
       **Review:** {{review}}
-      {% if refined_implementation %}**Refinements:** {{refined_implementation}}{% endif %}
+      **Refinements:** {{refined_implementation}}
 
       Final checklist:
       1. All requirements met?
