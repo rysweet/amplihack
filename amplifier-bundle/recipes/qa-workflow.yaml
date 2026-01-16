@@ -29,6 +29,9 @@ context:
   
   # Escalation thresholds
   escalate_if_complex: "true"
+  
+  # Escalation result (set by conditional step, needs default for templates)
+  escalation_result: ""
 
 steps:
   # ==========================================================================
@@ -141,7 +144,7 @@ steps:
         "question": "{{question}}",
         "is_qa": "{{classification.is_qa}}",
         "classification": {{classification}},
-        {% if escalation_result %}"escalation": {{escalation_result}},{% endif %}
+        "escalation": "{{escalation_result}}",
         "status": "complete"
       }
       EOF

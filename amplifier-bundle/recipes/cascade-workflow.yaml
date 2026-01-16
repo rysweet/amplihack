@@ -58,6 +58,14 @@ context:
   
   # Session identifier for metrics correlation
   session_id: ""
+  
+  # Exit code tracking (set by output_exit_code, need defaults for validator)
+  primary_exit_code: "1"
+  secondary_exit_code: "1"
+  
+  # Result tracking (set by conditional steps, need defaults for templates)
+  secondary_result: ""
+  tertiary_result: ""
 
 steps:
   # ==========================================================================
@@ -263,10 +271,10 @@ steps:
       fi
       
       # Secondary was run, check its result
-      SECONDARY_EXIT="{% if secondary_exit_code %}{{secondary_exit_code}}{% else %}1{% endif %}"
+      SECONDARY_EXIT="{{secondary_exit_code}}"
       
       cat << 'SECONDARY_EOF' > /tmp/secondary_result_$$.txt
-      {% if secondary_result %}{{secondary_result}}{% else %}NO_RESULT{% endif %}
+      {{secondary_result}}
       SECONDARY_EOF
       
       if [ "$SECONDARY_EXIT" = "0" ] && grep -qi "SUCCESS" /tmp/secondary_result_$$.txt 2>/dev/null; then
@@ -298,7 +306,7 @@ steps:
 
       **Previous Attempts**:
       - PRIMARY: {{primary_result}}
-      {% if secondary_result %}- SECONDARY: {{secondary_result}}{% endif %}
+      - SECONDARY: {{secondary_result}}
 
       **Cascade Context**:
       {{cascade_config}}
@@ -519,7 +527,7 @@ steps:
       TOTAL_RUNS=$(wc -l < "$METRICS_FILE" | tr -d ' ')
       
       if [ "$TOTAL_RUNS" -lt 5 ]; then
-        echo "{\"has_recommendations\": false, \"reason\": \"Insufficient data (need 5+ runs, have $TOTAL_RUNS)\"}"
+        echo "{\"has_recommendations\": false, \"reason\": \"Insufficient data - need 5+ runs, have $TOTAL_RUNS\"}"
         exit 0
       fi
       
@@ -597,12 +605,12 @@ steps:
           ;;
         SECONDARY)
           cat << 'RESULT_EOF'
-      {% if secondary_result %}{{secondary_result}}{% else %}Secondary level completed{% endif %}
+      {{secondary_result}}
       RESULT_EOF
           ;;
         TERTIARY)
           cat << 'RESULT_EOF'
-      {% if tertiary_result %}{{tertiary_result}}{% else %}Tertiary level completed{% endif %}
+      {{tertiary_result}}
       RESULT_EOF
           ;;
       esac
