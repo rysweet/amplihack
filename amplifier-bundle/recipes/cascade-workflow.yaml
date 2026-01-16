@@ -508,8 +508,6 @@ steps:
       ```
     output: "primary_result"
     timeout: 180
-    on_error: "continue"
-    output_exit_code: "primary_exit_code"
 
   # ════════════════════════════════════════════════════════════════════════════
   # STEP 3: ATTEMPT SECONDARY APPROACH (Original Step 3)
@@ -518,7 +516,6 @@ steps:
   - id: "attempt-secondary"
     agent: "amplihack:fallback-cascade"
     mode: "EXECUTE"
-    condition: "{{primary_exit_code}} != 0"
     prompt: |
       **STEP 3: Attempt Secondary Approach**
 
@@ -583,8 +580,6 @@ steps:
       ```
     output: "secondary_result"
     timeout: 90
-    on_error: "continue"
-    output_exit_code: "secondary_exit_code"
 
   # ════════════════════════════════════════════════════════════════════════════
   # STEP 4: ATTEMPT TERTIARY APPROACH (Original Step 4)
@@ -593,7 +588,6 @@ steps:
   - id: "attempt-tertiary"
     agent: "amplihack:fallback-cascade"
     mode: "EXECUTE"
-    condition: "{{secondary_exit_code}} != 0"
     prompt: |
       **STEP 4: Attempt Tertiary Approach - GUARANTEED COMPLETION**
 
@@ -661,10 +655,6 @@ steps:
       **Execute the TERTIARY guaranteed completion now. YOU MUST SUCCEED.**
     output: "tertiary_result"
     timeout: 60
-    retry:
-      max_attempts: 3
-      backoff: "linear"
-      initial_delay: 1
 
   # ════════════════════════════════════════════════════════════════════════════
   # STEP 5: REPORT DEGRADATION (Original Step 5)
@@ -683,13 +673,13 @@ steps:
       **Cascade Design**: {{cascade_design}}
 
       **Attempt Results**:
-      - PRIMARY (exit {{primary_exit_code}}): {{primary_result}}
-      {% if secondary_result %}- SECONDARY (exit {{secondary_exit_code}}): {{secondary_result}}{% endif %}
+      - PRIMARY: {{primary_result}}
+      {% if secondary_result %}- SECONDARY: {{secondary_result}}{% endif %}
       {% if tertiary_result %}- TERTIARY: {{tertiary_result}}{% endif %}
 
       **DETERMINE FINAL LEVEL**:
-      - If primary_exit_code == 0: Final level is PRIMARY (optimal)
-      - Else if secondary_exit_code == 0: Final level is SECONDARY (acceptable)
+      - If primary_result shows SUCCESS: Final level is PRIMARY (optimal)
+      - Else if secondary_result shows SUCCESS: Final level is SECONDARY (acceptable)
       - Else: Final level is TERTIARY (minimal but guaranteed)
 
       **GENERATE REPORT BY NOTIFICATION MODE**:

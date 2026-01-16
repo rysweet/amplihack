@@ -112,13 +112,7 @@ steps:
   # ==========================================================================
   - id: "step-03-commit"
     type: "bash"
-    prompt: |
-      # Step 3: Commit
-
-      Commit the verified change and push to branch.
-
-      **Change:** {{change_description}}
-      **Verification:** {{verification_result}}
+    # Step 3: Commit - Commit the verified change and push to branch
     command: |
       cd "{{repo_path}}" && \
       echo "=== Step 3: Committing Changes ===" && \
