@@ -1,5 +1,8 @@
-# MANIFEST.in - Include ALL framework files for UVX package as explicitly requested
-# This ensures all framework files are available in the packaged distribution
+# MANIFEST.in - Controls SOURCE DISTRIBUTION (sdist) only, NOT wheels
+# For wheel packaging, see build_hooks.py which copies .claude/ into the package
+#
+# This file ensures all framework files are available in source distributions,
+# but wheels are built from pyproject.toml + build_hooks.py
 
 # Core package files
 include src/amplihack/prompts/*.md
@@ -10,8 +13,8 @@ include CLAUDE.md
 include README.md
 include *.md
 
-# Claude framework structure (ALL files as requested)
-# .claude/ is at repo root and copied during build
+# Claude framework structure (for sdist only)
+# For wheels: build_hooks.py copies .claude/ → src/amplihack/.claude/ before build
 recursive-include .claude *
 
 # Documentation, examples, and specifications
