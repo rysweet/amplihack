@@ -5,7 +5,10 @@ bundle:
   description: "A set of recipes, agents, tools, hooks, and skills from the amplihack toolset which are designed to provide a more complete engineering system on top of Amplifier."
 
 includes:
-  - bundle: git+https://github.com/microsoft/amplifier-foundation@main
+  # Note: foundation is NOT explicitly included here because:
+  # 1. Amplifier CLI already loads foundation as the default bundle
+  # 2. amplifier-bundle-recipes includes foundation transitively
+  # Including it again causes a "circular dependency" warning
   - bundle: git+https://github.com/microsoft/amplifier-bundle-recipes@main
 
 # Configure tool-skills to find skills in .claude/skills directory
