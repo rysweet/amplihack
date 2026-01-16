@@ -42,6 +42,8 @@ theme:
     - toc.follow
     - content.code.copy
     - content.code.annotate
+    - content.action.edit
+    - content.action.view
   icon:
     repo: fontawesome/brands/github
 

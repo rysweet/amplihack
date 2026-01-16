@@ -18,7 +18,9 @@ from fastapi.responses import StreamingResponse  # type: ignore
 from pydantic import BaseModel, field_validator  # type: ignore
 
 from .github_auth import GitHubAuthManager
+from .github_models import CLAUDE_MODELS, GITHUB_COPILOT_MODELS, OPENAI_MODELS
 from .passthrough import PassthroughHandler
+from .security import TokenSanitizer
 
 # Load environment variables from .env file
 load_dotenv()
@@ -118,6 +120,7 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
+GITHUB_API_KEY = os.environ.get("GITHUB_API_KEY") or GITHUB_TOKEN  # LiteLLM expects GITHUB_API_KEY
 
 # Get preferred provider (default to openai)
 PREFERRED_PROVIDER = os.environ.get("PREFERRED_PROVIDER", "openai").lower()
@@ -130,6 +133,84 @@ if PASSTHROUGH_MODE:
     logger.info(
         "Passthrough mode enabled - will try Anthropic API first, fallback to Azure on 429 errors"
     )
+
+# Initialize security components
+token_sanitizer = TokenSanitizer()
+
+
+class ModelValidator:
+    """Unified model validation and routing (Issue #1922).
+
+    Eliminates duplication between multiple validation functions and
+    fixes Sonnet 4 routing conflict from Issue #1920.
+    """
+
+    def __init__(self):
+        """Initialize ModelValidator with known model lists."""
+        self.claude_models = set(CLAUDE_MODELS)
+        self.openai_models = set(OPENAI_MODELS)
+        self.github_models = set(GITHUB_COPILOT_MODELS)
+
+    def get_provider(self, model: str) -> str:
+        """Determine provider from model name.
+
+        Args:
+            model: Model name (without provider prefix)
+
+        Returns:
+            Provider name ('anthropic', 'openai', 'github')
+
+        Raises:
+            ValueError: If model is invalid or unknown
+        """
+        if not model or not isinstance(model, str):
+            raise ValueError(f"Invalid model name: {model}")
+
+        model_lower = model.lower()
+
+        # Check Claude models (includes Sonnet 4 variants)
+        # Match if model name matches or starts with known Claude model prefix
+        # FIX: Removed overly broad third condition that caused false matches
+        if any(model_lower == claude_model.lower() or
+               model_lower.startswith(claude_model.lower() + '-')
+               for claude_model in self.claude_models):
+            return "anthropic"
+
+        # Check GitHub Copilot models
+        if any(model_lower == github_model.lower() or
+               github_model.lower() in model_lower
+               for github_model in self.github_models):
+            return "github"
+
+        # Check OpenAI models - exact match or starts with known model
+        if any(model_lower == openai_model.lower() or
+               model_lower.startswith(openai_model.lower() + '-')
+               for openai_model in self.openai_models):
+            return "openai"
+
+        # Unknown model
+        raise ValueError(f"Invalid model name: unknown model '{model}'")
+
+    def validate_and_route(self, model: str) -> str:
+        """Validate model name and return with provider prefix.
+
+        Args:
+            model: Model name to validate
+
+        Returns:
+            Model name with provider prefix (e.g., 'anthropic/claude-sonnet-4-20250514')
+
+        Raises:
+            ValueError: If model name is invalid
+        """
+        if not model or not isinstance(model, str):
+            raise ValueError(f"Invalid model name: {model}")
+
+        # Get provider
+        provider = self.get_provider(model)
+
+        # Return with provider prefix
+        return f"{provider}/{model}"
 
 # Get model mapping configuration from environment
 # Default to latest OpenAI models if not set
@@ -220,27 +301,27 @@ if AZURE_BASE_URL:
     logger.warning(f"  API Version: {api_version}")
     logger.warning(f"  API Key: {'SET' if os.environ['AZURE_API_KEY'] else 'NOT SET'}")
 
-# List of OpenAI models
-OPENAI_MODELS = [
+# Additional OpenAI models beyond the constants (merge with imported OPENAI_MODELS)
+ADDITIONAL_OPENAI_MODELS = [
     "o3-mini",
     "o1",
     "o1-mini",
     "o1-pro",
     "gpt-4.5-preview",
-    "gpt-4o",
     "gpt-4o-audio-preview",
     "chatgpt-4o-latest",
-    "gpt-4o-mini",
     "gpt-4o-mini-audio-preview",
     "gpt-4.1",  # Added default big model
     "gpt-4.1-mini",  # Added default small model
 ]
 
+# Merge OpenAI models from constants with additional models
+OPENAI_MODELS_FULL = list(set(OPENAI_MODELS) | set(ADDITIONAL_OPENAI_MODELS))
+
 # List of Gemini models
 GEMINI_MODELS = ["gemini-2.5-pro-preview-03-25", "gemini-2.0-flash"]
 
-# List of GitHub Copilot models
-GITHUB_COPILOT_MODELS = ["copilot-gpt-4", "copilot-gpt-3.5-turbo"]
+# GitHub Copilot models already imported from github_models
 
 # Configure LiteLLM for GitHub Copilot
 GITHUB_COPILOT_ENABLED = os.environ.get("GITHUB_COPILOT_ENABLED", "false").lower() == "true"
@@ -264,6 +345,9 @@ if not GITHUB_TOKEN:
 if GITHUB_TOKEN and GITHUB_COPILOT_ENABLED:
     # Set up LiteLLM environment variables for GitHub Copilot provider
     os.environ["GITHUB_TOKEN"] = GITHUB_TOKEN
+    # LiteLLM expects GITHUB_API_KEY for github_copilot provider
+    if GITHUB_API_KEY:
+        os.environ["GITHUB_API_KEY"] = GITHUB_API_KEY
     if not os.environ.get("GITHUB_API_BASE"):
         os.environ["GITHUB_API_BASE"] = "https://api.github.com"
     logger.info("GitHub Copilot LiteLLM integration enabled")
@@ -373,6 +457,11 @@ class MessagesRequest(BaseModel):
 
     @field_validator("model")
     def validate_model_field(cls, v, info):  # Renamed to avoid conflict
+        # 🚨 CRITICAL FIX: Enforce security validation FIRST (Issue #1922)
+        from amplihack.proxy.github_models import GitHubModelMapper
+        github_mapper = GitHubModelMapper({})
+        github_mapper.validate_model_name(v)
+
         original_model = v
         new_model = v  # Default to original value
 
@@ -390,12 +479,16 @@ class MessagesRequest(BaseModel):
         # --- Mapping Logic --- START ---
         mapped = False
         # Determine provider based on configuration
-        # Use azure/ prefix for Azure models (LiteLLM requires this for Azure routing)
-        provider_prefix = "azure/"
-        if PREFERRED_PROVIDER == "google" and (
+        # Check if we should use GitHub Copilot for Claude models
+        if GITHUB_COPILOT_ENABLED and ("claude" in clean_v.lower() or clean_v in ["claude-sonnet-4", "claude-sonnet-4.5", "claude-opus-4"]):
+            provider_prefix = "github_copilot/"
+        elif PREFERRED_PROVIDER == "google" and (
             BIG_MODEL in GEMINI_MODELS or SMALL_MODEL in GEMINI_MODELS
         ):
             provider_prefix = "gemini/"
+        else:
+            # Use azure/ prefix for Azure models (LiteLLM requires this for Azure routing)
+            provider_prefix = "azure/"
 
         # Map Haiku to SMALL_MODEL based on provider preference
         if "haiku" in clean_v.lower():
@@ -412,10 +505,10 @@ class MessagesRequest(BaseModel):
             if clean_v in GEMINI_MODELS and not v.startswith("gemini/"):
                 new_model = f"gemini/{clean_v}"
                 mapped = True  # Technically mapped to add prefix
-            elif clean_v in GITHUB_COPILOT_MODELS and not v.startswith("github/"):
-                new_model = f"github/{clean_v}"
+            elif clean_v in GITHUB_COPILOT_MODELS and not (v.startswith("github/") or v.startswith("github_copilot/")):
+                new_model = f"github_copilot/{clean_v}"
                 mapped = True  # Technically mapped to add prefix
-            elif clean_v in OPENAI_MODELS and not v.startswith("openai/"):
+            elif clean_v in OPENAI_MODELS_FULL and not v.startswith("openai/"):
                 new_model = f"openai/{clean_v}"
                 mapped = True  # Technically mapped to add prefix
         # --- Mapping Logic --- END ---
@@ -424,7 +517,7 @@ class MessagesRequest(BaseModel):
             logger.debug(f"📌 MODEL MAPPING: '{original_model}' ➡️ '{new_model}'")
         else:
             # If no mapping occurred and no prefix exists, log warning or decide default
-            if not v.startswith(("openai/", "gemini/", "github/", "anthropic/")):
+            if not v.startswith(("openai/", "gemini/", "github/", "github_copilot/", "anthropic/")):
                 logger.warning(
                     f"⚠️ No prefix or mapping rule for model: '{original_model}'. Using as is."
                 )
@@ -469,12 +562,16 @@ class TokenCountRequest(BaseModel):
         # --- Mapping Logic --- START ---
         mapped = False
         # Determine provider based on configuration
-        # Use azure/ prefix for Azure models (LiteLLM requires this for Azure routing)
-        provider_prefix = "azure/"
-        if PREFERRED_PROVIDER == "google" and (
+        # Check if we should use GitHub Copilot for Claude models
+        if GITHUB_COPILOT_ENABLED and ("claude" in clean_v.lower() or clean_v in ["claude-sonnet-4", "claude-sonnet-4.5", "claude-opus-4"]):
+            provider_prefix = "github_copilot/"
+        elif PREFERRED_PROVIDER == "google" and (
             BIG_MODEL in GEMINI_MODELS or SMALL_MODEL in GEMINI_MODELS
         ):
             provider_prefix = "gemini/"
+        else:
+            # Use azure/ prefix for Azure models (LiteLLM requires this for Azure routing)
+            provider_prefix = "azure/"
 
         # Map Haiku to SMALL_MODEL based on provider preference
         if "haiku" in clean_v.lower():
@@ -491,10 +588,10 @@ class TokenCountRequest(BaseModel):
             if clean_v in GEMINI_MODELS and not v.startswith("gemini/"):
                 new_model = f"gemini/{clean_v}"
                 mapped = True  # Technically mapped to add prefix
-            elif clean_v in GITHUB_COPILOT_MODELS and not v.startswith("github/"):
-                new_model = f"github/{clean_v}"
+            elif clean_v in GITHUB_COPILOT_MODELS and not (v.startswith("github/") or v.startswith("github_copilot/")):
+                new_model = f"github_copilot/{clean_v}"
                 mapped = True  # Technically mapped to add prefix
-            elif clean_v in OPENAI_MODELS and not v.startswith("openai/"):
+            elif clean_v in OPENAI_MODELS_FULL and not v.startswith("openai/"):
                 new_model = f"openai/{clean_v}"
                 mapped = True  # Technically mapped to add prefix
         # --- Mapping Logic --- END ---
@@ -502,7 +599,7 @@ class TokenCountRequest(BaseModel):
         if mapped:
             logger.debug(f"📌 TOKEN COUNT MAPPING: '{original_model}' ➡️ '{new_model}'")
         else:
-            if not v.startswith(("openai/", "gemini/", "anthropic/")):
+            if not v.startswith(("openai/", "gemini/", "github/", "github_copilot/", "anthropic/")):
                 logger.warning(
                     f"⚠️ No prefix or mapping rule for token count model: '{original_model}'. Using as is."
                 )
@@ -743,8 +840,22 @@ def convert_anthropic_to_litellm(anthropic_request: MessagesRequest) -> dict[str
     )
 
     # Initialize the LiteLLM request dict first to ensure we always return the right structure
+    # Check if we should route Claude models to GitHub Copilot
+    model_name = anthropic_request.model
+    
+    # If GitHub Copilot is enabled and this is a Claude model without a provider prefix
+    logger.warning(f"🔍 Model routing check: model='{model_name}', GITHUB_COPILOT_ENABLED={GITHUB_COPILOT_ENABLED}")
+    if (
+        GITHUB_COPILOT_ENABLED
+        and "/" not in model_name
+        and ("claude" in model_name.lower() or model_name in ["claude-sonnet-4", "claude-sonnet-4.5", "claude-opus-4"])
+    ):
+        logger.warning(f"🔀 Routing Claude model '{model_name}' to GitHub Copilot")
+        # Use github_copilot/ prefix with underscore (not github/)
+        model_name = f"github_copilot/{model_name}"
+    
     litellm_request = {
-        "model": anthropic_request.model,  # it understands "anthropic/claude-x" format
+        "model": model_name,  # it understands "anthropic/claude-x" and "github/model-x" format
         "messages": [],
         "max_tokens": max_tokens_value,
         "temperature": temperature,
@@ -1746,8 +1857,14 @@ async def create_message(request: MessagesRequest, raw_request: Request):
         elif request.model.startswith("gemini/"):
             litellm_request["api_key"] = GEMINI_API_KEY
             logger.debug(f"Using Gemini API key for model: {request.model}")
-        elif request.model.startswith("github/"):
+        elif request.model.startswith("github/") or request.model.startswith("github_copilot/"):
             litellm_request["api_key"] = GITHUB_TOKEN
+            # Add GitHub Copilot specific headers
+            if request.model.startswith("github_copilot/"):
+                litellm_request["extra_headers"] = {
+                    "editor-version": "vscode/1.95.0",
+                    "editor-plugin-version": "copilot-chat/0.26.7"
+                }
             logger.debug(f"Using GitHub token for model: {request.model}")
         else:
             litellm_request["api_key"] = ANTHROPIC_API_KEY
@@ -2067,15 +2184,18 @@ async def create_message(request: MessagesRequest, raw_request: Request):
                     # Always convert to string to ensure JSON serializability
                     error_details[key] = str(value)
 
-        # Log all error details (now guaranteed to be JSON-serializable)
-        logger.error(f"Error processing request: {json.dumps(error_details, indent=2)}")
+        # SECURITY: Sanitize tokens from error details before logging (Issue #1922)
+        sanitized_error_details = token_sanitizer.sanitize(error_details)
 
-        # Format error for response
-        error_message = f"Error: {e!s}"
-        if error_details.get("message"):
-            error_message += f"\nMessage: {error_details['message']}"
-        if error_details.get("response"):
-            error_message += f"\nResponse: {error_details['response']}"
+        # Log all error details (sanitized and JSON-serializable)
+        logger.error(f"Error processing request: {json.dumps(sanitized_error_details, indent=2)}")
+
+        # Format error for response (also sanitized)
+        error_message = f"Error: {token_sanitizer.sanitize(str(e))}"
+        if sanitized_error_details.get("message"):
+            error_message += f"\nMessage: {sanitized_error_details['message']}"
+        if sanitized_error_details.get("response"):
+            error_message += f"\nResponse: {sanitized_error_details['response']}"
 
         # Return detailed error
         status_code = error_details.get("status_code", 500)

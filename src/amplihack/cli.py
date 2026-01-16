@@ -6,6 +6,7 @@ import platform
 import sys
 from pathlib import Path
 
+from . import copytree_manifest
 from .docker import DockerManager
 from .launcher import ClaudeLauncher
 from .proxy import ProxyConfig, ProxyManager
@@ -426,6 +427,36 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         "--backend", choices=["kuzu", "sqlite"], default="kuzu", help="Memory backend to use"
     )
 
+    # Clean subcommand
+    clean_parser = memory_subparsers.add_parser(
+        "clean",
+        help="Clean up test sessions",
+        epilog="Examples:\n"
+        "  amplihack memory clean --pattern 'test_*'     # Clean test sessions\n"
+        "  amplihack memory clean --pattern 'demo_*'     # Clean demo sessions\n"
+        "  amplihack memory clean --pattern '*_temp'     # Clean temporary sessions\n"
+        "  amplihack memory clean --pattern 'dev_*' --no-dry-run  # Actually delete dev sessions",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    clean_parser.add_argument(
+        "--pattern",
+        default="test_*",
+        help="Session ID pattern to match (supports * wildcards, default: test_*)",
+    )
+    clean_parser.add_argument(
+        "--backend", choices=["kuzu", "sqlite"], default="kuzu", help="Memory backend to use"
+    )
+    clean_parser.add_argument(
+        "--no-dry-run",
+        action="store_true",
+        help="Actually delete sessions (default is dry-run mode)",
+    )
+    clean_parser.add_argument(
+        "--confirm",
+        action="store_true",
+        help="Skip confirmation prompt (use with --no-dry-run)",
+    )
+
     return parser
 
 
@@ -460,6 +491,14 @@ def main(argv: list[str] | None = None) -> int:
             conflicting_files=conflict_result.conflicting_files,
         )
 
+        # Bug #1 Fix: Respect user cancellation (Issue #1940)
+        # When user responds 'n' to conflict prompt, should_proceed=False
+        # Exit gracefully with code 0 (user-initiated cancellation, not an error)
+        if not copy_strategy.should_proceed:
+            print("\n❌ Operation cancelled - cannot proceed without updating .claude/ directory")
+            print("   Commit your changes and try again\n")
+            sys.exit(0)
+
         temp_claude_dir = str(copy_strategy.target_dir)
 
         # Store original_cwd for auto mode (always set, regardless of conflicts)
@@ -474,13 +513,21 @@ def main(argv: list[str] | None = None) -> int:
         # Find amplihack package location for .claude files
         import amplihack
 
-        from . import copytree_manifest
-
         amplihack_src = os.path.dirname(os.path.abspath(amplihack.__file__))
 
         # Copy .claude contents to temp .claude directory
         # Note: copytree_manifest copies TO the dst, not INTO dst/.claude
         copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude")
+
+        # Bug #2 Fix: Detect empty copy results (Issue #1940)
+        # When copytree_manifest returns empty list, no files were copied
+        # This indicates a package installation problem - exit with clear error
+        if not copied:
+            print("\n❌ Failed to copy .claude files - cannot proceed")
+            print(f"   Package location: {amplihack_src}")
+            print(f"   Looking for .claude/ at: {amplihack_src}/.claude/")
+            print("   This may indicate a package installation problem\n")
+            sys.exit(1)
 
         # Smart PROJECT.md initialization for UVX mode
         if copied:
@@ -751,8 +798,10 @@ def main(argv: list[str] | None = None) -> int:
                     backend = KuzuBackend()
                     backend.initialize()
                 except ImportError:
-                    print("Error: Kùzu backend not available. Install with: pip install kuzu")
-                    print("Falling back to SQLite backend...")
+                    print(
+                        "Error: Kùzu backend not available. Kuzu should be installed automatically with amplihack."
+                    )
+                    print("Fallin' back to SQLite backend...")
                     from .memory.database import MemoryDatabase
 
                     backend = MemoryDatabase()
@@ -781,6 +830,41 @@ def main(argv: list[str] | None = None) -> int:
                 backend.close()
 
             return 0
+
+        if args.memory_command == "clean":
+            from .memory.cli_cleanup import cleanup_memory_sessions
+
+            # Select backend
+            if args.backend == "kuzu":
+                try:
+                    from .memory.backends.kuzu_backend import KuzuBackend
+
+                    backend = KuzuBackend()
+                    backend.initialize()
+                except ImportError:
+                    print("Error: Kùzu backend not available. Install with: pip install amplihack")
+                    return 1
+            else:
+                from .memory.database import MemoryDatabase
+
+                backend = MemoryDatabase()
+                backend.initialize()
+
+            # Run cleanup
+            result = cleanup_memory_sessions(
+                backend=backend,
+                pattern=args.pattern,
+                dry_run=not args.no_dry_run,
+                confirm=args.confirm,
+            )
+
+            # Cleanup backend
+            if hasattr(backend, "close"):
+                backend.close()
+
+            # Return non-zero if there were errors
+            return 1 if result["errors"] > 0 else 0
+
         create_parser().print_help()
         return 1
 
