@@ -1,0 +1,1 @@
+../../.claude/agents/insight-synthesizer.md
