@@ -111,11 +111,11 @@ class AutoMode:
                 None disables timeout. Opus detection is handled by cli.py:resolve_timeout().
         """
         # Ensure UTF-8 encoding for stdout/stderr on Windows
-        if sys.platform == 'win32':
-            if hasattr(sys.stdout, 'reconfigure'):
-                sys.stdout.reconfigure(encoding='utf-8', errors='replace')
-            if hasattr(sys.stderr, 'reconfigure'):
-                sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+        if sys.platform == "win32":
+            if hasattr(sys.stdout, "reconfigure"):
+                sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+            if hasattr(sys.stderr, "reconfigure"):
+                sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
         self.sdk = sdk
         self.prompt = prompt
@@ -181,7 +181,7 @@ class AutoMode:
                 markup=True,
                 force_interactive=False,
                 no_color=False,
-                legacy_windows=False
+                legacy_windows=False,
             )
         else:
             self.console = None
@@ -324,8 +324,8 @@ class AutoMode:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            encoding='utf-8',  # Explicit UTF-8 encoding for proper emoji/unicode support
-            errors='replace',  # Replace decode errors instead of crashing
+            encoding="utf-8",  # Explicit UTF-8 encoding for proper emoji/unicode support
+            errors="replace",  # Replace decode errors instead of crashing
             cwd=self.working_dir,
         )
 

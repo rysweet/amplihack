@@ -52,7 +52,7 @@ hooks:
   post_tool_use:
     enabled: true
     module: hook-post-tool-use
-  
+
   # Feature hooks
   power_steering:
     enabled: true

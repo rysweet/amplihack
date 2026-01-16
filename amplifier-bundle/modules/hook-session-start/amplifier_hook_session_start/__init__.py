@@ -19,19 +19,34 @@ from amplifier_core.protocols import Hook, HookResult
 logger = logging.getLogger(__name__)
 
 # Add Claude Code hooks to path for imports
-_CLAUDE_HOOKS = (
-    Path(__file__).parent.parent.parent.parent.parent.parent
-    / ".claude"
-    / "tools"
-    / "amplihack"
-    / "hooks"
-)
+# Path: __init__.py -> amplifier_hook_session_start/ -> hook-session-start/ -> modules/ -> amplifier-bundle/ -> amplifier-amplihack/
+_PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent
+_CLAUDE_HOOKS = _PROJECT_ROOT / ".claude" / "tools" / "amplihack" / "hooks"
+
+_DELEGATION_AVAILABLE = False
+_IMPORT_ERROR: str | None = None
+
 if _CLAUDE_HOOKS.exists():
-    sys.path.insert(0, str(_CLAUDE_HOOKS))
-    sys.path.insert(0, str(_CLAUDE_HOOKS.parent))
+    if str(_CLAUDE_HOOKS) not in sys.path:
+        sys.path.insert(0, str(_CLAUDE_HOOKS))
+    if str(_CLAUDE_HOOKS.parent) not in sys.path:
+        sys.path.insert(0, str(_CLAUDE_HOOKS.parent))
+
+    # Verify the import works
+    try:
+        import session_start  # noqa: F401
+
+        _DELEGATION_AVAILABLE = True
+        logger.info(f"SessionStartHook: Delegation available from {_CLAUDE_HOOKS}")
+    except ImportError as e:
+        _IMPORT_ERROR = str(e)
+        logger.warning(f"SessionStartHook: Import failed - {e}")
+else:
+    _IMPORT_ERROR = f"Claude hooks directory not found: {_CLAUDE_HOOKS}"
+    logger.warning(_IMPORT_ERROR)
 
 
-# Inline shared utilities (hooks are installed as separate packages)
+# Inline shared utilities (fallback if delegation fails)
 def load_user_preferences() -> str | None:
     """Load user preferences from standard locations."""
     prefs_paths = [
@@ -73,18 +88,24 @@ class SessionStartHook(Hook):
         self.config = config or {}
         self.enabled = self.config.get("enabled", True)
         self._session_start_hook = None
+        self._delegation_attempted = False
 
     def _get_session_start_hook(self):
-        """Lazy load session start hook."""
-        if self._session_start_hook is None:
-            try:
-                from session_start import SessionStartHook as ClaudeSessionStartHook
+        """Lazy load session start hook from Claude Code."""
+        if not self._delegation_attempted:
+            self._delegation_attempted = True
+            if _DELEGATION_AVAILABLE:
+                try:
+                    from session_start import SessionStartHook as ClaudeSessionStartHook
 
-                self._session_start_hook = ClaudeSessionStartHook()
-            except ImportError as e:
-                logger.debug(f"Claude Code session_start hook not available: {e}")
-                self._session_start_hook = False
-        return self._session_start_hook if self._session_start_hook else None
+                    self._session_start_hook = ClaudeSessionStartHook()
+                    logger.info("SessionStartHook: Delegating to Claude Code hook")
+                except ImportError as e:
+                    logger.warning(f"SessionStartHook: Claude Code delegation failed: {e}")
+                    self._session_start_hook = None
+            else:
+                logger.info(f"SessionStartHook: Using fallback ({_IMPORT_ERROR})")
+        return self._session_start_hook
 
     async def __call__(self, event: str, data: dict[str, Any]) -> HookResult | None:
         """Handle session:start events for comprehensive initialization."""
@@ -111,24 +132,28 @@ class SessionStartHook(Hook):
                         if additional_context:
                             injections.append(additional_context)
                             metadata["claude_hook_processed"] = True
+                            metadata["delegation"] = "success"
+                            logger.info("SessionStartHook: Delegation successful")
                 except Exception as e:
-                    logger.debug(f"Claude Code session start hook failed: {e}")
+                    logger.warning(f"Claude Code session start hook execution failed: {e}")
+                    metadata["delegation"] = "execution_failed"
 
-            # Fallback: inject essentials if Claude Code hook unavailable
+            # Fallback: inject essentials if Claude Code hook unavailable or failed
             if not injections:
+                metadata["delegation"] = metadata.get("delegation", "fallback")
+                logger.info("SessionStartHook: Using fallback implementation")
+
                 # Load user preferences
-                if load_user_preferences:
-                    prefs = load_user_preferences()
-                    if prefs:
-                        injections.append(f"## USER PREFERENCES (MANDATORY)\n\n{prefs}")
-                        metadata["preferences_injected"] = True
+                prefs = load_user_preferences()
+                if prefs:
+                    injections.append(f"## USER PREFERENCES (MANDATORY)\n\n{prefs}")
+                    metadata["preferences_injected"] = True
 
                 # Load project context
-                if load_project_context:
-                    project_context = load_project_context()
-                    if project_context:
-                        injections.append(f"## PROJECT CONTEXT\n\n{project_context}")
-                        metadata["project_context_injected"] = True
+                project_context = load_project_context()
+                if project_context:
+                    injections.append(f"## PROJECT CONTEXT\n\n{project_context}")
+                    metadata["project_context_injected"] = True
 
             if injections:
                 return HookResult(
@@ -138,7 +163,7 @@ class SessionStartHook(Hook):
 
         except Exception as e:
             # Fail open - log but don't block session start
-            logger.debug(f"Session start hook failed (continuing): {e}")
+            logger.warning(f"Session start hook failed (continuing): {e}")
 
         return None
 

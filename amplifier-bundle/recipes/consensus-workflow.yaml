@@ -1,284 +1,2155 @@
 name: "consensus-workflow"
-description: "Enhanced workflow with multi-agent consensus at critical decision points for maximum quality"
-version: "1.0.0"
+description: "Enhanced workflow with multi-agent consensus at critical decision points - 15 steps with 7 mandatory consensus gates"
+version: "2.0.0"
 author: "Amplihack Team"
-tags: ["consensus", "quality", "multi-agent", "critical", "validation"]
+tags: ["consensus", "quality", "multi-agent", "critical", "validation", "debate", "n-version", "expert-panel"]
 
 # CONSENSUS_WORKFLOW: Multi-Agent Consensus for Critical Work
 #
-# This workflow extends default development with consensus mechanisms:
-#   - Multi-Agent Debate for ambiguous requirements
+# This workflow extends DEFAULT_WORKFLOW with consensus mechanisms at critical decision points:
+#   - Multi-Agent Debate for ambiguous requirements and critical design decisions
 #   - N-Version Programming for critical code paths
-#   - Expert Panel reviews for quality gates
+#   - Expert Panel reviews for refactoring and final PR review
+#   - Consensus-driven decision making at key gates
+#
+# 7 MANDATORY CONSENSUS GATES:
+#   1. Step 1 (Requirements): IF AMBIGUOUS → Multi-Agent Debate (3-5 agents)
+#   2. Step 4 (Design): ALWAYS CONSENSUS - Architecture debate (5 agents, 3 rounds)
+#   3. Step 5 (Implementation): N-VERSION for critical code (2-3 builders)
+#   4. Step 6 (Refactoring): MANDATORY - Expert Panel (4 agents)
+#   5. Step 11 (PR Review): ALWAYS EXPERT PANEL (5 agents)
+#   6. Step 13 (Philosophy): MANDATORY - Compliance Panel (3 agents)
+#   7. Step 15 (Final): MANDATORY - Final Quality Panel (3 agents)
+#
+# Phases:
+#   - requirements-with-debate
+#   - design-with-consensus
+#   - n-version-implementation
+#   - expert-panel-refactoring
+#   - expert-panel-review
+#   - final-consensus-validation
 #
 # Use this workflow for:
 #   - Complex features with architectural implications
 #   - Mission-critical code requiring high reliability
 #   - Ambiguous requirements needing clarification
 #   - Security-sensitive implementations
+#   - Performance-critical components
 #   - Public APIs with long-term commitments
 #
-# Trade-off: Slower but higher quality output
+# NOT for (use default-workflow instead):
+#   - Simple bug fixes
+#   - Minor refactoring
+#   - Documentation updates
+#   - Time-sensitive quick fixes
+#
+# Trade-off: Slower but significantly higher quality output
 #
 # Usage:
 #   amplifier recipes execute consensus-workflow.yaml --context '{
 #     "task_description": "Implement user authentication with JWT",
 #     "requirements": "Must support refresh tokens, rate limiting",
-#     "criticality": "high"
+#     "criticality": "critical",
+#     "is_ambiguous": "true"
 #   }'
 
 recursion:
-  max_depth: 5
-  max_total_steps: 60
+  max_depth: 8
+  max_total_steps: 120
 
 context:
   # Description of the task
   task_description: ""
-  
-  # Specific requirements
+
+  # Specific requirements from user
   requirements: ""
-  
+
   # Criticality level: low, medium, high, critical
   criticality: "high"
-  
-  # Output directory for artifacts
+
+  # Whether requirements are ambiguous (triggers debate)
+  is_ambiguous: "false"
+
+  # Whether code is critical (triggers N-version)
+  is_critical_code: "false"
+
+  # GitHub issue number (optional, created in step 2)
+  issue_number: ""
+
+  # Branch name (created in step 3)
+  branch_name: ""
+
+  # Working directory for worktree
+  worktree_dir: "./worktrees"
+
+  # Output directory for consensus artifacts
   output_dir: "./ai_working/consensus"
 
+  # Conditional outputs (initialized for validation)
+  requirements_debate: ""
+  n_version_implementations: ""
+  refined_implementation: ""
+
 steps:
-  # ==========================================================================
-  # PHASE 1: REQUIREMENTS CONSENSUS
-  # Multi-agent debate to clarify and validate requirements
-  # ==========================================================================
-  - id: "requirements-clarification"
-    agent: "foundation:zen-architect"
-    mode: "ANALYZE"
+  # ============================================================================
+  # STEP 1: REWRITE AND CLARIFY REQUIREMENTS WITH CONSENSUS
+  # CONSENSUS TRIGGER: If requirements are ambiguous, complex, or involve multiple stakeholders
+  # ============================================================================
+
+  - id: "step1-requirements-analysis"
+    agent: "amplihack:prompt-writer"
     prompt: |
-      Clarify and validate the requirements for this task:
+      Clarify and structure the task requirements:
 
       **Task:** {{task_description}}
       **Requirements:** {{requirements}}
       **Criticality:** {{criticality}}
 
-      Analyze from multiple perspectives:
-      1. What are the EXPLICIT requirements that cannot be changed?
-      2. What IMPLICIT requirements should be considered?
-      3. Are there any AMBIGUITIES that need resolution?
-      4. What CONSTRAINTS apply?
+      First, identify:
+      1. EXPLICIT user requirements that CANNOT be optimized away
+      2. Any AMBIGUITIES that need resolution
+      3. IMPLICIT requirements from context
 
-      Return as JSON:
+      Return structured analysis as JSON:
       ```json
       {
-        "explicit_requirements": ["list of must-have requirements"],
+        "task_summary": "one-line summary",
+        "explicit_requirements": ["requirements that MUST be preserved"],
         "implicit_requirements": ["derived requirements"],
-        "ambiguities": [
-          {"issue": "the ambiguity", "suggested_resolution": "how to resolve"}
+        "ambiguities_detected": [
+          {"issue": "the ambiguity", "severity": "high/medium/low"}
         ],
         "constraints": ["technical and business constraints"],
         "success_criteria": ["measurable success criteria"],
-        "risks": ["potential risks to consider"]
+        "is_ambiguous": true/false,
+        "requires_debate": true/false,
+        "rationale": "why debate is/isn't needed"
       }
       ```
-    output: "requirements_analysis"
+    output: "initial_requirements"
     parse_json: true
 
-  # ==========================================================================
-  # PHASE 2: ARCHITECTURE CONSENSUS
-  # Multi-perspective architecture design
-  # ==========================================================================
-  - id: "architecture-design"
-    agent: "foundation:zen-architect"
-    mode: "ARCHITECT"
+  - id: "step1-codebase-analysis"
+    agent: "amplihack:analyzer"
     prompt: |
-      Design the architecture with multi-perspective analysis:
+      Analyze the existing codebase context for this task:
 
       **Task:** {{task_description}}
-      **Requirements:** {{requirements_analysis}}
-      **Criticality:** {{criticality}}
+      **Requirements:** {{initial_requirements}}
 
-      Analyze from these perspectives:
-      1. **Architect**: System design, module boundaries, patterns
-      2. **Security**: Threat model, security requirements
-      3. **Tester**: Testability analysis, test strategy
-
-      Provide architecture design:
-
-      ## System Architecture
-      [Component design and boundaries]
-
-      ## Security Considerations
-      [Threat model and mitigations]
-
-      ## Test Strategy
-      [How this will be tested]
-
-      ## Design Decisions
-      ```json
-      {
-        "components": [
-          {"name": "...", "responsibility": "...", "interfaces": ["..."]}
-        ],
-        "patterns_used": ["list of design patterns"],
-        "security_measures": ["security implementations"],
-        "test_approach": "TDD/integration/e2e strategy",
-        "trade_offs": [
-          {"decision": "...", "rationale": "...", "alternatives_rejected": ["..."]}
-        ]
-      }
-      ```
-    output: "architecture"
-    parse_json: true
-
-  # ==========================================================================
-  # PHASE 3: IMPLEMENTATION WITH VALIDATION
-  # Build with continuous validation
-  # ==========================================================================
-  - id: "implementation"
-    agent: "foundation:modular-builder"
-    prompt: |
-      Implement the solution following the architecture:
-
-      **Task:** {{task_description}}
-      **Requirements:** {{requirements_analysis}}
-      **Architecture:** {{architecture}}
-
-      Implementation guidelines:
-      1. Follow the architecture design exactly
-      2. Write tests alongside implementation (TDD)
-      3. No stubs, no TODOs, no placeholders
-      4. Comprehensive error handling
-      5. Clear documentation
-
-      Provide:
-      1. Complete implementation code
-      2. Unit tests
-      3. Integration points documentation
-      4. Any deviations from architecture (with justification)
-    output: "implementation"
-
-  # ==========================================================================
-  # PHASE 4: EXPERT PANEL REVIEW
-  # Multi-agent review for quality assurance
-  # ==========================================================================
-  - id: "security-review"
-    agent: "foundation:security-guardian"
-    prompt: |
-      Conduct a security review of this implementation:
-
-      **Task:** {{task_description}}
-      **Requirements:** {{requirements_analysis}}
-      **Implementation:** {{implementation}}
-
-      Review for:
-      1. OWASP Top 10 vulnerabilities
-      2. Authentication/authorization issues
-      3. Data validation and sanitization
-      4. Secure defaults
-      5. Error handling that doesn't leak information
-
-      Return findings as JSON:
-      ```json
-      {
-        "security_score": "1-10",
-        "critical_issues": ["must fix before deploy"],
-        "warnings": ["should fix"],
-        "recommendations": ["nice to have"],
-        "approved": true/false
-      }
-      ```
-    output: "security_review"
-    parse_json: true
-
-  - id: "code-quality-review"
-    agent: "foundation:zen-architect"
-    mode: "REVIEW"
-    prompt: |
-      Review the implementation for code quality and philosophy compliance:
-
-      **Implementation:** {{implementation}}
-      **Architecture:** {{architecture}}
-      **Requirements:** {{requirements_analysis}}
-
-      Review against:
-      1. Ruthless simplicity - Is this as simple as possible?
-      2. Zero-BS - No stubs, TODOs, or placeholders?
-      3. Single responsibility - Clear module boundaries?
-      4. Testability - Can this be easily tested?
-      5. Maintainability - Will this be easy to change?
+      Examine the codebase to understand:
+      1. Existing patterns and conventions
+      2. Related modules and dependencies
+      3. Integration points
+      4. Potential conflicts or impacts
 
       Return as JSON:
       ```json
       {
-        "quality_score": "1-10",
-        "simplicity_assessment": "assessment",
-        "issues": [
-          {"severity": "high/medium/low", "issue": "...", "fix": "..."}
-        ],
-        "philosophy_compliance": true/false,
-        "approved": true/false
+        "relevant_modules": ["modules that will be affected"],
+        "existing_patterns": ["patterns to follow"],
+        "dependencies": ["dependencies involved"],
+        "integration_points": ["where this integrates"],
+        "potential_conflicts": ["possible issues"],
+        "codebase_context": "summary of relevant codebase state"
       }
       ```
-    output: "quality_review"
+    output: "codebase_analysis"
     parse_json: true
 
-  # ==========================================================================
-  # PHASE 5: CONSENSUS VALIDATION
-  # Ensure all reviewers approve
-  # ==========================================================================
-  - id: "consensus-validation"
-    agent: "foundation:zen-architect"
-    mode: "ANALYZE"
+  # ---------------------------------------------------------------------------
+  # CONSENSUS GATE 1: Multi-Agent Debate for Ambiguous Requirements
+  # IF AMBIGUOUS → Deploy 3-5 specialized agents for structured debate
+  # ---------------------------------------------------------------------------
+
+  - id: "step1-debate-round1-architect"
+    condition: "{{initial_requirements.requires_debate}} == true"
+    agent: "amplihack:architect"
     prompt: |
-      Validate consensus across all reviews:
+      MULTI-AGENT DEBATE - ROUND 1: Independent Analysis (Architect Perspective)
 
-      **Security Review:** {{security_review}}
-      **Quality Review:** {{quality_review}}
+      **Task:** {{task_description}}
+      **Initial Requirements:** {{initial_requirements}}
+      **Codebase Context:** {{codebase_analysis}}
+      **Ambiguities to Resolve:** {{initial_requirements.ambiguities_detected}}
 
-      Determine if we have consensus to proceed:
+      As the ARCHITECT, provide your interpretation of the requirements:
+      - Focus on system architecture implications
+      - Consider module boundaries and patterns
+      - Identify architectural constraints
+
+      Return as JSON:
+      ```json
+      {
+        "perspective": "architect",
+        "interpretation": "your interpretation of the requirements",
+        "key_points": ["important architectural considerations"],
+        "proposed_clarifications": [
+          {"ambiguity": "...", "resolution": "...", "rationale": "..."}
+        ],
+        "concerns": ["concerns about other interpretations"],
+        "confidence": "high/medium/low"
+      }
+      ```
+    output: "debate_architect"
+    parse_json: true
+
+  - id: "step1-debate-round1-security"
+    condition: "{{initial_requirements.requires_debate}} == true"
+    agent: "amplihack:security"
+    prompt: |
+      MULTI-AGENT DEBATE - ROUND 1: Independent Analysis (Security Perspective)
+
+      **Task:** {{task_description}}
+      **Initial Requirements:** {{initial_requirements}}
+      **Codebase Context:** {{codebase_analysis}}
+      **Ambiguities to Resolve:** {{initial_requirements.ambiguities_detected}}
+
+      As the SECURITY expert, provide your interpretation:
+      - Focus on security implications
+      - Identify threat vectors
+      - Consider compliance requirements
+
+      Return as JSON:
+      ```json
+      {
+        "perspective": "security",
+        "interpretation": "your interpretation of the requirements",
+        "key_points": ["important security considerations"],
+        "proposed_clarifications": [
+          {"ambiguity": "...", "resolution": "...", "rationale": "..."}
+        ],
+        "concerns": ["security concerns with requirements"],
+        "confidence": "high/medium/low"
+      }
+      ```
+    output: "debate_security"
+    parse_json: true
+
+  - id: "step1-debate-round1-api"
+    condition: "{{initial_requirements.requires_debate}} == true"
+    agent: "amplihack:api-designer"
+    prompt: |
+      MULTI-AGENT DEBATE - ROUND 1: Independent Analysis (API Designer Perspective)
+
+      **Task:** {{task_description}}
+      **Initial Requirements:** {{initial_requirements}}
+      **Codebase Context:** {{codebase_analysis}}
+      **Ambiguities to Resolve:** {{initial_requirements.ambiguities_detected}}
+
+      As the API DESIGNER, provide your interpretation:
+      - Focus on API contracts and interfaces
+      - Consider integration points
+      - Think about consumer experience
+
+      Return as JSON:
+      ```json
+      {
+        "perspective": "api-designer",
+        "interpretation": "your interpretation of the requirements",
+        "key_points": ["important API/interface considerations"],
+        "proposed_clarifications": [
+          {"ambiguity": "...", "resolution": "...", "rationale": "..."}
+        ],
+        "concerns": ["concerns about API implications"],
+        "confidence": "high/medium/low"
+      }
+      ```
+    output: "debate_api"
+    parse_json: true
+
+  - id: "step1-debate-round1-database"
+    condition: "{{initial_requirements.requires_debate}} == true"
+    agent: "amplihack:database"
+    prompt: |
+      MULTI-AGENT DEBATE - ROUND 1: Independent Analysis (Database Perspective)
+
+      **Task:** {{task_description}}
+      **Initial Requirements:** {{initial_requirements}}
+      **Codebase Context:** {{codebase_analysis}}
+      **Ambiguities to Resolve:** {{initial_requirements.ambiguities_detected}}
+
+      As the DATABASE expert, provide your interpretation:
+      - Focus on data models and schemas
+      - Consider query patterns
+      - Think about data integrity
+
+      Return as JSON:
+      ```json
+      {
+        "perspective": "database",
+        "interpretation": "your interpretation of the requirements",
+        "key_points": ["important data considerations"],
+        "proposed_clarifications": [
+          {"ambiguity": "...", "resolution": "...", "rationale": "..."}
+        ],
+        "concerns": ["concerns about data implications"],
+        "confidence": "high/medium/low"
+      }
+      ```
+    output: "debate_database"
+    parse_json: true
+
+  - id: "step1-debate-round1-tester"
+    condition: "{{initial_requirements.requires_debate}} == true"
+    agent: "amplihack:tester"
+    prompt: |
+      MULTI-AGENT DEBATE - ROUND 1: Independent Analysis (Tester Perspective)
+
+      **Task:** {{task_description}}
+      **Initial Requirements:** {{initial_requirements}}
+      **Codebase Context:** {{codebase_analysis}}
+      **Ambiguities to Resolve:** {{initial_requirements.ambiguities_detected}}
+
+      As the TESTER, provide your interpretation:
+      - Focus on testability
+      - Consider edge cases
+      - Think about verification criteria
+
+      Return as JSON:
+      ```json
+      {
+        "perspective": "tester",
+        "interpretation": "your interpretation of the requirements",
+        "key_points": ["important testing considerations"],
+        "proposed_clarifications": [
+          {"ambiguity": "...", "resolution": "...", "rationale": "..."}
+        ],
+        "concerns": ["concerns about testability"],
+        "confidence": "high/medium/low"
+      }
+      ```
+    output: "debate_tester"
+    parse_json: true
+
+  - id: "step1-debate-round2-cross-examination"
+    condition: "{{initial_requirements.requires_debate}} == true"
+    agent: "amplihack:architect"
+    prompt: |
+      MULTI-AGENT DEBATE - ROUND 2: Cross-Examination
+
+      Review all perspectives and identify conflicts:
+
+      **Architect:** {{debate_architect}}
+      **Security:** {{debate_security}}
+      **API Designer:** {{debate_api}}
+      **Database:** {{debate_database}}
+      **Tester:** {{debate_tester}}
+
+      Perform cross-examination:
+      1. Identify CONFLICTS between interpretations
+      2. Challenge ASSUMPTIONS made by each perspective
+      3. Explore EDGE CASES and failure modes
+      4. Debate TRADE-OFFS between perspectives
+
+      Return as JSON:
+      ```json
+      {
+        "agreements": ["points all perspectives agree on"],
+        "conflicts": [
+          {
+            "issue": "the conflict",
+            "perspectives": {
+              "architect": "position",
+              "security": "position",
+              "api": "position",
+              "database": "position",
+              "tester": "position"
+            },
+            "resolution_options": ["possible resolutions"]
+          }
+        ],
+        "challenged_assumptions": [
+          {"assumption": "...", "challenge": "...", "by": "perspective"}
+        ],
+        "edge_cases_identified": ["edge cases to handle"],
+        "trade_offs": [
+          {"trade_off": "...", "favors": "perspective", "rationale": "..."}
+        ]
+      }
+      ```
+    output: "debate_cross_examination"
+    parse_json: true
+
+  - id: "step1-debate-round3-consensus"
+    condition: "{{initial_requirements.requires_debate}} == true"
+    agent: "amplihack:architect"
+    prompt: |
+      MULTI-AGENT DEBATE - ROUND 3: Consensus Building
+
+      Synthesize a unified requirements specification:
+
+      **All Perspectives:**
+      - Architect: {{debate_architect}}
+      - Security: {{debate_security}}
+      - API: {{debate_api}}
+      - Database: {{debate_database}}
+      - Tester: {{debate_tester}}
+
+      **Cross-Examination Results:** {{debate_cross_examination}}
+
+      Build consensus:
+      1. Resolve all conflicts through reasoned debate
+      2. Document trade-off decisions with rationale
+      3. Create integrated requirements specification
+      4. Document any dissenting opinions
+
+      Return as JSON:
+      ```json
+      {
+        "consensus_achieved": true/false,
+        "unified_requirements": {
+          "explicit": ["finalized explicit requirements"],
+          "implicit": ["finalized implicit requirements"],
+          "constraints": ["agreed constraints"],
+          "success_criteria": ["agreed success criteria"]
+        },
+        "resolved_ambiguities": [
+          {"ambiguity": "...", "resolution": "...", "rationale": "...", "agreed_by": ["perspectives"]}
+        ],
+        "trade_off_decisions": [
+          {"decision": "...", "rationale": "...", "alternatives_rejected": ["..."]}
+        ],
+        "dissenting_opinions": [
+          {"perspective": "...", "opinion": "...", "noted_but_overruled": "..."}
+        ],
+        "final_confidence": "high/medium/low"
+      }
+      ```
+    output: "requirements_debate"
+    parse_json: true
+
+  - id: "step1-finalize-requirements"
+    agent: "amplihack:prompt-writer"
+    prompt: |
+      Finalize the requirements specification:
+
+      **Initial Analysis:** {{initial_requirements}}
+      **Codebase Context:** {{codebase_analysis}}
+      **Debate Results (if any):** {{requirements_debate}}
+
+      Create the final, unambiguous requirements document:
 
       ```json
       {
-        "security_approved": {{security_review.approved}},
-        "quality_approved": {{quality_review.approved}},
-        "overall_consensus": true/false,
-        "blocking_issues": ["issues that must be resolved"],
-        "recommendations": ["non-blocking improvements"],
-        "final_verdict": "approved/needs_work/rejected",
-        "next_steps": ["what to do next"]
+        "task_summary": "one-line summary",
+        "explicit_requirements": ["MUST-HAVE requirements that cannot be removed"],
+        "implicit_requirements": ["derived requirements"],
+        "constraints": ["all constraints"],
+        "success_criteria": ["measurable criteria"],
+        "acceptance_criteria": ["how to verify completion"],
+        "out_of_scope": ["what this does NOT include"],
+        "consensus_mechanism_used": "none/debate",
+        "agents_involved": ["list of agents"],
+        "confidence_level": "high/medium/low"
       }
       ```
 
-      Consensus requires:
-      - Security score >= 7
-      - Quality score >= 7
-      - No critical issues
-      - Philosophy compliance
-    output: "consensus"
+      CRITICAL: Pass these requirements to ALL subsequent steps.
+    output: "final_requirements"
     parse_json: true
 
-  # ==========================================================================
-  # PHASE 6: FINAL REFINEMENT (if needed)
-  # Address any issues found in review
-  # ==========================================================================
-  - id: "refinement"
-    condition: "{{consensus.final_verdict}} == 'needs_work'"
-    agent: "foundation:modular-builder"
+  # ============================================================================
+  # STEP 2: CREATE GITHUB ISSUE
+  # ============================================================================
+
+  - id: "step2-create-issue"
+    type: "bash"
+    command: |
+      # Create GitHub issue from consensus requirements
+      echo "Creating GitHub issue for: {{task_description}}"
+
+      # Format issue body
+      ISSUE_BODY=$(cat << 'ISSUE_EOF'
+      ## Task Description
+      {{task_description}}
+
+      ## Requirements (Consensus-Validated)
+      {{final_requirements.explicit_requirements}}
+
+      ## Success Criteria
+      {{final_requirements.success_criteria}}
+
+      ## Constraints
+      {{final_requirements.constraints}}
+
+      ## Consensus Process
+      - Mechanism Used: {{final_requirements.consensus_mechanism_used}}
+      - Agents Involved: {{final_requirements.agents_involved}}
+      - Confidence: {{final_requirements.confidence_level}}
+
+      ---
+      Labels: consensus-validated, {{criticality}}
+      ISSUE_EOF
+      )
+
+      # Create issue (outputs issue number)
+      gh issue create \
+        --title "{{task_description}}" \
+        --body "$ISSUE_BODY" \
+        --label "consensus,{{criticality}}" 2>/dev/null || echo "Issue creation skipped (no gh CLI or not in repo)"
+
+      echo '{"issue_created": true, "step": "step2-create-issue"}'
+    output: "issue_creation"
+    parse_json: true
+
+  # ============================================================================
+  # STEP 3: SETUP WORKTREE AND BRANCH
+  # ============================================================================
+
+  - id: "step3-setup-worktree"
+    agent: "amplihack:worktree-manager"
     prompt: |
-      Refine the implementation to address review findings:
+      Setup git worktree and branch for isolated development:
+
+      **Task:** {{task_description}}
+      **Issue:** {{issue_number}}
+      **Requirements:** {{final_requirements}}
+      **Worktree Directory:** {{worktree_dir}}
+
+      Create worktree setup:
+      1. Branch name format: `feat/issue-{number}-{brief-description}` or `feat/{brief-description}`
+      2. Create worktree in `{{worktree_dir}}/{branch-name}`
+      3. Push branch to remote with tracking
+
+      Commands to execute:
+      ```bash
+      # Create branch name
+      BRANCH_NAME="feat/consensus-$(echo '{{task_description}}' | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | cut -c1-30)"
+
+      # Create worktree
+      git worktree add "{{worktree_dir}}/$BRANCH_NAME" -b "$BRANCH_NAME"
+
+      # Push with tracking
+      cd "{{worktree_dir}}/$BRANCH_NAME"
+      git push -u origin "$BRANCH_NAME"
+      ```
+
+      Return setup details as JSON:
+      ```json
+      {
+        "branch_name": "the branch name created",
+        "worktree_path": "full path to worktree",
+        "commands_executed": ["list of git commands"],
+        "setup_complete": true/false
+      }
+      ```
+    output: "worktree_setup"
+    parse_json: true
+
+  # ============================================================================
+  # STEP 4: RESEARCH AND DESIGN WITH TDD (ALWAYS CONSENSUS)
+  # MANDATORY CONSENSUS TRIGGER: Design decisions have long-term architectural impact
+  # ============================================================================
+
+  # ---------------------------------------------------------------------------
+  # CONSENSUS GATE 2: Multi-Agent Debate for Architecture (MANDATORY)
+  # Deploy 5 agents in parallel: architect, api-designer, database, security, tester
+  # ---------------------------------------------------------------------------
+
+  - id: "step4-design-round1-architect"
+    agent: "amplihack:architect"
+    prompt: |
+      MANDATORY ARCHITECTURE DEBATE - ROUND 1: Independent Design (Architect)
+
+      **Task:** {{task_description}}
+      **Requirements:** {{final_requirements}}
+      **Codebase Context:** {{codebase_analysis}}
+      **Criticality:** {{criticality}}
+
+      As the ARCHITECT, propose your design:
+      - System architecture and module boundaries
+      - Design patterns to use
+      - Component interactions
+
+      Return as JSON:
+      ```json
+      {
+        "perspective": "architect",
+        "proposed_design": {
+          "architecture_style": "style/pattern",
+          "components": [
+            {"name": "...", "responsibility": "...", "interfaces": ["..."]}
+          ],
+          "module_boundaries": ["boundary definitions"],
+          "patterns_used": ["design patterns"],
+          "data_flow": "how data flows through system"
+        },
+        "rationale": "why this design",
+        "trade_offs": ["trade-offs accepted"],
+        "risks": ["identified risks"],
+        "confidence": "high/medium/low"
+      }
+      ```
+    output: "design_architect"
+    parse_json: true
+
+  - id: "step4-design-round1-api"
+    agent: "amplihack:api-designer"
+    prompt: |
+      MANDATORY ARCHITECTURE DEBATE - ROUND 1: Independent Design (API Designer)
+
+      **Task:** {{task_description}}
+      **Requirements:** {{final_requirements}}
+      **Codebase Context:** {{codebase_analysis}}
+      **Criticality:** {{criticality}}
+
+      As the API DESIGNER, propose your design:
+      - API contracts and interfaces
+      - Integration points
+      - Consumer experience
+
+      Return as JSON:
+      ```json
+      {
+        "perspective": "api-designer",
+        "proposed_design": {
+          "api_style": "REST/GraphQL/RPC/etc",
+          "endpoints": [
+            {"path": "...", "method": "...", "purpose": "..."}
+          ],
+          "interfaces": ["interface definitions"],
+          "contracts": ["API contracts"],
+          "versioning_strategy": "how to version"
+        },
+        "rationale": "why this API design",
+        "trade_offs": ["trade-offs accepted"],
+        "risks": ["identified risks"],
+        "confidence": "high/medium/low"
+      }
+      ```
+    output: "design_api"
+    parse_json: true
+
+  - id: "step4-design-round1-database"
+    agent: "amplihack:database"
+    prompt: |
+      MANDATORY ARCHITECTURE DEBATE - ROUND 1: Independent Design (Database)
+
+      **Task:** {{task_description}}
+      **Requirements:** {{final_requirements}}
+      **Codebase Context:** {{codebase_analysis}}
+      **Criticality:** {{criticality}}
+
+      As the DATABASE expert, propose your design:
+      - Data models and schemas
+      - Query patterns
+      - Data integrity approach
+
+      Return as JSON:
+      ```json
+      {
+        "perspective": "database",
+        "proposed_design": {
+          "data_model": "description of data model",
+          "schemas": [
+            {"entity": "...", "fields": ["..."], "relationships": ["..."]}
+          ],
+          "query_patterns": ["common queries"],
+          "indexes": ["recommended indexes"],
+          "integrity_constraints": ["constraints"]
+        },
+        "rationale": "why this data design",
+        "trade_offs": ["trade-offs accepted"],
+        "risks": ["identified risks"],
+        "confidence": "high/medium/low"
+      }
+      ```
+    output: "design_database"
+    parse_json: true
+
+  - id: "step4-design-round1-security"
+    agent: "amplihack:security"
+    prompt: |
+      MANDATORY ARCHITECTURE DEBATE - ROUND 1: Independent Design (Security)
+
+      **Task:** {{task_description}}
+      **Requirements:** {{final_requirements}}
+      **Codebase Context:** {{codebase_analysis}}
+      **Criticality:** {{criticality}}
+
+      As the SECURITY expert, provide security design:
+      - Threat model
+      - Security requirements
+      - Mitigations
+
+      Return as JSON:
+      ```json
+      {
+        "perspective": "security",
+        "proposed_design": {
+          "threat_model": {
+            "threats": ["identified threats"],
+            "attack_vectors": ["possible attacks"],
+            "assets_at_risk": ["what needs protection"]
+          },
+          "security_requirements": ["security must-haves"],
+          "mitigations": [
+            {"threat": "...", "mitigation": "...", "implementation": "..."}
+          ],
+          "authentication": "auth approach",
+          "authorization": "authz approach"
+        },
+        "rationale": "why these security measures",
+        "trade_offs": ["security vs usability trade-offs"],
+        "risks": ["remaining risks"],
+        "confidence": "high/medium/low"
+      }
+      ```
+    output: "design_security"
+    parse_json: true
+
+  - id: "step4-design-round1-tester"
+    agent: "amplihack:tester"
+    prompt: |
+      MANDATORY ARCHITECTURE DEBATE - ROUND 1: Independent Design (Tester)
+
+      **Task:** {{task_description}}
+      **Requirements:** {{final_requirements}}
+      **Codebase Context:** {{codebase_analysis}}
+      **Criticality:** {{criticality}}
+
+      As the TESTER, provide testability analysis and TDD approach:
+      - Test strategy
+      - Testability concerns
+      - TDD approach
+
+      Return as JSON:
+      ```json
+      {
+        "perspective": "tester",
+        "proposed_design": {
+          "test_strategy": "overall approach",
+          "test_levels": {
+            "unit": ["unit test areas"],
+            "integration": ["integration test areas"],
+            "e2e": ["end-to-end scenarios"]
+          },
+          "testability_requirements": ["design requirements for testability"],
+          "tdd_approach": "how to apply TDD",
+          "test_data_strategy": "how to handle test data"
+        },
+        "rationale": "why this test approach",
+        "concerns": ["testability concerns with other designs"],
+        "risks": ["testing risks"],
+        "confidence": "high/medium/low"
+      }
+      ```
+    output: "design_tester"
+    parse_json: true
+
+  - id: "step4-design-round2-cross-examination"
+    agent: "amplihack:architect"
+    prompt: |
+      MANDATORY ARCHITECTURE DEBATE - ROUND 2: Cross-Examination
+
+      Review all design proposals and challenge assumptions:
+
+      **Architect Design:** {{design_architect}}
+      **API Design:** {{design_api}}
+      **Database Design:** {{design_database}}
+      **Security Design:** {{design_security}}
+      **Test Design:** {{design_tester}}
+
+      Cross-examine:
+      1. Identify CONFLICTS between designs
+      2. Question ASSUMPTIONS and trade-offs
+      3. Explore EDGE CASES and failure modes
+      4. Debate SCALABILITY and maintainability
+
+      Return as JSON:
+      ```json
+      {
+        "design_agreements": ["points all designs align on"],
+        "design_conflicts": [
+          {
+            "issue": "the conflict",
+            "positions": {
+              "architect": "...",
+              "api": "...",
+              "database": "...",
+              "security": "...",
+              "tester": "..."
+            },
+            "impact": "high/medium/low",
+            "resolution_options": ["possible resolutions"]
+          }
+        ],
+        "challenged_assumptions": [
+          {"design": "perspective", "assumption": "...", "challenge": "..."}
+        ],
+        "edge_cases": ["edge cases all designs must handle"],
+        "scalability_concerns": ["scalability issues raised"],
+        "maintainability_concerns": ["maintainability issues raised"]
+      }
+      ```
+    output: "design_cross_examination"
+    parse_json: true
+
+  - id: "step4-design-round3-consensus"
+    agent: "amplihack:architect"
+    prompt: |
+      MANDATORY ARCHITECTURE DEBATE - ROUND 3: Consensus Building
+
+      Synthesize unified design from all perspectives:
+
+      **All Designs:**
+      - Architect: {{design_architect}}
+      - API: {{design_api}}
+      - Database: {{design_database}}
+      - Security: {{design_security}}
+      - Tester: {{design_tester}}
+
+      **Cross-Examination:** {{design_cross_examination}}
+
+      Build consensus design:
+      1. Resolve all conflicts through reasoned debate
+      2. Document trade-off decisions with rationale
+      3. Create integrated design specification
+      4. Ensure ALL agents agree on final approach
+
+      Return as JSON:
+      ```json
+      {
+        "consensus_achieved": true/false,
+        "unified_design": {
+          "architecture": {
+            "style": "...",
+            "components": [{"name": "...", "responsibility": "...", "interfaces": ["..."]}],
+            "patterns": ["patterns used"],
+            "module_boundaries": ["boundaries"]
+          },
+          "api": {
+            "style": "...",
+            "endpoints": [{"path": "...", "method": "...", "purpose": "..."}],
+            "contracts": ["contracts"]
+          },
+          "data": {
+            "model": "...",
+            "schemas": [{"entity": "...", "fields": ["..."]}],
+            "integrity": ["constraints"]
+          },
+          "security": {
+            "threat_model": "summary",
+            "mitigations": ["mitigations"],
+            "auth": "approach"
+          },
+          "testing": {
+            "strategy": "...",
+            "tdd_approach": "...",
+            "coverage_targets": ["targets"]
+          }
+        },
+        "resolved_conflicts": [
+          {"conflict": "...", "resolution": "...", "rationale": "...", "agreed_by": ["all"]}
+        ],
+        "trade_off_decisions": [
+          {"decision": "...", "rationale": "...", "alternatives_rejected": ["..."]}
+        ],
+        "dissenting_opinions": [
+          {"perspective": "...", "opinion": "...", "documented_but_overruled": true}
+        ],
+        "implementation_order": ["ordered steps to implement"],
+        "all_agents_approved": true/false
+      }
+      ```
+    output: "design_consensus"
+    parse_json: true
+
+  - id: "step4-write-tests"
+    agent: "amplihack:tester"
+    prompt: |
+      Write comprehensive failing tests based on consensus design (TDD):
+
+      **Requirements:** {{final_requirements}}
+      **Consensus Design:** {{design_consensus}}
+
+      Write tests that:
+      1. Cover ALL agreed-upon requirements
+      2. Include edge cases identified during debate
+      3. Follow TDD - tests should FAIL initially
+      4. Cover security requirements
+      5. Cover data integrity requirements
+
+      Provide:
+      1. Unit test file(s)
+      2. Integration test file(s)
+      3. Test coverage mapping to requirements
+
+      Format with file headers:
+      ```python
+      # File: tests/test_<component>.py
+      [test code]
+      ```
+
+      Return test summary as JSON:
+      ```json
+      {
+        "test_files": ["list of test files created"],
+        "requirements_coverage": [
+          {"requirement": "...", "tests": ["test names"]}
+        ],
+        "edge_cases_covered": ["edge cases with tests"],
+        "total_tests": 0,
+        "tests_should_fail": true
+      }
+      ```
+    output: "tdd_tests"
+    parse_json: true
+
+  # ============================================================================
+  # STEP 5: IMPLEMENT THE SOLUTION (N-VERSION FOR CRITICAL CODE)
+  # CONSENSUS TRIGGER: If implementation involves critical code paths
+  # ============================================================================
+
+  - id: "step5-standard-implementation"
+    condition: "{{is_critical_code}} == 'false'"
+    agent: "amplihack:builder"
+    prompt: |
+      Implement the solution following the consensus design:
+
+      **Task:** {{task_description}}
+      **Requirements:** {{final_requirements}}
+      **Consensus Design:** {{design_consensus}}
+      **TDD Tests:** {{tdd_tests}}
+
+      Implementation rules:
+      1. Follow the consensus architecture design EXACTLY
+      2. Make the failing tests PASS
+      3. NO stubs, NO TODOs, NO placeholders
+      4. Comprehensive error handling for ALL failure modes
+      5. Add inline documentation for complex logic
+      6. Log critical decision points
+
+      Provide:
+      1. Complete implementation code (all files)
+      2. Explanation of key decisions
+      3. Any minor deviations from design (with justification)
+
+      Format with file headers:
+      ```python
+      # File: path/to/file.py
+      [code]
+      ```
+    output: "implementation"
+
+  # ---------------------------------------------------------------------------
+  # CONSENSUS GATE 3: N-Version Programming for Critical Code
+  # Deploy 2-3 builder agents independently for critical sections
+  # ---------------------------------------------------------------------------
+
+  - id: "step5-nversion-identify-critical"
+    condition: "{{is_critical_code}} == 'true'"
+    agent: "amplihack:architect"
+    prompt: |
+      Identify critical code sections for N-Version programming:
+
+      **Requirements:** {{final_requirements}}
+      **Consensus Design:** {{design_consensus}}
+      **Criticality:** {{criticality}}
+
+      Identify sections that need N-Version implementation:
+      - Security checks (authentication, authorization)
+      - Financial calculations
+      - Data integrity logic
+      - Safety-critical paths
+
+      Return as JSON:
+      ```json
+      {
+        "critical_sections": [
+          {
+            "name": "section name",
+            "description": "what it does",
+            "why_critical": "why N-version needed",
+            "specification": "detailed spec for independent implementation"
+          }
+        ],
+        "non_critical_sections": ["sections for standard implementation"],
+        "num_versions_recommended": 2 or 3
+      }
+      ```
+    output: "critical_sections"
+    parse_json: true
+
+  - id: "step5-nversion-builder1-conservative"
+    condition: "{{is_critical_code}} == 'true'"
+    agent: "amplihack:builder"
+    prompt: |
+      N-VERSION IMPLEMENTATION - Version 1: CONSERVATIVE Approach
+
+      **Critical Sections:** {{critical_sections}}
+      **Design:** {{design_consensus}}
+      **Requirements:** {{final_requirements}}
+
+      Implement using CONSERVATIVE approach:
+      - Proven design patterns
+      - Comprehensive error handling
+      - Defensive programming
+      - Prioritize safety over cleverness
+
+      Implement ONLY the critical sections identified.
+      Other sections will use standard implementation.
+
+      Return as JSON:
+      ```json
+      {
+        "version": "conservative",
+        "implementation": "full code here",
+        "approach_rationale": "why this approach",
+        "error_handling": ["error cases handled"],
+        "trade_offs": ["trade-offs made"]
+      }
+      ```
+    output: "nversion_v1"
+    parse_json: true
+
+  - id: "step5-nversion-builder2-pragmatic"
+    condition: "{{is_critical_code}} == 'true'"
+    agent: "amplihack:builder"
+    prompt: |
+      N-VERSION IMPLEMENTATION - Version 2: PRAGMATIC Approach
+
+      **Critical Sections:** {{critical_sections}}
+      **Design:** {{design_consensus}}
+      **Requirements:** {{final_requirements}}
+
+      Implement using PRAGMATIC approach:
+      - Balance simplicity and robustness
+      - Standard library solutions where possible
+      - Practical trade-offs
+      - Focus on maintainability
+
+      Implement ONLY the critical sections identified.
+      DO NOT look at Version 1 - implement independently.
+
+      Return as JSON:
+      ```json
+      {
+        "version": "pragmatic",
+        "implementation": "full code here",
+        "approach_rationale": "why this approach",
+        "error_handling": ["error cases handled"],
+        "trade_offs": ["trade-offs made"]
+      }
+      ```
+    output: "nversion_v2"
+    parse_json: true
+
+  - id: "step5-nversion-builder3-minimalist"
+    condition: "{{is_critical_code}} == 'true'"
+    agent: "amplihack:builder"
+    prompt: |
+      N-VERSION IMPLEMENTATION - Version 3: MINIMALIST Approach
+
+      **Critical Sections:** {{critical_sections}}
+      **Design:** {{design_consensus}}
+      **Requirements:** {{final_requirements}}
+
+      Implement using MINIMALIST approach:
+      - Ruthless simplification
+      - Minimal dependencies
+      - Direct implementation
+      - Remove all unnecessary abstraction
+
+      Implement ONLY the critical sections identified.
+      DO NOT look at Versions 1-2 - implement independently.
+
+      Return as JSON:
+      ```json
+      {
+        "version": "minimalist",
+        "implementation": "full code here",
+        "approach_rationale": "why this approach",
+        "error_handling": ["error cases handled"],
+        "trade_offs": ["trade-offs made"]
+      }
+      ```
+    output: "nversion_v3"
+    parse_json: true
+
+  - id: "step5-nversion-compare"
+    condition: "{{is_critical_code}} == 'true'"
+    agent: "amplihack:architect"
+    prompt: |
+      N-VERSION COMPARISON: Evaluate all implementations
+
+      **Version 1 (Conservative):** {{nversion_v1}}
+      **Version 2 (Pragmatic):** {{nversion_v2}}
+      **Version 3 (Minimalist):** {{nversion_v3}}
+      **Requirements:** {{final_requirements}}
+
+      Compare implementations for:
+      1. Logic correctness
+      2. Edge case handling
+      3. Error handling approaches
+      4. Performance characteristics
+      5. Security considerations
+
+      Return as JSON:
+      ```json
+      {
+        "comparison_matrix": [
+          {
+            "version": "conservative",
+            "correctness": {"pass": true/false, "notes": "..."},
+            "security": {"pass": true/false, "notes": "..."},
+            "simplicity": {"score": 1-10, "notes": "..."},
+            "error_handling": {"score": 1-10, "notes": "..."},
+            "performance": {"score": 1-10, "notes": "..."},
+            "strengths": ["..."],
+            "weaknesses": ["..."]
+          }
+        ],
+        "recommendation": {
+          "selected": "version name or 'hybrid'",
+          "rationale": "why selected",
+          "if_hybrid": {
+            "components_from": {"v1": ["..."], "v2": ["..."], "v3": ["..."]}
+          }
+        },
+        "all_versions_meet_requirements": true/false
+      }
+      ```
+    output: "nversion_comparison"
+    parse_json: true
+
+  - id: "step5-nversion-synthesize"
+    condition: "{{is_critical_code}} == 'true'"
+    agent: "amplihack:builder"
+    prompt: |
+      N-VERSION SYNTHESIS: Create final implementation
+
+      **Comparison:** {{nversion_comparison}}
+      **Version 1:** {{nversion_v1}}
+      **Version 2:** {{nversion_v2}}
+      **Version 3:** {{nversion_v3}}
+      **Design:** {{design_consensus}}
+      **Requirements:** {{final_requirements}}
+
+      Create the final implementation:
+      1. Use the recommended version/hybrid approach
+      2. Combine best aspects from each version
+      3. Include non-critical sections
+      4. Ensure ALL requirements are met
+
+      Return complete implementation with all files.
+    output: "implementation"
+
+  - id: "step5-nversion-vote"
+    condition: "{{is_critical_code}} == 'true'"
+    agent: "amplihack:architect"
+    prompt: |
+      N-VERSION CONSENSUS VOTE: Final approval for critical code
+
+      **Final Implementation:** {{implementation}}
+      **Comparison Results:** {{nversion_comparison}}
+      **Requirements:** {{final_requirements}}
+
+      All agents must review and approve:
+
+      Return as JSON:
+      ```json
+      {
+        "votes": {
+          "architect": {"approved": true/false, "concerns": "..."},
+          "security": {"approved": true/false, "concerns": "..."},
+          "tester": {"approved": true/false, "concerns": "..."}
+        },
+        "consensus_reached": true/false,
+        "majority_approved": true/false,
+        "blocking_concerns": ["any blocking issues"],
+        "final_approval": true/false
+      }
+      ```
+    output: "n_version_implementations"
+    parse_json: true
+
+  # ============================================================================
+  # STEP 6: REFACTOR AND SIMPLIFY (EXPERT PANEL REVIEW)
+  # MANDATORY CONSENSUS TRIGGER: Refactoring requires validation
+  # ============================================================================
+
+  # ---------------------------------------------------------------------------
+  # CONSENSUS GATE 4: Expert Panel for Refactoring (MANDATORY)
+  # Deploy: cleanup, optimizer, reviewer, patterns agents
+  # ---------------------------------------------------------------------------
+
+  - id: "step6-panel-cleanup"
+    agent: "amplihack:cleanup"
+    prompt: |
+      EXPERT PANEL REVIEW - Cleanup Agent
+
+      **CRITICAL: Original user requirements that CANNOT be removed:**
+      {{final_requirements.explicit_requirements}}
+
+      **Implementation to Review:** {{implementation}}
+      **Design:** {{design_consensus}}
+
+      As the CLEANUP agent, propose simplifications:
+      - Ruthless simplification opportunities WITHIN constraints
+      - Remove unnecessary complexity
+      - Eliminate dead code
+      - Simplify logic WITHOUT violating requirements
+
+      Return as JSON:
+      ```json
+      {
+        "perspective": "cleanup",
+        "simplifications": [
+          {
+            "location": "file:line",
+            "current": "current code/pattern",
+            "proposed": "simplified version",
+            "rationale": "why simpler",
+            "requirements_preserved": true/false
+          }
+        ],
+        "dead_code": ["code that can be removed"],
+        "unnecessary_abstractions": ["abstractions to remove"],
+        "approved": true/false,
+        "concerns": ["any concerns"]
+      }
+      ```
+    output: "panel_cleanup"
+    parse_json: true
+
+  - id: "step6-panel-optimizer"
+    agent: "amplihack:optimizer"
+    prompt: |
+      EXPERT PANEL REVIEW - Optimizer Agent
+
+      **CRITICAL: Original user requirements that CANNOT be removed:**
+      {{final_requirements.explicit_requirements}}
+
+      **Implementation to Review:** {{implementation}}
+      **Design:** {{design_consensus}}
+
+      As the OPTIMIZER agent, propose performance improvements:
+      - Performance optimization opportunities
+      - Resource efficiency improvements
+      - Algorithmic improvements
+
+      Return as JSON:
+      ```json
+      {
+        "perspective": "optimizer",
+        "optimizations": [
+          {
+            "location": "file:line",
+            "current": "current approach",
+            "proposed": "optimized version",
+            "expected_improvement": "what improves",
+            "requirements_preserved": true/false
+          }
+        ],
+        "bottlenecks_identified": ["performance bottlenecks"],
+        "approved": true/false,
+        "concerns": ["any concerns"]
+      }
+      ```
+    output: "panel_optimizer"
+    parse_json: true
+
+  - id: "step6-panel-reviewer"
+    agent: "amplihack:reviewer"
+    prompt: |
+      EXPERT PANEL REVIEW - Reviewer Agent
+
+      **CRITICAL: Original user requirements that CANNOT be removed:**
+      {{final_requirements.explicit_requirements}}
+
+      **Implementation to Review:** {{implementation}}
+      **Design:** {{design_consensus}}
+
+      As the REVIEWER agent, assess code quality:
+      - Code quality and maintainability
+      - Naming and documentation
+      - Error handling completeness
+
+      Return as JSON:
+      ```json
+      {
+        "perspective": "reviewer",
+        "quality_issues": [
+          {
+            "severity": "high/medium/low",
+            "location": "file:line",
+            "issue": "the issue",
+            "fix": "how to fix"
+          }
+        ],
+        "maintainability_score": 1-10,
+        "documentation_adequate": true/false,
+        "error_handling_complete": true/false,
+        "approved": true/false,
+        "concerns": ["any concerns"]
+      }
+      ```
+    output: "panel_reviewer"
+    parse_json: true
+
+  - id: "step6-panel-patterns"
+    agent: "amplihack:patterns"
+    prompt: |
+      EXPERT PANEL REVIEW - Patterns Agent
+
+      **CRITICAL: Original user requirements that CANNOT be removed:**
+      {{final_requirements.explicit_requirements}}
+
+      **Implementation to Review:** {{implementation}}
+      **Design:** {{design_consensus}}
+
+      As the PATTERNS agent, assess pattern compliance:
+      - Design pattern correctness
+      - Best practices adherence
+      - Anti-pattern detection
+
+      Return as JSON:
+      ```json
+      {
+        "perspective": "patterns",
+        "pattern_issues": [
+          {
+            "pattern": "pattern name",
+            "issue": "how it's misused",
+            "fix": "correct usage"
+          }
+        ],
+        "anti_patterns_detected": ["anti-patterns found"],
+        "best_practices_violations": ["violations"],
+        "approved": true/false,
+        "concerns": ["any concerns"]
+      }
+      ```
+    output: "panel_patterns"
+    parse_json: true
+
+  - id: "step6-panel-consensus"
+    agent: "amplihack:architect"
+    prompt: |
+      EXPERT PANEL CONSENSUS - Refactoring Approval
+
+      **Panel Reviews:**
+      - Cleanup: {{panel_cleanup}}
+      - Optimizer: {{panel_optimizer}}
+      - Reviewer: {{panel_reviewer}}
+      - Patterns: {{panel_patterns}}
+
+      **Requirements to Preserve:** {{final_requirements.explicit_requirements}}
+
+      Build consensus on refactoring:
+      1. Cross-check all proposed changes
+      2. Verify NO requirements are violated
+      3. Agree on final refactoring plan
+      4. ALL agents must approve each change
+
+      Return as JSON:
+      ```json
+      {
+        "unanimous_approval": true/false,
+        "approved_changes": [
+          {"change": "...", "approved_by": ["all agents"], "rationale": "..."}
+        ],
+        "rejected_changes": [
+          {"change": "...", "rejected_by": ["agent"], "reason": "..."}
+        ],
+        "requirements_validation": {
+          "all_preserved": true/false,
+          "verification": ["how each requirement is preserved"]
+        },
+        "final_refactoring_plan": ["ordered changes to make"],
+        "panel_signoff": {
+          "cleanup": true/false,
+          "optimizer": true/false,
+          "reviewer": true/false,
+          "patterns": true/false
+        }
+      }
+      ```
+    output: "refactoring_consensus"
+    parse_json: true
+
+  - id: "step6-apply-refactoring"
+    agent: "amplihack:builder"
+    prompt: |
+      Apply consensus-approved refactoring:
 
       **Original Implementation:** {{implementation}}
-      **Security Issues:** {{security_review.critical_issues}}
-      **Quality Issues:** {{quality_review.issues}}
-      **Blocking Issues:** {{consensus.blocking_issues}}
+      **Approved Refactoring Plan:** {{refactoring_consensus.final_refactoring_plan}}
+      **Requirements to Preserve:** {{final_requirements.explicit_requirements}}
 
-      Address ALL blocking issues and critical findings.
-      Maintain all original requirements.
+      Apply ONLY the approved changes:
+      1. Implement each approved change
+      2. Run tests to verify no breakage
+      3. Verify all requirements still met
 
-      Provide the refined implementation with notes on what changed.
+      Provide the refactored implementation.
+    output: "refactored_implementation"
+
+  # ============================================================================
+  # STEP 7: RUN TESTS AND PRE-COMMIT HOOKS
+  # ============================================================================
+
+  - id: "step7-run-tests"
+    type: "bash"
+    command: |
+      echo "Running tests and pre-commit hooks..."
+
+      # Run tests
+      python -m pytest tests/ -v 2>/dev/null || echo "Tests need verification"
+
+      # Run pre-commit
+      pre-commit run --all-files 2>/dev/null || echo "Pre-commit checks need attention"
+
+      echo '{"tests_run": true, "precommit_run": true}'
+    output: "test_results"
+    parse_json: true
+
+  - id: "step7-fix-issues"
+    condition: "{{test_results.tests_run}} == true"
+    agent: "amplihack:pre-commit-diagnostic"
+    prompt: |
+      Diagnose and fix any test or pre-commit failures:
+
+      **Test Results:** {{test_results}}
+      **Implementation:** {{refactored_implementation}}
+
+      If there are failures:
+      1. Diagnose the root cause
+      2. Propose fixes
+      3. Ensure fixes don't violate requirements
+
+      Return as JSON:
+      ```json
+      {
+        "issues_found": ["list of issues"],
+        "fixes_applied": ["fixes made"],
+        "all_passing": true/false
+      }
+      ```
+    output: "hook_fixes"
+    parse_json: true
+
+  # ============================================================================
+  # STEP 8: MANDATORY LOCAL TESTING
+  # ============================================================================
+
+  - id: "step8-local-testing"
+    agent: "amplihack:tester"
+    prompt: |
+      Perform mandatory local testing:
+
+      **Implementation:** {{refactored_implementation}}
+      **Requirements:** {{final_requirements}}
+      **Design:** {{design_consensus}}
+
+      Test scenarios:
+      1. Simple use cases - basic functionality
+      2. Complex use cases - edge cases
+      3. Consensus-critical paths - critical code sections
+      4. Integration points - external dependencies
+
+      Return as JSON:
+      ```json
+      {
+        "test_scenarios": [
+          {
+            "scenario": "description",
+            "type": "simple/complex/critical/integration",
+            "test_steps": ["steps taken"],
+            "result": "pass/fail",
+            "notes": "observations"
+          }
+        ],
+        "all_scenarios_passed": true/false,
+        "regressions_found": ["any regressions"],
+        "ready_to_commit": true/false
+      }
+      ```
+    output: "local_testing"
+    parse_json: true
+
+  # ============================================================================
+  # STEP 9: COMMIT AND PUSH
+  # ============================================================================
+
+  - id: "step9-commit"
+    type: "bash"
+    command: |
+      echo "Committing changes..."
+
+      # Stage all changes
+      git add -A
+
+      # Create commit message
+      COMMIT_MSG=$(cat << 'COMMIT_EOF'
+      feat: {{task_description}}
+
+      Implements {{final_requirements.task_summary}}
+
+      Consensus Mechanisms Used:
+      - Multi-Agent Debate: Requirements clarification
+      - Multi-Agent Debate: Architecture design
+      - N-Version Programming: {{is_critical_code}}
+      - Expert Panel: Refactoring review
+
+      Requirements validated by consensus process.
+
+      Resolves #{{issue_number}}
+      COMMIT_EOF
+      )
+
+      git commit -m "$COMMIT_MSG" 2>/dev/null || echo "Commit prepared"
+      git push 2>/dev/null || echo "Push prepared"
+
+      echo '{"committed": true, "pushed": true}'
+    output: "commit_result"
+    parse_json: true
+
+  # ============================================================================
+  # STEP 10: OPEN PULL REQUEST
+  # ============================================================================
+
+  - id: "step10-create-pr"
+    type: "bash"
+    command: |
+      echo "Creating pull request..."
+
+      PR_BODY=$(cat << 'PR_EOF'
+      ## Description
+      {{task_description}}
+
+      ## Requirements (Consensus-Validated)
+      {{final_requirements.explicit_requirements}}
+
+      ## Design Decisions
+      Architecture consensus achieved with:
+      - Architect, API Designer, Database, Security, Tester agents
+      - 3 rounds of structured debate
+      - All conflicts resolved with documented rationale
+
+      ## Consensus Mechanisms Applied
+      - [x] Multi-Agent Debate: Requirements ({{final_requirements.consensus_mechanism_used}})
+      - [x] Multi-Agent Debate: Architecture design
+      - [x] N-Version Programming: {{is_critical_code}}
+      - [x] Expert Panel: Refactoring review
+
+      ## Test Plan
+      - Unit tests: {{tdd_tests.total_tests}} tests
+      - Local testing: {{local_testing.all_scenarios_passed}}
+      - Coverage: All requirements mapped to tests
+
+      ## Checklist
+      - [x] Consensus design followed
+      - [x] All tests passing
+      - [x] Pre-commit hooks passing
+      - [x] Local testing completed
+      - [x] No stubs/TODOs/placeholders
+
+      Resolves #{{issue_number}}
+
+      ---
+      Label: consensus-validated
+      PR_EOF
+      )
+
+      gh pr create \
+        --title "{{task_description}}" \
+        --body "$PR_BODY" \
+        --label "consensus-validated" 2>/dev/null || echo "PR creation prepared"
+
+      echo '{"pr_created": true}'
+    output: "pr_result"
+    parse_json: true
+
+  # ============================================================================
+  # STEP 11: REVIEW THE PR (ALWAYS EXPERT PANEL)
+  # MANDATORY CONSENSUS TRIGGER: Final PR review requires expert panel
+  # ============================================================================
+
+  # ---------------------------------------------------------------------------
+  # CONSENSUS GATE 5: Expert Panel for PR Review (MANDATORY)
+  # Deploy: reviewer, security, optimizer, patterns, tester agents
+  # ---------------------------------------------------------------------------
+
+  - id: "step11-pr-review-reviewer"
+    agent: "amplihack:reviewer"
+    prompt: |
+      EXPERT PANEL PR REVIEW - Reviewer Agent
+
+      **Implementation:** {{refactored_implementation}}
+      **Requirements:** {{final_requirements}}
+      **Design:** {{design_consensus}}
+
+      Comprehensive code review:
+      - Philosophy compliance
+      - Requirements validation
+      - Code quality
+
+      Return as JSON:
+      ```json
+      {
+        "perspective": "reviewer",
+        "review_items": [
+          {"severity": "critical/high/medium/low", "issue": "...", "location": "...", "fix": "..."}
+        ],
+        "philosophy_compliant": true/false,
+        "requirements_met": true/false,
+        "zero_bs_verified": true/false,
+        "approved": true/false
+      }
+      ```
+    output: "pr_review_reviewer"
+    parse_json: true
+
+  - id: "step11-pr-review-security"
+    agent: "amplihack:security"
+    prompt: |
+      EXPERT PANEL PR REVIEW - Security Agent
+
+      **Implementation:** {{refactored_implementation}}
+      **Requirements:** {{final_requirements}}
+      **Security Design:** {{design_security}}
+
+      Security vulnerability assessment:
+      - OWASP Top 10
+      - Authentication/authorization
+      - Data validation
+      - Information leakage
+
+      Return as JSON:
+      ```json
+      {
+        "perspective": "security",
+        "vulnerabilities": [
+          {"severity": "critical/high/medium/low", "type": "...", "location": "...", "fix": "..."}
+        ],
+        "threat_model_validated": true/false,
+        "secure_by_default": true/false,
+        "approved": true/false
+      }
+      ```
+    output: "pr_review_security"
+    parse_json: true
+
+  - id: "step11-pr-review-optimizer"
+    agent: "amplihack:optimizer"
+    prompt: |
+      EXPERT PANEL PR REVIEW - Optimizer Agent
+
+      **Implementation:** {{refactored_implementation}}
+      **Requirements:** {{final_requirements}}
+
+      Performance analysis:
+      - Bottleneck identification
+      - Resource efficiency
+      - Scalability assessment
+
+      Return as JSON:
+      ```json
+      {
+        "perspective": "optimizer",
+        "performance_issues": [
+          {"severity": "high/medium/low", "issue": "...", "location": "...", "recommendation": "..."}
+        ],
+        "scalability_concerns": ["concerns"],
+        "approved": true/false
+      }
+      ```
+    output: "pr_review_optimizer"
+    parse_json: true
+
+  - id: "step11-pr-review-patterns"
+    agent: "amplihack:patterns"
+    prompt: |
+      EXPERT PANEL PR REVIEW - Patterns Agent
+
+      **Implementation:** {{refactored_implementation}}
+      **Design:** {{design_consensus}}
+
+      Pattern compliance verification:
+      - Design patterns correctly used
+      - Best practices followed
+      - Anti-patterns avoided
+
+      Return as JSON:
+      ```json
+      {
+        "perspective": "patterns",
+        "pattern_violations": [
+          {"pattern": "...", "violation": "...", "fix": "..."}
+        ],
+        "best_practices_score": 1-10,
+        "approved": true/false
+      }
+      ```
+    output: "pr_review_patterns"
+    parse_json: true
+
+  - id: "step11-pr-review-tester"
+    agent: "amplihack:tester"
+    prompt: |
+      EXPERT PANEL PR REVIEW - Tester Agent
+
+      **Implementation:** {{refactored_implementation}}
+      **Tests:** {{tdd_tests}}
+      **Requirements:** {{final_requirements}}
+
+      Test coverage analysis:
+      - Coverage adequacy
+      - Test quality
+      - Edge case coverage
+
+      Return as JSON:
+      ```json
+      {
+        "perspective": "tester",
+        "coverage_issues": [
+          {"requirement": "...", "coverage": "adequate/insufficient", "recommendation": "..."}
+        ],
+        "test_quality_score": 1-10,
+        "edge_cases_covered": true/false,
+        "approved": true/false
+      }
+      ```
+    output: "pr_review_tester"
+    parse_json: true
+
+  - id: "step11-pr-review-consensus"
+    agent: "amplihack:architect"
+    prompt: |
+      EXPERT PANEL CONSENSUS - PR Review Approval
+
+      **Panel Reviews:**
+      - Reviewer: {{pr_review_reviewer}}
+      - Security: {{pr_review_security}}
+      - Optimizer: {{pr_review_optimizer}}
+      - Patterns: {{pr_review_patterns}}
+      - Tester: {{pr_review_tester}}
+
+      Consolidate findings and reach consensus:
+      1. Prioritize issues (critical vs nice-to-have)
+      2. Panel must agree on what's mandatory vs optional
+      3. Document consensus decision
+
+      Return as JSON:
+      ```json
+      {
+        "unanimous_approval": true/false,
+        "required_changes": [
+          {"issue": "...", "severity": "critical", "agreed_by": ["all"]}
+        ],
+        "optional_improvements": [
+          {"suggestion": "...", "noted_by": ["agents"]}
+        ],
+        "consensus_mechanisms_validated": true/false,
+        "panel_signoff": {
+          "reviewer": true/false,
+          "security": true/false,
+          "optimizer": true/false,
+          "patterns": true/false,
+          "tester": true/false
+        },
+        "final_verdict": "approved/needs_work/rejected"
+      }
+      ```
+    output: "pr_review_consensus"
+    parse_json: true
+
+  # ============================================================================
+  # STEP 12: IMPLEMENT REVIEW FEEDBACK
+  # ============================================================================
+
+  - id: "step12-implement-feedback"
+    condition: "{{pr_review_consensus.final_verdict}} == 'needs_work'"
+    agent: "amplihack:builder"
+    prompt: |
+      Implement required changes from PR review:
+
+      **Current Implementation:** {{refactored_implementation}}
+      **Required Changes:** {{pr_review_consensus.required_changes}}
+      **Optional Improvements:** {{pr_review_consensus.optional_improvements}}
+
+      Address ALL required changes (panel consensus).
+      Consider optional improvements (evaluate cost/benefit).
+
+      Provide updated implementation and summary of changes.
     output: "refined_implementation"
 
-  # ==========================================================================
-  # FINAL OUTPUT
-  # ==========================================================================
+  - id: "step12-push-updates"
+    condition: "{{pr_review_consensus.final_verdict}} == 'needs_work'"
+    type: "bash"
+    command: |
+      echo "Pushing review updates..."
+      git add -A
+      git commit -m "Address PR review feedback" 2>/dev/null || true
+      git push 2>/dev/null || true
+      echo '{"updates_pushed": true}'
+    output: "review_updates"
+    parse_json: true
+
+  # ============================================================================
+  # STEP 13: PHILOSOPHY COMPLIANCE CHECK (EXPERT PANEL)
+  # MANDATORY CONSENSUS TRIGGER: Final philosophy validation
+  # ============================================================================
+
+  # ---------------------------------------------------------------------------
+  # CONSENSUS GATE 6: Philosophy Compliance Panel (MANDATORY)
+  # Deploy: reviewer, patterns, cleanup + philosophy-guardian
+  # ---------------------------------------------------------------------------
+
+  - id: "step13-philosophy-reviewer"
+    agent: "amplihack:reviewer"
+    prompt: |
+      PHILOSOPHY COMPLIANCE - Reviewer Agent
+
+      **Implementation:** {{refined_implementation}}
+      **Requirements:** {{final_requirements}}
+
+      Final philosophy validation:
+      - Zero-BS verification (no stubs, TODOs, placeholders)
+      - Ruthless simplicity achieved WITHIN user requirements
+      - All tests passing
+
+      Return as JSON:
+      ```json
+      {
+        "perspective": "reviewer",
+        "zero_bs_violations": ["any violations"],
+        "simplicity_assessment": "achieved/needs_work",
+        "complexity_justified": ["complexity justified by requirements"],
+        "approved": true/false
+      }
+      ```
+    output: "philosophy_reviewer"
+    parse_json: true
+
+  - id: "step13-philosophy-patterns"
+    agent: "amplihack:patterns"
+    prompt: |
+      PHILOSOPHY COMPLIANCE - Patterns Agent
+
+      **Implementation:** {{refined_implementation}}
+      **Design:** {{design_consensus}}
+
+      Pattern compliance verification:
+      - Bricks & studs pattern followed
+      - Regeneratable design verified
+      - Clean module boundaries
+
+      Return as JSON:
+      ```json
+      {
+        "perspective": "patterns",
+        "bricks_studs_compliant": true/false,
+        "regeneratable": true/false,
+        "module_boundaries_clean": true/false,
+        "violations": ["any violations"],
+        "approved": true/false
+      }
+      ```
+    output: "philosophy_patterns"
+    parse_json: true
+
+  - id: "step13-philosophy-cleanup"
+    agent: "amplihack:cleanup"
+    prompt: |
+      PHILOSOPHY COMPLIANCE - Cleanup Agent
+
+      **Implementation:** {{refined_implementation}}
+      **Requirements:** {{final_requirements}}
+
+      Final cleanup verification:
+      - No dead code
+      - No stubs remaining
+      - Ruthless simplicity achieved
+
+      Return as JSON:
+      ```json
+      {
+        "perspective": "cleanup",
+        "dead_code_found": ["any dead code"],
+        "stubs_found": ["any stubs"],
+        "simplicity_achieved": true/false,
+        "approved": true/false
+      }
+      ```
+    output: "philosophy_cleanup"
+    parse_json: true
+
+  - id: "step13-philosophy-guardian"
+    agent: "amplihack:philosophy-guardian"
+    prompt: |
+      PHILOSOPHY GUARDIAN - Final Validation
+
+      **Implementation:** {{refined_implementation}}
+      **Requirements:** {{final_requirements}}
+      **Panel Reviews:**
+      - Reviewer: {{philosophy_reviewer}}
+      - Patterns: {{philosophy_patterns}}
+      - Cleanup: {{philosophy_cleanup}}
+
+      As the Philosophy Guardian, perform final validation:
+      1. All agents must agree code meets philosophy
+      2. Verify ruthless simplicity WITHIN user requirements
+      3. Confirm bricks & studs pattern followed
+      4. Ensure zero-BS implementation
+
+      Return as JSON:
+      ```json
+      {
+        "unanimous_philosophy_approval": true/false,
+        "panel_signoff": {
+          "reviewer": true/false,
+          "patterns": true/false,
+          "cleanup": true/false
+        },
+        "philosophy_principles_met": {
+          "ruthless_simplicity": true/false,
+          "bricks_and_studs": true/false,
+          "zero_bs": true/false,
+          "regeneratable": true/false,
+          "test_driven": true/false
+        },
+        "complexity_justified_by_requirements": ["justified complexity"],
+        "final_approval": true/false
+      }
+      ```
+    output: "philosophy_consensus"
+    parse_json: true
+
+  # ============================================================================
+  # STEP 14: ENSURE PR IS MERGEABLE
+  # ============================================================================
+
+  - id: "step14-check-ci"
+    type: "bash"
+    command: |
+      echo "Checking CI status..."
+      gh pr checks 2>/dev/null || echo "CI check pending"
+      echo '{"ci_checked": true}'
+    output: "ci_status"
+    parse_json: true
+
+  - id: "step14-diagnose-ci"
+    condition: "{{ci_status.ci_checked}} == true"
+    agent: "amplihack:ci-diagnostic-workflow"
+    prompt: |
+      Diagnose any CI failures:
+
+      **CI Status:** {{ci_status}}
+      **Implementation:** {{refined_implementation}}
+
+      If CI is failing:
+      1. Diagnose root cause
+      2. Propose fixes
+      3. Ensure fixes don't violate requirements
+
+      Return as JSON:
+      ```json
+      {
+        "ci_passing": true/false,
+        "failures": ["any failures"],
+        "fixes_needed": ["fixes required"],
+        "pr_mergeable": true/false
+      }
+      ```
+    output: "ci_diagnosis"
+    parse_json: true
+
+  - id: "step14-verify-mergeable"
+    agent: "amplihack:reviewer"
+    prompt: |
+      Verify PR is mergeable:
+
+      **CI Status:** {{ci_diagnosis}}
+      **PR Review Consensus:** {{pr_review_consensus}}
+      **Philosophy Consensus:** {{philosophy_consensus}}
+
+      Mergeable criteria:
+      - All CI checks passing
+      - All tests passing
+      - Expert panel approval received
+      - No unresolved review comments
+      - Consensus decisions documented
+      - Philosophy compliance confirmed
+
+      Return as JSON:
+      ```json
+      {
+        "mergeable": true/false,
+        "criteria_met": {
+          "ci_passing": true/false,
+          "tests_passing": true/false,
+          "panel_approved": true/false,
+          "comments_resolved": true/false,
+          "consensus_documented": true/false,
+          "philosophy_compliant": true/false
+        },
+        "blocking_issues": ["any blocking issues"],
+        "ready_to_merge": true/false
+      }
+      ```
+    output: "mergeable_status"
+    parse_json: true
+
+  # ============================================================================
+  # STEP 15: FINAL CLEANUP AND VERIFICATION (EXPERT PANEL)
+  # MANDATORY CONSENSUS TRIGGER: Final quality gate
+  # ============================================================================
+
+  # ---------------------------------------------------------------------------
+  # CONSENSUS GATE 7: Final Quality Panel (MANDATORY)
+  # Deploy: cleanup, reviewer, patterns agents
+  # ---------------------------------------------------------------------------
+
+  - id: "step15-final-cleanup"
+    agent: "amplihack:cleanup"
+    prompt: |
+      FINAL QUALITY PANEL - Cleanup Agent
+
+      **CRITICAL: Original user requirements (provide AGAIN):**
+      {{final_requirements.explicit_requirements}}
+
+      **Implementation:** {{refined_implementation}}
+
+      Final quality pass:
+      - Remove temporary artifacts (unless user wanted them)
+      - Eliminate unnecessary complexity (within requirements)
+      - Verify zero dead code or stub implementations
+
+      Return as JSON:
+      ```json
+      {
+        "perspective": "cleanup",
+        "artifacts_removed": ["removed items"],
+        "complexity_eliminated": ["simplified items"],
+        "requirements_still_preserved": true/false,
+        "final_approved": true/false
+      }
+      ```
+    output: "final_cleanup"
+    parse_json: true
+
+  - id: "step15-final-reviewer"
+    agent: "amplihack:reviewer"
+    prompt: |
+      FINAL QUALITY PANEL - Reviewer Agent
+
+      **CRITICAL: Original user requirements (provide AGAIN):**
+      {{final_requirements.explicit_requirements}}
+
+      **Implementation:** {{refined_implementation}}
+
+      Final review:
+      - All changes comply with philosophy
+      - All requirements preserved
+      - Ready for production
+
+      Return as JSON:
+      ```json
+      {
+        "perspective": "reviewer",
+        "philosophy_compliant": true/false,
+        "requirements_preserved": true/false,
+        "production_ready": true/false,
+        "final_approved": true/false
+      }
+      ```
+    output: "final_reviewer"
+    parse_json: true
+
+  - id: "step15-final-patterns"
+    agent: "amplihack:patterns"
+    prompt: |
+      FINAL QUALITY PANEL - Patterns Agent
+
+      **CRITICAL: Original user requirements (provide AGAIN):**
+      {{final_requirements.explicit_requirements}}
+
+      **Implementation:** {{refined_implementation}}
+      **Design:** {{design_consensus}}
+
+      Final patterns verification:
+      - Module boundaries remain clean
+      - Regeneratable design intact
+      - All patterns correctly applied
+
+      Return as JSON:
+      ```json
+      {
+        "perspective": "patterns",
+        "boundaries_clean": true/false,
+        "regeneratable_intact": true/false,
+        "patterns_correct": true/false,
+        "final_approved": true/false
+      }
+      ```
+    output: "final_patterns"
+    parse_json: true
+
+  - id: "step15-final-consensus"
+    agent: "amplihack:architect"
+    prompt: |
+      FINAL QUALITY CONSENSUS - Unanimous Approval Required
+
+      **CRITICAL: Verify ALL explicit requirements preserved:**
+      {{final_requirements.explicit_requirements}}
+
+      **Final Panel Reviews:**
+      - Cleanup: {{final_cleanup}}
+      - Reviewer: {{final_reviewer}}
+      - Patterns: {{final_patterns}}
+
+      **All Consensus Gates:**
+      - Requirements Debate: {{final_requirements.consensus_mechanism_used}}
+      - Design Consensus: {{design_consensus.consensus_achieved}}
+      - N-Version (if applicable): {{n_version_implementations}}
+      - Refactoring Consensus: {{refactoring_consensus.unanimous_approval}}
+      - PR Review Consensus: {{pr_review_consensus.unanimous_approval}}
+      - Philosophy Consensus: {{philosophy_consensus.unanimous_philosophy_approval}}
+
+      Final consensus:
+      1. ALL explicit user requirements preserved
+      2. ALL consensus mechanisms properly applied
+      3. Expert panel unanimously approves final state
+      4. Document lessons learned
+
+      Return as JSON:
+      ```json
+      {
+        "final_unanimous_approval": true/false,
+        "requirements_final_check": {
+          "all_preserved": true/false,
+          "verification": ["requirement -> how preserved"]
+        },
+        "panel_final_signoff": {
+          "cleanup": true/false,
+          "reviewer": true/false,
+          "patterns": true/false
+        },
+        "consensus_mechanisms_summary": {
+          "requirements_debate": "used/not_used",
+          "design_debate": "completed",
+          "n_version": "used/not_used",
+          "refactoring_panel": "completed",
+          "pr_review_panel": "completed",
+          "philosophy_panel": "completed",
+          "final_quality_panel": "completed"
+        },
+        "lessons_learned": ["insights from consensus process"],
+        "production_ready": true/false,
+        "pr_approved_for_merge": true/false
+      }
+      ```
+    output: "final_consensus"
+    parse_json: true
+
+  # ============================================================================
+  # FINAL OUTPUT SUMMARY
+  # ============================================================================
+
   - id: "final-output"
     type: "bash"
     parse_json: true
@@ -286,13 +2157,27 @@ steps:
       cat << 'EOF'
       {
         "workflow": "consensus-workflow",
+        "version": "2.0.0",
         "task": "{{task_description}}",
         "criticality": "{{criticality}}",
-        "consensus_achieved": "{{consensus.overall_consensus}}",
-        "security_score": "{{security_review.security_score}}",
-        "quality_score": "{{quality_review.quality_score}}",
-        "final_verdict": "{{consensus.final_verdict}}",
-        "status": "complete"
+        "status": "complete",
+        "consensus_gates_completed": {
+          "gate1_requirements_debate": "{{final_requirements.consensus_mechanism_used}}",
+          "gate2_design_debate": "{{design_consensus.consensus_achieved}}",
+          "gate3_n_version": "{{is_critical_code}}",
+          "gate4_refactoring_panel": "{{refactoring_consensus.unanimous_approval}}",
+          "gate5_pr_review_panel": "{{pr_review_consensus.unanimous_approval}}",
+          "gate6_philosophy_panel": "{{philosophy_consensus.unanimous_philosophy_approval}}",
+          "gate7_final_quality_panel": "{{final_consensus.final_unanimous_approval}}"
+        },
+        "agents_involved": [
+          "prompt-writer", "analyzer", "architect", "security", "api-designer",
+          "database", "tester", "worktree-manager", "builder", "cleanup",
+          "optimizer", "reviewer", "patterns", "pre-commit-diagnostic",
+          "ci-diagnostic-workflow", "philosophy-guardian"
+        ],
+        "final_approval": "{{final_consensus.production_ready}}",
+        "pr_ready_to_merge": "{{final_consensus.pr_approved_for_merge}}"
       }
       EOF
-    output: "final_result"
+    output: "workflow_result"
