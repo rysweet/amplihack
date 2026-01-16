@@ -248,8 +248,9 @@ def launch_amplifier(args: list[str] | None = None) -> int:
         # User explicitly passed 'run', insert bundle args after 'run'
         cmd = ["amplifier", "run"] + bundle_args + args[1:]
     else:
-        # Default to run mode with bundle
-        cmd = ["amplifier", "run"] + bundle_args + args
+        # Default to interactive chat mode with bundle
+        # Add --mode chat to ensure interactive mode (Amplifier defaults to single)
+        cmd = ["amplifier", "run", "--mode", "chat"] + bundle_args + args
 
     # Debug output to stderr
     if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
