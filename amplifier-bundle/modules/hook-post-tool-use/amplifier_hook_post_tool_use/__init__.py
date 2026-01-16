@@ -1,6 +1,7 @@
 """Post Tool Use Hook - Amplifier wrapper for tool execution tracking.
 
 Handles post-tool-use processing including:
+- Delegating to Claude Code post_tool_use hook
 - Tool usage metrics tracking
 - Extensible tool registry for multiple tool hooks
 - Error detection and warnings for file operations
@@ -17,16 +18,31 @@ from amplifier_core.protocols import Hook, HookResult
 logger = logging.getLogger(__name__)
 
 # Add Claude Code hooks to path for imports
-_CLAUDE_HOOKS = (
-    Path(__file__).parent.parent.parent.parent.parent.parent
-    / ".claude"
-    / "tools"
-    / "amplihack"
-    / "hooks"
-)
+# Path: __init__.py -> amplifier_hook_post_tool_use/ -> hook-post-tool-use/ -> modules/ -> amplifier-bundle/ -> amplifier-amplihack/
+_PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.parent
+_CLAUDE_HOOKS = _PROJECT_ROOT / ".claude" / "tools" / "amplihack" / "hooks"
+
+_DELEGATION_AVAILABLE = False
+_IMPORT_ERROR: str | None = None
+
 if _CLAUDE_HOOKS.exists():
-    sys.path.insert(0, str(_CLAUDE_HOOKS))
-    sys.path.insert(0, str(_CLAUDE_HOOKS.parent))
+    if str(_CLAUDE_HOOKS) not in sys.path:
+        sys.path.insert(0, str(_CLAUDE_HOOKS))
+    if str(_CLAUDE_HOOKS.parent) not in sys.path:
+        sys.path.insert(0, str(_CLAUDE_HOOKS.parent))
+
+    # Verify the import works
+    try:
+        import post_tool_use  # noqa: F401
+
+        _DELEGATION_AVAILABLE = True
+        logger.info(f"PostToolUseHook: Delegation available from {_CLAUDE_HOOKS}")
+    except ImportError as e:
+        _IMPORT_ERROR = str(e)
+        logger.warning(f"PostToolUseHook: Import failed - {e}")
+else:
+    _IMPORT_ERROR = f"Claude hooks directory not found: {_CLAUDE_HOOKS}"
+    logger.warning(_IMPORT_ERROR)
 
 
 class PostToolUseHook(Hook):
@@ -35,8 +51,27 @@ class PostToolUseHook(Hook):
     def __init__(self, config: dict[str, Any] | None = None):
         self.config = config or {}
         self.enabled = self.config.get("enabled", True)
+        self._claude_hook = None
+        self._delegation_attempted = False
         self._tool_registry = None
         self._registry_checked = False
+
+    def _get_claude_hook(self):
+        """Lazy load post tool use hook from Claude Code."""
+        if not self._delegation_attempted:
+            self._delegation_attempted = True
+            if _DELEGATION_AVAILABLE:
+                try:
+                    from post_tool_use import PostToolUseHook as ClaudePostToolUseHook
+
+                    self._claude_hook = ClaudePostToolUseHook()
+                    logger.info("PostToolUseHook: Delegating to Claude Code hook")
+                except ImportError as e:
+                    logger.warning(f"PostToolUseHook: Claude Code delegation failed: {e}")
+                    self._claude_hook = None
+            else:
+                logger.info(f"PostToolUseHook: Using fallback ({_IMPORT_ERROR})")
+        return self._claude_hook
 
     def _get_tool_registry(self):
         """Lazy load tool registry."""
@@ -77,7 +112,23 @@ class PostToolUseHook(Hook):
             metadata = {"tool_name": tool_name}
             warnings = []
 
-            # Track tool categories
+            # Try to delegate to Claude Code hook first
+            claude_hook = self._get_claude_hook()
+            if claude_hook:
+                try:
+                    hook_result = claude_hook.process(data)
+                    if hook_result:
+                        metadata["delegation"] = "success"
+                        if hook_result.get("metadata"):
+                            metadata.update(hook_result["metadata"])
+                        logger.debug(f"PostToolUseHook: Delegated for {tool_name}")
+                except Exception as e:
+                    logger.warning(f"Claude Code post tool use hook failed: {e}")
+                    metadata["delegation"] = "execution_failed"
+            else:
+                metadata["delegation"] = "fallback"
+
+            # Track tool categories (fallback behavior)
             if tool_name == "bash":
                 metadata["category"] = "bash_commands"
             elif tool_name in ["read_file", "write_file", "edit_file"]:

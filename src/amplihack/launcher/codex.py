@@ -1,7 +1,6 @@
 """Codex CLI launcher - wrapper around OpenAI Codex command."""
 
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path

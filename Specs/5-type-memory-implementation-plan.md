@@ -16,50 +16,56 @@ This plan triages 15 HIGH severity issues from reviewer and security agents, cre
 
 #### CRITICAL - Must Fix Before Phase 1 (8 issues)
 
-| ID | Issue | Source | Impact | Effort |
-|----|-------|--------|---------|--------|
-| H1 | SQL injection in LIMIT/OFFSET | Security | Security vulnerability | 1 hour |
-| H2 | No input validation on MemoryQuery | Security | Security vulnerability | 2 hours |
-| H3 | Session isolation not enforced | Security | Data leak risk | 2 hours |
-| H4 | Missing `__all__` exports | Reviewer | Philosophy violation | 1 hour |
-| H5 | Hook interface mismatch | Reviewer | Runtime failures | 3 hours |
-| H6 | Error messages leak internals | Security | Information disclosure | 1 hour |
-| H7 | Hash collision in duplicates | Security | Data integrity | 2 hours |
-| H8 | Agent review can be bypassed | Security | Quality degradation | 1 hour |
+| ID  | Issue                              | Source   | Impact                 | Effort  |
+| --- | ---------------------------------- | -------- | ---------------------- | ------- |
+| H1  | SQL injection in LIMIT/OFFSET      | Security | Security vulnerability | 1 hour  |
+| H2  | No input validation on MemoryQuery | Security | Security vulnerability | 2 hours |
+| H3  | Session isolation not enforced     | Security | Data leak risk         | 2 hours |
+| H4  | Missing `__all__` exports          | Reviewer | Philosophy violation   | 1 hour  |
+| H5  | Hook interface mismatch            | Reviewer | Runtime failures       | 3 hours |
+| H6  | Error messages leak internals      | Security | Information disclosure | 1 hour  |
+| H7  | Hash collision in duplicates       | Security | Data integrity         | 2 hours |
+| H8  | Agent review can be bypassed       | Security | Quality degradation    | 1 hour  |
 
 **Total Effort**: 13 hours
 
 #### IMPORTANT - Fix During Phase 1 (7 issues)
 
-| ID | Issue | Source | Impact | Effort |
-|----|-------|--------|---------|--------|
-| H9 | Error handling swallows exceptions | Reviewer | Silent failures | 2 hours |
-| M1 | Type adapter layer complexity | Reviewer | Maintainability | 3 hours |
-| M2 | Inconsistent async patterns | Reviewer | Confusion, bugs | 2 hours |
-| M3 | Database permissions not verified | Security | Unauthorized access | 1 hour |
-| M4 | No automatic expiration cleanup | Security | Resource leak | 2 hours |
-| L1 | Magic numbers in code | Reviewer | Clarity | 1 hour |
-| L2 | Documentation gaps | Reviewer | Understanding | 2 hours |
+| ID  | Issue                              | Source   | Impact              | Effort  |
+| --- | ---------------------------------- | -------- | ------------------- | ------- |
+| H9  | Error handling swallows exceptions | Reviewer | Silent failures     | 2 hours |
+| M1  | Type adapter layer complexity      | Reviewer | Maintainability     | 3 hours |
+| M2  | Inconsistent async patterns        | Reviewer | Confusion, bugs     | 2 hours |
+| M3  | Database permissions not verified  | Security | Unauthorized access | 1 hour  |
+| M4  | No automatic expiration cleanup    | Security | Resource leak       | 2 hours |
+| L1  | Magic numbers in code              | Reviewer | Clarity             | 1 hour  |
+| L2  | Documentation gaps                 | Reviewer | Understanding       | 2 hours |
 
 **Total Effort**: 13 hours
 
 ## Prioritization Strategy
 
 ### Priority Tier 1: Security & Correctness (H1-H8)
+
 **Fix BEFORE any implementation work begins.**
+
 - SQL injection vulnerabilities
 - Input validation
 - Session isolation
 - Hook interface contracts
 
 ### Priority Tier 2: Philosophy Compliance (H9, M1, M2)
+
 **Fix DURING Phase 1 implementation.**
+
 - Error handling
 - Type adapters
 - Async patterns
 
 ### Priority Tier 3: Robustness (M3-M4, L1-L2)
+
 **Fix BEFORE Phase 1 completion.**
+
 - Database permissions
 - Expiration cleanup
 - Documentation
@@ -67,10 +73,12 @@ This plan triages 15 HIGH severity issues from reviewer and security agents, cre
 ## Implementation Plan
 
 ### PHASE 0: Security Hardening (BEFORE Phase 1)
+
 **Duration**: 1 day (8 hours)
 **Deliverables**: All 8 CRITICAL issues resolved
 
 #### Step 0.1: Fix SQL Injection Vulnerabilities (H1)
+
 **Problem**: Direct string interpolation in LIMIT/OFFSET clauses.
 
 ```python
@@ -83,10 +91,12 @@ cursor.execute(query, (limit, offset))
 ```
 
 **Files to modify**:
+
 - `memory_coordinator/database.py:307-310` (LIMIT/OFFSET in retrieval)
 - `memory_coordinator/database.py:519-520` (LIMIT/OFFSET in cleanup)
 
 **Validation**:
+
 ```python
 # Test SQL injection attempt
 query = MemoryQuery(limit="10; DROP TABLE memories; --", offset=0)
@@ -94,6 +104,7 @@ query = MemoryQuery(limit="10; DROP TABLE memories; --", offset=0)
 ```
 
 #### Step 0.2: Add Input Validation (H2)
+
 **Problem**: MemoryQuery fields not validated before SQL execution.
 
 ```python
@@ -133,9 +144,11 @@ class MemoryQuery:
 ```
 
 **Files to modify**:
+
 - `retrieval_pipeline/query.py` (add `__post_init__` validation)
 
 **Validation**:
+
 ```python
 # Test all edge cases
 with pytest.raises(ValueError):
@@ -146,6 +159,7 @@ with pytest.raises(ValueError):
 ```
 
 #### Step 0.3: Enforce Session Isolation (H3)
+
 **Problem**: `clear_all()` method bypasses session isolation.
 
 ```python
@@ -169,9 +183,11 @@ def clear_all_admin(self, memory_type: MemoryType, confirmation: str):
 ```
 
 **Files to modify**:
+
 - `memory_coordinator/coordinator.py:293-319` (replace `clear_all` with `clear_session`)
 
 **Validation**:
+
 ```python
 # Create memories in 2 sessions
 coordinator1 = MemoryCoordinator(session_id="session-1")
@@ -188,6 +204,7 @@ assert len(coordinator2.retrieve_all(MemoryType.EPISODIC)) == 1
 ```
 
 #### Step 0.4: Add `__all__` Exports (H4)
+
 **Problem**: Missing `__all__` in core modules violates philosophy.
 
 ```python
@@ -215,6 +232,7 @@ __all__ = [
 ```
 
 **Files to modify**:
+
 - `memory_coordinator/__init__.py`
 - `storage_pipeline/__init__.py`
 - `retrieval_pipeline/__init__.py`
@@ -222,6 +240,7 @@ __all__ = [
 - `hook_integration/__init__.py`
 
 **Pattern for ALL modules**:
+
 ```python
 # __init__.py for each module
 from .core import MainClass, helper_function, CONSTANT
@@ -230,6 +249,7 @@ __all__ = ["MainClass", "helper_function", "CONSTANT"]
 ```
 
 **Validation**:
+
 ```python
 # Test public API is discoverable
 import memory_coordinator
@@ -241,9 +261,11 @@ assert "_internal_helper" not in memory_coordinator.__all__
 ```
 
 #### Step 0.5: Fix Hook Interface Mismatch (H5)
+
 **Problem**: Hook implementations don't match interface contracts.
 
 **Expected Interface** (from Claude Code SDK):
+
 ```python
 class Hook:
     def on_user_prompt_submit(self, hook_data: dict) -> dict:
@@ -256,6 +278,7 @@ class Hook:
 ```
 
 **Current Implementation** (WRONG):
+
 ```python
 # agent_memory_hook.py
 def on_user_prompt_submit(self, hook_data):
@@ -269,6 +292,7 @@ def on_session_stop(self, hook_data):
 ```
 
 **Fixed Implementation**:
+
 ```python
 # agent_memory_hook.py
 def on_user_prompt_submit(self, hook_data: dict) -> dict:
@@ -309,10 +333,12 @@ def on_session_stop(self, hook_data: dict) -> dict:
 ```
 
 **Files to modify**:
+
 - `hook_integration/agent_memory_hook.py`
 - `hook_integration/session_stop.py`
 
 **Validation**:
+
 ```python
 # Test return type compliance
 hook = AgentMemoryHook()
@@ -325,6 +351,7 @@ assert result == {}  # No intervention expected
 ```
 
 #### Step 0.6: Sanitize Error Messages (H6)
+
 **Problem**: Error messages leak internal implementation details.
 
 ```python
@@ -344,16 +371,19 @@ except sqlite3.Error as e:
 ```
 
 **Error Message Guidelines**:
+
 1. **NEVER expose**: SQL queries, file paths, stack traces, internal IDs
 2. **ALWAYS provide**: User-actionable guidance, error category
 3. **LOG internally**: Full details with context for debugging
 
 **Files to modify**:
+
 - `memory_coordinator/database.py` (all exception handlers)
 - `storage_pipeline/storage.py` (all exception handlers)
 - `retrieval_pipeline/retrieval.py` (all exception handlers)
 
 **Pattern**:
+
 ```python
 import logging
 
@@ -390,6 +420,7 @@ def execute_query(query: str, params: tuple):
 ```
 
 **Validation**:
+
 ```python
 # Test error messages don't leak internals
 with pytest.raises(QueryExecutionError) as exc_info:
@@ -402,6 +433,7 @@ assert "database.py" not in error_msg  # No file path
 ```
 
 #### Step 0.7: Fix Hash Collision Detection (H7)
+
 **Problem**: Simple SHA256 hash for duplicate detection has collision risk.
 
 ```python
@@ -463,9 +495,11 @@ class DuplicateDetector:
 ```
 
 **Files to modify**:
+
 - `storage_pipeline/trivial_filter.py` (replace simple hash with fingerprint)
 
 **Validation**:
+
 ```python
 # Test collision resistance
 detector = DuplicateDetector()
@@ -481,6 +515,7 @@ assert detector2.is_duplicate("Hello world?") == False
 ```
 
 #### Step 0.8: Enforce Agent Review (H8)
+
 **Problem**: Agent review can be bypassed via `skip_review=True` parameter.
 
 ```python
@@ -553,10 +588,12 @@ def bulk_import(
 ```
 
 **Files to modify**:
+
 - `storage_pipeline/storage.py` (remove `skip_review` parameter)
 - Add `storage_pipeline/bulk_import.py` (separate admin API)
 
 **Validation**:
+
 ```python
 # Test agent review is mandatory
 pipeline = StoragePipeline()
@@ -582,10 +619,12 @@ with pytest.raises(ValueError):
 ---
 
 ### PHASE 1: Core Infrastructure (AFTER Security Fixes)
+
 **Duration**: 3 days
 **Dependencies**: All Phase 0 fixes completed
 
 #### Step 1.1: Fix Error Handling (H9)
+
 **Problem**: Exceptions swallowed in critical paths.
 
 ```python
@@ -609,10 +648,12 @@ except Exception as e:
 ```
 
 **Files to modify**:
+
 - `memory_coordinator/coordinator.py:170-172` (agent review exception)
 - `memory_coordinator/coordinator.py:253-255` (storage exception)
 
 **Pattern**:
+
 ```python
 # Define specific exception hierarchy
 class MemorySystemError(Exception):
@@ -657,6 +698,7 @@ def store_with_review(content: str) -> tuple[bool, str]:
 ```
 
 **Validation**:
+
 ```python
 # Test graceful degradation
 with patch('agent_review.review_content', side_effect=AgentReviewError("timeout")):
@@ -671,6 +713,7 @@ with patch('db.store', side_effect=Exception("disk full")):
 ```
 
 #### Step 1.2: Simplify Type Adapter Layer (M1)
+
 **Problem**: Complex type adapter layer adds indirection.
 
 ```python
@@ -749,10 +792,12 @@ class EpisodicMemory:
 **Philosophy**: Dataclass fields should match database columns 1:1. No complex adapters.
 
 **Files to modify**:
+
 - `memory_coordinator/coordinator.py:577-593` (remove type adapters)
 - `memory_coordinator/models.py` (define simple dataclasses)
 
 **Validation**:
+
 ```python
 # Test round-trip (no transformation loss)
 original = EpisodicMemory(
@@ -771,6 +816,7 @@ assert original == restored
 ```
 
 #### Step 1.3: Standardize Async Patterns (M2)
+
 **Problem**: Mixing sync/async APIs causes confusion.
 
 ```python
@@ -802,16 +848,19 @@ def store_memory(self, content: str):
 **Design Decision**: Memory system is PURE SYNC. No async.
 
 **Rationale**:
+
 1. SQLite is synchronous
 2. Task tool invocation is synchronous (Claude Code handles parallelism)
 3. Hook interface is synchronous
 4. No I/O-bound operations that benefit from async
 
 **Files to modify**:
+
 - All modules: Remove `async`/`await` keywords
 - All modules: Remove `asyncio` imports
 
 **Validation**:
+
 ```bash
 # Verify no async in codebase
 grep -r "async def" memory_coordinator/
@@ -822,6 +871,7 @@ grep -r "asyncio" memory_coordinator/
 ```
 
 #### Step 1.4: Verify Database Permissions (M3)
+
 **Problem**: No check for database file permissions on startup.
 
 ```python
@@ -864,9 +914,11 @@ class DatabaseConnection:
 ```
 
 **Files to modify**:
+
 - `memory_coordinator/database.py` (add `_verify_permissions` to `__init__`)
 
 **Validation**:
+
 ```python
 # Test permission verification
 db_path = "/tmp/test_memories.db"
@@ -881,6 +933,7 @@ assert oct(file_stat.st_mode)[-3:] == "600"
 ```
 
 #### Step 1.5: Add Automatic Expiration Cleanup (M4)
+
 **Problem**: No background cleanup of expired working memories.
 
 ```python
@@ -927,9 +980,11 @@ class WorkingMemoryManager:
 ```
 
 **Files to modify**:
+
 - `memory_coordinator/working_memory.py` (add `_cleanup_expired`)
 
 **Validation**:
+
 ```python
 # Test automatic cleanup
 manager = WorkingMemoryManager(db, cleanup_interval=0)  # No rate limit for test
@@ -951,6 +1006,7 @@ assert cleared[0] is not None
 ```
 
 #### Step 1.6: Replace Magic Numbers (L1)
+
 **Problem**: Magic numbers scattered in code reduce clarity.
 
 ```python
@@ -979,12 +1035,15 @@ if importance < MIN_IMPORTANCE_THRESHOLD:
 ```
 
 **Files to create**:
+
 - `memory_coordinator/constants.py` (all magic numbers)
 
 **Files to modify**:
+
 - All modules: Replace magic numbers with named constants
 
 **Validation**:
+
 ```python
 # Test constants are used
 from memory_coordinator.constants import TRIVIAL_CONTENT_MIN_LENGTH
@@ -998,9 +1057,11 @@ assert filter_trivial("Short content") == (True, "Too short")
 ```
 
 #### Step 1.7: Fill Documentation Gaps (L2)
+
 **Problem**: Missing docstrings, module philosophy not documented.
 
 **Pattern for ALL modules**:
+
 ```python
 """Module name and purpose.
 
@@ -1031,11 +1092,13 @@ __all__ = ["MainClass", "helper_function", "CONSTANT"]
 ```
 
 **Files to modify**:
+
 - All modules: Add/update module docstrings
 - All classes: Add/update class docstrings
 - All public functions: Add/update docstrings with examples
 
 **Validation**:
+
 ```python
 # Test all public API has documentation
 import memory_coordinator
@@ -1054,6 +1117,7 @@ for name in memory_coordinator.__all__:
 ## Builder Handoff Instructions
 
 ### Prerequisites
+
 1. Read specification: `Specs/5-type-memory-architecture.md` v2.0
 2. Understand philosophy: `.claude/context/PHILOSOPHY.md`
 3. Review patterns: `.claude/context/PATTERNS.md`
@@ -1061,11 +1125,13 @@ for name in memory_coordinator.__all__:
 ### Implementation Order
 
 **Week 1: Security Hardening (Phase 0)**
+
 1. Day 1: Fix H1-H4 (SQL injection, validation, session isolation, `__all__`)
 2. Day 2: Fix H5-H8 (hooks, errors, hashing, agent review)
 3. Day 3: Testing + validation of all Phase 0 fixes
 
 **Week 2-3: Core Infrastructure (Phase 1)**
+
 1. Days 4-5: Schema + MemoryCoordinator + basic storage
 2. Days 6-7: Basic retrieval + UserPromptSubmit hook
 3. Days 8-9: Fix H9, M1-M2 (error handling, types, async)
@@ -1073,6 +1139,7 @@ for name in memory_coordinator.__all__:
 5. Day 12: Integration testing
 
 **Week 4: Agent Review Integration (Phase 2)**
+
 1. AgentReviewCoordinator implementation
 2. Parallel agent invocation
 3. Consensus logic
@@ -1081,17 +1148,20 @@ for name in memory_coordinator.__all__:
 ### Success Criteria
 
 **Phase 0 Complete**:
+
 - [ ] All 8 CRITICAL issues resolved
 - [ ] Security audit passes (no SQL injection, no session leaks)
 - [ ] All tests green
 
 **Phase 1 Complete**:
+
 - [ ] Memory injection works for semantic/procedural types
 - [ ] All 7 IMPORTANT issues resolved
 - [ ] Philosophy compliance: 100% (all modules have `__all__`, no magic numbers)
 - [ ] Tests green (60% unit, 30% integration, 10% e2e)
 
 **Phase 2 Complete**:
+
 - [ ] Trivial content filtered out
 - [ ] Storage decisions logged with agent metadata
 - [ ] Tests green
@@ -1099,12 +1169,14 @@ for name in memory_coordinator.__all__:
 ### Testing Strategy
 
 **For each fix**:
+
 1. Write failing test first (TDD)
 2. Implement fix
 3. Verify test passes
 4. Add edge case tests
 
 **Test categories**:
+
 - Unit tests (60%): Core logic, no external dependencies
 - Integration tests (30%): Multiple components, real database
 - E2E tests (10%): Full lifecycle, hook to storage
@@ -1112,12 +1184,14 @@ for name in memory_coordinator.__all__:
 ### Quality Gates
 
 **Before committing**:
+
 - [ ] All tests pass
 - [ ] No `# TODO` or `# FIXME` in code
 - [ ] All public API has docstrings
 - [ ] Pre-commit hooks pass (ruff, pyright, detect-secrets)
 
 **Before PR**:
+
 - [ ] Philosophy compliance check (`/analyze`)
 - [ ] End-to-end testing with `uvx --from git...`
 - [ ] All explicit user requirements preserved
@@ -1125,6 +1199,7 @@ for name in memory_coordinator.__all__:
 ## Explicit User Requirements Preservation
 
 **From original request**:
+
 1. ✅ 5 distinct memory types (Episodic, Semantic, Prospective, Procedural, Working)
 2. ✅ Automatic operation via hooks (no manual commands)
 3. ✅ Multi-agent review for storage decisions
@@ -1144,6 +1219,7 @@ This implementation plan addresses all 15 HIGH severity issues from reviewer and
 **Total Effort**: ~26 hours (2-3 days with testing)
 
 The plan ensures:
+
 - Security vulnerabilities fixed FIRST (no SQL injection, session isolation)
 - Philosophy compliance (all `__all__` exports, error handling, simplicity)
 - Explicit user requirements preserved (5 types, hooks, agents, tokens, SQLite)
@@ -1153,6 +1229,7 @@ Builder should follow this plan sequentially - DO NOT skip Phase 0.
 ---
 
 **Next Steps**:
+
 1. Builder reviews this plan
 2. Builder implements Phase 0 (security fixes)
 3. Builder creates PR with Phase 0 fixes for review

@@ -7,6 +7,7 @@ This schema separates the five psychological memory types into distinct node typ
 ## Node Types
 
 ### 1. Session
+
 Represents a conversational session or work context.
 
 ```cypher
@@ -21,6 +22,7 @@ CREATE NODE TABLE Session(
 ```
 
 ### 2. EpisodicMemory
+
 Session-specific events and experiences.
 
 ```cypher
@@ -36,12 +38,14 @@ CREATE NODE TABLE EpisodicMemory(
 ```
 
 **Key Properties**:
+
 - Always tied to a specific session
 - Time-stamped events
 - Can have emotional context
 - Rich contextual detail
 
 ### 3. SemanticMemory
+
 Cross-session knowledge and facts.
 
 ```cypher
@@ -58,12 +62,14 @@ CREATE NODE TABLE SemanticMemory(
 ```
 
 **Key Properties**:
+
 - Not tied to a single session
 - Updated across multiple sessions
 - Versioned for tracking changes
 - Confidence scores for fact checking
 
 ### 4. ProceduralMemory
+
 How-to knowledge and workflows.
 
 ```cypher
@@ -82,12 +88,14 @@ CREATE NODE TABLE ProceduralMemory(
 ```
 
 **Key Properties**:
+
 - Global, not session-specific
 - Tracks effectiveness (success_rate)
 - Usage patterns for ranking
 - Ordered steps
 
 ### 5. ProspectiveMemory
+
 Future intentions and reminders.
 
 ```cypher
@@ -105,12 +113,14 @@ CREATE NODE TABLE ProspectiveMemory(
 ```
 
 **Key Properties**:
+
 - Can be session-scoped or global
 - Trigger conditions for activation
 - Status tracking
 - Priority levels
 
 ### 6. WorkingMemory
+
 Active task state and temporary context.
 
 ```cypher
@@ -126,6 +136,7 @@ CREATE NODE TABLE WorkingMemory(
 ```
 
 **Key Properties**:
+
 - Short-lived (TTL)
 - Session-specific
 - Processing priority
@@ -221,11 +232,13 @@ CREATE REL TABLE BUILDS_ON(
 ### 1. Clear Session Boundaries
 
 **Session-Scoped** (destroyed when session ends):
+
 - EpisodicMemory (via CONTAINS_EPISODIC)
 - WorkingMemory (via CONTAINS_WORKING)
 - ProspectiveMemory with scope='session'
 
 **Global** (persist across sessions):
+
 - SemanticMemory
 - ProceduralMemory
 - ProspectiveMemory with scope='global'
@@ -414,24 +427,31 @@ RETURN s.session_id,
 ## Benefits Summary
 
 ### 1. Type Safety
+
 Each memory type has its own schema, preventing inappropriate property access.
 
 ### 2. Semantic Clarity
+
 Relationships explicitly show memory type interactions (DERIVES_FROM, REFERENCES, etc.).
 
 ### 3. Query Performance
+
 Type-specific indexes and targeted queries instead of filtering on `memory_type` property.
 
 ### 4. Session Lifecycle
+
 Clear distinction between session-scoped and global memories for proper cleanup.
 
 ### 5. Knowledge Evolution
+
 Track how episodic experiences consolidate into semantic knowledge over time.
 
 ### 6. Procedural Learning
+
 Monitor procedure effectiveness and usage patterns across sessions.
 
 ### 7. Future Intent Management
+
 Prospective memories with proper triggering mechanisms and scope control.
 
 This schema properly models the cognitive architecture of the system! Arrr! 🏴‍☠️

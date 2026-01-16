@@ -1,6 +1,5 @@
 """Copilot CLI launcher - simple wrapper around copilot command."""
 
-import os
 import subprocess
 
 

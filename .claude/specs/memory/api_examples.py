@@ -13,7 +13,6 @@ from .api_contracts import (
     StorageRequest,
 )
 
-
 # ============================================================================
 # Example 1: Basic Storage and Retrieval
 # ============================================================================
@@ -105,9 +104,7 @@ def example_prospective_memory(coordinator: MemoryCoordinator):
     coordinator.store(request)
 
     # Retrieve pending TODOs
-    query = RetrievalQuery(
-        memory_type=MemoryType.PROSPECTIVE, min_importance=6, tags=["todo"]
-    )
+    query = RetrievalQuery(memory_type=MemoryType.PROSPECTIVE, min_importance=6, tags=["todo"])
 
     todos = coordinator.retrieve(query)
     print(f"Pending TODOs: {len(todos)}")
@@ -145,9 +142,7 @@ def example_procedural_memory(coordinator: MemoryCoordinator):
     coordinator.store(request)
 
     # Retrieve procedure when needed
-    query = RetrievalQuery(
-        memory_type=MemoryType.PROCEDURAL, search_text="CI failure", limit=1
-    )
+    query = RetrievalQuery(memory_type=MemoryType.PROCEDURAL, search_text="CI failure", limit=1)
 
     procedures = coordinator.retrieve(query)
     if procedures:
@@ -179,9 +174,7 @@ def example_working_memory(coordinator: MemoryCoordinator):
     coordinator.store(request)
 
     # Retrieve active task context
-    query = RetrievalQuery(
-        memory_type=MemoryType.WORKING, agent_id="builder", tags=["active-task"]
-    )
+    query = RetrievalQuery(memory_type=MemoryType.WORKING, agent_id="builder", tags=["active-task"])
 
     active_tasks = coordinator.retrieve(query)
     print(f"Active tasks: {len(active_tasks)}")
@@ -201,7 +194,9 @@ def example_smart_retrieval(coordinator: MemoryCoordinator):
 
     # Retrieve with relevance scoring
     query = RetrievalQuery(
-        memory_type=MemoryType.SEMANTIC, min_importance=6, limit=20  # Broad query
+        memory_type=MemoryType.SEMANTIC,
+        min_importance=6,
+        limit=20,  # Broad query
     )
 
     # Agent reviews score relevance to current context
@@ -281,15 +276,9 @@ def example_cross_type_query(coordinator: MemoryCoordinator):
         RetrievalQuery(
             memory_type=MemoryType.EPISODIC, search_text="auth", limit=5
         ),  # Past discussions
-        RetrievalQuery(
-            memory_type=MemoryType.SEMANTIC, tags=["auth"], limit=5
-        ),  # Learnings
-        RetrievalQuery(
-            memory_type=MemoryType.PROCEDURAL, tags=["auth"], limit=5
-        ),  # Workflows
-        RetrievalQuery(
-            memory_type=MemoryType.PROSPECTIVE, tags=["auth"], limit=5
-        ),  # TODOs
+        RetrievalQuery(memory_type=MemoryType.SEMANTIC, tags=["auth"], limit=5),  # Learnings
+        RetrievalQuery(memory_type=MemoryType.PROCEDURAL, tags=["auth"], limit=5),  # Workflows
+        RetrievalQuery(memory_type=MemoryType.PROSPECTIVE, tags=["auth"], limit=5),  # TODOs
     ]
 
     all_auth_memories = []

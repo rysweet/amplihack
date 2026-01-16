@@ -8,13 +8,13 @@ One-page cheat sheet for the 5-type memory system. Print this and keep it handy!
 
 ## Memory Types at a Glance
 
-| Type | What | When Stored | Example |
-|------|------|-------------|---------|
-| **Episodic** | Specific events & decisions | SessionStop | "Decided to use Redis for sessions" |
-| **Semantic** | Facts & concepts | SessionStop | "JWT contains header, payload, signature" |
-| **Prospective** | TODOs & future work | UserPromptSubmit | "Add rate limiting to API" |
-| **Procedural** | How-to workflows | TodoWriteComplete | "Deploy: 1) Test, 2) Build, 3) Push" |
-| **Working** | Active context | UserPromptSubmit | "Currently debugging auth flow" |
+| Type            | What                        | When Stored       | Example                                   |
+| --------------- | --------------------------- | ----------------- | ----------------------------------------- |
+| **Episodic**    | Specific events & decisions | SessionStop       | "Decided to use Redis for sessions"       |
+| **Semantic**    | Facts & concepts            | SessionStop       | "JWT contains header, payload, signature" |
+| **Prospective** | TODOs & future work         | UserPromptSubmit  | "Add rate limiting to API"                |
+| **Procedural**  | How-to workflows            | TodoWriteComplete | "Deploy: 1) Test, 2) Build, 3) Push"      |
+| **Working**     | Active context              | UserPromptSubmit  | "Currently debugging auth flow"           |
 
 ---
 
@@ -154,11 +154,11 @@ coordinator.retrieve(
 
 ## Hooks (Automatic Triggers)
 
-| Hook | When | What Happens |
-|------|------|--------------|
-| **UserPromptSubmit** | You submit prompt | Extract prospective + working memory |
-| **TodoWriteComplete** | Task completes | Capture procedural memory (if score >= 6) |
-| **SessionStop** | Session ends | Review for episodic + semantic, consolidate working |
+| Hook                  | When              | What Happens                                        |
+| --------------------- | ----------------- | --------------------------------------------------- |
+| **UserPromptSubmit**  | You submit prompt | Extract prospective + working memory                |
+| **TodoWriteComplete** | Task completes    | Capture procedural memory (if score >= 6)           |
+| **SessionStop**       | Session ends      | Review for episodic + semantic, consolidate working |
 
 ---
 
@@ -187,11 +187,11 @@ Patterns           → Scores pattern match (0.0-1.0)
 
 ## Performance Targets
 
-| Operation | Target | Actual (Avg) |
-|-----------|--------|--------------|
-| Storage | <50ms | 2-3ms (DB) + 3-5s (agent review) |
-| Retrieval | <50ms | 5-10ms (search) + 1-2s (scoring) |
-| Database | <10MB | ~1MB per 10,000 memories |
+| Operation | Target | Actual (Avg)                     |
+| --------- | ------ | -------------------------------- |
+| Storage   | <50ms  | 2-3ms (DB) + 3-5s (agent review) |
+| Retrieval | <50ms  | 5-10ms (search) + 1-2s (scoring) |
+| Database  | <10MB  | ~1MB per 10,000 memories         |
 
 ---
 
@@ -321,6 +321,7 @@ memories = coordinator.retrieve(
 Default: `~/.amplihack/memory.db`
 
 Custom:
+
 ```python
 coordinator = MemoryCoordinator(
     db_path="/path/to/custom/memory.db"
@@ -332,6 +333,7 @@ coordinator = MemoryCoordinator(
 Default: 6.0 (out of 10)
 
 Custom:
+
 ```python
 coordinator.storage.consensus_threshold = 7.0  # More strict
 ```
@@ -341,6 +343,7 @@ coordinator.storage.consensus_threshold = 7.0  # More strict
 Default: None (unlimited)
 
 Custom:
+
 ```python
 # Set global default
 coordinator.retrieval.default_max_tokens = 2000
@@ -411,13 +414,13 @@ coordinator.store(
 
 ### MemoryCoordinator Methods
 
-| Method | Purpose | Returns |
-|--------|---------|---------|
-| `store()` | Store memory | `StoreResult` |
-| `retrieve()` | Get memories | `List[Memory]` |
-| `stats()` | Get statistics | `MemoryStats` |
-| `delete_memory()` | Delete by ID | `bool` |
-| `clear_working_memory()` | Clear session | `int` (count) |
+| Method                   | Purpose        | Returns        |
+| ------------------------ | -------------- | -------------- |
+| `store()`                | Store memory   | `StoreResult`  |
+| `retrieve()`             | Get memories   | `List[Memory]` |
+| `stats()`                | Get statistics | `MemoryStats`  |
+| `delete_memory()`        | Delete by ID   | `bool`         |
+| `clear_working_memory()` | Clear session  | `int` (count)  |
 
 ### Memory Object
 

@@ -20,6 +20,7 @@ Ahoy! This guide shows ye how amplihack's 5-type memory system works automatical
 The 5-type memory system automatically captures and retrieves different kinds of knowledge across your sessions. It mimics how human memory works, storing different types of information in specialized ways.
 
 **Key Features**:
+
 - **Automatic**: Captures memories via hooks (no manual storage needed)
 - **Intelligent**: Multi-agent review decides what's worth storing
 - **Fast**: SQLite backend with <50ms operations
@@ -27,6 +28,7 @@ The 5-type memory system automatically captures and retrieves different kinds of
 - **Trivial Filtering**: Pre-filters mundane interactions automatically
 
 **The Five Types**:
+
 1. **Episodic** - Specific events and decisions
 2. **Semantic** - Facts and concepts
 3. **Prospective** - Future intentions and TODOs
@@ -44,6 +46,7 @@ The memory system operates via three hooks that trigger automatically:
 **Triggers**: Every time you submit a prompt
 
 **Actions**:
+
 - Extracts prospective memories (TODOs, future intentions)
 - Stores in working memory for active context
 - Runs in background (<50ms impact)
@@ -58,6 +61,7 @@ The memory system operates via three hooks that trigger automatically:
 **Triggers**: When TodoWrite tool completes a task
 
 **Actions**:
+
 - Captures procedural memory (how task was done)
 - Multi-agent review scores importance (0-10)
 - Stores if score >= 6 (worth remembering)
@@ -73,6 +77,7 @@ The memory system operates via three hooks that trigger automatically:
 **Triggers**: When your session ends
 
 **Actions**:
+
 - Reviews entire session for episodic and semantic memories
 - Consolidates working memory into long-term storage
 - Multi-agent scoring decides what persists
@@ -113,11 +118,13 @@ Average: 8.0 → STORE
 **When Stored**: SessionStop hook, after significant decisions
 
 **Example Content**:
+
 - "Decided to use PostgreSQL over MongoDB for transactions"
 - "Fixed authentication bug by adding JWT validation"
 - "User reported slow query performance in dashboard"
 
 **Retrieval Triggers**:
+
 - Similar technical decisions
 - Related problem domains
 - References to specific features/components
@@ -148,11 +155,13 @@ for memory in memories:
 **When Stored**: SessionStop hook, when learning new concepts
 
 **Example Content**:
+
 - "JWT tokens contain header, payload, and signature"
 - "Redis pub/sub pattern used for real-time notifications"
 - "API rate limit is 1000 requests per hour"
 
 **Retrieval Triggers**:
+
 - Technical questions about concepts
 - Feature implementation requests
 - Debugging similar issues
@@ -179,11 +188,13 @@ for memory in memories:
 **When Stored**: UserPromptSubmit hook, when you mention future tasks
 
 **Example Content**:
+
 - "TODO: Refactor authentication middleware"
 - "Plan to implement rate limiting next sprint"
 - "Need to fix memory leak in worker process"
 
 **Retrieval Triggers**:
+
 - Start of new sessions
 - Related feature requests
 - Planning discussions
@@ -211,11 +222,13 @@ for memory in memories:
 **When Stored**: TodoWriteComplete hook, after task completion
 
 **Example Content**:
+
 - "Deploy to production: 1) Run tests, 2) Build Docker image, 3) Tag release, 4) Update k8s manifests"
-- "Fix import errors: Check __init__.py exports, verify module paths"
+- "Fix import errors: Check **init**.py exports, verify module paths"
 - "Add new API endpoint: Define route, create handler, add validation, write tests"
 
 **Retrieval Triggers**:
+
 - Similar tasks starting
 - Workflow questions
 - "How do I..." queries
@@ -241,11 +254,13 @@ for memory in memories:
 **When Stored**: UserPromptSubmit hook, cleared at SessionStop
 
 **Example Content**:
+
 - "Currently debugging authentication flow"
 - "Active branch: feature/jwt-tokens"
 - "Testing with user ID: test-user-123"
 
 **Retrieval Triggers**:
+
 - Automatic (always included in context)
 - Session state queries
 - Context reconstruction
@@ -462,11 +477,13 @@ working_memory = {
 **Symptom**: Expected memories don't appear in queries
 
 **Causes**:
+
 1. **Low agent scores**: Multi-agent review scored < 6.0
 2. **Trivial content**: Pre-filter removed mundane interactions
 3. **Working memory**: Only active during session, cleared at stop
 
 **Solutions**:
+
 ```python
 # Check storage pipeline logs
 from amplihack.memory import StoragePipeline
@@ -491,11 +508,13 @@ print(f"Reason: {result.reason}")
 **Symptom**: Queries take >50ms
 
 **Causes**:
+
 1. **Large result sets**: Retrieving too many memories
 2. **No token budget**: Not limiting results
 3. **Database index missing**: SQLite needs optimization
 
 **Solutions**:
+
 ```python
 # Use strict token budget
 memories = coordinator.retrieve(
@@ -518,10 +537,12 @@ print(f"Query took {duration_ms:.2f}ms")
 **Symptom**: Similar memories stored multiple times
 
 **Causes**:
+
 1. **Session overlap**: Multiple sessions storing same event
 2. **Missing deduplication**: Similar content not detected
 
 **Solutions**:
+
 ```python
 # Query with deduplication
 memories = coordinator.retrieve(
@@ -536,10 +557,12 @@ memories = coordinator.retrieve(
 **Symptom**: Memories lack useful context for retrieval
 
 **Causes**:
+
 1. **Vague queries**: Not enough specificity
 2. **Missing metadata**: Context not captured during storage
 
 **Solutions**:
+
 ```python
 # Use specific queries with context
 memories = coordinator.retrieve(
@@ -554,11 +577,13 @@ memories = coordinator.retrieve(
 **Symptom**: No memories being captured automatically
 
 **Causes**:
+
 1. **Hooks not registered**: Memory hooks not loaded
 2. **SQLite connection issue**: Database not accessible
 3. **Permissions issue**: Can't write to ~/.amplihack/
 
 **Solutions**:
+
 ```bash
 # Check hook registration
 ls ~/.claude/tools/amplihack/hooks/memory_*.py

@@ -22,39 +22,39 @@ The `amplihack amplifier` command launches Microsoft Amplifier with the amplihac
 
 ## Prerequisites
 
-| Requirement | Details |
-|-------------|---------|
-| **uv** | Required for auto-installation. Install from [docs.astral.sh/uv](https://docs.astral.sh/uv/) |
-| **Amplifier** | Auto-installed on first run via `uv tool install` |
-| **API Keys** | Configure for your chosen provider (Anthropic, OpenAI, Azure) |
+| Requirement   | Details                                                                                      |
+| ------------- | -------------------------------------------------------------------------------------------- |
+| **uv**        | Required for auto-installation. Install from [docs.astral.sh/uv](https://docs.astral.sh/uv/) |
+| **Amplifier** | Auto-installed on first run via `uv tool install`                                            |
+| **API Keys**  | Configure for your chosen provider (Anthropic, OpenAI, Azure)                                |
 
 ## Options
 
 ### Session Control
 
-| Option | Description |
-|--------|-------------|
-| `--resume SESSION_ID` | Resume an existing Amplifier session |
-| `--print` | Single response mode (no tool use, no conversation) |
+| Option                | Description                                         |
+| --------------------- | --------------------------------------------------- |
+| `--resume SESSION_ID` | Resume an existing Amplifier session                |
+| `--print`             | Single response mode (no tool use, no conversation) |
 
 ### Model Selection
 
-| Option | Description |
-|--------|-------------|
-| `--model MODEL` | Model to use (e.g., `claude-sonnet-4-20250514`, `gpt-4o`) |
-| `--provider PROVIDER` | Provider to use: `anthropic`, `openai`, `azure` |
+| Option                | Description                                               |
+| --------------------- | --------------------------------------------------------- |
+| `--model MODEL`       | Model to use (e.g., `claude-sonnet-4-20250514`, `gpt-4o`) |
+| `--provider PROVIDER` | Provider to use: `anthropic`, `openai`, `azure`           |
 
 ### Auto Mode
 
-| Option | Description |
-|--------|-------------|
-| `--auto` | Run in autonomous mode with task loop |
+| Option          | Description                               |
+| --------------- | ----------------------------------------- |
+| `--auto`        | Run in autonomous mode with task loop     |
 | `--max-turns N` | Maximum turns for auto mode (default: 10) |
 
 ### Common Options
 
-| Option | Description |
-|--------|-------------|
+| Option            | Description                              |
+| ----------------- | ---------------------------------------- |
 | `--no-reflection` | Disable post-session reflection analysis |
 
 ## Usage Examples
@@ -68,6 +68,7 @@ amplihack amplifier
 ```
 
 **Output:**
+
 ```
 Using amplihack bundle: /path/to/amplifier-bundle
 [Amplifier starts in interactive mode]
@@ -149,19 +150,19 @@ Continue? [y/N] y
 
 ## Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `AMPLIHACK_DEBUG` | Set to `true` for debug output (shows full command) |
-| `ANTHROPIC_API_KEY` | API key for Anthropic models |
-| `OPENAI_API_KEY` | API key for OpenAI models |
-| `AZURE_OPENAI_*` | Azure OpenAI configuration |
+| Variable            | Description                                         |
+| ------------------- | --------------------------------------------------- |
+| `AMPLIHACK_DEBUG`   | Set to `true` for debug output (shows full command) |
+| `ANTHROPIC_API_KEY` | API key for Anthropic models                        |
+| `OPENAI_API_KEY`    | API key for OpenAI models                           |
+| `AZURE_OPENAI_*`    | Azure OpenAI configuration                          |
 
 ## Exit Codes
 
-| Code | Meaning |
-|------|---------|
-| `0` | Success |
-| `1` | Error (installation failed, command not found, etc.) |
+| Code | Meaning                                              |
+| ---- | ---------------------------------------------------- |
+| `0`  | Success                                              |
+| `1`  | Error (installation failed, command not found, etc.) |
 
 ## Troubleshooting
 
@@ -180,7 +181,8 @@ export PATH="$HOME/.local/bin:$PATH"
 
 **Problem**: Warning about missing bundle appears.
 
-**Solution**: 
+**Solution**:
+
 1. Run from the amplihack repository root
 2. Or ensure `amplifier-bundle/bundle.md` exists in your project
 
@@ -214,14 +216,15 @@ export OPENAI_API_KEY="your-key"
 
 ## Comparison with Other Commands
 
-| Command | Use Case |
-|---------|----------|
-| `amplihack amplifier` | Multi-model support, Amplifier features |
-| `amplihack claude` | Claude Code with amplihack hooks and power steering |
-| `amplihack copilot` | GitHub Copilot CLI integration |
-| `amplihack codex` | OpenAI Codex CLI integration |
+| Command               | Use Case                                            |
+| --------------------- | --------------------------------------------------- |
+| `amplihack amplifier` | Multi-model support, Amplifier features             |
+| `amplihack claude`    | Claude Code with amplihack hooks and power steering |
+| `amplihack copilot`   | GitHub Copilot CLI integration                      |
+| `amplihack codex`     | OpenAI Codex CLI integration                        |
 
 Choose `amplifier` when you need:
+
 - Multi-model flexibility (switch between Claude, GPT-4, etc.)
 - Amplifier-specific features
 - The amplihack bundle context without full Claude Code hooks
