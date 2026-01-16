@@ -38,6 +38,13 @@ class _CustomBuildBackend:
             (".claude", ".claude"),
             ("amplifier-bundle", "amplifier-bundle"),
         ]
+        # Additional copies: source -> destination (within pkg_dest)
+        # These are copied AFTER the main directories
+        self.extra_copies = [
+            # Copy skills into amplifier-bundle so they're accessible via relative path
+            (".claude/skills", "amplifier-bundle/skills"),
+            (".claude/recipes", "amplifier-bundle/recipes-claude"),
+        ]
         self.pkg_dest = self.repo_root / "src" / "amplihack"
 
     def _copy_directories(self):
@@ -76,9 +83,45 @@ class _CustomBuildBackend:
             )
             print(f"Successfully copied {src_name}/ to package")
 
+        # Handle extra copies (e.g., skills into amplifier-bundle)
+        for src_name, dest_name in self.extra_copies:
+            src_path = self.repo_root / src_name
+            dest_path = self.pkg_dest / dest_name
+
+            if not src_path.exists():
+                print(f"Warning: {src_name}/ not found at {src_path}")
+                continue
+
+            # Remove existing directory to ensure clean copy
+            if dest_path.exists():
+                print(f"Removing existing {dest_path}")
+                shutil.rmtree(dest_path)
+
+            # Copy directory
+            print(f"Copying {src_path} -> {dest_path}")
+            shutil.copytree(
+                src_path,
+                dest_path,
+                ignore=shutil.ignore_patterns(
+                    "__pycache__",
+                    "*.pyc",
+                    "*.pyo",
+                    "*~",
+                    ".DS_Store",
+                ),
+            )
+            print(f"Successfully copied {src_name}/ to {dest_name}")
+
     def _cleanup_directories(self):
         """Remove copied directories from package after build."""
+        # Clean up main directories
         for _, dest_name in self.copy_dirs:
+            dest_path = self.pkg_dest / dest_name
+            if dest_path.exists():
+                print(f"Cleaning up {dest_path}")
+                shutil.rmtree(dest_path)
+        # Clean up extra copies
+        for _, dest_name in self.extra_copies:
             dest_path = self.pkg_dest / dest_name
             if dest_path.exists():
                 print(f"Cleaning up {dest_path}")

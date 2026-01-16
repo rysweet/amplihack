@@ -11,12 +11,13 @@ includes:
   # Including it again causes a "circular dependency" warning
   - bundle: git+https://github.com/microsoft/amplifier-bundle-recipes@main
 
-# Configure tool-skills to find skills in .claude/skills directory
+# Configure tool-skills to find skills
+# The amplihack launcher copies skills to .claude/skills in cwd during setup
 tools:
   - module: tool-skills
     config:
       skills_dirs:
-        - ../.claude/skills # Amplihack skills (relative to bundle)
+        - .claude/skills # Amplihack skills (copied by launcher during setup)
         - .amplifier/skills # Standard workspace location
         - ~/.amplifier/skills # User skills
 
