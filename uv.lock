@@ -1920,6 +1920,7 @@ dependencies = [
     { name = "claude-agent-sdk" },
     { name = "fastapi" },
     { name = "flask" },
+    { name = "kuzu" },
     { name = "litellm" },
     { name = "neo4j" },
     { name = "python-dotenv" },
@@ -1938,9 +1939,6 @@ dev = [
     { name = "pytest-cov" },
     { name = "rich" },
     { name = "ruff" },
-]
-kuzu = [
-    { name = "kuzu" },
 ]
 test = [
     { name = "pytest" },
@@ -1964,7 +1962,7 @@ requires-dist = [
     { name = "claude-agent-sdk", specifier = ">=0.1.0" },
     { name = "fastapi", specifier = ">=0.68.0" },
     { name = "flask", specifier = ">=2.0.0" },
-    { name = "kuzu", marker = "extra == 'kuzu'", specifier = ">=0.11.0" },
+    { name = "kuzu", specifier = ">=0.11.0" },
     { name = "litellm", specifier = ">=1.0.0" },
     { name = "neo4j", specifier = ">=5.15.0,<6.0.0" },
     { name = "pathlib2", marker = "python_full_version < '3.6'", specifier = ">=2.3.0" },

@@ -149,6 +149,56 @@ Check remaining files for:
 
 **BUT FIRST**: Verify nothing being removed was explicitly requested by user.
 
+### 5. Test Suite Simplification
+
+After code simplification, simplify test suite:
+
+**Test Proportionality Audit**:
+
+1. **Count Tests**:
+   - Total test files
+   - Total test lines
+   - Calculate ratio: test_lines / implementation_lines
+
+2. **Proportionality Check**:
+
+   ```python
+   ratio = test_lines / implementation_lines
+
+   if ratio > 20:
+       flag_for_cleanup("Severe over-testing")
+   elif ratio > 10:
+       flag_for_review("Potential over-testing")
+   ```
+
+3. **Test Consolidation**:
+   - Remove redundant tests (similar test cases)
+   - Remove trivial tests (assert True, basic getters)
+   - Consolidate integration tests
+   - Keep critical path tests only
+
+4. **Config Change Special Case**:
+   - If all changes are config files: Keep 1-2 verification tests ONLY
+   - Delete all unit tests for config values
+   - Rationale: Config files have no logic to test
+
+**Output**:
+
+```markdown
+## Test Simplification Results
+
+**Before**: 58 test files, 29,257 lines
+**After**: 2 test files, 45 lines
+**Ratio**: 14,628:1 → 22:1 (within target for verification)
+
+**Deleted**:
+
+- 56 redundant unit tests (config has no logic)
+- Kept: build verification + visual check
+
+**Reasoning**: Config change requires verification only, not unit testing.
+```
+
 ## Action Protocol
 
 **You CAN directly**:

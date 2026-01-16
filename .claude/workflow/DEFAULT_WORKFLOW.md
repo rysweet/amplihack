@@ -79,6 +79,33 @@ This workflow should be followed for:
 - Refactoring
 - Any non-trivial code changes
 
+## ⚠️ WORKFLOW SELECTION (Read This First)
+
+**This workflow is for NON-TRIVIAL changes only.**
+
+### Quick Classification
+
+Before starting, classify your task:
+
+| Classification | Description                                         | Use Workflow          |
+| -------------- | --------------------------------------------------- | --------------------- |
+| **TRIVIAL**    | Config edit, doc update, < 10 lines                 | VERIFICATION_WORKFLOW |
+| **SIMPLE**     | Straightforward change, < 50 lines, no architecture | SIMPLIFIED_WORKFLOW   |
+| **COMPLEX**    | New feature, architecture needed, 50+ lines         | DEFAULT_WORKFLOW      |
+
+### Classification Questions
+
+Ask yourself:
+
+1. Is this a config file edit only? → **TRIVIAL**
+2. Is this < 10 lines with no architecture needed? → **TRIVIAL**
+3. Is this < 50 lines with clear implementation? → **SIMPLE**
+4. Does this need design, architecture, or complex logic? → **COMPLEX**
+
+**If TRIVIAL or SIMPLE**: STOP. Use the appropriate simplified workflow.
+
+**If COMPLEX**: Continue with this workflow.
+
 **Execution approach:**
 
 - Start with using the SlashCommand(amplihack:ultrathink) for any non-trivial task
@@ -262,6 +289,37 @@ After investigation completes, continue with these tasks:
 - [ ] Create detailed implementation plan
 - [ ] Identify risks and dependencies
 
+### Step 5.5: Proportionality Check (MANDATORY)
+
+Before proceeding to TDD, verify design matches implementation size:
+
+**Implementation Size Estimate**:
+
+- [ ] Count estimated lines of code to be changed
+- [ ] Classify: TRIVIAL (< 10 lines), SIMPLE (10-50 lines), COMPLEX (50+ lines)
+
+**Proportionality Decision**:
+
+```yaml
+If TRIVIAL:
+  - Skip comprehensive TDD (Step 7)
+  - Use verification testing only
+  - Reason: "Config change - verify it works"
+
+If SIMPLE:
+  - Simplified TDD (1-2 test files max)
+  - Focus on critical path only
+
+If COMPLEX:
+  - Proceed with full TDD (Step 7)
+```
+
+**Anti-Pattern Prevention**:
+
+- ❌ DO NOT create elaborate test suites for config changes
+- ❌ DO NOT write 50+ tests for < 10 lines of code
+- ✅ DO match test effort to implementation complexity
+
 ### Step 6: Retcon Documentation Writing
 
 - [ ] ask @documentation-writer agent to retcon write the documentation for the finished feature as if it already exists - ie the documentation for the feature as we want it to be. Write ONLY the documentation, not the code.
@@ -271,6 +329,30 @@ After investigation completes, continue with these tasks:
 ### Step 7: Test Driven Development - Writing Tests First
 
 - [ ] Followingg the Test Driven Development methodology - use the tester agent to write failing tests (TDD approach) based upon the work done so far.
+
+### Step 7.5: Test Proportionality Validation
+
+Verify test suite size is proportional to implementation:
+
+**Proportionality Formula**:
+
+```
+Test Ratio = (Test Lines) / (Implementation Lines)
+
+Target Ratios:
+- Config changes: 1:1 to 2:1 (verification only)
+- Business logic: 3:1 to 5:1 (comprehensive tests)
+- Critical paths: 5:1 to 10:1 (exhaustive tests)
+```
+
+**Validation Checklist**:
+
+- [ ] Test ratio within target range for change type
+- [ ] If ratio > 10:1, review for over-testing
+- [ ] Remove redundant or low-value tests
+- [ ] Consolidate similar test cases
+
+**Escalation**: If ratio > 15:1, pause and consult prompt-writer agent to re-classify task complexity.
 
 ### Step 8: Implement the Solution
 

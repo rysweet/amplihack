@@ -8,6 +8,7 @@ This file documents non-obvious problems, solutions, and patterns discovered dur
 
 ### Recent (December 2025)
 
+- [UVX File Copying System Bug Fixes](#uvx-file-copying-system-bug-fixes-2025-12-15)
 - [SessionStop Hook BrokenPipeError Race Condition](#sessionstop-hook-brokenpipeerror-race-condition-2025-12-13)
 - [AI Agents Don't Need Human Psychology - No-Psych Winner](#ai-agents-dont-need-human-psychology-2025-12-02)
 - [Mandatory User Testing Validates Its Own Value](#mandatory-user-testing-validates-value-2025-12-02)
@@ -30,6 +31,83 @@ This file documents non-obvious problems, solutions, and patterns discovered dur
 - [Pattern Applicability Framework](#pattern-applicability-analysis-framework-2025-10-20)
 - [Socratic Questioning Pattern](#socratic-questioning-pattern-2025-10-18)
 - [Expert Agent Creation Pattern](#expert-agent-creation-pattern-2025-10-18)
+
+---
+
+## UVX File Copying System Bug Fixes (2025-12-15)
+
+### Problem
+
+Two critical bugs in the UVX file copying system (Issue #1940):
+
+**Bug #1**: Missing `should_proceed` check after user cancellation
+
+- When user responds 'n' to conflict prompt, `should_proceed=False` is set
+- Code continued to execute file operations anyway
+- Files were overwritten despite user declining
+
+**Bug #2**: Silent failure when no files copied
+
+- When `copytree_manifest()` returns empty list (no files copied)
+- Code silently continues as if everything succeeded
+- User gets no feedback about the installation problem
+
+### Root Cause
+
+**Bug #1**: After calling `SafeCopyStrategy.determine_target()` (line 487-491), the code immediately used `copy_strategy.target_dir` without checking `copy_strategy.should_proceed`. User cancellation was recorded but not respected.
+
+**Bug #2**: After calling `copytree_manifest()` (line 521), the code only checked `if copied:` for the success path but had no `if not copied:` error handling for the failure path.
+
+### Solution
+
+**Bug #1 Fix** (7 lines after line 491):
+
+```python
+# Bug #1 Fix: Respect user cancellation (Issue #1940)
+# When user responds 'n' to conflict prompt, should_proceed=False
+# Exit gracefully with code 0 (user-initiated cancellation, not an error)
+if not copy_strategy.should_proceed:
+    print("\n❌ Operation cancelled - cannot proceed without updating .claude/ directory")
+    print("   Commit your changes and try again\n")
+    sys.exit(0)
+```
+
+**Bug #2 Fix** (9 lines after line 521):
+
+```python
+# Bug #2 Fix: Detect empty copy results (Issue #1940)
+# When copytree_manifest returns empty list, no files were copied
+# This indicates a package installation problem - exit with clear error
+if not copied:
+    print("\n❌ Failed to copy .claude files - cannot proceed")
+    print(f"   Package location: {amplihack_src}")
+    print(f"   Looking for .claude/ at: {amplihack_src}/.claude/")
+    print("   This may indicate a package installation problem\n")
+    sys.exit(1)
+```
+
+**Import Fix**: Moved `copytree_manifest` import to module level (line 9) to make it patchable in tests.
+
+### Implementation Details
+
+- **Total Lines**: 17 lines (well under 30-line requirement per Proportionality Principle)
+- **Test Coverage**: 4 tests, all passing (2 for each bug)
+- **Philosophy Compliance**:
+  - Zero-BS: Real error messages, clear exit codes
+  - Ruthless Simplicity: Minimal code, maximum clarity
+  - Fail-Fast: Detect problems immediately, don't proceed silently
+
+### Key Insight
+
+**Always check boolean flags after decision-making functions**. The pattern of "make decision → check decision → act" must be complete. Don't assume success paths are the only paths that need handling.
+
+**Test Ratio**: 54 lines of test code / 17 lines of implementation = 3.2:1 (within target for business logic)
+
+### Related Issues
+
+- Issue #1940: UVX file copying bugs
+- Pattern: Fail-Fast Prerequisite Checking (PATTERNS.md)
+- Pattern: Zero-BS Implementation (PATTERNS.md)
 
 ---
 

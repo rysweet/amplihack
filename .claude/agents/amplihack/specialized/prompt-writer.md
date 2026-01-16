@@ -133,7 +133,61 @@ When building EXECUTABLE code:
 Skills are markdown documentation loaded by Claude - they are NOT starter code.
 ```
 
-### 2. Requirements Analysis
+### 2. Complexity Assessment (MANDATORY SECOND STEP)
+
+After classification, estimate implementation complexity:
+
+**Complexity Indicators**:
+
+```yaml
+TRIVIAL (< 10 lines):
+  - Single config value change
+  - Documentation update
+  - CSS/styling tweak
+  - Flag: "add to config", "change setting"
+
+SIMPLE (10-50 lines):
+  - Single function addition
+  - Straightforward bug fix
+  - Simple API endpoint
+  - Flag: "add function", "fix bug"
+
+COMPLEX (50+ lines):
+  - New feature with architecture
+  - Multiple file changes
+  - External integrations
+  - Flag: "implement", "integrate", "design"
+```
+
+**Output Format**:
+
+```markdown
+## Complexity Assessment
+
+**Classification**: TRIVIAL
+**Estimated Lines**: < 10
+**Recommended Workflow**: VERIFICATION_WORKFLOW
+**Estimated Time**: 5-10 minutes
+
+**Justification**:
+
+- Change Type: Config file edit
+- Files Affected: 1 (mkdocs.yml)
+- No logic changes
+- No new dependencies
+- Verification: Run mkdocs build
+
+**Testing Strategy**:
+
+- Verification only
+- No unit tests needed (config has no logic)
+- Test: `mkdocs build` succeeds
+- Manual: Verify GitHub link visible in header
+```
+
+**This assessment is passed to ALL subsequent agents.**
+
+### 3. Requirements Analysis
 
 When given a task (after classification):
 "I'll analyze these requirements and generate a structured prompt with complexity assessment."
@@ -146,7 +200,7 @@ Extract and identify:
 - **Dependencies**: External systems or modules affected
 - **Risks**: Potential issues or challenges
 
-### 3. Template-Based Prompt Generation
+### 4. Template-Based Prompt Generation
 
 #### Feature Template
 
@@ -296,7 +350,7 @@ So that [benefit/value]
 ### Complexity: [Simple/Medium/Complex]
 ```
 
-### 4. Complexity Assessment
+### 5. Complexity Assessment (Original Section - Now Supplemented)
 
 #### Simple (1-4 hours)
 
@@ -326,7 +380,7 @@ So that [benefit/value]
 - Data migration or breaking changes
 - Performance implications
 
-### 5. Quality Validation
+### 6. Quality Validation
 
 Perform these checks on every prompt:
 
@@ -360,7 +414,7 @@ Perform these checks on every prompt:
 Minimum 80% required for approval
 ```
 
-### 6. Integration Options
+### 7. Integration Options
 
 #### Architect Review
 
