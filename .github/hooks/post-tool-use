@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# GitHub Copilot compatible post-tool-use hook
+# Wrapper that calls Python implementation in .claude/tools/amplihack/hooks/
+#
+# This hook runs after tool execution to:
+# - Log tool results
+# - Update tool registry
+# - Track tool usage
+
+set -e
+
+# Get the root directory of the repository
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+
+# Call Python implementation
+python3 "${REPO_ROOT}/.claude/tools/amplihack/hooks/post_tool_use.py" "$@"

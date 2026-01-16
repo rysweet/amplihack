@@ -11,6 +11,12 @@ Why this is needed:
 - .claude/ is at repo root (outside src/amplihack/)
 - Solution: Copy .claude/ into package before build
 
+Why symlinks=True is required:
+- Enables support for symlinks within .claude/ directory structure
+- shutil.copytree fails on symlinks without symlinks=True parameter
+- Preserving symlinks maintains zero-duplication architecture
+- Example: .github/agents/amplihack → .claude/agents/amplihack (source of truth)
+
 NOTE: This file is only used during package building (not runtime),
 so missing setuptools import at runtime is expected and not an error.
 """
@@ -46,6 +52,7 @@ class _CustomBuildBackend:
         shutil.copytree(
             self.claude_src,
             self.claude_dest,
+            symlinks=True,  # Preserve symlinks within .claude/ directory structure
             ignore=shutil.ignore_patterns(
                 # Exclude runtime data (logs, metrics, analysis)
                 "runtime",
