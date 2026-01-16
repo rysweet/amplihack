@@ -1,0 +1,39 @@
+# Pre-commit hook for auto-syncing Copilot CLI files
+#
+# This ensures .github/ stays in sync with .claude/ automatically
+# Users never need to remember to run sync commands!
+#
+# Install: pre-commit install
+# Or merge into existing .pre-commit-config.yaml
+
+repos:
+  - repo: local
+    hooks:
+      - id: sync-copilot-agents
+        name: Sync Copilot CLI Agents
+        entry: python -c "from src.amplihack.adapters.copilot_agent_converter import convert_agents; convert_agents(force=True); print('✓ Agents synced')"
+        language: system
+        pass_filenames: false
+        files: '^\.claude/agents/.*\.md$'
+
+      - id: sync-copilot-commands
+        name: Sync Copilot CLI Commands
+        entry: python -c "from src.amplihack.adapters.copilot_command_converter import convert_commands; convert_commands(force=True); print('✓ Commands synced')"
+        language: system
+        pass_filenames: false
+        files: '^\.claude/commands/.*\.md$'
+
+      - id: sync-copilot-skills
+        name: Sync Copilot CLI Skills
+        entry: python -c "from src.amplihack.adapters.skills_to_agents import convert_skills; convert_skills(force=True); print('✓ Skills synced')"
+        language: system
+        pass_filenames: false
+        files: '^\.claude/skills/.*\.md$'
+
+      - id: stage-synced-files
+        name: Stage Synced Copilot Files
+        entry: bash -c 'git add .github/agents/ .github/commands/ .github/skills/ 2>/dev/null || true'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [commit]

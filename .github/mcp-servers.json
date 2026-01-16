@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "amplihack-agents": {
+      "command": "uvx",
+      "args": ["--from", "amplihack", "amplihack-mcp-agents"],
+      "env": {},
+      "description": "MCP server for invoking amplihack agents (architect, builder, reviewer, tester, etc.)"
+    },
+    "amplihack-workflows": {
+      "command": "uvx",
+      "args": ["--from", "amplihack", "amplihack-mcp-workflows"],
+      "env": {},
+      "description": "MCP server for orchestrating amplihack workflows (DEFAULT_WORKFLOW, INVESTIGATION_WORKFLOW, etc.)"
+    },
+    "amplihack-hooks": {
+      "command": "uvx",
+      "args": ["--from", "amplihack", "amplihack-mcp-hooks"],
+      "env": {},
+      "description": "MCP server for triggering amplihack hooks (session_start, pre_tool_use, post_tool_use, etc.)"
+    }
+  }
+}

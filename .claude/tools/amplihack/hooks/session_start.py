@@ -150,6 +150,17 @@ class SessionStartHook(HookProcessor):
             self.log(f"Settings merge failed (non-critical): {e}", "WARNING")
             self.save_metric("settings_update_error", True)
 
+        # Copilot CLI Agent Sync (Optional - Auto-triggers if Copilot environment detected)
+        try:
+            sys.path.insert(0, str(self.project_root / ".claude" / "tools" / "amplihack" / "hooks"))
+            from copilot_session_start import CopilotSessionStartHook
+
+            copilot_hook = CopilotSessionStartHook()
+            copilot_hook.process(input_data)
+        except Exception as e:
+            # Fail gracefully - don't break session start
+            self.log(f"Copilot session start hook failed (non-critical): {e}", "WARNING")
+
         # Neo4j Startup (Conditional - Opt-In Only)
         # Why opt-in: Neo4j requires Docker, external dependencies (Blarify), and adds complexity
         # Most users don't need advanced graph memory features

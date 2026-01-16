@@ -1,0 +1,5 @@
+{
+  "copilot_auto_sync_agents": "ask",
+  "copilot_sync_on_startup": true,
+  "neo4j_auto_shutdown": "ask"
+}
