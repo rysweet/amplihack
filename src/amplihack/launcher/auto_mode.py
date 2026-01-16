@@ -98,7 +98,6 @@ class AutoMode:
         working_dir: Path | None = None,
         ui_mode: bool = False,
         query_timeout_minutes: float | None = 30.0,
-        use_enhanced_copilot: bool = False,
     ):
         """Initialize auto mode.
 
@@ -110,7 +109,6 @@ class AutoMode:
             ui_mode: Enable interactive UI mode (requires Rich library)
             query_timeout_minutes: Timeout for each SDK query in minutes (default 30.0).
                 None disables timeout. Opus detection is handled by cli.py:resolve_timeout().
-            use_enhanced_copilot: Use enhanced Copilot mode with custom agents (default False)
         """
         # Ensure UTF-8 encoding for stdout/stderr on Windows
         if sys.platform == 'win32':
@@ -127,7 +125,6 @@ class AutoMode:
         self.working_dir = working_dir if working_dir is not None else Path.cwd()
         self.ui_enabled = ui_mode
         self.ui = None
-        self.use_enhanced_copilot = use_enhanced_copilot
 
         # Handle timeout: None means no timeout, otherwise validate
         if query_timeout_minutes is None:
@@ -916,15 +913,8 @@ Document your decisions and reasoning in comments/logs."""
     def run(self) -> int:
         """Execute agentic loop.
 
-        Routes to:
-        - Enhanced Copilot mode (if use_enhanced_copilot=True and sdk="copilot")
-        - Async session for Claude SDK
-        - Sync session for subprocess-based SDKs
+        Routes to async session for Claude SDK or sync session for subprocess-based SDKs.
         """
-        # Route to enhanced Copilot mode if requested
-        if self.sdk == "copilot" and self.use_enhanced_copilot:
-            return self._run_enhanced_copilot_mode()
-
         # Start UI thread if enabled
         self._start_ui_thread()
 
@@ -938,37 +928,6 @@ Document your decisions and reasoning in comments/logs."""
         finally:
             # Always stop UI thread when done
             self._stop_ui_thread()
-
-    def _run_enhanced_copilot_mode(self) -> int:
-        """Execute using enhanced Copilot auto mode.
-
-        Returns:
-            Exit code (0 for success)
-        """
-        try:
-            # Import enhanced Copilot auto mode
-            from amplihack.launcher.auto_mode_copilot import CopilotAutoMode
-
-            self.log("Using enhanced Copilot auto mode with custom agents")
-
-            # Create enhanced mode instance
-            copilot_mode = CopilotAutoMode(
-                prompt=self.prompt,
-                max_turns=self.max_turns,
-                working_dir=self.working_dir,
-                task_type="feature",  # Could be parameterized later
-            )
-
-            # Run async mode
-            return asyncio.run(copilot_mode.run())
-
-        except ImportError as e:
-            self.log(f"Enhanced Copilot mode not available: {e}", level="WARNING")
-            self.log("Falling back to standard subprocess mode")
-            return self._run_sync_session()
-        except Exception as e:
-            self.log(f"Error in enhanced Copilot mode: {e}", level="ERROR")
-            return 1
 
     def _run_sync_session(self) -> int:
         """Execute agentic loop using subprocess-based SDK calls (Copilot/fallback)."""
