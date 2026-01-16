@@ -27,6 +27,15 @@ amplihack is a development tool built on Claude Code that leverages multiple spe
 
 Everything you need to install and configure amplihack.
 
+### Plugin Architecture ⭐ NEW
+
+Zero-install, portable plugin system that works across all your projects:
+
+- [Plugin Overview](plugin/README.md) - What is the plugin architecture
+- [Plugin Installation](plugin/PLUGIN_INSTALLATION.md) - Install once, use everywhere
+- [LSP Configuration](plugin/LSP_CONFIGURATION.md) - Language server auto-detection
+- [Plugin Development](plugin/PLUGIN_DEVELOPMENT.md) - Contribute to the plugin
+
 ### Installation
 
 - [Prerequisites](PREREQUISITES.md) - System requirements and dependencies

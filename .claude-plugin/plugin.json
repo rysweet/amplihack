@@ -1,0 +1,17 @@
+{
+  "name": "amplihack",
+  "version": "0.9.0",
+  "description": "AI-powered development framework with specialized agents and automated workflows for Claude Code",
+  "author": {
+    "name": "Microsoft Amplihack Team",
+    "url": "https://github.com/rysweet/amplihack"
+  },
+  "homepage": "https://github.com/rysweet/amplihack",
+  "repository": "https://github.com/rysweet/amplihack",
+  "license": "MIT",
+  "keywords": ["claude-code", "ai", "agents", "workflows", "automation", "development"],
+  "commands": ["./.claude/commands/"],
+  "agents": "./.claude/agents/",
+  "skills": "./.claude/skills/",
+  "hooks": "./.claude/tools/amplihack/hooks/hooks.json"
+}
