@@ -179,3 +179,14 @@ repos:
         types: [python]
         pass_filenames: true
         exclude: '^(tests/.*\.py$|.*/tests/.*\.py$)'
+
+  # amplihack Copilot CLI: Auto-sync commands when source changes
+  - repo: local
+    hooks:
+      - id: amplihack-sync-commands
+        name: Auto-sync Copilot CLI commands
+        entry: .claude/tools/amplihack/hooks/pre_commit_sync.py
+        language: python
+        files: '^\.claude/commands/'
+        pass_filenames: false
+        always_run: false
