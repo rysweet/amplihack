@@ -1,0 +1,59 @@
+# Test Reliability Tracking
+# Updated by smart-test skill after test runs
+# Tests with reliability < 0.8 are excluded from Tier 1 (fast) runs
+
+version: 1
+last_updated: "2025-11-25T10:30:00Z"
+
+# Example reliability data demonstrating the structure
+# This is sample data - real data is built from test run results
+tests:
+  # Highly reliable unit test - always included in Tier 1
+  tests/unit/test_processor.py::test_process_valid_input:
+    passes: 150
+    failures: 0
+    reliability: 1.0
+    last_failure: null
+    flaky_reason: null
+
+  # Stable test with occasional failure
+  tests/unit/test_helpers.py::test_parse_complex_input:
+    passes: 145
+    failures: 5
+    reliability: 0.97
+    last_failure: "2025-11-20"
+    flaky_reason: null
+
+  # Borderline flaky - still included in Tier 1 but monitored
+  tests/integration/test_pipeline.py::test_async_pipeline:
+    passes: 120
+    failures: 24
+    reliability: 0.83
+    last_failure: "2025-11-24"
+    flaky_reason: "Occasional timing issues under load"
+
+  # Flaky test - EXCLUDED from Tier 1 runs
+  tests/integration/test_api.py::test_timeout_handling:
+    passes: 90
+    failures: 30
+    reliability: 0.75
+    last_failure: "2025-11-24"
+    flaky_reason: "Network dependent - external API latency varies"
+
+  # Unreliable test - consider quarantine or fix
+  tests/e2e/test_concurrent_writes.py::test_race_condition:
+    passes: 60
+    failures: 40
+    reliability: 0.60
+    last_failure: "2025-11-25"
+    flaky_reason: "Race condition in database writes - needs fix"
+# Thresholds:
+# - 1.0: Perfect (always passes) - included in Tier 1
+# - 0.8-0.99: Stable - included in Tier 1
+# - 0.5-0.79: Flaky - EXCLUDED from Tier 1, investigate root cause
+# - < 0.5: Unreliable - consider quarantine or rewrite
+
+# To update reliability:
+# 1. Run tests and capture results
+# 2. Tell Claude: "Update test reliability with these results"
+# 3. Skill will increment pass/failure counts and recalculate reliability
