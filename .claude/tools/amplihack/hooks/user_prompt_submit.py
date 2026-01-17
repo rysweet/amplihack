@@ -26,6 +26,7 @@ class UserPromptSubmitHook(HookProcessor):
 
     def __init__(self):
         super().__init__("user_prompt_submit")
+        self.strategy = None
         # Cache preferences to avoid repeated file reads
         self._preferences_cache: dict[str, str] | None = None
         self._cache_timestamp: float | None = None
@@ -194,6 +195,16 @@ class UserPromptSubmitHook(HookProcessor):
         Returns:
             Additional context to inject
         """
+        # Detect launcher and select strategy
+        self.strategy = self._select_strategy()
+        if self.strategy:
+            self.log(f"Using strategy: {self.strategy.__class__.__name__}")
+            # Check for strategy-specific prompt handling
+            strategy_result = self.strategy.handle_user_prompt_submit(input_data)
+            if strategy_result:
+                self.log("Strategy provided custom prompt handling")
+                return strategy_result
+
         # Extract user prompt
         user_prompt = input_data.get("userMessage", {}).get("text", "")
 
@@ -276,6 +287,26 @@ class UserPromptSubmitHook(HookProcessor):
         return {
             "additionalContext": full_context,
         }
+
+    def _select_strategy(self):
+        """Detect launcher and select appropriate strategy."""
+        try:
+            # Import adaptive components
+            sys.path.insert(0, str(self.project_root / "src" / "amplihack"))
+            from amplihack.context.adaptive.detector import LauncherDetector
+            from amplihack.context.adaptive.strategies import ClaudeStrategy, CopilotStrategy
+
+            detector = LauncherDetector(self.project_root)
+            launcher_type = detector.detect()
+
+            if launcher_type == "copilot":
+                return CopilotStrategy(self.project_root, self.log)
+            else:
+                return ClaudeStrategy(self.project_root, self.log)
+
+        except ImportError as e:
+            self.log(f"Adaptive strategy not available: {e}", "DEBUG")
+            return None
 
 
 def main():
