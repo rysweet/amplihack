@@ -594,6 +594,11 @@ class ClaudeLauncher:
             if "CLAUDE_PROJECT_DIR" in os.environ:
                 env["CLAUDE_PROJECT_DIR"] = os.environ["CLAUDE_PROJECT_DIR"]
 
+            # Export CLAUDE_PLUGIN_ROOT for plugin discoverability
+            plugin_root = Path.home() / ".amplihack" / ".claude"
+            if plugin_root.exists():
+                env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
+
             # Ensure user-local npm bin is in PATH (for claude/claude-trace installed via npm)
             user_npm_bin = str(Path.home() / ".npm-global" / "bin")
             current_path = env.get("PATH", "")
@@ -679,6 +684,11 @@ class ClaudeLauncher:
             # Pass through CLAUDE_PROJECT_DIR if set (for UVX temp environments)
             if "CLAUDE_PROJECT_DIR" in os.environ:
                 env["CLAUDE_PROJECT_DIR"] = os.environ["CLAUDE_PROJECT_DIR"]
+
+            # Export CLAUDE_PLUGIN_ROOT for plugin discoverability
+            plugin_root = Path.home() / ".amplihack" / ".claude"
+            if plugin_root.exists():
+                env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
 
             # Ensure user-local npm bin is in PATH (for claude/claude-trace installed via npm)
             user_npm_bin = str(Path.home() / ".npm-global" / "bin")
