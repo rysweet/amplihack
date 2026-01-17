@@ -1,0 +1,1 @@
+../../.claude/agents/amplihack/core/tester.md

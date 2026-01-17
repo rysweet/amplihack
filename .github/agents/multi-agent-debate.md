@@ -1,0 +1,1 @@
+../../.claude/agents/amplihack/specialized/multi-agent-debate.md

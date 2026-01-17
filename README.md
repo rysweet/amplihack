@@ -177,8 +177,19 @@ preference injection and context loading. All 38 agents, 73 skills, and 24 comma
 work seamlessly with Copilot.
 
 ```bash
+# Default mode (no agent)
 amplihack copilot -- -p "Your task here"
+
+# With specific agent
+amplihack copilot -- --agent architect -p "Design a REST API"
+amplihack copilot -- --agent builder -p "Implement the spec"
+
+# List available agents
+ls .github/agents/*.md
 ```
+
+**Note**: Copilot shows "No custom agents configured" until you select one with `--agent <name>`.
+All 38 amplihack agents are available in `.github/agents/`.
 
 See [COPILOT_CLI.md](COPILOT_CLI.md) for complete integration guide and
 [docs/HOOKS_COMPARISON.md](docs/HOOKS_COMPARISON.md) for adaptive hook system details.
