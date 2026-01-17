@@ -536,12 +536,12 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Working directory remains: {original_cwd}")
 
         # Setup plugin architecture
-        # Use current package directory as plugin source
+        # .claude-plugin is copied to src/amplihack/.claude-plugin/ by build_hooks.py
         import amplihack
-        package_root = Path(amplihack.__file__).parent.parent  # Go up to package root with .claude-plugin/
+        amplihack_package = Path(amplihack.__file__).parent
 
-        # Check if plugin manifest exists
-        plugin_manifest = package_root / ".claude-plugin" / "plugin.json"
+        # Check if plugin manifest exists in amplihack package
+        plugin_manifest = amplihack_package / ".claude-plugin" / "plugin.json"
         if not plugin_manifest.exists():
             print(f"⚠️  Plugin manifest not found at {plugin_manifest}")
             print("   Falling back to directory copy mode")
