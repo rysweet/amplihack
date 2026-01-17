@@ -77,22 +77,24 @@ class HookIntegration(Protocol):
 
 ## Performance Contracts
 
-| Operation | Target | Notes |
-|-----------|--------|-------|
-| store() | <500ms | Includes 3-agent review |
-| retrieve() | <50ms | Database only |
+| Operation              | Target | Notes                   |
+| ---------------------- | ------ | ----------------------- |
+| store()                | <500ms | Includes 3-agent review |
+| retrieve()             | <50ms  | Database only           |
 | retrieve_with_review() | <300ms | Includes 2-agent review |
-| clear_working_memory() | <50ms | Batch delete |
+| clear_working_memory() | <50ms  | Batch delete            |
 
 ## Multi-Agent Review
 
 ### Storage Review (3 agents)
+
 - analyzer
 - patterns
 - knowledge-archaeologist
 - Threshold: Store if avg score >4
 
 ### Retrieval Review (2 agents)
+
 - analyzer
 - patterns
 - Threshold: Return if score >7
@@ -104,30 +106,35 @@ class HookIntegration(Protocol):
 Create detailed specs for each module:
 
 **Module**: `memory.coordinator`
+
 - **Purpose**: Main interface implementation
 - **Dependencies**: storage_pipeline, retrieval_pipeline
 - **Public API**: Implements MemoryCoordinator protocol
 - **Contract**: Performance guarantees maintained
 
 **Module**: `memory.storage_pipeline`
+
 - **Purpose**: Storage with agent review
 - **Dependencies**: agent_review, database
 - **Public API**: Implements StoragePipeline protocol
 - **Contract**: <500ms total time
 
 **Module**: `memory.retrieval_pipeline`
+
 - **Purpose**: Fast + smart retrieval
 - **Dependencies**: agent_review, database
 - **Public API**: Implements RetrievalPipeline protocol
 - **Contract**: <50ms fast, <300ms smart
 
 **Module**: `memory.agent_review`
+
 - **Purpose**: Parallel agent execution
 - **Dependencies**: Task tool for agents
 - **Public API**: Implements AgentReview protocol
 - **Contract**: Parallel execution, not sequential
 
 **Module**: `memory.hook_integration`
+
 - **Purpose**: Automatic memory capture
 - **Dependencies**: coordinator, hooks system
 - **Public API**: Implements HookIntegration protocol
@@ -136,6 +143,7 @@ Create detailed specs for each module:
 ### 2. Database Schema
 
 The schema is ready in `database_schema.sql`:
+
 - Review table structure
 - Validate indexes for performance
 - Plan migration from current schema
@@ -144,6 +152,7 @@ The schema is ready in `database_schema.sql`:
 ### 3. Agent Integration
 
 Plan how to invoke agents in parallel:
+
 - Use existing Task tool
 - Execute 3 storage agents in parallel (~400ms)
 - Execute 2 retrieval agents in parallel (~250ms)
@@ -152,6 +161,7 @@ Plan how to invoke agents in parallel:
 ### 4. Hook Integration
 
 Design hook integration:
+
 - UserPromptSubmit: When to inject memories
 - SessionStop: How to extract learnings
 - TaskCompletion: What to capture
@@ -160,6 +170,7 @@ Design hook integration:
 ### 5. Error Handling
 
 Design error handling strategy:
+
 - Graceful degradation (continue without memory)
 - Error types (StorageError, RetrievalError, ReviewError)
 - Retry logic for transient failures
@@ -168,6 +179,7 @@ Design error handling strategy:
 ### 6. Testing Strategy
 
 Plan test coverage:
+
 - Unit tests for each module
 - Integration tests for flows
 - Performance tests for contracts

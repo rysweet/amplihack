@@ -371,6 +371,7 @@ src/amplihack/memory/
 ### 1. Five Memory Types (Not Six)
 
 **Psychology-based classification**:
+
 - EPISODIC - Events (temporal)
 - SEMANTIC - Knowledge (timeless)
 - PROSPECTIVE - Intentions (future)
@@ -380,16 +381,19 @@ src/amplihack/memory/
 ### 2. Two-Stage Review
 
 **Storage Review** (3 agents, thorough):
+
 - Only store valuable content (score >4)
 - Prevent trivial content pollution
 
 **Retrieval Review** (2 agents, fast):
+
 - Only return relevant content (score >7)
 - Respect token budget
 
 ### 3. Parallel Agent Execution
 
 **Not Sequential**:
+
 - 3 agents × 150ms = 450ms (sequential) ❌
 - 3 agents in parallel = ~400ms ✓
 
@@ -398,6 +402,7 @@ src/amplihack/memory/
 ### 4. Working Memory Lifecycle
 
 **Temporary by design**:
+
 - Cleared after task completion
 - Lower importance (≤5)
 - Expires after 7 days if not cleared
@@ -405,6 +410,7 @@ src/amplihack/memory/
 ### 5. SQLite-Only Initially
 
 **Start simple**:
+
 - SQLite meets all requirements
 - Neo4j/Kùzu can be added later
 - Don't build what you don't need yet
@@ -412,21 +418,25 @@ src/amplihack/memory/
 ## Philosophy Compliance
 
 ✅ **Ruthless Simplicity**
+
 - Five types (not twenty)
 - Two modes (fast/smart)
 - Clean interfaces
 
 ✅ **Brick & Studs**
+
 - Clear boundaries
 - Stable contracts
 - Regeneratable
 
 ✅ **Zero-BS**
+
 - Every method works
 - Explicit contracts
 - No placeholders
 
 ✅ **Performance First**
+
 - Explicit guarantees
 - Parallel execution
 - Strategic indexing

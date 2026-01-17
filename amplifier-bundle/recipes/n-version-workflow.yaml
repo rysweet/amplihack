@@ -1,0 +1,1386 @@
+name: "n-version-workflow"
+description: "N-version programming for critical code - generate multiple independent implementations and select best"
+version: "2.0.0"
+author: "Amplihack Team"
+tags: ["n-version", "critical", "validation", "multi-implementation", "safety", "parallel"]
+
+# N_VERSION_WORKFLOW: Multiple Independent Implementations
+#
+# Implements N-version programming for critical decisions where multiple
+# independent implementations should be generated and compared.
+#
+# WHEN TO USE:
+#   - Critical security features (authentication, authorization)
+#   - Complex algorithms with multiple valid approaches
+#   - High-risk refactoring of core components
+#   - Architecture decisions with significant long-term impact
+#   - When correctness is paramount over speed
+#
+# WHEN NOT TO USE:
+#   - Simple CRUD operations
+#   - Straightforward bug fixes
+#   - Documentation updates
+#   - Minor UI tweaks
+#   - Time-sensitive quick fixes
+#
+# COST-BENEFIT:
+#   - Cost: N times the compute resources and time
+#   - Benefit: Significantly reduced risk of critical errors
+#   - Best for: Features where bugs are expensive (security, data integrity)
+#
+# SELECTION CRITERIA (priority order):
+#   1. Correctness - Meets all requirements and passes tests
+#   2. Security - No vulnerabilities or security anti-patterns
+#   3. Simplicity - Ruthless simplicity, minimal complexity
+#   4. Philosophy Compliance - Follows project principles
+#   5. Performance - Efficiency and resource usage
+#
+# AGENT DIVERSITY PROFILES:
+#   - conservative: Focus on proven patterns and safety
+#   - pragmatic: Balance trade-offs for practical solutions
+#   - minimalist: Prioritize ruthless simplicity
+#   - innovative: Explore novel approaches and optimizations
+#   - performance: Optimize for speed and efficiency
+#
+# INTEGRATION WITH DEFAULT_WORKFLOW:
+#   This workflow replaces Steps 4-5 (Research/Design and Implementation)
+#   of DEFAULT_WORKFLOW. After completion, resume at Step 6 (Refactor/Simplify).
+#
+# Usage:
+#   amplifier recipes execute n-version-workflow.yaml --context '{
+#     "task_description": "Implement JWT token validation",
+#     "requirements": "Must validate signature, expiry, issuer",
+#     "num_versions": "3"
+#   }'
+
+recursion:
+  max_depth: 5
+  max_total_steps: 80
+
+context:
+  # Clear description of what to implement
+  task_description: ""
+
+  # Specific requirements that MUST be met (CANNOT be optimized away)
+  requirements: ""
+
+  # Number of versions to generate (2-6, default 3)
+  # 2 = Quick validation of approach
+  # 3 = Default for standard tasks
+  # 4-6 = Critical features requiring high confidence
+  num_versions: "3"
+
+  # Output directory for isolated version workspaces
+  output_dir: "./ai_working/n-version"
+
+  # Profile assignment strategy: "rotate" or "specific"
+  # rotate: Automatically assign profiles based on version number
+  # specific: Use profiles_override to specify each version's profile
+  profile_strategy: "rotate"
+
+  # Override profiles for specific assignment (comma-separated)
+  # Example: "conservative,pragmatic,minimalist,innovative,performance"
+  profiles_override: ""
+
+  # Defaults for conditional step outputs (needed for template validation)
+  version_4: ""
+  version_5: ""
+  version_6: ""
+  version_4_tests: ""
+  version_5_tests: ""
+  version_6_tests: ""
+  synthesis_design: ""
+  refined_solution: ""
+
+steps:
+  # ==========================================================================
+  # STEP 1: PREPARE COMMON CONTEXT
+  # Create crystal-clear specification used by ALL N versions
+  # ==========================================================================
+  - id: "prepare-specification"
+    agent: "amplihack:prompt-writer"
+    prompt: |
+      Create a crystal-clear specification for N-version implementation:
+
+      **Task:** {{task_description}}
+      **Requirements:** {{requirements}}
+      **Number of Versions:** {{num_versions}}
+
+      **CRITICAL**: Capture all EXPLICIT user requirements that CANNOT be optimized away.
+
+      Create a specification document that will be given IDENTICALLY to {{num_versions}}
+      independent implementers. The specification must be:
+      - Unambiguous (no room for interpretation differences)
+      - Complete (all requirements clearly stated)
+      - Testable (clear success criteria)
+      - Measurable (evaluation metrics defined upfront)
+
+      Return as JSON:
+      ```json
+      {
+        "task_name": "short descriptive name",
+        "specification": "detailed specification text - be extremely precise",
+        "explicit_requirements": [
+          "MUST: requirement that cannot be changed",
+          "MUST: another mandatory requirement"
+        ],
+        "implicit_requirements": [
+          "SHOULD: derived requirement",
+          "SHOULD: assumed expectation"
+        ],
+        "constraints": [
+          "technical constraint",
+          "business constraint"
+        ],
+        "success_criteria": [
+          "measurable criterion 1",
+          "measurable criterion 2"
+        ],
+        "test_cases": [
+          {"input": "...", "expected_output": "...", "description": "happy path"},
+          {"input": "...", "expected_output": "...", "description": "edge case"},
+          {"input": "...", "expected_output": "...", "description": "error case"}
+        ],
+        "evaluation_metrics": {
+          "correctness": "All test cases pass, meets all MUST requirements",
+          "security": "No OWASP vulnerabilities, secure defaults, no info leaks",
+          "simplicity": "Lines of code, cyclomatic complexity, abstraction layers",
+          "maintainability": "Clear naming, documentation, single responsibility",
+          "test_coverage": "Unit tests, edge cases, error handling",
+          "philosophy": "Ruthless simplicity, zero-BS, bricks-and-studs"
+        },
+        "anti_patterns_to_avoid": [
+          "Over-engineering",
+          "Premature optimization",
+          "Swallowed exceptions",
+          "Magic numbers/strings"
+        ]
+      }
+      ```
+    output: "specification"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 2: SETUP ISOLATED DIRECTORIES
+  # Create isolated workspaces for each version (true independence)
+  # ==========================================================================
+  - id: "setup-isolation"
+    type: "bash"
+    parse_json: true
+    command: |
+      set -euo pipefail
+
+      # Validate inputs
+      OUTPUT_DIR='{{output_dir}}'
+      NUM_VERSIONS='{{num_versions}}'
+      case "$OUTPUT_DIR" in
+        *'$('*|*'`'*|*';'*|*'|'*|*'&'*)
+          echo '{"error": "Invalid characters in output_dir"}' && exit 1 ;;
+      esac
+
+      # Validate num_versions is 2-6
+      if ! [[ "$NUM_VERSIONS" =~ ^[2-6]$ ]]; then
+        echo '{"error": "num_versions must be 2-6"}' && exit 1
+      fi
+
+      # Create base directory
+      mkdir -p "$OUTPUT_DIR"
+
+      # Create isolated directories for each version
+      DIRECTORIES="["
+      for i in $(seq 1 "$NUM_VERSIONS"); do
+        VERSION_DIR="$OUTPUT_DIR/version_$i"
+        mkdir -p "$VERSION_DIR"
+        mkdir -p "$VERSION_DIR/src"
+        mkdir -p "$VERSION_DIR/tests"
+        if [ $i -gt 1 ]; then
+          DIRECTORIES="$DIRECTORIES, "
+        fi
+        DIRECTORIES="$DIRECTORIES\"$VERSION_DIR\""
+      done
+      DIRECTORIES="$DIRECTORIES]"
+
+      # Assign profiles based on strategy
+      PROFILE_STRATEGY='{{profile_strategy}}'
+      PROFILES_OVERRIDE='{{profiles_override}}'
+
+      # Default profile rotation order
+      DEFAULT_PROFILES=("conservative" "pragmatic" "minimalist" "innovative" "performance")
+
+      ASSIGNED_PROFILES="["
+      if [ "$PROFILE_STRATEGY" = "specific" ] && [ -n "$PROFILES_OVERRIDE" ]; then
+        # Use override profiles
+        IFS=',' read -ra OVERRIDE_ARRAY <<< "$PROFILES_OVERRIDE"
+        for i in $(seq 1 "$NUM_VERSIONS"); do
+          idx=$((i - 1))
+          PROFILE="${OVERRIDE_ARRAY[$idx]:-${DEFAULT_PROFILES[$idx]}}"
+          if [ $i -gt 1 ]; then
+            ASSIGNED_PROFILES="$ASSIGNED_PROFILES, "
+          fi
+          ASSIGNED_PROFILES="$ASSIGNED_PROFILES{\"version\": $i, \"profile\": \"$PROFILE\"}"
+        done
+      else
+        # Rotate through default profiles
+        for i in $(seq 1 "$NUM_VERSIONS"); do
+          idx=$(( (i - 1) % 5 ))
+          PROFILE="${DEFAULT_PROFILES[$idx]}"
+          if [ $i -gt 1 ]; then
+            ASSIGNED_PROFILES="$ASSIGNED_PROFILES, "
+          fi
+          ASSIGNED_PROFILES="$ASSIGNED_PROFILES{\"version\": $i, \"profile\": \"$PROFILE\"}"
+        done
+      fi
+      ASSIGNED_PROFILES="$ASSIGNED_PROFILES]"
+
+      cat << EOF
+      {
+        "base_dir": "$OUTPUT_DIR",
+        "num_versions": $NUM_VERSIONS,
+        "version_directories": $DIRECTORIES,
+        "profile_assignments": $ASSIGNED_PROFILES,
+        "isolation_note": "NO context sharing between versions - true independence",
+        "created_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+      }
+      EOF
+    output: "isolation_setup"
+    timeout: 60
+
+  # ==========================================================================
+  # STEP 3: VERSION 1 - CONSERVATIVE APPROACH
+  # Proven patterns, comprehensive error handling, defensive programming
+  # ==========================================================================
+  - id: "version-1-conservative"
+    agent: "amplihack:builder"
+    prompt: |
+      Implement this task using a CONSERVATIVE approach.
+
+      **CONTEXT ISOLATION**: You are Version 1. You have NO knowledge of other versions.
+      Work independently in: {{isolation_setup.version_directories[0]}}
+
+      **Specification:** {{specification.specification}}
+      **Explicit Requirements (MUST implement):** {{specification.explicit_requirements}}
+      **Test Cases:** {{specification.test_cases}}
+      **Anti-patterns to Avoid:** {{specification.anti_patterns_to_avoid}}
+
+      ## CONSERVATIVE APPROACH GUIDELINES:
+      - Use proven, battle-tested design patterns
+      - Comprehensive error handling for ALL edge cases
+      - Defensive programming (validate all inputs)
+      - Prioritize safety and reliability over cleverness
+      - Prefer explicit over implicit behavior
+      - Document assumptions clearly
+      - Use established library solutions where appropriate
+
+      ## DELIVERABLES:
+      1. **Complete Implementation** - Working code, no stubs/TODOs
+      2. **Approach Explanation** - Why you chose this design
+      3. **Requirements Mapping** - How each MUST requirement is met
+      4. **Trade-offs** - What you prioritized and what you sacrificed
+      5. **Risk Assessment** - Potential failure modes and mitigations
+
+      Format code with clear file headers:
+      ```python
+      # File: version_1/src/implementation.py
+      [code]
+      ```
+
+      Output as JSON:
+      ```json
+      {
+        "version": 1,
+        "profile": "conservative",
+        "implementation": {
+          "files": [{"path": "...", "content": "..."}],
+          "entry_point": "main file/function"
+        },
+        "approach_explanation": "detailed explanation",
+        "requirements_mapping": [
+          {"requirement": "...", "how_implemented": "..."}
+        ],
+        "trade_offs": [
+          {"prioritized": "...", "sacrificed": "...", "rationale": "..."}
+        ],
+        "risk_assessment": [
+          {"risk": "...", "mitigation": "...", "severity": "low/medium/high"}
+        ],
+        "lines_of_code": 0,
+        "complexity_notes": "assessment of solution complexity"
+      }
+      ```
+    output: "version_1"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 4: VERSION 2 - PRAGMATIC APPROACH
+  # Balance simplicity and robustness, practical trade-offs
+  # ==========================================================================
+  - id: "version-2-pragmatic"
+    agent: "amplihack:builder"
+    prompt: |
+      Implement this task using a PRAGMATIC approach.
+
+      **CONTEXT ISOLATION**: You are Version 2. You have NO knowledge of other versions.
+      Work independently in: {{isolation_setup.version_directories[1]}}
+
+      **Specification:** {{specification.specification}}
+      **Explicit Requirements (MUST implement):** {{specification.explicit_requirements}}
+      **Test Cases:** {{specification.test_cases}}
+      **Anti-patterns to Avoid:** {{specification.anti_patterns_to_avoid}}
+
+      ## PRAGMATIC APPROACH GUIDELINES:
+      - Balance simplicity and robustness
+      - Use standard library solutions where possible
+      - Make practical trade-offs (80/20 rule)
+      - Focus on maintainability and readability
+      - Implement what's needed, not what might be needed
+      - Clear, straightforward code over clever solutions
+      - Reasonable error handling without over-engineering
+
+      ## DELIVERABLES:
+      1. **Complete Implementation** - Working code, no stubs/TODOs
+      2. **Approach Explanation** - Why you chose this design
+      3. **Requirements Mapping** - How each MUST requirement is met
+      4. **Trade-offs** - What you prioritized and what you sacrificed
+      5. **Risk Assessment** - Potential failure modes and mitigations
+
+      Format code with clear file headers:
+      ```python
+      # File: version_2/src/implementation.py
+      [code]
+      ```
+
+      Output as JSON:
+      ```json
+      {
+        "version": 2,
+        "profile": "pragmatic",
+        "implementation": {
+          "files": [{"path": "...", "content": "..."}],
+          "entry_point": "main file/function"
+        },
+        "approach_explanation": "detailed explanation",
+        "requirements_mapping": [
+          {"requirement": "...", "how_implemented": "..."}
+        ],
+        "trade_offs": [
+          {"prioritized": "...", "sacrificed": "...", "rationale": "..."}
+        ],
+        "risk_assessment": [
+          {"risk": "...", "mitigation": "...", "severity": "low/medium/high"}
+        ],
+        "lines_of_code": 0,
+        "complexity_notes": "assessment of solution complexity"
+      }
+      ```
+    output: "version_2"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 5: VERSION 3 - MINIMALIST APPROACH
+  # Ruthless simplification, minimal dependencies, direct implementation
+  # ==========================================================================
+  - id: "version-3-minimalist"
+    agent: "amplihack:builder"
+    prompt: |
+      Implement this task using a MINIMALIST approach.
+
+      **CONTEXT ISOLATION**: You are Version 3. You have NO knowledge of other versions.
+      Work independently in: {{isolation_setup.version_directories[2]}}
+
+      **Specification:** {{specification.specification}}
+      **Explicit Requirements (MUST implement):** {{specification.explicit_requirements}}
+      **Test Cases:** {{specification.test_cases}}
+      **Anti-patterns to Avoid:** {{specification.anti_patterns_to_avoid}}
+
+      ## MINIMALIST APPROACH GUIDELINES:
+      - Ruthless simplification - remove ALL unnecessary code
+      - Minimal dependencies - prefer no external libraries
+      - Direct implementation - no abstraction layers unless essential
+      - Single responsibility per function/module
+      - No premature optimization
+      - No speculative generality
+      - If in doubt, leave it out
+
+      ## DELIVERABLES:
+      1. **Complete Implementation** - Working code, no stubs/TODOs
+      2. **Approach Explanation** - Why you chose this design
+      3. **Requirements Mapping** - How each MUST requirement is met
+      4. **Trade-offs** - What you prioritized and what you sacrificed
+      5. **Risk Assessment** - Potential failure modes and mitigations
+
+      Format code with clear file headers:
+      ```python
+      # File: version_3/src/implementation.py
+      [code]
+      ```
+
+      Output as JSON:
+      ```json
+      {
+        "version": 3,
+        "profile": "minimalist",
+        "implementation": {
+          "files": [{"path": "...", "content": "..."}],
+          "entry_point": "main file/function"
+        },
+        "approach_explanation": "detailed explanation",
+        "requirements_mapping": [
+          {"requirement": "...", "how_implemented": "..."}
+        ],
+        "trade_offs": [
+          {"prioritized": "...", "sacrificed": "...", "rationale": "..."}
+        ],
+        "risk_assessment": [
+          {"risk": "...", "mitigation": "...", "severity": "low/medium/high"}
+        ],
+        "lines_of_code": 0,
+        "complexity_notes": "assessment of solution complexity"
+      }
+      ```
+    output: "version_3"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 6: VERSION 4 - INNOVATIVE APPROACH (conditional: N >= 4)
+  # Novel approaches, creative solutions, optimization opportunities
+  # ==========================================================================
+  - id: "version-4-innovative"
+    condition: "{{num_versions}} >= 4"
+    agent: "amplihack:builder"
+    prompt: |
+      Implement this task using an INNOVATIVE approach.
+
+      **CONTEXT ISOLATION**: You are Version 4. You have NO knowledge of other versions.
+      Work independently in: {{isolation_setup.version_directories[3]}}
+
+      **Specification:** {{specification.specification}}
+      **Explicit Requirements (MUST implement):** {{specification.explicit_requirements}}
+      **Test Cases:** {{specification.test_cases}}
+      **Anti-patterns to Avoid:** {{specification.anti_patterns_to_avoid}}
+
+      ## INNOVATIVE APPROACH GUIDELINES:
+      - Explore novel approaches others might not consider
+      - Think outside conventional patterns
+      - Consider emerging best practices
+      - Experiment with creative solutions
+      - Use modern language features effectively
+      - Still meet all requirements - innovation doesn't mean ignoring specs
+      - Document WHY your approach is innovative
+
+      ## DELIVERABLES:
+      1. **Complete Implementation** - Working code, no stubs/TODOs
+      2. **Approach Explanation** - What makes this innovative
+      3. **Requirements Mapping** - How each MUST requirement is met
+      4. **Trade-offs** - What you prioritized and what you sacrificed
+      5. **Innovation Assessment** - What's new/different about this approach
+
+      Output as JSON:
+      ```json
+      {
+        "version": 4,
+        "profile": "innovative",
+        "implementation": {
+          "files": [{"path": "...", "content": "..."}],
+          "entry_point": "main file/function"
+        },
+        "approach_explanation": "detailed explanation of innovation",
+        "requirements_mapping": [
+          {"requirement": "...", "how_implemented": "..."}
+        ],
+        "trade_offs": [
+          {"prioritized": "...", "sacrificed": "...", "rationale": "..."}
+        ],
+        "innovation_assessment": {
+          "novel_aspects": ["what's new"],
+          "compared_to_traditional": "how this differs",
+          "potential_benefits": ["why this might be better"],
+          "potential_risks": ["why this might be worse"]
+        },
+        "lines_of_code": 0,
+        "complexity_notes": "assessment of solution complexity"
+      }
+      ```
+    output: "version_4"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 7: VERSION 5 - PERFORMANCE-FOCUSED APPROACH (conditional: N >= 5)
+  # Optimize for speed, efficiency, resource usage
+  # ==========================================================================
+  - id: "version-5-performance"
+    condition: "{{num_versions}} >= 5"
+    agent: "amplihack:builder"
+    prompt: |
+      Implement this task using a PERFORMANCE-FOCUSED approach.
+
+      **CONTEXT ISOLATION**: You are Version 5. You have NO knowledge of other versions.
+      Work independently in: {{isolation_setup.version_directories[4]}}
+
+      **Specification:** {{specification.specification}}
+      **Explicit Requirements (MUST implement):** {{specification.explicit_requirements}}
+      **Test Cases:** {{specification.test_cases}}
+      **Anti-patterns to Avoid:** {{specification.anti_patterns_to_avoid}}
+
+      ## PERFORMANCE-FOCUSED APPROACH GUIDELINES:
+      - Optimize for speed and efficiency
+      - Consider time complexity of algorithms
+      - Minimize memory allocations
+      - Use efficient data structures
+      - Profile-guided optimization mindset
+      - Avoid unnecessary copies and allocations
+      - Consider caching where appropriate
+      - Document performance characteristics
+
+      ## DELIVERABLES:
+      1. **Complete Implementation** - Working code, no stubs/TODOs
+      2. **Approach Explanation** - Why these optimizations
+      3. **Requirements Mapping** - How each MUST requirement is met
+      4. **Performance Analysis** - Expected performance characteristics
+      5. **Trade-offs** - What readability/simplicity was sacrificed for speed
+
+      Output as JSON:
+      ```json
+      {
+        "version": 5,
+        "profile": "performance",
+        "implementation": {
+          "files": [{"path": "...", "content": "..."}],
+          "entry_point": "main file/function"
+        },
+        "approach_explanation": "detailed explanation of optimizations",
+        "requirements_mapping": [
+          {"requirement": "...", "how_implemented": "..."}
+        ],
+        "performance_analysis": {
+          "time_complexity": "O(...)",
+          "space_complexity": "O(...)",
+          "optimizations_applied": ["list of optimizations"],
+          "expected_speedup": "compared to naive approach"
+        },
+        "trade_offs": [
+          {"prioritized": "...", "sacrificed": "...", "rationale": "..."}
+        ],
+        "lines_of_code": 0,
+        "complexity_notes": "assessment of solution complexity"
+      }
+      ```
+    output: "version_5"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 8: VERSION 6 - ADDITIONAL PROFILE (conditional: N = 6)
+  # Rotates to conservative for balance
+  # ==========================================================================
+  - id: "version-6-additional"
+    condition: "{{num_versions}} >= 6"
+    agent: "amplihack:builder"
+    prompt: |
+      Implement this task with fresh perspective (second conservative pass).
+
+      **CONTEXT ISOLATION**: You are Version 6. You have NO knowledge of other versions.
+      Work independently in: {{isolation_setup.version_directories[5]}}
+
+      **Specification:** {{specification.specification}}
+      **Explicit Requirements (MUST implement):** {{specification.explicit_requirements}}
+      **Test Cases:** {{specification.test_cases}}
+      **Anti-patterns to Avoid:** {{specification.anti_patterns_to_avoid}}
+
+      ## APPROACH GUIDELINES:
+      - Fresh perspective on the problem
+      - Consider what others might miss
+      - Focus on edge cases and error conditions
+      - Ensure production-readiness
+      - Complete documentation
+
+      Output as JSON with same structure as other versions.
+    output: "version_6"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 9: TEST EXECUTION - VERSION 1
+  # Run tests for Version 1 in isolation
+  # ==========================================================================
+  - id: "test-version-1"
+    agent: "amplihack:tester"
+    prompt: |
+      Execute tests for Version 1 (Conservative approach).
+
+      **Version 1 Implementation:** {{version_1}}
+      **Test Cases from Specification:** {{specification.test_cases}}
+      **Working Directory:** {{isolation_setup.version_directories[0]}}
+
+      Run ALL test cases against this implementation.
+      Report results in detail.
+
+      Output as JSON:
+      ```json
+      {
+        "version": 1,
+        "profile": "conservative",
+        "test_results": {
+          "total_tests": 0,
+          "passed": 0,
+          "failed": 0,
+          "errors": 0,
+          "test_details": [
+            {
+              "test_case": "description",
+              "input": "...",
+              "expected": "...",
+              "actual": "...",
+              "status": "PASS/FAIL/ERROR",
+              "notes": "any observations"
+            }
+          ]
+        },
+        "correctness_verified": true/false,
+        "edge_cases_handled": true/false,
+        "error_handling_adequate": true/false,
+        "overall_assessment": "summary"
+      }
+      ```
+    output: "version_1_tests"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 10: TEST EXECUTION - VERSION 2
+  # ==========================================================================
+  - id: "test-version-2"
+    agent: "amplihack:tester"
+    prompt: |
+      Execute tests for Version 2 (Pragmatic approach).
+
+      **Version 2 Implementation:** {{version_2}}
+      **Test Cases from Specification:** {{specification.test_cases}}
+      **Working Directory:** {{isolation_setup.version_directories[1]}}
+
+      Run ALL test cases against this implementation.
+
+      Output as JSON (same structure as version 1 tests).
+    output: "version_2_tests"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 11: TEST EXECUTION - VERSION 3
+  # ==========================================================================
+  - id: "test-version-3"
+    agent: "amplihack:tester"
+    prompt: |
+      Execute tests for Version 3 (Minimalist approach).
+
+      **Version 3 Implementation:** {{version_3}}
+      **Test Cases from Specification:** {{specification.test_cases}}
+      **Working Directory:** {{isolation_setup.version_directories[2]}}
+
+      Run ALL test cases against this implementation.
+
+      Output as JSON (same structure as version 1 tests).
+    output: "version_3_tests"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 12: TEST EXECUTION - VERSION 4 (conditional)
+  # ==========================================================================
+  - id: "test-version-4"
+    condition: "{{num_versions}} >= 4"
+    agent: "amplihack:tester"
+    prompt: |
+      Execute tests for Version 4 (Innovative approach).
+
+      **Version 4 Implementation:** {{version_4}}
+      **Test Cases from Specification:** {{specification.test_cases}}
+
+      Run ALL test cases against this implementation.
+
+      Output as JSON (same structure as version 1 tests).
+    output: "version_4_tests"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 13: TEST EXECUTION - VERSION 5 (conditional)
+  # ==========================================================================
+  - id: "test-version-5"
+    condition: "{{num_versions}} >= 5"
+    agent: "amplihack:tester"
+    prompt: |
+      Execute tests for Version 5 (Performance-focused approach).
+
+      **Version 5 Implementation:** {{version_5}}
+      **Test Cases from Specification:** {{specification.test_cases}}
+
+      Run ALL test cases against this implementation.
+
+      Output as JSON (same structure as version 1 tests).
+    output: "version_5_tests"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 14: TEST EXECUTION - VERSION 6 (conditional)
+  # ==========================================================================
+  - id: "test-version-6"
+    condition: "{{num_versions}} >= 6"
+    agent: "amplihack:tester"
+    prompt: |
+      Execute tests for Version 6.
+
+      **Version 6 Implementation:** {{version_6}}
+      **Test Cases from Specification:** {{specification.test_cases}}
+
+      Run ALL test cases against this implementation.
+
+      Output as JSON (same structure as version 1 tests).
+    output: "version_6_tests"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 15: SECURITY EVALUATION
+  # Security review of all versions
+  # ==========================================================================
+  - id: "security-evaluation"
+    agent: "amplihack:security"
+    prompt: |
+      Conduct security evaluation of ALL {{num_versions}} implementations.
+
+      **Specification:** {{specification}}
+
+      **Version 1 (Conservative):** {{version_1}}
+      **Version 2 (Pragmatic):** {{version_2}}
+      **Version 3 (Minimalist):** {{version_3}}
+      {{#if version_4}}**Version 4 (Innovative):** {{version_4}}{{/if}}
+      {{#if version_5}}**Version 5 (Performance):** {{version_5}}{{/if}}
+      {{#if version_6}}**Version 6:** {{version_6}}{{/if}}
+
+      Evaluate each version for:
+      1. OWASP Top 10 vulnerabilities
+      2. Input validation and sanitization
+      3. Authentication/authorization issues (if applicable)
+      4. Information leakage in error messages
+      5. Secure defaults
+      6. Injection vulnerabilities
+      7. Cryptographic issues (if applicable)
+
+      Output as JSON:
+      ```json
+      {
+        "security_evaluations": [
+          {
+            "version": 1,
+            "profile": "conservative",
+            "security_score": 8,
+            "vulnerabilities": [
+              {"severity": "critical/high/medium/low", "issue": "...", "location": "...", "fix": "..."}
+            ],
+            "secure_practices": ["good things found"],
+            "security_gate_passed": true/false,
+            "notes": "overall assessment"
+          }
+        ],
+        "comparative_ranking": [1, 2, 3],
+        "security_leader": 1,
+        "security_concerns": ["issues affecting multiple versions"]
+      }
+      ```
+    output: "security_evaluation"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 16: COLLECT AND COMPARE - ANALYZER
+  # Build comparison matrix with 6 dimensions
+  # ==========================================================================
+  - id: "analyze-compare"
+    agent: "amplihack:analyzer"
+    prompt: |
+      Analyze and compare ALL {{num_versions}} implementations.
+
+      **Specification:** {{specification}}
+
+      **VERSIONS:**
+      - Version 1 (Conservative): {{version_1}}
+      - Version 2 (Pragmatic): {{version_2}}
+      - Version 3 (Minimalist): {{version_3}}
+      {{#if version_4}}- Version 4 (Innovative): {{version_4}}{{/if}}
+      {{#if version_5}}- Version 5 (Performance): {{version_5}}{{/if}}
+      {{#if version_6}}- Version 6: {{version_6}}{{/if}}
+
+      **TEST RESULTS:**
+      - Version 1 Tests: {{version_1_tests}}
+      - Version 2 Tests: {{version_2_tests}}
+      - Version 3 Tests: {{version_3_tests}}
+      {{#if version_4_tests}}- Version 4 Tests: {{version_4_tests}}{{/if}}
+      {{#if version_5_tests}}- Version 5 Tests: {{version_5_tests}}{{/if}}
+      {{#if version_6_tests}}- Version 6 Tests: {{version_6_tests}}{{/if}}
+
+      **SECURITY EVALUATION:** {{security_evaluation}}
+
+      Build a COMPARISON MATRIX with these 6 dimensions:
+      1. **Correctness** - Passes all tests, meets all MUST requirements
+      2. **Performance** - Efficiency, time/space complexity
+      3. **Security** - No vulnerabilities, secure practices
+      4. **Maintainability** - Readability, documentation, clear structure
+      5. **Test Coverage** - Edge cases, error handling
+      6. **Philosophy Alignment** - Ruthless simplicity, zero-BS
+
+      Output as JSON:
+      ```json
+      {
+        "comparison_matrix": [
+          {
+            "version": 1,
+            "profile": "conservative",
+            "correctness": {"pass": true, "score": 10, "notes": "all tests pass"},
+            "performance": {"score": 7, "time_complexity": "O(n)", "notes": "..."},
+            "security": {"pass": true, "score": 9, "notes": "..."},
+            "maintainability": {"score": 8, "notes": "..."},
+            "test_coverage": {"score": 9, "notes": "..."},
+            "philosophy": {"score": 7, "notes": "..."},
+            "total_score": 50,
+            "lines_of_code": 180,
+            "strengths": ["..."],
+            "weaknesses": ["..."]
+          }
+        ],
+        "dimension_weights": {
+          "correctness": 25,
+          "security": 20,
+          "simplicity": 20,
+          "philosophy": 15,
+          "performance": 10,
+          "maintainability": 10
+        },
+        "ranking": [
+          {"rank": 1, "version": 2, "weighted_score": 85},
+          {"rank": 2, "version": 1, "weighted_score": 80}
+        ],
+        "eliminated_versions": [
+          {"version": 3, "reason": "Failed correctness tests"}
+        ],
+        "observations": [
+          "Pattern observed across versions",
+          "Trade-off consistently seen"
+        ]
+      }
+      ```
+    output: "comparison_analysis"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 17: REVIEW AND EVALUATE
+  # 5-Step evaluation process
+  # ==========================================================================
+  - id: "review-evaluate"
+    agent: "amplihack:reviewer"
+    prompt: |
+      Perform comprehensive review and evaluation of all versions.
+
+      **Comparison Analysis:** {{comparison_analysis}}
+      **Security Evaluation:** {{security_evaluation}}
+      **Specification:** {{specification}}
+
+      Apply the 5-STEP EVALUATION PROCESS:
+
+      ## Step 1: FILTER (Basic Correctness)
+      Remove any versions failing correctness tests.
+      - Which versions pass ALL test cases?
+      - Which versions meet ALL MUST requirements?
+
+      ## Step 2: SECURITY GATE
+      Eliminate versions with security issues.
+      - Which versions pass security evaluation?
+      - Are there any critical/high vulnerabilities?
+
+      ## Step 3: PHILOSOPHY CHECK
+      Score each on simplicity and philosophy compliance.
+      - Does it follow "ruthless simplicity"?
+      - Is it zero-BS (no stubs, no TODOs)?
+      - Does it follow bricks-and-studs pattern?
+
+      ## Step 4: PERFORMANCE COMPARE
+      Measure and compare benchmarks.
+      - Time complexity comparison
+      - Space complexity comparison
+      - Resource usage patterns
+
+      ## Step 5: SYNTHESIS ASSESSMENT
+      Identify if hybrid approach could be superior.
+      - Do versions have complementary strengths?
+      - Could combining best parts improve outcome?
+
+      Output as JSON:
+      ```json
+      {
+        "evaluation_process": {
+          "step_1_filter": {
+            "passed": [1, 2],
+            "failed": [3],
+            "failure_reasons": {"3": "edge case handling failure"}
+          },
+          "step_2_security": {
+            "passed": [1, 2],
+            "failed": [],
+            "failure_reasons": {}
+          },
+          "step_3_philosophy": {
+            "scores": {"1": 7, "2": 9},
+            "best": 2,
+            "notes": "Version 2 exemplifies ruthless simplicity"
+          },
+          "step_4_performance": {
+            "ranking": [2, 1],
+            "notes": "Similar performance, v2 slightly faster"
+          },
+          "step_5_synthesis": {
+            "hybrid_recommended": true,
+            "rationale": "v2 core logic + v1 error handling",
+            "synthesis_components": {
+              "from_v1": ["error handling", "edge case coverage"],
+              "from_v2": ["core logic", "API design"]
+            }
+          }
+        },
+        "final_candidates": [1, 2],
+        "recommendation": {
+          "type": "single/hybrid",
+          "selected_version": 2,
+          "hybrid_components": null,
+          "confidence": "high/medium/low",
+          "rationale": "detailed explanation"
+        },
+        "learnings_from_rejected": [
+          {"version": 3, "lesson": "what we learned from this approach"}
+        ]
+      }
+      ```
+    output: "evaluation_result"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 18: SELECTION DECISION TREE
+  # Apply decision tree to determine final selection
+  # ==========================================================================
+  - id: "selection-decision"
+    agent: "amplihack:n-version-validator"
+    prompt: |
+      Apply the SELECTION DECISION TREE to make final selection.
+
+      **Evaluation Result:** {{evaluation_result}}
+      **Comparison Analysis:** {{comparison_analysis}}
+
+      ## SELECTION DECISION TREE:
+
+      ### Question 1: Is there ONE version that passes ALL criteria?
+      - YES -> Select it and document why
+      - NO -> Continue to Question 2
+
+      ### Question 2: Are there 2+ versions tied on top criteria?
+      - YES -> Continue to Question 3
+      - NO -> Select highest scoring version
+
+      ### Question 3: Do versions have complementary strengths?
+      (e.g., v1 has better error handling, v2 has simpler logic)
+      - YES -> Synthesize hybrid combining best parts
+      - NO -> Select based on weighted criteria priority
+
+      ## PRIORITY ORDER (for tie-breaking):
+      1. Correctness
+      2. Security
+      3. Simplicity
+      4. Philosophy
+      5. Performance
+
+      Output as JSON:
+      ```json
+      {
+        "decision_tree_path": {
+          "q1_single_winner": false,
+          "q2_tie": true,
+          "q3_complementary": true,
+          "decision": "synthesize"
+        },
+        "final_selection": {
+          "type": "single/hybrid",
+          "selected_version": null,
+          "hybrid_synthesis": {
+            "core_logic_from": 2,
+            "error_handling_from": 1,
+            "testing_approach_from": 2,
+            "documentation_from": 1,
+            "specific_components": [
+              {"component": "main algorithm", "from_version": 2, "reason": "..."},
+              {"component": "input validation", "from_version": 1, "reason": "..."}
+            ]
+          },
+          "rationale": "detailed explanation of selection"
+        },
+        "selection_criteria_applied": [
+          {"criterion": "correctness", "result": "v1=PASS, v2=PASS, v3=FAIL"},
+          {"criterion": "security", "result": "all passed"},
+          {"criterion": "simplicity", "result": "v2 ranked highest"}
+        ],
+        "documentation_for_rejected": [
+          {
+            "version": 3,
+            "approach": "minimalist",
+            "why_rejected": "failed edge case handling",
+            "valuable_insights": "showed that X can be simplified"
+          }
+        ]
+      }
+      ```
+    output: "selection_decision"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 19: SYNTHESIS DESIGN (conditional - if hybrid selected)
+  # Architect designs the hybrid solution
+  # ==========================================================================
+  - id: "synthesis-design"
+    condition: "{{selection_decision.final_selection.type}} == 'hybrid'"
+    agent: "amplihack:architect"
+    prompt: |
+      Design the HYBRID SYNTHESIS combining best parts of multiple versions.
+
+      **Selection Decision:** {{selection_decision}}
+      **Comparison Analysis:** {{comparison_analysis}}
+
+      **Source Versions:**
+      - Version 1: {{version_1}}
+      - Version 2: {{version_2}}
+      - Version 3: {{version_3}}
+      {{#if version_4}}- Version 4: {{version_4}}{{/if}}
+
+      Design the synthesis:
+      1. Identify exact components to take from each version
+      2. Define integration points
+      3. Resolve any conflicts between approaches
+      4. Ensure all MUST requirements are preserved
+      5. Validate the hybrid maintains simplicity
+
+      Output as JSON:
+      ```json
+      {
+        "synthesis_design": {
+          "architecture": "description of hybrid architecture",
+          "component_mapping": [
+            {
+              "component": "name",
+              "source_version": 1,
+              "modifications": "any changes needed",
+              "integration_notes": "how it connects"
+            }
+          ],
+          "conflict_resolutions": [
+            {"conflict": "...", "resolution": "...", "rationale": "..."}
+          ],
+          "integration_plan": [
+            "step 1",
+            "step 2"
+          ],
+          "requirements_verification": [
+            {"requirement": "...", "satisfied_by": "component from vX"}
+          ]
+        },
+        "expected_outcome": {
+          "strengths_combined": ["..."],
+          "weaknesses_mitigated": ["..."],
+          "new_risks": ["any new risks from combining"]
+        }
+      }
+      ```
+    output: "synthesis_design"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 20: IMPLEMENT FINAL SOLUTION
+  # Build the selected or synthesized solution
+  # ==========================================================================
+  - id: "implement-final"
+    agent: "amplihack:builder"
+    prompt: |
+      Implement the FINAL SOLUTION based on selection.
+
+      **Selection Decision:** {{selection_decision}}
+      **Synthesis Design (if hybrid):** {{synthesis_design}}
+      **Specification:** {{specification}}
+
+      **Source Versions:**
+      - Version 1: {{version_1}}
+      - Version 2: {{version_2}}
+      - Version 3: {{version_3}}
+
+      ## IF SINGLE VERSION SELECTED:
+      - Use the selected version directly
+      - Apply any minor improvements identified in review
+      - Ensure all documentation is complete
+
+      ## IF HYBRID SYNTHESIS:
+      - Follow the synthesis design exactly
+      - Combine components as specified
+      - Ensure seamless integration
+      - Verify all requirements are met
+
+      ## REQUIRED DOCUMENTATION:
+      Include this documentation block in the code:
+
+      ```python
+      """
+      N-Version Implementation Selection
+
+      Generated Versions: {{num_versions}}
+      Selection: [chosen version or "Hybrid of vX and vY"]
+
+      Rationale:
+      - [Why this was selected]
+      - [What each version contributed]
+      - [Why other versions were rejected]
+
+      Selection Criteria Applied:
+      1. Correctness: [results]
+      2. Security: [results]
+      3. Simplicity: [results]
+      4. Philosophy: [results]
+      5. Performance: [results]
+
+      See: n_version_analysis.md for full comparison matrix
+      """
+      ```
+
+      Output as JSON:
+      ```json
+      {
+        "final_implementation": {
+          "files": [{"path": "...", "content": "..."}],
+          "entry_point": "...",
+          "documentation_block": "..."
+        },
+        "implementation_notes": "how this was built",
+        "requirements_satisfied": ["all MUST requirements"],
+        "deviations": ["any changes from original versions"],
+        "ready_for_integration": true
+      }
+      ```
+    output: "final_implementation"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 21: FINAL TESTING
+  # Run comprehensive tests on final solution
+  # ==========================================================================
+  - id: "final-testing"
+    agent: "amplihack:tester"
+    prompt: |
+      Execute comprehensive tests on the FINAL implementation.
+
+      **Final Implementation:** {{final_implementation}}
+      **Test Cases:** {{specification.test_cases}}
+      **Success Criteria:** {{specification.success_criteria}}
+
+      Run:
+      1. All specification test cases
+      2. Edge case tests
+      3. Error handling tests
+      4. Integration tests if applicable
+
+      Output as JSON:
+      ```json
+      {
+        "final_test_results": {
+          "all_tests_passed": true/false,
+          "total_tests": 0,
+          "passed": 0,
+          "failed": 0,
+          "test_details": [...]
+        },
+        "requirements_verified": [
+          {"requirement": "...", "verified": true, "evidence": "..."}
+        ],
+        "ready_for_deployment": true/false,
+        "remaining_concerns": []
+      }
+      ```
+    output: "final_tests"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 22: GENERATE ANALYSIS DOCUMENT
+  # Create comprehensive n_version_analysis.md
+  # ==========================================================================
+  - id: "generate-analysis-document"
+    type: "bash"
+    command: |
+      set -euo pipefail
+
+      OUTPUT_DIR='{{output_dir}}'
+      case "$OUTPUT_DIR" in
+        *'$('*|*'`'*|*';'*|*'|'*|*'&'*)
+          echo 'Invalid output_dir' && exit 1 ;;
+      esac
+
+      ANALYSIS_FILE="$OUTPUT_DIR/n_version_analysis.md"
+
+      cat > "$ANALYSIS_FILE" << 'ANALYSIS_EOF'
+      # N-Version Analysis: {{specification.task_name}}
+
+      Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+      ## Configuration
+
+      - **N (Versions Generated)**: {{num_versions}}
+      - **Profiles Used**: Based on profile_assignments from setup
+      - **Selection Criteria Priority**: Correctness > Security > Simplicity > Philosophy > Performance
+
+      ## Implementations Generated
+
+      ### Version 1 (Conservative)
+      - **Approach**: {{version_1.approach_explanation}}
+      - **Strengths**: See comparison matrix
+      - **Weaknesses**: See comparison matrix
+      - **Test Results**: {{version_1_tests.overall_assessment}}
+      - **Lines of Code**: {{version_1.lines_of_code}}
+
+      ### Version 2 (Pragmatic)
+      - **Approach**: {{version_2.approach_explanation}}
+      - **Strengths**: See comparison matrix
+      - **Weaknesses**: See comparison matrix
+      - **Test Results**: {{version_2_tests.overall_assessment}}
+      - **Lines of Code**: {{version_2.lines_of_code}}
+
+      ### Version 3 (Minimalist)
+      - **Approach**: {{version_3.approach_explanation}}
+      - **Strengths**: See comparison matrix
+      - **Weaknesses**: See comparison matrix
+      - **Test Results**: {{version_3_tests.overall_assessment}}
+      - **Lines of Code**: {{version_3.lines_of_code}}
+
+      ## Comparison Matrix
+
+      | Version | Correctness | Security | Simplicity | Philosophy | Performance | LOC |
+      |---------|-------------|----------|------------|------------|-------------|-----|
+      | See comparison_analysis output for detailed matrix |
+
+      ## Evaluation Process
+
+      ### Step 1: Filter (Correctness)
+      {{evaluation_result.evaluation_process.step_1_filter}}
+
+      ### Step 2: Security Gate
+      {{evaluation_result.evaluation_process.step_2_security}}
+
+      ### Step 3: Philosophy Check
+      {{evaluation_result.evaluation_process.step_3_philosophy}}
+
+      ### Step 4: Performance Compare
+      {{evaluation_result.evaluation_process.step_4_performance}}
+
+      ### Step 5: Synthesis Assessment
+      {{evaluation_result.evaluation_process.step_5_synthesis}}
+
+      ## Selection Decision
+
+      **Type**: {{selection_decision.final_selection.type}}
+      **Rationale**: {{selection_decision.final_selection.rationale}}
+
+      ### Selection Criteria Applied
+      {{selection_decision.selection_criteria_applied}}
+
+      ## Learnings from Rejected Versions
+
+      {{selection_decision.documentation_for_rejected}}
+
+      ## Final Implementation
+
+      - **Ready for Integration**: {{final_implementation.ready_for_integration}}
+      - **All Tests Passed**: {{final_tests.final_test_results.all_tests_passed}}
+
+      ## Recommendations for Future
+
+      Based on this N-version analysis:
+      1. Patterns that worked well across versions
+      2. Trade-offs consistently observed
+      3. Recommended approach for similar tasks
+
+      ---
+
+      *This document was auto-generated by the N-Version Workflow.*
+      *For integration with DEFAULT_WORKFLOW, continue at Step 6 (Refactor and Simplify).*
+      ANALYSIS_EOF
+
+      echo "Analysis document generated at: $ANALYSIS_FILE"
+      cat "$ANALYSIS_FILE"
+    output: "analysis_document"
+    timeout: 60
+
+  # ==========================================================================
+  # STEP 23: FINAL OUTPUT AND WORKFLOW INTEGRATION
+  # Prepare for handoff to DEFAULT_WORKFLOW Step 6
+  # ==========================================================================
+  - id: "final-output"
+    type: "bash"
+    parse_json: true
+    command: |
+      cat << 'EOF'
+      {
+        "workflow": "n-version-workflow",
+        "task": "{{task_description}}",
+        "versions_generated": {{num_versions}},
+        "status": "complete",
+        "selection": {
+          "type": "{{selection_decision.final_selection.type}}",
+          "rationale": "{{selection_decision.final_selection.rationale}}"
+        },
+        "final_tests_passed": "{{final_tests.final_test_results.all_tests_passed}}",
+        "analysis_document": "{{output_dir}}/n_version_analysis.md",
+        "integration_point": {
+          "workflow": "DEFAULT_WORKFLOW",
+          "resume_at": "Step 6 - Refactor and Simplify",
+          "notes": "Selected implementation ready for refinement and CI/CD"
+        },
+        "artifacts": {
+          "specification": "{{output_dir}}/specification.json",
+          "versions": "{{output_dir}}/version_*/",
+          "analysis": "{{output_dir}}/n_version_analysis.md",
+          "final_implementation": "{{output_dir}}/final/"
+        }
+      }
+      EOF
+    output: "workflow_result"
+
+# ==========================================================================
+# WORKFLOW EXECUTION SUMMARY
+# ==========================================================================
+#
+# Phase 1: Common Context Preparation (Steps 1-2)
+#   - Create crystal-clear specification
+#   - Setup isolated directories for each version
+#
+# Phase 2: N Independent Implementations (Steps 3-8)
+#   - Version 1: Conservative approach
+#   - Version 2: Pragmatic approach
+#   - Version 3: Minimalist approach
+#   - Version 4: Innovative approach (if N >= 4)
+#   - Version 5: Performance-focused approach (if N >= 5)
+#   - Version 6: Additional perspective (if N = 6)
+#   - TRUE CONTEXT ISOLATION: No sharing between versions
+#
+# Phase 3: Collection and Comparison (Steps 9-16)
+#   - Test execution per version (separate tester runs)
+#   - Security evaluation of all versions
+#   - Build 6-dimension comparison matrix
+#
+# Phase 4: Review and Evaluation (Steps 17-18)
+#   - 5-step evaluation process
+#   - Selection decision tree
+#
+# Phase 5: Selection or Synthesis (Steps 19-21)
+#   - Synthesis design (if hybrid)
+#   - Final implementation
+#   - Comprehensive testing
+#
+# Phase 6: Documentation (Steps 22-23)
+#   - Generate analysis document
+#   - Prepare for DEFAULT_WORKFLOW integration
+#
+# PHILOSOPHY ALIGNMENT:
+#   - Reduced Risk: Multiple implementations catch errors
+#   - Exploration: Different approaches reveal trade-offs
+#   - Evidence-Based: Systematic comparison vs gut feeling
+#   - Learning: Rejected versions provide insights

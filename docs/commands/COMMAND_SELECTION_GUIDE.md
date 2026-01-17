@@ -47,6 +47,7 @@ What do you need to do?
 | Code understanding   | `/investigate <path>`    | Deep dive into codebase structure              |
 | Session analysis     | `/reflect`               | Review session and create improvement issues   |
 | Philosophy check     | `/analyze <path>`        | Validate code against amplihack principles     |
+| Multi-model AI       | `amplihack amplifier`    | Use Amplifier with Claude, GPT-4, etc.         |
 
 ## Key Distinctions
 

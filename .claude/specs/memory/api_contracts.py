@@ -30,7 +30,6 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Protocol
 
-
 # ============================================================================
 # Core Types
 # ============================================================================
@@ -182,9 +181,7 @@ class MemoryCoordinator(Protocol):
         """
         ...
 
-    def retrieve_with_review(
-        self, query: RetrievalQuery, context: str
-    ) -> list[MemoryEntry]:
+    def retrieve_with_review(self, query: RetrievalQuery, context: str) -> list[MemoryEntry]:
         """Retrieve memories with relevance scoring.
 
         Uses parallel agent evaluation to score relevance to context.
@@ -307,9 +304,7 @@ class RetrievalPipeline(Protocol):
         """
         ...
 
-    def query_with_scoring(
-        self, query: RetrievalQuery, context: str
-    ) -> list[MemoryEntry]:
+    def query_with_scoring(self, query: RetrievalQuery, context: str) -> list[MemoryEntry]:
         """Retrieval with relevance scoring.
 
         Uses 2 parallel agents to score relevance.
@@ -325,9 +320,7 @@ class RetrievalPipeline(Protocol):
         """
         ...
 
-    def score_relevance(
-        self, memories: list[MemoryEntry], context: str
-    ) -> dict[str, float]:
+    def score_relevance(self, memories: list[MemoryEntry], context: str) -> dict[str, float]:
         """Score relevance of memories to context.
 
         Args:
@@ -463,25 +456,17 @@ class HookIntegration(Protocol):
 class MemoryError(Exception):
     """Base exception for memory operations."""
 
-    pass
-
 
 class StorageError(MemoryError):
     """Failed to store memory."""
-
-    pass
 
 
 class RetrievalError(MemoryError):
     """Failed to retrieve memory."""
 
-    pass
-
 
 class ReviewError(MemoryError):
     """Agent review failed."""
-
-    pass
 
 
 # ============================================================================

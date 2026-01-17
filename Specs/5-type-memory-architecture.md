@@ -7,6 +7,7 @@
 This architecture implements a psychological memory model with 5 distinct memory types: Episodic, Semantic, Prospective, Procedural, and Working. The system automatically captures, filters, stores, and retrieves memories via hooks, using multi-agent review for storage decisions and selective injection for retrieval.
 
 **Core Design Principles**:
+
 - SQLite-only storage (ruthless simplicity)
 - Parallel agent review for quality filtering
 - Automatic operation via hooks (no manual commands)
@@ -18,23 +19,28 @@ This architecture implements a psychological memory model with 5 distinct memory
 This specification addresses 4 critical gaps identified by zen-architect:
 
 ### 1. Agent Invocation Mechanism (RESOLVED)
+
 **The Problem**: Task tool invokes ONE agent at a time, not multiple agents in parallel.
 
 **The Solution**: Multiple Task tool calls in a SINGLE Claude Code response block.
+
 - See "Agent Review Coordination (Detail)" section
 - Pattern from CLAUDE.md: `[analyzer(content), patterns(content), archaeologist(content)]`
 - Implementation: 3 separate Task tool invocations in one response
 - AgentReviewCoordinator prepares prompts, Claude Code executes in parallel
 
 ### 2. Error Recovery Strategy (RESOLVED)
+
 **Policy**: Accept ≥2/3 agents for consensus, graceful degradation on failures.
 
 **Recovery Tiers**:
+
 - **≥2 agents succeed**: Normal consensus (2/3 voting)
 - **1 agent succeeds**: Cautious acceptance (importance ≥3 required)
 - **0 agents succeed**: Fallback to heuristic filter
 
 **Pre-Filter**: Trivial content filtered BEFORE agent review (reduces overhead by ~40%).
+
 - Length check (< 50 chars)
 - Filler patterns ("ok", "thanks", etc.)
 - Duplicate detection (hash-based)
@@ -42,24 +48,29 @@ This specification addresses 4 critical gaps identified by zen-architect:
 See `_aggregate_with_fallback()` in AgentReviewCoordinator section.
 
 ### 3. Token Budget Enforcement (RESOLVED)
+
 **Enforcement**: HARD limit, not advisory. Budget respected within ±5% accuracy.
 
 **Implementation**:
+
 - Default: 8000 tokens (8% of 100K context)
 - Estimation: `word_count * 1.3` (conservative)
 - Trimming: Greedy selection by relevance score
 - Metadata: Returns actual usage per memory type
 
 **API Contract**: `RetrievalPipeline.retrieve_relevant()` returns tuple:
+
 - `(formatted_context: str, metadata: dict)`
 - Metadata includes token usage, utilization, trimmed count
 
 See updated RetrievalPipeline API contract.
 
 ### 4. Working Memory Lifecycle (RESOLVED)
+
 **Answer**: AUTOMATIC via hooks (primary), manual API (fallback only).
 
 **Lifecycle**:
+
 1. **Creation**: Auto on TodoWrite task creation
 2. **Usage**: Auto-injected on every UserPromptSubmit (separate token budget)
 3. **Cleanup**: Auto on TodoWrite completion (marks `cleared_at`, doesn't delete)
@@ -110,9 +121,11 @@ See "5. Working Memory (Active Context)" section for full lifecycle.
 ## Memory Types & Fields
 
 ### 1. Episodic Memory (Personal Experience)
+
 **What**: Specific events and experiences from this session.
 
 **Fields**:
+
 - `id` (TEXT PRIMARY KEY)
 - `session_id` (TEXT)
 - `agent_id` (TEXT)
@@ -131,9 +144,11 @@ See "5. Working Memory (Active Context)" section for full lifecycle.
 **Example**: "User requested architecture design for 5-type memory system"
 
 ### 2. Semantic Memory (Facts & Concepts)
+
 **What**: General knowledge, facts, and concepts learned across sessions.
 
 **Fields**:
+
 - `id` (TEXT PRIMARY KEY)
 - `concept` (TEXT) - Main concept name
 - `category` (TEXT) - "pattern", "fact", "principle", "domain_knowledge"
@@ -152,9 +167,11 @@ See "5. Working Memory (Active Context)" section for full lifecycle.
 **Example**: "SQLite performs at <50ms for indexed queries"
 
 ### 3. Prospective Memory (Future Intentions)
+
 **What**: Future tasks, reminders, and commitments.
 
 **Fields**:
+
 - `id` (TEXT PRIMARY KEY)
 - `session_id` (TEXT)
 - `agent_id` (TEXT)
@@ -175,9 +192,11 @@ See "5. Working Memory (Active Context)" section for full lifecycle.
 **Example**: "Remember to test with uvx --from git... syntax for PR #1902"
 
 ### 4. Procedural Memory (How-To Knowledge)
+
 **What**: Learned procedures, workflows, and skills.
 
 **Fields**:
+
 - `id` (TEXT PRIMARY KEY)
 - `procedure_name` (TEXT) - Name of procedure
 - `category` (TEXT) - "workflow", "pattern", "technique", "tool_usage"
@@ -195,12 +214,14 @@ See "5. Working Memory (Active Context)" section for full lifecycle.
 - `updated_at` (TEXT)
 - `accessed_at` (TEXT)
 
-**Example**: "How to design a brick module: 1) Define public API, 2) Create __all__ export..."
+**Example**: "How to design a brick module: 1) Define public API, 2) Create **all** export..."
 
 ### 5. Working Memory (Active Context)
+
 **What**: Currently active information for the ongoing task.
 
 **Fields**:
+
 - `id` (TEXT PRIMARY KEY)
 - `session_id` (TEXT)
 - `agent_id` (TEXT)
@@ -231,6 +252,7 @@ See "5. Working Memory (Active Context)" section for full lifecycle.
    - Fallback: Expire after 5 min if hook fails
 
 4. **Manual API** (Optional for advanced use):
+
    ```python
    # Manual creation (rarely needed)
    coordinator.create_working_memory(
@@ -253,9 +275,11 @@ See "5. Working Memory (Active Context)" section for full lifecycle.
 ## Module Structure (Bricks & Studs)
 
 ### Module: memory_coordinator/
+
 **Purpose**: Routes memory operations to appropriate pipelines and manages token budgets.
 
 **Public API** (`__all__`):
+
 ```python
 MemoryCoordinator          # Main coordinator class
 MemoryType                 # Enum for 5 types
@@ -263,14 +287,17 @@ determine_memory_type()    # Classify content
 ```
 
 **Contract**:
+
 - Input: Raw content, context, trigger source
 - Output: Storage decision or retrieved memories
 - No side effects except DB writes
 
 ### Module: storage_pipeline/
+
 **Purpose**: Captures, reviews, filters, and stores memories.
 
 **Public API**:
+
 ```python
 StoragePipeline           # Main pipeline class
 AgentReviewResult         # Review result from agents
@@ -279,14 +306,17 @@ filter_trivial()          # Triviality filter
 ```
 
 **Contract**:
+
 - Input: Content + context
 - Output: Boolean (stored/rejected) + reason
 - Side effect: Parallel agent invocation
 
 ### Module: retrieval_pipeline/
+
 **Purpose**: Queries, scores, allocates tokens, and injects memories.
 
 **Public API**:
+
 ```python
 RetrievalPipeline         # Main pipeline class
 MemoryQuery               # Query builder
@@ -296,14 +326,17 @@ inject_context()          # Inject into prompt
 ```
 
 **Contract**:
+
 - Input: Query + token budget
 - Output: Formatted context string
 - No side effects
 
 ### Module: agent_review/
+
 **Purpose**: Parallel multi-agent review for storage decisions.
 
 **Public API**:
+
 ```python
 AgentReviewCoordinator    # Coordinates parallel reviews
 ReviewDecision            # Decision from one agent
@@ -311,14 +344,17 @@ aggregate_decisions()     # Consensus logic
 ```
 
 **Contract**:
+
 - Input: Content to review + memory type
 - Output: Consensus decision (store/reject)
 - Side effect: Task tool calls (parallel)
 
 ### Module: hook_integration/
+
 **Purpose**: Integrates memory system with Claude Code hooks.
 
 **Public API**:
+
 ```python
 UserPromptSubmitHandler   # Handles user prompt submission
 SessionStopHandler        # Handles session stop
@@ -327,6 +363,7 @@ register_hooks()          # Register all handlers
 ```
 
 **Contract**:
+
 - Input: Hook event data
 - Output: Hook response (empty dict or memory injection)
 - Side effect: Memory storage/retrieval
@@ -334,11 +371,13 @@ register_hooks()          # Register all handlers
 ## Storage Pipeline (Detailed)
 
 ### Phase 1: Content Capture
+
 1. Hook triggers with raw content
 2. Extract metadata: session_id, agent_id, context, timestamp
 3. Classify memory type using heuristics + LLM if ambiguous
 
 ### Phase 1.5: Trivial Pre-Filter (BEFORE Agent Review)
+
 **Zen-Architect Suggestion**: Filter obvious trivial content to reduce agent overhead.
 
 ```python
@@ -368,6 +407,7 @@ def pre_filter_trivial(content: str) -> tuple[bool, str]:
 **Impact**: Reduces agent review calls by ~40% (most trivial content filtered here).
 
 ### Phase 2: Parallel Agent Review (3 agents)
+
 ```
 ┌─────────────────┐
 │ Content to Store│
@@ -396,11 +436,13 @@ def pre_filter_trivial(content: str) -> tuple[bool, str]:
 ```
 
 **Agent Questions**:
+
 1. **Analyzer**: "What is the importance of this content (1-10)? Is it trivial?"
 2. **Patterns**: "Does this represent a useful pattern or just noise? Rate relevance (1-10)."
 3. **Knowledge-Archaeologist**: "Is this novel information or redundant? Rate novelty (1-10)."
 
 **Consensus Logic**:
+
 - If 2+ agents say "trivial" → REJECT
 - If average importance < 4 → REJECT
 - If average relevance < 5 → REJECT
@@ -410,7 +452,7 @@ def pre_filter_trivial(content: str) -> tuple[bool, str]:
 
 **This is what actually happens in storage_pipeline.py:**
 
-```python
+````python
 class StoragePipeline:
     def store_memory(
         self,
@@ -498,9 +540,10 @@ def parse_agent_response(result: str, agent_name: str) -> dict:
             "agent": agent_name,
             "error": str(e),
         }
-```
+````
 
 **Key Points**:
+
 - 3 Task tool calls in sequence (Claude Code parallelizes them)
 - NOT a for-loop (explicit invocations)
 - Each agent gets structured prompt expecting JSON response
@@ -508,7 +551,9 @@ def parse_agent_response(result: str, agent_name: str) -> dict:
 - Error recovery via `success` field in parsed results
 
 ### Phase 3: Triviality Filter (Fallback)
+
 If ALL agents fail (0/3 successful responses):
+
 - Fall back to heuristic triviality filter (same as Phase 1.5)
 - Accept with low importance (5) if passes filter
 - Reject if fails filter
@@ -516,6 +561,7 @@ If ALL agents fail (0/3 successful responses):
 **This ensures we never lose important content due to agent failures.**
 
 ### Phase 4: SQLite Storage
+
 - Insert into appropriate table based on memory type
 - Store agent review metadata (scores, consensus level)
 - Update cross-session links (semantic memory)
@@ -524,6 +570,7 @@ If ALL agents fail (0/3 successful responses):
 ## Retrieval Pipeline (Detailed)
 
 ### Phase 1: Query Construction
+
 ```python
 query = MemoryQuery(
     memory_types=[MemoryType.SEMANTIC, MemoryType.PROCEDURAL],
@@ -534,7 +581,9 @@ query = MemoryQuery(
 ```
 
 ### Phase 2: Relevance Scoring
+
 For each memory:
+
 ```
 relevance_score = (
     importance * 0.3 +
@@ -545,11 +594,13 @@ relevance_score = (
 ```
 
 Where:
+
 - `recency_score`: Exponential decay (1.0 for today, 0.5 for week ago, 0.1 for month ago)
 - `access_frequency`: log(access_count + 1) normalized to 0-10
 - `semantic_similarity`: TF-IDF or simple keyword overlap (start simple)
 
 ### Phase 3: Token Allocation
+
 ```
 Total Budget: 8000 tokens (8% of 100K context)
 Breakdown:
@@ -561,30 +612,39 @@ Breakdown:
 ```
 
 ### Phase 4: Context Injection
+
 Format:
+
 ```markdown
 ## Memory Context (Auto-Injected)
 
 ### Working Memory (Current Task)
+
 - [Working memory items, if any]
 
 ### Recent Events (Episodic)
+
 - [Top 5-10 relevant events, most recent first]
 
 ### Relevant Knowledge (Semantic)
+
 - [Top 10-15 concepts/facts, sorted by relevance]
 
 ### Pending Tasks (Prospective)
+
 - [Active TODOs/reminders for this context]
 
 ### Applicable Procedures (Procedural)
+
 - [Top 3-5 relevant workflows/patterns]
 
 ---
+
 [Original user prompt]
 ```
 
 ### Phase 5: Freshness Tracking
+
 - Update `accessed_at` for all retrieved memories
 - Increment `access_count`
 - Track retrieval effectiveness for future optimization
@@ -592,10 +652,12 @@ Format:
 ## Hook Integration Points
 
 ### 1. UserPromptSubmit Hook
+
 **Trigger**: User submits a new prompt
 **Action**: Retrieval pipeline
 
 **Logic**:
+
 ```python
 def on_user_prompt_submit(hook_data):
     prompt = hook_data["userMessage"]["text"]
@@ -621,10 +683,12 @@ def on_user_prompt_submit(hook_data):
 ```
 
 ### 2. SessionStop Hook
+
 **Trigger**: Session ends (user closes, timeout, error)
 **Action**: Storage pipeline
 
 **Logic**:
+
 ```python
 def on_session_stop(hook_data):
     session_id = hook_data.get("sessionId")
@@ -659,10 +723,12 @@ def on_session_stop(hook_data):
 ```
 
 ### 3. TodoWriteComplete Hook (Custom)
+
 **Trigger**: TodoWrite task marked as completed
 **Action**: Clear working memory, store procedural memory if pattern detected
 
 **Logic**:
+
 ```python
 def on_todo_complete(hook_data):
     session_id = hook_data.get("sessionId")
@@ -693,7 +759,7 @@ def on_todo_complete(hook_data):
 
 From CLAUDE.md: "When multiple independent pieces of information are requested and all commands are likely to succeed, run multiple tool calls in parallel for optimal performance."
 
-```python
+````python
 from dataclasses import dataclass
 from typing import Optional
 import asyncio
@@ -920,11 +986,12 @@ class AgentReviewCoordinator:
                 "consensus": f"{len(successful)}/3 agents",
             },
         )
-```
+````
 
 ## Token Budget Management
 
 ### Dynamic Budget Allocation
+
 ```python
 class TokenBudget:
     """Manages token allocation across memory types."""
@@ -976,15 +1043,18 @@ class TokenBudget:
 ### Session-Scoped vs Global Memories
 
 **Session-Scoped** (Default):
+
 - Episodic: Always session-scoped
 - Prospective: Session-scoped unless explicitly marked global
 - Working: Session-scoped only
 
 **Global** (Cross-Session):
+
 - Semantic: Global by default (facts don't belong to sessions)
 - Procedural: Global by default (procedures are reusable)
 
 **Promotion Logic**:
+
 ```python
 def promote_to_global(session_id: str, memory_id: str) -> bool:
     """Promote session memory to global if reinforced."""
@@ -1010,6 +1080,7 @@ def promote_to_global(session_id: str, memory_id: str) -> bool:
 ## Implementation Phases
 
 ### Phase 1: Core Infrastructure (Issue #1902)
+
 1. Extend SQLite schema with 5 tables
 2. Implement MemoryCoordinator with type determination
 3. Create basic storage pipeline (no agent review yet)
@@ -1019,6 +1090,7 @@ def promote_to_global(session_id: str, memory_id: str) -> bool:
 **Success Criteria**: Memory injection works for semantic/procedural types.
 
 ### Phase 2: Agent Review Integration
+
 1. Implement AgentReviewCoordinator
 2. Add parallel agent invocation
 3. Add consensus logic
@@ -1027,6 +1099,7 @@ def promote_to_global(session_id: str, memory_id: str) -> bool:
 **Success Criteria**: Trivial content filtered out, storage decisions logged.
 
 ### Phase 3: Advanced Retrieval
+
 1. Implement relevance scoring
 2. Add dynamic token budget allocation
 3. Add freshness tracking
@@ -1035,6 +1108,7 @@ def promote_to_global(session_id: str, memory_id: str) -> bool:
 **Success Criteria**: Relevant memories retrieved within token budget.
 
 ### Phase 4: Full Hook Integration
+
 1. Add SessionStop handler
 2. Add TodoWriteComplete handler
 3. Implement working memory lifecycle
@@ -1043,6 +1117,7 @@ def promote_to_global(session_id: str, memory_id: str) -> bool:
 **Success Criteria**: Complete lifecycle works end-to-end.
 
 ### Phase 5: Optimization & Metrics
+
 1. Add performance metrics
 2. Implement relevance feedback loop
 3. Optimize agent review prompts
@@ -1053,6 +1128,7 @@ def promote_to_global(session_id: str, memory_id: str) -> bool:
 ## Testing Strategy
 
 ### Unit Tests (60%)
+
 - Schema validation
 - Memory type classification
 - Token budget allocation
@@ -1060,17 +1136,20 @@ def promote_to_global(session_id: str, memory_id: str) -> bool:
 - Relevance scoring
 
 ### Integration Tests (30%)
+
 - Storage pipeline end-to-end
 - Retrieval pipeline end-to-end
 - Agent review coordination
 - Cross-session promotion
 
 ### E2E Tests (10%)
+
 - Full lifecycle: UserPromptSubmit → SessionStop
 - TodoWrite completion → working memory cleanup
 - Multi-session semantic memory aggregation
 
 ### Test Data
+
 ```python
 # Synthetic memories for testing
 EPISODIC_TEST = "User requested architecture for memory system at 2025-01-11T10:00:00"
@@ -1091,11 +1170,13 @@ WORKING_TEST = "Current module: memory_coordinator, designing route_storage() AP
 ## Security & Privacy
 
 ### Data Protection
+
 - SQLite database file: 0o600 permissions (owner read/write only)
 - Sensitive content detection: Flag PII/credentials, skip storage
 - Session isolation: Memories tagged with session_id, cross-session via explicit links only
 
 ### Agent Review Safety
+
 - Agent prompts sanitized (no user PII in prompts)
 - Agent responses validated (structured format expected)
 - Timeouts enforced (2s max per agent)
@@ -1103,18 +1184,21 @@ WORKING_TEST = "Current module: memory_coordinator, designing route_storage() AP
 ## Philosophy Alignment
 
 ### Ruthless Simplicity
+
 - SQLite only (no graph DB initially)
 - Simple relevance scoring (no ML embeddings initially)
 - Triviality filter = basic heuristics + agent consensus
 - Hook integration = 3 hooks, not 10
 
 ### Brick & Studs
+
 - Each module = one directory with `__init__.py` + `__all__`
 - Clear public API contracts
 - No circular dependencies
 - Tests co-located with modules
 
 ### Zero-BS
+
 - No placeholder functions
 - No fake data or mocks (except in tests)
 - Agent review actually invokes agents, not simulated
@@ -1123,6 +1207,7 @@ WORKING_TEST = "Current module: memory_coordinator, designing route_storage() AP
 ## API Contracts
 
 ### MemoryCoordinator
+
 ```python
 class MemoryCoordinator:
     """Routes memory operations to appropriate pipelines."""
@@ -1178,6 +1263,7 @@ class MemoryCoordinator:
 ```
 
 ### StoragePipeline
+
 ```python
 class StoragePipeline:
     """Captures, reviews, filters, and stores memories."""
@@ -1217,6 +1303,7 @@ class StoragePipeline:
 ```
 
 ### RetrievalPipeline
+
 ```python
 class RetrievalPipeline:
     """Queries, scores, allocates tokens, injects memories.
@@ -1339,6 +1426,7 @@ class RetrievalPipeline:
 ```
 
 ### AgentReviewCoordinator
+
 ```python
 class AgentReviewCoordinator:
     """Coordinates parallel agent reviews for storage decisions."""
@@ -1528,6 +1616,7 @@ CREATE INDEX idx_links_target ON memory_links(target_id);
 **Status**: Fully Regeneratable - Ready for Implementation
 
 **Change Log**:
+
 - v1.0: Initial architecture
 - v2.0: Addressed 4 critical gaps from zen-architect review:
   1. Specified parallel agent invocation mechanism (3 Task tool calls in one response)

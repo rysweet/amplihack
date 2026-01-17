@@ -14,6 +14,7 @@ The zen-architect identified 4 CRITICAL gaps in the initial architecture (v1.0) 
 ## Gap 1: Agent Invocation Mechanism
 
 ### Zen-Architect's Feedback
+
 > "The design says 'parallel agent execution' but doesn't specify HOW. The Task tool invokes ONE agent at a time. How do we invoke 3 agents in parallel?"
 
 > "From CLAUDE.md: `[analyzer(comp1), analyzer(comp2), analyzer(comp3)]` suggests multiple Task tool calls in a single response block."
@@ -23,6 +24,7 @@ The zen-architect identified 4 CRITICAL gaps in the initial architecture (v1.0) 
 **Added Section**: "CRITICAL: Parallel Agent Invocation Pattern"
 
 **Key Changes**:
+
 1. **Clarified mechanism**: Multiple Task tool calls in ONE Claude Code response block
 2. **Added concrete implementation example** showing 3 explicit Task invocations:
    ```python
@@ -42,36 +44,41 @@ The zen-architect identified 4 CRITICAL gaps in the initial architecture (v1.0) 
 ## Gap 2: Error Recovery Strategy
 
 ### Zen-Architect's Feedback
+
 > "What happens if analyzer times out during storage review? Fail-fast, partial consensus, or fallback?"
 
 ### Resolution (v2.0)
 
-**Added Section**: "_aggregate_with_fallback()" in AgentReviewCoordinator
+**Added Section**: "\_aggregate_with_fallback()" in AgentReviewCoordinator
 
 **Error Recovery Policy**:
+
 - **≥2 agents succeed**: Normal 2/3 consensus voting
 - **1 agent succeeds**: Cautious acceptance (importance ≥3 required)
 - **0 agents succeed**: Fallback to heuristic filter
 
 **Three-Tier Recovery**:
+
 1. **Best case**: All 3 agents respond → Full consensus
 2. **Degraded**: 1-2 agents respond → Partial consensus with cautious thresholds
 3. **Worst case**: 0 agents respond → Heuristic filter (length, filler, duplicates)
 
 **Added Pre-Filter** (zen-architect suggestion):
+
 - Filters trivial content BEFORE agent review
 - Reduces agent overhead by ~40%
 - Checks: length (<50 chars), filler patterns, duplicates
 
 **Impact**: System never loses important content due to agent failures. Graceful degradation at every tier.
 
-**Verification**: See "_aggregate_with_fallback()" method and "Phase 1.5: Trivial Pre-Filter" in spec.
+**Verification**: See "\_aggregate_with_fallback()" method and "Phase 1.5: Trivial Pre-Filter" in spec.
 
 ---
 
 ## Gap 3: Token Budget Enforcement
 
 ### Zen-Architect's Feedback
+
 > "Token budget mentioned in issue but not in API contracts. How is it enforced?"
 
 ### Resolution (v2.0)
@@ -79,6 +86,7 @@ The zen-architect identified 4 CRITICAL gaps in the initial architecture (v1.0) 
 **Updated API Contract**: RetrievalPipeline.retrieve_relevant()
 
 **Key Changes**:
+
 1. **Return type changed**: `str` → `tuple[str, dict]`
    - Returns (formatted_context, metadata)
    - Metadata includes actual token usage
@@ -112,6 +120,7 @@ The zen-architect identified 4 CRITICAL gaps in the initial architecture (v1.0) 
 ## Gap 4: Working Memory Lifecycle
 
 ### Zen-Architect's Feedback
+
 > "Automatic via hook or manual API?"
 
 ### Resolution (v2.0)
@@ -121,6 +130,7 @@ The zen-architect identified 4 CRITICAL gaps in the initial architecture (v1.0) 
 **Answer**: AUTOMATIC via hooks (primary), manual API (fallback only)
 
 **Lifecycle Documented**:
+
 1. **Creation**: Auto on TodoWrite task creation
    - Hook: TodoWriteCreate (if available)
    - Fallback: Detect TodoWrite in UserPromptSubmit context
@@ -153,6 +163,7 @@ The zen-architect identified 4 CRITICAL gaps in the initial architecture (v1.0) 
 **Suggestion**: "Add trivial content pre-filter BEFORE agent review (reduce overhead)"
 
 **Implementation**:
+
 ```python
 def pre_filter_trivial(content: str) -> tuple[bool, str]:
     """Fast heuristic filter BEFORE agent review."""
@@ -180,19 +191,20 @@ def pre_filter_trivial(content: str) -> tuple[bool, str]:
 
 ## Summary of Changes
 
-| Gap | Status | Solution | Impact |
-|-----|--------|----------|--------|
-| Agent Invocation | ✅ RESOLVED | 3 Task tool calls in one response | Exact implementation pattern |
-| Error Recovery | ✅ RESOLVED | 3-tier graceful degradation | Never loses important content |
-| Token Budget | ✅ RESOLVED | Hard limit in API contract | Guaranteed enforcement |
-| Working Memory | ✅ RESOLVED | Automatic via hooks | Clear implementation priority |
-| Pre-Filter | ✅ ADDED | Heuristic trivial filter | ~40% overhead reduction |
+| Gap              | Status      | Solution                          | Impact                        |
+| ---------------- | ----------- | --------------------------------- | ----------------------------- |
+| Agent Invocation | ✅ RESOLVED | 3 Task tool calls in one response | Exact implementation pattern  |
+| Error Recovery   | ✅ RESOLVED | 3-tier graceful degradation       | Never loses important content |
+| Token Budget     | ✅ RESOLVED | Hard limit in API contract        | Guaranteed enforcement        |
+| Working Memory   | ✅ RESOLVED | Automatic via hooks               | Clear implementation priority |
+| Pre-Filter       | ✅ ADDED    | Heuristic trivial filter          | ~40% overhead reduction       |
 
 ---
 
 ## Architecture Quality Assessment
 
 **Before v2.0 (Zen-Architect Review)**:
+
 - ❌ Ambiguous parallel agent invocation
 - ❌ No error recovery strategy
 - ❌ Token budget not enforced in contracts
@@ -200,6 +212,7 @@ def pre_filter_trivial(content: str) -> tuple[bool, str]:
 - ⚠️ No optimization for trivial content
 
 **After v2.0 (Gaps Addressed)**:
+
 - ✅ Concrete parallel agent invocation pattern
 - ✅ 3-tier error recovery with graceful degradation
 - ✅ Token budget enforced (±5% accuracy)
@@ -223,6 +236,7 @@ def pre_filter_trivial(content: str) -> tuple[bool, str]:
 **Conclusion**: All critical gaps identified by zen-architect have been addressed with concrete, implementable solutions. The architecture is now fully regeneratable and ready for builder implementation.
 
 **Files Updated**:
+
 - `Specs/5-type-memory-architecture.md` (v1.0 → v2.0)
 - This review document (new)
 
