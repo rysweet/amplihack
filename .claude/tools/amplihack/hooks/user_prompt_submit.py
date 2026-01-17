@@ -218,7 +218,7 @@ class UserPromptSubmitHook(HookProcessor):
                 detect_agent_references,
                 detect_slash_command_agent,
                 format_memory_injection_notice,
-                inject_memory_for_agents,
+                inject_memory_for_agents_sync,
             )
 
             # Detect agent references
@@ -232,9 +232,9 @@ class UserPromptSubmitHook(HookProcessor):
             if agent_types:
                 self.log(f"Detected agents: {agent_types}")
 
-                # Inject memory context for these agents
+                # Inject memory context for these agents (using sync wrapper)
                 session_id = self.get_session_id()
-                enhanced_prompt, memory_metadata = inject_memory_for_agents(
+                enhanced_prompt, memory_metadata = inject_memory_for_agents_sync(
                     user_prompt, agent_types, session_id
                 )
 

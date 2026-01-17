@@ -286,3 +286,185 @@ def format_learning_extraction_notice(metadata: dict[str, Any]) -> str:
         return f"🧠 Stored {count} new learnings from agents: {agent_list}"
 
     return ""
+
+
+# ============================================================================
+# SYNC WRAPPERS - Solution for Issue #1960
+# ============================================================================
+# These sync wrapper functions safely handle async functions in synchronous
+# contexts (like hooks). They handle three critical edge cases:
+# 1. No event loop exists (create new loop)
+# 2. Event loop already running (use thread to avoid nested loop)
+# 3. Import errors or exceptions (fail-open gracefully)
+
+
+def inject_memory_for_agents_sync(
+    prompt: str, agent_types: list[str], session_id: str | None = None
+) -> tuple[str, dict[str, Any]]:
+    """Synchronous wrapper for inject_memory_for_agents.
+
+    Safely calls async inject_memory_for_agents from synchronous context.
+    Handles three edge cases:
+    1. No event loop - creates new loop
+    2. Running event loop - uses thread to avoid nesting
+    3. Errors - fails open (returns original prompt)
+
+    Args:
+        prompt: Original user prompt
+        agent_types: List of agent types detected
+        session_id: Optional session ID for logging
+
+    Returns:
+        Tuple of (enhanced_prompt, metadata_dict)
+    """
+    # Handle empty agent_types early
+    if not agent_types:
+        return prompt, {}
+
+    try:
+        import asyncio
+
+        # Try to get running loop
+        try:
+            loop = asyncio.get_running_loop()
+            # Loop is running - must use thread to avoid nested loop error
+            import concurrent.futures
+            import threading
+
+            result = [None]
+            error = [None]
+
+            def run_in_thread():
+                try:
+                    # Create new loop in thread
+                    new_loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(new_loop)
+                    try:
+                        result[0] = new_loop.run_until_complete(
+                            inject_memory_for_agents(prompt, agent_types, session_id)
+                        )
+                    finally:
+                        new_loop.close()
+                except Exception as e:
+                    error[0] = e
+
+            thread = threading.Thread(target=run_in_thread)
+            thread.start()
+            thread.join(timeout=30)  # 30 second timeout
+
+            if error[0]:
+                raise error[0]
+
+            if result[0]:
+                return result[0]
+            else:
+                # Timeout or no result
+                logger.warning("Memory injection timed out in thread")
+                return prompt, {"memory_available": False, "error": "timeout"}
+
+        except RuntimeError:
+            # No running loop - safe to create one
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                result = loop.run_until_complete(
+                    inject_memory_for_agents(prompt, agent_types, session_id)
+                )
+                return result
+            finally:
+                loop.close()
+
+    except ImportError as e:
+        logger.warning(f"Memory system not available: {e}")
+        return prompt, {"memory_available": False, "error": "import_failed"}
+
+    except Exception as e:
+        logger.error(f"Failed to inject memory (sync wrapper): {e}")
+        return prompt, {"memory_available": False, "error": str(e)}
+
+
+def extract_learnings_from_conversation_sync(
+    conversation_text: str, agent_types: list[str], session_id: str | None = None
+) -> dict[str, Any]:
+    """Synchronous wrapper for extract_learnings_from_conversation.
+
+    Safely calls async extract_learnings_from_conversation from synchronous context.
+    Handles three edge cases:
+    1. No event loop - creates new loop
+    2. Running event loop - uses thread to avoid nesting
+    3. Errors - fails open (returns minimal metadata)
+
+    Args:
+        conversation_text: Full conversation text
+        agent_types: List of agent types involved
+        session_id: Optional session ID for tracking
+
+    Returns:
+        Metadata about learnings stored
+    """
+    # Handle empty agent_types early
+    if not agent_types:
+        return {"learnings_stored": 0, "agents": []}
+
+    try:
+        import asyncio
+
+        # Try to get running loop
+        try:
+            loop = asyncio.get_running_loop()
+            # Loop is running - must use thread to avoid nested loop error
+            import concurrent.futures
+            import threading
+
+            result = [None]
+            error = [None]
+
+            def run_in_thread():
+                try:
+                    # Create new loop in thread
+                    new_loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(new_loop)
+                    try:
+                        result[0] = new_loop.run_until_complete(
+                            extract_learnings_from_conversation(
+                                conversation_text, agent_types, session_id
+                            )
+                        )
+                    finally:
+                        new_loop.close()
+                except Exception as e:
+                    error[0] = e
+
+            thread = threading.Thread(target=run_in_thread)
+            thread.start()
+            thread.join(timeout=30)  # 30 second timeout
+
+            if error[0]:
+                raise error[0]
+
+            if result[0]:
+                return result[0]
+            else:
+                # Timeout or no result
+                logger.warning("Learning extraction timed out in thread")
+                return {"memory_available": False, "error": "timeout", "learnings_stored": 0}
+
+        except RuntimeError:
+            # No running loop - safe to create one
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                result = loop.run_until_complete(
+                    extract_learnings_from_conversation(conversation_text, agent_types, session_id)
+                )
+                return result
+            finally:
+                loop.close()
+
+    except ImportError as e:
+        logger.warning(f"Memory system not available: {e}")
+        return {"memory_available": False, "error": "import_failed", "learnings_stored": 0}
+
+    except Exception as e:
+        logger.error(f"Failed to extract learnings (sync wrapper): {e}")
+        return {"memory_available": False, "error": str(e), "learnings_stored": 0}
