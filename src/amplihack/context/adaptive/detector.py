@@ -32,6 +32,12 @@ class LauncherDetector:
     """
 
     CONTEXT_FILE = ".claude/runtime/launcher_context.json"
+
+    # Context staleness threshold (24 hours)
+    # Rationale: Balances reusing valid context vs detecting launcher changes
+    # - Accommodates long dev sessions and multiple same-launcher sessions per day
+    # - Cleans up stale context from crashes (detected next day)
+    # - Handles developer switching between Claude Code/Copilot across days
     STALENESS_HOURS = 24
 
     def __init__(self, project_root: Path):
