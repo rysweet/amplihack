@@ -32,7 +32,7 @@ test_sample_project/
 # Adaptive hooks runtime (generated files)
 .claude/runtime/launcher_context.json
 .claude/runtime/copilot/
-.github/agents/AGENTS.md
+AGENTS.md
 
 # Environment files with secrets (catch ALL .env files)
 *.env           # Matches: test.env, production.env

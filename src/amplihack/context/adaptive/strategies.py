@@ -228,18 +228,18 @@ class ClaudeStrategy(HookStrategy):
 class CopilotStrategy(HookStrategy):
     """Copilot CLI strategy - AGENTS.md workaround (push model).
 
-    Copilot CLI doesn't auto-discover .claude/ files. Instead, we inject
-    context into .github/agents/AGENTS.md which Copilot loads automatically.
+    Copilot CLI auto-discovers AGENTS.md from repository root.
+    We inject context there so Copilot loads it at session start.
 
-    This is a workaround until Copilot gets proper context injection APIs.
+    This is a workaround for Copilot's observe-only hook model.
 
     Example:
         >>> strategy = CopilotStrategy(Path("/project"))
         >>> strategy.inject_context({"agent": "builder", "task": "implement"})
-        >>> # Copilot discovers context in .github/agents/AGENTS.md
+        >>> # Copilot discovers context in AGENTS.md at repo root
     """
 
-    AGENTS_FILE = ".github/agents/AGENTS.md"
+    AGENTS_FILE = "AGENTS.md"  # Must be in repository root per Copilot CLI docs
     CONTEXT_MARKER_START = "<!-- AMPLIHACK_CONTEXT_START -->"
     CONTEXT_MARKER_END = "<!-- AMPLIHACK_CONTEXT_END -->"
 
