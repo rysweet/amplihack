@@ -1,0 +1,1 @@
+../../.claude/agents/amplihack/specialized/amplifier-cli-architect.md

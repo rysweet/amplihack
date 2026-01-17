@@ -1,0 +1,1 @@
+../../.claude/agents/amplihack/specialized/philosophy-guardian.md
