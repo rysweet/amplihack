@@ -3,7 +3,6 @@
 import argparse
 import os
 import platform
-import subprocess
 import sys
 from pathlib import Path
 
@@ -556,10 +555,10 @@ def main(argv: list[str] | None = None) -> int:
         # Setup plugin architecture
         # Use current package directory as plugin source
         import amplihack
+        package_root = Path(amplihack.__file__).parent.parent  # Go up to package root with .claude-plugin/
 
-        # .claude-plugin is at amplihack/.claude-plugin/ (copied by build_hooks.py)
-        amplihack_package = Path(amplihack.__file__).parent
-        plugin_manifest = amplihack_package / ".claude-plugin" / "plugin.json"
+        # Check if plugin manifest exists
+        plugin_manifest = package_root / ".claude-plugin" / "plugin.json"
         if not plugin_manifest.exists():
             print(f"⚠️  Plugin manifest not found at {plugin_manifest}")
             print("   Falling back to directory copy mode")
@@ -577,8 +576,6 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"📦 Installing amplihack plugin from {package_root}")
 
             # Call: claude plugin install <path> --scope user
-            # Use parent of amplihack package (site-packages dir) as plugin root
-            package_root = amplihack_package.parent
             result = subprocess.run(
                 ["claude", "plugin", "install", str(package_root), "--scope", "user"],
                 capture_output=True,
@@ -716,6 +713,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "install":
         # Use the existing install logic
+        import subprocess
         import tempfile
 
         with tempfile.TemporaryDirectory() as tmp:
