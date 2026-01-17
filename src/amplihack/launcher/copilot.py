@@ -59,6 +59,22 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
         environment={"AMPLIHACK_LAUNCHER": "copilot"}
     )
 
+    # CRITICAL: Create AGENTS.md BEFORE launching Copilot
+    # Copilot autodiscovers AGENTS.md at startup, so it must exist first
+    try:
+        from ..context.adaptive.strategies import CopilotStrategy
+
+        strategy = CopilotStrategy(project_root)
+
+        # Load preferences and inject into AGENTS.md
+        prefs_file = project_root / ".claude/context/USER_PREFERENCES.md"
+        if prefs_file.exists():
+            prefs_content = prefs_file.read_text()
+            strategy.inject_context(prefs_content)
+    except Exception as e:
+        # Fail gracefully - Copilot will work without preferences
+        print(f"Warning: Could not create AGENTS.md: {e}")
+
     # Build command with full filesystem access (safe in VM environment)
     cmd = [
         "copilot",
