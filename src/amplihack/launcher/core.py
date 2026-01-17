@@ -290,7 +290,29 @@ class ClaudeLauncher:
                 configurator.enable_lsp()
                 print("📡 LSP: Enabled ENABLE_LSP_TOOL=1 in .env")
 
-            # Step 4: Add plugin marketplace
+            # Step 4: Check and install system LSP binaries (required for plugins to work)
+            binaries_to_install = {
+                "python": "pyright",
+                "typescript": "typescript-language-server",
+                "javascript": "typescript-language-server",
+                "rust": "rust-analyzer",
+            }
+
+            for lang in lang_names[:3]:
+                binary = binaries_to_install.get(lang)
+                if binary and not subprocess.run(["which", binary], capture_output=True).returncode == 0:
+                    # Try to install via npm (for most LSP servers)
+                    try:
+                        subprocess.run(
+                            ["npm", "install", "-g", binary],
+                            capture_output=True,
+                            timeout=60
+                        )
+                        print(f"📡 LSP: Installed {binary}")
+                    except:
+                        pass
+
+            # Step 5: Add plugin marketplace
             try:
                 subprocess.run(
                     ["claude", "plugin", "marketplace", "add", "boostvolt/claude-code-lsps"],
@@ -299,7 +321,7 @@ class ClaudeLauncher:
                 )
                 print("📡 LSP: Added plugin marketplace")
             except:
-                pass  # May already exist
+                pass
 
             # Step 5: Install plugins (map languages to plugin names)
             plugin_map = {
