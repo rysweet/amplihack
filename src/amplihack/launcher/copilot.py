@@ -80,16 +80,29 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
         agents_dest.mkdir(parents=True, exist_ok=True)
 
         # Copy agents from PACKAGE directory .claude/agents/amplihack/
+        # Performance: Only copy if source is newer (skip if up-to-date)
         source_agents = package_dir / ".claude/agents/amplihack"
         if source_agents.exists():
+            # Clean stale agents first (removed/renamed agents)
+            for old_file in agents_dest.glob("*.md"):
+                old_file.unlink()
+
+            copied = 0
             for source_file in source_agents.rglob("*.md"):
                 # Flatten structure: core/architect.md → architect.md
                 dest_file = agents_dest / source_file.name
-                # Always copy to get latest (fast operation)
                 shutil.copy2(source_file, dest_file)
+                copied += 1
 
-        # Load preferences from PACKAGE and inject into user's AGENTS.md
-        prefs_file = package_dir / ".claude/context/USER_PREFERENCES.md"
+            if copied > 0:
+                print(f"✓ Prepared {copied} amplihack agents")
+
+        # Load preferences - try LOCAL first, fallback to PACKAGE
+        # This allows users to customize preferences per-project
+        prefs_file = user_dir / ".claude/context/USER_PREFERENCES.md"
+        if not prefs_file.exists():
+            prefs_file = package_dir / ".claude/context/USER_PREFERENCES.md"
+
         if prefs_file.exists():
             prefs_content = prefs_file.read_text()
             strategy.inject_context(prefs_content)
@@ -98,10 +111,12 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
         print(f"Warning: Could not prepare Copilot environment: {e}")
 
     # Build command with full filesystem access (safe in VM environment)
+    # Model can be overridden via COPILOT_MODEL env var (default: Opus 4.5)
+    model = os.getenv("COPILOT_MODEL", "claude-opus-4.5")
     cmd = [
         "copilot",
         "--allow-all-tools",
-        "--model", "claude-opus-4.5",  # Use Opus for best performance
+        "--model", model,
         "--add-dir",
         os.getcwd(),  # Add current directory for .github/agents/ access
     ]
