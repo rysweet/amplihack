@@ -233,7 +233,7 @@ if [ -n "$session_id" ]; then
             active_agents=0
             for agent_file in "$subagents_dir"/agent-*.jsonl; do
                 if [ -f "$agent_file" ]; then
-                    file_mtime=$(stat -c %Y "$agent_file" 2>/dev/null || stat -f %m "$agent_file" 2>/dev/null)
+                    file_mtime=$(stat -f %m "$agent_file" 2>/dev/null || stat -c %Y "$agent_file" 2>/dev/null)
                     if [ -n "$file_mtime" ]; then
                         age=$((now - file_mtime))
                         if [ "$age" -lt 10 ]; then
