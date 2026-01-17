@@ -23,6 +23,12 @@ htmlcov/
 *.swo
 *~
 
+# Backup files
+*.bak
+*.backup
+*.backup.*
+**/.metadata/versions.json
+
 # Project specific
 .test_state.json
 .requirements_extraction_state.json
