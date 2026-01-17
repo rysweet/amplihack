@@ -33,6 +33,14 @@
          <lastmod>2026-01-17</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/COPILOT_CLI/</loc>
+         <lastmod>2026-01-17</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/COPILOT_CLI_INTEGRATION_SUMMARY/</loc>
+         <lastmod>2026-01-17</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/CREATE_YOUR_OWN_TOOLS/</loc>
          <lastmod>2026-01-17</lastmod>
     </url>
@@ -54,6 +62,10 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/GOAL_AGENT_GENERATOR_PRESENTATION/</loc>
+         <lastmod>2026-01-17</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/HOOKS_COMPARISON/</loc>
          <lastmod>2026-01-17</lastmod>
     </url>
     <url>
@@ -2038,6 +2050,10 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/features/neo4j-session-cleanup/</loc>
+         <lastmod>2026-01-17</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/features/smart-memory-management/</loc>
          <lastmod>2026-01-17</lastmod>
     </url>
     <url>
