@@ -1,5 +1,5 @@
 ---
-name: "Creating Pull Requests"
+name: creating-pull-requests
 description: "Creates high-quality pull requests with comprehensive descriptions, test plans, and context. Activates when user wants to create PR, says 'ready to merge', or has completed feature work. Analyzes commits and changes to generate meaningful PR descriptions."
 allowed-tools: ["Bash", "Read", "Grep", "Glob"]
 ---

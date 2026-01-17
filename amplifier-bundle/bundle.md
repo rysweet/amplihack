@@ -69,7 +69,7 @@ skills:
   azure-devops: { path: ../.claude/skills/azure-devops/SKILL.md }
   azure-devops-cli: { path: ../.claude/skills/azure-devops-cli/skill.md }
   code-smell-detector: { path: ../.claude/skills/code-smell-detector/SKILL.md }
-  context_management: { path: ../.claude/skills/context_management/SKILL.md }
+  context-management: { path: ../.claude/skills/context-management/SKILL.md }
   design-patterns-expert: { path: ../.claude/skills/design-patterns-expert/SKILL.md }
   documentation-writing: { path: ../.claude/skills/documentation-writing/SKILL.md }
   dynamic-debugger: { path: ../.claude/skills/dynamic-debugger/SKILL.md }
