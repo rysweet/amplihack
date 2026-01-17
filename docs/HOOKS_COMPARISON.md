@@ -208,10 +208,52 @@ Hook executes → Returns JSON → Copilot logs it → AI NEVER sees it (except 
 3. ✅ Zero logic duplication (wrappers just call Python)
 4. ✅ Single source of truth (.claude/tools/amplihack/hooks/)
 
-**Workaround for Copilot Limitation**:
-- Use `.github/copilot-instructions.md` for static preferences
-- Use hooks for logging/monitoring/blocking only
-- Accept that context injection only works in Claude Code
+**Adaptive Context Injection Strategy**:
+
+amplihack uses an adaptive hook system that detects which platform is calling and applies the appropriate context injection strategy:
+
+| Platform | Strategy | Implementation |
+|----------|----------|----------------|
+| **Claude Code** | Direct injection | Returns `hookSpecificOutput.additionalContext` |
+| **Copilot CLI** | File-based injection | Writes to `.github/agents/AGENTS.md` with `@include` directives |
+
+**How It Works**:
+
+```python
+# Hook detects platform
+if is_claude_code():
+    # Direct injection - Claude sees immediately
+    return {
+        "hookSpecificOutput": {
+            "additionalContext": load_user_preferences()
+        }
+    }
+else:  # Copilot CLI
+    # File-based injection - write AGENTS.md
+    write_agents_file([
+        "@.claude/context/USER_PREFERENCES.md",
+        "@.claude/context/PHILOSOPHY.md"
+    ])
+    # Copilot reads via @include on next request
+    return {}
+```
+
+**Why File-Based Injection for Copilot**:
+- Copilot CLI ignores hook stdout/JSON output (except preToolUse decisions)
+- But Copilot DOES support `@include` directives in agent files
+- Writing `AGENTS.md` with `@include` lets us inject preferences indirectly
+- This workaround enables preference loading on both platforms
+
+**Benefits of Adaptive Strategy**:
+- ✅ Preference injection works on both platforms
+- ✅ Context loading works everywhere
+- ✅ Single Python implementation (platform detection is automatic)
+- ✅ Zero duplication (same hooks, different output strategies)
+
+**Limitations**:
+- Copilot CLI: File-based injection has slight delay (next request)
+- Claude Code: Direct injection is immediate
+- Both: Work reliably for user preferences and context loading
 
 ---
 
