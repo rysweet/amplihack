@@ -1,8 +1,39 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash",
+      "TodoWrite",
+      "WebFetch",
+      "WebSearch",
+      "Grep",
+      "Glob",
+      "Read",
+      "Edit",
+      "MultiEdit",
+      "Write",
+      "NotebookEdit",
+      "BashOutput",
+      "KillShell",
+      "SlashCommand",
+      "mcp__ide__getDiagnostics",
+      "mcp__ide__executeCode"
+    ],
+    "deny": [],
+    "defaultMode": "bypassPermissions",
+    "additionalDirectories": [
+      ".claude",
+      "Specs",
+      ".git",
+      "src",
+      "tests",
+      "docs"
+    ]
+  },
+  "enableAllProjectMcpServers": false,
+  "enabledMcpjsonServers": [],
   "statusLine": {
     "type": "command",
-    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/statusline.sh",
-    "padding": 0
+    "command": ".claude/tools/statusline.sh"
   },
   "hooks": {
     "SessionStart": [
@@ -10,7 +41,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
+            "command": ".claude/tools/amplihack/hooks/session_start.py",
             "timeout": 10000
           }
         ]
@@ -21,7 +52,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/stop.py",
+            "command": ".claude/tools/amplihack/hooks/stop.py",
             "timeout": 30000
           }
         ]
@@ -33,7 +64,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/post_tool_use.py"
+            "command": ".claude/tools/amplihack/hooks/post_tool_use.py"
           }
         ]
       }
@@ -43,7 +74,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/pre_compact.py",
+            "command": ".claude/tools/amplihack/hooks/pre_compact.py",
             "timeout": 30000
           }
         ]
