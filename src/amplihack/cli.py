@@ -555,10 +555,10 @@ def main(argv: list[str] | None = None) -> int:
         # Setup plugin architecture
         # Use current package directory as plugin source
         import amplihack
-        package_root = Path(amplihack.__file__).parent.parent  # Go up to package root with .claude-plugin/
 
-        # Check if plugin manifest exists
-        plugin_manifest = package_root / ".claude-plugin" / "plugin.json"
+        # .claude-plugin is at amplihack/.claude-plugin/ (copied by build_hooks.py)
+        amplihack_package = Path(amplihack.__file__).parent
+        plugin_manifest = amplihack_package / ".claude-plugin" / "plugin.json"
         if not plugin_manifest.exists():
             print(f"⚠️  Plugin manifest not found at {plugin_manifest}")
             print("   Falling back to directory copy mode")
