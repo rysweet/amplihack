@@ -17,6 +17,10 @@ include *.md
 # For wheels: build_hooks.py copies .claude/ → src/amplihack/.claude/ before build
 recursive-include .claude *
 
+# GitHub Copilot CLI integration (for sdist only)
+# For wheels: build_hooks.py copies .github/ → src/amplihack/.github/ before build
+recursive-include .github *
+
 # Documentation, examples, and specifications
 recursive-include docs *
 recursive-include examples *

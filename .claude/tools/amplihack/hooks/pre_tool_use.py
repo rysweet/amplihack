@@ -17,6 +17,7 @@ class PreToolUseHook(HookProcessor):
 
     def __init__(self):
         super().__init__("pre_tool_use")
+        self.strategy = None
 
     def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Process pre tool use event and block dangerous operations.
@@ -27,6 +28,16 @@ class PreToolUseHook(HookProcessor):
         Returns:
             Dict with 'block' key set to True if operation should be blocked
         """
+        # Detect launcher and select strategy
+        self.strategy = self._select_strategy()
+        if self.strategy:
+            self.log(f"Using strategy: {self.strategy.__class__.__name__}")
+            # Check for strategy-specific pre-tool handling
+            strategy_result = self.strategy.handle_pre_tool_use(input_data)
+            if strategy_result:
+                self.log("Strategy provided custom pre-tool handling")
+                return strategy_result
+
         tool_use = input_data.get("toolUse", {})
         tool_name = tool_use.get("name", "")
         tool_input = tool_use.get("input", {})
@@ -65,6 +76,26 @@ For true emergencies, ask a human to override this protection.
 
         # Allow all other operations
         return {}
+
+    def _select_strategy(self):
+        """Detect launcher and select appropriate strategy."""
+        try:
+            # Import adaptive components
+            sys.path.insert(0, str(self.project_root / "src" / "amplihack"))
+            from amplihack.context.adaptive.detector import LauncherDetector
+            from amplihack.context.adaptive.strategies import ClaudeStrategy, CopilotStrategy
+
+            detector = LauncherDetector(self.project_root)
+            launcher_type = detector.detect()
+
+            if launcher_type == "copilot":
+                return CopilotStrategy(self.project_root, self.log)
+            else:
+                return ClaudeStrategy(self.project_root, self.log)
+
+        except ImportError as e:
+            self.log(f"Adaptive strategy not available: {e}", "DEBUG")
+            return None
 
 
 def main():
