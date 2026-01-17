@@ -1806,8 +1806,8 @@ AMPLIHACK_UVX_MODE=1
 # /home/azureuser/src/amplihack-worktree-921-922/pyproject.toml
 
 [project]
-name = "microsofthackathon2025-agenticcoding"
-version = "0.1.0"
+name = "amplihack"
+version = "0.2.0"
 requires-python = ">=3.8"
 
 dependencies = [

@@ -4,9 +4,9 @@ build-backend = "build_hooks"
 backend-path = ["."]
 
 [project]
-name = "microsofthackathon2025-agenticcoding"
-version = "0.1.7"
-description = "Agentic Coding Framework for Microsoft Hackathon 2025"
+name = "amplihack"
+version = "0.2.0"
+description = "Amplifier bundle for agentic coding with comprehensive skills, recipes, and workflows"
 requires-python = ">=3.11"
 dependencies = [
     "flask>=2.0.0",
@@ -16,7 +16,7 @@ dependencies = [
     "aiohttp>=3.8.0",
     "litellm>=1.0.0",
     "python-dotenv>=0.19.0",
-    "pathlib2>=2.3.0; python_version<'3.6'",
+
     "claude-agent-sdk>=0.1.0", # Claude Python Agent SDK for auto mode streaming
     "rich>=13.0.0", # Required for --ui interactive TUI mode
     "neo4j>=5.15.0,<6.0.0", # Neo4j driver for memory system
@@ -26,6 +26,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# When running as an Amplifier bundle, hook modules need amplifier-core
+amplifier = [
+    "amplifier-core @ git+https://github.com/microsoft/amplifier-core@main",
+]
 ui = [
     "rich>=13.0.0",  # Required for --ui interactive TUI mode
 ]
@@ -60,13 +64,15 @@ include = ["amplihack*"]
 
 [tool.setuptools.package-data]
 # Include prompts and framework files
-# .claude/ directory is copied into package by build_hooks.py before wheel build
+# .claude/ and amplifier-bundle/ are copied into package by build_hooks.py before wheel build
 amplihack = [
     "prompts/*.md",
     "utils/uvx_settings_template.json",
     ".claude/**/*",
     ".claude/**/.gitkeep",
     ".claude/**/.*",  # Include hidden files like .version
+    "amplifier-bundle/**/*",
+    "amplifier-bundle/**/.gitkeep",
 ]
 
 [tool.ruff]

@@ -40,6 +40,7 @@ Designed clean, minimal API contracts for the 5-type memory system following the
    - `on_task_complete()` - Extract learnings
 
 **Key Types**:
+
 - `MemoryType` - 5 psychological types (enum)
 - `MemoryEntry` - Memory data structure
 - `StorageRequest` - Storage input contract
@@ -50,6 +51,7 @@ Designed clean, minimal API contracts for the 5-type memory system following the
 ### 2. Usage Examples (`api_examples.py`)
 
 **12 Complete Examples**:
+
 1. Basic storage and retrieval
 2. Episodic memory (conversations)
 3. Prospective memory (TODOs)
@@ -66,17 +68,20 @@ Designed clean, minimal API contracts for the 5-type memory system following the
 ### 3. Database Schema (`database_schema.sql`)
 
 **Tables**:
+
 - `memory_entries` - Core storage with 5 types
 - `sessions` - Session tracking
 - `session_agents` - Agent activity
 - `review_history` - Review transparency
 
 **Performance Indexes**:
+
 - Single-column indexes for common filters
 - Compound indexes for common combinations
 - Full-text search with FTS5
 
 **Views**:
+
 - `active_memories` - Non-expired, non-working
 - `learnings` - High-value semantic memories
 - `pending_todos` - Prospective memories
@@ -86,6 +91,7 @@ Designed clean, minimal API contracts for the 5-type memory system following the
 ### 4. Documentation (`README.md`)
 
 Complete API documentation including:
+
 - Architecture overview
 - Performance contracts
 - Five memory type specifications
@@ -102,6 +108,7 @@ Complete API documentation including:
 **Purpose**: Store events, conversations, command executions
 
 **Schema**:
+
 ```python
 StorageRequest(
     content="User asked about auth",
@@ -121,6 +128,7 @@ StorageRequest(
 **Purpose**: Store patterns, facts, best practices
 
 **Schema**:
+
 ```python
 StorageRequest(
     content="REST APIs should use plural resource names",
@@ -137,6 +145,7 @@ StorageRequest(
 **Purpose**: Store TODOs, reminders, follow-ups
 
 **Schema**:
+
 ```python
 StorageRequest(
     content="TODO: Add rate limiting after MVP",
@@ -155,6 +164,7 @@ StorageRequest(
 **Purpose**: Store workflows, procedures, tool patterns
 
 **Schema**:
+
 ```python
 StorageRequest(
     content="CI Failure Response:\n1. Check pattern\n2. Apply fix...",
@@ -171,6 +181,7 @@ StorageRequest(
 **Purpose**: Store temporary task context (cleared after completion)
 
 **Schema**:
+
 ```python
 StorageRequest(
     content="Implementing JWT auth + refresh flow",
@@ -189,14 +200,15 @@ coordinator.clear_working_memory()
 
 ## Performance Contracts
 
-| Operation | Target | Includes |
-|-----------|--------|----------|
-| `store()` | <500ms | 3-agent parallel review |
-| `retrieve()` | <50ms | Database query only |
+| Operation                | Target | Includes                 |
+| ------------------------ | ------ | ------------------------ |
+| `store()`                | <500ms | 3-agent parallel review  |
+| `retrieve()`             | <50ms  | Database query only      |
 | `retrieve_with_review()` | <300ms | 2-agent parallel scoring |
-| `clear_working_memory()` | <50ms | Batch delete |
+| `clear_working_memory()` | <50ms  | Batch delete             |
 
 **Key Performance Features**:
+
 - Parallel agent execution (not sequential)
 - Strategic database indexing
 - Full-text search with FTS5
@@ -209,6 +221,7 @@ coordinator.clear_working_memory()
 **Purpose**: Evaluate content importance before storage
 
 **Agents**:
+
 1. `analyzer` - Evaluates content significance
 2. `patterns` - Checks for reusable patterns
 3. `knowledge-archaeologist` - Assesses long-term value
@@ -222,6 +235,7 @@ coordinator.clear_working_memory()
 **Purpose**: Score relevance to current context
 
 **Agents**:
+
 1. `analyzer` - Evaluates contextual relevance
 2. `patterns` - Checks pattern applicability
 
@@ -283,12 +297,14 @@ Memory operations triggered automatically by hooks:
 ## Error Handling
 
 **Error Types**:
+
 - `MemoryError` - Base exception
 - `StorageError` - Storage failed
 - `RetrievalError` - Retrieval failed
 - `ReviewError` - Agent review failed
 
 **Graceful Degradation**:
+
 ```python
 try:
     memory_id = coordinator.store(request)
@@ -363,6 +379,7 @@ END;
 All API contracts are complete and ready for the builder agent to implement. The interfaces follow the brick & studs pattern, making them easy to regenerate or replace.
 
 **Key Success Criteria**:
+
 - ✅ 5 memory types clearly defined
 - ✅ Performance contracts specified
 - ✅ Multi-agent review interfaces designed

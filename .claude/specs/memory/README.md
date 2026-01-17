@@ -15,17 +15,20 @@ The 5-Type Memory System provides intelligent memory storage and retrieval for A
 ## Design Philosophy
 
 **Ruthlessly Simple**:
+
 - Single responsibility per interface
 - Minimal method signatures
 - Standard library types only
 - No unnecessary abstractions
 
 **Performance Contracts**:
+
 - Storage: <500ms (includes agent review)
 - Retrieval: <50ms (without agent review)
 - Smart Retrieval: <300ms (with relevance scoring)
 
 **Brick & Studs**:
+
 - Each interface is a stable "stud" (connection point)
 - Implementation can be regenerated from specification
 - Clear boundaries between components
@@ -105,6 +108,7 @@ StorageRequest(
 ```
 
 **Use Cases**:
+
 - Conversation history
 - Command execution logs
 - Agent interaction history
@@ -127,6 +131,7 @@ StorageRequest(
 ```
 
 **Use Cases**:
+
 - Design patterns
 - Best practices
 - Anti-patterns
@@ -152,6 +157,7 @@ StorageRequest(
 ```
 
 **Use Cases**:
+
 - TODO tracking
 - Follow-up reminders
 - Deferred decisions
@@ -178,6 +184,7 @@ StorageRequest(
 ```
 
 **Use Cases**:
+
 - Workflow definitions
 - Tool usage patterns
 - Standard procedures
@@ -206,6 +213,7 @@ coordinator.clear_working_memory()
 ```
 
 **Use Cases**:
+
 - Current task state
 - Active dependencies
 - Temporary debugging context
@@ -228,6 +236,7 @@ Content → [analyzer, patterns, knowledge-archaeologist]
 ```
 
 **Review Agents**:
+
 - **analyzer**: Evaluates content significance
 - **patterns**: Checks for reusable patterns
 - **knowledge-archaeologist**: Assesses long-term value
@@ -259,12 +268,14 @@ else:
 ### Two Modes
 
 **Fast Mode** - No agent review:
+
 ```python
 query = RetrievalQuery(memory_type=MemoryType.SEMANTIC)
 memories = coordinator.retrieve(query)  # <50ms
 ```
 
 **Smart Mode** - With relevance scoring:
+
 ```python
 context = "Building authentication system"
 relevant = coordinator.retrieve_with_review(query, context)  # <300ms
@@ -324,14 +335,15 @@ class HookIntegration:
 
 All operations have explicit performance guarantees:
 
-| Operation | Target | Includes |
-|-----------|--------|----------|
-| `store()` | <500ms | Multi-agent review (3 agents) |
-| `retrieve()` | <50ms | Database query only |
+| Operation                | Target | Includes                       |
+| ------------------------ | ------ | ------------------------------ |
+| `store()`                | <500ms | Multi-agent review (3 agents)  |
+| `retrieve()`             | <50ms  | Database query only            |
 | `retrieve_with_review()` | <300ms | + Relevance scoring (2 agents) |
-| `clear_working_memory()` | <50ms | Batch delete |
+| `clear_working_memory()` | <50ms  | Batch delete                   |
 
 **Parallel Execution**:
+
 - Agent reviews run in parallel (not sequential)
 - 3 agent review: ~400ms (not 1200ms)
 - 2 agent review: ~250ms (not 500ms)

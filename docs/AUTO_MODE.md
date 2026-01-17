@@ -46,7 +46,7 @@ The UI feature requires the Rich library. Install it with:
 
 ```bash
 # Install with optional UI dependencies
-pip install 'microsofthackathon2025-agenticcoding[ui]'
+pip install 'amplihack[ui]'
 
 # Or install Rich directly
 pip install 'rich>=13.0.0'
@@ -68,7 +68,7 @@ If you use the `--ui` flag without Rich installed, auto mode will display a help
    Error: No module named 'rich'
 
    To enable TUI mode, install Rich:
-     pip install 'microsofthackathon2025-agenticcoding[ui]'
+     pip install 'amplihack[ui]'
    or:
      pip install rich>=13.0.0
 

@@ -129,6 +129,10 @@ ai_working/tmp
 # Claude Code auto-generated settings (machine-specific paths)
 .claude/settings.json
 
+# AGENTS.md is generated from CLAUDE.md by amplihack launcher
+# Keep CLAUDE.md as the single source of truth
+AGENTS.md
+
 # Smoke test runtime logs
 .smoke_test_data/data
 
