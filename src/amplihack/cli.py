@@ -577,6 +577,8 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"📦 Installing amplihack plugin from {package_root}")
 
             # Call: claude plugin install <path> --scope user
+            # Use parent of amplihack package (site-packages dir) as plugin root
+            package_root = amplihack_package.parent
             result = subprocess.run(
                 ["claude", "plugin", "install", str(package_root), "--scope", "user"],
                 capture_output=True,
