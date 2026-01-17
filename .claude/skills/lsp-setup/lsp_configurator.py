@@ -13,7 +13,7 @@ Public API:
 """
 
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 import re
 import shutil
 
@@ -282,7 +282,7 @@ class LSPConfigurator:
         except (IOError, OSError):
             return False
 
-    def get_lsp_status_summary(self) -> Dict[str, any]:
+    def get_lsp_status_summary(self) -> Dict[str, Any]:
         """Get summary of LSP configuration status.
 
         Returns:
@@ -299,7 +299,7 @@ class LSPConfigurator:
             "env_variable_count": len(self.get_all_env_variables()),
         }
 
-    def get_status_summary(self) -> Dict[str, any]:
+    def get_status_summary(self) -> Dict[str, Any]:
         """Alias for get_lsp_status_summary.
 
         Returns:
