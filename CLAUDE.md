@@ -28,12 +28,15 @@ BEFORE taking action. No exceptions.
 | Task Type         | Workflow               | When to Use                                            |
 | ----------------- | ---------------------- | ------------------------------------------------------ |
 | **Q&A**           | Q&A_WORKFLOW           | Simple questions, single-turn answers, no code changes |
+| **Operations**    | Direct execution       | Admin tasks, commands, disk cleanup, repo management   |
 | **Investigation** | INVESTIGATION_WORKFLOW | Understanding code, exploring systems, research        |
 | **Development**   | DEFAULT_WORKFLOW       | Code changes, features, bugs, refactoring              |
 
 ### Classification Keywords
 
 - **Q&A**: "what is", "explain briefly", "quick question", "how do I run"
+- **Operations**: "run command", "disk cleanup", "repo management", "git operations",
+  "delete files", "cleanup", "organize"
 - **Investigation**: "investigate", "understand", "analyze", "research",
   "explore", "how does X work"
 - **Development**: "implement", "add", "fix", "create", "refactor", "update",
@@ -48,6 +51,21 @@ WORKFLOW: [Q&A | INVESTIGATION | DEFAULT]
 Reason: [Brief justification]
 Following: .claude/workflow/[WORKFLOW_NAME].md
 ```
+
+### Workflow Execution
+
+**Default Behavior**: Claude invokes ultrathink-orchestrator for non-trivial development and investigation tasks.
+
+| Task Type         | Claude's Action        |
+| ----------------- | ---------------------- |
+| **Q&A**           | Responds directly      |
+| **Operations**    | Responds directly      |
+| **Investigation** | Invokes /ultrathink    |
+| **Development**   | Invokes /ultrathink    |
+
+**Task classification**: See "Classification Keywords" section above for keyword triggers.
+
+**Override**: Use explicit commands (/analyze, /improve) or request "without ultrathink" for direct implementation.
 
 ### Rules
 
@@ -95,9 +113,8 @@ Following: .claude/workflow/[WORKFLOW_NAME].md
   judgement, and only stop to ask if really necessary or explicitly instructed
   to do so.
 - **Check discoveries before problem-solving**: Before solving complex problems,
-  check `@docs/DISCOVERIES.md` for known issues and solutions
-- **Document learnings**: Update .claude/context/DISCOVERIES.md with new
-  insights
+  retrieve recent discoveries from memory using `get_recent_discoveries()` from `amplihack.memory.discoveries`
+- **Document learnings**: Store discoveries in memory using `store_discovery()` from `amplihack.memory.discoveries`
 - **Session Logs**: All interactions MUST be logged in
   .claude/runtime/logs/<session_id> where <session_id> is a unique identifier
   for the session based on the timestamp.
@@ -825,14 +842,14 @@ After code changes:
 1. Run tests if available
 2. Check philosophy compliance
 3. Verify module boundaries
-4. Update .claude/context/DISCOVERIES.md with learnings
+4. Store learnings in memory via discoveries adapter
 
 ## Self-Improvement
 
 The system should continuously improve:
 
 - Track patterns in `.claude/context/PATTERNS.md`
-- Document discoveries in `.claude/context/DISCOVERIES.md`
+- Store discoveries in memory for cross-session persistence
 - Update agent definitions as needed
 - Create new agents for repeated tasks
 

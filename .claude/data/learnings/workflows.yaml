@@ -1,0 +1,68 @@
+# Cross-Session Learning: Workflow Insights
+# This file stores workflow insights and process improvements.
+
+category: workflows
+description: Workflow patterns, shortcuts, and process improvements
+last_updated: "2025-11-25T00:00:00Z"
+
+learnings:
+  # Real example: Git worktree workflow
+  - id: "wf-001"
+    created: "2025-11-25T00:00:00Z"
+    keywords:
+      - "git"
+      - "worktree"
+      - "parallel"
+      - "branch"
+      - "development"
+    summary: "Use git worktrees for parallel feature development instead of branch switching"
+    insight: |
+      Git worktrees allow working on multiple branches simultaneously without
+      stashing or committing incomplete work. Each worktree is a separate
+      directory with its own checkout. This is especially useful when:
+      - Reviewing PRs while working on your own feature
+      - Running long tests on one branch while coding on another
+      - Comparing implementations across branches
+
+      Worktrees share the same .git, so pushes/pulls work from any worktree.
+    example: |
+      # Create worktree for a feature branch
+      git worktree add ../worktrees/feat/my-feature -b feat/my-feature
+
+      # List all worktrees
+      git worktree list
+
+      # Remove worktree when done
+      git worktree remove ../worktrees/feat/my-feature
+    confidence: 0.95
+    times_used: 0
+
+  # Real example: Pre-commit verification workflow
+  - id: "wf-002"
+    created: "2025-11-25T00:00:00Z"
+    keywords:
+      - "pre-commit"
+      - "ci"
+      - "lint"
+      - "format"
+      - "commit"
+    summary: "Always run pre-commit before pushing to catch CI failures locally"
+    insight: |
+      Running pre-commit locally before pushing catches 80% of CI failures.
+      This saves the 5-10 minute round-trip of push -> CI fail -> fix -> push.
+
+      Make it a habit:
+      1. Run `pre-commit run --all-files` before final commit
+      2. Use `pre-commit install` to auto-run on every commit
+      3. When CI fails, first run pre-commit locally to reproduce
+    example: |
+      # Run on all files before pushing
+      pre-commit run --all-files
+
+      # Auto-install for all commits
+      pre-commit install
+
+      # Run specific hooks only
+      pre-commit run ruff --all-files
+    confidence: 0.9
+    times_used: 0

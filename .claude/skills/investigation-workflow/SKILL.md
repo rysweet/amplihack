@@ -250,7 +250,7 @@ Verification: Examine reflection logs, trace message processing
 
 **Tasks**:
 
-- **Update .claude/context/DISCOVERIES.md** with key insights
+- **Store discoveries in memory** using `store_discovery()` from `amplihack.memory.discoveries`
 - **Update .claude/context/PATTERNS.md** if reusable patterns found
 - Create or update relevant documentation files
 - Add inline code comments for critical understanding
@@ -275,14 +275,14 @@ Verification: Examine reflection logs, trace message processing
 
 **Success Criteria**:
 
-- DISCOVERIES.md updated with investigation results
+- Discoveries stored in memory for future reference
 - Relevant documentation files updated
 - Knowledge is discoverable by future investigators
 - No information loss
 
 **Deliverables**:
 
-- Updated DISCOVERIES.md
+- Discoveries stored in memory
 - Updated PATTERNS.md (if applicable)
 - Updated project documentation
 - Optional: GitHub issues for improvements
@@ -294,7 +294,7 @@ Verification: Examine reflection logs, trace message processing
 
 1. **Resume at Step 4** (Research and Design) with the knowledge gained from investigation
 2. **Or resume at Step 5** (Implement the Solution) if the investigation already provided clear design guidance
-3. **Use investigation findings** from DISCOVERIES.md and session logs to inform design decisions
+3. **Use investigation findings** from memory (via `get_recent_discoveries()`) and session logs to inform design decisions
 
 **Example Hybrid Workflow**:
 
@@ -304,7 +304,7 @@ User: "/ultrathink investigate how authentication works, then add OAuth support"
 Phase 1: Investigation
 → Run INVESTIGATION_WORKFLOW.md (6 phases)
 → Complete understanding of existing auth system
-→ Document findings in DISCOVERIES.md
+→ Store findings in memory via discoveries adapter
 
 Phase 2: Development
 → Transition to DEFAULT_WORKFLOW.md
@@ -407,7 +407,7 @@ Track these metrics to validate workflow effectiveness:
 
 - **Message Count**: Target 30-40% reduction vs. ad-hoc (to be validated)
 - **Investigation Time**: Track time to completion
-- **Knowledge Reuse**: How often DISCOVERIES.md prevents repeat work
+- **Knowledge Reuse**: How often memory retrieval prevents repeat work
 - **Completeness**: Percentage of investigations with full documentation
 - **User Satisfaction**: Clear understanding achieved
 
@@ -416,7 +416,7 @@ Track these metrics to validate workflow effectiveness:
 - **Scope first, explore second** - Define boundaries before diving in
 - **Parallel exploration is key** - Deploy multiple agents simultaneously in Phase 3
 - **Verify understanding** - Test your hypotheses in Phase 4
-- **Capture knowledge** - Always update DISCOVERIES.md in Phase 6
+- **Capture knowledge** - Always store discoveries in memory in Phase 6
 - **This workflow optimizes for understanding, not implementation**
 
 When in doubt about investigation vs. development:

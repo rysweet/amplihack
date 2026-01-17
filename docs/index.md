@@ -184,6 +184,12 @@ Production-ready executable tools following the Progressive Maturity Model:
   - Integrates with Makefile: `make check-broken-links TARGET=<url-or-path>`
   - Returns exit codes for CI integration
 
+- **[Platform Bridge](platform-bridge/README.md)** - Multi-platform support for GitHub and Azure DevOps
+  - Automatic platform detection from git remotes
+  - Unified API for both GitHub and Azure DevOps
+  - Zero configuration required
+  - Used by DEFAULT_WORKFLOW for cross-platform compatibility
+
 ---
 
 ## ⚡️ Commands & Operations
@@ -298,6 +304,7 @@ Intelligent guidance system that prevents common mistakes:
 
 ### Other Features
 
+- [Smart Memory Management](features/smart-memory-management.md) - Automatic Node.js memory optimization for Claude Code
 - [Claude.md Preservation](features/claude-md-preservation.md) - Preserve custom instructions
 - [Neo4j Session Cleanup](features/neo4j-session-cleanup.md) - Automatic resource management
 - [Shutdown Detection](concepts/shutdown-detection.md) - Graceful exit handling (prevents 10-13s hang)
@@ -380,6 +387,7 @@ Fix common issues and learn from past solutions.
 
 - [Discoveries](DISCOVERIES.md) - Known issues and solutions (CHECK HERE FIRST!)
 - [Troubleshooting Guides](troubleshooting/README.md) - Common problems and fixes
+- [Platform Bridge Troubleshooting](troubleshooting/platform-bridge.md) - Fix platform detection and CLI issues
 - [Stop Hook Exit Hang](troubleshooting/stop-hook-exit-hang.md) - Fix 10-13s hang on exit (resolved v0.9.1)
 - [Tool Null Name Analysis](TOOL_NULL_NAME_ANALYSIS.md) - Debugging tool name issues
 - [Config Analysis Report](config-analysis-report.md) - Configuration problem diagnosis
@@ -389,6 +397,11 @@ Fix common issues and learn from past solutions.
 - [Documentation Guidelines](DOCUMENTATION_GUIDELINES.md) - Writing effective docs
 - [Documentation Structure Analysis](DOCUMENTATION_STRUCTURE_ANALYSIS.md) - Current state of docs
 - [How to Generate GitHub Pages](howto/github-pages-generation.md) - Publish your docs
+
+### How-To Guides
+
+- [Platform Bridge Quick Start](tutorials/platform-bridge-quickstart.md) - Learn the basics in 10 minutes
+- [Platform Bridge Workflows](howto/platform-bridge-workflows.md) - Common workflows for GitHub and Azure DevOps
 
 ---
 
@@ -420,6 +433,7 @@ Quick references, guides, and additional resources.
 ### Quick References
 
 - [Command Selection Guide](commands/COMMAND_SELECTION_GUIDE.md) - Choose the right command
+- [Platform Bridge API Reference](reference/platform-bridge-api.md) - Complete API documentation
 - [Doc Graph Quick Reference](doc_graph_quick_reference.md) - Navigate documentation
 - [Neo4j Quick Reference](neo4j_memory/quick_reference.md) - Memory system commands
 - [A/B Test Quick Reference](memory/AB_TEST_QUICK_REFERENCE.md) - Test results

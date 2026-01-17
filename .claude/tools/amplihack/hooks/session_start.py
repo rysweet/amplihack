@@ -20,6 +20,8 @@ try:
     from paths import get_project_root
     from settings_migrator import migrate_global_hooks
 
+    from amplihack.context.adaptive.detector import LauncherDetector
+    from amplihack.context.adaptive.strategies import ClaudeStrategy, CopilotStrategy
     from amplihack.utils.paths import FrameworkPathResolver
 except ImportError:
     # Fallback imports for standalone execution
@@ -27,6 +29,9 @@ except ImportError:
     ContextPreserver = None
     FrameworkPathResolver = None
     migrate_global_hooks = None
+    LauncherDetector = None
+    ClaudeStrategy = None
+    CopilotStrategy = None
 
 
 class SessionStartHook(HookProcessor):
@@ -55,6 +60,10 @@ class SessionStartHook(HookProcessor):
 
         # NEW: Check for global hook duplication and migrate
         self._migrate_global_hooks()
+
+        # Detect launcher and select strategy
+        strategy = self._select_strategy()
+        self.log(f"Using strategy: {strategy.__class__.__name__}")
 
         # Extract prompt
         prompt = input_data.get("prompt", "")
@@ -187,10 +196,24 @@ class SessionStartHook(HookProcessor):
         context_parts.append("This is the Microsoft Hackathon 2025 Agentic Coding project.")
         context_parts.append("Focus on building AI-powered development tools.")
 
-        # Check for recent discoveries
-        discoveries_file = self.project_root / ".claude" / "context" / "DISCOVERIES.md"
-        if discoveries_file.exists():
-            context_parts.append("\n## Recent Learnings")
+        # Check for recent discoveries from memory
+        context_parts.append("\n## Recent Learnings")
+        try:
+            from amplihack.memory.discoveries import get_recent_discoveries
+
+            recent_discoveries = get_recent_discoveries(days=30, limit=5)
+            if recent_discoveries:
+                context_parts.append(
+                    f"Found {len(recent_discoveries)} recent discoveries in memory:"
+                )
+                for disc in recent_discoveries:
+                    summary = disc.get("summary", "No summary")
+                    category = disc.get("category", "uncategorized")
+                    context_parts.append(f"- [{category}] {summary}")
+            else:
+                context_parts.append("Check .claude/context/DISCOVERIES.md for recent insights.")
+        except ImportError:
+            # Fallback if memory module not available
             context_parts.append("Check .claude/context/DISCOVERIES.md for recent insights.")
 
         # Simplified preference file resolution
@@ -206,17 +229,22 @@ class SessionStartHook(HookProcessor):
                     full_prefs_content = f.read()
                 self.log(f"Successfully read preferences from: {preferences_file}")
 
-                # Inject FULL preferences content with MANDATORY enforcement
-                context_parts.append("\n## 🎯 USER PREFERENCES (MANDATORY - MUST FOLLOW)")
-                context_parts.append(
-                    "\nApply these preferences to all responses. These preferences are READ-ONLY except when using /amplihack:customize command.\n"
-                )
-                context_parts.append(
-                    "\n💡 **Preference Management**: Use /amplihack:customize to view or modify preferences.\n"
-                )
-                context_parts.append(full_prefs_content)
-
-                self.log("Injected full USER_PREFERENCES.md content into session")
+                # Use strategy to inject preferences (launcher-specific format)
+                if strategy:
+                    prefs_context = strategy.inject_context(full_prefs_content)
+                    context_parts.append(prefs_context)
+                    self.log(f"Injected preferences using {strategy.__class__.__name__}")
+                else:
+                    # Fallback to default injection
+                    context_parts.append("\n## 🎯 USER PREFERENCES (MANDATORY - MUST FOLLOW)")
+                    context_parts.append(
+                        "\nApply these preferences to all responses. These preferences are READ-ONLY except when using /amplihack:customize command.\n"
+                    )
+                    context_parts.append(
+                        "\n💡 **Preference Management**: Use /amplihack:customize to view or modify preferences.\n"
+                    )
+                    context_parts.append(full_prefs_content)
+                    self.log("Injected full USER_PREFERENCES.md content into session (fallback)")
 
             except Exception as e:
                 self.log(f"Could not read preferences: {e}", "WARNING")
@@ -292,6 +320,19 @@ class SessionStartHook(HookProcessor):
             self.log(f"Injected {len(full_context)} characters of context")
 
         return output
+
+    def _select_strategy(self):
+        """Detect launcher and select appropriate strategy."""
+        if LauncherDetector is None or ClaudeStrategy is None or CopilotStrategy is None:
+            # Fallback to default (no strategy)
+            return None
+
+        detector = LauncherDetector(self.project_root)
+        launcher_type = detector.detect()  # Returns string: "claude", "copilot", "unknown"
+
+        if launcher_type == "copilot":
+            return CopilotStrategy(self.project_root, self.log)
+        return ClaudeStrategy(self.project_root, self.log)
 
     def _check_version_mismatch(self) -> None:
         """Check for version mismatch and offer to update.
