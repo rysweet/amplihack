@@ -294,8 +294,9 @@ class TestPromptUserConsent:
         config = {"current_limit_mb": 4096, "recommended_limit_mb": 8192}
 
         for response in ["y", "Y", "yes", "YES", "Yes"]:
-            with patch("builtins.input", return_value=response):
-                assert prompt_user_consent(config) is True
+            with patch("sys.stdin.isatty", return_value=True):
+                with patch("builtins.input", return_value=response):
+                    assert prompt_user_consent(config) is True
 
     def test_prompt_rejects_no_variants(self):
         """Test that prompt rejects 'no' inputs."""
@@ -304,8 +305,9 @@ class TestPromptUserConsent:
         config = {"current_limit_mb": 4096, "recommended_limit_mb": 8192}
 
         for response in ["n", "N", "no", "NO", "No"]:
-            with patch("builtins.input", return_value=response):
-                assert prompt_user_consent(config) is False
+            with patch("sys.stdin.isatty", return_value=True):
+                with patch("builtins.input", return_value=response):
+                    assert prompt_user_consent(config) is False
 
     def test_prompt_handles_empty_input(self):
         """Test that prompt handles empty input (default to no)."""
@@ -313,9 +315,10 @@ class TestPromptUserConsent:
 
         config = {"current_limit_mb": 4096, "recommended_limit_mb": 8192}
 
-        with patch("builtins.input", return_value=""):
-            result = prompt_user_consent(config)
-            assert result is False
+        with patch("sys.stdin.isatty", return_value=True):
+            with patch("builtins.input", return_value=""):
+                result = prompt_user_consent(config, default_response=False)
+                assert result is False
 
 
 # =============================================================================
@@ -441,14 +444,15 @@ class TestGetMemoryConfigE2E:
 
         with patch("pathlib.Path.exists", return_value=True):
             with patch("pathlib.Path.read_text", return_value=mock_meminfo):
-                with patch("builtins.input", return_value="n"):
-                    from amplihack.launcher.memory_config import get_memory_config
+                with patch("sys.stdin.isatty", return_value=True):
+                    with patch("builtins.input", return_value="n"):
+                        from amplihack.launcher.memory_config import get_memory_config
 
-                    config = get_memory_config()
+                        config = get_memory_config()
 
-                    # Should return config but indicate user declined
-                    assert config is not None
-                    assert config.get("user_consent") is False
+                        # Should return config but indicate user declined
+                        assert config is not None
+                        assert config.get("user_consent") is False
 
     def test_get_memory_config_insufficient_memory_warning(self):
         """Test complete flow with insufficient memory warning."""
