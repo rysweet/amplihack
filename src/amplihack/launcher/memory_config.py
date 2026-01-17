@@ -276,14 +276,14 @@ def parse_node_options(options_str: str) -> Dict[str, Any]:
             result[key] = value
         else:
             # Boolean flag (no value)
-            # Remove any trailing space or flags
+            # Remove Any trailing space or flags
             key = part.split()[0] if ' ' in part else part
             result[key] = True
 
     return result
 
 
-def merge_node_options(existing_options: Dict[str, any], new_limit_mb: int) -> str:
+def merge_node_options(existing_options: Dict[str, Any], new_limit_mb: int) -> str:
     """Merge new memory limit with existing NODE_OPTIONS.
 
     Args:
@@ -330,7 +330,7 @@ def should_warn_about_limit(limit_mb: int) -> bool:
     return limit_mb < MIN_MEMORY_MB
 
 
-def prompt_user_consent(config: Dict[str, any]) -> bool:
+def prompt_user_consent(config: Dict[str, Any]) -> bool:
     """Prompt user for consent to update memory configuration.
 
     Args:
@@ -365,7 +365,7 @@ def prompt_user_consent(config: Dict[str, any]) -> bool:
     return response in ['y', 'yes']
 
 
-def get_memory_config(existing_node_options: Optional[str] = None) -> Optional[Dict[str, any]]:
+def get_memory_config(existing_node_options: Optional[str] = None) -> Optional[Dict[str, Any]]:
     """Get complete memory configuration.
 
     Main entry point for memory configuration. Detects system RAM,
@@ -449,7 +449,7 @@ def get_memory_config(existing_node_options: Optional[str] = None) -> Optional[D
     return config
 
 
-def display_memory_config(config: Dict[str, any]) -> None:
+def display_memory_config(config: Dict[str, Any]) -> None:
     """Display memory configuration on launch.
 
     Args:
