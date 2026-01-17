@@ -553,43 +553,54 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Working directory remains: {original_cwd}")
 
         # Setup plugin architecture
-        # 1. Check if plugin already installed at ~/.amplihack/.claude/
-        plugin_root = Path.home() / ".amplihack" / ".claude"
-        plugin_manager = PluginManager(plugin_root=plugin_root.parent / "plugins")
+        # Use current package directory as plugin source
+        import amplihack
+        package_root = Path(amplihack.__file__).parent.parent  # Go up to package root with .claude-plugin/
 
-        # Check if local .claude/ exists (backward compatibility)
-        local_claude_dir = Path(original_cwd) / ".claude"
-        if local_claude_dir.exists() and (local_claude_dir / "settings.json").exists():
-            if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                print(f"Using existing local .claude/ directory at {local_claude_dir}")
-            temp_claude_dir = str(local_claude_dir)
-        else:
-            # Use plugin architecture
-            # 2. Install plugin if not already installed
-            import amplihack
+        # Check if plugin manifest exists
+        plugin_manifest = package_root / ".claude-plugin" / "plugin.json"
+        if not plugin_manifest.exists():
+            print(f"⚠️  Plugin manifest not found at {plugin_manifest}")
+            print("   Falling back to directory copy mode")
+            # Fallback to old copytree approach
+            temp_claude_dir = str(Path(original_cwd) / ".claude")
             amplihack_src = Path(amplihack.__file__).parent
+            Path(temp_claude_dir).mkdir(parents=True, exist_ok=True)
+            copied = copytree_manifest(str(amplihack_src), temp_claude_dir, ".claude")
+            if not copied:
+                print("❌ Failed to copy .claude directory")
+                sys.exit(1)
+        else:
+            # Install using claude plugin install
+            if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                print(f"📦 Installing amplihack plugin from {package_root}")
 
-            # Check if plugin already installed
-            if not plugin_root.exists() or not (plugin_root / "tools").exists():
-                if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                    print(f"Installing plugin to {plugin_root}")
+            # Call: claude plugin install <path> --scope user
+            result = subprocess.run(
+                ["claude", "plugin", "install", str(package_root), "--scope", "user"],
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
 
-                # Create plugin directory
-                plugin_root.mkdir(parents=True, exist_ok=True)
-
-                # Copy .claude contents to plugin root
-                copied = copytree_manifest(str(amplihack_src), str(plugin_root), ".claude")
-
+            if result.returncode != 0:
+                print(f"⚠️  Plugin installation failed: {result.stderr}")
+                print("   Falling back to directory copy mode")
+                # Fallback
+                temp_claude_dir = str(Path(original_cwd) / ".claude")
+                amplihack_src = Path(amplihack.__file__).parent
+                Path(temp_claude_dir).mkdir(parents=True, exist_ok=True)
+                copied = copytree_manifest(str(amplihack_src), temp_claude_dir, ".claude")
                 if not copied:
-                    print("\n❌ Failed to install plugin - cannot proceed")
-                    print(f"   Package location: {amplihack_src}")
+                    print("❌ Failed to copy .claude directory")
                     sys.exit(1)
-
-                if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                    print(f"Plugin installed successfully to {plugin_root}")
             else:
                 if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                    print(f"Plugin already installed at {plugin_root}")
+                    print(f"✅ Plugin installed successfully")
+                    print(result.stdout)
+
+                # No need for temp_claude_dir - plugin is installed
+                temp_claude_dir = None
 
             # 3. Generate settings.json in project's .claude/ that references plugin
             temp_claude_dir = str(local_claude_dir)
