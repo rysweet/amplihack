@@ -4,9 +4,9 @@ build-backend = "build_hooks"
 backend-path = ["."]
 
 [project]
-name = "microsofthackathon2025-agenticcoding"
-version = "0.1.7"
-description = "Agentic Coding Framework for Microsoft Hackathon 2025"
+name = "amplihack"
+version = "0.2.0"
+description = "Amplifier bundle for agentic coding with comprehensive skills, recipes, and workflows"
 requires-python = ">=3.11"
 dependencies = [
     "flask>=2.0.0",
@@ -26,6 +26,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# When running as an Amplifier bundle, hook modules need amplifier-core
+amplifier = [
+    "amplifier-core @ git+https://github.com/microsoft/amplifier-core@main",
+]
 ui = [
     "rich>=13.0.0",  # Required for --ui interactive TUI mode
 ]
