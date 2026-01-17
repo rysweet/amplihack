@@ -120,56 +120,11 @@ skills:
   # Nested skills - research (1)
   researching-topics: { path: ../.claude/skills/research/researching-topics/SKILL.md }
 
+# Amplifier-native agents (in amplifier-bundle/agents/)
+# These are discoverable via task tool as amplihack:agent-name
 agents:
-  # Core agents (6)
-  api-designer: { path: ../.claude/agents/amplihack/core/api-designer.md }
-  architect: { path: ../.claude/agents/amplihack/core/architect.md }
-  builder: { path: ../.claude/agents/amplihack/core/builder.md }
-  optimizer: { path: ../.claude/agents/amplihack/core/optimizer.md }
-  reviewer: { path: ../.claude/agents/amplihack/core/reviewer.md }
-  tester: { path: ../.claude/agents/amplihack/core/tester.md }
-
-  # Specialized agents (27)
-  ambiguity: { path: ../.claude/agents/amplihack/specialized/ambiguity.md }
-  amplifier-cli-architect:
-    { path: ../.claude/agents/amplihack/specialized/amplifier-cli-architect.md }
-  analyzer: { path: ../.claude/agents/amplihack/specialized/analyzer.md }
-  concept-extractor:
-    { path: ../.claude/agents/amplihack/specialized/concept-extractor.md }
-  azure-kubernetes-expert:
-    { path: ../.claude/agents/amplihack/specialized/azure-kubernetes-expert.md }
-  ci-diagnostic-workflow:
-    { path: ../.claude/agents/amplihack/specialized/ci-diagnostic-workflow.md }
-  cleanup: { path: ../.claude/agents/amplihack/specialized/cleanup.md }
-  database: { path: ../.claude/agents/amplihack/specialized/database.md }
-  documentation-writer: { path: ../.claude/agents/amplihack/specialized/documentation-writer.md }
-  fallback-cascade: { path: ../.claude/agents/amplihack/specialized/fallback-cascade.md }
-  fix-agent: { path: ../.claude/agents/amplihack/specialized/fix-agent.md }
-  insight-synthesizer:
-    { path: ../.claude/agents/amplihack/specialized/insight-synthesizer.md }
-  integration: { path: ../.claude/agents/amplihack/specialized/integration.md }
-  knowledge-archaeologist:
-    { path: ../.claude/agents/amplihack/specialized/knowledge-archaeologist.md }
-  memory-manager: { path: ../.claude/agents/amplihack/specialized/memory-manager.md }
-  multi-agent-debate: { path: ../.claude/agents/amplihack/specialized/multi-agent-debate.md }
-  n-version-validator: { path: ../.claude/agents/amplihack/specialized/n-version-validator.md }
-  patterns: { path: ../.claude/agents/amplihack/specialized/patterns.md }
-  philosophy-guardian: { path: ../.claude/agents/amplihack/specialized/philosophy-guardian.md }
-  pre-commit-diagnostic: { path: ../.claude/agents/amplihack/specialized/pre-commit-diagnostic.md }
-  preference-reviewer: { path: ../.claude/agents/amplihack/specialized/preference-reviewer.md }
-  prompt-writer: { path: ../.claude/agents/amplihack/specialized/prompt-writer.md }
-  rust-programming-expert:
-    { path: ../.claude/agents/amplihack/specialized/rust-programming-expert.md }
-  security: { path: ../.claude/agents/amplihack/specialized/security.md }
-  visualization-architect:
-    { path: ../.claude/agents/amplihack/specialized/visualization-architect.md }
-  worktree-manager: { path: ../.claude/agents/amplihack/specialized/worktree-manager.md }
-  xpia-defense: { path: ../.claude/agents/amplihack/specialized/xpia-defense.md }
-
-  # Workflow agents (2)
-  amplihack-improvement-workflow:
-    { path: ../.claude/agents/amplihack/workflows/amplihack-improvement-workflow.md }
-  prompt-review-workflow: { path: ../.claude/agents/amplihack/workflows/prompt-review-workflow.md }
+  include:
+    - amplihack:guide
 
 # Amplifier recipes (converted from Claude Code workflows)
 recipes:
