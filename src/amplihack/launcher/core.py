@@ -245,13 +245,13 @@ class ClaudeLauncher:
         return True
 
     def _configure_lsp_auto(self, target_dir: Path) -> None:
-        """Auto-configure LSP support via cclsp MCP server.
+        """Auto-configure LSP using Claude Code plugin marketplace.
 
         Automatically configures LSP by:
         1. Detecting languages in target directory
         2. Setting ENABLE_LSP_TOOL=1 environment variable
-        3. Generating cclsp.json configuration
-        4. Adding cclsp MCP server to Claude Code settings.json
+        3. Adding plugin marketplace (boostvolt/claude-code-lsps)
+        4. Installing LSP plugins via claude plugin install
 
         Args:
             target_dir: Project directory to configure LSP for
@@ -261,7 +261,7 @@ class ClaudeLauncher:
             This is a best-effort enhancement - failure doesn't block Claude launch.
         """
         try:
-            # Import LSP modules (may not be available in all environments)
+            import subprocess
             import sys
 
             # Add .claude/skills to Python path
@@ -270,20 +270,18 @@ class ClaudeLauncher:
                 sys.path.insert(0, str(claude_dir))
 
             from lsp_setup import LanguageDetector, LSPConfigurator
-            from lsp_setup.mcp_configurator import MCPConfigurator
 
             # Step 1: Detect languages
             detector = LanguageDetector(target_dir)
             languages_dict = detector.detect_languages()
 
             if not languages_dict:
-                # No languages detected - skip LSP setup
                 return
 
             lang_names = list(languages_dict.keys())
             print(f"📡 LSP: Detected {len(lang_names)} language(s): {', '.join(lang_names[:3])}...")
 
-            # Step 2: Set environment variable for current process
+            # Step 2: Set environment variable
             os.environ["ENABLE_LSP_TOOL"] = "1"
 
             # Step 3: Configure .env file
@@ -292,18 +290,52 @@ class ClaudeLauncher:
                 configurator.enable_lsp()
                 print("📡 LSP: Enabled ENABLE_LSP_TOOL=1 in .env")
 
-            # Step 4: Generate cclsp.json configuration
-            mcp_config = MCPConfigurator(target_dir)
-            if mcp_config.generate_cclsp_config(lang_names):
-                print(f"📡 LSP: Generated cclsp.json for {len(lang_names)} language(s)")
+            # Step 4: Add plugin marketplace
+            try:
+                subprocess.run(
+                    ["claude", "plugin", "marketplace", "add", "boostvolt/claude-code-lsps"],
+                    capture_output=True,
+                    timeout=30
+                )
+                print("📡 LSP: Added plugin marketplace")
+            except:
+                pass  # May already exist
 
-            # Step 5: Add cclsp MCP server to Claude Code settings
-            if not mcp_config.is_cclsp_configured():
-                if mcp_config.add_mcp_server_to_claude():
-                    print("📡 LSP: Configured cclsp MCP server in Claude Code")
+            # Step 5: Install plugins (map languages to plugin names)
+            plugin_map = {
+                "python": "pyright",
+                "typescript": "vtsls",
+                "javascript": "vtsls",
+                "rust": "rust-analyzer",
+                "go": "gopls",
+                "java": "jdtls",
+                "cpp": "clangd",
+                "c": "clangd",
+                "ruby": "ruby-lsp",
+                "php": "phpactor",
+            }
+
+            installed = 0
+            for lang in lang_names[:3]:
+                plugin_name = plugin_map.get(lang)
+                if not plugin_name:
+                    continue
+
+                try:
+                    subprocess.run(
+                        ["claude", "plugin", "install", f"{plugin_name}@claude-code-lsps", "--scope", "project"],
+                        capture_output=True,
+                        timeout=30,
+                        cwd=str(target_dir)
+                    )
+                    installed += 1
+                except:
+                    pass
+
+            if installed > 0:
+                print(f"📡 LSP: Installed {installed} plugin(s)")
 
         except Exception as e:
-            # Silently fail - LSP is best-effort, don't block Claude launch
             logger.debug(f"LSP auto-configuration skipped: {e}")
 
     def _open_log_tail_window(self) -> None:
