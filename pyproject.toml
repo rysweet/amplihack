@@ -69,6 +69,10 @@ amplihack = [
     ".claude/**/.*",  # Include hidden files like .version
 ]
 
+"" = [
+    ".claude-plugin/**/*",
+]
+
 [tool.ruff]
 # Essential Ruff settings only
 line-length = 100
