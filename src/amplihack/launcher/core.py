@@ -344,18 +344,23 @@ class ClaudeLauncher:
                     continue
 
                 try:
-                    subprocess.run(
+                    result = subprocess.run(
                         ["claude", "plugin", "install", f"{plugin_name}@claude-code-lsps", "--scope", "project"],
                         capture_output=True,
+                        text=True,
                         timeout=30,
                         cwd=str(target_dir)
                     )
-                    installed += 1
-                except:
-                    pass
+                    if result.returncode == 0:
+                        installed += 1
+                        print(f"📡 LSP: Installed {plugin_name} plugin")
+                    else:
+                        print(f"📡 LSP: Failed to install {plugin_name}: {result.stderr.strip()[:100]}")
+                except Exception as e:
+                    print(f"📡 LSP: Error installing {plugin_name}: {e}")
 
-            if installed > 0:
-                print(f"📡 LSP: Installed {installed} plugin(s)")
+            if installed == 0:
+                print("📡 LSP: No plugins installed (system LSP binaries + marketplace configured)")
 
 
         except Exception as e:
