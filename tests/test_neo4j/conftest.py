@@ -1,13 +1,31 @@
 """Pytest fixtures for Neo4j tests."""
 
 import os
+import subprocess
 from collections.abc import Generator
 from pathlib import Path
+from typing import Any
 
 import pytest
-from neo4j import Driver, GraphDatabase
 
-from amplihack.memory.neo4j.neo4j_schema import Neo4jSchema
+# Conditional imports - these tests require amplihack and neo4j to be installed
+NEO4J_AVAILABLE = False
+GraphDatabase: Any = None
+Neo4jSchema: Any = None
+CodebaseIdentifier: Any = None
+
+try:
+    from neo4j import GraphDatabase as _GraphDatabase
+
+    from amplihack.memory.neo4j.identifier import CodebaseIdentifier as _CodebaseIdentifier
+    from amplihack.memory.neo4j.neo4j_schema import Neo4jSchema as _Neo4jSchema
+
+    GraphDatabase = _GraphDatabase
+    Neo4jSchema = _Neo4jSchema
+    CodebaseIdentifier = _CodebaseIdentifier
+    NEO4J_AVAILABLE = True
+except ImportError:
+    pass
 
 
 @pytest.fixture(scope="session")
@@ -31,7 +49,7 @@ def neo4j_password() -> str:
 @pytest.fixture(scope="function")
 def neo4j_driver(
     neo4j_uri: str, neo4j_user: str, neo4j_password: str
-) -> Generator[Driver, None, None]:
+) -> Generator[Any, None, None]:
     """Create Neo4j driver for testing.
 
     Yields:
@@ -40,6 +58,9 @@ def neo4j_driver(
     Note:
         This fixture clears the database before each test.
     """
+    if not NEO4J_AVAILABLE:
+        pytest.skip("Neo4j dependencies not available")
+
     driver = GraphDatabase.driver(neo4j_uri, auth=(neo4j_user, neo4j_password))
 
     try:
@@ -73,8 +94,6 @@ def temp_git_repo(tmp_path: Path) -> Generator[Path, None, None]:
     Yields:
         Path to temporary Git repository
     """
-    import subprocess
-
     repo_path = tmp_path / "test_repo"
     repo_path.mkdir()
 
@@ -87,7 +106,10 @@ def temp_git_repo(tmp_path: Path) -> Generator[Path, None, None]:
         capture_output=True,
     )
     subprocess.run(
-        ["git", "config", "user.name", "Test User"], cwd=repo_path, check=True, capture_output=True
+        ["git", "config", "user.name", "Test User"],
+        cwd=repo_path,
+        check=True,
+        capture_output=True,
     )
 
     # Add remote
@@ -103,15 +125,21 @@ def temp_git_repo(tmp_path: Path) -> Generator[Path, None, None]:
     test_file.write_text("# Test Repo")
     subprocess.run(["git", "add", "."], cwd=repo_path, check=True, capture_output=True)
     subprocess.run(
-        ["git", "commit", "-m", "Initial commit"], cwd=repo_path, check=True, capture_output=True
+        ["git", "commit", "-m", "Initial commit"],
+        cwd=repo_path,
+        check=True,
+        capture_output=True,
     )
 
     yield repo_path
 
 
 @pytest.fixture
-def sample_codebase_identity():
+def sample_codebase_identity() -> Any:
     """Create sample CodebaseIdentity for testing."""
+    if not NEO4J_AVAILABLE:
+        pytest.skip("Neo4j dependencies not available")
+
     from amplihack.memory.neo4j.identifier import CodebaseIdentifier
 
     return CodebaseIdentifier.create_manual_identity(
