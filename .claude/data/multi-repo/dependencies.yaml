@@ -1,0 +1,44 @@
+# Multi-Repository Dependency Graph
+# This file tracks which repositories depend on each other
+#
+# Usage:
+#   - Add your repositories under 'repositories:'
+#   - List dependencies in 'depends_on:' for each repo
+#   - Document exposed interfaces in 'exposes:'
+#
+# The skill uses this graph to:
+#   - Detect breaking changes before they propagate
+#   - Determine correct merge order for linked PRs
+#   - Identify affected repos when interfaces change
+
+version: "1.0"
+last_updated: null
+
+# Repository dependency graph
+# Format:
+#   org/repo-name:
+#     depends_on:
+#       - repo: org/other-repo
+#         type: api|library|schema|data
+#         version: ">=1.0"  # semver constraint (optional)
+#     exposes:
+#       - type: api|library|schema|data
+#         name: Human-readable name
+#         contract: path/to/contract/file (optional)
+
+repositories:
+  # Example:
+  #
+  # my-org/api-server:
+  #   depends_on: []
+  #   exposes:
+  #     - type: api
+  #       name: REST API v2
+  #       contract: openapi.yaml
+  #
+  # my-org/web-client:
+  #   depends_on:
+  #     - repo: my-org/api-server
+  #       type: api
+  #       version: ">=2.0"
+  #   exposes: []

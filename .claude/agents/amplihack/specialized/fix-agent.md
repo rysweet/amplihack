@@ -200,7 +200,7 @@ Execute all 22 steps of DEFAULT_WORKFLOW:
 
 **Step 21: Documentation Updates**
 
-- Update DISCOVERIES.md if needed
+- Store discovery in memory if needed
 - Document fix pattern for future reference
 - Update related documentation
 

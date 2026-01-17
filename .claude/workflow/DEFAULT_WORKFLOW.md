@@ -44,6 +44,23 @@ This file defines the default workflow for all non-trivial code changes.
 
 You can customize this workflow by editing this file.
 
+## Multi-Platform Support (GitHub + Azure DevOps)
+
+This workflow supports both GitHub and Azure DevOps repositories. Platform-specific steps provide instructions for both platforms.
+
+**Platform Detection**: Determine your platform from git remote URL:
+```bash
+git remote get-url origin
+```
+- Contains `github.com` → Use **GitHub** commands
+- Contains `dev.azure.com` or `visualstudio.com` → Use **Azure DevOps** commands
+
+**Prerequisites**:
+- **GitHub**: Install and authenticate with `gh` CLI (`gh auth login`)
+- **Azure DevOps**: Install and configure `az` CLI (`az login` and `az devops configure`)
+
+Steps with platform-specific instructions: 3, 15, 16-17, 20, 21
+
 ## How This Workflow Works
 
 **This workflow is the single source of truth for:**
@@ -209,14 +226,35 @@ Agents that skip workflow steps (especially mandatory review steps 10, 16-17) cr
 - [ ] Document acceptance criteria
 - [ ] **CRITICAL: Pass explicit requirements to ALL subsequent agents**
 
-### Step 3: Create GitHub Issue
+### Step 3: Create Issue/Work Item
 
-- [ ] **Use** GitHub issue creation tool via agent
-- [ ] Create issue using `gh issue create`
+**Platform Detection**: Automatically detect your platform from git remote URL:
+```bash
+git remote get-url origin
+```
+- github.com → Use GitHub commands
+- dev.azure.com or visualstudio.com → Use Azure DevOps commands
+
+**For GitHub**:
+```bash
+gh issue create \
+  --title "Title" \
+  --body "Description" \
+  --label "label1,label2"
+```
+
+**For Azure DevOps**:
+```bash
+python .claude/scenarios/az-devops-tools/create_work_item.py \
+  --type "User Story" \
+  --title "Title" \
+  --description "Description"
+```
+
 - [ ] Include clear problem description
 - [ ] Define requirements and constraints
 - [ ] Add success criteria
-- [ ] Assign appropriate labels
+- [ ] Assign appropriate labels/tags
 
 ### Step 4: Setup Worktree and Branch
 
@@ -410,12 +448,35 @@ Target Ratios:
 **CRITICAL: Test all changes locally in realistic scenarios BEFORE committing.**
 Test like a user would use the feature - outside-in - not just unit tests.
 
+**🚨 VERIFICATION GATE - CANNOT PROCEED WITHOUT:**
+
+- [ ] **Test execution evidence documented** (outputs, screenshots, or results logged)
+- [ ] **At least 2 test scenarios executed** (1 simple + 1 complex/integration)
+- [ ] **Test results added to PR description** (include in Step 15)
+- [ ] **Regression check completed** (verified existing features still work)
+
+**⚠️ ABSOLUTE RULE**: Testing is ALWAYS possible. Figure out how. Never proceed to Step 14 without test results documented.
+
+**"But I can't test this because..."**
+
+There's always a way to test:
+- **"Need fresh session"** → Open new terminal, start fresh Claude Code session, test there
+- **"Documentation changes"** → Test in fresh session, verify guidance actually works
+- **"Need clean state"** → Create clean state (new directory, fresh checkout, new session)
+- **"Too complex"** → Test simpler scenarios that verify core behavior
+- **"Takes too long"** → Test critical path only, document what wasn't tested
+
+**No escape hatch. No approval path. Just find a way to test and document results.**
+
+---
+
+**Testing Checklist:**
+
 - [ ] **Test simple use cases** - Basic functionality verification
 - [ ] **Test complex use cases** - Edge cases and longer operations
 - [ ] **Test integration points** - External dependencies and APIs
 - [ ] **Verify no regressions** - Ensure existing functionality still works
-- [ ] **Document test results** - What was tested and results for the PR description (to be used in a moment) not in the repo
-- [ ] **RULE: Never commit without local testing**
+- [ ] **Document test results** - What was tested and results for PR description
 
 **Examples of required tests:**
 
@@ -423,6 +484,20 @@ Test like a user would use the feature - outside-in - not just unit tests.
 - If API changes: Test with real client requests
 - If CLI changes: Run actual commands with various options
 - If database changes: Test with actual data operations
+- If documentation changes: Test in fresh session to verify behavior
+
+**Test Results Template** (use in PR description):
+
+```markdown
+## Step 13: Local Testing Results
+
+**Test Environment**: <branch, method, date>
+**Tests Executed**:
+1. Simple: <scenario> → <result> ✅/❌
+2. Complex: <scenario> → <result> ✅/❌
+**Regressions**: <verification> → ✅ None detected
+**Issues Found**: <list any issues discovered and fixed>
+```
 
 **Why this matters:**
 
@@ -430,6 +505,7 @@ Test like a user would use the feature - outside-in - not just unit tests.
 - Local testing catches problems before they reach users
 - Faster feedback loop than waiting for CI
 - Prevents embarrassing failures after merge
+- **Verification gate prevents rationalization bypass**
 
 ### Step 14: Commit and Push
 
@@ -442,19 +518,30 @@ Test like a user would use the feature - outside-in - not just unit tests.
 
 ### Step 15: Open Pull Request as Draft
 
-- [ ] Create PR as DRAFT using `gh pr create --draft` (pipe through `| cat` for reliable output)
-- [ ] Link to the GitHub issue
+**For GitHub**:
+```bash
+gh pr create --draft \
+  --title "Title" \
+  --body "Description" \
+  2>&1 | cat
+```
+
+**For Azure DevOps**:
+```bash
+python .claude/scenarios/az-devops-tools/create_pr.py \
+  --source feature/branch \
+  --target main \
+  --title "Title" \
+  --description "Description" \
+  --draft
+```
+
+- [ ] Link to the issue/work item created in Step 3
 - [ ] Write comprehensive description
-- [ ] Include test plan and the rsults of any testing that you have already captured
+- [ ] Include test plan and the results of any testing that you have already captured
 - [ ] Add screenshots if UI changes
 - [ ] Add "WIP" or "Draft" context to indicate work in progress
 - [ ] Request appropriate reviewers (optional - they can review draft)
-
-**Important**: When using `gh` commands, always pipe through `cat` to ensure output is displayed:
-
-```bash
-gh pr create --draft --title "..." --body "..." 2>&1 | cat
-```
 
 **Why Draft First:**
 
@@ -463,8 +550,6 @@ gh pr create --draft --title "..." --body "..." 2>&1 | cat
 - Enables CI checks to run early
 - Creates space for philosophy and quality checks before marking ready
 - Prevents premature merge while work continues
-
-This ensures you see success messages, error details, and PR URLs.
 
 ### Step 16: Review the PR
 
@@ -477,15 +562,29 @@ This ensures you see success messages, error details, and PR URLs.
 
 **Review checklist:**
 
+- [ ] **⚠️ Step 13 Compliance Verification (MANDATORY)** - Verify PR description contains test results
+  - [ ] Check PR description has "Step 13: Local Testing Results" section with actual test execution evidence
+  - [ ] If missing: BLOCK review, comment on PR, request test results (no approval path - just do the testing)
 - [ ] **Always use** reviewer agent for comprehensive code review
 - [ ] **Use** security agent for security review
 - [ ] Check code quality and standards
 - [ ] Verify philosophy compliance
 - [ ] Ensure adequate test coverage
-- [ ] Post review comments on PR
 - [ ] Identify potential improvements
 - [ ] Ensure there are no TODOs, stubs, or swallowed exceptions, no unimplemented functions - follow the zero-BS principle.
-- [ ] Always Post the review as a comment on the PR
+- [ ] Post the review as a comment on the PR:
+
+**For GitHub**:
+```bash
+gh pr comment <pr_number> --body "Review comment text"
+```
+
+**For Azure DevOps**:
+```bash
+az repos pr create-thread \
+  --id <pr_number> \
+  --comment "Review comment text"
+```
 
 ### Step 17: Implement Review Feedback
 
@@ -504,7 +603,20 @@ This ensures you see success messages, error details, and PR URLs.
 - [ ] **Use** relevant specialized agents for specific feedback
 - [ ] Address each review comment
 - [ ] Push updates to PR
-- [ ] Respond to review comments by posting replies as coments on the PR
+- [ ] Respond to review comments by posting replies as comments on the PR:
+
+**For GitHub**:
+```bash
+gh pr comment <pr_number> --body "Response to feedback"
+```
+
+**For Azure DevOps**:
+```bash
+az repos pr create-thread \
+  --id <pr_number> \
+  --comment "Response to feedback"
+```
+
 - [ ] Ensure all tests still pass
 - [ ] Ensure PR is still mergeable
 - [ ] Request re-review if needed
@@ -573,7 +685,19 @@ This ensures you see success messages, error details, and PR URLs.
 
 ### Step 20: Convert PR to Ready for Review
 
-- [ ] Convert draft PR to ready-for-review using `gh pr ready`
+**For GitHub**:
+```bash
+gh pr ready 2>&1 | cat
+```
+
+**For Azure DevOps**:
+```bash
+# Azure DevOps: Mark PR as ready by setting auto-complete or removing draft status
+az repos pr update \
+  --id <pr_number> \
+  --draft false
+```
+
 - [ ] Verify all previous steps completed
 - [ ] Ensure all review feedback has been addressed
 - [ ] Confirm philosophy compliance check passed
@@ -587,10 +711,6 @@ This ensures you see success messages, error details, and PR URLs.
 - You believe the PR is truly ready to merge
 - No known blockers remain
 
-```bash
-gh pr ready 2>&1 | cat
-```
-
 **Why This Step Matters:**
 
 - Signals transition from "work in progress" to "ready to merge"
@@ -600,7 +720,25 @@ gh pr ready 2>&1 | cat
 
 ### Step 21: Ensure PR is Mergeable
 
-- [ ] Check CI status (all checks passing)
+**Check CI status**:
+
+**For GitHub**:
+```bash
+gh pr checks
+# Or for specific PR:
+gh pr checks <pr_number>
+```
+
+**For Azure DevOps**:
+```bash
+# Check pipeline runs for current branch
+az pipelines runs list --branch $(git branch --show-current) --top 1
+
+# Or check PR build status
+az repos pr show --id <pr_number> --query "mergeStatus"
+```
+
+- [ ] Verify all CI checks passing
 - [ ] **Always use** ci-diagnostic-workflow agent if CI fails
 - [ ] **💡 TIP**: When investigating CI failures, use [parallel agent investigation](.claude/CLAUDE.md#parallel-agent-investigation-strategy) to explore logs and code simultaneously
 - [ ] Resolve any merge conflicts
