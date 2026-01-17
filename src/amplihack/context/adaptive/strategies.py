@@ -151,8 +151,14 @@ class ClaudeStrategy(HookStrategy):
         if "timestamp" not in context:
             context["timestamp"] = datetime.now(timezone.utc).isoformat()
 
-        # Write context
-        context_path.write_text(json.dumps(context, indent=2))
+        # Write context with error handling
+        try:
+            context_path.write_text(json.dumps(context, indent=2))
+        except OSError as e:
+            # Fail gracefully - log error but don't crash
+            if self.log_func:
+                self.log_func(f"Failed to write context to {context_path}: {e}", "WARNING")
+            # Continue anyway - context injection optional
 
         # Return formatted context
         return json.dumps(context, indent=2)
@@ -298,8 +304,14 @@ class CopilotStrategy(HookStrategy):
         # Insert context after title
         lines.insert(title_line + 1, "\n" + context_md + "\n")
 
-        # Write updated content
-        agents_path.write_text("\n".join(lines))
+        # Write updated content with error handling
+        try:
+            agents_path.write_text("\n".join(lines))
+        except OSError as e:
+            # Fail gracefully - log error but don't crash
+            if self.log_func:
+                self.log_func(f"Failed to write AGENTS.md to {agents_path}: {e}", "WARNING")
+            # Continue anyway - context injection optional
 
         # Return the markdown context for logging
         return context_md
