@@ -605,6 +605,7 @@ def main(argv: list[str] | None = None) -> int:
                 temp_claude_dir = None
 
             # 3. Generate settings.json in project's .claude/ that references plugin
+            local_claude_dir = Path(original_cwd) / ".claude"
             temp_claude_dir = str(local_claude_dir)
             local_claude_dir.mkdir(parents=True, exist_ok=True)
 
