@@ -3,6 +3,7 @@
 import argparse
 import os
 import platform
+import subprocess
 import sys
 from pathlib import Path
 
@@ -713,7 +714,6 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "install":
         # Use the existing install logic
-        import subprocess
         import tempfile
 
         with tempfile.TemporaryDirectory() as tmp:
