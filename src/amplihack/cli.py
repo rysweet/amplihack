@@ -837,7 +837,6 @@ def main(argv: list[str] | None = None) -> int:
             # Select backend
             if args.backend == "kuzu":
                 try:
-            # PluginManager already imported at module level
 
                     backend = KuzuBackend()
                     backend.initialize()
