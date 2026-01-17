@@ -106,18 +106,32 @@ class SessionStopHook(Hook):
             logger.debug(f"Neo4j cleanup failed: {e}")
 
     def _check_lock_mode(self) -> dict[str, Any]:
-        """Check if session is in lock mode and should prevent stop."""
-        lock_info = {"locked": False}
-        try:
-            lock_file = _PROJECT_ROOT / ".claude" / "runtime" / "session.lock"
-            if lock_file.exists():
-                import json
+        """Check if session is in lock mode and should prevent stop.
 
-                lock_data = json.loads(lock_file.read_text())
-                if lock_data.get("locked"):
-                    lock_info["locked"] = True
-                    lock_info["reason"] = lock_data.get("reason", "Session locked")
-                    lock_info["locked_at"] = lock_data.get("locked_at")
+        Lock files are created by lock_tool.py at:
+        - .claude/runtime/locks/.lock_active (lock flag)
+        - .claude/runtime/locks/.lock_message (optional custom message)
+        """
+        lock_info: dict[str, Any] = {"locked": False}
+        try:
+            # Check the correct lock file path (matches lock_tool.py)
+            lock_dir = _PROJECT_ROOT / ".claude" / "runtime" / "locks"
+            lock_file = lock_dir / ".lock_active"
+            message_file = lock_dir / ".lock_message"
+
+            if lock_file.exists():
+                lock_info["locked"] = True
+                lock_info["locked_at"] = lock_file.read_text().strip()
+
+                # Check for custom message
+                if message_file.exists():
+                    lock_info["reason"] = message_file.read_text().strip()
+                else:
+                    lock_info["reason"] = (
+                        "Continuous work mode enabled - use /amplihack:unlock to disable"
+                    )
+
+                logger.info(f"Lock mode active: {lock_info['reason']}")
         except Exception as e:
             logger.debug(f"Lock mode check failed: {e}")
         return lock_info
