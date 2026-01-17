@@ -125,7 +125,13 @@ class ClaudeLauncher:
             return False
 
         # 9. Start proxy if needed
-        return self._start_proxy_if_needed()
+        if not self._start_proxy_if_needed():
+            return False
+
+        # 10. Auto-configure LSP if supported languages detected
+        self._configure_lsp_auto(target_dir)
+
+        return True
 
     def _handle_repo_checkout(self) -> bool:
         """Handle repository checkout.
@@ -237,6 +243,77 @@ class ClaudeLauncher:
             self._open_log_tail_window()
 
         return True
+
+    def _configure_lsp_auto(self, target_dir: Path) -> None:
+        """Auto-configure LSP support if languages detected.
+
+        Automatically configures LSP by:
+        1. Detecting languages in target directory
+        2. Setting ENABLE_LSP_TOOL=1 environment variable
+        3. Configuring .env file for project-specific settings
+        4. Installing Claude Code LSP plugins via npx cclsp (if npx available)
+
+        Args:
+            target_dir: Project directory to configure LSP for
+
+        Note:
+            Silently skips if LSP modules not available or if no languages detected.
+            This is a best-effort enhancement - failure doesn't block Claude launch.
+        """
+        try:
+            # Import LSP modules (may not be available in all environments)
+            import sys
+            from pathlib import Path as PathLib
+
+            # Add .claude/skills to Python path
+            claude_dir = target_dir / ".claude" / "skills"
+            if claude_dir.exists() and str(claude_dir) not in sys.path:
+                sys.path.insert(0, str(claude_dir))
+
+            from lsp_setup import LanguageDetector, LSPConfigurator, PluginManager
+
+            # Step 1: Detect languages
+            detector = LanguageDetector(target_dir)
+            languages_dict = detector.detect_languages()
+
+            if not languages_dict:
+                # No languages detected - skip LSP setup
+                return
+
+            print(f"📡 LSP: Detected {len(languages_dict)} language(s): {', '.join(list(languages_dict.keys())[:3])}...")
+
+            # Step 2: Set environment variable for current process
+            os.environ["ENABLE_LSP_TOOL"] = "1"
+
+            # Step 3: Configure .env file
+            configurator = LSPConfigurator(target_dir)
+            if not configurator.is_lsp_enabled():
+                configurator.enable_lsp()
+                print("📡 LSP: Enabled ENABLE_LSP_TOOL=1 in .env")
+
+            # Step 4: Install plugins if npx available (best effort)
+            manager = PluginManager()
+            if manager.check_npx_available():
+                installed_plugins = manager.list_installed_plugins()
+                lang_names = list(languages_dict.keys())
+
+                # Install plugins for detected languages that aren't already installed
+                to_install = [lang for lang in lang_names if lang not in installed_plugins]
+
+                if to_install:
+                    print(f"📡 LSP: Installing {len(to_install)} plugin(s)...")
+                    successful, failed = manager.install_multiple_plugins(to_install[:3])  # Limit to 3 to avoid delays
+
+                    if successful:
+                        print(f"📡 LSP: Installed {len(successful)} plugin(s): {', '.join(successful)}")
+                    if failed:
+                        print(f"📡 LSP: Skipped {len(failed)} plugin(s) (install manually if needed)")
+            else:
+                print("📡 LSP: npx not available - skipping plugin installation")
+
+        except Exception as e:
+            # Silently fail - LSP is best-effort, don't block Claude launch
+            logger.debug(f"LSP auto-configuration skipped: {e}")
 
     def _open_log_tail_window(self) -> None:
         """Open a new terminal window tailing proxy logs.
