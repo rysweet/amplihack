@@ -4,8 +4,8 @@ version: 1.0.0
 description: |
   Extracts key learnings from conversations, debugging sessions, and failed attempts.
   Use at session end or after solving complex problems to capture insights.
-  Automatically suggests updates to: DISCOVERIES.md (learnings), PATTERNS.md (reusable solutions), new agent creation (repeated workflows).
-  Ensures knowledge persists across sessions.
+  Stores discoveries in memory (via amplihack.memory.discoveries), suggests PATTERNS.md updates, and recommends new agent creation.
+  Ensures knowledge persists across sessions via Kuzu memory backend.
 ---
 
 # Knowledge Extractor Skill
@@ -251,7 +251,7 @@ Extract and structure knowledge:
 Place knowledge in correct locations:
 
 ```
-DISCOVERIES.md → New discovery at end of file
+Memory → Store discovery using store_discovery() from amplihack.memory.discoveries
 PATTERNS.md → New pattern in appropriate section
 Agent → Create in .claude/agents/amplihack/specialized/
 ```
@@ -426,12 +426,12 @@ Before finalizing an extraction, verify:
 
 ## Integration with System
 
-### DISCOVERIES.md Lifecycle
+### Discovery Memory Lifecycle
 
-1. **Extraction**: Added to DISCOVERIES.md during session
-2. **Visibility**: Immediately available to all agents
-3. **Action**: Agents can reference when solving similar problems
-4. **Prevention**: Prevents repeating same mistakes
+1. **Extraction**: Stored in memory via `store_discovery()` during session
+2. **Visibility**: Retrieved by `get_recent_discoveries()` at session start
+3. **Action**: Agents can query memory when solving similar problems
+4. **Prevention**: Prevents repeating same mistakes across sessions
 5. **Evolution**: Updated when better solution found
 
 ### PATTERNS.md Lifecycle
@@ -455,7 +455,7 @@ Before finalizing an extraction, verify:
 ### Impact 1: Prevent Wasted Debugging Time
 
 **Without knowledge extraction**: Repeat same 45-minute debugging process
-**With extraction**: Reference DISCOVERIES.md, fix in 10 minutes
+**With extraction**: Retrieve from memory, fix in 10 minutes
 
 ### Impact 2: Faster Solution Discovery
 

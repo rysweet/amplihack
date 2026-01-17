@@ -196,10 +196,24 @@ class SessionStartHook(HookProcessor):
         context_parts.append("This is the Microsoft Hackathon 2025 Agentic Coding project.")
         context_parts.append("Focus on building AI-powered development tools.")
 
-        # Check for recent discoveries
-        discoveries_file = self.project_root / ".claude" / "context" / "DISCOVERIES.md"
-        if discoveries_file.exists():
-            context_parts.append("\n## Recent Learnings")
+        # Check for recent discoveries from memory
+        context_parts.append("\n## Recent Learnings")
+        try:
+            from amplihack.memory.discoveries import get_recent_discoveries
+
+            recent_discoveries = get_recent_discoveries(days=30, limit=5)
+            if recent_discoveries:
+                context_parts.append(
+                    f"Found {len(recent_discoveries)} recent discoveries in memory:"
+                )
+                for disc in recent_discoveries:
+                    summary = disc.get("summary", "No summary")
+                    category = disc.get("category", "uncategorized")
+                    context_parts.append(f"- [{category}] {summary}")
+            else:
+                context_parts.append("Check .claude/context/DISCOVERIES.md for recent insights.")
+        except ImportError:
+            # Fallback if memory module not available
             context_parts.append("Check .claude/context/DISCOVERIES.md for recent insights.")
 
         # Simplified preference file resolution
@@ -318,8 +332,7 @@ class SessionStartHook(HookProcessor):
 
         if launcher_type == "copilot":
             return CopilotStrategy(self.project_root, self.log)
-        else:
-            return ClaudeStrategy(self.project_root, self.log)
+        return ClaudeStrategy(self.project_root, self.log)
 
     def _check_version_mismatch(self) -> None:
         """Check for version mismatch and offer to update.

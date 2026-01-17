@@ -349,7 +349,7 @@ Counter: [Additional evidence or reasoning]
 - Document full debate transcript
 - Include all perspective arguments
 - Record synthesis and final decision
-- Add to `.claude/context/DISCOVERIES.md`
+- Store in memory using `store_discovery()` from `amplihack.memory.discoveries`
 - Update relevant architecture docs
 
 **Decision Record Template:**
