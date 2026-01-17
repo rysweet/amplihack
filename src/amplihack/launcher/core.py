@@ -373,7 +373,9 @@ class ClaudeLauncher:
                             "command": "npx",
                             "args": ["cclsp"]
                         }
-                        print("📡 LSP: Added cclsp MCP server to settings")
+                        # Enable MCP servers
+                        settings["enableAllProjectMcpServers"] = True
+                        print("📡 LSP: Added cclsp MCP server and enabled MCP servers")
 
                     # Add LSP MCP tools to permissions
                     if "permissions" in settings and "allow" in settings["permissions"]:
