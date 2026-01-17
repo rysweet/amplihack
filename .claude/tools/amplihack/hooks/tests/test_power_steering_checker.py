@@ -603,5 +603,140 @@ class TestConsiderationAnalysis(unittest.TestCase):
         self.assertGreater(len(grouped), 0)
 
 
+class TestPreCompactionTranscript(unittest.TestCase):
+    """Tests for Issue #1962: Pre-compaction transcript handling."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.temp_dir = tempfile.mkdtemp()
+        self.project_root = Path(self.temp_dir)
+
+        # Create directory structure
+        (self.project_root / ".claude" / "tools" / "amplihack").mkdir(parents=True, exist_ok=True)
+        (self.project_root / ".claude" / "runtime" / "power-steering").mkdir(
+            parents=True, exist_ok=True
+        )
+        (self.project_root / ".claude" / "runtime" / "logs").mkdir(parents=True, exist_ok=True)
+
+        # Create default config
+        config_path = (
+            self.project_root / ".claude" / "tools" / "amplihack" / ".power_steering_config"
+        )
+        config = {"enabled": True, "version": "1.0.0", "phase": 1}
+        config_path.write_text(json.dumps(config, indent=2))
+
+    def tearDown(self):
+        """Clean up test fixtures."""
+        import shutil
+
+        shutil.rmtree(self.temp_dir)
+
+    def test_get_pre_compaction_transcript_no_compaction(self):
+        """Test _get_pre_compaction_transcript returns None when no compaction."""
+        checker = PowerSteeringChecker(self.project_root)
+        session_id = "test_session_123"
+
+        # Create session directory without compaction events
+        session_dir = self.project_root / ".claude" / "runtime" / "logs" / session_id
+        session_dir.mkdir(parents=True, exist_ok=True)
+
+        result = checker._get_pre_compaction_transcript(session_id)
+        self.assertIsNone(result)
+
+    def test_get_pre_compaction_transcript_with_compaction(self):
+        """Test _get_pre_compaction_transcript returns path when compaction detected."""
+        checker = PowerSteeringChecker(self.project_root)
+        session_id = "test_session_456"
+
+        # Create session directory with compaction events
+        session_dir = self.project_root / ".claude" / "runtime" / "logs" / session_id
+        session_dir.mkdir(parents=True, exist_ok=True)
+
+        # Create the pre-compaction transcript file
+        transcript_path = session_dir / "CONVERSATION_TRANSCRIPT.md"
+        transcript_path.write_text("## User\nTest message\n## Assistant\nTest response\n")
+
+        # Create compaction events file pointing to transcript
+        compaction_file = session_dir / "compaction_events.json"
+        compaction_events = [
+            {
+                "timestamp": "2025-01-17T10:00:00",
+                "session_id": session_id,
+                "messages_exported": 767,
+                "transcript_path": str(transcript_path),
+            }
+        ]
+        compaction_file.write_text(json.dumps(compaction_events))
+
+        result = checker._get_pre_compaction_transcript(session_id)
+        self.assertIsNotNone(result)
+        self.assertEqual(result, transcript_path)
+
+    def test_load_pre_compaction_transcript_markdown(self):
+        """Test _load_pre_compaction_transcript parses markdown format."""
+        checker = PowerSteeringChecker(self.project_root)
+
+        # Create markdown transcript
+        transcript_path = self.project_root / "test_transcript.md"
+        transcript_content = """# Conversation Transcript
+
+## User
+Please implement authentication
+
+## Assistant
+I'll help you implement authentication. Let me start by...
+
+## User
+Make sure to include JWT support
+
+## Assistant
+Got it, I'll add JWT support as requested.
+"""
+        transcript_path.write_text(transcript_content)
+
+        messages = checker._load_pre_compaction_transcript(transcript_path)
+
+        self.assertEqual(len(messages), 4)
+        self.assertEqual(messages[0]["role"], "user")
+        self.assertIn("authentication", messages[0]["content"])
+        self.assertEqual(messages[1]["role"], "assistant")
+        self.assertEqual(messages[2]["role"], "user")
+        self.assertIn("JWT", messages[2]["content"])
+
+    def test_load_pre_compaction_transcript_jsonl(self):
+        """Test _load_pre_compaction_transcript parses JSONL format."""
+        checker = PowerSteeringChecker(self.project_root)
+
+        # Create JSONL transcript
+        transcript_path = self.project_root / "test_transcript.jsonl"
+        transcript_content = """{"role": "user", "content": "Hello"}
+{"role": "assistant", "content": "Hi there!"}
+{"role": "user", "content": "Help me"}
+"""
+        transcript_path.write_text(transcript_content)
+
+        messages = checker._load_pre_compaction_transcript(transcript_path)
+
+        self.assertEqual(len(messages), 3)
+        self.assertEqual(messages[0]["role"], "user")
+        self.assertEqual(messages[0]["content"], "Hello")
+        self.assertEqual(messages[1]["role"], "assistant")
+
+    def test_verify_actual_state_no_pr(self):
+        """Test _verify_actual_state handles case with no PR."""
+        checker = PowerSteeringChecker(self.project_root)
+
+        # This will likely fail to find gh/git in test env, should return empty results
+        result = checker._verify_actual_state("test_session")
+
+        # Should be a dict with expected keys
+        self.assertIn("ci_passing", result)
+        self.assertIn("pr_mergeable", result)
+        self.assertIn("branch_current", result)
+        self.assertIn("all_passing", result)
+        # In test environment without git setup, all should be False
+        self.assertFalse(result["all_passing"])
+
+
 if __name__ == "__main__":
     unittest.main()

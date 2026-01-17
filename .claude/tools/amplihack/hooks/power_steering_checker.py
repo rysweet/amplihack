@@ -622,8 +622,33 @@ class PowerSteeringChecker:
                     summary=None,
                 )
 
-            # 3. Load transcript
-            transcript = self._load_transcript(transcript_path)
+            # 3. Load transcript (with pre-compaction fallback - Issue #1962)
+            # Check if session was compacted - if so, use the FULL pre-compaction transcript
+            # instead of the truncated compacted version Claude Code provides
+            pre_compaction_path = self._get_pre_compaction_transcript(session_id)
+            compaction_detected = pre_compaction_path is not None
+
+            if pre_compaction_path:
+                # Session was compacted - load the full transcript from pre-compaction save
+                self._emit_progress(
+                    progress_callback,
+                    "compaction_detected",
+                    "Session compaction detected - using pre-compaction transcript",
+                    {"pre_compaction_path": str(pre_compaction_path)},
+                )
+                transcript = self._load_pre_compaction_transcript(pre_compaction_path)
+
+                # If pre-compaction loading failed, fall back to provided transcript
+                if not transcript:
+                    self._log(
+                        "Pre-compaction transcript load failed, falling back to provided transcript",
+                        "WARNING",
+                    )
+                    transcript = self._load_transcript(transcript_path)
+                    compaction_detected = False  # Reset since we couldn't use pre-compaction
+            else:
+                # No compaction or compaction data unavailable - use provided transcript
+                transcript = self._load_transcript(transcript_path)
 
             # 3b. Initialize turn state management (fail-open on import error)
             if TURN_STATE_AVAILABLE:
@@ -686,7 +711,31 @@ class PowerSteeringChecker:
                     summary=None,
                 )
 
-            # 4c. PHASE 1: Evidence-based verification (fail-fast on concrete completion signals)
+            # 4c. State-based verification (Issue #1962 - robust fallback for post-compaction)
+            # When compaction is detected, supplement transcript analysis with actual state checks
+            # This provides ground truth even when transcript history is incomplete
+            if compaction_detected:
+                state_verification = self._verify_actual_state(session_id)
+                if state_verification.get("all_passing"):
+                    self._log(
+                        "State-based verification passed (PR mergeable, CI passing, branch current)",
+                        "INFO",
+                    )
+                    self._emit_progress(
+                        progress_callback,
+                        "state_verified",
+                        "Work completion verified via state checks",
+                        state_verification,
+                    )
+                    # If all state checks pass, this is strong evidence of completion
+                    # Store for decision-making but don't auto-approve yet (let evidence checker run too)
+                    self._state_verification_passed = True
+                else:
+                    self._state_verification_passed = False
+            else:
+                self._state_verification_passed = False
+
+            # 4d. PHASE 1: Evidence-based verification (fail-fast on concrete completion signals)
             if EVIDENCE_AVAILABLE:
                 try:
                     evidence_checker = CompletionEvidenceChecker(self.project_root)
@@ -820,6 +869,33 @@ class PowerSteeringChecker:
                         "INFO",
                     )
                     analysis = self._create_passing_analysis(analysis, addressed_concerns)
+
+                # Issue #1962: State-based override for post-compaction scenarios
+                # When session was compacted and state verification passed (PR mergeable, CI passing),
+                # trust actual state over potentially incomplete transcript analysis
+                elif (
+                    compaction_detected
+                    and getattr(self, "_state_verification_passed", False)
+                    and remaining_blockers
+                ):
+                    self._log(
+                        f"Post-compaction state override: {len(remaining_blockers)} transcript-based "
+                        "blockers overridden by passing state verification (PR mergeable, CI passing)",
+                        "INFO",
+                    )
+                    self._emit_progress(
+                        progress_callback,
+                        "state_override",
+                        f"Overriding {len(remaining_blockers)} blockers via state verification",
+                        {"blockers_overridden": [r.consideration_id for r in remaining_blockers]},
+                    )
+                    # Create a passing analysis with note about state override
+                    override_note = {
+                        r.consideration_id: "Overridden by state verification (PR mergeable, CI passing)"
+                        for r in remaining_blockers
+                    }
+                    analysis = self._create_passing_analysis(analysis, override_note)
+
                 else:
                     # Actual failures - block
                     # Mark results shown on first stop to prevent race condition
@@ -1101,6 +1177,295 @@ class PowerSteeringChecker:
         """
         semaphore = self.runtime_dir / f".{session_id}_completed"
         return semaphore.exists()
+
+    def _get_pre_compaction_transcript(self, session_id: str) -> Path | None:
+        """Check if session was compacted and return pre-compaction transcript path.
+
+        When Claude Code compacts a session, the transcript_path provided to hooks
+        only contains the compacted summary (~50 messages). The pre_compact.py hook
+        saves the FULL transcript before compaction. This method finds that saved
+        transcript to ensure power-steering analyzes complete session history.
+
+        Args:
+            session_id: Session identifier
+
+        Returns:
+            Path to pre-compaction transcript if available, None otherwise
+
+        Note:
+            See Issue #1962: After compaction, power-steering only saw ~50 messages
+            instead of 767+ causing false "work incomplete" blocks.
+        """
+        try:
+            # Check for compaction events in session logs
+            logs_dir = self.project_root / ".claude" / "runtime" / "logs"
+            session_dir = logs_dir / session_id
+
+            if not session_dir.exists():
+                return None
+
+            # Check if compaction events exist
+            compaction_file = session_dir / "compaction_events.json"
+            if not compaction_file.exists():
+                return None
+
+            # Parse compaction events to get transcript path
+            try:
+                with open(compaction_file) as f:
+                    compaction_events = json.load(f)
+            except (json.JSONDecodeError, OSError) as e:
+                self._log(f"Failed to read compaction events: {e}", "WARNING")
+                return None
+
+            if not compaction_events:
+                return None
+
+            # Get the most recent compaction event's transcript
+            # Events are appended chronologically, so last is most recent
+            latest_event = compaction_events[-1]
+            saved_transcript_path = latest_event.get("transcript_path")
+
+            if not saved_transcript_path:
+                # Fallback: Look for standard transcript file locations
+                possible_paths = [
+                    session_dir / "CONVERSATION_TRANSCRIPT.md",
+                    session_dir / "conversation_transcript.jsonl",
+                ]
+
+                # Check transcripts subdirectory for timestamped copies
+                transcripts_dir = session_dir / "transcripts"
+                if transcripts_dir.exists():
+                    transcript_files = sorted(transcripts_dir.glob("conversation_*.md"), reverse=True)
+                    if transcript_files:
+                        possible_paths.insert(0, transcript_files[0])
+
+                for path in possible_paths:
+                    if path.exists():
+                        saved_transcript_path = str(path)
+                        break
+
+            if not saved_transcript_path:
+                self._log("Compaction detected but no transcript path found", "WARNING")
+                return None
+
+            transcript_path = Path(saved_transcript_path)
+
+            # Security: Validate path is within project
+            if not self._validate_path(transcript_path, self.project_root):
+                self._log(
+                    f"Pre-compaction transcript path outside project: {transcript_path}",
+                    "WARNING",
+                )
+                return None
+
+            if transcript_path.exists():
+                messages_count = latest_event.get("messages_exported", "unknown")
+                self._log(
+                    f"Using pre-compaction transcript ({messages_count} messages): {transcript_path}",
+                    "INFO",
+                )
+                return transcript_path
+
+            self._log(f"Pre-compaction transcript not found: {transcript_path}", "WARNING")
+            return None
+
+        except Exception as e:
+            # Fail-open: If we can't check for pre-compaction, continue with provided transcript
+            self._log(f"Pre-compaction transcript check failed: {e}", "WARNING")
+            return None
+
+    def _load_pre_compaction_transcript(self, transcript_path: Path) -> list[dict]:
+        """Load pre-compaction transcript from markdown or JSONL format.
+
+        The pre_compact.py hook saves transcripts in markdown format (CONVERSATION_TRANSCRIPT.md).
+        This method parses that format to extract message data for analysis.
+
+        Args:
+            transcript_path: Path to pre-compaction transcript file
+
+        Returns:
+            List of message dictionaries
+
+        Note:
+            Handles both markdown format from pre_compact.py and JSONL format.
+        """
+        messages = []
+
+        try:
+            content = transcript_path.read_text()
+
+            # Detect format by extension and content
+            if transcript_path.suffix == ".jsonl" or content.strip().startswith("{"):
+                # JSONL format - parse line by line
+                for line in content.strip().split("\n"):
+                    if line.strip():
+                        try:
+                            messages.append(json.loads(line))
+                        except json.JSONDecodeError:
+                            continue
+            else:
+                # Markdown format from context_preservation.py
+                # Parse conversation entries marked with roles
+                current_role = None
+                current_content = []
+
+                for line in content.split("\n"):
+                    # Detect role headers like "## User" or "## Assistant" or "**User:**"
+                    role_match = None
+                    if line.startswith("## User") or "**User:**" in line or line.startswith("### User"):
+                        role_match = "user"
+                    elif (
+                        line.startswith("## Assistant")
+                        or "**Assistant:**" in line
+                        or line.startswith("### Assistant")
+                    ):
+                        role_match = "assistant"
+
+                    if role_match:
+                        # Save previous message if exists
+                        if current_role and current_content:
+                            messages.append(
+                                {"role": current_role, "content": "\n".join(current_content).strip()}
+                            )
+                        current_role = role_match
+                        current_content = []
+                    elif current_role:
+                        current_content.append(line)
+
+                # Don't forget the last message
+                if current_role and current_content:
+                    messages.append(
+                        {"role": current_role, "content": "\n".join(current_content).strip()}
+                    )
+
+            self._log(f"Loaded {len(messages)} messages from pre-compaction transcript", "INFO")
+            return messages
+
+        except Exception as e:
+            self._log(f"Failed to load pre-compaction transcript: {e}", "WARNING")
+            return []
+
+    def _verify_actual_state(self, session_id: str) -> dict[str, Any]:
+        """Verify work completion by checking actual git/GitHub state.
+
+        This provides ground truth verification independent of transcript analysis.
+        Used as robust fallback when session has been compacted (Issue #1962).
+
+        Args:
+            session_id: Session identifier
+
+        Returns:
+            Dict with verification results:
+            - ci_passing: bool - All CI checks passed
+            - pr_mergeable: bool - PR is in mergeable state
+            - branch_current: bool - Branch is up to date with main
+            - tests_local: bool - Local tests pass (if available)
+            - all_passing: bool - All checks passed
+
+        Note:
+            Fail-open design: Returns False for individual checks on errors,
+            but doesn't block overall verification.
+        """
+        import subprocess
+
+        results = {
+            "ci_passing": False,
+            "pr_mergeable": False,
+            "branch_current": False,
+            "tests_local": None,  # None = not checked
+            "all_passing": False,
+            "details": {},
+        }
+
+        try:
+            # 1. Check if there's an open PR for current branch
+            pr_result = subprocess.run(
+                ["gh", "pr", "view", "--json", "state,mergeable,statusCheckRollup"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                cwd=str(self.project_root),
+            )
+
+            if pr_result.returncode == 0:
+                try:
+                    pr_data = json.loads(pr_result.stdout)
+                    results["details"]["pr_state"] = pr_data.get("state")
+                    results["details"]["mergeable"] = pr_data.get("mergeable")
+
+                    # Check PR is open and mergeable
+                    if pr_data.get("state") == "OPEN":
+                        results["pr_mergeable"] = pr_data.get("mergeable") == "MERGEABLE"
+
+                        # Check CI status
+                        status_checks = pr_data.get("statusCheckRollup", [])
+                        if status_checks:
+                            # All checks must pass
+                            all_success = all(
+                                check.get("conclusion") in ("SUCCESS", "NEUTRAL", "SKIPPED")
+                                for check in status_checks
+                                if check.get("conclusion")  # Ignore pending
+                            )
+                            # At least some checks must have run
+                            has_completed = any(
+                                check.get("conclusion") for check in status_checks
+                            )
+                            results["ci_passing"] = all_success and has_completed
+                            results["details"]["ci_checks"] = len(status_checks)
+                            results["details"]["ci_conclusions"] = [
+                                check.get("conclusion") for check in status_checks
+                            ]
+                        else:
+                            # No status checks configured - consider CI passing
+                            results["ci_passing"] = True
+                            results["details"]["ci_checks"] = 0
+
+                except json.JSONDecodeError:
+                    self._log("Failed to parse PR data", "WARNING")
+            else:
+                # No PR found - check if we're on main branch (might be direct work)
+                results["details"]["no_pr"] = True
+
+            # 2. Check if branch is up to date with main/master
+            # Get commits behind main
+            for main_branch in ["origin/main", "origin/master"]:
+                behind_result = subprocess.run(
+                    ["git", "rev-list", "--count", f"HEAD..{main_branch}"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                    cwd=str(self.project_root),
+                )
+                if behind_result.returncode == 0:
+                    commits_behind = int(behind_result.stdout.strip())
+                    results["branch_current"] = commits_behind == 0
+                    results["details"]["commits_behind"] = commits_behind
+                    results["details"]["main_branch"] = main_branch
+                    break
+
+            # 3. Determine overall result
+            # For state verification to pass, we need PR mergeable AND CI passing
+            # (branch_current is informational but not blocking)
+            if results.get("pr_mergeable") and results.get("ci_passing"):
+                results["all_passing"] = True
+            elif results.get("details", {}).get("no_pr"):
+                # No PR - check if on main branch directly
+                results["all_passing"] = results.get("branch_current", False)
+
+            self._log(
+                f"State verification: ci={results['ci_passing']}, "
+                f"mergeable={results['pr_mergeable']}, current={results['branch_current']}",
+                "INFO",
+            )
+
+        except subprocess.TimeoutExpired:
+            self._log("State verification timed out", "WARNING")
+        except FileNotFoundError:
+            self._log("gh or git command not found for state verification", "WARNING")
+        except Exception as e:
+            self._log(f"State verification failed: {e}", "WARNING")
+
+        return results
 
     def _results_already_shown(self, session_id: str) -> bool:
         """Check if power-steering results were already shown for this session.
