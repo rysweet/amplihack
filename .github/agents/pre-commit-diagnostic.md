@@ -1,1 +1,0 @@
-../../.claude/agents/amplihack/specialized/pre-commit-diagnostic.md

@@ -59,21 +59,43 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
         environment={"AMPLIHACK_LAUNCHER": "copilot"}
     )
 
-    # CRITICAL: Create AGENTS.md BEFORE launching Copilot
-    # Copilot autodiscovers AGENTS.md at startup, so it must exist first
+    # CRITICAL: Create agent files and AGENTS.md BEFORE launching Copilot
+    # Copilot autodiscovers these at startup
     try:
+        import amplihack
+        import shutil
         from ..context.adaptive.strategies import CopilotStrategy
 
-        strategy = CopilotStrategy(project_root)
+        # Get package directory (where .claude/ is actually staged)
+        package_dir = Path(amplihack.__file__).parent
 
-        # Load preferences and inject into AGENTS.md
-        prefs_file = project_root / ".claude/context/USER_PREFERENCES.md"
+        # User's working directory (where we'll create .github/agents/)
+        user_dir = Path(os.getcwd())
+
+        strategy = CopilotStrategy(user_dir)
+
+        # Create individual agent files in user's .github/agents/
+        # (Copies instead of symlinks for Windows compatibility)
+        agents_dest = user_dir / ".github/agents"
+        agents_dest.mkdir(parents=True, exist_ok=True)
+
+        # Copy agents from PACKAGE directory .claude/agents/amplihack/
+        source_agents = package_dir / ".claude/agents/amplihack"
+        if source_agents.exists():
+            for source_file in source_agents.rglob("*.md"):
+                # Flatten structure: core/architect.md → architect.md
+                dest_file = agents_dest / source_file.name
+                # Always copy to get latest (fast operation)
+                shutil.copy2(source_file, dest_file)
+
+        # Load preferences from PACKAGE and inject into user's AGENTS.md
+        prefs_file = package_dir / ".claude/context/USER_PREFERENCES.md"
         if prefs_file.exists():
             prefs_content = prefs_file.read_text()
             strategy.inject_context(prefs_content)
     except Exception as e:
         # Fail gracefully - Copilot will work without preferences
-        print(f"Warning: Could not create AGENTS.md: {e}")
+        print(f"Warning: Could not prepare Copilot environment: {e}")
 
     # Build command with full filesystem access (safe in VM environment)
     cmd = [

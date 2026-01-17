@@ -1,1 +1,0 @@
-../../.claude/agents/amplihack/core/reviewer.md
