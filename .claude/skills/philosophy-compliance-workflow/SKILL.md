@@ -396,7 +396,7 @@ A successful philosophy review:
 
 - `.claude/runtime/logs/<session>/philosophy_review_<timestamp>.md`
 - Link in commit message if fixes applied
-- Update `.claude/context/DISCOVERIES.md` with patterns learned
+- Store patterns learned in memory using `store_discovery()` from `amplihack.memory.discoveries`
 
 ## Remember
 

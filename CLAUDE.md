@@ -113,9 +113,8 @@ Following: .claude/workflow/[WORKFLOW_NAME].md
   judgement, and only stop to ask if really necessary or explicitly instructed
   to do so.
 - **Check discoveries before problem-solving**: Before solving complex problems,
-  check `@docs/DISCOVERIES.md` for known issues and solutions
-- **Document learnings**: Update .claude/context/DISCOVERIES.md with new
-  insights
+  retrieve recent discoveries from memory using `get_recent_discoveries()` from `amplihack.memory.discoveries`
+- **Document learnings**: Store discoveries in memory using `store_discovery()` from `amplihack.memory.discoveries`
 - **Session Logs**: All interactions MUST be logged in
   .claude/runtime/logs/<session_id> where <session_id> is a unique identifier
   for the session based on the timestamp.
@@ -843,14 +842,14 @@ After code changes:
 1. Run tests if available
 2. Check philosophy compliance
 3. Verify module boundaries
-4. Update .claude/context/DISCOVERIES.md with learnings
+4. Store learnings in memory via discoveries adapter
 
 ## Self-Improvement
 
 The system should continuously improve:
 
 - Track patterns in `.claude/context/PATTERNS.md`
-- Document discoveries in `.claude/context/DISCOVERIES.md`
+- Store discoveries in memory for cross-session persistence
 - Update agent definitions as needed
 - Create new agents for repeated tasks
 
