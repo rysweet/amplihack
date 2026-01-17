@@ -314,9 +314,9 @@ class SessionStartHook(HookProcessor):
             return None
 
         detector = LauncherDetector(self.project_root)
-        launcher_info = detector.detect()
+        launcher_type = detector.detect()  # Returns string: "claude", "copilot", "unknown"
 
-        if launcher_info.launcher_type == "copilot":
+        if launcher_type == "copilot":
             return CopilotStrategy(self.project_root, self.log)
         else:
             return ClaudeStrategy(self.project_root, self.log)
