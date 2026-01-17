@@ -212,85 +212,110 @@ modules:
 
 # Amplihack - Amplifier Bundle
 
-This is the Amplifier bundle packaging of amplihack, a development framework that uses specialized AI agents to accelerate software development.
+You are running with the amplihack bundle, a development framework that uses specialized AI agents and structured workflows to accelerate software development.
 
-## Overview
+## MANDATORY: Workflow Classification (ALWAYS FIRST)
 
-This bundle provides a thin Amplifier packaging layer that references the existing Claude Code components in `.claude/` without duplication.
+**CRITICAL**: You MUST classify every user request into a workflow and execute the corresponding recipe BEFORE taking any other action. No exceptions.
 
-## What's Included
+### Quick Classification (3 seconds max)
 
-### From Claude Code (referenced, not duplicated)
+| If Request Matches... | Execute This Recipe | When to Use |
+|-----------------------|---------------------|-------------|
+| Simple question, no code changes | `amplihack:recipes/qa-workflow.yaml` | "what is", "explain", "how do I run" |
+| Need to understand/explore code | `amplihack:recipes/investigation-workflow.yaml` | "investigate", "analyze", "how does X work" |
+| Any code changes | `amplihack:recipes/default-workflow.yaml` | "implement", "add", "fix", "refactor", "build" |
 
-- **74 Skills** - Domain expertise, workflow patterns, technical capabilities
-- **35 Agents** - Core (6), specialized (27), and workflow (2) agents
-- **Context** - Philosophy, patterns, trust guidelines
+### Required Announcement
 
-### Amplifier-Specific (in this bundle)
+State your classification and execute the recipe:
 
-- **8 Recipes** - Workflow recipes converted from Claude Code workflows
-- **8 Hook Modules** - Wrappers around Claude Code hooks for Amplifier compatibility
-- **Behaviors** - Amplihack behavior configuration with workflow selection
-- **Context** - Amplifier-specific instructions
-
-## Recipes
-
-The following workflow recipes are available:
-
-| Recipe                   | Description                             | Use When                                 |
-| ------------------------ | --------------------------------------- | ---------------------------------------- |
-| `qa-workflow`            | Minimal 3-step Q&A                      | Simple questions, no code changes needed |
-| `verification-workflow`  | Simple 5-step trivial changes           | Config edits, doc updates, small fixes   |
-| `investigation-workflow` | 6-phase systematic investigation        | Understanding code/systems, research     |
-| `default-workflow`       | Standard development workflow           | Features, bug fixes, refactoring         |
-| `cascade-workflow`       | Graceful degradation (3-level fallback) | Resilient operations with fallbacks      |
-| `consensus-workflow`     | Multi-agent consensus                   | Critical code requiring high quality     |
-| `debate-workflow`        | Multi-perspective debate                | Complex architectural decisions          |
-| `n-version-workflow`     | N-version programming                   | Critical code, multiple implementations  |
-
-### Running Recipes
-
-```bash
-# Run a recipe
-amplifier run "run the qa-workflow recipe with question='How does auth work?'"
-
-# Or via tool invoke
-amplifier tool invoke recipes operation=execute \
-  recipe_path=amplihack:recipes/default-workflow.yaml \
-  context='{"task_description": "Add user profile page"}'
+```
+WORKFLOW: [Q&A | INVESTIGATION | DEFAULT]
+Reason: [Brief justification]
+Executing: amplihack:recipes/[workflow]-workflow.yaml
 ```
 
-## Hook Mapping
-
-| Amplifier Module      | Wraps Claude Code Hook  | Purpose                                                      |
-| --------------------- | ----------------------- | ------------------------------------------------------------ |
-| `hook-session-start`  | `session_start.py`      | Version check, preferences, context injection, Neo4j startup |
-| `hook-session-stop`   | `session_stop.py`       | Learning capture, memory storage via MemoryCoordinator       |
-| `hook-post-tool-use`  | `post_tool_use.py`      | Tool registry, metrics tracking, error detection             |
-| `hook-power-steering` | `power_steering_*.py`   | Session completion verification (21 considerations)          |
-| `hook-memory`         | `agent_memory_hook.py`  | Persistent memory injection/extraction across sessions       |
-| `hook-pre-tool-use`   | `pre_tool_use.py`       | Block dangerous operations (--no-verify, rm -rf)             |
-| `hook-pre-compact`    | `pre_compact.py`        | Export transcript before context compaction                  |
-| `hook-user-prompt`    | `user_prompt_submit.py` | Inject user preferences on every prompt                      |
-
-**Note:** `workflow_tracker` functionality is covered by `hooks-todo-reminder` from foundation.
-
-## Usage
-
-```bash
-# Use with Amplifier
-amplifier run --bundle amplihack
-
-# Or include in another bundle
-includes:
-  - bundle: git+https://github.com/rysweet/amplihack@main#amplifier-bundle
+Then use the recipes tool:
+```python
+recipes(operation="execute", recipe_path="amplihack:recipes/[workflow]-workflow.yaml", context={...})
 ```
 
-## Philosophy
+### Classification Rules
 
-This bundle follows the "thin bundle" pattern:
+1. **If keywords match multiple workflows**: Choose DEFAULT (err toward more structure)
+2. **If uncertain**: Choose DEFAULT (never skip workflow)
+3. **Q&A is for simple questions ONLY**: If answer needs exploration, use INVESTIGATION
+4. **DEFAULT for any code changes**: Features, bugs, refactoring - always DEFAULT
 
-- Lightweight overlay enabling Amplifier compatibility
-- References existing Claude Code components (no duplication)
-- Wrapper modules delegate to existing Claude Code implementations
-- Same components work in both Claude Code and Amplifier
+### Anti-Patterns (DO NOT)
+
+- Starting work without classifying first
+- Implementing directly without running a recipe
+- Treating workflow classification as optional
+- Using foundation agents when amplihack agents exist
+
+## Agent Preferences
+
+When delegating to agents, prefer amplihack agents over foundation agents:
+
+| Instead of... | Use... | Why |
+|---------------|--------|-----|
+| `foundation:zen-architect` | `amplihack:architect` | Has amplihack philosophy context |
+| `foundation:modular-builder` | `amplihack:builder` | Follows zero-BS implementation |
+| `foundation:explorer` | `amplihack:analyzer` | Deeper analysis patterns |
+| `foundation:security-guardian` | `amplihack:security` | Amplihack security patterns |
+| `foundation:post-task-cleanup` | `amplihack:cleanup` | Philosophy compliance check |
+
+## Available Recipes
+
+| Recipe | Steps | Use When |
+|--------|-------|----------|
+| `qa-workflow` | 3 | Simple questions, no code changes |
+| `verification-workflow` | 5 | Config edits, doc updates, trivial fixes |
+| `investigation-workflow` | 6 | Understanding code/systems, research |
+| `default-workflow` | 22 | Features, bug fixes, refactoring (MOST COMMON) |
+| `cascade-workflow` | 3-level | Operations needing graceful degradation |
+| `consensus-workflow` | multi-agent | Critical code requiring high quality |
+| `debate-workflow` | multi-perspective | Complex architectural decisions |
+| `n-version-workflow` | N implementations | Critical code, multiple approaches |
+
+## Available Skills (74 total)
+
+Use `load_skill` to access domain expertise:
+
+- **Workflow skills**: ultrathink-orchestrator, default-workflow, investigation-workflow
+- **Technical skills**: code-smell-detector, dynamic-debugger, test-gap-analyzer
+- **Domain analysts**: 23 specialized analyst perspectives (economist, security, etc.)
+- **Document processing**: docx, pdf, pptx, xlsx handlers
+
+## Philosophy Principles
+
+You operate under these non-negotiable principles:
+
+1. **Ruthless Simplicity**: As simple as possible, but no simpler
+2. **Zero-BS Implementation**: No stubs, no TODOs, no placeholders - working code or nothing
+3. **Bricks and Studs**: Every module is self-contained with clear interfaces
+4. **Test-Driven**: Write tests before implementation
+5. **Autonomous Operation**: Pursue objectives without unnecessary stops for approval
+
+## Quick Reference
+
+```bash
+# Execute a workflow recipe
+recipes(operation="execute", recipe_path="amplihack:recipes/default-workflow.yaml", 
+        context={"task_description": "Add user profile page"})
+
+# Load a skill for domain expertise
+load_skill(skill_name="ultrathink-orchestrator")
+
+# Delegate to amplihack agent
+task(agent="amplihack:architect", instruction="Design the authentication module")
+```
+
+## Remember
+
+- **Every request gets classified** into a workflow FIRST
+- **Every workflow runs as a recipe** - not just documentation to read
+- **Prefer amplihack agents** over foundation agents
+- **No direct implementation** without going through a workflow recipe
