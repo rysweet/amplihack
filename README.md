@@ -172,9 +172,16 @@ variables or secure key management systems.
 
 ### GitHub Copilot CLI
 
-amplihack also supports GitHub Copilot CLI integration. See
-[docs/github-copilot-litellm-integration.md](https://rysweet.github.io/amplihack/github-copilot-litellm-integration/)
-for setup instructions.
+amplihack fully supports GitHub Copilot CLI with adaptive hooks that enable
+preference injection and context loading. All 38 agents, 73 skills, and 24 commands
+work seamlessly with Copilot.
+
+```bash
+amplihack copilot -- -p "Your task here"
+```
+
+See [COPILOT_CLI.md](COPILOT_CLI.md) for complete integration guide and
+[docs/HOOKS_COMPARISON.md](docs/HOOKS_COMPARISON.md) for adaptive hook system details.
 
 ### Custom Workflows
 
