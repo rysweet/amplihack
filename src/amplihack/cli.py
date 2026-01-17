@@ -556,6 +556,7 @@ def main(argv: list[str] | None = None) -> int:
                 sys.exit(1)
         else:
             # Install using claude plugin install
+            package_root = amplihack_package.parent
             if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                 print(f"📦 Installing amplihack plugin from {package_root}")
 
