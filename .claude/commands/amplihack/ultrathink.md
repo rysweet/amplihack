@@ -37,6 +37,7 @@ Claude invokes this skill for non-trivial development and investigation tasks:
 - Development: "implement", "add", "fix", "create", "refactor"
 - Investigation: "investigate", "analyze", "explore", "understand"
 - Q&A: Responds directly (no orchestration needed)
+- Operations: Responds directly (no orchestration needed) - "run command", "cleanup", "git operations"
 
 **Bypass**: Use explicit commands (`/fix`, `/analyze`) or request "without ultrathink"
 
