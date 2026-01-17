@@ -369,13 +369,18 @@ class ClaudeLauncher:
                         settings["mcpServers"] = {}
 
                     if "cclsp" not in settings["mcpServers"]:
+                        # cclsp needs config path as environment variable
+                        cclsp_config_path = str((target_dir / "cclsp.json").absolute())
                         settings["mcpServers"]["cclsp"] = {
                             "command": "npx",
-                            "args": ["cclsp"]
+                            "args": ["cclsp"],
+                            "env": {
+                                "CCLSP_CONFIG_PATH": cclsp_config_path
+                            }
                         }
                         # Enable MCP servers
                         settings["enableAllProjectMcpServers"] = True
-                        print("📡 LSP: Added cclsp MCP server and enabled MCP servers")
+                        print(f"📡 LSP: Configured cclsp MCP server with config at {cclsp_config_path}")
 
                     # Add LSP MCP tools to permissions
                     if "permissions" in settings and "allow" in settings["permissions"]:
