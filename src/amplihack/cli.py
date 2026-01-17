@@ -883,6 +883,7 @@ def main(argv: list[str] | None = None) -> int:
 
     elif args.command == "plugin":
         if args.plugin_command == "link":
+            from .plugin_manager import PluginManager
 
             plugin_name = args.plugin_name
             plugin_root = Path.home() / ".amplihack" / "plugins"
