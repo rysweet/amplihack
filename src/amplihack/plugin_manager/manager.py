@@ -211,6 +211,15 @@ class PluginManager:
             # Copy plugin files
             shutil.copytree(source_path, target_path)
 
+            # Register plugin in Claude Code settings
+            if not self._register_plugin(plugin_name, target_path):
+                return InstallResult(
+                    success=False,
+                    plugin_name=plugin_name,
+                    installed_path=target_path,
+                    message=f"Plugin copied but registration failed: {plugin_name}"
+                )
+
             return InstallResult(
                 success=True,
                 plugin_name=plugin_name,
@@ -298,3 +307,42 @@ class PluginManager:
                 resolved[key] = value
 
         return resolved
+
+    def _register_plugin(self, plugin_name: str, plugin_path: Path) -> bool:
+        """Register plugin in Claude Code settings.
+
+        Adds plugin to enabledPlugins array in ~/.claude/settings.json
+        so it appears in /plugin command.
+
+        Args:
+            plugin_name: Name of plugin to register
+            plugin_path: Path to installed plugin
+
+        Returns:
+            True if successful, False otherwise
+        """
+        settings_path = Path.home() / ".claude" / "settings.json"
+
+        try:
+            # Create .claude directory if it doesn't exist
+            settings_path.parent.mkdir(parents=True, exist_ok=True)
+
+            # Load existing settings or create new
+            if settings_path.exists():
+                settings = json.loads(settings_path.read_text())
+            else:
+                settings = {}
+
+            # Add to enabledPlugins array
+            if 'enabledPlugins' not in settings:
+                settings['enabledPlugins'] = []
+
+            if plugin_name not in settings['enabledPlugins']:
+                settings['enabledPlugins'].append(plugin_name)
+
+            # Write updated settings
+            settings_path.write_text(json.dumps(settings, indent=2))
+            return True
+
+        except (OSError, json.JSONDecodeError, PermissionError):
+            return False

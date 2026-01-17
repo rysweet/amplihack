@@ -54,6 +54,11 @@ class SettingsGenerator:
                 plugin_manifest['mcpServers']
             )
 
+        # Add enabled plugins array for /plugin command discoverability
+        if plugin_manifest.get('name'):
+            plugin_name = plugin_manifest.get('name')
+            settings['enabledPlugins'] = [plugin_name]
+
         # Add plugin metadata
         if plugin_manifest:
             if 'plugins' not in settings:
