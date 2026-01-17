@@ -206,6 +206,7 @@ modules:
     - modules/hook-pre-tool-use # Dangerous operation blocking
     - modules/hook-pre-compact # Transcript export before compaction
     - modules/hook-user-prompt # User preferences injection
+    - modules/hook-lock-mode # Continuous work mode via context injection
 
 # Note: workflow_tracker functionality is covered by hooks-todo-reminder from foundation
 ---
