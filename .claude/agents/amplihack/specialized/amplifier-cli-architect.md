@@ -440,7 +440,7 @@ async def coordinate_agents(task: str) -> Dict:
 - **Workflow**: Map decisions to multi-step workflow
 - **Priorities**: Explicit requirements > implicit preferences > philosophy > defaults
 - **Execution**: Support parallel execution where decisions are independent
-- **Knowledge**: Update DISCOVERIES.md with learnings
+- **Knowledge**: Store learnings in memory via discoveries adapter
 
 ## Success Metrics
 

@@ -261,7 +261,7 @@ What's Missing:
 - Adjust timeouts based on success rates
 - Improve secondary approaches if frequently used
 - Update tertiary if inadequate
-- Document learnings in `.claude/context/DISCOVERIES.md`
+- Store learnings in memory using `store_discovery()` from `amplihack.memory.discoveries`
 
 **Optimization Criteria:**
 

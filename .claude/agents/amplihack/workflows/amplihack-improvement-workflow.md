@@ -145,7 +145,7 @@ Redundancy Check:
 - [ ] No security warnings
 - [ ] No philosophy violations
 - [ ] Documentation updated
-- [ ] DISCOVERIES.md updated if novel
+- [ ] Discoveries stored in memory if novel
 
 ## Complexity Justification
 
@@ -301,9 +301,9 @@ security_issues: [count]
 time_to_complete: [duration]
 ```
 
-### Update DISCOVERIES.md
+### Store Discoveries in Memory
 
-When patterns emerge:
+When patterns emerge, use `store_discovery()` from `amplihack.memory.discoveries`:
 
 ```markdown
 ## Improvement Pattern Discovered
