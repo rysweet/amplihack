@@ -225,6 +225,44 @@ NEVER merge PRs or commit directly to main without explicit user permission. Alw
 
 **This is MANDATORY - violating this damages user trust and control over the codebase**
 
+### 2026-01-17 00:00:00
+
+**Step 13 Local Testing - NO EXCEPTIONS Without Approval**
+
+EVERY PR MUST have local testing completed OR explicit user approval for alternative approach. Step 13 in DEFAULT_WORKFLOW.md is MANDATORY and cannot be skipped through rationalization.
+
+**Implementation Requirements:**
+
+- MUST execute at least 2 test scenarios (1 simple + 1 complex) locally
+- MUST document test results in PR description (Step 13: Local Testing Results)
+- MUST verify no regressions before committing
+- If testing genuinely impossible, MUST ask user for approval (never assume)
+- "Post-merge testing" is NOT acceptable without explicit user approval
+- Documentation changes ARE testable (fresh session, verify behavior)
+
+**What Counts as Testing:**
+
+- For code changes: Run the code locally with test data
+- For CLI changes: Execute commands with various inputs
+- For documentation changes: Test in fresh Claude Code session to verify guidance works
+- For API changes: Test with real client requests
+
+**What Does NOT Count:**
+
+- Creating test scenarios without executing them
+- Planning to test "post-merge"
+- Assuming "documentation can't be tested"
+- CI/CD checks only (local testing required IN ADDITION)
+
+**Rationalization Bypass Prevention:**
+
+- "Can't test in this session" → Open new terminal, test in fresh session
+- "Documentation-driven = untestable" → FALSE - test behavior in fresh session
+- "Need fresh context" → Create fresh context (new terminal/session)
+- "Will test post-merge" → NOT acceptable without user approval
+
+**This is MANDATORY - Step 13 violations damage code quality and user trust**
+
 ## Using Preferences
 
 Preferences are automatically loaded when:

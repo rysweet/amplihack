@@ -410,12 +410,33 @@ Target Ratios:
 **CRITICAL: Test all changes locally in realistic scenarios BEFORE committing.**
 Test like a user would use the feature - outside-in - not just unit tests.
 
+**🚨 VERIFICATION GATE - CANNOT PROCEED WITHOUT:**
+
+- [ ] **Test execution evidence documented** (outputs, screenshots, or results logged)
+- [ ] **At least 2 test scenarios executed** (1 simple + 1 complex/integration)
+- [ ] **Test results ready for PR description** (will be added in Step 15)
+- [ ] **Regression check completed** (verified existing features still work)
+
+**If Testing Genuinely Impossible:**
+
+1. **Document specific technical blocker** (not preference, not convenience)
+2. **Propose alternative testing plan** (e.g., post-merge with specific scenarios)
+3. **ASK user explicitly**: "Cannot test X because Y. Approve alternative plan Z?"
+4. **Get explicit approval** - NEVER assume permission to skip
+
+**⚠️ ABSOLUTE RULE**: Never proceed to Step 14 without EITHER:
+- **(A) Local test results documented**, OR
+- **(B) Explicit user approval for alternative approach**
+
+---
+
+**Testing Checklist:**
+
 - [ ] **Test simple use cases** - Basic functionality verification
 - [ ] **Test complex use cases** - Edge cases and longer operations
 - [ ] **Test integration points** - External dependencies and APIs
 - [ ] **Verify no regressions** - Ensure existing functionality still works
-- [ ] **Document test results** - What was tested and results for the PR description (to be used in a moment) not in the repo
-- [ ] **RULE: Never commit without local testing**
+- [ ] **Document test results** - What was tested and results for PR description
 
 **Examples of required tests:**
 
@@ -423,6 +444,20 @@ Test like a user would use the feature - outside-in - not just unit tests.
 - If API changes: Test with real client requests
 - If CLI changes: Run actual commands with various options
 - If database changes: Test with actual data operations
+- If documentation changes: Test in fresh session to verify behavior
+
+**Test Results Template** (use in PR description):
+
+```markdown
+## Step 13: Local Testing Results
+
+**Test Environment**: <branch, method, date>
+**Tests Executed**:
+1. Simple: <scenario> → <result> ✅/❌
+2. Complex: <scenario> → <result> ✅/❌
+**Regressions**: <verification> → ✅ None detected
+**Issues Found**: <list any issues discovered and fixed>
+```
 
 **Why this matters:**
 
@@ -430,6 +465,7 @@ Test like a user would use the feature - outside-in - not just unit tests.
 - Local testing catches problems before they reach users
 - Faster feedback loop than waiting for CI
 - Prevents embarrassing failures after merge
+- **Verification gate prevents rationalization bypass**
 
 ### Step 14: Commit and Push
 
@@ -477,6 +513,10 @@ This ensures you see success messages, error details, and PR URLs.
 
 **Review checklist:**
 
+- [ ] **⚠️ Step 13 Compliance Verification (MANDATORY)** - Verify PR description contains test results OR user approved alternative
+  - [ ] Check PR description has "Step 13: Local Testing Results" section
+  - [ ] OR verify user explicitly approved post-merge testing in comments
+  - [ ] If missing: BLOCK review, comment on PR, request test results or approval
 - [ ] **Always use** reviewer agent for comprehensive code review
 - [ ] **Use** security agent for security review
 - [ ] Check code quality and standards
