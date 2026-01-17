@@ -118,6 +118,13 @@ class LauncherDetector:
         # Write context
         self.context_path.write_text(json.dumps(context, indent=2))
 
+        # Security: Restrict file permissions (owner only)
+        # Protects potentially sensitive environment variables
+        try:
+            self.context_path.chmod(0o600)
+        except OSError:
+            pass  # Best effort - Windows doesn't support POSIX permissions
+
     def is_stale(self, max_age_hours: int | None = None) -> bool:
         """Check if launcher context is stale.
 
