@@ -303,6 +303,7 @@ Intelligent guidance system that prevents common mistakes:
 
 ### Other Features
 
+- [Smart Memory Management](features/smart-memory-management.md) - Automatic Node.js memory optimization for Claude Code
 - [Claude.md Preservation](features/claude-md-preservation.md) - Preserve custom instructions
 - [Neo4j Session Cleanup](features/neo4j-session-cleanup.md) - Automatic resource management
 - [Shutdown Detection](concepts/shutdown-detection.md) - Graceful exit handling (prevents 10-13s hang)
