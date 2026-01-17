@@ -156,8 +156,7 @@ class ClaudeStrategy(HookStrategy):
             context_path.write_text(json.dumps(context, indent=2))
         except OSError as e:
             # Fail gracefully - log error but don't crash
-            if self.log_func:
-                self.log_func(f"Failed to write context to {context_path}: {e}", "WARNING")
+            self.log(f"Failed to write context to {context_path}: {e}", "WARNING")
             # Continue anyway - context injection optional
 
         # Return formatted context
@@ -249,14 +248,19 @@ class CopilotStrategy(HookStrategy):
     CONTEXT_MARKER_START = "<!-- AMPLIHACK_CONTEXT_START -->"
     CONTEXT_MARKER_END = "<!-- AMPLIHACK_CONTEXT_END -->"
 
+    MAX_CONTEXT_SIZE = 10 * 1024 * 1024  # 10MB limit for context injection
+
     def inject_context(self, context: dict[str, Any] | str) -> str:
-        """Inject context into .github/agents/AGENTS.md.
+        """Inject context into AGENTS.md at repository root.
 
         Args:
             context: Context data (dict or string)
 
         Returns:
             Formatted context string
+
+        Raises:
+            ValueError: If context exceeds MAX_CONTEXT_SIZE
 
         Example:
             >>> strategy = CopilotStrategy(Path.cwd())
@@ -265,12 +269,26 @@ class CopilotStrategy(HookStrategy):
             ...     "launcher": "copilot",
             ...     "workflow": "DEFAULT_WORKFLOW"
             ... })
-            >>> # Context now in .github/agents/AGENTS.md
+            >>> # Context now in AGENTS.md at repository root
         """
         import json
         from datetime import datetime, timezone
 
+        # Security: Prevent resource exhaustion
+        context_str = context if isinstance(context, str) else json.dumps(context)
+        if len(context_str) > self.MAX_CONTEXT_SIZE:
+            raise ValueError(f"Context too large: {len(context_str)} bytes (max {self.MAX_CONTEXT_SIZE})")
+
         agents_path = self.project_root / self.AGENTS_FILE
+
+        # Security: Validate path is within project root
+        try:
+            resolved_path = agents_path.resolve(strict=False)
+            if not resolved_path.is_relative_to(self.project_root.resolve()):
+                raise ValueError(f"AGENTS.md path escapes project root: {resolved_path}")
+        except (ValueError, RuntimeError) as e:
+            self.log(f"Path validation failed: {e}", "ERROR")
+            raise
 
         # Ensure directory exists
         agents_path.parent.mkdir(parents=True, exist_ok=True)
@@ -309,8 +327,7 @@ class CopilotStrategy(HookStrategy):
             agents_path.write_text("\n".join(lines))
         except OSError as e:
             # Fail gracefully - log error but don't crash
-            if self.log_func:
-                self.log_func(f"Failed to write AGENTS.md to {agents_path}: {e}", "WARNING")
+            self.log(f"Failed to write AGENTS.md to {agents_path}: {e}", "WARNING")
             # Continue anyway - context injection optional
 
         # Return the markdown context for logging
