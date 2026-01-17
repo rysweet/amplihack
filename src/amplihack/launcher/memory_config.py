@@ -21,11 +21,15 @@ Public API (the "studs"):
     get_memory_config: Main entry point - get complete memory configuration
 """
 
+import logging
 import math
 import os
 import platform
 import re
+import signal
 import subprocess
+import sys
+import threading
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -44,6 +48,9 @@ __all__ = [
     "should_warn_about_limit",
     "prompt_user_consent",
     "get_memory_config",
+    "is_interactive_terminal",
+    "parse_consent_response",
+    "get_user_input_with_timeout",
 ]
 
 
@@ -102,6 +109,29 @@ def detect_system_ram_gb() -> Optional[int]:
     return None
 
 
+def _round_to_power_of_2(gb_float: float) -> int:
+    """Round GB value to nearest power of 2 if close (within 25%).
+
+    This matches how RAM is typically reported (2, 4, 8, 16, 32, 64, 128 GB).
+
+    Args:
+        gb_float: RAM in GB as a float
+
+    Returns:
+        Rounded GB value as integer
+    """
+    log_gb = math.log2(max(gb_float, 1))
+    rounded_log = round(log_gb)
+    nearest_power = 2 ** rounded_log
+
+    # If within 25% of a power of 2, snap to it
+    if abs(gb_float - nearest_power) / nearest_power < 0.25:
+        return nearest_power
+    else:
+        # Otherwise just round normally
+        return round(gb_float)
+
+
 def _detect_ram_linux() -> Optional[int]:
     """Detect RAM on Linux using /proc/meminfo."""
     try:
@@ -115,18 +145,7 @@ def _detect_ram_linux() -> Optional[int]:
                 # Convert KB to GB
                 mb = kb / 1024
                 gb_float = mb / 1024
-                # Round to nearest power of 2 if close (within 25%)
-                # This matches how RAM is typically reported (2, 4, 8, 16, 32, 64, 128 GB)
-                log_gb = math.log2(max(gb_float, 1))
-                rounded_log = round(log_gb)
-                nearest_power = 2 ** rounded_log
-
-                # If within 25% of a power of 2, snap to it
-                if abs(gb_float - nearest_power) / nearest_power < 0.25:
-                    return nearest_power
-                else:
-                    # Otherwise just round normally
-                    return round(gb_float)
+                return _round_to_power_of_2(gb_float)
     except Exception:
         pass
     return None
@@ -144,16 +163,7 @@ def _detect_ram_macos() -> Optional[int]:
         if result.returncode == 0:
             bytes_total = int(result.stdout.strip())
             gb_float = bytes_total / (1024 ** 3)
-
-            # Round to nearest power of 2 if close
-            log_gb = math.log2(max(gb_float, 1))
-            rounded_log = round(log_gb)
-            nearest_power = 2 ** rounded_log
-
-            if abs(gb_float - nearest_power) / nearest_power < 0.25:
-                return nearest_power
-            else:
-                return round(gb_float)
+            return _round_to_power_of_2(gb_float)
     except (subprocess.TimeoutExpired, Exception):
         pass
     return None
@@ -174,16 +184,7 @@ def _detect_ram_windows() -> Optional[int]:
             if len(lines) >= 2:
                 bytes_total = int(lines[1].strip())
                 gb_float = bytes_total / (1024 ** 3)
-
-                # Round to nearest power of 2 if close
-                log_gb = math.log2(max(gb_float, 1))
-                rounded_log = round(log_gb)
-                nearest_power = 2 ** rounded_log
-
-                if abs(gb_float - nearest_power) / nearest_power < 0.25:
-                    return nearest_power
-                else:
-                    return round(gb_float)
+                return _round_to_power_of_2(gb_float)
     except (subprocess.TimeoutExpired, Exception):
         pass
     return None
@@ -276,7 +277,7 @@ def parse_node_options(options_str: str) -> Dict[str, Any]:
             result[key] = value
         else:
             # Boolean flag (no value)
-            # Remove Any trailing space or flags
+            # Remove trailing space
             key = part.split()[0] if ' ' in part else part
             result[key] = True
 
@@ -330,14 +331,203 @@ def should_warn_about_limit(limit_mb: int) -> bool:
     return limit_mb < MIN_MEMORY_MB
 
 
-def prompt_user_consent(config: Dict[str, Any]) -> bool:
+def is_interactive_terminal() -> bool:
+    """Detect if running in interactive terminal.
+
+    Returns:
+        True if stdin is a TTY (interactive terminal), False otherwise
+
+    Example:
+        >>> # In interactive terminal
+        >>> is_interactive_terminal()
+        True
+        >>> # In CI/CD or piped input
+        >>> is_interactive_terminal()
+        False
+    """
+    try:
+        # Check if stdin exists and has isatty method
+        if sys.stdin is None:
+            return False
+        if not hasattr(sys.stdin, 'isatty'):
+            return False
+        # Check if stdin is a TTY
+        return sys.stdin.isatty()
+    except (AttributeError, OSError):
+        # If any error occurs, assume non-interactive
+        return False
+
+
+def parse_consent_response(response: Optional[str], default: bool) -> bool:
+    """Parse user consent response.
+
+    Args:
+        response: User's response string (or None)
+        default: Default value to use if response is invalid/empty
+
+    Returns:
+        True for consent, False for no consent
+
+    Example:
+        >>> parse_consent_response('yes', default=False)
+        True
+        >>> parse_consent_response('n', default=True)
+        False
+        >>> parse_consent_response('', default=True)
+        True
+        >>> parse_consent_response('invalid', default=False)
+        False
+    """
+    # Handle None or empty response
+    if response is None or not response.strip():
+        return default
+
+    # Normalize response
+    normalized = response.strip().lower()
+
+    # Check for yes variants
+    if normalized in ['y', 'yes']:
+        return True
+
+    # Check for no variants
+    if normalized in ['n', 'no']:
+        return False
+
+    # Invalid response - use default
+    return default
+
+
+def get_user_input_with_timeout(
+    prompt: str,
+    timeout_seconds: int,
+    logger: Optional[logging.Logger] = None
+) -> Optional[str]:
+    """Get user input with timeout.
+
+    Cross-platform implementation:
+    - Unix/Linux/macOS: Uses signal.SIGALRM
+    - Windows: Uses threading
+
+    Args:
+        prompt: Prompt message to display
+        timeout_seconds: Timeout in seconds
+        logger: Optional logger for warnings
+
+    Returns:
+        User input string, or None if timeout/error occurs
+
+    Example:
+        >>> # User types 'yes' within timeout
+        >>> result = get_user_input_with_timeout("Continue? ", 30, None)
+        >>> result
+        'yes'
+        >>> # User doesn't type anything (timeout)
+        >>> result = get_user_input_with_timeout("Continue? ", 5, None)
+        >>> result
+        None
+    """
+    # Detect platform
+    is_windows = platform.system() == "Windows"
+
+    if is_windows:
+        # Windows: Use threading approach
+        return _get_input_with_timeout_threading(prompt, timeout_seconds, logger)
+    else:
+        # Unix/Linux/macOS: Use signal approach
+        return _get_input_with_timeout_signal(prompt, timeout_seconds, logger)
+
+
+def _get_input_with_timeout_signal(
+    prompt: str,
+    timeout_seconds: int,
+    logger: Optional[logging.Logger]
+) -> Optional[str]:
+    """Unix/Linux/macOS implementation using signals."""
+
+    class TimeoutException(Exception):
+        pass
+
+    def timeout_handler(signum, frame):
+        raise TimeoutException("Input timeout")
+
+    try:
+        # Set up signal handler
+        old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+        # signal.alarm only accepts integers, ensure at least 1 second
+        alarm_seconds = max(1, int(timeout_seconds))
+        signal.alarm(alarm_seconds)
+
+        try:
+            # Get user input
+            user_input = input(prompt)
+            # Cancel alarm
+            signal.alarm(0)
+            return user_input
+        finally:
+            # Restore old handler
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, old_handler)
+
+    except TimeoutException:
+        if logger:
+            logger.warning(f"User input timed out after {timeout_seconds} seconds")
+        return None
+    except (KeyboardInterrupt, EOFError):
+        return None
+    except Exception:
+        return None
+
+
+def _get_input_with_timeout_threading(
+    prompt: str,
+    timeout_seconds: int,
+    logger: Optional[logging.Logger]
+) -> Optional[str]:
+    """Windows implementation using threading."""
+    result = {"value": None}
+
+    def get_input():
+        try:
+            result["value"] = input(prompt)
+        except (KeyboardInterrupt, EOFError):
+            result["value"] = None
+        except Exception:
+            result["value"] = None
+
+    # Create and start thread
+    thread = threading.Thread(target=get_input, daemon=True)
+    thread.start()
+
+    # Wait for timeout
+    thread.join(timeout=timeout_seconds)
+
+    if thread.is_alive():
+        # Timeout occurred
+        if logger:
+            logger.warning(f"User input timed out after {timeout_seconds} seconds")
+        return None
+
+    return result["value"]
+
+
+def prompt_user_consent(
+    config: Dict[str, Any],
+    timeout_seconds: int = 30,
+    default_response: bool = True,
+    logger: Optional[logging.Logger] = None
+) -> bool:
     """Prompt user for consent to update memory configuration.
+
+    Enhanced with timeout and non-interactive detection.
 
     Args:
         config: Memory configuration dict with:
             - current_limit_mb: Current limit (optional)
             - recommended_limit_mb: Recommended limit
             - system_ram_gb: Total system RAM (optional)
+        timeout_seconds: Timeout in seconds (default: 30)
+        default_response: Default response if timeout or non-interactive (default: True)
+        logger: Optional logger for messages
 
     Returns:
         True if user consents, False otherwise
@@ -347,22 +537,83 @@ def prompt_user_consent(config: Dict[str, Any]) -> bool:
         >>> config = {'recommended_limit_mb': 8192}
         >>> prompt_user_consent(config)  # User enters 'y'
         True
+        >>> # Non-interactive environment
+        >>> prompt_user_consent(config, default_response=True)
+        True
     """
+    # Check if running in interactive terminal
+    if not is_interactive_terminal():
+        # Non-interactive mode - use default
+        if logger:
+            logger.info(
+                f"Non-interactive environment detected. "
+                f"Using default response: {'Yes' if default_response else 'No'}"
+            )
+        else:
+            print("\nNon-interactive environment detected.")
+            print(f"Automatically using default response: {'Yes' if default_response else 'No'}")
+        return default_response
+
+    # Interactive mode - display config and prompt
     current = config.get('current_limit_mb', 'Not set')
     recommended = config.get('recommended_limit_mb')
     system_ram = config.get('system_ram_gb', 'Unknown')
 
-    print("\n" + "="*60)
-    print("Memory Configuration Update")
-    print("="*60)
-    print(f"System RAM: {system_ram} GB")
-    print(f"Current limit: {current} MB")
-    print(f"Recommended limit: {recommended} MB")
-    print("="*60)
-    print("\nUpdate NODE_OPTIONS with recommended limit? (y/n): ", end='')
+    try:
+        # Try to display config, but continue even if print fails
+        try:
+            print("\n" + "="*60)
+            print("Memory Configuration Update")
+            print("="*60)
+            print(f"System RAM: {system_ram} GB")
+            print(f"Current limit: {current} MB")
+            print(f"Recommended limit: {recommended} MB")
+            print("="*60)
 
-    response = input().strip().lower()
-    return response in ['y', 'yes']
+            # Show default in prompt
+            default_indicator = "[Y/n]" if default_response else "[y/N]"
+            print(f"\nDefault response: {'Yes' if default_response else 'No'} (timeout: {timeout_seconds}s)")
+        except (OSError, IOError):
+            # If print fails, log it but continue
+            if logger:
+                logger.warning("Failed to display configuration (print error)")
+
+        prompt_msg = f"Update NODE_OPTIONS with recommended limit? [Y/n]: "
+
+        # Get user input with timeout
+        response = get_user_input_with_timeout(prompt_msg, timeout_seconds, logger)
+
+        # Handle timeout (response is None)
+        if response is None:
+            if logger:
+                logger.warning(
+                    f"Input timed out after {timeout_seconds}s. "
+                    f"Using default: {'Yes' if default_response else 'No'}"
+                )
+            else:
+                print(f"\nTimeout after {timeout_seconds}s. Using default: {'Yes' if default_response else 'No'}")
+            return default_response
+
+        # Parse user response
+        result = parse_consent_response(response, default_response)
+
+        if logger:
+            logger.info(f"User response: {response} -> {'Yes' if result else 'No'}")
+
+        return result
+
+    except KeyboardInterrupt:
+        # User pressed Ctrl+C - always return False
+        if logger:
+            logger.info("User interrupted (Ctrl+C). Declining consent.")
+        else:
+            print("\nInterrupted. Declining consent.")
+        return False
+    except Exception as e:
+        # Any other error - use default
+        if logger:
+            logger.warning(f"Error during consent prompt: {e}. Using default: {default_response}")
+        return default_response
 
 
 def get_memory_config(existing_node_options: Optional[str] = None) -> Optional[Dict[str, Any]]:
