@@ -414,19 +414,21 @@ Test like a user would use the feature - outside-in - not just unit tests.
 
 - [ ] **Test execution evidence documented** (outputs, screenshots, or results logged)
 - [ ] **At least 2 test scenarios executed** (1 simple + 1 complex/integration)
-- [ ] **Test results ready for PR description** (will be added in Step 15)
+- [ ] **Test results added to PR description** (include in Step 15)
 - [ ] **Regression check completed** (verified existing features still work)
 
-**If Testing Genuinely Impossible:**
+**⚠️ ABSOLUTE RULE**: Testing is ALWAYS possible. Figure out how. Never proceed to Step 14 without test results documented.
 
-1. **Document specific technical blocker** (not preference, not convenience)
-2. **Propose alternative testing plan** (e.g., post-merge with specific scenarios)
-3. **ASK user explicitly**: "Cannot test X because Y. Approve alternative plan Z?"
-4. **Get explicit approval** - NEVER assume permission to skip
+**"But I can't test this because..."**
 
-**⚠️ ABSOLUTE RULE**: Never proceed to Step 14 without EITHER:
-- **(A) Local test results documented**, OR
-- **(B) Explicit user approval for alternative approach**
+There's always a way to test:
+- **"Need fresh session"** → Open new terminal, start fresh Claude Code session, test there
+- **"Documentation changes"** → Test in fresh session, verify guidance actually works
+- **"Need clean state"** → Create clean state (new directory, fresh checkout, new session)
+- **"Too complex"** → Test simpler scenarios that verify core behavior
+- **"Takes too long"** → Test critical path only, document what wasn't tested
+
+**No escape hatch. No approval path. Just find a way to test and document results.**
 
 ---
 
@@ -513,10 +515,9 @@ This ensures you see success messages, error details, and PR URLs.
 
 **Review checklist:**
 
-- [ ] **⚠️ Step 13 Compliance Verification (MANDATORY)** - Verify PR description contains test results OR user approved alternative
-  - [ ] Check PR description has "Step 13: Local Testing Results" section
-  - [ ] OR verify user explicitly approved post-merge testing in comments
-  - [ ] If missing: BLOCK review, comment on PR, request test results or approval
+- [ ] **⚠️ Step 13 Compliance Verification (MANDATORY)** - Verify PR description contains test results
+  - [ ] Check PR description has "Step 13: Local Testing Results" section with actual test execution evidence
+  - [ ] If missing: BLOCK review, comment on PR, request test results (no approval path - just do the testing)
 - [ ] **Always use** reviewer agent for comprehensive code review
 - [ ] **Use** security agent for security review
 - [ ] Check code quality and standards

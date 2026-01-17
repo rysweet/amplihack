@@ -227,17 +227,16 @@ NEVER merge PRs or commit directly to main without explicit user permission. Alw
 
 ### 2026-01-17 00:00:00
 
-**Step 13 Local Testing - NO EXCEPTIONS Without Approval**
+**Step 13 Local Testing - NO EXCEPTIONS**
 
-EVERY PR MUST have local testing completed OR explicit user approval for alternative approach. Step 13 in DEFAULT_WORKFLOW.md is MANDATORY and cannot be skipped through rationalization.
+EVERY PR MUST have local testing completed. Step 13 in DEFAULT_WORKFLOW.md is MANDATORY and cannot be skipped through rationalization. Testing is ALWAYS possible - figure out how.
 
 **Implementation Requirements:**
 
 - MUST execute at least 2 test scenarios (1 simple + 1 complex) locally
 - MUST document test results in PR description (Step 13: Local Testing Results)
 - MUST verify no regressions before committing
-- If testing genuinely impossible, MUST ask user for approval (never assume)
-- "Post-merge testing" is NOT acceptable without explicit user approval
+- MUST find a way to test (no escape hatches, no approval paths)
 - Documentation changes ARE testable (fresh session, verify behavior)
 
 **What Counts as Testing:**
@@ -253,13 +252,15 @@ EVERY PR MUST have local testing completed OR explicit user approval for alterna
 - Planning to test "post-merge"
 - Assuming "documentation can't be tested"
 - CI/CD checks only (local testing required IN ADDITION)
+- Asking for permission to skip
 
 **Rationalization Bypass Prevention:**
 
 - "Can't test in this session" → Open new terminal, test in fresh session
 - "Documentation-driven = untestable" → FALSE - test behavior in fresh session
 - "Need fresh context" → Create fresh context (new terminal/session)
-- "Will test post-merge" → NOT acceptable without user approval
+- "Will test post-merge" → NOT acceptable, test now in separate session
+- "Testing impossible" → FALSE - there's always a way, find it
 
 **This is MANDATORY - Step 13 violations damage code quality and user trust**
 
