@@ -39,6 +39,7 @@ test_sample_project/
 .claude/runtime/launcher_context.json
 .claude/runtime/copilot/
 AGENTS.md
+.github/agents/*.md
 
 # Environment files with secrets (catch ALL .env files)
 *.env           # Matches: test.env, production.env

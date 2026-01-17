@@ -1,1 +1,0 @@
-../../.claude/agents/amplihack/specialized/worktree-manager.md
