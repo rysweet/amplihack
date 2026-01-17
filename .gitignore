@@ -29,6 +29,11 @@ htmlcov/
 test_requirements*.md
 test_sample_project/
 
+# Adaptive hooks runtime (generated files)
+.claude/runtime/launcher_context.json
+.claude/runtime/copilot/
+.github/agents/AGENTS.md
+
 # Environment files with secrets (catch ALL .env files)
 *.env           # Matches: test.env, production.env
 .env*           # Matches: .env.production, .env.development, .env.test
@@ -108,6 +113,11 @@ ai_working/tmp
 **/runtime/logs/
 **/runtime/metrics/
 **/runtime/analysis/
+
+# Copilot agents and launcher context
+.github/agents/AGENTS.md
+.claude/runtime/copilot/
+.claude/runtime/launcher_context.json
 
 # Claude Code auto-generated settings (machine-specific paths)
 .claude/settings.json
