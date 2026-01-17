@@ -357,6 +357,35 @@ class ClaudeLauncher:
             if installed > 0:
                 print(f"📡 LSP: Installed {installed} plugin(s)")
 
+            # Step 6: Add LSP tool permissions to settings.json
+            settings_file = target_dir / ".claude" / "settings.json"
+            if settings_file.exists():
+                try:
+                    import json
+                    settings = json.loads(settings_file.read_text())
+
+                    # Add LSP MCP tools to permissions if not present
+                    if "permissions" in settings and "allow" in settings["permissions"]:
+                        lsp_tools = [
+                            "mcp__cclsp__find_definition",
+                            "mcp__cclsp__find_references",
+                            "mcp__cclsp__get_diagnostics",
+                            "mcp__cclsp__rename_symbol",
+                        ]
+
+                        existing_allow = settings["permissions"]["allow"]
+                        added = False
+                        for tool in lsp_tools:
+                            if tool not in existing_allow:
+                                existing_allow.append(tool)
+                                added = True
+
+                        if added:
+                            settings_file.write_text(json.dumps(settings, indent=2) + "\n")
+                            print("📡 LSP: Added LSP tools to permissions")
+                except:
+                    pass
+
         except Exception as e:
             logger.debug(f"LSP auto-configuration skipped: {e}")
 
