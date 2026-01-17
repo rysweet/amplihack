@@ -245,13 +245,13 @@ class ClaudeLauncher:
         return True
 
     def _configure_lsp_auto(self, target_dir: Path) -> None:
-        """Auto-configure LSP support if languages detected.
+        """Auto-configure LSP support via cclsp MCP server.
 
         Automatically configures LSP by:
         1. Detecting languages in target directory
         2. Setting ENABLE_LSP_TOOL=1 environment variable
-        3. Configuring .env file for project-specific settings
-        4. Installing Claude Code LSP plugins via npx cclsp (if npx available)
+        3. Generating cclsp.json configuration
+        4. Adding cclsp MCP server to Claude Code settings.json
 
         Args:
             target_dir: Project directory to configure LSP for
@@ -263,14 +263,14 @@ class ClaudeLauncher:
         try:
             # Import LSP modules (may not be available in all environments)
             import sys
-            from pathlib import Path as PathLib
 
             # Add .claude/skills to Python path
             claude_dir = target_dir / ".claude" / "skills"
             if claude_dir.exists() and str(claude_dir) not in sys.path:
                 sys.path.insert(0, str(claude_dir))
 
-            from lsp_setup import LanguageDetector, LSPConfigurator, PluginManager
+            from lsp_setup import LanguageDetector, LSPConfigurator
+            from lsp_setup.mcp_configurator import MCPConfigurator
 
             # Step 1: Detect languages
             detector = LanguageDetector(target_dir)
@@ -280,7 +280,8 @@ class ClaudeLauncher:
                 # No languages detected - skip LSP setup
                 return
 
-            print(f"📡 LSP: Detected {len(languages_dict)} language(s): {', '.join(list(languages_dict.keys())[:3])}...")
+            lang_names = list(languages_dict.keys())
+            print(f"📡 LSP: Detected {len(lang_names)} language(s): {', '.join(lang_names[:3])}...")
 
             # Step 2: Set environment variable for current process
             os.environ["ENABLE_LSP_TOOL"] = "1"
@@ -291,25 +292,15 @@ class ClaudeLauncher:
                 configurator.enable_lsp()
                 print("📡 LSP: Enabled ENABLE_LSP_TOOL=1 in .env")
 
-            # Step 4: Install plugins if npx available (best effort)
-            manager = PluginManager()
-            if manager.check_npx_available():
-                installed_plugins = manager.list_installed_plugins()
-                lang_names = list(languages_dict.keys())
+            # Step 4: Generate cclsp.json configuration
+            mcp_config = MCPConfigurator(target_dir)
+            if mcp_config.generate_cclsp_config(lang_names):
+                print(f"📡 LSP: Generated cclsp.json for {len(lang_names)} language(s)")
 
-                # Install plugins for detected languages that aren't already installed
-                to_install = [lang for lang in lang_names if lang not in installed_plugins]
-
-                if to_install:
-                    print(f"📡 LSP: Installing {len(to_install)} plugin(s)...")
-                    successful, failed = manager.install_multiple_plugins(to_install[:3])  # Limit to 3 to avoid delays
-
-                    if successful:
-                        print(f"📡 LSP: Installed {len(successful)} plugin(s): {', '.join(successful)}")
-                    if failed:
-                        print(f"📡 LSP: Skipped {len(failed)} plugin(s) (install manually if needed)")
-            else:
-                print("📡 LSP: npx not available - skipping plugin installation")
+            # Step 5: Add cclsp MCP server to Claude Code settings
+            if not mcp_config.is_cclsp_configured():
+                if mcp_config.add_mcp_server_to_claude():
+                    print("📡 LSP: Configured cclsp MCP server in Claude Code")
 
         except Exception as e:
             # Silently fail - LSP is best-effort, don't block Claude launch

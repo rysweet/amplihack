@@ -19,6 +19,7 @@ from .language_detector import LanguageDetector, LanguageDetection
 from .lsp_configurator import LSPConfigurator
 from .plugin_manager import PluginManager, PluginInstallResult
 from .status_tracker import StatusTracker, LayerStatus
+from .mcp_configurator import MCPConfigurator, CCLSPConfig
 
 __all__ = [
     "LanguageDetector",
@@ -28,6 +29,8 @@ __all__ = [
     "PluginInstallResult",
     "StatusTracker",
     "LayerStatus",
+    "MCPConfigurator",
+    "CCLSPConfig",
 ]
 
 __version__ = "0.1.0"
