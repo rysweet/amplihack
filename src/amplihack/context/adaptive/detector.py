@@ -68,13 +68,14 @@ class LauncherDetector:
             context = json.loads(self.context_path.read_text())
             launcher = context.get("launcher", "claude")
 
-            # Validate launcher type
+            # Validate launcher type (fail-safe to claude)
             if launcher not in ("claude", "copilot"):
-                return "unknown"
+                return "claude"  # Fail-safe default
 
             return launcher
         except (json.JSONDecodeError, KeyError):
-            return "unknown"
+            # Fail-safe: malformed context defaults to Claude Code
+            return "claude"
 
     def write_context(
         self,
