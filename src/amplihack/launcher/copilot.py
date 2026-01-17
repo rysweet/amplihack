@@ -2,6 +2,9 @@
 
 import os
 import subprocess
+from pathlib import Path
+
+from ..context.adaptive.detector import LauncherDetector
 
 
 def check_copilot() -> bool:
@@ -43,6 +46,15 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
         if not install_copilot() or not check_copilot():
             print("Failed to install Copilot CLI")
             return 1
+
+    # Write launcher context before launching
+    project_root = Path(os.getcwd())
+    detector = LauncherDetector(project_root)
+    detector.write_context(
+        launcher_type="copilot",
+        command=f"amplihack copilot {' '.join(args or [])}",
+        environment={"AMPLIHACK_LAUNCHER": "copilot"}
+    )
 
     # Build command with full filesystem access (safe in VM environment)
     cmd = [
