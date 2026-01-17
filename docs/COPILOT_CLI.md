@@ -16,6 +16,7 @@ This document describes the complete integration between GitHub Copilot CLI and 
 - [Usage Guide](#usage-guide)
 - [Available Agents](#available-agents)
 - [Available Skills](#available-skills)
+- [Adaptive Hook System](#adaptive-hook-system)
 - [MCP Servers](#mcp-servers)
 - [Hooks and Automation](#hooks-and-automation)
 - [Testing](#testing)
@@ -343,7 +344,71 @@ if __name__ == "__main__":
 3. Clear separation of concerns
 4. Easy to maintain and debug
 
-### 6. MCP Servers
+### 6. Adaptive Hook System
+
+**Challenge**: Claude Code and GitHub Copilot CLI have different hook capabilities.
+
+**Solution**: amplihack uses an adaptive hook system that detects which platform is calling and applies appropriate strategies for context injection.
+
+#### Platform Detection
+
+The hook system automatically detects the calling platform by checking:
+1. Environment variables (`CLAUDE_CODE`, `GITHUB_COPILOT`)
+2. Process name patterns
+3. Fallback to Claude Code behavior (safe default)
+
+#### Context Injection Strategies
+
+| Platform | Strategy | Method |
+|----------|----------|--------|
+| **Claude Code** | Direct injection | `hookSpecificOutput.additionalContext` or stdout |
+| **Copilot CLI** | File-based injection | Write to `.github/agents/AGENTS.md` with `@include` directives |
+
+**Claude Code** (Direct Injection):
+```python
+# Hook returns JSON with context
+return {
+    "hookSpecificOutput": {
+        "additionalContext": "User preferences: talk like a pirate"
+    }
+}
+# AI sees context immediately
+```
+
+**Copilot CLI** (File-Based Injection):
+```python
+# Hook writes to AGENTS.md
+with open(".github/agents/AGENTS.md", "w") as f:
+    f.write("""
+# Active Agents and Context
+
+@.claude/context/USER_PREFERENCES.md
+@.claude/context/PHILOSOPHY.md
+    """)
+# Copilot reads file via @include on next request
+```
+
+#### Why This Workaround is Needed
+
+**Copilot CLI Limitation**: Hook output is ignored for context injection (except `preToolUse` permission decisions). See [docs/HOOKS_COMPARISON.md](HOOKS_COMPARISON.md) for detailed comparison.
+
+**Our Solution Benefits**:
+- ✅ Preference injection works on both platforms
+- ✅ Context loading works everywhere
+- ✅ Zero duplication (single Python implementation)
+- ✅ Automatic platform adaptation
+
+**What Works Where**:
+| Feature | Claude Code | Copilot CLI | Implementation |
+|---------|-------------|-------------|----------------|
+| Logging | ✅ Direct | ✅ Direct | Same hooks |
+| Blocking tools | ✅ preToolUse | ✅ preToolUse | Same hooks |
+| Context injection | ✅ hookOutput | ✅ AGENTS.md | Adaptive strategy |
+| Preferences | ✅ hookOutput | ✅ AGENTS.md | Adaptive strategy |
+
+For complete hook capability comparison, see [HOOKS_COMPARISON.md](HOOKS_COMPARISON.md).
+
+### 7. MCP Servers
 
 **File**: `.github/mcp-servers.json`
 
@@ -712,6 +777,8 @@ gh copilot suggest -a .github/agents/amplihack/core/builder.md \
 ```
 
 ## Hooks and Automation
+
+**Note**: For information about how hooks adapt to different platforms (Claude Code vs Copilot CLI), see [Adaptive Hook System](#adaptive-hook-system).
 
 ### Git Hooks
 
