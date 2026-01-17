@@ -1,6 +1,7 @@
 """Copilot CLI launcher - simple wrapper around copilot command."""
 
 import os
+import shlex
 import subprocess
 from pathlib import Path
 
@@ -50,9 +51,11 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
     # Write launcher context before launching
     project_root = Path(os.getcwd())
     detector = LauncherDetector(project_root)
+    # Sanitize args for safe logging
+    safe_args = ' '.join(shlex.quote(arg) for arg in (args or []))
     detector.write_context(
         launcher_type="copilot",
-        command=f"amplihack copilot {' '.join(args or [])}",
+        command=f"amplihack copilot {safe_args}",
         environment={"AMPLIHACK_LAUNCHER": "copilot"}
     )
 

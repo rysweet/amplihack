@@ -5,7 +5,10 @@
 set -e
 
 # Get the root directory of the repository
-REPO_ROOT="$(git rev-parse --show-toplevel)"
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
+    echo "Error: Not in a git repository" >&2
+    exit 1
+}
 
 # Call Python implementation (if it exists, otherwise just log)
 if [[ -f "${REPO_ROOT}/.claude/tools/amplihack/hooks/error_occurred.py" ]]; then
