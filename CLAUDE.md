@@ -28,12 +28,15 @@ BEFORE taking action. No exceptions.
 | Task Type         | Workflow               | When to Use                                            |
 | ----------------- | ---------------------- | ------------------------------------------------------ |
 | **Q&A**           | Q&A_WORKFLOW           | Simple questions, single-turn answers, no code changes |
+| **Operations**    | Direct execution       | Admin tasks, commands, disk cleanup, repo management   |
 | **Investigation** | INVESTIGATION_WORKFLOW | Understanding code, exploring systems, research        |
 | **Development**   | DEFAULT_WORKFLOW       | Code changes, features, bugs, refactoring              |
 
 ### Classification Keywords
 
 - **Q&A**: "what is", "explain briefly", "quick question", "how do I run"
+- **Operations**: "run command", "disk cleanup", "repo management", "git operations",
+  "delete files", "cleanup", "organize"
 - **Investigation**: "investigate", "understand", "analyze", "research",
   "explore", "how does X work"
 - **Development**: "implement", "add", "fix", "create", "refactor", "update",
@@ -48,6 +51,21 @@ WORKFLOW: [Q&A | INVESTIGATION | DEFAULT]
 Reason: [Brief justification]
 Following: .claude/workflow/[WORKFLOW_NAME].md
 ```
+
+### Workflow Execution
+
+**Default Behavior**: Claude invokes ultrathink-orchestrator for non-trivial development and investigation tasks.
+
+| Task Type         | Claude's Action        |
+| ----------------- | ---------------------- |
+| **Q&A**           | Responds directly      |
+| **Operations**    | Responds directly      |
+| **Investigation** | Invokes /ultrathink    |
+| **Development**   | Invokes /ultrathink    |
+
+**Task classification**: See "Classification Keywords" section above for keyword triggers.
+
+**Override**: Use explicit commands (/analyze, /improve) or request "without ultrathink" for direct implementation.
 
 ### Rules
 

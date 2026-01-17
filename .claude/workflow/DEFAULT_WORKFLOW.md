@@ -448,12 +448,35 @@ Target Ratios:
 **CRITICAL: Test all changes locally in realistic scenarios BEFORE committing.**
 Test like a user would use the feature - outside-in - not just unit tests.
 
+**🚨 VERIFICATION GATE - CANNOT PROCEED WITHOUT:**
+
+- [ ] **Test execution evidence documented** (outputs, screenshots, or results logged)
+- [ ] **At least 2 test scenarios executed** (1 simple + 1 complex/integration)
+- [ ] **Test results added to PR description** (include in Step 15)
+- [ ] **Regression check completed** (verified existing features still work)
+
+**⚠️ ABSOLUTE RULE**: Testing is ALWAYS possible. Figure out how. Never proceed to Step 14 without test results documented.
+
+**"But I can't test this because..."**
+
+There's always a way to test:
+- **"Need fresh session"** → Open new terminal, start fresh Claude Code session, test there
+- **"Documentation changes"** → Test in fresh session, verify guidance actually works
+- **"Need clean state"** → Create clean state (new directory, fresh checkout, new session)
+- **"Too complex"** → Test simpler scenarios that verify core behavior
+- **"Takes too long"** → Test critical path only, document what wasn't tested
+
+**No escape hatch. No approval path. Just find a way to test and document results.**
+
+---
+
+**Testing Checklist:**
+
 - [ ] **Test simple use cases** - Basic functionality verification
 - [ ] **Test complex use cases** - Edge cases and longer operations
 - [ ] **Test integration points** - External dependencies and APIs
 - [ ] **Verify no regressions** - Ensure existing functionality still works
-- [ ] **Document test results** - What was tested and results for the PR description (to be used in a moment) not in the repo
-- [ ] **RULE: Never commit without local testing**
+- [ ] **Document test results** - What was tested and results for PR description
 
 **Examples of required tests:**
 
@@ -461,6 +484,20 @@ Test like a user would use the feature - outside-in - not just unit tests.
 - If API changes: Test with real client requests
 - If CLI changes: Run actual commands with various options
 - If database changes: Test with actual data operations
+- If documentation changes: Test in fresh session to verify behavior
+
+**Test Results Template** (use in PR description):
+
+```markdown
+## Step 13: Local Testing Results
+
+**Test Environment**: <branch, method, date>
+**Tests Executed**:
+1. Simple: <scenario> → <result> ✅/❌
+2. Complex: <scenario> → <result> ✅/❌
+**Regressions**: <verification> → ✅ None detected
+**Issues Found**: <list any issues discovered and fixed>
+```
 
 **Why this matters:**
 
@@ -468,6 +505,7 @@ Test like a user would use the feature - outside-in - not just unit tests.
 - Local testing catches problems before they reach users
 - Faster feedback loop than waiting for CI
 - Prevents embarrassing failures after merge
+- **Verification gate prevents rationalization bypass**
 
 ### Step 14: Commit and Push
 
@@ -524,6 +562,9 @@ python .claude/scenarios/az-devops-tools/create_pr.py \
 
 **Review checklist:**
 
+- [ ] **⚠️ Step 13 Compliance Verification (MANDATORY)** - Verify PR description contains test results
+  - [ ] Check PR description has "Step 13: Local Testing Results" section with actual test execution evidence
+  - [ ] If missing: BLOCK review, comment on PR, request test results (no approval path - just do the testing)
 - [ ] **Always use** reviewer agent for comprehensive code review
 - [ ] **Use** security agent for security review
 - [ ] Check code quality and standards
