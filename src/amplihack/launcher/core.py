@@ -357,60 +357,6 @@ class ClaudeLauncher:
             if installed > 0:
                 print(f"📡 LSP: Installed {installed} plugin(s)")
 
-            # Step 6: Configure cclsp MCP server AND add tool permissions
-            settings_file = target_dir / ".claude" / "settings.json"
-            if settings_file.exists():
-                try:
-                    import json
-                    settings = json.loads(settings_file.read_text())
-
-                    # Add cclsp MCP server
-                    if "mcpServers" not in settings:
-                        settings["mcpServers"] = {}
-
-                    if "cclsp" not in settings["mcpServers"]:
-                        # cclsp needs config path as environment variable
-                        cclsp_config_path = str((target_dir / "cclsp.json").absolute())
-                        settings["mcpServers"]["cclsp"] = {
-                            "command": "npx",
-                            "args": ["cclsp"],
-                            "env": {
-                                "CCLSP_CONFIG_PATH": cclsp_config_path
-                            }
-                        }
-                        # Enable MCP servers
-                        settings["enableAllProjectMcpServers"] = True
-                        print(f"📡 LSP: Configured cclsp MCP server with config at {cclsp_config_path}")
-
-                    # Add LSP MCP tools to permissions
-                    if "permissions" in settings and "allow" in settings["permissions"]:
-                        lsp_tools = [
-                            "mcp__cclsp__find_definition",
-                            "mcp__cclsp__find_references",
-                            "mcp__cclsp__get_diagnostics",
-                            "mcp__cclsp__rename_symbol",
-                            "mcp__cclsp__restart_server",
-                        ]
-
-                        existing_allow = settings["permissions"]["allow"]
-                        added = False
-                        for tool in lsp_tools:
-                            if tool not in existing_allow:
-                                existing_allow.append(tool)
-                                added = True
-
-                        if added:
-                            print("📡 LSP: Added LSP tools to permissions")
-
-                    settings_file.write_text(json.dumps(settings, indent=2) + "\n")
-                except:
-                    pass
-
-            # Step 7: Generate cclsp.json for MCP server
-            from lsp_setup.mcp_configurator import MCPConfigurator
-            mcp_config = MCPConfigurator(target_dir)
-            if mcp_config.generate_cclsp_config(lang_names):
-                print(f"📡 LSP: Generated cclsp.json for {len(lang_names)} language(s)")
 
         except Exception as e:
             logger.debug(f"LSP auto-configuration skipped: {e}")
