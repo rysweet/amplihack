@@ -186,6 +186,47 @@ class UserPromptSubmitHook(HookProcessor):
             self.log(f"Error reading preferences: {e}", "WARNING")
             return {}
 
+    def _ensure_claude_md_from_amplihack(self) -> None:
+        """Copy AMPLIHACK.md to CLAUDE.md if CLAUDE.md doesn't exist.
+
+        This enables plugin architecture where AMPLIHACK.md ships with the plugin
+        and gets copied to project root as CLAUDE.md on first use.
+        """
+        try:
+            claude_md = self.project_root / "CLAUDE.md"
+
+            # If CLAUDE.md already exists, don't overwrite
+            if claude_md.exists():
+                return
+
+            # Find AMPLIHACK.md (could be in package or .claude/)
+            amplihack_md = None
+
+            # Try .claude/ directory first
+            candidate = self.project_root / ".claude" / "AMPLIHACK.md"
+            if candidate.exists():
+                amplihack_md = candidate
+            else:
+                # Try package location (UVX mode)
+                try:
+                    import amplihack
+                    pkg_path = Path(amplihack.__file__).parent
+                    candidate = pkg_path / "AMPLIHACK.md"
+                    if candidate.exists():
+                        amplihack_md = candidate
+                except ImportError:
+                    pass
+
+            if amplihack_md and amplihack_md.exists():
+                # Copy AMPLIHACK.md to CLAUDE.md
+                import shutil
+                shutil.copy2(amplihack_md, claude_md)
+                self.log(f"Created CLAUDE.md from {amplihack_md}")
+
+        except Exception as e:
+            # Don't fail the hook if this doesn't work
+            self.log(f"Could not copy AMPLIHACK.md to CLAUDE.md: {e}", "WARNING")
+
     def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Process user prompt submit event.
 
@@ -195,6 +236,9 @@ class UserPromptSubmitHook(HookProcessor):
         Returns:
             Additional context to inject
         """
+        # FIRST: Handle AMPLIHACK.md → CLAUDE.md copy for plugin architecture
+        self._ensure_claude_md_from_amplihack()
+
         # Detect launcher and select strategy
         self.strategy = self._select_strategy()
         if self.strategy:
