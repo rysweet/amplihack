@@ -59,6 +59,8 @@ class StopHook(HookProcessor):
         self.continuation_prompt_file = (
             self.project_root / ".claude" / "runtime" / "locks" / ".continuation_prompt"
         )
+        # Initialize strategy (will be set in process())
+        self.strategy = None
 
     def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Check lock flag and block stop if active.
@@ -77,6 +79,16 @@ class StopHook(HookProcessor):
         if is_shutdown_in_progress():
             self.log("=== STOP HOOK: Shutdown detected - skipping all operations ===")
             return {"decision": "approve"}
+
+        # Detect launcher and select strategy
+        self.strategy = self._select_strategy()
+        if self.strategy:
+            self.log(f"Using strategy: {self.strategy.__class__.__name__}")
+            # Check for strategy-specific stop handling
+            strategy_result = self.strategy.handle_stop(input_data)
+            if strategy_result:
+                self.log("Strategy provided custom stop handling")
+                return strategy_result
 
         self.log("=== STOP HOOK STARTED ===")
         self.log(f"Input keys: {list(input_data.keys())}")
@@ -872,6 +884,26 @@ After presenting the findings and getting the user's decision, you may proceed a
         self.save_metric("reflection_blocked", 1)
 
         return {"decision": "block", "reason": reason}
+
+    def _select_strategy(self):
+        """Detect launcher and select appropriate strategy."""
+        try:
+            # Import adaptive components
+            sys.path.insert(0, str(self.project_root / "src" / "amplihack"))
+            from amplihack.context.adaptive.detector import LauncherDetector
+            from amplihack.context.adaptive.strategies import ClaudeStrategy, CopilotStrategy
+
+            detector = LauncherDetector(self.project_root)
+            launcher_type = detector.detect()
+
+            if launcher_type == "copilot":
+                return CopilotStrategy(self.project_root, self.log)
+            else:
+                return ClaudeStrategy(self.project_root, self.log)
+
+        except ImportError as e:
+            self.log(f"Adaptive strategy not available: {e}", "DEBUG")
+            return None
 
 
 def stop():

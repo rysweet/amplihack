@@ -1,5 +1,5 @@
 ---
-name: "Testing Code"
+name: testing-code
 description: "Generates and improves tests following TDD principles. Activates when new features are implemented, test coverage is low, or user requests tests. Ensures comprehensive test coverage with unit, integration, and edge case tests."
 allowed-tools: ["Read", "Grep", "Glob", "Write", "Edit", "Bash"]
 ---

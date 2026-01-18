@@ -10,7 +10,7 @@ Replace the sections below with information about your project.
 
 ---
 
-## Project: feat-issue-1902-5-type-memory-system
+## Project: amplihack-claude-plugin
 
 ## Overview
 
@@ -29,6 +29,7 @@ Development framework for Claude Code with specialized agents and automated work
 - **Language**: Python
 - **Language**: JavaScript/TypeScript
 - **Language**: Rust
+- **Language**: Go
 - **Framework**: [Main framework if applicable]
 - **Database**: [Database system if applicable]
 

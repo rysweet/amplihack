@@ -60,13 +60,17 @@ include = ["amplihack*"]
 
 [tool.setuptools.package-data]
 # Include prompts and framework files
-# .claude/ directory is copied into package by build_hooks.py before wheel build
+# .claude/, .claude-plugin/, and amplifier-bundle/ are copied into package by build_hooks.py before wheel build
 amplihack = [
     "prompts/*.md",
     "utils/uvx_settings_template.json",
     ".claude/**/*",
     ".claude/**/.gitkeep",
     ".claude/**/.*",  # Include hidden files like .version
+    ".claude-plugin/**/*",  # Plugin manifest
+    "amplifier-bundle/**/*",
+    "amplifier-bundle/**/.gitkeep",
+    "AMPLIHACK.md",  # Project instructions
 ]
 
 [tool.ruff]
