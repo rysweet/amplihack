@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Modular Build Configuration",
+  "description": "Simplified configuration for modular build command",
+
+  "phases": {
+    "contract": { "agents": ["architect", "api-designer"] },
+    "spec": { "agents": ["architect", "database", "security"] },
+    "plan": { "agents": ["tester", "integration"] },
+    "generate": { "agents": ["builder", "tester", "integration"] },
+    "review": { "agents": ["reviewer", "security", "optimizer"] }
+  },
+
+  "validation": {
+    "input_schema": ".claude/schemas/modular-build/input.schema.json",
+    "output_schema": ".claude/schemas/modular-build/output.schema.json"
+  },
+
+  "quality_gates": {
+    "min_test_coverage": 85,
+    "max_security_warnings": 0
+  },
+
+  "external_tools": {
+    "auto_detect": true,
+    "parallel_execution": true
+  },
+
+  "output": {
+    "directory": ".modular-build",
+    "preserve_logs": true
+  },
+
+  "metadata": {
+    "config_version": "v2.0",
+    "description": "Simplified modular build configuration following ruthless simplicity"
+  }
+}

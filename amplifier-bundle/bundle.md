@@ -26,99 +26,99 @@ tools:
 # discovers them via skills_dirs config above
 skills:
   # Domain analyst skills (23)
-  anthropologist-analyst: { path: ../.claude/skills/anthropologist-analyst/SKILL.md }
-  biologist-analyst: { path: ../.claude/skills/biologist-analyst/SKILL.md }
-  chemist-analyst: { path: ../.claude/skills/chemist-analyst/SKILL.md }
-  computer-scientist-analyst: { path: ../.claude/skills/computer-scientist-analyst/SKILL.md }
-  cybersecurity-analyst: { path: ../.claude/skills/cybersecurity-analyst/SKILL.md }
-  economist-analyst: { path: ../.claude/skills/economist-analyst/SKILL.md }
-  engineer-analyst: { path: ../.claude/skills/engineer-analyst/SKILL.md }
-  environmentalist-analyst: { path: ../.claude/skills/environmentalist-analyst/SKILL.md }
-  epidemiologist-analyst: { path: ../.claude/skills/epidemiologist-analyst/SKILL.md }
-  ethicist-analyst: { path: ../.claude/skills/ethicist-analyst/SKILL.md }
-  futurist-analyst: { path: ../.claude/skills/futurist-analyst/SKILL.md }
-  historian-analyst: { path: ../.claude/skills/historian-analyst/SKILL.md }
-  indigenous-leader-analyst: { path: ../.claude/skills/indigenous-leader-analyst/SKILL.md }
-  journalist-analyst: { path: ../.claude/skills/journalist-analyst/SKILL.md }
-  lawyer-analyst: { path: ../.claude/skills/lawyer-analyst/SKILL.md }
-  novelist-analyst: { path: ../.claude/skills/novelist-analyst/SKILL.md }
-  philosopher-analyst: { path: ../.claude/skills/philosopher-analyst/SKILL.md }
-  physicist-analyst: { path: ../.claude/skills/physicist-analyst/SKILL.md }
-  poet-analyst: { path: ../.claude/skills/poet-analyst/SKILL.md }
-  political-scientist-analyst: { path: ../.claude/skills/political-scientist-analyst/SKILL.md }
-  psychologist-analyst: { path: ../.claude/skills/psychologist-analyst/SKILL.md }
-  sociologist-analyst: { path: ../.claude/skills/sociologist-analyst/SKILL.md }
-  urban-planner-analyst: { path: ../.claude/skills/urban-planner-analyst/SKILL.md }
+  anthropologist-analyst: { path: skills/anthropologist-analyst/SKILL.md }
+  biologist-analyst: { path: skills/biologist-analyst/SKILL.md }
+  chemist-analyst: { path: skills/chemist-analyst/SKILL.md }
+  computer-scientist-analyst: { path: skills/computer-scientist-analyst/SKILL.md }
+  cybersecurity-analyst: { path: skills/cybersecurity-analyst/SKILL.md }
+  economist-analyst: { path: skills/economist-analyst/SKILL.md }
+  engineer-analyst: { path: skills/engineer-analyst/SKILL.md }
+  environmentalist-analyst: { path: skills/environmentalist-analyst/SKILL.md }
+  epidemiologist-analyst: { path: skills/epidemiologist-analyst/SKILL.md }
+  ethicist-analyst: { path: skills/ethicist-analyst/SKILL.md }
+  futurist-analyst: { path: skills/futurist-analyst/SKILL.md }
+  historian-analyst: { path: skills/historian-analyst/SKILL.md }
+  indigenous-leader-analyst: { path: skills/indigenous-leader-analyst/SKILL.md }
+  journalist-analyst: { path: skills/journalist-analyst/SKILL.md }
+  lawyer-analyst: { path: skills/lawyer-analyst/SKILL.md }
+  novelist-analyst: { path: skills/novelist-analyst/SKILL.md }
+  philosopher-analyst: { path: skills/philosopher-analyst/SKILL.md }
+  physicist-analyst: { path: skills/physicist-analyst/SKILL.md }
+  poet-analyst: { path: skills/poet-analyst/SKILL.md }
+  political-scientist-analyst: { path: skills/political-scientist-analyst/SKILL.md }
+  psychologist-analyst: { path: skills/psychologist-analyst/SKILL.md }
+  sociologist-analyst: { path: skills/sociologist-analyst/SKILL.md }
+  urban-planner-analyst: { path: skills/urban-planner-analyst/SKILL.md }
 
   # Workflow skills (11)
-  cascade-workflow: { path: ../.claude/skills/cascade-workflow/SKILL.md }
-  consensus-voting: { path: ../.claude/skills/consensus-voting/SKILL.md }
-  debate-workflow: { path: ../.claude/skills/debate-workflow/SKILL.md }
-  default-workflow: { path: ../.claude/skills/default-workflow/SKILL.md }
-  eval-recipes-runner: { path: ../.claude/skills/eval-recipes-runner/SKILL.md }
-  investigation-workflow: { path: ../.claude/skills/investigation-workflow/SKILL.md }
-  n-version-workflow: { path: ../.claude/skills/n-version-workflow/SKILL.md }
+  cascade-workflow: { path: skills/cascade-workflow/SKILL.md }
+  consensus-voting: { path: skills/consensus-voting/SKILL.md }
+  debate-workflow: { path: skills/debate-workflow/SKILL.md }
+  default-workflow: { path: skills/default-workflow/SKILL.md }
+  eval-recipes-runner: { path: skills/eval-recipes-runner/SKILL.md }
+  investigation-workflow: { path: skills/investigation-workflow/SKILL.md }
+  n-version-workflow: { path: skills/n-version-workflow/SKILL.md }
   philosophy-compliance-workflow:
-    { path: ../.claude/skills/philosophy-compliance-workflow/SKILL.md }
-  quality-audit-workflow: { path: ../.claude/skills/quality-audit-workflow/SKILL.md }
-  ultrathink-orchestrator: { path: ../.claude/skills/ultrathink-orchestrator/SKILL.md }
+    { path: skills/philosophy-compliance-workflow/SKILL.md }
+  quality-audit-workflow: { path: skills/quality-audit-workflow/SKILL.md }
+  ultrathink-orchestrator: { path: skills/ultrathink-orchestrator/SKILL.md }
 
   # Technical skills (19)
-  agent-sdk: { path: ../.claude/skills/agent-sdk/SKILL.md }
-  azure-admin: { path: ../.claude/skills/azure-admin/SKILL.md }
-  azure-devops: { path: ../.claude/skills/azure-devops/SKILL.md }
-  azure-devops-cli: { path: ../.claude/skills/azure-devops-cli/skill.md }
-  code-smell-detector: { path: ../.claude/skills/code-smell-detector/SKILL.md }
-  context-management: { path: ../.claude/skills/context-management/SKILL.md }
-  design-patterns-expert: { path: ../.claude/skills/design-patterns-expert/SKILL.md }
-  documentation-writing: { path: ../.claude/skills/documentation-writing/SKILL.md }
-  dynamic-debugger: { path: ../.claude/skills/dynamic-debugger/SKILL.md }
-  email-drafter: { path: ../.claude/skills/email-drafter/SKILL.md }
-  goal-seeking-agent-pattern: { path: ../.claude/skills/goal-seeking-agent-pattern/SKILL.md }
-  mcp-manager: { path: ../.claude/skills/mcp-manager/SKILL.md }
-  mermaid-diagram-generator: { path: ../.claude/skills/mermaid-diagram-generator/SKILL.md }
-  microsoft-agent-framework: { path: ../.claude/skills/microsoft-agent-framework/skill.md }
-  module-spec-generator: { path: ../.claude/skills/module-spec-generator/SKILL.md }
-  outside-in-testing: { path: ../.claude/skills/outside-in-testing/SKILL.md }
-  remote-work: { path: ../.claude/skills/remote-work/SKILL.md }
-  skill-builder: { path: ../.claude/skills/skill-builder/SKILL.md }
-  test-gap-analyzer: { path: ../.claude/skills/test-gap-analyzer/SKILL.md }
+  agent-sdk: { path: skills/agent-sdk/SKILL.md }
+  azure-admin: { path: skills/azure-admin/SKILL.md }
+  azure-devops: { path: skills/azure-devops/SKILL.md }
+  azure-devops-cli: { path: skills/azure-devops-cli/skill.md }
+  code-smell-detector: { path: skills/code-smell-detector/SKILL.md }
+  context-management: { path: skills/context-management/SKILL.md }
+  design-patterns-expert: { path: skills/design-patterns-expert/SKILL.md }
+  documentation-writing: { path: skills/documentation-writing/SKILL.md }
+  dynamic-debugger: { path: skills/dynamic-debugger/SKILL.md }
+  email-drafter: { path: skills/email-drafter/SKILL.md }
+  goal-seeking-agent-pattern: { path: skills/goal-seeking-agent-pattern/SKILL.md }
+  mcp-manager: { path: skills/mcp-manager/SKILL.md }
+  mermaid-diagram-generator: { path: skills/mermaid-diagram-generator/SKILL.md }
+  microsoft-agent-framework: { path: skills/microsoft-agent-framework/skill.md }
+  module-spec-generator: { path: skills/module-spec-generator/SKILL.md }
+  outside-in-testing: { path: skills/outside-in-testing/SKILL.md }
+  remote-work: { path: skills/remote-work/SKILL.md }
+  skill-builder: { path: skills/skill-builder/SKILL.md }
+  test-gap-analyzer: { path: skills/test-gap-analyzer/SKILL.md }
 
   # Document processing (4)
-  docx: { path: ../.claude/skills/docx/SKILL.md }
-  pdf: { path: ../.claude/skills/pdf/SKILL.md }
-  pptx: { path: ../.claude/skills/pptx/SKILL.md }
-  xlsx: { path: ../.claude/skills/xlsx/SKILL.md }
+  docx: { path: skills/docx/SKILL.md }
+  pdf: { path: skills/pdf/SKILL.md }
+  pptx: { path: skills/pptx/SKILL.md }
+  xlsx: { path: skills/xlsx/SKILL.md }
 
   # Meta skills (11)
-  backlog-curator: { path: ../.claude/skills/backlog-curator/skill.md }
-  knowledge-extractor: { path: ../.claude/skills/knowledge-extractor/SKILL.md }
-  learning-path-builder: { path: ../.claude/skills/learning-path-builder/SKILL.md }
-  meeting-synthesizer: { path: ../.claude/skills/meeting-synthesizer/SKILL.md }
-  model-evaluation-benchmark: { path: ../.claude/skills/model-evaluation-benchmark/SKILL.md }
-  pm-architect: { path: ../.claude/skills/pm-architect/skill.md }
-  pr-review-assistant: { path: ../.claude/skills/pr-review-assistant/SKILL.md }
-  roadmap-strategist: { path: ../.claude/skills/roadmap-strategist/skill.md }
-  storytelling-synthesizer: { path: ../.claude/skills/storytelling-synthesizer/SKILL.md }
-  work-delegator: { path: ../.claude/skills/work-delegator/skill.md }
-  workstream-coordinator: { path: ../.claude/skills/workstream-coordinator/skill.md }
+  backlog-curator: { path: skills/backlog-curator/skill.md }
+  knowledge-extractor: { path: skills/knowledge-extractor/SKILL.md }
+  learning-path-builder: { path: skills/learning-path-builder/SKILL.md }
+  meeting-synthesizer: { path: skills/meeting-synthesizer/SKILL.md }
+  model-evaluation-benchmark: { path: skills/model-evaluation-benchmark/SKILL.md }
+  pm-architect: { path: skills/pm-architect/skill.md }
+  pr-review-assistant: { path: skills/pr-review-assistant/SKILL.md }
+  roadmap-strategist: { path: skills/roadmap-strategist/skill.md }
+  storytelling-synthesizer: { path: skills/storytelling-synthesizer/SKILL.md }
+  work-delegator: { path: skills/work-delegator/skill.md }
+  workstream-coordinator: { path: skills/workstream-coordinator/skill.md }
 
   # Nested skills - collaboration (1)
-  creating-pull-requests: { path: ../.claude/skills/collaboration/creating-pull-requests/SKILL.md }
+  creating-pull-requests: { path: skills/collaboration/creating-pull-requests/SKILL.md }
 
   # Nested skills - development (2)
-  architecting-solutions: { path: ../.claude/skills/development/architecting-solutions/SKILL.md }
-  setting-up-projects: { path: ../.claude/skills/development/setting-up-projects/SKILL.md }
+  architecting-solutions: { path: skills/development/architecting-solutions/SKILL.md }
+  setting-up-projects: { path: skills/development/setting-up-projects/SKILL.md }
 
   # Nested skills - meta-cognitive (1)
-  analyzing-deeply: { path: ../.claude/skills/meta-cognitive/analyzing-deeply/SKILL.md }
+  analyzing-deeply: { path: skills/meta-cognitive/analyzing-deeply/SKILL.md }
 
   # Nested skills - quality (2)
-  reviewing-code: { path: ../.claude/skills/quality/reviewing-code/SKILL.md }
-  testing-code: { path: ../.claude/skills/quality/testing-code/SKILL.md }
+  reviewing-code: { path: skills/quality/reviewing-code/SKILL.md }
+  testing-code: { path: skills/quality/testing-code/SKILL.md }
 
   # Nested skills - research (1)
-  researching-topics: { path: ../.claude/skills/research/researching-topics/SKILL.md }
+  researching-topics: { path: skills/research/researching-topics/SKILL.md }
 
 # Amplifier-native agents
 # WORKAROUND: Agent instructions are defined inline due to microsoft/amplifier#174
@@ -126,6 +126,49 @@ skills:
 # The session-start hook also populates agent configs from agents/*.md files.
 # REMOVE WORKAROUND when microsoft/amplifier-foundation#30 is merged.
 agents:
+  # Core agents (7)
+  amplihack:api-designer: { path: agents/core/api-designer.md }
+  amplihack:architect: { path: agents/core/architect.md }
+  amplihack:builder: { path: agents/core/builder.md }
+  amplihack:optimizer: { path: agents/core/optimizer.md }
+  amplihack:reviewer: { path: agents/core/reviewer.md }
+  amplihack:tester: { path: agents/core/tester.md }
+  # Note: amplihack:guide is defined inline below due to microsoft/amplifier#174
+
+  # Specialized agents (27)
+  amplihack:ambiguity: { path: agents/specialized/ambiguity.md }
+  amplihack:amplifier-cli-architect: { path: agents/specialized/amplifier-cli-architect.md }
+  amplihack:analyzer: { path: agents/specialized/analyzer.md }
+  amplihack:azure-kubernetes-expert: { path: agents/specialized/azure-kubernetes-expert.md }
+  amplihack:ci-diagnostic-workflow: { path: agents/specialized/ci-diagnostic-workflow.md }
+  amplihack:cleanup: { path: agents/specialized/cleanup.md }
+  amplihack:concept-extractor: { path: agents/specialized/concept-extractor.md }
+  amplihack:database: { path: agents/specialized/database.md }
+  amplihack:documentation-writer: { path: agents/specialized/documentation-writer.md }
+  amplihack:fallback-cascade: { path: agents/specialized/fallback-cascade.md }
+  amplihack:fix-agent: { path: agents/specialized/fix-agent.md }
+  amplihack:insight-synthesizer: { path: agents/specialized/insight-synthesizer.md }
+  amplihack:integration: { path: agents/specialized/integration.md }
+  amplihack:knowledge-archaeologist: { path: agents/specialized/knowledge-archaeologist.md }
+  amplihack:memory-manager: { path: agents/specialized/memory-manager.md }
+  amplihack:multi-agent-debate: { path: agents/specialized/multi-agent-debate.md }
+  amplihack:n-version-validator: { path: agents/specialized/n-version-validator.md }
+  amplihack:patterns: { path: agents/specialized/patterns.md }
+  amplihack:philosophy-guardian: { path: agents/specialized/philosophy-guardian.md }
+  amplihack:pre-commit-diagnostic: { path: agents/specialized/pre-commit-diagnostic.md }
+  amplihack:preference-reviewer: { path: agents/specialized/preference-reviewer.md }
+  amplihack:prompt-writer: { path: agents/specialized/prompt-writer.md }
+  amplihack:rust-programming-expert: { path: agents/specialized/rust-programming-expert.md }
+  amplihack:security: { path: agents/specialized/security.md }
+  amplihack:visualization-architect: { path: agents/specialized/visualization-architect.md }
+  amplihack:worktree-manager: { path: agents/specialized/worktree-manager.md }
+  amplihack:xpia-defense: { path: agents/specialized/xpia-defense.md }
+
+  # Workflow agents (2)
+  amplihack:amplihack-improvement-workflow: { path: agents/workflows/amplihack-improvement-workflow.md }
+  amplihack:prompt-review-workflow: { path: agents/workflows/prompt-review-workflow.md }
+
+  # Guide agent (inline due to microsoft/amplifier#174)
   amplihack:guide:
     name: guide
     description: "Interactive guide to amplihack features. Walks users through workflows, recipes, skills, agents, and hooks. Use this agent to learn what amplihack can do."
@@ -227,9 +270,9 @@ recipes:
 context:
   include:
     # Reference existing Claude Code context
-    - ../.claude/context/PHILOSOPHY.md
-    - ../.claude/context/PATTERNS.md
-    - ../.claude/context/TRUST.md
+    - context/PHILOSOPHY.md
+    - context/PATTERNS.md
+    - context/TRUST.md
     # Amplifier-specific context
     - context/amplifier-instructions.md
 

@@ -1,0 +1,18 @@
+{
+  "snapshot_id": "20251116_120000",
+  "name": "test-snapshot",
+  "timestamp": "2025-11-16T12:00:00",
+  "original_requirements": "Build a JWT authentication system",
+  "key_decisions": [
+    {
+      "decision": "Use RS256 encryption",
+      "rationale": "Better security than HS256",
+      "alternatives": "HS256, ES256"
+    }
+  ],
+  "implementation_state": "JWT handler created, token validation in progress",
+  "open_items": ["Implement refresh token rotation", "Add error handling for expired tokens"],
+  "tools_used": ["Write", "Edit", "Read"],
+  "token_count": 1250,
+  "file_path": ".claude/runtime/context-snapshots/20251116_120000.json"
+}

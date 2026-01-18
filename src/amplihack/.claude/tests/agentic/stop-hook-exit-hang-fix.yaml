@@ -1,0 +1,106 @@
+name: stop-hook-exit-hang-fix-validation
+description: |
+  Validates that amplihack exits cleanly within 2 seconds when user types /exit.
+  Tests the complete interactive workflow, not just unit tests.
+
+  This is the REAL test that proves the fix works as users experience it.
+
+test_type: tui
+application:
+  command: uvx
+  args:
+    - --from
+    - git+https://github.com/rysweet/amplihack@feat/issue-1896-fix-stop-hook-exit-hang
+    - amplihack
+  timeout: 120
+
+scenarios:
+  - name: clean-exit-on-slash-exit-command
+    description: User types /exit and process exits cleanly within 2 seconds
+    steps:
+      - action: wait
+        description: Wait for amplihack to start and show prompt
+        conditions:
+          - type: output_contains
+            value: ">"
+            timeout: 30
+
+      - action: send
+        description: Send /exit command
+        input: "/exit\n"
+
+      - action: wait
+        description: Wait for goodbye message
+        conditions:
+          - type: output_contains
+            value: "Goodbye"
+            timeout: 5
+
+      - action: wait
+        description: Wait for Claude session to complete
+        conditions:
+          - type: output_contains
+            value: "Claude session completed"
+            timeout: 5
+
+      - action: wait
+        description: Verify process exits cleanly (no hang)
+        conditions:
+          - type: process_exits
+            timeout: 2
+            exit_code: 0
+
+    assertions:
+      - type: total_time_under
+        value: 45
+        description: Complete flow (start + exit) should take <45s total
+
+      - type: no_output_contains
+        value: "Exception ignored in atexit callback"
+        description: No atexit exceptions should occur
+
+      - type: no_output_contains
+        value: "Traceback"
+        description: No Python tracebacks should appear
+
+      - type: exit_code
+        value: 0
+        description: Process should exit cleanly with code 0
+
+  - name: no-ctrl-c-required
+    description: Process exits on its own without requiring Ctrl-C
+    steps:
+      - action: wait
+        description: Wait for amplihack prompt
+        conditions:
+          - type: output_contains
+            value: ">"
+            timeout: 30
+
+      - action: send
+        description: Send /exit
+        input: "/exit\n"
+
+      - action: wait
+        description: Process must exit without intervention
+        conditions:
+          - type: process_exits
+            timeout: 3
+            exit_code: 0
+
+    assertions:
+      - type: no_manual_intervention
+        description: Process exits on its own, no Ctrl-C needed
+
+      - type: total_time_under
+        value: 40
+        description: Exit should happen quickly
+
+success_criteria:
+  - all_scenarios_pass
+  - no_exceptions
+  - exit_time_under_2_seconds
+
+performance_requirements:
+  max_exit_time: 2.0
+  max_total_time: 45.0

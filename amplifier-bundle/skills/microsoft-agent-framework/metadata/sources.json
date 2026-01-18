@@ -1,0 +1,153 @@
+{
+  "description": "Source URL mappings for Microsoft Agent Framework skill documentation",
+  "version": "1.0.0",
+  "last_updated": "2025-11-15",
+  "url_categories": {
+    "official_documentation": [
+      {
+        "name": "microsoft_learn_overview",
+        "url": "https://learn.microsoft.com/en-us/microsoft-agent-framework/overview",
+        "priority": "high",
+        "content_type": "architecture",
+        "update_frequency": "monthly"
+      },
+      {
+        "name": "microsoft_learn_tutorials",
+        "url": "https://learn.microsoft.com/en-us/microsoft-agent-framework/tutorials",
+        "priority": "high",
+        "content_type": "tutorials",
+        "update_frequency": "monthly"
+      },
+      {
+        "name": "microsoft_learn_workflows",
+        "url": "https://learn.microsoft.com/en-us/microsoft-agent-framework/workflows",
+        "priority": "high",
+        "content_type": "technical",
+        "update_frequency": "monthly"
+      }
+    ],
+    "github_sources": [
+      {
+        "name": "github_repository",
+        "url": "https://github.com/microsoft/agent-framework",
+        "priority": "critical",
+        "content_type": "code",
+        "update_frequency": "weekly",
+        "watch_releases": true
+      },
+      {
+        "name": "github_workflow_samples",
+        "url": "https://github.com/microsoft/agent-framework/tree/main/python/samples/getting_started/workflows",
+        "priority": "high",
+        "content_type": "examples",
+        "update_frequency": "monthly"
+      }
+    ],
+    "blogs_articles": [
+      {
+        "name": "devblog_announcement",
+        "url": "https://devblogs.microsoft.com/dotnet/introducing-agent-framework/",
+        "priority": "medium",
+        "content_type": "announcement",
+        "update_frequency": "one-time"
+      },
+      {
+        "name": "linkedin_workflows",
+        "url": "https://www.linkedin.com/pulse/agent-framework-demos-day-2-building-workflow-book-dibia-phd-udd2c/",
+        "priority": "medium",
+        "content_type": "tutorial",
+        "update_frequency": "static",
+        "author": "Victor Dibia, PhD"
+      },
+      {
+        "name": "linkedin_function_calls",
+        "url": "https://www.linkedin.com/pulse/agent-framework-demos-day-1-intercepting-function-calls-dibia-phd-sbuqc/",
+        "priority": "medium",
+        "content_type": "tutorial",
+        "update_frequency": "static",
+        "author": "Victor Dibia, PhD"
+      },
+      {
+        "name": "linkedin_async",
+        "url": "https://www.linkedin.com/pulse/agent-framework-demos-day-3-building-scalable-async-dibia-phd-bvihc/",
+        "priority": "medium",
+        "content_type": "tutorial",
+        "update_frequency": "static",
+        "author": "Victor Dibia, PhD"
+      },
+      {
+        "name": "linkedin_rag",
+        "url": "https://www.linkedin.com/pulse/agent-framework-demos-day-4-building-help-you-code-rag-dibia-phd-7htwc/",
+        "priority": "medium",
+        "content_type": "tutorial",
+        "update_frequency": "static",
+        "author": "Victor Dibia, PhD"
+      }
+    ]
+  },
+  "tier_mappings": {
+    "tier_1_metadata": {
+      "sources": [],
+      "description": "Auto-generated from skill structure"
+    },
+    "tier_2_core": {
+      "sources": ["microsoft_learn_overview", "github_repository", "devblog_announcement"],
+      "description": "Framework overview and quick start"
+    },
+    "tier_3_detailed": {
+      "sources": [
+        "microsoft_learn_tutorials",
+        "microsoft_learn_workflows",
+        "github_workflow_samples",
+        "linkedin_workflows"
+      ],
+      "description": "Deep technical documentation"
+    },
+    "tier_4_advanced": {
+      "sources": [
+        "linkedin_function_calls",
+        "linkedin_async",
+        "linkedin_rag",
+        "github_workflow_samples"
+      ],
+      "description": "Advanced patterns and scenarios"
+    }
+  },
+  "content_distillation": {
+    "strategy": "Extract key concepts, API signatures, and working examples",
+    "token_allocation": {
+      "tier_1": 100,
+      "tier_2": 4700,
+      "tier_3": 18000,
+      "tier_4": 12000
+    },
+    "prioritization": [
+      "Working code examples",
+      "API signatures and contracts",
+      "Architecture patterns",
+      "Best practices",
+      "Detailed prose (minimal)"
+    ]
+  },
+  "update_workflow": {
+    "frequency": "monthly",
+    "steps": [
+      "Check GitHub releases for new versions",
+      "Review official documentation for changes",
+      "Scan blogs/articles for new content",
+      "Fetch updated content from all sources",
+      "Distill content by tier allocation",
+      "Update skill files maintaining token budgets",
+      "Update metadata with new versions",
+      "Test skill with sample queries",
+      "Validate examples compile and run"
+    ]
+  },
+  "notes": [
+    "LinkedIn articles are static - content doesn't change after publication",
+    "Microsoft Learn docs may update - check monthly",
+    "GitHub repository should be monitored for releases weekly",
+    "DevBlog announcement is one-time content",
+    "Some URLs may require authentication or have rate limiting"
+  ]
+}

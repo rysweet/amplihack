@@ -1,0 +1,66 @@
+# Cross-Session Learning: Tool Usage Patterns
+# This file stores tool usage patterns, gotchas, and best practices.
+
+category: tools
+description: Tool usage patterns, gotchas, and effective techniques
+last_updated: "2025-11-25T00:00:00Z"
+
+learnings:
+  # Real example: Claude SDK timeout handling
+  - id: "tool-001"
+    created: "2025-11-25T00:00:00Z"
+    keywords:
+      - "claude"
+      - "sdk"
+      - "timeout"
+      - "async"
+      - "api"
+    summary: "Claude SDK requires explicit timeout handling to avoid hanging"
+    insight: |
+      The Claude Code SDK can hang indefinitely if the API is slow or
+      unresponsive. Always wrap SDK calls in asyncio.timeout() with a
+      reasonable limit (120s is a good default for complex tasks).
+
+      Also note: The SDK only works inside Claude Code environment, not
+      in standalone Python scripts.
+    example: |
+      import asyncio
+      from claude_code_sdk import query
+
+      async def safe_query(prompt: str, timeout_seconds: int = 120):
+          try:
+              async with asyncio.timeout(timeout_seconds):
+                  return await query(prompt)
+          except asyncio.TimeoutError:
+              return None  # Handle gracefully
+    confidence: 0.9
+    times_used: 0
+
+  # Real example: uvx for testing git branches
+  - id: "tool-002"
+    created: "2025-11-25T00:00:00Z"
+    keywords:
+      - "uvx"
+      - "git"
+      - "testing"
+      - "branch"
+      - "install"
+    summary: "Use uvx --from git+URL to test packages from specific branches"
+    insight: |
+      When testing PRs or feature branches, use uvx to install directly
+      from the git branch without cloning. This tests the ACTUAL user
+      experience, not just the local development version.
+
+      This is essential for PR testing - it catches packaging issues that
+      local testing misses.
+    example: |
+      # Test a specific branch
+      uvx --from git+https://github.com/org/repo@branch-name tool-name
+
+      # Test from PR (use branch name from PR)
+      uvx --from git+https://github.com/org/repo@feat/my-feature my-command
+
+      # With specific options
+      uvx --from git+https://github.com/org/repo@main package command --help
+    confidence: 0.95
+    times_used: 0

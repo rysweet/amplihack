@@ -1,0 +1,18 @@
+{
+  "debugger": "node",
+  "default_port": 9229,
+  "file_extensions": [".js", ".ts", ".jsx", ".tsx"],
+  "manifest_files": ["package.json", "tsconfig.json"],
+  "description": "Node.js debugger using built-in inspector protocol",
+  "config": {
+    "name": "Node: Debug Current File",
+    "type": "node",
+    "request": "launch",
+    "program": "${project_dir}/${entry_point}.js",
+    "cwd": "${project_dir}"
+  },
+  "commands": {
+    "install": "node --version (built-in, no installation needed)",
+    "verify": "node --version"
+  }
+}

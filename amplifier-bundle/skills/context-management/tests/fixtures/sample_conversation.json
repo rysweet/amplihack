@@ -1,0 +1,43 @@
+[
+  {
+    "role": "user",
+    "content": "I need to build a JWT authentication system for my API. It should handle user login, token generation, and validation."
+  },
+  {
+    "role": "assistant",
+    "content": "I'll help you build a JWT authentication system. I've decided to use the standard JWT library with RS256 encryption for better security. Let me start by creating the authentication module."
+  },
+  {
+    "role": "tool_use",
+    "tool_name": "Write",
+    "parameters": {
+      "file_path": "/project/auth/jwt_handler.py",
+      "content": "# JWT handler implementation"
+    }
+  },
+  {
+    "role": "tool_result",
+    "content": "File created successfully"
+  },
+  {
+    "role": "assistant",
+    "content": "Now I'll implement the token validation. One key decision: I've chosen to use a 15-minute token expiry with refresh tokens for security. Should we implement refresh token rotation?"
+  },
+  {
+    "role": "user",
+    "content": "Yes, implement refresh token rotation for better security."
+  },
+  {
+    "role": "tool_use",
+    "tool_name": "Edit",
+    "parameters": {
+      "file_path": "/project/auth/jwt_handler.py",
+      "old_string": "# JWT handler implementation",
+      "new_string": "# JWT handler with refresh token rotation"
+    }
+  },
+  {
+    "role": "assistant",
+    "content": "I need to implement the token refresh logic. TODO: Add refresh token rotation logic. TODO: Handle expired token errors gracefully."
+  }
+]

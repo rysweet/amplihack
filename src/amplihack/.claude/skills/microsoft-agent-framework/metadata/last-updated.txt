@@ -1,0 +1,28 @@
+2025-11-15
+
+Skill Created: 2025-11-15
+Framework Version: 0.1.0-preview
+Last Content Update: 2025-11-15
+Last Verification: 2025-11-15
+Next Verification Due: 2025-12-15
+
+Status: CURRENT
+
+Sources Verified:
+- Microsoft Learn Documentation
+- GitHub Repository (5.1k stars)
+- DevBlog Announcement
+- Community Feedback
+
+Framework Status: PREVIEW
+- API may change before 1.0.0 stable
+- Production-ready but expect updates
+- Monthly verification recommended
+
+Content Accuracy: HIGH
+- Examples tested against preview release
+- Integration patterns validated
+- Decision framework aligned with use cases
+
+Freshness Check:
+Run `python scripts/check-freshness.py` to verify this skill is up-to-date.

@@ -1,0 +1,152 @@
+name: "qa-workflow"
+description: "Minimal 3-step workflow for simple questions and informational requests"
+version: "1.0.0"
+author: "Amplihack Team"
+tags: ["questions", "simple", "quick", "minimal"]
+
+# Q&A_WORKFLOW: Quick Questions Workflow
+#
+# Use this workflow when ALL are true:
+#   - Single-turn answer: Can be fully answered in one response
+#   - No code changes: Doesn't require creating/modifying files
+#   - Information available: Answer is in context or general knowledge
+#   - No exploration: Don't need to trace code paths or read many files
+#
+# If ANY doubt about complexity, escalate to investigation-workflow or default-workflow.
+#
+# Usage:
+#   amplifier recipes execute qa-workflow.yaml --context '{
+#     "question": "What does the cleanup agent do?",
+#     "context_info": "Working on amplihack project"
+#   }'
+
+context:
+  # The question to answer
+  question: ""
+
+  # Optional context about the current work
+  context_info: ""
+
+  # Escalation thresholds
+  escalate_if_complex: "true"
+
+  # Escalation result (set by conditional step, needs default for templates)
+  # Must be valid JSON since compile-output embeds it directly
+  escalation_result: "{}"
+
+steps:
+  # ==========================================================================
+  # STEP 1: CLASSIFICATION CONFIRMATION
+  # Confirm this is truly Q&A (not disguised investigation/development)
+  # ==========================================================================
+  - id: "classification-confirmation"
+    agent: "foundation:zen-architect"
+    mode: "ANALYZE"
+    prompt: |
+      Classify this question and determine if it's truly a simple Q&A:
+
+      **Question:** {{question}}
+      **Context:** {{context_info}}
+
+      Evaluate against Q&A criteria:
+      1. Can be fully answered in ONE response?
+      2. Does NOT require creating/modifying files?
+      3. Answer is available in context or general knowledge?
+      4. Does NOT need tracing code paths or reading many files?
+
+      Return your classification as JSON:
+      ```json
+      {
+        "is_qa": true/false,
+        "confidence": "high/medium/low",
+        "reasoning": "brief explanation",
+        "suggested_workflow": "qa/investigation/default",
+        "can_answer_directly": true/false
+      }
+      ```
+
+      If ALL criteria are met, set is_qa=true.
+      If ANY doubt, recommend escalation to investigation-workflow or default-workflow.
+    output: "classification"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 2: PROVIDE RESPONSE
+  # Answer directly and clearly (only if classified as Q&A)
+  # ==========================================================================
+  - id: "provide-response"
+    condition: "{{classification.is_qa}} == 'true'"
+    agent: "foundation:zen-architect"
+    prompt: |
+      Answer this question directly and clearly:
+
+      **Question:** {{question}}
+      **Context:** {{context_info}}
+
+      Guidelines:
+      - Keep response appropriately concise
+      - Include code examples if helpful
+      - Reference relevant files if applicable
+      - Be direct - no unnecessary preamble
+
+      If during answering you realize this requires deeper exploration,
+      note that at the end of your response.
+    output: "answer"
+
+  # ==========================================================================
+  # STEP 3: ESCALATION CHECK
+  # Verify answer fully addresses question or suggest escalation
+  # ==========================================================================
+  - id: "escalation-check"
+    condition: "{{classification.is_qa}} == 'true'"
+    agent: "foundation:zen-architect"
+    mode: "REVIEW"
+    prompt: |
+      Review the Q&A interaction and determine if escalation is needed:
+
+      **Original Question:** {{question}}
+      **Classification:** {{classification}}
+      **Answer Provided:** {{answer}}
+
+      Check:
+      1. Does the answer fully address the question?
+      2. Did any complexity emerge during answering?
+      3. Would deeper understanding help the user?
+      4. Is implementation work needed?
+
+      Return your assessment as JSON:
+      ```json
+      {
+        "answer_complete": true/false,
+        "escalation_needed": true/false,
+        "escalation_reason": "reason or null",
+        "suggested_workflow": "none/investigation/default",
+        "follow_up_hint": "what user might ask next or null"
+      }
+      ```
+
+      Examples of escalation triggers:
+      - "How does it integrate with X?" → investigation-workflow
+      - "Can you add/fix/create X?" → default-workflow
+    output: "escalation_result"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 4: FINAL OUTPUT
+  # Compile the response with any escalation recommendations
+  # ==========================================================================
+  - id: "compile-output"
+    type: "bash"
+    parse_json: true
+    command: |
+      cat << 'EOF'
+      {
+        "workflow": "qa-workflow",
+        "question": "{{question}}",
+        "is_qa": "{{classification.is_qa}}",
+        "classification": {{classification}},
+        "escalation": {{escalation_result}},
+        "status": "complete"
+      }
+      EOF
+    output: "final_output"
