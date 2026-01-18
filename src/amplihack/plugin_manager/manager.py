@@ -138,6 +138,15 @@ class PluginManager:
                 if plugin_name.endswith('.git'):
                     plugin_name = plugin_name[:-4]
 
+                # Validate plugin name to prevent path traversal
+                if not self.NAME_PATTERN.match(plugin_name):
+                    return InstallResult(
+                        success=False,
+                        plugin_name=plugin_name,
+                        installed_path=Path(),
+                        message=f"Invalid plugin name from URL: {plugin_name} (must be lowercase letters, numbers, hyphens only)"
+                    )
+
                 # Create temp directory for cloning
                 import tempfile
                 temp_dir = Path(tempfile.mkdtemp())
@@ -180,7 +189,7 @@ class PluginManager:
                 plugin_name = source_path.name
 
             # Validate manifest
-            manifest_path = source_path / "manifest.json"
+            manifest_path = source_path / ".claude-plugin" / "plugin.json"
             validation = self.validate_manifest(manifest_path)
 
             if not validation.valid:
@@ -209,7 +218,15 @@ class PluginManager:
             self.plugin_root.mkdir(parents=True, exist_ok=True)
 
             # Copy plugin files
-            shutil.copytree(source_path, target_path)
+            try:
+                shutil.copytree(source_path, target_path)
+            except (PermissionError, OSError) as e:
+                return InstallResult(
+                    success=False,
+                    plugin_name=plugin_name,
+                    installed_path=target_path,
+                    message=f"Failed to copy plugin files: {e}"
+                )
 
             # Register plugin in Claude Code settings
             if not self._register_plugin(plugin_name, target_path):
@@ -344,5 +361,8 @@ class PluginManager:
             settings_path.write_text(json.dumps(settings, indent=2))
             return True
 
-        except (OSError, json.JSONDecodeError, PermissionError):
+        except (OSError, json.JSONDecodeError, PermissionError) as e:
+            # Log error for debugging instead of swallowing silently
+            import logging
+            logging.error(f"Failed to register plugin {plugin_name}: {e}")
             return False

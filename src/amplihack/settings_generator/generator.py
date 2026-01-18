@@ -59,6 +59,44 @@ class SettingsGenerator:
             plugin_name = plugin_manifest.get('name')
             settings['enabledPlugins'] = [plugin_name]
 
+        # Add marketplace configuration
+        if 'marketplace' in plugin_manifest:
+            marketplace_config = plugin_manifest['marketplace']
+
+            # Validate marketplace URL
+            url = marketplace_config.get('url', '')
+            if not url or not self._is_valid_url(url):
+                raise ValueError(f"Invalid marketplace URL: {url}")
+
+            # Validate marketplace name
+            name = marketplace_config.get('name', '')
+            if not name or not self._is_valid_marketplace_name(name):
+                raise ValueError(f"Invalid marketplace name: {name}")
+
+            # Validate GitHub URL structure if type is github
+            marketplace_type = marketplace_config.get('type', 'github')
+            if marketplace_type == 'github' and not self._is_valid_github_url(url):
+                raise ValueError(f"Invalid GitHub URL structure: {url}")
+
+            if 'extraKnownMarketplaces' not in settings:
+                settings['extraKnownMarketplaces'] = []
+
+            # Add marketplace entry with all required fields
+            marketplace_entry = {
+                'name': name,
+                'url': url,
+                'type': marketplace_type
+            }
+
+            # Check if marketplace already exists (by name)
+            marketplace_exists = any(
+                m.get('name') == name
+                for m in settings['extraKnownMarketplaces']
+            )
+
+            if not marketplace_exists:
+                settings['extraKnownMarketplaces'].append(marketplace_entry)
+
         # Add plugin metadata
         if plugin_manifest:
             if 'plugins' not in settings:
@@ -104,8 +142,12 @@ class SettingsGenerator:
                 # Deep merge nested dictionaries
                 merged[key] = self.merge_settings(merged[key], value)
             elif key in merged and isinstance(merged[key], list) and isinstance(value, list):
-                # Concatenate lists (could also replace based on strategy)
-                merged[key] = merged[key] + value
+                # Special handling for marketplace lists - deduplicate by name
+                if key == 'extraKnownMarketplaces':
+                    merged[key] = self._deduplicate_marketplaces(merged[key], value)
+                else:
+                    # Concatenate other lists
+                    merged[key] = merged[key] + value
             else:
                 # Overlay value takes precedence
                 merged[key] = value
@@ -154,6 +196,10 @@ class SettingsGenerator:
         if seen is None:
             seen = set()
 
+        # Only check containers (dict/list) for circular references
+        if not isinstance(data, (dict, list)):
+            return
+
         # Get object ID
         obj_id = id(data)
 
@@ -161,16 +207,17 @@ class SettingsGenerator:
         if obj_id in seen:
             raise ValueError("Circular reference detected in manifest")
 
-        # Add to seen set
-        seen.add(obj_id)
+        # Add to seen set for this branch
+        # Create new seen set for each branch to avoid false positives
+        branch_seen = seen | {obj_id}
 
         # Recursively check nested structures
         if isinstance(data, dict):
             for value in data.values():
-                self._check_circular_reference(value, seen)
+                self._check_circular_reference(value, branch_seen)
         elif isinstance(data, list):
             for item in data:
-                self._check_circular_reference(item, seen)
+                self._check_circular_reference(item, branch_seen)
 
     def _resolve_paths_in_dict(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Resolve relative paths in dictionary to absolute paths.
@@ -199,3 +246,69 @@ class SettingsGenerator:
                 resolved[key] = value
 
         return resolved
+
+    def _is_valid_url(self, url: str) -> bool:
+        """Check if URL is valid.
+
+        Args:
+            url: URL string to validate
+
+        Returns:
+            True if valid URL format
+        """
+        # Simple URL validation - must start with http:// or https://
+        return url.startswith('http://') or url.startswith('https://')
+
+    def _is_valid_marketplace_name(self, name: str) -> bool:
+        """Check if marketplace name is valid.
+
+        Args:
+            name: Marketplace name to validate
+
+        Returns:
+            True if valid name format
+        """
+        # Use same pattern as plugin names
+        return bool(self.NAME_PATTERN.match(name))
+
+    def _is_valid_github_url(self, url: str) -> bool:
+        """Check if URL is a valid GitHub repository URL.
+
+        Args:
+            url: URL string to validate
+
+        Returns:
+            True if valid GitHub URL
+        """
+        # Must contain github.com and have repo structure
+        return 'github.com' in url and url.count('/') >= 3
+
+    def _deduplicate_marketplaces(
+        self,
+        base_list: list,
+        overlay_list: list
+    ) -> list:
+        """Merge and deduplicate marketplace lists by name.
+
+        Args:
+            base_list: Base marketplace list
+            overlay_list: Overlay marketplace list
+
+        Returns:
+            Deduplicated merged list
+        """
+        # Create dict by name for deduplication
+        marketplaces_by_name = {}
+
+        # Add base marketplaces
+        for marketplace in base_list:
+            if isinstance(marketplace, dict) and 'name' in marketplace:
+                marketplaces_by_name[marketplace['name']] = marketplace
+
+        # Add overlay marketplaces (overwriting duplicates)
+        for marketplace in overlay_list:
+            if isinstance(marketplace, dict) and 'name' in marketplace:
+                marketplaces_by_name[marketplace['name']] = marketplace
+
+        # Return as list
+        return list(marketplaces_by_name.values())
