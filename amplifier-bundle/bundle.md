@@ -126,6 +126,49 @@ skills:
 # The session-start hook also populates agent configs from agents/*.md files.
 # REMOVE WORKAROUND when microsoft/amplifier-foundation#30 is merged.
 agents:
+  # Core agents (7)
+  amplihack:api-designer: { path: agents/core/api-designer.md }
+  amplihack:architect: { path: agents/core/architect.md }
+  amplihack:builder: { path: agents/core/builder.md }
+  amplihack:optimizer: { path: agents/core/optimizer.md }
+  amplihack:reviewer: { path: agents/core/reviewer.md }
+  amplihack:tester: { path: agents/core/tester.md }
+  # Note: amplihack:guide is defined inline below due to microsoft/amplifier#174
+
+  # Specialized agents (27)
+  amplihack:ambiguity: { path: agents/specialized/ambiguity.md }
+  amplihack:amplifier-cli-architect: { path: agents/specialized/amplifier-cli-architect.md }
+  amplihack:analyzer: { path: agents/specialized/analyzer.md }
+  amplihack:azure-kubernetes-expert: { path: agents/specialized/azure-kubernetes-expert.md }
+  amplihack:ci-diagnostic-workflow: { path: agents/specialized/ci-diagnostic-workflow.md }
+  amplihack:cleanup: { path: agents/specialized/cleanup.md }
+  amplihack:concept-extractor: { path: agents/specialized/concept-extractor.md }
+  amplihack:database: { path: agents/specialized/database.md }
+  amplihack:documentation-writer: { path: agents/specialized/documentation-writer.md }
+  amplihack:fallback-cascade: { path: agents/specialized/fallback-cascade.md }
+  amplihack:fix-agent: { path: agents/specialized/fix-agent.md }
+  amplihack:insight-synthesizer: { path: agents/specialized/insight-synthesizer.md }
+  amplihack:integration: { path: agents/specialized/integration.md }
+  amplihack:knowledge-archaeologist: { path: agents/specialized/knowledge-archaeologist.md }
+  amplihack:memory-manager: { path: agents/specialized/memory-manager.md }
+  amplihack:multi-agent-debate: { path: agents/specialized/multi-agent-debate.md }
+  amplihack:n-version-validator: { path: agents/specialized/n-version-validator.md }
+  amplihack:patterns: { path: agents/specialized/patterns.md }
+  amplihack:philosophy-guardian: { path: agents/specialized/philosophy-guardian.md }
+  amplihack:pre-commit-diagnostic: { path: agents/specialized/pre-commit-diagnostic.md }
+  amplihack:preference-reviewer: { path: agents/specialized/preference-reviewer.md }
+  amplihack:prompt-writer: { path: agents/specialized/prompt-writer.md }
+  amplihack:rust-programming-expert: { path: agents/specialized/rust-programming-expert.md }
+  amplihack:security: { path: agents/specialized/security.md }
+  amplihack:visualization-architect: { path: agents/specialized/visualization-architect.md }
+  amplihack:worktree-manager: { path: agents/specialized/worktree-manager.md }
+  amplihack:xpia-defense: { path: agents/specialized/xpia-defense.md }
+
+  # Workflow agents (2)
+  amplihack:amplihack-improvement-workflow: { path: agents/workflows/amplihack-improvement-workflow.md }
+  amplihack:prompt-review-workflow: { path: agents/workflows/prompt-review-workflow.md }
+
+  # Guide agent (inline due to microsoft/amplifier#174)
   amplihack:guide:
     name: guide
     description: "Interactive guide to amplihack features. Walks users through workflows, recipes, skills, agents, and hooks. Use this agent to learn what amplihack can do."
