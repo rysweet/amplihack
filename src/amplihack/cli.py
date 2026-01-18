@@ -10,6 +10,12 @@ from pathlib import Path
 from . import copytree_manifest
 from .docker import DockerManager
 from .launcher import ClaudeLauncher
+from .plugin_cli import (
+    plugin_install_command,
+    plugin_uninstall_command,
+    plugin_verify_command,
+    setup_plugin_commands,
+)
 from .plugin_manager import PluginManager
 from .proxy import ProxyConfig, ProxyManager
 from .utils import is_uvx_deployment
@@ -434,6 +440,19 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         dest="plugin_command", help="Plugin subcommands"
     )
 
+    # Install plugin command
+    install_parser = plugin_subparsers.add_parser(
+        "install", help="Install plugin from git URL or local path"
+    )
+    install_parser.add_argument("source", help="Git URL or local directory path")
+    install_parser.add_argument("--force", action="store_true", help="Overwrite existing plugin")
+
+    # Uninstall plugin command
+    uninstall_parser = plugin_subparsers.add_parser(
+        "uninstall", help="Remove plugin"
+    )
+    uninstall_parser.add_argument("plugin_name", help="Name of plugin to remove")
+
     # Link plugin command
     link_parser = plugin_subparsers.add_parser(
         "link", help="Link installed plugin to Claude Code settings"
@@ -502,6 +521,27 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         "--confirm",
         action="store_true",
         help="Skip confirmation prompt (use with --no-dry-run)",
+    )
+
+    # Mode detection commands
+    mode_parser = subparsers.add_parser("mode", help="Claude installation mode commands")
+    mode_subparsers = mode_parser.add_subparsers(
+        dest="mode_command", help="Mode subcommands"
+    )
+
+    # Detect mode command
+    detect_parser = mode_subparsers.add_parser(
+        "detect", help="Detect current Claude installation mode"
+    )
+
+    # Migrate to plugin command
+    to_plugin_parser = mode_subparsers.add_parser(
+        "to-plugin", help="Migrate from local to plugin mode"
+    )
+
+    # Migrate to local command
+    to_local_parser = mode_subparsers.add_parser(
+        "to-local", help="Create local .claude/ from plugin"
     )
 
     return parser
@@ -895,7 +935,13 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     elif args.command == "plugin":
-        if args.plugin_command == "link":
+        if args.plugin_command == "install":
+            return plugin_install_command(args)
+        elif args.plugin_command == "uninstall":
+            return plugin_uninstall_command(args)
+        elif args.plugin_command == "verify":
+            return plugin_verify_command(args)
+        elif args.plugin_command == "link":
             plugin_name = args.plugin_name
             plugin_root = Path.home() / ".amplihack" / "plugins"
             plugin_path = plugin_root / plugin_name
@@ -915,78 +961,6 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print(f"Error: Failed to link plugin: {plugin_name}")
                 return 1
-
-        elif args.plugin_command == "verify":
-            plugin_name = args.plugin_name
-            plugin_root = Path.home() / ".amplihack" / "plugins"
-            plugin_path = plugin_root / plugin_name
-            settings_path = Path.home() / ".claude" / "settings.json"
-
-            print(f"Verifying plugin: {plugin_name}\n")
-
-            # Check 1: Plugin directory exists
-            if plugin_path.exists():
-                print(f"{EMOJI['check']} Plugin directory exists: {plugin_path}")
-            else:
-                print(f"❌ Plugin directory not found: {plugin_path}")
-                print(f"   Install with: amplihack install")
-                return 1
-
-            # Check 2: Manifest exists
-            manifest_path = plugin_path / "manifest.json"
-            if manifest_path.exists():
-                print(f"{EMOJI['check']} Manifest file exists")
-                try:
-                    import json
-                    manifest = json.loads(manifest_path.read_text())
-                    print(f"   Name: {manifest.get('name', 'N/A')}")
-                    print(f"   Version: {manifest.get('version', 'N/A')}")
-                except json.JSONDecodeError:
-                    print(f"   ⚠️  Warning: Manifest is not valid JSON")
-            else:
-                print(f"❌ Manifest file not found: {manifest_path}")
-
-            # Check 3: Settings.json exists and contains plugin
-            if settings_path.exists():
-                print(f"{EMOJI['check']} Settings file exists: {settings_path}")
-                try:
-                    import json
-                    settings = json.loads(settings_path.read_text())
-
-                    if 'enabledPlugins' in settings:
-                        if plugin_name in settings['enabledPlugins']:
-                            print(f"{EMOJI['check']} Plugin is registered in enabledPlugins array")
-                        else:
-                            print(f"❌ Plugin NOT in enabledPlugins array")
-                            print(f"   Fix with: amplihack plugin link {plugin_name}")
-                            return 1
-                    else:
-                        print(f"❌ No enabledPlugins array in settings")
-                        print(f"   Fix with: amplihack plugin link {plugin_name}")
-                        return 1
-                except json.JSONDecodeError:
-                    print(f"   ⚠️  Warning: Settings file is not valid JSON")
-            else:
-                print(f"❌ Settings file not found: {settings_path}")
-                print(f"   Fix with: amplihack plugin link {plugin_name}")
-                return 1
-
-            # Check 4: CLAUDE_PLUGIN_ROOT environment variable
-            plugin_root_env = os.environ.get("CLAUDE_PLUGIN_ROOT")
-            expected_root = str(Path.home() / ".amplihack" / ".claude")
-            if plugin_root_env:
-                if plugin_root_env == expected_root:
-                    print(f"{EMOJI['check']} CLAUDE_PLUGIN_ROOT is set correctly")
-                else:
-                    print(f"⚠️  CLAUDE_PLUGIN_ROOT mismatch:")
-                    print(f"   Current: {plugin_root_env}")
-                    print(f"   Expected: {expected_root}")
-            else:
-                print(f"⚠️  CLAUDE_PLUGIN_ROOT not set (will be set on launch)")
-
-            print(f"\n{EMOJI['check']} Plugin verification complete!")
-            print(f"   Plugin should be discoverable via /plugin command in Claude Code")
-            return 0
 
         else:
             create_parser().print_help()
@@ -1074,6 +1048,84 @@ def main(argv: list[str] | None = None) -> int:
 
         create_parser().print_help()
         return 1
+
+    elif args.command == "mode":
+        from .mode_detector import ModeDetector, MigrationHelper
+
+        detector = ModeDetector()
+
+        if args.mode_command == "detect":
+            mode = detector.detect()
+            claude_dir = detector.get_claude_dir(mode)
+
+            print(f"Claude installation mode: {mode.value}")
+            if claude_dir:
+                print(f"Using .claude directory: {claude_dir}")
+            else:
+                print("No .claude installation found")
+                print("Install amplihack with: amplihack install")
+            return 0
+
+        elif args.mode_command == "to-plugin":
+            migrator = MigrationHelper()
+            project_dir = Path.cwd()
+
+            if not migrator.can_migrate_to_plugin(project_dir):
+                print("Cannot migrate to plugin mode:")
+                if not detector.has_local_installation():
+                    print("  - No local .claude/ directory found")
+                if not detector.has_plugin_installation():
+                    print("  - Plugin not installed (run: amplihack install)")
+                return 1
+
+            print(f"This will remove local .claude/ directory: {project_dir / '.claude'}")
+            print("Plugin installation will be used instead.")
+            response = input("Continue? (y/N): ")
+
+            if response.lower() != 'y':
+                print("Migration cancelled")
+                return 0
+
+            if migrator.migrate_to_plugin(project_dir):
+                print(f"{EMOJI['check']} Migrated to plugin mode successfully")
+                print("Local .claude/ removed, using plugin installation")
+                return 0
+            else:
+                print("Migration failed")
+                return 1
+
+        elif args.mode_command == "to-local":
+            migrator = MigrationHelper()
+            project_dir = Path.cwd()
+            info = migrator.get_migration_info(project_dir)
+
+            if not info["can_migrate_to_local"]:
+                print("Cannot create local .claude/ directory:")
+                if info["has_local"]:
+                    print("  - Local .claude/ already exists")
+                if not info["has_plugin"]:
+                    print("  - Plugin not installed (run: amplihack install)")
+                return 1
+
+            print(f"This will create local .claude/ directory in: {project_dir}")
+            print(f"Copying from plugin: {info['plugin_path']}")
+            response = input("Continue? (y/N): ")
+
+            if response.lower() != 'y':
+                print("Migration cancelled")
+                return 0
+
+            if migrator.migrate_to_local(project_dir):
+                print(f"{EMOJI['check']} Local .claude/ created successfully")
+                print("Now using project-local installation")
+                return 0
+            else:
+                print("Migration failed")
+                return 1
+
+        else:
+            create_parser().print_help()
+            return 1
 
     else:
         create_parser().print_help()
