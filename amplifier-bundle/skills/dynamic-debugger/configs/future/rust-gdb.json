@@ -1,0 +1,21 @@
+{
+  "debugger": "rust-gdb",
+  "default_port": null,
+  "file_extensions": [".rs"],
+  "manifest_files": ["Cargo.toml", "Cargo.lock"],
+  "description": "GDB with Rust-specific pretty-printers and debugging support",
+  "config": {
+    "name": "Rust GDB: Debug Current Binary",
+    "type": "rust-gdb",
+    "request": "launch",
+    "program": "${project_dir}/target/debug/${entry_point}",
+    "cwd": "${project_dir}",
+    "MIMode": "gdb"
+  },
+  "commands": {
+    "install": "# rust-gdb is included with Rust toolchain\nrustup component add rust-src",
+    "verify": "rust-gdb --version",
+    "build": "cargo build"
+  },
+  "notes": "Requires 'cargo build' to create debug binary. Debug symbols included by default in debug builds."
+}

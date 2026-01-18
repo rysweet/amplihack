@@ -1,0 +1,378 @@
+# Level 3: TUI Performance Monitoring Dashboard
+# This advanced test verifies real-time updates, data accuracy, and performance
+# characteristics of a TUI dashboard application.
+
+scenario:
+  name: "TUI Performance Dashboard - Real-Time Monitoring"
+  description: |
+    Verifies TUI dashboard displays real-time system metrics with accurate data,
+    proper refresh rates, and responsive interactions under load.
+  type: tui
+  level: 3
+
+  tags: [tui, performance, real-time, dashboard, advanced]
+
+  prerequisites:
+    - "./system-monitor binary exists"
+    - "System has metrics available (CPU, memory, disk)"
+    - "Load generator script available for testing"
+
+  environment:
+    terminal_size:
+      width: 120
+      height: 40
+    variables:
+      TERM: "xterm-256color"
+      REFRESH_RATE: "1000" # 1 second refresh
+
+  # Performance thresholds
+  variables:
+    max_refresh_latency_ms: 1500
+    expected_update_frequency_s: 1
+    min_cpu_history_points: 60
+    stress_duration_s: 10
+
+  steps:
+    # Launch monitoring dashboard
+    - action: launch
+      target: "./system-monitor"
+      args: ["--refresh=${REFRESH_RATE}", "--history=60"]
+      description: "Start system monitor with 1s refresh"
+      timeout: 5s
+
+    - action: wait_for_screen
+      contains: "System Performance Monitor"
+      timeout: 3s
+      description: "Wait for dashboard to render"
+
+    # Test Case 1: Verify dashboard layout and widgets
+    - action: verify_screen
+      contains: "CPU Usage"
+      description: "CPU widget should be visible"
+
+    - action: verify_screen
+      contains: "Memory"
+      description: "Memory widget should be visible"
+
+    - action: verify_screen
+      contains: "Disk I/O"
+      description: "Disk I/O widget should be visible"
+
+    - action: verify_screen
+      contains: "Network"
+      description: "Network widget should be visible"
+
+    - action: verify_screen
+      matches: "Uptime: \\d+[dhms]"
+      description: "Should display system uptime"
+
+    # Capture baseline state
+    - action: capture_screenshot
+      save_as: "dashboard-baseline.txt"
+      description: "Capture idle state metrics"
+
+    # Test Case 2: Verify initial metric values are reasonable
+    - action: verify_screen
+      matches: "CPU: \\s*\\d{1,3}%"
+      description: "CPU percentage should be displayed"
+
+    - action: verify_screen
+      matches: "Memory: \\d+(\\.\\d+)? [GMK]B / \\d+(\\.\\d+)? [GMK]B"
+      description: "Memory usage should show used/total"
+
+    # Test Case 3: Monitor real-time updates
+    # Wait and capture multiple snapshots to verify refresh
+    - action: wait_for_screen
+      timeout: 2s
+      description: "Wait 2 seconds for at least 2 refreshes"
+
+    - action: capture_screenshot
+      save_as: "dashboard-t2.txt"
+      description: "Capture state at T+2s"
+
+    - action: wait_for_screen
+      timeout: 2s
+      description: "Wait another 2 seconds"
+
+    - action: capture_screenshot
+      save_as: "dashboard-t4.txt"
+      description: "Capture state at T+4s"
+
+    # Test Case 4: Test navigation between widgets
+    - action: send_keypress
+      value: "tab"
+      description: "Tab to next widget"
+
+    - action: verify_screen
+      contains: "[CPU Usage]"
+      description: "CPU widget should be highlighted"
+
+    - action: send_keypress
+      value: "tab"
+      description: "Tab to memory widget"
+
+    - action: verify_screen
+      contains: "[Memory]"
+      description: "Memory widget should be highlighted"
+
+    # Test Case 5: Expand detailed view
+    - action: send_keypress
+      value: "enter"
+      description: "Expand memory widget details"
+
+    - action: wait_for_screen
+      contains: "Memory Details"
+      timeout: 2s
+      description: "Detailed view should appear"
+
+    - action: verify_screen
+      contains: "Used:"
+      description: "Should show used memory"
+
+    - action: verify_screen
+      contains: "Free:"
+      description: "Should show free memory"
+
+    - action: verify_screen
+      contains: "Cached:"
+      description: "Should show cached memory"
+
+    - action: capture_screenshot
+      save_as: "memory-details.txt"
+      description: "Capture expanded memory view"
+
+    # Return to main view
+    - action: send_keypress
+      value: "escape"
+      description: "Return to main dashboard"
+
+    # Test Case 6: Test under load
+    # Start background load generator
+    - action: send_keypress
+      value: "l"
+      description: "Activate load test (l key)"
+
+    - action: wait_for_screen
+      contains: "Load test active"
+      timeout: 2s
+      description: "Should confirm load test started"
+
+    # Monitor for stress duration
+    - action: wait_for_screen
+      timeout: "${stress_duration_s}s"
+      description: "Monitor during ${stress_duration_s}s load test"
+
+    # Verify metrics respond to load
+    - action: verify_screen
+      matches: "CPU: \\s*(([5-9]\\d)|100)%"
+      description: "CPU should be elevated (>50%) during load"
+
+    - action: capture_screenshot
+      save_as: "dashboard-under-load.txt"
+      description: "Capture high-load state"
+
+    # Wait for load to complete
+    - action: wait_for_screen
+      contains: "Load test complete"
+      timeout: 15s
+      description: "Wait for load test to finish"
+
+    # Test Case 7: Verify history graph
+    - action: send_keypress
+      value: "h"
+      description: "Show history view (h key)"
+
+    - action: wait_for_screen
+      contains: "Historical Data"
+      timeout: 2s
+
+    # Verify history has data points
+    - action: verify_screen
+      matches: "Data points: ([6-9]\\d|\\d{3,})"
+      description: "Should have collected many data points"
+
+    # Verify graph renders
+    - action: verify_screen
+      matches: "[│┤├─]"
+      description: "Should show ASCII graph characters"
+
+    - action: capture_screenshot
+      save_as: "history-graph.txt"
+      description: "Capture historical graph"
+
+    # Test Case 8: Test refresh rate adjustment
+    - action: send_keypress
+      value: "r"
+      description: "Open refresh rate menu"
+
+    - action: wait_for_screen
+      contains: "Refresh Rate"
+      timeout: 2s
+
+    - action: send_keypress
+      value: "500"
+      description: "Set 500ms refresh"
+
+    - action: send_keypress
+      value: "enter"
+      description: "Confirm new refresh rate"
+
+    - action: verify_screen
+      contains: "Refresh: 500ms"
+      timeout: 2s
+      description: "Should show updated refresh rate"
+
+    # Verify faster refresh (observe 2 updates in 1 second)
+    - action: capture_screenshot
+      save_as: "fast-refresh-t0.txt"
+
+    - action: wait_for_screen
+      timeout: 0.6s
+      description: "Wait ~600ms"
+
+    - action: capture_screenshot
+      save_as: "fast-refresh-t0.6.txt"
+      description: "Should see update"
+
+    # Test Case 9: Export metrics
+    - action: send_keypress
+      value: "e"
+      description: "Export metrics (e key)"
+
+    - action: wait_for_screen
+      contains: "Metrics exported to"
+      timeout: 3s
+      description: "Should confirm export"
+
+    - action: verify_screen
+      matches: "metrics-\\d{8}-\\d{6}\\.csv"
+      description: "Should show exported filename"
+
+    # Test Case 10: Verify alert thresholds (if CPU > 80%)
+    - action: send_keypress
+      value: "a"
+      description: "Open alerts view"
+
+    - action: wait_for_screen
+      contains: "Alerts & Thresholds"
+      timeout: 2s
+
+    # If high CPU was detected during load test, should show alert
+    - action: verify_screen
+      contains: "High CPU Usage"
+      continue_on_failure: true
+      description: "May show CPU alert if threshold exceeded"
+
+    # Return to main view
+    - action: send_keypress
+      value: "escape"
+      description: "Return to main dashboard"
+
+    # Test Case 11: Test help screen
+    - action: send_keypress
+      value: "?"
+      description: "Show help screen"
+
+    - action: wait_for_screen
+      contains: "Keyboard Shortcuts"
+      timeout: 2s
+
+    - action: verify_screen
+      contains: "Tab"
+      description: "Help should document Tab key"
+
+    - action: verify_screen
+      contains: "q: Quit"
+      description: "Help should document q key"
+
+    - action: capture_screenshot
+      save_as: "help-screen.txt"
+
+    - action: send_keypress
+      value: "escape"
+      description: "Close help"
+
+    # Final state capture
+    - action: capture_screenshot
+      save_as: "dashboard-final.txt"
+      description: "Capture final state"
+
+    # Exit cleanly
+    - action: send_keypress
+      value: "q"
+      description: "Quit dashboard"
+
+    - action: verify_exit_code
+      expected: 0
+
+  # Performance validation
+  cleanup:
+    - action: analyze_screenshots
+      compare:
+        - "dashboard-t2.txt"
+        - "dashboard-t4.txt"
+      verify_different: true
+      description: "Verify metrics changed between captures (real-time updates)"
+
+    - action: stop_application
+      force: false
+# Expected Dashboard Layout:
+
+# ┌──────────────────────────────────────────────────────────────────────────────┐
+# │                     System Performance Monitor                                │
+# │ Uptime: 3h 24m                                       Refresh: 1000ms          │
+# ├─────────────────────────────────┬────────────────────────────────────────────┤
+# │                                 │                                            │
+# │  [CPU Usage]              78%   │  [Memory]                  8.4GB / 16GB  │
+# │  ████████████████████░░░░░░░    │  ████████████░░░░░░░░░░░░                │
+# │                                 │                                            │
+# │  Core 0: 82% ████████████████   │  Used:    8.4 GB                          │
+# │  Core 1: 75% ███████████████░   │  Free:    7.6 GB                          │
+# │  Core 2: 80% ████████████████   │  Cached:  2.1 GB                          │
+# │  Core 3: 74% ███████████████░   │  Buffers: 0.3 GB                          │
+# │                                 │                                            │
+# ├─────────────────────────────────┼────────────────────────────────────────────┤
+# │  [Disk I/O]                     │  [Network]                                 │
+# │  Read:   45.2 MB/s              │  ↓ 12.4 MB/s                              │
+# │  Write:  23.1 MB/s              │  ↑  3.2 MB/s                              │
+# │                                 │                                            │
+# └─────────────────────────────────┴────────────────────────────────────────────┘
+# Tab: Switch Widget | Enter: Expand | h: History | e: Export | ?: Help | q: Quit
+
+# Run Command:
+# gadugi-agentic-test run examples/tui/tui-performance-monitoring.yaml --verbose
+
+# Key Learning Points (Level 3):
+# 1. Test real-time updates by comparing snapshots over time
+# 2. Simulate load to verify metrics respond correctly
+# 3. Test all interactive features (navigation, expansion, export)
+# 4. Verify performance characteristics (refresh rate, responsiveness)
+# 5. Use pattern matching for dynamic content (numbers that change)
+# 6. Test keyboard shortcuts comprehensively
+# 7. Analyze captured screenshots programmatically
+
+# Advanced Techniques:
+# - Time-based verification (wait + capture + compare)
+# - Load injection to test metric accuracy
+# - Multi-state capture for historical analysis
+# - Conditional verification (continue_on_failure)
+# - Screenshot analysis in cleanup phase
+
+# What This Test Validates:
+# 1. Dashboard renders correctly
+# 2. Metrics update in real-time
+# 3. Navigation between widgets works
+# 4. Expanded views show details
+# 5. Metrics respond to actual load
+# 6. Historical data is collected
+# 7. Refresh rate can be adjusted
+# 8. Export functionality works
+# 9. Alerts detect threshold violations
+# 10. Help documentation is accessible
+# 11. Application exits cleanly
+
+# Performance Assertions:
+# - Refresh rate should match configured value (±10%)
+# - CPU metrics should increase during load test
+# - History should accumulate data points
+# - UI should remain responsive during high load

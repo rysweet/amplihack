@@ -1,0 +1,1256 @@
+name: "cascade-workflow"
+description: "Graceful degradation workflow with 3-level fallback cascade (PRIMARY → SECONDARY → TERTIARY)"
+version: "2.0.0"
+author: "Amplihack Team"
+tags: ["resilience", "fallback", "degradation", "reliability", "cascade"]
+
+# ════════════════════════════════════════════════════════════════════════════════
+# CASCADE_WORKFLOW: Graceful Degradation with 3-Level Fallback
+# ════════════════════════════════════════════════════════════════════════════════
+#
+# This recipe implements a robust cascade pattern ensuring task completion
+# through progressive degradation. Mirrors the original 7-step workflow:
+#
+#   Step 1: Define Cascade Levels (amplihack:architect)
+#   Step 2: Attempt Primary Approach (amplihack:fallback-cascade)
+#   Step 3: Attempt Secondary Approach (amplihack:fallback-cascade)
+#   Step 4: Attempt Tertiary Approach (amplihack:fallback-cascade)
+#   Step 5: Report Degradation (amplihack:fallback-cascade)
+#   Step 6: Log Cascade Metrics (amplihack:analyzer)
+#   Step 7: Continuous Optimization (amplihack:analyzer)
+#
+# Plus supporting steps:
+#   - Tertiary Verification Gate (CRITICAL: Ensure tertiary ALWAYS succeeds)
+#   - Integration Testing Verification (amplihack:tester)
+#   - Final Output Assembly (amplihack:fallback-cascade)
+#
+# Cascade Levels:
+#   PRIMARY   → Best outcome, may depend on external services, can fail/timeout
+#   SECONDARY → Reduced quality but functional, more reliable, faster
+#   TERTIARY  → Always succeeds, never fails, no external deps, minimal but works
+#
+# The TERTIARY level is GUARANTEED to complete - it has no external dependencies
+# and uses only local, deterministic operations.
+#
+# ════════════════════════════════════════════════════════════════════════════════
+# AGENTS USED (all from amplihack bundle)
+# ════════════════════════════════════════════════════════════════════════════════
+#
+#   amplihack:architect       - Cascade architecture design (Step 1)
+#   amplihack:fallback-cascade - Primary orchestrator for cascade execution
+#   amplihack:analyzer        - Metrics evaluation and intelligent optimization
+#   amplihack:tester          - Integration testing verification
+#
+# ════════════════════════════════════════════════════════════════════════════════
+# COST-BENEFIT ANALYSIS
+# ════════════════════════════════════════════════════════════════════════════════
+#
+# WHEN TO USE:
+#   - External service dependencies (APIs, databases)
+#   - Time-sensitive operations with acceptable degraded modes
+#   - Operations where partial results are better than no results
+#   - High-availability requirements (system must always respond)
+#   - Scenarios where waiting for perfect solution is worse than good-enough
+#
+# WHEN NOT TO USE:
+#   - Operations requiring exact correctness (no acceptable degradation)
+#   - Security-critical operations (authentication, authorization)
+#   - Financial transactions (no room for "approximate")
+#   - When failures must surface to user (diagnostic operations)
+#   - Simple operations with no meaningful fallback
+#
+# TRADE-OFFS:
+#   - Benefit: System always completes, never fully fails
+#   - Cost: Users may receive degraded responses
+#   - Best for: User-facing features where responsiveness matters
+#
+# Cost per Level:
+#   PRIMARY:   Highest cost (external APIs, complex processing, more tokens)
+#   SECONDARY: Medium cost (simpler models, cached data, reduced scope)
+#   TERTIARY:  Minimal cost (local only, no external deps, deterministic)
+#
+# Quality Tradeoffs:
+#   PRIMARY:   Full quality, complete results, real-time data
+#   SECONDARY: Acceptable quality, partial results, may be stale
+#   TERTIARY:  Minimal quality, basic functionality, guaranteed available
+#
+# Latency Expectations:
+#   aggressive: 5s / 2s / 1s   (fast fail, quick degradation)
+#   balanced:   30s / 10s / 5s (default - reasonable for most tasks)
+#   patient:    120s / 30s / 10s (wait longer before degrading)
+#
+# ════════════════════════════════════════════════════════════════════════════════
+# 5 CASCADE PATTERN TEMPLATES
+# ════════════════════════════════════════════════════════════════════════════════
+#
+# PATTERN 1: External API Cascade
+# ─────────────────────────────────
+#   Use Case: Fetching data from external API that may be slow or unavailable
+#
+#   PRIMARY:   Live API call (timeout: 10s)
+#              - Fresh data from API
+#              - Complete and current
+#   SECONDARY: Cached data (timeout: 2s)
+#              - Data from cache (< 1 hour old)
+#              - May be stale but recent
+#   TERTIARY:  Default/Historical data (timeout: 0s)
+#              - Safe default values or old historical data
+#              - Always available
+#   Notification: warning ("Using cached data from 30 minutes ago")
+#
+# PATTERN 2: AI Analysis Cascade
+# ─────────────────────────────────
+#   Use Case: Code analysis with AI models of varying capability
+#
+#   PRIMARY:   Powerful model comprehensive analysis (timeout: 30s)
+#              - Deep semantic analysis
+#              - Complex insights
+#   SECONDARY: Lighter model standard analysis (timeout: 10s)
+#              - Basic analysis
+#              - Standard patterns
+#   TERTIARY:  Static heuristic analysis (timeout: 5s)
+#              - Pattern matching only
+#              - No AI, guaranteed fast
+#   Notification: explicit (explain quality degradation)
+#
+# PATTERN 3: Database Query Cascade
+# ─────────────────────────────────
+#   Use Case: Complex database queries that may be slow
+#
+#   PRIMARY:   Exact query with full JOINs (timeout: 5s)
+#              - Precise results
+#              - All relationships included
+#   SECONDARY: Simplified query (timeout: 2s)
+#              - Approximate results
+#              - Fewer JOINs, main data only
+#   TERTIARY:  Cached summary (timeout: 0s)
+#              - Precomputed aggregates
+#              - May be stale but instant
+#   Notification: silent (log only)
+#
+# PATTERN 4: Test Execution Cascade
+# ─────────────────────────────────
+#   Use Case: Running tests with time constraints
+#
+#   PRIMARY:   Full test suite (timeout: 120s)
+#              - All tests run
+#              - Complete coverage
+#   SECONDARY: Smoke tests (timeout: 30s)
+#              - Core functionality only
+#              - Reduced coverage
+#   TERTIARY:  Critical only (timeout: 10s)
+#              - Basic sanity only
+#              - Minimal validation
+#   Notification: warning ("Ran critical tests only, skipped full suite")
+#
+# PATTERN 5: Data Processing Cascade
+# ─────────────────────────────────
+#   Use Case: Processing large datasets
+#
+#   PRIMARY:   Parallel full dataset (timeout: 60s)
+#              - Process all records
+#              - Complete accuracy
+#   SECONDARY: Sequential 10% sample (timeout: 10s)
+#              - Statistical sample
+#              - Approximate results
+#   TERTIARY:  Sampled summary statistics (timeout: 1s)
+#              - Precomputed aggregates
+#              - High-level overview only
+#   Notification: explicit (explain sampling used)
+#
+# ════════════════════════════════════════════════════════════════════════════════
+#
+# Usage:
+#   amplifier recipes execute cascade-workflow.yaml --context '{
+#     "task_description": "Fetch user data from API",
+#     "cascade_pattern": "external_api",
+#     "timeout_strategy": "balanced",
+#     "notification_mode": "warning"
+#   }'
+#
+#   # Or with custom approaches:
+#   amplifier recipes execute cascade-workflow.yaml --context '{
+#     "task_description": "Analyze code quality",
+#     "primary_approach": "Use GPT-4 for comprehensive analysis",
+#     "secondary_approach": "Use GPT-3.5 for standard analysis",
+#     "tertiary_approach": "Use regex pattern matching",
+#     "timeout_strategy": "patient",
+#     "notification_mode": "explicit"
+#   }'
+
+recursion:
+  max_depth: 3
+  max_total_steps: 30
+
+context:
+  # Task configuration (required)
+  task_description: ""
+
+  # Cascade pattern template (optional - use instead of manual approaches)
+  # Options: external_api, ai_analysis, database_query, test_execution, data_processing
+  cascade_pattern: ""
+
+  # Manual cascade approaches (optional - override pattern template)
+  primary_approach: ""
+  secondary_approach: ""
+  tertiary_approach: ""
+
+  # Timeout strategy: aggressive, balanced, patient, custom
+  timeout_strategy: "balanced"
+
+  # Custom timeouts (only used when timeout_strategy is "custom")
+  primary_timeout: 30
+  secondary_timeout: 10
+  tertiary_timeout: 5
+
+  # Notification mode: silent, warning, explicit
+  notification_mode: "warning"
+
+  # Working directory for metrics and state
+  working_dir: "./ai_working/cascade"
+
+  # Session identifier for metrics correlation
+  session_id: ""
+
+steps:
+  # ════════════════════════════════════════════════════════════════════════════
+  # STEP 1: DEFINE CASCADE LEVELS (Original Step 1)
+  # Use architect agent to identify and design cascade levels
+  # ════════════════════════════════════════════════════════════════════════════
+  - id: "define-cascade-levels"
+    agent: "amplihack:architect"
+    mode: "DESIGN"
+    prompt: |
+      **STEP 1: Define Cascade Levels**
+
+      You are the cascade architect. Design the complete cascade architecture
+      for graceful degradation following the CASCADE_WORKFLOW methodology.
+
+      **Task**: {{task_description}}
+      **Timeout Strategy**: {{timeout_strategy}}
+      **Notification Mode**: {{notification_mode}}
+
+      {% if cascade_pattern %}
+      **Cascade Pattern Template**: {{cascade_pattern}}
+
+      Apply the appropriate pattern template:
+
+      **external_api**:
+        PRIMARY: Live API call (timeout: 10s) - Fresh data, complete, current
+        SECONDARY: Cached data (timeout: 2s) - Data < 1 hour old, may be stale
+        TERTIARY: Default/Historical data (timeout: 0s) - Safe defaults, always available
+
+      **ai_analysis**:
+        PRIMARY: Powerful model comprehensive (timeout: 30s) - Deep semantic, complex insights
+        SECONDARY: Lighter model standard (timeout: 10s) - Basic analysis, standard patterns
+        TERTIARY: Static heuristic (timeout: 5s) - Pattern matching, no AI, guaranteed fast
+
+      **database_query**:
+        PRIMARY: Exact query with full JOINs (timeout: 5s) - Precise, all relationships
+        SECONDARY: Simplified query (timeout: 2s) - Approximate, fewer JOINs
+        TERTIARY: Cached summary (timeout: 0s) - Precomputed aggregates, instant
+
+      **test_execution**:
+        PRIMARY: Full test suite (timeout: 120s) - All tests, complete coverage
+        SECONDARY: Smoke tests (timeout: 30s) - Core functionality, reduced coverage
+        TERTIARY: Critical only (timeout: 10s) - Basic sanity, minimal validation
+
+      **data_processing**:
+        PRIMARY: Parallel full dataset (timeout: 60s) - All records, complete accuracy
+        SECONDARY: Sequential 10% sample (timeout: 10s) - Statistical sample, approximate
+        TERTIARY: Sampled summary (timeout: 1s) - Precomputed aggregates, high-level
+      {% endif %}
+
+      {% if primary_approach %}
+      **Custom Approaches Provided**:
+        - PRIMARY: {{primary_approach}}
+        - SECONDARY: {{secondary_approach}}
+        - TERTIARY: {{tertiary_approach}}
+      {% endif %}
+
+      **Timeout Values by Strategy**:
+        - aggressive: PRIMARY=5s, SECONDARY=2s, TERTIARY=1s
+        - balanced: PRIMARY=30s, SECONDARY=10s, TERTIARY=5s
+        - patient: PRIMARY=120s, SECONDARY=30s, TERTIARY=10s
+        {% if timeout_strategy == "custom" %}- custom: PRIMARY={{primary_timeout}}s, SECONDARY={{secondary_timeout}}s, TERTIARY={{tertiary_timeout}}s{% endif %}
+
+      **DESIGN REQUIREMENTS**:
+
+      1. **Define PRIMARY Level** (Optimal):
+         - Best possible outcome
+         - May depend on external services
+         - May be slow or resource-intensive
+         - Can fail or timeout
+         - Document: approach, timeout, dependencies, cost
+
+      2. **Define SECONDARY Level** (Acceptable):
+         - Reduced quality but functional
+         - More reliable than primary
+         - Faster or fewer dependencies
+         - Acceptable for users
+         - Document: approach, timeout, what degrades, cost
+
+      3. **Define TERTIARY Level** (Guaranteed):
+         - **CRITICAL: MUST ALWAYS SUCCEED - Design for zero failure**
+         - NO external dependencies allowed
+         - NO network calls
+         - NO operations that can fail due to external factors
+         - Fast and reliable
+         - Minimal but functional
+         - Document: approach, timeout, guarantees, verification method
+
+      4. **Cost-Benefit Analysis**:
+         For each level document:
+         - Resource cost (compute, API calls, tokens)
+         - Expected quality of output
+         - Expected latency
+         - Failure probability
+
+      5. **Integration Testing Plan**:
+         - How to test each level independently
+         - How to test fallback transitions (PRIMARY→SECONDARY, SECONDARY→TERTIARY)
+         - How to verify tertiary always-succeeds guarantee
+
+      **OUTPUT FORMAT** (structured):
+      ```yaml
+      cascade_design:
+        session_id: cascade_YYYYMMDD_HHMMSS_xxx
+        task: "{{task_description}}"
+        strategy: "{{timeout_strategy}}"
+        pattern: "{{cascade_pattern}}"
+
+        levels:
+          primary:
+            approach: "..."
+            timeout_seconds: N
+            dependencies: [...]
+            cost: "high/medium/low"
+            quality: "optimal"
+            failure_modes: [...]
+
+          secondary:
+            approach: "..."
+            timeout_seconds: N
+            dependencies: [...]
+            cost: "medium"
+            quality: "acceptable"
+            degradation: "what is lost from primary"
+
+          tertiary:
+            approach: "..."
+            timeout_seconds: N
+            dependencies: []  # MUST BE EMPTY
+            cost: "minimal"
+            quality: "minimal but functional"
+            guarantees:
+              - "No external dependencies"
+              - "Deterministic output"
+              - "Always succeeds"
+            verification_method: "how to prove it never fails"
+
+        cost_benefit_analysis:
+          primary_cost: "..."
+          secondary_cost: "..."
+          tertiary_cost: "..."
+          quality_tradeoffs: "..."
+          latency_expectations: "..."
+
+        testing_plan:
+          test_primary_independently: "..."
+          test_secondary_independently: "..."
+          test_tertiary_independently: "..."
+          test_fallback_transitions: "..."
+          verify_tertiary_guarantee: "..."
+      ```
+    output: "cascade_design"
+    timeout: 120
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # TERTIARY VERIFICATION GATE (Mandatory)
+  # CRITICAL: Ensure tertiary ALWAYS succeeds with agent-driven verification
+  # ════════════════════════════════════════════════════════════════════════════
+  - id: "tertiary-verification-gate"
+    agent: "amplihack:fallback-cascade"
+    mode: "VERIFY"
+    prompt: |
+      **MANDATORY VERIFICATION GATE: Tertiary Level Must ALWAYS Succeed**
+
+      This is a CRITICAL verification step. The entire cascade workflow depends
+      on the guarantee that TERTIARY level NEVER fails.
+
+      **Cascade Design to Verify**:
+      {{cascade_design}}
+
+      **VERIFICATION CHECKLIST**:
+
+      1. **No External Dependencies**:
+         - [ ] No API calls (REST, GraphQL, gRPC, etc.)
+         - [ ] No network requests (HTTP, WebSocket, etc.)
+         - [ ] No database queries that could fail
+         - [ ] No file system operations on remote mounts
+         - [ ] No message queue operations
+         - [ ] No external service health checks
+
+      2. **No Runtime Failures Possible**:
+         - [ ] No operations that throw unhandled exceptions
+         - [ ] No timeouts that could expire without result
+         - [ ] No resource exhaustion scenarios (memory, disk, etc.)
+         - [ ] No race conditions or deadlocks
+         - [ ] No operations dependent on system state
+
+      3. **Deterministic Output**:
+         - [ ] Same input ALWAYS produces same output
+         - [ ] No random elements that could fail
+         - [ ] Default values are ALWAYS valid
+         - [ ] No dependency on external clock/time for correctness
+
+      4. **Functional Minimum**:
+         - [ ] Output is usable by downstream consumers
+         - [ ] Degradation is documented and acceptable
+         - [ ] User can still accomplish their goal (even if minimally)
+         - [ ] Output format matches expected schema
+
+      **VERIFICATION ACTIONS**:
+
+      If tertiary design has ANY risk of failure:
+      - REJECT the design
+      - Identify specific failure risks
+      - Recommend changes to eliminate failure modes
+      - Suggest alternative tertiary approach
+      - Identify what must be hardcoded/cached/pre-computed
+
+      If tertiary design is solid:
+      - APPROVE the design
+      - Confirm each checklist item passed
+      - Document the guarantees
+
+      **OUTPUT**:
+      ```yaml
+      tertiary_verification:
+        status: APPROVED | NEEDS_REVISION
+        checklist_results:
+          no_external_dependencies: true/false
+          no_runtime_failures: true/false
+          deterministic_output: true/false
+          functional_minimum: true/false
+        failure_risks: [...]  # Empty if APPROVED
+        recommendations: [...]  # Changes needed if NEEDS_REVISION
+        tertiary_guarantees:
+          - "Guarantee 1"
+          - "Guarantee 2"
+        approved_tertiary_approach: "Final verified approach description"
+        verification_proof: "How we know this will never fail"
+      ```
+    output: "tertiary_verification"
+    timeout: 90
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STEP 2: ATTEMPT PRIMARY APPROACH (Original Step 2)
+  # Execute the optimal solution with timeout protection
+  # ════════════════════════════════════════════════════════════════════════════
+  - id: "attempt-primary"
+    agent: "amplihack:fallback-cascade"
+    mode: "EXECUTE"
+    prompt: |
+      **STEP 2: Attempt Primary Approach**
+
+      Execute the PRIMARY level approach - the optimal solution path.
+
+      **Task**: {{task_description}}
+      **Cascade Design**: {{cascade_design}}
+      **Tertiary Verified**: {{tertiary_verification}}
+
+      **PRIMARY Level Characteristics**:
+      - This is the OPTIMAL solution path
+      - External dependencies ARE allowed at this level
+      - Best quality, complete results expected
+      - May be slow - that's acceptable
+      - CAN fail or timeout - that's expected sometimes
+
+      **EXECUTION INSTRUCTIONS**:
+
+      1. Extract PRIMARY approach from cascade design
+      2. Set timeout based on strategy configuration
+      3. Execute the PRIMARY approach as specified
+      4. Monitor for timeouts and failures
+      5. Log attempt details regardless of outcome
+
+      **If SUCCESS**:
+      - Report status: SUCCESS
+      - Include full results
+      - Log: "PRIMARY succeeded - optimal outcome achieved"
+      - Cascade complete at best quality level
+
+      **If FAILURE or TIMEOUT**:
+      - Report status: FAILURE
+      - Include error details
+      - Log: "PRIMARY failed - initiating SECONDARY fallback"
+      - Continue to Step 3
+
+      **OUTPUT**:
+      ```yaml
+      primary_attempt:
+        status: SUCCESS | FAILURE | TIMEOUT
+        started_at: "ISO timestamp"
+        completed_at: "ISO timestamp"
+        execution_time_ms: N
+        timeout_used_ms: N
+
+        # If SUCCESS:
+        result: "Full results from primary approach"
+        quality_level: "optimal"
+
+        # If FAILURE/TIMEOUT:
+        error_type: "timeout | service_error | validation_error | ..."
+        error_message: "Detailed error description"
+        error_details: {...}
+        fallback_reason: "Why we need to fall back to SECONDARY"
+      ```
+    output: "primary_result"
+    timeout: 180
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STEP 3: ATTEMPT SECONDARY APPROACH (Original Step 3)
+  # Execute if primary failed - reduced quality but more reliable
+  # ════════════════════════════════════════════════════════════════════════════
+  - id: "attempt-secondary"
+    agent: "amplihack:fallback-cascade"
+    mode: "EXECUTE"
+    prompt: |
+      **STEP 3: Attempt Secondary Approach**
+
+      Execute the SECONDARY level fallback - acceptable degradation.
+
+      **Task**: {{task_description}}
+      **Reason for Fallback**: Primary attempt failed or timed out
+
+      **Primary Attempt Result**:
+      {{primary_result}}
+
+      **Cascade Design**: {{cascade_design}}
+
+      **SECONDARY Level Characteristics**:
+      - Reduced quality but FUNCTIONAL
+      - More reliable than PRIMARY
+      - Faster execution expected
+      - Fewer/simpler dependencies
+      - Acceptable for users
+
+      **EXECUTION INSTRUCTIONS**:
+
+      1. Log degradation: "Degrading from PRIMARY to SECONDARY"
+      2. Extract SECONDARY approach from cascade design
+      3. Set shorter timeout (typically 1/3 of primary)
+      4. Execute the SECONDARY approach
+      5. Prioritize reliability over quality
+
+      **If SUCCESS**:
+      - Report status: SUCCESS
+      - Include results with degradation notes
+      - Log: "SECONDARY succeeded - acceptable outcome achieved"
+      - Document what quality was lost from PRIMARY
+
+      **If FAILURE or TIMEOUT**:
+      - Report status: FAILURE
+      - Include error details
+      - Log: "SECONDARY failed - initiating TERTIARY guarantee"
+      - Continue to Step 4
+
+      **OUTPUT**:
+      ```yaml
+      secondary_attempt:
+        status: SUCCESS | FAILURE | TIMEOUT
+        degradation_from: "PRIMARY"
+        started_at: "ISO timestamp"
+        completed_at: "ISO timestamp"
+        execution_time_ms: N
+        timeout_used_ms: N
+
+        # If SUCCESS:
+        result: "Results (may be reduced quality)"
+        quality_level: "acceptable"
+        degradation_notes: "What quality was lost from PRIMARY"
+        what_user_gets: "Description of delivered functionality"
+        what_user_misses: "Description of missing functionality"
+
+        # If FAILURE/TIMEOUT:
+        error_type: "timeout | service_error | ..."
+        error_message: "Detailed error description"
+        fallback_reason: "Why we need TERTIARY"
+      ```
+    output: "secondary_result"
+    timeout: 90
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STEP 4: ATTEMPT TERTIARY APPROACH (Original Step 4)
+  # Execute if secondary failed - GUARANTEED completion, MUST ALWAYS SUCCEED
+  # ════════════════════════════════════════════════════════════════════════════
+  - id: "attempt-tertiary"
+    agent: "amplihack:fallback-cascade"
+    mode: "EXECUTE"
+    prompt: |
+      **STEP 4: Attempt Tertiary Approach - GUARANTEED COMPLETION**
+
+      **CRITICAL**: This level MUST SUCCEED. Failure is NOT an option.
+      **CRITICAL**: This approach was VERIFIED in the tertiary verification gate.
+      **CRITICAL**: Follow the APPROVED tertiary approach EXACTLY.
+
+      **Task**: {{task_description}}
+      **Reason**: Both PRIMARY and SECONDARY approaches failed
+
+      **Previous Attempts**:
+      - PRIMARY: {{primary_result}}
+      - SECONDARY: {{secondary_result}}
+
+      **VERIFIED Tertiary Approach**:
+      {{tertiary_verification}}
+
+      **Cascade Design**: {{cascade_design}}
+
+      **TERTIARY LEVEL RULES** (Non-negotiable):
+      1. NO external dependencies - local operations ONLY
+      2. NO network calls - must work completely offline
+      3. NO operations that can fail due to external factors
+      4. Use ONLY deterministic, always-available operations
+      5. Return minimal but FUNCTIONAL output
+      6. This is a GUARANTEE - produce usable output NO MATTER WHAT
+
+      **EXECUTION INSTRUCTIONS**:
+
+      1. Log degradation: "Degrading from SECONDARY to TERTIARY (guaranteed)"
+      2. Use the APPROVED tertiary approach from verification
+      3. Execute using ONLY local, deterministic operations
+      4. If somehow the approach cannot complete, create a minimal stub
+      5. Output MUST be usable by downstream consumers
+      6. Document ALL degradations/omissions
+
+      **OUTPUT REQUIREMENTS**:
+      - status: MUST be SUCCESS (tertiary cannot fail by design)
+      - result: Minimal but functional results
+      - guarantees_met: Confirm no external deps used
+
+      **OUTPUT**:
+      ```yaml
+      tertiary_attempt:
+        status: SUCCESS  # THIS MUST ALWAYS BE SUCCESS
+        degradation_from: "SECONDARY"
+        started_at: "ISO timestamp"
+        completed_at: "ISO timestamp"
+        execution_time_ms: N
+
+        result: "Minimal but functional results"
+        quality_level: "minimal"
+        degradation_notes: "What functionality was lost"
+        what_user_gets: "Minimal functionality delivered"
+        what_user_misses: "Full list of omitted features"
+
+        guarantees_met:
+          no_external_dependencies: true
+          deterministic_output: true
+          always_succeeds: true
+
+        verification_notes: "Confirmation that tertiary rules followed"
+      ```
+
+      **Execute the TERTIARY guaranteed completion now. YOU MUST SUCCEED.**
+    output: "tertiary_result"
+    timeout: 60
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STEP 5: REPORT DEGRADATION (Original Step 5)
+  # Inform user of achieved cascade level based on notification mode
+  # ════════════════════════════════════════════════════════════════════════════
+  - id: "report-degradation"
+    agent: "amplihack:fallback-cascade"
+    mode: "REPORT"
+    prompt: |
+      **STEP 5: Report Degradation**
+
+      Generate the degradation report based on notification mode configuration.
+
+      **Task**: {{task_description}}
+      **Notification Mode**: {{notification_mode}}
+      **Cascade Design**: {{cascade_design}}
+
+      **Attempt Results**:
+      - PRIMARY: {{primary_result}}
+      {% if secondary_result %}- SECONDARY: {{secondary_result}}{% endif %}
+      {% if tertiary_result %}- TERTIARY: {{tertiary_result}}{% endif %}
+
+      **DETERMINE FINAL LEVEL**:
+      - If primary_result shows SUCCESS: Final level is PRIMARY (optimal)
+      - Else if secondary_result shows SUCCESS: Final level is SECONDARY (acceptable)
+      - Else: Final level is TERTIARY (minimal but guaranteed)
+
+      **GENERATE REPORT BY NOTIFICATION MODE**:
+
+      **silent** (log only, no user notification):
+      ```
+      [CASCADE] Task: {{task_description}}
+      [CASCADE] Completed at {LEVEL} level
+      [CASCADE] Degradation: {none|moderate|maximum}
+      [CASCADE] Path: PRIMARY({status}) → SECONDARY({status}) → TERTIARY({status})
+      ```
+
+      **warning** (brief notification to user):
+      - PRIMARY: "✓ Task completed successfully at optimal quality"
+      - SECONDARY: "⚠ Task completed with reduced quality (SECONDARY fallback used)"
+      - TERTIARY: "⚠ Task completed with minimal functionality (TERTIARY fallback used)"
+
+      **explicit** (detailed explanation for user):
+      Include:
+      - What was attempted at each level
+      - Why fallbacks were needed (specific errors/timeouts)
+      - What the user is getting vs optimal
+      - What functionality was degraded/omitted
+      - Clear explanation of the delivered quality
+      - Actionable information for user
+
+      **CASCADE PATH DOCUMENTATION**:
+      Document the full cascade execution path:
+      ```
+      CASCADE EXECUTION TRACE
+      ═══════════════════════════════════════
+      Task: {task_description}
+      Timestamp: {ISO timestamp}
+      Strategy: {timeout_strategy}
+
+      1. PRIMARY: {approach}
+         - Timeout: {N}s
+         - Result: {SUCCESS|FAILURE|TIMEOUT}
+         - Duration: {N}s
+         - Reason: {why it succeeded or failed}
+
+      2. SECONDARY: {approach} (if attempted)
+         - Timeout: {N}s
+         - Result: {SUCCESS|FAILURE|TIMEOUT}
+         - Duration: {N}s
+         - Degradation: {what was lost}
+
+      3. TERTIARY: {approach} (if attempted)
+         - Timeout: {N}s
+         - Result: SUCCESS (guaranteed)
+         - Duration: {N}s
+         - Degradation: {what was lost}
+
+      FINAL OUTCOME
+      ─────────────────────────────────────────
+      Level: {PRIMARY|SECONDARY|TERTIARY}
+      Quality: {optimal|acceptable|minimal}
+      Total Time: {N}s
+      ═══════════════════════════════════════
+      ```
+
+      **OUTPUT**:
+      ```yaml
+      degradation_report:
+        final_level: PRIMARY | SECONDARY | TERTIARY
+        degradation: none | moderate | maximum
+        quality_delivered: optimal | acceptable | minimal
+
+        user_notification:
+          mode: "{{notification_mode}}"
+          message: "Formatted message per notification_mode"
+          details: "Additional details if explicit mode"
+
+        cascade_path:
+          - level: PRIMARY
+            status: SUCCESS | FAILURE | TIMEOUT
+            duration_ms: N
+            reason: "..."
+          - level: SECONDARY
+            status: SUCCESS | FAILURE | TIMEOUT | SKIPPED
+            duration_ms: N
+            reason: "..."
+          - level: TERTIARY
+            status: SUCCESS | SKIPPED
+            duration_ms: N
+            reason: "..."
+
+        final_result: "The actual result to deliver to user"
+        total_execution_time_ms: N
+      ```
+    output: "degradation_report"
+    timeout: 60
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STEP 6: LOG CASCADE METRICS (Original Step 6)
+  # Use analyzer agent for intelligent metrics capture and pattern detection
+  # ════════════════════════════════════════════════════════════════════════════
+  - id: "log-cascade-metrics"
+    agent: "amplihack:analyzer"
+    mode: "LOG"
+    prompt: |
+      **STEP 6: Log Cascade Metrics**
+
+      Record cascade execution metrics for optimization analysis.
+      Perform intelligent pattern detection on the execution data.
+
+      **Execution Data**:
+      - Task: {{task_description}}
+      - Strategy: {{timeout_strategy}}
+      - Pattern: {{cascade_pattern}}
+      - Cascade Design: {{cascade_design}}
+      - Degradation Report: {{degradation_report}}
+      - Working Directory: {{working_dir}}
+
+      **METRICS TO CAPTURE**:
+
+      1. **Session Metadata**:
+         - session_id: Generate unique ID (cascade_YYYYMMDD_HHMMSS_xxxx)
+         - timestamp: ISO 8601 format
+         - task_description: What was attempted
+         - cascade_pattern: Which pattern was used
+         - timeout_strategy: Which strategy was used
+
+      2. **Execution Metrics**:
+         - final_level: PRIMARY | SECONDARY | TERTIARY
+         - degradation: none | moderate | maximum
+         - total_duration_ms: End-to-end time
+         - primary_duration_ms: Time spent on primary
+         - secondary_duration_ms: Time spent on secondary (if attempted)
+         - tertiary_duration_ms: Time spent on tertiary (if attempted)
+
+      3. **Failure Analysis**:
+         - primary_result: SUCCESS | FAILURE | TIMEOUT
+         - secondary_result: SUCCESS | FAILURE | TIMEOUT | SKIPPED
+         - tertiary_result: SUCCESS | SKIPPED
+         - failure_reasons: Array of error types encountered
+
+      4. **Pattern Detection** (analyze for trends):
+         - Is this task type frequently degrading?
+         - Is the timeout strategy appropriate?
+         - Are there time-of-day patterns?
+         - Are specific error types recurring?
+
+      **METRICS FILE FORMAT**:
+      Append to {{working_dir}}/cascade_metrics.jsonl:
+      ```json
+      {"session_id": "...", "timestamp": "...", "task": "...", "pattern": "...",
+       "strategy": "...", "final_level": "...", "degradation": "...",
+       "total_duration_ms": N, "primary_result": "...", "secondary_result": "...",
+       "tertiary_result": "...", "failure_reasons": [...]}
+      ```
+
+      **OUTPUT**:
+      ```yaml
+      metrics_logged:
+        session_id: "cascade_YYYYMMDD_HHMMSS_xxxx"
+        metrics_file: "{{working_dir}}/cascade_metrics.jsonl"
+        timestamp: "ISO timestamp"
+
+        execution_summary:
+          final_level: PRIMARY | SECONDARY | TERTIARY
+          degradation: none | moderate | maximum
+          total_duration_ms: N
+          levels_attempted: [PRIMARY, SECONDARY?, TERTIARY?]
+
+        pattern_observations:
+          - "Observation about this execution"
+          - "Initial pattern detection notes"
+
+        metrics_entry: {full JSON entry that was logged}
+      ```
+    output: "metrics_result"
+    timeout: 60
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # STEP 7: CONTINUOUS OPTIMIZATION (Original Step 7)
+  # Use analyzer agent for intelligent pattern recognition and recommendations
+  # ════════════════════════════════════════════════════════════════════════════
+  - id: "continuous-optimization"
+    agent: "amplihack:analyzer"
+    mode: "OPTIMIZE"
+    prompt: |
+      **STEP 7: Continuous Optimization**
+
+      Analyze cascade metrics and provide intelligent optimization recommendations.
+      This is the key intelligence step - identify patterns and suggest improvements.
+
+      **Current Execution**:
+      - Task: {{task_description}}
+      - Strategy: {{timeout_strategy}}
+      - Metrics: {{metrics_result}}
+      - Degradation Report: {{degradation_report}}
+      - Cascade Design: {{cascade_design}}
+
+      **Metrics File**: {{working_dir}}/cascade_metrics.jsonl
+
+      **ANALYSIS TASKS**:
+
+      1. **Pattern Recognition**:
+         - Identify recurring failure patterns
+         - Detect time-of-day or load-based patterns
+         - Find correlations between task types and cascade levels
+         - Identify specific error types that recur
+         - Detect if certain patterns consistently degrade
+
+      2. **Timeout Adjustment Recommendations**:
+
+         | Condition | Recommendation |
+         |-----------|----------------|
+         | PRIMARY succeeds < 50% | Increase PRIMARY timeout |
+         | PRIMARY succeeds > 90% | Consider aggressive strategy |
+         | SECONDARY used > 40% | Evaluate if secondary should be primary |
+         | TERTIARY used > 10% | Secondary not reliable - investigate |
+         | Frequent timeouts at boundary | Adjust timeout by 20% |
+
+      3. **Level Skip Recommendations**:
+         - When to skip PRIMARY and go directly to SECONDARY
+         - Conditions where SECONDARY is actually optimal choice
+         - Circuit breaker patterns for known failures
+         - "Fast path" scenarios where lower level is better
+
+      4. **Cost-Benefit Optimization**:
+         - Calculate cost per successful outcome at each level
+         - Recommend cost-effective strategy adjustments
+         - Identify over-engineered cascades (tertiary never used)
+         - Identify under-engineered cascades (tertiary used too often)
+
+      5. **Health Assessment**:
+         - **healthy**: PRIMARY > 70%, TERTIARY < 5%
+         - **needs_attention**: PRIMARY 50-70% OR TERTIARY 5-10%
+         - **critical**: PRIMARY < 50% OR TERTIARY > 10%
+
+      **OPTIMIZATION OUTPUT**:
+      ```yaml
+      optimization_recommendations:
+        overall_health: healthy | needs_attention | critical
+
+        patterns_identified:
+          - pattern: "Description of pattern"
+            frequency: "How often observed"
+            impact: "Effect on cascade performance"
+          - ...
+
+        timeout_recommendations:
+          current_strategy: "{{timeout_strategy}}"
+          recommended_strategy: "aggressive | balanced | patient | custom"
+          specific_adjustments:
+            primary_timeout: "current → recommended (reason)"
+            secondary_timeout: "current → recommended (reason)"
+            tertiary_timeout: "current → recommended (reason)"
+
+        level_skip_suggestions:
+          - condition: "When to skip"
+            skip_to: "SECONDARY | TERTIARY"
+            reason: "Why this is beneficial"
+            expected_benefit: "Time/cost savings"
+
+        cost_optimization:
+          current_cost_per_success: "Estimate"
+          optimized_cost_per_success: "Projected with recommendations"
+          savings_potential: "Percentage improvement"
+
+        actionable_recommendations:
+          - priority: high | medium | low
+            recommendation: "Specific action to take"
+            expected_impact: "What will improve"
+            implementation: "How to implement"
+
+        next_steps:
+          - "Immediate action 1"
+          - "Immediate action 2"
+      ```
+    output: "optimization_recommendations"
+    timeout: 90
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # INTEGRATION TESTING VERIFICATION
+  # Test cascade levels and fallback transitions
+  # ════════════════════════════════════════════════════════════════════════════
+  - id: "integration-testing-verification"
+    agent: "amplihack:tester"
+    mode: "VERIFY"
+    prompt: |
+      **Integration Testing Verification**
+
+      Verify the cascade execution and provide integration testing guidance
+      for ongoing cascade reliability.
+
+      **Cascade Design**: {{cascade_design}}
+      **Execution Results**: {{degradation_report}}
+      **Tertiary Verification**: {{tertiary_verification}}
+
+      **INTEGRATION TESTING GUIDANCE**:
+
+      1. **Test Each Cascade Level Independently**:
+
+         ```python
+         def test_primary_level():
+             """Test PRIMARY succeeds when dependencies available"""
+             # Setup: Ensure all external dependencies are available
+             # Execute: Run operation with PRIMARY approach
+             # Assert: Result has optimal quality
+             # Assert: No fallback occurred
+
+         def test_secondary_level():
+             """Test SECONDARY succeeds independently"""
+             # Setup: Configure to skip PRIMARY
+             # Execute: Run SECONDARY approach directly
+             # Assert: Result has acceptable quality
+             # Assert: Degradation is documented
+
+         def test_tertiary_level():
+             """Test TERTIARY succeeds with NO external deps"""
+             # Setup: Disable ALL external services
+             # Execute: Run TERTIARY approach
+             # Assert: Result has minimal but functional quality
+             # Assert: No external calls were made
+             # Assert: ALWAYS succeeds
+         ```
+
+      2. **Test Fallback Transitions**:
+
+         ```python
+         def test_primary_to_secondary_fallback():
+             """Test clean handoff from PRIMARY to SECONDARY"""
+             with mock_primary_failure():
+                 result = execute_cascade()
+                 assert result.level == "SECONDARY"
+                 assert result.degradation == "moderate"
+                 assert "fallback" in result.metadata
+
+         def test_secondary_to_tertiary_fallback():
+             """Test clean handoff from SECONDARY to TERTIARY"""
+             with mock_primary_and_secondary_failure():
+                 result = execute_cascade()
+                 assert result.level == "TERTIARY"
+                 assert result.degradation == "maximum"
+                 assert result.status == "SUCCESS"  # MUST succeed
+         ```
+
+      3. **Test Tertiary Always-Succeeds Guarantee**:
+
+         ```python
+         def test_tertiary_with_network_down():
+             """TERTIARY must succeed even with no network"""
+             with disable_all_network():
+                 result = execute_tertiary()
+                 assert result.status == "SUCCESS"
+
+         def test_tertiary_with_all_services_down():
+             """TERTIARY must succeed with all services unavailable"""
+             with mock_all_external_services_down():
+                 result = execute_tertiary()
+                 assert result.status == "SUCCESS"
+
+         def test_tertiary_with_database_unavailable():
+             """TERTIARY must succeed without database"""
+             with mock_database_unavailable():
+                 result = execute_tertiary()
+                 assert result.status == "SUCCESS"
+
+         def test_tertiary_is_deterministic():
+             """TERTIARY must produce same output for same input"""
+             result1 = execute_tertiary(input_data)
+             result2 = execute_tertiary(input_data)
+             assert result1.output == result2.output
+         ```
+
+      4. **State Preservation Tests**:
+
+         ```python
+         def test_state_passed_between_levels():
+             """Verify context is preserved during fallbacks"""
+             # Track state through cascade
+             # Assert no data loss during transitions
+         ```
+
+      **CURRENT EXECUTION VALIDATION**:
+
+      Based on this execution, verify:
+      - Was the cascade path valid?
+      - Did transitions happen correctly?
+      - Was tertiary guarantee maintained?
+      - Were all degradations properly documented?
+
+      **OUTPUT**:
+      ```yaml
+      testing_verification:
+        current_execution_valid: true | false
+        validation_notes: "Details on current execution validity"
+
+        tertiary_guarantee_verification:
+          guarantee_met: true | false
+          verification_method: "How we verified"
+          evidence: "Proof that tertiary would always succeed"
+
+        recommended_test_cases:
+          unit_tests:
+            - name: "test_primary_succeeds"
+              description: "..."
+              assertions: [...]
+            - ...
+
+          integration_tests:
+            - name: "test_cascade_fallback"
+              description: "..."
+              setup: "..."
+              assertions: [...]
+            - ...
+
+          guarantee_tests:
+            - name: "test_tertiary_offline"
+              description: "Verify tertiary works with no network"
+              chaos_condition: "Network disabled"
+              expected: "SUCCESS"
+            - ...
+
+        coverage_recommendations:
+          - "Area needing more test coverage"
+          - ...
+      ```
+    output: "testing_verification"
+    timeout: 60
+
+  # ════════════════════════════════════════════════════════════════════════════
+  # FINAL OUTPUT ASSEMBLY
+  # Compile final result with full cascade documentation
+  # ════════════════════════════════════════════════════════════════════════════
+  - id: "final-output-assembly"
+    agent: "amplihack:fallback-cascade"
+    mode: "COMPILE"
+    prompt: |
+      **Final Output Assembly**
+
+      Compile the complete cascade workflow output with full documentation.
+
+      **Task**: {{task_description}}
+
+      **Cascade Execution Data**:
+      - Design: {{cascade_design}}
+      - Tertiary Verification: {{tertiary_verification}}
+      - Degradation Report: {{degradation_report}}
+      - Metrics: {{metrics_result}}
+      - Optimization: {{optimization_recommendations}}
+      - Testing: {{testing_verification}}
+
+      **COMPILE FINAL OUTPUT**:
+
+      1. **Executive Summary**:
+         - Task completed at which level
+         - Quality achieved vs optimal
+         - Key degradations (if any)
+         - Time taken
+
+      2. **Actual Result**:
+         - Extract the result from the successful level
+         - Format appropriately for the task
+         - Include any quality notices
+
+      3. **Cascade Path Visualization**:
+         ```
+         CASCADE PATH
+         ─────────────────────────────────────
+         [✓/✗] PRIMARY   → {status} ({reason})
+         [✓/✗] SECONDARY → {status} ({reason})
+         [✓/✗] TERTIARY  → {status} ({reason})
+         ─────────────────────────────────────
+         ```
+
+      4. **Quality Report**:
+         - What user is receiving
+         - What was omitted (if degraded)
+         - Recommendations for better results
+
+      5. **Optimization Insights**:
+         - Key recommendations from analyzer
+         - Suggested improvements for next run
+         - Health status of cascade
+
+      **OUTPUT FORMAT**:
+      ```
+      ═══════════════════════════════════════════════════════════════════
+      CASCADE WORKFLOW COMPLETE
+      ═══════════════════════════════════════════════════════════════════
+
+      Task: {task_description}
+      Final Level: {PRIMARY|SECONDARY|TERTIARY}
+      Quality: {optimal|acceptable|minimal}
+      Total Time: {N}s
+
+      CASCADE PATH:
+      ─────────────────────────────────────────────────────────────────────
+        [✓/✗] PRIMARY   → {status} ({duration}s) - {reason}
+        [✓/✗] SECONDARY → {status} ({duration}s) - {reason}
+        [✓/✗] TERTIARY  → {status} ({duration}s) - {reason}
+      ─────────────────────────────────────────────────────────────────────
+
+      RESULT:
+      ─────────────────────────────────────────────────────────────────────
+      {actual_result}
+      ─────────────────────────────────────────────────────────────────────
+
+      {degradation_notice_if_applicable}
+
+      OPTIMIZATION INSIGHTS:
+      ─────────────────────────────────────────────────────────────────────
+      Health: {healthy|needs_attention|critical}
+      {key_recommendations}
+      ─────────────────────────────────────────────────────────────────────
+
+      ═══════════════════════════════════════════════════════════════════
+      GUARANTEE: Workflow completed. Tertiary level cannot fail by design.
+      ═══════════════════════════════════════════════════════════════════
+      ```
+    output: "final_output"
+    timeout: 60
+
+# ════════════════════════════════════════════════════════════════════════════════
+# WORKFLOW EXECUTION SUMMARY
+# ════════════════════════════════════════════════════════════════════════════════
+#
+# Step 1: define-cascade-levels (Original Step 1)
+#   Agent: amplihack:architect
+#   Purpose: Design cascade levels with cost-benefit analysis
+#   Output: cascade_design
+#
+# Gate: tertiary-verification-gate (Mandatory)
+#   Agent: amplihack:fallback-cascade
+#   Purpose: CRITICAL - Verify tertiary ALWAYS succeeds
+#   Output: tertiary_verification
+#
+# Step 2: attempt-primary (Original Step 2)
+#   Agent: amplihack:fallback-cascade
+#   Purpose: Execute optimal solution
+#   Output: primary_result
+#
+# Step 3: attempt-secondary (Original Step 3, conditional)
+#   Agent: amplihack:fallback-cascade
+#   Purpose: Execute acceptable degradation
+#   Output: secondary_result
+#
+# Step 4: attempt-tertiary (Original Step 4, conditional)
+#   Agent: amplihack:fallback-cascade
+#   Purpose: GUARANTEED completion - must never fail
+#   Output: tertiary_result
+#
+# Step 5: report-degradation (Original Step 5)
+#   Agent: amplihack:fallback-cascade
+#   Purpose: Generate user-appropriate notification
+#   Output: degradation_report
+#
+# Step 6: log-cascade-metrics (Original Step 6)
+#   Agent: amplihack:analyzer
+#   Purpose: Intelligent metrics capture and pattern detection
+#   Output: metrics_result
+#
+# Step 7: continuous-optimization (Original Step 7)
+#   Agent: amplihack:analyzer
+#   Purpose: Intelligent pattern recognition and recommendations
+#   Output: optimization_recommendations
+#
+# Support: integration-testing-verification
+#   Agent: amplihack:tester
+#   Purpose: Verify cascade behavior and provide test guidance
+#   Output: testing_verification
+#
+# Final: final-output-assembly
+#   Agent: amplihack:fallback-cascade
+#   Purpose: Compile final result with full documentation
+#   Output: final_output
+#
+# ════════════════════════════════════════════════════════════════════════════════
+# GUARANTEE: The workflow ALWAYS completes. TERTIARY level cannot fail.
+# ════════════════════════════════════════════════════════════════════════════════

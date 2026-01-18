@@ -1,0 +1,10 @@
+[
+  {
+    "role": "user",
+    "content": "This is a very long conversation with high token usage..."
+  },
+  {
+    "role": "assistant",
+    "content": "Understanding your requirements. I've decided to use a microservices architecture..."
+  }
+]
