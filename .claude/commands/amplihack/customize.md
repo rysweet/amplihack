@@ -374,7 +374,7 @@ Before making changes, validate:
 This command integrates with the project by:
 
 1. Storing preferences in `.claude/context/USER_PREFERENCES.md`
-2. Preferences are loaded via CLAUDE.md imports at session start
+2. Preferences are loaded via session start hooks
 3. Agents and workflows reference these preferences (MANDATORY enforcement)
 4. Learned patterns accumulate over time
 
@@ -384,13 +384,13 @@ Preferences follow this priority hierarchy (highest to lowest):
 
 1. **USER_PREFERENCES.md** (HIGHEST - MANDATORY)
 2. Task-specific user instructions
-3. Project philosophy (CLAUDE.md, PHILOSOPHY.md)
+3. Project philosophy (AMPLIHACK.md, PHILOSOPHY.md)
 4. Default Claude Code behavior (LOWEST)
 
 ## Notes
 
 - Preferences persist across sessions
-- The preferences file is imported automatically in CLAUDE.md
+- The preferences file is imported automatically at session start
 - Agents MUST check preferences and apply them strictly
 - Learned patterns help improve future interactions
 - Use simple, direct tool invocations - no complex abstractions

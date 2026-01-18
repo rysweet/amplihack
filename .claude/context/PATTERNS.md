@@ -22,7 +22,7 @@ This document maintains **14 foundational patterns** that apply across most ampl
 
 **Trust in Emergence**: Removed patterns can re-emerge when needed. See git history for context: `git log -p .claude/context/PATTERNS.md`
 
-**This refactoring (2024-11):** Reduced from 24 to 14 patterns (74% reduction) based on usage analysis and philosophy compliance. Removed patterns include: CI Failure Rapid Diagnosis, Incremental Processing, Configuration Single Source of Truth, Parallel Task Execution (covered in CLAUDE.md), Multi-Layer Security Sanitization, Reflection-Driven Self-Improvement, Unified Validation Flow, Modular User Visibility, and others that were either too specific or better documented elsewhere.
+**This refactoring (2024-11):** Reduced from 24 to 14 patterns (74% reduction) based on usage analysis and philosophy compliance. Removed patterns include: CI Failure Rapid Diagnosis, Incremental Processing, Configuration Single Source of Truth, Parallel Task Execution (covered in project documentation), Multi-Layer Security Sanitization, Reflection-Driven Self-Improvement, Unified Validation Flow, Modular User Visibility, and others that were either too specific or better documented elsewhere.
 
 ## Core Architecture Patterns
 

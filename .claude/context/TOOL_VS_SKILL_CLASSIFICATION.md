@@ -122,7 +122,7 @@ eval-recipes and similar benchmarking frameworks:
 
 This classification should be applied:
 
-1. **In CLAUDE.md** - So all Claude Code sessions see it
+1. **In project documentation** - So all Claude Code sessions see it
 2. **In builder.md** - So the builder agent knows the difference
 3. **In this file** - As explicit reference documentation
 

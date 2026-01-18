@@ -401,7 +401,7 @@ Issues found: {len(errors)}
 | "Why was my session slow?"         | **session-replay**                          | API latency and token metrics |
 | "What did I discuss last session?" | **/transcripts**                            | Conversation content          |
 | "Extract learnings from sessions"  | **CodexTranscriptsBuilder**                 | Knowledge extraction          |
-| "Reduce my token usage"            | **session-replay** + **context_management** | Metrics + optimization        |
+| "Reduce my token usage"            | **session-replay** + **context-management** | Metrics + optimization        |
 | "Resume interrupted work"          | **/transcripts**                            | Context restoration           |
 
 ### vs. /transcripts Command
@@ -443,7 +443,7 @@ Issues found: {len(errors)}
 ```
 1. session-replay: Analyze token usage patterns (health action)
 2. Identify high-token operations
-3. context_management skill: Apply proactive trimming
+3. context-management skill: Apply proactive trimming
 4. session-replay: Compare before/after sessions (compare action)
 ```
 
