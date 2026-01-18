@@ -10,14 +10,7 @@
   "repository": "https://github.com/rysweet/amplihack",
   "license": "MIT",
   "keywords": ["claude-code", "ai", "agents", "workflows", "automation", "development"],
-  "commands": ["./.claude/commands/"],
-  "agents": "./.claude/agents/",
+  "commands": "./.claude/commands/",
   "skills": "./.claude/skills/",
-  "hooks": "./.claude/tools/amplihack/hooks/hooks.json",
-  "marketplace": {
-    "name": "amplihack",
-    "url": "https://github.com/rysweet/amplihack",
-    "type": "github",
-    "description": "Official amplihack plugin marketplace"
-  }
+  "hooks": "./.claude/tools/amplihack/hooks/hooks.json"
 }
