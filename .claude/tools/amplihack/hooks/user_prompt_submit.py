@@ -202,20 +202,10 @@ class UserPromptSubmitHook(HookProcessor):
             # Find AMPLIHACK.md (could be in package or .claude/)
             amplihack_md = None
 
-            # Try .claude/ directory first
+            # AMPLIHACK.md ships in .claude/ directory (always available)
             candidate = self.project_root / ".claude" / "AMPLIHACK.md"
             if candidate.exists():
                 amplihack_md = candidate
-            else:
-                # Try package location (UVX mode)
-                try:
-                    import amplihack
-                    pkg_path = Path(amplihack.__file__).parent
-                    candidate = pkg_path / "AMPLIHACK.md"
-                    if candidate.exists():
-                        amplihack_md = candidate
-                except ImportError:
-                    pass
 
             if amplihack_md and amplihack_md.exists():
                 # Copy AMPLIHACK.md to CLAUDE.md
