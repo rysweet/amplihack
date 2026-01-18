@@ -41,6 +41,8 @@ class _CustomBuildBackend:
         self.github_dest = self.repo_root / "src" / "amplihack" / ".github"
         self.bundle_src = self.repo_root / "amplifier-bundle"
         self.bundle_dest = self.repo_root / "src" / "amplihack" / "amplifier-bundle"
+        self.amplihack_md_src = self.repo_root / "AMPLIHACK.md"
+        self.amplihack_md_dest = self.repo_root / "src" / "amplihack" / "AMPLIHACK.md"
 
     def _copy_claude_directory(self):
         """Copy .claude/ from repo root to src/amplihack/ if needed."""
@@ -174,18 +176,18 @@ class _CustomBuildBackend:
             shutil.rmtree(self.bundle_dest)
 
     def _copy_amplihack_md(self):
-        """Copy CLAUDE.md from repo root to src/amplihack/ for wheel inclusion."""
+        """Copy AMPLIHACK.md from repo root to src/amplihack/ for wheel inclusion."""
         if not self.amplihack_md_src.exists():
-            print(f"Warning: CLAUDE.md not found at {self.amplihack_md_src}")
+            print(f"Warning: AMPLIHACK.md not found at {self.amplihack_md_src}")
             return
 
-        # Copy CLAUDE.md into package
+        # Copy AMPLIHACK.md into package
         print(f"Copying {self.amplihack_md_src} -> {self.amplihack_md_dest}")
         shutil.copy2(self.amplihack_md_src, self.amplihack_md_dest)
-        print("Successfully copied CLAUDE.md to package")
+        print("Successfully copied AMPLIHACK.md to package")
 
     def _cleanup_amplihack_md(self):
-        """Remove CLAUDE.md from package after build."""
+        """Remove AMPLIHACK.md from package after build."""
         if self.amplihack_md_dest.exists():
             print(f"Cleaning up {self.amplihack_md_dest}")
             self.amplihack_md_dest.unlink()
