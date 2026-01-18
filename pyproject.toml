@@ -74,6 +74,7 @@ amplihack = [
     ".claude-plugin/**/*",  # Plugin manifest
     "amplifier-bundle/**/*",
     "amplifier-bundle/**/.gitkeep",
+    "../AMPLIHACK.md",  # Amplihack instructions (copied to CLAUDE.md by UserPromptSubmit hook)
 ]
 
 [tool.ruff]
