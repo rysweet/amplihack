@@ -23,12 +23,20 @@ from setuptools.build_meta import *  # noqa: F403
 
 
 class _CustomBuildBackend:
-    """Custom build backend that copies .claude/ before building."""
+    """Custom build backend that copies .claude/, .claude-plugin/, .github/, amplifier-bundle/, and AMPLIHACK.md before building."""
 
     def __init__(self):
         self.repo_root = Path(__file__).parent
         self.claude_src = self.repo_root / ".claude"
         self.claude_dest = self.repo_root / "src" / "amplihack" / ".claude"
+        self.plugin_src = self.repo_root / ".claude-plugin"
+        self.plugin_dest = self.repo_root / "src" / "amplihack" / ".claude-plugin"
+        self.github_src = self.repo_root / ".github"
+        self.github_dest = self.repo_root / "src" / "amplihack" / ".github"
+        self.bundle_src = self.repo_root / "amplifier-bundle"
+        self.bundle_dest = self.repo_root / "src" / "amplihack" / "amplifier-bundle"
+        self.amplihack_md_src = self.repo_root / "AMPLIHACK.md"
+        self.amplihack_md_dest = self.repo_root / "src" / "amplihack" / "AMPLIHACK.md"
 
     def _copy_claude_directory(self):
         """Copy .claude/ from repo root to src/amplihack/ if needed."""
