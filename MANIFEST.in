@@ -9,7 +9,7 @@ include src/amplihack/prompts/*.md
 recursive-include src/amplihack *.py
 
 # Core framework documentation
-include CLAUDE.md
+include AMPLIHACK.md
 include README.md
 include *.md
 
