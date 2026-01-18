@@ -29,6 +29,68 @@ persistenceThreshold: 20
 
 The LSP Setup skill automatically detects programming languages in your codebase and generates the LSP configuration needed for Claude Code to provide intelligent code completion, diagnostics, and navigation. It supports 16 popular programming languages out of the box.
 
+## What LSP Provides to You
+
+When LSP is properly configured, Claude Code gains powerful code intelligence capabilities that enhance the AI's understanding of your codebase:
+
+### Real-Time Code Intelligence
+
+**Type Information** - Claude can see the exact types of variables, functions, and classes:
+```python
+# Claude can hover over 'user' and see: Type: User (class from models.py)
+user = get_current_user()
+```
+
+**Go to Definition** - Claude can jump to where symbols are defined:
+```python
+# Claude can navigate from 'authenticate()' call to its definition in auth.py
+result = authenticate(credentials)
+```
+
+**Code Diagnostics** - Claude receives real-time error detection from LSP servers:
+```python
+# Pyright reports: "Set" is not accessed
+from typing import List, Set  # Claude sees this warning
+```
+
+### How Claude Uses LSP
+
+**Better Code Understanding** - Instead of guessing types and behavior, Claude gets precise information from LSP servers about:
+- Function signatures and return types
+- Class hierarchies and inheritance
+- Import paths and module structure
+- Errors and warnings before runtime
+
+**Smarter Suggestions** - With LSP data, Claude provides:
+- Accurate refactoring recommendations
+- Type-safe code completions
+- Precise error fixes
+- Context-aware code generation
+
+**Example Workflow**:
+```
+You: "Fix the type error in user_service.py"
+
+Without LSP: Claude reads the file, guesses at types, may miss subtle issues
+
+With LSP: Claude receives diagnostic:
+  Line 42: Expected type 'User | None', got 'str'
+  → Claude provides exact fix based on actual type information
+```
+
+### What You'll Notice
+
+After `/lsp-setup` configures your project:
+
+1. **More Accurate Responses** - Claude's code suggestions match your actual types and APIs
+2. **Faster Debugging** - Claude sees the same errors your IDE would show
+3. **Better Refactoring** - Claude can safely rename variables across files using LSP references
+4. **Improved Navigation** - Claude can find definitions, usages, and implementations precisely
+
+### Important Note
+
+LSP enhances Claude's capabilities *behind the scenes*. You don't interact with LSP directly - it makes Claude smarter about your code automatically.
+
 ## When to Use This Skill
 
 Use `/lsp-setup` when you:
@@ -232,6 +294,105 @@ Would you like to continue with available servers? [Y/n] y
 Configuration complete! 2/3 LSP servers ready.
 Run `rustup component add rust-analyzer` to enable Rust support.
 ```
+
+## How to Verify LSP is Working
+
+After running `/lsp-setup`, here's how to confirm LSP is providing code intelligence to Claude:
+
+### Method 1: Check for Diagnostics
+
+**Ask Claude to analyze a file with intentional errors**:
+```
+You: "What issues do you see in src/main.py?"
+
+If LSP is working: Claude will report specific diagnostics from Pyright
+  → "Line 15: 'name' is not accessed"
+  → "Line 23: Expected type 'int', got 'str'"
+
+If LSP is NOT working: Claude only sees what's in the file content
+  → Generic observations about code style
+  → No specific type errors or warnings
+```
+
+### Method 2: Request Type Information
+
+**Ask Claude about types in your code**:
+```
+You: "What's the type of the 'user' variable in auth.py line 42?"
+
+If LSP is working: Claude provides exact type from LSP
+  → "Type: User | None (from models.User)"
+
+If LSP is NOT working: Claude guesses based on context
+  → "It appears to be a User object based on the code"
+```
+
+### Method 3: Test Navigation
+
+**Ask Claude to find definitions**:
+```
+You: "Where is the authenticate() function defined?"
+
+If LSP is working: Claude uses LSP goToDefinition
+  → "Defined in src/auth/service.py:156"
+
+If LSP is NOT working: Claude searches file contents
+  → "I found it by searching for 'def authenticate'"
+```
+
+### Method 4: Check Status Command
+
+**Run the status check**:
+```bash
+/lsp-setup --status-only
+```
+
+**Expected Output (LSP Working)**:
+```
+[LSP Setup] Configuration Status:
+
+✓ Python (pyright): Connected
+  - System Binary: /usr/local/bin/pyright-langserver
+  - Plugin: Installed and active
+  - Project Config: .env configured with ENABLE_LSP_TOOL=1
+
+✓ TypeScript (vtsls): Connected
+  - System Binary: /usr/local/bin/vtsls
+  - Plugin: Installed and active
+  - Project Config: .env configured with ENABLE_LSP_TOOL=1
+
+Overall Status: ✓ All LSP servers ready (2/2)
+```
+
+**Problem Output (LSP NOT Working)**:
+```
+[LSP Setup] Configuration Status:
+
+✗ Python (pyright): Not Connected
+  - System Binary: Not found
+  - Plugin: Not installed
+  - Project Config: Missing ENABLE_LSP_TOOL=1
+
+Issue: Run 'npm install -g pyright' and 'npx cclsp install pyright'
+```
+
+### What Success Looks Like
+
+When LSP is working properly, you'll notice:
+
+1. **Claude mentions specific line numbers** when discussing errors
+2. **Claude provides exact types** instead of guessing
+3. **Claude sees warnings/errors before code runs** (like your IDE does)
+4. **Claude can navigate code structure** using LSP's understanding
+
+### What Failure Looks Like
+
+When LSP is NOT working, you'll notice:
+
+1. **Claude only sees file contents** - no type information or diagnostics
+2. **Claude makes educated guesses** about types and behavior
+3. **Claude doesn't mention errors** until you run the code
+4. **Claude searches text** instead of using semantic understanding
 
 ## Troubleshooting
 
