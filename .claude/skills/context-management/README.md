@@ -2,6 +2,8 @@
 
 Proactive context window management for Claude Code sessions via intelligent token monitoring, context extraction, and selective rehydration.
 
+**Version 3.0** - Now with predictive budget monitoring, context health indicators, and priority-based retention.
+
 ## What This Skill Does
 
 This skill helps you proactively manage Claude's context window by:
@@ -10,6 +12,9 @@ This skill helps you proactively manage Claude's context window by:
 2. **Extracting essential context** (requirements, decisions, state) into snapshots
 3. **Restoring context** at appropriate detail levels after compaction
 4. **Managing snapshots** with list, create, and retrieve operations
+5. **Predicting capacity limits** before they're reached (v3.0)
+6. **Providing health indicators** for statusline integration (v3.0)
+7. **Prioritizing content retention** for efficient snapshots (v3.0)
 
 ## Quick Start
 
@@ -288,6 +293,7 @@ Each brick has ONE job:
 └── examples/
     ├── basic_usage.md
     ├── proactive_workflow.md
+    ├── proactive_management.md  # NEW in v3.0
     └── rehydration_levels.md
 ```
 
@@ -343,9 +349,24 @@ For issues, questions, or contributions:
 
 ## Version
 
-1.0.0 - Initial implementation
+3.0.0 - Proactive features
 
 ## Changelog
+
+### 3.0.0 (2025-11-25)
+
+- Added predictive budget monitoring (burn rate tracking)
+- Added context health indicators for statusline integration
+- Added priority-based context retention
+- Added proactive_management.md example
+- Updated SKILL.md with v3.0 features documentation
+- Enhanced automation with smarter threshold adaptation
+
+### 2.0.0 (2025-11-22)
+
+- Refactored to use centralized context_manager.py tool
+- Improved automation with adaptive checking frequency
+- Added compaction detection and auto-rehydration
 
 ### 1.0.0 (2025-11-16)
 

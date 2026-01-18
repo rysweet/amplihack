@@ -28,6 +28,7 @@ class PostToolUseHook(HookProcessor):
 
     def __init__(self):
         super().__init__("post_tool_use")
+        self.strategy = None
         self._setup_tool_hooks()
 
     def _setup_tool_hooks(self):
@@ -72,6 +73,16 @@ class PostToolUseHook(HookProcessor):
         Returns:
             Empty dict or validation messages
         """
+        # Detect launcher and select strategy
+        self.strategy = self._select_strategy()
+        if self.strategy:
+            self.log(f"Using strategy: {self.strategy.__class__.__name__}")
+            # Check for strategy-specific post-tool handling
+            strategy_result = self.strategy.handle_post_tool_use(input_data)
+            if strategy_result:
+                self.log("Strategy provided custom post-tool handling")
+                return strategy_result
+
         # Extract tool information
         tool_use = input_data.get("toolUse", {})
         tool_name = tool_use.get("name", "unknown")
@@ -145,6 +156,26 @@ class PostToolUseHook(HookProcessor):
                 self.log(f"Tool registry error: {e}", "DEBUG")
 
         return output
+
+    def _select_strategy(self):
+        """Detect launcher and select appropriate strategy."""
+        try:
+            # Import adaptive components
+            sys.path.insert(0, str(self.project_root / "src" / "amplihack"))
+            from amplihack.context.adaptive.detector import LauncherDetector
+            from amplihack.context.adaptive.strategies import ClaudeStrategy, CopilotStrategy
+
+            detector = LauncherDetector(self.project_root)
+            launcher_type = detector.detect()
+
+            if launcher_type == "copilot":
+                return CopilotStrategy(self.project_root, self.log)
+            else:
+                return ClaudeStrategy(self.project_root, self.log)
+
+        except ImportError as e:
+            self.log(f"Adaptive strategy not available: {e}", "DEBUG")
+            return None
 
 
 def main():

@@ -146,7 +146,7 @@ Fix: [Minimal solution]
 - Implement minimal solution
 - Add regression test
 - Document the issue
-- Update DISCOVERIES.md if novel
+- Store discovery in memory if novel
 
 ## Review Output Format
 
@@ -324,7 +324,7 @@ gh pr comment 123 --body "LGTM! All issues addressed"
 - **Minimal changes**: Fix only what's broken
 - **Root cause**: Address the cause, not symptoms
 - **Add tests**: Prevent regression
-- **Document**: Update DISCOVERIES.md for novel issues
+- **Document**: Store discoveries in memory for novel issues
 - **Simplify**: Can the fix make things simpler?
 
 ## Remember
