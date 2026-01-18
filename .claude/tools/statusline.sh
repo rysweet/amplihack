@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Amplihack Status Line
-# Shows: directory, git branch, model, tokens, cost, duration, background agents
+# Shows: directory, git branch, repo URI, model, tokens, cost, duration, background agents
 #
 # Configure in ~/.claude/settings.json:
 #   "statusLine": {
@@ -102,6 +102,31 @@ if git rev-parse --is-inside-work-tree &>/dev/null; then
             git_info=" \033[${git_color}m($branch$dirty_marker)\033[0m"
         fi
     fi
+fi
+
+# Repository URI
+get_repo_uri() {
+    # Return empty if not in a git repository
+    git rev-parse --is-inside-work-tree &>/dev/null || return
+
+    # Get remote URL (try origin first, then any remote)
+    local remote_url=$(git remote get-url origin 2>/dev/null || git remote get-url $(git remote 2>/dev/null | head -1) 2>/dev/null)
+
+    # Return empty if no remote exists
+    [ -z "$remote_url" ] && return
+
+    # Strip protocol and .git suffix for clean display
+    # Handles: https://github.com/user/repo.git → github.com/user/repo
+    # Handles: git@github.com:user/repo.git → github.com/user/repo
+    local clean_uri=$(echo "$remote_url" | sed 's|^https\?://||; s|^git@||; s|:|/|; s|\.git$||')
+
+    echo "$clean_uri"
+}
+
+repo_uri=$(get_repo_uri)
+repo_uri_str=""
+if [ -n "$repo_uri" ]; then
+    repo_uri_str=" \033[36m[$repo_uri]\033[0m"
 fi
 
 # Calculate tokens from transcript
@@ -257,4 +282,4 @@ if [ -n "$session_id" ]; then
 fi
 
 # Output status line
-echo -e "\033[32m$display_dir\033[0m$git_info \033[${model_color}m$model_name\033[0m$tokens_str 💰\$$cost_formatted$duration_str$agents_str$power_steering_str$lock_str"
+echo -e "\033[32m$display_dir\033[0m$git_info$repo_uri_str \033[${model_color}m$model_name\033[0m$tokens_str 💰\$$cost_formatted$duration_str$agents_str$power_steering_str$lock_str"
