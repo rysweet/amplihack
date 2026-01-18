@@ -173,13 +173,31 @@ class _CustomBuildBackend:
             print(f"Cleaning up {self.bundle_dest}")
             shutil.rmtree(self.bundle_dest)
 
+    def _copy_claude_md(self):
+        """Copy CLAUDE.md from repo root to src/amplihack/ for wheel inclusion."""
+        if not self.claude_md_src.exists():
+            print(f"Warning: CLAUDE.md not found at {self.claude_md_src}")
+            return
+
+        # Copy CLAUDE.md into package
+        print(f"Copying {self.claude_md_src} -> {self.claude_md_dest}")
+        shutil.copy2(self.claude_md_src, self.claude_md_dest)
+        print("Successfully copied CLAUDE.md to package")
+
+    def _cleanup_claude_md(self):
+        """Remove CLAUDE.md from package after build."""
+        if self.claude_md_dest.exists():
+            print(f"Cleaning up {self.claude_md_dest}")
+            self.claude_md_dest.unlink()
+
     def build_wheel(self, wheel_directory, config_settings=None, metadata_directory=None):
-        """Build wheel with .claude/, .claude-plugin/, .github/, and amplifier-bundle/ directories included."""
+        """Build wheel with .claude/, .claude-plugin/, .github/, amplifier-bundle/, and CLAUDE.md included."""
         try:
             self._copy_claude_directory()
             self._copy_plugin_manifest()
             self._copy_github_directory()
             self._copy_bundle_directory()
+            self._copy_claude_md()
             result = _orig.build_wheel(
                 wheel_directory,
                 config_settings=config_settings,
@@ -192,6 +210,7 @@ class _CustomBuildBackend:
             self._cleanup_plugin_manifest()
             self._cleanup_github_directory()
             self._cleanup_bundle_directory()
+            self._cleanup_claude_md()
 
     def build_sdist(self, sdist_directory, config_settings=None):
         """Build sdist (MANIFEST.in handles .claude/ for sdist)."""
