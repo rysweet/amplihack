@@ -1,0 +1,24 @@
+version: "1.0"
+name: "all"
+description: "Complete amplihack environment - all components loaded"
+
+components:
+  commands:
+    include_all: true
+  context:
+    include_all: true
+  agents:
+    include_all: true
+  skills:
+    include_all: true
+
+metadata:
+  author: "amplihack"
+  version: "1.0.0"
+  tags: ["default", "complete"]
+  created: "2025-11-22T00:00:00Z"
+  updated: "2025-11-22T00:00:00Z"
+
+performance:
+  lazy_load_skills: true
+  cache_ttl: 3600

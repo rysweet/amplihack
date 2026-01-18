@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://amplihack.dev/schemas/modular-build/output.schema.json",
+  "title": "Modular Build Output Schema",
+  "description": "Simplified schema for modular build output validation",
+  "type": "object",
+  "required": ["module_name", "status", "files_generated", "quality_metrics"],
+  "properties": {
+    "module_name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*[a-z0-9]$"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["success", "failed", "warnings"]
+    },
+    "files_generated": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "type"],
+        "properties": {
+          "path": { "type": "string" },
+          "type": { "type": "string", "enum": ["source", "test", "config", "docs"] }
+        }
+      }
+    },
+    "quality_metrics": {
+      "type": "object",
+      "required": ["test_coverage", "security_warnings"],
+      "properties": {
+        "test_coverage": { "type": "number", "minimum": 0, "maximum": 100 },
+        "security_warnings": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "execution_time": {
+      "type": "string",
+      "pattern": "^[0-9]+[smh]$"
+    }
+  },
+  "additionalProperties": false
+}

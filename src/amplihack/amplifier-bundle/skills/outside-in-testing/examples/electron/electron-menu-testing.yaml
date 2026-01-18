@@ -1,0 +1,116 @@
+# Level 2: Electron Menu Testing
+# This test comprehensively verifies application menu functionality including
+# keyboard shortcuts, menu state, and menu-triggered actions.
+
+scenario:
+  name: "Electron Menus - Comprehensive Menu Testing"
+  description: |
+    Verifies all menu items, keyboard shortcuts, menu states (enabled/disabled),
+    and menu-triggered actions work correctly.
+  type: electron
+  level: 2
+
+  tags: [electron, menus, keyboard-shortcuts, intermediate]
+
+  prerequisites:
+    - "./dist/text-editor executable exists"
+    - "Application has comprehensive menu structure"
+
+  steps:
+    - action: launch
+      target: "./dist/text-editor"
+      wait_for_window: true
+      timeout: 10s
+
+    # Test File Menu
+    - action: menu_click
+      path: ["File", "New"]
+      description: "File > New"
+
+    - action: verify_element
+      selector: ".editor"
+      exists: true
+
+    # Test keyboard shortcut (Cmd/Ctrl+N)
+    - action: send_keypress
+      value: "ctrl+n"
+      description: "Test New file keyboard shortcut"
+
+    - action: verify_window
+      count: 1
+      description: "Should create new tab, not new window"
+
+    # Test Edit Menu
+    - action: type
+      selector: ".editor"
+      value: "Sample text for testing"
+
+    - action: menu_click
+      path: ["Edit", "Select All"]
+
+    - action: send_keypress
+      value: "ctrl+c"
+      description: "Copy selected text"
+
+    - action: menu_click
+      path: ["Edit", "Paste"]
+
+    - action: verify_element
+      selector: ".editor"
+      contains: "Sample text for testing"
+
+    # Test View Menu
+    - action: menu_click
+      path: ["View", "Zoom In"]
+
+    - action: wait_for_screen
+      timeout: 0.5s
+
+    - action: menu_click
+      path: ["View", "Zoom Out"]
+
+    - action: menu_click
+      path: ["View", "Toggle Full Screen"]
+
+    - action: verify_window
+      fullscreen: true
+      timeout: 2s
+
+    - action: send_keypress
+      value: "f11"
+      description: "Exit fullscreen via F11"
+
+    - action: verify_window
+      fullscreen: false
+      timeout: 2s
+
+    # Test disabled menu items
+    - action: menu_click
+      path: ["Edit", "Undo"]
+      description: "Should be enabled after typing"
+
+    - action: menu_click
+      path: ["Edit", "Redo"]
+      continue_on_failure: true
+      description: "May be disabled if nothing to redo"
+
+    # Test Help Menu
+    - action: menu_click
+      path: ["Help", "Documentation"]
+
+    - action: wait_for_element
+      selector: ".help-window"
+      timeout: 3s
+      continue_on_failure: true
+
+    - action: menu_click
+      path: ["File", "Quit"]
+
+    - action: verify_exit_code
+      expected: 0
+
+  cleanup:
+    - action: stop_application
+      force: false
+# Run Command:
+# gadugi-agentic-test run examples/electron/electron-menu-testing.yaml

@@ -1,0 +1,69 @@
+# Cross-Session Learning: Debugging Strategies
+# This file stores debugging strategies, root cause patterns, and diagnostic techniques.
+
+category: debugging
+description: Debugging strategies, root cause analysis, and diagnostic techniques
+last_updated: "2025-11-25T00:00:00Z"
+
+learnings:
+  # Real example: Isolating import issues
+  - id: "dbg-001"
+    created: "2025-11-25T00:00:00Z"
+    keywords:
+      - "import"
+      - "debug"
+      - "isolate"
+      - "python"
+      - "module"
+    summary: "Use 'python -c' to isolate import errors from other code"
+    insight: |
+      When imports fail mysteriously (especially in larger codebases),
+      isolate the problem by testing imports in a fresh Python process:
+
+      `python -c "import module_name"`
+
+      This removes interference from other imports, cached modules, or
+      runtime state. The error message will be cleaner and point directly
+      to the actual problem.
+    example: |
+      # Test a single import in isolation
+      python -c "import problematic_module"
+
+      # Test a specific submodule
+      python -c "from package.submodule import function"
+
+      # Check the import path
+      python -c "import sys; print(sys.path)"
+    confidence: 0.95
+    times_used: 0
+
+  # Real example: Hook debugging strategy
+  - id: "dbg-002"
+    created: "2025-11-25T00:00:00Z"
+    keywords:
+      - "hook"
+      - "claude"
+      - "debug"
+      - "log"
+      - "session"
+    summary: "Debug Claude Code hooks by checking runtime logs first"
+    insight: |
+      When hooks don't behave as expected:
+      1. Check .claude/runtime/logs/ for session-specific logs
+      2. Look for hook execution timestamps and outputs
+      3. Verify hook is registered in settings.json
+      4. Test hook function independently before integration
+
+      Hooks fail silently by design (to not break sessions), so logging
+      is the primary debugging mechanism.
+    example: |
+      # Check recent session logs
+      ls -lt .claude/runtime/logs/ | head -5
+
+      # View specific session log
+      cat .claude/runtime/logs/2025-11-25_123456/hook_output.log
+
+      # Test hook function directly
+      python -c "from hook_module import stop_hook; stop_hook(session_data)"
+    confidence: 0.85
+    times_used: 0

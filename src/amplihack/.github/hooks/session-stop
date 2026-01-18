@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# GitHub Copilot compatible session-stop hook
+# Wrapper that calls Python implementation in .claude/tools/amplihack/hooks/
+#
+# This hook runs at session end to:
+# - Save session logs
+# - Shutdown Neo4j (if auto_shutdown enabled)
+# - Clear temporary files
+
+set -e
+
+# Get the root directory of the repository
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
+    echo "Error: Not in a git repository" >&2
+    exit 1
+}
+
+# Call Python implementation
+python3 "${REPO_ROOT}/.claude/tools/amplihack/hooks/session_stop.py" "$@"

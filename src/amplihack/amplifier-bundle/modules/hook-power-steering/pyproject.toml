@@ -1,0 +1,13 @@
+[project]
+name = "amplifier-hook-power-steering"
+version = "0.1.0"
+description = "Power steering hook - verifies session completeness"
+requires-python = ">=3.11"
+dependencies = ["amplifier-core"]
+
+[project.entry-points."amplifier.modules"]
+hook-power-steering = "amplifier_hook_power_steering"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
