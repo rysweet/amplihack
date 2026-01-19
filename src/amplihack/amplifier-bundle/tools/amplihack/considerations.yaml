@@ -1,0 +1,276 @@
+# Power-Steering Considerations Configuration
+# ============================================
+#
+# This file defines the 21 considerations used by power-steering mode to verify
+# session completeness. Each consideration checks a specific aspect of the work.
+#
+# YAML Structure:
+#   id: Unique identifier for this consideration
+#   category: One of 6 categories (see below)
+#   question: Natural language question checked by this consideration
+#   description: What this consideration verifies
+#   severity: "blocker" (blocks session end) or "warning" (advisory only)
+#   checker: Method name in PowerSteeringChecker, or "generic" for keyword matching
+#   enabled: true/false to enable/disable this check
+#   applicable_session_types: List of session types this consideration applies to
+#                             ["DEVELOPMENT", "INFORMATIONAL", "MAINTENANCE", "INVESTIGATION"]
+#                             or ["*"] for all types
+#
+# Session Types:
+#   - DEVELOPMENT: Full workflow with code changes, tests, PR operations
+#   - INFORMATIONAL: Q&A, help queries, capability questions (minimal checks)
+#   - MAINTENANCE: Documentation and configuration updates only
+#   - INVESTIGATION: Read-only exploration and analysis
+#
+# Categories:
+#   1. Session Completion & Progress
+#   2. Workflow Process Adherence
+#   3. Code Quality & Philosophy Compliance
+#   4. Testing & Local Validation
+#   5. PR Content & Quality
+#   6. CI/CD & Mergeability Status
+#
+# Customization:
+#   - Edit any field to customize behavior
+#   - Set enabled: false to disable a consideration
+#   - Add custom considerations in the "custom" section below
+#   - See HOW_TO_CUSTOMIZE_POWER_STEERING.md for detailed instructions
+
+# ============================================================================
+# CATEGORY 1: Session Completion & Progress (8 considerations)
+# ============================================================================
+
+- id: todos_complete
+  category: Session Completion & Progress
+  question: Were all TODO items completed?
+  description: Verifies all TodoWrite items are marked as completed
+  severity: blocker
+  checker: _check_todos_complete
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT"]
+
+- id: agent_unnecessary_questions
+  category: Session Completion & Progress
+  question: Did agent ask unnecessary questions instead of proceeding?
+  description: Detects if agent asked user questions that could be inferred from context
+  severity: warning
+  checker: _check_agent_unnecessary_questions
+  enabled: true
+  applicable_session_types: ["*"]
+
+- id: objective_completion
+  category: Session Completion & Progress
+  question: Was original user objective fully accomplished?
+  description: Checks if the stated goal from first user message was achieved
+  severity: blocker
+  checker: _check_objective_completion
+  enabled: true
+  applicable_session_types: ["*"]
+
+- id: documentation_updates
+  category: Session Completion & Progress
+  question: Were relevant documentation files updated?
+  description: Verifies README, docs, and inline documentation reflect changes
+  severity: warning
+  checker: _check_documentation_updates
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT", "MAINTENANCE", "INVESTIGATION"]
+
+- id: tutorial_needed
+  category: Session Completion & Progress
+  question: Does new feature need tutorial/how-to?
+  description: Identifies new features that should have usage examples
+  severity: warning
+  checker: _check_tutorial_needed
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT"]
+
+- id: feature_docs_discoverable
+  category: Session Completion & Progress
+  question: Is feature documentation discoverable from multiple paths?
+  description: Verifies new features have docs discoverable from README and docs/ directory
+  severity: warning
+  checker: _check_feature_docs_discoverable
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT"]
+
+- id: presentation_needed
+  category: Session Completion & Progress
+  question: Does work need presentation deck?
+  description: Checks if results should be presented to stakeholders
+  severity: warning
+  checker: _check_presentation_needed
+  enabled: false
+  applicable_session_types: ["DEVELOPMENT"]
+
+- id: next_steps
+  category: Session Completion & Progress
+  question: Is work complete with no remaining next steps?
+  description: Blocks stopping if agent mentions "next steps" or "remaining work" - they must continue until no outstanding items remain
+  severity: blocker
+  checker: _check_next_steps
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT", "INVESTIGATION"]
+
+- id: docs_organization
+  category: Session Completion & Progress
+  question: Are investigation/session docs organized properly?
+  description: Verifies logs and documentation are in correct directories
+  severity: warning
+  checker: _check_docs_organization
+  enabled: true
+  applicable_session_types: ["MAINTENANCE", "INVESTIGATION"]
+
+# ============================================================================
+# CATEGORY 2: Workflow Process Adherence (2 considerations)
+# ============================================================================
+
+- id: dev_workflow_complete
+  category: Workflow Process Adherence
+  question: Was full DEFAULT_WORKFLOW followed?
+  description: Checks for evidence of workflow steps (design, implement, test, review)
+  severity: blocker
+  checker: _check_dev_workflow_complete
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT"]
+
+- id: investigation_docs
+  category: Workflow Process Adherence
+  question: Were investigation findings documented?
+  description: Ensures exploration work is captured in persistent documentation
+  severity: warning
+  checker: _check_investigation_docs
+  enabled: true
+  applicable_session_types: ["INVESTIGATION"]
+
+# ============================================================================
+# CATEGORY 3: Code Quality & Philosophy Compliance (2 considerations)
+# ============================================================================
+
+- id: philosophy_compliance
+  category: Code Quality & Philosophy Compliance
+  question: PHILOSOPHY adherence (zero-BS, no TODOs, no stubs)?
+  description: Detects anti-patterns like TODO comments, NotImplementedError, stub functions
+  severity: blocker
+  checker: _check_philosophy_compliance
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT", "MAINTENANCE"]
+
+- id: shortcuts
+  category: Code Quality & Philosophy Compliance
+  question: Were any quality shortcuts taken?
+  description: Identifies compromises like skipped error handling or incomplete validation
+  severity: warning
+  checker: _check_shortcuts
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT"]
+
+# ============================================================================
+# CATEGORY 4: Testing & Local Validation (2 considerations)
+# ============================================================================
+
+- id: local_testing
+  category: Testing & Local Validation
+  question: Sure agent tested locally?
+  description: Verifies tests were executed and passed locally
+  severity: blocker
+  checker: _check_local_testing
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT"]
+
+- id: interactive_testing
+  category: Testing & Local Validation
+  question: Did agent test interactively beyond automated tests?
+  description: Checks for manual verification, edge case testing, UI validation
+  severity: warning
+  checker: _check_interactive_testing
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT"]
+
+# ============================================================================
+# CATEGORY 5: PR Content & Quality (4 considerations)
+# ============================================================================
+
+- id: unrelated_changes
+  category: PR Content & Quality
+  question: Are there unrelated changes in PR?
+  description: Detects scope creep and unrelated modifications
+  severity: warning
+  checker: _check_unrelated_changes
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT"]
+
+- id: root_pollution
+  category: PR Content & Quality
+  question: Did PR pollute project root with new files?
+  description: Flags new top-level files that should be in subdirectories
+  severity: warning
+  checker: _check_root_pollution
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT"]
+
+- id: pr_description
+  category: PR Content & Quality
+  question: Is PR description clear and complete?
+  description: Verifies PR has summary, test plan, and context
+  severity: warning
+  checker: _check_pr_description
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT"]
+
+- id: review_responses
+  category: PR Content & Quality
+  question: Were PR review comments addressed?
+  description: Checks if reviewer feedback was acknowledged and resolved
+  severity: blocker
+  checker: _check_review_responses
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT"]
+
+# ============================================================================
+# CATEGORY 6: CI/CD & Mergeability Status (3 considerations)
+# ============================================================================
+
+- id: ci_status
+  category: CI/CD & Mergeability Status
+  question: CI passing/mergeable?
+  description: Verifies GitHub Actions or other CI checks are passing
+  severity: blocker
+  checker: _check_ci_status
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT"]
+
+- id: branch_rebase
+  category: CI/CD & Mergeability Status
+  question: Does branch need rebase on main?
+  description: Checks if branch is behind main and needs updating
+  severity: warning
+  checker: _check_branch_rebase
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT"]
+
+- id: ci_precommit_mismatch
+  category: CI/CD & Mergeability Status
+  question: CI failures contradicting passing pre-commit?
+  description: Identifies divergence between local pre-commit and CI checks
+  severity: warning
+  checker: _check_ci_precommit_mismatch
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT"]
+# ============================================================================
+# CUSTOM CONSIDERATIONS
+# ============================================================================
+# Add your custom considerations below. Follow the same YAML structure.
+#
+# Example:
+# - id: custom_security_scan
+#   category: Security & Compliance
+#   question: Were security scans performed?
+#   description: Verifies security scanning tools were run
+#   severity: blocker
+#   checker: generic
+#   enabled: true
+#
+# For custom considerations, use checker: "generic" to enable simple keyword
+# matching. The generic analyzer looks for question keywords in the transcript.
+# For more sophisticated checks, implement a custom checker method.

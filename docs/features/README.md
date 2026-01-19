@@ -39,6 +39,7 @@ Additional amplihack capabilities:
   - **Automatic**: Configures LSP when you run `amplihack claude`
   - **Multi-Language**: Supports 16 programming languages
   - **Complete Setup**: System binaries, plugins, and project configuration
+- [Smart Memory Management](smart-memory-management.md) - Automatic Node.js memory optimization fer Claude Code launch
 - [Claude.md Preservation](claude-md-preservation.md) - Preserve custom instructions during updates
 - [Neo4j Session Cleanup](neo4j-session-cleanup.md) - Automatic resource management for memory system
 - [Shutdown Detection](shutdown-detection.md) - Graceful exit handling (prevents 10-13s hang on exit)

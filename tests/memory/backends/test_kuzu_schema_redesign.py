@@ -13,11 +13,8 @@ Philosophy:
 """
 
 import tempfile
-from datetime import datetime, timedelta
-from pathlib import Path
+from datetime import datetime
 from unittest.mock import Mock, patch
-
-import pytest
 
 from src.amplihack.memory.models import MemoryEntry, MemoryQuery, MemoryType
 
@@ -155,7 +152,9 @@ class TestKuzuBackendRelationshipTypes:
             ]
 
             for rel_type in expected_relationships:
-                assert any(rel_type in str(call) for call in calls), f"{rel_type} not found in calls"
+                assert any(rel_type in str(call) for call in calls), (
+                    f"{rel_type} not found in calls"
+                )
 
 
 class TestKuzuBackendStoreMemoryRouting:

@@ -38,6 +38,7 @@ Everything you need to install and configure amplihack.
 - [Profile Management](PROFILE_MANAGEMENT.md) - Multiple environment configurations
 - [Proxy Configuration](PROXY_CONFIG_GUIDE.md) - Network proxy setup
 - [Hook Configuration](HOOK_CONFIGURATION_GUIDE.md) - Customize framework behavior
+- [Memory Configuration Consent](features/memory-consent-prompt.md) - Intelligent memory settings with timeout protection
 
 ### Deployment
 
@@ -199,6 +200,7 @@ Execute complex tasks with simple slash commands.
 ### Command Reference
 
 - [Command Selection Guide](commands/COMMAND_SELECTION_GUIDE.md) - Choose the right command for your task
+- [Amplifier Command](reference/amplifier-command.md) - Launch Amplifier with amplihack bundle
 
 ### Core Commands
 
@@ -303,6 +305,7 @@ Intelligent guidance system that prevents common mistakes:
 
 ### Other Features
 
+- [Smart Memory Management](features/smart-memory-management.md) - Automatic Node.js memory optimization for Claude Code
 - [Claude.md Preservation](features/claude-md-preservation.md) - Preserve custom instructions
 - [Neo4j Session Cleanup](features/neo4j-session-cleanup.md) - Automatic resource management
 - [Shutdown Detection](concepts/shutdown-detection.md) - Graceful exit handling (prevents 10-13s hang)
@@ -385,6 +388,7 @@ Fix common issues and learn from past solutions.
 
 - [Discoveries](DISCOVERIES.md) - Known issues and solutions (CHECK HERE FIRST!)
 - [Troubleshooting Guides](troubleshooting/README.md) - Common problems and fixes
+- [Memory Consent Issues](troubleshooting/memory-consent-issues.md) - Fix prompt, timeout, and detection problems
 - [Platform Bridge Troubleshooting](troubleshooting/platform-bridge.md) - Fix platform detection and CLI issues
 - [Stop Hook Exit Hang](troubleshooting/stop-hook-exit-hang.md) - Fix 10-13s hang on exit (resolved v0.9.1)
 - [Tool Null Name Analysis](TOOL_NULL_NAME_ANALYSIS.md) - Debugging tool name issues
@@ -398,6 +402,7 @@ Fix common issues and learn from past solutions.
 
 ### How-To Guides
 
+- [Configure Memory Consent](howto/configure-memory-consent.md) - Customize prompt behavior, timeouts, and CI/CD integration
 - [Platform Bridge Quick Start](tutorials/platform-bridge-quickstart.md) - Learn the basics in 10 minutes
 - [Platform Bridge Workflows](howto/platform-bridge-workflows.md) - Common workflows for GitHub and Azure DevOps
 

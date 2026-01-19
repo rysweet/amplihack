@@ -1,0 +1,47 @@
+# Linked Pull Request Sets
+# Tracks PRs that should be merged together or in sequence
+#
+# Usage:
+#   - Each 'linked_set' groups related PRs across repos
+#   - 'merge_order' determines sequence (lower = earlier)
+#   - Status tracks progress: open -> approved -> merged
+
+version: "1.0"
+
+# Active linked PR sets
+# Format:
+#   - id: unique-identifier
+#     description: What this set accomplishes
+#     created: ISO timestamp
+#     status: pending|merging|completed|failed
+#     prs:
+#       - repo: org/repo-name
+#         pr: PR number
+#         branch: branch name
+#         status: open|approved|merged|closed
+#         merge_order: 1, 2, 3...
+
+linked_sets: []
+# Example:
+#
+# linked_sets:
+#   - id: "oauth2-implementation"
+#     description: "OAuth2 authentication across all services"
+#     created: "2025-11-25T10:00:00Z"
+#     status: "pending"
+#     prs:
+#       - repo: my-org/api-server
+#         pr: 123
+#         branch: feat/oauth2-backend
+#         status: "approved"
+#         merge_order: 1
+#       - repo: my-org/web-client
+#         pr: 456
+#         branch: feat/oauth2-frontend
+#         status: "open"
+#         merge_order: 2
+#       - repo: my-org/mobile-app
+#         pr: 789
+#         branch: feat/oauth2-mobile
+#         status: "open"
+#         merge_order: 2

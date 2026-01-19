@@ -1,0 +1,122 @@
+# Workflow State Template
+# =======================
+#
+# This template shows the expected format for workflow state tracking.
+# Copy this file to .claude/runtime/workflow_state.yaml when starting a workflow.
+#
+# Purpose:
+#   - Track workflow step completion
+#   - Enable progress visualization
+#   - Support mandatory step enforcement
+#   - Integrate with power_steering checks
+#
+# Usage:
+#   1. At Step 0, copy this template to workflow_state.yaml
+#   2. Update workflow_id with your session ID
+#   3. Update task_description with your task
+#   4. Mark steps as completed with timestamps as you go
+#   5. Delete the file when workflow completes
+
+# Required fields
+workflow_id: "session_YYYYMMDD_HHMMSS"  # Unique identifier, e.g., session_20251125_143022
+workflow_name: DEFAULT                   # Workflow being executed
+task_description: ""                     # Brief description of the task
+started_at: ""                           # ISO timestamp when workflow began
+
+# Current position in workflow
+current_step: 0                          # Step number currently being executed (0-21)
+
+# Step tracking
+# Each step can have:
+#   - status: pending | in_progress | completed | skipped
+#   - timestamp: ISO timestamp when status changed
+#   - mandatory: true for steps that cannot be skipped (auto-set for 10, 16, 17)
+#   - notes: Optional notes about completion
+steps:
+  0:
+    status: in_progress
+    mandatory: true
+    description: "Workflow Preparation - Read workflow, create todos"
+  1:
+    status: pending
+    description: "Prepare the Workspace"
+  2:
+    status: pending
+    description: "Rewrite and Clarify Requirements"
+  3:
+    status: pending
+    description: "Create GitHub Issue"
+  4:
+    status: pending
+    description: "Setup Worktree and Branch"
+  5:
+    status: pending
+    description: "Research and Design"
+  6:
+    status: pending
+    description: "Retcon Documentation Writing"
+  7:
+    status: pending
+    description: "Test Driven Development - Writing Tests First"
+  8:
+    status: pending
+    description: "Implement the Solution"
+  9:
+    status: pending
+    description: "Refactor and Simplify"
+  10:
+    status: pending
+    mandatory: true
+    description: "MANDATORY: Review Pass Before Commit"
+  11:
+    status: pending
+    description: "Incorporate Any Review Feedback"
+  12:
+    status: pending
+    description: "Run Tests and Pre-commit Hooks"
+  13:
+    status: pending
+    description: "Mandatory Local Testing"
+  14:
+    status: pending
+    description: "Commit and Push"
+  15:
+    status: pending
+    description: "Open Pull Request as Draft"
+  16:
+    status: pending
+    mandatory: true
+    description: "MANDATORY: Review the PR"
+  17:
+    status: pending
+    mandatory: true
+    description: "MANDATORY: Implement Review Feedback"
+  18:
+    status: pending
+    description: "Philosophy Compliance Check"
+  19:
+    status: pending
+    description: "Final Cleanup and Verification"
+  20:
+    status: pending
+    description: "Convert PR to Ready for Review"
+  21:
+    status: pending
+    description: "Ensure PR is Mergeable - TASK COMPLETION"
+
+# Mandatory steps list for quick reference
+mandatory_steps: [0, 10, 16, 17]
+
+# Checkpoint gates
+# These define enforcement points where mandatory steps are validated
+checkpoints:
+  before_step_15:
+    required_steps: [10]
+    error_message: "Cannot open PR without completing Step 10 (Pre-commit review)"
+  before_step_21:
+    required_steps: [10, 16, 17]
+    error_message: "Cannot mark mergeable without completing all mandatory review steps"
+
+# Metadata
+created_by: "workflow-enforcement-skill"
+version: "1.0.0"

@@ -1,0 +1,218 @@
+# Level 1: Basic TUI File Manager Navigation
+# This test demonstrates keyboard-based navigation in a terminal user interface,
+# verifying screen state after navigation actions.
+
+scenario:
+  name: "TUI File Manager - Basic Navigation"
+  description: |
+    Verifies keyboard navigation in a TUI file manager application.
+    Tests arrow key movement, directory entry, and screen state verification.
+  type: tui
+  level: 1
+
+  tags: [tui, navigation, keyboard, basic]
+
+  prerequisites:
+    - "./file-manager binary exists"
+    - "Test directory structure exists with predictable files"
+    - "Terminal supports ANSI escape codes"
+
+  # Terminal configuration
+  environment:
+    terminal_size:
+      width: 80
+      height: 24
+    variables:
+      TERM: "xterm-256color"
+
+  steps:
+    # Launch the TUI application
+    - action: launch
+      target: "./file-manager"
+      args: ["--test-mode", "--path=/test-root"]
+      description: "Start file manager in test directory"
+      timeout: 5s
+
+    # Wait for initial screen render
+    - action: wait_for_screen
+      contains: "File Manager v"
+      timeout: 3s
+      description: "Wait for application header to appear"
+
+    # Verify initial state shows file list
+    - action: verify_screen
+      contains: "documents/"
+      description: "Should display documents directory"
+
+    - action: verify_screen
+      contains: "downloads/"
+      description: "Should display downloads directory"
+
+    - action: verify_screen
+      contains: "pictures/"
+      description: "Should display pictures directory"
+
+    # Capture initial state
+    - action: capture_screenshot
+      save_as: "initial-state.txt"
+      description: "Save initial directory listing"
+
+    # Test Case 1: Navigate down in list
+    - action: send_keypress
+      value: "down"
+      description: "Move selection down one item"
+
+    - action: verify_screen
+      contains: "> documents/"
+      description: "First item should now be selected (> indicator)"
+
+    # Move down again
+    - action: send_keypress
+      value: "down"
+      description: "Move selection down again"
+
+    - action: verify_screen
+      contains: "> downloads/"
+      description: "Second item should be selected"
+
+    # Move down once more
+    - action: send_keypress
+      value: "down"
+      description: "Move selection to third item"
+
+    - action: verify_screen
+      contains: "> pictures/"
+      description: "Third item should be selected"
+
+    # Test Case 2: Navigate up in list
+    - action: send_keypress
+      value: "up"
+      description: "Move selection up one item"
+
+    - action: verify_screen
+      contains: "> downloads/"
+      description: "Should return to second item"
+
+    - action: send_keypress
+      value: "up"
+      description: "Move selection up again"
+
+    - action: verify_screen
+      contains: "> documents/"
+      description: "Should return to first item"
+
+    # Test Case 3: Enter directory
+    - action: send_keypress
+      value: "enter"
+      description: "Enter the documents directory"
+
+    - action: wait_for_screen
+      contains: "documents/"
+      timeout: 2s
+      description: "Wait for directory contents to load"
+
+    # Verify we're inside the directory
+    - action: verify_screen
+      contains: "report.pdf"
+      description: "Should show files inside documents/"
+
+    - action: verify_screen
+      contains: "notes.txt"
+      description: "Should show additional files"
+
+    # Capture directory view
+    - action: capture_screenshot
+      save_as: "documents-directory.txt"
+      description: "Save documents directory view"
+
+    # Test Case 4: Navigate back to parent
+    - action: send_keypress
+      value: "backspace"
+      description: "Return to parent directory"
+
+    - action: wait_for_screen
+      contains: "downloads/"
+      timeout: 2s
+      description: "Should return to root level"
+
+    # Verify back at root
+    - action: verify_screen
+      contains: "documents/"
+      description: "Should see all top-level directories again"
+
+    # Test Case 5: Quick navigation with multiple keys
+    - action: send_keypress
+      value: "down"
+      times: 3
+      description: "Press down 3 times quickly"
+
+    - action: verify_screen
+      contains: "> pictures/"
+      description: "Should reach pictures directory"
+
+    # Test Case 6: Status bar verification
+    - action: verify_screen
+      matches: "\\d+ items"
+      description: "Status bar should show item count"
+
+    # Exit application
+    - action: send_keypress
+      value: "q"
+      description: "Quit application (q key)"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "Should exit cleanly"
+
+  cleanup:
+    - action: stop_application
+      force: false
+      description: "Allow graceful shutdown"
+# Expected Screen State Examples:
+
+# Initial State:
+# ┌────────────────────────────────────────────┐
+# │ File Manager v1.0          /test-root      │
+# ├────────────────────────────────────────────┤
+# │ > documents/                               │
+# │   downloads/                               │
+# │   pictures/                                │
+# │                                            │
+# ├────────────────────────────────────────────┤
+# │ 3 items | q: quit | enter: open           │
+# └────────────────────────────────────────────┘
+
+# After navigation (down x2):
+# │   documents/                               │
+# │ > downloads/                               │
+# │   pictures/                                │
+
+# Inside documents/:
+# │ > report.pdf                               │
+# │   notes.txt                                │
+# │   spreadsheet.xlsx                         │
+
+# Run Command:
+# gadugi-agentic-test run examples/tui/file-manager-navigation.yaml
+
+# Key Learning Points (Level 1):
+# 1. TUI tests verify screen content, not internal state
+# 2. send_keypress simulates keyboard input
+# 3. verify_screen checks visible text on screen
+# 4. wait_for_screen handles async screen updates
+# 5. Terminal screenshots (ANSI text) provide evidence
+# 6. times parameter repeats keypresses efficiently
+
+# TUI Testing Patterns:
+# - Always wait for screen updates before verification
+# - Use visual indicators (>, highlighting) to verify selection
+# - Capture screenshots at key states for debugging
+# - Set terminal size explicitly for consistent rendering
+# - Test both forward and backward navigation
+
+# Common TUI Actions:
+# - Arrow keys: "up", "down", "left", "right"
+# - Special keys: "enter", "backspace", "escape", "tab"
+# - Control keys: "ctrl+c", "ctrl+d", "ctrl+z"
+# - Function keys: "f1", "f2", etc.
+# - Text keys: Any printable character

@@ -52,6 +52,7 @@ This developer guide explains the architecture, implementation, and extension po
 ### Data Flow
 
 **Storage Flow**:
+
 1. Hook triggers (UserPromptSubmit, TodoWriteComplete, SessionStop)
 2. MemoryCoordinator.store() called with content + type
 3. StoragePipeline extracts structured memory
@@ -61,6 +62,7 @@ This developer guide explains the architecture, implementation, and extension po
 7. Background operation (<50ms total)
 
 **Retrieval Flow**:
+
 1. User query or agent request
 2. MemoryCoordinator.retrieve() called with query + filters
 3. RetrievalPipeline searches SQLite (indexed search)
@@ -116,6 +118,7 @@ Each module is a self-contained "brick" following amplihack philosophy:
 **Purpose**: Main interface for storing and retrieving memories
 
 **Public API**:
+
 ```python
 from amplihack.memory import MemoryCoordinator
 
@@ -143,6 +146,7 @@ print(f"By type: {stats.by_type}")
 ```
 
 **Implementation**:
+
 ```python
 # coordinator.py
 from dataclasses import dataclass
@@ -202,6 +206,7 @@ class MemoryCoordinator:
 **Purpose**: Extract, review, and store memories with consensus
 
 **Key Methods**:
+
 ```python
 # storage_pipeline.py
 from .agent_review import AgentReview
@@ -278,6 +283,7 @@ class StoragePipeline:
 **Purpose**: Search, score, and rank memories by relevance
 
 **Key Methods**:
+
 ```python
 # retrieval_pipeline.py
 from typing import List, Optional
@@ -357,6 +363,7 @@ class RetrievalPipeline:
 **Purpose**: Multi-agent consensus scoring for storage and retrieval
 
 **Key Methods**:
+
 ```python
 # agent_review.py
 from dataclasses import dataclass
@@ -637,6 +644,7 @@ class TimeWeightedRetrieval:
 ### MemoryCoordinator
 
 **Constructor**:
+
 ```python
 MemoryCoordinator(db_path: Optional[str] = None)
 ```
@@ -651,6 +659,7 @@ store(
     context: Optional[Dict[str, Any]] = None
 ) -> StoreResult
 ```
+
 Store memory with multi-agent review.
 
 ```python
@@ -664,21 +673,25 @@ retrieve(
     similarity_threshold: float = 0.85
 ) -> List[Memory]
 ```
+
 Retrieve relevant memories with scoring.
 
 ```python
 stats() -> MemoryStats
 ```
+
 Get memory system statistics.
 
 ```python
 delete_memory(memory_id: str) -> bool
 ```
+
 Delete specific memory by ID.
 
 ```python
 clear_working_memory(session_id: str) -> int
 ```
+
 Clear working memory for session (returns count deleted).
 
 ### Memory Data Class
@@ -822,6 +835,7 @@ def consolidate_session_memory(session_id: str):
 ### Optimization Strategies
 
 **1. Indexed Search**:
+
 ```sql
 -- SQLite FTS5 index for fast text search
 CREATE VIRTUAL TABLE memories_fts USING fts5(
@@ -832,6 +846,7 @@ CREATE VIRTUAL TABLE memories_fts USING fts5(
 ```
 
 **2. Background Storage**:
+
 ```python
 # Don't block user interaction
 import asyncio
@@ -844,6 +859,7 @@ asyncio.create_task(store_async(coordinator, prompt, "working"))
 ```
 
 **3. Batch Retrieval**:
+
 ```python
 # Retrieve multiple queries efficiently
 def batch_retrieve(queries: List[str]) -> Dict[str, List[Memory]]:
