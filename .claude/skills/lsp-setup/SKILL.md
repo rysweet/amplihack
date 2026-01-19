@@ -23,11 +23,34 @@ persistenceThreshold: 20
 
 # LSP Auto-Configuration Skill
 
-**Auto-discovers and configures Language Server Protocol (LSP) servers for your project's languages.**
+**Manual control and troubleshooting for Language Server Protocol (LSP) configuration.**
+
+## Important: LSP is Configured Automatically
+
+**You probably don't need this skill!** LSP is configured automatically when you run `amplihack claude`.
+
+**When amplihack launches Claude Code, it automatically:**
+- Detects programming languages in your project
+- Sets `ENABLE_LSP_TOOL=1` environment variable
+- Installs required LSP plugins via Claude Code plugin marketplace
+- Configures project-specific settings in `.env`
+
+**You'll see:** `📡 LSP: Detected 3 language(s): python, javascript...` when amplihack starts Claude Code.
+
+## When to Use This Skill
+
+**Use `/lsp-setup` only when you need to:**
+
+- **Check Status**: Verify LSP configuration is working (`/lsp-setup --status-only`)
+- **Troubleshoot Issues**: Diagnose why code intelligence isn't working
+- **Force Reconfiguration**: Rebuild LSP config after manual changes (`/lsp-setup --force`)
+- **Add New Languages**: Configure LSP for newly added languages
+
+**Don't use this skill if:** LSP is already working! The automatic setup handles 99% of cases.
 
 ## Overview
 
-The LSP Setup skill automatically detects programming languages in your codebase and generates the LSP configuration needed for Claude Code to provide intelligent code completion, diagnostics, and navigation. It supports 16 popular programming languages out of the box.
+The LSP Setup skill provides manual control over the same LSP auto-configuration that happens automatically at launch. It supports 16 popular programming languages out of the box and gives you direct access to configuration, status checking, and troubleshooting.
 
 ## What LSP Provides to You
 
