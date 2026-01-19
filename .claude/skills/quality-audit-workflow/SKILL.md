@@ -23,12 +23,13 @@ I automatically load when you mention:
 
 ## What I Do
 
-Execute a 6-phase workflow that:
+Execute a 7-phase workflow that:
 
 1. **Familiarizes** with the project (investigation phase)
 2. **Audits** using parallel agents across codebase divisions
 3. **Creates** GitHub issues for each discovered problem
-4. **Generates** PRs in parallel worktrees per issue
+3.5. **Validates** against recent PRs (prevents false positives)
+4. **Generates** PRs in parallel worktrees per remaining issues
 5. **Reviews** PRs with PM architect for prioritization
 6. **Reports** consolidated recommendations in master issue
 
@@ -40,7 +41,7 @@ Skill: *activates automatically*
        "Beginning quality audit workflow..."
 ```
 
-## The 6 Phases
+## The 7 Phases
 
 ### Phase 1: Project Familiarization
 
@@ -60,12 +61,22 @@ Skill: *activates automatically*
 - Create GitHub issue for each finding
 - Include severity, location, recommendation
 - Tag with appropriate labels
+- Add unique IDs, keywords, and file metadata
+
+### Phase 3.5: Post-Audit Validation [NEW]
+
+- Scan merged PRs from last 30 days (configurable)
+- Calculate confidence scores for PR-issue matches
+- Auto-close high-confidence matches (≥90%)
+- Tag medium-confidence matches (70-89%) for verification
+- Add bidirectional cross-references between issues and PRs
+- Target: <5% false positive rate
 
 ### Phase 4: Parallel PR Generation
 
-- Create worktree per issue (`worktrees/fix-issue-XXX`)
+- Create worktree per remaining open issue (`worktrees/fix-issue-XXX`)
 - Run DEFAULT_WORKFLOW.md in each worktree
-- Generate fix PR for each issue
+- Generate fix PR for each confirmed open issue
 
 ### Phase 5: PM Review
 
@@ -110,6 +121,15 @@ This workflow ruthlessly applies:
 
 Override defaults via environment or prompt:
 
+**Core Settings**:
+
 - `AUDIT_PARALLEL_LIMIT`: Max concurrent worktrees (default: 8)
 - `AUDIT_SEVERITY_THRESHOLD`: Minimum severity to create issue (default: medium)
 - `AUDIT_MODULE_LOC_LIMIT`: Flag modules exceeding this LOC (default: 300)
+
+**Phase 3.5 Validation Settings** [NEW]:
+
+- `AUDIT_PR_SCAN_DAYS`: Days to scan for recent PRs (default: 30)
+- `AUDIT_AUTO_CLOSE_THRESHOLD`: Confidence % for auto-close (default: 90)
+- `AUDIT_TAG_THRESHOLD`: Confidence % for tagging (default: 70)
+- `AUDIT_ENABLE_VALIDATION`: Enable Phase 3.5 (default: true)
