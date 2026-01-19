@@ -29,12 +29,13 @@ Everything you need to install and configure amplihack.
 
 ### Plugin Architecture ⭐ NEW
 
-Zero-install, portable plugin system that works across all your projects:
+Centralized plugin system that works across all your projects:
 
-- [Plugin Overview](plugin/README.md) - What is the plugin architecture
-- [Plugin Installation](plugin/PLUGIN_INSTALLATION.md) - Install once, use everywhere
-- [LSP Configuration](plugin/LSP_CONFIGURATION.md) - Language server auto-detection
-- [Plugin Development](plugin/PLUGIN_DEVELOPMENT.md) - Contribute to the plugin
+- [Plugin Installation Guide](plugin/INSTALLATION.md) - Install amplihack as a global plugin
+- [Plugin Architecture Overview](plugin/ARCHITECTURE.md) - How the plugin system works
+- [Migration Guide](plugin/MIGRATION.md) - Migrate from per-project to plugin mode
+- [CLI Reference](plugin/CLI_REFERENCE.md) - Complete command-line reference
+- [Multi-IDE Setup](plugin/MULTI_IDE.md) - Configure for Claude Code, Copilot, and Codex
 
 ### Installation
 

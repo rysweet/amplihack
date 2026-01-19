@@ -57,6 +57,22 @@ class PluginManager:
         self.plugin_root = plugin_root or Path.home() / ".amplihack" / ".claude" / "plugins"
         self._lock = threading.Lock()
 
+    def _validate_path_safety(self, path: Path, base_path: Path) -> bool:
+        """Validate that path is safely under base_path (no traversal).
+
+        Args:
+            path: Path to validate
+            base_path: Base directory that path must be under
+
+        Returns:
+            True if path is safe, False if path traversal detected
+        """
+        try:
+            path.resolve().relative_to(base_path.resolve())
+            return True
+        except ValueError:
+            return False
+
     def validate_manifest(self, manifest_path: Path) -> ValidationResult:
         """Validate a plugin manifest file.
 
@@ -131,6 +147,8 @@ class PluginManager:
 
             # Determine if source is git URL or local path
             is_git_url = source.startswith(("http://", "https://", "git@"))
+            temp_dir = None
+            temp_cleanup_needed = False
 
             if is_git_url:
                 # Extract plugin name from URL
@@ -147,37 +165,38 @@ class PluginManager:
                         message=f"Invalid plugin name from URL: {plugin_name} (must be lowercase letters, numbers, hyphens only)"
                     )
 
-                # Create temp directory for cloning
+                # Create temp directory for cloning with cleanup tracking
                 import tempfile
                 temp_dir = Path(tempfile.mkdtemp())
+                temp_cleanup_needed = True
 
-                # Clone repository
-                result = subprocess.run(
-                    ['git', 'clone', source, str(temp_dir / plugin_name)],
-                    capture_output=True,
-                    text=True
-                )
-
-                if result.returncode != 0:
-                    return InstallResult(
-                        success=False,
-                        plugin_name=plugin_name,
-                        installed_path=Path(),
-                        message=f"Git clone failed: {result.stderr}"
+                try:
+                    # Clone repository
+                    result = subprocess.run(
+                        ['git', 'clone', source, str(temp_dir / plugin_name)],
+                        capture_output=True,
+                        text=True
                     )
 
-                source_path = temp_dir / plugin_name
+                    if result.returncode != 0:
+                        return InstallResult(
+                            success=False,
+                            plugin_name=plugin_name,
+                            installed_path=Path(),
+                            message=f"Git clone failed: {result.stderr}"
+                        )
+
+                    source_path = temp_dir / plugin_name
+                except Exception as e:
+                    # Clean up temp directory on error
+                    if temp_cleanup_needed and temp_dir.exists():
+                        shutil.rmtree(temp_dir)
+                    raise
             else:
                 # Local path
                 source_path = Path(source)
-                if not source_path.exists():
-                    return InstallResult(
-                        success=False,
-                        plugin_name="",
-                        installed_path=Path(),
-                        message=f"Source path does not exist: {source}"
-                    )
 
+                # is_dir() returns False for nonexistent paths, so no need for separate exists() check
                 if not source_path.is_dir():
                     return InstallResult(
                         success=False,
@@ -188,8 +207,18 @@ class PluginManager:
 
                 plugin_name = source_path.name
 
-            # Validate manifest
-            manifest_path = source_path / ".claude-plugin" / "plugin.json"
+            # Validate manifest - resolve and check for path traversal
+            manifest_path = (source_path / ".claude-plugin" / "plugin.json").resolve()
+
+            # Validate manifest_path is still under source_path (prevent path traversal)
+            if not self._validate_path_safety(manifest_path, source_path):
+                return InstallResult(
+                    success=False,
+                    plugin_name=plugin_name,
+                    installed_path=Path(),
+                    message="Manifest path traversal detected"
+                )
+
             validation = self.validate_manifest(manifest_path)
 
             if not validation.valid:
@@ -229,7 +258,13 @@ class PluginManager:
                 )
 
             # Register plugin in Claude Code settings
-            if not self._register_plugin(plugin_name, target_path):
+            registration_success = self._register_plugin(plugin_name)
+
+            # Clean up temp directory if it was created for git clone
+            if is_git_url and temp_cleanup_needed and temp_dir and temp_dir.exists():
+                shutil.rmtree(temp_dir)
+
+            if not registration_success:
                 return InstallResult(
                     success=False,
                     plugin_name=plugin_name,
@@ -325,20 +360,19 @@ class PluginManager:
 
         return resolved
 
-    def _register_plugin(self, plugin_name: str, plugin_path: Path) -> bool:
+    def _register_plugin(self, plugin_name: str) -> bool:
         """Register plugin in Claude Code settings.
 
-        Adds plugin to enabledPlugins array in ~/.claude/settings.json
+        Adds plugin to enabledPlugins array in ~/.config/claude-code/plugins.json
         so it appears in /plugin command.
 
         Args:
             plugin_name: Name of plugin to register
-            plugin_path: Path to installed plugin
 
         Returns:
             True if successful, False otherwise
         """
-        settings_path = Path.home() / ".claude" / "settings.json"
+        settings_path = Path.home() / ".config" / "claude-code" / "plugins.json"
 
         try:
             # Create .claude directory if it doesn't exist
