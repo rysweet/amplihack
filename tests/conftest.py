@@ -789,3 +789,104 @@ def validate_no_todos_in_production():
             return True, []
 
     return validate
+
+
+# =============================================================================
+# Plugin Architecture Test Fixtures
+# =============================================================================
+
+
+@pytest.fixture
+def sample_plugin(tmp_path):
+    """Create a sample plugin fer testin'.
+
+    Returns:
+        Path: Directory containin' sample plugin with valid manifest
+    """
+    plugin_dir = tmp_path / "sample-plugin"
+    plugin_dir.mkdir()
+
+    # Create manifest
+    manifest = {
+        "name": "sample-plugin",
+        "version": "1.0.0",
+        "description": "Sample plugin fer testin'",
+        "author": "Test Author",
+        "mcpServers": {
+            "sample-server": {
+                "command": "node",
+                "args": ["server.js"]
+            }
+        }
+    }
+
+    manifest_path = plugin_dir / "manifest.json"
+    manifest_path.write_text(json.dumps(manifest, indent=2))
+
+    # Create sample files
+    (plugin_dir / "README.md").write_text("# Sample Plugin\n\nTest plugin.")
+    (plugin_dir / "server.js").write_text("console.log('Sample server');")
+
+    return plugin_dir
+
+
+@pytest.fixture
+def invalid_plugin(tmp_path):
+    """Create an invalid plugin fer testin' error handlin'.
+
+    Returns:
+        Path: Directory containin' plugin with invalid/missing manifest
+    """
+    plugin_dir = tmp_path / "invalid-plugin"
+    plugin_dir.mkdir()
+
+    # No manifest file - invalid!
+    (plugin_dir / "README.md").write_text("# Invalid Plugin")
+
+    return plugin_dir
+
+
+@pytest.fixture
+def multi_language_project(tmp_path):
+    """Create a multi-language project fer LSP testin'.
+
+    Returns:
+        Path: Directory containin' Python, TypeScript, and Rust files
+    """
+    project_dir = tmp_path / "multi-lang-project"
+    project_dir.mkdir()
+
+    # Python files
+    (project_dir / "main.py").write_text("print('Hello from Python')")
+    (project_dir / "pyproject.toml").write_text("[tool.poetry]\nname = 'test'")
+
+    # TypeScript files
+    (project_dir / "index.ts").write_text("const x: string = 'test';")
+    (project_dir / "tsconfig.json").write_text('{"compilerOptions": {}}')
+
+    # Rust files
+    src_dir = project_dir / "src"
+    src_dir.mkdir()
+    (src_dir / "main.rs").write_text('fn main() { println!("Hello"); }')
+    (project_dir / "Cargo.toml").write_text('[package]\nname = "test"')
+
+    return project_dir
+
+
+def assert_subprocess_success(result):
+    """Assert that a subprocess result was successful.
+
+    Helper function fer clearer test assertions.
+
+    Args:
+        result: SubprocessResult from test harness
+
+    Raises:
+        AssertionError: If subprocess failed
+    """
+    assert result.success, (
+        f"Command failed: {' '.join(result.command)}\n"
+        f"Exit code: {result.returncode}\n"
+        f"Stdout: {result.stdout}\n"
+        f"Stderr: {result.stderr}"
+    )
