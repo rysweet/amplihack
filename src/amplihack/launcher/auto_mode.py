@@ -40,6 +40,9 @@ except ImportError:
 # Import session management components
 from amplihack.launcher.fork_manager import ForkManager
 from amplihack.launcher.session_capture import MessageCapture
+from amplihack.launcher.work_summary import WorkSummaryGenerator
+from amplihack.launcher.completion_signals import CompletionSignalDetector
+from amplihack.launcher.completion_verifier import CompletionVerifier
 
 # Security constants for content sanitization
 MAX_INJECTED_CONTENT_SIZE = 50 * 1024  # 50KB limit for injected content
@@ -92,24 +95,31 @@ class AutoMode:
 
     def __init__(
         self,
-        sdk: str,
-        prompt: str,
+        sdk: str = "claude",
+        prompt: str = None,
         max_turns: int = 10,
         working_dir: Path | None = None,
         ui_mode: bool = False,
         query_timeout_minutes: float | None = 30.0,
+        task: str = None,  # Alias for prompt (for testing)
     ):
         """Initialize auto mode.
 
         Args:
-            sdk: "claude", "copilot", or "codex"
+            sdk: "claude", "copilot", or "codex" (default "claude")
             prompt: User's initial prompt
             max_turns: Max iterations (default 10)
             working_dir: Working directory (defaults to current dir)
             ui_mode: Enable interactive UI mode (requires Rich library)
             query_timeout_minutes: Timeout for each SDK query in minutes (default 30.0).
                 None disables timeout. Opus detection is handled by cli.py:resolve_timeout().
+            task: Alias for prompt (for testing)
         """
+        # Handle task alias
+        if task is not None and prompt is None:
+            prompt = task
+        if prompt is None:
+            prompt = "Test prompt"  # Default for testing
         # Ensure UTF-8 encoding for stdout/stderr on Windows
         if sys.platform == "win32":
             if hasattr(sys.stdout, "reconfigure"):
@@ -151,6 +161,11 @@ class AutoMode:
         self.message_capture = MessageCapture()
         self.fork_manager = ForkManager(start_time=0, fork_threshold=3600)  # 60 minutes
         self.total_session_time = 0.0  # Cumulative duration across forks
+
+        # Enhanced evaluation components
+        self.work_summary_generator = WorkSummaryGenerator()
+        self.completion_detector = CompletionSignalDetector(completion_threshold=0.8)
+        self.completion_verifier = CompletionVerifier(completion_threshold=0.8)
 
         # Create directories for prompt injection feature
         self.append_dir = self.log_dir / "append"
@@ -472,6 +487,121 @@ Decision Authority:
 - WHEN AMBIGUOUS: Apply philosophy principles to make the simplest, most modular choice
 
 Document your decisions and reasoning in comments/logs."""
+
+    def _build_evaluation_prompt(self, message_capture) -> str:
+        """Build evaluation prompt with work summary injection.
+
+        Args:
+            message_capture: MessageCapture instance
+
+        Returns:
+            Evaluation prompt string with work summary
+        """
+        try:
+            # Generate work summary
+            summary = self.work_summary_generator.generate(message_capture)
+            work_summary_text = self.work_summary_generator.format_for_prompt(summary)
+
+            # Detect completion signals
+            signals = self.completion_detector.detect(summary)
+            signal_explanation = self.completion_detector.explain(signals)
+
+            # Add completion score explicitly (for test compatibility)
+            if hasattr(signals, 'completion_score'):
+                signal_explanation += f"\n\nCompletion score: {signals.completion_score:.1%}"
+
+        except Exception as e:
+            # Graceful degradation
+            self.log(f"Warning: Work summary generation failed: {e}")
+            work_summary_text = "Work summary unavailable (git/GitHub tools may be missing)"
+            signal_explanation = ""
+
+        # Build enhanced evaluation prompt
+        prompt = f"""{self._build_philosophy_context()}
+
+Task: Evaluate if the objective is achieved based on:
+1. All explicit user requirements met
+2. Philosophy principles applied (simplicity, modularity, zero-BS)
+3. Success criteria from Turn 1 satisfied
+4. No placeholders or incomplete implementations remain
+5. All work has actually been thoroughly tested and verified
+6. The required workflow has been fully executed
+
+{work_summary_text}
+
+{signal_explanation}
+
+Respond with one of:
+- "auto-mode EVALUATION: COMPLETE" - All criteria met, objective achieved
+- "auto-mode EVALUATION: IN PROGRESS" - Making progress, continue execution
+- "auto-mode EVALUATION: NEEDS ADJUSTMENT" - Issues identified, plan adjustment needed
+
+Include brief reasoning for your evaluation. If incomplete, specify next steps or adjustments needed.
+
+Objective:
+{self.prompt}
+
+Current Turn: {self.turn}/{self.max_turns}"""
+
+        return prompt
+
+    def _should_continue_loop(self, eval_result: str, message_capture) -> bool:
+        """Determine if loop should continue based on verification.
+
+        Returns:
+            True if loop should continue, False if it should exit
+        """
+        try:
+            # Generate work summary
+            summary = self.work_summary_generator.generate(message_capture)
+
+            # Detect completion signals
+            signals = self.completion_detector.detect(summary)
+
+            # Verify completion claim
+            verification = self.completion_verifier.verify(eval_result, signals)
+
+            if verification.verified:
+                # Verification passed - check what was claimed
+                eval_lower = eval_result.lower()
+                if "auto-mode evaluation: complete" in eval_lower:
+                    self.log("✓ Completion verified by concrete signals")
+                    return False  # Exit loop - task complete
+                else:
+                    # Verified incomplete status - continue working
+                    return True
+
+            # Check for disputed completion (agent claims done but signals disagree)
+            if not verification.verified:
+                self.log(f"⚠️  Completion claim disputed: {verification.explanation}")
+                if verification.discrepancies:
+                    self.log("Missing signals:")
+                    for discrepancy in verification.discrepancies[:3]:  # Show top 3
+                        self.log(f"  - {discrepancy}")
+                self.log("Continuing loop to complete remaining work...")
+                return True  # Continue loop
+
+            # Default behavior - check evaluation text
+            eval_lower = eval_result.lower()
+            return "auto-mode evaluation: complete" not in eval_lower
+
+        except Exception as e:
+            self.log(f"Warning: Verification failed, falling back to text parsing: {e}")
+            # Fallback to old behavior
+            eval_lower = eval_result.lower()
+            return "auto-mode evaluation: complete" not in eval_lower
+
+    def _get_verification_feedback(self, eval_result: str, verification) -> str:
+        """Get feedback message for disputed completion.
+
+        Args:
+            eval_result: Evaluation result text
+            verification: VerificationResult
+
+        Returns:
+            Feedback message
+        """
+        return self.completion_verifier.format_report(verification)
 
     def _format_todos_for_terminal(self, todos: list) -> str:
         """Format todo list for terminal display with ANSI colors.
@@ -1269,37 +1399,12 @@ Current Turn: {turn}/{self.max_turns}"""
                     "evaluating", self.turn
                 )  # Set phase for message capture
                 self.log(f"--- {self._progress_str('Evaluating')} Evaluate ---")
-                eval_prompt = f"""{self._build_philosophy_context()}
-
-Task: Evaluate if the objective is achieved based on:
-1. All explicit user requirements met
-2. Philosophy principles applied (simplicity, modularity, zero-BS)
-3. Success criteria from Turn 1 satisfied
-4. No placeholders or incomplete implementations remain
-5. All work has actually been thoroughly tested and verified
-6. The required workflow has been fully executed
-
-Respond with one of:
-- "auto-mode EVALUATION: COMPLETE" - All criteria met, objective achieved
-- "auto-mode EVALUATION: IN PROGRESS" - Making progress, continue execution
-- "auto-mode EVALUATION: NEEDS ADJUSTMENT" - Issues identified, plan adjustment needed
-
-Include brief reasoning for your evaluation. If incomplete, specify next steps or adjustments needed.
-
-Objective:
-{objective}
-
-Current Turn: {turn}/{self.max_turns}"""
+                eval_prompt = self._build_evaluation_prompt(self.message_capture)
 
                 code, eval_result = await self._run_turn_with_retry(eval_prompt, max_retries=3)
 
-                # Check completion - look for strong completion signals
-                eval_lower = eval_result.lower()
-                if (
-                    "auto-mode evaluation: complete" in eval_lower
-                    or "objective achieved" in eval_lower
-                    or "all criteria met" in eval_lower
-                ):
+                # Check completion with verification
+                if not self._should_continue_loop(eval_result, self.message_capture):
                     self.log("✓ Objective achieved!")
                     if self.ui_enabled and hasattr(self, "state"):
                         self.state.update_status("completed")
