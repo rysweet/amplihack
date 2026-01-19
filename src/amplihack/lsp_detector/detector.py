@@ -71,9 +71,6 @@ class LSPDetector:
         Returns:
             List of detected language names
         """
-        if not project_path.exists():
-            return []
-
         detected = set()
 
         try:

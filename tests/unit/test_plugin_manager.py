@@ -171,10 +171,12 @@ class TestPluginManagerInstallation:
 
         with patch("subprocess.run") as mock_run:
             mock_run.return_value = Mock(returncode=0)
-            with patch.object(manager, "validate_manifest") as mock_validate:
-                mock_validate.return_value = ValidationResult(True, [], [])
-
-                result = manager.install(git_url)
+            with patch("pathlib.Path.exists", return_value=False):  # Target doesn't exist
+                with patch.object(manager, "validate_manifest") as mock_validate:
+                    mock_validate.return_value = ValidationResult(True, [], [])
+                    with patch("shutil.copytree"):
+                        with patch.object(manager, "_register_plugin", return_value=True):
+                            result = manager.install(git_url)
 
         assert result.success is True
         assert result.plugin_name == "plugin"
@@ -187,12 +189,13 @@ class TestPluginManagerInstallation:
         manager = PluginManager()
         local_path = "/path/to/plugin"
 
-        with patch("pathlib.Path.exists", return_value=True):
-            with patch("pathlib.Path.is_dir", return_value=True):
+        with patch("pathlib.Path.is_dir", return_value=True):
+            with patch("pathlib.Path.exists", return_value=False):  # Target doesn't exist
                 with patch.object(manager, "validate_manifest") as mock_validate:
                     mock_validate.return_value = ValidationResult(True, [], [])
-
-                    result = manager.install(local_path)
+                    with patch("shutil.copytree"):
+                        with patch.object(manager, "_register_plugin", return_value=True):
+                            result = manager.install(local_path)
 
         assert result.success is True
 
@@ -203,7 +206,7 @@ class TestPluginManagerInstallation:
         manager = PluginManager()
         source = "/path/to/plugin"
 
-        with patch("pathlib.Path.exists", return_value=True):
+        with patch("pathlib.Path.is_dir", return_value=True):
             with patch.object(manager, "validate_manifest") as mock_validate:
                 mock_validate.return_value = ValidationResult(
                     False,
@@ -239,11 +242,13 @@ class TestPluginManagerInstallation:
         source = "/path/to/plugin"
 
         with patch("pathlib.Path.mkdir") as mock_mkdir:
-            with patch("pathlib.Path.exists", return_value=True):
-                with patch.object(manager, "validate_manifest") as mock_validate:
-                    mock_validate.return_value = ValidationResult(True, [], [])
-                    with patch("shutil.copytree"):
-                        result = manager.install(source)
+            with patch("pathlib.Path.is_dir", return_value=True):
+                with patch("pathlib.Path.exists", return_value=False):  # Target doesn't exist
+                    with patch.object(manager, "validate_manifest") as mock_validate:
+                        mock_validate.return_value = ValidationResult(True, [], [])
+                        with patch("shutil.copytree"):
+                            with patch.object(manager, "_register_plugin", return_value=True):
+                                result = manager.install(source)
 
         mock_mkdir.assert_called()
         assert result.success is True
@@ -255,8 +260,11 @@ class TestPluginManagerInstallation:
         manager = PluginManager()
         source = "/path/to/plugin"
 
-        with patch("pathlib.Path.exists", side_effect=[True, True]):  # Source exists, plugin exists
-            result = manager.install(source)
+        with patch("pathlib.Path.is_dir", return_value=True):
+            with patch("pathlib.Path.exists", return_value=True):  # Target exists
+                with patch.object(manager, "validate_manifest") as mock_validate:
+                    mock_validate.return_value = ValidationResult(True, [], [])
+                    result = manager.install(source)
 
         assert result.success is False
         assert "already installed" in result.message.lower()
@@ -268,12 +276,14 @@ class TestPluginManagerInstallation:
         manager = PluginManager()
         source = "/path/to/plugin"
 
-        with patch("pathlib.Path.exists", return_value=True):
-            with patch("shutil.rmtree") as mock_rmtree:
-                with patch.object(manager, "validate_manifest") as mock_validate:
-                    mock_validate.return_value = ValidationResult(True, [], [])
-                    with patch("shutil.copytree"):
-                        result = manager.install(source, force=True)
+        with patch("pathlib.Path.is_dir", return_value=True):
+            with patch("pathlib.Path.exists", return_value=True):  # Target exists
+                with patch("shutil.rmtree") as mock_rmtree:
+                    with patch.object(manager, "validate_manifest") as mock_validate:
+                        mock_validate.return_value = ValidationResult(True, [], [])
+                        with patch("shutil.copytree"):
+                            with patch.object(manager, "_register_plugin", return_value=True):
+                                result = manager.install(source, force=True)
 
         mock_rmtree.assert_called_once()
         assert result.success is True
@@ -388,6 +398,60 @@ class TestPluginManagerPathResolution:
 
         assert result["name"] == "test-plugin"
         assert result["version"] == "1.0.0"
+
+
+class TestPluginManagerSecurity:
+    """Unit tests for security features (NEW)."""
+
+    def test_path_traversal_protection_in_manifest(self):
+        """Test installation detects path traversal in manifest location."""
+        from amplihack.plugin_manager import PluginManager
+
+        manager = PluginManager()
+        source = "/tmp/plugin"
+
+        # Simulate malicious plugin with path traversal in .claude-plugin location
+        with patch("pathlib.Path.is_dir", return_value=True):
+            # Mock the _validate_path_safety to return False (path traversal detected)
+            with patch.object(manager, "_validate_path_safety", return_value=False):
+                result = manager.install(source)
+
+        assert result.success is False
+        assert "traversal" in result.message.lower()
+
+    def test_validate_path_safety_helper(self):
+        """Test _validate_path_safety helper method."""
+        from amplihack.plugin_manager import PluginManager
+
+        manager = PluginManager()
+
+        # Safe path - under base_path
+        safe_path = Path("/tmp/plugin/subdir/file.py")
+        base_path = Path("/tmp/plugin")
+        assert manager._validate_path_safety(safe_path, base_path) is True
+
+        # Unsafe path - outside base_path (path traversal)
+        unsafe_path = Path("/etc/passwd")
+        base_path = Path("/tmp/plugin")
+        assert manager._validate_path_safety(unsafe_path, base_path) is False
+
+    def test_plugin_name_validation_prevents_traversal(self):
+        """Test plugin name validation prevents directory traversal."""
+        from amplihack.plugin_manager import PluginManager
+
+        manager = PluginManager()
+
+        # Malicious URLs with path traversal attempts
+        malicious_urls = [
+            "https://github.com/user/../etc/passwd.git",
+            "https://github.com/user/../../root/.git",
+            "https://github.com/user/plugin../traversal.git",
+        ]
+
+        for url in malicious_urls:
+            result = manager.install(url)
+            assert result.success is False
+            # Should fail on name validation (contains '..' or invalid chars)
 
 
 class TestPluginManagerEdgeCases:
