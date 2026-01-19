@@ -1,0 +1,21 @@
+{
+  "debugger": "lldb",
+  "default_port": null,
+  "file_extensions": [".c", ".cpp", ".cc", ".cxx", ".h", ".hpp", ".hxx"],
+  "manifest_files": ["CMakeLists.txt", "Makefile"],
+  "description": "LLVM Debugger for C/C++ programs with DAP support via lldb-dap",
+  "config": {
+    "type": "lldb",
+    "debuggerPath": "lldb-dap",
+    "debuggerArgs": [],
+    "sourceDirs": ["${project_dir}"],
+    "name": "LLDB: Debug Current Binary",
+    "request": "launch",
+    "program": "${project_dir}/${entry_point}"
+  },
+  "commands": {
+    "install": "# macOS: brew install llvm\n# Ubuntu: sudo apt install lldb\n# Fedora: sudo dnf install lldb",
+    "verify": "lldb --version"
+  },
+  "notes": "Preferred debugger for macOS and Clang-compiled binaries. Requires compiled binary with debug symbols (-g flag)."
+}

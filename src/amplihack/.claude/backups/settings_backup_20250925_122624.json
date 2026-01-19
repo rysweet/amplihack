@@ -1,0 +1,56 @@
+{
+  "permissions": {
+    "allow": ["Bash", "TodoWrite", "WebSearch", "WebFetch"],
+    "deny": [],
+    "defaultMode": "bypassPermissions",
+    "additionalDirectories": [".claude", "Specs"]
+  },
+  "enableAllProjectMcpServers": false,
+  "enabledMcpjsonServers": [],
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/tools/amplihack/hooks/session_start.py",
+            "timeout": 10000
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/tools/amplihack/hooks/stop.py",
+            "timeout": 30000
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/tools/amplihack/hooks/post_tool_use.py"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/tools/amplihack/hooks/pre_compact.py",
+            "timeout": 30000
+          }
+        ]
+      }
+    ]
+  }
+}

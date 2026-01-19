@@ -9,6 +9,8 @@ This file documents non-obvious problems, solutions, and patterns discovered dur
 ### Recent (January 2026)
 
 - [Test Tool Functionality Directly - Not Assumptions](#test-tool-functionality-directly-2026-01-18)
+- [Power-Steering Post-Compaction Transcript Bug](#power-steering-post-compaction-transcript-bug-2026-01-17)
+- [Kuzu Memory System: Database Exists But Empty Due to Async/Await Bug](#kuzu-memory-system-async-bug-2026-01-17)
 
 ### December 2025
 
@@ -141,6 +143,165 @@ if error → Check plugin installation, binaries, config, etc.
 5. ❌ Don't create elaborate explanations before confirming the problem exists
 
 **This discovery highlights the importance of empirical testing over theoretical analysis.**
+
+---
+
+## Power-Steering Post-Compaction Transcript Bug (2026-01-17)
+
+### Problem
+
+Power-steering hook blocks session termination with "work incomplete" when session has been compacted, even though all work is actually complete.
+
+**Symptoms** (Issue #1962):
+
+- Session with 767+ messages gets compacted
+- Power-steering analyzes only ~50 messages from compacted summary
+- Reports "session was truncated at message 50 out of 767 total messages"
+- 18/19 checks fail even though PR exists, CI passes, local tests pass
+
+### Root Cause
+
+When Claude Code compacts a session (due to context window limits), the `transcript_path` provided to hooks contains only the compacted summary, not the full conversation history. The `pre_compact.py` hook DOES save the full transcript before compaction, but the power-steering checker didn't know to look for it.
+
+**Flow before fix**:
+
+1. Session reaches context limit → Claude Code compacts → Calls `pre_compact.py` hook
+2. `pre_compact.py` saves full transcript to `session_dir/CONVERSATION_TRANSCRIPT.md`
+3. User attempts to stop session → `stop.py` hook called
+4. Power-steering receives `transcript_path` pointing to compacted transcript (~50 messages)
+5. SDK analysis sees only "Phase 1: Scope Definition" → Reports work incomplete
+
+### Solution
+
+Two-part fix following the issue's Option A and Option B:
+
+**Part 1: Pre-Compaction Transcript Retrieval**
+
+New method `_get_pre_compaction_transcript(session_id)` checks for compaction by looking for `compaction_events.json` in the session's log directory. If found, returns path to the preserved full transcript.
+
+```python
+# In check() method:
+pre_compaction_path = self._get_pre_compaction_transcript(session_id)
+if pre_compaction_path:
+    # Session was compacted - load the full transcript
+    transcript = self._load_pre_compaction_transcript(pre_compaction_path)
+else:
+    # Normal case - use provided transcript
+    transcript = self._load_transcript(transcript_path)
+```
+
+**Part 2: State-Based Verification Fallback**
+
+New method `_verify_actual_state(session_id)` checks real git/GitHub state when compaction detected:
+
+- CI status via `gh pr view --json statusCheckRollup`
+- PR mergeability via `gh pr view --json mergeable`
+- Branch currency via `git rev-list --count HEAD..origin/main`
+
+When state verification passes (PR mergeable + CI passing), it can override transcript-based blockers that might be unreliable due to compaction.
+
+### Key Files Changed
+
+- `.claude/tools/amplihack/hooks/power_steering_checker.py`:
+  - Added `_get_pre_compaction_transcript()` method
+  - Added `_load_pre_compaction_transcript()` method (handles both markdown and JSONL)
+  - Added `_verify_actual_state()` method
+  - Modified `check()` to use pre-compaction transcript when available
+  - Added state-based override logic for post-compaction scenarios
+
+### Testing
+
+- 5 new unit tests in `TestPreCompactionTranscript` class
+- Tests cover: no compaction case, compaction detection, markdown parsing, JSONL parsing, state verification
+- All 30 tests pass
+
+### Lessons Learned
+
+1. **Hooks should be aware of session compaction**: The transcript provided after compaction may not represent the full session
+2. **State is more reliable than transcript analysis**: When transcript might be incomplete, check actual system state (CI, PR, git)
+3. **Pre-compact hook saves valuable context**: The full transcript IS preserved - other hooks just need to know where to find it
+
+---
+
+## Kuzu Memory System: Database Exists But Empty Due to Async/Await Bug {#kuzu-memory-system-async-bug-2026-01-17}
+
+**Date**: 2026-01-17
+**Context**: Investigation into why Kuzu memory system not storing memories during sessions
+
+**Problem**: Kuzu database is created and initialized properly, but contains 0 nodes despite hooks executing. Memory operations appear to run but nothing is stored.
+
+**Root Cause**: Hook integration has async/await bug where async memory functions are called without `await` keyword.
+
+**Evidence**:
+- Kuzu v0.11.3 installed and importable ✓
+- Database file exists at `~/.amplihack/memory_kuzu.db` (36KB) ✓
+- Database has 0 nodes (verified with `MATCH (n) RETURN count(n)`) ✗
+- Hook logs show execution but no memory operations ✗
+
+**Technical Details**:
+
+Location: `.claude/tools/amplihack/hooks/user_prompt_submit.py:226-228`
+
+```python
+# WRONG - async function called without await
+enhanced_prompt, memory_metadata = inject_memory_for_agents(
+    user_prompt, agent_types, session_id
+)
+
+# Returns coroutine object, never executes!
+```
+
+**Fix Required**:
+```python
+# Make hook method async
+async def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
+    # Await async function
+    enhanced_prompt, memory_metadata = await inject_memory_for_agents(
+        user_prompt, agent_types, session_id
+    )
+```
+
+**Impact**:
+- Memory system completely non-functional despite correct architecture
+- Silent failure - no errors shown to user
+- Database initializes but never stores data
+- Hooks execute but memory operations are no-ops
+
+**Supporting Evidence**:
+- `agent_memory_hook.py` lines 96-169: `async def inject_memory_for_agents()`
+- `agent_memory_hook.py` lines 171-244: `async def extract_learnings_from_conversation()`
+- Both are async but called without await in hooks
+
+**Architecture Findings**:
+- Kuzu auto-selection works correctly ✓
+- Auto-installation feature works (AMPLIHACK_NO_AUTO_INSTALL to disable) ✓
+- Lazy initialization pattern works ✓
+- 5-type memory schema (EPISODIC, SEMANTIC, PROCEDURAL, PROSPECTIVE, WORKING) ✓
+- Graceful fallback to SQLite works ✓
+
+**Related Issues**:
+- Similar async bugs may exist in other hooks
+- Error swallowing prevents bug detection (logged as warnings only)
+- No runtime verification of memory system functionality
+
+**Solution Path**:
+1. Fix async/await in user_prompt_submit.py hook
+2. Make hook process() method async
+3. Verify Claude Code hooks support async execution
+4. Add runtime verification (print memory injection status)
+5. Make errors visible instead of silently logged
+
+**Prevention**:
+- Add async/await linting checks
+- Require type hints showing async functions
+- Add integration tests that verify memory storage
+- Create `/amplihack:memory-status` command to verify system works
+
+**Related Patterns**:
+- Async Context Management (PATTERNS.md)
+- Fail-Fast Prerequisite Checking (PATTERNS.md)
+
+**Tags**: #kuzu #memory #async #hooks #silent-failure #integration-bug
 
 ---
 

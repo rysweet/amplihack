@@ -1,0 +1,151 @@
+# Level 2: CLI Error Handling Test
+# This test verifies that a CLI application properly handles errors and provides
+# helpful error messages without crashing or entering an invalid state.
+
+scenario:
+  name: "CLI Application - Error Handling and Recovery"
+  description: |
+    Verifies that CLI application handles invalid input gracefully, provides
+    clear error messages, and allows user to recover and continue using the application.
+  type: cli
+  # Complexity level
+  level: 2
+
+  # Test categories
+  tags: [cli, error-handling, resilience, intermediate]
+
+  prerequisites:
+    - "./myapp binary exists and is executable"
+    - "Application supports interactive mode with error recovery"
+
+  # Environment variables for this test
+  environment:
+    variables:
+      LOG_LEVEL: "debug"
+      ERROR_MODE: "verbose"
+
+  steps:
+    # Launch application
+    - action: launch
+      target: "./myapp"
+      args: ["--interactive", "--mode=strict"]
+      description: "Start application in strict mode for error testing"
+      timeout: 5s
+
+    # Wait for prompt
+    - action: wait_for_output
+      contains: ">"
+      timeout: 3s
+      description: "Wait for command prompt"
+
+    # Test Case 1: Invalid command
+    - action: send_input
+      value: "invalid_command\n"
+      description: "Send unknown command"
+
+    - action: verify_output
+      contains: "Error: Unknown command 'invalid_command'"
+      timeout: 2s
+      description: "Should show clear error message"
+
+    # Verify application is still responsive
+    - action: verify_output
+      contains: ">"
+      description: "Should return to prompt after error"
+
+    # Test Case 2: Missing required argument
+    - action: send_input
+      value: "process\n"
+      description: "Send command without required argument"
+
+    - action: verify_output
+      matches: "Error:.*(missing|required).*argument"
+      case_sensitive: false
+      timeout: 2s
+      description: "Should indicate missing argument"
+
+    # Test Case 3: Invalid argument type
+    - action: send_input
+      value: "calculate abc\n"
+      description: "Send non-numeric value where number expected"
+
+    - action: verify_output
+      contains: "Error: Invalid input type"
+      timeout: 2s
+      description: "Should report type mismatch"
+
+    # Test Case 4: Out of range value
+    - action: send_input
+      value: "set_limit 99999999999\n"
+      description: "Send value exceeding valid range"
+
+    - action: verify_output
+      matches: "Error:.*(range|limit|maximum)"
+      case_sensitive: false
+      timeout: 2s
+      description: "Should indicate value is out of range"
+
+    # Test Case 5: Verify help still works after errors
+    - action: send_input
+      value: "help\n"
+      description: "Request help after multiple errors"
+
+    - action: verify_output
+      contains: "Available commands:"
+      timeout: 2s
+      description: "Help should still be accessible"
+
+    # Test Case 6: Verify valid command works after errors
+    - action: send_input
+      value: "status\n"
+      description: "Execute valid command to confirm recovery"
+
+    - action: verify_output
+      contains: "Status: OK"
+      timeout: 2s
+      description: "Valid commands should work after errors"
+
+    # Test Case 7: Graceful exit after errors
+    - action: send_input
+      value: "exit\n"
+      description: "Exit application"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "Should exit cleanly even after errors"
+
+  # Capture all output for debugging
+  cleanup:
+    - action: capture_output
+      save_as: "error-handling-full-output.txt"
+      description: "Save complete session output"
+
+    - action: stop_application
+      force: false
+      description: "Allow graceful shutdown"
+# Expected Behavior:
+# - Application handles all error cases without crashing
+# - Each error produces a clear, actionable message
+# - Application returns to ready state after each error
+# - Valid commands work correctly after errors
+# - Application exits cleanly
+
+# Run Command:
+# gadugi-agentic-test run examples/cli/cli-error-handling.yaml --verbose
+
+# Key Learning Points (Level 2):
+# 1. Use regex patterns (matches:) for flexible error message checking
+# 2. Verify application state after errors (prompt returns)
+# 3. Test recovery by executing valid commands after errors
+# 4. Environment variables can configure application behavior
+# 5. Capture full output for debugging complex scenarios
+# 6. Case-insensitive matching handles variations in error messages
+
+# Anti-Pattern Example:
+# Don't do this (too specific, brittle):
+#   - action: verify_output
+#     contains: "Error: Command 'invalid_command' not found. Did you mean 'validate'?"
+#
+# Do this instead (flexible):
+#   - action: verify_output
+#     matches: "Error:.*not found"

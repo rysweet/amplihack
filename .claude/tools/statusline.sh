@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Amplihack Status Line
-# Shows: directory, git branch, model, tokens, cost, duration
+# Shows: directory, git branch, model, tokens, cost, duration, background agents
 #
 # Configure in ~/.claude/settings.json:
 #   "statusLine": {
@@ -39,8 +39,14 @@ extract_session_id() {
     # Return empty if no transcript path
     [ -z "$transcript_path" ] && return
 
-    # Extract session_id from path pattern: .../sessions/{session_id}/...
-    local session_id=$(echo "$transcript_path" | sed -n 's|.*/sessions/\([^/]*\)/.*|\1|p')
+    # Extract session_id from path pattern: .../{session_id}/transcript.jsonl
+    # The session ID is a UUID like: d9970265-92fd-4544-ab3c-78309a5ee3a5
+    local session_id=$(echo "$transcript_path" | grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' | head -1)
+
+    # Fallback: Try older /sessions/ path pattern
+    if [ -z "$session_id" ]; then
+        session_id=$(echo "$transcript_path" | sed -n 's|.*/sessions/\([^/]*\)/.*|\1|p')
+    fi
 
     # Fallback: Check CLAUDE_SESSION_ID env var
     if [ -z "$session_id" ] && [ -n "$CLAUDE_SESSION_ID" ]; then
@@ -76,6 +82,7 @@ esac
 
 # Git info
 git_info=""
+repo_uri_str=""
 if git rev-parse --is-inside-work-tree &>/dev/null; then
     branch=$(git symbolic-ref --quiet --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)
     if [ -n "$branch" ]; then
@@ -94,6 +101,14 @@ if git rev-parse --is-inside-work-tree &>/dev/null; then
             git_info=" \033[${git_color}m($branch$dirty_marker → $remote)\033[0m"
         else
             git_info=" \033[${git_color}m($branch$dirty_marker)\033[0m"
+        fi
+
+        # Get repository URI (shortened format)
+        repo_url=$(git remote get-url origin 2>/dev/null)
+        if [ -n "$repo_url" ]; then
+            # Remove protocol prefix and .git suffix for cleaner display
+            repo_short=$(echo "$repo_url" | sed -e 's|^https://||' -e 's|^http://||' -e 's|^git@||' -e 's|:|/|' -e 's|\.git$||')
+            repo_uri_str=" \033[36m[$repo_short]\033[0m"
         fi
     fi
 fi
@@ -205,5 +220,50 @@ if [ -f "$lock_flag" ]; then
     fi
 fi
 
+# Background agents indicator
+# Detects subagents spawned in current session and shows running/stopped count
+# Format: 🤖 green_running / red_stopped (e.g., "🤖 2 / 3" = 2 running, 3 stopped)
+# When no running: 🤖 red_stopped only (e.g., "🤖 3" = all 3 stopped)
+# Active detection uses file modification time heuristic (modified in last 10 seconds)
+# Note: Background bash tasks cannot be reliably detected, only subagents
+agents_str=""
+if [ -n "$session_id" ]; then
+    # Build project path from current_dir (Claude uses hyphenated path)
+    project_path=$(echo "$current_dir" | sed 's|^/||; s|/|-|g')
+    subagents_dir="$HOME/.claude/projects/-$project_path/$session_id/subagents"
+
+    if [ -d "$subagents_dir" ]; then
+        # Count total subagent files
+        total_agents=$(ls -1 "$subagents_dir"/agent-*.jsonl 2>/dev/null | wc -l)
+
+        if [ "$total_agents" -gt 0 ] 2>/dev/null; then
+            # Count recently active agents (modified in last 10 seconds)
+            now=$(date +%s)
+            active_agents=0
+            for agent_file in "$subagents_dir"/agent-*.jsonl; do
+                if [ -f "$agent_file" ]; then
+                    file_mtime=$(stat -c %Y "$agent_file" 2>/dev/null || stat -f %m "$agent_file" 2>/dev/null)
+                    if [ -n "$file_mtime" ]; then
+                        age=$((now - file_mtime))
+                        if [ "$age" -lt 10 ]; then
+                            active_agents=$((active_agents + 1))
+                        fi
+                    fi
+                fi
+            done
+
+            finished_agents=$((total_agents - active_agents))
+
+            # Format: 🤖 🟢running / 🔴stopped
+            if [ "$active_agents" -gt 0 ]; then
+                agents_str=" 🤖 \033[32m${active_agents}\033[0m / \033[31m${finished_agents}\033[0m"
+            else
+                # No running agents - just show stopped count in red
+                agents_str=" 🤖 \033[31m${finished_agents}\033[0m"
+            fi
+        fi
+    fi
+fi
+
 # Output status line
-echo -e "\033[32m$display_dir\033[0m$git_info \033[${model_color}m$model_name\033[0m$tokens_str 💰\$$cost_formatted$duration_str$power_steering_str$lock_str"
+echo -e "\033[32m$display_dir\033[0m$git_info$repo_uri_str \033[${model_color}m$model_name\033[0m$tokens_str 💰\$$cost_formatted$duration_str$agents_str$power_steering_str$lock_str"

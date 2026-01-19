@@ -1,0 +1,71 @@
+# Amplihack Behavior Configuration
+# Defines the core behavior patterns for the amplihack development framework
+
+name: amplihack
+version: 1.0.0
+description: "Amplihack development framework behavior - ruthless simplicity, zero-BS implementation"
+
+# Workflow classification is mandatory
+workflow_selection:
+  required: true
+  workflows:
+    - name: Q&A
+      triggers: ["what is", "explain briefly", "quick question", "how do I run"]
+      doc: ../.claude/workflow/Q&A_WORKFLOW.md
+    - name: INVESTIGATION
+      triggers: ["investigate", "understand", "analyze", "research", "explore", "how does"]
+      doc: ../.claude/workflow/INVESTIGATION_WORKFLOW.md
+    - name: DEFAULT
+      triggers: ["implement", "add", "fix", "create", "refactor", "update", "build"]
+      doc: ../.claude/workflow/DEFAULT_WORKFLOW.md
+
+# Philosophy enforcement
+philosophy:
+  enforce: true
+  principles:
+    - ruthless_simplicity
+    - zero_bs_implementation
+    - test_driven_development
+    - bricks_and_studs
+  context: ../.claude/context/PHILOSOPHY.md
+
+# Trust and anti-sycophancy
+trust:
+  anti_sycophancy: true
+  challenge_flawed_designs: true
+  context: ../.claude/context/TRUST.md
+
+# Pattern compliance
+patterns:
+  enforce: true
+  context: ../.claude/context/PATTERNS.md
+
+# Hooks configuration - references modules in amplifier-bundle/modules/
+hooks:
+  # Session lifecycle hooks
+  session_start:
+    enabled: true
+    module: hook-session-start
+  session_stop:
+    enabled: true
+    module: hook-session-stop
+  post_tool_use:
+    enabled: true
+    module: hook-post-tool-use
+
+  # Feature hooks
+  power_steering:
+    enabled: true
+    module: hook-power-steering
+  memory:
+    enabled: true
+    module: hook-memory
+  pre_tool_use:
+    enabled: true
+    module: hook-pre-tool-use
+  pre_compact:
+    enabled: true
+    module: hook-pre-compact
+  user_prompt:
+    enabled: true
+    module: hook-user-prompt

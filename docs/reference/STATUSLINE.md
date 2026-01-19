@@ -12,6 +12,7 @@ The statusline shows progress, costs, context usage, and active features for you
 | --------------------- | ------------------------- | ------------------------------------------- | ------------------------------------------------------- |
 | **Directory**         | Current working directory | `~/path`                                    | `~` = home directory                                    |
 | **Git Branch**        | Branch name and status    | `(branch → remote)` or `(branch* → remote)` | `*` = uncommitted changes, Cyan = clean, Yellow = dirty |
+| **Repository URI**    | Git remote repository URL | `[github.com/user/repo]`                    | Shortened format (cyan), only if remote exists          |
 | **Model**             | Active Claude model       | `Opus`, `Sonnet`, `Haiku`                   | Red=Opus, Green=Sonnet, Blue=Haiku                      |
 | **Tokens** 🎫         | Total token usage         | `234K`, `1.2M`, or raw number               | M=millions, K=thousands                                 |
 | **Cost** 💰           | Total session cost        | `$1.23`                                     | USD                                                     |
@@ -43,13 +44,14 @@ The statusline shows progress, costs, context usage, and active features for you
 ### Example 1: Clean Development Session
 
 ```
-~/src/amplihack4 (main → origin) Sonnet 🎫 234K 💰$1.23 ⏱12m
+~/src/amplihack4 (main → origin) [github.com/rysweet/amplihack] Sonnet 🎫 234K 💰$1.23 ⏱12m
 ```
 
 **Breakdown:**
 
 - **Directory**: `~/src/amplihack4` (~= home shorthand)
 - **Git**: `(main → origin)` cyan = clean branch
+- **Repository**: `[github.com/rysweet/amplihack]` cyan = repository URL
 - **Model**: `Sonnet` green = Sonnet family
 - **Tokens**: `🎫 234K` 234,000 tokens
 - **Cost**: `💰$1.23` $1.23 USD
@@ -58,13 +60,14 @@ The statusline shows progress, costs, context usage, and active features for you
 ### Example 2: Active Development with Features
 
 ```
-~/projects/api (feature/auth* → origin) Opus 🎫 1.2M 💰$15.67 ⏱1h 🚦×3 🔒×5
+~/projects/api (feature/auth* → origin) [github.com/org/api-service] Opus 🎫 1.2M 💰$15.67 ⏱1h 🚦×3 🔒×5
 ```
 
 **Breakdown:**
 
 - **Directory**: `~/projects/api`
 - **Git**: `(feature/auth* → origin)` yellow = dirty, `*` = uncommitted changes
+- **Repository**: `[github.com/org/api-service]` cyan = repository URL
 - **Model**: `Opus` red = Opus family
 - **Tokens**: `🎫 1.2M` 1.2 million tokens
 - **Cost**: `💰$15.67` $15.67 USD

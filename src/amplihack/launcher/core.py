@@ -713,8 +713,16 @@ class ClaudeLauncher:
             # Set environment variables for UVX mode
             env = os.environ.copy()
 
-            # Set Node.js memory limit to 8GB for claude/claude-trace
-            env["NODE_OPTIONS"] = "--max-old-space-size=8192"
+            # Smart memory configuration
+            from .memory_config import get_memory_config, display_memory_config
+            memory_config = get_memory_config(env.get("NODE_OPTIONS"))
+            if memory_config and "node_options" in memory_config:
+                env["NODE_OPTIONS"] = memory_config["node_options"]
+                # Display configuration on launch
+                display_memory_config(memory_config)
+            else:
+                # Fallback to 8GB if detection fails
+                env["NODE_OPTIONS"] = "--max-old-space-size=8192"
 
             if self._target_directory:
                 env.update(self.uvx_manager.get_environment_variables())
@@ -799,8 +807,16 @@ class ClaudeLauncher:
             # Set environment variables for UVX mode
             env = os.environ.copy()
 
-            # Set Node.js memory limit to 8GB for claude/claude-trace
-            env["NODE_OPTIONS"] = "--max-old-space-size=8192"
+            # Smart memory configuration
+            from .memory_config import get_memory_config, display_memory_config
+            memory_config = get_memory_config(env.get("NODE_OPTIONS"))
+            if memory_config and "node_options" in memory_config:
+                env["NODE_OPTIONS"] = memory_config["node_options"]
+                # Display configuration on launch
+                display_memory_config(memory_config)
+            else:
+                # Fallback to 8GB if detection fails
+                env["NODE_OPTIONS"] = "--max-old-space-size=8192"
 
             if self._target_directory:
                 env.update(self.uvx_manager.get_environment_variables())

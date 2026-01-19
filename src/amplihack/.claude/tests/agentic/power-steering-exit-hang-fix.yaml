@@ -1,0 +1,104 @@
+# Power Steering Exit Hang Fix - Agentic Test Scenario
+# Issue #1893: Verify that power steering hooks don't hang on exit
+#
+# This outside-in test verifies the fix works from a user's perspective without
+# knowing internal implementation details.
+
+scenario:
+  name: "Power Steering - Clean Exit Without Hang"
+  description: |
+    Verifies that Claude Code exits cleanly within 3 seconds when power steering
+    is active, without requiring Ctrl-C force termination. Tests the fix for
+    Issue #1893 where power steering hooks caused 30+ second hangs on exit.
+  type: cli
+  level: 2
+
+  tags: [cli, power-steering, exit-hang, regression, critical]
+
+  prerequisites:
+    - "amplihack is installed from branch feat/issue-1893-fix-power-steering-exit-hang"
+    - "Python 3.10+ is available"
+    - "AMPLIHACK_SHUTDOWN_IN_PROGRESS environment variable can be set"
+
+  steps:
+    # Step 1: Run the E2E test script
+    - action: launch
+      target: "python3"
+      args: ["test_exit_hang_fix_e2e.py"]
+      description: "Run comprehensive E2E test for power steering exit fix"
+      timeout: 10s
+
+    # Step 2: Verify test output shows shutdown detection works
+    - action: wait_for_output
+      contains: "✅ Normal operation: is_shutting_down() returns False"
+      timeout: 5s
+      description: "Verify shutdown detection in normal operation"
+
+    - action: wait_for_output
+      contains: "✅ Shutdown detected: is_shutting_down() returns True"
+      timeout: 5s
+      description: "Verify shutdown detection when flag is set"
+
+    # Step 3: Verify analyze_claims_sync timing
+    - action: wait_for_output
+      contains: "✅ analyze_claims_sync"
+      timeout: 5s
+      description: "Verify analyze_claims_sync returns immediately"
+
+    # Step 4: Verify analyze_if_addressed_sync timing
+    - action: wait_for_output
+      contains: "✅ analyze_if_addressed_sync"
+      timeout: 5s
+      description: "Verify analyze_if_addressed_sync returns immediately"
+
+    # Step 5: Verify analyze_consideration_sync timing
+    - action: wait_for_output
+      contains: "✅ analyze_consideration_sync"
+      timeout: 5s
+      description: "Verify analyze_consideration_sync returns immediately"
+
+    # Step 6: Verify complete shutdown sequence timing
+    - action: wait_for_output
+      contains: "✅ PASS: Shutdown sequence completed"
+      timeout: 5s
+      description: "Verify complete sequence is fast (<1s)"
+
+    # Step 7: Verify all tests passed
+    - action: wait_for_output
+      contains: "✅ ALL TESTS PASSED"
+      timeout: 5s
+      description: "Verify overall test success"
+
+    # Step 8: Verify clean exit
+    - action: verify_exit_code
+      expected: 0
+      description: "Test script should exit successfully"
+
+  # Expected Outcomes
+  success_criteria:
+    - "All shutdown detection functions return safe defaults"
+    - "Exit timing is under 3 seconds"
+    - "No async operations started during shutdown"
+    - "Application exits cleanly without Ctrl-C"
+
+  # What success looks like
+  expected_behavior: |
+    When AMPLIHACK_SHUTDOWN_IN_PROGRESS=1 is set:
+    - is_shutting_down() returns True
+    - analyze_claims_sync() returns [] immediately
+    - analyze_if_addressed_sync() returns None immediately
+    - analyze_consideration_sync() returns (True, None) immediately
+    - Complete exit sequence takes <3 seconds
+    - No Ctrl-C required
+
+  # What failure looks like
+  failure_indicators:
+    - "Exit hangs for >3 seconds"
+    - "Functions attempt async operations during shutdown"
+    - "Ctrl-C required to exit"
+    - "Timeout errors during shutdown"
+# How to Run:
+# gadugi-agentic-test run tests/power-steering-exit-hang-fix.yaml
+#
+# OR using the outside-in-testing skill:
+# claude-code --skill outside-in-testing run tests/power-steering-exit-hang.yaml

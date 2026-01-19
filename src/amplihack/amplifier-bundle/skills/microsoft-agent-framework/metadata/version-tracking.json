@@ -1,0 +1,93 @@
+{
+  "skill_version": "1.0.0",
+  "framework_version": "0.1.0-preview",
+  "last_updated": "2025-11-15",
+  "last_verified": "2025-11-15",
+  "sources": {
+    "microsoft_learn_overview": {
+      "url": "https://learn.microsoft.com/en-us/microsoft-agent-framework/overview",
+      "last_checked": "2025-11-15",
+      "status": "current",
+      "description": "Framework architecture, key features, components"
+    },
+    "microsoft_learn_tutorials": {
+      "url": "https://learn.microsoft.com/en-us/microsoft-agent-framework/tutorials",
+      "last_checked": "2025-11-15",
+      "status": "current",
+      "description": "Tutorial structure, learning paths"
+    },
+    "microsoft_learn_workflows": {
+      "url": "https://learn.microsoft.com/en-us/microsoft-agent-framework/workflows",
+      "last_checked": "2025-11-15",
+      "status": "current",
+      "description": "Graph-based workflows, executors, edges"
+    },
+    "github_repository": {
+      "url": "https://github.com/microsoft/agent-framework",
+      "last_checked": "2025-11-15",
+      "status": "current",
+      "stars": 5100,
+      "last_release": "0.1.0-preview",
+      "description": "README, installation, quick start, repository structure"
+    },
+    "github_workflow_samples": {
+      "url": "https://github.com/microsoft/agent-framework/tree/main/python/samples/getting_started/workflows",
+      "last_checked": "2025-11-15",
+      "status": "current",
+      "description": "Workflow examples, orchestration patterns, implementation samples"
+    },
+    "devblog_announcement": {
+      "url": "https://devblogs.microsoft.com/dotnet/introducing-agent-framework/",
+      "last_checked": "2025-11-15",
+      "status": "current",
+      "description": "Strategic vision, roadmap, four pillars"
+    },
+    "linkedin_workflows": {
+      "url": "https://www.linkedin.com/pulse/agent-framework-demos-day-2-building-workflow-book-dibia-phd-udd2c/",
+      "last_checked": "2025-11-15",
+      "status": "current",
+      "description": "Workflow-based book generation, structured workflows, fan-out patterns"
+    },
+    "linkedin_function_calls": {
+      "url": "https://www.linkedin.com/pulse/agent-framework-demos-day-1-intercepting-function-calls-dibia-phd-sbuqc/",
+      "last_checked": "2025-11-15",
+      "status": "current",
+      "description": "Middleware patterns, function interception, context enrichment"
+    },
+    "linkedin_async": {
+      "url": "https://www.linkedin.com/pulse/agent-framework-demos-day-3-building-scalable-async-dibia-phd-bvihc/",
+      "last_checked": "2025-11-15",
+      "status": "current",
+      "description": "Async multi-agent coordination, thread persistence, approval workflows"
+    },
+    "linkedin_rag": {
+      "url": "https://www.linkedin.com/pulse/agent-framework-demos-day-4-building-help-you-code-rag-dibia-phd-7htwc/",
+      "last_checked": "2025-11-15",
+      "status": "current",
+      "description": "RAG patterns, pre-computed indexing, code migration assistant"
+    }
+  },
+  "breaking_changes": [],
+  "deprecations": [],
+  "new_features_since_last_update": [],
+  "verification_schedule": "monthly",
+  "next_verification_due": "2025-12-15",
+  "contact": {
+    "maintainer": "amplihack-skills-team",
+    "github_issues": "https://github.com/microsoft/agent-framework/issues"
+  },
+  "compatibility": {
+    "python": "3.10+",
+    "csharp": ".NET 8.0+",
+    "operating_systems": ["Linux", "macOS", "Windows"]
+  },
+  "installation": {
+    "python": "pip install agent-framework --pre",
+    "csharp": "dotnet add package Microsoft.Agents.AI --prerelease"
+  },
+  "notes": [
+    "Framework is in preview (0.1.0-preview)",
+    "Expect API changes before 1.0.0 stable release",
+    "Check GitHub releases for updates"
+  ]
+}
