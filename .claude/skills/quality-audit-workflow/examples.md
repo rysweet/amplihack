@@ -425,6 +425,228 @@ is 71/100.
 
 ---
 
+### Example 6: Phase 3.5 False Positive Prevention
+
+**User Request**:
+
+```
+User: "Run quality audit, but check for duplicate work first"
+```
+
+**Skill Activation**:
+
+```
+quality-audit-workflow: *activates automatically*
+"Beginning quality audit with Phase 3.5 validation enabled..."
+```
+
+**Execution Flow**:
+
+```
+Phase 1: Familiarization
+└── Exploring project structure... (completed)
+
+Phase 2: Parallel Audit
+└── 10 findings discovered across 3 divisions
+
+Phase 3: Issue Assembly
+├── Created issue #101: [AUDIT] high: Complex auth module
+├── Created issue #102: [AUDIT] medium: Dead code in utils
+├── Created issue #103: [AUDIT] medium: Missing error handling
+├── Created issue #104: [AUDIT] medium: Over-abstracted router
+├── Created issue #105: [AUDIT] low: Inconsistent naming
+├── Created issue #106: [AUDIT] medium: Hardcoded config
+├── Created issue #107: [AUDIT] high: SQL injection risk
+├── Created issue #108: [AUDIT] medium: Memory leak in handler
+├── Created issue #109: [AUDIT] low: Missing docstrings
+└── Created issue #110: [AUDIT] medium: Duplicate logic
+└── 10 issues created with unique IDs and metadata
+
+Phase 3.5: Post-Audit Validation [NEW]
+├── Scanning merged PRs from last 30 days...
+├── Found 5 PRs that reference audit work
+├── PR #201: "fix: Improve authentication module" (merged 10 days ago)
+├── PR #202: "refactor: Remove unused utility functions" (merged 15 days ago)
+├── PR #203: "fix: Add error handling to API routes" (merged 20 days ago)
+├── PR #204: "refactor: Simplify routing layer" (merged 5 days ago)
+├── PR #205: "chore: Standardize variable naming" (merged 25 days ago)
+│
+├── Calculating confidence scores...
+│   ├── Issue #101 vs PR #201: 95% (file match + keywords + reference)
+│   ├── Issue #102 vs PR #202: 92% (file match + keywords)
+│   ├── Issue #103 vs PR #203: 91% (file match + reference + category)
+│   ├── Issue #104 vs PR #204: 78% (file match only)
+│   ├── Issue #105 vs PR #205: 45% (keyword match only)
+│   └── Issues #106-110: 0% (no matches)
+│
+├── Applying actions based on thresholds...
+│   ├── Issue #101: AUTO-CLOSED (95% ≥ 90%)
+│   ├── Issue #102: AUTO-CLOSED (92% ≥ 90%)
+│   ├── Issue #103: AUTO-CLOSED (91% ≥ 90%)
+│   ├── Issue #104: TAGGED needs-verification (78% in 70-89% range)
+│   └── Issues #105-110: Remain open (< 70%)
+│
+└── Validation complete: 3 auto-closed, 1 tagged, 6 remain open
+```
+
+**Phase 3.5 Validation Report**:
+
+```markdown
+# Phase 3.5: Post-Audit Validation Report
+
+**Scan Window**: Last 30 days
+**PRs Scanned**: 5 merged PRs
+**Child Issues**: 10 created
+
+## Validation Results
+
+| Issue | Confidence | Action         | PR   | Reason                |
+| ----- | ---------- | -------------- | ---- | --------------------- |
+| #101  | 95%        | Auto-closed    | #201 | File+keyword+ref      |
+| #102  | 92%        | Auto-closed    | #202 | File+keyword          |
+| #103  | 91%        | Auto-closed    | #203 | File+ref+category     |
+| #104  | 78%        | Needs-verify   | #204 | File match only       |
+| #105  | 45%        | Remains open   | -    | Low confidence        |
+| #106  | 0%         | Remains open   | -    | No PR found           |
+| #107  | 0%         | Remains open   | -    | No PR found           |
+| #108  | 0%         | Remains open   | -    | No PR found           |
+| #109  | 0%         | Remains open   | -    | No PR found           |
+| #110  | 0%         | Remains open   | -    | No PR found           |
+
+## Summary
+
+- **Auto-closed**: 3 issues (30%)
+- **Needs verification**: 1 issue (10%)
+- **Remaining open**: 6 issues (60%)
+- **False positive rate**: 3% (target <5% met ✅)
+
+## Confidence Score Breakdown
+
+**High Confidence Auto-Closures** (≥90%):
+
+- **Issue #101 (95%)**: Auth module complexity
+  - File match: `src/auth/authenticator.py` (40 pts)
+  - Keywords: "authentication", "complexity", "refactor" (28 pts)
+  - Direct reference: "Fixes issue mentioned in audit report" (20 pts)
+  - Category: "architecture" in PR body (7 pts)
+
+- **Issue #102 (92%)**: Dead code in utils
+  - File match: `src/utils/helpers.py` (40 pts)
+  - Keywords: "unused", "dead code", "cleanup" (30 pts)
+  - Direct reference: None (0 pts)
+  - Category: "quality" in PR title (10 pts)
+  - Note: PR #202 removed exactly the 12 functions flagged in audit
+
+- **Issue #103 (91%)**: Missing error handling
+  - File match: `src/api/routes.py` (40 pts)
+  - Keywords: "error handling", "try-catch", "exceptions" (25 pts)
+  - Direct reference: "Addresses audit feedback" (20 pts)
+  - Category: "quality" in PR labels (6 pts)
+
+**Medium Confidence Verification** (70-89%):
+
+- **Issue #104 (78%)**: Over-abstracted router
+  - File match: `src/api/router.py` (40 pts)
+  - Keywords: "routing", "simplify" (18 pts)
+  - Direct reference: None (0 pts)
+  - Category: "architecture" in PR body (10 pts)
+  - Note: PR #204 simplified routing, but unclear if it addressed audit's specific concerns
+
+## Next Steps
+
+1. **Manual Review**: Check issue #104 (needs-verification) against PR #204
+   - If fixed: Close #104 with reference to PR #204
+   - If not fixed: Remove "needs-verification" label, proceed to Phase 4
+
+2. **Proceed to Phase 4**: Generate PRs for 6 confirmed open issues (#105-110)
+
+3. **Monitor**: Track false positive closure rate (currently 0/3 = 0%)
+```
+
+**Auto-Closed Issue Comment Example** (Issue #101):
+
+```markdown
+Automatically closed - detected as fixed in PR #201
+
+**Confidence Score**: 95%
+
+**Matching Factors**:
+
+- ✅ File match: `src/auth/authenticator.py` in both issue and PR
+- ✅ Keyword match: "authentication", "complexity", "refactor"
+- ✅ Direct reference: PR body mentions "audit report"
+- ✅ Category match: "architecture" in both
+
+**PR Summary**: "fix: Improve authentication module - split into focused classes"
+
+**Verification**: PR #201 split the 135-line Authenticator class into 4 focused modules (exactly as recommended in this audit finding).
+
+If this closure is incorrect, please reopen and add the `false-positive-closure` label.
+
+---
+
+_Auto-closed by Phase 3.5: Post-Audit Validation_
+```
+
+**Needs-Verification Issue Comment Example** (Issue #104):
+
+```markdown
+⚠️ **Verification Needed**
+
+This issue may have been fixed in PR #204
+
+**Confidence Score**: 78%
+
+**Matching Factors**:
+
+- ✅ File match: `src/api/router.py`
+- ⚠️ Keyword match: Partial ("routing", "simplify" found, but not all terms)
+- ❌ Direct reference: PR doesn't reference this specific issue
+- ✅ Category match: "architecture"
+
+**Why verification needed**: PR #204 simplified routing, but it's unclear if the changes address the specific over-abstraction concerns raised in this audit finding.
+
+**Action Required**: Please review PR #204 and:
+
+- If fixed: Close this issue with comment: `Closes #104. Fixed in PR #204`
+- If not fixed: Remove the `needs-verification` label and this issue will proceed to Phase 4 for PR generation
+
+**PR Link**: https://github.com/org/repo/pull/204
+
+---
+
+_Tagged by Phase 3.5: Post-Audit Validation_
+```
+
+**Output Summary**:
+
+```
+Phase 3.5 Validation Complete!
+
+Summary:
+- 10 child issues created
+- 5 recent PRs scanned
+- 3 issues auto-closed (high confidence ≥90%)
+- 1 issue tagged for verification (70-89%)
+- 6 issues remain open for Phase 4
+
+False Positive Prevention:
+- Prevented 3 duplicate PRs (30% reduction)
+- False positive rate: 3% (target <5% met)
+- Estimated time saved: 2-3 hours of duplicate work
+
+Proceeding to Phase 4 with 6 confirmed open issues...
+```
+
+**Developer Experience Benefits**:
+
+1. **No Duplicate Work**: Developer would have wasted time creating PRs for #101-103
+2. **Clear Guidance**: Issue #104 tagged for quick manual check (5 min vs 30 min to implement)
+3. **Accurate Tracking**: Only genuine issues (#105-110) proceed to Phase 4
+4. **Learning Loop**: Cross-reference instructions help prevent false positives in future audits
+
+---
+
 ## Integration Patterns
 
 ### Pattern 1: Scheduled Audits
