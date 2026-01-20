@@ -45,6 +45,7 @@ ESSENTIAL_DIRS = [
 ESSENTIAL_FILES = [
     "tools/statusline.sh",  # StatusLine script for Claude Code status bar
     "../CLAUDE.md",  # Root-level CLAUDE.md (Issue #1746)
+    "AMPLIHACK.md",  # Framework instructions at .claude/AMPLIHACK.md (Issue #1948)
 ]
 
 # Runtime directories that need to be created

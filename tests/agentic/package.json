@@ -1,0 +1,16 @@
+{
+  "name": "amplihack-agentic-tests",
+  "version": "1.0.0",
+  "description": "Agentic tests for Claude Code plugin using node-pty",
+  "scripts": {
+    "test": "node test-claude-plugin-pty.js",
+    "test:shell": "./run-plugin-test.sh"
+  },
+  "dependencies": {
+    "node-pty": "^1.0.0"
+  },
+  "devDependencies": {},
+  "private": true,
+  "author": "amplihack",
+  "license": "MIT"
+}
