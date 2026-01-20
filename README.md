@@ -1,6 +1,6 @@
 # amplihack
 
-Development framework for popular coding agent systems (Claude Code, Github Copilot CLI, Microsoft Amplifier, codex) that provides structured dev workflows, memory, a package of useful skills and agents, goal-seeking agent generator, auto mode, and commands for getting the most out of agentic coding. Unlikely to work on Windows without WSL. 
+Development framework for popular coding agent systems (Claude Code, Github Copilot CLI, Microsoft Amplifier, codex) that provides structured dev workflows, memory, a package of useful skills and agents, goal-seeking agent generator, auto mode, self-improvement with reflection, and commands for getting the most out of agentic coding. Unlikely to work on Windows without WSL. 
 
 **📚 [View Full Documentation](https://rysweet.github.io/amplihack/)**
 
