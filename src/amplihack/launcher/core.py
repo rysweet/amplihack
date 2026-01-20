@@ -269,7 +269,10 @@ class ClaudeLauncher:
             if claude_dir.exists() and str(claude_dir) not in sys.path:
                 sys.path.insert(0, str(claude_dir))
 
-            from lsp_setup import LanguageDetector, LSPConfigurator
+            from lsp_setup import (  # type: ignore[import-not-found]
+                LanguageDetector,
+                LSPConfigurator,
+            )
 
             # Step 1: Detect languages
             detector = LanguageDetector(target_dir)
@@ -300,16 +303,17 @@ class ClaudeLauncher:
 
             for lang in lang_names[:3]:
                 binary = binaries_to_install.get(lang)
-                if binary and not subprocess.run(["which", binary], capture_output=True).returncode == 0:
+                if (
+                    binary
+                    and subprocess.run(["which", binary], capture_output=True).returncode != 0
+                ):
                     # Try to install via npm (for most LSP servers)
                     try:
                         subprocess.run(
-                            ["npm", "install", "-g", binary],
-                            capture_output=True,
-                            timeout=60
+                            ["npm", "install", "-g", binary], capture_output=True, timeout=60
                         )
                         print(f"📡 LSP: Installed {binary}")
-                    except:
+                    except (subprocess.TimeoutExpired, Exception):
                         pass
 
             # Step 5: Add plugin marketplace
@@ -317,10 +321,10 @@ class ClaudeLauncher:
                 subprocess.run(
                     ["claude", "plugin", "marketplace", "add", "boostvolt/claude-code-lsps"],
                     capture_output=True,
-                    timeout=30
+                    timeout=30,
                 )
                 print("📡 LSP: Added plugin marketplace")
-            except:
+            except (subprocess.TimeoutExpired, Exception):
                 pass
 
             # Step 5: Install plugins (map languages to plugin names)
@@ -345,23 +349,31 @@ class ClaudeLauncher:
 
                 try:
                     result = subprocess.run(
-                        ["claude", "plugin", "install", f"{plugin_name}@claude-code-lsps", "--scope", "project"],
+                        [
+                            "claude",
+                            "plugin",
+                            "install",
+                            f"{plugin_name}@claude-code-lsps",
+                            "--scope",
+                            "project",
+                        ],
                         capture_output=True,
                         text=True,
                         timeout=30,
-                        cwd=str(target_dir)
+                        cwd=str(target_dir),
                     )
                     if result.returncode == 0:
                         installed += 1
                         print(f"📡 LSP: Installed {plugin_name} plugin")
                     else:
-                        print(f"📡 LSP: Failed to install {plugin_name}: {result.stderr.strip()[:100]}")
+                        print(
+                            f"📡 LSP: Failed to install {plugin_name}: {result.stderr.strip()[:100]}"
+                        )
                 except Exception as e:
                     print(f"📡 LSP: Error installing {plugin_name}: {e}")
 
             if installed == 0:
                 print("📡 LSP: No plugins installed (system LSP binaries + marketplace configured)")
-
 
         except Exception as e:
             logger.debug(f"LSP auto-configuration skipped: {e}")
@@ -714,7 +726,8 @@ class ClaudeLauncher:
             env = os.environ.copy()
 
             # Smart memory configuration
-            from .memory_config import get_memory_config, display_memory_config
+            from .memory_config import display_memory_config, get_memory_config
+
             memory_config = get_memory_config(env.get("NODE_OPTIONS"))
             if memory_config and "node_options" in memory_config:
                 env["NODE_OPTIONS"] = memory_config["node_options"]
@@ -729,6 +742,11 @@ class ClaudeLauncher:
             # Pass through CLAUDE_PROJECT_DIR if set (for UVX temp environments)
             if "CLAUDE_PROJECT_DIR" in os.environ:
                 env["CLAUDE_PROJECT_DIR"] = os.environ["CLAUDE_PROJECT_DIR"]
+
+            # Export CLAUDE_PLUGIN_ROOT for plugin discoverability
+            plugin_root = Path.home() / ".amplihack" / ".claude"
+            if plugin_root.exists():
+                env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
 
             # Ensure user-local npm bin is in PATH (for claude/claude-trace installed via npm)
             user_npm_bin = str(Path.home() / ".npm-global" / "bin")
@@ -808,7 +826,8 @@ class ClaudeLauncher:
             env = os.environ.copy()
 
             # Smart memory configuration
-            from .memory_config import get_memory_config, display_memory_config
+            from .memory_config import display_memory_config, get_memory_config
+
             memory_config = get_memory_config(env.get("NODE_OPTIONS"))
             if memory_config and "node_options" in memory_config:
                 env["NODE_OPTIONS"] = memory_config["node_options"]
@@ -823,6 +842,11 @@ class ClaudeLauncher:
             # Pass through CLAUDE_PROJECT_DIR if set (for UVX temp environments)
             if "CLAUDE_PROJECT_DIR" in os.environ:
                 env["CLAUDE_PROJECT_DIR"] = os.environ["CLAUDE_PROJECT_DIR"]
+
+            # Export CLAUDE_PLUGIN_ROOT for plugin discoverability
+            plugin_root = Path.home() / ".amplihack" / ".claude"
+            if plugin_root.exists():
+                env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
 
             # Ensure user-local npm bin is in PATH (for claude/claude-trace installed via npm)
             user_npm_bin = str(Path.home() / ".npm-global" / "bin")

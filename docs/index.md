@@ -28,6 +28,16 @@ amplihack is a development tool built on Claude Code that leverages multiple spe
 
 Everything you need to install and configure amplihack.
 
+### Plugin Architecture ⭐ NEW
+
+Centralized plugin system that works across all your projects:
+
+- [Plugin Installation Guide](plugin/INSTALLATION.md) - Install amplihack as a global plugin (Claude Code only)
+- [Plugin Architecture Overview](plugin/ARCHITECTURE.md) - How the plugin system works
+- [Migration Guide](plugin/MIGRATION.md) - Migrate from per-project to plugin mode
+- [CLI Reference](plugin/CLI_REFERENCE.md) - Complete command-line reference
+- **Note**: Copilot and Codex use per-project `.claude/` staging, not plugin architecture
+
 ### Installation
 
 - [Prerequisites](PREREQUISITES.md) - System requirements and dependencies
@@ -129,6 +139,7 @@ Specialized AI agents and tools for every development task.
 ### Core Agents
 
 <!-- - [Agents Overview](claude/agents/amplihack/README.md) - Complete agent catalog (see individual agent docs below) -->
+
 - [Architect](claude/agents/amplihack/core/architect.md) - System design and specifications
 - [Builder](claude/agents/amplihack/core/builder.md) - Code implementation from specs
 - [Reviewer](claude/agents/amplihack/core/reviewer.md) - Quality assurance and compliance
