@@ -758,22 +758,53 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
-        # If in UVX mode, ensure we use --add-dir for the ORIGINAL directory
-        if is_uvx_deployment():
-            # Get the original directory (before we changed to temp)
-            original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
-            # Add --add-dir to claude_args if not already present
-            if claude_args and "--add-dir" not in claude_args:
-                claude_args = ["--add-dir", original_cwd] + claude_args
-            elif not claude_args:
-                claude_args = ["--add-dir", original_cwd]
+        # CRITICAL: Detect nesting BEFORE any .claude/ operations (including auto mode!)
+        from .launcher.nesting_detector import NestingDetector
+        from .launcher.auto_stager import AutoStager
 
-        # Handle auto mode
-        exit_code = handle_auto_mode("claude", args, claude_args)
-        if exit_code is not None:
-            return exit_code
+        detector = NestingDetector()
+        nesting_result = detector.detect_nesting(Path.cwd(), sys.argv)
 
-        return launch_command(args, claude_args)
+        # Auto-stage if nested/source repo detected
+        saved_cwd = None
+        if nesting_result.requires_staging:
+            print("\n🚨 SELF-MODIFICATION PROTECTION ACTIVATED")
+            print(f"   Reason: {'Nested execution' if nesting_result.is_nested else 'Running in amplihack source repo'}")
+            print("   Auto-staging .claude/ to temp directory for safety")
+
+            stager = AutoStager()
+            saved_cwd = Path.cwd()
+            staging_result = stager.stage_for_nested_execution(saved_cwd, f"protected-{os.getpid()}")
+
+            print(f"   📁 Staged to: {staging_result.temp_root}")
+            os.chdir(staging_result.temp_root)
+            print(f"   📂 CWD: {staging_result.temp_root}")
+            print("   Your original .claude/ files are PROTECTED\n")
+
+        try:
+            # If in UVX mode, ensure we use --add-dir for the ORIGINAL directory
+            if is_uvx_deployment():
+                # Get the original directory (before we changed to temp)
+                original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", saved_cwd or os.getcwd())
+                # Add --add-dir to claude_args if not already present
+                if claude_args and "--add-dir" not in claude_args:
+                    claude_args = ["--add-dir", str(original_cwd)] + claude_args
+                elif not claude_args:
+                    claude_args = ["--add-dir", str(original_cwd)]
+
+            # Handle auto mode
+            exit_code = handle_auto_mode("claude", args, claude_args)
+            if exit_code is not None:
+                return exit_code
+
+            return launch_command(args, claude_args)
+        finally:
+            # Restore CWD if we staged
+            if saved_cwd is not None:
+                try:
+                    os.chdir(saved_cwd)
+                except Exception:
+                    pass
 
     elif args.command == "claude":
         # Handle append mode FIRST (before any other initialization)
