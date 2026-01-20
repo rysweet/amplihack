@@ -13,6 +13,7 @@ This index provides navigation t' all plugin-related documentation created fer I
 **Audience**: Developers, architects, technical users
 
 **Contents**:
+
 - Complete technical architecture with diagrams
 - Plugin manifest structure and configuration
 - Hook registration with `${CLAUDE_PLUGIN_ROOT}` variable substitution
@@ -24,12 +25,14 @@ This index provides navigation t' all plugin-related documentation created fer I
 - Troubleshooting guide
 
 **When to read**:
+
 - Understanding how the plugin system works internally
 - Debuggin' installation or hook loading issues
 - Extendin' the plugin architecture
 - Contributing t' amplihack development
 
 **Key Sections**:
+
 - Architecture diagram (ASCII art)
 - Plugin manifest format
 - Hook registration with path variables
@@ -43,6 +46,7 @@ This index provides navigation t' all plugin-related documentation created fer I
 **Audience**: Users with existing per-project installations
 
 **Contents**:
+
 - Complete migration path from per-project t' plugin mode
 - Benefits comparison (plugin vs per-project)
 - Three migration methods (clean, gradual, hybrid)
@@ -53,12 +57,14 @@ This index provides navigation t' all plugin-related documentation created fer I
 - Migration checklist
 
 **When to read**:
+
 - Ye have existing projects with `.claude/` directories
 - Decidin' between plugin and per-project modes
 - Need step-by-step migration instructions
 - Want t' preserve custom agents/commands/skills
 
 **Key Sections**:
+
 - When to migrate vs stay per-project
 - Method 1: Clean migration (recommended)
 - Method 2: Gradual migration (test first)
@@ -73,6 +79,7 @@ This index provides navigation t' all plugin-related documentation created fer I
 **Audience**: All users
 
 **Contents**:
+
 - Complete reference fer `amplihack plugin` commands
 - Complete reference fer `amplihack mode` commands
 - Detailed examples fer each command
@@ -83,12 +90,14 @@ This index provides navigation t' all plugin-related documentation created fer I
 - Help text examples
 
 **When to read**:
+
 - Need syntax reference fer plugin commands
 - Want t' understand command output
 - Writin' scripts that use plugin commands
 - Troubleshootin' command failures
 
 **Key Sections**:
+
 - `amplihack plugin install` - Full documentation
 - `amplihack plugin uninstall` - Full documentation
 - `amplihack plugin verify` - Full documentation
@@ -104,6 +113,7 @@ This index provides navigation t' all plugin-related documentation created fer I
 **Audience**: New users, quick start
 
 **Contents**:
+
 - Quick overview o' plugin installation
 - Installation methods (plugin vs per-project)
 - Plugin location and structure
@@ -115,6 +125,7 @@ This index provides navigation t' all plugin-related documentation created fer I
 - Cross-tool compatibility table
 
 **When to read**:
+
 - First time installin' amplihack as plugin
 - Need quick reference fer plugin commands
 - Decidin' between installation methods
@@ -124,6 +135,7 @@ This index provides navigation t' all plugin-related documentation created fer I
 This content should be inserted into main `README.md` after the "Create Alias for Easy Access" section (after line 101).
 
 **Key Sections**:
+
 - Installation methods comparison
 - Plugin location structure
 - Mode detection precedence
@@ -214,6 +226,7 @@ Specs/
 **Goal**: Install amplihack as plugin fer first time
 
 **Path**:
+
 1. Read: [README Plugin Section](./README_PLUGIN_SECTION.md) - Installation methods
 2. Execute: `amplihack plugin install https://github.com/rysweet/amplihack`
 3. Verify: `amplihack plugin verify amplihack`
@@ -226,6 +239,7 @@ Specs/
 **Goal**: Convert per-project `.claude/` t' plugin
 
 **Path**:
+
 1. Read: [Migration Guide](./MIGRATION_GUIDE.md) - Choose migration method
 2. Backup custom content (if any)
 3. Execute: `amplihack plugin install` (if not installed)
@@ -240,6 +254,7 @@ Specs/
 **Goal**: Get latest amplihack changes
 
 **Path**:
+
 1. Execute: `amplihack plugin install --force https://github.com/rysweet/amplihack`
 2. Verify: `amplihack plugin verify amplihack`
 3. Reference: [CLI Commands Reference](./PLUGIN_CLI_HELP.md) - Command details
@@ -251,6 +266,7 @@ Specs/
 **Goal**: Create local `.claude/` fer project-specific customizations
 
 **Path**:
+
 1. Execute: `amplihack mode migrate-to-local`
 2. Customize: Edit `.claude/agents/`, `.claude/commands/`, etc.
 3. Verify: `amplihack mode status` (should show "local")
@@ -263,6 +279,7 @@ Specs/
 **Goal**: Fix plugin installation or discovery issues
 
 **Path**:
+
 1. Diagnose: `amplihack plugin verify amplihack`
 2. Check mode: `amplihack mode status`
 3. Reference: [Plugin Architecture](./PLUGIN_ARCHITECTURE.md#troubleshooting)
@@ -274,29 +291,37 @@ Specs/
 ## FAQ Quick Reference
 
 **Q: Which installation method should I use?**
+
 - Read: [README Plugin Section](./README_PLUGIN_SECTION.md#installation-methods)
 
 **Q: How do I migrate from per-project to plugin?**
+
 - Read: [Migration Guide](./MIGRATION_GUIDE.md#migration-methods)
 
 **Q: What's the command syntax fer plugin operations?**
+
 - Read: [CLI Commands Reference](./PLUGIN_CLI_HELP.md)
 
 **Q: How does mode detection work?**
+
 - Read: [Plugin Architecture](./PLUGIN_ARCHITECTURE.md#backward-compatibility)
 
 **Q: How do I preserve custom agents when migratin'?**
+
 - Read: [Migration Guide](./MIGRATION_GUIDE.md#preservin-customizations)
 
 **Q: Can I use both plugin and local .claude/?**
+
 - Yes! Read: [Plugin Architecture](./PLUGIN_ARCHITECTURE.md#backward-compatibility)
 - Local takes precedence (intentional design)
 
 **Q: How do I troubleshoot installation issues?**
+
 - Read: [Plugin Architecture](./PLUGIN_ARCHITECTURE.md#troubleshooting)
 - Run: `amplihack plugin verify amplihack`
 
 **Q: What's the difference between plugin and per-project modes?**
+
 - Read: [Migration Guide](./MIGRATION_GUIDE.md#benefits-o-plugin-mode)
 
 ---
@@ -342,8 +367,7 @@ Before releasin' documentation:
 
 ### Issue Tracking
 
-- **Issue #1948**: Plugin architecture implementation
-- **Requirements**: See `Specs/ISSUE_1948_REQUIREMENTS.md`
+- **Issue #1948**: Plugin architecture implementation ([view on GitHub](https://github.com/rysweet/amplihack/issues/1948))
 
 ---
 
