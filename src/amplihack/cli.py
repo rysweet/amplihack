@@ -39,19 +39,25 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
     nesting_result = detector.detect_nesting(Path.cwd(), sys.argv)
 
     # Auto-stage if nested execution in source repo detected
+    original_cwd = None
     if nesting_result.requires_staging:
         print("\n🚨 SELF-MODIFICATION PROTECTION ACTIVATED")
         print("   Running nested in amplihack source repository")
         print("   Auto-staging .claude/ to temp directory for safety")
 
         stager = AutoStager()
+        original_cwd = Path.cwd()
         staging_result = stager.stage_for_nested_execution(
-            Path.cwd(),
+            original_cwd,
             f"nested-{os.getpid()}"
         )
 
         print(f"   📁 Staged to: {staging_result.temp_root}")
-        print("   Your original .claude/ files are protected\n")
+        print("   Your original .claude/ files are protected")
+
+        # CRITICAL: Change to temp directory so all .claude/ operations happen there
+        os.chdir(staging_result.temp_root)
+        print(f"   📂 CWD changed to: {staging_result.temp_root}\n")
 
     # Start session tracking
     tracker = SessionTracker()
@@ -68,13 +74,19 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
 
     # Wrap execution in try/finally to ensure session is marked complete/crashed
     try:
-        return _launch_command_impl(args, claude_args, session_id, tracker)
+        result = _launch_command_impl(args, claude_args, session_id, tracker)
+        tracker.complete_session(session_id)
+        return result
     except Exception as e:
         tracker.crash_session(session_id)
         raise
     finally:
-        # If we get here without exception, mark as complete
-        pass  # Completion handled in _launch_command_impl
+        # Restore original CWD if we staged
+        if original_cwd is not None:
+            try:
+                os.chdir(original_cwd)
+            except Exception:
+                pass  # Best effort - don't fail on CWD restore
 
 
 def _launch_command_impl(args: argparse.Namespace, claude_args: list[str] | None, session_id: str, tracker: SessionTracker) -> int:
