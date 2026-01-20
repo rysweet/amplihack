@@ -1,0 +1,191 @@
+# Guide Agent - Sam (Senior Developer) - Quality Concerns
+# Tests if guide addresses AI skeptic's quality validation concerns with concrete review mechanisms
+
+scenario:
+  name: "Guide Agent - Sam (Senior Developer) - Quality Concerns"
+  description: "Tests if guide addresses AI skeptic's quality validation concerns with concrete review mechanisms"
+  type: cli
+  level: 3
+  persona: sam_non_ai_developer
+  learning_phase: discovery
+  session: 1
+
+  tags: [guide-agent, quality, consensus, persona-sam, senior-dev]
+
+  prerequisites:
+    - "amplihack installed"
+    - "ANTHROPIC_API_KEY set"
+
+  context:
+    student_background:
+      - "Senior full-stack developer (10 years experience)"
+      - "Expert in React, Node.js, TypeScript"
+      - "Strong code review practices"
+      - "Never used AI coding tools"
+      - "Skeptical about AI code quality"
+
+    student_goals:
+      - "Understand quality validation mechanisms"
+      - "Learn how to review AI-generated code"
+      - "Evaluate if AI meets senior-level standards"
+      - "Know when AI is trustworthy vs risky"
+
+  steps:
+    - action: launch
+      target: "amplihack"
+      args: ["claude", "--", "-p", "Task(subagent_type=\"guide\", prompt=\"I'm a senior developer who's skeptical about AI tools. How can I trust AI-generated code? What quality controls exist?\")"]
+      description: "Ask about quality validation as skeptical senior dev"
+      timeout: 90s
+
+    - action: wait_for_output
+      contains: "quality"
+      timeout: 30s
+      description: "Response should discuss quality controls"
+
+    # Metric: Acknowledges skepticism (not dismissive)
+    - action: verify_output_or
+      patterns:
+        - "Valid concern"
+        - "Fair question"
+        - "good question"
+        - "understand.*skeptic"
+      description: "Should acknowledge skepticism as valid, not dismissive"
+      metric_type: tone_appropriate
+
+    # Metric: Review mechanism explained
+    - action: verify_output_or
+      patterns:
+        - "review"
+        - "diff"
+        - "PR"
+        - "pull request"
+        - "branch"
+      description: "Should explain that developer reviews everything"
+      metric_type: quality_control
+
+    - action: verify_output_or
+      patterns:
+        - "branch"
+        - "never.*main"
+        - "separate branch"
+        - "creates.*branch"
+      description: "Should explain branch-based workflow prevents direct commits"
+      metric_type: quality_control
+
+    # Metric: CONSENSUS workflow explained
+    - action: verify_output
+      contains: "CONSENSUS"
+      description: "Should mention CONSENSUS workflow for critical code"
+      metric_type: quality_control
+
+    - action: verify_output_or
+      patterns:
+        - "three.*agent"
+        - "multiple.*agent"
+        - "three.*Claude"
+        - "three.*instance"
+        - "multi.*agent"
+      description: "Should explain CONSENSUS uses multiple agents/instances"
+      metric_type: quality_control
+
+    # Metric: Testing integration
+    - action: verify_output_or
+      patterns:
+        - "test"
+        - "pytest"
+        - "testing"
+      description: "Should mention testing capabilities"
+      metric_type: quality_control
+
+    # Metric: Concrete validation steps
+    - action: verify_output_or
+      patterns:
+        - "What to check"
+        - "review.*for"
+        - "Look for"
+        - "validate"
+        - "verify"
+      description: "Should provide specific things to check during review"
+      metric_type: actionable_guidance
+
+    # Metric: Real example or use case
+    - action: verify_output_or
+      patterns:
+        - "example"
+        - "For instance"
+        - "Let me show"
+        - "senior dev"
+      description: "Should provide concrete example or senior dev use case"
+      metric_type: example_quality
+
+    # Metric: Interactive element
+    - action: verify_output_or
+      patterns:
+        - "[WAIT]"
+        - "TRY IT"
+        - "Try this"
+        - "TELL ME"
+      description: "Should include interactive element to engage skeptical dev"
+      metric_type: interactive_element
+
+    # Metric: Read-only option for safety
+    - action: verify_output_or
+      patterns:
+        - "Q&A"
+        - "read-only"
+        - "won't change"
+        - "just.*analyz"
+        - "review.*suggest"
+      description: "Should mention safe read-only workflow for initial trial"
+      metric_type: safety_guidance
+
+    # Anti-pattern checks
+    - action: verify_output
+      not_contains: "perfect"
+      description: "Should NOT claim AI is perfect"
+      metric_type: honesty_check
+
+    - action: verify_output
+      not_contains: "always"
+      description: "Should NOT use absolute claims like 'always correct'"
+      metric_type: honesty_check
+
+    - action: verify_output_or_negative
+      patterns:
+        - "trust me"
+        - "just try it"
+        - "don't worry"
+      description: "Should NOT be dismissive of concerns"
+      metric_type: tone_appropriate
+
+  success_criteria:
+    metrics:
+      time_to_understanding:
+        target: "≤ 2 exchanges"
+        measure: "Exchanges until Sam understands quality control mechanisms"
+
+      quality_mechanisms_explained:
+        target: "≥ 3"
+        measure: "Count of quality controls explained (review, CONSENSUS, testing, branches, etc.)"
+
+      concrete_validation_steps:
+        target: true
+        measure: "Boolean - provides specific things to check during review"
+
+      interactive_elements:
+        target: true
+        measure: "Boolean - has [WAIT], TRY IT, or hands-on suggestion"
+
+      dismissive_tone:
+        target: 0
+        measure: "Count of dismissive responses (trust me, don't worry, etc.)"
+
+    student_outcomes:
+      - "Sam understands review mechanisms (branches, diffs, PRs)"
+      - "Sam knows about CONSENSUS workflow for critical code"
+      - "Sam has specific validation checklist for reviewing AI code"
+      - "Sam can try safe read-only workflow first"
+      - "Sam sees AI as tool requiring review, not magic solution"
+
+  cleanup:
+    - action: stop_application

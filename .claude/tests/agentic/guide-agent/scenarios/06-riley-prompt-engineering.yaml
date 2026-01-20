@@ -1,0 +1,181 @@
+# Guide Agent - Riley (Python Beginner) - Prompt Engineering
+# Tests if guide critiques vague prompts and teaches specificity through iteration
+
+scenario:
+  name: "Guide Agent - Riley (Python Beginner) - Improving Vague Prompts"
+  description: "Tests if guide identifies vague prompt issues and coaches Riley to write contextual, specific prompts"
+  type: cli
+  level: 1
+  persona: riley_python_beginner
+  learning_phase: skill_building
+  session: 2
+
+  tags: [guide-agent, beginner, prompt-engineering, persona-riley]
+
+  prerequisites:
+    - "amplihack installed"
+    - "ANTHROPIC_API_KEY set"
+
+  context:
+    student_background:
+      - "Python developer (2 years)"
+      - "Just learned about amplihack"
+      - "No prompting experience"
+      - "Thinks prompts are like ChatGPT questions"
+
+    student_goals:
+      - "Learn how to write good amplihack prompts"
+      - "Understand why 'improve this code' is insufficient"
+      - "Get template or structure for prompts"
+      - "Write one quality prompt successfully"
+
+  steps:
+    - action: launch
+      target: "amplihack"
+      args: ["claude", "--", "-p", "Task(subagent_type=\"guide\", prompt=\"I want to improve my Python function. How do I ask amplihack to improve this code?\")"]
+      description: "Riley writes vague prompt request"
+      timeout: 60s
+
+    - action: wait_for_output
+      contains: "improve"
+      timeout: 30s
+      description: "Should respond to improvement request"
+
+    # Metric: Identifies vagueness problem
+    - action: verify_output_or
+      patterns:
+        - "vague"
+        - "specific"
+        - "context"
+        - "need to know"
+        - "more information"
+      description: "Should identify that prompt needs more specificity"
+      metric_type: critique_quality
+
+    # Metric: Asks diagnostic questions
+    - action: verify_output_or
+      patterns:
+        - "?"
+        - "what.*code"
+        - "what.*improve"
+        - "tell me"
+      description: "Should ask questions to extract context"
+      metric_type: teaching_approach
+
+    # Metric: Explains missing context elements
+    - action: verify_output_or
+      patterns:
+        - "file"
+        - "function name"
+        - "location"
+        - "path"
+      description: "Should explain need for file/location context"
+      metric_type: concept_explanation
+
+    - action: verify_output_or
+      patterns:
+        - "goal"
+        - "what.*improve"
+        - "performance"
+        - "readability"
+        - "bug"
+      description: "Should explain need for improvement goal"
+      metric_type: concept_explanation
+
+    - action: verify_output_or
+      patterns:
+        - "criteria"
+        - "how.*know"
+        - "success"
+        - "better"
+      description: "Should explain need for success criteria"
+      metric_type: concept_explanation
+
+    # Metric: Provides template or structure
+    - action: verify_output_or
+      patterns:
+        - "template"
+        - "structure"
+        - "format"
+        - "like this"
+      description: "Should offer a prompt template/structure"
+      metric_type: scaffolding_quality
+
+    # Metric: Shows before/after comparison
+    - action: verify_output_or
+      patterns:
+        - "improve.*code"
+        - "BAD:"
+        - "GOOD:"
+        - "instead"
+        - "better prompt"
+      description: "Should contrast vague vs specific prompt"
+      metric_type: example_quality
+
+    # Metric: Concrete improved example
+    - action: verify_output
+      matches: "amplihack claude -- -p \".*function.*file.*\""
+      description: "Should provide specific prompt example with context"
+      metric_type: example_quality
+
+    # Metric: Actionable next step
+    - action: verify_output_or
+      patterns:
+        - "TRY IT"
+        - "Try this"
+        - "your turn"
+        - "[WAIT]"
+        - "rewrite"
+      description: "Should invite Riley to rewrite their prompt"
+      metric_type: interactive_element
+
+    # Metric: Checklist or framework
+    - action: verify_output_or
+      patterns:
+        - "checklist"
+        - "ask yourself"
+        - "include:"
+        - "1."
+        - "2."
+      description: "Should provide reusable checklist/framework"
+      metric_type: scaffolding_quality
+
+    # Anti-pattern: Doesn't just rewrite for Riley
+    - action: verify_output
+      not_contains: "Here's the prompt for you:"
+      description: "Should NOT just give Riley the answer without teaching"
+      metric_type: teaching_approach
+
+    # Anti-pattern: Doesn't overwhelm with theory
+    - action: verify_output
+      not_contains: "prompt engineering"
+      description: "Should focus on practical improvement, not theory"
+      metric_type: tone_check
+
+  success_criteria:
+    metrics:
+      time_to_quality_prompt:
+        target: "≤ 3 exchanges"
+        measure: "Exchanges until Riley writes a specific, contextual prompt"
+
+      critique_elements:
+        target: 3
+        measure: "Number of missing elements identified (location, goal, criteria)"
+
+      improvement_measurable:
+        target: true
+        measure: "Prompt v2 includes file path + specific goal + success criteria"
+
+      student_understanding:
+        target: true
+        measure: "Riley can explain why 'improve code' is insufficient"
+
+    student_outcomes:
+      - "Riley understands prompts need: location, goal, criteria"
+      - "Riley can critique their own vague prompts"
+      - "Riley has written one quality, specific prompt"
+      - "Riley has reusable template/checklist for future prompts"
+      - "Riley knows how to add context without overwhelming Claude"
+
+  cleanup:
+    - action: stop_application

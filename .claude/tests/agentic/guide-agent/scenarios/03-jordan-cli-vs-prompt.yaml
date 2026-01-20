@@ -1,0 +1,98 @@
+# SCENARIO 3: Jordan - CLI vs Prompt Confusion
+# File: .claude/tests/agentic/guide-agent/scenarios/03-jordan-cli-vs-prompt.yaml
+
+scenario:
+  name: "Guide Agent - Jordan (CLI Novice) - Prompt vs CLI Args"
+  description: "Tests if guide clarifies natural language prompts vs traditional CLI flags"
+  type: cli
+  level: 1
+  persona: jordan_cli_novice
+  learning_phase: discovery
+  session: 1
+
+  tags: [guide-agent, cli-user, prompting, persona-jordan]
+
+  prerequisites:
+    - "amplihack installed"
+    - "ANTHROPIC_API_KEY set"
+
+  context:
+    student_background:
+      - "Comfortable with bash, git, docker"
+      - "Expects CLI tools to use flags"
+      - "No AI prompting experience"
+
+  steps:
+    - action: launch
+      target: "amplihack"
+      args: ["claude", "--", "-p", "Task(subagent_type=\"guide\", prompt=\"I know bash and git. How do I use amplihack to review code? Do I pass --review flag?\")"]
+      description: "Ask about CLI usage expecting flags"
+      timeout: 60s
+
+    - action: wait_for_output
+      contains: "prompt"
+      timeout: 30s
+      description: "Should explain prompting concept"
+
+    # Metric: Contrast with familiar tools
+    - action: verify_output_or
+      patterns:
+        - "git"
+        - "bash"
+        - "traditional CLI"
+        - "unlike"
+      description: "Should contrast with tools Jordan knows"
+      metric_type: familiar_analogy
+
+    # Metric: Side-by-side example
+    - action: verify_output
+      matches: "git.*--.*amplihack claude -- -p"
+      description: "Should show CLI style vs amplihack style comparison"
+      metric_type: example_quality
+
+    # Metric: Explain -p flag
+    - action: verify_output_or
+      patterns:
+        - "-p flag"
+        - "-p means"
+        - "prompt flag"
+      description: "Should explain what -p flag does"
+      metric_type: concept_explanation
+
+    # Metric: Natural language example
+    - action: verify_output
+      matches: "amplihack claude -- -p \"[A-Z][^\"]+\""
+      description: "Should show natural language prompt example (starts with capital)"
+      metric_type: example_quality
+
+    # Metric: Interactive practice
+    - action: verify_output_or
+      patterns:
+        - "TRY IT"
+        - "Try this"
+        - "[WAIT]"
+      description: "Should prompt Jordan to try natural language"
+      metric_type: interactive_element
+
+  success_criteria:
+    metrics:
+      time_to_understanding:
+        target: "≤ 2 exchanges"
+        measure: "Exchanges until Jordan understands prompt vs flag"
+
+      conceptual_clarity:
+        target: true
+        measure: "Jordan can explain difference in own words"
+
+      example_quality:
+        target: high
+        measure: "Example contrasts familiar CLI with amplihack"
+
+    student_outcomes:
+      - "Jordan understands prompts are natural language, not flags"
+      - "Jordan can write one natural language prompt"
+      - "Jordan knows -p just delimits the prompt"
+      - "Jordan successfully runs one command"
+
+  cleanup:
+    - action: stop_application

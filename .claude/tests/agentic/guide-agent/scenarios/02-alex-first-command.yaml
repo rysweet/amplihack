@@ -1,0 +1,101 @@
+# Guide Agent - Alex (Absolute Newbie) - First Command
+# Tests if guide helps Alex successfully run first command without errors
+
+scenario:
+  name: "Guide Agent - Alex (Absolute Newbie) - First Command"
+  description: "Tests if guide helps Alex successfully run first command without errors"
+  type: cli
+  level: 1
+  persona: alex_absolute_newbie
+  learning_phase: practice
+  session: 1
+
+  tags: [guide-agent, beginner, first-command, persona-alex]
+
+  prerequisites:
+    - "Scenario 1 completed (Alex knows what amplihack is)"
+    - "amplihack installed"
+    - "ANTHROPIC_API_KEY set"
+
+  context:
+    student_state:
+      - "Has opened terminal"
+      - "Ready to try first command"
+      - "Nervous about making mistakes"
+
+  steps:
+    - action: launch
+      target: "amplihack"
+      args: ["claude", "--", "-p", "Task(subagent_type=\"guide\", prompt=\"Okay, I opened the terminal. What should I type to try amplihack?\")"]
+      description: "Ask guide for first command to try"
+      timeout: 60s
+
+    - action: wait_for_output
+      contains: "amplihack claude"
+      timeout: 30s
+      description: "Should provide amplihack command"
+
+    # Metric: Exact command provided
+    - action: verify_output
+      matches: "amplihack claude -- -p \"[^\"]+\""
+      description: "Should provide complete command with proper quoting"
+      metric_type: example_quality
+
+    # Metric: Common mistake warnings
+    - action: verify_output_or
+      patterns:
+        - "Copy this exactly"
+        - "Make sure to include the quotes"
+        - "Don't change"
+        - "As shown"
+      description: "Should warn about copy-paste accuracy"
+      metric_type: mistake_prevention
+
+    # Metric: Expected output explanation
+    - action: verify_output_or
+      patterns:
+        - "You should see"
+        - "Output will show"
+        - "It will display"
+        - "You'll get"
+      description: "Should explain what output to expect"
+      metric_type: success_indicator
+
+    # Metric: Interactive element
+    - action: verify_output_or
+      patterns:
+        - "[WAIT]"
+        - "TELL ME"
+        - "What happened"
+        - "Did it work"
+      description: "Should pause for user to try command"
+      metric_type: interactive_element
+
+    # Anti-pattern: Don't overwhelm with options
+    - action: verify_output
+      not_matches: "You can also try.*You can also try.*You can also try"
+      description: "Should give ONE command to try, not many options"
+      metric_type: simplicity_check
+
+  success_criteria:
+    metrics:
+      time_to_success:
+        target: "≤ 20 minutes"
+        measure: "Time from start to successful command execution"
+
+      command_clarity:
+        target: 100%
+        measure: "Command is copy-paste ready with no placeholders"
+
+      confusion_points:
+        target: 0
+        measure: "Student doesn't ask clarifying questions"
+
+    student_outcomes:
+      - "Alex successfully runs first command"
+      - "Alex sees expected output"
+      - "Alex understands what happened"
+      - "Alex feels confident to try next command"
+
+  cleanup:
+    - action: stop_application
