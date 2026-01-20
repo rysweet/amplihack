@@ -1,30 +1,9 @@
 {
   "name": "amplihack",
   "version": "0.9.0",
-  "description": "AI-powered development framework with specialized agents and automated workflows",
+  "description": "AI-powered development framework with specialized agents and automated workflows for Claude Code",
   "author": {
     "name": "Microsoft Amplihack Team",
     "url": "https://github.com/rysweet/amplihack"
-  },
-  "repository": "https://github.com/rysweet/amplihack",
-  "license": "MIT",
-  "keywords": ["claude-code", "ai", "agents", "workflows", "automation"],
-  "entry_point": "src/amplihack/__init__.py",
-  "commands": ".claude/commands/",
-  "skills": ".claude/skills/",
-  "hooks": ".claude/tools/amplihack/hooks/hooks.json",
-  "agents": ".claude/agents/amplihack/",
-  "workflows": ".claude/workflow/",
-  "context": ".claude/context/",
-  "compatibility": {
-    "claude-code": ">=1.0.0",
-    "rustyclawd": ">=1.0.0"
-  },
-  "notes": {
-    "copilot_codex": "GitHub Copilot and OpenAI Codex use per-project .claude/ staging (not plugin architecture). Use 'amplihack copilot' or 'amplihack codex' commands which may reference ~/.amplihack/.claude/ with appropriate directory permissions."
-  },
-  "requirements": {
-    "python": ">=3.10",
-    "npm": ">=8.0.0"
   }
 }
