@@ -67,12 +67,12 @@ managing different aspects of the system.
 ### ENV Configuration Files (3 files)
 
 1. **examples/example.azure.env**
-   - Location: `/examples/`
+   - Location: `/docs/examples/`
    - Purpose: Azure environment configuration template
    - Category: Cloud integration example
 
 2. **examples/example.github.env**
-   - Location: `/examples/`
+   - Location: `/docs/examples/`
    - Purpose: GitHub integration configuration template
    - Category: CI/CD example
 
@@ -443,8 +443,8 @@ before deploying beyond development environments.
 
 **ENV Files (3):**
 
-1. `/Users/ryan/src/hackathon/MicrosoftHackathon2025-AgenticCoding/examples/example.azure.env`
-2. `/Users/ryan/src/hackathon/MicrosoftHackathon2025-AgenticCoding/examples/example.github.env`
+1. `/Users/ryan/src/hackathon/MicrosoftHackathon2025-AgenticCoding/docs/examples/example.azure.env`
+2. `/Users/ryan/src/hackathon/MicrosoftHackathon2025-AgenticCoding/docs/examples/example.github.env`
 3. `/Users/ryan/src/hackathon/MicrosoftHackathon2025-AgenticCoding/amplihack_litellm_proxy.env`
 
 **Total Configuration Files:** 10
