@@ -81,6 +81,10 @@
          <lastmod>2026-01-20</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/MIGRATION_GUIDE/</loc>
+         <lastmod>2026-01-20</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/OPENAI_RESPONSES_API/</loc>
          <lastmod>2026-01-20</lastmod>
     </url>
@@ -93,6 +97,18 @@
          <lastmod>2026-01-20</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/PLUGIN_ARCHITECTURE/</loc>
+         <lastmod>2026-01-20</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/PLUGIN_CLI_HELP/</loc>
+         <lastmod>2026-01-20</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/PLUGIN_DOCUMENTATION_INDEX/</loc>
+         <lastmod>2026-01-20</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/PREREQUISITES/</loc>
          <lastmod>2026-01-20</lastmod>
     </url>
@@ -102,6 +118,14 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/PROXY_CONFIG_GUIDE/</loc>
+         <lastmod>2026-01-20</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/README_PLUGIN_SECTION/</loc>
+         <lastmod>2026-01-20</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/RETCON_DOCUMENTATION_SUMMARY/</loc>
          <lastmod>2026-01-20</lastmod>
     </url>
     <url>
@@ -2234,6 +2258,42 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/platform-bridge/</loc>
+         <lastmod>2026-01-20</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/plugin/</loc>
+         <lastmod>2026-01-20</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/plugin/ARCHITECTURE/</loc>
+         <lastmod>2026-01-20</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/plugin/CLI_REFERENCE/</loc>
+         <lastmod>2026-01-20</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/plugin/INSTALLATION/</loc>
+         <lastmod>2026-01-20</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/plugin/LSP_CONFIGURATION/</loc>
+         <lastmod>2026-01-20</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/plugin/MIGRATION/</loc>
+         <lastmod>2026-01-20</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/plugin/PLUGIN_DEVELOPMENT/</loc>
+         <lastmod>2026-01-20</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/plugin/PLUGIN_INSTALLATION/</loc>
+         <lastmod>2026-01-20</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/plugin/QUICK_REFERENCE/</loc>
          <lastmod>2026-01-20</lastmod>
     </url>
     <url>
