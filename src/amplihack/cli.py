@@ -9,6 +9,7 @@ from pathlib import Path
 from . import copytree_manifest
 from .docker import DockerManager
 from .launcher import ClaudeLauncher
+from .launcher.session_tracker import SessionTracker
 from .proxy import ProxyConfig, ProxyManager
 from .utils import is_uvx_deployment
 
