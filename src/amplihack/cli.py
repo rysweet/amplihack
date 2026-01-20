@@ -29,6 +29,65 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
     Returns:
         Exit code.
     """
+    # Detect nesting BEFORE any .claude/ operations
+    from .launcher.nesting_detector import NestingDetector
+    from .launcher.session_tracker import SessionTracker
+    from .launcher.auto_stager import AutoStager
+
+    detector = NestingDetector()
+    nesting_result = detector.detect_nesting(Path.cwd(), sys.argv)
+
+    # Auto-stage if nested execution in source repo detected
+    if nesting_result.requires_staging:
+        print("\n🚨 SELF-MODIFICATION PROTECTION ACTIVATED")
+        print("   Running nested in amplihack source repository")
+        print("   Auto-staging .claude/ to temp directory for safety")
+
+        stager = AutoStager()
+        staging_result = stager.stage_for_nested_execution(
+            Path.cwd(),
+            f"nested-{os.getpid()}"
+        )
+
+        print(f"   📁 Staged to: {staging_result.temp_root}")
+        print("   Your original .claude/ files are protected\n")
+
+    # Start session tracking
+    tracker = SessionTracker()
+    is_auto_mode = getattr(args, "auto", False)
+
+    session_id = tracker.start_session(
+        pid=os.getpid(),
+        launch_dir=str(Path.cwd()),
+        argv=sys.argv,
+        is_auto_mode=is_auto_mode,
+        is_nested=nesting_result.is_nested,
+        parent_session_id=nesting_result.parent_session_id,
+    )
+
+    # Wrap execution in try/finally to ensure session is marked complete/crashed
+    try:
+        return _launch_command_impl(args, claude_args, session_id, tracker)
+    except Exception as e:
+        tracker.crash_session(session_id)
+        raise
+    finally:
+        # If we get here without exception, mark as complete
+        pass  # Completion handled in _launch_command_impl
+
+
+def _launch_command_impl(args: argparse.Namespace, claude_args: list[str] | None, session_id: str, tracker: SessionTracker) -> int:
+    """Internal implementation of launch_command with session tracking.
+
+    Args:
+        args: Parsed command line arguments.
+        claude_args: Additional arguments to forward to Claude.
+        session_id: Session ID from tracker
+        tracker: SessionTracker instance
+
+    Returns:
+        Exit code.
+    """
     # Set environment variable for Neo4j opt-in (Why: Makes flag accessible to session hooks)
     if getattr(args, "use_graph_mem", False):
         os.environ["AMPLIHACK_USE_GRAPH_MEM"] = "1"
@@ -124,8 +183,13 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
     # Check if claude_args contains a prompt (-p) - if so, use non-interactive mode
     has_prompt = claude_args and ("-p" in claude_args)
     if has_prompt:
-        return launcher.launch()
-    return launcher.launch_interactive()
+        exit_code = launcher.launch()
+    else:
+        exit_code = launcher.launch_interactive()
+
+    # Mark session as complete
+    tracker.complete_session(session_id)
+    return exit_code
 
 
 def handle_auto_mode(sdk: str, args: argparse.Namespace, cmd_args: list[str] | None) -> int | None:

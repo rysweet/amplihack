@@ -209,9 +209,14 @@ class AutoMode:
             self.console = None
 
         # Safety: Detect if we're using temp staging directory (safety feature)
+        # Check both legacy AMPLIHACK_STAGED_DIR and new AMPLIHACK_IS_STAGED
         self.staged_dir = os.environ.get("AMPLIHACK_STAGED_DIR")
+        self.is_staged = os.environ.get("AMPLIHACK_IS_STAGED") == "1"
         self.original_cwd_from_env = os.environ.get("AMPLIHACK_ORIGINAL_CWD")
-        self.using_temp_staging = self.staged_dir is not None
+        self.using_temp_staging = self.staged_dir is not None or self.is_staged
+
+        if self.is_staged:
+            self.log("🛡️  Running in staged mode (nested session protection active)")
 
         # Initialize UI if enabled
         self.ui_thread = None
