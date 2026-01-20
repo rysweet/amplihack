@@ -104,7 +104,7 @@ amplihack launch --checkout-repo owner/repo
 
 ### Workflow
 
-Iterative multi-step development process (customizeable via DEFAULT_WORKFLOW.md)
+22-step development process (Steps 0-21, customizable via DEFAULT_WORKFLOW.md)
 
 1. Clarify requirements
 2. Create issue
@@ -120,6 +120,8 @@ Iterative multi-step development process (customizeable via DEFAULT_WORKFLOW.md)
 12. Check philosophy
 13. Prepare merge
 14. Cleanup
+
+Plus additional steps for PR refinement, CI validation, and final merge preparation.
 
 ### Philosophy
 
@@ -220,18 +222,19 @@ for detailed customization instructions.
 
 ## Agents Reference
 
-### Core Agents (6)
+### Core Agents (7)
 
 | Agent                                                             | Purpose                                  |
 | ----------------------------------------------------------------- | ---------------------------------------- |
 | [**api-designer**](.claude/agents/amplihack/core/api-designer.md) | API design and endpoint structure        |
 | [**architect**](.claude/agents/amplihack/core/architect.md)       | System design and architecture decisions |
 | [**builder**](.claude/agents/amplihack/core/builder.md)           | Code generation and implementation       |
+| [**guide**](.claude/agents/amplihack/core/guide.md)               | Feature guide and onboarding specialist  |
 | [**optimizer**](.claude/agents/amplihack/core/optimizer.md)       | Performance optimization and efficiency  |
 | [**reviewer**](.claude/agents/amplihack/core/reviewer.md)         | Code quality and best practices review   |
 | [**tester**](.claude/agents/amplihack/core/tester.md)             | Test generation and validation           |
 
-### Specialized Agents (23)
+### Specialized Agents (27)
 
 | Agent                                                                                          | Purpose                                         |
 | ---------------------------------------------------------------------------------------------- | ----------------------------------------------- |
@@ -396,7 +399,7 @@ amplihack launch
   Persistent memory and knowledge graphs across sessions
 - **[Investigation Workflow](CLAUDE.md#investigation-workflow)** - Deep
   knowledge excavation with historical context
-- **[Skills System](.claude/skills/README.md)** - 54+ skills including PDF,
+- **[Skills System](.claude/skills/README.md)** - 85+ skills including PDF,
   XLSX, DOCX, PPTX, analysts, and workflow patterns
 - **[Fix Workflow](CLAUDE.md#key-commands)** - Rapid resolution of common error
   patterns (`/amplihack:fix`)
@@ -468,7 +471,7 @@ Real-time session information displayed at the bottom of Claude Code showing:
 - [Azure DevOps CLI Skill](.claude/skills/azure-devops-cli/README.md) - Azure
   DevOps automation, pipelines, repos, and artifacts
 - **[Azure DevOps Boards Tools](docs/azure-devops/README.md) - Work item
-  management with CLI tools ([Quick Start](docs/azure-devops/quick-start.md))**
+  management with CLI tools**
 - [Benchmarking with eval-recipes](https://rysweet.github.io/amplihack/BENCHMARKING/) -
   Performance measurement and comparison
 - [Profile Management](https://rysweet.github.io/amplihack/PROFILE_MANAGEMENT/) -
