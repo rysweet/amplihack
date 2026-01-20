@@ -1,10 +1,10 @@
 # amplihack
 
-**Agentic coding framework that uses specialized AI agents to accelerate software development through intelligent automation and collaborative problem-solving.**
+**Agentic coding framework for Claude Code, Microsoft Amplifier, GitHub Copilot CLI, and Codex that uses specialized AI agents to accelerate software development through intelligent automation and collaborative problem-solving.**
 
 ## What is amplihack?
 
-amplihack is a development tool built on Claude Code that leverages multiple specialized AI agents working together to handle complex software development tasks. It combines ruthless simplicity with powerful capabilities to make AI-assisted development more effective and maintainable.
+amplihack is a development framework for popular coding agent systems (Claude Code, Microsoft Amplifier, GitHub Copilot CLI, and Codex) that leverages multiple specialized AI agents working together to handle complex software development tasks. It combines ruthless simplicity with powerful capabilities to make AI-assisted development more effective and maintainable.
 
 ## Quick Navigation
 
@@ -28,6 +28,41 @@ amplihack is a development tool built on Claude Code that leverages multiple spe
 
 Everything you need to install and configure amplihack.
 
+### Choose Your Tool
+
+amplihack works with multiple agentic coding tools. Choose the one that fits your workflow:
+
+```sh
+# Launch with Claude Code (default)
+uvx --from git+https://github.com/rysweet/amplihack amplihack claude
+
+# Launch with Microsoft Amplifier
+uvx --from git+https://github.com/rysweet/amplihack amplihack amplifier
+
+# Launch with GitHub Copilot CLI
+uvx --from git+https://github.com/rysweet/amplihack amplihack copilot
+```
+
+**Tool Compatibility Matrix:**
+
+| Feature             | Claude Code | Amplifier | Copilot CLI | Codex      |
+| ------------------- | ----------- | --------- | ----------- | ---------- |
+| Plugin Architecture | ✅ Yes      | ❌ No     | ❌ No       | ❌ No      |
+| Per-Project Staging | ✅ Yes      | ✅ Yes    | ✅ Yes      | ✅ Yes     |
+| All Agents (38)     | ✅ Yes      | ✅ Yes    | ✅ Yes      | ⚠️ Limited |
+| All Skills (73)     | ✅ Yes      | ✅ Yes    | ✅ Yes      | ⚠️ Limited |
+| All Commands (24)   | ✅ Yes      | ✅ Yes    | ✅ Yes      | ⚠️ Limited |
+| Workflows           | ✅ All      | ✅ All    | ✅ All      | ⚠️ Limited |
+| Auto Mode           | ✅ Yes      | ✅ Yes    | ✅ Yes      | ⚠️ Limited |
+
+**New to amplihack?** After launching, try the interactive tutorial:
+
+```
+Task(subagent_type='guide', prompt='I am new to amplihack. Teach me the basics.')
+```
+
+The guide agent will walk you through workflows, prompting strategies, and hands-on exercises (60-90 minutes).
+
 ### Plugin Architecture ⭐ NEW
 
 Centralized plugin system that works across all your projects:
@@ -36,7 +71,8 @@ Centralized plugin system that works across all your projects:
 - [Plugin Architecture Overview](plugin/ARCHITECTURE.md) - How the plugin system works
 - [Migration Guide](plugin/MIGRATION.md) - Migrate from per-project to plugin mode
 - [CLI Reference](plugin/CLI_REFERENCE.md) - Complete command-line reference
-- **Note**: Copilot and Codex use per-project `.claude/` staging, not plugin architecture
+
+**Note**: Plugin architecture is **Claude Code only**. Microsoft Amplifier, GitHub Copilot CLI, and Codex use per-project `.claude/` staging instead.
 
 ### Installation
 
@@ -46,8 +82,44 @@ Centralized plugin system that works across all your projects:
 
 ### Configuration
 
+#### Tool-Specific Setup
+
+**Claude Code (Default)**
+
+- Requires: `$ANTHROPIC_API_KEY` environment variable for Anthropic models
+- Plugin mode: Install globally with [Plugin Installation Guide](plugin/INSTALLATION.md)
+- Per-project mode: Copy `.claude/` directory to your project
+- Azure OpenAI: Use proxy configuration (see [Proxy Configuration](PROXY_CONFIG_GUIDE.md))
+
+**Microsoft Amplifier**
+
+```sh
+amplihack amplifier
+```
+
+Amplifier walks you through model configuration on first startup. Supports all Amplifier-compatible models including Claude, GPT-4, and local models.
+
+**GitHub Copilot CLI**
+
+```sh
+amplihack copilot
+```
+
+- Uses GitHub Copilot models (switch with `/model` command)
+- Adaptive hooks enable preference injection and context loading
+- All 38 agents available via `--agent <name>` flag
+- See [GitHub Copilot Integration](github-copilot-litellm-integration.md) for complete guide
+
+**Codex**
+
+- Limited support via per-project `.claude/` staging
+- Most features work but may require adaptation
+- Tested primarily with Claude models
+
+#### General Configuration
+
 - [Profile Management](PROFILE_MANAGEMENT.md) - Multiple environment configurations
-- [Proxy Configuration](PROXY_CONFIG_GUIDE.md) - Network proxy setup
+- [Proxy Configuration](PROXY_CONFIG_GUIDE.md) - Network proxy setup (Azure OpenAI, custom endpoints)
 - [Hook Configuration](HOOK_CONFIGURATION_GUIDE.md) - Customize framework behavior
 - [Memory Configuration Consent](features/memory-consent-prompt.md) - Intelligent memory settings with timeout protection
 
