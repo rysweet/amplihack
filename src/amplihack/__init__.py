@@ -24,6 +24,7 @@ ESSENTIAL_DIRS = [
     "docs",  # Investigation examples and documentation
     "schemas",  # JSON/YAML schemas for validation
     "config",  # Configuration files for tools
+    "../.claude-plugin",  # Plugin manifest directory (Issue #1948)
 ]
 
 # Essential files that must be copied (relative to .claude/)
