@@ -12,7 +12,7 @@ amplihack is a development tool built on Claude Code that leverages multiple spe
 
 - [Get Started](#-get-started) - Installation and first steps
 - [Core Concepts](#-core-concepts) - Philosophy and principles
-- [Amplihack Interactive Tutorial](tutorials/amplihack-tutorial.md) - Complete 60-90 min tutorial from basics to advanced
+- [Amplihack Tutorial](tutorials/amplihack-tutorial.md) - Comprehensive 60-90 minute tutorial
 - [First Docs Site Tutorial](tutorials/first-docs-site.md) - Create your first documentation site
 
 **Looking for something specific?**
@@ -27,6 +27,16 @@ amplihack is a development tool built on Claude Code that leverages multiple spe
 ## 🚀 Get Started
 
 Everything you need to install and configure amplihack.
+
+### Plugin Architecture ⭐ NEW
+
+Centralized plugin system that works across all your projects:
+
+- [Plugin Installation Guide](plugin/INSTALLATION.md) - Install amplihack as a global plugin (Claude Code only)
+- [Plugin Architecture Overview](plugin/ARCHITECTURE.md) - How the plugin system works
+- [Migration Guide](plugin/MIGRATION.md) - Migrate from per-project to plugin mode
+- [CLI Reference](plugin/CLI_REFERENCE.md) - Complete command-line reference
+- **Note**: Copilot and Codex use per-project `.claude/` staging, not plugin architecture
 
 ### Installation
 
@@ -118,7 +128,7 @@ Document-Driven Development is a systematic methodology where documentation come
 - [N-Version Programming](claude/workflow/N_VERSION_WORKFLOW.md) - Multiple solutions for critical code
 - [Multi-Agent Debate](claude/workflow/DEBATE_WORKFLOW.md) - Structured decision-making
 - [Cascade Workflow](claude/workflow/CASCADE_WORKFLOW.md) - Graceful degradation patterns
-- [Workflow Enforcement](workflow-enforcement.md) - Ensure process compliance
+<!-- - [Workflow Enforcement](workflow-enforcement.md) - Ensure process compliance (Coming soon) -->
 
 ---
 
@@ -128,7 +138,8 @@ Specialized AI agents and tools for every development task.
 
 ### Core Agents
 
-- [Agents Overview](claude/agents/amplihack/README.md) - Complete agent catalog
+<!-- - [Agents Overview](claude/agents/amplihack/README.md) - Complete agent catalog (see individual agent docs below) -->
+
 - [Architect](claude/agents/amplihack/core/architect.md) - System design and specifications
 - [Builder](claude/agents/amplihack/core/builder.md) - Code implementation from specs
 - [Reviewer](claude/agents/amplihack/core/reviewer.md) - Quality assurance and compliance
@@ -136,7 +147,7 @@ Specialized AI agents and tools for every development task.
 
 ### Specialized Agents
 
-- [API Designer](claude/agents/amplihack/specialized/api-designer.md) - Contract definitions
+- [API Designer](claude/agents/amplihack/core/api-designer.md) - Contract definitions
 - [Security Agent](claude/agents/amplihack/specialized/security.md) - Vulnerability assessment
 - [Database Agent](claude/agents/amplihack/specialized/database.md) - Schema and query optimization
 - [Integration Agent](claude/agents/amplihack/specialized/integration.md) - External service connections
@@ -165,7 +176,7 @@ Specialized AI agents and tools for every development task.
 Modular, on-demand capabilities that extend amplihack:
 
 - [Skills Catalog](skills/SKILL_CATALOG.md) - Complete skills catalog
-- [Documentation Writing](claude/skills/documentation-writing/README.md) - Eight Rules compliance
+<!-- - [Documentation Writing](claude/skills/documentation-writing/README.md) - Eight Rules compliance (Coming soon) -->
 - [Mermaid Diagrams](claude/skills/mermaid-diagram-generator/SKILL.md) - Visual documentation
 - [Test Gap Analyzer](claude/skills/test-gap-analyzer/SKILL.md) - Find untested code
 - [Code Smell Detector](claude/skills/code-smell-detector/SKILL.md) - Identify anti-patterns
@@ -309,7 +320,7 @@ Intelligent guidance system that prevents common mistakes:
 - [Smart Memory Management](features/smart-memory-management.md) - Automatic Node.js memory optimization for Claude Code
 - [Claude.md Preservation](features/claude-md-preservation.md) - Preserve custom instructions
 - [Neo4j Session Cleanup](features/neo4j-session-cleanup.md) - Automatic resource management
-- [Shutdown Detection](concepts/shutdown-detection.md) - Graceful exit handling (prevents 10-13s hang)
+<!-- - [Shutdown Detection](concepts/shutdown-detection.md) - Graceful exit handling (see stop-hook-exit-hang in Troubleshooting) -->
 
 ### Third-Party Integrations
 

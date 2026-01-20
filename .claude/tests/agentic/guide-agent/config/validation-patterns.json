@@ -1,0 +1,212 @@
+{
+  "description": "Regex patterns and validation rules for guide agent testing",
+  "patterns": {
+    "jargon": {
+      "description": "Terms that may confuse beginners (context-dependent)",
+      "levels": {
+        "beginner": {
+          "forbidden": [
+            "\\bAST\\b",
+            "\\bLSP\\b",
+            "\\bIDE\\b(?! like)",
+            "\\bCLI\\b(?! \\(command)",
+            "\\bREPL\\b",
+            "\\bJSON schema\\b",
+            "\\bYAML\\b(?! format)",
+            "\\bmarkdown\\b(?! format)",
+            "\\bregex\\b",
+            "\\bregular expression\\b(?! \\(pattern)",
+            "\\bAPI\\b(?! \\()",
+            "\\bSDK\\b",
+            "\\bframework\\b(?! \\()",
+            "\\blinter\\b",
+            "\\btranspile\\b",
+            "\\bpolyfill\\b",
+            "\\bbabel\\b",
+            "\\bwebpack\\b",
+            "\\bparcel\\b",
+            "\\bvite\\b",
+            "\\bbundler\\b(?! \\()",
+            "\\bpackage manager\\b(?! \\()",
+            "\\bnpm\\b(?! \\()",
+            "\\byarn\\b(?! \\()",
+            "\\bpnpm\\b",
+            "\\bmonorepo\\b",
+            "\\bmiddleware\\b",
+            "\\bORM\\b",
+            "\\bserialize\\b",
+            "\\bdeserialize\\b",
+            "\\basync\\b(?! \\()",
+            "\\bpromise\\b(?! \\()",
+            "\\bcallback\\b(?! function)",
+            "\\bclosure\\b",
+            "\\bhoisting\\b",
+            "\\bprototype\\b(?! \\()",
+            "\\bdependency injection\\b",
+            "\\bsynthetic event\\b",
+            "\\bvirtual DOM\\b(?! \\()",
+            "\\bhydration\\b",
+            "\\bSSR\\b",
+            "\\bSSG\\b",
+            "\\bISR\\b",
+            "\\bstatic site generation\\b(?! \\()",
+            "\\bserver-side rendering\\b(?! \\()",
+            "\\bincremental static regeneration\\b"
+          ],
+          "warning": [
+            "\\bcomponent\\b(?! \\()",
+            "\\bstate\\b(?! \\()",
+            "\\bprops\\b(?! \\()",
+            "\\bfunction\\b",
+            "\\bvariable\\b",
+            "\\barray\\b",
+            "\\bobject\\b",
+            "\\bloop\\b",
+            "\\bcondition\\b",
+            "\\bserver\\b",
+            "\\bclient\\b",
+            "\\bbrowser\\b"
+          ]
+        },
+        "intermediate": {
+          "forbidden": [
+            "\\bAST\\b",
+            "\\bLSP\\b",
+            "\\btranspile\\b(?! \\()",
+            "\\bpolyfill\\b(?! \\()",
+            "\\bsynthetic event\\b(?! \\()",
+            "\\bhydration\\b(?! \\()",
+            "\\bdependency injection\\b(?! \\()"
+          ],
+          "warning": [
+            "\\bREPL\\b",
+            "\\bORM\\b",
+            "\\bserialize\\b",
+            "\\bmonorepo\\b"
+          ]
+        },
+        "advanced": {
+          "forbidden": [],
+          "warning": []
+        }
+      }
+    },
+    "waitPattern": {
+      "description": "Detects [WAIT] usage for pacing control",
+      "pattern": "\\[WAIT\\]",
+      "expectedFrequency": {
+        "beginner": {
+          "min": 2,
+          "max": 5,
+          "description": "Should use [WAIT] 2-5 times per interaction for proper pacing"
+        },
+        "intermediate": {
+          "min": 1,
+          "max": 3
+        },
+        "advanced": {
+          "min": 0,
+          "max": 2
+        }
+      }
+    },
+    "links": {
+      "description": "Validates link format and context",
+      "patterns": {
+        "documentationLink": "https?://(?:developer\\.mozilla\\.org|docs\\..*|.*\\.readthedocs\\.io)",
+        "tutorialLink": "https?://(?:.*tutorial.*|.*guide.*|.*learn.*)",
+        "videoLink": "https?://(?:youtube\\.com|youtu\\.be|vimeo\\.com)",
+        "interactiveLink": "https?://(?:.*playground.*|codesandbox\\.io|stackblitz\\.com|replit\\.com)"
+      },
+      "requiredContext": {
+        "pattern": "(?:check out|see|learn more|documentation at|tutorial at|watch).*https?://",
+        "description": "Links should have contextual introduction"
+      }
+    },
+    "checkpoints": {
+      "description": "Detects learning checkpoints and comprehension checks",
+      "patterns": [
+        "Does (?:this|that) make sense\\?",
+        "Do you (?:understand|follow|get).*\\?",
+        "Are you (?:with me|following|comfortable).*\\?",
+        "(?:Ready to|Shall we|Want to) (?:move on|continue|try).*\\?",
+        "How (?:does|is) (?:this|that) (?:feel|sound|look)\\?",
+        "Would you like (?:to|me to).*\\?"
+      ]
+    },
+    "scaffolding": {
+      "description": "Detects proper scaffolding techniques",
+      "patterns": {
+        "stepIndicators": [
+          "(?:First|Second|Third|Next|Finally|Last),",
+          "Step \\d+:",
+          "Let's start (?:by|with)",
+          "Now (?:let's|we can|try)"
+        ],
+        "buildingOnPrevious": [
+          "(?:Remember|Recall) (?:when|how|that)",
+          "(?:Just like|Similar to) (?:before|earlier|what we)",
+          "Building on (?:what|that)",
+          "Now that you (?:know|understand|have)"
+        ],
+        "preview": [
+          "(?:We're going to|We'll|Let's)",
+          "(?:Here's|This is) what (?:we'll|we're going to)",
+          "(?:The|Our) (?:goal|plan|next step) is"
+        ]
+      }
+    },
+    "encouragement": {
+      "description": "Detects supportive and encouraging language",
+      "patterns": [
+        "(?:Great|Excellent|Perfect|Nice|Good) (?:job|work|question|thinking)!",
+        "You're (?:doing|getting).*(?:great|well|it)!",
+        "Don't worry,",
+        "That's (?:okay|fine|normal|expected)",
+        "(?:This|That) is (?:a|an) (?:common|normal|understandable)",
+        "You've (?:got|learned|mastered) (?:this|it)!"
+      ]
+    },
+    "antipatterns": {
+      "description": "Patterns that indicate poor teaching",
+      "violations": {
+        "overwhelming": [
+          "\\b(?:simply|just|trivial|obvious|easy)\\b",
+          "(?:everyone knows|as you know|clearly|of course)"
+        ],
+        "assumptive": [
+          "(?:You should already know|I assume you|Obviously you)"
+        ],
+        "dismissive": [
+          "(?:Don't bother|Skip|Ignore) (?:this|that|the details)"
+        ]
+      }
+    }
+  },
+  "thresholds": {
+    "beginner": {
+      "maxJargonViolations": 0,
+      "maxJargonWarnings": 3,
+      "minWaitUsage": 2,
+      "minCheckpoints": 3,
+      "minEncouragement": 2,
+      "maxAntipatternsTotal": 0
+    },
+    "intermediate": {
+      "maxJargonViolations": 0,
+      "maxJargonWarnings": 5,
+      "minWaitUsage": 1,
+      "minCheckpoints": 2,
+      "minEncouragement": 1,
+      "maxAntipatternsTotal": 1
+    },
+    "advanced": {
+      "maxJargonViolations": 2,
+      "maxJargonWarnings": 10,
+      "minWaitUsage": 0,
+      "minCheckpoints": 1,
+      "minEncouragement": 0,
+      "maxAntipatternsTotal": 2
+    }
+  }
+}

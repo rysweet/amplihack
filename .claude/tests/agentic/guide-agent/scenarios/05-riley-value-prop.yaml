@@ -1,0 +1,155 @@
+# Guide Agent - Riley (Python Beginner) - Value Proposition
+# Tests if guide explains amplihack advantages over ChatGPT to AI novice developer
+
+scenario:
+  name: "Guide Agent - Riley (Python Beginner) - Why amplihack vs ChatGPT?"
+  description: "Tests if guide explains context preservation, workflow automation, and code integration advantages"
+  type: cli
+  level: 1
+  persona: riley_python_beginner
+  learning_phase: discovery
+  session: 1
+
+  tags: [guide-agent, beginner, value-prop, persona-riley]
+
+  prerequisites:
+    - "amplihack installed"
+    - "ANTHROPIC_API_KEY set"
+
+  context:
+    student_background:
+      - "Python developer (2 years)"
+      - "No AI prompting experience"
+      - "Uses ChatGPT occasionally for quick questions"
+      - "Never used AI for full workflow automation"
+
+    student_goals:
+      - "Understand why use amplihack instead of ChatGPT"
+      - "Learn concrete advantages"
+      - "Determine if worth learning new tool"
+      - "See real-world use cases"
+
+  steps:
+    - action: launch
+      target: "amplihack"
+      args: ["claude", "--", "-p", "Task(subagent_type=\"guide\", prompt=\"I can already use ChatGPT for coding help. Why would I use amplihack instead? What's the difference?\")"]
+      description: "Riley asks about value proposition vs ChatGPT"
+      timeout: 60s
+
+    - action: wait_for_output
+      contains: "ChatGPT"
+      timeout: 30s
+      description: "Should acknowledge ChatGPT comparison"
+
+    # Metric: Context preservation explanation
+    - action: verify_output_or
+      patterns:
+        - "context"
+        - "codebase"
+        - "project files"
+        - "remembers your code"
+      description: "Should explain context preservation advantage"
+      metric_type: value_prop_coverage
+
+    - action: verify_output_or
+      patterns:
+        - "copy.*paste"
+        - "back.*forth"
+        - "switch between"
+      description: "Should contrast with ChatGPT copy-paste workflow"
+      metric_type: contrast_quality
+
+    # Metric: Workflow automation explanation
+    - action: verify_output_or
+      patterns:
+        - "workflow"
+        - "automated"
+        - "multi-step"
+        - "pipeline"
+      description: "Should explain workflow automation capabilities"
+      metric_type: value_prop_coverage
+
+    # Metric: Code integration explanation
+    - action: verify_output_or
+      patterns:
+        - "git"
+        - "files directly"
+        - "reads.*writes"
+        - "terminal"
+      description: "Should explain direct code integration"
+      metric_type: value_prop_coverage
+
+    # Metric: Concrete example provided
+    - action: verify_output
+      matches: "amplihack claude -- -p \".*\""
+      description: "Should provide concrete command example"
+      metric_type: example_quality
+
+    # Metric: Use case demonstration
+    - action: verify_output_or
+      patterns:
+        - "example"
+        - "for instance"
+        - "imagine"
+        - "let's say"
+      description: "Should illustrate with real use case"
+      metric_type: example_quality
+
+    # Metric: When to use ChatGPT vs amplihack
+    - action: verify_output_or
+      patterns:
+        - "ChatGPT.*good for"
+        - "amplihack.*better when"
+        - "use ChatGPT when"
+        - "use amplihack when"
+      description: "Should clarify when to use each tool (non-zero-sum)"
+      metric_type: conceptual_clarity
+
+    # Metric: Interactive engagement
+    - action: verify_output_or
+      patterns:
+        - "[WAIT]"
+        - "TRY IT"
+        - "Try this"
+        - "TELL ME"
+      description: "Should invite Riley to respond or try example"
+      metric_type: interactive_element
+
+    # Anti-pattern: Doesn't dismiss ChatGPT
+    - action: verify_output
+      not_contains: "better than ChatGPT"
+      description: "Should NOT claim amplihack is universally better"
+      metric_type: tone_check
+
+    - action: verify_output
+      not_contains: "replace ChatGPT"
+      description: "Should position as complementary, not replacement"
+      metric_type: tone_check
+
+  success_criteria:
+    metrics:
+      time_to_understanding:
+        target: "≤ 2 exchanges"
+        measure: "Exchanges until Riley understands key advantages"
+
+      value_props_covered:
+        target: 3
+        measure: "Count of advantages explained: context, workflow, integration"
+
+      concrete_examples:
+        target: "≥ 1"
+        measure: "Number of real use cases or commands provided"
+
+      conceptual_clarity:
+        target: true
+        measure: "Riley can articulate when to use amplihack vs ChatGPT"
+
+    student_outcomes:
+      - "Riley can name 3 amplihack advantages over ChatGPT"
+      - "Riley understands context preservation value"
+      - "Riley knows when to use each tool"
+      - "Riley has one concrete example to try"
+      - "Riley feels amplihack is worth exploring (not just better ChatGPT)"
+
+  cleanup:
+    - action: stop_application

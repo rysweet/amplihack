@@ -205,8 +205,6 @@ class TestRootDirectoryState:
             "requirements-docs.txt",
             # Config files
             "litellm_standalone_config.yaml",
-            "proxy_config_chat_api.env.example",
-            "proxy_config_responses_api.env.example",
             ":memory:",  # SQLite temp file
         }
 

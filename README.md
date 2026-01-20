@@ -1,15 +1,25 @@
 # amplihack
 
-Development framework for Claude Code with specialized agents and automated
-workflows.
+Development framework for popular coding agent systems (Claude Code, Github Copilot CLI, Microsoft Amplifier, codex) that provides structured dev workflows, memory, a package of useful skills and agents, goal-seeking agent generator, auto mode, self-improvement with reflection, and commands for getting the most out of agentic coding. Unlikely to work on Windows without WSL. 
 
 **📚 [View Full Documentation](https://rysweet.github.io/amplihack/)**
 
 ```sh
-uvx --from git+https://github.com/rysweet/amplihack amplihack launch
+# Launch amplihack with Claude Code
+uvx --from git+https://github.com/rysweet/amplihack amplihack claude
 ```
 
-Launches Claude Code with preconfigured agents. No installation needed.
+```sh
+# Launch amplihack with Microsoft Amplifier (https://github.com/microsoft/amplifier)
+uvx --from git+https://github.com/rysweet/amplihack amplihack amplifier
+```
+
+```sh
+Launch AMplihack with Github Copilot CLI
+uvx --from git+https://github.com/rysweet/amplihack amplihack copilot
+```
+
+Try asking the **amplihack-guide** agent for help.
 
 ## Table of Contents
 
@@ -54,13 +64,16 @@ Launches Claude Code with preconfigured agents. No installation needed.
 ## Quick Start
 
 ### Prerequisites
-
-- Python 3.8+, Node.js 18+, npm, git
+- MacOS, WSL, or Linux
+- Python 3.2+, Node.js 18+, npm, git
 - GitHub CLI (`gh`) for PR/issue management
+- az cli for AzDO and Azure skills
 - uv ([astral.sh/uv](https://docs.astral.sh/uv/))
 
 For detailed installation instructions, see
 [docs/PREREQUISITES.md](https://rysweet.github.io/amplihack/PREREQUISITES/).
+
+You may find that its useful to use amplihack with [azlin](https://github.com/rysweet/azlin) which makes it easy to start linux based agentic coding vms in the azure cloud. 
 
 ### Basic Usage
 
@@ -111,43 +124,44 @@ amplihack launch --checkout-repo owner/repo
 
 ## Core Concepts
 
-### Workflow
-
-Iterative multi-step development process (customizeable via DEFAULT_WORKFLOW.md)
-
-1. Clarify requirements
-2. Create issue
-3. Setup branch
-4. Design tests
-5. Implement
-6. Simplify
-7. Test
-8. Commit
-9. Create PR
-10. Review
-11. Integrate feedback
-12. Check philosophy
-13. Prepare merge
-14. Cleanup
-
 ### Philosophy
 
 - **Simplicity** - Start simple, add only justified complexity
 - **Modular** - Self-contained modules with clear interfaces
-- **Working code** - No stubs or dead code
 - **Test-driven** - Tests before implementation
+- **Zero BS Principle** - continually reinforcing zero tolerance of stubs, TODOs, faked apis or data, etc
+
+### Workflows
+
+The system tries to direct all work to one of a few customizeable [structured workflows](.claude/workflow/) which attempt to detect the user intent and guide the agent through a structured set of steps. The workflows try to put solid gaurdrails and multiagent points of view around the work. See the [DEFAULT_WORKFLOW.md](.claude/workflow/DEFAULT_WORKFLOW.md) for an example.
 
 ## Configuration
 
-amplihack works with Claude Code and Anthropic models by default. For additional
-capabilities, you can configure Azure OpenAI integration.
+amplihack works with [Claude Code](https://claude.com/product/claude-code?utm_source=google&utm_medium=paid_search_coder&utm_campaign=acq_code_us_q3&utm_content=getstarted_text_v1) and Anthropic models by default. You can, however also use it with [Microsoft Amplifier](https://github.com/microsoft/amplifier) and [Github Copilot CLI](https://github.com/features/copilot/cli). 
 
 ### Anthropic (Default)
 
-amplihack works with Claude Code and Anthropic models out of the box. No
-additional configuration needed.
+Set your $ANTHROPIC_API_KEY prior to launching amplihack. 
 
-### Azure OpenAI
+### Other models with GH Copilot CLI
+
+Github Copilot CLI supports all the models supported by GH Copilot - though most of the framework is only tested with Anthropic. 
+
+```sh
+amplihack copilot
+```
+
+and then use **/model**
+
+### Other models with Microosft Amplifier
+
+Amplifier wil walk you through model configuration on first startup:
+
+```sh
+amplihack amplfier
+```
+
+### Azure OpenAI in Claude via proxy
 
 To use Azure OpenAI models, create an `azure.env` file with the following
 minimum configuration:
@@ -247,18 +261,19 @@ for detailed customization instructions.
 
 ## Agents Reference
 
-### Core Agents (6)
+### Core Agents (7)
 
 | Agent                                                             | Purpose                                  |
 | ----------------------------------------------------------------- | ---------------------------------------- |
 | [**api-designer**](.claude/agents/amplihack/core/api-designer.md) | API design and endpoint structure        |
 | [**architect**](.claude/agents/amplihack/core/architect.md)       | System design and architecture decisions |
 | [**builder**](.claude/agents/amplihack/core/builder.md)           | Code generation and implementation       |
+| [**guide**](.claude/agents/amplihack/core/guide.md)               | Feature guide and onboarding specialist  |
 | [**optimizer**](.claude/agents/amplihack/core/optimizer.md)       | Performance optimization and efficiency  |
 | [**reviewer**](.claude/agents/amplihack/core/reviewer.md)         | Code quality and best practices review   |
 | [**tester**](.claude/agents/amplihack/core/tester.md)             | Test generation and validation           |
 
-### Specialized Agents (23)
+### Specialized Agents (27)
 
 | Agent                                                                                          | Purpose                                         |
 | ---------------------------------------------------------------------------------------------- | ----------------------------------------------- |
@@ -423,7 +438,7 @@ amplihack launch
   Persistent memory and knowledge graphs across sessions
 - **[Investigation Workflow](CLAUDE.md#investigation-workflow)** - Deep
   knowledge excavation with historical context
-- **[Skills System](.claude/skills/README.md)** - 54+ skills including PDF,
+- **[Skills System](.claude/skills/README.md)** - 85+ skills including PDF,
   XLSX, DOCX, PPTX, analysts, and workflow patterns
 - **[Fix Workflow](CLAUDE.md#key-commands)** - Rapid resolution of common error
   patterns (`/amplihack:fix`)
@@ -495,7 +510,7 @@ Real-time session information displayed at the bottom of Claude Code showing:
 - [Azure DevOps CLI Skill](.claude/skills/azure-devops-cli/README.md) - Azure
   DevOps automation, pipelines, repos, and artifacts
 - **[Azure DevOps Boards Tools](docs/azure-devops/README.md) - Work item
-  management with CLI tools ([Quick Start](docs/azure-devops/quick-start.md))**
+  management with CLI tools**
 - [Benchmarking with eval-recipes](https://rysweet.github.io/amplihack/BENCHMARKING/) -
   Performance measurement and comparison
 - [Profile Management](https://rysweet.github.io/amplihack/PROFILE_MANAGEMENT/) -

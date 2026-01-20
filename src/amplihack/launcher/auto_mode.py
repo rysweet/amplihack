@@ -43,6 +43,7 @@ from amplihack.launcher.session_capture import MessageCapture
 from amplihack.launcher.work_summary import WorkSummaryGenerator
 from amplihack.launcher.completion_signals import CompletionSignalDetector
 from amplihack.launcher.completion_verifier import CompletionVerifier
+from amplihack.launcher.json_logger import JsonLogger
 
 # Security constants for content sanitization
 MAX_INJECTED_CONTENT_SIZE = 50 * 1024  # 50KB limit for injected content
@@ -167,6 +168,12 @@ class AutoMode:
         self.completion_detector = CompletionSignalDetector(completion_threshold=0.8)
         self.completion_verifier = CompletionVerifier(completion_threshold=0.8)
 
+        # Turn duration tracking
+        self.turn_durations = []  # Track all turn durations
+
+        # JSON logger for structured event logging
+        self.json_logger = JsonLogger(self.log_dir)
+
         # Create directories for prompt injection feature
         self.append_dir = self.log_dir / "append"
         self.appended_dir = self.log_dir / "appended"
@@ -202,9 +209,14 @@ class AutoMode:
             self.console = None
 
         # Safety: Detect if we're using temp staging directory (safety feature)
+        # Check both legacy AMPLIHACK_STAGED_DIR and new AMPLIHACK_IS_STAGED
         self.staged_dir = os.environ.get("AMPLIHACK_STAGED_DIR")
+        self.is_staged = os.environ.get("AMPLIHACK_IS_STAGED") == "1"
         self.original_cwd_from_env = os.environ.get("AMPLIHACK_ORIGINAL_CWD")
-        self.using_temp_staging = self.staged_dir is not None
+        self.using_temp_staging = self.staged_dir is not None or self.is_staged
+
+        if self.is_staged:
+            self.log("🛡️  Running in staged mode (nested session protection active)")
 
         # Initialize UI if enabled
         self.ui_thread = None
@@ -561,17 +573,51 @@ Current Turn: {self.turn}/{self.max_turns}"""
             # Verify completion claim
             verification = self.completion_verifier.verify(eval_result, signals)
 
+            # Log evaluation decision details
+            self.log("=" * 70, level="INFO")
+            self.log(f"[EVAL] Turn {self.turn} Evaluation Decision", level="INFO")
+            self.log("-" * 70, level="INFO")
+
+            # Work summary
+            self.log("Work Summary:", level="INFO")
+            self.log(f"  Workflow: {summary.todo_state.completed}/{summary.todo_state.total} steps", level="INFO")
+            self.log(f"  Git: {summary.git_state.current_branch}, commits={summary.git_state.commits_ahead}", level="INFO")
+            if summary.github_state.pr_number:
+                self.log(f"  GitHub: PR#{summary.github_state.pr_number}, CI={summary.github_state.ci_status}, mergeable={summary.github_state.pr_mergeable}", level="INFO")
+
+            # Completion signals
+            self.log("", level="INFO")
+            self.log("Completion Signals:", level="INFO")
+            self.log(f"  ✓/✗ pr_created: {signals.pr_created}", level="INFO")
+            self.log(f"  ✓/✗ ci_passing: {signals.ci_passing}", level="INFO")
+            self.log(f"  ✓/✗ all_steps_complete: {signals.all_steps_complete}", level="INFO")
+            self.log(f"  ✓/✗ pr_mergeable: {signals.pr_mergeable}", level="INFO")
+
+            # Score and decision
+            self.log("", level="INFO")
+            self.log(f"Completion Score: {signals.completion_score:.1%} (threshold: 80%)", level="INFO")
+            self.log(f"Verification: {verification.status.value}", level="INFO")
+
+            # Determine should_continue before logging final decision
+            should_continue = True
             if verification.verified:
                 # Verification passed - check what was claimed
                 eval_lower = eval_result.lower()
                 if "auto-mode evaluation: complete" in eval_lower:
-                    self.log("✓ Completion verified by concrete signals")
-                    return False  # Exit loop - task complete
+                    should_continue = False  # Exit loop - task complete
                 else:
                     # Verified incomplete status - continue working
-                    return True
+                    should_continue = True
+            else:
+                # Disputed completion - continue
+                should_continue = True
 
-            # Check for disputed completion (agent claims done but signals disagree)
+            # Final decision
+            decision = "EXIT LOOP (task complete)" if not should_continue else "CONTINUE (work remaining)"
+            self.log(f"Decision: {decision}", level="INFO")
+            self.log("=" * 70, level="INFO")
+
+            # Additional legacy logging for disputed completion
             if not verification.verified:
                 self.log(f"⚠️  Completion claim disputed: {verification.explanation}")
                 if verification.discrepancies:
@@ -579,11 +625,10 @@ Current Turn: {self.turn}/{self.max_turns}"""
                     for discrepancy in verification.discrepancies[:3]:  # Show top 3
                         self.log(f"  - {discrepancy}")
                 self.log("Continuing loop to complete remaining work...")
-                return True  # Continue loop
+            elif not should_continue:
+                self.log("✓ Completion verified by concrete signals")
 
-            # Default behavior - check evaluation text
-            eval_lower = eval_result.lower()
-            return "auto-mode evaluation: complete" not in eval_lower
+            return should_continue
 
         except Exception as e:
             self.log(f"Warning: Verification failed, falling back to text parsing: {e}")
@@ -788,6 +833,13 @@ Current Turn: {self.turn}/{self.max_turns}"""
                                         f"🔍 Detected tool_use block: {tool_name}", level="INFO"
                                     )
 
+                                    # Log agent invocation (any tool_use indicates agent activity)
+                                    if tool_name:
+                                        self.json_logger.log_event(
+                                            "agent_invoked",
+                                            {"agent": tool_name, "turn": self.turn}
+                                        )
+
                                     if tool_name == "TodoWrite":
                                         self.log("🎯 TodoWrite tool detected!", level="INFO")
                                         # Extract todos from input object (not dict!)
@@ -856,6 +908,14 @@ Current Turn: {self.turn}/{self.max_turns}"""
                 f"Try reducing task complexity or increasing --query-timeout-minutes."
             )
             self.log(error_msg, level="ERROR")
+
+            # Log error event
+            self.json_logger.log_event(
+                "error",
+                {"turn": self.turn, "error_type": "timeout", "message": error_msg},
+                level="ERROR"
+            )
+
             if partial_output:
                 self.log(f"Partial output captured ({len(partial_output)} chars)", level="INFO")
             return (1, partial_output if partial_output else error_msg)
@@ -874,10 +934,19 @@ Current Turn: {self.turn}/{self.max_turns}"""
             raise
         except Exception as e:
             # Enhanced existing exception handling with turn context
-            self.log(f"Turn {self.turn} SDK error: {type(e).__name__}: {e}", level="ERROR")
+            error_msg = f"Turn {self.turn} SDK error: {type(e).__name__}: {e}"
+            self.log(error_msg, level="ERROR")
             import traceback
 
             self.log(f"Traceback: {traceback.format_exc()}", level="ERROR")
+
+            # Log error event
+            self.json_logger.log_event(
+                "error",
+                {"turn": self.turn, "error_type": type(e).__name__, "message": str(e)},
+                level="ERROR"
+            )
+
             return (1, f"SDK Error: {e!s}")
 
     def _is_retryable_error(self, error_text: str) -> bool:
@@ -1143,6 +1212,7 @@ Objective:
             # Turns 3+: Execute and evaluate
             for turn in range(3, self.max_turns + 1):
                 self.turn = turn
+                turn_start_time = time.time()  # Track turn start time
                 if self.ui_enabled and hasattr(self, "state"):
                     self.state.update_turn(self.turn)
                 self.log(f"\n--- {self._progress_str('Executing')} Execute ---")
@@ -1202,6 +1272,11 @@ Current Turn: {turn}/{self.max_turns}"""
 
                 code, eval_result = self.run_sdk(eval_prompt)
 
+                # Calculate and log turn duration
+                turn_duration = time.time() - turn_start_time
+                self.turn_durations.append(turn_duration)
+                self.log(f"Turn {turn} completed in {turn_duration:.1f}s", level="INFO")
+
                 # Check completion - look for strong completion signals
                 eval_lower = eval_result.lower()
                 if (
@@ -1219,6 +1294,18 @@ Current Turn: {turn}/{self.max_turns}"""
                     if self.ui_enabled and hasattr(self, "state"):
                         self.state.update_status("completed")
                     break
+
+            # Log session metrics
+            if self.turn_durations:
+                avg_duration = sum(self.turn_durations) / len(self.turn_durations)
+                max_duration = max(self.turn_durations)
+                total_duration = sum(self.turn_durations)
+                self.log(
+                    f"Session metrics: {len(self.turn_durations)} turns, "
+                    f"avg {avg_duration:.1f}s, max {max_duration:.1f}s, "
+                    f"total {total_duration:.1f}s",
+                    level="INFO"
+                )
 
             # Summary - display it directly
             self.log(f"\n--- {self._progress_str('Summarizing')} Summary ---")
@@ -1274,6 +1361,13 @@ Current Turn: {turn}/{self.max_turns}"""
             self.message_capture.set_phase("clarifying", self.turn)  # Set phase for message capture
             if self.ui_enabled and hasattr(self, "state"):
                 self.state.update_turn(self.turn)
+
+            # Log turn start event
+            self.json_logger.log_event(
+                "turn_start",
+                {"turn": self.turn, "phase": "clarifying", "max_turns": self.max_turns}
+            )
+
             self.log(f"\n--- {self._progress_str('Clarifying')} Clarify Objective ---")
             turn1_prompt = f"""{self._build_philosophy_context()}
 
@@ -1287,7 +1381,16 @@ Task: Analyze this user request and clarify the objective with evaluation criter
 User Request:
 {self.prompt}"""
 
+            turn_start_time = time.time()
             code, objective = await self._run_turn_with_retry(turn1_prompt, max_retries=3)
+            turn_duration = time.time() - turn_start_time
+
+            # Log turn complete event
+            self.json_logger.log_event(
+                "turn_complete",
+                {"turn": self.turn, "duration_sec": round(turn_duration, 2), "success": code == 0}
+            )
+
             if code != 0:
                 self.log(f"Error clarifying objective (exit {code})")
                 if self.ui_enabled and hasattr(self, "state"):
@@ -1299,6 +1402,13 @@ User Request:
             self.message_capture.set_phase("planning", self.turn)  # Set phase for message capture
             if self.ui_enabled and hasattr(self, "state"):
                 self.state.update_turn(self.turn)
+
+            # Log turn start event
+            self.json_logger.log_event(
+                "turn_start",
+                {"turn": self.turn, "phase": "planning", "max_turns": self.max_turns}
+            )
+
             self.log(f"\n--- {self._progress_str('Planning')} Create Plan ---")
             turn2_prompt = f"""{self._build_philosophy_context()}
 
@@ -1324,7 +1434,16 @@ Plan Structure:
 Objective:
 {objective}"""
 
+            turn_start_time = time.time()
             code, plan = await self._run_turn_with_retry(turn2_prompt, max_retries=3)
+            turn_duration = time.time() - turn_start_time
+
+            # Log turn complete event
+            self.json_logger.log_event(
+                "turn_complete",
+                {"turn": self.turn, "duration_sec": round(turn_duration, 2), "success": code == 0}
+            )
+
             if code != 0:
                 self.log(f"Error creating plan (exit {code})")
                 if self.ui_enabled and hasattr(self, "state"):
@@ -1334,6 +1453,7 @@ Objective:
             # Turns 3+: Execute and evaluate
             for turn in range(3, self.max_turns + 1):
                 self.turn = turn
+                turn_start_time = time.time()  # Track turn start time
 
                 # Check if fork needed before turn execution
                 if self.fork_manager.should_fork():
@@ -1361,6 +1481,13 @@ Objective:
                 )  # Set phase for message capture
                 if self.ui_enabled and hasattr(self, "state"):
                     self.state.update_turn(self.turn)
+
+                # Log turn start event
+                self.json_logger.log_event(
+                    "turn_start",
+                    {"turn": self.turn, "phase": "executing", "max_turns": self.max_turns}
+                )
+
                 self.log(f"\n--- {self._progress_str('Executing')} Execute ---")
 
                 # Check for new instructions before executing
@@ -1388,9 +1515,12 @@ Original Objective:
 
 Current Turn: {turn}/{self.max_turns}"""
 
+                turn_start_time = time.time()
                 code, execution_output = await self._run_turn_with_retry(
                     execute_prompt, max_retries=3
                 )
+                turn_duration = time.time() - turn_start_time
+
                 if code != 0:
                     self.log(f"Warning: Execution returned exit code {code}")
 
@@ -1402,6 +1532,17 @@ Current Turn: {turn}/{self.max_turns}"""
                 eval_prompt = self._build_evaluation_prompt(self.message_capture)
 
                 code, eval_result = await self._run_turn_with_retry(eval_prompt, max_retries=3)
+
+                # Calculate and log turn duration
+                turn_duration = time.time() - turn_start_time
+                self.turn_durations.append(turn_duration)
+                self.log(f"Turn {turn} completed in {turn_duration:.1f}s", level="INFO")
+
+                # Log turn complete event (after evaluation)
+                self.json_logger.log_event(
+                    "turn_complete",
+                    {"turn": self.turn, "duration_sec": round(turn_duration, 2), "success": code == 0}
+                )
 
                 # Check completion with verification
                 if not self._should_continue_loop(eval_result, self.message_capture):
@@ -1415,6 +1556,18 @@ Current Turn: {turn}/{self.max_turns}"""
                     if self.ui_enabled and hasattr(self, "state"):
                         self.state.update_status("completed")
                     break
+
+            # Log session metrics
+            if self.turn_durations:
+                avg_duration = sum(self.turn_durations) / len(self.turn_durations)
+                max_duration = max(self.turn_durations)
+                total_duration = sum(self.turn_durations)
+                self.log(
+                    f"Session metrics: {len(self.turn_durations)} turns, "
+                    f"avg {avg_duration:.1f}s, max {max_duration:.1f}s, "
+                    f"total {total_duration:.1f}s",
+                    level="INFO"
+                )
 
             # Summary - display it directly
             self.message_capture.set_phase(
