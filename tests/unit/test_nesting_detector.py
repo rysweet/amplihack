@@ -290,39 +290,19 @@ class TestNestingDetection:
 
             assert result.in_source_repo is True
 
-    def test_requires_staging_when_nested_and_in_source(self, tmp_path):
-        """Test requires_staging=True when both nested AND in source repo"""
-        # Create amplihack pyproject.toml
-        pyproject = tmp_path / "pyproject.toml"
-        pyproject.write_text('[project]\nname = "amplihack"')
-
-        # Create active session
-        sessions_log = tmp_path / "sessions.jsonl"
-        entry = {
-            "pid": os.getpid(),
-            "session_id": "parent-123",
-            "launch_dir": str(tmp_path),
-            "argv": ["amplihack", "launch"],
-            "start_time": 1234567890.0,
-            "is_auto_mode": False,
-            "is_nested": False,
-            "parent_session_id": None,
-            "status": "active",
-            "end_time": None,
-        }
-        sessions_log.write_text(json.dumps(entry) + "\n")
-
+    def test_requires_staging_in_auto_mode(self, tmp_path):
+        """Test requires_staging=True when auto-mode is used (regardless of nesting)"""
+        # No active session needed - just test auto-mode flag
         detector = NestingDetector()
 
-        with patch.object(detector, 'RUNTIME_LOG', sessions_log):
+        with patch.object(detector, 'RUNTIME_LOG', tmp_path / "sessions.jsonl"):
             result = detector.detect_nesting(tmp_path, ["amplihack", "launch", "--auto"])
 
-            assert result.is_nested is True
-            assert result.in_source_repo is True
+            # Auto-mode ALWAYS requires staging
             assert result.requires_staging is True
 
     def test_no_staging_when_only_nested(self, tmp_path):
-        """Test requires_staging=False when nested but NOT in source repo"""
+        """Test requires_staging=False when nested but NO auto-mode flag"""
         # Create active session (nested)
         sessions_log = tmp_path / "sessions.jsonl"
         entry = {
@@ -342,11 +322,30 @@ class TestNestingDetection:
         detector = NestingDetector()
 
         with patch.object(detector, 'RUNTIME_LOG', sessions_log):
+            # No --auto flag means interactive mode (no staging)
             result = detector.detect_nesting(tmp_path, ["amplihack", "launch"])
 
             assert result.is_nested is True
             assert result.in_source_repo is False
+            # No auto-mode = no staging (interactive mode prompts user)
             assert result.requires_staging is False
+
+    def test_requires_staging_any_repo_in_auto_mode(self, tmp_path):
+        """Test requires_staging=True in ANY repo when auto-mode is used"""
+        # Create normal user project (not amplihack source)
+        pyproject = tmp_path / "pyproject.toml"
+        pyproject.write_text('[project]\nname = "user-app"\nversion = "1.0.0"')
+
+        detector = NestingDetector()
+
+        with patch.object(detector, 'RUNTIME_LOG', tmp_path / "sessions.jsonl"):
+            # Auto-mode in normal user repo
+            result = detector.detect_nesting(tmp_path, ["amplihack", "launch", "--auto"])
+
+            # Not nested, not in source repo, but auto-mode = staging required
+            assert result.is_nested is False
+            assert result.in_source_repo is False
+            assert result.requires_staging is True
 
 
 # E2E TESTS (10%)
