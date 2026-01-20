@@ -6,7 +6,6 @@ This allows claude-code-proxy (which expects standard OpenAI format) to work wit
 """
 
 import json
-import logging
 import threading
 import time
 from typing import Any
@@ -14,7 +13,10 @@ from typing import Any
 import requests
 from flask import Flask, jsonify, request
 
-logger = logging.getLogger(__name__)
+from .sanitizing_logger import get_sanitizing_logger
+
+# Use sanitizing logger to prevent credential exposure (Issue #1997)
+logger = get_sanitizing_logger(__name__)
 
 
 class ResponsesAPIProxy:
