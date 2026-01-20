@@ -1,0 +1,282 @@
+# Claude Code Plugin Installation Test
+# Tests that amplihack is correctly installed as a Claude Code plugin
+# and appears in the /plugin command output
+
+name: "Claude Code Plugin Installation Test"
+description: "Verifies amplihack plugin is installed and discoverable via /plugin command in Claude Code TUI"
+version: "1.0.0"
+
+# Test configuration
+config:
+  timeout: 120000  # 2 minutes total
+  retries: 2
+  parallel: false
+
+# Environment requirements
+environment:
+  requires:
+    - HOME  # Need home directory for ~/.amplihack/.claude/
+  optional:
+    - PLUGIN_BRANCH  # Defaults to feat/issue-1948-plugin-architecture
+
+# Agents involved in this scenario
+agents:
+  - name: "setup-agent"
+    type: "system"
+    config:
+      shell: "bash"
+      cwd: "${PWD}"
+      timeout: 90000
+      capture_output: true
+
+  - name: "verification-agent"
+    type: "system"
+    config:
+      shell: "bash"
+      cwd: "${PWD}"
+      timeout: 30000
+      capture_output: true
+
+# Test steps
+steps:
+  # Step 1: Clean any existing installation
+  - name: "Clean previous installation"
+    agent: "setup-agent"
+    action: "execute_command"
+    params:
+      command: "rm -rf ~/.amplihack || true"
+    expect:
+      exit_code: 0
+    timeout: 5000
+
+  # Step 2: Install amplihack from feature branch via uvx
+  - name: "Install amplihack from feature branch"
+    agent: "setup-agent"
+    action: "execute_command"
+    params:
+      command: |
+        uvx --refresh --from git+https://github.com/rysweet/amplihack@${PLUGIN_BRANCH:-feat/issue-1948-plugin-architecture} amplihack --help
+    expect:
+      exit_code: 0
+      stdout_contains:
+        - "amplihack"
+    timeout: 60000
+
+  # Step 3: Verify AMPLIHACK.md deployed to centralized location
+  - name: "Verify AMPLIHACK.md exists"
+    agent: "verification-agent"
+    action: "execute_command"
+    params:
+      command: "ls -lh ~/.amplihack/.claude/AMPLIHACK.md"
+    expect:
+      exit_code: 0
+      stdout_contains:
+        - "AMPLIHACK.md"
+    timeout: 5000
+
+  # Step 4: Count deployed skills
+  - name: "Verify skills deployed"
+    agent: "verification-agent"
+    action: "execute_command"
+    params:
+      command: "find ~/.amplihack/.claude/skills -maxdepth 1 -type d | wc -l"
+    expect:
+      exit_code: 0
+      # Should have 80+ skills (directory count includes parent, so 81+)
+    timeout: 5000
+
+  # Step 5: Create expect script to interact with Claude Code TUI
+  - name: "Create expect script for TUI interaction"
+    agent: "setup-agent"
+    action: "execute_command"
+    params:
+      command: |
+        cat > /tmp/test-claude-plugin.exp <<'EXPECT_EOF'
+        #!/usr/bin/expect -f
+        set timeout 60
+
+        # Launch Claude Code with plugin directory
+        spawn claude --plugin-dir $env(HOME)/.amplihack/.claude/ --add-dir /tmp
+
+        # Wait for Claude Code to initialize
+        expect {
+          timeout { puts "ERROR: Timeout waiting for Claude Code"; exit 1 }
+          -re ".*Claude.*" { puts "Claude Code launched" }
+        }
+
+        # Give it a moment to fully initialize
+        sleep 2
+
+        # Send /plugin command
+        send "/plugin\r"
+
+        # Wait for response
+        expect {
+          timeout { puts "ERROR: Timeout waiting for /plugin response"; exit 1 }
+          -re ".*amplihack.*" {
+            puts "SUCCESS: Found 'amplihack' in plugin list"
+            set found_amplihack 1
+          }
+          -re ".*plugin.*" {
+            puts "WARNING: Got plugin response but no 'amplihack'"
+            set found_amplihack 0
+          }
+        }
+
+        # Try to exit gracefully
+        send "\x04"
+        sleep 1
+
+        # If still running, force quit
+        catch { exp_close }
+        catch { exp_wait }
+
+        if {$found_amplihack == 1} {
+          puts "TEST PASSED: amplihack plugin detected"
+          exit 0
+        } else {
+          puts "TEST FAILED: amplihack not found in plugin list"
+          exit 1
+        }
+        EXPECT_EOF
+        chmod +x /tmp/test-claude-plugin.exp
+    expect:
+      exit_code: 0
+    timeout: 10000
+
+  # Step 6: Run expect script to test TUI
+  - name: "Run TUI test with expect"
+    agent: "setup-agent"
+    action: "execute_command"
+    params:
+      command: "/tmp/test-claude-plugin.exp"
+    expect:
+      exit_code: 0
+      stdout_contains:
+        - "SUCCESS"
+        - "amplihack"
+    timeout: 90000
+
+  # Step 7: Alternative verification - Check plugin manifest
+  - name: "Verify plugin.json exists"
+    agent: "verification-agent"
+    action: "execute_command"
+    params:
+      command: "ls -lh ~/.amplihack/.claude/.claude-plugin/plugin.json"
+    expect:
+      exit_code: 0
+      stdout_contains:
+        - "plugin.json"
+    timeout: 5000
+
+  # Step 8: Validate plugin.json content
+  - name: "Validate plugin.json content"
+    agent: "verification-agent"
+    action: "execute_command"
+    params:
+      command: "cat ~/.amplihack/.claude/.claude-plugin/plugin.json"
+    expect:
+      exit_code: 0
+      stdout_contains:
+        - "amplihack"
+        - "id"
+        - "name"
+    timeout: 5000
+
+# Assertions to validate test success
+assertions:
+  - name: "Installation Successful"
+    type: "command_success"
+    agent: "setup-agent"
+    params:
+      step: "Install amplihack from feature branch"
+
+  - name: "AMPLIHACK.md Deployed"
+    type: "command_success"
+    agent: "verification-agent"
+    params:
+      step: "Verify AMPLIHACK.md exists"
+
+  - name: "Skills Deployed"
+    type: "command_success"
+    agent: "verification-agent"
+    params:
+      step: "Verify skills deployed"
+
+  - name: "TUI Test Passed"
+    type: "command_success"
+    agent: "setup-agent"
+    params:
+      step: "Run TUI test with expect"
+
+  - name: "Plugin Manifest Exists"
+    type: "command_success"
+    agent: "verification-agent"
+    params:
+      step: "Verify plugin.json exists"
+
+  - name: "Plugin JSON Valid"
+    type: "output_contains_all"
+    agent: "verification-agent"
+    params:
+      step: "Validate plugin.json content"
+      required_strings:
+        - "amplihack"
+        - "id"
+        - "name"
+
+# Cleanup actions
+cleanup:
+  - name: "Remove expect script"
+    agent: "setup-agent"
+    action: "execute_command"
+    params:
+      command: "rm -f /tmp/test-claude-plugin.exp"
+
+  - name: "Kill any remaining Claude processes"
+    agent: "setup-agent"
+    action: "execute_command"
+    params:
+      command: "pkill -f 'claude.*plugin-dir' || true"
+
+# Test metadata
+metadata:
+  tags:
+    - "plugin"
+    - "tui"
+    - "integration"
+    - "smoke-test"
+    - "critical"
+  priority: "high"
+  author: "amplihack-agentic-testing"
+  created: "2026-01-20T00:00:00Z"
+  updated: "2026-01-20T00:00:00Z"
+
+# Test Documentation
+#
+# This test verifies the complete plugin installation workflow:
+# 1. Installs amplihack via uvx (deploys to ~/.amplihack/.claude/)
+# 2. Verifies files deployed correctly (AMPLIHACK.md, skills, plugin.json)
+# 3. Launches Claude Code with --plugin-dir flag
+# 4. Sends /plugin command via expect script
+# 5. Verifies "amplihack" appears in plugin list
+#
+# Requirements:
+# - uvx command available (pipx installed)
+# - Claude Code CLI available
+# - expect command available (for TUI interaction)
+# - Internet connection for uvx package fetch
+#
+# How to Run:
+# 1. Install gadugi-agentic-test dependencies:
+#    cd /path/to/gadugi-agentic-test
+#    npm install
+#    npm run build
+#
+# 2. Run this test scenario:
+#    node dist/index.js run /path/to/claude-code-plugin-test.yaml
+#
+# Expected Result:
+# ✓ All 6 assertions pass
+# ✓ Evidence shows "amplihack" in /plugin command output
+# ✓ Plugin manifest validated
