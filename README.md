@@ -19,6 +19,8 @@ Launch AMplihack with Github Copilot CLI
 uvx --from git+https://github.com/rysweet/amplihack amplihack copilot
 ```
 
+Try asking the **amplihack-guide** agent for help.
+
 ## Table of Contents
 
 - [Quick Start](#quick-start)
