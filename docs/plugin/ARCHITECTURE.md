@@ -363,48 +363,18 @@ project1/.claude/
 - Projects maintain independent runtime state
 - Backup strategies can target runtime separately
 
-## Multi-IDE Support
+## Claude Code Plugin Support
 
-The plugin architecture supports multiple IDEs through standardized interfaces.
+The plugin architecture is designed specifically for **Claude Code and compatible implementations** (RustyClawd/Rusty).
 
-### Supported IDEs
+**Important**: GitHub Copilot and OpenAI Codex do NOT support Claude Code plugins. They use per-project `.claude/` staging via `amplihack copilot` and `amplihack codex` commands.
 
-1. **Claude Code** - First-class support, native integration
-2. **GitHub Copilot** - Via extension API
-3. **Codex** - Via language server protocol
+### Claude Code Plugin Registration
 
-### IDE-Specific Adapters
+The plugin registers itself in Claude Code's configuration at:
 
-Location: `~/.amplihack/.claude/adapters/`
+**Location**: `~/.config/claude-code/plugins.json`
 
-```
-adapters/
-├── claude-code/         # Native integration
-│   └── plugin.json
-├── github-copilot/      # Copilot extension
-│   └── extension.js
-└── codex/               # LSP adapter
-    └── server.py
-```
-
-Each adapter translates IDE-specific events into amplihack's standard format:
-
-```python
-# Example: Codex adapter
-class CodexAdapter:
-    def on_file_open(self, filepath: str):
-        # Translate Codex event to amplihack format
-        event = {
-            "type": "file_open",
-            "path": filepath,
-            "timestamp": datetime.now().isoformat()
-        }
-        self.amplihack.dispatch(event)
-```
-
-### Configuration per IDE
-
-Claude Code: `~/.config/claude-code/plugins.json`
 ```json
 {
   "plugins": [{
@@ -414,26 +384,7 @@ Claude Code: `~/.config/claude-code/plugins.json`
 }
 ```
 
-GitHub Copilot: `~/.config/github-copilot/extensions.json`
-```json
-{
-  "extensions": [{
-    "id": "amplihack",
-    "manifest": "~/.amplihack/.claude/adapters/github-copilot/extension.js"
-  }]
-}
-```
-
-Codex: `~/.config/codex/lsp-servers.json`
-```json
-{
-  "amplihack": {
-    "command": "python",
-    "args": ["~/.amplihack/.claude/adapters/codex/server.py"],
-    "enabled": true
-  }
-}
-```
+This tells Claude Code where to find the centralized plugin installation. All hooks, agents, skills, and workflows are loaded from this location.
 
 ## Security Considerations
 

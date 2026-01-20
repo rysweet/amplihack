@@ -31,11 +31,11 @@ Everything you need to install and configure amplihack.
 
 Centralized plugin system that works across all your projects:
 
-- [Plugin Installation Guide](plugin/INSTALLATION.md) - Install amplihack as a global plugin
+- [Plugin Installation Guide](plugin/INSTALLATION.md) - Install amplihack as a global plugin (Claude Code only)
 - [Plugin Architecture Overview](plugin/ARCHITECTURE.md) - How the plugin system works
 - [Migration Guide](plugin/MIGRATION.md) - Migrate from per-project to plugin mode
 - [CLI Reference](plugin/CLI_REFERENCE.md) - Complete command-line reference
-- [Multi-IDE Setup](plugin/MULTI_IDE.md) - Configure for Claude Code, Copilot, and Codex
+- **Note**: Copilot and Codex use per-project `.claude/` staging, not plugin architecture
 
 ### Installation
 

@@ -10,7 +10,7 @@ By the end of this tutorial, you'll have amplihack installed as a global plugin 
 
 - Python 3.8 or higher
 - pip or uv package manager
-- Claude Code, GitHub Copilot, or Codex IDE
+- Claude Code or RustyClawd/Rusty (Claude Code compatible implementations)
 
 ## Installation Methods
 
@@ -273,7 +273,7 @@ After installation:
 
 - [Plugin Architecture](./ARCHITECTURE.md) - How the plugin system works
 - [CLI Reference](./CLI_REFERENCE.md) - Complete command documentation
-- [Multi-IDE Setup](./MULTI_IDE.md) - Configure for Copilot, Codex, etc.
+- **Note**: GitHub Copilot and OpenAI Codex use per-project `.claude/` staging (not plugin architecture)
 - [Migration Guide](./MIGRATION.md) - Move from per-project to plugin mode
 
 ---
