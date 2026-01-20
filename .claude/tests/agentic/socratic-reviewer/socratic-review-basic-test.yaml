@@ -1,0 +1,104 @@
+scenario:
+  name: "Socratic Reviewer Agent Basic Test"
+  description: |
+    Tests the socratic-reviewer agent by having it review a simple Python file.
+    Verifies that the agent:
+    1. Asks probing questions (not direct critique)
+    2. Uses question categories (Design, Edge Case, etc.)
+    3. Includes [WAIT] markers for dialogue
+    4. Provides synthesis at the end
+  type: tui
+  level: 2
+  tags: [socratic-review, agent-test, feynman-framework]
+  timeout: "120s"
+
+  prerequisites:
+    - "Claude Code CLI installed"
+    - "amplihack plugin available in .claude directory"
+    - "socratic-reviewer agent spec exists"
+
+  environment:
+    terminal_size:
+      width: 120
+      height: 40
+    working_directory: "${PROJECT_ROOT}"
+
+  variables:
+    test_file: ".claude/agents/amplihack/specialized/socratic-reviewer.md"
+    agent_name: "socratic-reviewer"
+
+  steps:
+    # Step 1: Launch Claude Code in the project directory
+    - action: launch
+      target: "claude"
+      args: []
+      timeout: 30s
+      description: "Start Claude Code session in project directory"
+
+    # Step 2: Wait for Claude Code to be ready
+    - action: wait_for_screen
+      contains: ">"
+      timeout: 20s
+      description: "Wait for Claude Code prompt"
+
+    # Step 3: Invoke the socratic-reviewer agent with quick depth
+    - action: send_input
+      value: "Use the socratic-reviewer agent to conduct a quick Socratic review (3 questions only) of the file .claude/agents/amplihack/core/reviewer.md. Ask questions from different categories.\n"
+      description: "Request Socratic review of reviewer agent"
+
+    # Step 4: Wait for response with questions
+    - action: wait_for_screen
+      contains_any:
+        - "[Category:"
+        - "Q1"
+        - "question"
+        - "Why did you"
+        - "What happens"
+      timeout: 60s
+      description: "Wait for Socratic questions to appear"
+
+    # Step 5: Capture the response
+    - action: capture_screenshot
+      save_as: "01-socratic-questions.txt"
+      description: "Capture Socratic questions output"
+
+    # Step 6: Verify question characteristics
+    - action: verify_screen
+      contains_any:
+        - "Design"
+        - "Edge Case"
+        - "Clarity"
+        - "Philosophy"
+        - "Failure Mode"
+        - "Testing"
+      description: "Verify question category labels present"
+
+    # Step 7: Verify Socratic style (questions, not directives)
+    - action: verify_screen
+      contains_any:
+        - "?"
+        - "Why"
+        - "What"
+        - "How"
+      description: "Verify questions are being asked (not directives)"
+
+    # Step 8: Capture final output
+    - action: capture_screenshot
+      save_as: "02-full-response.txt"
+      description: "Capture full Socratic review response"
+
+    # Step 9: Exit Claude Code gracefully
+    - action: send_input
+      value: "/exit\n"
+      timeout: 5s
+      description: "Exit Claude Code"
+
+  success_criteria:
+    - "Questions contain category labels (Design, Edge Case, etc.)"
+    - "Questions use interrogative form (Why, What, How)"
+    - "Response demonstrates Socratic questioning pattern"
+
+  evidence:
+    output_dir: "evidence/socratic-reviewer-basic"
+    screenshots: true
+    execution_log: true
