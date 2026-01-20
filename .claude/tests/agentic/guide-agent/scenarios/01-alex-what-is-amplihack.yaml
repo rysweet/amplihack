@@ -1,0 +1,136 @@
+# Guide Agent - Alex (Absolute Newbie) - What is Amplihack?
+# Tests if guide explains amplihack to complete beginner without jargon, with terminal basics
+
+scenario:
+  name: "Guide Agent - Alex (Absolute Newbie) - What is Amplihack?"
+  description: "Tests if guide explains amplihack to complete beginner without jargon, with terminal basics"
+  type: cli
+  level: 1
+  persona: alex_absolute_newbie
+  learning_phase: discovery
+  session: 1
+
+  tags: [guide-agent, beginner, onboarding, persona-alex]
+
+  prerequisites:
+    - "amplihack installed"
+    - "ANTHROPIC_API_KEY set"
+
+  context:
+    student_background:
+      - "Never used terminal/command-line"
+      - "No Python experience"
+      - "Used GitHub web interface only"
+      - "Familiar with ChatGPT"
+
+    student_goals:
+      - "Understand what amplihack is"
+      - "Know if they can use it"
+      - "Learn how to open terminal"
+      - "Run first simple command"
+
+  steps:
+    - action: launch
+      target: "amplihack"
+      args: ["claude", "--", "-p", "Task(subagent_type=\"guide\", prompt=\"I heard about amplihack but I've never used a terminal before. What is it and can I use it?\")"]
+      description: "Invoke guide agent as absolute beginner"
+      timeout: 60s
+
+    - action: wait_for_output
+      contains: "amplihack"
+      timeout: 30s
+      description: "Response should mention amplihack"
+
+    # Metric: Jargon without definition
+    - action: verify_output
+      not_contains: "CLI"
+      description: "Should NOT use 'CLI' without defining it"
+      metric_type: jargon_check
+
+    - action: verify_output_or
+      patterns:
+        - "command-line"
+        - "terminal"
+        - "command prompt"
+      description: "Should use beginner-friendly terms instead of CLI"
+
+    # Metric: Explanation quality
+    - action: verify_output
+      contains: "AI"
+      description: "Should explain amplihack involves AI"
+
+    - action: verify_output
+      contains: "code"
+      description: "Should explain amplihack works on code"
+
+    # Metric: Prerequisite explanation
+    - action: verify_output_or
+      patterns:
+        - "Open your terminal"
+        - "terminal app"
+        - "Command Prompt"
+        - "Terminal.app"
+      description: "Should explain how to open terminal"
+      metric_type: prerequisite_coverage
+
+    # Metric: Concrete example
+    - action: verify_output
+      matches: "amplihack claude -- -p \".*\""
+      description: "Should provide concrete example command"
+      metric_type: example_quality
+
+    # Metric: Interactive elements
+    - action: verify_output_or
+      patterns:
+        - "[WAIT]"
+        - "TELL ME"
+        - "Tell me"
+      description: "Should include [WAIT] state or prompt for response"
+      metric_type: interactive_element
+
+    # Metric: TRY IT NOW prompt
+    - action: verify_output_or
+      patterns:
+        - "TRY IT"
+        - "Try it"
+        - "TRY THIS"
+      description: "Should encourage hands-on practice"
+      metric_type: interactive_element
+
+    # Anti-pattern checks
+    - action: verify_output
+      not_contains: "invoke"
+      description: "Should NOT use jargon like 'invoke' without explanation"
+      metric_type: jargon_check
+
+    - action: verify_output
+      not_contains: "execute"
+      description: "Should use 'run' instead of 'execute' for beginners"
+      metric_type: jargon_check
+
+  success_criteria:
+    metrics:
+      time_to_understanding:
+        target: "≤ 2 exchanges"
+        measure: "Count question/answer pairs until student understands 'what is amplihack'"
+
+      jargon_instances:
+        target: 0
+        measure: "Count unexplained technical terms (CLI, invoke, execute, etc.)"
+
+      missing_prerequisites:
+        target: 0
+        measure: "Count instances where guide skips basic steps"
+
+      interactive_elements:
+        target: true
+        measure: "Boolean check for [WAIT], TRY IT, or quiz"
+
+    student_outcomes:
+      - "Alex can explain: amplihack helps Claude AI work on code"
+      - "Alex knows how to open terminal"
+      - "Alex has one concrete example to try"
+      - "Alex knows where to get help if stuck"
+
+  cleanup:
+    - action: stop_application

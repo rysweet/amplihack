@@ -1,0 +1,44 @@
+# Guide Agent - Basic Invocation Test
+# Tests that guide agent can be invoked via amplihack CLI and responds with tutorial content
+
+scenario:
+  name: "Guide Agent - Basic Invocation"
+  description: "Verify guide agent invokes via amplihack claude CLI and shows tutorial structure"
+  type: cli
+  level: 1
+
+  tags: [guide-agent, cli, basic]
+
+  prerequisites:
+    - "amplihack installed (pip install amplihack)"
+    - "ANTHROPIC_API_KEY set"
+
+  steps:
+    - action: launch
+      target: "amplihack"
+      args: ["claude", "--", "-p", "Load the guide agent and show me the tutorial overview"]
+      description: "Invoke guide agent via amplihack CLI"
+      timeout: 60s
+
+    - action: wait_for_output
+      contains: "Tutorial Overview"
+      timeout: 30s
+      description: "Should display tutorial structure"
+
+    - action: verify_output
+      contains: "Section 1"
+      description: "Should list Section 1"
+
+    - action: verify_output
+      contains: "Section 7"
+      description: "Should list all 7 sections"
+
+    - action: verify_output
+      matches: "Claude Code|Amplifier|Copilot"
+      description: "Should mention supported platforms"
+
+    - action: verify_exit_code
+      expected: 0
+
+  cleanup:
+    - action: stop_application

@@ -10,8 +10,8 @@ Chat API and Responses API endpoints.
 1. Copy example configs and fill in your Azure credentials:
 
    ```bash
-   cp proxy_config_chat_api.env.example proxy_config_chat_api.env
-   cp proxy_config_responses_api.env.example proxy_config_responses_api.env
+   cp docs/proxy/proxy_config_chat_api.env.example proxy_config_chat_api.env
+   cp docs/proxy/proxy_config_responses_api.env.example proxy_config_responses_api.env
    ```
 
 2. Edit both files and replace:

@@ -1,0 +1,148 @@
+# SCENARIO 9: Taylor - Safety Concerns
+# File: .claude/tests/agentic/guide-agent/scenarios/09-taylor-safety-concerns.yaml
+
+scenario:
+  name: "Guide Agent - Taylor (Non-Technical User) - Safety Concerns"
+  description: "Tests if guide addresses safety concerns and explains read-only Q&A workflow for non-coders"
+  type: cli
+  level: 1
+  persona: taylor_non_technical
+  learning_phase: discovery
+  session: 1
+
+  tags: [guide-agent, beginner, safety, non-technical, persona-taylor]
+
+  prerequisites:
+    - "amplihack installed"
+    - "ANTHROPIC_API_KEY set"
+    - "User has terminal access but minimal coding experience"
+
+  context:
+    student_state:
+      - "Project manager role (can read code, can't write code)"
+      - "Worried about breaking production or making mistakes"
+      - "Wants to use amplihack but unsure what's safe"
+      - "Needs reassurance and clear boundaries"
+
+  steps:
+    - action: launch
+      target: "amplihack"
+      args: ["claude", "--", "-p", "Task(subagent_type=\"guide\", prompt=\"I'm a project manager who doesn't write code. What if I accidentally break something using amplihack? Is this safe for me?\")"]
+      description: "Ask about safety concerns as non-technical user"
+      timeout: 90s
+
+    - action: wait_for_output
+      contains: "safe"
+      timeout: 30s
+      description: "Should address safety concerns"
+
+    # Metric: Directly addresses safety concern
+    - action: verify_output_or
+      patterns:
+        - "safe.*you"
+        - "won't.*break"
+        - "read-only"
+        - "no.*change"
+        - "can't.*damage"
+      description: "Should reassure about safety"
+      metric_type: safety_reassurance
+
+    # Metric: Explains Q&A workflow as safe option
+    - action: verify_output
+      contains: "Q&A"
+      description: "Should mention Q&A workflow"
+      metric_type: workflow_recommendation
+
+    - action: verify_output_or
+      patterns:
+        - "Q&A.*safe"
+        - "Q&A.*read"
+        - "Q&A.*only.*answer"
+        - "Q&A.*no.*modif"
+        - "Q&A.*won't.*change"
+      description: "Should explain Q&A workflow is read-only and safe"
+      metric_type: concept_explanation
+
+    # Metric: Clear distinction between safe and risky workflows
+    - action: verify_output_or
+      patterns:
+        - "SAFE.*you"
+        - "NOT safe.*you"
+        - "avoid.*DEFAULT"
+        - "avoid.*AUTO"
+        - "stick.*Q&A"
+      description: "Should distinguish safe vs risky workflows for non-coders"
+      metric_type: safety_boundaries
+
+    # Metric: Provides concrete example
+    - action: verify_output
+      matches: "amplihack claude.*-p"
+      description: "Should provide actual command example"
+      metric_type: example_quality
+
+    - action: verify_output_or
+      patterns:
+        - "How many"
+        - "List"
+        - "What does"
+        - "Explain"
+      description: "Should show example questions appropriate for non-technical users"
+      metric_type: example_relevance
+
+    # Metric: No code modification guarantee
+    - action: verify_output_or
+      patterns:
+        - "only.*read"
+        - "won't.*write"
+        - "won't.*modify"
+        - "won't.*create"
+        - "won't.*delete"
+        - "no.*change.*code"
+      description: "Should explicitly state Q&A won't modify code"
+      metric_type: safety_guarantee
+
+    # Metric: Interactive element - wait for user
+    - action: verify_output
+      matches: "\\[WAIT\\]"
+      description: "Should pause for user to try safe command"
+      metric_type: interactive_element
+
+    # Anti-pattern: Should not overwhelm with too many workflows
+    - action: verify_output
+      not_matches: "DDD|CONSENSUS|INVESTIGATION.*DEFAULT.*AUTO.*Q&A"
+      description: "Should focus on Q&A for beginner, not list all 8 workflows"
+      metric_type: simplicity_check
+
+    # Anti-pattern: Should not use excessive jargon
+    - action: verify_output
+      not_matches: "autonomous.*agent.*orchestration|multi-step.*pipeline"
+      description: "Should avoid technical jargon for non-technical user"
+      metric_type: jargon_check
+
+  success_criteria:
+    metrics:
+      time_to_understanding:
+        target: "≤ 2 exchanges"
+        measure: "Exchanges until Taylor understands Q&A is safe"
+
+      safety_reassurance:
+        target: 100%
+        measure: "Explicitly states Q&A workflow is safe and read-only"
+
+      confusion_points:
+        target: 0
+        measure: "No jargon without explanation, clear boundaries"
+
+      workflow_clarity:
+        target: true
+        measure: "Recommends Q&A workflow, explains it won't modify code"
+
+    student_outcomes:
+      - "Taylor understands Q&A workflow is completely safe"
+      - "Taylor knows Q&A only reads code, never modifies it"
+      - "Taylor can distinguish safe (Q&A) from risky (DEFAULT, AUTO) workflows"
+      - "Taylor feels confident to try Q&A workflow without developer supervision"
+      - "Taylor receives reassurance without condescension"
+
+  cleanup:
+    - action: stop_application

@@ -1,0 +1,221 @@
+# Guide Agent Test Configuration
+# For use with gadugi-agentic-test framework
+
+version: "1.0.0"
+framework: gadugi-agentic-test
+
+# Test execution settings
+execution:
+  parallel: false  # Run tests sequentially for guide agent
+  timeout: 300000  # 5 minutes per test scenario
+  retries: 0  # No automatic retries - tests should be deterministic
+  captureOutput: true
+  captureMetrics: true
+
+# Agent configuration
+agent:
+  name: "guide-agent"
+  version: "3.0.0"
+  type: "conversational-tutor"
+  platform: "claude-code"
+  
+  capabilities:
+    - "interactive-teaching"
+    - "persona-adaptation"
+    - "resource-recommendation"
+    - "comprehension-checking"
+    - "paced-delivery"
+
+# Persona configurations
+personas:
+  beginner:
+    displayName: "Complete Beginner"
+    description: "New to programming, needs extensive scaffolding"
+    characteristics:
+      - "no-prior-knowledge"
+      - "needs-analogies"
+      - "requires-encouragement"
+      - "prefers-visual-learning"
+    expectations:
+      jargonLevel: "minimal"
+      scaffoldingDepth: "maximum"
+      pacing: "slow"
+      checkpointFrequency: "high"
+      
+  intermediate:
+    displayName: "Intermediate Learner"
+    description: "Some programming experience, building skills"
+    characteristics:
+      - "basic-syntax-familiarity"
+      - "understands-common-patterns"
+      - "needs-context"
+      - "can-handle-some-jargon"
+    expectations:
+      jargonLevel: "moderate"
+      scaffoldingDepth: "medium"
+      pacing: "moderate"
+      checkpointFrequency: "medium"
+      
+  advanced:
+    displayName: "Advanced Developer"
+    description: "Experienced, seeking specific knowledge"
+    characteristics:
+      - "strong-fundamentals"
+      - "familiar-with-ecosystem"
+      - "prefers-concise-explanations"
+      - "comfortable-with-jargon"
+    expectations:
+      jargonLevel: "technical"
+      scaffoldingDepth: "minimal"
+      pacing: "fast"
+      checkpointFrequency: "low"
+
+# Test scenarios organization
+scenarios:
+  directory: "./scenarios"
+  namingPattern: "{persona}-{topic}-{variant}.yaml"
+  
+  categories:
+    - name: "getting-started"
+      description: "Initial onboarding and setup scenarios"
+      personas: ["beginner", "intermediate"]
+      
+    - name: "core-concepts"
+      description: "Teaching fundamental programming concepts"
+      personas: ["beginner", "intermediate", "advanced"]
+      
+    - name: "troubleshooting"
+      description: "Debugging and error resolution scenarios"
+      personas: ["beginner", "intermediate", "advanced"]
+      
+    - name: "best-practices"
+      description: "Code quality and professional patterns"
+      personas: ["intermediate", "advanced"]
+      
+    - name: "advanced-topics"
+      description: "Complex architectural and design patterns"
+      personas: ["advanced"]
+
+# Metrics collection
+metrics:
+  schemaFile: "./config/metrics-schema.json"
+  validationFile: "./config/validation-patterns.json"
+  
+  autoCollect:
+    enabled: true
+    outputDir: "../../../evidence"
+    format: "json"
+    includeConversationLog: true
+    includeTimestamps: true
+    
+  calculated:
+    - name: "jargonScore"
+      formula: "max(0, 10 - (violations * 3 + warnings * 1))"
+      
+    - name: "pedagogicalScore"
+      formula: "(conceptClarity + scaffolding + waitUsage) / 3"
+      
+    - name: "engagementScore"
+      formula: "(questionPrompts * 0.3 + checkpoints * 0.4 + encouragement * 0.3)"
+      
+    - name: "compositeScore"
+      formula: "(pedagogicalScore * 0.4 + jargonScore * 0.3 + engagementScore * 0.2 + linkQuality * 0.1) * 10"
+      weights:
+        pedagogical: 0.4
+        jargon: 0.3
+        engagement: 0.2
+        resources: 0.1
+
+# Success criteria
+passingCriteria:
+  beginner:
+    minCompositeScore: 70
+    requiredMetrics:
+      - "jargonScore >= 8"
+      - "waitUsage >= 2"
+      - "checkpoints >= 3"
+      - "jargonViolations == 0"
+      - "antipatternsTotal == 0"
+      
+  intermediate:
+    minCompositeScore: 65
+    requiredMetrics:
+      - "jargonScore >= 6"
+      - "waitUsage >= 1"
+      - "checkpoints >= 2"
+      - "jargonViolations == 0"
+      
+  advanced:
+    minCompositeScore: 60
+    requiredMetrics:
+      - "scaffoldingProgression >= 5"
+      - "linkQualityScore >= 7"
+
+# Evidence collection
+evidence:
+  baseDir: "../../../evidence"
+  
+  structure:
+    - "conversations/"  # Full conversation logs
+    - "screenshots/"    # Visual evidence
+    - "metrics/"        # Raw metric data
+    - "annotations/"    # Manual test notes
+    
+  naming:
+    conversation: "{persona}-{scenario}-{timestamp}.log"
+    metrics: "{persona}-{scenario}-{timestamp}.json"
+    screenshot: "{persona}-{scenario}-{step}-{timestamp}.png"
+
+# Reporting
+reports:
+  baseDir: "../../../reports"
+  
+  formats:
+    - "json"
+    - "markdown"
+    - "html"
+    
+  templates:
+    summary: "./templates/summary.md.hbs"
+    detail: "./templates/detail.md.hbs"
+    
+  sections:
+    - "executive-summary"
+    - "metrics-overview"
+    - "persona-breakdown"
+    - "failure-analysis"
+    - "recommendations"
+    - "evidence-links"
+
+# Iterative testing support
+iterativeTesting:
+  enabled: true
+  
+  versionTracking:
+    enabled: true
+    baselineVersion: "3.0.0"
+    
+  comparison:
+    enabled: true
+    compareAgainst: "previous"  # or "baseline"
+    showImprovement: true
+    highlightRegressions: true
+    
+  retesting:
+    strategy: "failed-scenarios-first"
+    preserveEvidence: true
+    linkToOriginal: true
+
+# Debugging and development
+debug:
+  verbose: false
+  dryRun: false
+  logLevel: "info"  # trace, debug, info, warn, error
+  preserveTempFiles: false
+
+# Integration hooks
+hooks:
+  beforeTest: []
+  afterTest: ["collect-metrics.py"]
+  beforeSuite: []
+  afterSuite: ["generate-report.py"]
