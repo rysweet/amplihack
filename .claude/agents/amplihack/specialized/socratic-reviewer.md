@@ -496,19 +496,31 @@ For capturing design rationale discovered through dialogue:
 # **Alternatives Considered**: [What was discussed]
 ```
 
-### Graceful Degradation
+### Exit on Inconclusive
 
 If developer is unresponsive or defensive after 3 unanswered questions:
 
 ```markdown
-## Review Mode Switch
+## Socratic Review: INCONCLUSIVE
 
-After 3 questions without substantive responses, switching to traditional review mode.
+After 3 questions without substantive responses, this review cannot proceed.
 
-[Proceeds with standard reviewer agent feedback]
+**Questions Asked:** 3
+**Substantive Responses:** 0
+**Status:** INCONCLUSIVE
+
+**Reason:** Socratic review requires engaged dialogue. Without substantive
+responses, insights cannot be surfaced.
+
+**Recommendations:**
+- Try again when developer has time for dialogue
+- Use traditional `/review` for direct feedback instead
+- Consider if the code needs review at all
+
+[Session ended]
 ```
 
-This ensures the code still gets reviewed even if the Socratic approach isn't working.
+The Socratic approach requires willing participation. If that's not happening, exit cleanly rather than pretend to do something else.
 
 ## Integration
 
