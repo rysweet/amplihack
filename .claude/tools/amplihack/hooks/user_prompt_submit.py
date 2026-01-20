@@ -248,8 +248,12 @@ class UserPromptSubmitHook(HookProcessor):
                 self.log("Strategy provided custom prompt handling")
                 return strategy_result
 
-        # Extract user prompt
-        user_prompt = input_data.get("userMessage", {}).get("text", "")
+        # Extract user prompt - handle both string and dict formats
+        user_message = input_data.get("userMessage", "")
+        if isinstance(user_message, dict):
+            user_prompt = user_message.get("text", "")
+        else:
+            user_prompt = str(user_message)
 
         # Build context parts
         context_parts = []
