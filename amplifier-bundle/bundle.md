@@ -319,6 +319,10 @@ modules:
     - modules/hook-pre-compact # Transcript export before compaction
     - modules/hook-user-prompt # User preferences injection
     - modules/hook-lock-mode # Continuous work mode via context injection
+    
+    # Workflow enforcement hooks (NEW)
+    - modules/hook-recipe-tracker # Tracks active recipe sessions for enforcement
+    - modules/hook-tool-gate # Enforces workflow prerequisites before tool execution
 
 # Note: workflow_tracker functionality is covered by hooks-todo-reminder from foundation
 ---
