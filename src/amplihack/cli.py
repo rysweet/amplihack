@@ -27,6 +27,33 @@ EMOJI = {
 }
 
 
+def add_plugin_args_for_uvx(claude_args: list[str] | None = None) -> list[str]:
+    """Add --plugin-dir and --add-dir arguments for UVX deployment.
+
+    Args:
+        claude_args: Existing Claude arguments
+
+    Returns:
+        Updated arguments with plugin directory added
+    """
+    if not is_uvx_deployment():
+        return claude_args or []
+
+    result_args = list(claude_args or [])
+    original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
+    plugin_root = str(Path.home() / ".amplihack" / ".claude")
+
+    # Add --add-dir for project access
+    if "--add-dir" not in result_args:
+        result_args = ["--add-dir", original_cwd] + result_args
+
+    # Add --plugin-dir to load amplihack as a plugin
+    if "--plugin-dir" not in result_args:
+        result_args = ["--plugin-dir", plugin_root] + result_args
+
+    return result_args
+
+
 def launch_command(args: argparse.Namespace, claude_args: list[str] | None = None) -> int:
     """Handle the launch command.
 
@@ -736,13 +763,9 @@ def main(argv: list[str] | None = None) -> int:
     if not args.command:
         # If we have claude_args but no command, default to launching Claude directly
         if claude_args:
-            # If in UVX mode, ensure we use --add-dir for BOTH the original directory AND plugin directory
+            # If in UVX mode, use --plugin-dir to load amplihack as a plugin
             if is_uvx_deployment():
-                # Get the original directory (before we changed to temp)
-                original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
-                plugin_root = str(Path.home() / ".amplihack" / ".claude")
-                if "--add-dir" not in claude_args:
-                    claude_args = ["--add-dir", original_cwd, "--add-dir", plugin_root] + claude_args
+                claude_args = add_plugin_args_for_uvx(claude_args)
 
             # Check if Docker should be used for direct launch
             if DockerManager.should_use_docker():
@@ -788,14 +811,7 @@ def main(argv: list[str] | None = None) -> int:
 
         # If in UVX mode, ensure we use --add-dir for BOTH the original directory AND plugin directory
         if is_uvx_deployment():
-            # Get the original directory (before we changed to temp)
-            original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
-            plugin_root = str(Path.home() / ".amplihack" / ".claude")
-            # Add --add-dir to claude_args if not already present
-            if claude_args and "--add-dir" not in claude_args:
-                claude_args = ["--add-dir", original_cwd, "--add-dir", plugin_root] + claude_args
-            elif not claude_args:
-                claude_args = ["--add-dir", original_cwd, "--add-dir", plugin_root]
+            claude_args = add_plugin_args_for_uvx(claude_args)
 
         # Handle auto mode
         exit_code = handle_auto_mode("claude", args, claude_args)
@@ -811,12 +827,7 @@ def main(argv: list[str] | None = None) -> int:
 
         # Claude is an alias for launch
         if is_uvx_deployment():
-            original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
-            plugin_root = str(Path.home() / ".amplihack" / ".claude")
-            if claude_args and "--add-dir" not in claude_args:
-                claude_args = ["--add-dir", original_cwd, "--add-dir", plugin_root] + claude_args
-            elif not claude_args:
-                claude_args = ["--add-dir", original_cwd, "--add-dir", plugin_root]
+            claude_args = add_plugin_args_for_uvx(claude_args)
 
         # Handle auto mode
         exit_code = handle_auto_mode("claude", args, claude_args)
@@ -836,12 +847,7 @@ def main(argv: list[str] | None = None) -> int:
 
         # RustyClawd launcher setup (similar to claude command)
         if is_uvx_deployment():
-            original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
-            plugin_root = str(Path.home() / ".amplihack" / ".claude")
-            if claude_args and "--add-dir" not in claude_args:
-                claude_args = ["--add-dir", original_cwd, "--add-dir", plugin_root] + claude_args
-            elif not claude_args:
-                claude_args = ["--add-dir", original_cwd, "--add-dir", plugin_root]
+            claude_args = add_plugin_args_for_uvx(claude_args)
 
         # Handle auto mode
         exit_code = handle_auto_mode("claude", args, claude_args)  # Reuse claude auto mode
@@ -958,7 +964,7 @@ def main(argv: list[str] | None = None) -> int:
 
             # Create plugin manager and link plugin
             manager = PluginManager(plugin_root=plugin_root)
-            if manager._register_plugin(plugin_name, plugin_path):
+            if manager._register_plugin(plugin_name):
                 print(f"{EMOJI['check']} Plugin linked successfully: {plugin_name}")
                 print(f"  Settings updated in: ~/.claude/settings.json")
                 print(f"  Plugin should now appear in /plugin command")
