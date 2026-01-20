@@ -73,6 +73,8 @@ Try asking the **amplihack-guide** agent for help.
 For detailed installation instructions, see
 [docs/PREREQUISITES.md](https://rysweet.github.io/amplihack/PREREQUISITES/).
 
+You may find that its useful to use amplihack with [azlin](https://github.com/rysweet/azlin) which makes it easy to start linux based agentic coding vms in the azure cloud. 
+
 ### Basic Usage
 
 ```sh
