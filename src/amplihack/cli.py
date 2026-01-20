@@ -4,6 +4,7 @@ import argparse
 import logging
 import os
 import platform
+import subprocess
 import sys
 from pathlib import Path
 
@@ -11,6 +12,13 @@ from . import copytree_manifest
 from .docker import DockerManager
 from .launcher import ClaudeLauncher
 from .launcher.session_tracker import SessionTracker
+from .plugin_cli import (
+    plugin_install_command,
+    plugin_uninstall_command,
+    plugin_verify_command,
+    setup_plugin_commands,
+)
+from .plugin_manager import PluginManager
 from .proxy import ProxyConfig, ProxyManager
 from .utils import is_uvx_deployment
 
@@ -19,6 +27,33 @@ IS_WINDOWS = platform.system() == "Windows"
 EMOJI = {
     "check": "[OK]" if IS_WINDOWS else "✓",
 }
+
+
+def add_plugin_args_for_uvx(claude_args: list[str] | None = None) -> list[str]:
+    """Add --plugin-dir and --add-dir arguments for UVX deployment.
+
+    Args:
+        claude_args: Existing Claude arguments
+
+    Returns:
+        Updated arguments with plugin directory added
+    """
+    if not is_uvx_deployment():
+        return claude_args or []
+
+    result_args = list(claude_args or [])
+    original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
+    plugin_root = str(Path.home() / ".amplihack" / ".claude")
+
+    # Add --add-dir for project access
+    if "--add-dir" not in result_args:
+        result_args = ["--add-dir", original_cwd] + result_args
+
+    # Add --plugin-dir to load amplihack as a plugin
+    if "--plugin-dir" not in result_args:
+        result_args = ["--plugin-dir", plugin_root] + result_args
+
+    return result_args
 
 
 def launch_command(args: argparse.Namespace, claude_args: list[str] | None = None) -> int:
@@ -148,7 +183,7 @@ def _launch_command_impl(args: argparse.Namespace, claude_args: list[str] | None
 
         return docker_manager.run_command(docker_args)
 
-    # In UVX mode, Claude now runs from the current directory so no --add-dir needed
+    # In UVX mode, Claude uses --add-dir for both project directory and plugin directory
 
     proxy_manager = None
     system_prompt_path = None
@@ -505,6 +540,47 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     local_install_parser = subparsers.add_parser("_local_install", help=argparse.SUPPRESS)
     local_install_parser.add_argument("repo_root", help="Repository root directory")
 
+    # Plugin management commands
+    plugin_parser = subparsers.add_parser("plugin", help="Plugin management commands")
+    plugin_subparsers = plugin_parser.add_subparsers(
+        dest="plugin_command", help="Plugin subcommands"
+    )
+
+    # Install plugin command
+    install_parser = plugin_subparsers.add_parser(
+        "install", help="Install plugin from git URL or local path"
+    )
+    install_parser.add_argument("source", help="Git URL or local directory path")
+    install_parser.add_argument("--force", action="store_true", help="Overwrite existing plugin")
+
+    # Uninstall plugin command
+    uninstall_parser = plugin_subparsers.add_parser(
+        "uninstall", help="Remove plugin"
+    )
+    uninstall_parser.add_argument("plugin_name", help="Name of plugin to remove")
+
+    # Link plugin command
+    link_parser = plugin_subparsers.add_parser(
+        "link", help="Link installed plugin to Claude Code settings"
+    )
+    link_parser.add_argument(
+        "plugin_name",
+        nargs="?",
+        default="amplihack",
+        help="Plugin name to link (default: amplihack)",
+    )
+
+    # Verify plugin command
+    verify_parser = plugin_subparsers.add_parser(
+        "verify", help="Verify plugin installation and discoverability"
+    )
+    verify_parser.add_argument(
+        "plugin_name",
+        nargs="?",
+        default="amplihack",
+        help="Plugin name to verify (default: amplihack)",
+    )
+
     # Memory tree visualization command
     memory_parser = subparsers.add_parser("memory", help="Memory system commands")
     memory_subparsers = memory_parser.add_subparsers(
@@ -551,6 +627,27 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         "--confirm",
         action="store_true",
         help="Skip confirmation prompt (use with --no-dry-run)",
+    )
+
+    # Mode detection commands
+    mode_parser = subparsers.add_parser("mode", help="Claude installation mode commands")
+    mode_subparsers = mode_parser.add_subparsers(
+        dest="mode_command", help="Mode subcommands"
+    )
+
+    # Detect mode command
+    detect_parser = mode_subparsers.add_parser(
+        "detect", help="Detect current Claude installation mode"
+    )
+
+    # Migrate to plugin command
+    to_plugin_parser = mode_subparsers.add_parser(
+        "to-plugin", help="Migrate from local to plugin mode"
+    )
+
+    # Migrate to local command
+    to_local_parser = mode_subparsers.add_parser(
+        "to-local", help="Create local .claude/ from plugin"
     )
 
     return parser
@@ -607,52 +704,74 @@ def main(argv: list[str] | None = None) -> int:
         os.environ["AMPLIHACK_ORIGINAL_CWD"] = original_cwd
 
         if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-            print(f"UVX mode: Staging Claude environment in current directory: {original_cwd}")
+            print(f"UVX mode: Using plugin architecture")
             print(f"Working directory remains: {original_cwd}")
 
-        # Stage framework files to the current directory's .claude directory
-        # Find the amplihack package location
-        # Find amplihack package location for .claude files
+        # Setup plugin architecture
+        # .claude-plugin is copied to src/amplihack/.claude-plugin/ by build_hooks.py
         import amplihack
+        amplihack_package = Path(amplihack.__file__).parent
 
-        amplihack_src = os.path.dirname(os.path.abspath(amplihack.__file__))
+        # Check if plugin manifest exists in amplihack package
+        plugin_manifest = amplihack_package / ".claude-plugin" / "plugin.json"
+        if not plugin_manifest.exists():
+            print(f"⚠️  Plugin manifest not found at {plugin_manifest}")
+            print("   Falling back to directory copy mode")
+            # Fallback to old copytree approach
+            temp_claude_dir = str(Path(original_cwd) / ".claude")
+            amplihack_src = Path(amplihack.__file__).parent
+            Path(temp_claude_dir).mkdir(parents=True, exist_ok=True)
+            copied = copytree_manifest(str(amplihack_src), temp_claude_dir, ".claude")
+            if not copied:
+                print("❌ Failed to copy .claude directory")
+                sys.exit(1)
+        else:
+            # Install using claude plugin install
+            package_root = amplihack_package.parent
+            plugin_root = Path.home() / ".amplihack" / ".claude"
 
-        # Copy .claude contents to temp .claude directory
-        # Note: copytree_manifest copies TO the dst, not INTO dst/.claude
-        copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude")
+            if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                print(f"📦 Installing amplihack plugin from {package_root}")
 
-        # Bug #2 Fix: Detect empty copy results (Issue #1940)
-        # When copytree_manifest returns empty list, no files were copied
-        # This indicates a package installation problem - exit with clear error
-        if not copied:
-            print("\n❌ Failed to copy .claude files - cannot proceed")
-            print(f"   Package location: {amplihack_src}")
-            print(f"   Looking for .claude/ at: {amplihack_src}/.claude/")
-            print("   This may indicate a package installation problem\n")
-            sys.exit(1)
+            # Call: claude plugin install <path> --scope user
+            result = subprocess.run(
+                ["claude", "plugin", "install", str(package_root), "--scope", "user"],
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
 
-        # Smart PROJECT.md initialization for UVX mode
-        if copied:
-            try:
-                from .utils.project_initializer import InitMode, initialize_project_md
-
-                result = initialize_project_md(Path(original_cwd), mode=InitMode.FORCE)
-                if result.success and result.action_taken.value in ["initialized", "regenerated"]:
-                    if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                        print(
-                            f"PROJECT.md {result.action_taken.value} for {Path(original_cwd).name}"
-                        )
-            except Exception as e:
+            if result.returncode != 0:
+                print(f"⚠️  Plugin installation failed: {result.stderr}")
+                print("   Falling back to directory copy mode")
+                # Fallback to plugin location
+                temp_claude_dir = str(Path.home() / ".amplihack" / ".claude")
+                amplihack_src = Path(amplihack.__file__).parent
+                Path(temp_claude_dir).mkdir(parents=True, exist_ok=True)
+                copied = copytree_manifest(str(amplihack_src), temp_claude_dir, ".claude")
+                if not copied:
+                    print("❌ Failed to copy .claude directory")
+                    sys.exit(1)
+            else:
                 if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                    print(f"Warning: PROJECT.md initialization failed: {e}")
+                    print(f"✅ Plugin installed successfully")
+                    print(result.stdout)
 
-        # Create settings.json with relative paths (Claude will resolve relative to CLAUDE_PROJECT_DIR)
-        # When CLAUDE_PROJECT_DIR is set, Claude will use settings.json from that directory only
-        if copied:
-            settings_path = os.path.join(temp_claude_dir, "settings.json")
+                # No need for temp_claude_dir - plugin is installed
+                temp_claude_dir = None
+
+            # 3. Generate settings.json in project's .claude/ that references plugin
+            local_claude_dir = Path(original_cwd) / ".claude"
+            temp_claude_dir = str(local_claude_dir)
+            local_claude_dir.mkdir(parents=True, exist_ok=True)
+
+            settings_path = local_claude_dir / "settings.json"
             import json
 
-            # Create minimal settings.json with just amplihack hooks
+            # Set CLAUDE_PLUGIN_ROOT for path resolution
+            os.environ["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
+
+            # Create settings.json with plugin references
             settings = {
                 "hooks": {
                     "SessionStart": [
@@ -702,26 +821,35 @@ def main(argv: list[str] | None = None) -> int:
                 }
             }
 
-            # Write settings.json
-            os.makedirs(temp_claude_dir, exist_ok=True)
             with open(settings_path, "w") as f:
                 json.dump(settings, f, indent=2)
 
             if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                print(f"UVX staging completed to {temp_claude_dir}")
-                print("Created settings.json with relative hook paths")
+                print(f"Created settings.json at {settings_path}")
+                print(f"Settings reference plugin at {plugin_root}")
+
+        # Smart PROJECT.md initialization for UVX mode
+        try:
+            from .utils.project_initializer import InitMode, initialize_project_md
+
+            result = initialize_project_md(Path(original_cwd), mode=InitMode.FORCE)
+            if result.success and result.action_taken.value in ["initialized", "regenerated"]:
+                if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                    print(
+                        f"PROJECT.md {result.action_taken.value} for {Path(original_cwd).name}"
+                    )
+        except Exception as e:
+            if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                print(f"Warning: PROJECT.md initialization failed: {e}")
 
     args, claude_args = parse_args_with_passthrough(argv)
 
     if not args.command:
         # If we have claude_args but no command, default to launching Claude directly
         if claude_args:
-            # If in UVX mode, ensure we use --add-dir for the ORIGINAL directory
+            # If in UVX mode, use --plugin-dir to load amplihack as a plugin
             if is_uvx_deployment():
-                # Get the original directory (before we changed to temp)
-                original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
-                if "--add-dir" not in claude_args:
-                    claude_args = ["--add-dir", original_cwd] + claude_args
+                claude_args = add_plugin_args_for_uvx(claude_args)
 
             # Check if Docker should be used for direct launch
             if DockerManager.should_use_docker():
@@ -740,7 +868,6 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "install":
         # Use the existing install logic
-        import subprocess
         import tempfile
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -765,6 +892,10 @@ def main(argv: list[str] | None = None) -> int:
         # Handle append mode FIRST (before any other initialization)
         if getattr(args, "append", None):
             return handle_append_instruction(args)
+
+        # If in UVX mode, ensure we use --add-dir for BOTH the original directory AND plugin directory
+        if is_uvx_deployment():
+            claude_args = add_plugin_args_for_uvx(claude_args)
 
         # CRITICAL: Detect nesting BEFORE any .claude/ operations (including auto mode!)
         from .launcher.nesting_detector import NestingDetector
@@ -822,11 +953,7 @@ def main(argv: list[str] | None = None) -> int:
 
         # Claude is an alias for launch
         if is_uvx_deployment():
-            original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
-            if claude_args and "--add-dir" not in claude_args:
-                claude_args = ["--add-dir", original_cwd] + claude_args
-            elif not claude_args:
-                claude_args = ["--add-dir", original_cwd]
+            claude_args = add_plugin_args_for_uvx(claude_args)
 
         # Handle auto mode
         exit_code = handle_auto_mode("claude", args, claude_args)
@@ -846,11 +973,7 @@ def main(argv: list[str] | None = None) -> int:
 
         # RustyClawd launcher setup (similar to claude command)
         if is_uvx_deployment():
-            original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
-            if claude_args and "--add-dir" not in claude_args:
-                claude_args = ["--add-dir", original_cwd] + claude_args
-            elif not claude_args:
-                claude_args = ["--add-dir", original_cwd]
+            claude_args = add_plugin_args_for_uvx(claude_args)
 
         # Handle auto mode
         exit_code = handle_auto_mode("claude", args, claude_args)  # Reuse claude auto mode
@@ -948,6 +1071,38 @@ def main(argv: list[str] | None = None) -> int:
         print_uvx_usage_instructions()
         return 0
 
+    elif args.command == "plugin":
+        if args.plugin_command == "install":
+            return plugin_install_command(args)
+        elif args.plugin_command == "uninstall":
+            return plugin_uninstall_command(args)
+        elif args.plugin_command == "verify":
+            return plugin_verify_command(args)
+        elif args.plugin_command == "link":
+            plugin_name = args.plugin_name
+            plugin_root = Path.home() / ".amplihack" / "plugins"
+            plugin_path = plugin_root / plugin_name
+
+            if not plugin_path.exists():
+                print(f"Error: Plugin not found at {plugin_path}")
+                print(f"Install the plugin first with: amplihack install")
+                return 1
+
+            # Create plugin manager and link plugin
+            manager = PluginManager(plugin_root=plugin_root)
+            if manager._register_plugin(plugin_name):
+                print(f"{EMOJI['check']} Plugin linked successfully: {plugin_name}")
+                print(f"  Settings updated in: ~/.claude/settings.json")
+                print(f"  Plugin should now appear in /plugin command")
+                return 0
+            else:
+                print(f"Error: Failed to link plugin: {plugin_name}")
+                return 1
+
+        else:
+            create_parser().print_help()
+            return 1
+
     elif args.command == "memory":
         if args.memory_command == "tree":
             from .memory.cli_visualize import visualize_memory_tree
@@ -1030,6 +1185,84 @@ def main(argv: list[str] | None = None) -> int:
 
         create_parser().print_help()
         return 1
+
+    elif args.command == "mode":
+        from .mode_detector import ModeDetector, MigrationHelper
+
+        detector = ModeDetector()
+
+        if args.mode_command == "detect":
+            mode = detector.detect()
+            claude_dir = detector.get_claude_dir(mode)
+
+            print(f"Claude installation mode: {mode.value}")
+            if claude_dir:
+                print(f"Using .claude directory: {claude_dir}")
+            else:
+                print("No .claude installation found")
+                print("Install amplihack with: amplihack install")
+            return 0
+
+        elif args.mode_command == "to-plugin":
+            migrator = MigrationHelper()
+            project_dir = Path.cwd()
+
+            if not migrator.can_migrate_to_plugin(project_dir):
+                print("Cannot migrate to plugin mode:")
+                if not detector.has_local_installation():
+                    print("  - No local .claude/ directory found")
+                if not detector.has_plugin_installation():
+                    print("  - Plugin not installed (run: amplihack install)")
+                return 1
+
+            print(f"This will remove local .claude/ directory: {project_dir / '.claude'}")
+            print("Plugin installation will be used instead.")
+            response = input("Continue? (y/N): ")
+
+            if response.lower() != 'y':
+                print("Migration cancelled")
+                return 0
+
+            if migrator.migrate_to_plugin(project_dir):
+                print(f"{EMOJI['check']} Migrated to plugin mode successfully")
+                print("Local .claude/ removed, using plugin installation")
+                return 0
+            else:
+                print("Migration failed")
+                return 1
+
+        elif args.mode_command == "to-local":
+            migrator = MigrationHelper()
+            project_dir = Path.cwd()
+            info = migrator.get_migration_info(project_dir)
+
+            if not info["can_migrate_to_local"]:
+                print("Cannot create local .claude/ directory:")
+                if info["has_local"]:
+                    print("  - Local .claude/ already exists")
+                if not info["has_plugin"]:
+                    print("  - Plugin not installed (run: amplihack install)")
+                return 1
+
+            print(f"This will create local .claude/ directory in: {project_dir}")
+            print(f"Copying from plugin: {info['plugin_path']}")
+            response = input("Continue? (y/N): ")
+
+            if response.lower() != 'y':
+                print("Migration cancelled")
+                return 0
+
+            if migrator.migrate_to_local(project_dir):
+                print(f"{EMOJI['check']} Local .claude/ created successfully")
+                print("Now using project-local installation")
+                return 0
+            else:
+                print("Migration failed")
+                return 1
+
+        else:
+            create_parser().print_help()
+            return 1
 
     else:
         create_parser().print_help()

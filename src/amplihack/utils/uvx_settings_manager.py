@@ -71,7 +71,7 @@ class UVXSettingsManager:
                         existing = json.load(f)
                         existing_mcp_servers = existing.get("mcpServers")
                         existing_mcp_enabled = existing.get("enableAllProjectMcpServers")
-                except:
+                except (OSError, json.JSONDecodeError):
                     pass
 
             # Load the UVX template

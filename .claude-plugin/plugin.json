@@ -1,0 +1,9 @@
+{
+  "name": "amplihack",
+  "version": "0.9.0",
+  "description": "AI-powered development framework with specialized agents and automated workflows for Claude Code",
+  "author": {
+    "name": "Microsoft Amplihack Team",
+    "url": "https://github.com/rysweet/amplihack"
+  }
+}

@@ -1,13 +1,14 @@
-"""Build hooks for setuptools to include .claude/, .github/, and amplifier-bundle/ in wheels.
+"""Build hooks for setuptools to include .claude/, .claude-plugin/, .github/, and amplifier-bundle/ in wheels.
 
 This module provides custom build hooks that copy directories from the repository
 root into src/amplihack/ before building the wheel. This ensures the framework
-files are included in the wheel distribution for UVX deployment.
+files, plugin manifest, and bundle files are included in the wheel distribution
+for UVX deployment.
 
 Why this is needed:
 - MANIFEST.in only controls sdist, not wheels
 - Wheels only include files inside Python packages
-- .claude/, .github/, and amplifier-bundle/ are at repo root (outside src/amplihack/)
+- .claude/, .claude-plugin/, .github/, and amplifier-bundle/ are at repo root (outside src/amplihack/)
 - Solution: Copy them into package before build, cleanup after
 
 Why symlinks=True is required:
@@ -28,16 +29,20 @@ from setuptools.build_meta import *  # noqa: F403
 
 
 class _CustomBuildBackend:
-    """Custom build backend that copies .claude/, .github/, and amplifier-bundle/ before building."""
+    """Custom build backend that copies .claude/, .claude-plugin/, .github/, and amplifier-bundle/ before building."""
 
     def __init__(self):
         self.repo_root = Path(__file__).parent
         self.claude_src = self.repo_root / ".claude"
         self.claude_dest = self.repo_root / "src" / "amplihack" / ".claude"
+        self.plugin_src = self.repo_root / ".claude-plugin"
+        self.plugin_dest = self.repo_root / "src" / "amplihack" / ".claude-plugin"
         self.github_src = self.repo_root / ".github"
         self.github_dest = self.repo_root / "src" / "amplihack" / ".github"
         self.bundle_src = self.repo_root / "amplifier-bundle"
         self.bundle_dest = self.repo_root / "src" / "amplihack" / "amplifier-bundle"
+        self.amplihack_md_src = self.repo_root / "AMPLIHACK.md"
+        self.amplihack_md_dest = self.repo_root / "src" / "amplihack" / "AMPLIHACK.md"
 
     def _copy_claude_directory(self):
         """Copy .claude/ from repo root to src/amplihack/ if needed."""
@@ -71,6 +76,22 @@ class _CustomBuildBackend:
             ),
         )
         print("Successfully copied .claude/ to package")
+
+    def _copy_plugin_manifest(self):
+        """Copy .claude-plugin/ from repo root to src/amplihack/ for wheel inclusion."""
+        if not self.plugin_src.exists():
+            print(f"Warning: .claude-plugin/ not found at {self.plugin_src}")
+            return
+
+        # Remove existing .claude-plugin/ in package to ensure clean copy
+        if self.plugin_dest.exists():
+            print(f"Removing existing {self.plugin_dest}")
+            shutil.rmtree(self.plugin_dest)
+
+        # Copy .claude-plugin/ into package
+        print(f"Copying {self.plugin_src} -> {self.plugin_dest}")
+        shutil.copytree(self.plugin_src, self.plugin_dest)
+        print("Successfully copied .claude-plugin/ to package")
 
     def _copy_github_directory(self):
         """Copy .github/ from repo root to src/amplihack/ for Copilot CLI integration."""
@@ -108,6 +129,12 @@ class _CustomBuildBackend:
         if self.claude_dest.exists():
             print(f"Cleaning up {self.claude_dest}")
             shutil.rmtree(self.claude_dest)
+
+    def _cleanup_plugin_manifest(self):
+        """Remove .claude-plugin/ from package after build."""
+        if self.plugin_dest.exists():
+            print(f"Cleaning up {self.plugin_dest}")
+            shutil.rmtree(self.plugin_dest)
 
     def _cleanup_github_directory(self):
         """Remove .github/ from package after build."""
@@ -148,12 +175,31 @@ class _CustomBuildBackend:
             print(f"Cleaning up {self.bundle_dest}")
             shutil.rmtree(self.bundle_dest)
 
+    def _copy_amplihack_md(self):
+        """Copy AMPLIHACK.md from repo root to src/amplihack/ for wheel inclusion."""
+        if not self.amplihack_md_src.exists():
+            print(f"Warning: AMPLIHACK.md not found at {self.amplihack_md_src}")
+            return
+
+        # Copy AMPLIHACK.md into package
+        print(f"Copying {self.amplihack_md_src} -> {self.amplihack_md_dest}")
+        shutil.copy2(self.amplihack_md_src, self.amplihack_md_dest)
+        print("Successfully copied AMPLIHACK.md to package")
+
+    def _cleanup_amplihack_md(self):
+        """Remove AMPLIHACK.md from package after build."""
+        if self.amplihack_md_dest.exists():
+            print(f"Cleaning up {self.amplihack_md_dest}")
+            self.amplihack_md_dest.unlink()
+
     def build_wheel(self, wheel_directory, config_settings=None, metadata_directory=None):
-        """Build wheel with .claude/, .github/, and amplifier-bundle/ directories included."""
+        """Build wheel with .claude/, .claude-plugin/, .github/, amplifier-bundle/, and CLAUDE.md included."""
         try:
             self._copy_claude_directory()
+            self._copy_plugin_manifest()
             self._copy_github_directory()
             self._copy_bundle_directory()
+            self._copy_amplihack_md()
             result = _orig.build_wheel(
                 wheel_directory,
                 config_settings=config_settings,
@@ -163,8 +209,10 @@ class _CustomBuildBackend:
         finally:
             # Always cleanup, even if build fails
             self._cleanup_claude_directory()
+            self._cleanup_plugin_manifest()
             self._cleanup_github_directory()
             self._cleanup_bundle_directory()
+            self._cleanup_amplihack_md()
 
     def build_sdist(self, sdist_directory, config_settings=None):
         """Build sdist (MANIFEST.in handles .claude/ for sdist)."""
