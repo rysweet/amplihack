@@ -47,6 +47,15 @@ Use traditional review when:
 
 # Review a directory
 /socratic-review src/auth/
+
+# Non-interactive mode (for CI/subprocess - asks all questions, synthesizes without waiting)
+/socratic-review path/to/file.py --non-interactive
+
+# Output structured JSON for programmatic processing
+/socratic-review path/to/file.py --non-interactive --output=review.json
+
+# Write insights to DECISIONS.md
+/socratic-review path/to/file.py --write-decisions
 ```
 
 ## How It Works
@@ -203,6 +212,40 @@ When answering questions:
 2. **Acknowledge uncertainty**: "I'm not sure what happens" is valuable - it reveals gaps
 3. **Think out loud**: Explain your reasoning, not just the answer
 4. **Ask for clarification**: If a question is unclear, say so
+
+## Feedback Loop: How Insights Return
+
+The key question: how do insights from dialogue become actual improvements?
+
+### Interactive Mode (Default)
+
+During live dialogue:
+1. Each question and response is captured
+2. Insights are noted inline
+3. At the end, a synthesis is produced
+4. You can use `--write-decisions` to persist insights to DECISIONS.md
+
+### Non-Interactive Mode (CI/Subprocess)
+
+For automated contexts:
+1. All questions are asked rhetorically
+2. Agent analyzes code to identify likely issues
+3. Structured JSON output is produced
+4. Output can be posted to PR comments automatically
+
+### Posting to PR
+
+```bash
+# Run non-interactive review
+/socratic-review src/auth/ --non-interactive --output=review.json
+
+# Post results to PR
+gh pr comment 123 --body "$(jq -r '.synthesis | "## Socratic Review\n\n### Insights\n" + (.insights_revealed | map("- " + .) | join("\n")) + "\n\n### Recommendations\n" + (.recommendations | map("- [" + .priority + "] " + .description) | join("\n"))' review.json)"
+```
+
+### Graceful Degradation
+
+If 3 questions go unanswered in interactive mode, the agent switches to traditional review to ensure the code still gets feedback.
 
 ## What This Is NOT
 

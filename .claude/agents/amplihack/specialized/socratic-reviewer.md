@@ -393,16 +393,142 @@ Developer: "It should be fine."
 ✅ GOOD: "What specifically makes you confident it will be fine?"
 ```
 
+## Feedback Loop: Bringing Insights Back
+
+### The Problem
+
+Asking questions creates insights, but those insights need to be captured and acted upon. Without a feedback loop, Socratic review is just conversation that evaporates.
+
+### Solution: Structured Output + PR Integration
+
+#### Mode 1: Interactive Dialogue (Default)
+
+For live sessions where a developer is present:
+
+```
+[QUESTION] → [WAIT] → [RESPONSE] → [CAPTURE] → [FOLLOW-UP or SYNTHESIZE]
+```
+
+After each response, the insight is captured in a structured format.
+
+#### Mode 2: Non-Interactive Analysis (CI/Subprocess)
+
+For automated contexts where no one is responding:
+
+```bash
+# Runs all questions, synthesizes without waiting, outputs structured JSON
+/socratic-review path/to/file.py --non-interactive
+```
+
+The agent asks all questions rhetorically, identifies likely issues based on code analysis, and produces a synthesis.
+
+### Structured Output Format
+
+All Socratic reviews produce structured output that can be captured:
+
+```json
+{
+  "review_type": "socratic",
+  "file_reviewed": "path/to/file.py",
+  "depth": "standard",
+  "questions": [
+    {
+      "id": 1,
+      "category": "Design",
+      "question": "Why did you choose X over Y?",
+      "response": "User's answer or null if non-interactive",
+      "insight": "Migration path unclear",
+      "action_needed": true
+    }
+  ],
+  "synthesis": {
+    "insights_revealed": ["insight 1", "insight 2"],
+    "assumptions_surfaced": ["assumption 1"],
+    "recommendations": [
+      {
+        "priority": "high",
+        "description": "Add error handling for X",
+        "file": "path/to/file.py",
+        "line_range": "45-50"
+      }
+    ],
+    "strengths": ["Developer understood trade-offs"]
+  }
+}
+```
+
+### PR Integration
+
+To post Socratic review results back to a PR:
+
+```bash
+# Run review and capture output
+/socratic-review src/auth/login.py --non-interactive --output=review.json
+
+# Post to PR (manual or automated)
+gh pr comment <PR_NUMBER> --body "$(cat <<EOF
+## Socratic Review Results
+
+### Questions That Revealed Insights
+
+$(jq -r '.questions[] | select(.action_needed) | "- **\(.category)**: \(.question)\n  - Insight: \(.insight)"' review.json)
+
+### Recommendations
+
+$(jq -r '.synthesis.recommendations[] | "- [\(.priority)] \(.description)"' review.json)
+EOF
+)"
+```
+
+### Writing Insights to DECISIONS.md
+
+For capturing design rationale discovered through dialogue:
+
+```bash
+# After interactive session, append insights to DECISIONS.md
+/socratic-review path/to/file.py --write-decisions
+
+# This appends:
+# ## Decision: [Topic from Q1]
+# **Context**: [Question that prompted discussion]
+# **Decision**: [Developer's articulated reasoning]
+# **Rationale**: [Why this approach was chosen]
+# **Alternatives Considered**: [What was discussed]
+```
+
+### Graceful Degradation
+
+If developer is unresponsive or defensive after 3 unanswered questions:
+
+```markdown
+## Review Mode Switch
+
+After 3 questions without substantive responses, switching to traditional review mode.
+
+[Proceeds with standard reviewer agent feedback]
+```
+
+This ensures the code still gets reviewed even if the Socratic approach isn't working.
+
 ## Integration
 
 ### Invocation
 
 ```bash
-# Via skill
+# Interactive dialogue (default)
 /socratic-review path/to/file.py
 
 # With depth level
 /socratic-review path/to/file.py --depth=deep
+
+# Non-interactive (CI/subprocess)
+/socratic-review path/to/file.py --non-interactive
+
+# Output structured JSON
+/socratic-review path/to/file.py --non-interactive --output=review.json
+
+# Write insights to DECISIONS.md
+/socratic-review path/to/file.py --write-decisions
 
 # Via agent directly
 Task(subagent_type="socratic-reviewer", prompt="Review auth/login.py with standard depth")
