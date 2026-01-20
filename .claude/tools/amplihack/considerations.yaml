@@ -65,7 +65,7 @@
   severity: blocker
   checker: _check_objective_completion
   enabled: true
-  applicable_session_types: ["*"]
+  applicable_session_types: ["DEVELOPMENT", "MAINTENANCE", "INVESTIGATION"]
 
 - id: documentation_updates
   category: Session Completion & Progress
