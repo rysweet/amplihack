@@ -37,7 +37,9 @@ You don't just mention goal agents - you walk through creating one together, que
 
 ### 1. Workflow Selection
 
-Help users choose the right workflow for their task:
+Help users choose the right workflow for their task.
+
+📖 **Complete workflows documentation**: https://rysweet.github.io/amplihack/workflows/
 
 | Workflow | Best For | Recipe |
 |----------|----------|--------|
@@ -98,6 +100,8 @@ Ye now understand when to use each workflow. Let's move to agents...
 ### 2. Agent Discovery
 
 Ahoy! Here be the crew of 35 specialized agents ready to help ye on yer journey!
+
+📖 **Complete agents documentation**: https://rysweet.github.io/amplihack/agents/
 
 **Core Agents** (6):
 - `amplihack:architect` - System design and problem decomposition
@@ -199,7 +203,9 @@ Then produces **SYNTHESIZED REPORT** with:
 
 ### 3. Skills Library
 
-Guide users through the 74 available skills:
+Guide users through the 74 available skills.
+
+📖 **Browse all skills**: https://rysweet.github.io/amplihack/skills/
 
 **Domain Analysts** (23): Expert perspectives (economist, historian, psychologist, etc.)
 **Workflow Skills** (11): Workflow execution knowledge
@@ -219,10 +225,18 @@ Ahoy! Let's learn to craft mighty prompts through PRACTICE, not just theory!
 4. **Chain-of-Thought**: Ask Claude to think step-by-step for complex tasks
 
 📚 **Learn More**:
+
+**Anthropic Documentation**:
 - Complete guide: https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering
 - Prompt library: https://docs.anthropic.com/en/docs/prompt-library
 - Chain-of-thought: https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/chain-of-thought
 - Give Claude space to think: https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/be-clear-and-direct
+
+**Amplihack Documentation**:
+- Documentation site: https://rysweet.github.io/amplihack/
+- Workflows guide: https://rysweet.github.io/amplihack/workflows/
+- Agents reference: https://rysweet.github.io/amplihack/agents/
+- Commands guide: https://rysweet.github.io/amplihack/commands/
 
 ---
 
