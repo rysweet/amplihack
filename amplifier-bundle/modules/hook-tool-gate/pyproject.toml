@@ -1,0 +1,22 @@
+[project]
+name = "amplifier-hook-tool-gate"
+version = "0.1.0"
+description = "Tool gate enforcement for workflow prerequisites"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "amplifier-hook-recipe-tracker",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.21.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["amplifier_hook_tool_gate"]
