@@ -1,7 +1,6 @@
 """Proxy lifecycle management."""
 
 import atexit
-import logging
 import os
 import re
 import signal
@@ -13,8 +12,10 @@ from typing import Any
 
 from .config import ProxyConfig
 from .env import ProxyEnvironment
+from .sanitizing_logger import get_sanitizing_logger
 
-logger = logging.getLogger(__name__)
+# Use sanitizing logger to prevent credential exposure (Issue #1997)
+logger = get_sanitizing_logger(__name__)
 
 
 class ProxyManager:

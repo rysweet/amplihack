@@ -9,7 +9,25 @@ includes:
   # 1. Amplifier CLI already loads foundation as the default bundle
   # 2. amplifier-bundle-recipes includes foundation transitively
   # Including it again causes a "circular dependency" warning
+  
+  # Core recipes bundle (includes foundation transitively)
   - bundle: git+https://github.com/microsoft/amplifier-bundle-recipes@main
+  
+  # Language Server Protocol (LSP) bundles
+  # Base LSP infrastructure (required by language-specific LSP bundles)
+  - bundle: git+https://github.com/microsoft/amplifier-bundle-lsp@main
+  
+  # Language-specific LSP integration (depends on lsp base)
+  - bundle: git+https://github.com/microsoft/amplifier-bundle-lsp-python@main
+  - bundle: git+https://github.com/microsoft/amplifier-bundle-lsp-typescript@main
+  
+  # Development tool bundles (provide language-specific tooling)
+  - bundle: git+https://github.com/microsoft/amplifier-bundle-python-dev@main
+  - bundle: git+https://github.com/microsoft/amplifier-bundle-ts-dev@main
+  
+  # Advanced workflow bundles
+  - bundle: git+https://github.com/microsoft/amplifier-bundle-shadow@main  # Shadow mode for observability
+  - bundle: git+https://github.com/microsoft/amplifier-bundle-issues@main  # GitHub issues integration
 
 # Configure tool-skills to find skills
 # The amplihack launcher copies skills to .claude/skills in cwd during setup
@@ -258,14 +276,23 @@ agents:
 
 # Amplifier recipes (converted from Claude Code workflows)
 recipes:
+  # Core workflows (3)
   qa-workflow: { path: recipes/qa-workflow.yaml }
+  investigation-workflow: { path: recipes/investigation-workflow.yaml }
+  default-workflow: { path: recipes/default-workflow.yaml }
+  
+  # Verification workflow (1)
+  verification-workflow: { path: recipes/verification-workflow.yaml }
+  
+  # Advanced workflows (4)
   cascade-workflow: { path: recipes/cascade-workflow.yaml }
   consensus-workflow: { path: recipes/consensus-workflow.yaml }
   debate-workflow: { path: recipes/debate-workflow.yaml }
-  default-workflow: { path: recipes/default-workflow.yaml }
-  investigation-workflow: { path: recipes/investigation-workflow.yaml }
   n-version-workflow: { path: recipes/n-version-workflow.yaml }
-  verification-workflow: { path: recipes/verification-workflow.yaml }
+  
+  # Autonomous workflows (2)
+  auto-workflow: { path: recipes/auto-workflow.yaml }
+  guide: { path: recipes/guide.yaml }
 
 context:
   include:

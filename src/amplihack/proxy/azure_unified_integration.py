@@ -14,7 +14,6 @@ Performance Optimizations:
 
 import hashlib
 import json
-import logging
 import ssl
 import time
 from functools import lru_cache
@@ -24,7 +23,10 @@ import aiohttp  # type: ignore[import-untyped]
 import certifi  # type: ignore[import-untyped]
 from litellm import Router  # type: ignore[import-untyped]
 
-logger = logging.getLogger(__name__)
+from .sanitizing_logger import get_sanitizing_logger
+
+# Use sanitizing logger to prevent credential exposure (Issue #1997)
+logger = get_sanitizing_logger(__name__)
 
 # Placeholder API key for LiteLLM model configurations
 # The actual key is injected at runtime from environment variables
