@@ -82,8 +82,12 @@ class NestingDetector:
         is_nested = active_session is not None
         parent_session_id = active_session.session_id if active_session else None
 
-        # Staging required when BOTH nested AND in source repo
-        requires_staging = is_nested and in_source_repo
+        # Check if auto-mode
+        is_auto_mode = "--auto" in argv
+
+        # Staging required when (nested OR in source repo) AND auto-mode
+        # Protects against both self-modification and nested corruption
+        requires_staging = (is_nested or in_source_repo) and is_auto_mode
 
         return NestingResult(
             is_nested=is_nested,
