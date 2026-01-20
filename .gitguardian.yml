@@ -1,0 +1,10 @@
+# GitGuardian Configuration
+# Excludes test files containing fake credentials for testing purposes
+
+version: 2
+
+paths-ignore:
+  - "tests/**/*" # All test files may contain fake credentials for testing
+  - "**/*test*.py" # Test modules
+  - "**/fixtures/**" # Test fixtures
+  - "**/examples/**" # Example code may contain demo credentials
