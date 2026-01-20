@@ -1,7 +1,6 @@
 # amplihack
 
-Development framework for Claude Code with specialized agents and automated
-workflows.
+Development framework for popular coding agent systems (Claude Code, Github Copilot CLI, Microsoft Amplifier, codex) that provides structured dev workflows, a package of useful skills and agents, and commands for getting the most out of agentic coding. 
 
 **📚 [View Full Documentation](https://rysweet.github.io/amplihack/)**
 
