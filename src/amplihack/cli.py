@@ -1,6 +1,7 @@
 """Enhanced CLI for amplihack with proxy and launcher support."""
 
 import argparse
+import logging
 import os
 import platform
 import sys
@@ -9,6 +10,7 @@ from pathlib import Path
 from . import copytree_manifest
 from .docker import DockerManager
 from .launcher import ClaudeLauncher
+from .launcher.session_tracker import SessionTracker
 from .proxy import ProxyConfig, ProxyManager
 from .utils import is_uvx_deployment
 
@@ -25,6 +27,78 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
     Args:
         args: Parsed command line arguments.
         claude_args: Additional arguments to forward to Claude.
+
+    Returns:
+        Exit code.
+    """
+    # Detect nesting BEFORE any .claude/ operations
+    from .launcher.nesting_detector import NestingDetector
+    from .launcher.session_tracker import SessionTracker
+    from .launcher.auto_stager import AutoStager
+
+    detector = NestingDetector()
+    nesting_result = detector.detect_nesting(Path.cwd(), sys.argv)
+
+    # Auto-stage if nested execution in source repo detected
+    original_cwd = None
+    if nesting_result.requires_staging:
+        print("\n🚨 SELF-MODIFICATION PROTECTION ACTIVATED")
+        print("   Running nested in amplihack source repository")
+        print("   Auto-staging .claude/ to temp directory for safety")
+
+        stager = AutoStager()
+        original_cwd = Path.cwd()
+        staging_result = stager.stage_for_nested_execution(
+            original_cwd,
+            f"nested-{os.getpid()}"
+        )
+
+        print(f"   📁 Staged to: {staging_result.temp_root}")
+        print("   Your original .claude/ files are protected")
+
+        # CRITICAL: Change to temp directory so all .claude/ operations happen there
+        os.chdir(staging_result.temp_root)
+        print(f"   📂 CWD changed to: {staging_result.temp_root}\n")
+
+    # Start session tracking
+    tracker = SessionTracker()
+    is_auto_mode = getattr(args, "auto", False)
+
+    session_id = tracker.start_session(
+        pid=os.getpid(),
+        launch_dir=str(Path.cwd()),
+        argv=sys.argv,
+        is_auto_mode=is_auto_mode,
+        is_nested=nesting_result.is_nested,
+        parent_session_id=nesting_result.parent_session_id,
+    )
+
+    # Wrap execution in try/finally to ensure session is marked complete/crashed
+    try:
+        result = _launch_command_impl(args, claude_args, session_id, tracker)
+        tracker.complete_session(session_id)
+        return result
+    except Exception as e:
+        tracker.crash_session(session_id)
+        raise
+    finally:
+        # Restore original CWD if we staged
+        if original_cwd is not None:
+            try:
+                os.chdir(original_cwd)
+            except Exception as e:
+                # Best effort - log error but don't fail on CWD restore
+                logging.debug(f"Failed to restore CWD to {original_cwd}: {e}")
+
+
+def _launch_command_impl(args: argparse.Namespace, claude_args: list[str] | None, session_id: str, tracker: SessionTracker) -> int:
+    """Internal implementation of launch_command with session tracking.
+
+    Args:
+        args: Parsed command line arguments.
+        claude_args: Additional arguments to forward to Claude.
+        session_id: Session ID from tracker
+        tracker: SessionTracker instance
 
     Returns:
         Exit code.
@@ -124,8 +198,13 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
     # Check if claude_args contains a prompt (-p) - if so, use non-interactive mode
     has_prompt = claude_args and ("-p" in claude_args)
     if has_prompt:
-        return launcher.launch()
-    return launcher.launch_interactive()
+        exit_code = launcher.launch()
+    else:
+        exit_code = launcher.launch_interactive()
+
+    # Mark session as complete
+    tracker.complete_session(session_id)
+    return exit_code
 
 
 def handle_auto_mode(sdk: str, args: argparse.Namespace, cmd_args: list[str] | None) -> int | None:
@@ -687,22 +766,54 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
-        # If in UVX mode, ensure we use --add-dir for the ORIGINAL directory
-        if is_uvx_deployment():
-            # Get the original directory (before we changed to temp)
-            original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
-            # Add --add-dir to claude_args if not already present
-            if claude_args and "--add-dir" not in claude_args:
-                claude_args = ["--add-dir", original_cwd] + claude_args
-            elif not claude_args:
-                claude_args = ["--add-dir", original_cwd]
+        # CRITICAL: Detect nesting BEFORE any .claude/ operations (including auto mode!)
+        from .launcher.nesting_detector import NestingDetector
+        from .launcher.auto_stager import AutoStager
 
-        # Handle auto mode
-        exit_code = handle_auto_mode("claude", args, claude_args)
-        if exit_code is not None:
-            return exit_code
+        detector = NestingDetector()
+        nesting_result = detector.detect_nesting(Path.cwd(), sys.argv)
 
-        return launch_command(args, claude_args)
+        # Auto-stage if nested/source repo detected
+        saved_cwd = None
+        if nesting_result.requires_staging:
+            print("\n🚨 SELF-MODIFICATION PROTECTION ACTIVATED")
+            print(f"   Reason: {'Nested execution' if nesting_result.is_nested else 'Running in amplihack source repo'}")
+            print("   Auto-staging .claude/ to temp directory for safety")
+
+            stager = AutoStager()
+            saved_cwd = Path.cwd()
+            staging_result = stager.stage_for_nested_execution(saved_cwd, f"protected-{os.getpid()}")
+
+            print(f"   📁 Staged to: {staging_result.temp_root}")
+            os.chdir(staging_result.temp_root)
+            print(f"   📂 CWD: {staging_result.temp_root}")
+            print("   Your original .claude/ files are PROTECTED\n")
+
+        try:
+            # If in UVX mode, ensure we use --add-dir for the ORIGINAL directory
+            if is_uvx_deployment():
+                # Get the original directory (before we changed to temp)
+                original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", saved_cwd or os.getcwd())
+                # Add --add-dir to claude_args if not already present
+                if claude_args and "--add-dir" not in claude_args:
+                    claude_args = ["--add-dir", str(original_cwd)] + claude_args
+                elif not claude_args:
+                    claude_args = ["--add-dir", str(original_cwd)]
+
+            # Handle auto mode
+            exit_code = handle_auto_mode("claude", args, claude_args)
+            if exit_code is not None:
+                return exit_code
+
+            return launch_command(args, claude_args)
+        finally:
+            # Restore CWD if we staged
+            if saved_cwd is not None:
+                try:
+                    os.chdir(saved_cwd)
+                except Exception as e:
+                    # Best effort - log error but don't fail on CWD restore
+                    logging.debug(f"Failed to restore CWD to {saved_cwd}: {e}")
 
     elif args.command == "claude":
         # Handle append mode FIRST (before any other initialization)
