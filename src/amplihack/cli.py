@@ -474,6 +474,26 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         help="Skip confirmation prompt (use with --no-dry-run)",
     )
 
+    # Workflow enforcement commands
+    workflow_parser = subparsers.add_parser("workflow", help="Workflow enforcement management")
+    workflow_subparsers = workflow_parser.add_subparsers(
+        dest="workflow_command", help="Workflow subcommands"
+    )
+
+    override_parser = workflow_subparsers.add_parser(
+        "override", help="Enable workflow enforcement override for emergency fixes"
+    )
+    override_parser.add_argument(
+        "--reason", required=True, help="Justification for override (minimum 10 characters)"
+    )
+    override_parser.add_argument(
+        "--duration", type=int, default=30, help="Duration in minutes (default: 30)"
+    )
+
+    workflow_subparsers.add_parser("check", help="Check if workflow override is active")
+
+    workflow_subparsers.add_parser("clear", help="Clear active workflow override")
+
     return parser
 
 
@@ -913,6 +933,19 @@ def main(argv: list[str] | None = None) -> int:
 
         create_parser().print_help()
         return 1
+
+    elif args.command == "workflow":
+        from .workflow.commands import WorkflowCommands
+
+        if args.workflow_command == "override":
+            return WorkflowCommands.override(args.reason, args.duration)
+        elif args.workflow_command == "check":
+            return WorkflowCommands.check()
+        elif args.workflow_command == "clear":
+            return WorkflowCommands.clear()
+        else:
+            create_parser().print_help()
+            return 1
 
     else:
         create_parser().print_help()

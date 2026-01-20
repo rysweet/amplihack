@@ -18,6 +18,30 @@ class PreToolUseHook(HookProcessor):
     def __init__(self):
         super().__init__("pre_tool_use")
         self.strategy = None
+        # Workflow enforcement components
+        self.tracker = None
+        self.gate = None
+        self._init_enforcement()
+
+    def _init_enforcement(self):
+        """Initialize workflow enforcement components."""
+        try:
+            # Try to import enforcement modules
+            sys.path.insert(
+                0, str(self.project_root / "amplifier-bundle" / "modules" / "hook-recipe-tracker")
+            )
+            sys.path.insert(
+                0, str(self.project_root / "amplifier-bundle" / "modules" / "hook-tool-gate")
+            )
+
+            from amplifier_hook_recipe_tracker import RecipeSessionTracker
+            from amplifier_hook_tool_gate import EnforcementLevel, ToolGate
+
+            self.tracker = RecipeSessionTracker()
+            self.gate = ToolGate(self.tracker, enforcement_level=EnforcementLevel.HARD)
+            self.log("Workflow enforcement initialized (HARD mode)")
+        except ImportError as e:
+            self.log(f"Workflow enforcement not available: {e}", "DEBUG")
 
     def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Process pre tool use event and block dangerous operations.
@@ -41,6 +65,43 @@ class PreToolUseHook(HookProcessor):
         tool_use = input_data.get("toolUse", {})
         tool_name = tool_use.get("name", "")
         tool_input = tool_use.get("input", {})
+
+        # Workflow enforcement gate
+        if self.gate:
+            decision = self.gate.check_tool_allowed(
+                tool_name, tool_input, context={"session_id": self.session_id}
+            )
+
+            if not decision.allowed:
+                self.log(f"WORKFLOW ENFORCEMENT: Blocked {tool_name}", "ERROR")
+                return {
+                    "block": True,
+                    "message": f"""⛔ WORKFLOW ENFORCEMENT: Operation Blocked
+
+This operation requires workflow execution.
+
+Reason: {decision.reason}
+
+🎯 Required Action:
+{decision.suggested_action}
+
+💡 Why This Matters:
+The default-workflow ensures:
+- Proper requirements clarification
+- Design documentation
+- Test coverage
+- Code review
+- Quality gates
+
+🔓 User Override Available:
+If this is truly a trivial change or emergency:
+  amplihack workflow override --reason "your justification"
+
+This protection ensures complete, quality implementations.""".strip(),
+                }
+
+            if decision.severity == "warning":
+                self.log(f"WORKFLOW ADVISORY: {decision.reason}", "WARNING")
 
         # Check for git commit --no-verify in Bash commands
         if tool_name == "Bash":
