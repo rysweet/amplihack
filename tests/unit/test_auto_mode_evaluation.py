@@ -549,3 +549,167 @@ class TestAutoModeLoopIntegration:
         should_continue = auto_mode._should_continue_loop(evaluation_result, Mock())
 
         assert should_continue is True  # Should continue working
+
+
+class TestEvaluationDecisionLogging:
+    """Test audit logging for evaluation decisions (Issue #1987)."""
+
+    @patch("amplihack.launcher.auto_mode.WorkSummaryGenerator")
+    @patch("amplihack.launcher.auto_mode.CompletionSignalDetector")
+    @patch("amplihack.launcher.auto_mode.CompletionVerifier")
+    def test_logs_evaluation_decision_details(
+        self, mock_verifier_class, mock_detector_class, mock_generator_class
+    ):
+        """Should log detailed evaluation decision including WHY decision was made."""
+        # Setup mocks
+        mock_generator = Mock()
+        mock_summary = WorkSummary(
+            todo_state=TodoState(total=5, completed=5, in_progress=0, pending=0),
+            git_state=GitState(
+                current_branch="feat/test",
+                has_uncommitted_changes=False,
+                commits_ahead=3,
+            ),
+            github_state=GitHubState(
+                pr_number=123, pr_state="OPEN", ci_status="SUCCESS", pr_mergeable=True
+            ),
+        )
+        mock_generator.generate.return_value = mock_summary
+        mock_generator_class.return_value = mock_generator
+
+        mock_detector = Mock()
+        mock_signals = CompletionSignals(
+            all_steps_complete=True,
+            pr_created=True,
+            ci_passing=True,
+            pr_mergeable=True,
+            has_commits=True,
+            no_uncommitted_changes=True,
+            completion_score=1.0,
+        )
+        mock_detector.detect.return_value = mock_signals
+        mock_detector_class.return_value = mock_detector
+
+        mock_verifier = Mock()
+        mock_verification = VerificationResult(
+            status=VerificationStatus.VERIFIED,
+            verified=True,
+            explanation="All signals confirm completion",
+            discrepancies=[],
+        )
+        mock_verifier.verify.return_value = mock_verification
+        mock_verifier_class.return_value = mock_verifier
+
+        auto_mode = AutoMode(task="Test task")
+        auto_mode.turn = 3  # Set turn number
+
+        # Capture log output
+        logged_messages = []
+        original_log = auto_mode.log
+        def capture_log(msg, level="INFO"):
+            logged_messages.append(msg)
+            original_log(msg, level=level)
+        auto_mode.log = capture_log
+
+        evaluation_result = "Auto-Mode Evaluation: COMPLETE\n\nAll tasks done."
+
+        should_continue = auto_mode._should_continue_loop(evaluation_result, Mock())
+
+        # Verify logging includes key details
+        log_output = "\n".join(logged_messages)
+
+        # Should log evaluation header
+        assert "[EVAL] Turn 3 Evaluation Decision" in log_output
+
+        # Should log work summary
+        assert "Work Summary:" in log_output
+        assert "Workflow: 5/5 steps" in log_output
+        assert "Git: feat/test, commits=3" in log_output
+        assert "GitHub: PR#123, CI=SUCCESS, mergeable=True" in log_output
+
+        # Should log completion signals
+        assert "Completion Signals:" in log_output
+        assert "pr_created: True" in log_output
+        assert "ci_passing: True" in log_output
+        assert "all_steps_complete: True" in log_output
+        assert "pr_mergeable: True" in log_output
+
+        # Should log score and verification
+        assert "Completion Score: 100.0%" in log_output or "Completion Score: 100%" in log_output
+        assert "Verification: verified" in log_output
+
+        # Should log final decision
+        assert "Decision: EXIT LOOP (task complete)" in log_output
+
+    @patch("amplihack.launcher.auto_mode.WorkSummaryGenerator")
+    @patch("amplihack.launcher.auto_mode.CompletionSignalDetector")
+    @patch("amplihack.launcher.auto_mode.CompletionVerifier")
+    def test_logs_continue_decision_with_reasons(
+        self, mock_verifier_class, mock_detector_class, mock_generator_class
+    ):
+        """Should log CONTINUE decision with reasons why."""
+        # Setup mocks for incomplete work
+        mock_generator = Mock()
+        mock_summary = WorkSummary(
+            todo_state=TodoState(total=5, completed=3, in_progress=1, pending=1),
+            git_state=GitState(
+                current_branch="feat/test",
+                has_uncommitted_changes=False,
+                commits_ahead=2,
+            ),
+            github_state=GitHubState(
+                pr_number=None, pr_state=None, ci_status=None, pr_mergeable=None
+            ),
+        )
+        mock_generator.generate.return_value = mock_summary
+        mock_generator_class.return_value = mock_generator
+
+        mock_detector = Mock()
+        mock_signals = CompletionSignals(
+            all_steps_complete=False,
+            pr_created=False,
+            ci_passing=False,
+            pr_mergeable=False,
+            has_commits=True,
+            no_uncommitted_changes=True,
+            completion_score=0.5,
+        )
+        mock_detector.detect.return_value = mock_signals
+        mock_detector_class.return_value = mock_detector
+
+        mock_verifier = Mock()
+        mock_verification = VerificationResult(
+            status=VerificationStatus.DISPUTED,
+            verified=False,
+            explanation="Work not complete, PR not created",
+            discrepancies=["PR not created", "CI not passing"],
+        )
+        mock_verifier.verify.return_value = mock_verification
+        mock_verifier_class.return_value = mock_verifier
+
+        auto_mode = AutoMode(task="Test task")
+        auto_mode.turn = 2
+
+        # Capture log output
+        logged_messages = []
+        def capture_log(msg, level="INFO"):
+            logged_messages.append(msg)
+        auto_mode.log = capture_log
+
+        evaluation_result = "EVALUATION: COMPLETE\n\nDone!"
+
+        should_continue = auto_mode._should_continue_loop(evaluation_result, Mock())
+
+        log_output = "\n".join(logged_messages)
+
+        # Should show incomplete work
+        assert "Workflow: 3/5 steps" in log_output
+        assert "pr_created: False" in log_output
+        assert "Completion Score: 50.0%" in log_output or "Completion Score: 50%" in log_output
+
+        # Should show decision to continue
+        assert "Decision: CONTINUE (work remaining)" in log_output
+
+        # Should show disputed claim
+        assert "Completion claim disputed" in log_output
+        assert should_continue is True

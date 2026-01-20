@@ -561,17 +561,51 @@ Current Turn: {self.turn}/{self.max_turns}"""
             # Verify completion claim
             verification = self.completion_verifier.verify(eval_result, signals)
 
+            # Log evaluation decision details
+            self.log("=" * 70, level="INFO")
+            self.log(f"[EVAL] Turn {self.turn} Evaluation Decision", level="INFO")
+            self.log("-" * 70, level="INFO")
+
+            # Work summary
+            self.log("Work Summary:", level="INFO")
+            self.log(f"  Workflow: {summary.todo_state.completed}/{summary.todo_state.total} steps", level="INFO")
+            self.log(f"  Git: {summary.git_state.current_branch}, commits={summary.git_state.commits_ahead}", level="INFO")
+            if summary.github_state.pr_number:
+                self.log(f"  GitHub: PR#{summary.github_state.pr_number}, CI={summary.github_state.ci_status}, mergeable={summary.github_state.pr_mergeable}", level="INFO")
+
+            # Completion signals
+            self.log("", level="INFO")
+            self.log("Completion Signals:", level="INFO")
+            self.log(f"  ✓/✗ pr_created: {signals.pr_created}", level="INFO")
+            self.log(f"  ✓/✗ ci_passing: {signals.ci_passing}", level="INFO")
+            self.log(f"  ✓/✗ all_steps_complete: {signals.all_steps_complete}", level="INFO")
+            self.log(f"  ✓/✗ pr_mergeable: {signals.pr_mergeable}", level="INFO")
+
+            # Score and decision
+            self.log("", level="INFO")
+            self.log(f"Completion Score: {signals.completion_score:.1%} (threshold: 80%)", level="INFO")
+            self.log(f"Verification: {verification.status.value}", level="INFO")
+
+            # Determine should_continue before logging final decision
+            should_continue = True
             if verification.verified:
                 # Verification passed - check what was claimed
                 eval_lower = eval_result.lower()
                 if "auto-mode evaluation: complete" in eval_lower:
-                    self.log("✓ Completion verified by concrete signals")
-                    return False  # Exit loop - task complete
+                    should_continue = False  # Exit loop - task complete
                 else:
                     # Verified incomplete status - continue working
-                    return True
+                    should_continue = True
+            else:
+                # Disputed completion - continue
+                should_continue = True
 
-            # Check for disputed completion (agent claims done but signals disagree)
+            # Final decision
+            decision = "EXIT LOOP (task complete)" if not should_continue else "CONTINUE (work remaining)"
+            self.log(f"Decision: {decision}", level="INFO")
+            self.log("=" * 70, level="INFO")
+
+            # Additional legacy logging for disputed completion
             if not verification.verified:
                 self.log(f"⚠️  Completion claim disputed: {verification.explanation}")
                 if verification.discrepancies:
@@ -579,11 +613,10 @@ Current Turn: {self.turn}/{self.max_turns}"""
                     for discrepancy in verification.discrepancies[:3]:  # Show top 3
                         self.log(f"  - {discrepancy}")
                 self.log("Continuing loop to complete remaining work...")
-                return True  # Continue loop
+            elif not should_continue:
+                self.log("✓ Completion verified by concrete signals")
 
-            # Default behavior - check evaluation text
-            eval_lower = eval_result.lower()
-            return "auto-mode evaluation: complete" not in eval_lower
+            return should_continue
 
         except Exception as e:
             self.log(f"Warning: Verification failed, falling back to text parsing: {e}")
