@@ -82,6 +82,7 @@ esac
 
 # Git info
 git_info=""
+repo_uri_str=""
 if git rev-parse --is-inside-work-tree &>/dev/null; then
     branch=$(git symbolic-ref --quiet --short HEAD 2>/dev/null || git rev-parse --short HEAD 2>/dev/null)
     if [ -n "$branch" ]; then
@@ -100,6 +101,14 @@ if git rev-parse --is-inside-work-tree &>/dev/null; then
             git_info=" \033[${git_color}m($branch$dirty_marker → $remote)\033[0m"
         else
             git_info=" \033[${git_color}m($branch$dirty_marker)\033[0m"
+        fi
+
+        # Get repository URI (shortened format)
+        repo_url=$(git remote get-url origin 2>/dev/null)
+        if [ -n "$repo_url" ]; then
+            # Remove protocol prefix and .git suffix for cleaner display
+            repo_short=$(echo "$repo_url" | sed -e 's|^https://||' -e 's|^http://||' -e 's|^git@||' -e 's|:|/|' -e 's|\.git$||')
+            repo_uri_str=" \033[36m[$repo_short]\033[0m"
         fi
     fi
 fi

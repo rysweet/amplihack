@@ -4,13 +4,7 @@ Tests for XPIA Defender Core Implementation
 Comprehensive test suite for XPIA defense validation logic.
 """
 
-import sys
-
 import pytest
-
-sys.path.append(
-    "/Users/ryan/src/hackathon/MicrosoftHackathon2025-AgenticCoding-xpia-133/src"  # pragma: allowlist secret
-)
 
 from amplihack.security.xpia_defender import WebFetchXPIADefender, XPIADefender
 from amplihack.security.xpia_defense_interface import (

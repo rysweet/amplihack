@@ -227,6 +227,25 @@ class XPIADefender(XPIADefenseInterface):
                     )
                 )
 
+        # Check for privilege escalation attempts
+        privilege_escalation_patterns = [
+            r"\bsudo\s+su\b",
+            r"\bchmod\s+777\s+/etc",
+            r"\busermod\s+-[aG]+\s+sudo",
+            r"\bsu\s+-\b",
+        ]
+
+        for pattern in privilege_escalation_patterns:
+            if re.search(pattern, full_command):
+                threats.append(
+                    ThreatDetection(
+                        threat_type=ThreatType.PRIVILEGE_ESCALATION,
+                        severity=RiskLevel.HIGH,
+                        description="Privilege escalation attempt detected",
+                        mitigation="Block and review command",
+                    )
+                )
+
         # Check for command injection patterns
         injection_patterns = [
             r";\s*rm",
@@ -563,6 +582,7 @@ class WebFetchXPIADefender(XPIADefender):
         try:
             parsed = urlparse(url)
             domain = parsed.netloc.lower()
+            path = parsed.path.lower()
 
             # Check blacklist
             if domain in self.blacklist:
@@ -574,6 +594,27 @@ class WebFetchXPIADefender(XPIADefender):
                         mitigation="Block request immediately",
                     )
                 )
+
+            # Check for malicious keywords in URL path
+            malicious_keywords = [
+                "malware",
+                "payload",
+                "exploit",
+                "backdoor",
+                "trojan",
+                "virus",
+                "ransomware",
+            ]
+            for keyword in malicious_keywords:
+                if keyword in path:
+                    threats.append(
+                        ThreatDetection(
+                            threat_type=ThreatType.MALICIOUS_CODE,
+                            severity=RiskLevel.CRITICAL,
+                            description=f"URL path contains malicious keyword: {keyword}",
+                            mitigation="Block request immediately",
+                        )
+                    )
 
             # Check suspicious domain patterns
             if URLPatterns.is_suspicious_domain(domain):
