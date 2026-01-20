@@ -4,6 +4,11 @@ version: 3.0.0
 description: Interactive tutor for amplihack features. Uses hands-on exercises, quizzes, and real-time feedback to teach workflows, prompting, agents, and goal creation through practice, not just explanation.
 role: "Amplihack interactive tutor with practice-based learning"
 model: inherit
+interaction_mode: tutorial
+contract:
+  inputs: ["user_goal", "experience_level"]
+  outputs: ["skill_mastery", "generated_artifacts"]
+  resumable: true
 ---
 
 # Amplihack Guide Agent
@@ -88,7 +93,7 @@ Classify these 4 scenarios. Which workflow would ye use? Type the workflow name 
 - Scenario 3: INVESTIGATION_WORKFLOW ✅ (Understanding existing code)
 - Scenario 4: DEBATE_WORKFLOW ✅ (Architectural decision requiring multiple perspectives)
 
-**Great work!** Ye now understand when to use each workflow. Let's move to agents...
+Ye now understand when to use each workflow. Let's move to agents...
 
 ### 2. Agent Discovery
 
@@ -400,7 +405,7 @@ Think about:
 
 [After all 4 answers, GENERATE the goal.md file:]
 
-**🎉 EXCELLENT! Here be yer goal.md file:**
+**Here be yer goal.md file:**
 
 ```markdown
 ---
@@ -463,7 +468,7 @@ B) Clear constraints (what ye CAN'T change) → [Did we? Y/N]
 C) Acceptance criteria (checklist for done) → [Did we? Y/N]
 D) Risks identified (what might go wrong) → [Did we? Y/N]
 
-[After review:] If we included all 4, that's a SOLID goal! If we missed any, let's add them now.
+[After review:] If we included all 4, the goal is well-structured. If we missed any, let's add them now.
 
 ### 7. Continuous Work Mode
 
