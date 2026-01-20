@@ -10,12 +10,13 @@ Detailed documentation for executing comprehensive codebase quality audits.
 2. [Phase 1: Project Familiarization](#phase-1-project-familiarization)
 3. [Phase 2: Parallel Quality Audit](#phase-2-parallel-quality-audit)
 4. [Phase 3: Issue Assembly](#phase-3-issue-assembly)
-5. [Phase 4: Parallel PR Generation](#phase-4-parallel-pr-generation)
-6. [Phase 5: PM Review](#phase-5-pm-review)
-7. [Phase 6: Master Report](#phase-6-master-report)
-8. [Agent Mappings](#agent-mappings)
-9. [Codebase Division Strategies](#codebase-division-strategies)
-10. [Issue & PR Templates](#issue--pr-templates)
+5. [Phase 3.5: Post-Audit Validation](#phase-35-post-audit-validation)
+6. [Phase 4: Parallel PR Generation](#phase-4-parallel-pr-generation)
+7. [Phase 5: PM Review](#phase-5-pm-review)
+8. [Phase 6: Master Report](#phase-6-master-report)
+9. [Agent Mappings](#agent-mappings)
+10. [Codebase Division Strategies](#codebase-division-strategies)
+11. [Issue & PR Templates](#issue--pr-templates)
 
 ---
 
@@ -40,6 +41,9 @@ Detailed documentation for executing comprehensive codebase quality audits.
 ├─────────────────────────────────────────────────────────────────┤
 │  Phase 3: Issue Assembly (Sequential)                           │
 │    └── findings → deduplicate → create GitHub issues            │
+├─────────────────────────────────────────────────────────────────┤
+│  Phase 3.5: Post-Audit Validation (Sequential) [NEW]            │
+│    └── scan PRs → score confidence → auto-close/tag issues      │
 ├─────────────────────────────────────────────────────────────────┤
 │  Phase 4: Parallel PR Generation                                │
 │    ├── Issue #1 → worktree → DEFAULT_WORKFLOW → PR #1           │
@@ -222,6 +226,314 @@ issue_map = {
     # ...
 }
 ```
+
+---
+
+## Phase 3.5: Post-Audit Validation
+
+**Objective**: Detect and close child issues already fixed in recent PRs to prevent false positives
+
+### Overview
+
+After creating child issues in Phase 3, Phase 3.5 scans merged PRs from the last 30 days (configurable) that reference the parent issue. It analyzes each PR's changes against child issues using confidence scoring, then automatically closes high-confidence matches or tags medium-confidence matches for verification.
+
+**Why This Phase Exists**:
+
+- Prevents false positive child issues (target: <5% false positive rate)
+- Detects PRs that fixed problems but only referenced parent issue
+- Reduces duplicate work for developers
+- Maintains accurate issue tracking
+
+**Performance**: Runs in <2 minutes for typical audits (10 issues, 5 PRs scanned)
+
+### Step 3.5.1: PR Discovery
+
+Scan for merged PRs referencing the parent audit issue:
+
+```bash
+# Find PRs that mention the audit report issue
+gh pr list --state merged --search "audit in:title,body" --json number,title,files,body --limit 50
+
+# Filter to last N days (default: 30)
+CUTOFF_DATE=$(date -d '30 days ago' +%Y-%m-%d)
+
+# Get PRs with file changes and descriptions
+for pr_number in "${pr_numbers[@]}"; do
+    gh pr view "$pr_number" --json files,body,createdAt
+done
+```
+
+**Discovery Criteria**:
+
+- PR state: merged
+- PR age: within last 30 days (configurable via `AUDIT_PR_SCAN_DAYS`)
+- PR mentions: references parent audit issue in title or body
+- PR files: has file changes available
+
+### Step 3.5.2: Confidence Scoring
+
+Match each child issue against PR changes using a multi-factor confidence algorithm:
+
+```python
+def calculate_confidence_score(issue: dict, pr: dict) -> float:
+    """
+    Calculate confidence that PR fixed this issue.
+
+    Returns: 0.0-100.0 (percentage confidence)
+    """
+    score = 0.0
+    max_score = 100.0
+
+    # Factor 1: File path match (40 points)
+    issue_files = set(issue.get("files", []))
+    pr_files = set(pr.get("changed_files", []))
+
+    if issue_files & pr_files:  # Intersection
+        file_match_ratio = len(issue_files & pr_files) / len(issue_files)
+        score += 40.0 * file_match_ratio
+
+    # Factor 2: Keyword match (30 points)
+    issue_keywords = set(issue.get("keywords", []))
+    pr_body = pr.get("body", "").lower()
+    pr_title = pr.get("title", "").lower()
+    pr_text = f"{pr_title} {pr_body}"
+
+    matched_keywords = sum(1 for kw in issue_keywords if kw.lower() in pr_text)
+    if issue_keywords:
+        keyword_ratio = matched_keywords / len(issue_keywords)
+        score += 30.0 * keyword_ratio
+
+    # Factor 3: Issue reference (20 points)
+    issue_number = issue.get("number")
+    if f"#{issue_number}" in pr_text or f"issue {issue_number}" in pr_text.lower():
+        score += 20.0
+
+    # Factor 4: Category match (10 points)
+    issue_category = issue.get("category", "").lower()
+    if issue_category and issue_category in pr_text:
+        score += 10.0
+
+    return min(score, max_score)
+```
+
+**Confidence Thresholds**:
+
+- **≥90%**: High confidence - auto-close issue
+- **70-89%**: Medium confidence - tag "needs-verification"
+- **<70%**: Low confidence - no action
+
+### Step 3.5.3: Issue State Management
+
+Apply three-tier action system based on confidence scores:
+
+```bash
+# High confidence (≥90%): Auto-close
+if (( $(echo "$confidence >= 90.0" | bc -l) )); then
+    gh issue close "$issue_number" --comment "$(cat <<EOF
+Automatically closed - detected as fixed in PR #${pr_number}
+
+**Confidence Score**: ${confidence}%
+
+**Matching Factors**:
+- File match: ${file_match}
+- Keyword match: ${keyword_match}
+- Direct reference: ${direct_ref}
+
+**PR Summary**: ${pr_title}
+
+If this closure is incorrect, please reopen and add the \`false-positive-closure\` label.
+EOF
+)"
+
+    # Add cross-reference labels
+    gh issue edit "$issue_number" --add-label "auto-closed,fixed-in-pr-${pr_number}"
+fi
+
+# Medium confidence (70-89%): Tag for verification
+if (( $(echo "$confidence >= 70.0 && $confidence < 90.0" | bc -l) )); then
+    gh issue comment "$issue_number" --body "$(cat <<EOF
+⚠️ **Verification Needed**
+
+This issue may have been fixed in PR #${pr_number}
+
+**Confidence Score**: ${confidence}%
+
+**Matching Factors**:
+- File match: ${file_match}
+- Keyword match: ${keyword_match}
+
+**Action Required**: Please review PR #${pr_number} and:
+- If fixed: Close this issue and reference the PR
+- If not fixed: Remove the \`needs-verification\` label and proceed with implementation
+
+EOF
+)"
+
+    gh issue edit "$issue_number" --add-label "needs-verification,possibly-fixed-pr-${pr_number}"
+fi
+
+# Low confidence (<70%): No action, issue remains open
+```
+
+**State Transitions**:
+
+```
+Child Issue Created (Phase 3)
+    ↓
+Confidence Scoring (Phase 3.5)
+    ↓
+    ├─ ≥90% → Auto-closed with comment
+    ├─ 70-89% → Tagged "needs-verification"
+    └─ <70% → Remains open
+```
+
+### Step 3.5.4: Bidirectional Cross-Referencing
+
+Create bidirectional links between issues and PRs for future prevention:
+
+**In Child Issues** (via template updates):
+
+````markdown
+## Cross-Reference Instructions
+
+**To prevent future false positives**, when fixing this issue:
+
+1. Reference this specific issue number in your PR: `Fixes #${issue_number}`
+2. Use the unique ID in commit messages: `audit-${category}-${key_term}`
+3. Tag PR with: `audit-fix,${category}`
+
+**Unique ID**: `audit-${category}-${key_term}`
+**Keywords**: `${keyword_list}`
+**Files**: `${file_list}`
+````
+
+**In PR Comments** (auto-added by Phase 3.5):
+
+```markdown
+## Audit Cross-Reference
+
+This PR may have addressed quality audit findings:
+
+- Issue #123 (90% confidence) - [auto-closed]
+- Issue #124 (75% confidence) - [needs verification]
+
+**For future reference**: Use unique IDs in commit messages to improve matching accuracy.
+```
+
+### Step 3.5.5: Validation Reporting
+
+Generate summary report of validation results:
+
+```markdown
+# Phase 3.5: Post-Audit Validation Report
+
+**Scan Window**: Last 30 days
+**PRs Scanned**: 5 merged PRs
+**Child Issues**: 10 created
+
+## Validation Results
+
+| Issue | Confidence | Action         | PR     | Reason                    |
+| ----- | ---------- | -------------- | ------ | ------------------------- |
+| #101  | 95%        | Auto-closed    | #201   | File + keyword + ref      |
+| #102  | 92%        | Auto-closed    | #202   | File + keyword match      |
+| #103  | 91%        | Auto-closed    | #203   | File + ref + category     |
+| #104  | 78%        | Needs-verify   | #204   | File match only           |
+| #105  | 45%        | Remains open   | -      | Low confidence            |
+| #106  | 12%        | Remains open   | -      | No match                  |
+| #107  | 0%         | Remains open   | -      | No PR found               |
+| #108  | 0%         | Remains open   | -      | No PR found               |
+| #109  | 0%         | Remains open   | -      | No PR found               |
+| #110  | 0%         | Remains open   | -      | No PR found               |
+
+## Summary
+
+- **Auto-closed**: 3 issues (30%)
+- **Needs verification**: 1 issue (10%)
+- **Remaining open**: 6 issues (60%)
+- **False positive rate**: <5% (target met)
+
+## Next Steps
+
+1. Review "needs-verification" issues manually
+2. Proceed to Phase 4 with 6 remaining open issues
+3. Generate PRs only for confirmed open issues
+```
+
+### Step 3.5.6: Transition to Phase 4
+
+Prepare for PR generation with validated issue list:
+
+```python
+# Filter to only open issues after validation
+validated_open_issues = [
+    issue for issue in child_issues
+    if issue["state"] == "open" and "auto-closed" not in issue["labels"]
+]
+
+# Pass to Phase 4
+print(f"Proceeding to Phase 4 with {len(validated_open_issues)} confirmed issues")
+```
+
+**Transition Criteria**:
+
+- Validation report generated
+- Auto-closed issues confirmed
+- Needs-verification issues tagged
+- Open issue list updated
+- Ready for worktree creation (Phase 4)
+
+### Configuration Options
+
+Control Phase 3.5 behavior via environment variables:
+
+```bash
+# Days to scan for recent PRs (default: 30)
+export AUDIT_PR_SCAN_DAYS=30
+
+# Confidence threshold for auto-close (default: 90.0)
+export AUDIT_AUTO_CLOSE_THRESHOLD=90.0
+
+# Confidence threshold for tagging (default: 70.0)
+export AUDIT_TAG_THRESHOLD=70.0
+
+# Enable/disable Phase 3.5 (default: true)
+export AUDIT_ENABLE_VALIDATION=true
+```
+
+**Recommended Settings**:
+
+- **Conservative**: `AUTO_CLOSE_THRESHOLD=95.0` (fewer auto-closures, more verification)
+- **Balanced**: `AUTO_CLOSE_THRESHOLD=90.0` (default, tested threshold)
+- **Aggressive**: `AUTO_CLOSE_THRESHOLD=85.0` (more auto-closures, review verification tags)
+
+### Error Handling
+
+Phase 3.5 uses graceful degradation:
+
+```python
+try:
+    # Attempt PR discovery
+    merged_prs = scan_merged_prs(parent_issue, days=30)
+except GitHubAPIError as e:
+    print(f"Warning: Could not scan PRs ({e}). Skipping Phase 3.5.")
+    print("All issues will proceed to Phase 4.")
+    return child_issues  # Continue without validation
+
+try:
+    # Attempt confidence scoring
+    for issue in child_issues:
+        confidence = calculate_confidence_score(issue, merged_prs)
+except Exception as e:
+    print(f"Warning: Confidence scoring failed ({e}). Using conservative approach.")
+    # Proceed with all issues open (no auto-closures)
+```
+
+**Failure Modes**:
+
+- **GitHub API unavailable**: Skip Phase 3.5, proceed to Phase 4 with all issues
+- **Confidence scoring error**: Conservative approach (no auto-closures)
+- **Issue update failure**: Log error, continue with remaining issues
 
 ---
 
@@ -495,6 +807,7 @@ divisions = get_modules_by_complexity(threshold=10)
 **Severity**: {critical|high|medium|low|info}
 **Category**: {security|architecture|performance|quality|style}
 **Location**: `{file}:{start_line}-{end_line}`
+**Unique ID**: `audit-{category}-{key-term}`
 
 ## Problem
 
@@ -510,7 +823,6 @@ divisions = get_modules_by_complexity(threshold=10)
 ```{language}
 {code snippet showing the problem}
 ```
-````
 
 ## Recommended Fix
 
@@ -529,6 +841,20 @@ divisions = get_modules_by_complexity(threshold=10)
 | reviewer | {notes} |
 | security | {notes} |
 
+## Metadata (for Phase 3.5)
+
+**Keywords**: `{comma-separated list of key terms}`
+**Files**: `{comma-separated list of affected files}`
+
+## Cross-Reference Instructions
+
+**To prevent future false positives**, when fixing this issue:
+
+1. Reference this specific issue number in your PR: `Fixes #{issue_number}`
+2. Use the unique ID in commit messages: `audit-{category}-{key-term}`
+3. Tag PR with: `audit-fix,{category}`
+
+This helps Phase 3.5 auto-detect fixes in future audits.
 ````
 
 ### PR Template

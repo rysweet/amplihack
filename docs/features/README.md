@@ -35,6 +35,10 @@ Intelligent guidance system that prevents common mistakes and ensures work compl
 
 Additional amplihack capabilities:
 
+- [LSP Auto-Configuration](lsp-auto-configuration.md) - Zero-configuration Language Server Protocol setup
+  - **Automatic**: Configures LSP when you run `amplihack claude`
+  - **Multi-Language**: Supports 16 programming languages
+  - **Complete Setup**: System binaries, plugins, and project configuration
 - [Smart Memory Management](smart-memory-management.md) - Automatic Node.js memory optimization fer Claude Code launch
 - [Claude.md Preservation](claude-md-preservation.md) - Preserve custom instructions during updates
 - [Neo4j Session Cleanup](neo4j-session-cleanup.md) - Automatic resource management for memory system

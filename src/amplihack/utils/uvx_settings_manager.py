@@ -58,14 +58,31 @@ class UVXSettingsManager:
             True if settings were created successfully, False otherwise
         """
         try:
-            # Backup existing settings if requested and file exists
+            # Preserve MCP-related settings from existing settings if present
+            existing_mcp_servers = None
+            existing_mcp_enabled = None
             if preserve_existing and target_path.exists():
                 backup_path = target_path.with_suffix(".json.backup.uvx")
                 shutil.copy2(target_path, backup_path)
 
+                # Extract MCP settings to preserve
+                try:
+                    with open(target_path, encoding="utf-8") as f:
+                        existing = json.load(f)
+                        existing_mcp_servers = existing.get("mcpServers")
+                        existing_mcp_enabled = existing.get("enableAllProjectMcpServers")
+                except (OSError, json.JSONDecodeError):
+                    pass
+
             # Load the UVX template
             with open(self._template_path, encoding="utf-8") as f:
                 uvx_template = json.load(f)
+
+            # Restore preserved MCP settings
+            if existing_mcp_servers:
+                uvx_template["mcpServers"] = existing_mcp_servers
+            if existing_mcp_enabled is not None:
+                uvx_template["enableAllProjectMcpServers"] = existing_mcp_enabled
 
             # Write the UVX-optimized settings
             target_path.parent.mkdir(parents=True, exist_ok=True)

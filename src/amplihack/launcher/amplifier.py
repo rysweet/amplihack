@@ -10,8 +10,42 @@ import sys
 from pathlib import Path
 
 
+def get_uv_tool_bin_dir() -> Path | None:
+    """Get the uv tool bin directory."""
+    # Try common locations
+    candidates = [
+        Path.home() / ".local" / "bin",  # Linux/macOS default
+        Path.home() / ".cargo" / "bin",  # Alternative location
+    ]
+    
+    # Also check UV_TOOL_BIN_DIR environment variable
+    if env_dir := os.environ.get("UV_TOOL_BIN_DIR"):
+        candidates.insert(0, Path(env_dir))
+    
+    for candidate in candidates:
+        if candidate.exists() and (candidate / "amplifier").exists():
+            return candidate
+    
+    # Return first candidate even if amplifier not there yet (for post-install)
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    
+    return None
+
+
+def ensure_uv_bin_in_path() -> None:
+    """Ensure uv tool bin directory is in PATH for current process."""
+    bin_dir = get_uv_tool_bin_dir()
+    if bin_dir and str(bin_dir) not in os.environ.get("PATH", ""):
+        os.environ["PATH"] = f"{bin_dir}:{os.environ.get('PATH', '')}"
+
+
 def check_amplifier() -> bool:
     """Check if Amplifier CLI is installed."""
+    # Ensure uv bin dir is in PATH
+    ensure_uv_bin_in_path()
+    
     try:
         result = subprocess.run(
             ["amplifier", "--version"], capture_output=True, timeout=5, check=False

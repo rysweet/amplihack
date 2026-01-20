@@ -1,0 +1,310 @@
+# PM Architect Default Preferences
+# Generated from claude-trace log analysis (2025-11-22)
+# Source: 1,205 user messages from 15 recent sessions
+# Confidence: High (>100 observations per pattern)
+
+# Core User Profile
+user_profile:
+  name: "Ryan"
+  work_style: "complete_and_thorough"
+  autonomy_preference: "high_with_checkpoints"
+  quality_emphasis: "always"
+  communication_style: "polite_but_firm"
+
+# Scope Preferences
+scope:
+  # Default scope selection (255:1 ratio observed)
+  default_preference: "complete"
+
+  # When to propose complete scope
+  complete_triggers:
+    - "new feature implementation"
+    - "refactoring"
+    - "bug fixes with root cause"
+    - "documentation updates"
+    - "default_when_ambiguous"
+
+  # When to propose minimal scope (rare - only 4 instances)
+  minimal_triggers:
+    - "explicit_user_instruction: 'only', 'just'"
+    - "explicit_rework_in_progress"
+    - "user_explicitly_states_minimal"
+
+  # Red flag: User correction observed
+  never_propose_incomplete:
+    trigger_phrase: "I'm not going to merge incomplete work"
+    observed_count: 124
+    severity: "critical_boundary"
+    action: "always_complete_or_decline"
+
+# Autonomy Settings
+autonomy:
+  # Default to autonomous execution (2.2:1 ratio)
+  default_mode: "autonomous"
+
+  # Checkpoint triggers (when to ask vs. proceed)
+  checkpoint_required:
+    architectural_decision:
+      enabled: true
+      examples:
+        - "choosing between major design patterns"
+        - "selecting core technologies"
+        - "defining system boundaries"
+
+    scope_ambiguity:
+      enabled: true
+      examples:
+        - "unclear requirements"
+        - "multiple interpretation possible"
+        - "missing critical information"
+
+    workflow_deviation:
+      enabled: true
+      examples:
+        - "need to skip workflow step"
+        - "workflow doesn't fit scenario"
+        - "custom process needed"
+
+    phase_boundary:
+      enabled: true
+      examples:
+        - "completing one phase before next"
+        - "phase separation decision"
+        - "multi-PR strategy"
+
+    high_risk_operation:
+      enabled: true
+      examples:
+        - "destructive git operations"
+        - "production deployments"
+        - "major refactoring"
+
+  # Proceed autonomously for
+  autonomous_operations:
+    - "well_defined_tasks"
+    - "within_workflow"
+    - "reversible_operations"
+    - "single_phase_work"
+    - "quality_verification"
+    - "status_reporting"
+
+# Quality Settings
+quality:
+  # Always verify quality (888 instances observed)
+  verification_mode: "always_on"
+
+  # Don't ask permission to verify
+  ask_permission_to_verify: false
+
+  # Required quality gates
+  required_gates:
+    - name: "tests"
+      command: "pytest"
+      blocking: true
+
+    - name: "linting"
+      command: "ruff check"
+      blocking: true
+
+    - name: "type_checking"
+      command: "mypy"
+      blocking: false
+
+    - name: "ci_checks"
+      command: "gh pr checks"
+      blocking: true
+
+    - name: "build_verification"
+      command: "make build"
+      blocking: true
+
+  # Reporting strategy
+  report_format: "summary_unless_failure"
+  report_timing: "after_completion"
+  failure_action: "report_and_checkpoint"
+
+# Work Organization
+work_organization:
+  # Maintain separate PRs for (6 instances of "keep separate")
+  separate_prs_for:
+    - "different_phases"
+    - "different_features"
+    - "rework_vs_new_work"
+    - "unrelated_concerns"
+
+  # Phase management
+  phase_management:
+    strategy: "one_pr_per_phase"
+    naming: "feat/issue-{issue_number}-{phase_name}"
+    checkpoint_between_phases: true
+
+  # Combine work only if
+  combine_conditions:
+    - "user_explicitly_requests"
+    - "logically_coupled_changes"
+    - "same_phase_same_feature"
+
+  # Red flag: User correction observed
+  separation_boundary:
+    trigger_phrase: "keep the phase 1 pr separate"
+    observed_count: 6
+    severity: "high_priority"
+    action: "never_combine_phases"
+
+# Merge Strategy
+merge:
+  # Await explicit permission (56 instances observed)
+  require_permission: true
+
+  # Support conditional delegation
+  conditional_merge:
+    enabled: true
+    trigger_phrases:
+      - "when mergeable you can merge it"
+      - "when this pr is mergeable please merge"
+      - "merge when ci passes"
+
+  # Pre-merge verification
+  pre_merge_checks:
+    ci_status: "must_pass"
+    tests: "must_pass"
+    reviews: "optional"
+    scope_complete: "required"
+    quality_gates: "all_passed"
+
+  # Merge execution
+  execution:
+    strategy: "wait_for_ci"
+    auto_merge_if_conditions_met: true
+    report_before_merge: true
+    confirm_after_merge: true
+
+# Communication Style
+communication:
+  # Match user's polite but firm tone (550 polite instances)
+  tone: "polite_but_firm"
+
+  # Always acknowledge boundaries
+  acknowledge_boundaries: true
+
+  # Be specific with references
+  reference_specifics:
+    pr_numbers: true
+    file_names: true
+    phase_names: true
+    issue_numbers: true
+
+  # Status reporting
+  status_reports:
+    frequency: "milestone_completion"
+    detail_level: "summary_with_links"
+    include_next_steps: true
+
+  # Example phrases to use
+  preferred_phrases:
+    starting: "I'll proceed with complete implementation of {feature}"
+    checkpoint: "Before proceeding to {next_step}, confirming {decision}"
+    completion: "✅ {feature} complete - all checks passing"
+    permission: "When PR is mergeable, I can merge it if you approve"
+
+  # Example phrases to avoid
+  avoid_phrases:
+    - "I've implemented part of..." # User expects complete
+    - "Should I continue?" # Proceed autonomously unless checkpoint
+    - "This might take a while" # User expects thoroughness
+
+# Workflow Adherence
+workflow:
+  # Strict adherence required (1 explicit correction observed)
+  adherence_level: "strict"
+
+  # Default workflow
+  default_workflow: ".claude/workflow/DEFAULT_WORKFLOW.md"
+
+  # Workflow deviation handling
+  deviation_handling:
+    allowed: false
+    checkpoint_required: true
+    document_reason: true
+
+  # Red flag: User correction observed
+  workflow_boundary:
+    trigger_phrase: "always supposed to follow the workflow"
+    observed_count: 1
+    severity: "critical_boundary"
+    action: "never_deviate_without_permission"
+
+# Learning System
+learning:
+  # Track corrections for pattern refinement
+  track_corrections: true
+
+  # Correction types to monitor
+  correction_types:
+    incomplete_work: "critical"
+    workflow_deviation: "critical"
+    phase_mixing: "high"
+    premature_merge: "medium"
+
+  # Learning signals
+  strong_signals:
+    - pattern: "I'm not going to merge incomplete work"
+      interpretation: "complete_scope_required"
+      confidence: "critical"
+
+    - pattern: "keep the phase 1 pr separate"
+      interpretation: "phase_separation_required"
+      confidence: "high"
+
+    - pattern: "always supposed to follow"
+      interpretation: "workflow_adherence_required"
+      confidence: "critical"
+
+# Task Distribution (observed patterns)
+task_priorities:
+  # Primary focus areas (>70% of requests)
+  primary:
+    - git_operations: 91.0
+    - ci_cd: 78.4
+    - documentation: 75.0
+    - implementation: 74.8
+    - analysis: 74.8
+
+  # Common action verbs
+  common_verbs:
+    - run: 77.0
+    - implement: 74.4
+    - create: 74.4
+    - check: 73.9
+    - update: 73.8
+
+# Confidence Levels
+confidence:
+  # High confidence patterns (>100 observations)
+  high:
+    - complete_scope_preference
+    - quality_emphasis
+    - git_workflow_focus
+    - polite_but_firm_communication
+
+  # Medium confidence patterns (20-100 observations)
+  medium:
+    - autonomy_checkpoint_balance
+    - merge_delegation_patterns
+    - phase_separation_rules
+
+  # Low confidence patterns (<20 observations)
+  low:
+    - minimal_scope_triggers
+    - error_recovery_preferences
+    - debug_methodology
+
+# Version and Metadata
+metadata:
+  version: "1.0"
+  generated: "2025-11-22"
+  source: "claude-trace-logs"
+  samples: 1205
+  confidence: "high"
+  validation_status: "pending_user_review"
+  next_review: "2025-12-22"

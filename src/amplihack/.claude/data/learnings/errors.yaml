@@ -1,0 +1,78 @@
+# Cross-Session Learning: Error Patterns
+# This file stores error patterns and their solutions for automatic injection
+# at session start when similar errors are encountered.
+
+category: errors
+description: Error patterns encountered during development and their solutions
+last_updated: "2025-11-25T00:00:00Z"
+
+learnings:
+  # Real example: Circular import errors in Python modules
+  - id: "err-001"
+    created: "2025-11-25T00:00:00Z"
+    keywords:
+      - "import"
+      - "circular"
+      - "module not found"
+      - "ImportError"
+    summary: "Circular imports cause 'module not found' or 'cannot import name' errors"
+    insight: |
+      When module A imports from module B and module B imports from module A,
+      Python raises ImportError because one module isn't fully loaded when the
+      other tries to import from it. The error message often says the name
+      doesn't exist, but it's actually a circular dependency issue.
+
+      Solutions (in order of preference):
+      1. Move shared code to a third module that both import from
+      2. Use TYPE_CHECKING imports for type hints only
+      3. Import inside the function that needs it (lazy import)
+    example: |
+      # Bad: circular import
+      # models.py: from utils import helper
+      # utils.py: from models import Model
+
+      # Good: extract shared code
+      # types.py: class BaseModel: ...
+      # models.py: from types import BaseModel
+      # utils.py: from types import BaseModel
+
+      # Alternative: TYPE_CHECKING for type hints
+      from typing import TYPE_CHECKING
+      if TYPE_CHECKING:
+          from models import Model  # Only for type hints
+    confidence: 0.95
+    times_used: 0
+
+  # Real example: YAML parsing errors
+  - id: "err-002"
+    created: "2025-11-25T00:00:00Z"
+    keywords:
+      - "yaml"
+      - "parse"
+      - "invalid"
+      - "syntax"
+      - "indentation"
+    summary: "YAML parsing fails due to inconsistent indentation or special characters"
+    insight: |
+      YAML is whitespace-sensitive. Common causes of parse errors:
+      1. Mixed tabs and spaces (use spaces only)
+      2. Colons in values without quotes ("url: http://x" fails, use quotes)
+      3. Special characters (*, &, !, |, >) have YAML meanings
+      4. Inconsistent indentation (must be exact, usually 2 spaces)
+
+      Always validate YAML files after editing.
+    example: |
+      # Bad: unquoted URL with colon
+      api_url: http://example.com
+
+      # Good: quoted string with special chars
+      api_url: "http://example.com"
+
+      # Validate YAML in Python:
+      import yaml
+      try:
+          data = yaml.safe_load(content)
+      except yaml.YAMLError as e:
+          print(f"YAML error at line {e.problem_mark.line}: {e}")
+    confidence: 0.9
+    times_used: 0

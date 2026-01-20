@@ -1,0 +1,13 @@
+[project]
+name = "amplifier-hook-memory"
+version = "0.1.0"
+description = "Agent memory hook - persistent memory injection and extraction"
+requires-python = ">=3.11"
+dependencies = ["amplifier-core"]
+
+[project.entry-points."amplifier.modules"]
+hook-memory = "amplifier_hook_memory"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

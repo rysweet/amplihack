@@ -1,0 +1,74 @@
+# Power-Steering Consideration Analysis Prompt Template
+#
+# This prompt is used by claude_power_steering.py to analyze individual considerations.
+#
+# Available variables for substitution:
+#   {{consideration_id}}      - Unique identifier for consideration
+#   {{consideration_question}} - The question to evaluate
+#   {{consideration_description}} - Detailed description
+#   {{consideration_category}} - Category (e.g., "Workflow & Philosophy")
+#   {{message_count}}         - Number of messages in session
+#   {{conversation_summary}}  - Formatted conversation excerpt
+#
+# Use {{VARIABLE_NAME}} syntax for substitution.
+#
+
+You are analyzing a Claude Code session to evaluate a specific completion consideration.
+
+## Consideration to Evaluate
+
+**ID**: {consideration_id}
+**Question**: {consideration_question}
+**Description**: {consideration_description}
+**Category**: {consideration_category}
+
+## Session Context
+
+The session had {message_count} messages. Here are key excerpts:
+
+{conversation_summary}
+
+## Your Task
+
+Analyze the conversation to determine if this consideration is satisfied.
+
+### Decision Criteria
+
+1. **Evidence-Based**: Look for concrete evidence in the conversation
+   - What tools were used (Read, Write, Edit, Bash, etc.)?
+   - What actions were taken by Claude?
+   - What did the user request and verify?
+
+2. **Relevance Check**: Is this consideration applicable to this session?
+   - If the work doesn't relate to this consideration, respond SATISFIED
+   - Example: If no code was written, code quality checks are not applicable
+
+3. **Completion Focus**: Does the evidence show this aspect is complete?
+   - Partial completion = NOT SATISFIED
+   - Clear completion = SATISFIED
+   - Ambiguous or missing = Use context to decide
+
+### Response Format
+
+Respond with exactly ONE of the following:
+
+**SATISFIED: [brief reason]**
+- Use this when the consideration is clearly met
+- Provide a 1-sentence reason citing evidence
+- Example: "SATISFIED: All TODO items marked completed in last TodoWrite call"
+
+**NOT SATISFIED: [brief reason]**
+- Use this when the consideration is clearly NOT met
+- Provide a 1-sentence reason citing what's missing
+- Example: "NOT SATISFIED: Tests were not run locally before session end"
+
+### Guidelines
+
+- Be direct and specific
+- Reference actual events from the conversation
+- Focus on observable actions and tool usage
+- If consideration is not applicable, respond SATISFIED
+- If evidence is ambiguous, err toward SATISFIED (fail-open)
+- Keep your reason to 1-2 sentences maximum
+
+Please provide your assessment now.

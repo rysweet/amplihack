@@ -1,0 +1,11 @@
+# GitGuardian Ignore File
+# Test files contain fake credentials for testing sanitization functionality
+
+# Exclude all test files
+tests/**
+**/*test*.py
+**/fixtures/**
+**/examples/**
+
+# Specifically exclude token sanitizer tests
+tests/unit/proxy/test_token_sanitizer.py

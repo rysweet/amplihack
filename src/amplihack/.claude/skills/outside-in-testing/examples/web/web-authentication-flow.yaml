@@ -1,0 +1,351 @@
+# Level 2: Web Authentication Flow Test
+# This test verifies a complete multi-step authentication workflow including
+# login, logout, session persistence, and error handling.
+
+scenario:
+  name: "Web Application - User Authentication Flow"
+  description: |
+    Verifies complete authentication workflow: login with valid/invalid credentials,
+    session persistence, protected routes, and logout functionality.
+  type: web
+  level: 2
+
+  tags: [web, auth, login, security, intermediate]
+
+  prerequisites:
+    - "Web application running on http://localhost:3000"
+    - "Test user exists: test@example.com / TestPass123!"
+    - "Database is accessible"
+
+  # Test credentials
+  variables:
+    valid_email: "test@example.com"
+    valid_password: "TestPass123!"
+    invalid_email: "wrong@example.com"
+    invalid_password: "wrongpass"
+    user_display_name: "Test User"
+
+  steps:
+    # Phase 1: Test Invalid Login
+    - action: navigate
+      url: "http://localhost:3000/login"
+      description: "Navigate to login page"
+      wait_for_load: true
+
+    - action: wait_for_element
+      selector: "form.login-form"
+      timeout: 5s
+      description: "Wait for login form to appear"
+
+    # Verify login form elements
+    - action: verify_element
+      selector: "input[name='email']"
+      exists: true
+      description: "Email field should exist"
+
+    - action: verify_element
+      selector: "input[name='password']"
+      exists: true
+      description: "Password field should exist"
+
+    - action: verify_element
+      selector: "button[type='submit']"
+      contains: "Log In"
+      description: "Submit button should exist"
+
+    # Take screenshot of login page
+    - action: screenshot
+      save_as: "01-login-page.png"
+      description: "Capture login page state"
+
+    # Test Case 1: Submit empty form
+    - action: click
+      selector: "button[type='submit']"
+      description: "Submit without credentials"
+
+    - action: wait_for_element
+      selector: ".error-message"
+      timeout: 3s
+      description: "Error should appear"
+
+    - action: verify_element
+      selector: ".error-message"
+      contains: "required"
+      case_sensitive: false
+      description: "Should indicate fields are required"
+
+    # Test Case 2: Invalid credentials
+    - action: type
+      selector: "input[name='email']"
+      value: "${invalid_email}"
+      description: "Enter invalid email"
+
+    - action: type
+      selector: "input[name='password']"
+      value: "${invalid_password}"
+      description: "Enter invalid password"
+
+    - action: screenshot
+      save_as: "02-invalid-credentials-entered.png"
+
+    - action: click
+      selector: "button[type='submit']"
+      description: "Submit invalid credentials"
+
+    - action: wait_for_element
+      selector: ".error-message"
+      timeout: 5s
+      description: "Wait for authentication error"
+
+    - action: verify_element
+      selector: ".error-message"
+      matches: "(Invalid|incorrect).*(email|password|credentials)"
+      case_sensitive: false
+      description: "Should show authentication error"
+
+    - action: verify_url
+      equals: "http://localhost:3000/login"
+      description: "Should remain on login page after failed attempt"
+
+    - action: screenshot
+      save_as: "03-invalid-credentials-error.png"
+
+    # Phase 2: Valid Login
+    - action: type
+      selector: "input[name='email']"
+      value: "${valid_email}"
+      clear_first: true
+      description: "Clear and enter valid email"
+
+    - action: type
+      selector: "input[name='password']"
+      value: "${valid_password}"
+      clear_first: true
+      description: "Clear and enter valid password"
+
+    - action: screenshot
+      save_as: "04-valid-credentials-entered.png"
+
+    - action: click
+      selector: "button[type='submit']"
+      description: "Submit valid credentials"
+
+    # Verify redirect to dashboard
+    - action: wait_for_url
+      contains: "/dashboard"
+      timeout: 10s
+      description: "Should redirect to dashboard after successful login"
+
+    - action: wait_for_element
+      selector: ".user-profile"
+      timeout: 5s
+      description: "Wait for user profile to load"
+
+    # Verify logged-in state
+    - action: verify_element
+      selector: ".user-profile"
+      contains: "${user_display_name}"
+      description: "Should display user's name"
+
+    - action: verify_element
+      selector: ".logout-button"
+      exists: true
+      description: "Logout button should be visible"
+
+    - action: screenshot
+      save_as: "05-logged-in-dashboard.png"
+      description: "Capture logged-in state"
+
+    # Phase 3: Test Session Persistence
+    # Navigate to another page
+    - action: navigate
+      url: "http://localhost:3000/profile"
+      description: "Navigate to profile page"
+
+    - action: wait_for_element
+      selector: ".profile-container"
+      timeout: 5s
+
+    # Verify still logged in
+    - action: verify_element
+      selector: ".user-profile"
+      contains: "${user_display_name}"
+      description: "Should still show user name on different page"
+
+    - action: verify_element
+      selector: ".profile-email"
+      contains: "${valid_email}"
+      description: "Profile should show user email"
+
+    # Refresh page to test session persistence
+    - action: navigate
+      url: "http://localhost:3000/profile"
+      description: "Refresh page"
+
+    - action: wait_for_element
+      selector: ".profile-container"
+      timeout: 5s
+      description: "Page should reload"
+
+    # Still logged in after refresh
+    - action: verify_element
+      selector: ".user-profile"
+      contains: "${user_display_name}"
+      description: "Session should persist after page refresh"
+
+    # Phase 4: Test Protected Route Access
+    - action: verify_url
+      contains: "/profile"
+      description: "Should be on profile page"
+
+    - action: verify_element
+      selector: ".protected-content"
+      exists: true
+      description: "Protected content should be accessible when logged in"
+
+    - action: screenshot
+      save_as: "06-protected-route-accessible.png"
+
+    # Phase 5: Logout
+    - action: click
+      selector: ".logout-button"
+      description: "Click logout button"
+
+    # Wait for redirect to login or home
+    - action: wait_for_url
+      matches: "(login|home|/\\s*$)"
+      timeout: 5s
+      description: "Should redirect after logout"
+
+    # Verify logged-out state
+    - action: verify_element
+      selector: ".user-profile"
+      exists: false
+      description: "User profile should not be visible after logout"
+
+    - action: verify_element
+      selector: ".login-button"
+      exists: true
+      description: "Login button should appear after logout"
+
+    - action: screenshot
+      save_as: "07-logged-out.png"
+      description: "Capture logged-out state"
+
+    # Phase 6: Test Protected Route After Logout
+    - action: navigate
+      url: "http://localhost:3000/profile"
+      description: "Try to access protected route after logout"
+
+    # Should redirect to login
+    - action: wait_for_url
+      contains: "/login"
+      timeout: 5s
+      description: "Should redirect to login when accessing protected route while logged out"
+
+    - action: verify_element
+      selector: "form.login-form"
+      exists: true
+      description: "Should show login form"
+
+    # May show message about needing to log in
+    - action: verify_element
+      selector: ".info-message"
+      contains: "log in"
+      case_sensitive: false
+      continue_on_failure: true
+      description: "May show message about needing authentication"
+
+    - action: screenshot
+      save_as: "08-protected-route-blocked.png"
+      description: "Capture redirect to login"
+
+    # Phase 7: Test Remember Me (Optional Feature)
+    - action: navigate
+      url: "http://localhost:3000/login"
+      description: "Return to login page"
+
+    - action: wait_for_element
+      selector: "form.login-form"
+      timeout: 3s
+
+    # Check if "Remember Me" option exists
+    - action: verify_element
+      selector: "input[name='remember']"
+      exists: true
+      continue_on_failure: true
+      description: "Remember me checkbox may exist"
+      id: remember_me_exists
+
+    # If it exists, test it
+    - action: checkbox
+      selector: "input[name='remember']"
+      checked: true
+      condition: remember_me_exists.passed
+      description: "Check 'Remember Me' if available"
+
+    - action: type
+      selector: "input[name='email']"
+      value: "${valid_email}"
+      clear_first: true
+
+    - action: type
+      selector: "input[name='password']"
+      value: "${valid_password}"
+      clear_first: true
+
+    - action: click
+      selector: "button[type='submit']"
+      description: "Login with remember me"
+
+    - action: wait_for_url
+      contains: "/dashboard"
+      timeout: 10s
+
+    - action: screenshot
+      save_as: "09-final-logged-in.png"
+      description: "Final state after complete auth flow"
+# Expected Flow:
+
+# 1. Login Page → Invalid Credentials → Error
+# 2. Login Page → Valid Credentials → Dashboard
+# 3. Dashboard → Navigate → Profile (Still Logged In)
+# 4. Profile → Refresh → Still Logged In
+# 5. Any Page → Logout → Login/Home Page
+# 6. Logged Out → Protected Route → Redirect to Login
+
+# Run Command:
+# gadugi-agentic-test run examples/web/web-authentication-flow.yaml --verbose
+
+# Key Learning Points (Level 2):
+# 1. Multi-phase testing (invalid → valid → persistence → logout)
+# 2. URL verification (wait_for_url, verify_url)
+# 3. Session persistence testing (refresh, navigation)
+# 4. Protected route verification
+# 5. Error message validation
+# 6. Clear_first parameter for input fields
+# 7. Conditional steps (continue_on_failure, condition)
+# 8. Screenshot evidence at each phase
+
+# Security Testing Aspects:
+# ✓ Invalid credentials rejected
+# ✓ Error messages don't leak info
+# ✓ Successful login redirects properly
+# ✓ Session persists across pages
+# ✓ Session persists across refresh
+# ✓ Protected routes blocked when logged out
+# ✓ Logout clears session
+# ✓ Redirect after logout
+
+# What This Doesn't Test:
+# - Password strength validation (test in registration)
+# - Rate limiting (test in security suite)
+# - CSRF protection (test in security suite)
+# - SQL injection (test in security suite)
+# - Session timeout (test in separate long-running test)
+
+# Maintenance Tips:
+# - Update variables if credentials change
+# - Adjust selectors if UI changes
+# - Keep error message checks flexible (regex)
+# - Screenshot naming reflects sequence
