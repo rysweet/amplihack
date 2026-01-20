@@ -1,0 +1,213 @@
+# Level 2: Guide Agent - Advanced Features and Goal Structuring
+# Tests advanced tutorial features, goal structuring workshop, and progressive disclosure
+
+scenario:
+  name: "Guide Agent - Advanced Features Test"
+  description: |
+    Tests the guide agent's advanced capabilities including goal structuring workshop,
+    progressive disclosure based on skill level, and comprehensive platform examples.
+  type: cli
+  level: 2
+
+  tags: [guide-agent, advanced, goal-structuring, progressive-disclosure]
+
+  prerequisites:
+    - "amplihack installed"
+    - "Guide agent v2.0.0 with tutorial enhancements"
+
+  environment:
+    variables:
+      ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY}"
+
+  variables:
+    user_goal: "automate security audits"
+    user_constraints: "must complete in 30 minutes"
+    success_criteria: "identifies 5+ vulnerability types"
+
+  steps:
+    # Test Case 1: Advanced User Flow
+    - action: launch
+      target: "amplihack"
+      args: ["claude", "--", "-p", "Task(subagent_type='guide', prompt='I am an advanced user, take me to Section 6 on Goal Agents')"]
+      description: "Advanced user directly requests Section 6"
+      timeout: 60s
+
+    - action: wait_for_output
+      contains: "Section 6"
+      timeout: 15s
+      description: "Should jump directly to Section 6"
+
+    - action: verify_output
+      contains: "Goal Agents"
+      description: "Should show Goal Agents title"
+
+    - action: verify_output
+      contains: "amplihack new"
+      description: "Should show goal agent creation command"
+
+    # Test Case 2: Goal Structuring Workshop
+    - action: send_input
+      value: "I want to create a goal agent for: ${user_goal}\n"
+      description: "User requests help structuring goal"
+
+    - action: wait_for_output
+      contains: "goal"
+      timeout: 10s
+      description: "Agent should engage with goal structuring"
+
+    - action: verify_output
+      matches: "constraint|success|SMART"
+      description: "Should ask about constraints or success criteria"
+
+    - action: send_input
+      value: "Constraints: ${user_constraints}\n"
+      description: "User provides constraints"
+
+    - action: wait_for_output
+      contains: "Success"
+      timeout: 10s
+      description: "Should ask about success criteria"
+
+    - action: send_input
+      value: "Success criteria: ${success_criteria}\n"
+      description: "User provides success criteria"
+
+    - action: wait_for_output
+      contains: "# Goal:"
+      timeout: 10s
+      description: "Should generate structured goal prompt"
+
+    - action: verify_output
+      contains: "Constraints"
+      description: "Should include constraints section"
+
+    - action: verify_output
+      contains: "Success Criteria"
+      description: "Should include success criteria section"
+
+    # Test Case 3: Progressive Disclosure
+    - action: send_input
+      value: "Section 7\n"
+      description: "Request advanced topics section"
+
+    - action: wait_for_output
+      contains: "Advanced Topics"
+      timeout: 10s
+      description: "Should show Section 7"
+
+    - action: verify_output
+      contains: "Skills system"
+      description: "Should mention skills (74+ capabilities)"
+
+    - action: verify_output
+      contains: "Hooks"
+      description: "Should mention hooks system"
+
+    - action: verify_output
+      contains: "Memory"
+      description: "Should mention memory systems"
+
+    # Verify advanced content is shown (not marked BEGINNER-only)
+    - action: verify_output
+      matches: "\\[ADVANCED\\]|customization|N-version|Debate"
+      description: "Should show advanced-level content"
+
+    # Test Case 4: Platform-Specific Examples
+    - action: send_input
+      value: "Section 3\n"
+      description: "Jump to Workflows section"
+
+    - action: wait_for_output
+      contains: "Workflows Deep Dive"
+      timeout: 10s
+      description: "Should show Section 3"
+
+    - action: verify_output
+      contains: "DEFAULT_WORKFLOW"
+      description: "Should mention default workflow"
+
+    - action: verify_output
+      contains: "INVESTIGATION_WORKFLOW"
+      description: "Should mention investigation workflow"
+
+    - action: verify_output
+      matches: "N-version|Debate|Cascade"
+      description: "Should mention fault-tolerant workflows"
+
+    # Test Case 5: Prompting Strategies Section
+    - action: send_input
+      value: "Section 4\n"
+      description: "Request prompting techniques section"
+
+    - action: wait_for_output
+      contains: "Prompting Techniques"
+      timeout: 10s
+      description: "Should show Section 4"
+
+    - action: verify_output
+      matches: "prompt|specific|context|example"
+      description: "Should cover prompting best practices"
+
+    # Test Case 6: Documentation Cross-References
+    - action: verify_output
+      contains: "AUTO_MODE.md"
+      description: "Should reference auto mode documentation"
+
+    - action: verify_output
+      contains: "GOAL_AGENT_GENERATOR"
+      description: "Should reference goal agent guide"
+
+    # Test Case 7: Verify No TODOs or Stubs
+    - action: verify_output
+      contains: "TODO"
+      expected: false
+      description: "Should have no TODOs (Zero-BS compliance)"
+
+    - action: verify_output
+      contains: "FIXME"
+      expected: false
+      description: "Should have no FIXMEs"
+
+    - action: verify_output
+      contains: "Coming soon"
+      expected: false
+      description: "Should have no placeholders"
+
+    - action: verify_exit_code
+      expected: 0
+
+  cleanup:
+    - action: stop_application
+
+# Expected Interaction Flow:
+#
+# User: "I am an advanced user, take me to Section 6"
+# Guide: [Shows Section 6: Goal Agents]
+#
+# User: "I want to create a goal agent for: automate security audits"
+# Guide: "What are your constraints?"
+# User: "must complete in 30 minutes"
+# Guide: "What are your success criteria?"
+# User: "identifies 5+ vulnerability types"
+# Guide: [Generates structured goal prompt]
+#
+# # Goal: Automated Security Audit
+# [Full structured goal with constraints and success criteria]
+#
+# User: "Section 4"
+# Guide: [Shows Prompting Techniques section]
+#
+# User: "Section 7"
+# Guide: [Shows Advanced Topics]
+
+# Run Command:
+# gadugi-agentic-test run .claude/tests/agentic/guide-agent-advanced-features.yaml --verbose
+
+# Success Criteria:
+# ✅ Advanced users can skip basic sections
+# ✅ Goal structuring workshop functional
+# ✅ All 7 sections accessible via navigation
+# ✅ Progressive disclosure works ([BEGINNER] vs [ADVANCED])
+# ✅ Platform examples present for all 5 platforms
+# ✅ Cross-references functional
+# ✅ No TODOs or placeholders (Zero-BS)
