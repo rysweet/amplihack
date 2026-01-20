@@ -243,9 +243,9 @@ For automated contexts:
 gh pr comment 123 --body "$(jq -r '.synthesis | "## Socratic Review\n\n### Insights\n" + (.insights_revealed | map("- " + .) | join("\n")) + "\n\n### Recommendations\n" + (.recommendations | map("- [" + .priority + "] " + .description) | join("\n"))' review.json)"
 ```
 
-### Graceful Degradation
+### Exit on Inconclusive
 
-If 3 questions go unanswered in interactive mode, the agent switches to traditional review to ensure the code still gets feedback.
+If 3 questions go unanswered in interactive mode, the session exits with `INCONCLUSIVE` status. Socratic review requires willing participation - without it, exit cleanly rather than pretend to do something else. The user can then choose to run traditional `/review` instead.
 
 ## What This Is NOT
 
