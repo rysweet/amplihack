@@ -571,9 +571,12 @@ def main(argv: list[str] | None = None) -> int:
         detector = GitConflictDetector(original_cwd)
         conflict_result = detector.detect_conflicts(ESSENTIAL_DIRS)
 
+        # Plugin architecture: Deploy to centralized location ~/.amplihack/.claude/
+        plugin_install_dir = os.path.join(os.path.expanduser("~"), ".amplihack", ".claude")
+
         strategy_manager = SafeCopyStrategy()
         copy_strategy = strategy_manager.determine_target(
-            original_target=os.path.join(original_cwd, ".claude"),
+            original_target=plugin_install_dir,
             has_conflicts=conflict_result.has_conflicts,
             conflicting_files=conflict_result.conflicting_files,
         )
@@ -630,8 +633,8 @@ def main(argv: list[str] | None = None) -> int:
             if result.returncode != 0:
                 print(f"⚠️  Plugin installation failed: {result.stderr}")
                 print("   Falling back to directory copy mode")
-                # Fallback
-                temp_claude_dir = str(Path(original_cwd) / ".claude")
+                # Fallback to plugin location
+                temp_claude_dir = str(Path.home() / ".amplihack" / ".claude")
                 amplihack_src = Path(amplihack.__file__).parent
                 Path(temp_claude_dir).mkdir(parents=True, exist_ok=True)
                 copied = copytree_manifest(str(amplihack_src), temp_claude_dir, ".claude")
