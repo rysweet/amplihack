@@ -12,6 +12,7 @@ amplihack is a development tool built on Claude Code that leverages multiple spe
 
 - [Get Started](#-get-started) - Installation and first steps
 - [Core Concepts](#-core-concepts) - Philosophy and principles
+- [Amplihack Tutorial](tutorials/amplihack-tutorial.md) - Comprehensive 60-90 minute tutorial
 - [First Docs Site Tutorial](tutorials/first-docs-site.md) - Create your first documentation site
 
 **Looking for something specific?**

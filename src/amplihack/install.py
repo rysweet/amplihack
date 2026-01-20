@@ -287,6 +287,27 @@ def _local_install(repo_root, profile_uri=None):
     print(f"   Source: {repo_root}")
     print(f"   Target: {CLAUDE_DIR}\n")
 
+    # CRITICAL: Detect self-modification risk BEFORE copying files
+    # Inline detection (can't import nesting_detector - not installed yet)
+    is_auto_mode = "--auto" in sys.argv
+    is_source_repo = False
+
+    # Check if we're in amplihack source repo
+    pyproject_path = os.path.join(os.getcwd(), "pyproject.toml")
+    if os.path.exists(pyproject_path):
+        try:
+            with open(pyproject_path, 'r') as f:
+                content = f.read()
+                is_source_repo = 'name = "amplihack"' in content
+        except Exception:
+            pass
+
+    # If auto-mode in source repo, skip installation (protection already staged .claude/)
+    if is_auto_mode and is_source_repo:
+        print("🛡️  Self-modification protection: Skipping .claude/ installation")
+        print("   (Running in amplihack source - .claude/ already staged to temp)\n")
+        return
+
     # NEW: Create staging manifest based on profile
     try:
         # Import staging module from source repo during installation

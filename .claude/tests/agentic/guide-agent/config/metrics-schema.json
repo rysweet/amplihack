@@ -1,0 +1,209 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Guide Agent Test Metrics Schema",
+  "description": "Defines success criteria and metrics for guide agent persona testing",
+  "type": "object",
+  "properties": {
+    "testRun": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "persona": { "type": "string", "enum": ["beginner", "intermediate", "advanced"] },
+        "scenario": { "type": "string" },
+        "version": { "type": "string" }
+      },
+      "required": ["id", "timestamp", "persona", "scenario"]
+    },
+    "metrics": {
+      "type": "object",
+      "properties": {
+        "pedagogicalQuality": {
+          "type": "object",
+          "description": "Measures teaching effectiveness",
+          "properties": {
+            "conceptExplanationClarity": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 10,
+              "description": "How clearly concepts are explained (0-10)"
+            },
+            "waitPatternUsage": {
+              "type": "object",
+              "properties": {
+                "count": { "type": "integer", "minimum": 0 },
+                "appropriateness": { 
+                  "type": "number", 
+                  "minimum": 0, 
+                  "maximum": 10,
+                  "description": "How appropriately [WAIT] is used for pacing"
+                }
+              }
+            },
+            "scaffoldingProgression": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 10,
+              "description": "Quality of step-by-step progression"
+            },
+            "checkpointFrequency": {
+              "type": "object",
+              "properties": {
+                "count": { "type": "integer", "minimum": 0 },
+                "distribution": { 
+                  "type": "string",
+                  "enum": ["too-frequent", "balanced", "too-sparse"]
+                }
+              }
+            }
+          },
+          "required": ["conceptExplanationClarity", "waitPatternUsage", "scaffoldingProgression"]
+        },
+        "jargonControl": {
+          "type": "object",
+          "description": "Measures appropriate language complexity",
+          "properties": {
+            "jargonViolations": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "term": { "type": "string" },
+                  "context": { "type": "string" },
+                  "severity": { "type": "string", "enum": ["low", "medium", "high"] }
+                }
+              }
+            },
+            "jargonScore": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 10,
+              "description": "0 = excessive jargon, 10 = perfectly adapted"
+            }
+          },
+          "required": ["jargonViolations", "jargonScore"]
+        },
+        "resourceGuidance": {
+          "type": "object",
+          "description": "Quality of external resource recommendations",
+          "properties": {
+            "linksProvided": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "url": { "type": "string", "format": "uri" },
+                  "context": { "type": "string" },
+                  "relevance": { 
+                    "type": "number", 
+                    "minimum": 0, 
+                    "maximum": 10 
+                  }
+                }
+              }
+            },
+            "linkQualityScore": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 10,
+              "description": "Overall quality of recommended resources"
+            }
+          },
+          "required": ["linksProvided", "linkQualityScore"]
+        },
+        "interactiveEngagement": {
+          "type": "object",
+          "description": "Measures conversational interaction quality",
+          "properties": {
+            "questionPrompts": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of engaging questions asked"
+            },
+            "responseAdaptation": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 10,
+              "description": "How well agent adapts to user responses"
+            },
+            "encouragementInstances": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of encouraging/supportive statements"
+            }
+          },
+          "required": ["questionPrompts", "responseAdaptation"]
+        },
+        "errorHandling": {
+          "type": "object",
+          "description": "How gracefully errors and confusion are handled",
+          "properties": {
+            "confusionDetection": {
+              "type": "boolean",
+              "description": "Did agent detect user confusion?"
+            },
+            "recoveryStrategy": {
+              "type": "string",
+              "enum": ["clarification", "simplification", "alternative-explanation", "none"]
+            },
+            "recoveryEffectiveness": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 10
+            }
+          }
+        },
+        "overallSuccess": {
+          "type": "object",
+          "properties": {
+            "passedCriteria": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "failedCriteria": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "compositeScore": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Weighted average of all metrics"
+            },
+            "verdict": {
+              "type": "string",
+              "enum": ["pass", "fail", "partial"]
+            }
+          },
+          "required": ["compositeScore", "verdict"]
+        }
+      },
+      "required": ["pedagogicalQuality", "jargonControl", "resourceGuidance", "interactiveEngagement", "overallSuccess"]
+    },
+    "evidence": {
+      "type": "object",
+      "properties": {
+        "conversationLog": { 
+          "type": "string",
+          "description": "Path to full conversation log"
+        },
+        "screenshots": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "annotations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "timestamp": { "type": "string" },
+              "note": { "type": "string" },
+              "severity": { "type": "string", "enum": ["info", "warning", "error"] }
+            }
+          }
+        }
+      }
+    }
+  },
+  "required": ["testRun", "metrics"]
+}

@@ -1,0 +1,214 @@
+# Guide Agent - Sam (Senior Developer) - Review Strategy for Critical Code
+# Tests if guide recommends CONSENSUS workflow for security-critical changes with proper review strategy
+
+scenario:
+  name: "Guide Agent - Sam (Senior Developer) - Review Strategy for Critical Code"
+  description: "Tests if guide recommends CONSENSUS workflow for security-critical changes with proper review strategy"
+  type: cli
+  level: 3
+  persona: sam_non_ai_developer
+  learning_phase: practice
+  session: 1
+
+  tags: [guide-agent, consensus, security, review, persona-sam, senior-dev]
+
+  prerequisites:
+    - "Scenario 7 completed (Sam understands basic quality controls)"
+    - "amplihack installed"
+    - "ANTHROPIC_API_KEY set"
+
+  context:
+    student_state:
+      - "Understands basic quality controls exist"
+      - "Needs to modify authentication logic (security-critical)"
+      - "Wants to ensure highest quality for critical code"
+      - "Still somewhat skeptical but willing to try with safeguards"
+
+  steps:
+    - action: launch
+      target: "amplihack"
+      args: ["claude", "--", "-p", "Task(subagent_type=\"guide\", prompt=\"I need to refactor our authentication system to add OAuth support. This is security-critical code. How do I ensure quality and avoid introducing vulnerabilities?\")"]
+      description: "Ask about quality assurance for security-critical change"
+      timeout: 90s
+
+    - action: wait_for_output
+      contains: "security"
+      timeout: 30s
+      description: "Should acknowledge security concerns"
+
+    # Metric: Recognizes security-critical context
+    - action: verify_output_or
+      patterns:
+        - "security"
+        - "critical"
+        - "important"
+        - "careful"
+        - "rigorous"
+      description: "Should acknowledge security-critical nature"
+      metric_type: context_awareness
+
+    # Metric: Recommends CONSENSUS workflow
+    - action: verify_output
+      contains: "CONSENSUS"
+      description: "Should explicitly recommend CONSENSUS workflow"
+      metric_type: workflow_recommendation
+
+    - action: verify_output_or
+      patterns:
+        - "three.*agent"
+        - "three.*Claude"
+        - "multiple.*agent"
+        - "three.*instance"
+        - "multi.*agent.*review"
+      description: "Should explain CONSENSUS uses multiple agents"
+      metric_type: workflow_explanation
+
+    - action: verify_output_or
+      patterns:
+        - "consensus"
+        - "agree"
+        - "reach.*agreement"
+        - "independent"
+      description: "Should explain agents must reach consensus/agreement"
+      metric_type: workflow_explanation
+
+    # Metric: Security-specific guidance
+    - action: verify_output_or
+      patterns:
+        - "OAuth"
+        - "authentication"
+        - "authorization"
+        - "password"
+        - "token"
+        - "security.*best.*practice"
+      description: "Should provide security-specific considerations"
+      metric_type: domain_expertise
+
+    # Metric: Review checklist provided
+    - action: verify_output_or
+      patterns:
+        - "check"
+        - "verify"
+        - "review.*for"
+        - "look for"
+        - "ensure"
+      description: "Should provide specific review checklist items"
+      metric_type: actionable_guidance
+
+    - action: verify_output_or
+      patterns:
+        - "1\\."
+        - "2\\."
+        - "3\\."
+        - "-.*-.*-"
+      description: "Should provide numbered or bulleted list of things to check"
+      metric_type: actionable_guidance
+
+    # Metric: Testing recommendation
+    - action: verify_output_or
+      patterns:
+        - "test"
+        - "security.*test"
+        - "integration.*test"
+        - "end-to-end"
+      description: "Should recommend testing for security changes"
+      metric_type: quality_control
+
+    # Metric: Concrete example or command
+    - action: verify_output
+      matches: "amplihack claude.*-p"
+      description: "Should provide concrete amplihack command example"
+      metric_type: example_quality
+
+    - action: verify_output_or
+      patterns:
+        - "CONSENSUS"
+        - "workflow.*CONSENSUS"
+      description: "Example command should mention CONSENSUS workflow"
+      metric_type: workflow_recommendation
+
+    # Metric: Multi-perspective benefit explained
+    - action: verify_output_or
+      patterns:
+        - "perspective"
+        - "approach"
+        - "different.*angle"
+        - "catch.*issue"
+        - "identify.*problem"
+      description: "Should explain benefit of multiple perspectives"
+      metric_type: workflow_explanation
+
+    # Metric: Interactive element
+    - action: verify_output_or
+      patterns:
+        - "[WAIT]"
+        - "TRY IT"
+        - "Try this"
+        - "TELL ME"
+      description: "Should include interactive element"
+      metric_type: interactive_element
+
+    # Metric: Proper workflow selection reasoning
+    - action: verify_output_or
+      patterns:
+        - "critical.*CONSENSUS"
+        - "security.*CONSENSUS"
+        - "when.*use.*CONSENSUS"
+        - "CONSENSUS.*for.*critical"
+      description: "Should explain why CONSENSUS is appropriate for critical code"
+      metric_type: workflow_selection_logic
+
+    # Anti-pattern checks
+    - action: verify_output
+      not_contains: "DEFAULT workflow"
+      description: "Should NOT recommend DEFAULT for security-critical code"
+      metric_type: workflow_selection_logic
+
+    - action: verify_output
+      not_contains: "AUTO"
+      description: "Should NOT recommend AUTO for security-critical code"
+      metric_type: workflow_selection_logic
+
+    - action: verify_output_or_negative
+      patterns:
+        - "AI.*better.*human"
+        - "don't need.*review"
+        - "trust.*AI"
+      description: "Should NOT downplay need for human review"
+      metric_type: honesty_check
+
+  success_criteria:
+    metrics:
+      time_to_recommendation:
+        target: "≤ 2 exchanges"
+        measure: "Exchanges until CONSENSUS workflow recommended"
+
+      workflow_correctly_selected:
+        target: true
+        measure: "Boolean - recommends CONSENSUS for security-critical code"
+
+      security_considerations_provided:
+        target: "≥ 3"
+        measure: "Count of security-specific points mentioned"
+
+      review_checklist_items:
+        target: "≥ 4"
+        measure: "Count of specific review checklist items provided"
+
+      interactive_elements:
+        target: true
+        measure: "Boolean - has [WAIT], TRY IT, or hands-on example"
+
+      wrong_workflow_suggested:
+        target: 0
+        measure: "Count of inappropriate workflow suggestions (DEFAULT, AUTO)"
+
+    student_outcomes:
+      - "Sam knows to use CONSENSUS for security-critical code"
+      - "Sam understands multi-agent review benefits"
+      - "Sam has security-specific review checklist"
+      - "Sam can write CONSENSUS workflow command"
+      - "Sam sees value in multi-perspective validation for critical code"
+
+  cleanup:
+    - action: stop_application
