@@ -637,7 +637,7 @@ amplihack bundle generate \
 - [Requirements Document](./agent-bundle-generator-requirements.md) - Detailed feature requirements
 - [Design Document](./agent-bundle-generator-design.md) - Technical architecture and design decisions
 - [Amplihack Philosophy](claude/context/PHILOSOPHY.md) - Core principles and design philosophy
-- [Examples](../examples/) - Sample code and usage patterns
+- [Examples](./examples/) - Sample code and usage patterns
 
 ---
 
@@ -647,7 +647,7 @@ For issues, questions, or contributions:
 
 - **GitHub Issues**: [Report a bug or request a feature](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues)
 - **Documentation**: Check the [main README](../README.md) for general usage
-- **Examples**: Browse the [examples directory](../examples/) for more code samples
+- **Examples**: Browse the [examples directory](./examples/) for more code samples
 
 ---
 

@@ -252,7 +252,7 @@ The framework generates recommendations based on metrics:
 
 ## Example Reports
 
-See `examples/evaluate_backends.py` for complete working examples.
+See `docs/examples/evaluate_backends.py` for complete working examples.
 
 Sample output:
 
