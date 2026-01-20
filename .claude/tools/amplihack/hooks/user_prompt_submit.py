@@ -30,24 +30,6 @@ class UserPromptSubmitHook(HookProcessor):
         # Cache preferences to avoid repeated file reads
         self._preferences_cache: dict[str, str] | None = None
         self._cache_timestamp: float | None = None
-        # Workflow enforcement components
-        self.tracker = None
-        self._init_enforcement()
-
-    def _init_enforcement(self):
-        """Initialize workflow enforcement components."""
-        try:
-            # Try to import enforcement modules
-            sys.path.insert(
-                0, str(self.project_root / "amplifier-bundle" / "modules" / "hook-recipe-tracker")
-            )
-
-            from amplifier_hook_recipe_tracker import RecipeSessionTracker
-
-            self.tracker = RecipeSessionTracker()
-            self.log("Workflow tracking initialized")
-        except ImportError as e:
-            self.log(f"Workflow tracking not available: {e}", "DEBUG")
 
     def find_user_preferences(self) -> Path | None:
         """Find USER_PREFERENCES.md file using FrameworkPathResolver or fallback."""
@@ -228,35 +210,6 @@ class UserPromptSubmitHook(HookProcessor):
 
         # Build context parts
         context_parts = []
-
-        # 0. Workflow enforcement detection
-        if self.tracker:
-            workflow_required, reason = self.tracker.is_workflow_required(
-                user_prompt, context={"session_id": self.session_id}
-            )
-
-            if workflow_required:
-                workflow_context = f"""🎯 WORKFLOW REQUIREMENT DETECTED
-
-This request requires workflow execution: {reason}
-
-MANDATORY: You MUST execute the default-workflow recipe:
-  recipes(operation="execute", recipe_path="@amplihack:recipes/default-workflow.yaml")
-
-DO NOT implement directly. DO NOT use write_file, edit_file, or bash for implementation.
-
-The workflow will guide you through:
-1. Requirements clarification
-2. Design specification
-3. Test writing
-4. Implementation
-5. Review and refinement
-
-This is NOT optional. This prevents incomplete implementations and ensures quality.""".strip()
-
-                context_parts.append(workflow_context)
-                self.log(f"Workflow required: {reason}")
-                self.save_metric("workflow_required", 1)
 
         # 1. Check for agent references and inject memory if found
         memory_context = ""
