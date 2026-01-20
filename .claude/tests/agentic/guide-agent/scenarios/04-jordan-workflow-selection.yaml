@@ -1,0 +1,118 @@
+# SCENARIO 4: Jordan - Workflow Selection
+# File: .claude/tests/agentic/guide-agent/scenarios/04-jordan-workflow-selection.yaml
+
+scenario:
+  name: "Guide Agent - Jordan (CLI Novice) - Workflow Selection"
+  description: "Tests if guide teaches workflow selection through quiz and practice"
+  type: cli
+  level: 2
+  persona: jordan_cli_novice
+  learning_phase: practice
+  session: 1
+
+  tags: [guide-agent, workflows, quiz, persona-jordan]
+
+  prerequisites:
+    - "Scenario 3 completed (Jordan understands prompting)"
+    - "amplihack installed"
+    - "ANTHROPIC_API_KEY set"
+
+  context:
+    student_state:
+      - "Can write natural language prompts"
+      - "Confused about multiple workflows"
+      - "Wants to know when to use each"
+
+  steps:
+    - action: launch
+      target: "amplihack"
+      args: ["claude", "--", "-p", "Task(subagent_type=\"guide\", prompt=\"I see there are multiple workflows. When do I use Q&A vs DEFAULT vs AUTO?\")"]
+      description: "Ask about workflow selection"
+      timeout: 90s
+
+    - action: wait_for_output
+      contains: "workflow"
+      timeout: 30s
+      description: "Should discuss workflows"
+
+    # Metric: Workflow comparison
+    - action: verify_output
+      contains: "Q&A"
+      description: "Should mention Q&A workflow"
+
+    - action: verify_output
+      contains: "DEFAULT"
+      description: "Should mention DEFAULT workflow"
+
+    # Metric: Key difference explained
+    - action: verify_output_or
+      patterns:
+        - "Q&A.*question"
+        - "Q&A.*fast"
+        - "Q&A.*no.*change"
+        - "Q&A.*read"
+      description: "Should explain Q&A is for questions/reading"
+      metric_type: concept_explanation
+
+    - action: verify_output_or
+      patterns:
+        - "DEFAULT.*code"
+        - "DEFAULT.*change"
+        - "DEFAULT.*branch"
+        - "DEFAULT.*commit"
+      description: "Should explain DEFAULT is for code changes"
+      metric_type: concept_explanation
+
+    # Metric: Concrete examples
+    - action: verify_output_or
+      patterns:
+        - "TRY IT NOW"
+        - "Try this"
+        - "Run this"
+      description: "Should provide examples to try"
+      metric_type: interactive_element
+
+    # Metric: Checkpoint quiz
+    - action: verify_output_or
+      patterns:
+        - "CHECKPOINT"
+        - "Quiz"
+        - "Classify these"
+        - "Which workflow"
+      description: "Should include quiz to verify understanding"
+      metric_type: interactive_element
+
+    # Metric: Wait for answers
+    - action: verify_output
+      matches: "\\[WAIT\\]"
+      description: "Should wait for user to answer quiz questions"
+      metric_type: interactive_element
+
+    # Metric: Multiple quiz scenarios
+    - action: verify_output
+      matches: "1\\.|2\\.|3\\.|4\\."
+      description: "Should have multiple quiz questions (numbered list)"
+      metric_type: quiz_quality
+
+  success_criteria:
+    metrics:
+      time_to_understanding:
+        target: "≤ 3 exchanges"
+        measure: "Exchanges until 80% correct workflow selection"
+
+      quiz_pass_rate:
+        target: "≥ 75%"
+        measure: "Student correctly classifies 3 out of 4 scenarios"
+
+      interactive_elements:
+        target: true
+        measure: "Has TRY IT, quiz, and [WAIT]"
+
+    student_outcomes:
+      - "Jordan correctly selects workflows 80% of time"
+      - "Jordan can explain Q&A vs DEFAULT difference"
+      - "Jordan successfully runs both Q&A and DEFAULT"
+      - "Jordan passes checkpoint quiz (3/4 correct)"
+
+  cleanup:
+    - action: stop_application
