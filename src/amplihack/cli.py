@@ -501,9 +501,12 @@ def main(argv: list[str] | None = None) -> int:
         detector = GitConflictDetector(original_cwd)
         conflict_result = detector.detect_conflicts(ESSENTIAL_DIRS)
 
+        # Plugin architecture: Deploy to centralized location ~/.amplihack/.claude/
+        plugin_install_dir = os.path.join(os.path.expanduser("~"), ".amplihack", ".claude")
+
         strategy_manager = SafeCopyStrategy()
         copy_strategy = strategy_manager.determine_target(
-            original_target=os.path.join(original_cwd, ".claude"),
+            original_target=plugin_install_dir,
             has_conflicts=conflict_result.has_conflicts,
             conflicting_files=conflict_result.conflicting_files,
         )
@@ -517,6 +520,9 @@ def main(argv: list[str] | None = None) -> int:
             sys.exit(0)
 
         temp_claude_dir = str(copy_strategy.target_dir)
+
+        # Set CLAUDE_PLUGIN_ROOT for hook path resolution
+        os.environ["CLAUDE_PLUGIN_ROOT"] = temp_claude_dir
 
         # Store original_cwd for auto mode (always set, regardless of conflicts)
         os.environ["AMPLIHACK_ORIGINAL_CWD"] = original_cwd
@@ -575,7 +581,7 @@ def main(argv: list[str] | None = None) -> int:
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
+                                    "command": "${CLAUDE_PLUGIN_ROOT}/tools/amplihack/hooks/session_start.py",
                                     "timeout": 10000,
                                 }
                             ]
@@ -586,7 +592,7 @@ def main(argv: list[str] | None = None) -> int:
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/stop.py",
+                                    "command": "${CLAUDE_PLUGIN_ROOT}/tools/amplihack/hooks/stop.py",
                                     "timeout": 30000,
                                 }
                             ]
@@ -598,7 +604,7 @@ def main(argv: list[str] | None = None) -> int:
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/post_tool_use.py",
+                                    "command": "${CLAUDE_PLUGIN_ROOT}/tools/amplihack/hooks/post_tool_use.py",
                                 }
                             ],
                         }
@@ -608,7 +614,7 @@ def main(argv: list[str] | None = None) -> int:
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/pre_compact.py",
+                                    "command": "${CLAUDE_PLUGIN_ROOT}/tools/amplihack/hooks/pre_compact.py",
                                     "timeout": 30000,
                                 }
                             ]
