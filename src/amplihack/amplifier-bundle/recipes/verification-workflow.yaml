@@ -1,0 +1,178 @@
+name: "verification-workflow"
+description: "Simple 5-step workflow for trivial changes: config edits, doc updates, single-line fixes"
+version: "2.0.0"
+author: "Amplihack Team"
+tags: ["verification", "trivial", "config", "docs", "simple", "quick"]
+
+# VERIFICATION_WORKFLOW: Trivial Changes Workflow
+#
+# Use this workflow when ALL are true:
+#   - Config file changes (*.yml, *.json, *.toml)
+#   - Documentation updates
+#   - Presentational changes (CSS, styling)
+#   - Simple fixes < 10 lines
+#
+# Total Time: 5-10 minutes
+# Tests Required: Verification only (does it build?)
+#
+# If ANY doubt about complexity, escalate to default-workflow.
+#
+# Usage:
+#   amplifier recipes execute verification-workflow.yaml --context '{
+#     "change_description": "Update config value",
+#     "files_to_change": "config.yaml",
+#     "repo_path": "/path/to/repo"
+#   }'
+
+context:
+  # Description of the change
+  change_description: ""
+
+  # Files to be changed
+  files_to_change: ""
+
+  # Path to the repository
+  repo_path: "."
+
+  # Branch name (optional, auto-generated if empty)
+  branch_name: ""
+
+  # Related issue number (optional)
+  issue_number: ""
+
+  # Outputs populated during execution
+  change_result: ""
+  verification_result: ""
+  commit_result: ""
+  pr_result: ""
+  ci_result: ""
+
+steps:
+  # ==========================================================================
+  # STEP 1: MAKE CHANGE
+  # Edit the file(s) and verify syntax
+  # ==========================================================================
+  - id: "step-01-make-change"
+    agent: "amplihack:builder"
+    prompt: |
+      # Step 1: Make Change
+
+      Make the requested trivial change to the specified file(s).
+
+      **Change Description:** {{change_description}}
+      **Files to Change:** {{files_to_change}}
+      **Repository:** {{repo_path}}
+
+      Actions:
+      1. Edit the file(s) as specified
+      2. Verify syntax (run linter/formatter if applicable)
+      3. Confirm the change is complete
+
+      Guidelines:
+      - Keep changes minimal and focused
+      - Verify syntax is valid after edit
+      - Report exactly what was changed
+
+      Return a summary of:
+      - Files modified
+      - Changes made
+      - Syntax verification result
+    output: "change_result"
+
+  # ==========================================================================
+  # STEP 2: VERIFY LOCALLY
+  # Run build command, visual check, test command
+  # ==========================================================================
+  - id: "step-02-verify-locally"
+    agent: "amplihack:builder"
+    prompt: |
+      # Step 2: Verify Locally
+
+      Verify the change works correctly in the local environment.
+
+      **Change Made:** {{change_result}}
+      **Repository:** {{repo_path}}
+
+      Actions:
+      1. Run build command (if applicable)
+      2. Visual check (if UI change)
+      3. Test command succeeds (if CLI change)
+
+      Verification Checklist:
+      - [ ] Build completes without errors
+      - [ ] No new warnings introduced
+      - [ ] Change behaves as expected
+
+      Return verification status with any issues found.
+    output: "verification_result"
+
+  # ==========================================================================
+  # STEP 3: COMMIT
+  # Commit with descriptive message, push to branch
+  # ==========================================================================
+  - id: "step-03-commit"
+    type: "bash"
+    # Step 3: Commit - Commit the verified change and push to branch
+    command: |
+      cd "{{repo_path}}" && \
+      echo "=== Step 3: Committing Changes ===" && \
+      git status --short && \
+      echo "" && \
+      echo "Ready to commit with message based on: {{change_description}}" && \
+      echo "Branch: $(git branch --show-current)" && \
+      echo "" && \
+      echo "Next: Create commit and push to branch"
+    output: "commit_result"
+
+  # ==========================================================================
+  # STEP 4: CREATE PR
+  # Create PR with brief description, link to issue
+  # ==========================================================================
+  - id: "step-04-create-pr"
+    agent: "amplihack:builder"
+    prompt: |
+      # Step 4: Create PR
+
+      Create a pull request for the trivial change.
+
+      **Change Description:** {{change_description}}
+      **Issue Number:** {{issue_number}}
+      **Commit Result:** {{commit_result}}
+
+      Actions:
+      1. Create PR with brief, clear description
+      2. Link to issue if one exists
+      3. Mark as ready for review (trivial changes don't need draft)
+
+      PR Guidelines:
+      - Title should be concise and descriptive
+      - Body should explain what changed and why
+      - Link issue with "Fixes #N" or "Related to #N" if applicable
+    output: "pr_result"
+
+  # ==========================================================================
+  # STEP 5: VERIFY CI
+  # CI passes, request review, merge when approved
+  # ==========================================================================
+  - id: "step-05-verify-ci"
+    agent: "amplihack:reviewer"
+    prompt: |
+      # Step 5: Verify CI
+
+      Verify CI passes and complete the PR process.
+
+      **PR Result:** {{pr_result}}
+      **Change Description:** {{change_description}}
+
+      Actions:
+      1. Verify CI pipeline passes
+      2. Request review from appropriate reviewer
+      3. Merge when approved
+
+      Checklist:
+      - [ ] CI passes
+      - [ ] Review requested
+      - [ ] Ready to merge when approved
+
+      Return final status of the verification workflow.
+    output: "ci_result"

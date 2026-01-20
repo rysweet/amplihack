@@ -8,6 +8,7 @@ This file documents non-obvious problems, solutions, and patterns discovered dur
 
 ### Recent (January 2026)
 
+- [Test Tool Functionality Directly - Not Assumptions](#test-tool-functionality-directly-2026-01-18)
 - [Power-Steering Post-Compaction Transcript Bug](#power-steering-post-compaction-transcript-bug-2026-01-17)
 - [Kuzu Memory System: Database Exists But Empty Due to Async/Await Bug](#kuzu-memory-system-async-bug-2026-01-17)
 
@@ -36,6 +37,112 @@ This file documents non-obvious problems, solutions, and patterns discovered dur
 - [Pattern Applicability Framework](#pattern-applicability-analysis-framework-2025-10-20)
 - [Socratic Questioning Pattern](#socratic-questioning-pattern-2025-10-18)
 - [Expert Agent Creation Pattern](#expert-agent-creation-pattern-2025-10-18)
+
+---
+
+## Test Tool Functionality Directly - Not Assumptions (2026-01-18)
+
+### Problem
+
+During LSP auto-configuration work (PR #1958), I incorrectly concluded that LSP tools weren't working in Claude Code 2.1.6 and created elaborate "race condition bug" explanations for a non-existent problem.
+
+**What I Did Wrong**:
+- Never actually tested the LSP tool using the `LSP()` function
+- Only tested external observation (asking Claude to "list tools")
+- Assumed LSP wasn't working based on indirect evidence
+- Created detailed technical explanations for a problem that didn't exist
+- Filed issue #1978 documenting this incorrect analysis
+
+**The Reality**:
+- LSP tool was fully functional the entire time
+- Plugins were correctly installed
+- Binaries were in PATH
+- Configuration was correct
+- Everything worked as designed
+
+### Root Cause
+
+**Confusion between "tool visibility" and "tool availability"**:
+- ✅ **Tool availability**: Can Claude Code USE the tool? (The important question)
+- ❌ **Tool visibility**: Does tool appear in some list? (Irrelevant)
+
+I never tested actual functionality - I only looked for evidence the tool existed in some abstract way.
+
+### Solution
+
+**Always test tool functionality directly**:
+
+```python
+# WRONG - Testing assumptions, not functionality
+# "Let me check if LSP appears in the tool list..."
+# "Let me see if there's documentation about LSP..."
+# "Let me search for LSP configuration..."
+
+# RIGHT - Test actual functionality
+LSP(operation="hover", filePath="file.py", line=10, character=5)
+→ If this returns type info, LSP works ✅
+→ If this errors, LSP doesn't work ❌
+```
+
+### Testing Methodology Pattern
+
+**When investigating tool/feature availability**:
+
+1. **Test functionality FIRST** - Call the actual tool/API
+2. **Verify with real operations** - Use the feature in realistic scenarios
+3. **Only then investigate configuration** - If step 1 fails, investigate why
+4. **Assumptions are dangerous** - Direct testing trumps all theory
+
+**Example Applied to LSP**:
+```python
+# Step 1: Test if it works (FIRST)
+result = LSP(operation="hover", filePath="test.py", line=1, character=1)
+if result contains type info → LSP WORKS ✅
+
+# Step 2: Only if Step 1 fails, investigate
+if error → Check plugin installation, binaries, config, etc.
+```
+
+### Key Learning
+
+**Direct functional testing > Theoretical analysis**
+
+- If you can call a tool and get results, it works (regardless of how it "should" work)
+- Configuration investigation is only useful when functionality fails
+- Elaborate explanations for problems should come AFTER verifying the problem exists
+- "Works for me" testing is valuable - if it works in one session, the infrastructure is correct
+
+### Impact
+
+**Wasted Effort**:
+- Created comprehensive "upstream bug" analysis that was incorrect
+- Filed issue #1978 based on wrong assumptions
+- Delayed PR #1958 merge based on non-existent blocker
+- Generated 6 separate "test approaches" for a working feature
+
+**Corrected Analysis**:
+- LSP auto-configuration works perfectly in Claude Code 2.1.6
+- All infrastructure is production-ready
+- PR #1958 ready to merge immediately
+- No upstream bugs to report to Anthropic
+
+### Related
+
+- **PR**: #1958 (LSP auto-configuration - ready to merge)
+- **Issue**: #1978 (Closed as "not planned" - based on incorrect analysis)
+- **Original Issue**: #1954 (LSP auto-configuration request)
+- **Pattern**: Always test tool functionality directly before theorizing about why it doesn't work
+
+### Lesson for Future Investigations
+
+**Before concluding a tool doesn't work**:
+1. ✅ Call the tool directly with realistic parameters
+2. ✅ Verify actual functionality with multiple operations
+3. ✅ Test in current session (not theoretical future sessions)
+4. ❌ Don't rely on indirect evidence (documentation, lists, assumptions)
+5. ❌ Don't create elaborate explanations before confirming the problem exists
+
+**This discovery highlights the importance of empirical testing over theoretical analysis.**
 
 ---
 
@@ -113,6 +220,88 @@ When state verification passes (PR mergeable + CI passing), it can override tran
 1. **Hooks should be aware of session compaction**: The transcript provided after compaction may not represent the full session
 2. **State is more reliable than transcript analysis**: When transcript might be incomplete, check actual system state (CI, PR, git)
 3. **Pre-compact hook saves valuable context**: The full transcript IS preserved - other hooks just need to know where to find it
+
+---
+
+## Kuzu Memory System: Database Exists But Empty Due to Async/Await Bug {#kuzu-memory-system-async-bug-2026-01-17}
+
+**Date**: 2026-01-17
+**Context**: Investigation into why Kuzu memory system not storing memories during sessions
+
+**Problem**: Kuzu database is created and initialized properly, but contains 0 nodes despite hooks executing. Memory operations appear to run but nothing is stored.
+
+**Root Cause**: Hook integration has async/await bug where async memory functions are called without `await` keyword.
+
+**Evidence**:
+- Kuzu v0.11.3 installed and importable ✓
+- Database file exists at `~/.amplihack/memory_kuzu.db` (36KB) ✓
+- Database has 0 nodes (verified with `MATCH (n) RETURN count(n)`) ✗
+- Hook logs show execution but no memory operations ✗
+
+**Technical Details**:
+
+Location: `.claude/tools/amplihack/hooks/user_prompt_submit.py:226-228`
+
+```python
+# WRONG - async function called without await
+enhanced_prompt, memory_metadata = inject_memory_for_agents(
+    user_prompt, agent_types, session_id
+)
+
+# Returns coroutine object, never executes!
+```
+
+**Fix Required**:
+```python
+# Make hook method async
+async def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
+    # Await async function
+    enhanced_prompt, memory_metadata = await inject_memory_for_agents(
+        user_prompt, agent_types, session_id
+    )
+```
+
+**Impact**:
+- Memory system completely non-functional despite correct architecture
+- Silent failure - no errors shown to user
+- Database initializes but never stores data
+- Hooks execute but memory operations are no-ops
+
+**Supporting Evidence**:
+- `agent_memory_hook.py` lines 96-169: `async def inject_memory_for_agents()`
+- `agent_memory_hook.py` lines 171-244: `async def extract_learnings_from_conversation()`
+- Both are async but called without await in hooks
+
+**Architecture Findings**:
+- Kuzu auto-selection works correctly ✓
+- Auto-installation feature works (AMPLIHACK_NO_AUTO_INSTALL to disable) ✓
+- Lazy initialization pattern works ✓
+- 5-type memory schema (EPISODIC, SEMANTIC, PROCEDURAL, PROSPECTIVE, WORKING) ✓
+- Graceful fallback to SQLite works ✓
+
+**Related Issues**:
+- Similar async bugs may exist in other hooks
+- Error swallowing prevents bug detection (logged as warnings only)
+- No runtime verification of memory system functionality
+
+**Solution Path**:
+1. Fix async/await in user_prompt_submit.py hook
+2. Make hook process() method async
+3. Verify Claude Code hooks support async execution
+4. Add runtime verification (print memory injection status)
+5. Make errors visible instead of silently logged
+
+**Prevention**:
+- Add async/await linting checks
+- Require type hints showing async functions
+- Add integration tests that verify memory storage
+- Create `/amplihack:memory-status` command to verify system works
+
+**Related Patterns**:
+- Async Context Management (PATTERNS.md)
+- Fail-Fast Prerequisite Checking (PATTERNS.md)
+
+**Tags**: #kuzu #memory #async #hooks #silent-failure #integration-bug
 
 ---
 
@@ -2327,85 +2516,3 @@ cp -r .claude docs/.claude
 - Zero-BS Implementation (PATTERNS.md)
 
 **Tags**: #documentation #mkdocs #github-pages #deployment #simplicity
-
----
-
-## Kuzu Memory System: Database Exists But Empty Due to Async/Await Bug {#kuzu-memory-system-async-bug-2026-01-17}
-
-**Date**: 2026-01-17
-**Context**: Investigation into why Kuzu memory system not storing memories during sessions
-
-**Problem**: Kuzu database is created and initialized properly, but contains 0 nodes despite hooks executing. Memory operations appear to run but nothing is stored.
-
-**Root Cause**: Hook integration has async/await bug where async memory functions are called without `await` keyword.
-
-**Evidence**:
-- Kuzu v0.11.3 installed and importable ✓
-- Database file exists at `~/.amplihack/memory_kuzu.db` (36KB) ✓
-- Database has 0 nodes (verified with `MATCH (n) RETURN count(n)`) ✗
-- Hook logs show execution but no memory operations ✗
-
-**Technical Details**:
-
-Location: `.claude/tools/amplihack/hooks/user_prompt_submit.py:226-228`
-
-```python
-# WRONG - async function called without await
-enhanced_prompt, memory_metadata = inject_memory_for_agents(
-    user_prompt, agent_types, session_id
-)
-
-# Returns coroutine object, never executes!
-```
-
-**Fix Required**:
-```python
-# Make hook method async
-async def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
-    # Await async function
-    enhanced_prompt, memory_metadata = await inject_memory_for_agents(
-        user_prompt, agent_types, session_id
-    )
-```
-
-**Impact**:
-- Memory system completely non-functional despite correct architecture
-- Silent failure - no errors shown to user
-- Database initializes but never stores data
-- Hooks execute but memory operations are no-ops
-
-**Supporting Evidence**:
-- `agent_memory_hook.py` lines 96-169: `async def inject_memory_for_agents()`
-- `agent_memory_hook.py` lines 171-244: `async def extract_learnings_from_conversation()`
-- Both are async but called without await in hooks
-
-**Architecture Findings**:
-- Kuzu auto-selection works correctly ✓
-- Auto-installation feature works (AMPLIHACK_NO_AUTO_INSTALL to disable) ✓
-- Lazy initialization pattern works ✓
-- 5-type memory schema (EPISODIC, SEMANTIC, PROCEDURAL, PROSPECTIVE, WORKING) ✓
-- Graceful fallback to SQLite works ✓
-
-**Related Issues**:
-- Similar async bugs may exist in other hooks
-- Error swallowing prevents bug detection (logged as warnings only)
-- No runtime verification of memory system functionality
-
-**Solution Path**:
-1. Fix async/await in user_prompt_submit.py hook
-2. Make hook process() method async
-3. Verify Claude Code hooks support async execution
-4. Add runtime verification (print memory injection status)
-5. Make errors visible instead of silently logged
-
-**Prevention**:
-- Add async/await linting checks
-- Require type hints showing async functions
-- Add integration tests that verify memory storage
-- Create `/amplihack:memory-status` command to verify system works
-
-**Related Patterns**:
-- Async Context Management (PATTERNS.md)
-- Fail-Fast Prerequisite Checking (PATTERNS.md)
-
-**Tags**: #kuzu #memory #async #hooks #silent-failure #integration-bug

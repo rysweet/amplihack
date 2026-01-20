@@ -1,0 +1,44 @@
+# Session Learning Statistics
+# Auto-generated file tracking learning system usage metrics
+# Updated automatically when learnings are injected or extracted
+
+stats:
+  # Total learnings across all categories
+  total_learnings: 0
+
+  # Learnings per category
+  by_category:
+    errors: 0
+    workflows: 0
+    tools: 0
+    architecture: 0
+    debugging: 0
+
+  # Injection statistics
+  injections:
+    total: 0
+    sessions_with_injection: 0
+    avg_learnings_per_session: 0.0
+
+  # Extraction statistics
+  extractions:
+    total: 0
+    sessions_with_extraction: 0
+
+  # Effectiveness metrics
+  effectiveness:
+    # How often injected learnings were marked as helpful
+    helpful_rate: 0.0
+    # Learnings that have been used 3+ times
+    proven_learnings: 0
+
+  # Last updated timestamp
+  last_updated: "2025-11-25T00:00:00Z"
+
+# Usage tracking by date (rolling 30 days)
+daily_usage: []
+# Example entry:
+# - date: "2025-11-25"
+#   injections: 2
+#   extractions: 1
+#   helpful_count: 1

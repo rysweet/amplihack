@@ -1,0 +1,73 @@
+# Cross-Session Learning: Architecture Decisions
+# This file stores architecture decisions, trade-offs, and design insights.
+
+category: architecture
+description: Architecture decisions, design trade-offs, and structural insights
+last_updated: "2025-11-25T00:00:00Z"
+
+learnings:
+  # Real example: Brick philosophy for modules
+  - id: "arch-001"
+    created: "2025-11-25T00:00:00Z"
+    keywords:
+      - "module"
+      - "brick"
+      - "design"
+      - "interface"
+      - "public"
+    summary: "Design modules as self-contained bricks with explicit public interfaces"
+    insight: |
+      Following the brick philosophy: each module should be a self-contained
+      unit with a clear public interface defined via __all__. This enables:
+      - Independent testing without mocking internal details
+      - Easy regeneration from specifications
+      - Clear contracts for other modules to depend on
+
+      The "studs" (public API) should be stable while internal implementation
+      can change freely.
+    example: |
+      # module/__init__.py - defines the public interface
+      from .core import process, validate
+      from .models import InputModel, OutputModel
+
+      __all__ = ["process", "validate", "InputModel", "OutputModel"]
+
+      # Internal functions stay private (not in __all__)
+      # _internal_helper() in core.py is not exported
+    confidence: 0.95
+    times_used: 0
+
+  # Real example: Skills vs scenarios distinction
+  - id: "arch-002"
+    created: "2025-11-25T00:00:00Z"
+    keywords:
+      - "skill"
+      - "scenario"
+      - "tool"
+      - "claude"
+      - "capability"
+    summary: "Skills are Claude capabilities, scenarios are executable tools"
+    insight: |
+      When user asks for "a tool", distinguish between:
+
+      1. **Skills** (.claude/skills/): Markdown docs that give Claude new
+         capabilities. Loaded automatically when relevant. NOT executable.
+
+      2. **Scenarios** (.claude/scenarios/): Actual executable Python tools
+         that users run via Makefile or command line.
+
+      The pattern: Build the executable tool first (scenario), optionally
+      add a skill that knows how to use it effectively.
+    example: |
+      # User says: "Create a PDF analysis tool"
+
+      # Step 1: Build executable scenario
+      .claude/scenarios/pdf-analyzer/
+        tool.py          # The actual tool
+        tests/           # Tests
+        README.md        # Usage docs
+
+      # Step 2: Optionally add skill for Claude
+      .claude/skills/pdf/SKILL.md  # Tells Claude how to use the tool
+    confidence: 0.9
+    times_used: 0

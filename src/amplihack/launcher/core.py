@@ -125,7 +125,13 @@ class ClaudeLauncher:
             return False
 
         # 9. Start proxy if needed
-        return self._start_proxy_if_needed()
+        if not self._start_proxy_if_needed():
+            return False
+
+        # 10. Auto-configure LSP if supported languages detected
+        self._configure_lsp_auto(target_dir)
+
+        return True
 
     def _handle_repo_checkout(self) -> bool:
         """Handle repository checkout.
@@ -237,6 +243,140 @@ class ClaudeLauncher:
             self._open_log_tail_window()
 
         return True
+
+    def _configure_lsp_auto(self, target_dir: Path) -> None:
+        """Auto-configure LSP using Claude Code plugin marketplace.
+
+        Automatically configures LSP by:
+        1. Detecting languages in target directory
+        2. Setting ENABLE_LSP_TOOL=1 environment variable
+        3. Adding plugin marketplace (boostvolt/claude-code-lsps)
+        4. Installing LSP plugins via claude plugin install
+
+        Args:
+            target_dir: Project directory to configure LSP for
+
+        Note:
+            Silently skips if LSP modules not available or if no languages detected.
+            This is a best-effort enhancement - failure doesn't block Claude launch.
+        """
+        try:
+            import subprocess
+            import sys
+
+            # Add .claude/skills to Python path
+            claude_dir = target_dir / ".claude" / "skills"
+            if claude_dir.exists() and str(claude_dir) not in sys.path:
+                sys.path.insert(0, str(claude_dir))
+
+            from lsp_setup import (  # type: ignore[import-not-found]
+                LanguageDetector,
+                LSPConfigurator,
+            )
+
+            # Step 1: Detect languages
+            detector = LanguageDetector(target_dir)
+            languages_dict = detector.detect_languages()
+
+            if not languages_dict:
+                return
+
+            lang_names = list(languages_dict.keys())
+            print(f"📡 LSP: Detected {len(lang_names)} language(s): {', '.join(lang_names[:3])}...")
+
+            # Step 2: Set environment variable
+            os.environ["ENABLE_LSP_TOOL"] = "1"
+
+            # Step 3: Configure .env file
+            configurator = LSPConfigurator(target_dir)
+            if not configurator.is_lsp_enabled():
+                configurator.enable_lsp()
+                print("📡 LSP: Enabled ENABLE_LSP_TOOL=1 in .env")
+
+            # Step 4: Check and install system LSP binaries (required for plugins to work)
+            binaries_to_install = {
+                "python": "pyright",
+                "typescript": "typescript-language-server",
+                "javascript": "typescript-language-server",
+                "rust": "rust-analyzer",
+            }
+
+            for lang in lang_names[:3]:
+                binary = binaries_to_install.get(lang)
+                if (
+                    binary
+                    and subprocess.run(["which", binary], capture_output=True).returncode != 0
+                ):
+                    # Try to install via npm (for most LSP servers)
+                    try:
+                        subprocess.run(
+                            ["npm", "install", "-g", binary], capture_output=True, timeout=60
+                        )
+                        print(f"📡 LSP: Installed {binary}")
+                    except (subprocess.TimeoutExpired, Exception):
+                        pass
+
+            # Step 5: Add plugin marketplace
+            try:
+                subprocess.run(
+                    ["claude", "plugin", "marketplace", "add", "boostvolt/claude-code-lsps"],
+                    capture_output=True,
+                    timeout=30,
+                )
+                print("📡 LSP: Added plugin marketplace")
+            except (subprocess.TimeoutExpired, Exception):
+                pass
+
+            # Step 5: Install plugins (map languages to plugin names)
+            plugin_map = {
+                "python": "pyright",
+                "typescript": "vtsls",
+                "javascript": "vtsls",
+                "rust": "rust-analyzer",
+                "go": "gopls",
+                "java": "jdtls",
+                "cpp": "clangd",
+                "c": "clangd",
+                "ruby": "ruby-lsp",
+                "php": "phpactor",
+            }
+
+            installed = 0
+            for lang in lang_names[:3]:
+                plugin_name = plugin_map.get(lang)
+                if not plugin_name:
+                    continue
+
+                try:
+                    result = subprocess.run(
+                        [
+                            "claude",
+                            "plugin",
+                            "install",
+                            f"{plugin_name}@claude-code-lsps",
+                            "--scope",
+                            "project",
+                        ],
+                        capture_output=True,
+                        text=True,
+                        timeout=30,
+                        cwd=str(target_dir),
+                    )
+                    if result.returncode == 0:
+                        installed += 1
+                        print(f"📡 LSP: Installed {plugin_name} plugin")
+                    else:
+                        print(
+                            f"📡 LSP: Failed to install {plugin_name}: {result.stderr.strip()[:100]}"
+                        )
+                except Exception as e:
+                    print(f"📡 LSP: Error installing {plugin_name}: {e}")
+
+            if installed == 0:
+                print("📡 LSP: No plugins installed (system LSP binaries + marketplace configured)")
+
+        except Exception as e:
+            logger.debug(f"LSP auto-configuration skipped: {e}")
 
     def _open_log_tail_window(self) -> None:
         """Open a new terminal window tailing proxy logs.
@@ -586,7 +726,8 @@ class ClaudeLauncher:
             env = os.environ.copy()
 
             # Smart memory configuration
-            from .memory_config import get_memory_config, display_memory_config
+            from .memory_config import display_memory_config, get_memory_config
+
             memory_config = get_memory_config(env.get("NODE_OPTIONS"))
             if memory_config and "node_options" in memory_config:
                 env["NODE_OPTIONS"] = memory_config["node_options"]
@@ -685,7 +826,8 @@ class ClaudeLauncher:
             env = os.environ.copy()
 
             # Smart memory configuration
-            from .memory_config import get_memory_config, display_memory_config
+            from .memory_config import display_memory_config, get_memory_config
+
             memory_config = get_memory_config(env.get("NODE_OPTIONS"))
             if memory_config and "node_options" in memory_config:
                 env["NODE_OPTIONS"] = memory_config["node_options"]

@@ -1,0 +1,118 @@
+# Level 1: Basic CLI Calculator Test
+# This is a simple outside-in test that verifies a CLI calculator can perform basic arithmetic
+# operations without knowing anything about its internal implementation.
+
+scenario:
+  name: "CLI Calculator - Basic Arithmetic Operations"
+  description: |
+    Verifies that a CLI calculator application can perform addition, subtraction,
+    multiplication, and division operations correctly from a user's perspective.
+  type: cli
+  # Complexity level indicator
+  level: 1
+
+  # Test categories
+  tags: [cli, smoke, basic, arithmetic]
+
+  # What must be true before this test runs
+  prerequisites:
+    - "./calculator binary exists and is executable"
+    - "Calculator supports interactive mode"
+
+  # The test steps execute sequentially
+  steps:
+    # Step 1: Launch the calculator application
+    - action: launch
+      target: "./calculator"
+      args: ["--interactive"]
+      description: "Start calculator in interactive mode"
+      timeout: 5s
+
+    # Step 2: Wait for application to be ready
+    - action: wait_for_output
+      contains: "Calculator ready"
+      timeout: 3s
+      description: "Wait for startup message"
+
+    # Step 3: Test addition
+    - action: send_input
+      value: "add 5 3\n"
+      description: "Send addition command: 5 + 3"
+
+    - action: verify_output
+      contains: "Result: 8"
+      timeout: 2s
+      description: "Verify addition result is correct"
+
+    # Step 4: Test subtraction
+    - action: send_input
+      value: "subtract 10 4\n"
+      description: "Send subtraction command: 10 - 4"
+
+    - action: verify_output
+      contains: "Result: 6"
+      timeout: 2s
+      description: "Verify subtraction result is correct"
+
+    # Step 5: Test multiplication
+    - action: send_input
+      value: "multiply 7 6\n"
+      description: "Send multiplication command: 7 * 6"
+
+    - action: verify_output
+      contains: "Result: 42"
+      timeout: 2s
+      description: "Verify multiplication result is correct"
+
+    # Step 6: Test division
+    - action: send_input
+      value: "divide 20 4\n"
+      description: "Send division command: 20 / 4"
+
+    - action: verify_output
+      contains: "Result: 5"
+      timeout: 2s
+      description: "Verify division result is correct"
+
+    # Step 7: Exit gracefully
+    - action: send_input
+      value: "exit\n"
+      description: "Send exit command"
+
+    # Step 8: Verify clean exit
+    - action: verify_exit_code
+      expected: 0
+      description: "Application should exit with code 0"
+
+  # Cleanup runs even if test fails
+  cleanup:
+    - action: stop_application
+      force: true
+      description: "Ensure calculator process is terminated"
+# Expected Output:
+# ✓ Scenario: CLI Calculator - Basic Arithmetic Operations
+#   ✓ Step 1: Launched ./calculator --interactive
+#   ✓ Step 2: Output contains "Calculator ready"
+#   ✓ Step 3: Sent input "add 5 3"
+#   ✓ Step 4: Output contains "Result: 8"
+#   ✓ Step 5: Sent input "subtract 10 4"
+#   ✓ Step 6: Output contains "Result: 6"
+#   ✓ Step 7: Sent input "multiply 7 6"
+#   ✓ Step 8: Output contains "Result: 42"
+#   ✓ Step 9: Sent input "divide 20 4"
+#   ✓ Step 10: Output contains "Result: 5"
+#   ✓ Step 11: Sent input "exit"
+#   ✓ Step 12: Exit code is 0
+#
+# PASSED (12/12 steps successful)
+# Evidence saved to: ./evidence/cli-calculator-basic-20250116-093045/
+
+# How to Run:
+# gadugi-agentic-test run examples/cli/calculator-basic.yaml
+
+# Key Learning Points:
+# 1. Outside-in tests don't know about Calculator class internals
+# 2. Tests verify user-visible behavior (output text)
+# 3. Each operation is verified independently
+# 4. Cleanup ensures process termination even on failure
+# 5. Timeouts prevent hanging on slow operations

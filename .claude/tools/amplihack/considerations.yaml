@@ -56,7 +56,7 @@
   severity: warning
   checker: _check_agent_unnecessary_questions
   enabled: true
-  applicable_session_types: ["*"]
+  applicable_session_types: ["DEVELOPMENT"]
 
 - id: objective_completion
   category: Session Completion & Progress
