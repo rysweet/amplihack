@@ -1,14 +1,23 @@
 # amplihack
 
-Development framework for popular coding agent systems (Claude Code, Github Copilot CLI, Microsoft Amplifier, codex) that provides structured dev workflows, a package of useful skills and agents, and commands for getting the most out of agentic coding. 
+Development framework for popular coding agent systems (Claude Code, Github Copilot CLI, Microsoft Amplifier, codex) that provides structured dev workflows, memory, a package of useful skills and agents, goal-seeking agent generator, auto mode, and commands for getting the most out of agentic coding. 
 
 **📚 [View Full Documentation](https://rysweet.github.io/amplihack/)**
 
 ```sh
-uvx --from git+https://github.com/rysweet/amplihack amplihack launch
+# Launch amplihack with Claude Code
+uvx --from git+https://github.com/rysweet/amplihack amplihack claude
 ```
 
-Launches Claude Code with preconfigured agents. No installation needed.
+```sh
+# Launch amplihack with Microsoft Amplifier (https://github.com/microsoft/amplifier)
+uvx --from git+https://github.com/rysweet/amplihack amplihack amplifier
+```
+
+```sh
+Launch AMplihack with Github Copilot CLI
+uvx --from git+https://github.com/rysweet/amplihack amplihack copilot
+```
 
 ## Table of Contents
 
