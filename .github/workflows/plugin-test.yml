@@ -73,7 +73,7 @@ jobs:
 
       - name: Upload test evidence
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: plugin-test-evidence
           path: tests/agentic/evidence/
@@ -127,7 +127,7 @@ jobs:
 
       - name: Upload shell test evidence
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: shell-test-evidence
           path: tests/agentic/evidence/
