@@ -654,6 +654,34 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     return parser
 
 
+def _fallback_to_directory_copy(reason: str = "Plugin installation failed") -> str:
+    """Fallback to directory copy mode when plugin installation is not available.
+
+    Args:
+        reason: Reason for fallback (for debug logging)
+
+    Returns:
+        Path to temporary .claude directory
+
+    Raises:
+        SystemExit: If directory copy fails
+    """
+    import amplihack
+
+    if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+        print(f"   Reason: {reason}")
+
+    temp_claude_dir = str(Path.home() / ".amplihack" / ".claude")
+    amplihack_src = Path(amplihack.__file__).parent
+    Path(temp_claude_dir).mkdir(parents=True, exist_ok=True)
+    copied = copytree_manifest(str(amplihack_src), temp_claude_dir, ".claude")
+    if not copied:
+        print("❌ Failed to copy .claude directory")
+        sys.exit(1)
+
+    return temp_claude_dir
+
+
 def main(argv: list[str] | None = None) -> int:
     """Main entry point for amplihack CLI.
 
@@ -735,16 +763,9 @@ def main(argv: list[str] | None = None) -> int:
             claude_path = get_claude_cli_path(auto_install=True)
 
             if not claude_path:
-                print("⚠️  Claude CLI not available")
+                print("⚠️  Claude CLI not available (auto-installation failed)")
                 print("   Falling back to directory copy mode")
-                # Fallback to plugin location
-                temp_claude_dir = str(Path.home() / ".amplihack" / ".claude")
-                amplihack_src = Path(amplihack.__file__).parent
-                Path(temp_claude_dir).mkdir(parents=True, exist_ok=True)
-                copied = copytree_manifest(str(amplihack_src), temp_claude_dir, ".claude")
-                if not copied:
-                    print("❌ Failed to copy .claude directory")
-                    sys.exit(1)
+                temp_claude_dir = _fallback_to_directory_copy("Claude CLI not available")
             else:
                 if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                     print(f"📦 Installing amplihack plugin from {package_root}")
@@ -761,14 +782,7 @@ def main(argv: list[str] | None = None) -> int:
                 if result.returncode != 0:
                     print(f"⚠️  Plugin installation failed: {result.stderr}")
                     print("   Falling back to directory copy mode")
-                    # Fallback to plugin location
-                    temp_claude_dir = str(Path.home() / ".amplihack" / ".claude")
-                    amplihack_src = Path(amplihack.__file__).parent
-                    Path(temp_claude_dir).mkdir(parents=True, exist_ok=True)
-                    copied = copytree_manifest(str(amplihack_src), temp_claude_dir, ".claude")
-                    if not copied:
-                        print("❌ Failed to copy .claude directory")
-                        sys.exit(1)
+                    temp_claude_dir = _fallback_to_directory_copy(f"Plugin install error: {result.stderr}")
                 else:
                     if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                         print(f"✅ Plugin installed successfully")
