@@ -1,0 +1,158 @@
+scenario:
+  name: "Claude Code Plugin Installation - Amplihack Detection"
+  description: |
+    End-to-end TUI test that verifies amplihack appears in Claude Code's /plugin command.
+    Tests the complete plugin loading workflow from the user's perspective.
+
+    PREREQUISITE: Run ./setup-plugin-test-env.sh first to install amplihack!
+  type: tui
+  tags: [smoke, critical, plugin, e2e]
+  timeout: 120s
+
+  prerequisites:
+    - "Amplihack installed to ~/.amplihack/.claude/ (run setup-plugin-test-env.sh)"
+    - "~/.amplihack/.claude/AMPLIHACK.md exists"
+    - "Claude Code CLI (claude command) available"
+    - "~/.amplihack/.claude/skills directory contains 80+ skills"
+
+  environment:
+    variables:
+      HOME: "${HOME}"
+      TERM: "xterm-256color"
+
+  steps:
+    # Step 1: Launch Claude Code with plugin directory
+    - action: launch
+      target: "claude"
+      args:
+        - "--plugin-dir"
+        - "${HOME}/.amplihack/.claude/"
+        - "--add-dir"
+        - "/tmp"
+      terminal_size:
+        width: 120
+        height: 40
+      description: "Launch Claude Code TUI with amplihack plugin directory"
+      timeout: 30s
+
+    # Step 2: Wait for Claude Code to fully initialize
+    - action: wait_for_screen
+      contains: "Claude"
+      timeout: 20s
+      description: "Wait for Claude Code to display welcome/prompt"
+
+    # Step 3: Capture initial screen state
+    - action: capture_screenshot
+      save_as: "01-claude-code-launched.txt"
+      description: "Evidence: Claude Code launched successfully"
+
+    # Step 4: Type /plugin command (without enter)
+    - action: send_keypress
+      value: "/"
+      description: "Start typing slash command"
+
+    - action: send_keypress
+      value: "p"
+      times: 1
+
+    - action: send_keypress
+      value: "l"
+      times: 1
+
+    - action: send_keypress
+      value: "u"
+      times: 1
+
+    - action: send_keypress
+      value: "g"
+      times: 1
+
+    - action: send_keypress
+      value: "i"
+      times: 1
+
+    - action: send_keypress
+      value: "n"
+      times: 1
+
+    # Step 5: Press Enter to execute /plugin command
+    - action: send_keypress
+      value: "enter"
+      description: "Execute /plugin command"
+
+    # Step 6: Wait for plugin list to appear
+    - action: wait_for_screen
+      contains: "plugin"
+      timeout: 10s
+      description: "Wait for plugin list response"
+
+    # Step 7: Capture plugin list screen
+    - action: capture_screenshot
+      save_as: "02-plugin-command-output.txt"
+      description: "Evidence: /plugin command output"
+
+    # Step 8: Verify amplihack appears in output
+    - action: verify_screen
+      contains: "amplihack"
+      description: "CRITICAL: Plugin list must contain 'amplihack'"
+
+    # Step 9: Verify plugin path is shown
+    - action: verify_screen
+      contains: ".amplihack"
+      description: "Verify ~/.amplihack/.claude/ path is displayed"
+
+    # Step 10: Capture final verification
+    - action: capture_screenshot
+      save_as: "03-amplihack-verified.txt"
+      description: "Evidence: amplihack verified in plugin list"
+
+    # Step 11: Send Ctrl+D to exit gracefully
+    - action: send_keypress
+      value: "ctrl+d"
+      description: "Exit Claude Code (Ctrl+D)"
+      timeout: 3s
+
+    # Step 12: If exit confirmation appears, confirm
+    - action: send_keypress
+      value: "y"
+      continue_on_failure: true
+      description: "Confirm exit if prompted"
+      timeout: 2s
+
+  cleanup:
+    # Kill any remaining claude processes
+    - action: send_keypress
+      value: "ctrl+c"
+      continue_on_failure: true
+      description: "Force exit if still running"
+
+# Expected Test Results:
+# ✓ Claude Code launches with --plugin-dir flag
+# ✓ /plugin command executes successfully
+# ✓ Plugin list contains "amplihack"
+# ✓ Plugin path shows ~/.amplihack/.claude/
+# ✓ Screenshots saved to evidence directory
+
+# How to Run This Test:
+#
+# 1. Install gadugi-agentic-test framework:
+#    pip install gadugi-agentic-test
+#
+# 2. Run setup script to install amplihack:
+#    cd tests/agentic
+#    chmod +x setup-plugin-test-env.sh
+#    ./setup-plugin-test-env.sh
+#
+# 3. Run the test:
+#    gadugi-agentic-test run test-claude-code-plugin-installation.yaml
+#
+# 4. Check evidence:
+#    ls -lh evidence/claude-code-plugin-installation-*/
+#    cat evidence/claude-code-plugin-installation-*/02-plugin-command-output.txt
+#
+# Evidence Files Generated:
+# - 01-claude-code-launched.txt: Initial Claude Code screen
+# - 02-plugin-command-output.txt: Output of /plugin command
+# - 03-amplihack-verified.txt: Final verification screenshot
+# - execution-log.json: Detailed test execution log
+# - report.html: Human-readable test report
