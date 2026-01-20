@@ -4,6 +4,7 @@ UserPromptSubmit hook - Inject user preferences on every message.
 Ensures preferences persist across all conversation turns in REPL mode.
 """
 
+import os
 import re
 import sys
 from pathlib import Path
@@ -199,13 +200,21 @@ class UserPromptSubmitHook(HookProcessor):
             if claude_md.exists():
                 return
 
-            # Find AMPLIHACK.md (could be in package or .claude/)
+            # Find AMPLIHACK.md in centralized plugin location (Issue #1948)
             amplihack_md = None
 
-            # AMPLIHACK.md ships in .claude/ directory (always available)
-            candidate = self.project_root / ".claude" / "AMPLIHACK.md"
-            if candidate.exists():
-                amplihack_md = candidate
+            # Try centralized plugin location first (plugin architecture)
+            plugin_root = os.environ.get("CLAUDE_PLUGIN_ROOT")
+            if plugin_root:
+                candidate = Path(plugin_root) / "AMPLIHACK.md"
+                if candidate.exists():
+                    amplihack_md = candidate
+
+            # Fallback: Check project .claude/ directory (per-project mode)
+            if not amplihack_md:
+                candidate = self.project_root / ".claude" / "AMPLIHACK.md"
+                if candidate.exists():
+                    amplihack_md = candidate
 
             if amplihack_md and amplihack_md.exists():
                 # Copy AMPLIHACK.md to CLAUDE.md
