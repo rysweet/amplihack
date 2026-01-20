@@ -77,9 +77,29 @@ Use `test-gap-analyzer` skill for unit test guidance, and this skill for behavio
 
 ### 1. Install Framework
 
+**Option A: From GitHub (Recommended - Latest)**
 ```bash
-pip install gadugi-agentic-test
+# Install globally
+npm install -g github:rysweet/gadugi-agentic-test
+
+# Or use with npx
+npx github:rysweet/gadugi-agentic-test gadugi-test run test.yaml
+
+# Or clone and build
+git clone https://github.com/rysweet/gadugi-agentic-test
+cd gadugi-agentic-test
+npm install
+npm run build
+node dist/cli.js run scenarios/your-test.yaml
 ```
+
+**Option B: From npm (when published)**
+```bash
+npm install -g gadugi-agentic-test
+gadugi-test run test.yaml
+```
+
+**Note**: Framework is Node.js/TypeScript based, not Python. If you get dependency errors, see troubleshooting below.
 
 ### 2. Create Your First Test
 
@@ -104,8 +124,20 @@ scenario:
 
 ### 3. Run the Test
 
+**If installed globally**:
 ```bash
-gadugi-agentic-test run test-hello.yaml
+gadugi-test run test-hello.yaml
+```
+
+**If using from source**:
+```bash
+cd /path/to/gadugi-agentic-test
+node dist/cli.js run /path/to/test-hello.yaml
+```
+
+**Run all tests in directory**:
+```bash
+node dist/cli.js run -d ./my-test-scenarios
 ```
 
 ### 4. Review Results
@@ -449,6 +481,29 @@ cleanup:
 
 ## Troubleshooting
 
+### Installation Issues
+
+**Problem**: `@types/node-pty` not found error
+
+**Solution**: This was fixed in gadugi-agentic-test. If you see this:
+```bash
+# Update to latest version
+npm install -g github:rysweet/gadugi-agentic-test
+
+# Or if you cloned, pull latest:
+git pull origin main
+npm install
+npm run build
+```
+
+**Problem**: `tsc: command not found` when building
+
+**Solution**: TypeScript not installed
+```bash
+npm install  # Installs all dependencies including TypeScript
+npm run build  # Now will work
+```
+
 ### Test Times Out
 
 **Problem**: Test exceeds timeout and fails
@@ -459,6 +514,27 @@ cleanup:
 - action: wait_for_element
   selector: ".slow-loading-data"
   timeout: 30s # Generous timeout
+```
+
+### Scenario Format Issues
+
+**Problem**: "Scenario must have a name" error
+
+**Solution**: gadugi expects top-level `name:`, not nested under `scenario:`:
+
+```yaml
+# WRONG (won't load)
+scenario:
+  name: "My Test"
+  steps: [...]
+
+# RIGHT
+name: "My Test"
+description: "What this tests"
+version: "1.0.0"
+config:
+  timeout: 120000
+steps: [...]
 ```
 
 ### Element Not Found
@@ -604,3 +680,79 @@ Start with Level 1 examples and progressively add complexity as needed. The AI a
 ---
 
 **Remember**: Outside-in tests verify WHAT your application does, not HOW it does it. Focus on behavior, and your tests will remain stable across refactorings while providing meaningful validation.
+
+## Real-World Example: Testing amplihack Guide Agent
+
+Based on actual testing of amplihack's guide agent, here's a complete working example:
+
+### Scenario: Naive Student Learning Flow
+
+```yaml
+name: "Guide Agent - Beginner First Question"
+description: "Test how guide responds to complete beginner"
+version: "1.0.0"
+
+config:
+  timeout: 180000  # 3 minutes for AI response
+  retries: 1
+  parallel: false
+
+agents:
+  - name: "student-cli"
+    type: "system"
+    config:
+      shell: "bash"
+      cwd: "/tmp/test-student"
+      timeout: 180000
+      capture_output: true
+
+steps:
+  - name: "Student asks: What is amplihack?"
+    agent: "student-cli"
+    action: "execute_command"
+    params:
+      command: "mkdir -p /tmp/test-student && uvx --from git+https://github.com/rysweet/amplihack amplihack claude -- -p \"Task(subagent_type='guide', prompt='I am new. What is amplihack?')\" 2>&1 | head -100"
+    expect:
+      exit_code: 0
+      stdout_contains:
+        - "amplihack"
+        - "AI"
+    timeout: 180000
+
+  - name: "Verify guide gives immediate action"
+    agent: "student-cli"
+    action: "execute_command"
+    params:
+      command: "grep -i 'TRY IT\\|try this\\|run this' /tmp/test-student/.claude/agents/amplihack/core/guide.md"
+    expect:
+      exit_code: 0
+    timeout: 5000
+
+metadata:
+  tags: ["guide-agent", "beginner", "real-world"]
+  priority: "high"
+```
+
+### What This Tests
+
+1. **Installation via uvx** - Tests users can run without installing
+2. **Guide agent invocation** - Verifies Task(subagent_type='guide') works
+3. **Beginner-friendly response** - Checks for immediate actionable command
+4. **Interactive elements** - Looks for TRY IT prompts
+
+### Running This Test
+
+```bash
+cd gadugi-agentic-test
+node dist/cli.js run scenarios/amplihack-guide-test.yaml --verbose
+```
+
+### What We Learned
+
+**From testing amplihack guide agent**:
+- Long-running AI commands need 180s+ timeouts
+- Testing in clean `/tmp` directory avoids state pollution
+- Combining `uvx --from git+...` with gadugi tests unreleased branches
+- Checking file content (guide.md) verifies features beyond just output
+- Real-world tests exposed gaps (guide showing bash commands in REPL context)
+
