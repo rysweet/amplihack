@@ -168,6 +168,9 @@ class AutoMode:
         self.completion_detector = CompletionSignalDetector(completion_threshold=0.8)
         self.completion_verifier = CompletionVerifier(completion_threshold=0.8)
 
+        # Turn duration tracking
+        self.turn_durations = []  # Track all turn durations
+
         # JSON logger for structured event logging
         self.json_logger = JsonLogger(self.log_dir)
 
@@ -1204,6 +1207,7 @@ Objective:
             # Turns 3+: Execute and evaluate
             for turn in range(3, self.max_turns + 1):
                 self.turn = turn
+                turn_start_time = time.time()  # Track turn start time
                 if self.ui_enabled and hasattr(self, "state"):
                     self.state.update_turn(self.turn)
                 self.log(f"\n--- {self._progress_str('Executing')} Execute ---")
@@ -1263,6 +1267,11 @@ Current Turn: {turn}/{self.max_turns}"""
 
                 code, eval_result = self.run_sdk(eval_prompt)
 
+                # Calculate and log turn duration
+                turn_duration = time.time() - turn_start_time
+                self.turn_durations.append(turn_duration)
+                self.log(f"Turn {turn} completed in {turn_duration:.1f}s", level="INFO")
+
                 # Check completion - look for strong completion signals
                 eval_lower = eval_result.lower()
                 if (
@@ -1280,6 +1289,18 @@ Current Turn: {turn}/{self.max_turns}"""
                     if self.ui_enabled and hasattr(self, "state"):
                         self.state.update_status("completed")
                     break
+
+            # Log session metrics
+            if self.turn_durations:
+                avg_duration = sum(self.turn_durations) / len(self.turn_durations)
+                max_duration = max(self.turn_durations)
+                total_duration = sum(self.turn_durations)
+                self.log(
+                    f"Session metrics: {len(self.turn_durations)} turns, "
+                    f"avg {avg_duration:.1f}s, max {max_duration:.1f}s, "
+                    f"total {total_duration:.1f}s",
+                    level="INFO"
+                )
 
             # Summary - display it directly
             self.log(f"\n--- {self._progress_str('Summarizing')} Summary ---")
@@ -1427,6 +1448,7 @@ Objective:
             # Turns 3+: Execute and evaluate
             for turn in range(3, self.max_turns + 1):
                 self.turn = turn
+                turn_start_time = time.time()  # Track turn start time
 
                 # Check if fork needed before turn execution
                 if self.fork_manager.should_fork():
@@ -1506,6 +1528,11 @@ Current Turn: {turn}/{self.max_turns}"""
 
                 code, eval_result = await self._run_turn_with_retry(eval_prompt, max_retries=3)
 
+                # Calculate and log turn duration
+                turn_duration = time.time() - turn_start_time
+                self.turn_durations.append(turn_duration)
+                self.log(f"Turn {turn} completed in {turn_duration:.1f}s", level="INFO")
+
                 # Log turn complete event (after evaluation)
                 self.json_logger.log_event(
                     "turn_complete",
@@ -1524,6 +1551,18 @@ Current Turn: {turn}/{self.max_turns}"""
                     if self.ui_enabled and hasattr(self, "state"):
                         self.state.update_status("completed")
                     break
+
+            # Log session metrics
+            if self.turn_durations:
+                avg_duration = sum(self.turn_durations) / len(self.turn_durations)
+                max_duration = max(self.turn_durations)
+                total_duration = sum(self.turn_durations)
+                self.log(
+                    f"Session metrics: {len(self.turn_durations)} turns, "
+                    f"avg {avg_duration:.1f}s, max {max_duration:.1f}s, "
+                    f"total {total_duration:.1f}s",
+                    level="INFO"
+                )
 
             # Summary - display it directly
             self.message_capture.set_phase(
