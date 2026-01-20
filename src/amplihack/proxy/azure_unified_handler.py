@@ -5,13 +5,14 @@ Integrates seamlessly with the existing integrated_proxy.py architecture.
 """
 
 import json
-import logging
 import time
 from typing import Any
 
 from .azure_unified_integration import AzureUnifiedProvider
+from .sanitizing_logger import get_sanitizing_logger
 
-logger = logging.getLogger(__name__)
+# Use sanitizing logger to prevent credential exposure (Issue #1997)
+logger = get_sanitizing_logger(__name__)
 
 
 class AzureUnifiedHandler:
