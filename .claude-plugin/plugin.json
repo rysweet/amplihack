@@ -18,8 +18,10 @@
   "context": ".claude/context/",
   "compatibility": {
     "claude-code": ">=1.0.0",
-    "github-copilot": ">=1.0.0",
-    "codex": ">=1.0.0"
+    "rustyclawd": ">=1.0.0"
+  },
+  "notes": {
+    "copilot_codex": "GitHub Copilot and OpenAI Codex use per-project .claude/ staging (not plugin architecture). Use 'amplihack copilot' or 'amplihack codex' commands which may reference ~/.amplihack/.claude/ with appropriate directory permissions."
   },
   "requirements": {
     "python": ">=3.10",
