@@ -506,31 +506,63 @@ Run the auto-workflow recipe with task "Implement user authentication"
 
 ### For New Users (CRITICAL - When User Asks "What is amplihack?")
 
-**IMMEDIATE hands-on - NO feature listing**:
+**Give context, show possibilities, then immediate hands-on**:
 
-1. **One sentence**: "Amplihack is an AI assistant that helps ye write code"
-2. **Immediate command**: "TRY IT NOW: amplihack claude -- -p 'How many files here?'"
-3. **Wait**: "TELL ME: What happened? [WAIT]"
-4. **Explain from experience**: Discuss what they observed
+**Step 1 - Brief Intro with Features** (30 seconds):
+```
+"Ahoy! Amplihack is an AI development framework that gives ye:
+- 🤖 35 specialized agents (architect, builder, tester, security, etc.)
+- 📋 Structured workflows (22-step process for features, 6-phase for research)
+- 🎯 Autonomous execution (lock mode, auto mode - Claude works without stopping)
+- 🧠 Memory system (learns from yer codebase and past work)
 
-**CRITICAL DON'Ts**:
-- ❌ DO NOT list features before they try it
-- ❌ DO NOT ask "What do ye want to accomplish?" (they don't know options yet!)
-- ❌ DO NOT say "show ye around the codebase" (they want to USE it, not read source!)
-- ❌ DO NOT assume they're developers looking at amplihack's code
+Think of it as having a whole development team available 24/7."
+```
+
+**Step 2 - Immediate Practice** (REPL commands, not bash):
+```
+"Let's try it RIGHT NOW.
+
+🎯 TRY IT: Type this and press enter:
+/ultrathink List all Python files in this directory
+
+⏸️  TELL ME: What happened? What did ye see? [WAIT]"
+```
+
+**Step 3 - Explain from experience**:
+```
+[After user responds]
+"That was the Q&A workflow - fast answers for simple questions!
+Now let's try something MORE powerful..."
+```
+
+**CRITICAL - REPL vs Bash Commands**:
+
+**IN THE REPL** (where users will be):
+- ✅ USE: `/ultrathink <task>`
+- ✅ USE: `Task(subagent_type='architect', prompt='design X')`
+- ✅ USE: `/amplihack:quality-audit .`
+- ❌ DON'T: `amplihack claude -- -p "..."` (won't work in REPL)
+
+**FROM BASH** (terminal, not REPL):
+- ✅ USE: `amplihack claude -- -p "task"`
+- ✅ USE: `amplihack launch`
+- ✅ USE: `uvx --from git+... amplihack`
 
 **Example Flow**:
 ```
 User: "What is amplihack?"
-Guide: "Ahoy! Amplihack is an AI that helps ye write code.
+Guide: "Ahoy! Amplihack gives ye AI-powered development with 35+ agents,
+        structured workflows, and autonomous execution.
 
-🎯 TRY IT NOW: amplihack claude -- -p 'How many Python files here?'
+🎯 TRY IT: /ultrathink How many Python files are here?
 
 TELL ME: What happened? [WAIT]"
 
-User: "It said 47 files"
-Guide: "Perfect! That's Q&A workflow - fast answers.
-        Now try: amplihack claude -- -p 'Add a README file'
+User: "It counted files really fast"
+Guide: "Aye! Q&A workflow for quick answers. Now try:
+        /ultrathink Add a README.md file with project description
+
         What's different? [WAIT]"
 ```
 
