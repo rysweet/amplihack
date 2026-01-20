@@ -29,11 +29,14 @@ def sample_agent():
         type="specialized",
         role="Test agent for unit tests",
         description="A test agent",
-        content="# Test Agent\n\nThis is a test agent.",
+        content="""# Test Agent
+
+This is a test agent for unit testing purposes. It demonstrates the basic structure
+and content that all agents should have. This agent validates testing functionality.""",
         capabilities=["testing", "validation"],
         dependencies=[],
         tests=["def test_example():\n    assert True"],
-        documentation="## Test Agent Documentation\n\nThis is documentation.",
+        documentation="## Test Agent Documentation\n\nThis is documentation for the test agent.",
         model="claude-3-sonnet-20241022",
     )
 
@@ -125,7 +128,10 @@ def test_write_multiple_agents(base_packager, sample_bundle, temp_package_dir):
         type="specialized",
         role="Second test agent",
         description="Another test agent",
-        content="# Test Agent 2",
+        content="""# Test Agent 2
+
+This is the second test agent for validating multi-agent bundle functionality.
+It ensures that multiple agents can be written to the bundle correctly.""",
         capabilities=["testing"],
         dependencies=[],
     )
@@ -390,7 +396,10 @@ def test_write_all_common_files_minimal_bundle(base_packager, temp_package_dir):
         type="specialized",
         role="Minimal agent",
         description="Minimal test",
-        content="# Minimal",
+        content="""# Minimal Agent
+
+This is a minimal agent with just basic content for testing minimal bundle generation.
+It has no tests or documentation, just the core agent definition.""",
         capabilities=[],
         dependencies=[],
     )
