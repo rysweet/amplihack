@@ -756,7 +756,7 @@ def main(argv: list[str] | None = None) -> int:
                 sys.exit(1)
         else:
             # Install using claude plugin install
-            package_root = amplihack_package.parent
+            package_root = amplihack_package
             plugin_root = Path.home() / ".amplihack" / ".claude"
 
             # Ensure Claude CLI is available (auto-installs if missing)
