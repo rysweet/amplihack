@@ -2045,6 +2045,50 @@
          <lastmod>2026-01-20</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/examples/</loc>
+         <lastmod>2026-01-20</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/examples/copilot_integration/</loc>
+         <lastmod>2026-01-20</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/examples/goal_agent_generator/</loc>
+         <lastmod>2026-01-20</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/examples/goal_agent_generator/example_goal_prompt/</loc>
+         <lastmod>2026-01-20</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/examples/goal_agent_generator/aks_sre_example/</loc>
+         <lastmod>2026-01-20</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/examples/goal_agent_generator/aks_sre_example/goal_prompt/</loc>
+         <lastmod>2026-01-20</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/examples/goal_agent_generator/api_documentation_generator/goal_prompt/</loc>
+         <lastmod>2026-01-20</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/examples/goal_agent_generator/dependency_auditor/goal_prompt/</loc>
+         <lastmod>2026-01-20</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/examples/goal_agent_generator/github_pr_manager/goal_prompt/</loc>
+         <lastmod>2026-01-20</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/examples/goal_agent_generator/security_scanner/goal_prompt/</loc>
+         <lastmod>2026-01-20</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/examples/goal_agent_generator/test_coverage_analyzer/goal_prompt/</loc>
+         <lastmod>2026-01-20</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/features/</loc>
          <lastmod>2026-01-20</lastmod>
     </url>
