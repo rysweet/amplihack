@@ -12,6 +12,7 @@ Public API (the "studs"):
 """
 
 import os
+import re
 import shutil
 import tempfile
 from dataclasses import dataclass
@@ -67,9 +68,12 @@ class AutoStager:
             ... )
             >>> # Now .claude/ is safely staged in temp directory
         """
+        # Sanitize session_id to prevent path traversal attacks
+        safe_session_id = re.sub(r'[^a-zA-Z0-9_-]', '_', session_id)
+
         # Create temp directory with session-specific name
         temp_root = Path(
-            tempfile.mkdtemp(prefix=f"amplihack-stage-{session_id}-")
+            tempfile.mkdtemp(prefix=f"amplihack-stage-{safe_session_id}-")
         )
 
         # Create .claude subdirectory in temp
@@ -93,6 +97,8 @@ class AutoStager:
     def _copy_claude_directory(self, source: Path, dest: Path):
         """Copy .claude components (not runtime logs).
 
+        Security: Skips symlinked directories to prevent symlink attacks.
+
         Copies:
             - agents/
             - commands/
@@ -103,6 +109,7 @@ class AutoStager:
 
         Does NOT copy:
             - runtime/ (session logs, state)
+            - Symlinked directories (security protection)
 
         Args:
             source: Source .claude directory
@@ -127,9 +134,20 @@ class AutoStager:
         for dir_name in dirs_to_copy:
             source_dir = source / dir_name
             if source_dir.exists() and source_dir.is_dir():
+                # Security check: Skip symlinked directories to prevent symlink attacks
+                if source_dir.is_symlink():
+                    print(f"Warning: Skipping symlinked directory {dir_name} (security protection)")
+                    continue
+
                 dest_dir = dest / dir_name
                 try:
-                    shutil.copytree(source_dir, dest_dir)
+                    # Use symlinks=False and copy_function=shutil.copy for security
+                    shutil.copytree(
+                        source_dir,
+                        dest_dir,
+                        symlinks=False,
+                        copy_function=shutil.copy
+                    )
                 except Exception as e:
                     # If copy fails, warn user and continue with other directories
                     print(f"Warning: Failed to copy {dir_name} directory: {e}")

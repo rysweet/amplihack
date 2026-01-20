@@ -382,3 +382,161 @@ class TestAutoStagerE2E:
         # Should still create staged directory
         assert result.staged_claude.exists()
         assert (result.staged_claude / "context" / "PROJECT.md").exists()
+
+
+# SECURITY TESTS
+class TestSymlinkProtection:
+    """Test security protections against symlink attacks"""
+
+    def test_skips_symlinked_directories(self, tmp_path, capsys):
+        """Test that symlinked directories are skipped with warning"""
+        source = tmp_path / "source" / ".claude"
+        dest = tmp_path / "dest" / ".claude"
+
+        source.mkdir(parents=True)
+        dest.mkdir(parents=True)
+
+        # Create a normal directory
+        normal_dir = source / "context"
+        normal_dir.mkdir()
+        (normal_dir / "test.txt").write_text("normal content")
+
+        # Create a symlink that points to sensitive system location
+        sensitive_target = tmp_path / "sensitive"
+        sensitive_target.mkdir()
+        (sensitive_target / "secrets.txt").write_text("sensitive data")
+
+        symlink_dir = source / "agents"
+        symlink_dir.symlink_to(sensitive_target)
+
+        stager = AutoStager()
+        stager._copy_claude_directory(source, dest)
+
+        # Verify normal directory was copied
+        assert (dest / "context" / "test.txt").exists()
+        assert (dest / "context" / "test.txt").read_text() == "normal content"
+
+        # Verify symlinked directory was NOT copied
+        assert not (dest / "agents").exists()
+
+        # Verify warning message was printed
+        captured = capsys.readouterr()
+        assert "Skipping symlinked directory agents" in captured.out
+        assert "security protection" in captured.out
+
+    def test_copytree_with_security_parameters(self, tmp_path):
+        """Test that copytree uses symlinks=False and copy_function=shutil.copy"""
+        source = tmp_path / "source" / ".claude"
+        dest = tmp_path / "dest" / ".claude"
+
+        source.mkdir(parents=True)
+        dest.mkdir(parents=True)
+
+        # Create a directory with a file containing a symlink internally
+        context_dir = source / "context"
+        context_dir.mkdir()
+        (context_dir / "real_file.txt").write_text("real content")
+
+        # Create internal symlink
+        internal_target = tmp_path / "internal_target.txt"
+        internal_target.write_text("internal target")
+        (context_dir / "internal_link.txt").symlink_to(internal_target)
+
+        stager = AutoStager()
+        stager._copy_claude_directory(source, dest)
+
+        # Verify real file was copied
+        assert (dest / "context" / "real_file.txt").exists()
+
+        # Verify internal symlink was NOT followed (should be copied as symlink or skipped)
+        # With symlinks=False, the symlink should be converted to a regular file
+        if (dest / "context" / "internal_link.txt").exists():
+            # If it exists, it should be a regular file (not a symlink)
+            assert not (dest / "context" / "internal_link.txt").is_symlink()
+
+
+class TestSessionIdSanitization:
+    """Test security protections for session_id sanitization"""
+
+    def test_sanitizes_path_traversal_attempts(self, tmp_path):
+        """Test that session_id with path traversal is sanitized"""
+        original_cwd = tmp_path / "original"
+        original_cwd.mkdir()
+        claude_dir = original_cwd / ".claude"
+        claude_dir.mkdir()
+        (claude_dir / "context").mkdir()
+
+        stager = AutoStager()
+
+        # Try path traversal attack
+        malicious_session_id = "../../../etc/passwd"
+        result = stager.stage_for_nested_execution(original_cwd, malicious_session_id)
+
+        # Verify that session_id was sanitized (no path separators)
+        temp_name = str(result.temp_root)
+        assert "../" not in temp_name
+        assert ".." not in temp_name.split("amplihack-stage-")[1].split("-")[0]  # Check sanitized part only
+
+        # Verify the slashes were replaced with underscores
+        assert "_________etc_passwd" in temp_name or "___etc_passwd" in temp_name
+
+        # Verify temp directory was created with sanitized name
+        assert result.temp_root.exists()
+
+    def test_sanitizes_special_characters(self, tmp_path):
+        """Test that session_id with special characters is sanitized"""
+        original_cwd = tmp_path / "original"
+        original_cwd.mkdir()
+        claude_dir = original_cwd / ".claude"
+        claude_dir.mkdir()
+        (claude_dir / "context").mkdir()
+
+        stager = AutoStager()
+
+        # Try various special characters
+        malicious_session_id = "session!@#$%^&*()=+[]{}|;:'\",<>?/\\"
+        result = stager.stage_for_nested_execution(original_cwd, malicious_session_id)
+
+        # Verify special characters were replaced with underscores
+        temp_name = result.temp_root.name
+        assert "!" not in temp_name
+        assert "@" not in temp_name
+        assert "#" not in temp_name
+        assert "/" not in temp_name
+        assert "\\" not in temp_name
+
+        # Verify only safe characters remain (alphanumeric, underscore, hyphen)
+        import re
+        # Extract the session part from the temp directory name
+        # Format: amplihack-stage-{session_id}-{random}
+        assert re.match(r'^amplihack-stage-[a-zA-Z0-9_-]+', temp_name)
+
+        # Verify temp directory was created successfully
+        assert result.temp_root.exists()
+
+    def test_preserves_valid_session_ids(self, tmp_path):
+        """Test that valid session_ids are not modified"""
+        original_cwd = tmp_path / "original"
+        original_cwd.mkdir()
+        claude_dir = original_cwd / ".claude"
+        claude_dir.mkdir()
+        (claude_dir / "context").mkdir()
+
+        stager = AutoStager()
+
+        # Valid session IDs should pass through unchanged
+        valid_ids = [
+            "session-123",
+            "nested-session-001",
+            "test_session_2024",
+            "my-test-session",
+        ]
+
+        for session_id in valid_ids:
+            result = stager.stage_for_nested_execution(original_cwd, session_id)
+
+            # Verify session_id appears in temp directory name
+            assert session_id in str(result.temp_root)
+
+            # Clean up for next iteration
+            shutil.rmtree(result.temp_root)
