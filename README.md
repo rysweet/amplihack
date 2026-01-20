@@ -126,8 +126,7 @@ The system tries to direct all work to one of a few customizeable [structured wo
 
 ## Configuration
 
-amplihack works with Claude Code and Anthropic models by default. For additional
-capabilities, you can configure Azure OpenAI integration.
+amplihack works with [Claude Code](https://claude.com/product/claude-code?utm_source=google&utm_medium=paid_search_coder&utm_campaign=acq_code_us_q3&utm_content=getstarted_text_v1) and Anthropic models by default. You can, however also use it with [Microsoft Amplifier](https://github.com/microsoft/amplifier) and [Github Copilot CLI](https://github.com/features/copilot/cli). 
 
 ### Anthropic (Default)
 
