@@ -132,7 +132,25 @@ amplihack works with [Claude Code](https://claude.com/product/claude-code?utm_so
 
 Set your $ANTHROPIC_API_KEY prior to launching amplihack. 
 
-### Azure OpenAI
+### Other models with GH Copilot CLI
+
+Github Copilot CLI supports all the models supported by GH Copilot - though most of the framework is only tested with Anthropic. 
+
+```sh
+amplihack copilot
+```
+
+and then use **/model**
+
+### Other models with Microosft Amplifier
+
+Amplifier wil walk you through model configuration on first startup:
+
+```sh
+amplihack amplfier
+```
+
+### Azure OpenAI in Claude via proxy
 
 To use Azure OpenAI models, create an `azure.env` file with the following
 minimum configuration:
