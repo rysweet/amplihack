@@ -85,9 +85,9 @@ class NestingDetector:
         # Check if auto-mode
         is_auto_mode = "--auto" in argv
 
-        # Staging required when (nested OR in source repo) AND auto-mode
-        # Protects against both self-modification and nested corruption
-        requires_staging = (is_nested or in_source_repo) and is_auto_mode
+        # Auto-mode ALWAYS stages to temp directory to protect .claude/ in ANY repo
+        # Prevents overwriting uncommitted user work regardless of repo type
+        requires_staging = is_auto_mode
 
         return NestingResult(
             is_nested=is_nested,
