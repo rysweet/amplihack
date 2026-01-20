@@ -24,7 +24,6 @@ ESSENTIAL_DIRS = [
     "docs",  # Investigation examples and documentation
     "schemas",  # JSON/YAML schemas for validation
     "config",  # Configuration files for tools
-    "../.claude-plugin",  # Plugin manifest directory (Issue #1948)
 ]
 
 # Essential files that must be copied (relative to .claude/)
@@ -312,6 +311,24 @@ def copytree_manifest(
                 print(f"  ⚠️  {result.message}")
     except Exception as e:
         print(f"  ⚠️  Could not handle CLAUDE.md: {e}")
+
+    # Copy .claude-plugin/ directory INSIDE dst for Claude Code plugin detection (Issue #1948)
+    try:
+        source_plugin_dir = os.path.join(base, "..", ".claude-plugin")
+        target_plugin_dir = os.path.join(dst, ".claude-plugin")
+
+        if os.path.exists(source_plugin_dir):
+            # Remove existing if present
+            if os.path.exists(target_plugin_dir):
+                shutil.rmtree(target_plugin_dir)
+
+            # Copy .claude-plugin/ into dst
+            shutil.copytree(source_plugin_dir, target_plugin_dir, dirs_exist_ok=True)
+            print(f"  ✅ Copied .claude-plugin/ (plugin manifest)")
+        else:
+            print(f"  ⚠️  .claude-plugin/ not found at {source_plugin_dir}, skipping")
+    except Exception as e:
+        print(f"  ⚠️  Could not copy .claude-plugin/: {e}")
 
     return copied
 
