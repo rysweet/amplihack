@@ -8,7 +8,7 @@ import sys
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Literal, Union
+from typing import Any, Literal
 
 import aiohttp  # type: ignore[import-unresolved]
 import certifi  # type: ignore[import-unresolved]
@@ -28,6 +28,9 @@ if os.path.exists(".azure.env"):
 
 # Import unified Azure integration
 from .azure_unified_integration import create_unified_litellm_router, validate_azure_unified_config
+
+# Import sanitizing logger to prevent credential exposure (Issue #1997)
+from .sanitizing_logger import SanitizingLoggerAdapter
 
 # Check if we should use LiteLLM router for Azure
 USE_LITELLM_ROUTER = os.environ.get("AMPLIHACK_USE_LITELLM", "true").lower() == "true"
@@ -715,18 +718,23 @@ def log_azure_operation(
 
 
 # Configure logging with file output and rotation
-def setup_logging() -> None:
-    """Set up logging with file rotation and console output."""
+def setup_logging() -> SanitizingLoggerAdapter:
+    """
+    Set up logging with file rotation and console output.
+
+    Returns a SanitizingLoggerAdapter that automatically redacts sensitive
+    credentials from all log messages (Issue #1997: Prevent API key exposure).
+    """
     # Create logs directory
     logs_dir = Path("logs")
     logs_dir.mkdir(exist_ok=True)
 
-    # Create logger
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)  # Set to DEBUG for file logging
+    # Create base logger
+    base_logger = logging.getLogger(__name__)
+    base_logger.setLevel(logging.DEBUG)  # Set to DEBUG for file logging
 
     # Clear any existing handlers
-    logger.handlers.clear()
+    base_logger.handlers.clear()
 
     # File handler with rotation (10MB files, keep 5 backups)
     file_handler = logging.handlers.RotatingFileHandler(
@@ -737,14 +745,14 @@ def setup_logging() -> None:
     file_handler.setLevel(logging.DEBUG)
     file_formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     file_handler.setFormatter(file_formatter)
-    logger.addHandler(file_handler)
+    base_logger.addHandler(file_handler)
 
     # Console handler (WARN level and above only)
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(logging.WARN)
     console_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
     console_handler.setFormatter(console_formatter)
-    logger.addHandler(console_handler)
+    base_logger.addHandler(console_handler)
 
     # Tell uvicorn's loggers to be quiet
     logging.getLogger("uvicorn").setLevel(logging.WARNING)
@@ -758,7 +766,8 @@ def setup_logging() -> None:
     logging.getLogger("litellm.cost_calculator").setLevel(logging.ERROR)
     logging.getLogger("litellm.completion").setLevel(logging.ERROR)
 
-    return logger
+    # Wrap logger with sanitizing adapter to prevent credential exposure
+    return SanitizingLoggerAdapter(base_logger, {})
 
 
 # Set up logging
@@ -1360,7 +1369,7 @@ GEMINI_MODELS = ["gemini-2.5-pro-preview-03-25", "gemini-2.0-flash"]
 
 
 # Type alias for JSON schema structures
-JSONSchema = Union[dict[str, Any], list[Any], str, int, float, bool, None]
+JSONSchema = dict[str, Any] | list[Any] | str | int | float | bool | None
 
 
 # Helper function to clean schema for Gemini
