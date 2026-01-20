@@ -1,6 +1,7 @@
 """Enhanced CLI for amplihack with proxy and launcher support."""
 
 import argparse
+import logging
 import os
 import platform
 import sys
@@ -85,8 +86,9 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
         if original_cwd is not None:
             try:
                 os.chdir(original_cwd)
-            except Exception:
-                pass  # Best effort - don't fail on CWD restore
+            except Exception as e:
+                # Best effort - log error but don't fail on CWD restore
+                logging.debug(f"Failed to restore CWD to {original_cwd}: {e}")
 
 
 def _launch_command_impl(args: argparse.Namespace, claude_args: list[str] | None, session_id: str, tracker: SessionTracker) -> int:
@@ -803,8 +805,9 @@ def main(argv: list[str] | None = None) -> int:
             if saved_cwd is not None:
                 try:
                     os.chdir(saved_cwd)
-                except Exception:
-                    pass
+                except Exception as e:
+                    # Best effort - log error but don't fail on CWD restore
+                    logging.debug(f"Failed to restore CWD to {saved_cwd}: {e}")
 
     elif args.command == "claude":
         # Handle append mode FIRST (before any other initialization)
