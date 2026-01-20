@@ -1,6 +1,6 @@
 # amplihack
 
-Development framework for popular coding agent systems (Claude Code, Github Copilot CLI, Microsoft Amplifier, codex) that provides structured dev workflows, memory, a package of useful skills and agents, goal-seeking agent generator, auto mode, and commands for getting the most out of agentic coding. 
+Development framework for popular coding agent systems (Claude Code, Github Copilot CLI, Microsoft Amplifier, codex) that provides structured dev workflows, memory, a package of useful skills and agents, goal-seeking agent generator, auto mode, and commands for getting the most out of agentic coding. Unlikely to work on Windows without WSL. 
 
 **📚 [View Full Documentation](https://rysweet.github.io/amplihack/)**
 
@@ -62,9 +62,10 @@ uvx --from git+https://github.com/rysweet/amplihack amplihack copilot
 ## Quick Start
 
 ### Prerequisites
-
-- Python 3.8+, Node.js 18+, npm, git
+- MacOS, WSL, or Linux
+- Python 3.2+, Node.js 18+, npm, git
 - GitHub CLI (`gh`) for PR/issue management
+- az cli for AzDO and Azure skills
 - uv ([astral.sh/uv](https://docs.astral.sh/uv/))
 
 For detailed installation instructions, see
@@ -110,33 +111,16 @@ amplihack launch --checkout-repo owner/repo
 
 ## Core Concepts
 
-### Workflow
-
-22-step development process (Steps 0-21, customizable via DEFAULT_WORKFLOW.md)
-
-1. Clarify requirements
-2. Create issue
-3. Setup branch
-4. Design tests
-5. Implement
-6. Simplify
-7. Test
-8. Commit
-9. Create PR
-10. Review
-11. Integrate feedback
-12. Check philosophy
-13. Prepare merge
-14. Cleanup
-
-Plus additional steps for PR refinement, CI validation, and final merge preparation.
-
 ### Philosophy
 
 - **Simplicity** - Start simple, add only justified complexity
 - **Modular** - Self-contained modules with clear interfaces
-- **Working code** - No stubs or dead code
 - **Test-driven** - Tests before implementation
+- **Zero BS Principle** - continually reinforcing zero tolerance of stubs, TODOs, faked apis or data, etc
+
+### Workflows
+
+The system tries to direct all work to one of a few customizeable [structured workflows](.claude/workflow/) which attempt to detect the user intent and guide the agent through a structured set of steps. The workflows try to put solid gaurdrails and multiagent points of view around the work. See the [DEFAULT_WORKFLOW.md](.claude/workflow/DEFAULT_WORKFLOW.md) for an example.
 
 ## Configuration
 
@@ -145,8 +129,7 @@ capabilities, you can configure Azure OpenAI integration.
 
 ### Anthropic (Default)
 
-amplihack works with Claude Code and Anthropic models out of the box. No
-additional configuration needed.
+Set your $ANTHROPIC_API_KEY prior to launching amplihack. 
 
 ### Azure OpenAI
 
