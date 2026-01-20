@@ -69,12 +69,12 @@ class TestTokenSanitizer:
     # Azure/JWT Token Tests
     def test_sanitize_jwt_token(self):
         """Test sanitization of JWT tokens (Azure AD, etc.)"""
-        text = "JWT: eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"  # pragma: allowlist secret
+        # Use obviously fake JWT that still matches pattern
+        text = "JWT: eyJFAKE0000000000000.eyJTEST0000000000000.FAKE000000000000000"
         result = TokenSanitizer.sanitize(text)
         assert "eyJ***.eyJ***.***" in result
-        assert (
-            "SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c" not in result  # pragma: allowlist secret
-        )  # pragma: allowlist secret
+        assert "FAKE" not in result
+        assert "TEST" not in result
 
     # AWS Credentials Tests
     def test_sanitize_aws_access_key(self):
@@ -156,12 +156,12 @@ class TestTokenSanitizer:
         assert "123456789012345678" not in result
 
     # Dictionary Sanitization Tests
-    def test_sanitize_dict_simple(self):  # pragma: allowlist secret
+    def test_sanitize_dict_simple(self):
         """Test dictionary sanitization"""
-        data = {  # pragma: allowlist secret
+        data = {
             "api_key": "sk-1234567890abcdef",  # pragma: allowlist secret
             "user": "john",
-            "token": "ghp_123456789012345678901234567890123456",  # pragma: allowlist secret
+            "token": "ghp_FAKE00000000000000000000000000000000",  # pragma: allowlist secret
         }
         result = TokenSanitizer.sanitize_dict(data)
         assert "sk-***" in result["api_key"]
@@ -205,10 +205,10 @@ class TestTokenSanitizer:
     # Real-world Scenarios
     def test_sanitize_curl_command(self):
         """Test sanitization of curl command with Authorization header"""
-        text = 'curl -H "Authorization: Bearer sk-proj-abc123xyz" https://api.openai.com/v1/chat/completions'
+        text = 'curl -H "Authorization: Bearer sk-proj-FAKETOKEN123" https://api.openai.com/v1/chat/completions'
         result = TokenSanitizer.sanitize(text)
         assert "Authorization: ***" in result or "Bearer ***" in result
-        assert "abc123xyz" not in result
+        assert "FAKETOKEN" not in result
 
     def test_sanitize_http_request_log(self):
         """Test sanitization of HTTP request log"""
