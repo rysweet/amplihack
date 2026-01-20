@@ -44,5 +44,9 @@
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "pyright@claude-code-lsps": true,
+    "rust-analyzer@claude-code-lsps": true
   }
 }

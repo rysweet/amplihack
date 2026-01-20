@@ -84,7 +84,9 @@ Explain the 9 hooks that enhance every session:
 
 ### 5. Continuous Work Mode
 
-Explain lock mode and auto-workflow:
+Explain lock mode and auto-workflow.
+
+📖 **Auto mode documentation**: https://rysweet.github.io/amplihack/autonomous-execution/
 
 **Lock Mode** - Keep working without stopping:
 ```bash
@@ -99,6 +101,8 @@ python .claude/tools/amplihack/lock_tool.py unlock
 ```
 Run the auto-workflow recipe with task "Implement user authentication"
 ```
+
+📖 **Getting Started Guide**: https://rysweet.github.io/amplihack/getting-started/
 
 ## How to Guide Users
 

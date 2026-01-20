@@ -75,10 +75,19 @@ amplihack launch --with-proxy-config ./azure.env
 amplihack launch --checkout-repo owner/repo
 ```
 
-Not sure where to start? Use the command above to run from uvx, then tell Claude
-Code to `cd /path/to/my/project` and provide your prompt. All prompts are
-automatically wrapped with `/amplihack:ultrathink` for workflow orchestration
-(use `--no-ultrathink` flag to opt-out for simple tasks).
+**New to amplihack?** After launching, try the interactive tutorial:
+
+```
+Task(subagent_type='guide', prompt='I am new to amplihack. Teach me the basics.')
+```
+
+The guide agent will walk you through workflows, prompting strategies, and hands-on
+exercises. Takes 60-90 minutes to complete.
+
+**Already familiar?** Tell Claude Code to `cd /path/to/my/project` and provide
+your prompt. All prompts are automatically wrapped with `/amplihack:ultrathink`
+for workflow orchestration (use `--no-ultrathink` flag to opt-out for simple
+tasks).
 
 ### Create Alias for Easy Access
 
