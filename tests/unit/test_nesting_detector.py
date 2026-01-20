@@ -209,6 +209,29 @@ class TestFindActiveSession:
             result = detector._find_active_session(tmp_path)
             assert result is None
 
+    def test_handles_corrupted_jsonl(self, tmp_path):
+        """Test graceful handling of corrupted/malformed JSON in sessions.jsonl"""
+        sessions_log = tmp_path / "sessions.jsonl"
+
+        # Write mix of valid and corrupted JSON lines
+        sessions_log.write_text(
+            '{"pid": 12345, "session_id": "valid-1", "status": "completed"}\n'
+            'this is not valid json at all\n'
+            '{"incomplete json without closing brace"\n'
+            '{"pid": ' + str(os.getpid()) + ', "session_id": "valid-2", "launch_dir": "'
+            + str(tmp_path) + '", "argv": ["test"], "start_time": 1.0, '
+            '"is_auto_mode": false, "is_nested": false, "parent_session_id": null, '
+            '"status": "active", "end_time": null}\n'
+        )
+
+        detector = NestingDetector()
+
+        with patch.object(detector, 'RUNTIME_LOG', sessions_log):
+            # Should skip corrupted lines and find the valid active session
+            result = detector._find_active_session(tmp_path)
+            assert result is not None
+            assert result.session_id == "valid-2"
+
 
 # INTEGRATION TESTS (30%)
 class TestNestingDetection:
@@ -292,7 +315,7 @@ class TestNestingDetection:
         detector = NestingDetector()
 
         with patch.object(detector, 'RUNTIME_LOG', sessions_log):
-            result = detector.detect_nesting(tmp_path, ["amplihack", "launch"])
+            result = detector.detect_nesting(tmp_path, ["amplihack", "launch", "--auto"])
 
             assert result.is_nested is True
             assert result.in_source_repo is True

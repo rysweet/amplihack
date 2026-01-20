@@ -130,9 +130,9 @@ class AutoStager:
                 dest_dir = dest / dir_name
                 try:
                     shutil.copytree(source_dir, dest_dir)
-                except Exception:
-                    # If copy fails, continue with other directories
-                    pass
+                except Exception as e:
+                    # If copy fails, warn user and continue with other directories
+                    print(f"Warning: Failed to copy {dir_name} directory: {e}")
 
 
 __all__ = ["StagingResult", "AutoStager"]
