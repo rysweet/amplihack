@@ -5,5 +5,10 @@
   "author": {
     "name": "Microsoft Amplihack Team",
     "url": "https://github.com/rysweet/amplihack"
+  },
+  "marketplace": {
+    "name": "amplihack",
+    "url": "https://github.com/rysweet/amplihack",
+    "type": "github"
   }
 }
