@@ -184,6 +184,7 @@ forbidden_patterns:
 # Point-in-time documentation patterns
 # These indicate documentation that's only relevant at a specific time
 point_in_time_indicators:
+  # Focus on explicit dates and temporal phrases to reduce false positives
   - "Q1 2025"
   - "Q2 2025"
   - "Q3 2025"
@@ -191,14 +192,16 @@ point_in_time_indicators:
   - "January 2025"
   - "February 2025"
   - "March 2025"
+  - "April 2025"
+  - "May 2025"
+  - "June 2025"
   - "Sprint"
   - "Week of"
-  - "As of"
-  - "Current status"
-  - "Latest"
-  - "Recent changes"
-  - "Update:"
-  - "Status:"
+  - "As of 20"
+  - "Current status:"
+  - "Today's"
+  - "This week's"
+  - "Last week's"
 
 # Unrelated change detection configuration
 unrelated_change_detection:
