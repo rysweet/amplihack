@@ -68,7 +68,7 @@ class SkillIndexBuilder:
                     continue
 
                 skill_name = skill_dir.name
-                skill_file = skill_dir / "skill.md"
+                skill_file = skill_dir / "SKILL.md"
                 if not skill_file.exists():
                     skill_file = skill_dir / "README.md"
 
@@ -93,7 +93,7 @@ class SkillIndexBuilder:
         """Generate description from skill directory name.
 
         Args:
-            skill_file: Path to skill.md or README.md
+            skill_file: Path to SKILL.md or README.md
 
         Returns:
             Description string in format "Skill: {directory_name}"

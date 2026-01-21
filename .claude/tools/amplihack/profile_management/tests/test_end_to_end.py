@@ -105,11 +105,11 @@ def complete_amplihack_env(tmp_path):
 
     pdf_dir = office_dir / "pdf"
     pdf_dir.mkdir()
-    (pdf_dir / "skill.md").write_text("# PDF Skill")
+    (pdf_dir / "SKILL.md").write_text("# PDF Skill")
 
     xlsx_dir = office_dir / "xlsx"
     xlsx_dir.mkdir()
-    (xlsx_dir / "skill.md").write_text("# XLSX Skill")
+    (xlsx_dir / "SKILL.md").write_text("# XLSX Skill")
 
     # Analysis category
     analysis_dir = skills_dir / "analysis"
@@ -117,7 +117,7 @@ def complete_amplihack_env(tmp_path):
 
     analyst_dir = analysis_dir / "economist-analyst"
     analyst_dir.mkdir()
-    (analyst_dir / "skill.md").write_text("# Economist Analyst")
+    (analyst_dir / "SKILL.md").write_text("# Economist Analyst")
 
     return root
 
@@ -357,7 +357,7 @@ def test_end_to_end_skill_index_rebuild(complete_amplihack_env):
     new_category.mkdir()
     new_skill = new_category / "new-skill"
     new_skill.mkdir()
-    (new_skill / "skill.md").write_text("# New Skill")
+    (new_skill / "SKILL.md").write_text("# New Skill")
 
     # Rebuild index
     index_data2 = index_builder.build_index(force_rebuild=True)
