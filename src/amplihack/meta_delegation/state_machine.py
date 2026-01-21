@@ -191,33 +191,24 @@ class SubprocessStateMachine:
 
         return (datetime.now() - self.start_time).total_seconds()
 
-    def poll_process(self) -> None:
-        """Poll the subprocess and update state accordingly.
+    def poll_process(self) -> int | None:
+        """Poll the subprocess to check if it has finished.
 
-        Transitions to COMPLETING if process has exited successfully,
-        or FAILED if process exited with error.
+        Returns:
+            Exit code if process finished, None if still running
         """
         if not self.process:
-            return
+            return None
 
-        if self.current_state != ProcessState.RUNNING:
-            return
+        # Only poll if in RUNNING state (not already completed/failed/completing)
+        if self.current_state not in [ProcessState.RUNNING]:
+            return None
 
         returncode = self.process.poll()
 
-        if returncode is None:
-            # Process still running
-            return
-
-        if returncode == 0:
-            # Process completed successfully
-            self.transition_to(ProcessState.COMPLETING)
-        else:
-            # Process failed
-            self.transition_to(
-                ProcessState.FAILED,
-                error=f"Process exited with exit code {returncode}",
-            )
+        # Return the exit code (or None if still running)
+        # Don't transition here - let the caller handle state transitions
+        return returncode
 
     def kill_process(self, force: bool = False) -> None:
         """Terminate the subprocess.

@@ -418,8 +418,12 @@ class MetaDelegationOrchestrator:
                     timeout_minutes=timeout_seconds / 60,
                 )
 
-            # Poll process
-            self.state_machine.poll_process()
+            # Poll process and check if finished
+            exit_code = self.state_machine.poll_process()
+            if exit_code is not None:
+                # Process finished - break out of loop
+                self.state_machine.transition_to(ProcessState.COMPLETING)
+                break
 
             # Read output (non-blocking) using select for proper I/O multiplexing
             if self.state_machine.process and self.state_machine.process.stdout:
@@ -447,9 +451,10 @@ class MetaDelegationOrchestrator:
             except Exception as e:
                 execution_log_parts.append(f"Error reading output: {e}")
 
-        # Transition to completed
-        if not self.state_machine.has_failed():
+        # Transition to completed (only if not already completing/completed)
+        if not self.state_machine.has_failed() and self.state_machine.current_state not in [ProcessState.COMPLETING, ProcessState.COMPLETED]:
             self.state_machine.transition_to(ProcessState.COMPLETING)
+        if not self.state_machine.has_failed() and self.state_machine.current_state == ProcessState.COMPLETING:
             self.state_machine.transition_to(ProcessState.COMPLETED)
 
         return "\n".join(execution_log_parts)

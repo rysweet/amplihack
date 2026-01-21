@@ -301,18 +301,22 @@ Focus on delivering working code that meets the stated requirements.""",
         if extra_args:
             command[3:3] = extra_args  # Insert before "--"
 
-        # Merge environment variables
+        # Merge environment variables - add non-interactive flag
         env = os.environ.copy()
         env.update(environment)
+        env["AMPLIHACK_NONINTERACTIVE"] = "1"  # Prevent interactive prompts
+        env["CI"] = "true"  # Also signals non-interactive environment
 
         # Spawn subprocess
         process = subprocess.Popen(
             command,
             cwd=working_dir,
             env=env,
+            stdin=subprocess.DEVNULL,  # No stdin to prevent hanging on prompts
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.STDOUT,  # Combine stderr into stdout for simpler reading
             text=True,
+            bufsize=1,  # Line buffered
         )
 
         return process
