@@ -744,9 +744,16 @@ class ClaudeLauncher:
                 env["CLAUDE_PROJECT_DIR"] = os.environ["CLAUDE_PROJECT_DIR"]
 
             # Export CLAUDE_PLUGIN_ROOT for plugin discoverability
-            plugin_root = Path.home() / ".amplihack" / ".claude"
-            if plugin_root.exists():
-                env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
+            # Check if plugin was installed via Claude Code (AMPLIHACK_PLUGIN_INSTALLED set by cli.py)
+            if os.environ.get("AMPLIHACK_PLUGIN_INSTALLED") == "true":
+                # Plugin installed via Claude Code - use installed plugin path
+                installed_plugin_path = Path.home() / ".claude" / "plugins" / "cache" / "amplihack" / "amplihack" / "0.9.0"
+                env["CLAUDE_PLUGIN_ROOT"] = str(installed_plugin_path)
+            else:
+                # Directory copy mode - use ~/.amplihack/.claude/
+                plugin_root = Path.home() / ".amplihack" / ".claude"
+                if plugin_root.exists():
+                    env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
 
             # Ensure user-local npm bin is in PATH (for claude/claude-trace installed via npm)
             user_npm_bin = str(Path.home() / ".npm-global" / "bin")
@@ -844,9 +851,16 @@ class ClaudeLauncher:
                 env["CLAUDE_PROJECT_DIR"] = os.environ["CLAUDE_PROJECT_DIR"]
 
             # Export CLAUDE_PLUGIN_ROOT for plugin discoverability
-            plugin_root = Path.home() / ".amplihack" / ".claude"
-            if plugin_root.exists():
-                env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
+            # Check if plugin was installed via Claude Code (AMPLIHACK_PLUGIN_INSTALLED set by cli.py)
+            if os.environ.get("AMPLIHACK_PLUGIN_INSTALLED") == "true":
+                # Plugin installed via Claude Code - use installed plugin path
+                installed_plugin_path = Path.home() / ".claude" / "plugins" / "cache" / "amplihack" / "amplihack" / "0.9.0"
+                env["CLAUDE_PLUGIN_ROOT"] = str(installed_plugin_path)
+            else:
+                # Directory copy mode - use ~/.amplihack/.claude/
+                plugin_root = Path.home() / ".amplihack" / ".claude"
+                if plugin_root.exists():
+                    env["CLAUDE_PLUGIN_ROOT"] = str(plugin_root)
 
             # Ensure user-local npm bin is in PATH (for claude/claude-trace installed via npm)
             user_npm_bin = str(Path.home() / ".npm-global" / "bin")
