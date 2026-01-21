@@ -11,17 +11,12 @@ includes:
   # Including it again causes a "circular dependency" warning
   
   # Core recipes bundle (includes foundation transitively)
+  # Foundation already includes: python-dev, ts-dev, shadow, sessions
+  # So we don't include those bundles directly to avoid circular dependencies
   - bundle: git+https://github.com/microsoft/amplifier-bundle-recipes@main
   
-  # Development tool bundles (provide language-specific tooling + LSP transitively)
-  # Note: python-dev includes lsp-python, ts-dev includes lsp-typescript
-  # These transitively include the base lsp bundle, so we don't include LSP bundles directly
-  - bundle: git+https://github.com/microsoft/amplifier-bundle-python-dev@main
-  - bundle: git+https://github.com/microsoft/amplifier-bundle-ts-dev@main
-  
-  # Advanced workflow bundles
-  - bundle: git+https://github.com/microsoft/amplifier-bundle-shadow@main  # Shadow mode for observability
-  - bundle: git+https://github.com/microsoft/amplifier-bundle-issues@main  # GitHub issues integration
+  # GitHub issues integration (NOT in foundation, safe to include directly)
+  - bundle: git+https://github.com/microsoft/amplifier-bundle-issues@main
 
 # Configure tool-skills to find skills
 # The amplihack launcher copies skills to .claude/skills in cwd during setup
