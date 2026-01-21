@@ -1,0 +1,228 @@
+# Root Directory Hygiene Configuration
+# This file defines what belongs in the project root directory
+
+# Allowed files in root directory
+allowed_patterns:
+  # Configuration & Build
+  - ".env.example"
+  - ".env.passthrough.example"
+  - ".env.security-template"
+  - ".gitignore"
+  - ".gitattributes"
+  - ".pre-commit-config.yaml"
+  - "Dockerfile"
+  - "docker-compose*.yml"
+  - "Makefile"
+  - "pyproject.toml"
+  - "setup.py"
+  - "setup.cfg"
+  - "package.json"
+  - "package-lock.json"
+  - "yarn.lock"
+  - "tsconfig.json"
+  - "requirements*.txt"
+  - "Pipfile"
+  - "Pipfile.lock"
+  - ".prettierrc.json"
+  - ".eslintrc*"
+  - "pytest.ini"
+  - ".coveragerc"
+  - "MANIFEST.in"
+  - ".dockerignore"
+  - ".ggignore"
+  - ".mcp.json"
+  - ".github.copilot.env"
+  - "build_hooks.py"
+  - "conftest.py"
+  - "litellm_standalone_config.yaml"
+  - "marketplace.json"
+  - "mkdocs.yml"
+  - "poetry.lock"
+  - "pyrightconfig.json"
+  - "uv.lock"
+
+  # Documentation (Limited)
+  - "README.md"
+  - "CHANGELOG.md"
+  - "LICENSE.md"
+  - "CONTRIBUTING.md"
+  - "CLAUDE.md"
+
+  # Legacy/Existing documentation (to be migrated)
+  - "PHASE3_ALPHA_PLUGIN_ARCHITECTURE_MAP.md"
+  - "TEAM_BRAVO_FINDINGS.md"
+
+  # CI/CD & Security
+  - ".secrets.baseline"
+  - ".gitguardian.yaml"
+  - ".gitguardian.yml"
+
+# Allowed directories in root
+allowed_directories:
+  - ".github"
+  - ".gitlab"
+  - ".claude"
+  - ".amplihack"
+  - ".devcontainer"
+  - ".vscode"
+  - ".idea"
+  - ".claude-plugin"
+  - "docs"
+  - "scripts"
+  - "tests"
+  - "src"
+  - "lib"
+  - "pkg"
+  - "cmd"
+  - "build"
+  - "dist"
+  - "node_modules"
+  - ".git"
+  - "amplifier-bundle"
+  - "Specs"
+  - "amplifier-module-orchestrator-amplihack"
+  - "amplihack-logparse"
+  - "archive"
+  - "docker"
+  - "proxy"
+  - "tools"
+  - "worktrees"
+  - ".claude-trace"
+  - ".claude.backup.*"
+
+# Forbidden patterns (explicit blocklist)
+forbidden_patterns:
+  # Test files
+  - pattern: "test_*.py"
+    message: "Test files belong in tests/ directory"
+    suggested_location: "tests/"
+
+  - pattern: "*_test.py"
+    message: "Test files belong in tests/ directory"
+    suggested_location: "tests/"
+
+  - pattern: "test_*.js"
+    message: "Test files belong in tests/ or __tests__/ directory"
+    suggested_location: "tests/"
+
+  # Ad-hoc scripts
+  - pattern: "script.py"
+    message: "Scripts belong in scripts/ directory"
+    suggested_location: "scripts/"
+
+  - pattern: "run_*.py"
+    message: "Run scripts belong in scripts/ directory"
+    suggested_location: "scripts/"
+
+  - pattern: "check_*.py"
+    message: "Check scripts belong in scripts/ or .claude/ci/ directory"
+    suggested_location: "scripts/"
+
+  - pattern: "fix_*.py"
+    message: "Fix scripts belong in scripts/ directory or should be removed after use"
+    suggested_location: "scripts/"
+
+  # Temporary/Debug files
+  - pattern: "scratch.py"
+    message: "Scratch files should never be committed"
+    suggested_location: "DELETE"
+
+  - pattern: "temp*.py"
+    message: "Temporary files should never be committed"
+    suggested_location: "DELETE"
+
+  - pattern: "debug*.py"
+    message: "Debug files should never be committed"
+    suggested_location: "DELETE"
+
+  - pattern: "playground.py"
+    message: "Playground files should never be committed or belong in experiments/"
+    suggested_location: "DELETE or experiments/"
+
+  - pattern: "experiment*.py"
+    message: "Experiment files belong in experiments/ directory"
+    suggested_location: "experiments/"
+
+  # Documentation beyond allowlist
+  - pattern: "DESIGN_*.md"
+    message: "Design documents belong in docs/design/ directory"
+    suggested_location: "docs/design/"
+
+  - pattern: "SPEC_*.md"
+    message: "Specifications belong in docs/specs/ directory"
+    suggested_location: "docs/specs/"
+
+  - pattern: "IMPL_*.md"
+    message: "Implementation notes belong in docs/implementation/ directory"
+    suggested_location: "docs/implementation/"
+
+  - pattern: "TEST_*.md"
+    message: "Test documentation belongs in docs/testing/ directory"
+    suggested_location: "docs/testing/"
+
+  - pattern: "NOTES.md"
+    message: "Notes belong in docs/planning/ or issue tracker"
+    suggested_location: "docs/planning/"
+
+  - pattern: "TODO.md"
+    message: "TODOs belong in issue tracker or docs/planning/"
+    suggested_location: "DELETE - use issue tracker"
+
+  # Data files
+  - pattern: "*.csv"
+    message: "Data files belong in data/ directory"
+    suggested_location: "data/"
+
+  - pattern: "*.log"
+    message: "Log files should be in .gitignore or logs/ directory"
+    suggested_location: "logs/"
+
+  - pattern: "*.bak"
+    message: "Backup files should never be committed"
+    suggested_location: "DELETE"
+
+# Point-in-time documentation patterns
+# These indicate documentation that's only relevant at a specific time
+point_in_time_indicators:
+  # Focus on explicit dates and temporal phrases to reduce false positives
+  - "Q1 2025"
+  - "Q2 2025"
+  - "Q3 2025"
+  - "Q4 2025"
+  - "January 2025"
+  - "February 2025"
+  - "March 2025"
+  - "April 2025"
+  - "May 2025"
+  - "June 2025"
+  - "Sprint"
+  - "Week of"
+  - "As of 20"
+  - "Current status:"
+  - "Today's"
+  - "This week's"
+  - "Last week's"
+
+# Unrelated change detection configuration
+unrelated_change_detection:
+  # File patterns that indicate scope
+  scope_indicators:
+    ci: [".github/workflows/", ".gitlab-ci.yml", ".travis.yml"]
+    docs: ["docs/", "*.md", "README"]
+    tests: ["tests/", "test_*.py", "*_test.py", "__tests__/"]
+    src: ["src/", "lib/", "pkg/"]
+    config: ["*.yml", "*.yaml", "*.json", "*.toml", "*.ini"]
+    scripts: ["scripts/"]
+
+  # These combinations are usually related (won't warn)
+  related_scopes:
+    - ["src", "tests"]  # Code and tests are related
+    - ["src", "docs"]   # Code and documentation are related
+    - ["tests", "ci"]   # Tests and CI are related
+    - ["config", "ci"]  # Config and CI are related
+    - ["scripts", "ci"] # Scripts and CI are related
+
+  # These combinations trigger warnings
+  warn_on_combinations:
+    - ["docs", "ci", "src"]  # Too broad
+    - ["config", "docs", "tests"]  # Mixing concerns
