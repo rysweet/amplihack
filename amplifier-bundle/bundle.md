@@ -5,15 +5,11 @@ bundle:
   description: "A set of recipes, agents, tools, hooks, and skills from the amplihack toolset which are designed to provide a more complete engineering system on top of Amplifier."
 
 includes:
-  # Note: foundation is NOT explicitly included here because:
-  # 1. Amplifier CLI already loads foundation as the default bundle
-  # 2. amplifier-bundle-recipes includes foundation transitively
-  # Including it again causes a "circular dependency" warning
-  
-  # Core recipes bundle (includes foundation transitively)
-  # Foundation already includes: python-dev, ts-dev, shadow, sessions
-  # So we don't include those bundles directly to avoid circular dependencies
-  - bundle: git+https://github.com/microsoft/amplifier-bundle-recipes@main
+  # Note: We include the recipes BEHAVIOR bundle, not the main bundle
+  # The main bundle includes foundation, which would create a circular dependency
+  # since foundation already includes recipes:behaviors/recipes
+  # This matches the pattern foundation uses (line 36 of foundation/bundle.md)
+  - bundle: git+https://github.com/microsoft/amplifier-bundle-recipes@main#subdirectory=behaviors/recipes.yaml
   
   # GitHub issues integration (NOT in foundation, safe to include directly)
   - bundle: git+https://github.com/microsoft/amplifier-bundle-issues@main
