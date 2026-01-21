@@ -337,7 +337,6 @@ If the consideration is not applicable to this session (e.g., no relevant work w
 
     return prompt
 
-
 def _extract_reason_from_response(response: str) -> str | None:
     """Extract failure reason from SDK response.
 
@@ -373,9 +372,7 @@ def _extract_reason_from_response(response: str) -> str | None:
             reason_start = idx + len(pattern)
             reason = response[reason_start:].strip()
 
-            # Truncate to 200 chars
-            if len(reason) > 200:
-                reason = reason[:200]
+            # Return full reason without truncation
 
             return reason if reason else "Check not satisfied"
 
