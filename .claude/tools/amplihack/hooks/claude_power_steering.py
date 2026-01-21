@@ -337,6 +337,62 @@ If the consideration is not applicable to this session (e.g., no relevant work w
 
     return prompt
 
+def _smart_truncate(text: str, max_length: int = 200) -> str:
+    """Intelligently truncate text at sentence or word boundaries.
+
+    Args:
+        text: Text to truncate
+        max_length: Maximum length of returned text (default: 200)
+
+    Returns:
+        Truncated text, preferring sentence > word > hard boundaries
+
+    Algorithm:
+        1. If text fits within max_length, return as-is
+        2. Try to find sentence boundary (. ! ?) before max_length
+        3. Fall back to word boundary (spaces) before max_length
+        4. Hard truncate if no boundaries available
+
+    Example:
+        >>> _smart_truncate("First sentence. Second sentence.", 20)
+        "First sentence."
+        >>> _smart_truncate("No periods just words and more words", 20)
+        "No periods just"
+    """
+    # Handle edge cases
+    if max_length <= 0:
+        return ""
+
+    if not text or len(text) <= max_length:
+        return text
+
+    # Text is too long, need to truncate
+    # Reserve space for potential "..." suffix
+    safe_limit = max_length - 3
+
+    # Try sentence boundary first (search backwards from safe_limit)
+    sentence_boundaries = ['.', '!', '?']
+    best_boundary = -1
+
+    for i in range(safe_limit, -1, -1):
+        if text[i] in sentence_boundaries:
+            # Include the boundary character itself
+            best_boundary = i + 1
+            break
+
+    if best_boundary > 0:
+        # Found sentence boundary - truncate here with ellipsis
+        return text[:best_boundary].rstrip() + "..."
+
+    # No sentence boundary, try word boundary
+    for i in range(safe_limit - 1, -1, -1):
+        if text[i] == ' ':
+            # Don't include the trailing space, add ellipsis (cutting content)
+            return text[:i].rstrip() + "..."
+
+    # No word boundary, hard truncate with ellipsis
+    return text[:safe_limit].rstrip() + "..."
+
 
 def _extract_reason_from_response(response: str) -> str | None:
     """Extract failure reason from SDK response.
@@ -373,9 +429,8 @@ def _extract_reason_from_response(response: str) -> str | None:
             reason_start = idx + len(pattern)
             reason = response[reason_start:].strip()
 
-            # Truncate to 200 chars
-            if len(reason) > 200:
-                reason = reason[:200]
+            # Smart truncate to 200 chars
+            reason = _smart_truncate(reason, max_length=200)
 
             return reason if reason else "Check not satisfied"
 

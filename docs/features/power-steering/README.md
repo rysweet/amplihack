@@ -143,6 +143,30 @@ Please run tests locally using pytest or the appropriate test runner,
 verify they pass, then try ending the session again.
 ```
 
+### Feedback Message Formatting
+
+Power-steering uses smart truncation to keep feedback messages concise and readable:
+
+- **200 character maximum** - Messages are automatically truncated for readability and security
+- **Sentence boundaries preferred** - Truncation happens at natural sentence breaks (. ! ?)
+- **Word boundaries fallback** - If no sentence boundary, truncates at last word before limit
+- **Ellipsis indicator** - Truncated messages end with "..." to show content was shortened
+
+**Examples:**
+
+```
+✅ "Tests passing locally and in CI."
+   (Short message, no truncation needed)
+
+⚠️ "Complete the 3 incomplete TODOs shown in the task list. Update the..."
+   (Long message truncated at word boundary)
+
+❌ "Run pytest to verify your changes. Ensure all tests pass."
+   (Long message truncated at sentence boundary)
+```
+
+This ensures feedback is always scannable and actionable, even for complex checks with detailed reasoning.
+
 ## Fail-Open Philosophy
 
 Power-steering follows a **fail-open** design philosophy:
