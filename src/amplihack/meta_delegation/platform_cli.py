@@ -294,14 +294,12 @@ Focus on delivering working code that meets the stated requirements.""",
 
         prompt = self.format_prompt(goal, persona, kwargs.get("context", ""))
 
-        # Build command
-        command = ["claude"]
+        # Build command - use amplihack with prompt flag (proper way to invoke Claude)
+        command = ["amplihack", "claude", "--", "-p", prompt]
 
         # Add extra arguments if provided
-        command.extend(extra_args)
-
-        # Add the prompt as the last argument
-        command.append(prompt)
+        if extra_args:
+            command[3:3] = extra_args  # Insert before "--"
 
         # Merge environment variables
         env = os.environ.copy()
