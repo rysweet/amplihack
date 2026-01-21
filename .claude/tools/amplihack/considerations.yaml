@@ -125,6 +125,15 @@
 # CATEGORY 2: Workflow Process Adherence (2 considerations)
 # ============================================================================
 
+- id: workflow_invocation
+  category: Workflow Process Adherence
+  question: Was workflow properly invoked via Skill or Read tool?
+  description: Validates ultrathink-orchestrator properly invoked workflow skills using Skill tool or Read tool fallback (Issue #2040)
+  severity: blocker
+  checker: _check_workflow_invocation
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT", "INVESTIGATION"]
+
 - id: dev_workflow_complete
   category: Workflow Process Adherence
   question: Was full DEFAULT_WORKFLOW followed?
