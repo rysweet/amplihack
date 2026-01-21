@@ -30,29 +30,34 @@ EMOJI = {
 }
 
 
-def add_plugin_args_for_uvx(claude_args: list[str] | None = None) -> list[str]:
+def add_plugin_args_for_uvx(claude_args: list[str] | None = None, use_installed_plugin: bool = False) -> list[str]:
     """Add --plugin-dir and --add-dir arguments for UVX deployment.
 
     Args:
         claude_args: Existing Claude arguments
+        use_installed_plugin: If True, don't add --plugin-dir (plugin installed via Claude Code)
 
     Returns:
-        Updated arguments with plugin directory added
+        Updated arguments with plugin directory added (if needed)
     """
     if not is_uvx_deployment():
         return claude_args or []
 
     result_args = list(claude_args or [])
     original_cwd = os.environ.get("AMPLIHACK_ORIGINAL_CWD", os.getcwd())
-    plugin_root = str(Path.home() / ".amplihack" / ".claude")
 
     # Add --add-dir for project access
     if "--add-dir" not in result_args:
         result_args = ["--add-dir", original_cwd] + result_args
 
-    # Add --plugin-dir to load amplihack as a plugin
-    if "--plugin-dir" not in result_args:
-        result_args = ["--plugin-dir", plugin_root] + result_args
+    # Add --plugin-dir ONLY if using directory copy (not installed plugin)
+    # When plugin is installed via `claude plugin install`, Claude Code auto-discovers it
+    plugin_installed = use_installed_plugin or os.environ.get("AMPLIHACK_PLUGIN_INSTALLED") == "true"
+
+    if not plugin_installed:
+        plugin_root = str(Path.home() / ".amplihack" / ".claude")
+        if "--plugin-dir" not in result_args:
+            result_args = ["--plugin-dir", plugin_root] + result_args
 
     return result_args
 
@@ -841,8 +846,10 @@ def main(argv: list[str] | None = None) -> int:
                     if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                         print(f"✅ Amplihack plugin installed successfully")
                         print(result.stdout)
-                    # Plugin installed successfully - no temp_claude_dir needed
+                    # Plugin installed successfully - Claude Code will auto-discover it
+                    # Don't pass --plugin-dir (set flag for add_plugin_args_for_uvx)
                     temp_claude_dir = None
+                    os.environ["AMPLIHACK_PLUGIN_INSTALLED"] = "true"
 
         # Smart PROJECT.md initialization for UVX mode
         try:
