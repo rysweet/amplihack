@@ -792,7 +792,7 @@ class PowerSteeringChecker:
             user_claims: list[str] = []
             delta_result: DeltaAnalysisResult | None = None
 
-            if TURN_STATE_AVAILABLE and turn_state and turn_state.block_history:
+            if TURN_STATE_AVAILABLE and turn_state and turn_state.block_history and turn_state_manager:
                 # Get previous block's failures for delta analysis
                 previous_block = turn_state.get_previous_block()
                 if previous_block and previous_block.failed_evidence:
@@ -2198,53 +2198,11 @@ class PowerSteeringChecker:
 
         return None
 
-    def _extract_message_text(self, msg: dict) -> str:
-        """Extract text content from a message dict.
-
-        Args:
-            msg: Message dictionary
-
-        Returns:
-            Text content as string
-        """
-        content = msg.get("content", msg.get("message", ""))
-
-        if isinstance(content, str):
-            return content
-
-        if isinstance(content, dict):
-            inner = content.get("content", "")
-            if isinstance(inner, str):
-                return inner
-            if isinstance(inner, list):
-                return self._extract_text_from_blocks(inner)
-
-        if isinstance(content, list):
-            return self._extract_text_from_blocks(content)
-
-        return ""
-
-    def _extract_text_from_blocks(self, blocks: list) -> str:
-        """Extract text from content blocks.
-
-        Args:
-            blocks: List of content blocks
-
-        Returns:
-            Concatenated text content
-        """
-        texts = []
-        for block in blocks:
-            if isinstance(block, dict):
-                if block.get("type") == "text":
-                    texts.append(str(block.get("text", "")))
-        return " ".join(texts)
-
     def _analyze_considerations(
         self,
         transcript: list[dict],
         session_id: str,
-        session_type: str = None,
+        session_type: str | None = None,
         progress_callback: Callable | None = None,
     ) -> ConsiderationAnalysis:
         """Analyze transcript against all enabled considerations IN PARALLEL.
@@ -2756,6 +2714,151 @@ class PowerSteeringChecker:
                                             next_steps.append(clean_sentence)
 
         return next_steps[:5]  # Limit to 5 items
+
+    def _check_workflow_invocation(self, transcript: list[dict], session_id: str) -> bool:
+        """Check if workflow was properly invoked via Skill or Read tool.
+
+        Validates that when ultrathink-orchestrator is triggered, the appropriate
+        workflow skill is invoked using Skill tool or Read tool fallback.
+
+        Issue #2040: Enforce workflow invocation compliance
+
+        Args:
+            transcript: List of message dictionaries
+            session_id: Session identifier
+
+        Returns:
+            True if workflow properly invoked or not required, False otherwise
+        """
+        try:
+            # Import validator
+            from workflow_invocation_validator import validate_workflow_invocation
+
+            # Convert transcript to string format for validator
+            transcript_text = self._transcript_to_text(transcript)
+
+            # Determine session type from state if available
+            session_type = "DEVELOPMENT"  # Default
+            try:
+                state_file = (
+                    self.runtime_dir / session_id / "turn_state.json"
+                )
+                if state_file.exists():
+                    state = json.loads(state_file.read_text())
+                    session_type = state.get("session_type", "DEVELOPMENT")
+            except Exception:
+                pass  # Use default
+
+            # Validate workflow invocation
+            result = validate_workflow_invocation(transcript_text, session_type)
+
+            if not result.valid:
+                # Log violation details
+                self._log_violation(
+                    "workflow_invocation",
+                    {
+                        "reason": result.reason,
+                        "violation_type": result.violation_type,
+                        "evidence": result.evidence,
+                        "session_type": session_type,
+                    },
+                    session_id,
+                )
+
+            return result.valid
+
+        except ImportError:
+            # Validator not available - fail open
+            import sys
+
+            sys.stderr.write(
+                "[Power Steering] workflow_invocation_validator not found, skipping check\n"
+            )
+            return True
+        except Exception as e:
+            # Fail-open on errors
+            import sys
+
+            sys.stderr.write(
+                f"[Power Steering] Error in _check_workflow_invocation: {e}\n"
+            )
+            return True
+
+    def _transcript_to_text(self, transcript: list[dict]) -> str:
+        """Convert transcript list to plain text for pattern matching.
+
+        Args:
+            transcript: List of message dictionaries
+
+        Returns:
+            Plain text representation of transcript
+        """
+        lines = []
+        for msg in transcript:
+            role = msg.get("type", "unknown")
+            if role == "user":
+                lines.append(f"User: {self._extract_message_text(msg)}")
+            elif role == "assistant":
+                lines.append(f"Claude: {self._extract_message_text(msg)}")
+        return "\n".join(lines)
+
+    def _extract_message_text(self, msg: dict) -> str:
+        """Extract text content from message.
+
+        Args:
+            msg: Message dictionary
+
+        Returns:
+            Text content
+        """
+        message = msg.get("message", {})
+        content = message.get("content", [])
+
+        if isinstance(content, str):
+            return content
+
+        if isinstance(content, list):
+            texts = []
+            for block in content:
+                if isinstance(block, dict):
+                    if block.get("type") == "text":
+                        texts.append(block.get("text", ""))
+                    elif block.get("type") == "tool_use":
+                        # Include tool invocations in text
+                        tool_name = block.get("name", "")
+                        tool_input = block.get("input", {})
+                        texts.append(f"<invoke name=\"{tool_name}\">{tool_input}")
+            return " ".join(texts)
+
+        return ""
+
+    def _log_violation(self, consideration_id: str, details: dict, session_id: str) -> None:
+        """Log violation details to session logs.
+
+        Args:
+            consideration_id: ID of failed consideration
+            details: Violation details
+            session_id: Session identifier
+        """
+        try:
+            log_file = self.runtime_dir / session_id / "violations.json"
+            log_file.parent.mkdir(parents=True, exist_ok=True)
+
+            violations = []
+            if log_file.exists():
+                violations = json.loads(log_file.read_text())
+
+            violations.append(
+                {
+                    "consideration_id": consideration_id,
+                    "timestamp": datetime.now().isoformat(),
+                    "details": details,
+                }
+            )
+
+            log_file.write_text(json.dumps(violations, indent=2))
+        except Exception:
+            pass  # Fail silently
 
     def _check_dev_workflow_complete(self, transcript: list[dict], session_id: str) -> bool:
         """Check if full DEFAULT_WORKFLOW followed.
