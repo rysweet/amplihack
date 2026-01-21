@@ -242,7 +242,7 @@ class EvidenceCollector:
                     try:
                         item = self._create_evidence_item(file_path, evidence_type)
                         evidence.append(item)
-                    except Exception as e:
+                    except Exception:
                         # Skip files that can't be read (binary files, permission errors, etc.)
                         continue
 

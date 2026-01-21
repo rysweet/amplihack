@@ -62,10 +62,6 @@ class TestScenario:
 class GadugiScenarioGenerator:
     """Generates comprehensive test scenarios for QA validation."""
 
-    def __init__(self):
-        """Initialize scenario generator."""
-        pass
-
     def generate_scenarios(
         self,
         goal: str,
