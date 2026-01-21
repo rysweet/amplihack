@@ -233,6 +233,8 @@ For automated contexts:
 3. Structured JSON output is produced
 4. Output can be posted to PR comments automatically
 
+**Auto-Detection:** The skill automatically detects non-interactive contexts (e.g., `claude --print`, CI pipelines, no TTY) and switches to non-interactive mode. This prevents the frustrating pattern of asking questions, waiting for responses that can't come, and exiting INCONCLUSIVE with no useful output.
+
 ### Posting to PR
 
 ```bash

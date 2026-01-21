@@ -422,6 +422,14 @@ For automated contexts where no one is responding:
 
 The agent asks all questions rhetorically, identifies likely issues based on code analysis, and produces a synthesis.
 
+**Auto-Detection:** If the session appears non-interactive (e.g., invoked via `claude --print`, running in CI, or no TTY attached), automatically switch to non-interactive mode. Don't ask questions and wait for responses that can never come - that just produces INCONCLUSIVE with no value.
+
+Signs of non-interactive context:
+- `--print` flag in invocation
+- No TTY attached to stdin
+- CI environment variables present (CI, GITHUB_ACTIONS, etc.)
+- Piped input detected
+
 ### Structured Output Format
 
 All Socratic reviews produce structured output that can be captured:
