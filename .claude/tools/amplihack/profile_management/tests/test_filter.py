@@ -31,9 +31,9 @@ def sample_inventory():
             "economist-analyst": Path("/claude/agents/economist-analyst.md"),
         },
         skills={
-            "pdf": Path("/claude/skills/office/pdf/skill.md"),
-            "xlsx": Path("/claude/skills/office/xlsx/skill.md"),
-            "economist-analyst": Path("/claude/skills/analysis/economist-analyst/skill.md"),
+            "pdf": Path("/claude/skills/office/pdf/SKILL.md"),
+            "xlsx": Path("/claude/skills/office/xlsx/SKILL.md"),
+            "economist-analyst": Path("/claude/skills/analysis/economist-analyst/SKILL.md"),
         },
         skill_categories={
             "office": ["pdf", "xlsx"],

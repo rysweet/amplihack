@@ -180,13 +180,13 @@ class ComponentDiscovery:
         """
         skills = {}
 
-        # Look for skill.md or README.md in each subdirectory
+        # Look for SKILL.md or README.md in each subdirectory
         for skill_dir in skills_dir.rglob("*"):
             if not skill_dir.is_dir():
                 continue
 
-            # Check for skill.md first, then README.md
-            skill_file = skill_dir / "skill.md"
+            # Check for SKILL.md first, then README.md
+            skill_file = skill_dir / "SKILL.md"
             if not skill_file.exists():
                 skill_file = skill_dir / "README.md"
 
