@@ -1,0 +1,12 @@
+{
+  "plugins": [
+    {
+      "name": "amplihack",
+      "source": {
+        "source": "github",
+        "repo": "rysweet/amplihack",
+        "path": ".claude-plugin"
+      }
+    }
+  ]
+}
