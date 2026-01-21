@@ -237,6 +237,19 @@ Specialized AI agents and tools for every development task.
 
 **Key Feature**: Goal-seeking agents work autonomously toward a defined objective, iterating and adapting without requiring user intervention at each step. Perfect for complex, open-ended tasks.
 
+### Meta-Agentic Task Delegation ⭐ NEW
+
+**Run AI agents in isolated subprocess environments with automatic validation and evidence collection.**
+
+- [Meta-Delegation Overview](meta-delegation/README.md) - What is meta-delegation and when to use it
+- [Tutorial](meta-delegation/tutorial.md) - Learn meta-delegation step-by-step (30 minutes)
+- [How-To Guide](meta-delegation/howto.md) - Common tasks and recipes
+- [API Reference](meta-delegation/reference.md) - Complete technical documentation
+- [Concepts](meta-delegation/concepts.md) - Architecture and design principles
+- [Troubleshooting](meta-delegation/troubleshooting.md) - Fix common issues
+
+**Key Feature**: Delegate complex tasks to specialized personas (guide, QA engineer, architect, junior developer) running in isolated environments. The system monitors execution, collects evidence, validates success criteria, and provides detailed reports.
+
 ### Workflow Agents
 
 - [Ambiguity Handler](claude/agents/amplihack/specialized/ambiguity.md) - Clarify unclear requirements
