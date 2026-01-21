@@ -20,6 +20,7 @@ Philosophy:
 
 import json
 import os
+import select
 import time
 from dataclasses import dataclass
 from datetime import datetime
@@ -420,12 +421,18 @@ class MetaDelegationOrchestrator:
             # Poll process
             self.state_machine.poll_process()
 
-            # Read output (non-blocking)
-            if self.state_machine.process:
+            # Read output (non-blocking) using select for proper I/O multiplexing
+            if self.state_machine.process and self.state_machine.process.stdout:
                 try:
-                    # This is simplified - real implementation would use select/poll
-                    pass
+                    # Use select to check if data is available without blocking
+                    readable, _, _ = select.select([self.state_machine.process.stdout], [], [], 0)
+                    if readable:
+                        # Read available data (non-blocking)
+                        chunk = os.read(self.state_machine.process.stdout.fileno(), 4096)
+                        if chunk:
+                            execution_log_parts.append(chunk.decode('utf-8', errors='replace'))
                 except Exception:
+                    # Handle any I/O errors gracefully (process may have terminated)
                     pass
 
             time.sleep(1)
