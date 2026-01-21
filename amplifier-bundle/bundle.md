@@ -13,15 +13,9 @@ includes:
   # Core recipes bundle (includes foundation transitively)
   - bundle: git+https://github.com/microsoft/amplifier-bundle-recipes@main
   
-  # Language Server Protocol (LSP) bundles
-  # Base LSP infrastructure (required by language-specific LSP bundles)
-  - bundle: git+https://github.com/microsoft/amplifier-bundle-lsp@main
-  
-  # Language-specific LSP integration (depends on lsp base)
-  - bundle: git+https://github.com/microsoft/amplifier-bundle-lsp-python@main
-  - bundle: git+https://github.com/microsoft/amplifier-bundle-lsp-typescript@main
-  
-  # Development tool bundles (provide language-specific tooling)
+  # Development tool bundles (provide language-specific tooling + LSP transitively)
+  # Note: python-dev includes lsp-python, ts-dev includes lsp-typescript
+  # These transitively include the base lsp bundle, so we don't include LSP bundles directly
   - bundle: git+https://github.com/microsoft/amplifier-bundle-python-dev@main
   - bundle: git+https://github.com/microsoft/amplifier-bundle-ts-dev@main
   
