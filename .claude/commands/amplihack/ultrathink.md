@@ -41,6 +41,35 @@ Claude invokes this skill for non-trivial development and investigation tasks:
 
 **Bypass**: Use explicit commands (`/fix`, `/analyze`) or request "without ultrathink"
 
+## ⛔ BLOCKING REQUIREMENT: Workflow Invocation
+
+When ultrathink-orchestrator skill is triggered (auto-activation or explicit /ultrathink command), you MUST:
+
+1. **IMMEDIATELY invoke the appropriate workflow skill** using the Skill tool:
+   - Development tasks: `Skill(skill="default-workflow")`
+   - Investigation tasks: `Skill(skill="investigation-workflow")`
+   - Q&A tasks: Read `.claude/workflow/Q&A_WORKFLOW.md` directly
+
+2. **IF skill invocation fails**, use Read tool as fallback:
+   - Development: `Read(file_path=".claude/workflow/DEFAULT_WORKFLOW.md")`
+   - Investigation: `Read(file_path=".claude/workflow/INVESTIGATION_WORKFLOW.md")`
+
+3. **NEVER proceed with workflow execution without loading the workflow**
+   - Power-steering will detect this violation at session end
+   - Session will be blocked until proper workflow invocation is added
+
+**Self-Check Protocol:**
+Before proceeding with any workflow steps, verify you have:
+- [ ] Invoked Skill tool with workflow skill name, OR
+- [ ] Used Read tool to load workflow markdown file
+- [ ] Confirmed workflow content is loaded in context
+
+**Error Protocol:**
+If you forget to invoke the workflow:
+1. Power-steering will block session termination
+2. You must retry with proper Skill or Read tool invocation
+3. No shortcuts or workarounds accepted
+
 ## EXECUTION INSTRUCTIONS FOR CLAUDE
 
 When this command is invoked, you MUST:
