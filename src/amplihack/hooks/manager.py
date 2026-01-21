@@ -64,7 +64,17 @@ def _find_stop_hook() -> Path | None:
     Returns:
         Path to stop.py if found, None otherwise
     """
-    # PRIORITY 1: Try bundled hooks in installed package FIRST
+    import os
+
+    # PRIORITY 1: Try installed plugin (when using Claude Code plugin system)
+    if os.environ.get("AMPLIHACK_PLUGIN_INSTALLED") == "true":
+        installed_plugin_path = Path.home() / ".claude" / "plugins" / "cache" / "amplihack" / "amplihack" / "0.9.0"
+        plugin_stop_hook = installed_plugin_path / "tools" / "amplihack" / "hooks" / "stop.py"
+        if plugin_stop_hook.exists():
+            logger.debug(f"Using installed plugin stop hook: {plugin_stop_hook}")
+            return plugin_stop_hook
+
+    # PRIORITY 2: Try bundled hooks in installed package (for UV/pip installs)
     # This ensures installed versions use the hooks that were bundled with them
     module_dir = Path(__file__).parent.parent.parent.parent
     bundled_hook = module_dir / ".claude" / "tools" / "amplihack" / "hooks" / "stop.py"
@@ -72,7 +82,7 @@ def _find_stop_hook() -> Path | None:
         logger.debug(f"Using bundled stop hook from package: {bundled_hook}")
         return bundled_hook
 
-    # PRIORITY 2: Fall back to local .claude directory (for development)
+    # PRIORITY 3: Fall back to local .claude directory (for development)
     current = Path.cwd()
     for parent in [current] + list(current.parents):
         claude_dir = parent / ".claude"
