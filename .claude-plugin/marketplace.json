@@ -7,7 +7,7 @@
   "plugins": [
     {
       "name": "amplihack",
-      "source": ".",
+      "source": "./.claude-plugin",
       "description": "AI-powered development framework with specialized agents and automated workflows for Claude Code",
       "version": "0.9.0",
       "author": {
