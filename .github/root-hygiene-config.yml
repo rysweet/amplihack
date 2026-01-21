@@ -32,6 +32,14 @@ allowed_patterns:
   - ".ggignore"
   - ".mcp.json"
   - ".github.copilot.env"
+  - "build_hooks.py"
+  - "conftest.py"
+  - "litellm_standalone_config.yaml"
+  - "marketplace.json"
+  - "mkdocs.yml"
+  - "poetry.lock"
+  - "pyrightconfig.json"
+  - "uv.lock"
 
   # Documentation (Limited)
   - "README.md"
@@ -72,6 +80,15 @@ allowed_directories:
   - ".git"
   - "amplifier-bundle"
   - "Specs"
+  - "amplifier-module-orchestrator-amplihack"
+  - "amplihack-logparse"
+  - "archive"
+  - "docker"
+  - "proxy"
+  - "tools"
+  - "worktrees"
+  - ".claude-trace"
+  - ".claude.backup.*"
 
 # Forbidden patterns (explicit blocklist)
 forbidden_patterns:
