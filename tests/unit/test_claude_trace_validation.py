@@ -10,7 +10,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from amplihack.utils.claude_trace import (
     _is_valid_claude_trace_binary,
-    _test_claude_trace_execution,
+    clear_status_cache,
+    detect_claude_trace_status,
 )
 
 
@@ -24,9 +25,17 @@ class TestClaudeTraceValidation:
         mock_result.stdout = "Usage: claude-trace [options]\nTrace claude execution"
         mock_result.stderr = ""
 
-        with patch("subprocess.run", return_value=mock_result) as mock_run:
-            result = _test_claude_trace_execution("/usr/bin/claude-trace")
-            assert result is True
+        with (
+            patch("subprocess.run", return_value=mock_result) as mock_run,
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.is_file", return_value=True),
+            patch("os.access", return_value=True),
+        ):
+            # Clear cache
+            clear_status_cache()
+
+            result = detect_claude_trace_status("/usr/bin/claude-trace")
+            assert result == "working"
             mock_run.assert_called_once()
             # Verify --help was called with 2s timeout
             call_args = mock_run.call_args
@@ -40,9 +49,17 @@ class TestClaudeTraceValidation:
         mock_result.stdout = "Usage: claude [options]\nRun claude with tracing"
         mock_result.stderr = ""
 
-        with patch("subprocess.run", return_value=mock_result):
-            result = _test_claude_trace_execution("/usr/bin/claude-trace")
-            assert result is True
+        with (
+            patch("subprocess.run", return_value=mock_result),
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.is_file", return_value=True),
+            patch("os.access", return_value=True),
+        ):
+            # Clear cache
+            clear_status_cache()
+
+            result = detect_claude_trace_status("/usr/bin/claude-trace")
+            assert result == "working"
 
     def test_help_output_case_insensitive(self):
         """Test that validation is case-insensitive."""
@@ -51,9 +68,17 @@ class TestClaudeTraceValidation:
         mock_result.stdout = "USAGE: CLAUDE-TRACE [OPTIONS]\nTrace CLAUDE execution"
         mock_result.stderr = ""
 
-        with patch("subprocess.run", return_value=mock_result):
-            result = _test_claude_trace_execution("/usr/bin/claude-trace")
-            assert result is True
+        with (
+            patch("subprocess.run", return_value=mock_result),
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.is_file", return_value=True),
+            patch("os.access", return_value=True),
+        ):
+            # Clear cache
+            clear_status_cache()
+
+            result = detect_claude_trace_status("/usr/bin/claude-trace")
+            assert result == "working"
 
     def test_help_output_missing_claude(self):
         """Test that output without 'claude' fails validation."""
@@ -62,9 +87,15 @@ class TestClaudeTraceValidation:
         mock_result.stdout = "Usage: trace-tool [options]\nTrace execution"
         mock_result.stderr = ""
 
-        with patch("subprocess.run", return_value=mock_result):
-            result = _test_claude_trace_execution("/usr/bin/wrong-tool")
-            assert result is False
+        with (
+            patch("subprocess.run", return_value=mock_result),
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.is_file", return_value=True),
+            patch("os.access", return_value=True),
+        ):
+            clear_status_cache()
+            result = detect_claude_trace_status("/usr/bin/wrong-tool")
+            assert result == "broken"
 
     def test_help_output_missing_trace_and_usage(self):
         """Test that output without 'trace' or 'usage' fails validation."""
@@ -73,9 +104,15 @@ class TestClaudeTraceValidation:
         mock_result.stdout = "claude debugging tool\nSome other info"
         mock_result.stderr = ""
 
-        with patch("subprocess.run", return_value=mock_result):
-            result = _test_claude_trace_execution("/usr/bin/wrong-tool")
-            assert result is False
+        with (
+            patch("subprocess.run", return_value=mock_result),
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.is_file", return_value=True),
+            patch("os.access", return_value=True),
+        ):
+            clear_status_cache()
+            result = detect_claude_trace_status("/usr/bin/wrong-tool")
+            assert result == "broken"
 
     def test_help_output_empty(self):
         """Test that empty output fails validation."""
@@ -84,9 +121,15 @@ class TestClaudeTraceValidation:
         mock_result.stdout = ""
         mock_result.stderr = ""
 
-        with patch("subprocess.run", return_value=mock_result):
-            result = _test_claude_trace_execution("/usr/bin/wrong-tool")
-            assert result is False
+        with (
+            patch("subprocess.run", return_value=mock_result),
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.is_file", return_value=True),
+            patch("os.access", return_value=True),
+        ):
+            clear_status_cache()
+            result = detect_claude_trace_status("/usr/bin/wrong-tool")
+            assert result == "broken"
 
     def test_help_output_only_whitespace(self):
         """Test that whitespace-only output fails validation."""
@@ -95,9 +138,15 @@ class TestClaudeTraceValidation:
         mock_result.stdout = "   \n\t  \n"
         mock_result.stderr = ""
 
-        with patch("subprocess.run", return_value=mock_result):
-            result = _test_claude_trace_execution("/usr/bin/wrong-tool")
-            assert result is False
+        with (
+            patch("subprocess.run", return_value=mock_result),
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.is_file", return_value=True),
+            patch("os.access", return_value=True),
+        ):
+            clear_status_cache()
+            result = detect_claude_trace_status("/usr/bin/wrong-tool")
+            assert result == "broken"
 
     def test_non_zero_exit_code(self):
         """Test that non-zero exit code fails validation."""
@@ -106,27 +155,59 @@ class TestClaudeTraceValidation:
         mock_result.stdout = "Usage: claude-trace [options]\nTrace claude execution"
         mock_result.stderr = ""
 
-        with patch("subprocess.run", return_value=mock_result):
-            result = _test_claude_trace_execution("/usr/bin/claude-trace")
-            assert result is False
+        with (
+            patch("subprocess.run", return_value=mock_result),
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.is_file", return_value=True),
+            patch("os.access", return_value=True),
+        ):
+            # Clear cache
+            clear_status_cache()
+
+            result = detect_claude_trace_status("/usr/bin/claude-trace")
+            assert result == "broken"
 
     def test_subprocess_timeout(self):
         """Test that timeout exceptions result in False."""
-        with patch("subprocess.run", side_effect=subprocess.TimeoutExpired("cmd", 2)):
-            result = _test_claude_trace_execution("/usr/bin/claude-trace")
-            assert result is False
+        with (
+            patch("subprocess.run", side_effect=subprocess.TimeoutExpired("cmd", 2)),
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.is_file", return_value=True),
+            patch("os.access", return_value=True),
+        ):
+            # Clear cache
+            clear_status_cache()
+
+            result = detect_claude_trace_status("/usr/bin/claude-trace")
+            assert result == "broken"
 
     def test_subprocess_error(self):
         """Test that subprocess errors result in False."""
-        with patch("subprocess.run", side_effect=subprocess.SubprocessError("error")):
-            result = _test_claude_trace_execution("/usr/bin/claude-trace")
-            assert result is False
+        with (
+            patch("subprocess.run", side_effect=subprocess.SubprocessError("error")),
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.is_file", return_value=True),
+            patch("os.access", return_value=True),
+        ):
+            # Clear cache
+            clear_status_cache()
+
+            result = detect_claude_trace_status("/usr/bin/claude-trace")
+            assert result == "broken"
 
     def test_os_error(self):
         """Test that OS errors result in False."""
-        with patch("subprocess.run", side_effect=OSError("error")):
-            result = _test_claude_trace_execution("/usr/bin/claude-trace")
-            assert result is False
+        with (
+            patch("subprocess.run", side_effect=OSError("error")),
+            patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.is_file", return_value=True),
+            patch("os.access", return_value=True),
+        ):
+            # Clear cache
+            clear_status_cache()
+
+            result = detect_claude_trace_status("/usr/bin/claude-trace")
+            assert result == "broken"
 
     def test_homebrew_symlink_handling(self):
         """Test that homebrew symlinks are still validated."""
@@ -144,12 +225,17 @@ class TestClaudeTraceValidation:
                 return_value=Path("/opt/homebrew/lib/node_modules/claude-trace.js"),
             ),
             patch("pathlib.Path.exists", return_value=True),
+            patch("pathlib.Path.is_file", return_value=True),
+            patch("os.access", return_value=True),
             patch("subprocess.run", return_value=mock_result),
         ):
-            # The homebrew path should still be validated via the new logic
-            result = _test_claude_trace_execution("/opt/homebrew/bin/claude-trace")
-            # Should return True due to homebrew special case (before subprocess)
-            assert result is True
+            # Clear cache
+            clear_status_cache()
+
+            # The homebrew path should be validated via the standard logic
+            result = detect_claude_trace_status("/opt/homebrew/bin/claude-trace")
+            # Should return "working" after subprocess test passes
+            assert result == "working"
 
     def test_is_valid_binary_integration(self):
         """Test that _is_valid_claude_trace_binary integrates correctly."""
@@ -164,6 +250,9 @@ class TestClaudeTraceValidation:
             patch("pathlib.Path.is_file", return_value=True),
             patch("os.access", return_value=True),
         ):
+            # Clear cache
+            clear_status_cache()
+
             result = _is_valid_claude_trace_binary("/usr/bin/claude-trace")
             assert result is True
 

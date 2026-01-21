@@ -1,9 +1,26 @@
 """Claude-trace integration - ruthlessly simple implementation."""
 
+import logging
 import os
 import shutil
 import subprocess
 from pathlib import Path
+
+__all__ = [
+    "should_use_trace",
+    "get_claude_command",
+    "detect_claude_trace_status",
+    "clear_status_cache",
+]
+
+# Module-level cache for detection results to avoid repeated checks
+_claude_trace_status_cache: dict[str, str] = {}
+_fallback_message_shown = False
+
+# Note: This module uses both print() and logging:
+# - print() for user-facing messages (installation status, fallback notices)
+# - logging (logger.debug) for internal diagnostics and debugging
+logger = logging.getLogger(__name__)
 
 
 def should_use_trace() -> bool:
@@ -26,12 +43,20 @@ def get_claude_command() -> str:
     Uses smart binary detection to avoid shell script wrappers and
     prefer reliable binaries. Checks for RustyClawd first (Rust implementation).
 
+    Implements fallback logic:
+    1. Try RustyClawd (Rust native implementation)
+    2. Try claude-trace (if working)
+    3. Fall back to claude (if claude-trace broken/missing)
+
     Returns:
         Command name/path to use ('rustyclawd', 'claude-trace', or 'claude')
 
     Side Effects:
-        May attempt to install claude-trace via npm if not found
+        - May attempt to install claude-trace via npm if not found
+        - Shows informational message once if falling back from broken claude-trace
     """
+    global _fallback_message_shown
+
     # Check for RustyClawd (Rust implementation) first
     from .rustyclawd_detect import get_rustyclawd_path, should_use_rustyclawd
 
@@ -48,8 +73,19 @@ def get_claude_command() -> str:
     # Smart detection of valid claude-trace binary
     claude_trace_path = _find_valid_claude_trace()
     if claude_trace_path:
-        print(f"Using claude-trace for enhanced debugging: {claude_trace_path}")
-        return "claude-trace"
+        # Found a working claude-trace
+        status = detect_claude_trace_status(claude_trace_path)
+        if status == "working":
+            print(f"Using claude-trace for enhanced debugging: {claude_trace_path}")
+            return "claude-trace"
+        elif status == "broken":
+            # claude-trace exists but is broken - fall back to claude
+            if not _fallback_message_shown:
+                print(f"\nℹ️  Found claude-trace at {claude_trace_path} but it failed execution test")
+                print("   Falling back to standard 'claude' command")
+                print("   Tip: Reinstall claude-trace with: npm install -g @mariozechner/claude-trace\n")
+                _fallback_message_shown = True
+            return "claude"
 
     # Try to install claude-trace
     print("Claude-trace not found, attempting to install...")
@@ -57,9 +93,17 @@ def get_claude_command() -> str:
         # Verify installation worked
         claude_trace_path = _find_valid_claude_trace()
         if claude_trace_path:
-            print(f"Claude-trace installed successfully: {claude_trace_path}")
-            return "claude-trace"
-        print("Claude-trace installation completed but binary validation failed")
+            status = detect_claude_trace_status(claude_trace_path)
+            if status == "working":
+                print(f"Claude-trace installed successfully: {claude_trace_path}")
+                return "claude-trace"
+            elif status == "broken":
+                print("Claude-trace installed but binary validation failed")
+                if not _fallback_message_shown:
+                    print("Falling back to standard 'claude' command")
+                    _fallback_message_shown = True
+                return "claude"
+        print("Claude-trace installation completed but binary not found")
 
     # Fall back to claude
     print("Could not install claude-trace, falling back to standard claude")
@@ -159,37 +203,46 @@ def _is_valid_claude_trace_binary(path: str) -> bool:
             return False
 
         # Test execution to ensure it's not a broken wrapper
-        return _test_claude_trace_execution(path)
+        status = detect_claude_trace_status(path)
+        return status == "working"
 
     except (OSError, PermissionError):
         return False
 
 
-def _test_claude_trace_execution(path: str) -> bool:
-    """Test if a claude-trace binary actually executes correctly.
+def detect_claude_trace_status(path: str) -> str:
+    """Detect the status of a claude-trace binary.
+
+    Tests whether a claude-trace binary is:
+    - "working": Executes successfully with valid output
+    - "broken": Exists but fails at runtime (ELF format error, syntax error, etc.)
+    - "missing": Does not exist or not executable
 
     Args:
         path: Path to claude-trace binary to test
 
     Returns:
-        True if binary executes without syntax errors and appears to be claude-trace
-    """
-    try:
-        # Special handling for known good homebrew installation
-        # The homebrew claude-trace is a symlink to a valid Node.js script
-        if path in ["/opt/homebrew/bin/claude-trace", "/usr/local/bin/claude-trace"]:
-            # Check if it's a symlink to a .js file (valid Node.js script)
-            path_obj = Path(path)
-            if path_obj.is_symlink():
-                target = path_obj.resolve()
-                if target.suffix == ".js" and target.exists():
-                    # This is a valid homebrew installation
-                    # Even if claude-trace fails to find a working claude binary,
-                    # the claude-trace binary itself is valid
-                    return True
+        Status string: "working", "broken", or "missing"
 
-        # Run with --help flag to test basic functionality
-        # Use a short timeout to avoid hanging
+    Note:
+        Results are cached to avoid repeated checks during the same session.
+    """
+    # Check cache first
+    if path in _claude_trace_status_cache:
+        return _claude_trace_status_cache[path]
+
+    # Check if file exists and is executable
+    path_obj = Path(path)
+    if not path_obj.exists() or not path_obj.is_file():
+        _claude_trace_status_cache[path] = "missing"
+        return "missing"
+
+    if not os.access(path, os.X_OK):
+        _claude_trace_status_cache[path] = "missing"
+        return "missing"
+
+    # Test execution
+    try:
         result = subprocess.run(
             [path, "--help"],
             check=False,
@@ -198,35 +251,71 @@ def _test_claude_trace_execution(path: str) -> bool:
             timeout=2,
         )
 
-        # Consider success if:
-        # 1. Process exits cleanly (returncode 0)
-        # 2. Output is non-empty
-        # 3. Output contains "claude" (case-insensitive)
-        # 4. Output contains either "trace" or "usage" (case-insensitive)
-        if result.returncode == 0:
-            stdout_lower = (result.stdout or "").lower()
+        # Check for common error indicators
+        if result.returncode != 0:
+            stderr_lower = (result.stderr or "").lower()
 
-            # Must have non-empty output
-            if not stdout_lower.strip():
-                return False
+            # Detect specific error patterns that indicate broken binary
+            broken_patterns = [
+                "exec format error",
+                "cannot execute binary",
+                "syntax error",
+                "unexpected token",
+                "bad interpreter",
+            ]
 
-            # Must mention "claude"
-            if "claude" not in stdout_lower:
-                return False
+            if any(pattern in stderr_lower for pattern in broken_patterns):
+                logger.debug(f"claude-trace at {path} is broken: {result.stderr[:100]}")
+                _claude_trace_status_cache[path] = "broken"
+                return "broken"
 
-            # Must mention either "trace" or "usage"
-            if "trace" not in stdout_lower and "usage" not in stdout_lower:
-                return False
+            # Non-zero exit without clear error pattern - treat as broken
+            _claude_trace_status_cache[path] = "broken"
+            return "broken"
 
-            # All checks passed
-            return True
+        # Exit code 0 - validate output
+        stdout_lower = (result.stdout or "").lower()
 
-        return False
+        # Must have non-empty output
+        if not stdout_lower.strip():
+            _claude_trace_status_cache[path] = "broken"
+            return "broken"
 
-    except (subprocess.TimeoutExpired, subprocess.SubprocessError, OSError):
-        # Any execution failure means invalid binary
-        # This includes exec format errors from shell scripts, etc.
-        return False
+        # Must mention "claude"
+        if "claude" not in stdout_lower:
+            _claude_trace_status_cache[path] = "broken"
+            return "broken"
+
+        # Must mention either "trace" or "usage"
+        if "trace" not in stdout_lower and "usage" not in stdout_lower:
+            _claude_trace_status_cache[path] = "broken"
+            return "broken"
+
+        # All checks passed
+        _claude_trace_status_cache[path] = "working"
+        return "working"
+
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as e:
+        # Execution failure indicates broken binary
+        logger.debug(f"claude-trace at {path} failed to execute: {e}")
+        _claude_trace_status_cache[path] = "broken"
+        return "broken"
+
+
+def clear_status_cache() -> None:
+    """Clear the cached claude-trace status detection results.
+
+    This is primarily useful for testing, allowing tests to reset detection
+    state between test cases. May also be useful for forcing re-detection
+    after manual fixes or reinstallation of claude-trace.
+
+    Side Effects:
+        - Clears the module-level _claude_trace_status_cache dictionary
+        - Resets the _fallback_message_shown flag
+    """
+    global _fallback_message_shown
+    _claude_trace_status_cache.clear()
+    _fallback_message_shown = False
 
 
 def _install_claude_trace() -> bool:
