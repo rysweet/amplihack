@@ -20,11 +20,11 @@ def temp_skills_dir(tmp_path):
 
     pdf_dir = office_dir / "pdf"
     pdf_dir.mkdir()
-    (pdf_dir / "skill.md").write_text("# PDF Skill")
+    (pdf_dir / "SKILL.md").write_text("# PDF Skill")
 
     xlsx_dir = office_dir / "xlsx"
     xlsx_dir.mkdir()
-    (xlsx_dir / "skill.md").write_text("# XLSX Skill")
+    (xlsx_dir / "SKILL.md").write_text("# XLSX Skill")
 
     # Category: analysis
     analysis_dir = skills_dir / "analysis"
@@ -32,7 +32,7 @@ def temp_skills_dir(tmp_path):
 
     economist_dir = analysis_dir / "economist-analyst"
     economist_dir.mkdir()
-    (economist_dir / "skill.md").write_text("# Economist Analyst")
+    (economist_dir / "SKILL.md").write_text("# Economist Analyst")
 
     return skills_dir
 
@@ -160,7 +160,7 @@ def test_save_index(tmp_path):
             {
                 "name": "test-skill",
                 "category": "test",
-                "path": ".claude/skills/test/test-skill/skill.md",
+                "path": ".claude/skills/test/test-skill/SKILL.md",
             }
         ],
         "total_skills": 1,
@@ -220,7 +220,7 @@ def test_build_index_ignores_hidden_directories(tmp_path):
     hidden_dir.mkdir()
     skill_dir = hidden_dir / "test-skill"
     skill_dir.mkdir()
-    (skill_dir / "skill.md").write_text("# Hidden Skill")
+    (skill_dir / "SKILL.md").write_text("# Hidden Skill")
 
     builder = SkillIndexBuilder(skills_dir=skills_dir)
     index_data = builder.build_index()
@@ -240,7 +240,7 @@ def test_build_index_handles_files_in_category_dir(tmp_path):
     # Create both a skill directory and a file
     skill_dir = category_dir / "skill1"
     skill_dir.mkdir()
-    (skill_dir / "skill.md").write_text("# Skill 1")
+    (skill_dir / "SKILL.md").write_text("# Skill 1")
 
     # File in category directory (should be ignored)
     (category_dir / "readme.md").write_text("# Category README")
@@ -255,7 +255,7 @@ def test_build_index_handles_files_in_category_dir(tmp_path):
 
 def test_extract_description_basic(index_builder):
     """Test basic description extraction."""
-    skill_file = Path("/skills/test/test-skill/skill.md")
+    skill_file = Path("/skills/test/test-skill/SKILL.md")
     description = index_builder._extract_description(skill_file)
 
     # For Phase 2, just returns skill name
@@ -282,7 +282,7 @@ def test_index_file_format(index_builder):
 
 
 def test_build_index_skill_with_readme_fallback(tmp_path):
-    """Test that index building handles skills with README.md instead of skill.md."""
+    """Test that index building handles skills with README.md instead of SKILL.md."""
     skills_dir = tmp_path / ".claude" / "skills"
     category_dir = skills_dir / "test"
     category_dir.mkdir(parents=True)

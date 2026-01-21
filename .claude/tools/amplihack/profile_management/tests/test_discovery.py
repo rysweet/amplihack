@@ -52,7 +52,7 @@ def temp_amplihack_dir(tmp_path):
     office_dir.mkdir()
     pdf_dir = office_dir / "pdf"
     pdf_dir.mkdir()
-    (pdf_dir / "skill.md").write_text("# PDF Skill")
+    (pdf_dir / "SKILL.md").write_text("# PDF Skill")
 
     xlsx_dir = office_dir / "xlsx"
     xlsx_dir.mkdir()
@@ -63,7 +63,7 @@ def temp_amplihack_dir(tmp_path):
     analysis_dir.mkdir()
     analyst_dir = analysis_dir / "economist-analyst"
     analyst_dir.mkdir()
-    (analyst_dir / "skill.md").write_text("# Economist Analyst")
+    (analyst_dir / "SKILL.md").write_text("# Economist Analyst")
 
     return root
 
@@ -143,7 +143,7 @@ def test_discover_with_index(discovery):
     index_data = {
         "version": "1.0",
         "skills": [
-            {"name": "pdf", "category": "office", "path": ".claude/skills/office/pdf/skill.md"},
+            {"name": "pdf", "category": "office", "path": ".claude/skills/office/pdf/SKILL.md"},
             {"name": "xlsx", "category": "office", "path": ".claude/skills/office/xlsx/README.md"},
         ],
     }
@@ -229,6 +229,6 @@ def test_skill_fallback_to_readme(discovery):
     """Test that skill discovery falls back to README.md."""
     skills = discovery._discover_skills()
 
-    # xlsx uses README.md instead of skill.md
+    # xlsx uses README.md instead of SKILL.md
     assert "xlsx" in skills
     assert skills["xlsx"].name == "README.md"
