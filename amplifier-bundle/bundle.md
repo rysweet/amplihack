@@ -153,7 +153,6 @@ agents:
   amplihack:insight-synthesizer: { path: agents/specialized/insight-synthesizer.md }
   amplihack:integration: { path: agents/specialized/integration.md }
   amplihack:knowledge-archaeologist: { path: agents/specialized/knowledge-archaeologist.md }
-  amplihack:memory-manager: { path: agents/specialized/memory-manager.md }
   amplihack:multi-agent-debate: { path: agents/specialized/multi-agent-debate.md }
   amplihack:n-version-validator: { path: agents/specialized/n-version-validator.md }
   amplihack:patterns: { path: agents/specialized/patterns.md }
