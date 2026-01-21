@@ -851,6 +851,12 @@ def main(argv: list[str] | None = None) -> int:
                     temp_claude_dir = None
                     os.environ["AMPLIHACK_PLUGIN_INSTALLED"] = "true"
 
+                    # Set CLAUDE_PLUGIN_ROOT for hook resolution
+                    # When plugin installed via Claude Code, hooks use ${CLAUDE_PLUGIN_ROOT}
+                    # Point to where Claude Code installed the plugin
+                    installed_plugin_path = Path.home() / ".claude" / "plugins" / "cache" / "amplihack" / "amplihack" / "0.9.0"
+                    os.environ["CLAUDE_PLUGIN_ROOT"] = str(installed_plugin_path)
+
         # Smart PROJECT.md initialization for UVX mode
         try:
             from .utils.project_initializer import InitMode, initialize_project_md
