@@ -2,7 +2,11 @@
 
 ## Overview
 
-Amplihack is a development tool that extends Claude Code with specialized AI agents and automated workflows. It transforms conversational AI assistance into a development orchestrator with autonomous execution, multi-agent coordination, and intelligent automation.
+Amplihack is a **wrapper framework** that creates a consistent engineering environment across three agentic coding tools: Claude Code (Anthropic), GitHub Copilot CLI, and Amplifier. It transforms conversational AI assistance into a development orchestrator with autonomous execution, multi-agent coordination, and intelligent automation.
+
+**CRITICAL**: Amplihack is NOT a standalone tool - it stages files and configures environments for Claude Code, Copilot, and Amplifier to provide a unified development experience.
+
+See `.claude/memory/MULTI_TOOL_ARCHITECTURE.md` for detailed architecture and testing requirements.
 
 ## Purpose
 
