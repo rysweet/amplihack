@@ -689,8 +689,7 @@ def _configure_amplihack_marketplace() -> bool:
             settings["extraKnownMarketplaces"]["amplihack"] = {
                 "source": {
                     "source": "github",
-                    "repo": "rysweet/amplihack",
-                    "path": ".claude-plugin"
+                    "repo": "rysweet/amplihack"
                 }
             }
 
