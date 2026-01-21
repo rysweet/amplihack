@@ -109,10 +109,6 @@ def parse_success_criteria(criteria: str) -> List[Union[str, Dict]]:
 class SuccessCriteriaEvaluator:
     """Evaluates task success against criteria using evidence."""
 
-    def __init__(self):
-        """Initialize evaluator."""
-        pass
-
     def evaluate(
         self,
         criteria: str,
