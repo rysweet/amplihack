@@ -741,55 +741,20 @@ def main(argv: list[str] | None = None) -> int:
         import amplihack
         amplihack_package = Path(amplihack.__file__).parent
 
-        # Check if plugin manifest exists in amplihack package
-        plugin_manifest = amplihack_package / ".claude-plugin" / "plugin.json"
-        if not plugin_manifest.exists():
-            print(f"⚠️  Plugin manifest not found at {plugin_manifest}")
-            print("   Falling back to directory copy mode")
-            # Fallback to old copytree approach
-            temp_claude_dir = str(Path(original_cwd) / ".claude")
-            amplihack_src = Path(amplihack.__file__).parent
-            Path(temp_claude_dir).mkdir(parents=True, exist_ok=True)
-            copied = copytree_manifest(str(amplihack_src), temp_claude_dir, ".claude")
-            if not copied:
-                print("❌ Failed to copy .claude directory")
-                sys.exit(1)
-        else:
-            # Install using claude plugin install
-            package_root = amplihack_package
-            plugin_root = Path.home() / ".amplihack" / ".claude"
+        # For local installations (pip/uvx), use directory copy mode
+        # Note: `claude plugin install` expects marketplace plugin names (e.g., "amplihack"),
+        # not local filesystem paths. It's only used when users run: claude plugin install amplihack
+        # The .claude-plugin/plugin.json manifest enables that marketplace discovery.
+        if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+            print(f"📦 Setting up amplihack from local installation")
 
-            # Ensure Claude CLI is available (auto-installs if missing)
-            claude_path = get_claude_cli_path(auto_install=True)
-
-            if not claude_path:
-                print("⚠️  Claude CLI not available (auto-installation failed)")
-                print("   Falling back to directory copy mode")
-                temp_claude_dir = _fallback_to_directory_copy("Claude CLI not available")
-            else:
-                if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                    print(f"📦 Installing amplihack plugin from {package_root}")
-                    print(f"Using Claude CLI: {claude_path}")
-
-                # Call: claude plugin install <path>
-                result = subprocess.run(
-                    [claude_path, "plugin", "install", str(package_root)],
-                    capture_output=True,
-                    text=True,
-                    timeout=60
-                )
-
-                if result.returncode != 0:
-                    print(f"⚠️  Plugin installation failed: {result.stderr}")
-                    print("   Falling back to directory copy mode")
-                    temp_claude_dir = _fallback_to_directory_copy(f"Plugin install error: {result.stderr}")
-                else:
-                    if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                        print(f"✅ Plugin installed successfully")
-                        print(result.stdout)
-
-                    # No need for temp_claude_dir - plugin is installed
-                    temp_claude_dir = None
+        temp_claude_dir = str(Path(original_cwd) / ".claude")
+        amplihack_src = Path(amplihack.__file__).parent
+        Path(temp_claude_dir).mkdir(parents=True, exist_ok=True)
+        copied = copytree_manifest(str(amplihack_src), temp_claude_dir, ".claude")
+        if not copied:
+            print("❌ Failed to copy .claude directory")
+            sys.exit(1)
 
             # 3. Generate settings.json in project's .claude/ that references plugin
             local_claude_dir = Path(original_cwd) / ".claude"
