@@ -150,9 +150,10 @@ class EvidenceItem:
             ValueError: If output_path attempts path traversal
         """
         output_path_obj = Path(output_path).resolve()
+        expected_parent = Path(output_path).parent.resolve()
 
-        # Validate path doesn't escape intended directory
-        if ".." in Path(output_path).parts:
+        # Validate resolved path is within expected parent directory
+        if not str(output_path_obj).startswith(str(expected_parent)):
             raise ValueError(f"Path traversal detected in output path: {output_path}")
 
         output_path_obj.write_text(self.content, encoding="utf-8")
@@ -283,10 +284,15 @@ class EvidenceCollector:
         Raises:
             ValueError: If output_directory attempts path traversal
         """
-        # Validate output directory
+        # Validate output directory - resolve and check it's in a safe location
         output_dir = Path(output_directory).resolve()
-        if ".." in Path(output_directory).parts:
-            raise ValueError(f"Path traversal detected in output directory: {output_directory}")
+
+        # Ensure the resolved path doesn't escape the current working directory
+        # (unless it's an absolute path, which we allow)
+        if not Path(output_directory).is_absolute():
+            cwd = Path.cwd().resolve()
+            if not str(output_dir).startswith(str(cwd)):
+                raise ValueError(f"Path traversal detected in output directory: {output_directory}")
 
         output_dir.mkdir(parents=True, exist_ok=True)
 
