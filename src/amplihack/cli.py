@@ -815,12 +815,22 @@ def main(argv: list[str] | None = None) -> int:
                 print("   Falling back to directory copy mode")
                 temp_claude_dir = _fallback_to_directory_copy("Claude CLI not available")
             else:
+                # Fix EXDEV error: Use temp directory on same filesystem as ~/.claude/
+                # Claude Code uses fs.rename() which fails across different filesystems
+                claude_temp_dir = Path.home() / ".claude" / "temp"
+                claude_temp_dir.mkdir(parents=True, exist_ok=True)
+
+                # Set TMPDIR for subprocess to avoid cross-device rename errors
+                env = os.environ.copy()
+                env["TMPDIR"] = str(claude_temp_dir)
+
                 result = subprocess.run(
                     [claude_path, "plugin", "install", "amplihack"],
                     capture_output=True,
                     text=True,
                     timeout=60,
-                    check=False
+                    check=False,
+                    env=env
                 )
 
                 if result.returncode != 0:
