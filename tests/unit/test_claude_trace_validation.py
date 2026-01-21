@@ -129,26 +129,18 @@ class TestClaudeTraceValidation:
             assert result is False
 
     def test_homebrew_symlink_handling(self):
-        """Test that homebrew symlinks are still validated."""
-        # The special homebrew handling should still work
+        """Test that homebrew symlinks are validated through execution test."""
+        # Homebrew paths now go through the same validation as other paths
+        # to catch bugs where claude-trace might require() instead of spawn()
         mock_result = MagicMock()
         mock_result.returncode = 0
         mock_result.stdout = "Usage: claude-trace\nTrace claude"
         mock_result.stderr = ""
 
-        # Create a mock Path object for homebrew location
-        with (
-            patch("pathlib.Path.is_symlink", return_value=True),
-            patch(
-                "pathlib.Path.resolve",
-                return_value=Path("/opt/homebrew/lib/node_modules/claude-trace.js"),
-            ),
-            patch("pathlib.Path.exists", return_value=True),
-            patch("subprocess.run", return_value=mock_result),
-        ):
-            # The homebrew path should still be validated via the new logic
+        with patch("subprocess.run", return_value=mock_result):
+            # The homebrew path should be validated via subprocess execution
             result = _test_claude_trace_execution("/opt/homebrew/bin/claude-trace")
-            # Should return True due to homebrew special case (before subprocess)
+            # Should return True because subprocess execution succeeded
             assert result is True
 
     def test_is_valid_binary_integration(self):
