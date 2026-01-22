@@ -27,7 +27,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import kuzu
 
@@ -78,12 +78,15 @@ class KuzuBackend:
         )
 
     def initialize(self) -> None:
-        """Initialize Kùzu schema with 5 memory node types.
+        """Initialize Kùzu schema with 5 memory node types and code graph support.
 
         Creates node and relationship tables for the new schema:
         - 5 memory node types (Episodic, Semantic, Procedural, Prospective, Working)
+        - 3 code node types (CodeFile, Class, Function)
         - Session and Agent nodes
-        - 11 relationship types for memory interactions
+        - 11 memory relationship types
+        - 7 code relationship types
+        - 10 memory-code link types
 
         Idempotent - safe to call multiple times.
         """
@@ -316,7 +319,203 @@ class KuzuBackend:
                 )
             """)
 
-            logger.info("Kùzu schema initialized successfully with 5 memory node types")
+            # ============================================================
+            # Code Graph Schema Extension
+            # ============================================================
+
+            # Create CodeFile node table
+            self.connection.execute("""
+                CREATE NODE TABLE IF NOT EXISTS CodeFile(
+                    file_id STRING,
+                    file_path STRING,
+                    language STRING,
+                    size_bytes INT64,
+                    last_modified TIMESTAMP,
+                    content_hash STRING,
+                    metadata STRING,
+                    created_at TIMESTAMP,
+                    PRIMARY KEY (file_id)
+                )
+            """)
+
+            # Create Class node table
+            self.connection.execute("""
+                CREATE NODE TABLE IF NOT EXISTS Class(
+                    class_id STRING,
+                    class_name STRING,
+                    docstring STRING,
+                    line_start INT64,
+                    line_end INT64,
+                    metadata STRING,
+                    created_at TIMESTAMP,
+                    PRIMARY KEY (class_id)
+                )
+            """)
+
+            # Create Function node table
+            self.connection.execute("""
+                CREATE NODE TABLE IF NOT EXISTS Function(
+                    function_id STRING,
+                    function_name STRING,
+                    signature STRING,
+                    docstring STRING,
+                    line_start INT64,
+                    line_end INT64,
+                    complexity INT64,
+                    metadata STRING,
+                    created_at TIMESTAMP,
+                    PRIMARY KEY (function_id)
+                )
+            """)
+
+            # Create code relationship tables
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS DEFINED_IN(
+                    FROM Class TO CodeFile,
+                    line_number INT64
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS DEFINED_IN_FUNCTION(
+                    FROM Function TO CodeFile,
+                    line_number INT64
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS METHOD_OF(
+                    FROM Function TO Class,
+                    is_static BOOL,
+                    is_classmethod BOOL
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS CALLS(
+                    FROM Function TO Function,
+                    call_count INT64,
+                    context STRING
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS INHERITS(
+                    FROM Class TO Class,
+                    inheritance_order INT64
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS IMPORTS(
+                    FROM CodeFile TO CodeFile,
+                    import_type STRING,
+                    imported_names STRING
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS REFERENCES_CLASS(
+                    FROM Function TO Class,
+                    reference_type STRING,
+                    line_number INT64
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS CONTAINS(
+                    FROM CodeFile TO CodeFile,
+                    relationship_type STRING
+                )
+            """)
+
+            # Create memory-code link tables (10 total: 5 memory types × 2 code types)
+            # EpisodicMemory links
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS RELATES_TO_FILE_EPISODIC(
+                    FROM EpisodicMemory TO CodeFile,
+                    context STRING,
+                    timestamp TIMESTAMP
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS RELATES_TO_FUNCTION_EPISODIC(
+                    FROM EpisodicMemory TO Function,
+                    context STRING,
+                    timestamp TIMESTAMP
+                )
+            """)
+
+            # SemanticMemory links
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS RELATES_TO_FILE_SEMANTIC(
+                    FROM SemanticMemory TO CodeFile,
+                    relevance_score DOUBLE,
+                    context STRING
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS RELATES_TO_FUNCTION_SEMANTIC(
+                    FROM SemanticMemory TO Function,
+                    relevance_score DOUBLE,
+                    context STRING
+                )
+            """)
+
+            # ProceduralMemory links
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS RELATES_TO_FILE_PROCEDURAL(
+                    FROM ProceduralMemory TO CodeFile,
+                    usage_context STRING,
+                    success_rate DOUBLE
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS RELATES_TO_FUNCTION_PROCEDURAL(
+                    FROM ProceduralMemory TO Function,
+                    usage_context STRING,
+                    success_rate DOUBLE
+                )
+            """)
+
+            # ProspectiveMemory links
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS RELATES_TO_FILE_PROSPECTIVE(
+                    FROM ProspectiveMemory TO CodeFile,
+                    intention_type STRING,
+                    priority STRING
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS RELATES_TO_FUNCTION_PROSPECTIVE(
+                    FROM ProspectiveMemory TO Function,
+                    intention_type STRING,
+                    priority STRING
+                )
+            """)
+
+            # WorkingMemory links
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS RELATES_TO_FILE_WORKING(
+                    FROM WorkingMemory TO CodeFile,
+                    activation_level DOUBLE,
+                    context STRING
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS RELATES_TO_FUNCTION_WORKING(
+                    FROM WorkingMemory TO Function,
+                    activation_level DOUBLE,
+                    context STRING
+                )
+            """)
+
+            logger.info("Kùzu schema initialized successfully with 5 memory node types and code graph support")
 
         except Exception as e:
             logger.error(f"Error initializing Kùzu schema: {e}")
@@ -396,7 +595,7 @@ class KuzuBackend:
                     {
                         "session_id": memory.session_id,
                         "memory_id": memory.id,
-                        "sequence_number": 0,  # TODO: track sequence
+                        "sequence_number": 0,
                     },
                 )
 
@@ -786,11 +985,16 @@ class KuzuBackend:
         # Execute query
         result = self.connection.execute(cypher, params)
 
+        # Handle union type: execute() returns QueryResult | list[QueryResult]
+        # For single statements (our case), it returns QueryResult
+        if isinstance(result, list):
+            result = result[0]
+
         # Convert to MemoryEntry objects
         memories = []
         while result.has_next():
-            row = result.get_next()
-            memory_node = row[0]
+            row = cast(list[Any], result.get_next())
+            memory_node = cast(dict[str, Any], row[0])  # type: ignore[index]
 
             # Determine memory type from node label
             memory_type = self._get_memory_type_from_label(node_label)
@@ -872,9 +1076,13 @@ class KuzuBackend:
                     {"memory_id": memory_id},
                 )
 
+                # Handle union type
+                if isinstance(result, list):
+                    result = result[0]
+
                 if result.has_next():
-                    row = result.get_next()
-                    memory_node = row[0]
+                    row = cast(list[Any], result.get_next())
+                    memory_node = cast(dict[str, Any], row[0])  # type: ignore[index]
 
                     # Update access time
                     now = datetime.now()
@@ -945,16 +1153,22 @@ class KuzuBackend:
                     {"memory_id": memory_id},
                 )
 
-                if result.has_next() and result.get_next()[0] > 0:
-                    # Delete memory node and its relationships (DETACH DELETE removes edges first)
-                    self.connection.execute(
-                        f"""
-                        MATCH (m:{node_label} {{memory_id: $memory_id}})
-                        DETACH DELETE m
-                    """,
-                        {"memory_id": memory_id},
-                    )
-                    return True
+                # Handle union type
+                if isinstance(result, list):
+                    result = result[0]
+
+                if result.has_next():
+                    count_row = cast(list[Any], result.get_next())
+                    if count_row[0] > 0:  # type: ignore[index]
+                        # Delete memory node and its relationships (DETACH DELETE removes edges first)
+                        self.connection.execute(
+                            f"""
+                            MATCH (m:{node_label} {{memory_id: $memory_id}})
+                            DETACH DELETE m
+                        """,
+                            {"memory_id": memory_id},
+                        )
+                        return True
 
             # Memory not found in any node type
             return False
@@ -982,9 +1196,13 @@ class KuzuBackend:
                 {"now": datetime.now()},
             )
 
+            # Handle union type
+            if isinstance(result, list):
+                result = result[0]
+
             if result.has_next():
-                row = result.get_next()
-                return row[0]
+                row = cast(list[Any], result.get_next())
+                return cast(int, row[0])  # type: ignore[index]
 
             return 0
 
@@ -1014,13 +1232,17 @@ class KuzuBackend:
                 {"session_id": session_id},
             )
 
+            # Handle union type
+            if isinstance(result, list):
+                result = result[0]
+
             if not result.has_next():
                 return None
 
-            row = result.get_next()
-            session_node = row[0]
-            memory_count = row[1]
-            agent_ids = row[2] if row[2] else []
+            row = cast(list[Any], result.get_next())
+            session_node = cast(dict[str, Any], row[0])  # type: ignore[index]
+            memory_count = cast(int, row[1])  # type: ignore[index]
+            agent_ids = cast(list[str], row[2]) if row[2] else []  # type: ignore[index]
 
             return SessionInfo(
                 session_id=session_node["session_id"],
@@ -1064,12 +1286,16 @@ class KuzuBackend:
 
             result = self.connection.execute(cypher, params)
 
+            # Handle union type
+            if isinstance(result, list):
+                result = result[0]
+
             sessions = []
             while result.has_next():
-                row = result.get_next()
-                session_node = row[0]
-                memory_count = row[1]
-                agent_ids = row[2] if row[2] else []
+                row = cast(list[Any], result.get_next())
+                session_node = cast(dict[str, Any], row[0])  # type: ignore[index]
+                memory_count = cast(int, row[1])  # type: ignore[index]
+                agent_ids = cast(list[str], row[2]) if row[2] else []
 
                 sessions.append(
                     SessionInfo(
@@ -1132,9 +1358,14 @@ class KuzuBackend:
                 {"session_id": session_id},
             )
 
+            # Handle union type
+            if isinstance(result, list):
+                result = result[0]
+
             # Check if session was deleted
             if result.has_next():
-                deleted_count = result.get_next()[0]
+                row = cast(list[Any], result.get_next())
+                deleted_count = cast(int, row[0])
                 return deleted_count > 0
 
             return False
@@ -1171,8 +1402,13 @@ class KuzuBackend:
 
                 result = self.connection.execute(f"MATCH (m:{node_label}) RETURN COUNT(m) AS count")
 
+                # Handle union type
+                if isinstance(result, list):
+                    result = result[0]
+
                 if result.has_next():
-                    count = result.get_next()[0]
+                    row = cast(list[Any], result.get_next())
+                    count = cast(int, row[0])
                     memory_types[memory_type.value] = count
                     total_memories += count
 
@@ -1181,13 +1417,19 @@ class KuzuBackend:
 
             # Total sessions
             result = self.connection.execute("MATCH (s:Session) RETURN COUNT(s) AS count")
+            if isinstance(result, list):
+                result = result[0]
             if result.has_next():
-                stats["total_sessions"] = result.get_next()[0]
+                row = cast(list[Any], result.get_next())
+                stats["total_sessions"] = cast(int, row[0])
 
             # Total agents
             result = self.connection.execute("MATCH (a:Agent) RETURN COUNT(a) AS count")
+            if isinstance(result, list):
+                result = result[0]
             if result.has_next():
-                stats["total_agents"] = result.get_next()[0]
+                row = cast(list[Any], result.get_next())
+                stats["total_agents"] = cast(int, row[0])
 
             # Top agents by memory count (across all types)
             top_agents = {}
@@ -1207,10 +1449,14 @@ class KuzuBackend:
                 """
                 )
 
+                # Handle union type
+                if isinstance(result, list):
+                    result = result[0]
+
                 while result.has_next():
-                    row = result.get_next()
-                    agent_id = row[0]
-                    count = row[1]
+                    row = cast(list[Any], result.get_next())
+                    agent_id = cast(str, row[0])
+                    count = cast(int, row[1])
                     top_agents[agent_id] = top_agents.get(agent_id, 0) + count
 
             # Sort and limit to top 10
@@ -1254,53 +1500,6 @@ class KuzuBackend:
         self.close()
         return False
 
-    def _has_old_schema(self) -> bool:
-        """Check if old Memory table exists in database.
-
-        Returns:
-            True if old schema exists, False otherwise
-        """
-        try:
-            # Try to query old Memory table
-            result = self.connection.execute(
-                """
-                MATCH (m:Memory)
-                RETURN COUNT(m) AS count
-                LIMIT 1
-            """
-            )
-            # If query succeeds, old schema exists
-            return result.has_next()
-        except Exception:
-            # If query fails, old schema doesn't exist
-            return False
-
-    def migrate_to_new_schema(self) -> bool:
-        """Migrate data from old Memory table to new 5-node schema.
-
-        This is a stub for future migration implementation.
-
-        Returns:
-            True if migration successful, False otherwise
-        """
-        try:
-            if not self._has_old_schema():
-                logger.info("No old schema detected, skipping migration")
-                return True
-
-            logger.warning("Migration from old schema not yet implemented")
-            # TODO: Implement migration logic
-            # 1. Query all nodes from old Memory table
-            # 2. Route each to appropriate new node type based on memory_type
-            # 3. Create proper relationships (Session, Agent)
-            # 4. Verify data integrity
-            # 5. Optionally remove old Memory table
-
-            return False
-
-        except Exception as e:
-            logger.error(f"Error during schema migration: {e}")
-            return False
 
 
 __all__ = ["KuzuBackend"]
