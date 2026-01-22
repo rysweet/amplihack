@@ -566,6 +566,7 @@ python .claude/scenarios/az-devops-tools/create_pr.py \
   - [ ] Check PR description has "Step 13: Local Testing Results" section with actual test execution evidence
   - [ ] If missing: BLOCK review, comment on PR, request test results (no approval path - just do the testing)
 - [ ] **Always use** reviewer agent for comprehensive code review
+  - **Alternative**: Use `/socratic-review` for dialogue-based review when learning is as important as fixing (mentoring, design documentation, complex code explanation)
 - [ ] **Use** security agent for security review
 - [ ] Check code quality and standards
 - [ ] Verify philosophy compliance
