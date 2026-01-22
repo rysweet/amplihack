@@ -292,7 +292,7 @@ def test_security_audit_scenario(tmp_path):
 
         logger.log({
             "event": "github_operation",
-            "token": "ghp_1234567890abcdefghij1234567890abcdef",
+            "token": "ghp_FAKE_TOKEN_FOR_TESTING_ONLY_DO_NOT_USE",
             "repo": "org/repo",
         })
 
@@ -302,7 +302,7 @@ def test_security_audit_scenario(tmp_path):
     # No raw credentials should be present
     assert "sk-1234567890abcdefghij" not in content
     assert "secret_token" not in content
-    assert "ghp_1234567890abcdefghij1234567890abcdef" not in content
+    assert "ghp_FAKE_TOKEN_FOR_TESTING_ONLY_DO_NOT_USE" not in content
 
     # Sanitized placeholders should be present
     assert "sk-***" in content

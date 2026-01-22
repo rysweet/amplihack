@@ -206,13 +206,13 @@ def test_log_sanitizes_github_tokens(tmp_path):
     with logger:
         logger.log({
             "event": "git_operation",
-            "token": "ghp_1234567890abcdefghij1234567890abcdef",
+            "token": "ghp_FAKE_TOKEN_FOR_TESTING_ONLY_DO_NOT_USE",
         })
 
     lines = log_file.read_text().strip().split("\n")
     entry = json.loads(lines[0])
 
-    assert "ghp_1234567890abcdefghij1234567890abcdef" not in json.dumps(entry)
+    assert "ghp_FAKE_TOKEN_FOR_TESTING_ONLY_DO_NOT_USE" not in json.dumps(entry)
     assert entry["token"] == "ghp_***"
 
 
@@ -226,7 +226,7 @@ def test_log_sanitizes_nested_credentials(tmp_path):
             "event": "config",
             "settings": {
                 "api": {"key": "sk-1234567890abcdefghij", "endpoint": "https://api.example.com"},
-                "auth": {"password": "secret123", "token": "ghp_1234567890abcdefghij1234567890abcdef"},
+                "auth": {"password": "secret123", "token": "ghp_FAKE_TOKEN_FOR_TESTING_ONLY_DO_NOT_USE"},
             },
         })
 
@@ -237,7 +237,7 @@ def test_log_sanitizes_nested_credentials(tmp_path):
     raw_json = json.dumps(entry)
     assert "sk-1234567890abcdefghij" not in raw_json
     assert "secret123" not in raw_json
-    assert "ghp_1234567890abcdefghij1234567890abcdef" not in raw_json
+    assert "ghp_FAKE_TOKEN_FOR_TESTING_ONLY_DO_NOT_USE" not in raw_json
 
 
 # =============================================================================
