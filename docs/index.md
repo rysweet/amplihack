@@ -388,6 +388,19 @@ Advanced graph-based memory for complex knowledge representation:
 
 Specific features and third-party integrations.
 
+### Native Binary Trace Logging ⭐ NEW
+
+Optional request/response logging using Anthropic's native Claude binary:
+
+- **[Native Binary Trace Logging Overview](NATIVE_BINARY_TRACE_LOGGING.md)** - Complete feature documentation hub
+- [Trace Logging Feature Guide](features/trace-logging.md) - What it is and when to use it
+- [How-To: Trace Logging](howto/trace-logging.md) - Practical recipes
+- [Migration: claude-trace to Native](migration/claude-trace-to-native.md) - Upgrade from NPM package
+- [API Reference: Trace Logging](reference/trace-logging-api.md) - Technical details
+- [Troubleshooting: Trace Logging](troubleshooting/trace-logging.md) - Fix common issues
+
+**Key Features**: Zero overhead when disabled (<0.1ms), automatic security sanitization, session-scoped JSONL logs, no NPM dependencies.
+
 ### Power Steering
 
 Intelligent guidance system that prevents common mistakes:
@@ -399,6 +412,16 @@ Intelligent guidance system that prevents common mistakes:
 - [Migration Guide v0.9.1](features/power-steering/migration-v0.9.1.md) - Upgrade guide
 - [Technical Reference](features/power-steering/technical-reference.md) - Developer reference
 - [Changelog v0.9.1](features/power-steering/changelog-v0.9.1.md) - Infinite loop fix release notes
+
+### Trace Logging
+
+Optional request/response logging for Claude API calls:
+
+- [Trace Logging Overview](features/trace-logging.md) - What is trace logging and when to use it
+- [How-To: Trace Logging](howto/trace-logging.md) - Practical recipes for enabling and analyzing traces
+- [Migration: claude-trace to Native](migration/claude-trace-to-native.md) - Upgrade from claude-trace NPM package
+- [API Reference: Trace Logging](reference/trace-logging-api.md) - Technical implementation details
+- [Troubleshooting: Trace Logging](troubleshooting/trace-logging.md) - Fix common trace logging issues
 
 ### Other Features
 

@@ -11,10 +11,11 @@ from pathlib import Path
 
 from ..neo4j.manager import Neo4jManager
 from ..proxy.manager import ProxyManager
+from ..tracing.trace_logger import TraceLogger
 from ..utils.claude_cli import get_claude_cli_path
-from ..utils.claude_trace import get_claude_command
 from ..utils.prerequisites import check_prerequisites
 from ..uvx.manager import UVXManager
+from .claude_binary_manager import ClaudeBinaryManager
 from .detector import ClaudeDirectoryDetector
 from .repo_checkout import checkout_repository
 
@@ -78,6 +79,12 @@ class ClaudeLauncher:
         self._cached_uvx_decision = None  # Cache for UVX --add-dir decision
         self._target_directory = None  # Target directory for --add-dir
 
+        # Native binary manager for detection and command building
+        self.binary_manager = ClaudeBinaryManager()
+
+        # Optional trace logger (initialized if tracing enabled)
+        self.trace_logger: TraceLogger | None = None
+
         # Setup signal handlers for graceful shutdown
         self._setup_signal_handlers()
 
@@ -91,44 +98,49 @@ class ClaudeLauncher:
         if not check_prerequisites():
             return False
 
-        # 2. Check and sync Neo4j credentials from existing containers (if any)
+        # 2. Initialize TraceLogger if enabled
+        self.trace_logger = TraceLogger.from_env()
+        if self.trace_logger.enabled:
+            print(f"Trace logging enabled: {self.trace_logger.log_file}")
+
+        # 3. Check and sync Neo4j credentials from existing containers (if any)
         self._check_neo4j_credentials()
 
-        # 3. Interactive Neo4j startup (blocks until ready or user decides)
+        # 4. Interactive Neo4j startup (blocks until ready or user decides)
         if not self._interactive_neo4j_startup():
             # User chose to exit rather than continue without Neo4j
             return False
 
-        # 4. Handle repository checkout if needed
+        # 5. Handle repository checkout if needed
         if self.checkout_repo:
             if not self._handle_repo_checkout():
                 return False
 
-        # 5. Find and validate target directory
+        # 6. Find and validate target directory
         target_dir = self._find_target_directory()
         if not target_dir:
             print("Failed to determine target directory")
             return False
 
-        # 6. Ensure required runtime directories exist
+        # 7. Ensure required runtime directories exist
         if not self._ensure_runtime_directories(target_dir):
             print("Warning: Could not create runtime directories")
             # Don't fail - just warn
 
-        # 7. Fix hook paths in settings.json to use absolute paths
+        # 8. Fix hook paths in settings.json to use absolute paths
         if not self._fix_hook_paths_in_settings(target_dir):
             print("Warning: Could not fix hook paths in settings.json")
             # Don't fail - hooks might still work
 
-        # 8. Handle directory change if needed (unless UVX with --add-dir)
+        # 9. Handle directory change if needed (unless UVX with --add-dir)
         if not self._handle_directory_change(target_dir):
             return False
 
-        # 9. Start proxy if needed
+        # 10. Start proxy if needed
         if not self._start_proxy_if_needed():
             return False
 
-        # 10. Auto-configure LSP if supported languages detected
+        # 11. Auto-configure LSP if supported languages detected
         self._configure_lsp_auto(target_dir)
 
         return True
@@ -486,15 +498,19 @@ class ClaudeLauncher:
         Returns:
             List of command arguments for subprocess.
         """
-        # Get claude command (could be claude, claude-trace, or rustyclawd)
-        claude_binary = get_claude_command()
+        # Detect native binary using ClaudeBinaryManager
+        binary = self.binary_manager.detect_native_binary()
 
-        # Check if this is RustyClawd (Rust implementation)
-        is_rustyclawd = "rustyclawd" in claude_binary.lower() or "claude-code-rs" in claude_binary
+        # Fall back to standard claude if no native binary found
+        if not binary:
+            # Use standard claude CLI path
+            claude_path = get_claude_cli_path(auto_install=False)
+            if not claude_path:
+                # This shouldn't happen after prerequisite checks, but be defensive
+                raise RuntimeError("No Claude binary found. Please install Claude CLI.")
 
-        if is_rustyclawd:
-            # RustyClawd has same CLI as claude (simpler than claude-trace)
-            cmd = [claude_binary, "--dangerously-skip-permissions"]
+            # Build standard claude command
+            cmd = [claude_path, "--dangerously-skip-permissions"]
 
             # Add --verbose if requested
             if self.verbose:
@@ -523,54 +539,27 @@ class ClaudeLauncher:
 
             return cmd
 
-        if claude_binary == "claude-trace":
-            # claude-trace requires --run-with before Claude arguments
-            cmd = [claude_binary]
+        # Use native binary (rustyclawd, etc.)
+        print(f"Using native binary: {binary.name} at {binary.path}")
+        if binary.version:
+            print(f"Version: {binary.version}")
 
-            # Get claude binary path (already validated by prerequisites check)
-            claude_path = get_claude_cli_path(auto_install=False)
+        # Prepare trace file path if tracing is enabled
+        trace_file = None
+        if self.trace_logger and self.trace_logger.enabled:
+            trace_file = str(self.trace_logger.log_file) if self.trace_logger.log_file else None
 
-            # Add --claude-path if we have a claude binary
-            if claude_path:
-                cmd.extend(["--claude-path", claude_path])
+        # Build base command with trace support if available
+        cmd = self.binary_manager.build_command(
+            binary,
+            enable_trace=self.trace_logger.enabled if self.trace_logger else False,
+            trace_file=trace_file,
+        )
 
-            claude_args = ["--dangerously-skip-permissions"]
+        # Add standard Claude CLI arguments
+        cmd.append("--dangerously-skip-permissions")
 
-            # Add --verbose flag only if requested (auto mode)
-            if self.verbose:
-                claude_args.append("--verbose")
-
-            # Add system prompt if provided
-            if self.append_system_prompt and self.append_system_prompt.exists():
-                claude_args.extend(["--append-system-prompt", str(self.append_system_prompt)])
-
-            # Add --add-dir arguments if UVX mode and we have a target directory
-            # Use cached decision to avoid re-checking
-            if self._target_directory and self._cached_uvx_decision:
-                claude_args.extend(["--add-dir", str(self._target_directory)])
-
-            # Add Azure model when using proxy
-            if self.proxy_manager:
-                azure_model = self._get_azure_model()
-                claude_args.extend(["--model", f"azure/{azure_model}"])
-            # Add default model if not using proxy and user hasn't specified one
-            elif not self._has_model_arg():
-                default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "sonnet[1m]")
-                claude_args.extend(["--model", default_model])
-
-            # Add forwarded Claude arguments
-            if self.claude_args:
-                claude_args.extend(self.claude_args)
-
-            # Add --run-with followed by all Claude arguments
-            if claude_args:
-                cmd.extend(["--run-with"] + claude_args)
-
-            return cmd
-        # Standard claude command
-        cmd = [claude_binary, "--dangerously-skip-permissions"]
-
-        # Add --verbose flag only if requested (auto mode)
+        # Add --verbose if requested
         if self.verbose:
             cmd.append("--verbose")
 
@@ -578,8 +567,7 @@ class ClaudeLauncher:
         if self.append_system_prompt and self.append_system_prompt.exists():
             cmd.extend(["--append-system-prompt", str(self.append_system_prompt)])
 
-        # Add --add-dir arguments if UVX mode and we have a target directory
-        # Use cached decision to avoid re-checking
+        # Add --add-dir if in UVX mode
         if self._target_directory and self._cached_uvx_decision:
             cmd.extend(["--add-dir", str(self._target_directory)])
 
@@ -592,7 +580,7 @@ class ClaudeLauncher:
             default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "sonnet[1m]")
             cmd.extend(["--model", default_model])
 
-        # Add forwarded Claude arguments
+        # Add forwarded arguments
         if self.claude_args:
             cmd.extend(self.claude_args)
 
