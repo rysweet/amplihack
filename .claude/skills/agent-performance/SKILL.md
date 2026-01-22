@@ -152,12 +152,12 @@ recommendations:
 
 - architect, builder, reviewer, tester, optimizer, api-designer
 
-**Specialized Agents** (25):
+**Specialized Agents** (24):
 
 - ambiguity, amplifier-cli-architect, analyzer, azure-kubernetes-expert
 - ci-diagnostic-workflow, cleanup, database, documentation-writer
 - fallback-cascade, fix-agent, integration, knowledge-archaeologist
-- memory-manager, multi-agent-debate, n-version-validator, patterns
+- multi-agent-debate, n-version-validator, patterns
 - philosophy-guardian, pre-commit-diagnostic, preference-reviewer
 - prompt-writer, rust-programming-expert, security, visualization-architect
 - worktree-manager, xpia-defense
