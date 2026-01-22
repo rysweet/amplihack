@@ -423,18 +423,19 @@ def _format_conversation_summary(conversation: list[dict], max_length: int = 500
         Formatted conversation summary
 
     Note:
-        Truncates large conversations (>50000 chars) before processing.
+        Truncates large conversations (>100 messages) to last 100 messages for recency-biased sampling.
     """
     import sys
 
     # Security check: validate conversation size before processing
-    if len(conversation) > 100:
+    original_length = len(conversation)
+    if original_length > 100:
         sys.stderr.write(
-            f"[Power Steering Warning] Large conversation ({len(conversation)} messages), truncating for safety\n"
+            f"[Power Steering Warning] Large conversation ({original_length} messages), truncating for safety\n"
         )
         sys.stderr.flush()
-        # Truncate conversation to first 50 messages
-        conversation = conversation[:50]
+        # Truncate conversation to last 100 messages (recency-biased)
+        conversation = conversation[-100:]
 
     summary_parts = []
     current_length = 0
