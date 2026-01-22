@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-TDD unit tests for power-steering conversation truncation fix.
+Unit tests for power-steering conversation analysis with NO truncation.
 
-Bug: _format_conversation_summary() uses first 50 instead of last 100 messages.
+Issue #2078: Remove message truncation entirely - analyze FULL session.
 
-These tests verify the fix changes behavior from conversation[:50] to conversation[-100:].
-All tests should FAIL initially (TDD red phase) until the implementation is fixed.
+These tests verify that _format_conversation_summary() includes ALL messages
+regardless of conversation length, with no 100-message limit.
 """
 
 import pytest
@@ -36,129 +36,105 @@ def _create_test_messages(count: int) -> list[dict]:
     return messages
 
 
-class TestConversationTruncationBehavior:
-    """Test suite for conversation truncation fix (Issue #2078)."""
+class TestNoTruncationBehavior:
+    """Test suite for NO truncation behavior (Issue #2078)."""
 
-    def test_no_truncation_with_100_messages(self):
-        """Test 1: No truncation when conversation has exactly 100 messages.
+    def test_all_100_messages_included(self):
+        """Test 1: All 100 messages included in summary.
 
-        Expected: All 100 messages included in summary.
-        Bug behavior: Would include all 100 (passes by accident).
-        Fixed behavior: Includes all 100 (correct).
+        Expected: All 100 messages included, no truncation.
         """
         messages = _create_test_messages(100)
         summary = _format_conversation_summary(messages)
 
         # All messages should be present
-        assert "Message 0001" in summary, "First message should be included with 100 messages"
+        assert "Message 0001" in summary, "First message should be included"
         assert "Message 0050" in summary, "Middle message should be included"
         assert "Message 0100" in summary, "Last message should be included"
 
         # Should not show truncation indicator
-        assert "more messages" not in summary, "Should not show truncation with exactly 100"
+        assert "more messages" not in summary, "Should not show truncation with 100 messages"
 
-    def test_truncation_with_101_messages_includes_last_100(self):
-        """Test 2: With 101 messages, last 100 should be used (messages 2-101).
+    def test_all_101_messages_included(self):
+        """Test 2: With 101 messages, ALL should be included (no truncation).
 
-        Expected: Messages 2-101 present, message 1 absent.
-        Bug behavior: FAILS - includes messages 1-50, missing 51-101.
-        Fixed behavior: Includes messages 2-101, excludes message 1.
+        Expected: Messages 1-101 all present, no exclusions.
         """
         messages = _create_test_messages(101)
         summary = _format_conversation_summary(messages)
 
-        # CRITICAL: Message 0001 should be EXCLUDED (not in last 100)
-        assert "Message 0001" not in summary, \
-            "BUG: Message 0001 should be excluded with 101 messages (only last 100 kept)"
-
-        # Messages 2-101 should be present (last 100)
-        assert "Message 0002" in summary, "Message 0002 should be included (start of last 100)"
+        # ALL messages should be included (no truncation at 100)
+        assert "Message 0001" in summary, "Message 0001 should be included (no truncation)"
+        assert "Message 0002" in summary, "Message 0002 should be included"
         assert "Message 0050" in summary, "Message 0050 should be included"
-        assert "Message 0101" in summary, "Message 0101 should be included (end of last 100)"
+        assert "Message 0101" in summary, "Message 0101 should be included (last message)"
 
-    def test_truncation_with_150_messages_includes_last_100(self):
-        """Test 3: With 150 messages, last 100 should be used (messages 51-150).
+    def test_all_150_messages_included(self):
+        """Test 3: With 150 messages, ALL should be included (no truncation).
 
-        Expected: Messages 51-150 present, messages 1-50 absent.
-        Bug behavior: FAILS - includes messages 1-50, missing 51-150.
-        Fixed behavior: Includes messages 51-150, excludes 1-50.
+        Expected: Messages 1-150 all present, no exclusions.
         """
         messages = _create_test_messages(150)
         summary = _format_conversation_summary(messages)
 
-        # First 50 messages should be EXCLUDED
-        assert "Message 0001" not in summary, "Message 0001 should be excluded (not in last 100)"
-        assert "Message 0025" not in summary, "Message 0025 should be excluded"
-        assert "Message 0050" not in summary, "Message 0050 should be excluded"
-
-        # Last 100 messages (51-150) should be present
-        assert "Message 0051" in summary, "Message 0051 should be included (start of last 100)"
+        # ALL messages should be included (no truncation)
+        assert "Message 0001" in summary, "Message 0001 should be included (no truncation)"
+        assert "Message 0025" in summary, "Message 0025 should be included"
+        assert "Message 0050" in summary, "Message 0050 should be included"
         assert "Message 0100" in summary, "Message 0100 should be included"
-        assert "Message 0150" in summary, "Message 0150 should be included (end of last 100)"
+        assert "Message 0150" in summary, "Message 0150 should be included (last message)"
 
-    def test_truncation_with_500_messages_includes_last_100(self):
-        """Test 4: With 500 messages, last 100 should be used (messages 401-500).
+    def test_all_500_messages_included(self):
+        """Test 4: With 500 messages, ALL should be included (no truncation).
 
-        Expected: Messages 401-500 present, earlier messages absent.
-        Bug behavior: FAILS - includes messages 1-50, missing 51-500.
-        Fixed behavior: Includes messages 401-500, excludes 1-400.
+        Expected: Messages 1-500 all present, no exclusions.
         """
         messages = _create_test_messages(500)
         summary = _format_conversation_summary(messages)
 
-        # Early messages should be EXCLUDED
-        assert "Message 0001" not in summary, "Message 0001 should be excluded"
-        assert "Message 0050" not in summary, "Message 0050 should be excluded"
-        assert "Message 0100" not in summary, "Message 0100 should be excluded"
-        assert "Message 0400" not in summary, "Message 0400 should be excluded"
+        # ALL messages should be included (no truncation)
+        assert "Message 0001" in summary, "Message 0001 should be included (no truncation)"
+        assert "Message 0050" in summary, "Message 0050 should be included"
+        assert "Message 0100" in summary, "Message 0100 should be included"
+        assert "Message 0400" in summary, "Message 0400 should be included"
+        assert "Message 0500" in summary, "Message 0500 should be included (last message)"
 
-        # Last 100 messages (401-500) should be present
-        assert "Message 0401" in summary, "Message 0401 should be included (start of last 100)"
-        assert "Message 0450" in summary, "Message 0450 should be included"
-        assert "Message 0500" in summary, "Message 0500 should be included (end of last 100)"
+    def test_all_600_messages_included(self):
+        """Test 5: With 600 messages, ALL should be included (no truncation).
 
-    def test_truncation_with_600_messages_includes_last_100(self):
-        """Test 5: With 600 messages, last 100 should be used (messages 501-600).
-
-        Expected: Messages 501-600 present, earlier messages absent.
-        Bug behavior: FAILS - includes messages 1-50, missing 51-600.
-        Fixed behavior: Includes messages 501-600, excludes 1-500.
+        Expected: Messages 1-600 all present, no exclusions.
         """
         messages = _create_test_messages(600)
         summary = _format_conversation_summary(messages)
 
-        # Early messages should be EXCLUDED
-        assert "Message 0001" not in summary, "Message 0001 should be excluded"
-        assert "Message 0050" not in summary, "Message 0050 should be excluded"
-        assert "Message 0500" not in summary, "Message 0500 should be excluded"
+        # ALL messages should be included (no truncation)
+        assert "Message 0001" in summary, "Message 0001 should be included (no truncation)"
+        assert "Message 0050" in summary, "Message 0050 should be included"
+        assert "Message 0500" in summary, "Message 0500 should be included"
+        assert "Message 0600" in summary, "Message 0600 should be included (last message)"
 
-        # Last 100 messages (501-600) should be present
-        assert "Message 0501" in summary, "Message 0501 should be included (start of last 100)"
-        assert "Message 0550" in summary, "Message 0550 should be included"
-        assert "Message 0600" in summary, "Message 0600 should be included (end of last 100)"
+    def test_full_session_analysis_with_600_messages(self):
+        """Test 6: Verify FULL session is analyzed (both early and late messages).
 
-    def test_recency_verification_with_600_messages(self):
-        """Test 6: Verify most recent messages are kept, not oldest.
+        This is the CRITICAL test for Issue #2078.
+        With 600 messages, we should see BOTH message 1 (early) AND message 600 (late).
 
-        This is the CRITICAL test that demonstrates the bug.
-        With 600 messages, we should see message 600 (recent) NOT message 50 (old).
-
-        Expected: Message 600 present, message 50 absent.
-        Bug behavior: FAILS - message 50 present, message 600 absent.
-        Fixed behavior: Message 600 present, message 50 absent.
+        Expected: Both message 1 and message 600 present (full session analyzed).
         """
         messages = _create_test_messages(600)
         summary = _format_conversation_summary(messages)
 
-        # CRITICAL ASSERTIONS: These prove we're using last 100, not first 50
-        assert "Message 0050" not in summary, \
-            "BUG: Message 0050 should NOT be in summary (proves using first 50 not last 100)"
+        # CRITICAL: Both early and late messages must be present (no truncation)
+        assert "Message 0001" in summary, \
+            "Message 0001 MUST be in summary (no truncation - full session analyzed)"
+        assert "Message 0050" in summary, \
+            "Message 0050 MUST be in summary (early messages included)"
         assert "Message 0600" in summary, \
-            "BUG: Message 0600 MUST be in summary (proves using last 100 not first 50)"
+            "Message 0600 MUST be in summary (late messages included)"
 
-        # Additional verification: messages near end should be present
-        assert "Message 0501" in summary, "Message 0501 should be included"
-        assert "Message 0550" in summary, "Message 0550 should be included"
+        # Additional verification: messages throughout session should be present
+        assert "Message 0300" in summary, "Middle message 0300 should be included"
+        assert "Message 0550" in summary, "Later message 0550 should be included"
 
 
 class TestTokenBudgetRespected:
@@ -279,54 +255,57 @@ class TestEdgeCases:
         assert "newlines" in summary
 
 
-class TestWarningLogging:
-    """Test warning message behavior for large conversations."""
+class TestNoWarningLogging:
+    """Test that NO warnings are logged for large conversations (no truncation)."""
 
-    def test_warning_logged_for_large_conversation(self, capsys):
-        """Test warning is logged to stderr when conversation > 100 messages."""
+    def test_no_warning_for_large_conversation(self, capsys):
+        """Test NO warning is logged when conversation > 100 messages (no truncation)."""
         messages = _create_test_messages(150)
         _format_conversation_summary(messages)
 
-        # Check stderr for warning
+        # Check stderr - should be NO warnings about truncation
         captured = capsys.readouterr()
-        assert "Large conversation" in captured.err or "150 messages" in captured.err, \
-            "Should log warning to stderr for large conversations"
-        assert "truncating for safety" in captured.err.lower(), \
-            "Warning should mention truncation for safety"
+        assert "truncating" not in captured.err.lower(), \
+            "Should NOT log truncation warnings (no truncation behavior)"
+        assert "Large conversation" not in captured.err, \
+            "Should NOT log large conversation warnings"
 
-    def test_no_warning_for_100_messages(self, capsys):
-        """Test no warning logged for exactly 100 messages."""
-        messages = _create_test_messages(100)
+    def test_no_warning_for_600_messages(self, capsys):
+        """Test no warning logged even for very large conversations."""
+        messages = _create_test_messages(600)
         _format_conversation_summary(messages)
 
         captured = capsys.readouterr()
-        # Should not log warning for exactly 100
-        assert "Large conversation" not in captured.err
+        # Should not log any truncation warnings
+        assert "truncating" not in captured.err.lower(), \
+            "Should NOT log truncation warnings"
 
 
 # Test summary for developer reference
 """
-Test Coverage Summary
-====================
+Test Coverage Summary (Issue #2078 - NO Truncation)
+====================================================
 
-These 8 core tests verify the truncation fix:
+These tests verify NO truncation behavior - FULL session analysis:
 
-1. test_no_truncation_with_100_messages - Baseline: 100 msgs → all included
-2. test_truncation_with_101_messages_includes_last_100 - 101 msgs → last 100
-3. test_truncation_with_150_messages_includes_last_100 - 150 msgs → last 100
-4. test_truncation_with_500_messages_includes_last_100 - 500 msgs → last 100
-5. test_truncation_with_600_messages_includes_last_100 - 600 msgs → last 100
-6. test_recency_verification_with_600_messages - CRITICAL: msg 600 present, 50 absent
-7. test_token_budget_respected - Output ≤ 5000 chars
-8. test_individual_message_truncation - Long messages → 500 chars max
+1. test_all_100_messages_included - 100 msgs → all included
+2. test_all_101_messages_included - 101 msgs → all included (no truncation)
+3. test_all_150_messages_included - 150 msgs → all included (no truncation)
+4. test_all_500_messages_included - 500 msgs → all included (no truncation)
+5. test_all_600_messages_included - 600 msgs → all included (no truncation)
+6. test_full_session_analysis_with_600_messages - CRITICAL: msg 1 AND 600 both present
+7. test_token_budget_respected - Output ≤ max_length (only when needed)
+8. test_individual_message_truncation - Long messages → 500 chars max (but all messages included)
+9. test_no_warning_for_large_conversation - NO warnings logged for large sessions
 
-Expected TDD Behavior:
-- RED PHASE: Tests 2-6 FAIL with current [:50] implementation
-- GREEN PHASE: All tests PASS after changing to [-100:]
-- REFACTOR: Verify no regressions
+Expected Behavior:
+- All messages in conversation are included in summary, regardless of count
+- No 100-message limit
+- No truncation warnings logged to stderr
+- Only max_length parameter constrains output (when summary would exceed it)
 
-Key Bug Indicators:
-- Test 2 failure: "Message 1" present (should be excluded)
-- Test 3-5 failures: Early messages present (should be excluded)
-- Test 6 CRITICAL failure: "Message 50" present, "Message 600" absent
+Key Assertions:
+- Test 2-5: Message 0001 (first) is ALWAYS present (no truncation)
+- Test 6 CRITICAL: Both "Message 0001" and "Message 0600" present (full session)
+- Warning tests: NO "truncating" messages in stderr
 """
