@@ -288,7 +288,6 @@ for detailed customization instructions.
 | [**fix-agent**](.claude/agents/amplihack/specialized/fix-agent.md)                             | Automated error fixing                          |
 | [**integration**](.claude/agents/amplihack/specialized/integration.md)                         | System integration patterns                     |
 | [**knowledge-archaeologist**](.claude/agents/amplihack/specialized/knowledge-archaeologist.md) | Extract and preserve knowledge                  |
-| [**memory-manager**](.claude/agents/amplihack/specialized/memory-manager.md)                   | Context and state management                    |
 | [**multi-agent-debate**](.claude/agents/amplihack/specialized/multi-agent-debate.md)           | Facilitate multi-perspective debates            |
 | [**n-version-validator**](.claude/agents/amplihack/specialized/n-version-validator.md)         | Validate N-version implementations              |
 | [**patterns**](.claude/agents/amplihack/specialized/patterns.md)                               | Design pattern recommendations                  |
