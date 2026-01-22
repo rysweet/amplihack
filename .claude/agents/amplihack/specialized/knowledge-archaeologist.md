@@ -224,7 +224,7 @@ When populating templates, map investigation findings to template variables:
 - No documentation created
 - No error or negative feedback
 
-### Integration with INVESTIGATION_WORKFLOW.md
+### Integration with Investigation Workflow
 
 This documentation capability integrates with the investigation workflow as **Step 6: Capture Findings in Documentation (Optional)**.
 
@@ -235,7 +235,7 @@ The workflow handles:
 - Optional nature (skippable step)
 - Workflow continuation (whether accepted or declined)
 
-See `.claude/workflow/INVESTIGATION_WORKFLOW.md` for complete integration details.
+See `Skill(skill="investigation-workflow")` for complete integration details.
 
 ### Best Practices
 
