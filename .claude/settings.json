@@ -31,10 +31,6 @@
   },
   "enableAllProjectMcpServers": false,
   "enabledMcpjsonServers": [],
-  "statusLine": {
-    "type": "command",
-    "command": ".claude/tools/statusline.sh"
-  },
   "hooks": {
     "SessionStart": [
       {
@@ -79,6 +75,25 @@
           }
         ]
       }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/tools/amplihack/hooks/session_end.py",
+            "timeout": 10000
+          }
+        ]
+      }
     ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": ".claude/tools/statusline.sh"
+  },
+  "enabledPlugins": {
+    "pyright@claude-code-lsps": true,
+    "rust-analyzer@claude-code-lsps": true
   }
 }
