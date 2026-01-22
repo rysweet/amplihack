@@ -16,7 +16,6 @@ from .plugin_cli import (
     plugin_install_command,
     plugin_uninstall_command,
     plugin_verify_command,
-    setup_plugin_commands,
 )
 from .plugin_manager import PluginManager
 from .proxy import ProxyConfig, ProxyManager
@@ -30,7 +29,9 @@ EMOJI = {
 }
 
 
-def add_plugin_args_for_uvx(claude_args: list[str] | None = None, use_installed_plugin: bool = False) -> list[str]:
+def add_plugin_args_for_uvx(
+    claude_args: list[str] | None = None, use_installed_plugin: bool = False
+) -> list[str]:
     """Add --plugin-dir and --add-dir arguments for UVX deployment.
 
     Args:
@@ -52,7 +53,9 @@ def add_plugin_args_for_uvx(claude_args: list[str] | None = None, use_installed_
 
     # Add --plugin-dir ONLY if using directory copy (not installed plugin)
     # When plugin is installed via `claude plugin install`, Claude Code auto-discovers it
-    plugin_installed = use_installed_plugin or os.environ.get("AMPLIHACK_PLUGIN_INSTALLED") == "true"
+    plugin_installed = (
+        use_installed_plugin or os.environ.get("AMPLIHACK_PLUGIN_INSTALLED") == "true"
+    )
 
     if not plugin_installed:
         plugin_root = str(Path.home() / ".amplihack" / ".claude")
@@ -73,9 +76,9 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
         Exit code.
     """
     # Detect nesting BEFORE any .claude/ operations
+    from .launcher.auto_stager import AutoStager
     from .launcher.nesting_detector import NestingDetector
     from .launcher.session_tracker import SessionTracker
-    from .launcher.auto_stager import AutoStager
 
     detector = NestingDetector()
     nesting_result = detector.detect_nesting(Path.cwd(), sys.argv)
@@ -89,10 +92,7 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
 
         stager = AutoStager()
         original_cwd = Path.cwd()
-        staging_result = stager.stage_for_nested_execution(
-            original_cwd,
-            f"nested-{os.getpid()}"
-        )
+        staging_result = stager.stage_for_nested_execution(original_cwd, f"nested-{os.getpid()}")
 
         print(f"   📁 Staged to: {staging_result.temp_root}")
         print("   Your original .claude/ files are protected")
@@ -119,7 +119,7 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
         result = _launch_command_impl(args, claude_args, session_id, tracker)
         tracker.complete_session(session_id)
         return result
-    except Exception as e:
+    except Exception:
         tracker.crash_session(session_id)
         raise
     finally:
@@ -132,7 +132,12 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
                 logging.debug(f"Failed to restore CWD to {original_cwd}: {e}")
 
 
-def _launch_command_impl(args: argparse.Namespace, claude_args: list[str] | None, session_id: str, tracker: SessionTracker) -> int:
+def _launch_command_impl(
+    args: argparse.Namespace,
+    claude_args: list[str] | None,
+    session_id: str,
+    tracker: SessionTracker,
+) -> int:
     """Internal implementation of launch_command with session tracking.
 
     Args:
@@ -560,9 +565,7 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     install_parser.add_argument("--force", action="store_true", help="Overwrite existing plugin")
 
     # Uninstall plugin command
-    uninstall_parser = plugin_subparsers.add_parser(
-        "uninstall", help="Remove plugin"
-    )
+    uninstall_parser = plugin_subparsers.add_parser("uninstall", help="Remove plugin")
     uninstall_parser.add_argument("plugin_name", help="Name of plugin to remove")
 
     # Link plugin command
@@ -637,24 +640,16 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
 
     # Mode detection commands
     mode_parser = subparsers.add_parser("mode", help="Claude installation mode commands")
-    mode_subparsers = mode_parser.add_subparsers(
-        dest="mode_command", help="Mode subcommands"
-    )
+    mode_subparsers = mode_parser.add_subparsers(dest="mode_command", help="Mode subcommands")
 
     # Detect mode command
-    detect_parser = mode_subparsers.add_parser(
-        "detect", help="Detect current Claude installation mode"
-    )
+    _ = mode_subparsers.add_parser("detect", help="Detect current Claude installation mode")
 
     # Migrate to plugin command
-    to_plugin_parser = mode_subparsers.add_parser(
-        "to-plugin", help="Migrate from local to plugin mode"
-    )
+    _ = mode_subparsers.add_parser("to-plugin", help="Migrate from local to plugin mode")
 
     # Migrate to local command
-    to_local_parser = mode_subparsers.add_parser(
-        "to-local", help="Create local .claude/ from plugin"
-    )
+    _ = mode_subparsers.add_parser("to-local", help="Create local .claude/ from plugin")
 
     return parser
 
@@ -692,21 +687,18 @@ def _configure_amplihack_marketplace() -> bool:
 
         if "amplihack" not in settings["extraKnownMarketplaces"]:
             settings["extraKnownMarketplaces"]["amplihack"] = {
-                "source": {
-                    "source": "github",
-                    "repo": "rysweet/amplihack"
-                }
+                "source": {"source": "github", "repo": "rysweet/amplihack"}
             }
 
             # Write atomically
-            with open(settings_path, 'w') as f:
+            with open(settings_path, "w") as f:
                 json.dump(settings, f, indent=2)
 
             if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                 print(f"✅ Configured amplihack marketplace in {settings_path}")
         else:
             if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                print(f"✅ Amplihack marketplace already configured")
+                print("✅ Amplihack marketplace already configured")
 
         return True
 
@@ -752,7 +744,11 @@ def main(argv: list[str] | None = None) -> int:
     Returns:
         Exit code.
     """
-    # Initialize UVX staging if needed (before parsing args)
+    # Parse arguments FIRST to determine which command is being run
+    # This allows us to skip Claude Code plugin installation for amplifier command
+    args, claude_args = parse_args_with_passthrough(argv)
+
+    # Initialize UVX staging if needed
     temp_claude_dir = None
     if is_uvx_deployment():
         # Stage Claude environment in current directory for UVX zero-install
@@ -794,68 +790,86 @@ def main(argv: list[str] | None = None) -> int:
         os.environ["AMPLIHACK_ORIGINAL_CWD"] = original_cwd
 
         if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-            print(f"UVX mode: Using plugin architecture")
+            print("UVX mode: Using plugin architecture")
             print(f"Working directory remains: {original_cwd}")
 
         # Setup plugin architecture
         # .claude-plugin is copied to src/amplihack/.claude-plugin/ by build_hooks.py
-        import amplihack
-        amplihack_package = Path(amplihack.__file__).parent
+        import amplihack  # noqa: F401 - needed for package path resolution
 
-        # Setup amplihack plugin via Claude Code plugin system
-        # This uses extraKnownMarketplaces to enable: claude plugin install amplihack
-        if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-            print(f"📦 Setting up amplihack plugin")
-
-        # Step 1: Configure marketplace in Claude Code settings
-        if not _configure_amplihack_marketplace():
-            print("⚠️  Failed to configure amplihack marketplace")
-            print("   Falling back to directory copy mode")
-            temp_claude_dir = _fallback_to_directory_copy("Marketplace configuration failed")
+        # Skip Claude Code plugin installation for amplifier command
+        # Amplifier uses its own bundle system and doesn't need the Claude Code plugin
+        if args.command == "amplifier":
+            # For amplifier, just copy files to ~/.amplihack/.claude (fallback mode)
+            # The Amplifier bundle system expects files here
+            if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                print("📦 Amplifier command detected - skipping Claude Code plugin installation")
+            temp_claude_dir = _fallback_to_directory_copy("Amplifier mode - using directory copy")
         else:
-            # Step 2: Install plugin using Claude CLI
-            claude_path = get_claude_cli_path(auto_install=True)
-            if not claude_path:
-                print("⚠️  Claude CLI not available")
+            # Setup amplihack plugin via Claude Code plugin system
+            # This uses extraKnownMarketplaces to enable: claude plugin install amplihack
+            if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                print("📦 Setting up amplihack plugin")
+
+            # Step 1: Configure marketplace in Claude Code settings
+            if not _configure_amplihack_marketplace():
+                print("⚠️  Failed to configure amplihack marketplace")
                 print("   Falling back to directory copy mode")
-                temp_claude_dir = _fallback_to_directory_copy("Claude CLI not available")
+                temp_claude_dir = _fallback_to_directory_copy("Marketplace configuration failed")
             else:
-                # Fix EXDEV error: Use temp directory on same filesystem as ~/.claude/
-                # Claude Code uses fs.rename() which fails across different filesystems
-                claude_temp_dir = Path.home() / ".claude" / "temp"
-                claude_temp_dir.mkdir(parents=True, exist_ok=True)
-
-                # Set TMPDIR for subprocess to avoid cross-device rename errors
-                env = os.environ.copy()
-                env["TMPDIR"] = str(claude_temp_dir)
-
-                result = subprocess.run(
-                    [claude_path, "plugin", "install", "amplihack"],
-                    capture_output=True,
-                    text=True,
-                    timeout=60,
-                    check=False,
-                    env=env
-                )
-
-                if result.returncode != 0:
-                    print(f"⚠️  Plugin installation failed: {result.stderr}")
+                # Step 2: Install plugin using Claude CLI
+                claude_path = get_claude_cli_path(auto_install=True)
+                if not claude_path:
+                    print("⚠️  Claude CLI not available")
                     print("   Falling back to directory copy mode")
-                    temp_claude_dir = _fallback_to_directory_copy(f"Plugin install error: {result.stderr}")
+                    temp_claude_dir = _fallback_to_directory_copy("Claude CLI not available")
                 else:
-                    if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                        print(f"✅ Amplihack plugin installed successfully")
-                        print(result.stdout)
-                    # Plugin installed successfully - Claude Code will auto-discover it
-                    # Don't pass --plugin-dir (set flag for add_plugin_args_for_uvx)
-                    temp_claude_dir = None
-                    os.environ["AMPLIHACK_PLUGIN_INSTALLED"] = "true"
+                    # Fix EXDEV error: Use temp directory on same filesystem as ~/.claude/
+                    # Claude Code uses fs.rename() which fails across different filesystems
+                    claude_temp_dir = Path.home() / ".claude" / "temp"
+                    claude_temp_dir.mkdir(parents=True, exist_ok=True)
 
-                    # Set CLAUDE_PLUGIN_ROOT for hook resolution
-                    # When plugin installed via Claude Code, hooks use ${CLAUDE_PLUGIN_ROOT}
-                    # Point to where Claude Code installed the plugin
-                    installed_plugin_path = Path.home() / ".claude" / "plugins" / "cache" / "amplihack" / "amplihack" / "0.9.0"
-                    os.environ["CLAUDE_PLUGIN_ROOT"] = str(installed_plugin_path)
+                    # Set TMPDIR for subprocess to avoid cross-device rename errors
+                    env = os.environ.copy()
+                    env["TMPDIR"] = str(claude_temp_dir)
+
+                    result = subprocess.run(
+                        [claude_path, "plugin", "install", "amplihack"],
+                        capture_output=True,
+                        text=True,
+                        timeout=60,
+                        check=False,
+                        env=env,
+                    )
+
+                    if result.returncode != 0:
+                        print(f"⚠️  Plugin installation failed: {result.stderr}")
+                        print("   Falling back to directory copy mode")
+                        temp_claude_dir = _fallback_to_directory_copy(
+                            f"Plugin install error: {result.stderr}"
+                        )
+                    else:
+                        if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                            print("✅ Amplihack plugin installed successfully")
+                            print(result.stdout)
+                        # Plugin installed successfully - Claude Code will auto-discover it
+                        # Don't pass --plugin-dir (set flag for add_plugin_args_for_uvx)
+                        temp_claude_dir = None
+                        os.environ["AMPLIHACK_PLUGIN_INSTALLED"] = "true"
+
+                        # Set CLAUDE_PLUGIN_ROOT for hook resolution
+                        # When plugin installed via Claude Code, hooks use ${CLAUDE_PLUGIN_ROOT}
+                        # Point to where Claude Code installed the plugin
+                        installed_plugin_path = (
+                            Path.home()
+                            / ".claude"
+                            / "plugins"
+                            / "cache"
+                            / "amplihack"
+                            / "amplihack"
+                            / "0.9.0"
+                        )
+                        os.environ["CLAUDE_PLUGIN_ROOT"] = str(installed_plugin_path)
 
         # Smart PROJECT.md initialization for UVX mode
         try:
@@ -864,14 +878,10 @@ def main(argv: list[str] | None = None) -> int:
             result = initialize_project_md(Path(original_cwd), mode=InitMode.FORCE)
             if result.success and result.action_taken.value in ["initialized", "regenerated"]:
                 if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                    print(
-                        f"PROJECT.md {result.action_taken.value} for {Path(original_cwd).name}"
-                    )
+                    print(f"PROJECT.md {result.action_taken.value} for {Path(original_cwd).name}")
         except Exception as e:
             if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                 print(f"Warning: PROJECT.md initialization failed: {e}")
-
-    args, claude_args = parse_args_with_passthrough(argv)
 
     if not args.command:
         # If we have claude_args but no command, default to launching Claude directly
@@ -927,8 +937,8 @@ def main(argv: list[str] | None = None) -> int:
             claude_args = add_plugin_args_for_uvx(claude_args)
 
         # CRITICAL: Detect nesting BEFORE any .claude/ operations (including auto mode!)
-        from .launcher.nesting_detector import NestingDetector
         from .launcher.auto_stager import AutoStager
+        from .launcher.nesting_detector import NestingDetector
 
         detector = NestingDetector()
         nesting_result = detector.detect_nesting(Path.cwd(), sys.argv)
@@ -937,12 +947,16 @@ def main(argv: list[str] | None = None) -> int:
         saved_cwd = None
         if nesting_result.requires_staging:
             print("\n🚨 SELF-MODIFICATION PROTECTION ACTIVATED")
-            print(f"   Reason: {'Nested execution' if nesting_result.is_nested else 'Running in amplihack source repo'}")
+            print(
+                f"   Reason: {'Nested execution' if nesting_result.is_nested else 'Running in amplihack source repo'}"
+            )
             print("   Auto-staging .claude/ to temp directory for safety")
 
             stager = AutoStager()
             saved_cwd = Path.cwd()
-            staging_result = stager.stage_for_nested_execution(saved_cwd, f"protected-{os.getpid()}")
+            staging_result = stager.stage_for_nested_execution(
+                saved_cwd, f"protected-{os.getpid()}"
+            )
 
             print(f"   📁 Staged to: {staging_result.temp_root}")
             os.chdir(staging_result.temp_root)
@@ -1114,15 +1128,15 @@ def main(argv: list[str] | None = None) -> int:
 
             if not plugin_path.exists():
                 print(f"Error: Plugin not found at {plugin_path}")
-                print(f"Install the plugin first with: amplihack install")
+                print("Install the plugin first with: amplihack install")
                 return 1
 
             # Create plugin manager and link plugin
             manager = PluginManager(plugin_root=plugin_root)
             if manager._register_plugin(plugin_name):
                 print(f"{EMOJI['check']} Plugin linked successfully: {plugin_name}")
-                print(f"  Settings updated in: ~/.claude/settings.json")
-                print(f"  Plugin should now appear in /plugin command")
+                print("  Settings updated in: ~/.claude/settings.json")
+                print("  Plugin should now appear in /plugin command")
                 return 0
             else:
                 print(f"Error: Failed to link plugin: {plugin_name}")
@@ -1216,7 +1230,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     elif args.command == "mode":
-        from .mode_detector import ModeDetector, MigrationHelper
+        from .mode_detector import MigrationHelper, ModeDetector
 
         detector = ModeDetector()
 
@@ -1248,7 +1262,7 @@ def main(argv: list[str] | None = None) -> int:
             print("Plugin installation will be used instead.")
             response = input("Continue? (y/N): ")
 
-            if response.lower() != 'y':
+            if response.lower() != "y":
                 print("Migration cancelled")
                 return 0
 
@@ -1277,7 +1291,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Copying from plugin: {info['plugin_path']}")
             response = input("Continue? (y/N): ")
 
-            if response.lower() != 'y':
+            if response.lower() != "y":
                 print("Migration cancelled")
                 return 0
 
