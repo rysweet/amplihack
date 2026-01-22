@@ -2,6 +2,14 @@
 """
 Compaction Validator: Validates conversation compaction and data preservation.
 
+WHY THIS EXISTS:
+Defensive safeguard against regression of issue #1962 where Claude's context
+window compaction could lose critical session data (TODOs, objectives, recent
+work). This validator detects compaction events and verifies data preservation,
+providing actionable recovery steps when loss is detected.
+
+See: https://github.com/rysweet/amplihack/issues/1962
+
 Detects when Claude's context window was compacted (old messages removed) and
 validates that critical session data was preserved. Provides actionable
 diagnostics for recovery when data is lost.
@@ -15,7 +23,6 @@ Philosophy:
 Public API:
     CompactionValidator - Main validator class
     CompactionContext - Compaction event metadata
-    CompactionEvent - Single compaction event
     ValidationResult - Validation result with recovery steps
 """
 
@@ -29,7 +36,6 @@ from typing import Optional
 __all__ = [
     "CompactionValidator",
     "CompactionContext",
-    "CompactionEvent",
     "ValidationResult",
 ]
 
@@ -67,17 +73,6 @@ def _parse_timestamp_age(timestamp: str) -> tuple[float, bool]:
     except (ValueError, AttributeError):
         # Fail-open: Can't parse timestamp
         return (0.0, False)
-
-
-@dataclass
-class CompactionEvent:
-    """Single compaction event from compaction_events.json."""
-
-    timestamp: str
-    turn_number: int
-    messages_removed: int
-    pre_compaction_transcript_path: str
-    session_id: str
 
 
 @dataclass
