@@ -210,8 +210,8 @@ def register_trace_callbacks(
     Register trace callbacks with LiteLLM.
 
     Args:
-        enabled: Whether to enable tracing (default: from CLAUDE_TRACE_ENABLED env)
-        trace_file: Path to trace file (default: from CLAUDE_TRACE_FILE env)
+        enabled: Whether to enable tracing (default: from AMPLIHACK_TRACE_LOGGING env)
+        trace_file: Path to trace file (default: from AMPLIHACK_TRACE_FILE env)
 
     Returns:
         TraceCallback instance if registered, None if disabled
@@ -225,15 +225,15 @@ def register_trace_callbacks(
         >>> unregister_trace_callbacks(callback)
 
     Environment Variables:
-        CLAUDE_TRACE_ENABLED: "true" to enable (default: disabled)
-        CLAUDE_TRACE_FILE: Path to log file (default: ~/.amplihack/trace.jsonl)
+        AMPLIHACK_TRACE_LOGGING: "true" to enable (default: disabled)
+        AMPLIHACK_TRACE_FILE: Path to log file (default: ~/.amplihack/trace.jsonl)
     """
     if not LITELLM_AVAILABLE:
         return None
 
     # Determine if tracing is enabled
     if enabled is None:
-        enabled_str = os.getenv("CLAUDE_TRACE_ENABLED", "").lower()
+        enabled_str = os.getenv("AMPLIHACK_TRACE_LOGGING", "").lower()
         enabled = enabled_str in ("true", "1", "yes")
 
     if not enabled:
@@ -241,7 +241,7 @@ def register_trace_callbacks(
 
     # Determine trace file path
     if trace_file is None:
-        trace_file_str = os.getenv("CLAUDE_TRACE_FILE")
+        trace_file_str = os.getenv("AMPLIHACK_TRACE_FILE")
         if trace_file_str:
             trace_file = trace_file_str
         else:

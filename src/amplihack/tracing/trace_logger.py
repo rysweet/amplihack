@@ -63,18 +63,18 @@ class TraceLogger:
         Create TraceLogger from environment variables.
 
         Environment Variables:
-            CLAUDE_TRACE_ENABLED: "true" to enable logging (default: disabled)
-            CLAUDE_TRACE_FILE: Path to log file (default: ~/.amplihack/trace.jsonl)
+            AMPLIHACK_TRACE_LOGGING: "true" to enable logging (default: disabled)
+            AMPLIHACK_TRACE_FILE: Path to log file (default: ~/.amplihack/trace.jsonl)
 
         Returns:
             Configured TraceLogger instance
         """
-        enabled_str = os.getenv("CLAUDE_TRACE_ENABLED", "").lower()
+        enabled_str = os.getenv("AMPLIHACK_TRACE_LOGGING", "").lower()
         enabled = enabled_str in ("true", "1", "yes")
 
         log_file = None
         if enabled:
-            log_file_str = os.getenv("CLAUDE_TRACE_FILE")
+            log_file_str = os.getenv("AMPLIHACK_TRACE_FILE")
             if log_file_str:
                 log_file = Path(log_file_str)
             else:
