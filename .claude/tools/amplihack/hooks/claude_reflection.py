@@ -368,15 +368,19 @@ The following preferences are REQUIRED and CANNOT be ignored:
         return None
 
 
-def _format_conversation_summary(conversation: list[dict], max_length: int = 5000) -> str:
+def _format_conversation_summary(conversation: list[dict], max_length: int | None = None) -> str:
     """Format conversation summary for analysis.
 
     Args:
         conversation: List of message dicts
-        max_length: Maximum summary length
+        max_length: Optional maximum summary length (None = unlimited, includes all messages)
 
     Returns:
         Formatted conversation summary
+
+    Note:
+        All messages in the conversation are included in the analysis unless max_length is specified.
+        Individual messages longer than 500 chars are truncated for readability.
     """
     summary_parts = []
     current_length = 0
@@ -385,15 +389,18 @@ def _format_conversation_summary(conversation: list[dict], max_length: int = 500
         role = msg.get("role", "unknown")
         content = str(msg.get("content", ""))
 
-        # Truncate long messages
+        # Truncate long individual messages for readability
         if len(content) > 500:
             content = content[:497] + "..."
 
         msg_summary = f"\n**Message {i + 1} ({role}):** {content}\n"
 
-        # Check if adding this would exceed limit
-        if current_length + len(msg_summary) > max_length:
-            summary_parts.append(f"\n[... {len(conversation) - i} more messages ...]")
+        # Only check length limit if max_length is specified
+        if max_length is not None and current_length + len(msg_summary) > max_length:
+            truncation_indicator = f"\n[... {len(conversation) - i} more messages ...]"
+            # Only add truncation indicator if we have room for it
+            if current_length + len(truncation_indicator) <= max_length:
+                summary_parts.append(truncation_indicator)
             break
 
         summary_parts.append(msg_summary)
