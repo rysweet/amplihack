@@ -41,21 +41,20 @@ def test_bundle_registration_removed():
         "bundle.md should not reference memory-manager.md"
 
 
-def test_agent_performance_skill_updated():
-    """Verify agent-performance skill shows correct count (24 not 25)."""
+def test_agent_performance_skill_removed():
+    """Verify agent-performance skill is completely removed."""
     repo_root = Path(__file__).parent.parent
-    skill_file = repo_root / ".claude/skills/agent-performance/SKILL.md"
 
-    assert skill_file.exists(), "agent-performance SKILL.md should exist"
-    content = skill_file.read_text()
+    expected_removed = [
+        ".claude/skills/agent-performance/SKILL.md",
+        "amplifier-bundle/skills/agent-performance/SKILL.md",
+        "src/amplihack/.claude/skills/agent-performance/SKILL.md",
+        "src/amplihack/amplifier-bundle/skills/agent-performance/SKILL.md",
+    ]
 
-    # Should NOT contain memory-manager in agent list
-    assert "memory-manager" not in content.lower(), \
-        "SKILL.md should not list memory-manager"
-
-    # Should show 24 specialized agents (was 25)
-    assert "24" in content or "twenty-four" in content.lower(), \
-        "SKILL.md should show 24 specialized agents (not 25)"
+    for file_path in expected_removed:
+        full_path = repo_root / file_path
+        assert not full_path.exists(), f"File should be deleted: {file_path}"
 
 
 def test_readme_agent_table_updated():
@@ -116,7 +115,7 @@ if __name__ == "__main__":
     tests = [
         test_memory_manager_files_deleted,
         test_bundle_registration_removed,
-        test_agent_performance_skill_updated,
+        test_agent_performance_skill_removed,
         test_readme_agent_table_updated,
         test_memory_hook_still_exists,
         test_no_code_references_memory_manager,
