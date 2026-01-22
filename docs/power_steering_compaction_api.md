@@ -1,4 +1,4 @@
-# [PLANNED - Implementation Pending] Power-Steering Compaction API Reference
+# Power-Steering Compaction API Reference
 
 Developer documentation for compaction handling in power-steering mode.
 
@@ -19,7 +19,6 @@ Validates that critical session data was preserved during compaction.
 **API:**
 
 ```python
-# [PLANNED] - This API will be implemented
 class CompactionValidator:
     """Validates conversation compaction and data preservation.
 
@@ -172,7 +171,6 @@ Enhanced context object with compaction diagnostics.
 **API:**
 
 ```python
-# [PLANNED] - This API will be implemented
 @dataclass
 class CompactionContext:
     """Compaction event metadata and diagnostics.
@@ -278,7 +276,6 @@ Result object returned by validation methods.
 **API:**
 
 ```python
-# [PLANNED] - This API will be implemented
 @dataclass
 class ValidationResult:
     """Result of compaction validation with recovery guidance.
@@ -360,7 +357,6 @@ The `CompactionValidator` integrates into the main power-steering checker.
 **Integration method:**
 
 ```python
-# [PLANNED] - This integration will be implemented
 class PowerSteeringChecker:
     """Main power-steering checker with compaction support."""
 
@@ -582,7 +578,6 @@ Compaction events expose these metrics for monitoring:
 Compaction events log at appropriate levels:
 
 ```python
-# [PLANNED] - This logging will be implemented
 import logging
 
 logger = logging.getLogger("power_steering.compaction")
@@ -631,7 +626,6 @@ logger.debug(f"Compaction context: {ctx.to_dict()}")
 **Example integration:**
 
 ```python
-# [PLANNED] - This integration will be implemented
 from power_steering_checker import CompactionValidator, ValidationResult
 
 def check_session_completeness(transcript: list[dict], session_id: str):
@@ -684,5 +678,5 @@ def check_session_completeness(transcript: list[dict], session_id: str):
 ---
 
 **Version:** v1.0
-**Status:** [PLANNED - Implementation Pending]
+**Status:** Implemented
 **Last Updated:** 2026-01-22
