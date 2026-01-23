@@ -52,7 +52,7 @@ Power-Steering respects the USER_PREFERENCES.md setting "NEVER Merge PRs Without
 
 ### Detection Method
 
-[PLANNED]
+
 
 ```python
 def _user_prefers_no_auto_merge(self) -> bool:
@@ -92,7 +92,7 @@ def _user_prefers_no_auto_merge(self) -> bool:
 
 ### Validation Method
 
-[PLANNED]
+
 
 ```python
 def _check_ci_status_no_auto_merge(self) -> CheckResult:
@@ -136,7 +136,7 @@ def _check_ci_status_no_auto_merge(self) -> CheckResult:
 
 ### Integration Method
 
-[PLANNED]
+
 
 ```python
 def _check_ci_status(self) -> CheckResult:
@@ -164,7 +164,7 @@ def _check_ci_status(self) -> CheckResult:
 
 ### CheckResult
 
-[PLANNED]
+
 
 ```python
 @dataclass
@@ -275,7 +275,7 @@ merge applies - subsequent PRs require separate approval.
 
 ### Lazy Detection Design
 
-[PLANNED] Preference detection occurs **during each `_check_ci_status()` call**, not at initialization:
+ Preference detection occurs **during each `_check_ci_status()` call**, not at initialization:
 
 ```python
 # In _check_ci_status()
@@ -306,7 +306,7 @@ else:
 
 ### gh CLI Integration
 
-[PLANNED] Uses GitHub CLI to fetch PR status:
+ Uses GitHub CLI to fetch PR status:
 
 ```bash
 # Command executed
@@ -378,7 +378,7 @@ return self._check_ci_status_standard()
 
 ### Unit Tests
 
-[PLANNED] Test coverage for preference awareness:
+ Test coverage for preference awareness:
 
 ```python
 # test_power_steering_checker.py
@@ -413,7 +413,7 @@ class TestMergePreferenceAwareness:
 
 ### Integration Tests
 
-[PLANNED] End-to-end validation:
+ End-to-end validation:
 
 ```python
 class TestMergePreferenceIntegration:
@@ -543,7 +543,7 @@ class TestMergePreferenceIntegration:
 
 ### Debug Logging
 
-[PLANNED] Enable detailed logging:
+ Enable detailed logging:
 
 ```python
 # In power_steering_checker.py

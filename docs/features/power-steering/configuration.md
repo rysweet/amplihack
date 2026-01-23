@@ -163,7 +163,7 @@ Add to considerations.yaml:
 
 ### USER_PREFERENCES.md Format
 
-[PLANNED] Power-Steering reads USER_PREFERENCES.md to detect workflow preferences.
+ Power-Steering reads USER_PREFERENCES.md to detect workflow preferences.
 
 **Standard format**:
 
@@ -211,7 +211,7 @@ EVERY PR MUST include a "Test Plan" section describing manual testing performed.
 - Expected results specified
 ```
 
-[PLANNED] Future versions will support this preference automatically.
+ Future versions will support this preference automatically.
 
 ---
 
@@ -557,7 +557,7 @@ Evidence:
 
 ### Conditional Checks
 
-[PLANNED] Some considerations only apply in specific contexts:
+ Some considerations only apply in specific contexts:
 
 ```yaml
 - id: workflow_followed

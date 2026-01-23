@@ -172,7 +172,7 @@ Power-Steering: All checks passed ✅
 
 ### USER_PREFERENCES.md Integration
 
-[PLANNED] Power-Steering reads `.claude/context/USER_PREFERENCES.md` to respect your workflow preferences.
+ Power-Steering reads `.claude/context/USER_PREFERENCES.md` to respect your workflow preferences.
 
 **Supported preferences**:
 
@@ -269,7 +269,7 @@ Add team-specific checks to considerations.yaml:
 
 ### Conditional Checks
 
-[PLANNED] Some checks only apply in specific contexts:
+ Some checks only apply in specific contexts:
 
 - DEFAULT_WORKFLOW checks → only when workflow active
 - Investigation checks → only during investigation sessions
@@ -354,7 +354,7 @@ gh pr view --json statusCheckRollup
 
 ### Checker Methods
 
-[PLANNED]
+
 
 | Method | Purpose | Evidence |
 |--------|---------|----------|

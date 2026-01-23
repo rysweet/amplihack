@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-TDD Failing Tests for Power-Steering Merge Preference Awareness.
+Test Suite for Power-Steering Merge Preference Awareness.
 
 Tests the feature that makes power-steering respect the user preference:
 "NEVER Merge PRs Without Permission"
 
-This test suite follows TDD methodology - all tests are designed to FAIL initially
-until the implementation is complete.
+This test suite was developed using TDD methodology - tests were written first,
+then implementation was built to make them pass.
 
 Feature Requirements:
 - Detect user preference in USER_PREFERENCES.md via regex pattern
