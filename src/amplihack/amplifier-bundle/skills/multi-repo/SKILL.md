@@ -40,7 +40,7 @@ Coordinate atomic changes across multiple repositories when features span repo b
 
 ## Storage Location
 
-All multi-repo data is stored in `.claude/data/multi-repo/`:
+All multi-repo data is stored in `~/.amplihack/.claude/data/multi-repo/`:
 
 - `dependencies.yaml` - Repository dependency graph
 - `linked-prs.yaml` - Currently active linked PR sets
@@ -84,7 +84,7 @@ repositories:
 
 **Process:**
 
-1. Create `.claude/data/multi-repo/` directory if not exists
+1. Create `~/.amplihack/.claude/data/multi-repo/` directory if not exists
 2. Create initial `dependencies.yaml` with current repository
 3. Prompt for known dependencies (repos this one depends on)
 4. Prompt for known dependents (repos that depend on this one)

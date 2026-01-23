@@ -339,10 +339,10 @@ After creating your tool:
 
 ## Resources
 
-- **Original Tool**: `.claude/scenarios/{tool-name}/`
-- **Template Files**: `.claude/scenarios/templates/`
-- **Agent Documentation**: `.claude/agents/`
-- **Philosophy Guide**: `.claude/context/PHILOSOPHY.md`
+- **Original Tool**: `~/.amplihack/.claude/scenarios/{tool-name}/`
+- **Template Files**: `~/.amplihack/.claude/scenarios/templates/`
+- **Agent Documentation**: `~/.amplihack/.claude/agents/`
+- **Philosophy Guide**: `~/.amplihack/.claude/context/PHILOSOPHY.md`
 
 ---
 

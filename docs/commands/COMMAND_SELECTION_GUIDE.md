@@ -153,6 +153,6 @@ For quick questions or simple tasks, just ask directly without commands.
 
 **See Also**:
 
-- `.claude/context/AGENT_SELECTION_GUIDE.md` - Which agent to use (AI context)
+- `~/.amplihack/.claude/context/AGENT_SELECTION_GUIDE.md` - Which agent to use (AI context)
 - `CLAUDE.md` - Complete project documentation
-- `.claude/commands/` - Individual command documentation
+- `~/.amplihack/.claude/commands/` - Individual command documentation

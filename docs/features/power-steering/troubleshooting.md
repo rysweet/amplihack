@@ -122,7 +122,7 @@ Trigger power steering in different contexts and observe message variations base
 
 ### Understanding Diagnostic Output
 
-Diagnostic logs be written to `.claude/runtime/power-steering/{session_id}/diagnostic.jsonl` with this structure:
+Diagnostic logs be written to `~/.amplihack/.claude/runtime/power-steering/{session_id}/diagnostic.jsonl` with this structure:
 
 ```json
 {

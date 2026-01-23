@@ -66,7 +66,7 @@ Options:
 ### Implementation Pattern
 
 ```markdown
-@.claude/agents/amplihack/specialized/n-version-validator.md
+@~/.amplihack/.claude/agents/amplihack/specialized/n-version-validator.md
 
 Task: [Your critical task]
 Target Agents: 3 (or specify N)

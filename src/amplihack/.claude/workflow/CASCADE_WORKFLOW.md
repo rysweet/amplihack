@@ -454,7 +454,7 @@ Recommendations:
 - [ ] Adjust timeouts based on success rates
 - [ ] Improve secondary approaches if frequently used
 - [ ] Update tertiary if inadequate
-- [ ] Document learnings in `.claude/context/DISCOVERIES.md`
+- [ ] Document learnings in `~/.amplihack/.claude/context/DISCOVERIES.md`
 
 **Optimization Criteria:**
 

@@ -719,13 +719,17 @@ def _configure_amplihack_marketplace() -> bool:
 
 
 def _fallback_to_directory_copy(reason: str = "Plugin installation failed") -> str:
-    """Fallback to directory copy mode when plugin installation is not available.
+    """Copy .claude directory to ~/.amplihack/.claude/ (primary install location).
+
+    This is the primary mechanism for deploying amplihack's .claude components
+    to the user's home directory. Used both as a fallback when Claude Code plugin
+    installation is unavailable AND as the primary method for amplifier command.
 
     Args:
-        reason: Reason for fallback (for debug logging)
+        reason: Reason for using directory copy (for debug logging)
 
     Returns:
-        Path to temporary .claude directory
+        Path to ~/.amplihack/.claude directory
 
     Raises:
         SystemExit: If directory copy fails
@@ -735,15 +739,15 @@ def _fallback_to_directory_copy(reason: str = "Plugin installation failed") -> s
     if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
         print(f"   Reason: {reason}")
 
-    temp_claude_dir = str(Path.home() / ".amplihack" / ".claude")
+    install_dir = str(Path.home() / ".amplihack" / ".claude")
     amplihack_src = Path(amplihack.__file__).parent
-    Path(temp_claude_dir).mkdir(parents=True, exist_ok=True)
-    copied = copytree_manifest(str(amplihack_src), temp_claude_dir, ".claude")
+    Path(install_dir).mkdir(parents=True, exist_ok=True)
+    copied = copytree_manifest(str(amplihack_src), install_dir, ".claude")
     if not copied:
         print("❌ Failed to copy .claude directory")
         sys.exit(1)
 
-    return temp_claude_dir
+    return install_dir
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -811,7 +815,7 @@ def main(argv: list[str] | None = None) -> int:
         # Skip Claude Code plugin installation for amplifier command
         # Amplifier uses its own bundle system and doesn't need the Claude Code plugin
         if args.command == "amplifier":
-            # For amplifier, just copy files to ~/.amplihack/.claude (fallback mode)
+            # For amplifier, copy files to ~/.amplihack/.claude (primary install location)
             # The Amplifier bundle system expects files here
             if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                 print("📦 Amplifier command detected - skipping Claude Code plugin installation")

@@ -50,7 +50,7 @@ Input: prompt.md (natural language goal)
 
 - Matches existing skills to requirements
 - Scores skill relevance (0-1)
-- Currently copies from `.claude/agents/amplihack`
+- Currently copies from `~/.amplihack/.claude/agents/amplihack`
 - Future: AI-generate custom skills
 
 #### 4. Agent Assembler (`agent_assembler.py`)
@@ -240,7 +240,7 @@ This module follows amplihack principles:
 
 ### "No skills matched"
 
-- Check that `.claude/agents/amplihack` exists
+- Check that `~/.amplihack/.claude/agents/amplihack` exists
 - Provide custom `--skills-dir` if using different location
 - Generic executor will be used as fallback
 
@@ -269,4 +269,4 @@ When extending the goal agent generator:
 
 - Auto-mode documentation: `docs/AUTO_MODE.md`
 - Bundle generator: `src/amplihack/bundle_generator/`
-- Existing skills: `.claude/agents/amplihack/`
+- Existing skills: `~/.amplihack/.claude/agents/amplihack/`

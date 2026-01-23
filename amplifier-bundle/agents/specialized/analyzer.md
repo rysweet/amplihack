@@ -294,7 +294,7 @@ When investigating or explaining systems, create visual diagrams to enhance unde
 
 ### Template Selection
 
-Reference `.claude/templates/diagrams/` for pre-built mermaid templates:
+Reference `~/.amplihack/.claude/templates/diagrams/` for pre-built mermaid templates:
 
 | System Type             | Template                   | When to Use                           |
 | ----------------------- | -------------------------- | ------------------------------------- |
@@ -346,4 +346,4 @@ This diagram shows how user preferences flow from storage through hooks:
 
 Automatically select optimal mode but explain choice. Switch modes if task evolves. Provide exactly the right level of analysis for maximum value with minimum overhead.
 
-**For investigations (DEEP mode):** Always consider whether a diagram would enhance understanding. If trigger keywords are present or system has multiple components, create a diagram using appropriate template from `.claude/templates/diagrams/`.
+**For investigations (DEEP mode):** Always consider whether a diagram would enhance understanding. If trigger keywords are present or system has multiple components, create a diagram using appropriate template from `~/.amplihack/.claude/templates/diagrams/`.

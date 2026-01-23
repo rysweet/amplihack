@@ -25,11 +25,11 @@ Based on three proven principles:
 
 ## Input Validation
 
-@.claude/context/AGENT_INPUT_VALIDATION.md
+@~/.amplihack/.claude/context/AGENT_INPUT_VALIDATION.md
 
 ## Anti-Sycophancy Guidelines (MANDATORY)
 
-@.claude/context/TRUST.md
+@~/.amplihack/.claude/context/TRUST.md
 
 **Critical Behaviors for Socratic Review:**
 

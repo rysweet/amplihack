@@ -220,8 +220,8 @@ Use this skill during:
 
 ## Resources
 
-- **Full Philosophy**: See `.claude/context/PHILOSOPHY.md`
-- **Design Patterns**: See `.claude/context/PATTERNS.md`
+- **Full Philosophy**: See `~/.amplihack/.claude/context/PHILOSOPHY.md`
+- **Design Patterns**: See `~/.amplihack/.claude/context/PATTERNS.md`
 - **Detailed SKILL.md**: Full detection rules and analysis process
 
 ## Next Steps

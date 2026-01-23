@@ -582,4 +582,4 @@ This skill should grow based on:
 - What knowledge sources are underutilized?
 - How can we better surface relevant knowledge?
 
-Document learnings in `.claude/context/DISCOVERIES.md`.
+Document learnings in `~/.amplihack/.claude/context/DISCOVERIES.md`.

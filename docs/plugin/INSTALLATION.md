@@ -126,7 +126,7 @@ After installation, your `~/.amplihack/.claude/` directory contains:
 
 ## Project-Specific Settings
 
-Each project can override plugin settings by creating `.claude/settings.json`:
+Each project can override plugin settings by creating `~/.amplihack/.claude/settings.json`:
 
 ```json
 {
@@ -233,7 +233,7 @@ ls *.py pyproject.toml setup.py
 ls *.js package.json
 ```
 
-3. Manually configure LSP in project `.claude/settings.json`:
+3. Manually configure LSP in project `~/.amplihack/.claude/settings.json`:
 
 ```json
 {
@@ -267,13 +267,13 @@ After installation:
 1. **Read the architecture guide**: See [ARCHITECTURE.md](./ARCHITECTURE.md) to understand how the plugin works
 2. **Try a command**: Run `/ultrathink analyze this codebase` in Claude Code
 3. **Explore agents**: List available agents with `amplihack agents list`
-4. **Migrate existing projects**: See [MIGRATION.md](./MIGRATION.md) if you have per-project `.claude/` directories
+4. **Migrate existing projects**: See [MIGRATION.md](./MIGRATION.md) if you have per-project `~/.amplihack/.claude/` directories
 
 ## Additional Resources
 
 - [Plugin Architecture](./ARCHITECTURE.md) - How the plugin system works
 - [CLI Reference](./CLI_REFERENCE.md) - Complete command documentation
-- **Note**: GitHub Copilot and OpenAI Codex use per-project `.claude/` staging (not plugin architecture)
+- **Note**: GitHub Copilot and OpenAI Codex use per-project `~/.amplihack/.claude/` staging (not plugin architecture)
 - [Migration Guide](./MIGRATION.md) - Move from per-project to plugin mode
 
 ---

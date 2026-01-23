@@ -90,7 +90,7 @@ update_result() {
 
 **Data Flow**:
 
-1. Load configuration from `.claude/config/cs-validator.json`
+1. Load configuration from `~/.amplihack/.claude/config/cs-validator.json`
 2. Get modified files from `git diff`
 3. Initialize results JSON structure
 4. Run checks sequentially (Level 1-2) or parallel (Level 3-4)
@@ -447,7 +447,7 @@ dotnet build "$project"
 
 ### Adding New Configuration Options
 
-1. Update config schema in `.claude/config/cs-validator.json`
+1. Update config schema in `~/.amplihack/.claude/config/cs-validator.json`
 2. Parse in orchestrator:
    ```bash
    CUSTOM_OPTION=$(jq -r '.customOption // "default"' "$CONFIG_FILE")

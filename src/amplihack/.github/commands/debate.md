@@ -1,6 +1,6 @@
 # GitHub Copilot Command Reference: debate
 
-**Source**: `.claude/commands/amplihack/debate.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/debate.md`
 
 ---
 
@@ -82,10 +82,10 @@ When this command is invoked, you MUST:
    - Explain confidence level (HIGH/MEDIUM/LOW)
    - Summarize key debate points
    - Report session_id for traceability
-   - Link to logs: `.claude/runtime/logs/debate_<timestamp>/`
+   - Link to logs: `~/.amplihack/.claude/runtime/logs/debate_<timestamp>/`
 
 4. **Manual fallback** (if orchestrator unavailable):
-   - Read workflow: `.claude/workflow/DEBATE_WORKFLOW.md`
+   - Read workflow: `~/.amplihack/.claude/workflow/DEBATE_WORKFLOW.md`
    - Execute steps manually with TodoWrite tracking
 
 ## When to Use
@@ -113,7 +113,7 @@ Execute debate for the following decision:
 
 ## Configuration
 
-The workflow can be customized by editing `.claude/workflow/DEBATE_WORKFLOW.md`:
+The workflow can be customized by editing `~/.amplihack/.claude/workflow/DEBATE_WORKFLOW.md`:
 
 - Agent perspectives: 3 (default), 5 (extended), custom profiles
 - Debate rounds: 2-3 (standard), 4-5 (deep analysis)

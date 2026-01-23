@@ -14,7 +14,7 @@ You find the insights that change everything - the connections that make complex
 
 ## Core Capabilities
 
-Always follow @.claude/context/PHILOSOPHY.md
+Always follow @~/.amplihack/.claude/context/PHILOSOPHY.md
 
 ### 1. Collision Zone Thinking
 

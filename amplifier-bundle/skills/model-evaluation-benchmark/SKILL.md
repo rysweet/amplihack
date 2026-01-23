@@ -59,7 +59,7 @@ python run_benchmarks.py --model {opus|sonnet} --tasks 1,2,3,4
 
 ### Phase 3: Analyze Results
 
-1. Read all result files: `.claude/runtime/benchmarks/suite_v3/*/result.json`
+1. Read all result files: `~/.amplihack/.claude/runtime/benchmarks/suite_v3/*/result.json`
 2. Launch parallel Task tool calls with `subagent_type="reviewer"` to:
    - Analyze trace logs for tool/agent/skill usage
    - Score code quality (1-5 scale)

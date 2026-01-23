@@ -394,7 +394,7 @@ stats = toolkit.get_toolkit_stats()
 
 - **Python 3.8+**: Compatible with modern Python versions
 - **Disk Space**: Minimal overhead for session storage
-- **Permissions**: Read/write access to `.claude/runtime/` directory
+- **Permissions**: Read/write access to `~/.amplihack/.claude/runtime/` directory
 
 ### Installation
 

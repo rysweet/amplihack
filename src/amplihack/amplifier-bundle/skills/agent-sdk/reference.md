@@ -943,7 +943,7 @@ Skills are modular knowledge packages that enhance Claude's capabilities in spec
 
 **Key Characteristics:**
 
-- Filesystem-based (`.claude/skills/` directory)
+- Filesystem-based (`~/.amplihack/.claude/skills/` directory)
 - YAML frontmatter with metadata
 - Markdown content with domain knowledge
 - Automatic activation based on keywords or manual invocation
@@ -1002,7 +1002,7 @@ Domain-specific knowledge, patterns, and examples...
 
 **Discovery Process:**
 
-1. SDK scans `.claude/skills/` recursively
+1. SDK scans `~/.amplihack/.claude/skills/` recursively
 2. Finds all `SKILL.md` files (case-insensitive)
 3. Parses YAML frontmatter
 4. Validates required fields

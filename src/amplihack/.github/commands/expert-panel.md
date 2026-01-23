@@ -1,6 +1,6 @@
 # GitHub Copilot Command Reference: expert-panel
 
-**Source**: `.claude/commands/amplihack/expert-panel.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/expert-panel.md`
 
 ---
 

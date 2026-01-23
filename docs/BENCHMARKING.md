@@ -147,6 +147,6 @@ To test a specific PR branch:
 ## References
 
 - **eval-recipes:** https://github.com/microsoft/eval-recipes
-- **Agent configs:** `.claude/agents/eval-recipes/` in amplihack repo
+- **Agent configs:** `~/.amplihack/.claude/agents/eval-recipes/` in amplihack repo
 - **Issue #1435:** Task classification improvement
 - **Validation results:** See benchmark_results/ directories

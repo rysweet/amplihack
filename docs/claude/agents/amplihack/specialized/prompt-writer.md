@@ -78,7 +78,7 @@ WARNING: User wants working code/program, NOT documentation.
 
 - Target location: .claude/scenarios/ (for production tools)
 - Target location: .claude/ai_working/ (for experimental tools)
-- NEVER create markdown skill files (.claude/skills/) for this request
+- NEVER create markdown skill files (~/.amplihack/.claude/skills/) for this request
 - Ignore .claude/skills/ directory content (it contains DOCUMENTATION only)
 ```
 

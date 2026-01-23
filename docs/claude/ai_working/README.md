@@ -52,7 +52,7 @@ Even experimental tools must:
 
 ## Graduation Criteria
 
-Move to `.claude/scenarios/` when:
+Move to `~/.amplihack/.claude/scenarios/` when:
 
 - Used successfully by 2-3 real users
 - Stable interface (no breaking changes for 1+ week)

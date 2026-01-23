@@ -50,9 +50,9 @@ The PM Architect agent automatically loads these defaults when invoked. The conf
 ## Related Documentation
 
 - **Analysis Report**: Issue [#1504](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1504)
-- **Full Analysis**: `.claude/runtime/README_TRACE_ANALYSIS.md`
-- **User Preferences**: `.claude/context/USER_PREFERENCES.md`
-- **Workflow**: `.claude/workflow/DEFAULT_WORKFLOW.md`
+- **Full Analysis**: `~/.amplihack/.claude/runtime/README_TRACE_ANALYSIS.md`
+- **User Preferences**: `~/.amplihack/.claude/context/USER_PREFERENCES.md`
+- **Workflow**: `~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md`
 
 ## Maintenance
 

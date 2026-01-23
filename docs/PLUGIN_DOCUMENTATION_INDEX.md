@@ -58,7 +58,7 @@ This index provides navigation t' all plugin-related documentation created fer I
 
 **When to read**:
 
-- Ye have existing projects with `.claude/` directories
+- Ye have existing projects with `~/.amplihack/.claude/` directories
 - Decidin' between plugin and per-project modes
 - Need step-by-step migration instructions
 - Want t' preserve custom agents/commands/skills
@@ -236,7 +236,7 @@ Specs/
 
 ### Use Case 2: Migrate Existing Project
 
-**Goal**: Convert per-project `.claude/` t' plugin
+**Goal**: Convert per-project `~/.amplihack/.claude/` t' plugin
 
 **Path**:
 
@@ -263,12 +263,12 @@ Specs/
 
 ### Use Case 4: Revert t' Per-Project
 
-**Goal**: Create local `.claude/` fer project-specific customizations
+**Goal**: Create local `~/.amplihack/.claude/` fer project-specific customizations
 
 **Path**:
 
 1. Execute: `amplihack mode migrate-to-local`
-2. Customize: Edit `.claude/agents/`, `.claude/commands/`, etc.
+2. Customize: Edit `~/.amplihack/.claude/agents/`, `~/.amplihack/.claude/commands/`, etc.
 3. Verify: `amplihack mode status` (should show "local")
 4. Reference: [Migration Guide](./MIGRATION_GUIDE.md) - Customization guidance
 
@@ -363,7 +363,7 @@ Before releasin' documentation:
 
 - `README.md` - Main project documentation
 - `CLAUDE.md` - Framework usage guide
-- `.claude/context/PHILOSOPHY.md` - Development philosophy
+- `~/.amplihack/.claude/context/PHILOSOPHY.md` - Development philosophy
 
 ### Issue Tracking
 

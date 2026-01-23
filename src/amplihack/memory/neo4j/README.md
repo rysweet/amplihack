@@ -459,7 +459,7 @@ docker logs amplihack-neo4j --tail 100 -f
 
 - **Documentation**: See `docs/memory/` for detailed guides
 - **GitHub Issues**: #1071 (Foundation), #1181 (Code Ingestion)
-- **Troubleshooting**: See `.claude/agents/amplihack/infrastructure/neo4j-setup-agent.md`
+- **Troubleshooting**: See `~/.amplihack/.claude/agents/amplihack/infrastructure/neo4j-setup-agent.md`
 
 ## Version History
 

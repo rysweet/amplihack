@@ -25,7 +25,7 @@ Ultra-Think command currently deploys full multi-agent orchestration for ALL inv
 
 #### Component 1: Complexity Assessment Engine (Embedded)
 
-**Location**: `.claude/commands/amplihack/ultrathink.md` (Step 0)
+**Location**: `~/.amplihack/.claude/commands/amplihack/ultrathink.md` (Step 0)
 
 **Responsibility**: Analyze investigation request and classify complexity
 
@@ -99,7 +99,7 @@ Ultra-Think command currently deploys full multi-agent orchestration for ALL inv
 
 #### Component 2: Routing Dispatcher (Embedded)
 
-**Location**: `.claude/commands/amplihack/ultrathink.md` (Step 0)
+**Location**: `~/.amplihack/.claude/commands/amplihack/ultrathink.md` (Step 0)
 
 **Responsibility**: Execute appropriate path based on classification
 
@@ -121,7 +121,7 @@ ROUTE: UltraThink-Full (Complex)
 
 #### Component 3: User Announcement (Embedded)
 
-**Location**: `.claude/commands/amplihack/ultrathink.md` (Step 0)
+**Location**: `~/.amplihack/.claude/commands/amplihack/ultrathink.md` (Step 0)
 
 **Responsibility**: Provide transparency about routing decision
 
@@ -357,6 +357,6 @@ Specs/
 ## Related Documents
 
 - `Specs/complexity_estimator_tests.md` - Test specification
-- `.claude/commands/amplihack/ultrathink.md` - Implementation file
+- `~/.amplihack/.claude/commands/amplihack/ultrathink.md` - Implementation file
 - Issue #1108 - Original feature request
 - Reflection session 20251104 - Source of recommendation

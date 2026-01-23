@@ -16,32 +16,6 @@ Replace the sections below with information about your project.
 
 Development framework for popular coding agent systems (Claude Code, Github Copilot CLI, Microsoft Amplifier, codex) that provides structured dev workflows, memory, a package of useful skills and agents, goal-seeking agent generator, auto mode, self-improvement with reflection, and commands for getting the most out of agentic coding. Unlikely to work on Windows without WSL. **📚 [View Full Documentation](https://rysweet.github.io/amplihack/)**
 
-## Multi-Tool Architecture (CRITICAL)
-
-**amplihack is a wrapper framework** that creates a consistent environment across three agentic coding tools:
-
-1. **Claude Code** (`amplihack claude` or `amplihack launch`) - Anthropic's agentic coding CLI
-2. **GitHub Copilot** (`amplihack copilot`) - GitHub's agentic coding mode
-3. **Amplifier** (`amplihack amplifier`) - Third agentic coding tool
-
-### How amplihack Works
-
-- **File staging**: Manages `.claude/` directory for each tool
-- **Environment config**: Sets up tool-specific configurations
-- **Unified CLI**: Single interface for all three tools
-- **Cross-tool features**: Ensures features work consistently
-
-### Testing Methodology (MANDATORY)
-
-When testing amplihack features:
-
-1. **Use subprocess testing** - Launch via `amplihack <tool>` commands, not from within current session
-2. **Test all applicable tools** - Verify features work in claude, copilot, and amplifier
-3. **Use TUI testing** - Use gadugi-agentic-test framework for interactive testing
-4. **Validate staging** - Ensure `.claude/` files are correctly staged for each tool
-
-**Example**: To test skill discovery, launch `amplihack claude` subprocess and verify skills load there, not just in current session.
-
 ## Architecture
 
 ### Key Components

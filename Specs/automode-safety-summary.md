@@ -4,7 +4,7 @@
 
 ### Problem
 
-UVX deployment silently overwrites uncommitted `.claude/` changes, causing data loss.
+UVX deployment silently overwrites uncommitted `~/.amplihack/.claude/` changes, causing data loss.
 
 ### Solution Overview
 
@@ -22,7 +22,7 @@ GitConflictDetector → SafeCopyStrategy → PromptTransformer
 ### Module 1: GitConflictDetector
 
 **File:** `src/amplihack/safety/git_conflict_detector.py`
-**Purpose:** Detect uncommitted changes in `.claude/` directories
+**Purpose:** Detect uncommitted changes in `~/.amplihack/.claude/` directories
 **Key Method:** `detect_conflicts(essential_dirs) -> ConflictDetectionResult`
 **Dependencies:** subprocess (git commands)
 **Lines:** ~150
@@ -358,5 +358,5 @@ src/amplihack/launcher/auto_mode.py (~20 lines added at 3 locations)
 - Full Specification: `Specs/automode-safety-architecture.md`
 - Issue: #1090
 - Prompt Writer: Completed requirements analysis
-- Philosophy: `.claude/context/PHILOSOPHY.md`
-- Patterns: `.claude/context/PATTERNS.md`
+- Philosophy: `~/.amplihack/.claude/context/PHILOSOPHY.md`
+- Patterns: `~/.amplihack/.claude/context/PATTERNS.md`

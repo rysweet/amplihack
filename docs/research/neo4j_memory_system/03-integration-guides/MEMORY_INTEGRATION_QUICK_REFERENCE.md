@@ -211,8 +211,8 @@ error_record = memory_system.query_error_pattern(
 
 ### Agent Definitions - UNCHANGED
 
-- `.claude/agents/amplihack/core/*.md` - No changes needed
-- `.claude/agents/amplihack/specialized/*.md` - No changes needed
+- `~/.amplihack/.claude/agents/amplihack/core/*.md` - No changes needed
+- `~/.amplihack/.claude/agents/amplihack/specialized/*.md` - No changes needed
 - Agent prompts remain identical
 - Agent execution remains stateless
 

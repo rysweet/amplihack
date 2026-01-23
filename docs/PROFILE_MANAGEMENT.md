@@ -4,7 +4,7 @@ Amplihack's profile system filters which components get staged during installati
 
 ## How It Works
 
-Profiles control **file staging** - which files get copied to `.claude/` when you run `amplihack install` or `amplihack launch`. Claude Code sees only the filtered files (no runtime awareness needed).
+Profiles control **file staging** - which files get copied to `~/.amplihack/.claude/` when you run `amplihack install` or `amplihack launch`. Claude Code sees only the filtered files (no runtime awareness needed).
 
 **Key Principle**: Profile switching happens OUTSIDE Claude Code. To change profiles, you must exit Claude, set a new profile, and restart.
 
@@ -83,7 +83,7 @@ amplihack install
 
 ### Supported URI Schemes
 
-- `amplihack://profiles/name` - Built-in profiles (.claude/profiles/\*.yaml)
+- `amplihack://profiles/name` - Built-in profiles (~/.amplihack/.claude/profiles/\*.yaml)
 - `file:///path/to/profile.yaml` - Local filesystem
 - `git+https://github.com/user/repo/blob/ref/path/to/profile.yaml` - GitHub repository
 
@@ -111,7 +111,7 @@ amplihack launch
 
 ### Example: Minimal Profile
 
-Create `.claude/profiles/minimal.yaml`:
+Create `~/.amplihack/.claude/profiles/minimal.yaml`:
 
 ```yaml
 version: "1.0"
@@ -223,8 +223,8 @@ Claude Code launches, sees filtered environment
 
 ### Module Location
 
-- **Profile YAML files**: `.claude/profiles/*.yaml`
-- **Implementation**: `.claude/tools/amplihack/profile_management/`
+- **Profile YAML files**: `~/.amplihack/.claude/profiles/*.yaml`
+- **Implementation**: `~/.amplihack/.claude/tools/amplihack/profile_management/`
   - `staging.py` - File staging logic
   - `loader.py` - Profile loading
   - `parser.py` - YAML parsing
@@ -285,5 +285,5 @@ echo $AMPLIHACK_PROFILE
 ## Related
 
 - Issue #1537: Profile staging implementation
-- `.claude/profiles/`: Built-in profile configurations
-- `.claude/tools/amplihack/profile_management/`: Implementation modules
+- `~/.amplihack/.claude/profiles/`: Built-in profile configurations
+- `~/.amplihack/.claude/tools/amplihack/profile_management/`: Implementation modules

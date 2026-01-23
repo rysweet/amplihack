@@ -624,7 +624,7 @@ Run without --dry-run to execute migration.
 
 ## amplihack mode extract-settings
 
-Extract project-specific settings from `.claude/` directory.
+Extract project-specific settings from `~/.amplihack/.claude/` directory.
 
 ### Syntax
 

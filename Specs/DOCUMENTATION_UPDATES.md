@@ -7,7 +7,7 @@ Update all documentation to reflect plugin architecture migration and provide cl
 ## Problem
 
 Issue #1948 requires documentation updates but currently:
-- README still describes per-project `.claude/` installation
+- README still describes per-project `~/.amplihack/.claude/` installation
 - No plugin installation instructions
 - No migration guide
 - CLI help text outdated
@@ -67,7 +67,7 @@ pip install amplihack
 amplihack install
 ```
 
-This copies `.claude/` directory to your project.
+This copies `~/.amplihack/.claude/` directory to your project.
 ```
 
 **New (Plugin Mode):**
@@ -98,7 +98,7 @@ pip install amplihack
 amplihack mode migrate-to-local
 ```
 
-This creates a local `.claude/` directory in your project.
+This creates a local `~/.amplihack/.claude/` directory in your project.
 
 ### Which Mode Should I Use?
 
@@ -114,7 +114,7 @@ See [Migration Guide](docs/MIGRATION_GUIDE.md) for switching between modes.
 
 **Section:** Architecture
 
-**Location:** `.claude/context/PROJECT.md`
+**Location:** `~/.amplihack/.claude/context/PROJECT.md`
 
 **New Content:**
 ```markdown
@@ -169,12 +169,12 @@ Amplihack supports two installation modes:
    - Automatic updates
 
 2. **Local Mode (For Customization):**
-   - Project-local `.claude/` directory
+   - Project-local `~/.amplihack/.claude/` directory
    - Full control over agents, commands, workflows
    - Version pinning per project
 
 **Mode Detection:** Amplihack automatically detects which mode to use:
-- Local `.claude/` takes precedence if it exists
+- Local `~/.amplihack/.claude/` takes precedence if it exists
 - Falls back to plugin if no local installation
 - Override with `AMPLIHACK_MODE` environment variable
 
@@ -289,7 +289,7 @@ verify_parser = plugin_subparsers.add_parser(
 ```markdown
 # Migration Guide: Per-Project → Plugin
 
-This guide helps you migrate from per-project `.claude/` installations to the plugin architecture.
+This guide helps you migrate from per-project `~/.amplihack/.claude/` installations to the plugin architecture.
 
 ## Why Migrate?
 
@@ -339,7 +339,7 @@ amplihack mode migrate-to-plugin
 
 This:
 1. Checks for custom files (warns if found)
-2. Removes local `.claude/` directory
+2. Removes local `~/.amplihack/.claude/` directory
 3. Project now uses plugin
 
 ### Step 4: Verify
@@ -392,7 +392,7 @@ If you need to revert:
 amplihack mode migrate-to-local
 ```
 
-This creates a local `.claude/` copy from the plugin.
+This creates a local `~/.amplihack/.claude/` copy from the plugin.
 
 ## Multi-Project Workflow
 
@@ -546,7 +546,7 @@ Amplihack uses Claude Code's plugin system for installation and discovery.
 
 ### Hook Configuration
 
-**File:** `.claude/tools/amplihack/hooks/hooks.json`
+**File:** `~/.amplihack/.claude/tools/amplihack/hooks/hooks.json`
 
 ```json
 {
@@ -686,7 +686,7 @@ See [Cross-Tool Compatibility](CROSS_TOOL_COMPATIBILITY.md) for details.
 
 ### Migration
 - See [Migration Guide](docs/MIGRATION_GUIDE.md) for upgrading from v0.8.x
-- Per-project `.claude/` installations still supported (local mode)
+- Per-project `~/.amplihack/.claude/` installations still supported (local mode)
 - Plugin mode is now recommended for most users
 
 ### Compatibility

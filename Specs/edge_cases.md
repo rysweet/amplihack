@@ -389,7 +389,7 @@ def _validate_config(self, config: Dict) -> Dict:
 
 #### 5.1 Permission Errors (Can't Write Semaphore)
 
-**Scenario**: No write permission for `.claude/runtime/power-steering/`
+**Scenario**: No write permission for `~/.amplihack/.claude/runtime/power-steering/`
 
 **Handling**:
 

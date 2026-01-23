@@ -20,7 +20,7 @@ Add power-steering as 3rd check, after reflection.
 
 ### Location
 
-`.claude/tools/amplihack/hooks/stop.py`
+`~/.amplihack/.claude/tools/amplihack/hooks/stop.py`
 
 ### Change 1: Import PowerSteeringChecker
 

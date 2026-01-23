@@ -53,7 +53,7 @@ Successfully implemented the Neo4j memory system foundation following all specif
 
 ### Phase 3: Goal-Seeking Agent ✅
 
-- [x] `.claude/agents/amplihack/infrastructure/neo4j-setup-agent.md`
+- [x] `~/.amplihack/.claude/agents/amplihack/infrastructure/neo4j-setup-agent.md`
   - Advisory pattern (check → report → guide)
   - 6 prerequisite checks documented
   - Fix instructions for each failure mode

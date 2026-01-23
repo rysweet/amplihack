@@ -394,9 +394,9 @@ A successful philosophy review:
 
 **Where to save:**
 
-- `.claude/runtime/logs/<session>/philosophy_review_<timestamp>.md`
+- `~/.amplihack/.claude/runtime/logs/<session>/philosophy_review_<timestamp>.md`
 - Link in commit message if fixes applied
-- Update `.claude/context/DISCOVERIES.md` with patterns learned
+- Update `~/.amplihack/.claude/context/DISCOVERIES.md` with patterns learned
 
 ## Remember
 

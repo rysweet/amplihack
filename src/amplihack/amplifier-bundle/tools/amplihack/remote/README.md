@@ -126,7 +126,7 @@ Result integration into local repository.
 **Key Features**:
 
 - Git branch import into `remote-exec/` namespace
-- Log copying to `.claude/runtime/logs/remote/`
+- Log copying to `~/.amplihack/.claude/runtime/logs/remote/`
 - Conflict detection
 - Integration summary generation
 
@@ -448,9 +448,9 @@ When modifying this module:
 ## References
 
 - **Azlin**: https://github.com/rysweet/azlin
-- **Requirements**: `.claude/runtime/logs/remote-execution-requirements.md`
-- **Investigation**: `.claude/runtime/logs/investigation-remote-execution-findings.md`
-- **Slash Command**: `.claude/commands/amplihack/remote.md`
+- **Requirements**: `~/.amplihack/.claude/runtime/logs/remote-execution-requirements.md`
+- **Investigation**: `~/.amplihack/.claude/runtime/logs/investigation-remote-execution-findings.md`
+- **Slash Command**: `~/.amplihack/.claude/commands/amplihack/remote.md`
 
 ## Status
 

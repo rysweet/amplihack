@@ -8,12 +8,12 @@ Verify ALL amplihack hooks are registered in `hooks.json` with `${CLAUDE_PLUGIN_
 
 Issue #1948 requirement #2: "ALL hooks with ${CLAUDE_PLUGIN_ROOT}". Currently:
 - `hooks.json` has 4 hooks registered (SessionStart, Stop, PostToolUse, PreCompact)
-- Directory `.claude/tools/amplihack/hooks/` contains 7 Python hook files
+- Directory `~/.amplihack/.claude/tools/amplihack/hooks/` contains 7 Python hook files
 - 3 hooks may be missing from `hooks.json`: `pre_tool_use.py`, `user_prompt_submit.py`, `power_steering_checker.py`
 
 ## Solution Overview
 
-1. Audit `.claude/tools/amplihack/hooks/` directory for all hook files
+1. Audit `~/.amplihack/.claude/tools/amplihack/hooks/` directory for all hook files
 2. Compare against `hooks.json` entries
 3. Add missing hooks to `hooks.json` with proper configuration
 4. Verify all paths use `${CLAUDE_PLUGIN_ROOT}` variable
@@ -23,7 +23,7 @@ Issue #1948 requirement #2: "ALL hooks with ${CLAUDE_PLUGIN_ROOT}". Currently:
 ### Inputs
 
 **Directory Audit:**
-- Scan `.claude/tools/amplihack/hooks/*.py` for hook files
+- Scan `~/.amplihack/.claude/tools/amplihack/hooks/*.py` for hook files
 - Exclude test files (`test_*.py`) and `__init__.py`
 
 **Current `hooks.json`:**
@@ -52,7 +52,7 @@ Issue #1948 requirement #2: "ALL hooks with ${CLAUDE_PLUGIN_ROOT}". Currently:
 
 ### Side Effects
 
-- Updates `.claude/tools/amplihack/hooks/hooks.json` with complete hook list
+- Updates `~/.amplihack/.claude/tools/amplihack/hooks/hooks.json` with complete hook list
 - Ensures all hooks load properly in Claude Code
 
 ## Implementation Design
@@ -396,4 +396,4 @@ For each *.py file in .claude/tools/amplihack/hooks/:
 
 - Issue #1948, Requirement #2: "ALL hooks with ${CLAUDE_PLUGIN_ROOT}"
 - `ISSUE_1948_REQUIREMENTS.md`, Gap 3 (lines 325-347)
-- Current `hooks.json` (lines 1-46 in `.claude/tools/amplihack/hooks/hooks.json`)
+- Current `hooks.json` (lines 1-46 in `~/.amplihack/.claude/tools/amplihack/hooks/hooks.json`)
