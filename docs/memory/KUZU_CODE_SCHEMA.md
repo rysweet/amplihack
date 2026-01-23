@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Kuzu Code Graph Schema extends the 5-type memory system with code structure modeling, enabling memory-code linking for intelligent codebase understanding. This schema adds 3 code node types, 8 code relationship types, and 10 memory-code link types to the existing Kuzu backend.
+The Kuzu Code Graph Schema extends the 5-type memory system with code structure modeling, enabling memory-code linking for intelligent codebase understanding. This schema adds 3 code node types, 7 code relationship types, and 10 memory-code link types to the existing Kuzu backend.
 
 **Key Capabilities**:
 - Map code structure (files, classes, functions)
@@ -24,7 +24,7 @@ backend.initialize()
 
 # Query code graph
 result = backend.connection.execute("""
-    MATCH (f:Function)-[:DEFINED_IN_FUNCTION]->(file:CodeFile)
+    MATCH (f:Function)-[:DEFINED_IN]->(file:CodeFile)
     WHERE file.file_path = 'src/main.py'
     RETURN f.function_name, f.line_start, f.docstring
 """)
@@ -59,10 +59,12 @@ CREATE NODE TABLE CodeFile(
     file_path STRING,
     language STRING,
     size_bytes INT64,
+    line_count INT64,
     last_modified TIMESTAMP,
-    content_hash STRING,
-    metadata STRING,
-    created_at TIMESTAMP
+    git_hash STRING,
+    module_name STRING,
+    is_test BOOL,
+    metadata STRING
 )
 ```
 
@@ -71,10 +73,12 @@ CREATE NODE TABLE CodeFile(
 - `file_path`: Absolute or relative path to file
 - `language`: Programming language (python, typescript, etc.)
 - `size_bytes`: File size in bytes
+- `line_count`: Total lines of code
 - `last_modified`: Last modification timestamp
-- `content_hash`: Hash of file contents for change detection
+- `git_hash`: Git commit hash when file was indexed
+- `module_name`: Python module or package name
+- `is_test`: Whether file contains tests
 - `metadata`: JSON string with additional properties
-- `created_at`: When the file record was created
 
 **Example**:
 ```python
@@ -84,12 +88,14 @@ backend.connection.execute("""
         file_path: 'src/amplihack/memory/backends/kuzu_backend.py',
         language: 'python',
         size_bytes: 15234,
-        last_modified: $last_modified,
-        content_hash: 'abc123def456',
-        metadata: '{}',
-        created_at: $created_at
+        line_count: 450,
+        last_modified: $timestamp,
+        git_hash: 'abc123def',
+        module_name: 'amplihack.memory.backends.kuzu_backend',
+        is_test: false,
+        metadata: '{}'
     })
-""", {"file_id": file_id, "last_modified": datetime.now(), "created_at": datetime.now()})
+""", {"file_id": file_id, "timestamp": datetime.now()})
 ```
 
 ### Class
@@ -100,22 +106,30 @@ Represents a class or interface definition.
 CREATE NODE TABLE Class(
     class_id STRING PRIMARY KEY,
     class_name STRING,
-    docstring STRING,
+    fully_qualified_name STRING,
     line_start INT64,
     line_end INT64,
-    metadata STRING,
-    created_at TIMESTAMP
+    docstring STRING,
+    is_abstract BOOL,
+    is_interface BOOL,
+    access_modifier STRING,
+    decorators STRING,
+    metadata STRING
 )
 ```
 
 **Properties**:
 - `class_id`: Unique identifier (hash of fully_qualified_name)
 - `class_name`: Simple class name
-- `docstring`: Class documentation string
+- `fully_qualified_name`: Full module path + class name
 - `line_start`: Starting line number in file
 - `line_end`: Ending line number in file
-- `metadata`: JSON string with additional properties (can store fully_qualified_name, is_abstract, is_interface, access_modifier, decorators, etc.)
-- `created_at`: When the class record was created
+- `docstring`: Class documentation string
+- `is_abstract`: Whether class is abstract
+- `is_interface`: Whether class is an interface
+- `access_modifier`: public, private, protected
+- `decorators`: JSON array of decorator names
+- `metadata`: JSON string with additional properties
 
 **Example**:
 ```python
@@ -123,23 +137,17 @@ backend.connection.execute("""
     CREATE (c:Class {
         class_id: $class_id,
         class_name: 'KuzuBackend',
-        docstring: 'Kùzu graph database backend.',
+        fully_qualified_name: 'amplihack.memory.backends.kuzu_backend.KuzuBackend',
         line_start: 40,
         line_end: 850,
-        metadata: $metadata,
-        created_at: $created_at
+        docstring: 'Kùzu graph database backend.',
+        is_abstract: false,
+        is_interface: false,
+        access_modifier: 'public',
+        decorators: '[]',
+        metadata: '{}'
     })
-""", {
-    "class_id": class_id,
-    "metadata": json.dumps({
-        "fully_qualified_name": "amplihack.memory.backends.kuzu_backend.KuzuBackend",
-        "is_abstract": False,
-        "is_interface": False,
-        "access_modifier": "public",
-        "decorators": []
-    }),
-    "created_at": datetime.now()
-})
+""", {"class_id": class_id})
 ```
 
 ### Function
@@ -150,26 +158,38 @@ Represents a function or method definition.
 CREATE NODE TABLE Function(
     function_id STRING PRIMARY KEY,
     function_name STRING,
-    signature STRING,
-    docstring STRING,
+    fully_qualified_name STRING,
     line_start INT64,
     line_end INT64,
-    complexity INT64,
-    metadata STRING,
-    created_at TIMESTAMP
+    docstring STRING,
+    signature STRING,
+    return_type STRING,
+    is_async BOOL,
+    is_method BOOL,
+    is_static BOOL,
+    access_modifier STRING,
+    decorators STRING,
+    complexity_score DOUBLE,
+    metadata STRING
 )
 ```
 
 **Properties**:
 - `function_id`: Unique identifier (hash of fully_qualified_name)
 - `function_name`: Simple function/method name
-- `signature`: Complete function signature with parameters
-- `docstring`: Function documentation string
+- `fully_qualified_name`: Full module path + class + function
 - `line_start`: Starting line number in file
 - `line_end`: Ending line number in file
-- `complexity`: Cyclomatic complexity score
-- `metadata`: JSON string with additional properties (can store fully_qualified_name, return_type, is_async, is_method, is_static, access_modifier, decorators, etc.)
-- `created_at`: When the function record was created
+- `docstring`: Function documentation string
+- `signature`: Complete function signature with parameters
+- `return_type`: Return type annotation (if available)
+- `is_async`: Whether function is async/await
+- `is_method`: Whether function is a class method
+- `is_static`: Whether method is static
+- `access_modifier`: public, private, protected
+- `decorators`: JSON array of decorator names
+- `complexity_score`: Cyclomatic complexity (0.0-100.0)
+- `metadata`: JSON string with additional properties
 
 **Example**:
 ```python
@@ -177,61 +197,49 @@ backend.connection.execute("""
     CREATE (f:Function {
         function_id: $function_id,
         function_name: 'store_memory',
-        signature: 'def store_memory(self, memory: MemoryEntry) -> bool',
-        docstring: 'Store a memory entry in appropriate node type.',
+        fully_qualified_name: 'amplihack.memory.backends.kuzu_backend.KuzuBackend.store_memory',
         line_start: 325,
         line_end: 450,
-        complexity: 12,
-        metadata: $metadata,
-        created_at: $created_at
+        docstring: 'Store a memory entry in appropriate node type.',
+        signature: 'def store_memory(self, memory: MemoryEntry) -> bool',
+        return_type: 'bool',
+        is_async: false,
+        is_method: true,
+        is_static: false,
+        access_modifier: 'public',
+        decorators: '[]',
+        complexity_score: 12.5,
+        metadata: '{}'
     })
-""", {
-    "function_id": function_id,
-    "metadata": json.dumps({
-        "fully_qualified_name": "amplihack.memory.backends.kuzu_backend.KuzuBackend.store_memory",
-        "return_type": "bool",
-        "is_async": False,
-        "is_method": True,
-        "is_static": False,
-        "access_modifier": "public",
-        "decorators": []
-    }),
-    "created_at": datetime.now()
-})
+""", {"function_id": function_id})
 ```
 
 ## Code Relationships
 
-### DEFINED_IN / DEFINED_IN_FUNCTION
+### DEFINED_IN
 
 Links classes and functions to their containing file.
 
 ```cypher
 CREATE REL TABLE DEFINED_IN(
     FROM Class TO CodeFile,
-    line_number INT64
+    line_offset INT64
 )
 
-CREATE REL TABLE DEFINED_IN_FUNCTION(
+CREATE REL TABLE DEFINED_IN(
     FROM Function TO CodeFile,
-    line_number INT64
+    line_offset INT64
 )
 ```
 
 **Properties**:
-- `line_number`: Line number where definition starts in file
-
-**Note**: Classes use `DEFINED_IN`, functions use `DEFINED_IN_FUNCTION` to avoid relationship type conflicts in Kùzu.
+- `line_offset`: Line number where definition starts in file
 
 **Example**:
 ```cypher
 MATCH (c:Class {class_id: $class_id}),
       (f:CodeFile {file_id: $file_id})
-CREATE (c)-[:DEFINED_IN {line_number: 40}]->(f)
-
-MATCH (fn:Function {function_id: $function_id}),
-      (f:CodeFile {file_id: $file_id})
-CREATE (fn)-[:DEFINED_IN_FUNCTION {line_number: 325}]->(f)
+CREATE (c)-[:DEFINED_IN {line_offset: 40}]->(f)
 ```
 
 ### METHOD_OF
@@ -241,20 +249,20 @@ Links methods to their containing class.
 ```cypher
 CREATE REL TABLE METHOD_OF(
     FROM Function TO Class,
-    is_static BOOL,
-    is_classmethod BOOL
+    is_constructor BOOL,
+    is_property BOOL
 )
 ```
 
 **Properties**:
-- `is_static`: Whether method is a static method
-- `is_classmethod`: Whether method is a class method
+- `is_constructor`: Whether method is `__init__` or constructor
+- `is_property`: Whether method is a property getter/setter
 
 **Example**:
 ```cypher
 MATCH (m:Function {function_name: 'store_memory'}),
       (c:Class {class_name: 'KuzuBackend'})
-CREATE (m)-[:METHOD_OF {is_static: false, is_classmethod: false}]->(c)
+CREATE (m)-[:METHOD_OF {is_constructor: false, is_property: false}]->(c)
 ```
 
 ### CALLS
@@ -265,22 +273,19 @@ Tracks function call relationships.
 CREATE REL TABLE CALLS(
     FROM Function TO Function,
     call_count INT64,
-    context STRING
+    line_numbers STRING
 )
 ```
 
 **Properties**:
 - `call_count`: Number of times function is called
-- `context`: JSON string with additional context (can include line numbers, call sites, etc.)
+- `line_numbers`: JSON array of line numbers where calls occur
 
 **Example**:
 ```cypher
 MATCH (caller:Function {function_id: $caller_id}),
       (callee:Function {function_id: $callee_id})
-CREATE (caller)-[:CALLS {
-    call_count: 3,
-    context: '{"line_numbers": [145, 210, 389]}'
-}]->(callee)
+CREATE (caller)-[:CALLS {call_count: 3, line_numbers: '[145, 210, 389]'}]->(callee)
 ```
 
 ### INHERITS
@@ -312,13 +317,13 @@ Tracks file import dependencies.
 CREATE REL TABLE IMPORTS(
     FROM CodeFile TO CodeFile,
     import_type STRING,
-    imported_names STRING
+    imported_symbols STRING
 )
 ```
 
 **Properties**:
 - `import_type`: 'module', 'from_import', 'relative'
-- `imported_names`: JSON array of imported names
+- `imported_symbols`: JSON array of imported names
 
 **Example**:
 ```cypher
@@ -326,33 +331,33 @@ MATCH (importer:CodeFile {file_path: 'src/main.py'}),
       (imported:CodeFile {file_path: 'src/utils.py'})
 CREATE (importer)-[:IMPORTS {
     import_type: 'from_import',
-    imported_names: '["helper", "formatter"]'
+    imported_symbols: '["helper", "formatter"]'
 }]->(imported)
 ```
 
-### REFERENCES_CLASS
+### REFERENCES
 
 Links functions to classes they reference (not inherit).
 
 ```cypher
-CREATE REL TABLE REFERENCES_CLASS(
+CREATE REL TABLE REFERENCES(
     FROM Function TO Class,
     reference_type STRING,
-    line_number INT64
+    line_numbers STRING
 )
 ```
 
 **Properties**:
 - `reference_type`: 'instantiation', 'type_annotation', 'usage'
-- `line_number`: Line number where reference occurs
+- `line_numbers`: JSON array of line numbers where references occur
 
 **Example**:
 ```cypher
 MATCH (f:Function {function_name: 'create_backend'}),
       (c:Class {class_name: 'MemoryEntry'})
-CREATE (f)-[:REFERENCES_CLASS {
+CREATE (f)-[:REFERENCES {
     reference_type: 'type_annotation',
-    line_number: 12
+    line_numbers: '[12]'
 }]->(c)
 ```
 
@@ -386,8 +391,8 @@ Connect the 5 memory types to code artifacts for context-aware memory retrieval.
 ```cypher
 CREATE REL TABLE RELATES_TO_FILE_EPISODIC(
     FROM EpisodicMemory TO CodeFile,
-    context STRING,
-    timestamp TIMESTAMP
+    relevance_score DOUBLE,
+    context STRING
 )
 
 CREATE REL TABLE RELATES_TO_FILE_SEMANTIC(
@@ -398,29 +403,26 @@ CREATE REL TABLE RELATES_TO_FILE_SEMANTIC(
 
 CREATE REL TABLE RELATES_TO_FILE_PROCEDURAL(
     FROM ProceduralMemory TO CodeFile,
-    usage_context STRING,
-    success_rate DOUBLE
+    relevance_score DOUBLE,
+    context STRING
 )
 
 CREATE REL TABLE RELATES_TO_FILE_PROSPECTIVE(
     FROM ProspectiveMemory TO CodeFile,
-    intention_type STRING,
-    priority STRING
+    relevance_score DOUBLE,
+    context STRING
 )
 
 CREATE REL TABLE RELATES_TO_FILE_WORKING(
     FROM WorkingMemory TO CodeFile,
-    activation_level DOUBLE,
+    relevance_score DOUBLE,
     context STRING
 )
 ```
 
-**Properties vary by memory type**:
-- **Episodic**: `context` (why/what happened), `timestamp` (when)
-- **Semantic**: `relevance_score` (0.0-1.0), `context` (why relevant)
-- **Procedural**: `usage_context` (how used), `success_rate` (0.0-1.0)
-- **Prospective**: `intention_type` (what to do), `priority` (urgency)
-- **Working**: `activation_level` (0.0-1.0), `context` (current focus)
+**Properties**:
+- `relevance_score`: 0.0-1.0 indicating strength of relationship
+- `context`: Why memory relates to this file
 
 **Example**:
 ```cypher
@@ -437,8 +439,8 @@ CREATE (m)-[:RELATES_TO_FILE_SEMANTIC {
 ```cypher
 CREATE REL TABLE RELATES_TO_FUNCTION_EPISODIC(
     FROM EpisodicMemory TO Function,
-    context STRING,
-    timestamp TIMESTAMP
+    relevance_score DOUBLE,
+    context STRING
 )
 
 CREATE REL TABLE RELATES_TO_FUNCTION_SEMANTIC(
@@ -449,37 +451,34 @@ CREATE REL TABLE RELATES_TO_FUNCTION_SEMANTIC(
 
 CREATE REL TABLE RELATES_TO_FUNCTION_PROCEDURAL(
     FROM ProceduralMemory TO Function,
-    usage_context STRING,
-    success_rate DOUBLE
+    relevance_score DOUBLE,
+    context STRING
 )
 
 CREATE REL TABLE RELATES_TO_FUNCTION_PROSPECTIVE(
     FROM ProspectiveMemory TO Function,
-    intention_type STRING,
-    priority STRING
+    relevance_score DOUBLE,
+    context STRING
 )
 
 CREATE REL TABLE RELATES_TO_FUNCTION_WORKING(
     FROM WorkingMemory TO Function,
-    activation_level DOUBLE,
+    relevance_score DOUBLE,
     context STRING
 )
 ```
 
-**Properties vary by memory type**:
-- **Episodic**: `context` (why/what happened), `timestamp` (when)
-- **Semantic**: `relevance_score` (0.0-1.0), `context` (why relevant)
-- **Procedural**: `usage_context` (how used), `success_rate` (0.0-1.0)
-- **Prospective**: `intention_type` (what to do), `priority` (urgency)
-- **Working**: `activation_level` (0.0-1.0), `context` (current focus)
+**Properties**:
+- `relevance_score`: 0.0-1.0 indicating strength of relationship
+- `context`: Why memory relates to this function
 
 **Example**:
 ```cypher
 MATCH (m:ProceduralMemory {procedure_name: 'debugging_kuzu_queries'}),
       (f:Function {function_name: 'retrieve_memories'})
 CREATE (m)-[:RELATES_TO_FUNCTION_PROCEDURAL {
-    usage_context: 'Learned debugging technique while fixing query performance',
-    success_rate: 0.85
+    relevance_score: 0.85,
+    context: 'Learned debugging technique while fixing query performance'
 }]->(f)
 ```
 
@@ -488,20 +487,20 @@ CREATE (m)-[:RELATES_TO_FUNCTION_PROCEDURAL {
 ### Query 1: Find All Functions in a File
 
 ```cypher
-MATCH (f:Function)-[:DEFINED_IN_FUNCTION]->(file:CodeFile)
+MATCH (f:Function)-[:DEFINED_IN]->(file:CodeFile)
 WHERE file.file_path = 'src/amplihack/memory/backends/kuzu_backend.py'
-RETURN f.function_name, f.line_start, f.complexity
+RETURN f.function_name, f.line_start, f.complexity_score
 ORDER BY f.line_start
 ```
 
 **Output**:
 ```
-function_name       | line_start | complexity
---------------------|------------|------------
-__init__            | 49         | 2
-initialize          | 80         | 15
-store_memory        | 325        | 12
-retrieve_memories   | 500        | 18
+function_name       | line_start | complexity_score
+--------------------|------------|------------------
+__init__            | 49         | 2.0
+initialize          | 80         | 15.5
+store_memory        | 325        | 12.5
+retrieve_memories   | 500        | 18.0
 ```
 
 ### Query 2: Find Class Hierarchy
@@ -526,16 +525,16 @@ KuzuBackend | BaseBackend    | 2
 ```cypher
 MATCH (caller:Function)-[c:CALLS]->(callee:Function)
 WHERE caller.function_name = 'store_memory'
-RETURN callee.function_name, c.call_count, c.context
+RETURN callee.function_name, c.call_count, c.line_numbers
 ORDER BY c.call_count DESC
 ```
 
 **Output**:
 ```
-callee_name          | call_count | context
----------------------|------------|----------------------------------
-_create_session_node | 5          | {"line_numbers": [390, 420, ...]}
-_validate_memory     | 1          | {"line_numbers": [330]}
+callee_name          | call_count | line_numbers
+---------------------|------------|-------------
+_create_session_node | 5          | [390, 420, ...]
+_validate_memory     | 1          | [330]
 ```
 
 ### Query 4: Find Memories Related to Code
@@ -560,31 +559,31 @@ graph_traversal_patterns   | Cypher patterns for... | 0.85      | Query examples
 ### Query 5: Find Complex Functions
 
 ```cypher
-MATCH (f:Function)-[:DEFINED_IN_FUNCTION]->(file:CodeFile)
-WHERE f.complexity > 15
+MATCH (f:Function)-[:DEFINED_IN]->(file:CodeFile)
+WHERE f.complexity_score > 15.0
   AND file.language = 'python'
-RETURN f.function_name, f.complexity, f.line_start, f.line_end
-ORDER BY f.complexity DESC
+RETURN f.fully_qualified_name, f.complexity_score, f.line_start, f.line_end
+ORDER BY f.complexity_score DESC
 LIMIT 10
 ```
 
 **Output**:
 ```
-function_name       | complexity | line_start | line_end
---------------------|------------|------------|----------
-retrieve_memories   | 18         | 500        | 650
-initialize          | 16         | 80         | 320
+fully_qualified_name                                    | complexity | line_start | line_end
+-------------------------------------------------------|------------|------------|----------
+amplihack.memory.backends.kuzu_backend.retrieve_memories | 18.0       | 500        | 650
+amplihack.memory.backends.kuzu_backend.initialize        | 15.5       | 80         | 320
 ```
 
 ### Query 6: Find Memories for Active Work
 
 ```cypher
 // Get all memories linked to functions in current file
-MATCH (f:Function)-[:DEFINED_IN_FUNCTION]->(file:CodeFile)
+MATCH (f:Function)-[:DEFINED_IN]->(file:CodeFile)
 WHERE file.file_path = $current_file
 OPTIONAL MATCH (m)-[r:RELATES_TO_FUNCTION_SEMANTIC|RELATES_TO_FUNCTION_PROCEDURAL]->(f)
 RETURN f.function_name,
-       collect({memory: m, context: r.relevance_score}) AS related_memories
+       collect({memory: m, relevance: r.relevance_score}) AS related_memories
 ORDER BY f.line_start
 ```
 
@@ -593,12 +592,12 @@ ORDER BY f.line_start
 ```cypher
 MATCH (f:CodeFile)-[i:IMPORTS]->(dep:CodeFile)
 WHERE f.file_path = 'src/amplihack/memory/backends/kuzu_backend.py'
-RETURN dep.file_path, i.import_type, i.imported_names
+RETURN dep.file_path, i.import_type, i.imported_symbols
 ```
 
 **Output**:
 ```
-file_path                      | import_type  | imported_names
+file_path                      | import_type  | imported_symbols
 -------------------------------|--------------|---------------------------
 src/amplihack/memory/models.py | from_import  | ["MemoryEntry", "MemoryQuery"]
 src/amplihack/memory/base.py   | from_import  | ["BackendCapabilities"]
@@ -667,7 +666,7 @@ result = backend.connection.execute("""
 
 ### Schema Initialization
 
-- **Time**: <1000ms for all 21 tables (3 node types + 8 code relationships + 10 memory-code links)
+- **Time**: <1000ms for all 20 tables (3 node types + 7 code relationships + 10 memory-code links)
 - **Idempotent**: Safe to call `initialize()` multiple times
 - **Database size**: ~50KB overhead for empty schema
 
@@ -729,9 +728,9 @@ print(f"Query time: {elapsed*1000:.1f}ms")
 ### Complete Relationship Count
 
 - **Memory relationships**: 11 types
-- **Code relationships**: 8 types (DEFINED_IN, DEFINED_IN_FUNCTION, METHOD_OF, CALLS, INHERITS, IMPORTS, REFERENCES_CLASS, CONTAINS)
+- **Code relationships**: 7 types
 - **Memory-code links**: 10 types (5 to files + 5 to functions)
-- **Total**: 29 relationship types
+- **Total**: 28 relationship types
 
 ### Schema Evolution
 

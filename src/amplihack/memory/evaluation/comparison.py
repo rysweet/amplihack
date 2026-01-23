@@ -69,7 +69,7 @@ class BackendComparison:
         """Evaluate a single backend.
 
         Args:
-            backend_type: Backend type ('sqlite', 'kuzu', 'neo4j')
+            backend_type: Backend type ('sqlite', 'kuzu')
             **backend_config: Backend-specific configuration
 
         Returns:
@@ -142,7 +142,7 @@ class BackendComparison:
         Returns:
             Dict mapping backend name to comparison report
         """
-        backends = ["sqlite", "kuzu"]  # Neo4j requires separate setup
+        backends = ["sqlite", "kuzu"]
 
         for backend_type in backends:
             try:
@@ -246,10 +246,6 @@ class BackendComparison:
             recommendations.append("SQLite: Best for single-process, simple deployments")
         elif backend_type == "kuzu":
             recommendations.append("Kùzu: Best for graph queries and relationship traversal")
-        elif backend_type == "neo4j":
-            recommendations.append(
-                "Neo4j: Best for large-scale graph analytics and multi-user access"
-            )
 
         return recommendations
 

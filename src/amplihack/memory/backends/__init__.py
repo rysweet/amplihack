@@ -30,7 +30,6 @@ class BackendType(Enum):
 
     SQLITE = "sqlite"
     KUZU = "kuzu"
-    NEO4J = "neo4j"  # Future: Not implemented yet
 
 
 def create_backend(backend_type: str | BackendType | None = None, **config: Any) -> MemoryBackend:
@@ -42,7 +41,7 @@ def create_backend(backend_type: str | BackendType | None = None, **config: Any)
     3. Default: Kùzu (if available), fallback to SQLite
 
     Args:
-        backend_type: Specific backend to use (sqlite, kuzu, neo4j)
+        backend_type: Specific backend to use (sqlite, kuzu)
         **config: Backend-specific configuration
             - db_path: Path to database file/directory
 
@@ -119,11 +118,6 @@ def create_backend(backend_type: str | BackendType | None = None, **config: Any)
         backend = KuzuBackend(db_path=db_path)
         backend.initialize()
         return backend
-
-    if backend_type == BackendType.NEO4J:
-        raise NotImplementedError(
-            "Neo4j backend not yet implemented. Use 'sqlite' or 'kuzu' fer now."
-        )
 
     raise ValueError(f"Unknown backend type: {backend_type}")
 

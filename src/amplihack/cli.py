@@ -149,16 +149,7 @@ def _launch_command_impl(
     Returns:
         Exit code.
     """
-    # Set environment variable for Neo4j opt-in (Why: Makes flag accessible to session hooks)
-    if getattr(args, "use_graph_mem", False):
-        os.environ["AMPLIHACK_USE_GRAPH_MEM"] = "1"
-        print("Neo4j graph memory enabled")
-
-        # Set container name if provided
-        if getattr(args, "use_memory_db", None):
-            # Store in environment for session hooks to access
-            os.environ["NEO4J_CONTAINER_NAME_CLI"] = args.use_memory_db
-            print(f"Using Neo4j container: {args.use_memory_db}")
+    # Neo4j flags removed (Week 7 cleanup) - Kuzu is now the only backend
 
     # Check if Docker should be used (CLI flag takes precedence over env var)
     use_docker = getattr(args, "docker", False) or DockerManager.should_use_docker()
@@ -167,7 +158,7 @@ def _launch_command_impl(
     if getattr(args, "no_reflection", False):
         os.environ["AMPLIHACK_SKIP_REFLECTION"] = "1"
 
-    # Handle --auto flag (for Neo4j container selection non-interactive mode)
+    # Handle --auto flag
     if getattr(args, "auto", False):
         os.environ["AMPLIHACK_AUTO_MODE"] = "1"
 
@@ -437,22 +428,7 @@ def add_claude_specific_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def add_neo4j_args(parser: argparse.ArgumentParser) -> None:
-    """Add Neo4j graph memory arguments to a parser.
-
-    Args:
-        parser: ArgumentParser to add arguments to.
-    """
-    parser.add_argument(
-        "--use-graph-mem",
-        action="store_true",
-        help="Enable Neo4j graph memory system (opt-in). Requires Docker. See docs/NEO4J.md for setup.",
-    )
-    parser.add_argument(
-        "--use-memory-db",
-        metavar="NAME",
-        help="Specify Neo4j container name (e.g., amplihack-myproject). Works with --use-graph-mem.",
-    )
+# Neo4j arguments removed (Week 7 cleanup) - Kuzu is now the only backend
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -504,14 +480,12 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     )
     add_claude_specific_args(launch_parser)
     add_auto_mode_args(launch_parser)
-    add_neo4j_args(launch_parser)
     add_common_sdk_args(launch_parser)
 
     # Claude command (alias for launch)
     claude_parser = subparsers.add_parser("claude", help="Launch Claude Code (alias for launch)")
     add_claude_specific_args(claude_parser)
     add_auto_mode_args(claude_parser)
-    add_neo4j_args(claude_parser)
     add_common_sdk_args(claude_parser)
 
     # RustyClawd command (Rust implementation)
@@ -520,7 +494,6 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     )
     add_claude_specific_args(rustyclawd_parser)
     add_auto_mode_args(rustyclawd_parser)
-    add_neo4j_args(rustyclawd_parser)
     add_common_sdk_args(rustyclawd_parser)
 
     # Copilot command

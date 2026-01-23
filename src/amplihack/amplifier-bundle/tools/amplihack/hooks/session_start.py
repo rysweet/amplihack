@@ -47,7 +47,6 @@ class SessionStartHook(HookProcessor):
         1. Version mismatch detection and auto-update
         2. Global hook migration (prevents duplicate hook execution)
         3. Original request capture for context preservation
-        4. Neo4j memory system startup (if enabled)
 
         Args:
             input_data: Input from Claude Code
@@ -159,34 +158,10 @@ class SessionStartHook(HookProcessor):
             self.log(f"Settings merge failed (non-critical): {e}", "WARNING")
             self.save_metric("settings_update_error", True)
 
-        # Neo4j Startup (Conditional - Opt-In Only)
-        # Why opt-in: Neo4j requires Docker, external dependencies (Blarify), and adds complexity
-        # Most users don't need advanced graph memory features
-        import os
-
-        neo4j_enabled = os.environ.get("AMPLIHACK_ENABLE_NEO4J_MEMORY") == "1"
-
-        if neo4j_enabled:
-            self.log("Neo4j opt-in flag detected, starting memory system...")
-            try:
-                from amplihack.memory.neo4j.startup_wizard import interactive_neo4j_startup
-
-                # Interactive startup with user feedback
-                success = interactive_neo4j_startup()
-
-                if success:
-                    self.log("✅ Neo4j memory system ready")
-                    self.save_metric("neo4j_enabled", True)
-                else:
-                    self.log("⚠️ Neo4j startup declined or failed, using basic memory", "WARNING")
-                    self.save_metric("neo4j_enabled", False)
-
-            except Exception as e:
-                self.log(f"Neo4j startup failed: {e}", "ERROR")
-                self.save_metric("neo4j_enabled", False)
-        else:
-            self.log("Neo4j not enabled (use --enable-neo4j-memory to enable)")
-            self.save_metric("neo4j_enabled", False)
+        # Neo4j has been removed from this project (Week 7 cleanup)
+        # Memory functionality now uses Kuzu backend exclusively
+        self.log("Using Kuzu memory backend (Neo4j removed)")
+        self.save_metric("kuzu_backend", True)
 
         # Build context if needed
         context_parts = []
