@@ -178,4 +178,4 @@ repos:
         language: system
         types: [python]
         pass_filenames: true
-        exclude: '^(tests/.*\.py$|.*/tests/.*\.py$)'
+        exclude: '^(tests/.*\.py$|.*/tests/.*\.py$|scripts/test_.*\.py$)'
