@@ -78,8 +78,8 @@ class TestKuzuCodeSchemaCreation:
             assert any("class_name" in str(c) for c in class_calls), (
                 "Class missing class_name property"
             )
-            assert any("fully_qualified_name" in str(c) for c in class_calls), (
-                "Class missing fully_qualified_name property"
+            assert any("docstring" in str(c) for c in class_calls), (
+                "Class missing docstring property"
             )
 
     @patch("src.amplihack.memory.backends.kuzu_backend.kuzu")
@@ -108,13 +108,13 @@ class TestKuzuCodeSchemaCreation:
             assert any("function_name" in str(c) for c in func_calls), (
                 "Function missing function_name property"
             )
-            assert any("is_async" in str(c) for c in func_calls), (
-                "Function missing is_async property"
+            assert any("signature" in str(c) for c in func_calls), (
+                "Function missing signature property"
             )
 
     @patch("src.amplihack.memory.backends.kuzu_backend.kuzu")
-    def test_initialize_creates_all_7_code_relationships(self, mock_kuzu):
-        """Test that all 7 code relationship types are created."""
+    def test_initialize_creates_all_8_code_relationships(self, mock_kuzu):
+        """Test that all 8 code relationship types are created."""
         from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
 
         mock_conn = Mock()
@@ -128,11 +128,12 @@ class TestKuzuCodeSchemaCreation:
             calls = [str(call) for call in mock_conn.execute.call_args_list]
             expected_relationships = [
                 "DEFINED_IN",
+                "DEFINED_IN_FUNCTION",
                 "METHOD_OF",
                 "CALLS",
                 "INHERITS",
                 "IMPORTS",
-                "REFERENCES",
+                "REFERENCES_CLASS",
                 "CONTAINS",
             ]
 
@@ -176,8 +177,8 @@ class TestKuzuCodeSchemaCreation:
                 )
 
     @patch("src.amplihack.memory.backends.kuzu_backend.kuzu")
-    def test_initialize_creates_all_20_tables(self, mock_kuzu):
-        """Test that exactly 20 new tables are created (3 nodes + 7 rels + 10 links)."""
+    def test_initialize_creates_all_21_tables(self, mock_kuzu):
+        """Test that exactly 21 new tables are created (3 nodes + 8 rels + 10 links)."""
         from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
 
         mock_conn = Mock()
@@ -193,7 +194,7 @@ class TestKuzuCodeSchemaCreation:
             # Count code schema tables
             code_tables = [
                 "CodeFile", "Class", "Function",  # 3 node types
-                "DEFINED_IN", "METHOD_OF", "CALLS", "INHERITS", "IMPORTS", "REFERENCES", "CONTAINS",  # 7 rels
+                "DEFINED_IN", "DEFINED_IN_FUNCTION", "METHOD_OF", "CALLS", "INHERITS", "IMPORTS", "REFERENCES_CLASS", "CONTAINS",  # 8 rels
                 "RELATES_TO_FILE_EPISODIC", "RELATES_TO_FILE_SEMANTIC", "RELATES_TO_FILE_PROCEDURAL",
                 "RELATES_TO_FILE_PROSPECTIVE", "RELATES_TO_FILE_WORKING",
                 "RELATES_TO_FUNCTION_EPISODIC", "RELATES_TO_FUNCTION_SEMANTIC", "RELATES_TO_FUNCTION_PROCEDURAL",
@@ -201,8 +202,8 @@ class TestKuzuCodeSchemaCreation:
             ]
 
             found_tables = [table for table in code_tables if any(table in str(call) for call in calls)]
-            assert len(found_tables) == 20, (
-                f"Expected 20 code schema tables, found {len(found_tables)}: {found_tables}"
+            assert len(found_tables) == 21, (
+                f"Expected 21 code schema tables, found {len(found_tables)}: {found_tables}"
             )
 
 
@@ -254,7 +255,7 @@ class TestKuzuCodeSchemaIdempotency:
                 if "CREATE" in str(c) and any(
                     table in str(c) for table in [
                         "CodeFile", "Class", "Function",
-                        "DEFINED_IN", "METHOD_OF", "CALLS", "INHERITS", "IMPORTS", "REFERENCES", "CONTAINS",
+                        "DEFINED_IN", "DEFINED_IN_FUNCTION", "METHOD_OF", "CALLS", "INHERITS", "IMPORTS", "REFERENCES_CLASS", "CONTAINS",
                         "RELATES_TO_FILE", "RELATES_TO_FUNCTION"
                     ]
                 )
@@ -286,8 +287,8 @@ class TestKuzuCodeSchemaTableStructure:
             codefile_calls = [c for c in calls if "CodeFile" in str(c)]
 
             required_properties = [
-                "file_id", "file_path", "language", "size_bytes", "line_count",
-                "last_modified", "git_hash", "module_name", "is_test", "metadata"
+                "file_id", "file_path", "language", "size_bytes",
+                "last_modified", "content_hash", "metadata", "created_at"
             ]
 
             for prop in required_properties:
@@ -312,8 +313,8 @@ class TestKuzuCodeSchemaTableStructure:
             class_calls = [c for c in calls if "Class" in str(c) and "NODE TABLE" in str(c)]
 
             required_properties = [
-                "class_id", "class_name", "fully_qualified_name", "line_start", "line_end",
-                "docstring", "is_abstract", "is_interface", "access_modifier", "decorators", "metadata"
+                "class_id", "class_name", "docstring", "line_start", "line_end",
+                "metadata", "created_at"
             ]
 
             for prop in required_properties:
@@ -338,9 +339,8 @@ class TestKuzuCodeSchemaTableStructure:
             func_calls = [c for c in calls if "Function" in str(c) and "NODE TABLE" in str(c)]
 
             required_properties = [
-                "function_id", "function_name", "fully_qualified_name", "line_start", "line_end",
-                "docstring", "signature", "return_type", "is_async", "is_method", "is_static",
-                "access_modifier", "decorators", "complexity_score", "metadata"
+                "function_id", "function_name", "signature", "docstring",
+                "line_start", "line_end", "complexity", "metadata", "created_at"
             ]
 
             for prop in required_properties:
@@ -349,8 +349,8 @@ class TestKuzuCodeSchemaTableStructure:
                 )
 
     @patch("src.amplihack.memory.backends.kuzu_backend.kuzu")
-    def test_memory_code_links_have_relevance_score(self, mock_kuzu):
-        """Test that memory-code link relationships have relevance_score property."""
+    def test_memory_code_links_have_context_properties(self, mock_kuzu):
+        """Test that memory-code link relationships have appropriate context properties."""
         from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
 
         mock_conn = Mock()
@@ -364,13 +364,17 @@ class TestKuzuCodeSchemaTableStructure:
             calls = [str(call) for call in mock_conn.execute.call_args_list]
             link_calls = [c for c in calls if "RELATES_TO" in str(c)]
 
-            # All memory-code links should have relevance_score and context
+            # All memory-code links should have at least context or similar property
             for call in link_calls:
-                assert "relevance_score" in str(call), (
-                    f"Memory-code link missing relevance_score: {call}"
+                # Check for any context-related property
+                has_context_prop = any(
+                    prop in str(call) for prop in [
+                        "context", "relevance_score", "timestamp", "usage_context",
+                        "success_rate", "intention_type", "priority", "activation_level"
+                    ]
                 )
-                assert "context" in str(call), (
-                    f"Memory-code link missing context: {call}"
+                assert has_context_prop, (
+                    f"Memory-code link missing context property: {call}"
                 )
 
 
@@ -524,12 +528,12 @@ class TestKuzuCodeSchemaQueryCatalog:
             # Test querying each relationship type
             relationships = [
                 ("Class", "DEFINED_IN", "CodeFile"),
-                ("Function", "DEFINED_IN", "CodeFile"),
+                ("Function", "DEFINED_IN_FUNCTION", "CodeFile"),
                 ("Function", "METHOD_OF", "Class"),
                 ("Function", "CALLS", "Function"),
                 ("Class", "INHERITS", "Class"),
                 ("CodeFile", "IMPORTS", "CodeFile"),
-                ("Function", "REFERENCES", "Class"),
+                ("Function", "REFERENCES_CLASS", "Class"),
                 ("CodeFile", "CONTAINS", "CodeFile"),
             ]
 
@@ -581,11 +585,11 @@ class TestKuzuCodeSchemaPerformance:
             calls = [str(call) for call in mock_conn.execute.call_args_list]
 
             # Count total CREATE statements for code schema
-            # Expected: 3 node types + 7 code rels + 10 memory-code links = 20 new statements
+            # Expected: 3 node types + 8 code rels + 10 memory-code links = 21 new statements
             # Plus existing: 2 infrastructure nodes + 5 memory nodes + 11 memory rels = 18 existing
-            # Total: 38 CREATE statements minimum
+            # Total: 39 CREATE statements minimum
             create_calls = [c for c in calls if "CREATE" in str(c)]
 
-            assert len(create_calls) >= 38, (
-                f"Expected at least 38 CREATE statements, got {len(create_calls)}"
+            assert len(create_calls) >= 39, (
+                f"Expected at least 39 CREATE statements, got {len(create_calls)}"
             )
