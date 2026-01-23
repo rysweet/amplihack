@@ -843,6 +843,34 @@ def main(argv: list[str] | None = None) -> int:
                     env = os.environ.copy()
                     env["TMPDIR"] = str(claude_temp_dir)
 
+                    # Step 2a: Sync marketplace to known_marketplaces.json
+                    # extraKnownMarketplaces in settings.json is for IDE, not CLI
+                    # We need to explicitly add the marketplace for CLI to find it
+                    marketplace_add_result = subprocess.run(
+                        [
+                            claude_path,
+                            "plugin",
+                            "marketplace",
+                            "add",
+                            "https://github.com/rysweet/amplihack",
+                        ],
+                        capture_output=True,
+                        text=True,
+                        timeout=60,
+                        check=False,
+                        env=env,
+                    )
+
+                    if marketplace_add_result.returncode != 0:
+                        if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                            print(
+                                f"⚠️  Marketplace add failed (may already exist): {marketplace_add_result.stderr}"
+                            )
+                    else:
+                        if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                            print("✅ Amplihack marketplace added to known marketplaces")
+
+                    # Step 2b: Install plugin from marketplace
                     result = subprocess.run(
                         [claude_path, "plugin", "install", "amplihack"],
                         capture_output=True,
