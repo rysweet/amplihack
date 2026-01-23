@@ -27,7 +27,15 @@ class WorkflowClassificationReminder(HookProcessor):
 
     def _init_state_dir(self):
         """Initialize state directory after parent sets runtime_dir."""
-        self._state_dir = self.runtime_dir / "classification_state"
+        # Handle both production (runtime_dir set) and test (not set) environments
+        try:
+            state_parent = self.runtime_dir
+        except AttributeError:
+            # Test/standalone environment - use temp directory
+            state_parent = Path("/tmp/.claude_test/runtime/logs")
+            state_parent.mkdir(parents=True, exist_ok=True)
+
+        self._state_dir = state_parent / "classification_state"
         self._state_dir.mkdir(parents=True, exist_ok=True)
 
     def get_session_state_file(self) -> Path:
