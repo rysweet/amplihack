@@ -40,6 +40,7 @@ I automatically load when you mention:
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
 
     <!-- Package as .NET Tool -->
     <PackAsTool>true</PackAsTool>
