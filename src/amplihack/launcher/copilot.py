@@ -199,6 +199,8 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
     # Build command with full filesystem access (safe in VM environment)
     # Model can be overridden via COPILOT_MODEL env var (default: Opus 4.5)
     model = os.getenv("COPILOT_MODEL", "claude-opus-4.5")
+    # Resolve temp directory path (handles symlinks and validates it exists)
+    temp_dir = os.path.realpath(tempfile.gettempdir())
     cmd = [
         "copilot",
         "--allow-all-tools",
@@ -207,7 +209,7 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
         "--add-dir",
         os.getcwd(),  # Add current directory for .github/agents/ access
         "--add-dir",
-        tempfile.gettempdir(),  # Grant access to system temp directory
+        temp_dir,  # Grant access to system temp directory
         "--disable-mcp-server",
         "github-mcp-server",  # Disable to save context tokens, use gh CLI instead
     ]
