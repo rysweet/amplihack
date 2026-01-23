@@ -51,7 +51,7 @@ Power-steering mode is a stop hook enhancement that analyzes session transcripts
 
 ### 1. PowerSteeringChecker (Main Module)
 
-**File**: `.claude/tools/amplihack/hooks/power_steering_checker.py`
+**File**: `~/.amplihack/.claude/tools/amplihack/hooks/power_steering_checker.py`
 
 **Responsibilities**:
 
@@ -70,7 +70,7 @@ Power-steering mode is a stop hook enhancement that analyzes session transcripts
 
 ### 2. Stop Hook Integration
 
-**File**: `.claude/tools/amplihack/hooks/stop.py` (MODIFIED)
+**File**: `~/.amplihack/.claude/tools/amplihack/hooks/stop.py` (MODIFIED)
 
 **Changes**:
 
@@ -82,7 +82,7 @@ Power-steering mode is a stop hook enhancement that analyzes session transcripts
 
 ### 3. Configuration System
 
-**File**: `.claude/tools/amplihack/.power_steering_config` (NEW)
+**File**: `~/.amplihack/.claude/tools/amplihack/.power_steering_config` (NEW)
 
 **Format**: JSON with defaults
 
@@ -100,7 +100,7 @@ Power-steering mode is a stop hook enhancement that analyzes session transcripts
 
 **Three-Layer Disable System** (priority order):
 
-1. Semaphore file: `.claude/runtime/power-steering/.disabled` (highest)
+1. Semaphore file: `~/.amplihack/.claude/runtime/power-steering/.disabled` (highest)
 2. Environment variable: `AMPLIHACK_SKIP_POWER_STEERING` (medium)
 3. Config file: `{"enabled": false}` (lowest)
 

@@ -353,7 +353,7 @@ The `socratic-reviewer` agent asks probing questions instead of providing direct
 - You need written documentation
 - Developer explicitly wants direct feedback
 
-See: `.claude/agents/amplihack/specialized/socratic-reviewer.md`
+See: `~/.amplihack/.claude/agents/amplihack/specialized/socratic-reviewer.md`
 
 ## Remember
 

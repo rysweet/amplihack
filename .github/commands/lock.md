@@ -1,6 +1,6 @@
 # GitHub Copilot Command Reference: lock
 
-**Source**: `.claude/commands/amplihack/lock.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/lock.md`
 
 ---
 
@@ -102,5 +102,5 @@ python .claude/tools/amplihack/lock_tool.py lock --message "Focus on security fi
 
 **Lock files:**
 
-- Lock flag: `.claude/runtime/locks/.lock_active`
-- Custom message: `.claude/runtime/locks/.lock_message`
+- Lock flag: `~/.amplihack/.claude/runtime/locks/.lock_active`
+- Custom message: `~/.amplihack/.claude/runtime/locks/.lock_message`

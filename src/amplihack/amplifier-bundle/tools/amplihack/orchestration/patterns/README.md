@@ -39,7 +39,7 @@ print(f"Selected: {result['selected']}")
 print(f"Rationale: {result['rationale']}")
 ```
 
-**Based on:** `.claude/workflow/N_VERSION_WORKFLOW.md`
+**Based on:** `~/.amplihack/.claude/workflow/N_VERSION_WORKFLOW.md`
 
 **Key Features:**
 
@@ -90,7 +90,7 @@ print(f"Consensus: {result['synthesis'].output}")
 print(f"Confidence: {result['confidence']}")
 ```
 
-**Based on:** `.claude/workflow/DEBATE_WORKFLOW.md`
+**Based on:** `~/.amplihack/.claude/workflow/DEBATE_WORKFLOW.md`
 
 **Key Features:**
 
@@ -143,7 +143,7 @@ if result['degradation']:
     print(f"Degradation: {result['degradation']}")
 ```
 
-**Based on:** `.claude/workflow/CASCADE_WORKFLOW.md`
+**Based on:** `~/.amplihack/.claude/workflow/CASCADE_WORKFLOW.md`
 
 **Key Features:**
 
@@ -178,7 +178,7 @@ All patterns share these common parameters:
 
 ## Session Logs
 
-All patterns create session logs in `.claude/runtime/logs/<session_id>/`:
+All patterns create session logs in `~/.amplihack/.claude/runtime/logs/<session_id>/`:
 
 - `session.log` - Overall session information
 - `<process_id>.log` - Individual process logs
@@ -202,7 +202,7 @@ See `PATTERN_EXAMPLES.py` for complete working examples of each pattern.
 
 ## Integration with Workflows
 
-These patterns are designed to integrate with the default workflow (`.claude/workflow/DEFAULT_WORKFLOW.md`):
+These patterns are designed to integrate with the default workflow (`~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md`):
 
 - **N-Version**: Replaces Steps 4-5 (Research/Design and Implementation)
 - **Debate**: Replaces Step 4 (Research and Design)
@@ -318,5 +318,5 @@ When adding new patterns:
 ## References
 
 - Orchestration Infrastructure: `../README.md`
-- Workflows: `.claude/workflow/*.md`
-- Core Philosophy: `.claude/context/PHILOSOPHY.md`
+- Workflows: `~/.amplihack/.claude/workflow/*.md`
+- Core Philosophy: `~/.amplihack/.claude/context/PHILOSOPHY.md`

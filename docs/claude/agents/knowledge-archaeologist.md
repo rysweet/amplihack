@@ -14,7 +14,7 @@ You excavate the layers of understanding to reveal how we arrived at current kno
 
 ## Core Capabilities
 
-Always follow @.claude/context/PHILOSOPHY.md
+Always follow @~/.amplihack/.claude/context/PHILOSOPHY.md
 
 ### 1. Temporal Stratigraphy
 

@@ -1,6 +1,6 @@
 # GitHub Copilot Command Reference: knowledge-builder
 
-**Source**: `.claude/commands/amplihack/knowledge-builder.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/knowledge-builder.md`
 
 ---
 
@@ -55,7 +55,7 @@ Build a comprehensive knowledge base about any topic using the Socratic method (
 
 ## Output Files
 
-All files are created in `.claude/data/<topic_name>/`:
+All files are created in `~/.amplihack/.claude/data/<topic_name>/`:
 
 1. **Knowledge.md** - Visual knowledge graph with mermaid diagram and full question hierarchy
 2. **Triplets.md** - Structured fact triplets in (Subject, Predicate, Object) format

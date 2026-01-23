@@ -374,9 +374,9 @@ connector.execute_write("DROP CONSTRAINT constraint_name")
 
 ### Project Philosophy
 
-- `.claude/context/PHILOSOPHY.md` - Ruthless simplicity, zero-BS
-- `.claude/context/PATTERNS.md` - Proven development patterns
-- `.claude/context/USER_REQUIREMENT_PRIORITY.md` - Priority hierarchy
+- `~/.amplihack/.claude/context/PHILOSOPHY.md` - Ruthless simplicity, zero-BS
+- `~/.amplihack/.claude/context/PATTERNS.md` - Proven development patterns
+- `~/.amplihack/.claude/context/USER_REQUIREMENT_PRIORITY.md` - Priority hierarchy
 
 ### Related Specifications
 

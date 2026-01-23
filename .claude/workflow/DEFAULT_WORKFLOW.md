@@ -282,7 +282,7 @@ After investigation completes, continue with these tasks:
 - [ ] **Use** database agent for data model design (if applicable)
 - [ ] **Use** security agent to identify security requirements
 - [ ] use other subagents as appropriate if their expertise is applicable to the problem
-- [ ] **💡 TIP**: For diagnostic follow-up questions during research, consider [parallel agent investigation](.claude/CLAUDE.md#parallel-agent-investigation-strategy)
+- [ ] **💡 TIP**: For diagnostic follow-up questions during research, consider [parallel agent investigation](~/.amplihack/.claude/CLAUDE.md#parallel-agent-investigation-strategy)
 - [ ] ask @zen-architect agent to review everything done so far and provide feedback
 - [ ] ask @architect agent to consider the feedback
 - [ ] Document module specifications
@@ -407,7 +407,7 @@ Target Ratios:
 - [ ] **Point-in-Time Documents Check**: Identify analysis/investigation documents
   - Pattern: `ANALYSIS_YYYYMMDD.md`, `INVESTIGATION_*.md`, `NOTES_*.txt`
   - Pattern: Date-stamped reports not intended as permanent documentation
-  - Move to `.claude/runtime/logs/` or delete unless required for issue
+  - Move to `~/.amplihack/.claude/runtime/logs/` or delete unless required for issue
 
 - [ ] **Git Hygiene Verification**:
   - `.gitignore` properly configured for new file types introduced?
@@ -435,7 +435,7 @@ Target Ratios:
   - This ensures fresh worktrees work without manual setup
   - ⚠️ **Security Note**: Always review `.pre-commit-config.yaml` changes before running hooks, especially when pulling updates or merging branches
 - [ ] **Use** pre-commit-diagnostic agent if hooks fail
-- [ ] **💡 TIP**: For test failures, use [parallel investigation](.claude/CLAUDE.md#parallel-agent-investigation-strategy) to explore issues while continuing work
+- [ ] **💡 TIP**: For test failures, use [parallel investigation](~/.amplihack/.claude/CLAUDE.md#parallel-agent-investigation-strategy) to explore issues while continuing work
 - [ ] Run all unit tests
 - [ ] Execute `pre-commit run --all-files`
 - [ ] Fix any linting issues
@@ -656,7 +656,7 @@ az repos pr create-thread \
   - Pattern: `test_*.py`, `temp_*.js`, `scratch_*.md`, `debug_*.log`, `*.tmp`
   - Pattern: `experiment_*.py`, `test_manual_*.sh`, `playground_*.ts`
   - Pattern: `ANALYSIS_YYYYMMDD.md`, `INVESTIGATION_*.md`, `NOTES_*.txt`
-  - Remove or move to `.claude/runtime/logs/` as appropriate
+  - Remove or move to `~/.amplihack/.claude/runtime/logs/` as appropriate
 
 - [ ] **Debugging Code Sweep**: Final search for debugging statements across all modified files
   - JavaScript/TypeScript: `console.log`, `console.debug`, `debugger;`
@@ -665,7 +665,7 @@ az repos pr create-thread \
   - Remove all debugging artifacts
 
 - [ ] **Documentation Audit**: Verify only permanent documentation is included
-  - Point-in-time analysis docs moved to `.claude/runtime/logs/`
+  - Point-in-time analysis docs moved to `~/.amplihack/.claude/runtime/logs/`
   - Investigation notes not required for feature understanding removed
   - Only architectural/design docs that serve ongoing maintenance included
 
@@ -741,7 +741,7 @@ az repos pr show --id <pr_number> --query "mergeStatus"
 
 - [ ] Verify all CI checks passing
 - [ ] **Always use** ci-diagnostic-workflow agent if CI fails
-- [ ] **💡 TIP**: When investigating CI failures, use [parallel agent investigation](.claude/CLAUDE.md#parallel-agent-investigation-strategy) to explore logs and code simultaneously
+- [ ] **💡 TIP**: When investigating CI failures, use [parallel agent investigation](~/.amplihack/.claude/CLAUDE.md#parallel-agent-investigation-strategy) to explore logs and code simultaneously
 - [ ] Resolve any merge conflicts
 - [ ] Verify all review comments addressed, including check for any that showed up after marking the PR as ready
 - [ ] Confirm PR is approved

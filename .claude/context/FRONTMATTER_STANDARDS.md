@@ -448,7 +448,7 @@ This command orchestrates workflow-driven execution...
 
 ## References
 
-- **Revised Architecture**: `.claude/runtime/logs/session_20251119_024338/REVISED_ARCHITECTURE.md`
+- **Revised Architecture**: `~/.amplihack/.claude/runtime/logs/session_20251119_024338/REVISED_ARCHITECTURE.md`
 - **Claude Code Best Practices**: https://docs.anthropic.com/claude/docs/claude-code
 - **Semantic Versioning**: https://semver.org/
 

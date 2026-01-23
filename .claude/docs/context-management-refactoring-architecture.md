@@ -14,7 +14,7 @@ This document describes the refactored architecture for context management and t
 
 The original context management implementation had several architectural issues:
 
-1. **Skill contained business logic** - `.claude/skills/context_management/` had Python files with implementation
+1. **Skill contained business logic** - `~/.amplihack/.claude/skills/context_management/` had Python files with implementation
 2. **Skill too large** - SKILL.md was 513 lines (should be < 500)
 3. **Command was Python code** - `transcripts.py` was executable Python (should be markdown)
 4. **Hook had inline logic** - `post_tool_use.py` imported and inlined context automation
@@ -52,7 +52,7 @@ The original context management implementation had several architectural issues:
 
 ### 1. context_manager.py
 
-**Location**: `.claude/tools/amplihack/context_manager.py`
+**Location**: `~/.amplihack/.claude/tools/amplihack/context_manager.py`
 **Lines**: ~900
 **Purpose**: Self-contained context management brick with ONE clear responsibility
 
@@ -97,7 +97,7 @@ run_automation(current_tokens, conversation_data) -> Dict
 
 ### 2. transcript_manager.py
 
-**Location**: `.claude/tools/amplihack/transcript_manager.py`
+**Location**: `~/.amplihack/.claude/tools/amplihack/transcript_manager.py`
 **Lines**: ~400
 **Purpose**: Self-contained transcript management brick
 
@@ -134,11 +134,11 @@ get_current_session_id() -> str
 
 **Replaces**:
 
-- `.claude/commands/transcripts.py` (343 lines of Python code)
+- `~/.amplihack/.claude/commands/transcripts.py` (343 lines of Python code)
 
 ### 3. tool_registry.py
 
-**Location**: `.claude/tools/amplihack/hooks/tool_registry.py`
+**Location**: `~/.amplihack/.claude/tools/amplihack/hooks/tool_registry.py`
 **Lines**: ~300
 **Purpose**: Extensible hook registration system
 
@@ -171,7 +171,7 @@ aggregate_hook_results(results) -> Dict
 
 ### 4. context_automation_hook.py
 
-**Location**: `.claude/tools/amplihack/context_automation_hook.py`
+**Location**: `~/.amplihack/.claude/tools/amplihack/context_automation_hook.py`
 **Lines**: ~150
 **Purpose**: Bridge between hook system and context_manager
 
@@ -192,7 +192,7 @@ register_context_hook() -> None
 
 ### 5. Refactored post_tool_use.py
 
-**Location**: `.claude/tools/amplihack/hooks/post_tool_use.py`
+**Location**: `~/.amplihack/.claude/tools/amplihack/hooks/post_tool_use.py`
 **Changes**:
 
 - Removed direct imports of `automation.py`
@@ -226,7 +226,7 @@ def process(self, input_data):
 
 ### 6. Refactored SKILL.md
 
-**Location**: `.claude/skills/context_management/SKILL.md`
+**Location**: `~/.amplihack/.claude/skills/context_management/SKILL.md`
 **Lines**: 395 (< 500 ✓)
 **Changes**:
 
@@ -240,7 +240,7 @@ def process(self, input_data):
 
 ### 7. Refactored transcripts.md
 
-**Location**: `.claude/commands/amplihack/transcripts.md`
+**Location**: `~/.amplihack/.claude/commands/amplihack/transcripts.md`
 **Type**: Markdown (not Python)
 **Changes**:
 
@@ -317,8 +317,8 @@ print(manager.format_context_display(context))
 
 ### 1. Separation of Concerns
 
-- **Business logic** in `.claude/tools/amplihack/` (reusable, testable)
-- **Presentation logic** in `.claude/skills/` and `.claude/commands/` (instructions)
+- **Business logic** in `~/.amplihack/.claude/tools/amplihack/` (reusable, testable)
+- **Presentation logic** in `~/.amplihack/.claude/skills/` and `~/.amplihack/.claude/commands/` (instructions)
 - **Clear boundaries** between what does the work vs what tells you how to use it
 
 ### 2. Extensibility
@@ -481,8 +481,8 @@ The new architecture provides a solid foundation for future enhancements while m
 ## References
 
 - **Claude Code Skill Best Practices**: https://platform.claude.com/docs/en/agents-and-tools/agent-skills/best-practices
-- **Amplihack Philosophy**: `.claude/context/PHILOSOPHY.md`
-- **Amplihack Patterns**: `.claude/context/PATTERNS.md`
+- **Amplihack Philosophy**: `~/.amplihack/.claude/context/PHILOSOPHY.md`
+- **Amplihack Patterns**: `~/.amplihack/.claude/context/PATTERNS.md`
 - **Issue #1575**: Context management refactoring
 
 ---

@@ -103,7 +103,7 @@ When asked to create documentation:
 | Status updates | GitHub Issues |
 | Progress reports | Pull Request descriptions |
 | Decisions | Commit messages |
-| Runtime data | `.claude/runtime/logs/` |
+| Runtime data | `~/.amplihack/.claude/runtime/logs/` |
 
 ### 4. Example Requirements
 

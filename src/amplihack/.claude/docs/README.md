@@ -45,12 +45,12 @@ When you complete an investigation using the INVESTIGATION_WORKFLOW.md:
 
 ### Templates Used
 
-Documentation is generated from templates in `.claude/templates/`:
+Documentation is generated from templates in `~/.amplihack/.claude/templates/`:
 
 - `investigation-doc-template.md` - General investigations
 - `architecture-doc-template.md` - Architecture investigations
 
-See `.claude/templates/README.md` for template details.
+See `~/.amplihack/.claude/templates/README.md` for template details.
 
 ## Documentation Structure
 
@@ -110,7 +110,7 @@ Simply open the markdown files in your editor or viewer. They contain:
 When discussing a system, reference existing documentation:
 
 ```markdown
-See `.claude/docs/ARCHITECTURE_USER_PREFERENCES_HOOKS.md` for details on how
+See `~/.amplihack/.claude/docs/ARCHITECTURE_USER_PREFERENCES_HOOKS.md` for details on how
 user preferences integrate with the hooks system.
 ```
 
@@ -152,15 +152,15 @@ Good documentation should:
 
 ## Related Resources
 
-- `.claude/workflow/INVESTIGATION_WORKFLOW.md` - Investigation workflow with documentation step
-- `.claude/templates/README.md` - Template usage guide
-- `.claude/agents/amplihack/specialized/knowledge-archaeologist.md` - Agent that generates documentation
+- `~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md` - Investigation workflow with documentation step
+- `~/.amplihack/.claude/templates/README.md` - Template usage guide
+- `~/.amplihack/.claude/agents/amplihack/specialized/knowledge-archaeologist.md` - Agent that generates documentation
 
 ## Contributing Documentation
 
 You can manually create documentation following the templates:
 
-1. Copy appropriate template from `.claude/templates/`
+1. Copy appropriate template from `~/.amplihack/.claude/templates/`
 2. Fill in all sections with investigation findings
 3. Save with naming convention: `[TYPE]_[TOPIC].md`
 4. Place in this directory

@@ -3,7 +3,7 @@
 **Target**: Get Modular Architecture from 88 → 95+ and Zero-BS Implementation from 90 → 98+
 
 **Analysis Date**: 2025-11-22
-**Codebase**: `.claude/tools/amplihack/profile_management/`
+**Codebase**: `~/.amplihack/.claude/tools/amplihack/profile_management/`
 **Total LOC**: 1,655 implementation + 1,833 tests = 3,488 total
 
 ---

@@ -43,8 +43,8 @@ Comprehensive code analysis and philosophy compliance review.
 ## Process
 
 1. **Read Philosophy**
-   - Review `.claude/context/PHILOSOPHY.md`
-   - Check `.claude/context/PATTERNS.md`
+   - Review `~/.amplihack/.claude/context/PHILOSOPHY.md`
+   - Check `~/.amplihack/.claude/context/PATTERNS.md`
    - Understand project principles
 
 2. **Analyze Code**

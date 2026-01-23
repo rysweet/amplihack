@@ -6,11 +6,11 @@ We would lke to enahce it to also be able to use GitHub Copilot CLI.
 
 First, You should learn about how Claude Code works - in particular it has use of valuable feature called subagents, hooks, and commands. You should read about them in detail here: @https://docs.claude.com/en/docs/claude-code/overview and the pages that it links to for those topics.
 
-The power of this project lies in its instructions in @CLAUDE.md, and the various subagents (in @.claude/agents/_/_.md), commands (in @.claude/commands/\*), hooks (configured in .claude/settings.json and run from .claude/tools/)
+The power of this project lies in its instructions in @CLAUDE.md, and the various subagents (in @~/.amplihack/.claude/agents/_/_.md), commands (in @~/.amplihack/.claude/commands/\*), hooks (configured in .claude/settings.json and run from .claude/tools/)
 
-The CLAUDE.md and other files reference context in the @.claude/context directory, especially the @.claude/context/PHILOSOPHY.md. This is a very important document for guiding code generation and planning.
+The CLAUDE.md and other files reference context in the @~/.amplihack/.claude/context directory, especially the @~/.amplihack/.claude/context/PHILOSOPHY.md. This is a very important document for guiding code generation and planning.
 
-All code changes must follow specific workflows. The default workflow is in @.claude/workflows/DEFAULT_WORKFLOW.md.
+All code changes must follow specific workflows. The default workflow is in @~/.amplihack/.claude/workflows/DEFAULT_WORKFLOW.md.
 
 This project is run using a cli "amplihack" which is in @src/
 
@@ -60,17 +60,17 @@ The auto mode will start a new turn agentic loop that does the following:
 
 ## Instructions for launching subagents with copilot cli
 
-As the github copilot cli, you have a new super-power - you can launch subagents. You do this by selecting (or being told) a subagent to use from @.claude/agents/_.md or @.claude/agents/_/\*.md etc (any md file under .claude/agents/) from the descriptions in the frontmatter of each md. Then you craft a prompt with the specfic context and instructions, including the .md file, and then invoke copilot with that prompt as a subprocess.
+As the github copilot cli, you have a new super-power - you can launch subagents. You do this by selecting (or being told) a subagent to use from @~/.amplihack/.claude/agents/_.md or @~/.amplihack/.claude/agents/_/\*.md etc (any md file under .claude/agents/) from the descriptions in the frontmatter of each md. Then you craft a prompt with the specfic context and instructions, including the .md file, and then invoke copilot with that prompt as a subprocess.
 eg:
 
-````copilot --allow-all-tools -p "Include @.claude/agents/amplichack/prompt-writer.md -- Take the user's prompt and improve it: <user-prompt>" etc.
+````copilot --allow-all-tools -p "Include @~/.amplihack/.claude/agents/amplichack/prompt-writer.md -- Take the user's prompt and improve it: <user-prompt>" etc.
 
 You will need to structure comprehensive instructions for how to invoke subagents for github copilot cli somewhere in the .claude/context directory and ensure it is referenced from AGENTS.md
 
 ## Instructions for running commands with copilot cli
 
-As the github copilot cli, you have new capabilities that are AI commands defined in @.claude/commands/* (any .md file underneath that directory structure). Each command is a prompt that you can use to structure a particular operation.
-To invoke a command run a copilot subprocess ```copilot --allow-all-tools -p "Include @.claude/commands/<some_path_to_command>.md <args> <any additional instructions>"```
+As the github copilot cli, you have new capabilities that are AI commands defined in @~/.amplihack/.claude/commands/* (any .md file underneath that directory structure). Each command is a prompt that you can use to structure a particular operation.
+To invoke a command run a copilot subprocess ```copilot --allow-all-tools -p "Include @~/.amplihack/.claude/commands/<some_path_to_command>.md <args> <any additional instructions>"```
 
 You will need to structure comprehensive instructionsfor running commands somewhere in the .claude/context/ dir and ensure that they are referenced from AGENTS.md
 

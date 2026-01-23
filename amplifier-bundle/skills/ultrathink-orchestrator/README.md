@@ -110,8 +110,8 @@ Would you like me to use /ultrathink to orchestrate this work?
 
 **Fallback** (if skills not available):
 
-- Reads `.claude/workflow/DEFAULT_WORKFLOW.md`
-- Reads `.claude/workflow/INVESTIGATION_WORKFLOW.md`
+- Reads `~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md`
+- Reads `~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md`
 - Provides same functionality via markdown workflows
 
 ## Benefits
@@ -124,7 +124,7 @@ Would you like me to use /ultrathink to orchestrate this work?
 
 ## Related
 
-- Default Workflow Skill: `.claude/skills/default-workflow/`
-- Investigation Workflow Skill: `.claude/skills/investigation-workflow/`
-- Ultrathink Command: `.claude/commands/amplihack/ultrathink.md`
-- Workflow Files: `.claude/workflow/DEFAULT_WORKFLOW.md`, `.claude/workflow/INVESTIGATION_WORKFLOW.md`
+- Default Workflow Skill: `~/.amplihack/.claude/skills/default-workflow/`
+- Investigation Workflow Skill: `~/.amplihack/.claude/skills/investigation-workflow/`
+- Ultrathink Command: `~/.amplihack/.claude/commands/amplihack/ultrathink.md`
+- Workflow Files: `~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md`, `~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md`

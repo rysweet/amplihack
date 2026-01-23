@@ -48,7 +48,7 @@ In Claude Code, start with:
 ```
 I'm working on the @my-project/ project within this amplihack workspace.
 Please read @my-project/AGENTS.md for project-specific guidance.
-For overall design philosophy, refer to @.claude/context/PHILOSOPHY.md.
+For overall design philosophy, refer to @~/.amplihack/.claude/context/PHILOSOPHY.md.
 ```
 
 That's it. Read on for why this matters and how to use it effectively with amplihack.
@@ -77,7 +77,7 @@ Using the workspace pattern with amplihack provides unique advantages:
 
 **Agent specialization per project.** amplihack's powerful agent system (including specialized agents like `/amplihack:ultrathink` and `/amplihack:modular-build`) becomes available to all your projects. Each project can have its own AGENTS.md that leverages these specialized agents while maintaining project-specific context.
 
-**Philosophy inheritance.** Your projects automatically benefit from amplihack's design philosophy documented in `.claude/context/PHILOSOPHY.md`. The "Brick Philosophy" of modular, regeneratable components applies to your project structure, making it easier to refactor and maintain with AI assistance.
+**Philosophy inheritance.** Your projects automatically benefit from amplihack's design philosophy documented in `~/.amplihack/.claude/context/PHILOSOPHY.md`. The "Brick Philosophy" of modular, regeneratable components applies to your project structure, making it easier to refactor and maintain with AI assistance.
 
 **Command integration.** amplihack's extensive command library (accessible through slash commands) becomes available across all your projects. Commands like `/amplihack:ultrathink` for deep analysis or `/amplihack:fix` for code improvements work seamlessly within project boundaries.
 
@@ -229,7 +229,7 @@ public/             # Static assets
 This project leverages amplihack's design philosophy:
 
 - **Brick Philosophy**: Each component is a self-contained module that can be regenerated
-- **Modular design**: Follow @.claude/context/PHILOSOPHY.md for architectural decisions
+- **Modular design**: Follow @~/.amplihack/.claude/context/PHILOSOPHY.md for architectural decisions
 - **Agent support**: Use `/amplihack:ultrathink` for architectural analysis
 - **Code transformations**: Use `/amplihack:codemod` for refactoring tasks
 
@@ -267,7 +267,7 @@ This constraint is freeing, not limiting.
 
 ## Alignment with amplihack Philosophy
 
-This project follows amplihack's Brick Philosophy (see @.claude/context/PHILOSOPHY.md):
+This project follows amplihack's Brick Philosophy (see @~/.amplihack/.claude/context/PHILOSOPHY.md):
 
 - **Bricks and Studs**: Each component (PostList, Header, Footer) is a self-contained
   brick with clear interfaces (studs) that other components connect to
@@ -301,7 +301,7 @@ Please read @my-blog/AGENTS.md for project-specific guidance.
 All changes should be scoped to the @my-blog/ directory.
 Use @my-blog/ai_working/ for temporary files.
 
-For architectural decisions, refer to @.claude/context/PHILOSOPHY.md.
+For architectural decisions, refer to @~/.amplihack/.claude/context/PHILOSOPHY.md.
 ```
 
 This establishes boundaries from the start. The `@` prefix creates namespace clarity—it's always obvious which files belong to which context.
@@ -451,9 +451,9 @@ When working with amplihack agents on this project:
 
 **Integration with .claude/agents/:**
 
-amplihack's workspace-level agents in `.claude/agents/` are available to all projects but respect project-level constraints defined in each project's AGENTS.md. This creates a hierarchy:
+amplihack's workspace-level agents in `~/.amplihack/.claude/agents/` are available to all projects but respect project-level constraints defined in each project's AGENTS.md. This creates a hierarchy:
 
-1. **Workspace-level**: amplihack's philosophy and agent capabilities (`.claude/context/PHILOSOPHY.md`)
+1. **Workspace-level**: amplihack's philosophy and agent capabilities (`~/.amplihack/.claude/context/PHILOSOPHY.md`)
 2. **Project-level**: Your project's specific constraints and preferences (`my-blog/AGENTS.md`)
 3. **Session-level**: Specific instructions for the current task
 
@@ -466,7 +466,7 @@ Working on @my-blog/. I need to add a tagging system for posts.
 
 Context:
 - Read @my-blog/AGENTS.md for project constraints
-- Refer to @.claude/context/PHILOSOPHY.md for modular design approach
+- Refer to @~/.amplihack/.claude/context/PHILOSOPHY.md for modular design approach
 - Use /amplihack:modular-build to design the solution
 
 Requirements:
@@ -552,7 +552,7 @@ cat > AGENTS.md << 'EOF'
 
 This project uses amplihack's workspace pattern and agent system.
 
-Refer to @.claude/context/PHILOSOPHY.md for modular design guidance.
+Refer to @~/.amplihack/.claude/context/PHILOSOPHY.md for modular design guidance.
 EOF
 git add AGENTS.md
 git commit -m "Add AGENTS.md for workspace pattern"
@@ -670,7 +670,7 @@ for blog posts. This should happen at build time and follow our static-first
 philosophy. What's the best approach?
 
 For architectural analysis, use /amplihack:modular-build with reference to our
-Brick Philosophy at @.claude/context/PHILOSOPHY.md.
+Brick Philosophy at @~/.amplihack/.claude/context/PHILOSOPHY.md.
 ```
 
 Claude reads your AGENTS.md, understands your tech stack (Next.js) and principles (static-first, simple), accesses amplihack's architectural guidance, and proposes a solution that fits your architecture. The specialized agents ensure the solution is modular and regeneratable. No need to re-explain your project every time.

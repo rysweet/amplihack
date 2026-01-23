@@ -54,7 +54,7 @@ This tool automatically analyzes claude-trace JSONL logs to extract:
 make analyze-trace-logs
 ```
 
-This analyzes the 15 most recent trace logs in `.claude-trace/` and generates a report at `.claude/runtime/TRACE_LOG_ANALYSIS.md`.
+This analyzes the 15 most recent trace logs in `.claude-trace/` and generates a report at `~/.amplihack/.claude/runtime/TRACE_LOG_ANALYSIS.md`.
 
 ### Specify Custom Log Directory
 
@@ -275,7 +275,7 @@ This tool provides data for:
 
 ### With User Preferences
 
-Analysis results can inform updates to `.claude/context/USER_PREFERENCES.md`:
+Analysis results can inform updates to `~/.amplihack/.claude/context/USER_PREFERENCES.md`:
 
 ```markdown
 ### Learned Patterns
@@ -305,7 +305,7 @@ None required. Tool uses standard Python libraries.
 ### File Locations
 
 - **Input**: `.claude-trace/*.jsonl` (default)
-- **Output**: `.claude/runtime/TRACE_LOG_ANALYSIS.md` (default)
+- **Output**: `~/.amplihack/.claude/runtime/TRACE_LOG_ANALYSIS.md` (default)
 
 ## Troubleshooting
 

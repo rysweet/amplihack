@@ -91,7 +91,7 @@ All hooks are designed to fail gracefully:
 
 This bundle maintains compatibility with both:
 
-- **Claude Code** - Via the `.claude/` directory structure
+- **Claude Code** - Via the `~/.amplihack/.claude/` directory structure
 - **Amplifier** - Via this bundle packaging with hook wrappers
 
 The same skills, agents, and context work in both environments.

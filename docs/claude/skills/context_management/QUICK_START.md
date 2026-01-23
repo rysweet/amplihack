@@ -175,9 +175,9 @@ result = list_snapshots()
 
 | What         | Where                                                          |
 | ------------ | -------------------------------------------------------------- |
-| Snapshots    | `.claude/runtime/context-snapshots/*.json`                     |
-| Transcripts  | `.claude/runtime/logs/<session_id>/CONVERSATION_TRANSCRIPT.md` |
-| Session logs | `.claude/runtime/logs/<session_id>/`                           |
+| Snapshots    | `~/.amplihack/.claude/runtime/context-snapshots/*.json`                     |
+| Transcripts  | `~/.amplihack/.claude/runtime/logs/<session_id>/CONVERSATION_TRANSCRIPT.md` |
+| Session logs | `~/.amplihack/.claude/runtime/logs/<session_id>/`                           |
 
 ## Integration
 

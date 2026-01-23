@@ -78,7 +78,7 @@ print(f"Token estimate: {filtered.token_count_estimate()} tokens")
 
 ## Built-in Profiles
 
-Built-in profiles are located in `.claude/profiles/` and can be loaded using simple names (preferred) or URIs:
+Built-in profiles are located in `~/.amplihack/.claude/profiles/` and can be loaded using simple names (preferred) or URIs:
 
 - **all**: Complete environment (default)
   - Simple: `"all"`

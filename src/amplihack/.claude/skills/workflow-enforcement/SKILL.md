@@ -22,7 +22,7 @@ implementation_status: specification
 
 Guides Claude to complete all workflow steps by:
 
-1. Reminding about step completion tracking (use TodoWrite or `.claude/runtime/workflow_state.yaml`)
+1. Reminding about step completion tracking (use TodoWrite or `~/.amplihack/.claude/runtime/workflow_state.yaml`)
 2. Emphasizing mandatory steps (0, 10, 16-17) that must not be skipped
 3. Providing visual progress indicator format
 4. Defining expected blocking behavior at checkpoints
@@ -159,7 +159,7 @@ This skill was created because an agent skipped workflow steps while building a 
 
 1. Verify all steps completed (or explicitly skipped with documented reason)
 2. Final progress: `[######################] 22/22 Steps Complete`
-3. Delete `.claude/runtime/workflow_state.yaml` if used
+3. Delete `~/.amplihack/.claude/runtime/workflow_state.yaml` if used
 4. Log completion to workflow_tracker.py
 
 ## Visual Progress Formats
@@ -213,8 +213,8 @@ Next: Step 11 - Incorporate Review Feedback
 
 ## State File Format
 
-**Template Location**: `.claude/templates/workflow_state.yaml.template`
-**Active State Location**: `.claude/runtime/workflow_state.yaml`
+**Template Location**: `~/.amplihack/.claude/templates/workflow_state.yaml.template`
+**Active State Location**: `~/.amplihack/.claude/runtime/workflow_state.yaml`
 
 ```yaml
 workflow_id: "session_20251125_143022"

@@ -193,7 +193,7 @@ Every modification:
 - **Validates configuration** before writing
 - **Rolls back on errors** (restores from backup)
 
-**Backups are stored in:** `.claude/backups/settings_backup_*.json`
+**Backups are stored in:** `~/.amplihack/.claude/backups/settings_backup_*.json`
 
 ---
 

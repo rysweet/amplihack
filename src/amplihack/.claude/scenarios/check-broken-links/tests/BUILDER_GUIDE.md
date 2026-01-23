@@ -346,7 +346,7 @@ Use this checklist to track implementation progress:
 Refer to:
 
 - `TEST_COVERAGE_SUMMARY.md` - Complete test breakdown
-- `.claude/context/PATTERNS.md` - Implementation patterns
+- `~/.amplihack/.claude/context/PATTERNS.md` - Implementation patterns
 - Architect specs - Module design and API
 
 Good luck, and may yer code be bug-free! 🏴‍☠️

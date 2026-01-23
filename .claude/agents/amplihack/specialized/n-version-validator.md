@@ -203,7 +203,7 @@ This pattern is implemented as a workflow. Use the `/amplihack:n-version` comman
 /amplihack:n-version "Implement password hashing function"
 ```
 
-The workflow file `.claude/workflow/N_VERSION_WORKFLOW.md` can be customized to adjust:
+The workflow file `~/.amplihack/.claude/workflow/N_VERSION_WORKFLOW.md` can be customized to adjust:
 
 - Number of versions (N)
 - Selection criteria

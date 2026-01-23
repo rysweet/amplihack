@@ -173,7 +173,7 @@ Patterns trigger automation when:
 ### With Stop Hook
 
 - Automatically runs on session end
-- Saves analysis to `.claude/runtime/analysis/`
+- Saves analysis to `~/.amplihack/.claude/runtime/analysis/`
 - Respects environment settings
 
 ### With UltraThink
@@ -286,7 +286,7 @@ print(f"✓ Updated {key} = {value}")
 
 ## Configuration File
 
-Location: `.claude/tools/amplihack/.reflection_config`
+Location: `~/.amplihack/.claude/tools/amplihack/.reflection_config`
 
 ```json
 {

@@ -103,7 +103,7 @@ When activated:
 4. **Execute the command** using the SlashCommand tool
 
 5. **Guide the user** on next steps:
-   - Results will be in `.claude/runtime/logs/remote/`
+   - Results will be in `~/.amplihack/.claude/runtime/logs/remote/`
    - Git branches in `remote-exec/` namespace
    - How to view logs and integrate changes
 
@@ -214,4 +214,4 @@ Remind users:
 
 - `/amplihack:remote` - Direct command interface
 - Azlin documentation: https://github.com/rysweet/azlin
-- Remote execution module: `.claude/tools/amplihack/remote/README.md`
+- Remote execution module: `~/.amplihack/.claude/tools/amplihack/remote/README.md`

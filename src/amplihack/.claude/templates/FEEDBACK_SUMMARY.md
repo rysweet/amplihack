@@ -120,7 +120,7 @@ d) **Just Stop**
 
 1. **When to Use:** End of significant sessions (not trivial tasks)
 2. **Who Fills It:** Reflection system or manual session review
-3. **Where to Save:** `.claude/runtime/logs/<session_id>/feedback_summary.md`
+3. **Where to Save:** `~/.amplihack/.claude/runtime/logs/<session_id>/feedback_summary.md`
 4. **Purpose:** Capture learning opportunities for continuous improvement
 
 **Integration with Reflection:**

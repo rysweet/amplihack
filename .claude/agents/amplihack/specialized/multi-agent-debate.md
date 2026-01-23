@@ -272,7 +272,7 @@ This pattern is implemented as a workflow. Use the `/amplihack:debate` command:
 /amplihack:debate "Should we add Redis for caching?"
 ```
 
-The workflow file `.claude/workflow/DEBATE_WORKFLOW.md` can be customized to adjust:
+The workflow file `~/.amplihack/.claude/workflow/DEBATE_WORKFLOW.md` can be customized to adjust:
 
 - Agent perspectives (security, performance, simplicity, etc.)
 - Number of debate rounds

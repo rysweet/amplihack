@@ -32,9 +32,9 @@ class PowerSteeringResult:
 ### Side Effects
 
 - Reads transcript JSONL file
-- Checks semaphore files in `.claude/runtime/power-steering/`
-- Writes session summary to `.claude/runtime/power-steering/{session_id}/summary.md`
-- Creates completion semaphore at `.claude/runtime/power-steering/.{session_id}_completed`
+- Checks semaphore files in `~/.amplihack/.claude/runtime/power-steering/`
+- Writes session summary to `~/.amplihack/.claude/runtime/power-steering/{session_id}/summary.md`
+- Creates completion semaphore at `~/.amplihack/.claude/runtime/power-steering/.{session_id}_completed`
 
 ## Class Structure
 

@@ -5,7 +5,7 @@
 The amplihack plugin system has **two distinct installation modes**:
 
 1. **Native Plugin Mode** (via Claude Code's plugin system): Uses `~/.amplihack/.claude/` as centralized installation
-2. **UVX Fallback Mode** (when Claude CLI unavailable): Falls back to per-project `.claude/` directory copy
+2. **UVX Fallback Mode** (when Claude CLI unavailable): Falls back to per-project `~/.amplihack/.claude/` directory copy
 
 The error path `/home/azureuser/.cache/uv/archive-v0/.../lib/python3.12/site-packages` originates from:
 - **Proxy server path resolution** attempting to locate `amplihack.proxy.server` in UVX environments
@@ -351,7 +351,7 @@ except (ImportError, AttributeError):
     pass
 ```
 
-**Result**: Returns path within site-packages if `.claude/` directory exists there.
+**Result**: Returns path within site-packages if `~/.amplihack/.claude/` directory exists there.
 
 ## Plugin vs. UVX Path Dichotomy
 
@@ -373,7 +373,7 @@ except (ImportError, AttributeError):
 **Priority Order** (from `FrameworkPathResolver.find_framework_root()`):
 
 1. **PRIORITY 1**: Current working directory and parents (local development)
-   - Search for `.claude/` in CWD and parent directories
+   - Search for `~/.amplihack/.claude/` in CWD and parent directories
    - Enables local development mode
 
 2. **PRIORITY 2**: `AMPLIHACK_ROOT` environment variable
@@ -382,7 +382,7 @@ except (ImportError, AttributeError):
 
 3. **PRIORITY 3**: Inside amplihack package (UVX and installed packages - FALLBACK)
    - `amplihack.__file__` → package location
-   - Used when `.claude/` exists in site-packages
+   - Used when `~/.amplihack/.claude/` exists in site-packages
    - **This is where UVX paths appear**
 
 ## Component Interaction Map

@@ -1,6 +1,6 @@
 # CI Validators Test Suite
 
-Comprehensive test coverage for the three CI validation scripts in `.claude/ci/`.
+Comprehensive test coverage for the three CI validation scripts in `~/.amplihack/.claude/ci/`.
 
 ## Test Files
 

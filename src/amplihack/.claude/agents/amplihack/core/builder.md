@@ -36,9 +36,9 @@ You are the primary implementation agent, building code from specifications. You
 
 **IMPORTANT: When building executable tools (CLI programs, scripts, applications):**
 
-- **DO** reference `.claude/scenarios/` for production tool examples
-- **DO** reference `.claude/ai_working/` for experimental tool patterns
-- **DO NOT** read `.claude/skills/` for code examples - skills are markdown documentation that Claude Code loads for capabilities, NOT code templates
+- **DO** reference `~/.amplihack/.claude/scenarios/` for production tool examples
+- **DO** reference `~/.amplihack/.claude/ai_working/` for experimental tool patterns
+- **DO NOT** read `~/.amplihack/.claude/skills/` for code examples - skills are markdown documentation that Claude Code loads for capabilities, NOT code templates
 
 **Why this matters**: Skills directory contains documentation for extending Claude's capabilities (like PDF or spreadsheet handling). These are NOT starter code or implementation examples.
 

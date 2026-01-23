@@ -11,12 +11,12 @@ automation and collaborative problem-solving.
 
 When starting a session, import these files for context:
 
-[@~/.amplihack/.claude/context/PHILOSOPHY.md](.claude/context/PHILOSOPHY.md)
-[@~/.amplihack/.claude/context/PROJECT.md](.claude/context/PROJECT.md)
-[@~/.amplihack/.claude/context/PATTERNS.md](.claude/context/PATTERNS.md)
-[@~/.amplihack/.claude/context/TRUST.md](.claude/context/TRUST.md)
-[@~/.amplihack/.claude/context/USER_PREFERENCES.md](.claude/context/USER_PREFERENCES.md)
-[@~/.amplihack/.claude/context/USER_REQUIREMENT_PRIORITY.md](.claude/context/USER_REQUIREMENT_PRIORITY.md)
+[@~/.amplihack/.claude/context/PHILOSOPHY.md](~/.amplihack/.claude/context/PHILOSOPHY.md)
+[@~/.amplihack/.claude/context/PROJECT.md](~/.amplihack/.claude/context/PROJECT.md)
+[@~/.amplihack/.claude/context/PATTERNS.md](~/.amplihack/.claude/context/PATTERNS.md)
+[@~/.amplihack/.claude/context/TRUST.md](~/.amplihack/.claude/context/TRUST.md)
+[@~/.amplihack/.claude/context/USER_PREFERENCES.md](~/.amplihack/.claude/context/USER_PREFERENCES.md)
+[@~/.amplihack/.claude/context/USER_REQUIREMENT_PRIORITY.md](~/.amplihack/.claude/context/USER_REQUIREMENT_PRIORITY.md)
 
 ## MANDATORY: Workflow Selection (ALWAYS FIRST)
 
@@ -101,7 +101,7 @@ Following: .claude/workflow/[WORKFLOW_NAME].md
   Skill(ultrathink-orchestrator) which reads the workflow and orchestrates
   agents to execute it - this is defined in the ultrathink skill.
 - **Maximize agent usage**: Every workflow step should leverage specialized
-  agents - delegate aggressively to agents in `.claude/agents/amplihack/*.md`
+  agents - delegate aggressively to agents in `~/.amplihack/.claude/agents/amplihack/*.md`
 - **Operate Autonomously and Independently by default**: You must try to
   determine the user's objective, and then pursue that objective autonomously
   and independently, with the highest possible quality and attention to detail,
@@ -142,7 +142,7 @@ Amplihack provides four extensibility mechanisms with clear invocation patterns:
 
 **Key Invocation Patterns:**
 
-- **SlashCommand Tool**: Custom commands in `.claude/commands/` CAN be invoked
+- **SlashCommand Tool**: Custom commands in `~/.amplihack/.claude/commands/` CAN be invoked
   programmatically by commands, skills, and agents. Only built-in commands
   (`/help`, `/clear`) cannot be invoked programmatically.
 
@@ -165,7 +165,7 @@ Amplihack provides four extensibility mechanisms with clear invocation patterns:
 - **Workflow Reference**: Commands/skills/agents read workflow files to follow
   process
   ```python
-  Read(file_path=".claude/workflow/DEFAULT_WORKFLOW.md")
+  Read(file_path="~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md")
   ```
 
 **Composition Examples:**
@@ -175,7 +175,7 @@ Amplihack provides four extensibility mechanisms with clear invocation patterns:
 - Skill invoking agent: `test-gap-analyzer` invokes `tester` agent
 - Agent invoking skill: `architect` can invoke `mermaid-diagram-generator`
 
-See `.claude/context/FRONTMATTER_STANDARDS.md` for complete invocation metadata
+See `~/.amplihack/.claude/context/FRONTMATTER_STANDARDS.md` for complete invocation metadata
 in frontmatter.
 
 ### CRITICAL: User Requirement Priority
@@ -192,7 +192,7 @@ requirements in quotes, these CANNOT be optimized away by simplification
 agents.**
 
 See
-[`@~/.amplihack/.claude/context/USER_REQUIREMENT_PRIORITY.md`](.claude/context/USER_REQUIREMENT_PRIORITY.md)
+[`@~/.amplihack/.claude/context/USER_REQUIREMENT_PRIORITY.md`](~/.amplihack/.claude/context/USER_REQUIREMENT_PRIORITY.md)
 for complete guidelines.
 
 ### Agent Delegation Strategy
@@ -297,7 +297,7 @@ Example - Complex issue:
 For repeated specialized tasks:
 
 1. Identify pattern after 2-3 similar requests
-2. Create agent in `.claude/agents/amplihack/specialized/`
+2. Create agent in `~/.amplihack/.claude/agents/amplihack/specialized/`
 3. Define clear role and boundaries
 4. Add to delegation triggers above
 
@@ -320,7 +320,7 @@ Example - Any Non-Trivial Task:
 User: "Add authentication to the API"
 
 1. Invoke /ultrathink with the task
-   → UltraThink reads [DEFAULT_WORKFLOW.md](.claude/workflow/DEFAULT_WORKFLOW.md)
+   → UltraThink reads [DEFAULT_WORKFLOW.md](~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md)
    → Follows all workflow steps in order
    → Orchestrates multiple agents at each step
 
@@ -555,7 +555,7 @@ Makefile             # Easy access to scenario tools
 Default execution mode for non-trivial tasks. UltraThink:
 
 - Reads the workflow from
-  [`DEFAULT_WORKFLOW.md`](.claude/workflow/DEFAULT_WORKFLOW.md)
+  [`DEFAULT_WORKFLOW.md`](~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md)
 - Orchestrates specialized agents through each workflow step
 - Enforces systematic execution with TodoWrite tracking
 - Ensures philosophy compliance throughout
@@ -608,7 +608,7 @@ solutions and selects the best through comparison.
 - **Use for**: Security code, core algorithms, mission-critical features
 - **Cost**: 3-4x execution time
 - **Benefit**: 30-65% error reduction
-- **Workflow**: `.claude/workflow/N_VERSION_WORKFLOW.md`
+- **Workflow**: `~/.amplihack/.claude/workflow/N_VERSION_WORKFLOW.md`
 
 ```bash
 /amplihack:n-version "Implement JWT token validation"
@@ -622,7 +622,7 @@ perspectives (security, performance, simplicity) converges on best decision.
 - **Use for**: Architectural trade-offs, algorithm selection, design decisions
 - **Cost**: 2-3x execution time
 - **Benefit**: 40-70% better decision quality
-- **Workflow**: `.claude/workflow/DEBATE_WORKFLOW.md`
+- **Workflow**: `~/.amplihack/.claude/workflow/DEBATE_WORKFLOW.md`
 
 ```bash
 /amplihack:debate "Should we use PostgreSQL or Redis for this feature?"
@@ -636,7 +636,7 @@ pragmatic → minimal ensures reliable completion.
 - **Use for**: External APIs, code generation, data retrieval with fallbacks
 - **Cost**: 1.1-2x (only on failures)
 - **Benefit**: 95%+ reliability vs 70-80% single approach
-- **Workflow**: `.claude/workflow/CASCADE_WORKFLOW.md`
+- **Workflow**: `~/.amplihack/.claude/workflow/CASCADE_WORKFLOW.md`
 
 ```bash
 /amplihack:cascade "Generate API documentation from codebase"
@@ -717,17 +717,17 @@ documentation:
 **Key Feature - Auto-Documentation:**
 
 After investigations, the agent offers to create persistent docs in
-`.claude/docs/` (ARCHITECTURE*\* or INVESTIGATION*\*) so knowledge persists
+`~/.amplihack/.claude/docs/` (ARCHITECTURE*\* or INVESTIGATION*\*) so knowledge persists
 across sessions instead of being lost in chat history.
 
 **Details:**
 
-- **Complete Workflow**: `.claude/workflow/INVESTIGATION_WORKFLOW.md`
+- **Complete Workflow**: `~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md`
 - **Agent Implementation**:
-  `.claude/agents/amplihack/specialized/knowledge-archaeologist.md`
+  `~/.amplihack/.claude/agents/amplihack/specialized/knowledge-archaeologist.md`
 - **Templates**:
-  `.claude/templates/{investigation,architecture}-doc-template.md`
-- **Storage**: `.claude/docs/` (all generated documentation)
+  `~/.amplihack/.claude/templates/{investigation,architecture}-doc-template.md`
+- **Storage**: `~/.amplihack/.claude/docs/` (all generated documentation)
 
 ## Claude Code Skills
 
@@ -777,11 +777,11 @@ make analyze-codebase TARGET=./src OPTIONS='--format json --depth deep'
 
 ### Creating New Scenario Tools
 
-1. **Start Experimental**: Create in `.claude/ai_working/tool-name/`
+1. **Start Experimental**: Create in `~/.amplihack/.claude/ai_working/tool-name/`
 2. **Develop and Test**: Build minimal viable version with real usage
-3. **Graduate to Production**: Move to `.claude/scenarios/` when criteria met
+3. **Graduate to Production**: Move to `~/.amplihack/.claude/scenarios/` when criteria met
 
-See `.claude/scenarios/README.md` for detailed guidance and templates.
+See `~/.amplihack/.claude/scenarios/README.md` for detailed guidance and templates.
 
 ### Graduation Criteria
 
@@ -848,7 +848,7 @@ After code changes:
 
 The system should continuously improve:
 
-- Track patterns in `.claude/context/PATTERNS.md`
+- Track patterns in `~/.amplihack/.claude/context/PATTERNS.md`
 - Store discoveries in memory for cross-session persistence
 - Update agent definitions as needed
 - Create new agents for repeated tasks
@@ -867,7 +867,7 @@ We measure success by:
 
 ### MANDATORY Preference Enforcement
 
-User preferences in `.claude/context/USER_PREFERENCES.md` are MANDATORY and MUST
+User preferences in `~/.amplihack/.claude/context/USER_PREFERENCES.md` are MANDATORY and MUST
 be strictly followed by all agents and Claude Code operations. These are NOT
 advisory suggestions - they are REQUIRED behaviors that CANNOT be optimized away
 or ignored.
@@ -947,7 +947,7 @@ Use `/amplihack:customize` to manage preferences:
 ```
 
 This command uses Claude Code's native Read, Edit, and Write tools to modify
-`.claude/context/USER_PREFERENCES.md` directly - no bash scripts, no complex
+`~/.amplihack/.claude/context/USER_PREFERENCES.md` directly - no bash scripts, no complex
 automation, just simple file operations.
 
 ---
@@ -959,5 +959,5 @@ liberally, execute in parallel, and continuously learn.
 
 **PREFERRED PATTERN:** When user says "create a tool" → Build BOTH:
 
-1. Executable tool in `.claude/scenarios/` (the program itself)
-2. Skill in `.claude/skills/` that calls the tool (convenient interface)
+1. Executable tool in `~/.amplihack/.claude/scenarios/` (the program itself)
+2. Skill in `~/.amplihack/.claude/skills/` that calls the tool (convenient interface)

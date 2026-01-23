@@ -58,8 +58,8 @@ This document describes the complete integration between GitHub Copilot CLI and 
 
 ### Key Principles
 
-1. **Source of Truth**: All content lives in `.claude/` directory
-2. **Symlinks for Access**: `.github/` uses symlinks to `.claude/` content
+1. **Source of Truth**: All content lives in `~/.amplihack/.claude/` directory
+2. **Symlinks for Access**: `.github/` uses symlinks to `~/.amplihack/.claude/` content
 3. **No Duplication**: Single source of truth prevents drift
 4. **Safe for Build Tools**: Symlinks use `followlinks=True` in build scripts
 5. **Philosophy Aligned**: Ruthless simplicity, no complex sync systems
@@ -79,7 +79,7 @@ This document describes the complete integration between GitHub Copilot CLI and 
 - Build tools (`build_hooks.py`) can process with `followlinks=True`
 - No circular symlinks
 - Single source of truth
-- Changes in `.claude/` automatically available in `.github/`
+- Changes in `~/.amplihack/.claude/` automatically available in `.github/`
 
 **INCORRECT Pattern** (What Breaks):
 ```
@@ -325,7 +325,7 @@ Each hook is a **bash wrapper** that calls a **Python implementation**:
 python3 .claude/tools/amplihack/hooks/pre_commit.py "$@"
 ```
 
-**Python Implementation** (`.claude/tools/amplihack/hooks/pre_commit.py`):
+**Python Implementation** (`~/.amplihack/.claude/tools/amplihack/hooks/pre_commit.py`):
 ```python
 #!/usr/bin/env python3
 """Pre-commit hook implementation."""
@@ -382,8 +382,8 @@ with open(".github/agents/AGENTS.md", "w") as f:
     f.write("""
 # Active Agents and Context
 
-@.claude/context/USER_PREFERENCES.md
-@.claude/context/PHILOSOPHY.md
+@~/.amplihack/.claude/context/USER_PREFERENCES.md
+@~/.amplihack/.claude/context/PHILOSOPHY.md
     """)
 # Copilot reads file via @include on next request
 ```
@@ -531,7 +531,7 @@ GitHub Copilot CLI and Claude Code can work together:
 
 1. **Use Claude Code for Workflows**: Complex multi-step workflows
 2. **Use Copilot for Quick Suggestions**: Rapid code generation
-3. **Share Context**: Both use same `.claude/context/` files
+3. **Share Context**: Both use same `~/.amplihack/.claude/context/` files
 4. **Complementary Tools**: Different strengths, same philosophy
 
 **Example Workflow**:
@@ -794,7 +794,7 @@ All git hooks follow the bash wrapper → Python implementation pattern:
 python3 .claude/tools/amplihack/hooks/pre_commit.py "$@"
 ```
 
-**Implementation**: `.claude/tools/amplihack/hooks/pre_commit.py`
+**Implementation**: `~/.amplihack/.claude/tools/amplihack/hooks/pre_commit.py`
 
 **Checks**:
 - Linting (ruff, pylint, etc.)
@@ -812,7 +812,7 @@ python3 .claude/tools/amplihack/hooks/pre_commit.py "$@"
 python3 .claude/tools/amplihack/hooks/commit_msg.py "$@"
 ```
 
-**Implementation**: `.claude/tools/amplihack/hooks/commit_msg.py`
+**Implementation**: `~/.amplihack/.claude/tools/amplihack/hooks/commit_msg.py`
 
 **Validation**:
 - Conventional commits format
@@ -829,7 +829,7 @@ python3 .claude/tools/amplihack/hooks/commit_msg.py "$@"
 python3 .claude/tools/amplihack/hooks/pre_push.py "$@"
 ```
 
-**Implementation**: `.claude/tools/amplihack/hooks/pre_push.py`
+**Implementation**: `~/.amplihack/.claude/tools/amplihack/hooks/pre_push.py`
 
 **Checks**:
 - Unit tests
@@ -846,7 +846,7 @@ python3 .claude/tools/amplihack/hooks/pre_push.py "$@"
 python3 .claude/tools/amplihack/hooks/post_checkout.py "$@"
 ```
 
-**Implementation**: `.claude/tools/amplihack/hooks/post_checkout.py`
+**Implementation**: `~/.amplihack/.claude/tools/amplihack/hooks/post_checkout.py`
 
 **Actions**:
 - Install dependencies (if needed)
@@ -863,7 +863,7 @@ python3 .claude/tools/amplihack/hooks/post_checkout.py "$@"
 python3 .claude/tools/amplihack/hooks/post_merge.py "$@"
 ```
 
-**Implementation**: `.claude/tools/amplihack/hooks/post_merge.py`
+**Implementation**: `~/.amplihack/.claude/tools/amplihack/hooks/post_merge.py`
 
 **Actions**:
 - Remove merged branches
@@ -882,7 +882,7 @@ python3 .claude/tools/amplihack/hooks/post_merge.py "$@"
 python3 .claude/tools/amplihack/hooks/session_start.py "$@"
 ```
 
-**Implementation**: `.claude/tools/amplihack/hooks/session_start.py`
+**Implementation**: `~/.amplihack/.claude/tools/amplihack/hooks/session_start.py`
 
 **Actions**:
 - Check amplihack version
@@ -900,7 +900,7 @@ python3 .claude/tools/amplihack/hooks/session_start.py "$@"
 python3 .claude/tools/amplihack/hooks/session_end.py "$@"
 ```
 
-**Implementation**: `.claude/tools/amplihack/hooks/session_end.py`
+**Implementation**: `~/.amplihack/.claude/tools/amplihack/hooks/session_end.py`
 
 **Actions**:
 - Save session logs
@@ -1097,14 +1097,14 @@ tail -f .claude/runtime/logs/debug.log
 ### Ruthless Simplicity
 
 **Applied to Integration**:
-- Single source of truth (`.claude/`)
+- Single source of truth (`~/.amplihack/.claude/`)
 - Symlinks instead of duplication
 - Bash wrappers for hooks (simple)
 - Python implementations (testable)
 - No complex sync systems
 
 **What We Avoid**:
-- ❌ Duplicating files between `.claude/` and `.github/`
+- ❌ Duplicating files between `~/.amplihack/.claude/` and `.github/`
 - ❌ Complex synchronization scripts
 - ❌ Circular symlinks
 - ❌ Over-engineered hook systems
@@ -1138,8 +1138,8 @@ tail -f .claude/runtime/logs/debug.log
 
 - **GitHub Copilot CLI**: https://docs.github.com/en/copilot/github-copilot-in-the-cli
 - **MCP Servers**: https://modelcontextprotocol.io/
-- **amplihack Philosophy**: `.claude/context/PHILOSOPHY.md`
-- **amplihack Patterns**: `.claude/context/PATTERNS.md`
+- **amplihack Philosophy**: `~/.amplihack/.claude/context/PHILOSOPHY.md`
+- **amplihack Patterns**: `~/.amplihack/.claude/context/PATTERNS.md`
 
 ### Support
 

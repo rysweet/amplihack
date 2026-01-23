@@ -19,7 +19,7 @@ copied = copytree_manifest(amplihack_src, temp_claude_dir, ".claude")
 
 **Path Resolution**:
 - Source: `/path/to/site-packages/amplihack/`
-- Looked for `.claude/` inside amplihack package
+- Looked for `~/.amplihack/.claude/` inside amplihack package
 - Direct file copy, no plugin system involvement
 
 ### After PR #1973 (commit 03a8e2fc)

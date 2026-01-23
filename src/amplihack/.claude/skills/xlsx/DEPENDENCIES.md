@@ -383,4 +383,4 @@ For automated testing in CI environments:
 - **pandas documentation**: https://pandas.pydata.org/docs/
 - **openpyxl documentation**: https://openpyxl.readthedocs.io/
 - **LibreOffice documentation**: https://documentation.libreoffice.org/
-- **Verification script**: `.claude/skills/common/verification/verify_skill.py`
+- **Verification script**: `~/.amplihack/.claude/skills/common/verification/verify_skill.py`

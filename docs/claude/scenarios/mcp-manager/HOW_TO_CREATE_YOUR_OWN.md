@@ -680,7 +680,7 @@ After creating your basic tool:
 2. Add interactive mode
 3. Add configuration validation schemas
 4. Add export/import functionality
-5. Create a companion skill in `.claude/skills/`
+5. Create a companion skill in `~/.amplihack/.claude/skills/`
 
 ## Questions?
 

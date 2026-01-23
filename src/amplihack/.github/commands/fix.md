@@ -1,6 +1,6 @@
 # GitHub Copilot Command Reference: fix
 
-**Source**: `.claude/commands/amplihack/fix.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/fix.md`
 
 ---
 

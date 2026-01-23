@@ -140,7 +140,7 @@ This skill provides a systematic 6-phase workflow for investigating and understa
 
 ```
 Investigation: "How does the reflection system work?"
-→ [analyzer(.claude/tools/amplihack/hooks/), patterns(reflection), integration(logging)]
+→ [analyzer(~/.amplihack/.claude/tools/amplihack/hooks/), patterns(reflection), integration(logging)]
 
 Investigation: "Why is CI failing?"
 → [analyzer(ci-config), patterns(ci-failures), integration(github-actions)]
@@ -286,7 +286,7 @@ Verification: Examine reflection logs, trace message processing
 - Updated PATTERNS.md (if applicable)
 - Updated project documentation
 - Optional: GitHub issues for improvements
-- Investigation session log in `.claude/runtime/logs/`
+- Investigation session log in `~/.amplihack/.claude/runtime/logs/`
 
 ## Transitioning to Development Workflow
 
@@ -394,7 +394,7 @@ UltraThink: Detected investigation task. Using INVESTIGATION_WORKFLOW.md
 
 To customize this workflow:
 
-1. Edit `.claude/workflow/INVESTIGATION_WORKFLOW.md` to modify, add, or remove phases
+1. Edit `~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md` to modify, add, or remove phases
 2. Adjust agent deployment strategies for your needs
 3. Add project-specific investigation patterns
 4. Update efficiency targets based on your metrics
@@ -426,7 +426,7 @@ When in doubt about investigation vs. development:
 
 ## Related Resources
 
-- **Source Workflow**: `.claude/workflow/INVESTIGATION_WORKFLOW.md` (complete 436-line specification)
+- **Source Workflow**: `~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md` (complete 436-line specification)
 - **Knowledge Extraction**: Use knowledge-extractor skill after investigations to capture learnings
-- **Agent Catalog**: `.claude/agents/CATALOG.md` for all available agents
-- **Pattern Library**: `.claude/context/PATTERNS.md` for reusable investigation patterns
+- **Agent Catalog**: `~/.amplihack/.claude/agents/CATALOG.md` for all available agents
+- **Pattern Library**: `~/.amplihack/.claude/context/PATTERNS.md` for reusable investigation patterns

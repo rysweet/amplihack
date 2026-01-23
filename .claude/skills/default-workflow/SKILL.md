@@ -80,7 +80,7 @@ This skill auto-activates for:
 
 ## Related Files
 
-- **Canonical Workflow**: `.claude/workflow/DEFAULT_WORKFLOW.md`
-- **Command Interface**: `.claude/commands/amplihack/ultrathink.md`
-- **Orchestrator Skill**: `.claude/skills/ultrathink-orchestrator/`
-- **Investigation Workflow**: `.claude/skills/investigation-workflow/`
+- **Canonical Workflow**: `~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md`
+- **Command Interface**: `~/.amplihack/.claude/commands/amplihack/ultrathink.md`
+- **Orchestrator Skill**: `~/.amplihack/.claude/skills/ultrathink-orchestrator/`
+- **Investigation Workflow**: `~/.amplihack/.claude/skills/investigation-workflow/`

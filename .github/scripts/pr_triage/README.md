@@ -161,7 +161,7 @@ Posted as PR comment with:
 
 ### Audit Log
 
-Security audit trail in `.claude/runtime/logs/pr-triage-{number}/audit.log`:
+Security audit trail in `~/.amplihack/.claude/runtime/logs/pr-triage-{number}/audit.log`:
 
 ```
 [2025-11-23 23:45:12] PR-123 | get_pr_data | success | {'num_files': 5}
@@ -171,7 +171,7 @@ Security audit trail in `.claude/runtime/logs/pr-triage-{number}/audit.log`:
 
 ### Log File
 
-Detailed execution log in `.claude/runtime/logs/pr-triage-{number}/triage.log`:
+Detailed execution log in `~/.amplihack/.claude/runtime/logs/pr-triage-{number}/triage.log`:
 
 ```
 [23:45:12] [INFO] [PR-123] Fetching PR data...

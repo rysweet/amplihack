@@ -1,6 +1,6 @@
 # GitHub Copilot Command Reference: modular-build
 
-**Source**: `.claude/commands/amplihack/modular-build.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/modular-build.md`
 
 ---
 
@@ -160,7 +160,7 @@ Integrates with `/ultrathink` and `/fix` workflows.
 
 ## Configuration
 
-Simplified configuration in `.claude/config/modular-build.json`:
+Simplified configuration in `~/.amplihack/.claude/config/modular-build.json`:
 
 - Phase agent assignments
 - Quality gate thresholds

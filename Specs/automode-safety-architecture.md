@@ -2,7 +2,7 @@
 
 ## Problem Statement
 
-When amplihack is launched via `uvx --from git+...` in a directory with uncommitted git changes, the UVX initialization copies `.claude/` directory contents and silently overwrites local uncommitted changes, causing irreversible data loss.
+When amplihack is launched via `uvx --from git+...` in a directory with uncommitted git changes, the UVX initialization copies `~/.amplihack/.claude/` directory contents and silently overwrites local uncommitted changes, causing irreversible data loss.
 
 ## Solution Overview
 

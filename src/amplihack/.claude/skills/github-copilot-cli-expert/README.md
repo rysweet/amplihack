@@ -54,7 +54,7 @@ Skill(skill="github-copilot-cli-expert")
 
 ### 1. Integration Architecture
 
-- **Symlink Architecture**: `.github/` symlinks to `.claude/` (source of truth)
+- **Symlink Architecture**: `.github/` symlinks to `~/.amplihack/.claude/` (source of truth)
 - **Hook System**: Bash wrappers calling Python implementations
 - **Command Conversion**: Claude Code commands → Copilot-friendly docs
 - **MCP Servers**: Filesystem, git, amplihack-specific servers
@@ -203,7 +203,7 @@ cat .github/mcp-servers.json
 ### Philosophy Alignment
 
 #### Ruthless Simplicity
-- **Single source of truth**: `.claude/` is source
+- **Single source of truth**: `~/.amplihack/.claude/` is source
 - **Symlinks not duplication**: No file copying
 - **Bash wrappers**: Simple, testable
 - **No complex sync**: Convert commands once
@@ -233,10 +233,10 @@ cat .github/mcp-servers.json
 - **Agents Registry**: `.github/agents/REGISTRY.json`
 
 ### Core Context
-- **Philosophy**: `.claude/context/PHILOSOPHY.md`
-- **Patterns**: `.claude/context/PATTERNS.md`
-- **Project**: `.claude/context/PROJECT.md`
-- **Trust**: `.claude/context/TRUST.md`
+- **Philosophy**: `~/.amplihack/.claude/context/PHILOSOPHY.md`
+- **Patterns**: `~/.amplihack/.claude/context/PATTERNS.md`
+- **Project**: `~/.amplihack/.claude/context/PROJECT.md`
+- **Trust**: `~/.amplihack/.claude/context/TRUST.md`
 
 ## Examples
 
@@ -335,7 +335,7 @@ gh copilot explain .github/agents/skills/investigation-workflow/
 - ✅ Use MCP servers when available
 
 ### Don't
-- ❌ Duplicate files between `.claude/` and `.github/`
+- ❌ Duplicate files between `~/.amplihack/.claude/` and `.github/`
 - ❌ Create circular symlinks
 - ❌ Bypass philosophy for speed
 - ❌ Ignore available skills

@@ -258,8 +258,8 @@ suggest_preference_improvements(learned_patterns)
 
 ### Agent Definitions (CRITICAL - UNCHANGED)
 
-- `.claude/agents/amplihack/core/*.md` - No changes
-- `.claude/agents/amplihack/specialized/*.md` - No changes
+- `~/.amplihack/.claude/agents/amplihack/core/*.md` - No changes
+- `~/.amplihack/.claude/agents/amplihack/specialized/*.md` - No changes
 - Agent execution remains stateless
 - Agent prompts remain identical
 - No agent-internal modifications needed

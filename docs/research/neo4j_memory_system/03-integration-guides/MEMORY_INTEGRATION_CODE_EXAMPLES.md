@@ -10,7 +10,7 @@ This document provides concrete Python implementation examples for integrating a
 
 ### 1.1 Memory Store (Simple JSON-Based)
 
-**File**: `.claude/memory/system/memory_store.py`
+**File**: `~/.amplihack/.claude/memory/system/memory_store.py`
 
 ```python
 import json
@@ -109,7 +109,7 @@ class MemoryStore:
 
 ### 1.2 Memory Retrieval Interface
 
-**File**: `.claude/memory/system/memory_retrieval.py`
+**File**: `~/.amplihack/.claude/memory/system/memory_retrieval.py`
 
 ```python
 from typing import Dict, List, Any, Optional

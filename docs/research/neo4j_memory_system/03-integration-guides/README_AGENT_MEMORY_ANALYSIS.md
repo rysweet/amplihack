@@ -194,8 +194,8 @@ New:      User Request → Agent Orchestration → [Memory Enhanced] Agent → R
 
 ### Agent Definitions (100% UNCHANGED)
 
-- `.claude/agents/amplihack/core/*.md` - No modifications
-- `.claude/agents/amplihack/specialized/*.md` - No modifications
+- `~/.amplihack/.claude/agents/amplihack/core/*.md` - No modifications
+- `~/.amplihack/.claude/agents/amplihack/specialized/*.md` - No modifications
 - All agent execution remains identical
 - All agent output format unchanged
 

@@ -177,7 +177,7 @@ insight: "Create worktree per feature to avoid branch switching overhead"
 
 **Learnings not being injected?**
 
-- Check that `.claude/data/learnings/` directory exists
+- Check that `~/.amplihack/.claude/data/learnings/` directory exists
 - Verify YAML files are valid
 - Ensure keywords in learning match your task
 

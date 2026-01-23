@@ -73,7 +73,7 @@ def generate_content_hash(url: str) -> str:
 
 ### check_drift.py Script
 
-Location: `.claude/skills/agent-sdk/scripts/check_drift.py`
+Location: `~/.amplihack/.claude/skills/agent-sdk/scripts/check_drift.py`
 
 **Core Functionality:**
 

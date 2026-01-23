@@ -1,6 +1,6 @@
 # GitHub Copilot Command Reference: customize
 
-**Source**: `.claude/commands/amplihack/customize.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/customize.md`
 
 ---
 
@@ -86,7 +86,7 @@ Captures user feedback to improve future interactions.
 
 `/amplihack:customize list-workflows`
 
-Displays all available workflows in `.claude/workflow/` directory with descriptions.
+Displays all available workflows in `~/.amplihack/.claude/workflow/` directory with descriptions.
 
 Example output:
 
@@ -206,7 +206,7 @@ When you invoke this command, follow these steps:
 
 ### For "set" action:
 
-1. Use the Read tool to read `.claude/context/USER_PREFERENCES.md`
+1. Use the Read tool to read `~/.amplihack/.claude/context/USER_PREFERENCES.md`
 2. Validate the preference name and value against the available preferences list above
 3. Use the Edit tool to update the preference section in USER_PREFERENCES.md:
    - Find the section matching the preference (e.g., "### Verbosity")
@@ -228,20 +228,20 @@ Then update timestamp:
 
 ### For "show" action:
 
-1. Use the Read tool to read `.claude/context/USER_PREFERENCES.md`
+1. Use the Read tool to read `~/.amplihack/.claude/context/USER_PREFERENCES.md`
 2. Display the contents to the user in a formatted manner
 
 ### For "reset" action:
 
 If resetting a specific preference:
 
-1. Use the Read tool to read `.claude/context/USER_PREFERENCES.md`
+1. Use the Read tool to read `~/.amplihack/.claude/context/USER_PREFERENCES.md`
 2. Use the Edit tool to replace the preference value with its default
 3. Update the timestamp
 
 If resetting all preferences:
 
-1. Use the Write tool to overwrite `.claude/context/USER_PREFERENCES.md` with the default template (see below)
+1. Use the Write tool to overwrite `~/.amplihack/.claude/context/USER_PREFERENCES.md` with the default template (see below)
 
 Default template structure:
 
@@ -297,7 +297,7 @@ _Last updated: [current timestamp]_
 
 ### For "learn" action:
 
-1. Use the Read tool to read `.claude/context/USER_PREFERENCES.md`
+1. Use the Read tool to read `~/.amplihack/.claude/context/USER_PREFERENCES.md`
 2. Extract the feedback text from the command arguments
 3. Use the Edit tool to add the feedback to the "Learned Patterns" section:
    - Insert after the "<!-- User feedback... -->" comment
@@ -323,7 +323,7 @@ Use Edit tool on .claude/context/USER_PREFERENCES.md:
    - Title (from first # heading)
    - Description (from first paragraph after "How This Workflow Works")
    - Number of steps (count lines starting with "### Step")
-3. Use the Read tool on `.claude/context/USER_PREFERENCES.md` to get current selection:
+3. Use the Read tool on `~/.amplihack/.claude/context/USER_PREFERENCES.md` to get current selection:
    - Find line "**Selected Workflow**:"
    - Extract workflow name
 4. Format and display results as shown in the command documentation above
@@ -333,7 +333,7 @@ Use Edit tool on .claude/context/USER_PREFERENCES.md:
 
 1. Validate workflow_name argument is provided
    - If missing: Display error and show available workflows (use list-workflows logic)
-2. Construct absolute file path: `.claude/workflow/{workflow_name}.md`
+2. Construct absolute file path: `~/.amplihack/.claude/workflow/{workflow_name}.md`
 3. Use the Read tool to read the workflow file
 4. If file not found:
    - Show error message
@@ -345,10 +345,10 @@ Use Edit tool on .claude/context/USER_PREFERENCES.md:
 
 1. Validate workflow_name argument is provided
    - If missing: Display error and show usage
-2. Construct workflow file path: `.claude/workflow/{workflow_name}.md`
+2. Construct workflow file path: `~/.amplihack/.claude/workflow/{workflow_name}.md`
 3. Verify file exists using Read tool (attempt to read)
    - If not found: Show error with available workflows list
-4. Use the Read tool to read `.claude/context/USER_PREFERENCES.md`
+4. Use the Read tool to read `~/.amplihack/.claude/context/USER_PREFERENCES.md`
 5. Use the Edit tool to update workflow selection:
    ```
    old_string: "**Selected Workflow**: [current_workflow]"
@@ -387,7 +387,7 @@ Before making changes, validate:
 
 ## Error Handling
 
-- If `.claude/context/USER_PREFERENCES.md` doesn't exist, create it with the default template
+- If `~/.amplihack/.claude/context/USER_PREFERENCES.md` doesn't exist, create it with the default template
 - If preference name is invalid, list valid preferences
 - If value is invalid for enumerated preference, list valid values
 - If file operations fail, report the error clearly
@@ -397,7 +397,7 @@ Before making changes, validate:
 
 This command integrates with the project by:
 
-1. Storing preferences in `.claude/context/USER_PREFERENCES.md`
+1. Storing preferences in `~/.amplihack/.claude/context/USER_PREFERENCES.md`
 2. Preferences are loaded via CLAUDE.md imports at session start
 3. Agents and workflows reference these preferences (MANDATORY enforcement)
 4. Learned patterns accumulate over time
