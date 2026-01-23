@@ -1,11 +1,83 @@
 """Copilot CLI launcher - simple wrapper around copilot command."""
 
+import json
 import os
 import shlex
 import subprocess
 from pathlib import Path
 
 from ..context.adaptive.detector import LauncherDetector
+
+
+def get_gh_auth_account() -> str | None:
+    """Check if gh CLI is authenticated and return the account name.
+
+    Returns:
+        Account name if authenticated, None otherwise.
+    """
+    try:
+        result = subprocess.run(
+            ["gh", "auth", "status"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+        if result.returncode == 0:
+            # Parse output - may be in stdout or stderr depending on environment
+            output = result.stdout + result.stderr
+            # Parse output like "Logged in to github.com account USERNAME"
+            for line in output.split("\n"):
+                if "Logged in to" in line and "account" in line:
+                    parts = line.split("account")
+                    if len(parts) > 1:
+                        # Extract account name (format: "account USERNAME (path)")
+                        account_part = parts[1].strip()
+                        account = account_part.split()[0] if account_part else None
+                        return account
+        return None
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return None
+
+
+def disable_github_mcp_server() -> bool:
+    """Disable the GitHub MCP server by staging an MCP config.
+
+    Creates or updates ~/.copilot/github-copilot/mcp.json to disable
+    the github-mcp-server, saving context tokens.
+
+    Returns:
+        True if config was staged successfully, False otherwise.
+    """
+    mcp_config_dir = Path.home() / ".copilot" / "github-copilot"
+    mcp_config_file = mcp_config_dir / "mcp.json"
+
+    try:
+        # Create directory if needed
+        mcp_config_dir.mkdir(parents=True, exist_ok=True)
+
+        # Load existing config or create new
+        if mcp_config_file.exists():
+            config = json.loads(mcp_config_file.read_text())
+        else:
+            config = {}
+
+        # Ensure mcpServers exists
+        if "mcpServers" not in config:
+            config["mcpServers"] = {}
+
+        # Disable github-mcp-server
+        if "github-mcp-server" not in config["mcpServers"]:
+            config["mcpServers"]["github-mcp-server"] = {}
+
+        config["mcpServers"]["github-mcp-server"]["disabled"] = True
+
+        # Write config
+        mcp_config_file.write_text(json.dumps(config, indent=2) + "\n")
+        return True
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"Warning: Could not disable GitHub MCP server: {e}")
+        return False
 
 
 def check_copilot() -> bool:
@@ -48,22 +120,35 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
             print("Failed to install Copilot CLI")
             return 1
 
+    # Disable GitHub MCP server to save context tokens
+    # Users can re-enable by asking "please use the GitHub MCP server"
+    if disable_github_mcp_server():
+        print("✓ Disabled GitHub MCP server to save context tokens - using gh CLI instead")
+        gh_account = get_gh_auth_account()
+        if gh_account:
+            print(f"  Using gh CLI with account: {gh_account}")
+        else:
+            print("  ⚠ gh CLI not authenticated - run 'gh auth login' for GitHub access")
+        print("  To re-enable GitHub MCP, just ask: 'please use the GitHub MCP server'")
+
     # Write launcher context before launching
     project_root = Path(os.getcwd())
     detector = LauncherDetector(project_root)
     # Sanitize args for safe logging
-    safe_args = ' '.join(shlex.quote(arg) for arg in (args or []))
+    safe_args = " ".join(shlex.quote(arg) for arg in (args or []))
     detector.write_context(
         launcher_type="copilot",
         command=f"amplihack copilot {safe_args}",
-        environment={"AMPLIHACK_LAUNCHER": "copilot"}
+        environment={"AMPLIHACK_LAUNCHER": "copilot"},
     )
 
     # CRITICAL: Create agent files and AGENTS.md BEFORE launching Copilot
     # Copilot autodiscovers these at startup
     try:
-        import amplihack
         import shutil
+
+        import amplihack
+
         from ..context.adaptive.strategies import CopilotStrategy
 
         # Get package directory (where .claude/ is actually staged)
@@ -116,7 +201,8 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
     cmd = [
         "copilot",
         "--allow-all-tools",
-        "--model", model,
+        "--model",
+        model,
         "--add-dir",
         os.getcwd(),  # Add current directory for .github/agents/ access
     ]
