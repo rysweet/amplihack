@@ -683,25 +683,19 @@ def _configure_amplihack_marketplace() -> bool:
 
         # Add marketplace if not present
         if "extraKnownMarketplaces" not in settings:
-            settings["extraKnownMarketplaces"] = []
-        elif not isinstance(settings["extraKnownMarketplaces"], list):
-            # Auto-repair corrupted settings from old bug (dict → list)
-            settings["extraKnownMarketplaces"] = []
+            settings["extraKnownMarketplaces"] = {}
+        elif not isinstance(settings["extraKnownMarketplaces"], dict):
+            # Auto-repair corrupted settings from old bug (list/array → dict)
+            settings["extraKnownMarketplaces"] = {}
 
-        # Check if amplihack marketplace already exists in the list
-        marketplace_exists = any(
-            isinstance(m, dict) and m.get("name") == "amplihack"
-            for m in settings["extraKnownMarketplaces"]
-        )
-
-        if not marketplace_exists:
-            settings["extraKnownMarketplaces"].append(
-                {
-                    "name": "amplihack",
-                    "url": "https://github.com/rysweet/amplihack",
-                    "type": "github",
+        # Check if amplihack marketplace already exists
+        if "amplihack" not in settings["extraKnownMarketplaces"]:
+            settings["extraKnownMarketplaces"]["amplihack"] = {
+                "source": {
+                    "source": "github",
+                    "repo": "rysweet/amplihack",
                 }
-            )
+            }
 
             # Write atomically
             with open(settings_path, "w") as f:
