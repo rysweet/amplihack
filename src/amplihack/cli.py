@@ -658,8 +658,7 @@ def _configure_amplihack_marketplace() -> bool:
     """Configure amplihack marketplace in Claude Code settings.
 
     Adds extraKnownMarketplaces entry pointing to amplihack GitHub repo.
-    Note: Path-based installation doesn't require marketplace lookup, but this
-    configuration is maintained for backward compatibility and potential future use.
+    This enables: claude plugin install amplihack
 
     Returns:
         bool: True if configuration successful, False otherwise
@@ -813,7 +812,6 @@ def main(argv: list[str] | None = None) -> int:
 
         # Setup plugin architecture
         # .claude-plugin is copied to src/amplihack/.claude-plugin/ by build_hooks.py
-        import amplihack
 
         # Skip Claude Code plugin installation for amplifier command
         # Amplifier uses its own bundle system and doesn't need the Claude Code plugin
@@ -825,7 +823,7 @@ def main(argv: list[str] | None = None) -> int:
             temp_claude_dir = _fallback_to_directory_copy("Amplifier mode - using directory copy")
         else:
             # Setup amplihack plugin via Claude Code plugin system
-            # Uses direct path-based installation (not marketplace lookup)
+            # This uses extraKnownMarketplaces to enable: claude plugin install amplihack
             if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                 print("📦 Setting up amplihack plugin")
 
@@ -851,12 +849,8 @@ def main(argv: list[str] | None = None) -> int:
                     env = os.environ.copy()
                     env["TMPDIR"] = str(claude_temp_dir)
 
-                    # Get amplihack package path for direct installation
-                    # Uses path-based install instead of marketplace lookup
-                    plugin_path = Path(amplihack.__file__).parent
-
                     result = subprocess.run(
-                        [claude_path, "plugin", "install", str(plugin_path)],
+                        [claude_path, "plugin", "install", "amplihack"],
                         capture_output=True,
                         text=True,
                         timeout=60,
