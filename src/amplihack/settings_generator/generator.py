@@ -3,7 +3,7 @@
 import json
 import re
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any
 
 
 class SettingsGenerator:
@@ -16,13 +16,11 @@ class SettingsGenerator:
     """
 
     # Plugin name pattern (lowercase letters, numbers, hyphens)
-    NAME_PATTERN = re.compile(r'^[a-z0-9-]+$')
+    NAME_PATTERN = re.compile(r"^[a-z0-9-]+$")
 
     def generate(
-        self,
-        plugin_manifest: Dict[str, Any],
-        user_settings: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
+        self, plugin_manifest: dict[str, Any], user_settings: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Generate settings from plugin manifest.
 
         Args:
@@ -39,8 +37,8 @@ class SettingsGenerator:
         self._check_circular_reference(plugin_manifest)
 
         # Validate plugin name if present
-        if 'name' in plugin_manifest:
-            if not self.NAME_PATTERN.match(str(plugin_manifest['name'])):
+        if "name" in plugin_manifest:
+            if not self.NAME_PATTERN.match(str(plugin_manifest["name"])):
                 raise ValueError(
                     f"Invalid plugin name: {plugin_manifest['name']} "
                     "(must be lowercase letters, numbers, hyphens only)"
@@ -49,63 +47,59 @@ class SettingsGenerator:
         settings = {}
 
         # Add MCP servers if present in manifest
-        if 'mcpServers' in plugin_manifest:
-            settings['mcpServers'] = self._resolve_paths_in_dict(
-                plugin_manifest['mcpServers']
-            )
+        if "mcpServers" in plugin_manifest:
+            settings["mcpServers"] = self._resolve_paths_in_dict(plugin_manifest["mcpServers"])
 
         # Add enabled plugins array for /plugin command discoverability
-        if plugin_manifest.get('name'):
-            plugin_name = plugin_manifest.get('name')
-            settings['enabledPlugins'] = [plugin_name]
+        if plugin_manifest.get("name"):
+            plugin_name = plugin_manifest.get("name")
+            settings["enabledPlugins"] = [plugin_name]
 
         # Add marketplace configuration
-        if 'marketplace' in plugin_manifest:
-            marketplace_config = plugin_manifest['marketplace']
+        if "marketplace" in plugin_manifest:
+            marketplace_config = plugin_manifest["marketplace"]
 
             # Validate marketplace URL
-            url = marketplace_config.get('url', '')
+            url = marketplace_config.get("url", "")
             if not url or not self._is_valid_url(url):
                 raise ValueError(f"Invalid marketplace URL: {url}")
 
             # Validate marketplace name
-            name = marketplace_config.get('name', '')
+            name = marketplace_config.get("name", "")
             if not name or not self._is_valid_marketplace_name(name):
                 raise ValueError(f"Invalid marketplace name: {name}")
 
-            # Validate GitHub URL structure if type is github
-            marketplace_type = marketplace_config.get('type', 'github')
-            if marketplace_type == 'github' and not self._is_valid_github_url(url):
-                raise ValueError(f"Invalid GitHub URL structure: {url}")
+            # Extract GitHub repo from URL for correct Claude Code format
+            marketplace_type = marketplace_config.get("type", "github")
+            if marketplace_type == "github":
+                if not self._is_valid_github_url(url):
+                    raise ValueError(f"Invalid GitHub URL structure: {url}")
+                # Convert URL to repo format: "owner/repo"
+                if "github.com/" in url:
+                    repo = url.split("github.com/")[-1].rstrip(".git").rstrip("/")
+                else:
+                    raise ValueError(f"Invalid GitHub URL: {url}")
+            else:
+                raise ValueError("Only GitHub marketplaces are currently supported")
 
-            if 'extraKnownMarketplaces' not in settings:
-                settings['extraKnownMarketplaces'] = []
+            if "extraKnownMarketplaces" not in settings:
+                settings["extraKnownMarketplaces"] = {}
 
-            # Add marketplace entry with all required fields
-            marketplace_entry = {
-                'name': name,
-                'url': url,
-                'type': marketplace_type
-            }
-
-            # Check if marketplace already exists (by name)
-            marketplace_exists = any(
-                m.get('name') == name
-                for m in settings['extraKnownMarketplaces']
-            )
-
-            if not marketplace_exists:
-                settings['extraKnownMarketplaces'].append(marketplace_entry)
+            # Add marketplace entry with correct nested source structure
+            if name not in settings["extraKnownMarketplaces"]:
+                settings["extraKnownMarketplaces"][name] = {
+                    "source": {"source": "github", "repo": repo}
+                }
 
         # Add plugin metadata
         if plugin_manifest:
-            if 'plugins' not in settings:
-                settings['plugins'] = {}
+            if "plugins" not in settings:
+                settings["plugins"] = {}
 
-            plugin_name = plugin_manifest.get('name', 'unknown')
-            settings['plugins'][plugin_name] = {
-                'version': plugin_manifest.get('version'),
-                'description': plugin_manifest.get('description'),
+            plugin_name = plugin_manifest.get("name", "unknown")
+            settings["plugins"][plugin_name] = {
+                "version": plugin_manifest.get("version"),
+                "description": plugin_manifest.get("description"),
             }
 
         # Merge with user settings if provided
@@ -114,11 +108,7 @@ class SettingsGenerator:
 
         return settings
 
-    def merge_settings(
-        self,
-        base: Dict[str, Any],
-        overlay: Dict[str, Any]
-    ) -> Dict[str, Any]:
+    def merge_settings(self, base: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
         """Deep merge two settings dictionaries.
 
         Args:
@@ -139,26 +129,18 @@ class SettingsGenerator:
 
         for key, value in overlay.items():
             if key in merged and isinstance(merged[key], dict) and isinstance(value, dict):
-                # Deep merge nested dictionaries
+                # Deep merge nested dictionaries (includes extraKnownMarketplaces)
                 merged[key] = self.merge_settings(merged[key], value)
             elif key in merged and isinstance(merged[key], list) and isinstance(value, list):
-                # Special handling for marketplace lists - deduplicate by name
-                if key == 'extraKnownMarketplaces':
-                    merged[key] = self._deduplicate_marketplaces(merged[key], value)
-                else:
-                    # Concatenate other lists
-                    merged[key] = merged[key] + value
+                # Concatenate lists
+                merged[key] = merged[key] + value
             else:
                 # Overlay value takes precedence
                 merged[key] = value
 
         return merged
 
-    def write_settings(
-        self,
-        settings: Dict[str, Any],
-        target_path: Path
-    ) -> bool:
+    def write_settings(self, settings: dict[str, Any], target_path: Path) -> bool:
         """Write settings to JSON file.
 
         Args:
@@ -183,7 +165,7 @@ class SettingsGenerator:
         except (PermissionError, OSError, TypeError):
             return False
 
-    def _check_circular_reference(self, data: Any, seen: Optional[set] = None) -> None:
+    def _check_circular_reference(self, data: Any, seen: set | None = None) -> None:
         """Check for circular references in data structure.
 
         Args:
@@ -219,7 +201,7 @@ class SettingsGenerator:
             for item in data:
                 self._check_circular_reference(item, branch_seen)
 
-    def _resolve_paths_in_dict(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    def _resolve_paths_in_dict(self, data: dict[str, Any]) -> dict[str, Any]:
         """Resolve relative paths in dictionary to absolute paths.
 
         Args:
@@ -231,7 +213,7 @@ class SettingsGenerator:
         resolved = {}
 
         for key, value in data.items():
-            if key in {'cwd', 'path', 'script'} and isinstance(value, str):
+            if key in {"cwd", "path", "script"} and isinstance(value, str):
                 # Resolve relative paths
                 path = Path(value)
                 if not path.is_absolute():
@@ -257,7 +239,7 @@ class SettingsGenerator:
             True if valid URL format
         """
         # Simple URL validation - must start with http:// or https://
-        return url.startswith('http://') or url.startswith('https://')
+        return url.startswith("http://") or url.startswith("https://")
 
     def _is_valid_marketplace_name(self, name: str) -> bool:
         """Check if marketplace name is valid.
@@ -281,34 +263,4 @@ class SettingsGenerator:
             True if valid GitHub URL
         """
         # Must contain github.com and have repo structure
-        return 'github.com' in url and url.count('/') >= 3
-
-    def _deduplicate_marketplaces(
-        self,
-        base_list: list,
-        overlay_list: list
-    ) -> list:
-        """Merge and deduplicate marketplace lists by name.
-
-        Args:
-            base_list: Base marketplace list
-            overlay_list: Overlay marketplace list
-
-        Returns:
-            Deduplicated merged list
-        """
-        # Create dict by name for deduplication
-        marketplaces_by_name = {}
-
-        # Add base marketplaces
-        for marketplace in base_list:
-            if isinstance(marketplace, dict) and 'name' in marketplace:
-                marketplaces_by_name[marketplace['name']] = marketplace
-
-        # Add overlay marketplaces (overwriting duplicates)
-        for marketplace in overlay_list:
-            if isinstance(marketplace, dict) and 'name' in marketplace:
-                marketplaces_by_name[marketplace['name']] = marketplace
-
-        # Return as list
-        return list(marketplaces_by_name.values())
+        return "github.com" in url and url.count("/") >= 3
