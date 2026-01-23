@@ -58,12 +58,14 @@ class RetrievalQuery:
         token_budget: Max tokens to return (default 8000)
         memory_types: Filter by specific types
         time_range: Filter by time range (start, end)
+        include_code_context: Include related code files/functions (default False)
     """
 
     query_text: str
     token_budget: int = 8000
     memory_types: list[MemoryType] | None = None
     time_range: tuple[datetime, datetime] | None = None
+    include_code_context: bool = False
 
 
 class MemoryCoordinator:
@@ -87,7 +89,7 @@ class MemoryCoordinator:
         Args:
             backend: Backend instance (creates default if None)
             session_id: Session identifier (generates if None)
-            backend_type: Backend type to create ('sqlite', 'kuzu', 'neo4j')
+            backend_type: Backend type to create ('sqlite', 'kuzu')
             **backend_config: Backend-specific configuration (e.g., db_path)
 
         Examples:
@@ -278,6 +280,11 @@ class MemoryCoordinator:
                 total_tokens += memory_tokens
 
             self.last_retrieval_tokens = total_tokens
+
+            # Enrich with code context if requested
+            if query.include_code_context:
+                selected_memories = await self._enrich_with_code_context(selected_memories)
+
             return selected_memories
 
         except Exception as e:
@@ -717,6 +724,127 @@ Return: {{"importance_score": <number>, "reasoning": "<brief reason>"}}
         # Sort by score descending
         scored.sort(key=lambda x: x[1], reverse=True)
         return scored
+
+    async def _enrich_with_code_context(
+        self, memories: list[MemoryEntry]
+    ) -> list[MemoryEntry]:
+        """Enrich memories with related code context.
+
+        Queries Kuzu graph fer code files and functions linked to each memory
+        via RELATES_TO_FILE_* and RELATES_TO_FUNCTION_* relationships.
+
+        Args:
+            memories: List of memory entries to enrich
+
+        Returns:
+            Same memories with code_context added to metadata
+
+        Performance: Must complete under 100ms total (not per memory)
+        """
+        # Check if backend supports code graph queries
+        capabilities = self.backend.get_capabilities()
+        if not capabilities.supports_graph_queries:
+            logger.debug("Backend does not support graph queries, skipping code context")
+            return memories
+
+        # Check if backend has code graph integration (Kuzu-specific)
+        try:
+            # Attempt to access Kuzu-specific code graph
+            from .backends.kuzu_backend import KuzuBackend
+
+            if not isinstance(self.backend, KuzuBackend):
+                logger.debug("Backend is not KuzuBackend, skipping code context")
+                return memories
+
+            # Get code graph instance
+            code_graph = self.backend.get_code_graph()
+            if code_graph is None:
+                logger.debug("Code graph not initialized, skipping code context")
+                return memories
+
+        except (ImportError, AttributeError) as e:
+            logger.debug(f"Code graph not available: {e}")
+            return memories
+
+        # Enrich each memory with code context
+        for memory in memories:
+            try:
+                # Query code context for this memory
+                context = code_graph.query_code_context(memory.id)
+
+                # Format code context into readable text
+                code_context_text = self._format_code_context(context)
+
+                # Add to metadata (don't overwrite existing)
+                if code_context_text:
+                    memory.metadata["code_context"] = code_context_text
+
+            except Exception as e:
+                logger.warning(f"Failed to enrich memory {memory.id} with code context: {e}")
+                # Continue with other memories
+
+        return memories
+
+    def _format_code_context(self, context: dict[str, Any]) -> str:
+        """Format code context into readable text fer LLM consumption.
+
+        Args:
+            context: Code context dictionary from query_code_context()
+
+        Returns:
+            Formatted text describing related code
+        """
+        if not context:
+            return ""
+
+        lines = []
+
+        # Format related files
+        files = context.get("files", [])
+        if files:
+            lines.append("**Related Files:**")
+            for file_info in files[:5]:  # Limit to top 5
+                path = file_info.get("path", "")
+                language = file_info.get("language", "")
+                lines.append(f"- {path} ({language})")
+
+        # Format related functions
+        functions = context.get("functions", [])
+        if functions:
+            if lines:
+                lines.append("")
+            lines.append("**Related Functions:**")
+            for func_info in functions[:5]:  # Limit to top 5
+                name = func_info.get("name", "")
+                signature = func_info.get("signature", "")
+                docstring = func_info.get("docstring", "")
+                complexity = func_info.get("complexity", 0)
+
+                lines.append(f"- `{signature}`")
+                if docstring:
+                    # Truncate long docstrings
+                    doc_preview = docstring[:100] + "..." if len(docstring) > 100 else docstring
+                    lines.append(f"  {doc_preview}")
+                if complexity > 0:
+                    lines.append(f"  (complexity: {complexity})")
+
+        # Format related classes
+        classes = context.get("classes", [])
+        if classes:
+            if lines:
+                lines.append("")
+            lines.append("**Related Classes:**")
+            for class_info in classes[:3]:  # Limit to top 3
+                name = class_info.get("name", "")
+                fqn = class_info.get("fully_qualified_name", "")
+                docstring = class_info.get("docstring", "")
+
+                lines.append(f"- {fqn}")
+                if docstring:
+                    doc_preview = docstring[:100] + "..." if len(docstring) > 100 else docstring
+                    lines.append(f"  {doc_preview}")
+
+        return "\n".join(lines) if lines else ""
 
 
 __all__ = ["MemoryCoordinator", "StorageRequest", "RetrievalQuery"]

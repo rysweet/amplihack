@@ -3,8 +3,7 @@
 Handles session completion including:
 - Delegating to Claude Code session_stop hook
 - Capturing learnings from the session
-- Storing memories using MemoryCoordinator (SQLite or Neo4j)
-- Neo4j cleanup on session end
+- Storing memories using MemoryCoordinator (Kuzu backend)
 - Lock mode checking
 - Extracting patterns, decisions, outcomes for future agent use
 """
@@ -91,19 +90,7 @@ class SessionStopHook(Hook):
                 self._memory_coordinator = False  # type: ignore[assignment]
         return self._memory_coordinator if self._memory_coordinator is not False else None
 
-    def _cleanup_neo4j(self):
-        """Cleanup Neo4j connections on session end."""
-        try:
-            from amplihack.memory.neo4j_client import Neo4jClient
-
-            client = Neo4jClient()
-            if client.is_connected():
-                client.close()
-                logger.info("SessionStopHook: Neo4j connection closed")
-        except ImportError:
-            pass  # Neo4j not available
-        except Exception as e:
-            logger.debug(f"Neo4j cleanup failed: {e}")
+    # Neo4j cleanup removed (Week 7) - Kuzu backend does not require cleanup
 
     def _check_lock_mode(self) -> dict[str, Any]:
         """Check if session is in lock mode and should prevent stop.
@@ -202,9 +189,6 @@ class SessionStopHook(Hook):
 
                     except Exception as e:
                         logger.debug(f"Memory storage failed: {e}")
-
-            # Cleanup Neo4j connections
-            self._cleanup_neo4j()
 
             # Log session end
             logger.info(
