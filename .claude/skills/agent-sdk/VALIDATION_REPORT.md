@@ -344,7 +344,7 @@ token_budget: 4500                        ✓ Integer valid
 
 ### Immediate Actions
 
-1. ✓ Deploy skill to `.claude/skills/agent-sdk/`
+1. ✓ Deploy skill to `~/.amplihack/.claude/skills/agent-sdk/`
 2. Run drift detection to generate initial hashes:
    ```bash
    cd .claude/skills/agent-sdk

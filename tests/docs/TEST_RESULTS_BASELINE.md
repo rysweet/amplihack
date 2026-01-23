@@ -33,7 +33,7 @@ All tests are currently **FAILING** as expected - this baseline proves we're sol
 
 **Sample Broken Links**:
 
-- `skills/SKILL_CATALOG.md` → `.claude/runtime/logs/.../RESEARCH.md` (missing)
+- `skills/SKILL_CATALOG.md` → `~/.amplihack/.claude/runtime/logs/.../RESEARCH.md` (missing)
 - `document_driven_development/phases/01_documentation_retcon.md` → `docs/USER_GUIDE.md` (incorrect relative path)
 - `remote-sessions/index.md` → `TUTORIAL.md` (missing file)
 - `howto/github-pages-generation.md` → `../../DOCUMENTATION_GUIDELINES.md` (incorrect path)

@@ -10,14 +10,14 @@ The Claude Code agent architecture is a sophisticated multi-layered system desig
 
 ### 1.1 Agent Definition Structure
 
-**Location**: `.claude/agents/` directory hierarchy
+**Location**: `~/.amplihack/.claude/agents/` directory hierarchy
 
 **Agent Types**:
 
-- **Core Agents** (`.claude/agents/amplihack/core/`): architect, builder, reviewer, tester, optimizer
-- **Specialized Agents** (`.claude/agents/amplihack/specialized/`): analyzer, fix-agent, security, database, integration, cleanup, etc.
-- **Workflow Agents** (`.claude/agents/amplihack/workflows/`): Multi-step complex workflows
-- **Knowledge Agents** (`.claude/agents/`): ambiguity-guardian, knowledge-archaeologist, concept-extractor, insight-synthesizer, post-task-cleanup
+- **Core Agents** (`~/.amplihack/.claude/agents/amplihack/core/`): architect, builder, reviewer, tester, optimizer
+- **Specialized Agents** (`~/.amplihack/.claude/agents/amplihack/specialized/`): analyzer, fix-agent, security, database, integration, cleanup, etc.
+- **Workflow Agents** (`~/.amplihack/.claude/agents/amplihack/workflows/`): Multi-step complex workflows
+- **Knowledge Agents** (`~/.amplihack/.claude/agents/`): ambiguity-guardian, knowledge-archaeologist, concept-extractor, insight-synthesizer, post-task-cleanup
 
 **Agent Definition Format**:
 
@@ -79,10 +79,10 @@ model: inherit
 
 - **Original Request Preservation** (context_preservation.py)
   - Extracts requirements at session start
-  - Stores in `.claude/runtime/logs/<session_id>/ORIGINAL_REQUEST.md`
+  - Stores in `~/.amplihack/.claude/runtime/logs/<session_id>/ORIGINAL_REQUEST.md`
   - Pre-compact hook exports conversations
 
-- **Session Logging** (`.claude/runtime/logs/<session_id>/`)
+- **Session Logging** (`~/.amplihack/.claude/runtime/logs/<session_id>/`)
   - DECISIONS.md: Decision tracking and rationale
   - Session metadata and progress tracking
   - Accessible across workflow steps
@@ -201,10 +201,10 @@ Agents use **automatic mode selection** based on context:
 2. **Reference Imports** (via @notation)
 
    ```markdown
-   @.claude/context/PHILOSOPHY.md → Agent reads key principles
-   @.claude/context/PATTERNS.md → Agent references common patterns
-   @.claude/context/DISCOVERIES.md → Agent learns from past issues
-   @.claude/context/USER_REQUIREMENTS.md → Agent preserves explicit requirements
+   @~/.amplihack/.claude/context/PHILOSOPHY.md → Agent reads key principles
+   @~/.amplihack/.claude/context/PATTERNS.md → Agent references common patterns
+   @~/.amplihack/.claude/context/DISCOVERIES.md → Agent learns from past issues
+   @~/.amplihack/.claude/context/USER_REQUIREMENTS.md → Agent preserves explicit requirements
    ```
 
 3. **Explicit Parameter Passing**
@@ -247,7 +247,7 @@ Agents use **automatic mode selection** based on context:
 
 ### 3.3 Session & Decision Logging
 
-**Location**: `.claude/runtime/logs/<session_id>/`
+**Location**: `~/.amplihack/.claude/runtime/logs/<session_id>/`
 
 **Components**:
 
@@ -720,7 +720,7 @@ Files to check for removal: [List from pattern history]
 
 ### Phase 1: Foundation (Minimal, Non-Breaking)
 
-- Create memory storage structure (.claude/memory/)
+- Create memory storage structure (~/.amplihack/.claude/memory/)
 - Implement basic query interface
 - Add pre-execution memory injection (read-only)
 - Test with single agent (architect)

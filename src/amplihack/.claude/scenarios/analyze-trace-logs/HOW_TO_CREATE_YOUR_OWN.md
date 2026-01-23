@@ -556,9 +556,9 @@ Before moving from `ai_working/` to `scenarios/`:
 
 ## Resources
 
-- Trace log analyzer: `.claude/scenarios/analyze-trace-logs/tool.py`
-- Codebase analyzer: `.claude/scenarios/analyze-codebase/tool.py`
-- Scenarios pattern: `.claude/scenarios/README.md`
+- Trace log analyzer: `~/.amplihack/.claude/scenarios/analyze-trace-logs/tool.py`
+- Codebase analyzer: `~/.amplihack/.claude/scenarios/analyze-codebase/tool.py`
+- Scenarios pattern: `~/.amplihack/.claude/scenarios/README.md`
 - Testing patterns: `pytest` documentation
 
 ---

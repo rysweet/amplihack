@@ -71,7 +71,7 @@ I've designed a complete architecture for power-steering mode that follows ampli
 
 ### Core Module: PowerSteeringChecker
 
-**Location**: `.claude/tools/amplihack/hooks/power_steering_checker.py`
+**Location**: `~/.amplihack/.claude/tools/amplihack/hooks/power_steering_checker.py`
 
 **Contract**:
 

@@ -164,7 +164,7 @@ amplihack plugin verify <plugin_name>
 4. Verify all paths use `${CLAUDE_PLUGIN_ROOT}`
 
 **Configuration:**
-- `.claude/tools/amplihack/hooks/hooks.json` (MODIFIED, 0-50 lines)
+- `~/.amplihack/.claude/tools/amplihack/hooks/hooks.json` (MODIFIED, 0-50 lines)
 
 **Testing:**
 - Verification: 3 bash commands
@@ -227,7 +227,7 @@ LOCAL > PLUGIN > NONE  # Precedence order
 
 **Files:**
 1. `README.md` (MODIFIED, installation section)
-2. `.claude/context/PROJECT.md` (MODIFIED, architecture section)
+2. `~/.amplihack/.claude/context/PROJECT.md` (MODIFIED, architecture section)
 3. `docs/MIGRATION_GUIDE.md` (NEW, ~400 lines)
 4. `docs/PLUGIN_ARCHITECTURE.md` (NEW, ~500 lines)
 5. `CHANGELOG.md` (MODIFIED, +30 lines)

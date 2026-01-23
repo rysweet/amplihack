@@ -311,5 +311,5 @@ python .claude/scenarios/check-broken-links/link_checker.py ./docs/ --format jso
 ## References
 
 - linkinator documentation: https://github.com/JustinBeckwith/linkinator
-- amplihack scenarios pattern: `.claude/scenarios/README.md`
-- Eight Rules of Documentation: `.claude/context/PHILOSOPHY.md`
+- amplihack scenarios pattern: `~/.amplihack/.claude/scenarios/README.md`
+- Eight Rules of Documentation: `~/.amplihack/.claude/context/PHILOSOPHY.md`

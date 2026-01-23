@@ -99,7 +99,7 @@ Consensus: 2/3 agents converged on PostgreSQL
 ### Implementation Pattern
 
 ```markdown
-@.claude/agents/amplihack/specialized/multi-agent-debate.md
+@~/.amplihack/.claude/agents/amplihack/specialized/multi-agent-debate.md
 
 Task: [Your decision or design question]
 Agent Profiles:

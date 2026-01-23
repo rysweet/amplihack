@@ -224,7 +224,7 @@ The documentation is automatically deployed on push to `main` via GitHub Actions
   - `docs/**`
   - `mkdocs.yml`
   - `requirements-docs.txt`
-  - `.claude/**` (context, workflows, agents, commands, skills, scenarios)
+  - `~/.amplihack/.claude/**` (context, workflows, agents, commands, skills, scenarios)
   - Root level markdown files
 
 ### Manual Deployment

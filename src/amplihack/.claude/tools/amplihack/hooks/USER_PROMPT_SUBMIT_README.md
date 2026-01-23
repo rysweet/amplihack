@@ -61,7 +61,7 @@ These preferences MUST be applied to this response.
 The hook uses a multi-strategy approach to find USER_PREFERENCES.md:
 
 1. **FrameworkPathResolver** (UVX and installed package support)
-2. **Project root** (.claude/context/USER_PREFERENCES.md)
+2. **Project root** (~/.amplihack/.claude/context/USER_PREFERENCES.md)
 3. **Package location** (src/amplihack/.claude/context/USER_PREFERENCES.md)
 
 ### 2. Preference Extraction
@@ -99,9 +99,9 @@ Extracts key preferences using regex patterns:
 
 ### 5. Logging and Metrics
 
-**Log File**: `.claude/runtime/logs/user_prompt_submit.log`
+**Log File**: `~/.amplihack/.claude/runtime/logs/user_prompt_submit.log`
 
-**Metrics File**: `.claude/runtime/metrics/user_prompt_submit_metrics.jsonl`
+**Metrics File**: `~/.amplihack/.claude/runtime/metrics/user_prompt_submit_metrics.jsonl`
 
 **Tracked Metrics**:
 
@@ -246,14 +246,14 @@ ls -l .claude/tools/amplihack/hooks/user_prompt_submit.py
 
 ## Related Files
 
-- **Base class**: `.claude/tools/amplihack/hooks/hook_processor.py`
-- **Session start**: `.claude/tools/amplihack/hooks/session_start.py`
+- **Base class**: `~/.amplihack/.claude/tools/amplihack/hooks/hook_processor.py`
+- **Session start**: `~/.amplihack/.claude/tools/amplihack/hooks/session_start.py`
 - **Path resolution**: `src/amplihack/utils/paths.py`
-- **Preferences file**: `.claude/context/USER_PREFERENCES.md`
+- **Preferences file**: `~/.amplihack/.claude/context/USER_PREFERENCES.md`
 
 ## References
 
 - Claude Code Hook System: [Official Documentation]
-- Amplihack Philosophy: `.claude/context/PHILOSOPHY.md`
-- User Preferences Guide: `.claude/context/USER_PREFERENCES.md`
-- Priority Hierarchy: `.claude/context/USER_REQUIREMENT_PRIORITY.md`
+- Amplihack Philosophy: `~/.amplihack/.claude/context/PHILOSOPHY.md`
+- User Preferences Guide: `~/.amplihack/.claude/context/USER_PREFERENCES.md`
+- Priority Hierarchy: `~/.amplihack/.claude/context/USER_REQUIREMENT_PRIORITY.md`

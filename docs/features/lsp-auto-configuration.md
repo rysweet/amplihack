@@ -40,17 +40,17 @@ The feature consists of four main components:
    - Executes before Claude Code starts
    - Silently skips if LSP modules unavailable
 
-2. **Language Detector** (`.claude/skills/lsp-setup/language_detector.py`)
+2. **Language Detector** (`~/.amplihack/.claude/skills/lsp-setup/language_detector.py`)
    - Scans project directory for file extensions
    - Identifies framework markers (package.json, Cargo.toml, etc.)
    - Returns detected languages sorted by file count
 
-3. **LSP Configurator** (`.claude/skills/lsp-setup/lsp_configurator.py`)
+3. **LSP Configurator** (`~/.amplihack/.claude/skills/lsp-setup/lsp_configurator.py`)
    - Sets `ENABLE_LSP_TOOL=1` environment variable
    - Creates/updates `.env` file with LSP configuration
    - Detects language-specific settings (Python venv, Node project root)
 
-4. **Plugin Manager** (`.claude/skills/lsp-setup/plugin_manager.py`)
+4. **Plugin Manager** (`~/.amplihack/.claude/skills/lsp-setup/plugin_manager.py`)
    - Installs system LSP binaries via npm/brew/rustup
    - Adds Claude Code plugin marketplace
    - Installs Claude Code LSP plugins via `claude plugin install`
@@ -306,14 +306,14 @@ Updated automatically with plugin configuration:
 
 **Source Code:**
 - Launcher Integration: `src/amplihack/launcher/core.py::_configure_lsp_auto()`
-- Language Detection: `.claude/skills/lsp-setup/language_detector.py`
-- LSP Configuration: `.claude/skills/lsp-setup/lsp_configurator.py`
-- Plugin Management: `.claude/skills/lsp-setup/plugin_manager.py`
+- Language Detection: `~/.amplihack/.claude/skills/lsp-setup/language_detector.py`
+- LSP Configuration: `~/.amplihack/.claude/skills/lsp-setup/lsp_configurator.py`
+- Plugin Management: `~/.amplihack/.claude/skills/lsp-setup/plugin_manager.py`
 
 **Tests:**
-- Unit Tests: `.claude/skills/lsp-setup/tests/test_*.py`
-- Integration Tests: `.claude/skills/lsp-setup/tests/test_integration.py`
-- E2E Tests: `.claude/skills/lsp-setup/tests/test_e2e.py`
+- Unit Tests: `~/.amplihack/.claude/skills/lsp-setup/tests/test_*.py`
+- Integration Tests: `~/.amplihack/.claude/skills/lsp-setup/tests/test_integration.py`
+- E2E Tests: `~/.amplihack/.claude/skills/lsp-setup/tests/test_e2e.py`
 
 ---
 

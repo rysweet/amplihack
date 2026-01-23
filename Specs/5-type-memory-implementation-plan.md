@@ -1119,8 +1119,8 @@ for name in memory_coordinator.__all__:
 ### Prerequisites
 
 1. Read specification: `Specs/5-type-memory-architecture.md` v2.0
-2. Understand philosophy: `.claude/context/PHILOSOPHY.md`
-3. Review patterns: `.claude/context/PATTERNS.md`
+2. Understand philosophy: `~/.amplihack/.claude/context/PHILOSOPHY.md`
+3. Review patterns: `~/.amplihack/.claude/context/PATTERNS.md`
 
 ### Implementation Order
 

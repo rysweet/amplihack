@@ -8,7 +8,7 @@ When users run AmplifyHack via UVX:
 uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding amplihack launch
 ```
 
-The framework files (`.claude/`, `CLAUDE.md`, etc.) are downloaded to UVX's temporary cache directory, but Claude Code expects them in the working directory for `@` imports to work.
+The framework files (`~/.amplihack/.claude/`, `CLAUDE.md`, etc.) are downloaded to UVX's temporary cache directory, but Claude Code expects them in the working directory for `@` imports to work.
 
 ## Solution Comparison
 
@@ -113,7 +113,7 @@ uvx --from git+... amplihack launch --add-dir /path/from/helper
 
 3. **Safe File Staging:**
    - Never overwrites existing files
-   - Stages only essential files (`.claude/`, `CLAUDE.md`, `DISCOVERIES.md`)
+   - Stages only essential files (`~/.amplihack/.claude/`, `CLAUDE.md`, `DISCOVERIES.md`)
    - Automatic cleanup on exit
 
 4. **Graceful Fallbacks:**

@@ -51,7 +51,7 @@ If ye prefer manual updates:
 
 **Preserved automatically:**
 
-- Existing `.claude/runtime/power-steering/*/state.json` files remain compatible
+- Existing `~/.amplihack/.claude/runtime/power-steering/*/state.json` files remain compatible
 - Counter values carry forward
 - Session IDs preserved
 
@@ -62,7 +62,7 @@ If ye prefer manual updates:
 **Automatically enabled after upgrade:**
 
 1. **Diagnostic logging**
-   - New logs appear at `.claude/runtime/power-steering/{session_id}/diagnostic.jsonl`
+   - New logs appear at `~/.amplihack/.claude/runtime/power-steering/{session_id}/diagnostic.jsonl`
    - Captures state operations automatically
    - No configuration needed
 
@@ -159,7 +159,7 @@ pip install git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding@
 
 ### Issue: Diagnostic logs grow large
 
-**Symptom:** `.claude/runtime/power-steering/*/diagnostic.jsonl` gets very large over time
+**Symptom:** `~/.amplihack/.claude/runtime/power-steering/*/diagnostic.jsonl` gets very large over time
 
 **Workaround:**
 

@@ -1,6 +1,6 @@
 # GitHub Copilot Command Reference: n-version
 
-**Source**: `.claude/commands/amplihack/n-version.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/n-version.md`
 
 ---
 
@@ -80,10 +80,10 @@ When this command is invoked, you MUST:
    - Show selected implementation
    - Explain rationale for selection
    - Report session_id for traceability
-   - Link to logs: `.claude/runtime/logs/n_version_<timestamp>/`
+   - Link to logs: `~/.amplihack/.claude/runtime/logs/n_version_<timestamp>/`
 
 4. **Manual fallback** (if orchestrator unavailable):
-   - Read workflow: `.claude/workflow/N_VERSION_WORKFLOW.md`
+   - Read workflow: `~/.amplihack/.claude/workflow/N_VERSION_WORKFLOW.md`
    - Execute steps manually with TodoWrite tracking
 
 ## When to Use
@@ -110,7 +110,7 @@ Execute the following task using N-version programming:
 
 ## Configuration
 
-The workflow can be customized by editing `.claude/workflow/N_VERSION_WORKFLOW.md`:
+The workflow can be customized by editing `~/.amplihack/.claude/workflow/N_VERSION_WORKFLOW.md`:
 
 - Number of versions (N): 3 (default), 4-6 (critical tasks)
 - Selection criteria: Correctness, Security, Performance, Simplicity

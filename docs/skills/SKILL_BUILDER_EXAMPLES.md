@@ -27,7 +27,7 @@ Create an auto-discoverable skill that loads when Claude detects relevance:
 5. Invokes builder to generate SKILL.md with YAML frontmatter
 6. Invokes reviewer to validate philosophy compliance
 7. Validates YAML frontmatter and token budget
-8. Creates directory and file at: `.claude/skills/json-validator/SKILL.md`
+8. Creates directory and file at: `~/.amplihack/.claude/skills/json-validator/SKILL.md`
 
 **Expected Output:**
 
@@ -62,7 +62,7 @@ Create a specialized agent for data transformation:
 5. Invokes builder to generate skill file
 6. Invokes reviewer to validate philosophy compliance
 7. Validates YAML frontmatter and structure
-8. Creates file at: `.claude/agents/amplihack/specialized/data-transformer.md`
+8. Creates file at: `~/.amplihack/.claude/agents/amplihack/specialized/data-transformer.md`
 
 **Expected Output:**
 
@@ -89,7 +89,7 @@ Create a slash command for dependency analysis:
 4. Generates command file with proper frontmatter
 5. Reviews for philosophy compliance
 6. Validates YAML and structure
-7. Creates file at: `.claude/commands/amplihack/analyze-dependencies.md`
+7. Creates file at: `~/.amplihack/.claude/commands/amplihack/analyze-dependencies.md`
 
 **Key Features:**
 
@@ -115,7 +115,7 @@ Create a production-ready tool for code review:
 4. Generates complete scenario with directory structure
 5. Reviews for production readiness
 6. Validates all components
-7. Creates directory: `.claude/scenarios/code-reviewer/`
+7. Creates directory: `~/.amplihack/.claude/scenarios/code-reviewer/`
    - `SKILL.md` - Main skill definition
    - `README.md` - User-facing documentation
    - `tool.py` - Implementation placeholder

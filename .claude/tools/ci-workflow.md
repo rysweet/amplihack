@@ -11,7 +11,7 @@ A comprehensive CI workflow management tool that provides higher-level CI/CD fun
 
 ## Installation
 
-The tool is located at `.claude/tools/ci_workflow.py` and can be used both as a Python module and a command-line tool.
+The tool is located at `~/.amplihack/.claude/tools/ci_workflow.py` and can be used both as a Python module and a command-line tool.
 
 ## Command-Line Usage
 
@@ -128,7 +128,7 @@ The `poll-status` command:
 
 ## Integration with CI/CD Agents
 
-This tool is designed to work with the CI/CD specialist agent (`.claude/agents/amplihack/cicd.md`) to provide automated CI management capabilities.
+This tool is designed to work with the CI/CD specialist agent (`~/.amplihack/.claude/agents/amplihack/cicd.md`) to provide automated CI management capabilities.
 
 ## Dependencies
 

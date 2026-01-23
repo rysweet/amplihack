@@ -148,7 +148,7 @@ context = rehydrate_context(snapshot_a_id, level='standard')
 
 - **What**: Automatically saves full conversation before compaction
 - **When**: Triggered by Claude Code
-- **Where**: `.claude/runtime/logs/<session_id>/CONVERSATION_TRANSCRIPT.md`
+- **Where**: `~/.amplihack/.claude/runtime/logs/<session_id>/CONVERSATION_TRANSCRIPT.md`
 - **Relationship**: Safety net for complete recovery
 
 ### /transcripts Command (Reactive Recovery)
@@ -162,7 +162,7 @@ context = rehydrate_context(snapshot_a_id, level='standard')
 
 - **What**: Intelligent context extraction and selective rehydration
 - **When**: User invoked at threshold warnings
-- **Where**: `.claude/runtime/context-snapshots/*.json`
+- **Where**: `~/.amplihack/.claude/runtime/context-snapshots/*.json`
 - **Relationship**: Proactive optimization tool
 
 **All three are complementary, not competing.**
@@ -184,7 +184,7 @@ THRESHOLDS = {
 
 ### Snapshot Storage
 
-Default location: `.claude/runtime/context-snapshots/`
+Default location: `~/.amplihack/.claude/runtime/context-snapshots/`
 
 Can be customized:
 
@@ -342,7 +342,7 @@ Part of the amplihack framework. See project LICENSE.
 
 For issues, questions, or contributions:
 
-- See: `.claude/context/PHILOSOPHY.md` for principles
+- See: `~/.amplihack/.claude/context/PHILOSOPHY.md` for principles
 - See: `Specs/context-management-skill.md` for specification
 - See: `SKILL.md` for complete skill documentation
 - See: `QUICK_START.md` for quick reference

@@ -64,10 +64,10 @@ When this command is invoked, you MUST:
    - Explain any degradation from optimal
    - Report which fallback succeeded
    - Report session_id for traceability
-   - Link to logs: `.claude/runtime/logs/cascade_<timestamp>/`
+   - Link to logs: `~/.amplihack/.claude/runtime/logs/cascade_<timestamp>/`
 
 4. **Manual fallback** (if orchestrator unavailable):
-   - Read workflow: `.claude/workflow/CASCADE_WORKFLOW.md`
+   - Read workflow: `~/.amplihack/.claude/workflow/CASCADE_WORKFLOW.md`
    - Execute steps manually with TodoWrite tracking
 
 ## When to Use
@@ -95,7 +95,7 @@ Execute the following task with fallback cascade:
 
 ## Configuration
 
-The workflow can be customized by editing `.claude/workflow/CASCADE_WORKFLOW.md`:
+The workflow can be customized by editing `~/.amplihack/.claude/workflow/CASCADE_WORKFLOW.md`:
 
 - Timeout strategy: Aggressive (5/2/1s), Balanced (30/10/5s), Patient (120/30/10s)
 - Fallback types: Service, Quality, Freshness

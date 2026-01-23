@@ -44,7 +44,7 @@ stop"
 
 **Test ID**: UNIT-PROCESS-002 **Test**: Lock file exists with default prompt
 **Input**: `{"session_id": "test_123", "hook_event_name": "stop"}`
-**Precondition**: Lock file `.claude/tools/amplihack/.lock_active` exists
+**Precondition**: Lock file `~/.amplihack/.claude/tools/amplihack/.lock_active` exists
 **Expected Output**:
 
 ```json
@@ -204,13 +204,13 @@ serialized with UTF-8
 #### 1.5 Path and File System Tests (3 tests)
 
 **Test ID**: UNIT-PATH-001 **Test**: Lock file path resolution **Expected**:
-Path is `.claude/tools/amplihack/.lock_active`
+Path is `~/.amplihack/.claude/tools/amplihack/.lock_active`
 
 **Test ID**: UNIT-PATH-002 **Test**: Continuation prompt file path resolution
-**Expected**: Path is `.claude/tools/amplihack/.continuation_prompt`
+**Expected**: Path is `~/.amplihack/.claude/tools/amplihack/.continuation_prompt`
 
 **Test ID**: UNIT-PATH-003 **Test**: Log file path resolution **Expected**: Path
-is `.claude/runtime/logs/stop.log`
+is `~/.amplihack/.claude/runtime/logs/stop.log`
 
 ### Level 2: Integration Tests (30% - ~18 tests)
 
@@ -383,7 +383,7 @@ regains control) **Scenario**: User disables continuous work after enabling
 **Test ID**: E2E-ERROR-002 **Test**: Recovery from missing directories
 **Scenario**: Runtime directories don't exist **Steps**:
 
-1. Delete `.claude/runtime/logs`
+1. Delete `~/.amplihack/.claude/runtime/logs`
 2. Execute hook **Expected**: Hook creates directories, executes normally
 
 #### 3.3 Performance and Reliability Test (1 test)

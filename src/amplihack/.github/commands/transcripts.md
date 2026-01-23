@@ -1,6 +1,6 @@
 # GitHub Copilot Command Reference: transcripts
 
-**Source**: `.claude/commands/amplihack/transcripts.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/transcripts.md`
 
 ---
 
@@ -143,7 +143,7 @@ print(f"⏰ Timestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
 All transcript functionality is provided by the `transcript_manager` tool:
 
-**Tool**: `.claude/tools/amplihack/transcript_manager.py`
+**Tool**: `~/.amplihack/.claude/tools/amplihack/transcript_manager.py`
 
 This command provides instructions on how to use the tool. No Python code is executed directly by this command - Claude interprets the instructions and calls the tool.
 
@@ -233,9 +233,9 @@ Found 2 matches across sessions
 
 ## Resources
 
-- **Tool**: `.claude/tools/amplihack/transcript_manager.py` (business logic)
-- **Command**: `.claude/commands/amplihack/transcripts.md` (instructions only)
-- **PreCompact Hook**: `.claude/tools/amplihack/hooks/pre_compact.py` (automatic export)
+- **Tool**: `~/.amplihack/.claude/tools/amplihack/transcript_manager.py` (business logic)
+- **Command**: `~/.amplihack/.claude/commands/amplihack/transcripts.md` (instructions only)
+- **PreCompact Hook**: `~/.amplihack/.claude/tools/amplihack/hooks/pre_compact.py` (automatic export)
 
 This command provides amplihack-style transcript management through a clean, reusable tool. The tool can be called from commands, skills, and hooks. It ensures that conversation context and original requirements are never lost, even during context compaction events.
 

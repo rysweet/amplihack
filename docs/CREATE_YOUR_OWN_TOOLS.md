@@ -129,7 +129,7 @@ Create a new agent that can be invoked for specific tasks.
 
 **When to use:** For tasks that need to be repeated with different inputs
 
-**Location:** `.claude/agents/your-agent-name.md`
+**Location:** `~/.amplihack/.claude/agents/your-agent-name.md`
 
 **Example:**
 
@@ -166,7 +166,7 @@ Create a reusable slash command for common workflows.
 
 **When to use:** For multi-step workflows that you run frequently
 
-**Location:** `.claude/commands/your-command.md`
+**Location:** `~/.amplihack/.claude/commands/your-command.md`
 
 **Example command structure:**
 
@@ -229,7 +229,7 @@ if __name__ == "__main__":
 ```
 
 **Integration with agent:**
-Create an agent in `.claude/agents/` that invokes your Python tool.
+Create an agent in `~/.amplihack/.claude/agents/` that invokes your Python tool.
 
 ## 5. Refine the Tool (Iterate and Improve)
 
@@ -281,7 +281,7 @@ so it can handle nested route definitions correctly.
 
 ### Follow the Philosophy
 
-All tools should adhere to amplihack's philosophy (see `.claude/context/PHILOSOPHY.md`):
+All tools should adhere to amplihack's philosophy (see `~/.amplihack/.claude/context/PHILOSOPHY.md`):
 
 ✅ **Ruthless Simplicity**
 
@@ -403,7 +403,7 @@ To deepen your understanding and improve your tool-creation skills, make sure to
 - **DISCOVERIES.md** - Non-obvious problems and solutions from real development
 - **PHILOSOPHY.md** - Core principles including the Brick Philosophy and zero-BS implementation
 - **DEFAULT_WORKFLOW.md** - The multi-step workflow for development tasks
-- **Existing Agents** - Browse `.claude/agents/` for examples of specialized agents
+- **Existing Agents** - Browse `~/.amplihack/.claude/agents/` for examples of specialized agents
 
 ### Tool Creation Checklist
 

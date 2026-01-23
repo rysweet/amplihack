@@ -56,8 +56,8 @@ class ValidationResult:
 - XML format: `<invoke name="Skill">...default-workflow`
 
 **Step 3: Check Read Tool Fallback**
-- `Read(.claude/workflow/DEFAULT_WORKFLOW.md)`
-- `Read(.claude/workflow/INVESTIGATION_WORKFLOW.md)`
+- `Read(~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md)`
+- `Read(~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md)`
 - XML format: `<invoke name="Read">...DEFAULT_WORKFLOW`
 
 **Step 4: Report Result**
@@ -68,7 +68,7 @@ class ValidationResult:
 
 ### New Consideration: `workflow_invocation`
 
-**Configuration** (`.claude/tools/amplihack/considerations.yaml`):
+**Configuration** (`~/.amplihack/.claude/tools/amplihack/considerations.yaml`):
 ```yaml
 - id: workflow_invocation
   category: Workflow Process Adherence
@@ -92,7 +92,7 @@ def _check_workflow_invocation(self, transcript: list[dict], session_id: str) ->
 
 ## Enforcement Points
 
-### 1. Command Documentation (`.claude/commands/amplihack/ultrathink.md`)
+### 1. Command Documentation (`~/.amplihack/.claude/commands/amplihack/ultrathink.md`)
 
 **Added Section:**
 ```markdown
@@ -109,7 +109,7 @@ When ultrathink-orchestrator skill is triggered, you MUST:
 - [ ] Confirmed workflow content is loaded in context
 ```
 
-### 2. Skill Documentation (`.claude/skills/ultrathink-orchestrator/SKILL.md`)
+### 2. Skill Documentation (`~/.amplihack/.claude/skills/ultrathink-orchestrator/SKILL.md`)
 
 **Added Section:**
 ```markdown
@@ -203,7 +203,7 @@ Claude: Workflow loaded, executing steps...
 ```
 User: /ultrathink implement authentication
 Claude: Skill invocation failed, using fallback
-Claude: Read(.claude/workflow/DEFAULT_WORKFLOW.md)
+Claude: Read(~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md)
 Claude: Workflow loaded successfully
 ```
 

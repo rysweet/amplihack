@@ -14,7 +14,7 @@ label-triggered workflow.
 
 1. **Workflow File**: `.github/workflows/pm-label-delegate.yml`
 2. **Delegation Script**:
-   `.claude/skills/pm-architect/scripts/delegate_response.py`
+   `~/.amplihack/.claude/skills/pm-architect/scripts/delegate_response.py`
 3. **Label**: `pm:delegate` (will be created if doesn't exist)
 
 ## Test Strategy
@@ -33,7 +33,7 @@ consists of:
 Validated files:
 
 - `.github/workflows/pm-label-delegate.yml` - YAML syntax valid
-- `.claude/skills/pm-architect/scripts/delegate_response.py` - Python formatting
+- `~/.amplihack/.claude/skills/pm-architect/scripts/delegate_response.py` - Python formatting
   and type checking passed
 
 ## Manual Testing Plan
@@ -215,7 +215,7 @@ Validated files:
 
 **Steps**:
 
-1. Check `.claude/runtime/logs/` for auto mode session logs
+1. Check `~/.amplihack/.claude/runtime/logs/` for auto mode session logs
 2. Verify logs are created when delegation runs
 3. Verify logs contain expected content
 

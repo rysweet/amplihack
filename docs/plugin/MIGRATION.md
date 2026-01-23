@@ -1,15 +1,15 @@
 # Migration Guide
 
-Migrate your projects from per-project `.claude/` directories to the centralized plugin architecture.
+Migrate your projects from per-project `~/.amplihack/.claude/` directories to the centralized plugin architecture.
 
 ## Who Should Migrate?
 
 You should migrate if:
 
-- You have projects with `.claude/` directories containing amplihack framework code
+- You have projects with `~/.amplihack/.claude/` directories containing amplihack framework code
 - You installed amplihack before version 1.0.0
 - You run `amplihack upgrade` in each project individually
-- You see merge conflicts in `.claude/` directories
+- You see merge conflicts in `~/.amplihack/.claude/` directories
 
 ## Migration Overview
 
@@ -33,7 +33,7 @@ Migration moves framework code from `project/.claude/` to `~/.amplihack/.claude/
 
 ## Step 1: Backup Your Projects
 
-Before migration, create a backup of your `.claude/` directories.
+Before migration, create a backup of your `~/.amplihack/.claude/` directories.
 
 ```bash
 # Backup a single project
@@ -164,7 +164,7 @@ cat .claude/settings.json 2>/dev/null
 
 #### 3.2: Extract Project Settings
 
-If `.claude/settings.json` exists, identify project-specific overrides:
+If `~/.amplihack/.claude/settings.json` exists, identify project-specific overrides:
 
 ```bash
 # View current settings
@@ -188,7 +188,7 @@ Create a new minimal `settings.json` with only your overrides:
 }
 ```
 
-Save to `.claude/settings.json`.
+Save to `~/.amplihack/.claude/settings.json`.
 
 #### 3.3: Preserve Custom Components
 
@@ -228,11 +228,11 @@ rm -rf .claude/context/
 ```
 
 Keep only:
-- `.claude/settings.json`
-- `.claude/agents/custom/` (if exists)
-- `.claude/commands/custom/` (if exists)
-- `.claude/workflow/custom/` (if exists)
-- `.claude/runtime/` (logs, cache)
+- `~/.amplihack/.claude/settings.json`
+- `~/.amplihack/.claude/agents/custom/` (if exists)
+- `~/.amplihack/.claude/commands/custom/` (if exists)
+- `~/.amplihack/.claude/workflow/custom/` (if exists)
+- `~/.amplihack/.claude/runtime/` (logs, cache)
 
 #### 3.5: Update .gitignore
 
@@ -394,7 +394,7 @@ cat .claude/settings.json
 
 ### Commands still reference old paths
 
-**Problem:** Scripts reference `.claude/agents/amplihack/...` paths.
+**Problem:** Scripts reference `~/.amplihack/.claude/agents/amplihack/...` paths.
 
 **Solution:**
 
@@ -570,11 +570,11 @@ For teams migrating together:
 
 ### Q: Can I use both modes simultaneously?
 
-A: Yes, plugin mode and per-project mode can coexist. Projects with full `.claude/` directories use per-project mode. Projects with minimal `.claude/settings.json` use plugin mode.
+A: Yes, plugin mode and per-project mode can coexist. Projects with full `~/.amplihack/.claude/` directories use per-project mode. Projects with minimal `~/.amplihack/.claude/settings.json` use plugin mode.
 
 ### Q: What happens to my runtime data (logs, cache)?
 
-A: Runtime data is preserved in `.claude/runtime/` in each project. Migration doesn't touch runtime directories.
+A: Runtime data is preserved in `~/.amplihack/.claude/runtime/` in each project. Migration doesn't touch runtime directories.
 
 ### Q: Do I need to migrate all projects at once?
 
@@ -598,7 +598,7 @@ A: Plugin mode enforces consistent versions. If you need different versions per 
 
 ### Q: Can I customize the plugin for specific projects?
 
-A: Yes, use `.claude/settings.json` to override plugin defaults. See [ARCHITECTURE.md](./ARCHITECTURE.md) for settings merger details.
+A: Yes, use `~/.amplihack/.claude/settings.json` to override plugin defaults. See [ARCHITECTURE.md](./ARCHITECTURE.md) for settings merger details.
 
 ## Related Documentation
 

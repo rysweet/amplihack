@@ -347,7 +347,7 @@ These checkers have sophisticated logic built-in:
 
 **Solutions:**
 
-1. Verify file exists: `.claude/tools/amplihack/considerations.yaml`
+1. Verify file exists: `~/.amplihack/.claude/tools/amplihack/considerations.yaml`
 2. Check file permissions (must be readable)
 3. Look for typos in filename
 

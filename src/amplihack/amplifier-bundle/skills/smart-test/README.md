@@ -25,7 +25,7 @@ Start with Tier 1 for quick feedback.
 - **Import Dependency Analysis**: Maps source files to tests via Python imports
 - **Three-Tier Testing**: Fast (< 1 min), Impacted (< 5 min), Full Suite
 - **Reliability Tracking**: Excludes flaky tests from fast runs
-- **Cache-Based**: Stores mappings in `.claude/data/test-mapping/`
+- **Cache-Based**: Stores mappings in `~/.amplihack/.claude/data/test-mapping/`
 - **pytest Integration**: Works with existing markers (slow, integration, e2e)
 
 ## Tiers Explained

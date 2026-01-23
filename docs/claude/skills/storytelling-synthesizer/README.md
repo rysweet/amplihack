@@ -531,9 +531,9 @@ This skill is built on these principles:
 
 ## Related Resources
 
-- `.claude/skills/storytelling-synthesizer/SKILL.md` - Full skill specification
-- `.claude/skills/examples/` - Real-world examples by medium and audience
-- `.claude/context/PATTERNS.md` - Technical storytelling patterns in this codebase
+- `~/.amplihack/.claude/skills/storytelling-synthesizer/SKILL.md` - Full skill specification
+- `~/.amplihack/.claude/skills/examples/` - Real-world examples by medium and audience
+- `~/.amplihack/.claude/context/PATTERNS.md` - Technical storytelling patterns in this codebase
 
 ## Success Stories
 

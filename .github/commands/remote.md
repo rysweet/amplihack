@@ -1,6 +1,6 @@
 # GitHub Copilot Command Reference: remote
 
-**Source**: `.claude/commands/amplihack/remote.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/remote.md`
 
 ---
 
@@ -146,7 +146,7 @@ The command executes the following workflow:
 6. **Retrieve Results**
    - Download execution logs
    - Fetch git branches and commits
-   - Copy logs to `.claude/runtime/logs/remote/`
+   - Copy logs to `~/.amplihack/.claude/runtime/logs/remote/`
 
 7. **Cleanup**
    - Delete VM (unless `--keep-vm` set)

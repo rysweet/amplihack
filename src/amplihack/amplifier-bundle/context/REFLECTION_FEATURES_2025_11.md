@@ -39,7 +39,7 @@ Updated agent execution framework and prompt engineering to enforce message cons
 
 #### Files Changed
 
-- `.claude/commands/amplihack/ultrathink.md` - Updated prompts for message consolidation
+- `~/.amplihack/.claude/commands/amplihack/ultrathink.md` - Updated prompts for message consolidation
 - Agent prompt templates - Added consolidation instructions
 
 #### Integration Points
@@ -62,7 +62,7 @@ DEFAULT_WORKFLOW.md is optimized for development tasks (Implementation → Testi
 
 #### Solution Implemented
 
-Created `.claude/workflow/INVESTIGATION_WORKFLOW.md` with explicit phases for research:
+Created `~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md` with explicit phases for research:
 
 1. **Scope Definition** - Define boundaries and success criteria
 2. **Exploration Strategy** - Plan agent deployment
@@ -83,8 +83,8 @@ Updated `/amplihack:ultrathink` to detect investigation vs development tasks and
 
 #### Files Changed
 
-- `.claude/workflow/INVESTIGATION_WORKFLOW.md` - New investigation-specific workflow
-- `.claude/commands/amplihack/ultrathink.md` - Added workflow detection logic
+- `~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md` - New investigation-specific workflow
+- `~/.amplihack/.claude/commands/amplihack/ultrathink.md` - Added workflow detection logic
 
 #### Integration Points
 
@@ -125,7 +125,7 @@ Added to Explore agent's system prompt as required first step.
 
 #### Files Changed
 
-- `.claude/agents/amplihack/analyzer.md` - Added documentation discovery step
+- `~/.amplihack/.claude/agents/amplihack/analyzer.md` - Added documentation discovery step
 - Explore agent prompts - Added documentation-first requirement
 
 #### Integration Points
@@ -149,7 +149,7 @@ After thorough investigations, excellent comprehensive explanations existed only
 
 Added final workflow step for investigation tasks that automatically offers to create persistent documentation:
 
-**File Format**: `.claude/docs/ARCHITECTURE_<TOPIC>.md` or `.claude/docs/INVESTIGATION_<TOPIC>.md`
+**File Format**: `~/.amplihack/.claude/docs/ARCHITECTURE_<TOPIC>.md` or `~/.amplihack/.claude/docs/INVESTIGATION_<TOPIC>.md`
 
 **Content Structure**:
 
@@ -172,8 +172,8 @@ Added final workflow step for investigation tasks that automatically offers to c
 
 #### Files Changed
 
-- `.claude/workflow/INVESTIGATION_WORKFLOW.md` - Added documentation generation as final step
-- `.claude/templates/INVESTIGATION_DOCUMENTATION_TEMPLATE.md` - New template for generated docs
+- `~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md` - Added documentation generation as final step
+- `~/.amplihack/.claude/templates/INVESTIGATION_DOCUMENTATION_TEMPLATE.md` - New template for generated docs
 
 #### Integration Points
 
@@ -219,7 +219,7 @@ Comparison to baseline (investigation tasks):
 ```
 
 **Phase 3: Establish Baselines**
-Track metrics across sessions in `.claude/runtime/metrics/baselines.json`
+Track metrics across sessions in `~/.amplihack/.claude/runtime/metrics/baselines.json`
 
 #### Expected Impact
 
@@ -231,9 +231,9 @@ Track metrics across sessions in `.claude/runtime/metrics/baselines.json`
 
 #### Files Changed
 
-- `.claude/tools/amplihack/todowrite.py` - Added timestamp capture (if exists)
-- `.claude/commands/amplihack/ultrathink.md` - Added performance reporting
-- `.claude/runtime/metrics/baselines.json` - Baseline storage
+- `~/.amplihack/.claude/tools/amplihack/todowrite.py` - Added timestamp capture (if exists)
+- `~/.amplihack/.claude/commands/amplihack/ultrathink.md` - Added performance reporting
+- `~/.amplihack/.claude/runtime/metrics/baselines.json` - Baseline storage
 
 #### Integration Points
 
@@ -257,7 +257,7 @@ Investigation tasks focused on "how it works" without addressing system robustne
 
 Created standardized **Investigation Summary Template** mandating comprehensive coverage:
 
-**Template Location**: `.claude/templates/INVESTIGATION_SUMMARY_TEMPLATE.md`
+**Template Location**: `~/.amplihack/.claude/templates/INVESTIGATION_SUMMARY_TEMPLATE.md`
 
 **Required Sections**:
 
@@ -287,8 +287,8 @@ Created standardized **Investigation Summary Template** mandating comprehensive 
 
 #### Files Changed
 
-- `.claude/templates/INVESTIGATION_SUMMARY_TEMPLATE.md` - New comprehensive template
-- `.claude/workflow/INVESTIGATION_WORKFLOW.md` - Reference template in synthesis phase
+- `~/.amplihack/.claude/templates/INVESTIGATION_SUMMARY_TEMPLATE.md` - New comprehensive template
+- `~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md` - Reference template in synthesis phase
 - Explore agent prompts - Updated to include edge case discovery
 
 #### Integration Points
@@ -316,7 +316,7 @@ System treated verbosity as static setting that didn't adapt to task type or com
 **Dynamic Verbosity Adjustment** mapping: User Preference × Task Complexity × Task Type → Actual Update Frequency
 
 **Component 1: Verbosity Matrix**
-Created mapping table in `.claude/context/VERBOSITY_MATRIX.md`:
+Created mapping table in `~/.amplihack/.claude/context/VERBOSITY_MATRIX.md`:
 
 | User Preference | Task Type      | Complexity | Update Frequency | Message Target |
 | --------------- | -------------- | ---------- | ---------------- | -------------- |
@@ -350,9 +350,9 @@ Added to workflow initialization (Step 1.5):
 
 #### Files Changed
 
-- `.claude/context/VERBOSITY_MATRIX.md` - New verbosity mapping
-- `.claude/workflow/DEFAULT_WORKFLOW.md` - Added Step 1.5 (Task Analysis)
-- `.claude/commands/amplihack/ultrathink.md` - Integrated verbosity calculation
+- `~/.amplihack/.claude/context/VERBOSITY_MATRIX.md` - New verbosity mapping
+- `~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md` - Added Step 1.5 (Task Analysis)
+- `~/.amplihack/.claude/commands/amplihack/ultrathink.md` - Integrated verbosity calculation
 
 #### Integration Points
 
@@ -405,9 +405,9 @@ Added to both DEFAULT_WORKFLOW and INVESTIGATION_WORKFLOW.
 
 #### Files Changed
 
-- `.claude/workflow/DEFAULT_WORKFLOW.md` - Added phase announcement requirements
-- `.claude/workflow/INVESTIGATION_WORKFLOW.md` - Added phase announcements
-- `.claude/commands/amplihack/ultrathink.md` - Implements announcement logic
+- `~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md` - Added phase announcement requirements
+- `~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md` - Added phase announcements
+- `~/.amplihack/.claude/commands/amplihack/ultrathink.md` - Implements announcement logic
 
 #### Integration Points
 
@@ -438,7 +438,7 @@ Added automatic mermaid diagram generation templates for common investigation pa
 3. **Sequence Diagram** - Interaction sequences between components
 4. **State Diagram** - State transitions and lifecycle
 
-**Location**: `.claude/templates/MERMAID_INVESTIGATION_TEMPLATES.md`
+**Location**: `~/.amplihack/.claude/templates/MERMAID_INVESTIGATION_TEMPLATES.md`
 
 **Integration**: Auto-documentation (#1097) automatically offers to generate diagrams when creating investigation docs.
 
@@ -463,8 +463,8 @@ graph TB
 
 #### Files Changed
 
-- `.claude/templates/MERMAID_INVESTIGATION_TEMPLATES.md` - New diagram templates
-- `.claude/templates/INVESTIGATION_DOCUMENTATION_TEMPLATE.md` - Added diagram section
+- `~/.amplihack/.claude/templates/MERMAID_INVESTIGATION_TEMPLATES.md` - New diagram templates
+- `~/.amplihack/.claude/templates/INVESTIGATION_DOCUMENTATION_TEMPLATE.md` - Added diagram section
 - Auto-documentation logic - Integrated diagram generation
 
 #### Integration Points
@@ -526,8 +526,8 @@ Progress: 2/6 phases complete (33%)
 
 #### Files Changed
 
-- `.claude/tools/amplihack/todowrite.py` - Added phase grouping logic (if exists)
-- `.claude/commands/amplihack/ultrathink.md` - Integrated phase-aware TodoWrite
+- `~/.amplihack/.claude/tools/amplihack/todowrite.py` - Added phase grouping logic (if exists)
+- `~/.amplihack/.claude/commands/amplihack/ultrathink.md` - Integrated phase-aware TodoWrite
 - TodoWrite display logic - New formatted output
 
 #### Integration Points
@@ -559,7 +559,7 @@ Reflection system would chain on trivial follow-up sessions (< 10 messages) afte
 Added message count threshold to reflection system:
 
 - **Minimum threshold**: 10 messages (configurable)
-- Check implemented in `.claude/tools/amplihack/hooks/stop.py`
+- Check implemented in `~/.amplihack/.claude/tools/amplihack/hooks/stop.py`
 - Skip reflection if session < threshold AND recent reflection exists (within 30 minutes)
 - Log skipping decision for metrics
 
@@ -580,9 +580,9 @@ if message_count < min_threshold and recent_reflection_exists():
 
 #### Files Changed
 
-- `.claude/tools/amplihack/hooks/stop.py` - Added threshold check
-- `.claude/tools/amplihack/reflection/reflection.py` - Updated reflection logic
-- `.claude/tools/amplihack/.reflection_config` - Added `min_turns` configuration
+- `~/.amplihack/.claude/tools/amplihack/hooks/stop.py` - Added threshold check
+- `~/.amplihack/.claude/tools/amplihack/reflection/reflection.py` - Updated reflection logic
+- `~/.amplihack/.claude/tools/amplihack/.reflection_config` - Added `min_turns` configuration
 
 #### Integration Points
 
@@ -640,8 +640,8 @@ Recommendation: Focusing on key findings synthesis
 
 #### Files Changed
 
-- `.claude/commands/amplihack/ultrathink.md` - Added budget calculation and checkpoint logic
-- `.claude/tools/amplihack/todowrite.py` - Track message counts (if exists)
+- `~/.amplihack/.claude/commands/amplihack/ultrathink.md` - Added budget calculation and checkpoint logic
+- `~/.amplihack/.claude/tools/amplihack/todowrite.py` - Track message counts (if exists)
 - Workflow files - Integrated checkpoint system
 
 #### Integration Points
@@ -702,8 +702,8 @@ D) 📝 Clarify or expand on particular section
 
 #### Files Changed
 
-- `.claude/workflow/INVESTIGATION_WORKFLOW.md` - Added satisfaction checkpoint after synthesis
-- `.claude/commands/amplihack/ultrathink.md` - Implemented checkpoint prompts
+- `~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md` - Added satisfaction checkpoint after synthesis
+- `~/.amplihack/.claude/commands/amplihack/ultrathink.md` - Implemented checkpoint prompts
 
 #### Integration Points
 
@@ -794,7 +794,7 @@ Expected: 25-40 messages
 
 #### Files Changed
 
-- `.claude/commands/amplihack/ultrathink.md` - Added Step 0 (Complexity Assessment)
+- `~/.amplihack/.claude/commands/amplihack/ultrathink.md` - Added Step 0 (Complexity Assessment)
 - `Specs/complexity_estimator_architecture.md` - Complete architecture specification
 - `Specs/complexity_estimator_tests.md` - Test cases and heuristics validation
 
@@ -851,8 +851,8 @@ Enhanced reflection system with context awareness:
 
 #### Files Changed
 
-- `.claude/tools/amplihack/reflection/reflection.py` - Added context-aware analysis
-- `.claude/tools/amplihack/hooks/stop.py` - Session classification logic
+- `~/.amplihack/.claude/tools/amplihack/reflection/reflection.py` - Added context-aware analysis
+- `~/.amplihack/.claude/tools/amplihack/hooks/stop.py` - Session classification logic
 
 #### Integration Points
 
@@ -1016,7 +1016,7 @@ cat .claude/runtime/logs/<session_id>/FEEDBACK_SUMMARY.md
 
 #### Adjusting Complexity Heuristics
 
-Edit `.claude/commands/amplihack/ultrathink.md` Step 0 to tune scoring:
+Edit `~/.amplihack/.claude/commands/amplihack/ultrathink.md` Step 0 to tune scoring:
 
 - Modify scope/depth/breadth keywords
 - Adjust threshold values (1.5, 2.5)
@@ -1026,15 +1026,15 @@ See `Specs/complexity_estimator_architecture.md` for design rationale.
 
 #### Customizing Workflows
 
-- **Investigation tasks**: Edit `.claude/workflow/INVESTIGATION_WORKFLOW.md`
-- **Development tasks**: Edit `.claude/workflow/DEFAULT_WORKFLOW.md`
+- **Investigation tasks**: Edit `~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md`
+- **Development tasks**: Edit `~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md`
 - Changes take effect immediately (no restart needed)
 
 #### Updating Templates
 
-- **Investigation summary**: `.claude/templates/INVESTIGATION_SUMMARY_TEMPLATE.md`
-- **Mermaid diagrams**: `.claude/templates/MERMAID_INVESTIGATION_TEMPLATES.md`
-- **Documentation**: `.claude/templates/INVESTIGATION_DOCUMENTATION_TEMPLATE.md`
+- **Investigation summary**: `~/.amplihack/.claude/templates/INVESTIGATION_SUMMARY_TEMPLATE.md`
+- **Mermaid diagrams**: `~/.amplihack/.claude/templates/MERMAID_INVESTIGATION_TEMPLATES.md`
+- **Documentation**: `~/.amplihack/.claude/templates/INVESTIGATION_DOCUMENTATION_TEMPLATE.md`
 
 ### Reflection System Usage
 
@@ -1174,9 +1174,9 @@ Satisfaction Check → Documentation → Reflection → Metrics
 
 ### Related Documentation
 
-- `.claude/workflow/INVESTIGATION_WORKFLOW.md` - Investigation execution process
-- `.claude/context/VERBOSITY_MATRIX.md` - Verbosity mapping
-- `.claude/templates/INVESTIGATION_SUMMARY_TEMPLATE.md` - Comprehensive investigation structure
+- `~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md` - Investigation execution process
+- `~/.amplihack/.claude/context/VERBOSITY_MATRIX.md` - Verbosity mapping
+- `~/.amplihack/.claude/templates/INVESTIGATION_SUMMARY_TEMPLATE.md` - Comprehensive investigation structure
 - `Specs/complexity_estimator_architecture.md` - Complexity assessment design
 
 ### Reflection Session Logs

@@ -13,11 +13,11 @@ You are the documentation writer agent, specializing in creating clear, discover
 
 ## Input Validation
 
-@.claude/context/AGENT_INPUT_VALIDATION.md
+@~/.amplihack/.claude/context/AGENT_INPUT_VALIDATION.md
 
 ## Anti-Sycophancy Guidelines (MANDATORY)
 
-@.claude/context/TRUST.md
+@~/.amplihack/.claude/context/TRUST.md
 
 **Critical Behaviors**:
 
@@ -44,7 +44,7 @@ This skill provides:
 
 ## Core Philosophy
 
-@.claude/context/PHILOSOPHY.md
+@~/.amplihack/.claude/context/PHILOSOPHY.md
 
 Apply ruthless simplicity to documentation:
 
@@ -103,7 +103,7 @@ When asked to create documentation:
 | Status updates | GitHub Issues |
 | Progress reports | Pull Request descriptions |
 | Decisions | Commit messages |
-| Runtime data | `.claude/runtime/logs/` |
+| Runtime data | `~/.amplihack/.claude/runtime/logs/` |
 
 ### 4. Example Requirements
 

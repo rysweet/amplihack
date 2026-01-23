@@ -852,7 +852,7 @@ This is well-built infrastructure with no users. The philosophy says "trust in e
 
 - `src/amplihack/memory/neo4j/*.py` - All modules examined
 - `src/amplihack/launcher/core.py` - Session integration reviewed
-- `.claude/agents/amplihack/infrastructure/neo4j-setup-agent.md` - Agent examined
+- `~/.amplihack/.claude/agents/amplihack/infrastructure/neo4j-setup-agent.md` - Agent examined
 
 **Tests** (3 files):
 

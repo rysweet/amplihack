@@ -53,8 +53,8 @@ python3 test_security.py       # ✅ 9/10 tests pass (blocks all dangerous comma
 
 ## Files
 
-- `.claude/hooks/user_prompt_submit.py` (72 lines)
-- `.claude/settings.json` (hook configuration)
+- `~/.amplihack/.claude/hooks/user_prompt_submit.py` (72 lines)
+- `~/.amplihack/.claude/settings.json` (hook configuration)
 - `test_shell_hook.py` (basic tests)
 - `test_security.py` (security validation)
 

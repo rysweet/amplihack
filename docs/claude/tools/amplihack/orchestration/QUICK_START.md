@@ -265,7 +265,7 @@ from orchestration import *
 
 - Check timeout is set
 - Verify working directory exists
-- Check logs in `.claude/runtime/logs/`
+- Check logs in `~/.amplihack/.claude/runtime/logs/`
 
 ### Parallel Execution Issues
 

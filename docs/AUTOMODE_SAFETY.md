@@ -6,7 +6,7 @@
 
 When you launch `amplihack claude --auto` from within an active Claude Code session:
 
-- Automode tries to stage files in the same `.claude/` directory
+- Automode tries to stage files in the same `~/.amplihack/.claude/` directory
 - Conflicts with existing structure
 - Can overwrite uncommitted changes
 - Results in: `OSError: Directory not empty`
@@ -177,7 +177,7 @@ See issue #1090 for planned improvements:
 
 - Issue #1090: Automode safety improvements
 - PR #1083: Had to reconstruct lost changes
-- `.claude/commands/amplihack/auto.md`: Automode documentation
+- `~/.amplihack/.claude/commands/amplihack/auto.md`: Automode documentation
 
 ---
 

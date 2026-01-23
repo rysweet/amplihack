@@ -258,7 +258,7 @@ Current mode: none
 **Mode Detection:**
 
 Precedence order:
-1. **LOCAL**: Project has `.claude/` directory → Use local
+1. **LOCAL**: Project has `~/.amplihack/.claude/` directory → Use local
 2. **PLUGIN**: Plugin installed at `~/.amplihack/.claude/` → Use plugin
 3. **NONE**: No installation found → Prompt t' install
 
@@ -279,7 +279,7 @@ AMPLIHACK_MODE=local amplihack mode status
 
 ### `amplihack mode migrate-to-plugin`
 
-Migrate project from local `.claude/` t' plugin mode.
+Migrate project from local `~/.amplihack/.claude/` t' plugin mode.
 
 **Synopsis:**
 ```bash
@@ -288,8 +288,8 @@ amplihack mode migrate-to-plugin
 
 **Prerequisites:**
 - Plugin must be installed (`amplihack plugin install`)
-- Project must have local `.claude/` directory
-- Local `.claude/` must not have custom modifications (or be backed up)
+- Project must have local `~/.amplihack/.claude/` directory
+- Local `~/.amplihack/.claude/` must not have custom modifications (or be backed up)
 
 **Examples:**
 
@@ -330,9 +330,9 @@ These will be lost. Backup first or use --preserve-custom
 **What It Does:**
 
 1. Checks fer plugin installation
-2. Checks fer local `.claude/` directory
+2. Checks fer local `~/.amplihack/.claude/` directory
 3. Detects custom modifications (files not in plugin)
-4. Removes local `.claude/` directory
+4. Removes local `~/.amplihack/.claude/` directory
 5. Project now uses plugin automatically (no local override)
 
 **Files Modified:**
@@ -346,7 +346,7 @@ These will be lost. Backup first or use --preserve-custom
 
 ### `amplihack mode migrate-to-local`
 
-Create local `.claude/` from plugin fer project-specific customization.
+Create local `~/.amplihack/.claude/` from plugin fer project-specific customization.
 
 **Synopsis:**
 ```bash
@@ -355,7 +355,7 @@ amplihack mode migrate-to-local
 
 **Prerequisites:**
 - Plugin must be installed (`amplihack plugin install`)
-- Project must NOT have local `.claude/` directory
+- Project must NOT have local `~/.amplihack/.claude/` directory
 
 **Examples:**
 
@@ -387,9 +387,9 @@ Plugin not installed. Cannot create local copy.
 **What It Does:**
 
 1. Checks fer plugin installation
-2. Checks local `.claude/` does NOT exist
-3. Copies plugin content t' project's `.claude/` directory
-4. Project now uses local `.claude/` (takes precedence over plugin)
+2. Checks local `~/.amplihack/.claude/` does NOT exist
+3. Copies plugin content t' project's `~/.amplihack/.claude/` directory
+4. Project now uses local `~/.amplihack/.claude/` (takes precedence over plugin)
 
 **Files Modified:**
 - `project/.claude/` (created, copied from plugin)
@@ -408,7 +408,7 @@ Override automatic mode detection.
 
 **Values:**
 - `plugin`: Force plugin mode
-- `local`: Force local mode (if `.claude/` exists)
+- `local`: Force local mode (if `~/.amplihack/.claude/` exists)
 
 **Usage:**
 

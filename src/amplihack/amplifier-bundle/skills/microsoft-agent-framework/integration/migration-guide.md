@@ -50,7 +50,7 @@ mkdir -p src/tools
 
 ### Step 3: Convert Agents
 
-**amplihack agent** (`.claude/agents/amplihack/reviewer.md`):
+**amplihack agent** (`~/.amplihack/.claude/agents/amplihack/reviewer.md`):
 
 ```markdown
 # Code Reviewer Agent

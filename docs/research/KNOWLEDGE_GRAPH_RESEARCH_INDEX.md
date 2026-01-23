@@ -499,7 +499,7 @@ For questions or feedback about this research:
 
 1. Review appropriate document first (see Quick Start above)
 2. Check this index for common questions
-3. Consult decision log: `.claude/runtime/logs/20251102_knowledge_graph_research/DECISIONS.md`
+3. Consult decision log: `~/.amplihack/.claude/runtime/logs/20251102_knowledge_graph_research/DECISIONS.md`
 
 ---
 

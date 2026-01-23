@@ -1315,7 +1315,7 @@ Advisory agent that checks prerequisites, reports issues, and provides fix guida
 
 ### 7.2 Agent Definition
 
-**File**: `.claude/agents/amplihack/infrastructure/neo4j-setup-agent.md`
+**File**: `~/.amplihack/.claude/agents/amplihack/infrastructure/neo4j-setup-agent.md`
 
 ````markdown
 # Neo4j Setup Agent
@@ -2362,7 +2362,7 @@ All modules have:
 
 **Tasks**:
 
-1. Create `.claude/agents/amplihack/infrastructure/` directory
+1. Create `~/.amplihack/.claude/agents/amplihack/infrastructure/` directory
 2. Write `neo4j-setup-agent.md` with prerequisite checks
 3. Implement `check_neo4j_prerequisites()` function
 4. Test: Agent detects each failure mode

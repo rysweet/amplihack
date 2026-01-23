@@ -289,7 +289,7 @@ Tested with actual markdown files from the project:
 **Files Tested**: 5 markdown files
 
 - 3 from `docs/`
-- 2 from `.claude/context/`
+- 2 from `~/.amplihack/.claude/context/`
 
 **Results**:
 

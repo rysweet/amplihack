@@ -72,7 +72,7 @@ Centralized plugin system that works across all your projects:
 - [Migration Guide](plugin/MIGRATION.md) - Migrate from per-project to plugin mode
 - [CLI Reference](plugin/CLI_REFERENCE.md) - Complete command-line reference
 
-**Note**: Plugin architecture is **Claude Code only**. Microsoft Amplifier, GitHub Copilot CLI, and Codex use per-project `.claude/` staging instead.
+**Note**: Plugin architecture is **Claude Code only**. Microsoft Amplifier, GitHub Copilot CLI, and Codex use per-project `~/.amplihack/.claude/` staging instead.
 
 ### Installation
 
@@ -88,7 +88,7 @@ Centralized plugin system that works across all your projects:
 
 - Requires: `$ANTHROPIC_API_KEY` environment variable for Anthropic models
 - Plugin mode: Install globally with [Plugin Installation Guide](plugin/INSTALLATION.md)
-- Per-project mode: Copy `.claude/` directory to your project
+- Per-project mode: Copy `~/.amplihack/.claude/` directory to your project
 - Azure OpenAI: Use proxy configuration (see [Proxy Configuration](PROXY_CONFIG_GUIDE.md))
 
 **Microsoft Amplifier**
@@ -112,7 +112,7 @@ amplihack copilot
 
 **Codex**
 
-- Limited support via per-project `.claude/` staging
+- Limited support via per-project `~/.amplihack/.claude/` staging
 - Most features work but may require adaptation
 - Tested primarily with Claude models
 

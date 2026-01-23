@@ -34,7 +34,7 @@ amplihack launch
 
 **Method 2: Per-Project Mode**
 
-Copy `.claude/` to each project (legacy mode):
+Copy `~/.amplihack/.claude/` to each project (legacy mode):
 
 ```bash
 # UVX mode still works
@@ -120,7 +120,7 @@ AMPLIHACK_MODE=plugin amplihack launch # Force plugin mode
 
 ### Migration from Per-Project
 
-If ye have existing projects with `.claude/` directories:
+If ye have existing projects with `~/.amplihack/.claude/` directories:
 
 ```bash
 # Install plugin
@@ -208,7 +208,7 @@ amplihack mode migrate-to-plugin
 | Tool | Status | Installation |
 |------|--------|--------------|
 | **Claude Code** | ✅ Full support | `amplihack plugin install` |
-| **GitHub Copilot** | ⚠️ Partial | Manual copy to `.claude/` |
+| **GitHub Copilot** | ⚠️ Partial | Manual copy to `~/.amplihack/.claude/` |
 | **Codex** | ⚠️ Unknown | Test with per-project mode |
 
 See [Plugin Architecture](./docs/PLUGIN_ARCHITECTURE.md#cross-tool-compatibility) fer details.

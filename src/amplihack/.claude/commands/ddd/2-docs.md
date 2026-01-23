@@ -374,7 +374,7 @@ The updated docs are now the specification that code must match.
 
 - Ultrathink step-by-step, laying out assumptions and unknowns, use the TodoWrite tool to capture all tasks and subtasks.
   - VERY IMPORTANT: Make sure to use the actual TodoWrite tool for todo lists, don't do your own task tracking, there is code behind use of the TodoWrite tool that is invisible to you that ensures that all tasks are completed fully.
-  - Adhere to the @.claude/context/PHILOSOPHY.md and @.claude/context/PHILOSOPHY.md files.
+  - Adhere to the @~/.amplihack/.claude/context/PHILOSOPHY.md and @~/.amplihack/.claude/context/PHILOSOPHY.md files.
 - For each sub-agent, clearly delegate its task, capture its output, and summarise insights.
 - Perform an "ultrathink" reflection phase where you combine all insights to form a cohesive solution.
 - If gaps remain, iterate (spawn sub-agents again) until confident.

@@ -677,7 +677,7 @@ amplihack goal-agent-generator execute \
 
 **Module Issues**:
 
-- Check logs: `.claude/runtime/logs/<session_id>/`
+- Check logs: `~/.amplihack/.claude/runtime/logs/<session_id>/`
 - Review agent bundle: `<agent-path>/metadata.json`
 
 **Integration Issues**:

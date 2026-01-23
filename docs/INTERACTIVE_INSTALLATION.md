@@ -20,7 +20,7 @@ The interactive installation feature extends the prerequisite checking system to
 - **No Shell Injection**: Commands use `List[str]` format, never `shell=True`
 - **Hardcoded Commands**: All commands from `INSTALL_COMMANDS` dictionary
 - **Interactive stdin**: Uses `sys.stdin` to allow password prompts
-- **Audit Logging**: All attempts logged to `.claude/runtime/logs/installation_audit.jsonl`
+- **Audit Logging**: All attempts logged to `~/.amplihack/.claude/runtime/logs/installation_audit.jsonl`
 - **TTY Detection**: Prevents installation in non-interactive environments
 - **CI Detection**: Automatically skips prompts in CI/CD environments
 
@@ -182,7 +182,7 @@ The feature uses platform-specific installation commands stored in `INSTALL_COMM
 
 ## Audit Logging
 
-All installation attempts are logged to `.claude/runtime/logs/installation_audit.jsonl` in JSONL format (one JSON object per line).
+All installation attempts are logged to `~/.amplihack/.claude/runtime/logs/installation_audit.jsonl` in JSONL format (one JSON object per line).
 
 ### Example Audit Entry
 

@@ -247,7 +247,7 @@ NEO4J_HEALTH_CHECK_INTERVAL=2
 
 ### Memory Settings (Future)
 
-Future config file (`.claude/runtime/memory/.config`):
+Future config file (`~/.amplihack/.claude/runtime/memory/.config`):
 
 ```json
 {
@@ -338,4 +338,4 @@ For questions or issues:
 
 - GitHub Issues: MicrosoftHackathon2025-AgenticCoding
 - Review design doc: `Specs/Memory/AGENT_INTEGRATION_DESIGN.md`
-- Check logs: `.claude/runtime/logs/*.log`
+- Check logs: `~/.amplihack/.claude/runtime/logs/*.log`

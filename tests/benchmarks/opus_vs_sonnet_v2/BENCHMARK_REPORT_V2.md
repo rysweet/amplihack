@@ -142,13 +142,13 @@ Both models received `/amplihack:ultrathink` prefix, but:
 ### Opus v2
 
 - Session ID: 59aaa60b-a324-4186-b265-7cdafab1cd97
-- Full results: `.claude/runtime/benchmarks/opus_v2/result.json`
+- Full results: `~/.amplihack/.claude/runtime/benchmarks/opus_v2/result.json`
 - Trace log: `worktrees/benchmark-opus-v2/.claude-trace/log-2025-11-26-03-33-05.jsonl`
 
 ### Sonnet v2
 
 - Session ID: 0b225098-38dc-46fc-95d8-7594cab24937
-- Full results: `.claude/runtime/benchmarks/sonnet_v2/result.json`
+- Full results: `~/.amplihack/.claude/runtime/benchmarks/sonnet_v2/result.json`
 - Trace log: `worktrees/benchmark-sonnet-v2/.claude-trace/log-2025-11-26-03-34-36.jsonl`
 
 ## Conclusion

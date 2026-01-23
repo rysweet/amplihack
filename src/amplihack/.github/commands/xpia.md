@@ -1,6 +1,6 @@
 # GitHub Copilot Command Reference: xpia
 
-**Source**: `.claude/commands/amplihack/xpia.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/xpia.md`
 
 ---
 

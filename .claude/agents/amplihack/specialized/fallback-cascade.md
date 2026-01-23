@@ -110,7 +110,7 @@ L3: Daily rate → Approximate
 ### Implementation Pattern
 
 ```markdown
-@.claude/agents/amplihack/specialized/fallback-cascade.md
+@~/.amplihack/.claude/agents/amplihack/specialized/fallback-cascade.md
 
 Task: [Your operation]
 Cascade Levels:

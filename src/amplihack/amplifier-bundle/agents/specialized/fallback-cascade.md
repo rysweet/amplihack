@@ -110,7 +110,7 @@ L3: Daily rate → Approximate
 ### Implementation Pattern
 
 ```markdown
-@.claude/agents/amplihack/specialized/fallback-cascade.md
+@~/.amplihack/.claude/agents/amplihack/specialized/fallback-cascade.md
 
 Task: [Your operation]
 Cascade Levels:
@@ -308,7 +308,7 @@ This pattern is implemented as a workflow. Use the `/amplihack:cascade` command:
 /amplihack:cascade "Generate API documentation from codebase"
 ```
 
-The workflow file `.claude/workflow/CASCADE_WORKFLOW.md` can be customized to adjust:
+The workflow file `~/.amplihack/.claude/workflow/CASCADE_WORKFLOW.md` can be customized to adjust:
 
 - Timeout strategy (aggressive, balanced, patient)
 - Fallback types (service, quality, freshness)

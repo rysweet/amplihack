@@ -66,7 +66,7 @@ Options:
 ### Implementation Pattern
 
 ```markdown
-@.claude/agents/amplihack/specialized/n-version-validator.md
+@~/.amplihack/.claude/agents/amplihack/specialized/n-version-validator.md
 
 Task: [Your critical task]
 Target Agents: 3 (or specify N)
@@ -203,7 +203,7 @@ This pattern is implemented as a workflow. Use the `/amplihack:n-version` comman
 /amplihack:n-version "Implement password hashing function"
 ```
 
-The workflow file `.claude/workflow/N_VERSION_WORKFLOW.md` can be customized to adjust:
+The workflow file `~/.amplihack/.claude/workflow/N_VERSION_WORKFLOW.md` can be customized to adjust:
 
 - Number of versions (N)
 - Selection criteria

@@ -18,19 +18,19 @@ The Stop Hook visibility fix has comprehensive test coverage with:
 
 ### Bug #1: Reflection Module Import Error
 
-**File**: `.claude/tools/amplihack/reflection/__init__.py`
+**File**: `~/.amplihack/.claude/tools/amplihack/reflection/__init__.py`
 **Problem**: Exported non-existent functions causing ImportError
 **Fix**: Removed exports for SessionReflector and save_reflection_summary
 
 ### Bug #2: Decision Summary Unreachable
 
-**File**: `.claude/tools/amplihack/hooks/stop.py` (lines 706-715)
+**File**: `~/.amplihack/.claude/tools/amplihack/hooks/stop.py` (lines 706-715)
 **Problem**: decision_summary code was inside `if learnings:` block
 **Fix**: Moved decision_summary check OUTSIDE learnings block
 
 ### Bug #3: Wrong Function Import
 
-**File**: `.claude/tools/amplihack/hooks/stop.py` (line 143)
+**File**: `~/.amplihack/.claude/tools/amplihack/hooks/stop.py` (line 143)
 **Problem**: Imported non-existent functions from reflection
 **Fix**: Import only analyze_session_patterns (which actually exists)
 

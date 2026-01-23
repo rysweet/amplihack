@@ -1,10 +1,10 @@
 # Migration Guide: Per-Project t' Plugin
 
-Guide fer migratin' from per-project `.claude/` installations t' the global plugin architecture.
+Guide fer migratin' from per-project `~/.amplihack/.claude/` installations t' the global plugin architecture.
 
 ## Overview
 
-This guide helps ye transition from copyin' `.claude/` into each project t' usin' the global plugin at `~/.amplihack/.claude/`.
+This guide helps ye transition from copyin' `~/.amplihack/.claude/` into each project t' usin' the global plugin at `~/.amplihack/.claude/`.
 
 **Migration Path:**
 
@@ -20,7 +20,7 @@ Before (Per-Project)              After (Plugin)
 
 ### Automatic Updates
 - Plugin updates affect all projects instantly
-- No need t' copy `.claude/` to each project
+- No need t' copy `~/.amplihack/.claude/` to each project
 - Always use latest agents and commands
 
 ### Consistent Behavior
@@ -34,7 +34,7 @@ Before (Per-Project)              After (Plugin)
 - Simpler backup and version control
 
 ### Disk Space Savings
-- One `.claude/` directory instead o' N copies
+- One `~/.amplihack/.claude/` directory instead o' N copies
 - 50MB saved per project (typical)
 - Example: 10 projects = 500MB saved
 
@@ -89,7 +89,7 @@ cd ~/project
 amplihack mode status
 ```
 
-Check fer custom files in `.claude/` (agents, commands, skills ye added).
+Check fer custom files in `~/.amplihack/.claude/` (agents, commands, skills ye added).
 
 2. **Install Plugin**
 
@@ -159,7 +159,7 @@ cd ~/new-test-project
 amplihack launch
 ```
 
-Plugin be used automatically (no local `.claude/` exists).
+Plugin be used automatically (no local `~/.amplihack/.claude/` exists).
 
 3. **Migrate Low-Risk Project**
 
@@ -190,7 +190,7 @@ amplihack mode migrate-to-plugin
 
 ### Method 3: Hybrid Mode
 
-Keep plugin fer most projects, local `.claude/` fer specific ones.
+Keep plugin fer most projects, local `~/.amplihack/.claude/` fer specific ones.
 
 **Use Case**: 90% o' projects use plugin, but one project needs custom agents.
 
@@ -221,12 +221,12 @@ amplihack launch  # Uses local .claude/ (precedence)
 ```
 
 **Mode Detection:**
-- Projects without `.claude/` → Use plugin
-- Projects with `.claude/` → Use local (override)
+- Projects without `~/.amplihack/.claude/` → Use plugin
+- Projects with `~/.amplihack/.claude/` → Use local (override)
 
 ## Preservin' Customizations
 
-If ye have custom agents, commands, or skills in `.claude/`, preserve 'em before migratin'.
+If ye have custom agents, commands, or skills in `~/.amplihack/.claude/`, preserve 'em before migratin'.
 
 ### Backup Custom Files
 
@@ -288,7 +288,7 @@ Migration complete. Project now uses local .claude/
 You can now customize .claude/ for this project.
 ```
 
-**Result**: Project has own `.claude/` copy (local precedence).
+**Result**: Project has own `~/.amplihack/.claude/` copy (local precedence).
 
 ## Verification Steps
 
@@ -387,7 +387,7 @@ amplihack plugin verify amplihack
 
 ### Local .claude/ Still Used After Migration
 
-**Symptom**: Project still uses local `.claude/` after migration.
+**Symptom**: Project still uses local `~/.amplihack/.claude/` after migration.
 
 **Diagnosis**:
 ```bash
@@ -456,7 +456,7 @@ Migration date: 2025-01-17
 
 ### 4. Update .gitignore
 
-If ye previously committed `.claude/` t' git:
+If ye previously committed `~/.amplihack/.claude/` t' git:
 
 ```bash
 # Add to .gitignore
@@ -489,7 +489,7 @@ Use this checklist fer each project:
 
 **Q: Can I use both plugin and local .claude/ simultaneously?**
 
-A: Aye, local `.claude/` takes precedence. Plugin be used as fallback when no local installation exists.
+A: Aye, local `~/.amplihack/.claude/` takes precedence. Plugin be used as fallback when no local installation exists.
 
 **Q: What happens t' my customizations?**
 
@@ -505,7 +505,7 @@ A: Reinstall: `amplihack plugin install --force https://github.com/rysweet/ampli
 
 **Q: Does migration affect git history?**
 
-A: No, unless ye committed `.claude/` t' git. If so, remove it from git after migration.
+A: No, unless ye committed `~/.amplihack/.claude/` t' git. If so, remove it from git after migration.
 
 **Q: What if migration fails?**
 

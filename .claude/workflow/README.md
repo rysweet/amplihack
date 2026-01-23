@@ -110,11 +110,11 @@ Create your own workflows using the template in `templates/WORKFLOW_TEMPLATE.md`
 /amplihack:customize list-workflows
 ```
 
-Lists all available workflows in `.claude/workflow/` with descriptions.
+Lists all available workflows in `~/.amplihack/.claude/workflow/` with descriptions.
 
 **Method 2: Via File System**
 
-Browse `.claude/workflow/` directory:
+Browse `~/.amplihack/.claude/workflow/` directory:
 
 ```
 .claude/workflow/
@@ -456,7 +456,7 @@ UltraThink:
 **Solutions**:
 
 1. Check workflow name in USER_PREFERENCES.md (exact match, no .md extension)
-2. Verify workflow file exists in `.claude/workflow/`
+2. Verify workflow file exists in `~/.amplihack/.claude/workflow/`
 3. Ensure workflow file is valid markdown with required structure
 
 ### Agents Not Deploying
@@ -466,7 +466,7 @@ UltraThink:
 **Solutions**:
 
 1. Check agent assignment syntax: "**Use** agent-name agent"
-2. Verify agent exists in `.claude/agents/amplihack/`
+2. Verify agent exists in `~/.amplihack/.claude/agents/amplihack/`
 3. Ensure TodoWrite is tracking workflow steps
 
 ### Workflow Taking Too Long

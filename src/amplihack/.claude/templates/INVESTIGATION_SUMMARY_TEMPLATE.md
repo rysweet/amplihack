@@ -65,9 +65,9 @@ The user preferences system enforces MANDATORY user preferences across all Claud
 ### Component Diagram
 ```
 
-Storage Layer (.claude/context/USER_PREFERENCES.md)
+Storage Layer (~/.amplihack/.claude/context/USER_PREFERENCES.md)
 ↓
-Hook Layer (.claude/tools/amplihack/hooks/)
+Hook Layer (~/.amplihack/.claude/tools/amplihack/hooks/)
 ├─ session_start.py (loads FULL preferences at init)
 └─ user_prompt_submit.py (re-injects concise preferences per message)
 ↓
@@ -114,7 +114,7 @@ Enforcement Layer (All agents and responses)
 
 ### Component: SessionStart Hook
 
-**File**: `.claude/tools/amplihack/hooks/session_start.py`
+**File**: `~/.amplihack/.claude/tools/amplihack/hooks/session_start.py`
 
 **Responsibility**: Load and inject user preferences at session initialization.
 
@@ -138,7 +138,7 @@ Enforcement Layer (All agents and responses)
 4. Extracts preferences using regex patterns
 5. Formats as structured context with MANDATORY header
 6. Returns JSON response with additionalContext
-7. Logs execution to `.claude/runtime/logs/session_start.log`
+7. Logs execution to `~/.amplihack/.claude/runtime/logs/session_start.log`
 
 **Key Code Pattern**:
 
@@ -154,7 +154,7 @@ else:
 
 ### Component: FrameworkPathResolver
 
-**File**: `.claude/tools/amplihack/hooks/framework_path_resolver.py`
+**File**: `~/.amplihack/.claude/tools/amplihack/hooks/framework_path_resolver.py`
 
 **Responsibility**: Find framework files using multi-strategy path resolution.
 
@@ -162,14 +162,14 @@ else:
 
 - **Input**: Filename (e.g., "USER_PREFERENCES.md"), starting directory
 - **Output**: Path object if found, None otherwise
-- **Side Effects**: Traverses filesystem upward looking for `.claude/` directories
+- **Side Effects**: Traverses filesystem upward looking for `~/.amplihack/.claude/` directories
 
 **Implementation**:
 Four-strategy fallback approach:
 
 1. Direct path: `{cwd}/.claude/context/{filename}`
-2. Parent traversal: Walk up directories looking for `.claude/context/{filename}`
-3. Framework root: Find `.claude/` dir and search from there
+2. Parent traversal: Walk up directories looking for `~/.amplihack/.claude/context/{filename}`
+3. Framework root: Find `~/.amplihack/.claude/` dir and search from there
 4. Absolute fallback: Try known absolute paths
 
 **Why Four Strategies**: Handles various execution contexts (worktrees, subdirectories, CI environments).
@@ -220,7 +220,7 @@ Four-strategy fallback approach:
   }
   ```
 
-**Coupling**: Loose coupling through JSON interface, but depends on specific hook event names defined in `.claude/settings.json`.
+**Coupling**: Loose coupling through JSON interface, but depends on specific hook event names defined in `~/.amplihack/.claude/settings.json`.
 
 **Error Handling**: Claude Code ignores hooks that return non-zero exit codes or malformed JSON.
 
@@ -248,7 +248,7 @@ Four-strategy fallback approach:
 
 **Connection Type**: File system writes
 
-**Data Exchange Format**: Plain text log files in `.claude/runtime/logs/`
+**Data Exchange Format**: Plain text log files in `~/.amplihack/.claude/runtime/logs/`
 
 **Coupling**: Loose coupling - logs are informational only, not read by system.
 
@@ -302,7 +302,7 @@ Four-strategy fallback approach:
 - Invalid patterns don't match → sections come through as empty
 - No exceptions thrown - graceful degradation
 - Returns partial preferences (whatever could be parsed)
-- Logs warning to `.claude/runtime/logs/session_start.log`
+- Logs warning to `~/.amplihack/.claude/runtime/logs/session_start.log`
 
 **Recovery**: System continues with defaults for unparseable preferences.
 
@@ -343,7 +343,7 @@ INFO: USER_PREFERENCES.md not found, continuing with defaults
 
 ### Hook Execution Timeout (>10 seconds)
 
-**Scenario**: SessionStart hook takes longer than 10-second timeout defined in `.claude/settings.json`.
+**Scenario**: SessionStart hook takes longer than 10-second timeout defined in `~/.amplihack/.claude/settings.json`.
 
 **Handling**:
 1. Claude Code kills hook process after 10 seconds
@@ -355,7 +355,7 @@ INFO: USER_PREFERENCES.md not found, continuing with defaults
 **Recovery**: Manual - investigate why hook is slow, fix underlying issue.
 
 **Verified**:
-- Examined `.claude/settings.json`: `"hook_timeout_seconds": 10`
+- Examined `~/.amplihack/.claude/settings.json`: `"hook_timeout_seconds": 10`
 - Confirmed timeout behavior in Claude Code documentation
 - Did NOT test with artificial delay (would require code modification)
 
@@ -485,7 +485,7 @@ verbosity :: detailed        # Double colon
 
 **Workaround**: End session and start new one (stop → start).
 
-**Why**: SessionStart hook only runs once. UserPromptSubmit hook is disabled (see `.claude/settings.json`).
+**Why**: SessionStart hook only runs once. UserPromptSubmit hook is disabled (see `~/.amplihack/.claude/settings.json`).
 
 **Could Be Fixed**: Enable UserPromptSubmit hook to re-read preferences on every message (performance trade-off: +50ms per message).
 
@@ -672,7 +672,7 @@ echo '{"session_id":"test","hook_event_name":"SessionStart","cwd":"'$(pwd)'"}' |
 
 ✅ **Log Analysis** (Message 26-27)
 
-**File**: `.claude/runtime/logs/session_start.log`
+**File**: `~/.amplihack/.claude/runtime/logs/session_start.log`
 
 **Findings**:
 
@@ -692,10 +692,10 @@ echo '{"session_id":"test","hook_event_name":"SessionStart","cwd":"'$(pwd)'"}' |
 
 **Files Analyzed**:
 
-- `.claude/tools/amplihack/hooks/session_start.py` (127 lines)
-- `.claude/tools/amplihack/hooks/user_prompt_submit.py` (95 lines)
-- `.claude/tools/amplihack/hooks/framework_path_resolver.py` (156 lines)
-- `.claude/tools/amplihack/hooks/hook_processor.py` (89 lines)
+- `~/.amplihack/.claude/tools/amplihack/hooks/session_start.py` (127 lines)
+- `~/.amplihack/.claude/tools/amplihack/hooks/user_prompt_submit.py` (95 lines)
+- `~/.amplihack/.claude/tools/amplihack/hooks/framework_path_resolver.py` (156 lines)
+- `~/.amplihack/.claude/tools/amplihack/hooks/hook_processor.py` (89 lines)
 
 **Patterns Confirmed**:
 
@@ -709,7 +709,7 @@ echo '{"session_id":"test","hook_event_name":"SessionStart","cwd":"'$(pwd)'"}' |
 
 ✅ **Configuration Verification**
 
-**File**: `.claude/settings.json`
+**File**: `~/.amplihack/.claude/settings.json`
 
 **Findings**:
 

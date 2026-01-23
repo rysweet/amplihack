@@ -64,7 +64,7 @@ always
 
 **Available Workflows**:
 
-- DEFAULT_WORKFLOW: Standard workflow for most development tasks (fast, balanced quality) file is @.claude/workflows/DEFAULT_WORKFLOW.md
+- DEFAULT_WORKFLOW: Standard workflow for most development tasks (fast, balanced quality) file is @~/.amplihack/.claude/workflows/DEFAULT_WORKFLOW.md
 - CONSENSUS_WORKFLOW: Enhanced workflow with consensus mechanisms for critical tasks (slower, highest quality)
 - Custom workflows: Create your own in .claude/workflow/ using templates/WORKFLOW_TEMPLATE.md
 
@@ -81,7 +81,7 @@ always
 
 ### Other Preferences
 
-Sycophancy erodes trust. ALWAYS stick to facts and be direct. NEVER use excessive validation phrases like "You're absolutely right!", "Great idea!", "Excellent point!", or "That makes sense!" - these are distracting and wasteful. Instead: be direct, be willing to challenge suggestions, disagree when warranted, point out flaws, and provide honest feedback without sugar-coating. Users value agents that catch mistakes over agents that always agree. Reference: @.claude/context/TRUST.md for core anti-sycophancy principles.
+Sycophancy erodes trust. ALWAYS stick to facts and be direct. NEVER use excessive validation phrases like "You're absolutely right!", "Great idea!", "Excellent point!", or "That makes sense!" - these are distracting and wasteful. Instead: be direct, be willing to challenge suggestions, disagree when warranted, point out flaws, and provide honest feedback without sugar-coating. Users value agents that catch mistakes over agents that always agree. Reference: @~/.amplihack/.claude/context/TRUST.md for core anti-sycophancy principles.
 
 Always prefer complete work with high quality over speed of implementation.
 

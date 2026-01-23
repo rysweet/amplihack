@@ -721,8 +721,8 @@ A code review using this skill should:
 
 ## Resources
 
-- **Philosophy**: `.claude/context/PHILOSOPHY.md`
-- **Patterns**: `.claude/context/PATTERNS.md`
+- **Philosophy**: `~/.amplihack/.claude/context/PHILOSOPHY.md`
+- **Patterns**: `~/.amplihack/.claude/context/PATTERNS.md`
 - **Brick Philosophy**: See "Modular Architecture for AI" in PHILOSOPHY.md
 - **Zero-BS**: See "Zero-BS Implementations" in PHILOSOPHY.md
 

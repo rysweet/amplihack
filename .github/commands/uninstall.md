@@ -1,6 +1,6 @@
 # GitHub Copilot Command Reference: uninstall
 
-**Source**: `.claude/commands/amplihack/uninstall.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/uninstall.md`
 
 ---
 

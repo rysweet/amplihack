@@ -2,10 +2,10 @@
 
 ## Problem
 
-The `.claude/` directory was not included in wheel builds for UVX deployment because:
+The `~/.amplihack/.claude/` directory was not included in wheel builds for UVX deployment because:
 
 1. **MANIFEST.in only controls sdist**: MANIFEST.in affects source distributions but NOT wheel distributions
-2. **.claude/ is outside package**: The `.claude/` directory is at repository root, outside `src/amplihack/`
+2. **.claude/ is outside package**: The `~/.amplihack/.claude/` directory is at repository root, outside `src/amplihack/`
 3. **Wheels only include package files**: Setuptools wheels only include files inside Python packages by default
 
 This caused UVX deployments to fail with "`.claude not found`" errors.
@@ -14,8 +14,8 @@ This caused UVX deployments to fail with "`.claude not found`" errors.
 
 We use a **custom build backend** (`build_hooks.py`) that:
 
-1. **Before wheel build**: Copies `.claude/` from repo root → `src/amplihack/.claude/`
-2. **During build**: Setuptools includes `.claude/` as package data
+1. **Before wheel build**: Copies `~/.amplihack/.claude/` from repo root → `src/amplihack/.claude/`
+2. **During build**: Setuptools includes `~/.amplihack/.claude/` as package data
 3. **After build**: Cleans up `src/amplihack/.claude/` (temp copy)
 
 ### Architecture
@@ -68,7 +68,7 @@ amplihack = [
 
 Custom build backend that wraps `setuptools.build_meta`:
 
-- Copies `.claude/` before building wheel
+- Copies `~/.amplihack/.claude/` before building wheel
 - Excludes runtime data (logs, metrics)
 - Cleans up after build (always, even on failure)
 

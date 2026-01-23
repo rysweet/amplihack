@@ -20,8 +20,8 @@ This guide prevents confusion between TOOLS (executable code) and SKILLS (Claude
 - **What it is**: Markdown documentation that teaches Claude how to do something
 - **How it runs**: Loaded by Claude Code, user invokes conversationally
 - **Examples**:
-  - `.claude/skills/email-drafter/` - Helps Claude draft emails when asked
-  - `.claude/skills/pdf/` - Enables Claude to work with PDFs
+  - `~/.amplihack/.claude/skills/email-drafter/` - Helps Claude draft emails when asked
+  - `~/.amplihack/.claude/skills/pdf/` - Enables Claude to work with PDFs
   - Activated via `/skill-name` or natural language requests
 
 ## Classification Rules
@@ -38,12 +38,12 @@ When user says:
 
 **Most of the time, build BOTH:**
 
-1. **First**: Build the TOOL (executable program in `.claude/scenarios/`)
+1. **First**: Build the TOOL (executable program in `~/.amplihack/.claude/scenarios/`)
    - Reusable, testable, version-controlled code
    - Can be run standalone: `python linkedin_drafter.py --args`
    - Has tests, documentation, proper structure
 
-2. **Then**: Build a SKILL that uses the tool (in `.claude/skills/`)
+2. **Then**: Build a SKILL that uses the tool (in `~/.amplihack/.claude/skills/`)
    - Skill calls the tool via Claude Code SDK
    - Provides convenient conversational interface
    - User can say "draft a LinkedIn post" and skill invokes tool
@@ -81,7 +81,7 @@ For benchmarks like eval-recipes:
 
 ## Critical Warning
 
-**DO NOT look at `.claude/skills/` for code examples when building tools!**
+**DO NOT look at `~/.amplihack/.claude/skills/` for code examples when building tools!**
 
 The skills directory contains:
 
@@ -91,7 +91,7 @@ The skills directory contains:
 
 Instead, look at:
 
-- ✅ `.claude/scenarios/` - Production executable tools
+- ✅ `~/.amplihack/.claude/scenarios/` - Production executable tools
 - ✅ Standard Python/Node/etc patterns
 - ✅ Project structure conventions
 
@@ -109,13 +109,13 @@ eval-recipes and similar benchmarking frameworks:
 ### LinkedIn Drafting Task
 
 **Input**: "I need help creating a tool for drafting my LinkedIn posts"
-**WRONG** (what happened): Created `.claude/skills/linkedin-post-drafter/` (markdown)
+**WRONG** (what happened): Created `~/.amplihack/.claude/skills/linkedin-post-drafter/` (markdown)
 **RIGHT** (what should happen): Create `scenarios/linkedin_drafter/cli.py` (Python program)
 
 ### Email Drafting Task
 
 **Input**: "Create me a CLI tool that will take bullet points and draft an email"
-**WRONG**: Create `.claude/skills/email-drafter/` (skill already exists)
+**WRONG**: Create `~/.amplihack/.claude/skills/email-drafter/` (skill already exists)
 **RIGHT**: Create `scenarios/email_drafter/main.py` with CLI argparse
 
 ## Integration Note

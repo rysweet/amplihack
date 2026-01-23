@@ -140,7 +140,7 @@ if session_duration >= 60 minutes:
 - `test_auto_mode_works_without_session_tracking` - Optional `enable_session_management` flag
 - `test_existing_public_api_unchanged` - Public methods unchanged
 - `test_session_management_minimal_overhead` - <5% performance overhead
-- `test_session_dir_structure_compatible` - Files in `.claude/runtime/logs/<session_id>/`
+- `test_session_dir_structure_compatible` - Files in `~/.amplihack/.claude/runtime/logs/<session_id>/`
 - `test_existing_hooks_still_called` - `session_start` and `stop` hooks still called
 
 **Backward Compatibility Requirements**:
@@ -330,7 +330,7 @@ python tests/test_auto_mode_session_management.py
 
 ### 1. ClaudeTranscriptBuilder
 
-**File**: `.claude/tools/amplihack/builders/claude_transcript_builder.py`
+**File**: `~/.amplihack/.claude/tools/amplihack/builders/claude_transcript_builder.py`
 
 **Interface**:
 
@@ -346,13 +346,13 @@ transcript_path = builder.build_session_transcript(
 
 ### 2. Stop Hook
 
-**File**: `.claude/tools/amplihack/hooks/stop.py`
+**File**: `~/.amplihack/.claude/tools/amplihack/hooks/stop.py`
 
 **Integration**: Export should be called before stop hook runs, allowing stop hook to process the transcript.
 
 ### 3. Session Start Hook
 
-**File**: `.claude/tools/amplihack/hooks/session_start.py`
+**File**: `~/.amplihack/.claude/tools/amplihack/hooks/session_start.py`
 
 **Integration**: Session start hook should receive session metadata, including whether this is a forked session.
 

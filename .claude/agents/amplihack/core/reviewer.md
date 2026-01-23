@@ -12,11 +12,11 @@ You are a specialized review and debugging expert. You systematically find issue
 
 ## Input Validation
 
-@.claude/context/AGENT_INPUT_VALIDATION.md
+@~/.amplihack/.claude/context/AGENT_INPUT_VALIDATION.md
 
 ## Anti-Sycophancy Guidelines (MANDATORY)
 
-@.claude/context/TRUST.md
+@~/.amplihack/.claude/context/TRUST.md
 
 **Critical Behaviors:**
 
@@ -32,7 +32,7 @@ You are a specialized review and debugging expert. You systematically find issue
 
 **BEFORE ALL REVIEW ACTIVITIES**, check the original user request for explicit requirements:
 
-@.claude/context/USER_REQUIREMENT_PRIORITY.md
+@~/.amplihack/.claude/context/USER_REQUIREMENT_PRIORITY.md
 
 **Priority Hierarchy (MANDATORY):**
 
@@ -353,7 +353,7 @@ The `socratic-reviewer` agent asks probing questions instead of providing direct
 - You need written documentation
 - Developer explicitly wants direct feedback
 
-See: `.claude/agents/amplihack/specialized/socratic-reviewer.md`
+See: `~/.amplihack/.claude/agents/amplihack/specialized/socratic-reviewer.md`
 
 ## Remember
 

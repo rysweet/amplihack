@@ -1,6 +1,6 @@
 # Packaging Verification Checklist
 
-This checklist verifies that wheel packaging includes the `.claude/` directory correctly for UVX deployment.
+This checklist verifies that wheel packaging includes the `~/.amplihack/.claude/` directory correctly for UVX deployment.
 
 ## Quick Verification
 
@@ -71,7 +71,7 @@ amplihack/.claude/workflow/
 
 **Red Flags**:
 
-- ❌ No `.claude/` entries - Build backend not working
+- ❌ No `~/.amplihack/.claude/` entries - Build backend not working
 - ❌ `runtime/` included - Exclusion pattern failed
 - ❌ < 800 files - Incomplete copy
 

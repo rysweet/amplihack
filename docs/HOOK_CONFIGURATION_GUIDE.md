@@ -2,7 +2,7 @@
 
 ## Understanding Claude Code Hook Configuration
 
-Claude Code uses a settings merge strategy where **project settings override global settings**. This means if your project has any hooks defined in `.claude/settings.json`, they will completely replace ALL global hooks, including amplihack's hooks.
+Claude Code uses a settings merge strategy where **project settings override global settings**. This means if your project has any hooks defined in `~/.amplihack/.claude/settings.json`, they will completely replace ALL global hooks, including amplihack's hooks.
 
 ## Installation Scenarios
 
@@ -20,7 +20,7 @@ uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding a
 
 ### Scenario 2: Project with Existing Hooks (Manual Configuration Required ⚠️)
 
-If your project has a `.claude/settings.json` with hooks, you'll need to manually add amplihack hooks.
+If your project has a `~/.amplihack/.claude/settings.json` with hooks, you'll need to manually add amplihack hooks.
 
 ## Manual Hook Configuration
 
@@ -42,7 +42,7 @@ ls -la ~/.claude/tools/amplihack/hooks/
 
 ### Step 3: Add Amplihack Hooks to Your Project
 
-Edit your project's `.claude/settings.json` and add the amplihack hooks alongside your existing hooks:
+Edit your project's `~/.amplihack/.claude/settings.json` and add the amplihack hooks alongside your existing hooks:
 
 ```json
 {
@@ -187,7 +187,7 @@ If you're still having issues:
 
 ## Example: Complete Settings File
 
-Here's a complete example of a project's `.claude/settings.json` with both project hooks and amplihack hooks:
+Here's a complete example of a project's `~/.amplihack/.claude/settings.json` with both project hooks and amplihack hooks:
 
 ```json
 {

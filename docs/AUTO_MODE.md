@@ -269,7 +269,7 @@ amplihack claude --append "Ensure all passwords are hashed with bcrypt"
 ### How It Works
 
 1. The `--append` flag finds the active auto mode session in the current project
-2. It writes your instruction to `.claude/runtime/logs/auto_<sdk>_<timestamp>/append/<timestamp>.md`
+2. It writes your instruction to `~/.amplihack/.claude/runtime/logs/auto_<sdk>_<timestamp>/append/<timestamp>.md`
 3. Before the next turn, auto mode reads and processes all instructions in the `append/` directory
 4. The instructions are integrated into the turn prompt as additional requirements
 5. Processed instruction files are moved to `appended/` directory for tracking
@@ -426,7 +426,7 @@ Auto mode excels at:
 ### Execution Errors
 
 **Cause**: Syntax errors, test failures during execution
-**Solution**: Auto mode logs errors and continues. Review logs in `.claude/runtime/logs/` to see what happened.
+**Solution**: Auto mode logs errors and continues. Review logs in `~/.amplihack/.claude/runtime/logs/` to see what happened.
 
 ### Turn Timeouts
 
@@ -450,14 +450,14 @@ Auto mode excels at:
 
 Runs at the beginning of auto mode session.
 
-- Location: `.claude/tools/amplihack/hooks/session_start.py`
+- Location: `~/.amplihack/.claude/tools/amplihack/hooks/session_start.py`
 - Use: Initialize session logging, set up environment
 
 ### Stop Hook
 
 Runs at the end of auto mode session.
 
-- Location: `.claude/tools/amplihack/hooks/stop.py`
+- Location: `~/.amplihack/.claude/tools/amplihack/hooks/stop.py`
 - Use: Cleanup, final logging, metrics collection
 
 **Note**: Only `session_start` and `stop` hooks run in auto mode. Tool-use hooks aren't supported.
@@ -511,7 +511,7 @@ amplihack claude --auto --max-turns 10 -- -p "complete feature X implementation:
 ## Tips
 
 1. **Start small**: Test auto mode with simpler tasks first
-2. **Monitor logs**: Check `.claude/runtime/logs/` to understand what auto mode is doing
+2. **Monitor logs**: Check `~/.amplihack/.claude/runtime/logs/` to understand what auto mode is doing
 3. **Iterate prompts**: Refine your prompts based on results
 4. **Use max-turns wisely**: Don't set too high - better to run multiple focused sessions
 5. **Trust the process**: Let auto mode work through its turns autonomously
@@ -519,8 +519,8 @@ amplihack claude --auto --max-turns 10 -- -p "complete feature X implementation:
 ## See Also
 
 - `AGENTS.md` - Guide for using subagents with Copilot CLI
-- `.claude/workflow/DEFAULT_WORKFLOW.md` - Standard workflow steps
-- `.claude/context/PHILOSOPHY.md` - Development principles
+- `~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md` - Standard workflow steps
+- `~/.amplihack/.claude/context/PHILOSOPHY.md` - Development principles
 
 ---
 

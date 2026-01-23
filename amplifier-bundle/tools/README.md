@@ -175,7 +175,7 @@ The hook system integrates with Claude Code's lifecycle events to provide sessio
 
 **What it does**:
 
-- Checks for lock flag (`.claude/runtime/locks/.lock_active`)
+- Checks for lock flag (`~/.amplihack/.claude/runtime/locks/.lock_active`)
 - Blocks stop if lock is active (continuous work mode)
 - Triggers reflection analysis if enabled
 - Creates reflection pending marker
@@ -213,8 +213,8 @@ class MyHook(HookProcessor):
 **Features**:
 
 - JSON input/output handling
-- Structured logging to `.claude/runtime/logs/`
-- Metric collection to `.claude/runtime/metrics/`
+- Structured logging to `~/.amplihack/.claude/runtime/logs/`
+- Metric collection to `~/.amplihack/.claude/runtime/metrics/`
 - Error handling with graceful fallback
 - Path validation and security
 - Session data management
@@ -465,7 +465,7 @@ with AgentMemory("my-agent") as memory:
 
 **Features**:
 
-- SQLite-based backend (`.claude/runtime/memory.db`)
+- SQLite-based backend (`~/.amplihack/.claude/runtime/memory.db`)
 - Session-scoped memory
 - Optional activation (enabled by default)
 - Performance guarantees (< 100ms operations)
@@ -870,14 +870,14 @@ Reflection system uses `security.py` to sanitize all content before GitHub issue
 
 ### Hook Not Running
 
-1. Check `.claude/tools/amplihack/hooks/` exists
+1. Check `~/.amplihack/.claude/tools/amplihack/hooks/` exists
 2. Verify hooks are executable
-3. Check logs in `.claude/runtime/logs/<hook_name>.log`
+3. Check logs in `~/.amplihack/.claude/runtime/logs/<hook_name>.log`
 4. Enable debug mode: `export AMPLIHACK_DEBUG=1`
 
 ### Memory Not Persisting
 
-1. Check `.claude/runtime/memory.db` exists
+1. Check `~/.amplihack/.claude/runtime/memory.db` exists
 2. Verify session_id is consistent
 3. Check file permissions
 4. Confirm `enabled=True` when creating AgentMemory
@@ -903,12 +903,12 @@ When adding new tools to this directory:
 ## References
 
 - [Claude Code Hooks Documentation](https://docs.claude.com/en/docs/claude-code/hooks)
-- [Project Philosophy](.claude/context/PHILOSOPHY.md)
-- [Development Patterns](.claude/context/PATTERNS.md)
-- [Workflow Definition](.claude/workflow/DEFAULT_WORKFLOW.md)
+- [Project Philosophy](~/.amplihack/.claude/context/PHILOSOPHY.md)
+- [Development Patterns](~/.amplihack/.claude/context/PATTERNS.md)
+- [Workflow Definition](~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md)
 
 ---
 
 **Last Updated**: 2025-01-05
 **Maintainer**: Amplihack Framework Team
-**Questions**: Check `.claude/context/DISCOVERIES.md` for known issues and solutions
+**Questions**: Check `~/.amplihack/.claude/context/DISCOVERIES.md` for known issues and solutions

@@ -50,26 +50,26 @@ except ImportError:
 
 #### Core Infrastructure
 
-- ✅ `.claude/tools/amplihack/paths.py` (NEW - centralized path management)
-- ✅ `.claude/tools/amplihack/__init__.py` (updated to use paths module)
-- ✅ `.claude/tools/amplihack/context_preservation.py`
+- ✅ `~/.amplihack/.claude/tools/amplihack/paths.py` (NEW - centralized path management)
+- ✅ `~/.amplihack/.claude/tools/amplihack/__init__.py` (updated to use paths module)
+- ✅ `~/.amplihack/.claude/tools/amplihack/context_preservation.py`
 
 #### Hook Processors
 
-- ✅ `.claude/tools/amplihack/hooks/hook_processor.py`
-- ✅ `.claude/tools/amplihack/hooks/session_start.py`
-- ✅ `.claude/tools/amplihack/hooks/pre_compact.py`
-- ✅ `.claude/tools/amplihack/hooks/post_edit_format.py`
-- ✅ `.claude/tools/amplihack/hooks/stop_azure_continuation.py`
+- ✅ `~/.amplihack/.claude/tools/amplihack/hooks/hook_processor.py`
+- ✅ `~/.amplihack/.claude/tools/amplihack/hooks/session_start.py`
+- ✅ `~/.amplihack/.claude/tools/amplihack/hooks/pre_compact.py`
+- ✅ `~/.amplihack/.claude/tools/amplihack/hooks/post_edit_format.py`
+- ✅ `~/.amplihack/.claude/tools/amplihack/hooks/stop_azure_continuation.py`
 
 #### Memory System
 
-- ✅ `.claude/tools/amplihack/memory/context_preservation.py`
-- ✅ `.claude/tools/amplihack/memory/examples.py`
+- ✅ `~/.amplihack/.claude/tools/amplihack/memory/context_preservation.py`
+- ✅ `~/.amplihack/.claude/tools/amplihack/memory/examples.py`
 
 #### Commands
 
-- ✅ `.claude/commands/transcripts.py`
+- ✅ `~/.amplihack/.claude/commands/transcripts.py`
 
 ## Benefits Achieved
 

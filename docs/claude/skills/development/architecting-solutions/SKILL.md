@@ -154,7 +154,7 @@ Ask these questions in order:
 
 ### Invokes
 
-- **Architect Agent**: Core architectural reasoning from `.claude/agents/architect.md`
+- **Architect Agent**: Core architectural reasoning from `~/.amplihack/.claude/agents/architect.md`
 - **Module Templates**: Reference `Templates/ModuleSpec.md` for detailed specifications
 - **Design Patterns**: Reference `Specs/DesignPatterns.md` for common solutions
 

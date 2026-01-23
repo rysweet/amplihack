@@ -145,7 +145,7 @@ Your agents now have memory. They will:
 
 - Read full documentation: [AGENT_MEMORY_INTEGRATION.md](./AGENT_MEMORY_INTEGRATION.md)
 - Customize extraction patterns: `src/amplihack/memory/neo4j/extraction_patterns.py`
-- Tune configuration: `.claude/runtime/memory/.config`
+- Tune configuration: `~/.amplihack/.claude/runtime/memory/.config`
 - View architecture: [Specs/Memory/AGENT_INTEGRATION_DESIGN.md](../Specs/Memory/AGENT_INTEGRATION_DESIGN.md)
 
 ## Troubleshooting

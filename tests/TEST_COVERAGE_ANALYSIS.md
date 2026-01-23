@@ -238,7 +238,7 @@ For manual verification of the fix:
 
 ### Test Case 1: Decision Records Visible with Empty Learnings
 
-1. Create `.claude/runtime/logs/test_session/DECISIONS.md`:
+1. Create `~/.amplihack/.claude/runtime/logs/test_session/DECISIONS.md`:
 
    ```markdown
    ## Decision: Test Decision

@@ -155,7 +155,7 @@ print(f"Saved to: {snapshot.file_path}")
 **Returns:**
 
 - `ContextSnapshot` object with metadata
-- Snapshot saved to `.claude/runtime/context-snapshots/`
+- Snapshot saved to `~/.amplihack/.claude/runtime/context-snapshots/`
 
 ### Action: `rehydrate`
 
@@ -459,8 +459,8 @@ context = rehydrate_from_snapshot(
 
 ### Storage Locations
 
-- **Snapshots**: `.claude/runtime/context-snapshots/` (JSON)
-- **Transcripts**: `.claude/runtime/logs/<session_id>/CONVERSATION_TRANSCRIPT.md`
+- **Snapshots**: `~/.amplihack/.claude/runtime/context-snapshots/` (JSON)
+- **Transcripts**: `~/.amplihack/.claude/runtime/logs/<session_id>/CONVERSATION_TRANSCRIPT.md`
 - **No conflicts**: Different directories, different purposes
 
 ## Automatic Management
@@ -478,9 +478,9 @@ This happens transparently without user intervention.
 
 All context management functionality is provided by:
 
-- **Tool**: `.claude/tools/amplihack/context_manager.py`
-- **Hook Integration**: `.claude/tools/amplihack/context_automation_hook.py`
-- **Hook System**: `.claude/tools/amplihack/hooks/tool_registry.py`
+- **Tool**: `~/.amplihack/.claude/tools/amplihack/context_manager.py`
+- **Hook Integration**: `~/.amplihack/.claude/tools/amplihack/context_automation_hook.py`
+- **Hook System**: `~/.amplihack/.claude/tools/amplihack/hooks/tool_registry.py`
 
 See tool documentation for complete API reference and implementation details.
 
@@ -563,10 +563,10 @@ snapshot = create_context_snapshot(
 
 ## Resources
 
-- **Tool**: `.claude/tools/amplihack/context_manager.py`
-- **Hook**: `.claude/tools/amplihack/context_automation_hook.py`
-- **Philosophy**: `.claude/context/PHILOSOPHY.md`
-- **Patterns**: `.claude/context/PATTERNS.md`
+- **Tool**: `~/.amplihack/.claude/tools/amplihack/context_manager.py`
+- **Hook**: `~/.amplihack/.claude/tools/amplihack/context_automation_hook.py`
+- **Philosophy**: `~/.amplihack/.claude/context/PHILOSOPHY.md`
+- **Patterns**: `~/.amplihack/.claude/context/PATTERNS.md`
 
 ## Remember
 

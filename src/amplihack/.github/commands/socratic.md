@@ -1,6 +1,6 @@
 # GitHub Copilot Command Reference: socratic
 
-**Source**: `.claude/commands/amplihack/socratic.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/socratic.md`
 
 ---
 
@@ -169,7 +169,7 @@ Challenge architectural decisions and design trade-offs with Socratic questions.
 
 ## Pattern Reference
 
-This command implements the **Socratic Questioning Pattern** documented in `.claude/context/DISCOVERIES.md`.
+This command implements the **Socratic Questioning Pattern** documented in `~/.amplihack/.claude/context/DISCOVERIES.md`.
 
 **Status**: Validation phase (1/3 uses completed)
 **Effectiveness**: 8.6/10 average across dimensions
@@ -177,10 +177,10 @@ This command implements the **Socratic Questioning Pattern** documented in `.cla
 
 ## Resources
 
-- **Full Template**: `.claude/runtime/logs/20251018_socratic_questioning/SOCRATIC_TEMPLATE.md`
-- **Quick Reference**: `.claude/runtime/logs/20251018_socratic_questioning/QUICK_REFERENCE.md`
-- **Domain Examples**: `.claude/runtime/logs/20251018_socratic_questioning/DOMAIN_EXAMPLES.md`
-- **Quality Checker**: `.claude/runtime/logs/20251018_socratic_questioning/QUALITY_CHECKER.py`
+- **Full Template**: `~/.amplihack/.claude/runtime/logs/20251018_socratic_questioning/SOCRATIC_TEMPLATE.md`
+- **Quick Reference**: `~/.amplihack/.claude/runtime/logs/20251018_socratic_questioning/QUICK_REFERENCE.md`
+- **Domain Examples**: `~/.amplihack/.claude/runtime/logs/20251018_socratic_questioning/DOMAIN_EXAMPLES.md`
+- **Quality Checker**: `~/.amplihack/.claude/runtime/logs/20251018_socratic_questioning/QUALITY_CHECKER.py`
 
 ## Example Session
 

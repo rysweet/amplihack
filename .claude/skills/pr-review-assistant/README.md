@@ -182,7 +182,7 @@ All reviews anchor in:
 4. **Quality Over Speed** - Long-term maintainability
 5. **Modular Design** - Clear boundaries and contracts
 
-See `.claude/context/PHILOSOPHY.md` for complete philosophy.
+See `~/.amplihack/.claude/context/PHILOSOPHY.md` for complete philosophy.
 
 ## Acceptance Criteria for Code
 
@@ -263,7 +263,7 @@ This skill evolves based on usage:
 - What's missing from the review process?
 - How can we make this more helpful?
 
-Share learnings in `.claude/context/DISCOVERIES.md`.
+Share learnings in `~/.amplihack/.claude/context/DISCOVERIES.md`.
 
 ## Getting Started
 

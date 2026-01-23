@@ -11,7 +11,7 @@ Designed clean, minimal API contracts for the 5-type memory system. All interfac
 
 ## Files Created
 
-All files in `.claude/specs/memory/`:
+All files in `~/.amplihack/.claude/specs/memory/`:
 
 1. **api_contracts.py** - Complete interface definitions
 2. **api_examples.py** - 12 working examples

@@ -17,7 +17,7 @@ invokes:
 This skill provides cross-session learning by:
 
 1. **Extracting** learnings from session transcripts at Stop hook
-2. **Storing** learnings in structured YAML format (`.claude/data/learnings/`)
+2. **Storing** learnings in structured YAML format (`~/.amplihack/.claude/data/learnings/`)
 3. **Injecting** relevant past learnings at SessionStart based on task similarity
 4. **Managing** learnings via `/amplihack:learnings` capability
 

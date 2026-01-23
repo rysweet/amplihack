@@ -1845,10 +1845,10 @@ Archive (not delete):
 
 ### Related Amplihack Documentation
 
-1. `.claude/context/PHILOSOPHY.md` - Core design principles
-2. `.claude/context/PATTERNS.md` - Existing pattern catalog
-3. `.claude/agents/README.md` - Agent system overview
-4. `.claude/agents/amplihack/core/*.md` - Core agent definitions
+1. `~/.amplihack/.claude/context/PHILOSOPHY.md` - Core design principles
+2. `~/.amplihack/.claude/context/PATTERNS.md` - Existing pattern catalog
+3. `~/.amplihack/.claude/agents/README.md` - Agent system overview
+4. `~/.amplihack/.claude/agents/amplihack/core/*.md` - Core agent definitions
 
 ---
 

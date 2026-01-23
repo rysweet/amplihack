@@ -48,7 +48,7 @@ Added structured diagnostic logging to understand failure patterns:
 }
 ```
 
-**Location:** `.claude/runtime/power-steering/{session_id}/diagnostic.jsonl`
+**Location:** `~/.amplihack/.claude/runtime/power-steering/{session_id}/diagnostic.jsonl`
 
 **Benefits:**
 
@@ -186,7 +186,7 @@ Made state persistence failures visible to users:
 
 **New files created:**
 
-- `.claude/runtime/power-steering/{session_id}/diagnostic.jsonl`
+- `~/.amplihack/.claude/runtime/power-steering/{session_id}/diagnostic.jsonl`
 
 **Performance impact:**
 
@@ -195,18 +195,18 @@ Made state persistence failures visible to users:
 
 ### Files Changed
 
-- `.claude/tools/amplihack/hooks/power_steering_state.py`
+- `~/.amplihack/.claude/tools/amplihack/hooks/power_steering_state.py`
   - Added `fsync()` to state save
   - Added verification read after save
   - Added retry logic with exponential backoff
   - Added defensive state validation
   - Added diagnostic logging
 
-- `.claude/tools/amplihack/hooks/power_steering_checker.py`
+- `~/.amplihack/.claude/tools/amplihack/hooks/power_steering_checker.py`
   - Enhanced message customization logic
   - Integrated check results with guidance
 
-- `.claude/tools/amplihack/hooks/hook_processor.py`
+- `~/.amplihack/.claude/tools/amplihack/hooks/hook_processor.py`
   - Added `/amplihack:ps-diagnose` command
   - Integrated diagnostic reporting
 

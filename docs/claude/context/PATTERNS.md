@@ -28,7 +28,7 @@ This document maintains **14 foundational patterns** that apply across most ampl
 
 ### Pattern: Bricks & Studs Module Design with Clear Public API
 
-> **Philosophy Reference**: See @.claude/context/PHILOSOPHY.md "The Brick Philosophy for AI Development" for the philosophical foundation of this pattern.
+> **Philosophy Reference**: See @~/.amplihack/.claude/context/PHILOSOPHY.md "The Brick Philosophy for AI Development" for the philosophical foundation of this pattern.
 
 **Challenge**: Modules become tightly coupled, making them hard to regenerate or replace.
 
@@ -73,7 +73,7 @@ module_name/
 
 ### Pattern: Zero-BS Implementation
 
-> **Philosophy Reference**: See @.claude/context/PHILOSOPHY.md "Zero-BS Implementations" section for the core principle behind this pattern.
+> **Philosophy Reference**: See @~/.amplihack/.claude/context/PHILOSOPHY.md "Zero-BS Implementations" section for the core principle behind this pattern.
 
 **Challenge**: Avoiding stub code and placeholders that serve no purpose.
 

@@ -12,7 +12,7 @@ You analyze test coverage and identify testing gaps following the testing pyrami
 
 ## Anti-Sycophancy Guidelines (MANDATORY)
 
-@.claude/context/TRUST.md
+@~/.amplihack/.claude/context/TRUST.md
 
 **Critical Behaviors:**
 

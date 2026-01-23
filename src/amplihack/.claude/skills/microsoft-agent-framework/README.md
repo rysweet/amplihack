@@ -329,7 +329,7 @@ This skill follows amplihack philosophy:
 
 ### Amplihack Integration
 
-- Skills Catalog: `.claude/skills/README.md`
+- Skills Catalog: `~/.amplihack/.claude/skills/README.md`
 - Decision Framework: `@integration/decision-framework.md`
 - Integration Patterns: `@integration/amplihack-integration.md`
 

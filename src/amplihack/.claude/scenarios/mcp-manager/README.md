@@ -21,7 +21,7 @@ MCP Manager provides safe, atomic operations for managing MCP servers with autom
 
 **What this means**:
 
-- **Current implementation**: Stores full MCP server configs as objects in `.claude/settings.json`
+- **Current implementation**: Stores full MCP server configs as objects in `~/.amplihack/.claude/settings.json`
 - **Claude Code standard** (per azure-admin docs): May expect servers defined in global `~/.config/claude-code/mcp.json` with project settings only referencing server names as strings
 
 **Impact**:
@@ -165,7 +165,7 @@ Exports all public functions and classes for programmatic use.
 
 ## Configuration Schema
 
-MCP Manager operates on `.claude/settings.json` with this structure:
+MCP Manager operates on `~/.amplihack/.claude/settings.json` with this structure:
 
 ```json
 {

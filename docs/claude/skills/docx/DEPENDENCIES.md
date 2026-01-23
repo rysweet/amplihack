@@ -516,7 +516,7 @@ The DOCX skill shares some dependencies with other Office skills:
 
 - poppler-utils (PDF processing)
 
-See `.claude/skills/common/dependencies.txt` for complete shared dependency information.
+See `~/.amplihack/.claude/skills/common/dependencies.txt` for complete shared dependency information.
 
 ## Advanced Installation
 

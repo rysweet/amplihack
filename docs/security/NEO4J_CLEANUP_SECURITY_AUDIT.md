@@ -380,7 +380,7 @@ logger.error(f"Auth failed: {response.text}")  # Could leak credentials
 
 #### 5.3 Stop Hook Integration
 
-**File**: `.claude/tools/amplihack/hooks/stop.py` (Lines 158-189)
+**File**: `~/.amplihack/.claude/tools/amplihack/hooks/stop.py` (Lines 158-189)
 
 ```python
 def _handle_neo4j_cleanup(self) -> None:

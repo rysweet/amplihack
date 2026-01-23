@@ -361,7 +361,7 @@ blarify changes preserve memory links. Code refactoring doesn't break agent expe
 ### Elsewhere in Codebase
 
 - `src/amplihack/memory/README.md` - Current SQLite memory system
-- `.claude/tools/amplihack/memory/README.md` - Memory system integration guide
+- `~/.amplihack/.claude/tools/amplihack/memory/README.md` - Memory system integration guide
 - `docs/research/neo4j_memory_system/` - Complete research documentation
 
 ### External

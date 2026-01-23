@@ -77,7 +77,7 @@ The statusline shows progress, costs, context usage, and active features for you
 
 ## Configuration
 
-To enable the statusline, add this to `.claude/settings.json`:
+To enable the statusline, add this to `~/.amplihack/.claude/settings.json`:
 
 ```json
 {
@@ -178,7 +178,7 @@ Where `N` is the number of times power-steering has intervened in **this session
 
 ### Configuration
 
-Power-steering can be toggled via `.claude/tools/amplihack/.power_steering_config`:
+Power-steering can be toggled via `~/.amplihack/.claude/tools/amplihack/.power_steering_config`:
 
 ```json
 {

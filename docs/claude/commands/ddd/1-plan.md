@@ -20,8 +20,8 @@ Loading context:
 @docs/document_driven_development/overview.md
 @docs/document_driven_development/phases/00_planning_and_alignment.md
 @docs/document_driven_development/core_concepts/context_poisoning.md
-@.claude/context/PHILOSOPHY.md
-@.claude/context/PHILOSOPHY.md
+@~/.amplihack/.claude/context/PHILOSOPHY.md
+@~/.amplihack/.claude/context/PHILOSOPHY.md
 
 Feature: $ARGUMENTS
 
@@ -258,7 +258,7 @@ run without arguments using the plan as their guide.
 
 - Ultrathink step-by-step, laying out assumptions and unknowns, use the TodoWrite tool to capture all tasks and subtasks.
   - VERY IMPORTANT: Make sure to use the actual TodoWrite tool for todo lists, don't do your own task tracking, there is code behind use of the TodoWrite tool that is invisible to you that ensures that all tasks are completed fully.
-  - Adhere to the @.claude/context/PHILOSOPHY.md and @.claude/context/PHILOSOPHY.md files.
+  - Adhere to the @~/.amplihack/.claude/context/PHILOSOPHY.md and @~/.amplihack/.claude/context/PHILOSOPHY.md files.
 - For each sub-agent, clearly delegate its task, capture its output, and summarise insights.
 - Perform an "ultrathink" reflection phase where you combine all insights to form a cohesive solution.
 - If gaps remain, iterate (spawn sub-agents again) until confident.

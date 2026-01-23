@@ -122,11 +122,11 @@ amplihack copilot
 
 | Command                         | Purpose                           | Implementation                             |
 | ------------------------------- | --------------------------------- | ------------------------------------------ |
-| `/amplihack:ultrathink <task>`  | Orchestrate multi-agent workflows | `.claude/commands/amplihack/ultrathink.md` |
-| `/amplihack:analyze <path>`     | Code review and analysis          | `.claude/commands/amplihack/analyze.md`    |
-| `/amplihack:fix [pattern]`      | Intelligent fix workflow          | `.claude/commands/amplihack/fix.md`        |
-| `/amplihack:improve [target]`   | Capture learnings                 | `.claude/commands/amplihack/improve.md`    |
-| `/amplihack:customize <action>` | Manage preferences                | `.claude/commands/amplihack/customize.md`  |
+| `/amplihack:ultrathink <task>`  | Orchestrate multi-agent workflows | `~/.amplihack/.claude/commands/amplihack/ultrathink.md` |
+| `/amplihack:analyze <path>`     | Code review and analysis          | `~/.amplihack/.claude/commands/amplihack/analyze.md`    |
+| `/amplihack:fix [pattern]`      | Intelligent fix workflow          | `~/.amplihack/.claude/commands/amplihack/fix.md`        |
+| `/amplihack:improve [target]`   | Capture learnings                 | `~/.amplihack/.claude/commands/amplihack/improve.md`    |
+| `/amplihack:customize <action>` | Manage preferences                | `~/.amplihack/.claude/commands/amplihack/customize.md`  |
 
 **Implementation**: `/home/azureuser/src/amplihack-worktree-921-922/.claude/commands/amplihack/`
 
@@ -145,7 +145,7 @@ amplihack copilot
 | File                       | Purpose                  | Location                    |
 | -------------------------- | ------------------------ | --------------------------- |
 | **azure.env**              | Azure OpenAI config      | Project root (user-created) |
-| **settings.json**          | Claude settings          | `.claude/settings.json`     |
+| **settings.json**          | Claude settings          | `~/.amplihack/.claude/settings.json`     |
 | **.env.security-template** | Security config template | Project root                |
 | **pyproject.toml**         | Project metadata         | Project root                |
 
@@ -153,9 +153,9 @@ amplihack copilot
 
 | Type                   | Location                                | Count |
 | ---------------------- | --------------------------------------- | ----- |
-| **Core Agents**        | `.claude/agents/amplihack/core/`        | 10+   |
-| **Specialized Agents** | `.claude/agents/amplihack/specialized/` | 15+   |
-| **Workflow Agents**    | `.claude/agents/amplihack/workflows/`   | 5+    |
+| **Core Agents**        | `~/.amplihack/.claude/agents/amplihack/core/`        | 10+   |
+| **Specialized Agents** | `~/.amplihack/.claude/agents/amplihack/specialized/` | 15+   |
+| **Workflow Agents**    | `~/.amplihack/.claude/agents/amplihack/workflows/`   | 5+    |
 
 #### Common File Paths
 
@@ -219,7 +219,7 @@ amplihack is a **development framework** that enhances Claude Code and GitHub Co
 ┌────────────────────┴────────────────────────────────────────┐
 │                   Orchestration Layer                        │
 │  • Launcher (core.py)                                        │
-│  • Command Router (.claude/commands/)                        │
+│  • Command Router (~/.amplihack/.claude/commands/)                        │
 │  • Agent Orchestrator (ultrathink.md)                        │
 └────────────────────┬────────────────────────────────────────┘
                      │
@@ -498,16 +498,16 @@ amplihack is a **development framework** that enhances Claude Code and GitHub Co
 
 | Feature                 | Description                   | Implementation                             | Status          |
 | ----------------------- | ----------------------------- | ------------------------------------------ | --------------- |
-| **Core Agents**         | 10+ pre-built core agents     | `.claude/agents/amplihack/core/`           | ✅ Stable       |
-| **Specialized Agents**  | 15+ specialized agents        | `.claude/agents/amplihack/specialized/`    | ✅ Stable       |
-| **Workflow Agents**     | 5+ workflow agents            | `.claude/agents/amplihack/workflows/`      | ✅ Stable       |
-| **Agent Orchestration** | Multi-agent task coordination | `.claude/commands/amplihack/ultrathink.md` | ✅ Stable       |
+| **Core Agents**         | 10+ pre-built core agents     | `~/.amplihack/.claude/agents/amplihack/core/`           | ✅ Stable       |
+| **Specialized Agents**  | 15+ specialized agents        | `~/.amplihack/.claude/agents/amplihack/specialized/`    | ✅ Stable       |
+| **Workflow Agents**     | 5+ workflow agents            | `~/.amplihack/.claude/agents/amplihack/workflows/`      | ✅ Stable       |
+| **Agent Orchestration** | Multi-agent task coordination | `~/.amplihack/.claude/commands/amplihack/ultrathink.md` | ✅ Stable       |
 | **Parallel Execution**  | Concurrent agent execution    | `CLAUDE.md:200-350`                        | ✅ Stable       |
 | **Agent Communication** | Inter-agent messaging         | Security validation available              | 🚧 Experimental |
 | **Custom Agents**       | User-created agents           | Bundle Generator                           | ✅ Stable       |
-| **Agent Catalog**       | Browse available agents       | `.claude/agents/CATALOG.md`                | ✅ Stable       |
-| **Context Injection**   | Automatic context loading     | `.claude/context/` files                   | ✅ Stable       |
-| **Session Logging**     | Agent decision logging        | `.claude/runtime/logs/`                    | ✅ Stable       |
+| **Agent Catalog**       | Browse available agents       | `~/.amplihack/.claude/agents/CATALOG.md`                | ✅ Stable       |
+| **Context Injection**   | Automatic context loading     | `~/.amplihack/.claude/context/` files                   | ✅ Stable       |
+| **Session Logging**     | Agent decision logging        | `~/.amplihack/.claude/runtime/logs/`                    | ✅ Stable       |
 
 **Search Terms**: agents, orchestration, multi-agent, workflows, agent system
 
@@ -1879,7 +1879,7 @@ uvx --from git+https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding a
 
 #### 5.2.2 settings.json
 
-**Location**: `.claude/settings.json`
+**Location**: `~/.amplihack/.claude/settings.json`
 
 ```json
 {
@@ -2235,19 +2235,19 @@ amplihack-worktree-921-922/
 **Step 1: Determine Agent Type**
 
 - **Core Agent**: Fundamental functionality (architect, builder, reviewer)
-  - Location: `.claude/agents/amplihack/core/`
+  - Location: `~/.amplihack/.claude/agents/amplihack/core/`
 
 - **Specialized Agent**: Specific domain expertise (security, optimizer, database)
-  - Location: `.claude/agents/amplihack/specialized/`
+  - Location: `~/.amplihack/.claude/agents/amplihack/specialized/`
 
 - **Workflow Agent**: Complete workflows (ci-diagnostic, pre-commit)
-  - Location: `.claude/agents/amplihack/workflows/`
+  - Location: `~/.amplihack/.claude/agents/amplihack/workflows/`
 
 ---
 
 **Step 2: Create Agent File**
 
-**File**: `.claude/agents/amplihack/specialized/my-agent.md`
+**File**: `~/.amplihack/.claude/agents/amplihack/specialized/my-agent.md`
 
 ````markdown
 # My Agent
@@ -2615,7 +2615,7 @@ jobs:
 /amplihack:fix ci
 
 # Or manually invoke ci-diagnostic agent
-@.claude/agents/amplihack/workflows/ci-diagnostic-workflow.md
+@~/.amplihack/.claude/agents/amplihack/workflows/ci-diagnostic-workflow.md
 
 # Agent will:
 # 1. Check CI status
@@ -2881,7 +2881,7 @@ amplihack claude
 
 4. **Document Command**:
 
-Update `.claude/commands/README.md`:
+Update `~/.amplihack/.claude/commands/README.md`:
 
 ```markdown
 ## Custom Commands
@@ -2892,7 +2892,7 @@ Description: [Brief description]
 
 Usage: `/amplihack:my-command [args]`
 
-See: `.claude/commands/amplihack/my-command.md`
+See: `~/.amplihack/.claude/commands/amplihack/my-command.md`
 ```
 
 **Command Best Practices**:
@@ -4063,7 +4063,7 @@ if __name__ == "__main__":
 | `.gitignore`                     | Git ignore patterns      | Root       |
 | `.env.security-template`         | Security config template | Root       |
 | `litellm_standalone_config.yaml` | LiteLLM config           | Root       |
-| `.claude/settings.json`          | Claude settings          | `.claude/` |
+| `~/.amplihack/.claude/settings.json`          | Claude settings          | `~/.amplihack/.claude/` |
 
 ---
 
@@ -4071,12 +4071,12 @@ if __name__ == "__main__":
 
 | Directory                               | Purpose               | Count |
 | --------------------------------------- | --------------------- | ----- |
-| `.claude/agents/amplihack/core/`        | Core agents           | 10+   |
-| `.claude/agents/amplihack/specialized/` | Specialized agents    | 15+   |
-| `.claude/agents/amplihack/workflows/`   | Workflow agents       | 5+    |
-| `.claude/commands/amplihack/`           | Slash commands        | 10+   |
-| `.claude/context/`                      | Philosophy & patterns | 7     |
-| `.claude/workflow/`                     | Development workflows | 1+    |
+| `~/.amplihack/.claude/agents/amplihack/core/`        | Core agents           | 10+   |
+| `~/.amplihack/.claude/agents/amplihack/specialized/` | Specialized agents    | 15+   |
+| `~/.amplihack/.claude/agents/amplihack/workflows/`   | Workflow agents       | 5+    |
+| `~/.amplihack/.claude/commands/amplihack/`           | Slash commands        | 10+   |
+| `~/.amplihack/.claude/context/`                      | Philosophy & patterns | 7     |
+| `~/.amplihack/.claude/workflow/`                     | Development workflows | 1+    |
 
 ---
 

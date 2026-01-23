@@ -38,10 +38,10 @@ Agents receive memory context automatically and contribute learnings automatical
 
 **Leverage what's already there**:
 
-- `.claude/tools/amplihack/hooks/session_start.py` ✓ (existing)
-- `.claude/tools/amplihack/hooks/stop.py` ✓ (existing)
-- `.claude/tools/amplihack/hooks/pre_agent.py` ⚡ (NEW)
-- `.claude/tools/amplihack/hooks/post_agent.py` ⚡ (NEW)
+- `~/.amplihack/.claude/tools/amplihack/hooks/session_start.py` ✓ (existing)
+- `~/.amplihack/.claude/tools/amplihack/hooks/stop.py` ✓ (existing)
+- `~/.amplihack/.claude/tools/amplihack/hooks/pre_agent.py` ⚡ (NEW)
+- `~/.amplihack/.claude/tools/amplihack/hooks/post_agent.py` ⚡ (NEW)
 
 All hooks extend the proven `HookProcessor` pattern for consistency.
 
@@ -98,7 +98,7 @@ Memory system **disabled by default**, enable via config:
 }
 ```
 
-File: `.claude/runtime/memory/.config`
+File: `~/.amplihack/.claude/runtime/memory/.config`
 
 ---
 

@@ -360,7 +360,7 @@ All reviews anchor in these principles:
 - **Quality Over Speed**: Long-term maintainability over quick implementation
 - **Regeneratable Modules**: Any module can be rebuilt from its specification
 
-See `.claude/context/PHILOSOPHY.md` for full philosophy.
+See `~/.amplihack/.claude/context/PHILOSOPHY.md` for full philosophy.
 
 ## Tips for Better Reviews
 
@@ -409,6 +409,6 @@ A: Recommended for significant changes, especially new modules or refactoring.
 
 - `SKILL.md` - Complete skill documentation
 - `EXAMPLES.md` - Detailed review examples
-- `.claude/context/PHILOSOPHY.md` - Core development philosophy
+- `~/.amplihack/.claude/context/PHILOSOPHY.md` - Core development philosophy
 - `Specs/` - Module specifications directory
-- `.claude/context/DISCOVERIES.md` - Known issues and solutions
+- `~/.amplihack/.claude/context/DISCOVERIES.md` - Known issues and solutions

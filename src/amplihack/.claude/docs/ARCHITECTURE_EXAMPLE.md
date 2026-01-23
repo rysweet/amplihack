@@ -7,7 +7,7 @@ The documentation generation system is a lightweight feature that extends the kn
 - Extending existing knowledge-archaeologist agent (not creating new agent)
 - Simple markdown templates with variable placeholders (no template engine)
 - User prompt for explicit consent (never automatic)
-- Flat directory structure in `.claude/docs/` with TYPE_TOPIC naming convention
+- Flat directory structure in `~/.amplihack/.claude/docs/` with TYPE_TOPIC naming convention
 
 The architecture prioritizes simplicity and user control over sophisticated automation.
 
@@ -81,12 +81,12 @@ sequenceDiagram
 
 | File Path                                                         | Purpose                                                | Key Components                          |
 | ----------------------------------------------------------------- | ------------------------------------------------------ | --------------------------------------- |
-| `.claude/workflow/INVESTIGATION_WORKFLOW.md`                      | Defines investigation workflow with documentation step | Step 6: Documentation generation        |
-| `.claude/agents/amplihack/specialized/knowledge-archaeologist.md` | Agent with documentation generation capability         | Documentation Generation section        |
-| `.claude/templates/investigation-doc-template.md`                 | Template for general investigations                    | Findings, Files, Integration, Examples  |
-| `.claude/templates/architecture-doc-template.md`                  | Template for architecture investigations               | Architecture diagrams, Design decisions |
-| `.claude/templates/README.md`                                     | Template usage documentation                           | Usage guide, examples, conventions      |
-| `.claude/docs/`                                                   | Directory for generated documentation                  | Storage location for all generated docs |
+| `~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md`                      | Defines investigation workflow with documentation step | Step 6: Documentation generation        |
+| `~/.amplihack/.claude/agents/amplihack/specialized/knowledge-archaeologist.md` | Agent with documentation generation capability         | Documentation Generation section        |
+| `~/.amplihack/.claude/templates/investigation-doc-template.md`                 | Template for general investigations                    | Findings, Files, Integration, Examples  |
+| `~/.amplihack/.claude/templates/architecture-doc-template.md`                  | Template for architecture investigations               | Architecture diagrams, Design decisions |
+| `~/.amplihack/.claude/templates/README.md`                                     | Template usage documentation                           | Usage guide, examples, conventions      |
+| `~/.amplihack/.claude/docs/`                                                   | Directory for generated documentation                  | Storage location for all generated docs |
 
 ## System Integration
 
@@ -125,7 +125,7 @@ sequenceDiagram
 
 - **Configuration**:
   - File naming convention: `[ARCHITECTURE|INVESTIGATION]_[TOPIC].md`
-  - Directory structure: `.claude/docs/` for generated docs
+  - Directory structure: `~/.amplihack/.claude/docs/` for generated docs
   - Topic naming: UPPER_SNAKE_CASE format
 
 ### Communication Patterns
@@ -143,8 +143,8 @@ sequenceDiagram
 
 **Agent → Filesystem:**
 
-- Agent reads template files from `.claude/templates/`
-- Agent writes generated docs to `.claude/docs/`
+- Agent reads template files from `~/.amplihack/.claude/templates/`
+- Agent writes generated docs to `~/.amplihack/.claude/docs/`
 - Creates directories if they don't exist
 
 ## Verification Steps
@@ -197,7 +197,7 @@ I've completed the investigation of the user preferences and hooks integration s
 
 Shall I create a permanent record of this investigation in the ship's logs (documentation)?
 
-This would create `.claude/docs/ARCHITECTURE_USER_PREFERENCES_HOOKS.md` with:
+This would create `~/.amplihack/.claude/docs/ARCHITECTURE_USER_PREFERENCES_HOOKS.md` with:
 - Findings summary explaining the integration pattern
 - Architecture diagram showing preference → hook flow
 - Key files: USER_PREFERENCES.md, hook implementations
@@ -210,7 +210,7 @@ This would create `.claude/docs/ARCHITECTURE_USER_PREFERENCES_HOOKS.md` with:
 
 **Result** (if user accepts):
 
-- File created: `.claude/docs/ARCHITECTURE_USER_PREFERENCES_HOOKS.md`
+- File created: `~/.amplihack/.claude/docs/ARCHITECTURE_USER_PREFERENCES_HOOKS.md`
 - Contains populated template with investigation findings
 - User notified of creation and location
 
@@ -227,7 +227,7 @@ I've completed the investigation of the hook execution timing bug.
 
 Shall I create a permanent record of this investigation in the ship's logs (documentation)?
 
-This would create `.claude/docs/INVESTIGATION_HOOK_EXECUTION_BUG.md` with:
+This would create `~/.amplihack/.claude/docs/INVESTIGATION_HOOK_EXECUTION_BUG.md` with:
 - Findings summary of root cause
 - Key files involved in the bug
 - System integration details
@@ -239,7 +239,7 @@ This would create `.claude/docs/INVESTIGATION_HOOK_EXECUTION_BUG.md` with:
 
 **Result** (if user accepts):
 
-- File created: `.claude/docs/INVESTIGATION_HOOK_EXECUTION_BUG.md`
+- File created: `~/.amplihack/.claude/docs/INVESTIGATION_HOOK_EXECUTION_BUG.md`
 - Contains bug analysis and resolution details
 - Preserves knowledge for future reference
 
@@ -292,7 +292,7 @@ This would create `.claude/docs/INVESTIGATION_HOOK_EXECUTION_BUG.md` with:
 
 ### Decision 4: Flat Directory vs Subdirectories
 
-- **Choice**: Flat `.claude/docs/` directory with TYPE_TOPIC naming
+- **Choice**: Flat `~/.amplihack/.claude/docs/` directory with TYPE_TOPIC naming
 - **Rationale**:
   - Simpler to implement and maintain
   - Easy to search and discover
@@ -307,10 +307,10 @@ This would create `.claude/docs/INVESTIGATION_HOOK_EXECUTION_BUG.md` with:
 
 ## Related Documentation
 
-- `.claude/workflow/INVESTIGATION_WORKFLOW.md` - Investigation workflow definition
-- `.claude/templates/README.md` - Template usage guide
-- `.claude/agents/amplihack/specialized/knowledge-archaeologist.md` - Agent definition
-- `.claude/context/PATTERNS.md` - Project patterns (should add documentation pattern)
+- `~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md` - Investigation workflow definition
+- `~/.amplihack/.claude/templates/README.md` - Template usage guide
+- `~/.amplihack/.claude/agents/amplihack/specialized/knowledge-archaeologist.md` - Agent definition
+- `~/.amplihack/.claude/context/PATTERNS.md` - Project patterns (should add documentation pattern)
 - `CLAUDE.md` - Project overview (should reference investigation workflow)
 
 ## Future Considerations

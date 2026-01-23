@@ -1,6 +1,6 @@
 # GitHub Copilot Command Reference: skill-builder
 
-**Source**: `.claude/commands/amplihack/skill-builder.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/skill-builder.md`
 
 ---
 
@@ -118,10 +118,10 @@ description = args[2] # e.g., "Transforms data between formats"
    - Must be one of: `agent`, `command`, `scenario`, `skill`
    - Case-insensitive (normalize to lowercase)
    - Maps to output directories:
-     - `skill` → `.claude/skills/{skill-name}/` (creates SKILL.md for auto-discovery)
-     - `agent` → `.claude/agents/amplihack/specialized/` (creates agent .md file)
-     - `command` → `.claude/commands/amplihack/` (creates command .md file)
-     - `scenario` → `.claude/scenarios/{skill-name}/` (creates directory with README.md)
+     - `skill` → `~/.amplihack/.claude/skills/{skill-name}/` (creates SKILL.md for auto-discovery)
+     - `agent` → `~/.amplihack/.claude/agents/amplihack/specialized/` (creates agent .md file)
+     - `command` → `~/.amplihack/.claude/commands/amplihack/` (creates command .md file)
+     - `scenario` → `~/.amplihack/.claude/scenarios/{skill-name}/` (creates directory with README.md)
 
 3. **description**:
    - Length: 10-200 characters
@@ -572,7 +572,7 @@ This skill follows Amplihack principles:
 
 ### For Claude Code Skills (`skill`)
 
-**Location**: `.claude/skills/{skill-name}/SKILL.md`
+**Location**: `~/.amplihack/.claude/skills/{skill-name}/SKILL.md`
 
 **Purpose**: Auto-discoverable skills that Claude loads based on description matching
 
@@ -665,11 +665,11 @@ When your skill includes supporting documents (reference.md, examples.md, patter
 - Common pitfalls and how to avoid them
 ```
 
-**Reference Example:** See `.claude/skills/agent-sdk/SKILL.md` lines 376-408 for an excellent navigation guide implementation.
+**Reference Example:** See `~/.amplihack/.claude/skills/agent-sdk/SKILL.md` lines 376-408 for an excellent navigation guide implementation.
 
 ### For Agent Skills (`agent`)
 
-**Location**: `.claude/agents/amplihack/specialized/{skill-name}.md`
+**Location**: `~/.amplihack/.claude/agents/amplihack/specialized/{skill-name}.md`
 
 **Additional Considerations:**
 
@@ -687,7 +687,7 @@ model: inherit # or specific model like "claude-sonnet-4-5"
 
 ### For Command Skills (`command`)
 
-**Location**: `.claude/commands/amplihack/{skill-name}.md`
+**Location**: `~/.amplihack/.claude/commands/amplihack/{skill-name}.md`
 
 **Additional Considerations:**
 
@@ -705,7 +705,7 @@ argument-hint: <required-arg> [optional-arg]
 
 ### For Scenario Skills (`scenario`)
 
-**Location**: `.claude/scenarios/{skill-name}/SKILL.md`
+**Location**: `~/.amplihack/.claude/scenarios/{skill-name}/SKILL.md`
 
 **Additional Considerations:**
 

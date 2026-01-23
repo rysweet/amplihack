@@ -29,10 +29,10 @@ This skill acts as a thin wrapper around the canonical ultrathink command, follo
 
 **This skill is a thin wrapper that references canonical sources:**
 
-- **Primary Command**: `.claude/commands/amplihack/ultrathink.md` (278 lines)
+- **Primary Command**: `~/.amplihack/.claude/commands/amplihack/ultrathink.md` (278 lines)
 - **Workflow Sources**:
-  - Development: `.claude/workflow/DEFAULT_WORKFLOW.md`
-  - Investigation: `.claude/workflow/INVESTIGATION_WORKFLOW.md`
+  - Development: `~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md`
+  - Investigation: `~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md`
 
 The canonical command contains complete task detection logic, complexity estimation, and orchestration patterns for both investigation and development workflows.
 
@@ -42,7 +42,7 @@ When this skill is activated, you MUST follow this exact 5-step process:
 
 ### Step 1: Read Canonical Command (MANDATORY)
 ```
-Read(file_path=".claude/commands/amplihack/ultrathink.md")
+Read(file_path="~/.amplihack/.claude/commands/amplihack/ultrathink.md")
 ```
 **Validation Checkpoint**: Confirm ultrathink.md content is loaded before proceeding.
 
@@ -60,7 +60,7 @@ Analyze user request using keywords from canonical command:
 
 **For Q&A tasks:**
 ```
-Read(file_path=".claude/workflow/Q&A_WORKFLOW.md")
+Read(file_path="~/.amplihack/.claude/workflow/Q&A_WORKFLOW.md")
 ```
 
 **For Investigation tasks:**
@@ -87,12 +87,12 @@ Only if skill invocation fails, use Read tool as fallback:
 
 **Investigation fallback:**
 ```
-Read(file_path=".claude/workflow/INVESTIGATION_WORKFLOW.md")
+Read(file_path="~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md")
 ```
 
 **Development fallback:**
 ```
-Read(file_path=".claude/workflow/DEFAULT_WORKFLOW.md")
+Read(file_path="~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md")
 ```
 
 **Validation Checkpoint**: Confirm workflow content is loaded in context.
@@ -140,9 +140,9 @@ This pattern aligns with amplihack philosophy: ruthless simplicity through elimi
 
 ## Related Files
 
-- **Canonical Command**: `.claude/commands/amplihack/ultrathink.md`
-- **Development Workflow Skill**: `.claude/skills/default-workflow/`
-- **Investigation Workflow Skill**: `.claude/skills/investigation-workflow/`
+- **Canonical Command**: `~/.amplihack/.claude/commands/amplihack/ultrathink.md`
+- **Development Workflow Skill**: `~/.amplihack/.claude/skills/default-workflow/`
+- **Investigation Workflow Skill**: `~/.amplihack/.claude/skills/investigation-workflow/`
 - **Canonical Workflows**:
-  - `.claude/workflow/DEFAULT_WORKFLOW.md`
-  - `.claude/workflow/INVESTIGATION_WORKFLOW.md`
+  - `~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md`
+  - `~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md`

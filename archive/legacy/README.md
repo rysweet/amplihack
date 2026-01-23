@@ -48,7 +48,7 @@ Files be moved here when:
 This archive is NOT fer:
 
 - Broken or buggy code → Delete it
-- Experimental code → Use `.claude/ai_working/`
+- Experimental code → Use `~/.amplihack/.claude/ai_working/`
 - Old documentation → Update or delete it
 - Temporary files → Never commit them
 

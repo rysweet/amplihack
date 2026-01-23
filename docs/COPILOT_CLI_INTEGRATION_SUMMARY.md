@@ -74,7 +74,7 @@ python3 "${REPO_ROOT}/.claude/tools/amplihack/hooks/[hook_name].py" "$@"
 - **Example**: `github-copilot-cli-expert → ../../../.claude/skills/github-copilot-cli-expert`
 
 **Architecture Confirmed**:
-- ✅ Source of truth: `.claude/` directory (REAL files)
+- ✅ Source of truth: `~/.amplihack/.claude/` directory (REAL files)
 - ✅ Access point: `.github/` directory (SYMLINKS only)
 - ✅ No circular symlinks
 - ✅ No duplicate files
@@ -82,14 +82,14 @@ python3 "${REPO_ROOT}/.claude/tools/amplihack/hooks/[hook_name].py" "$@"
 
 ### Phase 5: Commands Converter ✅
 
-**Created**: `.claude/tools/amplihack/commands_converter.py`
+**Created**: `~/.amplihack/.claude/tools/amplihack/commands_converter.py`
 
 **Features**:
 - Converts Claude Code slash commands to Copilot-friendly docs
 - Extracts frontmatter metadata
 - Converts `@` notation to relative paths
 - Generates command index (`README.md`)
-- Single source of truth: `.claude/commands/amplihack/`
+- Single source of truth: `~/.amplihack/.claude/commands/amplihack/`
 - Generated output: `.github/commands/`
 
 **Usage**:
@@ -108,7 +108,7 @@ python3 .claude/tools/amplihack/commands_converter.py --command ultrathink
 
 ### Phase 6: GitHub Copilot CLI Expert Skill ✅
 
-**Created**: `.claude/skills/github-copilot-cli-expert/README.md`
+**Created**: `~/.amplihack/.claude/skills/github-copilot-cli-expert/README.md`
 
 **Features**:
 - Auto-triggers on "github copilot", "gh copilot", "copilot cli"
@@ -198,7 +198,7 @@ shutil.copytree(
 ### Symlink Architecture (CORRECT)
 
 ```
-Source of Truth (.claude/):
+Source of Truth (~/.amplihack/.claude/):
 ├── agents/amplihack/          ← REAL FILES (source)
 │   ├── core/                  ← architect.md, builder.md, etc.
 │   ├── specialized/           ← analyzer.md, cleanup.md, etc.
@@ -230,8 +230,8 @@ Access Point (.github/):
 
 ### Key Principles
 
-1. **Single Source of Truth**: All content lives in `.claude/`
-2. **Symlinks for Access**: `.github/` uses symlinks to `.claude/` content
+1. **Single Source of Truth**: All content lives in `~/.amplihack/.claude/`
+2. **Symlinks for Access**: `.github/` uses symlinks to `~/.amplihack/.claude/` content
 3. **No Duplication**: No file copying, no drift
 4. **Safe for Build Tools**: `symlinks=True` in `shutil.copytree`
 5. **Philosophy Aligned**: Ruthless simplicity, no complex systems
@@ -302,8 +302,8 @@ gh copilot suggest \
 ### New Files
 
 1. `docs/COPILOT_CLI.md` (14,000+ lines)
-2. `.claude/tools/amplihack/commands_converter.py` (580+ lines)
-3. `.claude/skills/github-copilot-cli-expert/README.md` (800+ lines)
+2. `~/.amplihack/.claude/tools/amplihack/commands_converter.py` (580+ lines)
+3. `~/.amplihack/.claude/skills/github-copilot-cli-expert/README.md` (800+ lines)
 4. `.github/hooks/pre-commit` (bash wrapper)
 5. `.github/hooks/session-start` (bash wrapper)
 6. `.github/hooks/session-stop` (bash wrapper)
@@ -316,7 +316,7 @@ gh copilot suggest \
 
 ### New Symlinks
 
-1. `.github/agents/skills/github-copilot-cli-expert` → `.claude/skills/github-copilot-cli-expert`
+1. `.github/agents/skills/github-copilot-cli-expert` → `~/.amplihack/.claude/skills/github-copilot-cli-expert`
 
 ### Modified Files
 
@@ -393,7 +393,7 @@ None - all existing files preserved
 
 ### Ruthless Simplicity ✅
 
-- Single source of truth (`.claude/`)
+- Single source of truth (`~/.amplihack/.claude/`)
 - Symlinks instead of duplication
 - Bash wrappers (simple)
 - Python implementations (testable)
@@ -419,7 +419,7 @@ None - all existing files preserved
 
 Successfully implemented complete GitHub Copilot CLI integration for amplihack framework following CORRECT symlink architecture:
 
-- **Source of Truth**: `.claude/` directory (real files)
+- **Source of Truth**: `~/.amplihack/.claude/` directory (real files)
 - **Access Point**: `.github/` directory (symlinks only)
 - **No Duplication**: Single source of truth maintained
 - **Safe for Build Tools**: `symlinks=True` confirmed in `build_hooks.py`

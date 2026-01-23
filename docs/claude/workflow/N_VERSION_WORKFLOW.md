@@ -271,7 +271,7 @@ See: n_version_analysis.md for full comparison matrix
 - [ ] Document all N implementations generated
 - [ ] Explain selection rationale in detail
 - [ ] Capture insights from rejected versions
-- [ ] Update `.claude/context/DISCOVERIES.md` with patterns learned
+- [ ] Update `~/.amplihack/.claude/context/DISCOVERIES.md` with patterns learned
 - [ ] Include comparison matrix for future reference
 
 **Analysis Document Structure:**

@@ -43,7 +43,7 @@ Benchmarks vanilla Claude Code for baseline comparison.
 
 **We consume eval-recipes from upstream, not copy it.**
 
-- ✅ Agent configs live in our repo (`.claude/agents/eval-recipes/`)
+- ✅ Agent configs live in our repo (`~/.amplihack/.claude/agents/eval-recipes/`)
 - ✅ eval-recipes framework consumed from Microsoft's repo
 - ❌ Do NOT copy eval-recipes code into our codebase
 

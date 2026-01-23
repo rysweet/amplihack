@@ -1,6 +1,6 @@
 # GitHub Copilot Commands Reference
 
-Converted from Claude Code slash commands in `.claude/commands/amplihack/`.
+Converted from Claude Code slash commands in `~/.amplihack/.claude/commands/amplihack/`.
 
 ## Available Commands
 
@@ -8,7 +8,7 @@ Converted from Claude Code slash commands in `.claude/commands/amplihack/`.
 
 **File**: `analyze.md`
 
-**Source**: `.claude/commands/amplihack/analyze.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/analyze.md`
 
 **View**: `gh copilot explain .github/commands/analyze.md`
 
@@ -18,7 +18,7 @@ Converted from Claude Code slash commands in `.claude/commands/amplihack/`.
 
 **File**: `auto.md`
 
-**Source**: `.claude/commands/amplihack/auto.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/auto.md`
 
 **View**: `gh copilot explain .github/commands/auto.md`
 
@@ -28,7 +28,7 @@ Converted from Claude Code slash commands in `.claude/commands/amplihack/`.
 
 **File**: `cascade.md`
 
-**Source**: `.claude/commands/amplihack/cascade.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/cascade.md`
 
 **View**: `gh copilot explain .github/commands/cascade.md`
 
@@ -38,7 +38,7 @@ Converted from Claude Code slash commands in `.claude/commands/amplihack/`.
 
 **File**: `customize.md`
 
-**Source**: `.claude/commands/amplihack/customize.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/customize.md`
 
 **View**: `gh copilot explain .github/commands/customize.md`
 
@@ -48,7 +48,7 @@ Converted from Claude Code slash commands in `.claude/commands/amplihack/`.
 
 **File**: `debate.md`
 
-**Source**: `.claude/commands/amplihack/debate.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/debate.md`
 
 **View**: `gh copilot explain .github/commands/debate.md`
 
@@ -58,7 +58,7 @@ Converted from Claude Code slash commands in `.claude/commands/amplihack/`.
 
 **File**: `expert-panel.md`
 
-**Source**: `.claude/commands/amplihack/expert-panel.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/expert-panel.md`
 
 **View**: `gh copilot explain .github/commands/expert-panel.md`
 
@@ -68,7 +68,7 @@ Converted from Claude Code slash commands in `.claude/commands/amplihack/`.
 
 **File**: `fix.md`
 
-**Source**: `.claude/commands/amplihack/fix.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/fix.md`
 
 **View**: `gh copilot explain .github/commands/fix.md`
 
@@ -78,7 +78,7 @@ Converted from Claude Code slash commands in `.claude/commands/amplihack/`.
 
 **File**: `improve.md`
 
-**Source**: `.claude/commands/amplihack/improve.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/improve.md`
 
 **View**: `gh copilot explain .github/commands/improve.md`
 
@@ -88,7 +88,7 @@ Converted from Claude Code slash commands in `.claude/commands/amplihack/`.
 
 **File**: `ingest-code.md`
 
-**Source**: `.claude/commands/amplihack/ingest-code.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/ingest-code.md`
 
 **View**: `gh copilot explain .github/commands/ingest-code.md`
 
@@ -98,7 +98,7 @@ Converted from Claude Code slash commands in `.claude/commands/amplihack/`.
 
 **File**: `install.md`
 
-**Source**: `.claude/commands/amplihack/install.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/install.md`
 
 **View**: `gh copilot explain .github/commands/install.md`
 
@@ -108,7 +108,7 @@ Converted from Claude Code slash commands in `.claude/commands/amplihack/`.
 
 **File**: `knowledge-builder.md`
 
-**Source**: `.claude/commands/amplihack/knowledge-builder.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/knowledge-builder.md`
 
 **View**: `gh copilot explain .github/commands/knowledge-builder.md`
 
@@ -118,7 +118,7 @@ Converted from Claude Code slash commands in `.claude/commands/amplihack/`.
 
 **File**: `lock.md`
 
-**Source**: `.claude/commands/amplihack/lock.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/lock.md`
 
 **View**: `gh copilot explain .github/commands/lock.md`
 
@@ -128,7 +128,7 @@ Converted from Claude Code slash commands in `.claude/commands/amplihack/`.
 
 **File**: `modular-build.md`
 
-**Source**: `.claude/commands/amplihack/modular-build.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/modular-build.md`
 
 **View**: `gh copilot explain .github/commands/modular-build.md`
 
@@ -138,7 +138,7 @@ Converted from Claude Code slash commands in `.claude/commands/amplihack/`.
 
 **File**: `n-version.md`
 
-**Source**: `.claude/commands/amplihack/n-version.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/n-version.md`
 
 **View**: `gh copilot explain .github/commands/n-version.md`
 
@@ -148,7 +148,7 @@ Converted from Claude Code slash commands in `.claude/commands/amplihack/`.
 
 **File**: `ps-diagnose.md`
 
-**Source**: `.claude/commands/amplihack/ps-diagnose.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/ps-diagnose.md`
 
 **View**: `gh copilot explain .github/commands/ps-diagnose.md`
 
@@ -158,7 +158,7 @@ Converted from Claude Code slash commands in `.claude/commands/amplihack/`.
 
 **File**: `reflect.md`
 
-**Source**: `.claude/commands/amplihack/reflect.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/reflect.md`
 
 **View**: `gh copilot explain .github/commands/reflect.md`
 
@@ -168,7 +168,7 @@ Converted from Claude Code slash commands in `.claude/commands/amplihack/`.
 
 **File**: `remote.md`
 
-**Source**: `.claude/commands/amplihack/remote.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/remote.md`
 
 **View**: `gh copilot explain .github/commands/remote.md`
 
@@ -178,7 +178,7 @@ Converted from Claude Code slash commands in `.claude/commands/amplihack/`.
 
 **File**: `skill-builder.md`
 
-**Source**: `.claude/commands/amplihack/skill-builder.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/skill-builder.md`
 
 **View**: `gh copilot explain .github/commands/skill-builder.md`
 
@@ -188,7 +188,7 @@ Converted from Claude Code slash commands in `.claude/commands/amplihack/`.
 
 **File**: `socratic.md`
 
-**Source**: `.claude/commands/amplihack/socratic.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/socratic.md`
 
 **View**: `gh copilot explain .github/commands/socratic.md`
 
@@ -198,7 +198,7 @@ Converted from Claude Code slash commands in `.claude/commands/amplihack/`.
 
 **File**: `transcripts.md`
 
-**Source**: `.claude/commands/amplihack/transcripts.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/transcripts.md`
 
 **View**: `gh copilot explain .github/commands/transcripts.md`
 
@@ -208,7 +208,7 @@ Converted from Claude Code slash commands in `.claude/commands/amplihack/`.
 
 **File**: `ultrathink.md`
 
-**Source**: `.claude/commands/amplihack/ultrathink.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/ultrathink.md`
 
 **View**: `gh copilot explain .github/commands/ultrathink.md`
 
@@ -218,7 +218,7 @@ Converted from Claude Code slash commands in `.claude/commands/amplihack/`.
 
 **File**: `uninstall.md`
 
-**Source**: `.claude/commands/amplihack/uninstall.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/uninstall.md`
 
 **View**: `gh copilot explain .github/commands/uninstall.md`
 
@@ -228,7 +228,7 @@ Converted from Claude Code slash commands in `.claude/commands/amplihack/`.
 
 **File**: `unlock.md`
 
-**Source**: `.claude/commands/amplihack/unlock.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/unlock.md`
 
 **View**: `gh copilot explain .github/commands/unlock.md`
 
@@ -238,7 +238,7 @@ Converted from Claude Code slash commands in `.claude/commands/amplihack/`.
 
 **File**: `xpia.md`
 
-**Source**: `.claude/commands/amplihack/xpia.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/xpia.md`
 
 **View**: `gh copilot explain .github/commands/xpia.md`
 

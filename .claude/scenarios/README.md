@@ -161,7 +161,7 @@ All tools implement security validation:
 **Most requests for "tools" mean BOTH:**
 
 1. **Executable tool** (this directory) - Working program that can be run standalone
-2. **Claude Code skill** (`.claude/skills/`) - Convenient interface that calls the tool
+2. **Claude Code skill** (`~/.amplihack/.claude/skills/`) - Convenient interface that calls the tool
 
 **Build order**: Tool first (testable, executable), then optional skill (conversational interface).
 

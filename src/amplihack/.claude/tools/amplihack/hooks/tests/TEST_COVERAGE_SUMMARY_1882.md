@@ -124,7 +124,7 @@ Comprehensive TDD test suite for Issue #1882 (Power Steering Infinite Loop).
 
 **Key Assertions**:
 
-- Log file at `.claude/runtime/power-steering/{session_id}/diagnostic.jsonl`
+- Log file at `~/.amplihack/.claude/runtime/power-steering/{session_id}/diagnostic.jsonl`
 - Log entries in JSONL format
 - Includes `state_write` and `state_read` events
 

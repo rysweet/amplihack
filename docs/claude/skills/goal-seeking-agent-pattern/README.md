@@ -213,7 +213,7 @@ amplihack goal-agent-generator execute \
 - Adaptive investigation depth based on findings
 - Automated remediation suggestions
 
-**Location**: `.claude/agents/amplihack/specialized/azure-kubernetes-expert.md`
+**Location**: `~/.amplihack/.claude/agents/amplihack/specialized/azure-kubernetes-expert.md`
 
 ### Example 2: CI Diagnostic Workflow
 
@@ -234,7 +234,7 @@ amplihack goal-agent-generator execute \
 - Smart waiting with exponential backoff
 - Never auto-merges (stops at mergeable state)
 
-**Location**: `.claude/agents/amplihack/specialized/ci-diagnostic-workflow.md`
+**Location**: `~/.amplihack/.claude/agents/amplihack/specialized/ci-diagnostic-workflow.md`
 
 ### Example 3: Pre-Commit Diagnostic
 
@@ -255,7 +255,7 @@ amplihack goal-agent-generator execute \
 - Hook-specific fix templates
 - 80% automated resolution
 
-**Location**: `.claude/agents/amplihack/specialized/pre-commit-diagnostic.md`
+**Location**: `~/.amplihack/.claude/agents/amplihack/specialized/pre-commit-diagnostic.md`
 
 ### Example 4: Fix-Agent Pattern Matching
 
@@ -275,7 +275,7 @@ amplihack goal-agent-generator execute \
 - Pattern recognition from usage data
 - Right-sized approach (no over-engineering)
 
-**Location**: `.claude/agents/amplihack/specialized/fix-agent.md`
+**Location**: `~/.amplihack/.claude/agents/amplihack/specialized/fix-agent.md`
 
 ## Design Checklist
 
@@ -365,10 +365,10 @@ When designing goal-seeking agents, verify:
 
 ### Documentation
 
-- **Full Skill**: `.claude/skills/goal-seeking-agent-pattern/SKILL.md` (comprehensive guide)
-- **Examples**: `.claude/skills/goal-seeking-agent-pattern/examples/` (3 detailed scenarios)
-- **Templates**: `.claude/skills/goal-seeking-agent-pattern/templates/` (goal prompt, integration guide)
-- **Tests**: `.claude/skills/goal-seeking-agent-pattern/tests/` (validation test suite)
+- **Full Skill**: `~/.amplihack/.claude/skills/goal-seeking-agent-pattern/SKILL.md` (comprehensive guide)
+- **Examples**: `~/.amplihack/.claude/skills/goal-seeking-agent-pattern/examples/` (3 detailed scenarios)
+- **Templates**: `~/.amplihack/.claude/skills/goal-seeking-agent-pattern/templates/` (goal prompt, integration guide)
+- **Tests**: `~/.amplihack/.claude/skills/goal-seeking-agent-pattern/tests/` (validation test suite)
 
 ### Code
 
@@ -378,10 +378,10 @@ When designing goal-seeking agents, verify:
 
 ### Real Agents
 
-- **AKS Expert**: `.claude/agents/amplihack/specialized/azure-kubernetes-expert.md`
-- **CI Diagnostic**: `.claude/agents/amplihack/specialized/ci-diagnostic-workflow.md`
-- **Pre-Commit**: `.claude/agents/amplihack/specialized/pre-commit-diagnostic.md`
-- **Fix Agent**: `.claude/agents/amplihack/specialized/fix-agent.md`
+- **AKS Expert**: `~/.amplihack/.claude/agents/amplihack/specialized/azure-kubernetes-expert.md`
+- **CI Diagnostic**: `~/.amplihack/.claude/agents/amplihack/specialized/ci-diagnostic-workflow.md`
+- **Pre-Commit**: `~/.amplihack/.claude/agents/amplihack/specialized/pre-commit-diagnostic.md`
+- **Fix Agent**: `~/.amplihack/.claude/agents/amplihack/specialized/fix-agent.md`
 
 ## Getting Help
 

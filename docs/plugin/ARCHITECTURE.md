@@ -10,7 +10,7 @@ Amplihack uses a centralized plugin architecture where all framework code lives 
 
 ### The Problem with Per-Project Deployment
 
-Before the plugin architecture, amplihack deployed a complete `.claude/` directory into every project:
+Before the plugin architecture, amplihack deployed a complete `~/.amplihack/.claude/` directory into every project:
 
 ```
 project1/.claude/  (5.2 MB)
@@ -367,7 +367,7 @@ project1/.claude/
 
 The plugin architecture is designed specifically for **Claude Code and compatible implementations** (RustyClawd/Rusty).
 
-**Important**: GitHub Copilot and OpenAI Codex do NOT support Claude Code plugins. They use per-project `.claude/` staging via `amplihack copilot` and `amplihack codex` commands.
+**Important**: GitHub Copilot and OpenAI Codex do NOT support Claude Code plugins. They use per-project `~/.amplihack/.claude/` staging via `amplihack copilot` and `amplihack codex` commands.
 
 ### Claude Code Plugin Registration
 
@@ -442,7 +442,7 @@ Plugin loading adds minimal overhead to IDE startup:
 ### Disk Usage
 
 - **Plugin installation**: ~5.2 MB (`~/.amplihack/.claude/`)
-- **Per-project overhead**: < 1 KB (`.claude/settings.json`)
+- **Per-project overhead**: < 1 KB (`~/.amplihack/.claude/settings.json`)
 - **Runtime data**: Varies by usage (logs, cache, discoveries)
 
 ## Comparison with Per-Project Mode

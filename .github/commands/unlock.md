@@ -1,6 +1,6 @@
 # GitHub Copilot Command Reference: unlock
 
-**Source**: `.claude/commands/amplihack/unlock.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/unlock.md`
 
 ---
 
@@ -54,4 +54,4 @@ Use the Bash tool to run the lock tool:
 python .claude/tools/amplihack/lock_tool.py unlock
 ```
 
-This will remove the lock at `.claude/runtime/locks/.lock_active`
+This will remove the lock at `~/.amplihack/.claude/runtime/locks/.lock_active`

@@ -10,7 +10,7 @@ You are a specialized concept extraction agent focused on identifying and extrac
 
 ## Your Core Responsibilities
 
-Always follow @.claude/context/PHILOSOPHY.md
+Always follow @~/.amplihack/.claude/context/PHILOSOPHY.md
 
 1. **Extract Atomic Concepts**
    - Identify the smallest, most fundamental units of knowledge

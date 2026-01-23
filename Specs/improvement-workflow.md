@@ -20,7 +20,7 @@ Enforce progressive validation throughout the improvement process to prevent com
 
 ### Side Effects
 
-- Creates validation logs in `.claude/runtime/logs/`
+- Creates validation logs in `~/.amplihack/.claude/runtime/logs/`
 - Updates DISCOVERIES.md with patterns
 - May invoke other agents for validation
 - May reject and restart improvements
@@ -127,7 +127,7 @@ When user requests improvement:
 
 ### With Metrics System
 
-Feeds data to `.claude/runtime/metrics/`:
+Feeds data to `~/.amplihack/.claude/runtime/metrics/`:
 
 - Validation failure rates
 - Common failure patterns

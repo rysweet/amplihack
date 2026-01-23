@@ -13,7 +13,7 @@ triggers:
 
 ## Input Validation
 
-@.claude/context/AGENT_INPUT_VALIDATION.md
+@~/.amplihack/.claude/context/AGENT_INPUT_VALIDATION.md
 
 ## Usage
 
@@ -137,7 +137,7 @@ Integrates with `/ultrathink` and `/fix` workflows.
 
 ## Configuration
 
-Simplified configuration in `.claude/config/modular-build.json`:
+Simplified configuration in `~/.amplihack/.claude/config/modular-build.json`:
 
 - Phase agent assignments
 - Quality gate thresholds

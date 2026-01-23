@@ -573,7 +573,7 @@ if error_record and error_record['success_rate'] > 0.7:
 
 **Implementation**:
 
-- SQLite: Separate .db file per project (`.claude/memory/<project_hash>.db`)
+- SQLite: Separate .db file per project (`~/.amplihack/.claude/memory/<project_hash>.db`)
 - Neo4j: Separate database per project (`neo4j-project-<hash>`)
 
 **Future Option**: Shared "pattern library" for common solutions (opt-in)
@@ -795,7 +795,7 @@ Month 12: 50% improvement (institutional knowledge)
 
 **Mitigations**:
 
-1. **Daily Backups**: Automated backup to `.claude/memory/backups/`
+1. **Daily Backups**: Automated backup to `~/.amplihack/.claude/memory/backups/`
 2. **Git Integration**: Memory db committed to version control (if small)
 3. **Reconstruction**: Can rebuild memory from session logs
 4. **Graceful Degradation**: System works without memory
@@ -1251,7 +1251,7 @@ def monthly_review():
 #### Action 2: Kickoff (Day 1)
 
 - [ ] Create project branch (`feat/memory-system`)
-- [ ] Set up project structure (`.claude/memory/`)
+- [ ] Set up project structure (`~/.amplihack/.claude/memory/`)
 - [ ] Finalize SQLite schema
 - [ ] Write initial tests (TDD approach)
 

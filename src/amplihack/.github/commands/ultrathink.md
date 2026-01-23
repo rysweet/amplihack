@@ -1,6 +1,6 @@
 # GitHub Copilot Command Reference: ultrathink
 
-**Source**: `.claude/commands/amplihack/ultrathink.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/ultrathink.md`
 
 ---
 
@@ -121,7 +121,7 @@ THERE IS NO VALUE in SKIPPING STEPS - DO NOT TAKE SHORTCUTS.
 
 5. **Use the specified agents** for each step (marked with "**Use**" or "**Always use**")
 6. \*\*MANDATORY: Enforce all steps.
-7. **Track decisions** by creating and writing important decisions to `.claude/runtime/logs/<session_timestamp>/DECISIONS.md`
+7. **Track decisions** by creating and writing important decisions to `~/.amplihack/.claude/runtime/logs/<session_timestamp>/DECISIONS.md`
 8. **End with cleanup agent** (development) or knowledge capture (investigation)
 
 ## Task Management
@@ -143,7 +143,7 @@ User: "/ultrathink what is the purpose of the workflow system?"
 
 1. Detect: Q&A task (contains "what is")
 2. Select: Q&A workflow (simple, single-turn)
-3. Read: `.claude/workflow/Q&A_WORKFLOW.md`
+3. Read: `~/.amplihack/.claude/workflow/Q&A_WORKFLOW.md`
 4. Follow Q&A workflow steps (typically 3-4 steps)
 5. Provide concise, direct answer
 6. No complex agent orchestration needed
@@ -157,7 +157,7 @@ User: "/ultrathink implement JWT authentication"
 1. Detect: Development task (contains "implement")
 2. Select: default-workflow skill
 3. Try: Skill(skill="default-workflow")
-4. Fallback if needed: Read `.claude/workflow/DEFAULT_WORKFLOW.md`
+4. Fallback if needed: Read `~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md`
 5. Begin executing workflow steps with deep analysis
 6. Orchestrate multiple agents where complexity requires
 7. Follow all workflow steps as defined
@@ -174,7 +174,7 @@ User: "/ultrathink investigate how the reflection system works"
 2. Select: investigation-workflow skill (6 phases)
 3. Inform user: "Detected investigation task. Using investigation-workflow skill"
 4. Try: Skill(skill="investigation-workflow")
-5. Fallback if needed: Read `.claude/workflow/INVESTIGATION_WORKFLOW.md`
+5. Fallback if needed: Read `~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md`
 6. Execute Phase 1: Scope Definition
 7. Execute Phase 2: Exploration Strategy
 8. Execute Phase 3: Parallel Deep Dives (multiple agents simultaneously)

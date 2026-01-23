@@ -10,7 +10,7 @@
 
 ### Step 1.1: Create Pre-Agent Hook
 
-**File**: `.claude/tools/amplihack/hooks/pre_agent.py`
+**File**: `~/.amplihack/.claude/tools/amplihack/hooks/pre_agent.py`
 
 ```python
 #!/usr/bin/env python3
@@ -127,7 +127,7 @@ echo '{"agent_file": "architect.md", "task": "design auth"}' | \
 
 ### Step 1.2: Create Post-Agent Hook
 
-**File**: `.claude/tools/amplihack/hooks/post_agent.py`
+**File**: `~/.amplihack/.claude/tools/amplihack/hooks/post_agent.py`
 
 ```python
 #!/usr/bin/env python3
@@ -297,7 +297,7 @@ EOF
 
 ### Step 1.3: Extend Session Start Hook
 
-**File**: `.claude/tools/amplihack/hooks/session_start.py`
+**File**: `~/.amplihack/.claude/tools/amplihack/hooks/session_start.py`
 
 Add to existing `process()` method:
 
@@ -349,7 +349,7 @@ def _initialize_memory_system(self):
 
 ### Step 1.4: Extend Stop Hook
 
-**File**: `.claude/tools/amplihack/hooks/stop.py`
+**File**: `~/.amplihack/.claude/tools/amplihack/hooks/stop.py`
 
 Add to existing `process()` method:
 
@@ -897,7 +897,7 @@ If slower, check:
 - Design docs: `Specs/Memory/AGENT_INTEGRATION_DESIGN.md`
 - Architecture: `Specs/Memory/AGENT_INTEGRATION_DIAGRAM.md`
 - Summary: `Specs/Memory/AGENT_INTEGRATION_SUMMARY.md`
-- Logs: `.claude/runtime/logs/*/auto.log`
+- Logs: `~/.amplihack/.claude/runtime/logs/*/auto.log`
 
 ---
 

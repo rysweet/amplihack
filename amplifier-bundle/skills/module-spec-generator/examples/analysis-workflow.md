@@ -4,7 +4,7 @@ This document walks through the step-by-step process of analyzing an existing mo
 
 ## Example: Analyzing the String Utils Module
 
-Suppose we have an existing module at `.claude/tools/amplihack/string_utils/` and we want to generate its specification.
+Suppose we have an existing module at `~/.amplihack/.claude/tools/amplihack/string_utils/` and we want to generate its specification.
 
 ### Step 1: Explore Module Structure
 

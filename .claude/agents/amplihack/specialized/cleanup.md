@@ -23,7 +23,7 @@ Review all changes after tasks complete to:
 
 **BEFORE ANY CLEANUP ACTION**, check the original user request for explicit requirements:
 
-@.claude/context/USER_REQUIREMENT_PRIORITY.md
+@~/.amplihack/.claude/context/USER_REQUIREMENT_PRIORITY.md
 
 **NEVER REMOVE OR SIMPLIFY anything that was explicitly requested by the user.**
 
@@ -98,7 +98,7 @@ When found in project root (`/`), these MUST be removed or relocated immediately
   - Example: `test_api.py` → `tests/test_api.py`
 
 - **Ad-hoc Scripts**: `script.py`, `run_*.py`, `check_*.py`, `fix_*.py`
-  - Action: Move to `scripts/` or `.claude/ci/`, or delete if one-time use
+  - Action: Move to `scripts/` or `~/.amplihack/.claude/ci/`, or delete if one-time use
   - Example: `fix_imports.py` → `scripts/maintenance/fix_imports.py`
 
 - **Debug/Scratch Files**: `scratch.py`, `temp*.py`, `debug*.py`, `playground.py`
@@ -193,7 +193,7 @@ The root directory should contain ONLY essential project files. Any file that do
 - `.gitguardian.yaml`, `.gitguardian.yml` - Secret scanning
 
 **Hidden Config Directories**:
-- `.claude/`, `.amplihack/`, `.devcontainer/` - Tool-specific configuration
+- `~/.amplihack/.claude/`, `.amplihack/`, `.devcontainer/` - Tool-specific configuration
 - `.vscode/`, `.idea/` - Editor configuration
 
 #### Forbidden Root Files
@@ -205,7 +205,7 @@ The root directory should contain ONLY essential project files. Any file that do
 
 **Script Files**:
 - ❌ `script.py`, `run_*.py` - Belongs in `scripts/`
-- ❌ `check_*.py` - Belongs in `scripts/` or `.claude/ci/`
+- ❌ `check_*.py` - Belongs in `scripts/` or `~/.amplihack/.claude/ci/`
 - ❌ `fix_*.py` - Belongs in `scripts/` or appropriate module
 
 **Temporary/Debug Files**:
@@ -228,7 +228,7 @@ The root directory should contain ONLY essential project files. Any file that do
 
 1. **Identify Category**:
    - Test → Move to `tests/`
-   - Script → Move to `scripts/` or `.claude/ci/`
+   - Script → Move to `scripts/` or `~/.amplihack/.claude/ci/`
    - Documentation → Move to appropriate `docs/` subdirectory
    - Temporary → Delete immediately
    - Data → Move to `data/` or appropriate location

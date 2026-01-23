@@ -435,9 +435,9 @@ This research was conducted by a multi-agent team:
 
 ### Claude Code Documentation
 
-- Agent Architecture: `.claude/agents/`
-- Workflow Definition: `.claude/workflow/DEFAULT_WORKFLOW.md`
-- Philosophy: `.claude/context/PHILOSOPHY.md`
+- Agent Architecture: `~/.amplihack/.claude/agents/`
+- Workflow Definition: `~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md`
+- Philosophy: `~/.amplihack/.claude/context/PHILOSOPHY.md`
 
 ---
 
@@ -456,7 +456,7 @@ For questions about this research or to provide feedback:
 
 1. Review the [Executive Report](00-executive-summary/NEO4J_MEMORY_COMPREHENSIVE_REPORT.md) first
 2. Check specific sections for detailed answers
-3. Consult decision log: `.claude/runtime/logs/20251102_neo4j_memory_research/DECISIONS.md`
+3. Consult decision log: `~/.amplihack/.claude/runtime/logs/20251102_neo4j_memory_research/DECISIONS.md`
 
 ---
 

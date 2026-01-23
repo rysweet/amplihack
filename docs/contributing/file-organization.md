@@ -42,7 +42,7 @@ docs/
 └── concepts/          # Understanding-oriented docs
 ```
 
-**See the [Eight Rules of Good Documentation](.claude/skills/documentation-writing/reference.md) fer complete guidelines.**
+**See the [Eight Rules of Good Documentation](~/.amplihack/.claude/skills/documentation-writing/reference.md) fer complete guidelines.**
 
 ### Archive (archive/)
 
@@ -125,7 +125,7 @@ When movin' files:
 
 ## References
 
-- [Eight Rules of Good Documentation](.claude/skills/documentation-writing/reference.md)
+- [Eight Rules of Good Documentation](~/.amplihack/.claude/skills/documentation-writing/reference.md)
 - [Documentation Guidelines](../DOCUMENTATION_GUIDELINES.md)
 - [Legacy Files Archive](../../archive/legacy/README.md)
 

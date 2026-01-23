@@ -68,7 +68,7 @@ Execute shutdown (if approved)
 
 ### Preferences
 
-The feature respects your preferences stored in `.claude/context/USER_PREFERENCES.md`:
+The feature respects your preferences stored in `~/.amplihack/.claude/context/USER_PREFERENCES.md`:
 
 **Available Values:**
 
@@ -78,7 +78,7 @@ The feature respects your preferences stored in `.claude/context/USER_PREFERENCE
 
 **Preference Locations (checked in order):**
 
-1. Project-local: `.claude/context/USER_PREFERENCES.md` (in current directory)
+1. Project-local: `~/.amplihack/.claude/context/USER_PREFERENCES.md` (in current directory)
 2. Home directory: `~/.claude/context/USER_PREFERENCES.md`
 
 **Setting Preferences:**
@@ -98,7 +98,7 @@ Neo4j database is running. Shutdown now? (y/n/Always/Never):
 
 **Option 2: Manual Edit**
 
-Edit `.claude/context/USER_PREFERENCES.md` and add:
+Edit `~/.amplihack/.claude/context/USER_PREFERENCES.md` and add:
 
 ```markdown
 ### neo4j_auto_shutdown
@@ -280,7 +280,7 @@ The shutdown coordinator implements strict path validation to prevent path trave
 **Validation Rules:**
 
 1. **File name check**: Must be named `USER_PREFERENCES.md` exactly
-2. **Directory check**: Path must contain `.claude/context`
+2. **Directory check**: Path must contain `~/.amplihack/.claude/context`
 3. **Absolute path**: Resolved to canonical absolute path
 4. **No symlink exploitation**: Uses `Path.resolve()` to follow symlinks safely
 
@@ -625,7 +625,7 @@ coordinator = Neo4jShutdownCoordinator(
 - **Implementation Details**: See module docstrings in `connection_tracker.py` and `shutdown_coordinator.py`
 - **Test Coverage**: See `tests/unit/neo4j/` for comprehensive unit tests
 - **Container Management**: See `amplihack.memory.neo4j.lifecycle` module
-- **User Preferences**: See `.claude/context/USER_PREFERENCES.md` documentation
+- **User Preferences**: See `~/.amplihack/.claude/context/USER_PREFERENCES.md` documentation
 
 ## Support
 
@@ -633,7 +633,7 @@ For issues or questions:
 
 1. Check troubleshooting section above
 2. Enable debug logging for detailed diagnostics
-3. Review logs in `.claude/runtime/logs/`
+3. Review logs in `~/.amplihack/.claude/runtime/logs/`
 4. Report issues with log excerpts and reproduction steps
 
 ---

@@ -95,7 +95,7 @@ When state verification passes (PR mergeable + CI passing), it can override tran
 
 ### Key Files Changed
 
-- `.claude/tools/amplihack/hooks/power_steering_checker.py`:
+- `~/.amplihack/.claude/tools/amplihack/hooks/power_steering_checker.py`:
   - Added `_get_pre_compaction_transcript()` method
   - Added `_load_pre_compaction_transcript()` method (handles both markdown and JSONL)
   - Added `_verify_actual_state()` method
@@ -263,11 +263,11 @@ def write_output(self, output: Dict[str, Any]):
 
 ### Related
 
-- **File**: `.claude/tools/amplihack/hooks/hook_processor.py` (lines 161-169, 277, 289, 306, 331)
-- **File**: `.claude/tools/amplihack/hooks/stop.py` (completes successfully, issue is in base class)
+- **File**: `~/.amplihack/.claude/tools/amplihack/hooks/hook_processor.py` (lines 161-169, 277, 289, 306, 331)
+- **File**: `~/.amplihack/.claude/tools/amplihack/hooks/stop.py` (completes successfully, issue is in base class)
 - **Recent fix**: Commit 45778fcd fixed `sys.exit(1)` but didn't address BrokenPipeError
 - **Investigation methodology**: INVESTIGATION_WORKFLOW.md (6-phase systematic investigation)
-- **Log evidence**: `.claude/runtime/logs/stop.log` shows "HOOK ENDED" followed by BrokenPipeError
+- **Log evidence**: `~/.amplihack/.claude/runtime/logs/stop.log` shows "HOOK ENDED" followed by BrokenPipeError
 
 ### Remaining Questions
 
@@ -391,7 +391,7 @@ What insights should be remembered?
 
 ### Problem
 
-User reported: "amplihack's copytree_manifest fails when .claude/ has uncommitted changes" specifically with `.claude/.version` file modified. Despite having a comprehensive safety system (GitConflictDetector + SafeCopyStrategy), deployment proceeded without warning and created a version mismatch state.
+User reported: "amplihack's copytree_manifest fails when .claude/ has uncommitted changes" specifically with `~/.amplihack/.claude/.version` file modified. Despite having a comprehensive safety system (GitConflictDetector + SafeCopyStrategy), deployment proceeded without warning and created a version mismatch state.
 
 ### Root Cause
 
@@ -409,7 +409,7 @@ The `.version` file is a **system-generated tracking file** that stores the git 
 
 3. **ESSENTIAL_DIRS Are All Subdirectories**: `["agents/amplihack", "commands/amplihack", "context/", ...]` - all contain "/"
 
-4. **Root-Level Files Filtered Out**: `.version` at `.claude/.version` doesn't match any pattern → filtered OUT → `has_conflicts = False`
+4. **Root-Level Files Filtered Out**: `.version` at `~/.amplihack/.claude/.version` doesn't match any pattern → filtered OUT → `has_conflicts = False`
 
 5. **No Warning Issued**: SafeCopyStrategy sees no conflicts, proceeds to working directory without prompting user
 
@@ -490,7 +490,7 @@ def _filter_conflicts(
 Test cases added:
 
 - Uncommitted `.version` doesn't trigger conflict warning ✅
-- Uncommitted user content (`.claude/context/custom.md`) DOES trigger warning ✅
+- Uncommitted user content (`~/.amplihack/.claude/context/custom.md`) DOES trigger warning ✅
 - Deployment proceeds smoothly with modified `.version` ✅
 - Version mismatch detection still works correctly ✅
 
@@ -1109,7 +1109,7 @@ This discovery strengthens and validates existing principles:
 
 ### Files Referenced
 
-- PBZFT Analysis: `.claude/runtime/logs/[session]/pbzft_analysis.md`
+- PBZFT Analysis: `~/.amplihack/.claude/runtime/logs/[session]/pbzft_analysis.md`
 - N-Version Pattern: Already implemented in amplihack
 - Threat Modeling: Aligns with security agent principles
 - Complexity Analysis: Informed by PHILOSOPHY.md simplicity mandate
@@ -1170,8 +1170,8 @@ Successfully executed 13 parallel full-workflow tasks simultaneously, converting
    - Quick mode for common issues
 
 4. **Documentation-First Approach**: Templates and workflows provided clear guidance
-   - Message templates (.claude/data/message_templates/)
-   - Fix templates (.claude/data/fix_templates/)
+   - Message templates (~/.amplihack/.claude/data/message_templates/)
+   - Fix templates (~/.amplihack/.claude/data/fix_templates/)
    - Workflow documentation (docs/workflows/)
 
 ### Solution Patterns That Worked
@@ -1326,8 +1326,8 @@ git cherry-pick origin/main
 
 **Templates Created:**
 
-- `.claude/data/message_templates/` (various)
-- `.claude/data/fix_templates/` (import, config, quality, etc.)
+- `~/.amplihack/.claude/data/message_templates/` (various)
+- `~/.amplihack/.claude/data/fix_templates/` (import, config, quality, etc.)
 
 **Workflows Documented:**
 
@@ -1472,14 +1472,14 @@ Settings validation failed:
 - Schema validation confirms format is correct
 - **Two separate Python processes** spawn anyway (different PIDs)
 
-**From `.claude/runtime/logs/session_start.log`**:
+**From `~/.amplihack/.claude/runtime/logs/session_start.log`**:
 
 ```
 [2025-11-21T13:01:07.113446] INFO: session_start hook starting (Python 3.13.9)
 [2025-11-21T13:01:07.113687] INFO: session_start hook starting (Python 3.13.9)
 ```
 
-**From `.claude/runtime/logs/stop.log`**:
+**From `~/.amplihack/.claude/runtime/logs/stop.log`**:
 
 ```
 [2025-11-20T21:37:05.173846] INFO: stop hook starting (Python 3.13.9)
@@ -1587,10 +1587,10 @@ Configuration correctness verified:
 
 ### Files Analyzed
 
-- `.claude/settings.json` (1 SessionStart hook, 1 Stop hook)
-- `.claude/tools/amplihack/hooks/session_start.py` (hook implementation)
-- `.claude/runtime/logs/session_start.log` (execution evidence)
-- `.claude/runtime/logs/stop.log` (execution evidence)
+- `~/.amplihack/.claude/settings.json` (1 SessionStart hook, 1 Stop hook)
+- `~/.amplihack/.claude/tools/amplihack/hooks/session_start.py` (hook implementation)
+- `~/.amplihack/.claude/runtime/logs/session_start.log` (execution evidence)
+- `~/.amplihack/.claude/runtime/logs/stop.log` (execution evidence)
 - Claude Code schema (hook format requirements)
 
 ---
@@ -1677,8 +1677,8 @@ priority: high
 
 **Expert Agents:**
 
-- `.claude/agents/amplihack/specialized/rust-programming-expert.md` (156 lines)
-- `.claude/agents/amplihack/specialized/azure-kubernetes-expert.md` (262 lines)
+- `~/.amplihack/.claude/agents/amplihack/specialized/rust-programming-expert.md` (156 lines)
+- `~/.amplihack/.claude/agents/amplihack/specialized/azure-kubernetes-expert.md` (262 lines)
 
 **Rust Knowledge Base:**
 
@@ -1688,9 +1688,9 @@ priority: high
 
 **Azure AKS Knowledge Base:**
 
-- `.claude/data/azure_aks_expert/Knowledge.md` (986 lines, 30+ examples)
-- `.claude/data/azure_aks_expert/KeyInfo.md` (172 lines)
-- `.claude/data/azure_aks_expert/HowToUseTheseFiles.md` (275 lines)
+- `~/.amplihack/.claude/data/azure_aks_expert/Knowledge.md` (986 lines, 30+ examples)
+- `~/.amplihack/.claude/data/azure_aks_expert/KeyInfo.md` (172 lines)
+- `~/.amplihack/.claude/data/azure_aks_expert/HowToUseTheseFiles.md` (275 lines)
 
 **Rust Log Parser (demonstrating knowledge application):**
 
@@ -2259,11 +2259,11 @@ This discovery **validates the user's explicit requirement** - mandatory user te
 **Issue**: #1827
 **PR**: #1829
 
-**Context**: GitHub Pages documentation deployment was failing with 133 mkdocs warnings and 305 total broken links. The mkdocs build couldn't find `.claude/` content referenced in navigation.
+**Context**: GitHub Pages documentation deployment was failing with 133 mkdocs warnings and 305 total broken links. The mkdocs build couldn't find `~/.amplihack/.claude/` content referenced in navigation.
 
-**Problem**: MkDocs expects all content in `docs/` directory, but our `.claude/` directory (containing agents, workflows, commands, skills) was at project root. Navigation links to `.claude/` files resulted in 404s.
+**Problem**: MkDocs expects all content in `docs/` directory, but our `~/.amplihack/.claude/` directory (containing agents, workflows, commands, skills) was at project root. Navigation links to `~/.amplihack/.claude/` files resulted in 404s.
 
-**Solution**: Copy entire `.claude/` structure to `docs/.claude/` (776 files)
+**Solution**: Copy entire `~/.amplihack/.claude/` structure to `docs/.claude/` (776 files)
 
 **Why This Works**:
 
@@ -2292,7 +2292,7 @@ cp -r .claude docs/.claude
 **Trade-offs**:
 
 - **Pros**: Ruthlessly simple, no build complexity, works immediately
-- **Cons**: Duplicates `.claude/` content (+776 files in docs/), increases repo size by ~1MB
+- **Cons**: Duplicates `~/.amplihack/.claude/` content (+776 files in docs/), increases repo size by ~1MB
 
 **Philosophy Alignment**: ✅ Ruthless Simplicity
 
@@ -2347,7 +2347,7 @@ cp -r .claude docs/.claude
 
 **Technical Details**:
 
-Location: `.claude/tools/amplihack/hooks/user_prompt_submit.py:226-228`
+Location: `~/.amplihack/.claude/tools/amplihack/hooks/user_prompt_submit.py:226-228`
 
 ```python
 # WRONG - async function called without await

@@ -133,7 +133,7 @@ amplihack launch --checkout-repo owner/repo
 
 ### Workflows
 
-The system tries to direct all work to one of a few customizeable [structured workflows](.claude/workflow/) which attempt to detect the user intent and guide the agent through a structured set of steps. The workflows try to put solid gaurdrails and multiagent points of view around the work. See the [DEFAULT_WORKFLOW.md](.claude/workflow/DEFAULT_WORKFLOW.md) for an example.
+The system tries to direct all work to one of a few customizeable [structured workflows](~/.amplihack/.claude/workflow/) which attempt to detect the user intent and guide the agent through a structured set of steps. The workflows try to put solid gaurdrails and multiagent points of view around the work. See the [DEFAULT_WORKFLOW.md](~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md) for an example.
 
 ## Configuration
 
@@ -220,7 +220,7 @@ See [COPILOT_CLI.md](COPILOT_CLI.md) for complete integration guide and
 ### Custom Workflows
 
 The iterative-step workflow is fully customizable. Edit
-`.claude/workflow/DEFAULT_WORKFLOW.md` to modify the development process -
+`~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md` to modify the development process -
 changes apply immediately to `/ultrathink` and other commands. See
 [docs/WORKFLOW_COMPLETION.md](https://rysweet.github.io/amplihack/WORKFLOW_COMPLETION/)
 for detailed customization instructions.
@@ -265,40 +265,40 @@ for detailed customization instructions.
 
 | Agent                                                             | Purpose                                  |
 | ----------------------------------------------------------------- | ---------------------------------------- |
-| [**api-designer**](.claude/agents/amplihack/core/api-designer.md) | API design and endpoint structure        |
-| [**architect**](.claude/agents/amplihack/core/architect.md)       | System design and architecture decisions |
-| [**builder**](.claude/agents/amplihack/core/builder.md)           | Code generation and implementation       |
-| [**guide**](.claude/agents/amplihack/core/guide.md)               | Feature guide and onboarding specialist  |
-| [**optimizer**](.claude/agents/amplihack/core/optimizer.md)       | Performance optimization and efficiency  |
-| [**reviewer**](.claude/agents/amplihack/core/reviewer.md)         | Code quality and best practices review   |
-| [**tester**](.claude/agents/amplihack/core/tester.md)             | Test generation and validation           |
+| [**api-designer**](~/.amplihack/.claude/agents/amplihack/core/api-designer.md) | API design and endpoint structure        |
+| [**architect**](~/.amplihack/.claude/agents/amplihack/core/architect.md)       | System design and architecture decisions |
+| [**builder**](~/.amplihack/.claude/agents/amplihack/core/builder.md)           | Code generation and implementation       |
+| [**guide**](~/.amplihack/.claude/agents/amplihack/core/guide.md)               | Feature guide and onboarding specialist  |
+| [**optimizer**](~/.amplihack/.claude/agents/amplihack/core/optimizer.md)       | Performance optimization and efficiency  |
+| [**reviewer**](~/.amplihack/.claude/agents/amplihack/core/reviewer.md)         | Code quality and best practices review   |
+| [**tester**](~/.amplihack/.claude/agents/amplihack/core/tester.md)             | Test generation and validation           |
 
 ### Specialized Agents (27)
 
 | Agent                                                                                          | Purpose                                         |
 | ---------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| [**ambiguity**](.claude/agents/amplihack/specialized/ambiguity.md)                             | Clarify ambiguous requirements                  |
-| [**amplifier-cli-architect**](.claude/agents/amplihack/specialized/amplifier-cli-architect.md) | CLI tool design and architecture                |
-| [**analyzer**](.claude/agents/amplihack/specialized/analyzer.md)                               | Deep code analysis                              |
-| [**azure-kubernetes-expert**](.claude/agents/amplihack/specialized/azure-kubernetes-expert.md) | Azure Kubernetes Service expertise              |
-| [**ci-diagnostic-workflow**](.claude/agents/amplihack/specialized/ci-diagnostic-workflow.md)   | CI/CD pipeline diagnostics                      |
-| [**cleanup**](.claude/agents/amplihack/specialized/cleanup.md)                                 | Remove artifacts and enforce philosophy         |
-| [**database**](.claude/agents/amplihack/specialized/database.md)                               | Database design and optimization                |
-| [**fallback-cascade**](.claude/agents/amplihack/specialized/fallback-cascade.md)               | Resilient fallback strategies                   |
-| [**fix-agent**](.claude/agents/amplihack/specialized/fix-agent.md)                             | Automated error fixing                          |
-| [**integration**](.claude/agents/amplihack/specialized/integration.md)                         | System integration patterns                     |
-| [**knowledge-archaeologist**](.claude/agents/amplihack/specialized/knowledge-archaeologist.md) | Extract and preserve knowledge                  |
-| [**multi-agent-debate**](.claude/agents/amplihack/specialized/multi-agent-debate.md)           | Facilitate multi-perspective debates            |
-| [**n-version-validator**](.claude/agents/amplihack/specialized/n-version-validator.md)         | Validate N-version implementations              |
-| [**patterns**](.claude/agents/amplihack/specialized/patterns.md)                               | Design pattern recommendations                  |
-| [**pre-commit-diagnostic**](.claude/agents/amplihack/specialized/pre-commit-diagnostic.md)     | Pre-commit hook diagnostics                     |
-| [**preference-reviewer**](.claude/agents/amplihack/specialized/preference-reviewer.md)         | User preference validation                      |
-| [**prompt-writer**](.claude/agents/amplihack/specialized/prompt-writer.md)                     | Effective prompt engineering                    |
-| [**rust-programming-expert**](.claude/agents/amplihack/specialized/rust-programming-expert.md) | Rust language expertise                         |
-| [**security**](.claude/agents/amplihack/specialized/security.md)                               | Security analysis and vulnerability detection   |
-| [**visualization-architect**](.claude/agents/amplihack/specialized/visualization-architect.md) | Data visualization design                       |
-| [**xpia-defense**](.claude/agents/amplihack/specialized/xpia-defense.md)                       | Advanced threat detection                       |
-| [**philosophy-guardian**](.claude/agents/amplihack/specialized/philosophy-guardian.md)         | Philosophy compliance and simplicity validation |
+| [**ambiguity**](~/.amplihack/.claude/agents/amplihack/specialized/ambiguity.md)                             | Clarify ambiguous requirements                  |
+| [**amplifier-cli-architect**](~/.amplihack/.claude/agents/amplihack/specialized/amplifier-cli-architect.md) | CLI tool design and architecture                |
+| [**analyzer**](~/.amplihack/.claude/agents/amplihack/specialized/analyzer.md)                               | Deep code analysis                              |
+| [**azure-kubernetes-expert**](~/.amplihack/.claude/agents/amplihack/specialized/azure-kubernetes-expert.md) | Azure Kubernetes Service expertise              |
+| [**ci-diagnostic-workflow**](~/.amplihack/.claude/agents/amplihack/specialized/ci-diagnostic-workflow.md)   | CI/CD pipeline diagnostics                      |
+| [**cleanup**](~/.amplihack/.claude/agents/amplihack/specialized/cleanup.md)                                 | Remove artifacts and enforce philosophy         |
+| [**database**](~/.amplihack/.claude/agents/amplihack/specialized/database.md)                               | Database design and optimization                |
+| [**fallback-cascade**](~/.amplihack/.claude/agents/amplihack/specialized/fallback-cascade.md)               | Resilient fallback strategies                   |
+| [**fix-agent**](~/.amplihack/.claude/agents/amplihack/specialized/fix-agent.md)                             | Automated error fixing                          |
+| [**integration**](~/.amplihack/.claude/agents/amplihack/specialized/integration.md)                         | System integration patterns                     |
+| [**knowledge-archaeologist**](~/.amplihack/.claude/agents/amplihack/specialized/knowledge-archaeologist.md) | Extract and preserve knowledge                  |
+| [**multi-agent-debate**](~/.amplihack/.claude/agents/amplihack/specialized/multi-agent-debate.md)           | Facilitate multi-perspective debates            |
+| [**n-version-validator**](~/.amplihack/.claude/agents/amplihack/specialized/n-version-validator.md)         | Validate N-version implementations              |
+| [**patterns**](~/.amplihack/.claude/agents/amplihack/specialized/patterns.md)                               | Design pattern recommendations                  |
+| [**pre-commit-diagnostic**](~/.amplihack/.claude/agents/amplihack/specialized/pre-commit-diagnostic.md)     | Pre-commit hook diagnostics                     |
+| [**preference-reviewer**](~/.amplihack/.claude/agents/amplihack/specialized/preference-reviewer.md)         | User preference validation                      |
+| [**prompt-writer**](~/.amplihack/.claude/agents/amplihack/specialized/prompt-writer.md)                     | Effective prompt engineering                    |
+| [**rust-programming-expert**](~/.amplihack/.claude/agents/amplihack/specialized/rust-programming-expert.md) | Rust language expertise                         |
+| [**security**](~/.amplihack/.claude/agents/amplihack/specialized/security.md)                               | Security analysis and vulnerability detection   |
+| [**visualization-architect**](~/.amplihack/.claude/agents/amplihack/specialized/visualization-architect.md) | Data visualization design                       |
+| [**xpia-defense**](~/.amplihack/.claude/agents/amplihack/specialized/xpia-defense.md)                       | Advanced threat detection                       |
+| [**philosophy-guardian**](~/.amplihack/.claude/agents/amplihack/specialized/philosophy-guardian.md)         | Philosophy compliance and simplicity validation |
 
 ## Features
 
@@ -311,7 +311,7 @@ amplihack remote auto "implement feature" --region westus3 --vm-size s
 ```
 
 Documentation:
-[.claude/tools/amplihack/remote/README.md](.claude/tools/amplihack/remote/README.md)
+[.claude/tools/amplihack/remote/README.md](~/.amplihack/.claude/tools/amplihack/remote/README.md)
 
 ### Workflow Orchestration by Default (NEW!)
 
@@ -406,7 +406,7 @@ amplihack launch
 
 **Generate professional documentation sites automatically:**
 
-- Auto-discovers content from `docs/`, `README.md`, and `.claude/commands/`
+- Auto-discovers content from `docs/`, `README.md`, and `~/.amplihack/.claude/commands/`
 - Three-pass validation ensures quality documentation
 - Safe gh-pages deployment with rollback support
 - Local preview server for testing
@@ -437,7 +437,7 @@ amplihack launch
   Persistent memory and knowledge graphs across sessions
 - **[Investigation Workflow](CLAUDE.md#investigation-workflow)** - Deep
   knowledge excavation with historical context
-- **[Skills System](.claude/skills/README.md)** - 85+ skills including PDF,
+- **[Skills System](~/.amplihack/.claude/skills/README.md)** - 85+ skills including PDF,
   XLSX, DOCX, PPTX, analysts, and workflow patterns
 - **[Fix Workflow](CLAUDE.md#key-commands)** - Rapid resolution of common error
   patterns (`/amplihack:fix`)
@@ -457,7 +457,7 @@ amplihack launch
   formatting, linting, type checking before push
 - **[CI Diagnostics](CLAUDE.md#development-workflow-agents)** - Monitor CI,
   diagnose failures, iterate until mergeable
-- **[Worktree Management](.claude/agents/amplihack/specialized/worktree-manager.md)** -
+- **[Worktree Management](~/.amplihack/.claude/agents/amplihack/specialized/worktree-manager.md)** -
   Git worktree automation for parallel development
 - **[Session Logs](CLAUDE.md#working-philosophy)** - Comprehensive logging and
   decision records
@@ -499,14 +499,14 @@ Real-time session information displayed at the bottom of Claude Code showing:
   Custom agent creation
 - [GitHub Copilot Integration](https://rysweet.github.io/amplihack/github-copilot-litellm-integration/) -
   Copilot CLI support
-- [Office Skills](.claude/skills/README.md) - PDF, Excel, Word, and PowerPoint
+- [Office Skills](~/.amplihack/.claude/skills/README.md) - PDF, Excel, Word, and PowerPoint
   document processing
-  - [PDF Skill](.claude/skills/pdf/README.md) - Comprehensive PDF manipulation
-  - [XLSX Skill](.claude/skills/xlsx/README.md) - Spreadsheet creation with
+  - [PDF Skill](~/.amplihack/.claude/skills/pdf/README.md) - Comprehensive PDF manipulation
+  - [XLSX Skill](~/.amplihack/.claude/skills/xlsx/README.md) - Spreadsheet creation with
     formulas and financial modeling
-- [Azure Admin Skill](.claude/skills/azure-admin/README.md) - Azure
+- [Azure Admin Skill](~/.amplihack/.claude/skills/azure-admin/README.md) - Azure
   administration, identity management, RBAC, and resource orchestration
-- [Azure DevOps CLI Skill](.claude/skills/azure-devops-cli/README.md) - Azure
+- [Azure DevOps CLI Skill](~/.amplihack/.claude/skills/azure-devops-cli/README.md) - Azure
   DevOps automation, pipelines, repos, and artifacts
 - **[Azure DevOps Boards Tools](docs/azure-devops/README.md) - Work item
   management with CLI tools**
@@ -560,15 +560,15 @@ Real-time session information displayed at the bottom of Claude Code showing:
   problems, solutions, and learnings
 - [Creating Tools](https://rysweet.github.io/amplihack/CREATE_YOUR_OWN_TOOLS/) -
   Build custom AI-powered tools
-- [Philosophy](.claude/context/PHILOSOPHY.md) - Core principles and patterns
-- [Workflows](.claude/workflow/DEFAULT_WORKFLOW.md) - Development process
+- [Philosophy](~/.amplihack/.claude/context/PHILOSOPHY.md) - Core principles and patterns
+- [Workflows](~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md) - Development process
 
 ## Development
 
 ### Contributing
 
-Fork, submit PRs. Add agents to `.claude/agents/`, patterns to
-`.claude/context/PATTERNS.md`.
+Fork, submit PRs. Add agents to `~/.amplihack/.claude/agents/`, patterns to
+`~/.amplihack/.claude/context/PATTERNS.md`.
 
 ### Local Development
 

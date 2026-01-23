@@ -160,7 +160,7 @@ exit 0
 
 **Both Platforms**: ✅ CONFIRMED
 
-**Evidence** (.claude/runtime/logs/):
+**Evidence** (~/.amplihack/.claude/runtime/logs/):
 - session_start.log: Updated during test
 - user_prompt_submit.log: Created during test
 - pre_tool_use.log: Updated during test
@@ -206,7 +206,7 @@ Hook executes → Returns JSON → Copilot logs it → AI NEVER sees it (except 
 1. ✅ Python hooks work for Claude Code (full capability)
 2. ✅ Bash wrappers work for Copilot CLI (logging only)
 3. ✅ Zero logic duplication (wrappers just call Python)
-4. ✅ Single source of truth (.claude/tools/amplihack/hooks/)
+4. ✅ Single source of truth (~/.amplihack/.claude/tools/amplihack/hooks/)
 
 **Adaptive Context Injection Strategy**:
 
@@ -231,8 +231,8 @@ if is_claude_code():
 else:  # Copilot CLI
     # File-based injection - write AGENTS.md
     write_agents_file([
-        "@.claude/context/USER_PREFERENCES.md",
-        "@.claude/context/PHILOSOPHY.md"
+        "@~/.amplihack/.claude/context/USER_PREFERENCES.md",
+        "@~/.amplihack/.claude/context/PHILOSOPHY.md"
     ])
     # Copilot reads via @include on next request
     return {}

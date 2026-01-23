@@ -514,4 +514,4 @@ This skill evolves based on usage patterns:
 - What errors occur and how to prevent them?
 - How can diagrams better support documentation?
 
-Document learnings and suggest improvements for `.claude/context/DISCOVERIES.md`.
+Document learnings and suggest improvements for `~/.amplihack/.claude/context/DISCOVERIES.md`.

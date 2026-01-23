@@ -11,7 +11,7 @@ arguments:
 
 # /amplihack:learnings Command
 
-Manage cross-session learnings stored in `.claude/data/learnings/`.
+Manage cross-session learnings stored in `~/.amplihack/.claude/data/learnings/`.
 
 ## Actions
 
@@ -59,7 +59,7 @@ Show learning statistics:
 When this command is invoked:
 
 1. **Parse action and query** from arguments
-2. **Load learning files** from `.claude/data/learnings/`
+2. **Load learning files** from `~/.amplihack/.claude/data/learnings/`
 3. **Execute requested action**:
 
 ### For `show`:
@@ -180,9 +180,9 @@ For each match:
 
 ## Related Files
 
-- `.claude/data/learnings/errors.yaml` - Error patterns
-- `.claude/data/learnings/workflows.yaml` - Workflow insights
-- `.claude/data/learnings/tools.yaml` - Tool patterns
-- `.claude/data/learnings/architecture.yaml` - Design decisions
-- `.claude/data/learnings/debugging.yaml` - Debug strategies
-- `.claude/skills/session-learning/SKILL.md` - Full skill documentation
+- `~/.amplihack/.claude/data/learnings/errors.yaml` - Error patterns
+- `~/.amplihack/.claude/data/learnings/workflows.yaml` - Workflow insights
+- `~/.amplihack/.claude/data/learnings/tools.yaml` - Tool patterns
+- `~/.amplihack/.claude/data/learnings/architecture.yaml` - Design decisions
+- `~/.amplihack/.claude/data/learnings/debugging.yaml` - Debug strategies
+- `~/.amplihack/.claude/skills/session-learning/SKILL.md` - Full skill documentation

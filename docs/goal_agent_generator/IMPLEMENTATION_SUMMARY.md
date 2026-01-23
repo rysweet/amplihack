@@ -59,7 +59,7 @@ Built on existing bundle_generator infrastructure with 5 core components followi
 - Calculate required skills from capabilities
 - Estimate duration based on complexity
 - Identify risk factors
-- Match existing skills from `.claude/agents/amplihack`
+- Match existing skills from `~/.amplihack/.claude/agents/amplihack`
 - Calculate skill match scores (0-1)
 - Extract capabilities from skill content
 - Provide generic executor fallback

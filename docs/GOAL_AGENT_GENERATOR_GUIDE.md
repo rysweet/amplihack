@@ -405,7 +405,7 @@ done
 
 **Solutions:**
 
-- Check that `.claude/agents/amplihack/` exists
+- Check that `~/.amplihack/.claude/agents/amplihack/` exists
 - Provide custom `--skills-dir` if using different location
 - Simplify goal to match available skills
 
@@ -564,9 +564,9 @@ amplihack new --file organize.md
 
 ### Skill Library Tips
 
-1. **Explore Skills**: Browse `.claude/agents/amplihack/` to see what's available
+1. **Explore Skills**: Browse `~/.amplihack/.claude/agents/amplihack/` to see what's available
 2. **Understand Capabilities**: Read skill docs to understand what they do
-3. **Custom Skills**: Add your own to `.claude/agents/` if needed
+3. **Custom Skills**: Add your own to `~/.amplihack/.claude/agents/` if needed
 
 ---
 
@@ -611,7 +611,7 @@ A: Not in Phase 1 MVP. Learning features are deferred pending evidence of need.
 A: Yes! They're just Python scripts and markdown files. Customize as needed.
 
 **Q: What if my goal doesn't match any skills?**
-A: A generic executor will be used. Consider adding custom skills to `.claude/agents/`.
+A: A generic executor will be used. Consider adding custom skills to `~/.amplihack/.claude/agents/`.
 
 **Q: Can agents access the internet?**
 A: Yes, if Claude SDK has access. Agents use same permissions as Claude.

@@ -221,4 +221,4 @@ For issues or questions:
 - **DOCX Skill**: For Word document creation (planned)
 - **PPTX Skill**: For PowerPoint presentations (planned)
 
-See `.claude/skills/INTEGRATION_STATUS.md` for current integration status.
+See `~/.amplihack/.claude/skills/INTEGRATION_STATUS.md` for current integration status.

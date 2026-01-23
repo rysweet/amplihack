@@ -52,15 +52,15 @@ Fast, isolated tests with heavy mocking:
 
 - Parametrized tests for all 10 amplihack hook patterns:
   - `amplihack/hooks/stop.py`
-  - `.claude/tools/amplihack/hooks/stop.py`
+  - `~/.amplihack/.claude/tools/amplihack/hooks/stop.py`
   - `amplihack/hooks/session_start.py`
-  - `.claude/tools/amplihack/hooks/session_start.py`
+  - `~/.amplihack/.claude/tools/amplihack/hooks/session_start.py`
   - `amplihack/hooks/pre_tool_use.py`
-  - `.claude/tools/amplihack/hooks/pre_tool_use.py`
+  - `~/.amplihack/.claude/tools/amplihack/hooks/pre_tool_use.py`
   - `amplihack/hooks/post_tool_use.py`
-  - `.claude/tools/amplihack/hooks/post_tool_use.py`
+  - `~/.amplihack/.claude/tools/amplihack/hooks/post_tool_use.py`
   - `amplihack/hooks/pre_compact.py`
-  - `.claude/tools/amplihack/hooks/pre_compact.py`
+  - `~/.amplihack/.claude/tools/amplihack/hooks/pre_compact.py`
 
 ### Integration Tests (30% - 13 tests)
 

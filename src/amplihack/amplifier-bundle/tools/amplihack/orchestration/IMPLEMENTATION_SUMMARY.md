@@ -6,7 +6,7 @@ All 5 required files have been successfully implemented:
 
 ### 1. claude_process.py (383 lines)
 
-**Location**: `.claude/tools/amplihack/orchestration/claude_process.py`
+**Location**: `~/.amplihack/.claude/tools/amplihack/orchestration/claude_process.py`
 
 **Classes**:
 
@@ -41,7 +41,7 @@ All 5 required files have been successfully implemented:
 
 ### 2. execution.py (226 lines)
 
-**Location**: `.claude/tools/amplihack/orchestration/execution.py`
+**Location**: `~/.amplihack/.claude/tools/amplihack/orchestration/execution.py`
 
 **Functions**:
 
@@ -73,7 +73,7 @@ All functions include comprehensive docstrings with examples.
 
 ### 3. session.py (178 lines)
 
-**Location**: `.claude/tools/amplihack/orchestration/session.py`
+**Location**: `~/.amplihack/.claude/tools/amplihack/orchestration/session.py`
 
 **Class**: `OrchestratorSession`
 
@@ -96,7 +96,7 @@ All functions include comprehensive docstrings with examples.
 
 ### 4. orchestration/**init**.py (49 lines)
 
-**Location**: `.claude/tools/amplihack/orchestration/__init__.py`
+**Location**: `~/.amplihack/.claude/tools/amplihack/orchestration/__init__.py`
 
 **Exports**:
 
@@ -116,7 +116,7 @@ Comprehensive module docstring with usage examples.
 
 ### 5. orchestration/patterns/**init**.py (23 lines)
 
-**Location**: `.claude/tools/amplihack/orchestration/patterns/__init__.py`
+**Location**: `~/.amplihack/.claude/tools/amplihack/orchestration/patterns/__init__.py`
 
 Placeholder for future reusable orchestration patterns with clear documentation on structure.
 

@@ -27,14 +27,14 @@ The primary use case for this tool is integration with Claude Code's stop hooks.
    ```
 
 2. **Customize validation level** (optional):
-   Edit `.claude/hooks/stop.sh` and change the `--level` parameter:
+   Edit `~/.amplihack/.claude/hooks/stop.sh` and change the `--level` parameter:
 
    ```bash
    "$VALIDATOR_SCRIPT" --level 2 --verbose
    ```
 
 3. **Configure validation settings** (optional):
-   Edit `.claude/config/cs-validator.json` to customize behavior
+   Edit `~/.amplihack/.claude/config/cs-validator.json` to customize behavior
 
 ### Usage
 
@@ -58,7 +58,7 @@ unset SKIP_CS_VALIDATION
 ```
 
 **Change validation level per session**:
-Edit `.claude/hooks/stop.sh` before the session:
+Edit `~/.amplihack/.claude/hooks/stop.sh` before the session:
 
 ```bash
 # For quick iterations (syntax only)

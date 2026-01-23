@@ -222,7 +222,7 @@ Solution: Increased timeout to 30 seconds
 
 ### Memory Settings
 
-Configured via Neo4j config (`.claude/runtime/memory/.config`):
+Configured via Neo4j config (`~/.amplihack/.claude/runtime/memory/.config`):
 
 ```json
 {
@@ -361,12 +361,12 @@ Total: 10 tests | Passed: 10 | Failed: 0
 
 All operations logged to:
 
-- `.claude/runtime/logs/session_start.log` - Memory initialization
+- `~/.amplihack/.claude/runtime/logs/session_start.log` - Memory initialization
 - Agent-specific logs (if available)
 
 ### Metrics
 
-Stored in `.claude/runtime/metrics/`:
+Stored in `~/.amplihack/.claude/runtime/metrics/`:
 
 - `memories_injected` - Count per agent invocation
 - `learnings_extracted` - Count per agent completion

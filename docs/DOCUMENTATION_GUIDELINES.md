@@ -53,7 +53,7 @@ docs/FEATURE_X.md   <- Not linked from anywhere
 | Status updates | GitHub Issues |
 | Progress reports | Pull Request descriptions |
 | Meeting decisions | Commit messages |
-| Performance data | `.claude/runtime/logs/` |
+| Performance data | `~/.amplihack/.claude/runtime/logs/` |
 
 **Example - Bad** (in docs/):
 

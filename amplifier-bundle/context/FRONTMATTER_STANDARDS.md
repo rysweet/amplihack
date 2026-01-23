@@ -293,7 +293,7 @@ philosophy:
     application: How agent maintains focus
 dependencies:
   required_context: # Files to import
-    - "@.claude/context/PHILOSOPHY.md"
+    - "@~/.amplihack/.claude/context/PHILOSOPHY.md"
   tools:
     - Read
     - Bash
@@ -329,8 +329,8 @@ philosophy:
     application: Creates self-contained module specs
 dependencies:
   required_context:
-    - "@.claude/context/PHILOSOPHY.md"
-    - "@.claude/context/PATTERNS.md"
+    - "@~/.amplihack/.claude/context/PHILOSOPHY.md"
+    - "@~/.amplihack/.claude/context/PATTERNS.md"
   tools:
     - Read
     - Write
@@ -448,7 +448,7 @@ This command orchestrates workflow-driven execution...
 
 ## References
 
-- **Revised Architecture**: `.claude/runtime/logs/session_20251119_024338/REVISED_ARCHITECTURE.md`
+- **Revised Architecture**: `~/.amplihack/.claude/runtime/logs/session_20251119_024338/REVISED_ARCHITECTURE.md`
 - **Claude Code Best Practices**: https://docs.anthropic.com/claude/docs/claude-code
 - **Semantic Versioning**: https://semver.org/
 

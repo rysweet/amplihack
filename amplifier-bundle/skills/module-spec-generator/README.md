@@ -100,7 +100,7 @@ Max Score: 50 points
 Skills are automatically discovered from:
 
 - User settings: `~/.config/claude/skills/`
-- Project settings: `.claude/skills/`
+- Project settings: `~/.amplihack/.claude/skills/`
 - Plugin-provided skills
 - Built-in skills
 

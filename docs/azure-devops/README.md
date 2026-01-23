@@ -13,7 +13,7 @@ Provides CLI tools and AI guidance for:
 
 ## For AI Agents
 
-See `.claude/skills/azure-devops/SKILL.md` for complete skill definition with progressive loading references.
+See `~/.amplihack/.claude/skills/azure-devops/SKILL.md` for complete skill definition with progressive loading references.
 
 ## For Humans
 
@@ -54,7 +54,7 @@ See `.claude/skills/azure-devops/SKILL.md` for complete skill definition with pr
 
 ### Available Tools
 
-All tools are in `.claude/scenarios/az-devops-tools/`. Run any tool with `--help` for usage.
+All tools are in `~/.amplihack/.claude/scenarios/az-devops-tools/`. Run any tool with `--help` for usage.
 
 #### Work Item Tools
 
@@ -197,13 +197,13 @@ python .claude/scenarios/az-devops-tools/list_types.py
 
 For detailed AI-facing documentation, see:
 
-- `.claude/skills/azure-devops/authentication.md` - Auth setup
-- `.claude/skills/azure-devops/work-items.md` - Work item operations
-- `.claude/skills/azure-devops/queries.md` - WIQL query patterns
-- `.claude/skills/azure-devops/html-formatting.md` - HTML formatting
-- `.claude/skills/azure-devops/repos.md` - Repository operations
-- `.claude/skills/azure-devops/pipelines.md` - Pipeline operations
-- `.claude/skills/azure-devops/artifacts.md` - Artifact management
+- `~/.amplihack/.claude/skills/azure-devops/authentication.md` - Auth setup
+- `~/.amplihack/.claude/skills/azure-devops/work-items.md` - Work item operations
+- `~/.amplihack/.claude/skills/azure-devops/queries.md` - WIQL query patterns
+- `~/.amplihack/.claude/skills/azure-devops/html-formatting.md` - HTML formatting
+- `~/.amplihack/.claude/skills/azure-devops/repos.md` - Repository operations
+- `~/.amplihack/.claude/skills/azure-devops/pipelines.md` - Pipeline operations
+- `~/.amplihack/.claude/skills/azure-devops/artifacts.md` - Artifact management
 
 ## References
 

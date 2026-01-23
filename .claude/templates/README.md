@@ -60,7 +60,7 @@ When completing an investigation, the knowledge-archaeologist agent will:
 1. Prompt: "Shall I create a permanent record of this investigation in the ship's logs (documentation)?"
 2. If accepted, select appropriate template based on investigation type
 3. Populate template with investigation findings
-4. Save to `.claude/docs/[TYPE]_[TOPIC].md`
+4. Save to `~/.amplihack/.claude/docs/[TYPE]_[TOPIC].md`
 
 ### Manual Generation
 
@@ -68,7 +68,7 @@ You can manually create documentation using these templates:
 
 1. Copy the appropriate template
 2. Replace all `[PLACEHOLDER]` sections with actual content
-3. Save to `.claude/docs/` with naming convention:
+3. Save to `~/.amplihack/.claude/docs/` with naming convention:
    - `ARCHITECTURE_[TOPIC].md` for architecture investigations
    - `INVESTIGATION_[TOPIC].md` for general investigations
 4. Use UPPER_SNAKE_CASE for TOPIC (e.g., `USER_PREFERENCES_HOOKS`)
@@ -86,7 +86,7 @@ Common placeholders in templates:
 
 ## Examples
 
-See `.claude/docs/` directory for examples of generated documentation.
+See `~/.amplihack/.claude/docs/` directory for examples of generated documentation.
 
 ## File Naming Convention
 

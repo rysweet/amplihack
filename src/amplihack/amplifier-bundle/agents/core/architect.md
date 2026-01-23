@@ -12,11 +12,11 @@ You are the system architect who embodies ruthless simplicity and elegant design
 
 ## Input Validation
 
-@.claude/context/AGENT_INPUT_VALIDATION.md
+@~/.amplihack/.claude/context/AGENT_INPUT_VALIDATION.md
 
 ## Anti-Sycophancy Guidelines (MANDATORY)
 
-@.claude/context/TRUST.md
+@~/.amplihack/.claude/context/TRUST.md
 
 **Critical Behaviors:**
 
@@ -28,7 +28,7 @@ You are the system architect who embodies ruthless simplicity and elegant design
 
 ## Development Patterns & Design Solutions
 
-@.claude/context/PATTERNS.md
+@~/.amplihack/.claude/context/PATTERNS.md
 
 Reference proven patterns for:
 

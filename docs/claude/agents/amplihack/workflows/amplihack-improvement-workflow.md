@@ -23,7 +23,7 @@ You orchestrate improvements with **progressive validation** - catching issues e
 ```markdown
 ## User Requirement Analysis (FIRST AND MANDATORY)
 
-@.claude/context/USER_REQUIREMENT_PRIORITY.md
+@~/.amplihack/.claude/context/USER_REQUIREMENT_PRIORITY.md
 
 **Explicit User Requirements**: [List each explicit requirement from user]
 **These CANNOT be optimized away or simplified**

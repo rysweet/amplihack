@@ -63,7 +63,7 @@ python run_benchmarks.py --tasks 1,2,3,4
 
 ### Results Location
 
-- **Result Files**: `.claude/runtime/benchmarks/suite_v3/{model}_task{N}/result.json`
+- **Result Files**: `~/.amplihack/.claude/runtime/benchmarks/suite_v3/{model}_task{N}/result.json`
 - **Trace Logs**: `worktrees/bench-{model}-task{N}/.claude-trace/*.jsonl`
 - **Reports**: `tests/benchmarks/benchmark_suite_v3/BENCHMARK_REPORT_V3.md`
 
@@ -114,7 +114,7 @@ For automated reproduction of benchmark workflows, use:
 /amplihack:model-evaluation-benchmark
 ```
 
-See `.claude/skills/model-evaluation-benchmark/` for documentation.
+See `~/.amplihack/.claude/skills/model-evaluation-benchmark/` for documentation.
 
 ## Contributing
 

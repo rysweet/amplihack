@@ -12,7 +12,7 @@ The hook system uses a **unified HookProcessor** base class that provides common
 
 - **`hook_processor.py`** - Base class providing common functionality for all hooks
   - JSON input/output handling
-  - Logging to `.claude/runtime/logs/`
+  - Logging to `~/.amplihack/.claude/runtime/logs/`
   - Metrics collection
   - Error handling and graceful fallback
   - Session data management
@@ -25,7 +25,7 @@ The hook system uses a **unified HookProcessor** base class that provides common
   - Logs session start metrics
 
 - **`stop.py`** - Runs when a session ends
-  - Checks for lock flag (`.claude/tools/amplihack/.lock_active`)
+  - Checks for lock flag (`~/.amplihack/.claude/tools/amplihack/.lock_active`)
   - Blocks stop if continuous work mode is enabled (lock active)
   - Logs stop attempts and lock status
 
@@ -176,7 +176,7 @@ This ensures that hook failures never break the Claude Code chain.
 
 ## Hook Configuration
 
-Hooks are configured in `.claude/settings.json`:
+Hooks are configured in `~/.amplihack/.claude/settings.json`:
 
 ```json
 {
@@ -240,7 +240,7 @@ Hooks are configured in `.claude/settings.json`:
 
 The stop hook supports continuous work mode via a lock flag:
 
-- **Lock file**: `.claude/tools/amplihack/.lock_active`
+- **Lock file**: `~/.amplihack/.claude/tools/amplihack/.lock_active`
 - **Enable**: Use `/amplihack:lock` slash command
 - **Disable**: Use `/amplihack:unlock` slash command
 - **Behavior**: When locked, Claude continues working through all TODOs without stopping

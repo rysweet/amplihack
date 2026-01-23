@@ -197,7 +197,7 @@ None - pure Python standard library only (json, pathlib, datetime, typing)
 
 - Complements `/transcripts` command (transcripts = full history, snapshots = intelligent extraction)
 - Works alongside PreCompact hook (hook = automatic export, skill = proactive management)
-- Reads from `.claude/runtime/logs/` when creating snapshots
+- Reads from `~/.amplihack/.claude/runtime/logs/` when creating snapshots
 
 ## Module Structure
 
@@ -416,8 +416,8 @@ result = context_management_skill('list')
 
 ### Storage Location
 
-- Snapshots: `.claude/runtime/context-snapshots/`
-- Transcripts: `.claude/runtime/logs/<session_id>/CONVERSATION_TRANSCRIPT.md`
+- Snapshots: `~/.amplihack/.claude/runtime/context-snapshots/`
+- Transcripts: `~/.amplihack/.claude/runtime/logs/<session_id>/CONVERSATION_TRANSCRIPT.md`
 - **No conflicts**: Different directories, different purposes
 
 ## Regeneration Notes

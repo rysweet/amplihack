@@ -90,7 +90,7 @@ Session End
 
 **Purpose**: Inject relevant memory context into agent prompts
 
-**Location**: `.claude/tools/amplihack/hooks/pre_agent.py` (NEW)
+**Location**: `~/.amplihack/.claude/tools/amplihack/hooks/pre_agent.py` (NEW)
 
 **Trigger**: Before agent markdown file is loaded and prompt constructed
 
@@ -338,7 +338,7 @@ if __name__ == "__main__":
 **Key Features**:
 
 - Non-invasive: Agents unaware of memory system
-- Opt-in: Controlled via `.claude/runtime/memory/.config`
+- Opt-in: Controlled via `~/.amplihack/.claude/runtime/memory/.config`
 - Fast: Query limits prevent prompt bloat
 - Intelligent: Task category detection + quality filtering
 - Cross-agent learning: Architects see builder patterns, etc.
@@ -349,7 +349,7 @@ if __name__ == "__main__":
 
 **Purpose**: Extract learnings from agent output and store in Neo4j
 
-**Location**: `.claude/tools/amplihack/hooks/post_agent.py` (NEW)
+**Location**: `~/.amplihack/.claude/tools/amplihack/hooks/post_agent.py` (NEW)
 
 **Trigger**: After agent completes, before returning to orchestrator
 
@@ -629,7 +629,7 @@ if __name__ == "__main__":
 
 **Purpose**: Consolidate session-level learnings and index for future retrieval
 
-**Location**: Extend existing `.claude/tools/amplihack/hooks/stop.py`
+**Location**: Extend existing `~/.amplihack/.claude/tools/amplihack/hooks/stop.py`
 
 **Implementation**:
 
@@ -954,7 +954,7 @@ Agents output whatever they want
 
 **Default**: Memory system disabled
 
-**Enable**: Create/edit `.claude/runtime/memory/.config`
+**Enable**: Create/edit `~/.amplihack/.claude/runtime/memory/.config`
 
 ```json
 {
@@ -1110,7 +1110,7 @@ Fix-Agent: Queries error history
 2. Create `post_agent.py` hook
 3. Extend `stop.py` with consolidation
 4. Add memory initialization to `session_start.py`
-5. Create `.claude/runtime/memory/.config` default
+5. Create `~/.amplihack/.claude/runtime/memory/.config` default
 
 **Deliverables**:
 

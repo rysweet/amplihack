@@ -649,7 +649,7 @@ yaml.safe_load(frontmatter_text)  # Should not error
 1. Enhance description with trigger keywords
 2. Restart Claude Code
 3. Fix YAML syntax errors
-4. Check file location (.claude/skills/skill-name/SKILL.md)
+4. Check file location (~/.amplihack/.claude/skills/skill-name/SKILL.md)
 
 ### Issue: Token Budget Exceeded
 

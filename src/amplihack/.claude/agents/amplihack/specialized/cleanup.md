@@ -23,7 +23,7 @@ Review all changes after tasks complete to:
 
 **BEFORE ANY CLEANUP ACTION**, check the original user request for explicit requirements:
 
-@.claude/context/USER_REQUIREMENT_PRIORITY.md
+@~/.amplihack/.claude/context/USER_REQUIREMENT_PRIORITY.md
 
 **NEVER REMOVE OR SIMPLIFY anything that was explicitly requested by the user.**
 

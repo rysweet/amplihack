@@ -155,8 +155,8 @@ $ uvx --from amplihack amplihack
 
 **Result**:
 
-- Yer original content → `.claude/context/PROJECT.md` (primary)
-- Complete backup → `.claude/context/CLAUDE.md.preserved`
+- Yer original content → `~/.amplihack/.claude/context/PROJECT.md` (primary)
+- Complete backup → `~/.amplihack/.claude/context/CLAUDE.md.preserved`
 - New amplihack CLAUDE.md installed
 
 ### Scenario 2: Reinstallation
@@ -227,14 +227,14 @@ cp .claude/context/CLAUDE.md.preserved CLAUDE.md
 
 ### Backup Not Created
 
-**Symptom**: Installed amplihack but don't see `.claude/context/CLAUDE.md.preserved`
+**Symptom**: Installed amplihack but don't see `~/.amplihack/.claude/context/CLAUDE.md.preserved`
 
 **Possible causes**:
 
 1. Yer CLAUDE.md was identical to amplihack's default (no custom content)
 2. Installation was interrupted before preservation completed
 
-**Solution**: Check `.claude/context/PROJECT.md` fer the AMPLIHACK-PRESERVED-CONTENT section. If present, yer content was preserved there.
+**Solution**: Check `~/.amplihack/.claude/context/PROJECT.md` fer the AMPLIHACK-PRESERVED-CONTENT section. If present, yer content was preserved there.
 
 ### Content Appears Lost
 
@@ -266,7 +266,7 @@ cp .claude/context/CLAUDE.md.preserved CLAUDE.md
 echo "CLAUDE.md" >> .gitignore
 ```
 
-Amplihack will still function - it only reads from `.claude/context/` files, not CLAUDE.md itself.
+Amplihack will still function - it only reads from `~/.amplihack/.claude/context/` files, not CLAUDE.md itself.
 
 ## Integration with Agents
 
@@ -293,7 +293,7 @@ The system identifies custom content through a multi-stage analysis:
    - **Qualification**: Any non-whitespace content difference = custom content
    - **Version marker check**: Missing version marker = assumed custom
 
-3. **Backup check**: Is `.claude/context/CLAUDE.md.preserved` already present?
+3. **Backup check**: Is `~/.amplihack/.claude/context/CLAUDE.md.preserved` already present?
    - If yes → preservation already complete (idempotent)
    - If no → preservation needed
 

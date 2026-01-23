@@ -44,7 +44,7 @@ The Neo4j memory system implementation is COMPLETE, TESTED, and PRODUCTION-READY
 
 - File: `src/amplihack/memory/neo4j/dependency_installer.py` (694 lines)
 - Capabilities: Docker detection, Docker Compose detection, Python package installation
-- Advisory agent: `.claude/agents/amplihack/infrastructure/neo4j-setup-agent.md`
+- Advisory agent: `~/.amplihack/.claude/agents/amplihack/infrastructure/neo4j-setup-agent.md`
 - Behavior: Check → Report → Guide pattern (never auto-installs system packages without permission)
 
 #### ✅ REQ-3: Graph Database Used (Not SQLite)
@@ -303,7 +303,7 @@ pytest tests/integration/memory/neo4j/ -v --docker
 **Integration Documentation**:
 
 - ✅ `Specs/Memory/AGENT_INTEGRATION_SUMMARY.md` - Integration overview
-- ✅ `.claude/agents/amplihack/infrastructure/neo4j-setup-agent.md` - Agent guide
+- ✅ `~/.amplihack/.claude/agents/amplihack/infrastructure/neo4j-setup-agent.md` - Agent guide
 
 ### Documentation Gaps
 

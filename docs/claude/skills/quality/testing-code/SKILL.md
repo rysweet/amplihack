@@ -447,7 +447,7 @@ def test_divide_with_negative_numbers():
 
 ### Invokes
 
-- **Tester Agent**: Core testing logic from `.claude/agents/tester.md`
+- **Tester Agent**: Core testing logic from `~/.amplihack/.claude/agents/tester.md`
 - **Code Analysis**: To identify untested code
 - **Coverage Tools**: pytest-cov, coverage.py, jest --coverage
 

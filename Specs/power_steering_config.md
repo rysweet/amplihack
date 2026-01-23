@@ -6,7 +6,7 @@ Stores power-steering configuration settings.
 
 ## Location
 
-`.claude/tools/amplihack/.power_steering_config`
+`~/.amplihack/.claude/tools/amplihack/.power_steering_config`
 
 ## Format
 
@@ -40,7 +40,7 @@ JSON file with the following structure:
 
 - **Type**: string
 - **Default**: "default.json"
-- **Description**: Name of considerations file in `.claude/tools/amplihack/considerations/`
+- **Description**: Name of considerations file in `~/.amplihack/.claude/tools/amplihack/considerations/`
 
 ### summary_enabled
 
@@ -82,7 +82,7 @@ touch .claude/runtime/power-steering/.disabled
 
 ### /amplihack:disable-power-steering
 
-Creates semaphore file at `.claude/runtime/power-steering/.disabled`
+Creates semaphore file at `~/.amplihack/.claude/runtime/power-steering/.disabled`
 
 ### /amplihack:enable-power-steering
 

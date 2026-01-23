@@ -310,7 +310,7 @@ Total:                    132 tests (131 passing, 1 skipped)
 
 **Issue**: When state file JSON is missing the 'state' field, `read_state()` raises `KeyError` instead of gracefully handling it and returning IDLE state.
 
-**Fix Required**: In `.claude/tools/amplihack/reflection/state_machine.py`, the `read_state()` method needs to catch `KeyError` in the exception handler on line 68:
+**Fix Required**: In `~/.amplihack/.claude/tools/amplihack/reflection/state_machine.py`, the `read_state()` method needs to catch `KeyError` in the exception handler on line 68:
 
 ```python
 # Current (line 68):
