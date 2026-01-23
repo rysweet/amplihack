@@ -4,6 +4,7 @@ import json
 import os
 import shlex
 import subprocess
+import tempfile
 from pathlib import Path
 
 from ..context.adaptive.detector import LauncherDetector
@@ -205,6 +206,8 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
         model,
         "--add-dir",
         os.getcwd(),  # Add current directory for .github/agents/ access
+        "--add-dir",
+        tempfile.gettempdir(),  # Grant access to system temp directory
         "--disable-mcp-server",
         "github-mcp-server",  # Disable to save context tokens, use gh CLI instead
     ]
