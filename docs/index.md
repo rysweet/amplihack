@@ -343,7 +343,8 @@ Psychological memory model with episodic, semantic, procedural, prospective, and
 - [5-Type Memory Guide](memory/5-TYPE-MEMORY-GUIDE.md) - Complete user guide
 - [Developer Reference](memory/5-TYPE-MEMORY-DEVELOPER.md) - Architecture and API
 - [Quick Reference](memory/5-TYPE-MEMORY-QUICKREF.md) - One-page cheat sheet
-- [Kùzu Schema](memory/KUZU_MEMORY_SCHEMA.md) - Graph database design
+- [Kùzu Memory Schema](memory/KUZU_MEMORY_SCHEMA.md) - Graph database design for 5 memory types
+- [Kùzu Code Schema](memory/KUZU_CODE_SCHEMA.md) - Code graph schema for memory-code linking
 - [Terminal Visualization](memory/MEMORY_TREE_VISUALIZATION.md) - View graph in terminal
 - [Memory System Overview](memory/README.md) - Complete memory documentation
 

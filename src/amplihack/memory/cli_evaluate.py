@@ -49,7 +49,7 @@ Examples:
 
     parser.add_argument(
         "--backend",
-        choices=["sqlite", "kuzu", "neo4j"],
+        choices=["sqlite", "kuzu"],
         help="Specific backend to evaluate (default: all)",
     )
 

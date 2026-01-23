@@ -36,7 +36,8 @@ Ahoy, matey! Welcome to the memory system documentation - where agents remember 
 
 ### Architecture & Schema
 
-- [Kùzu Memory Schema](KUZU_MEMORY_SCHEMA.md) - Graph database schema with 5 node types
+- [Kùzu Memory Schema](KUZU_MEMORY_SCHEMA.md) - Graph database schema with 5 memory node types
+- [Kùzu Code Schema](KUZU_CODE_SCHEMA.md) - Code graph schema for memory-code linking
 - [Backend Architecture](../backend-architecture.md) - Pluggable backend design (SQLite, Kùzu, Neo4j)
 - [Evaluation Framework](../evaluation-framework.md) - Compare backend quality and performance
 

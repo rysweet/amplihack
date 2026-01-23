@@ -433,8 +433,8 @@ amplihack launch
   programming, multi-agent debate, and cascade fallback patterns
 - **[Security Analysis](CLAUDE.md#key-commands)** - XPIA cross-prompt injection
   defense (`/amplihack:xpia`)
-- **[Neo4j Memory System](https://rysweet.github.io/amplihack/AGENT_MEMORY_QUICKSTART/)** -
-  Persistent memory and knowledge graphs across sessions
+- **[Kuzu Memory System](https://rysweet.github.io/amplihack/AGENT_MEMORY_QUICKSTART/)** -
+  Persistent memory and knowledge graphs across sessions with code-aware context
 - **[Investigation Workflow](CLAUDE.md#investigation-workflow)** - Deep
   knowledge excavation with historical context
 - **[Skills System](~/.amplihack/.claude/skills/README.md)** - 85+ skills including PDF,
