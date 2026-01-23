@@ -20,7 +20,7 @@ invokes:
 
 ## Input Validation
 
-@.claude/context/AGENT_INPUT_VALIDATION.md
+@~/.amplihack/.claude/context/AGENT_INPUT_VALIDATION.md
 
 ## Usage
 
@@ -51,18 +51,18 @@ Execute this exact sequence for the task: `{TASK_DESCRIPTION}`
    - **Investigation keywords**: investigate, explain, understand, how does, why does, analyze, research, explore, examine, study
    - **Development keywords**: implement, build, create, add feature, fix, refactor, deploy
    - **Priority order**: Q&A detection first (simple questions), then Investigation, then Development
-   - **If Q&A detected**: Use @.claude/workflow/Q&A_WORKFLOW.md (simple, single-turn answers)
-   - **If Investigation keywords found**: Use @.claude/workflow/INVESTIGATION_WORKFLOW.md
-   - **If Development keywords found**: Use @.claude/workflow/DEFAULT_WORKFLOW.md
+   - **If Q&A detected**: Use @~/.amplihack/.claude/workflow/Q&A_WORKFLOW.md (simple, single-turn answers)
+   - **If Investigation keywords found**: Use @~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md
+   - **If Development keywords found**: Use @~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md
    - **If both Investigation and Development detected**: Use hybrid workflow (investigation first, then development)
 2. Mandatory - not doing this wil require rework **Invoke the appropriate workflow skill** using the Skill tool:
-   - Q&A: Read @.claude/workflow/Q&A_WORKFLOW.md directly (no skill wrapper needed for simple Q&A)
+   - Q&A: Read @~/.amplihack/.claude/workflow/Q&A_WORKFLOW.md directly (no skill wrapper needed for simple Q&A)
    - Investigation: Skill(skill="investigation-workflow")`
    - Development: `Skill(skill="default-workflow")`
    - **FALLBACK**: If skill invocation fails (skill not found), fall back to reading markdown workflows:
-     - Q&A: @.claude/workflow/Q&A_WORKFLOW.md
-     - Investigation: @.claude/workflow/INVESTIGATION_WORKFLOW.md
-     - Development: @.claude/workflow/DEFAULT_WORKFLOW.md
+     - Q&A: @~/.amplihack/.claude/workflow/Q&A_WORKFLOW.md
+     - Investigation: @~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md
+     - Development: @~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md
 3. ALWAYS **Create a comprehensive todo list** using TodoWrite tool that includes all workflow steps/phases
 4. ALWAYS **Execute each step systematically**, marking todos as in_progress and completed
 

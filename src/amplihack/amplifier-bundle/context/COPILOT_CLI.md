@@ -38,8 +38,8 @@ with open(".github/agents/AGENTS.md", "w") as f:
     f.write("""
 # Active Agents and Context
 
-@.claude/context/USER_PREFERENCES.md
-@.claude/context/PHILOSOPHY.md
+@~/.amplihack/.claude/context/USER_PREFERENCES.md
+@~/.amplihack/.claude/context/PHILOSOPHY.md
     """)
 # Copilot reads file via @include on next request
 ```

@@ -293,7 +293,7 @@ philosophy:
     application: How agent maintains focus
 dependencies:
   required_context: # Files to import
-    - "@.claude/context/PHILOSOPHY.md"
+    - "@~/.amplihack/.claude/context/PHILOSOPHY.md"
   tools:
     - Read
     - Bash
@@ -329,8 +329,8 @@ philosophy:
     application: Creates self-contained module specs
 dependencies:
   required_context:
-    - "@.claude/context/PHILOSOPHY.md"
-    - "@.claude/context/PATTERNS.md"
+    - "@~/.amplihack/.claude/context/PHILOSOPHY.md"
+    - "@~/.amplihack/.claude/context/PATTERNS.md"
   tools:
     - Read
     - Write
