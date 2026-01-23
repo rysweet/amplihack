@@ -656,23 +656,19 @@ def _configure_amplihack_marketplace() -> bool:
 
         # Add marketplace if not present
         if "extraKnownMarketplaces" not in settings:
-            settings["extraKnownMarketplaces"] = []
-        elif not isinstance(settings["extraKnownMarketplaces"], list):
-            # Auto-repair corrupted settings from old bug (dict → list)
-            settings["extraKnownMarketplaces"] = []
+            settings["extraKnownMarketplaces"] = {}
+        elif not isinstance(settings["extraKnownMarketplaces"], dict):
+            # Auto-repair corrupted settings from old bug (list/array → dict)
+            settings["extraKnownMarketplaces"] = {}
 
-        # Check if amplihack marketplace already exists in the list
-        marketplace_exists = any(
-            isinstance(m, dict) and m.get("name") == "amplihack"
-            for m in settings["extraKnownMarketplaces"]
-        )
-
-        if not marketplace_exists:
-            settings["extraKnownMarketplaces"].append({
-                "name": "amplihack",
-                "url": "https://github.com/rysweet/amplihack",
-                "type": "github"
-            })
+        # Check if amplihack marketplace already exists
+        if "amplihack" not in settings["extraKnownMarketplaces"]:
+            settings["extraKnownMarketplaces"]["amplihack"] = {
+                "source": {
+                    "source": "github",
+                    "repo": "rysweet/amplihack",
+                }
+            }
 
             # Write atomically
             with open(settings_path, "w") as f:
@@ -783,7 +779,6 @@ def main(argv: list[str] | None = None) -> int:
 
         # Setup plugin architecture
         # .claude-plugin is copied to src/amplihack/.claude-plugin/ by build_hooks.py
-        import amplihack  # noqa: F401 - needed for package path resolution
 
         # Skip Claude Code plugin installation for amplifier command
         # Amplifier uses its own bundle system and doesn't need the Claude Code plugin
@@ -821,6 +816,34 @@ def main(argv: list[str] | None = None) -> int:
                     env = os.environ.copy()
                     env["TMPDIR"] = str(claude_temp_dir)
 
+                    # Step 2a: Sync marketplace to known_marketplaces.json
+                    # extraKnownMarketplaces in settings.json is for IDE, not CLI
+                    # We need to explicitly add the marketplace for CLI to find it
+                    marketplace_add_result = subprocess.run(
+                        [
+                            claude_path,
+                            "plugin",
+                            "marketplace",
+                            "add",
+                            "https://github.com/rysweet/amplihack",
+                        ],
+                        capture_output=True,
+                        text=True,
+                        timeout=60,
+                        check=False,
+                        env=env,
+                    )
+
+                    if marketplace_add_result.returncode != 0:
+                        if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                            print(
+                                f"⚠️  Marketplace add failed (may already exist): {marketplace_add_result.stderr}"
+                            )
+                    else:
+                        if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                            print("✅ Amplihack marketplace added to known marketplaces")
+
+                    # Step 2b: Install plugin from marketplace
                     result = subprocess.run(
                         [claude_path, "plugin", "install", "amplihack"],
                         capture_output=True,
@@ -1105,11 +1128,11 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "plugin":
         if args.plugin_command == "install":
             return plugin_install_command(args)
-        elif args.plugin_command == "uninstall":
+        if args.plugin_command == "uninstall":
             return plugin_uninstall_command(args)
-        elif args.plugin_command == "verify":
+        if args.plugin_command == "verify":
             return plugin_verify_command(args)
-        elif args.plugin_command == "link":
+        if args.plugin_command == "link":
             plugin_name = args.plugin_name
             plugin_root = Path.home() / ".amplihack" / "plugins"
             plugin_path = plugin_root / plugin_name
@@ -1126,13 +1149,11 @@ def main(argv: list[str] | None = None) -> int:
                 print("  Settings updated in: ~/.claude/settings.json")
                 print("  Plugin should now appear in /plugin command")
                 return 0
-            else:
-                print(f"Error: Failed to link plugin: {plugin_name}")
-                return 1
-
-        else:
-            create_parser().print_help()
+            print(f"Error: Failed to link plugin: {plugin_name}")
             return 1
+
+        create_parser().print_help()
+        return 1
 
     elif args.command == "memory":
         if args.memory_command == "tree":
@@ -1234,7 +1255,7 @@ def main(argv: list[str] | None = None) -> int:
                 print("Install amplihack with: amplihack install")
             return 0
 
-        elif args.mode_command == "to-plugin":
+        if args.mode_command == "to-plugin":
             migrator = MigrationHelper()
             project_dir = Path.cwd()
 
@@ -1258,11 +1279,10 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"{EMOJI['check']} Migrated to plugin mode successfully")
                 print("Local .claude/ removed, using plugin installation")
                 return 0
-            else:
-                print("Migration failed")
-                return 1
+            print("Migration failed")
+            return 1
 
-        elif args.mode_command == "to-local":
+        if args.mode_command == "to-local":
             migrator = MigrationHelper()
             project_dir = Path.cwd()
             info = migrator.get_migration_info(project_dir)
@@ -1287,13 +1307,11 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"{EMOJI['check']} Local .claude/ created successfully")
                 print("Now using project-local installation")
                 return 0
-            else:
-                print("Migration failed")
-                return 1
-
-        else:
-            create_parser().print_help()
+            print("Migration failed")
             return 1
+
+        create_parser().print_help()
+        return 1
 
     else:
         create_parser().print_help()
