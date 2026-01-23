@@ -233,10 +233,6 @@
          <lastmod>2026-01-23</lastmod>
     </url>
     <url>
-         <loc>https://rysweet.github.io/amplihack/neo4j_memory_phase4_implementation/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
          <loc>https://rysweet.github.io/amplihack/azure-devops/</loc>
          <lastmod>2026-01-23</lastmod>
     </url>
@@ -2125,10 +2121,6 @@
          <lastmod>2026-01-23</lastmod>
     </url>
     <url>
-         <loc>https://rysweet.github.io/amplihack/features/neo4j-session-cleanup/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
          <loc>https://rysweet.github.io/amplihack/features/smart-memory-management/</loc>
          <lastmod>2026-01-23</lastmod>
     </url>
@@ -2197,6 +2189,18 @@
          <lastmod>2026-01-23</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/memory/AUTO_LINKING/</loc>
+         <lastmod>2026-01-23</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/memory/CODE_CONTEXT_INJECTION/</loc>
+         <lastmod>2026-01-23</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/memory/CODE_CONTEXT_QUICK_START/</loc>
+         <lastmod>2026-01-23</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/memory/CODE_REVIEW_PR_1077/</loc>
          <lastmod>2026-01-23</lastmod>
     </url>
@@ -2209,23 +2213,15 @@
          <lastmod>2026-01-23</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/memory/KUZU_CODE_SCHEMA/</loc>
+         <lastmod>2026-01-23</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/memory/KUZU_MEMORY_SCHEMA/</loc>
          <lastmod>2026-01-23</lastmod>
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/memory/MEMORY_TREE_VISUALIZATION/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/memory/NEO4J_IMPLEMENTATION_SUMMARY/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/memory/NEO4J_PHASES_1_6_COMPLETE/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/memory/NEO4J_VALIDATION_CHECKLIST/</loc>
          <lastmod>2026-01-23</lastmod>
     </url>
     <url>
@@ -2258,10 +2254,6 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/meta-delegation/tutorial/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/neo4j_memory/PHASE_5_6_IMPLEMENTATION/</loc>
          <lastmod>2026-01-23</lastmod>
     </url>
     <url>
@@ -2361,99 +2353,7 @@
          <lastmod>2026-01-23</lastmod>
     </url>
     <url>
-         <loc>https://rysweet.github.io/amplihack/research/neo4j_memory_system/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/research/neo4j_memory_system/BLARIFY_AGENT_MEMORY_INTEGRATION_DESIGN/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/research/neo4j_memory_system/BLARIFY_INTEGRATION_INDEX/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/research/neo4j_memory_system/BLARIFY_INTEGRATION_QUICK_REF/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/research/neo4j_memory_system/BLARIFY_INTEGRATION_SUMMARY/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/research/neo4j_memory_system/BLARIFY_INTEGRATION_VISUAL_GUIDE/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/research/neo4j_memory_system/00-executive-summary/NEO4J_MEMORY_COMPREHENSIVE_REPORT/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/research/neo4j_memory_system/00-executive-summary/NEO4J_MEMORY_REVISED_COMPREHENSIVE_REPORT/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/research/neo4j_memory_system/01-technical-research/AGENT_ARCHITECTURE_ANALYSIS/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/research/neo4j_memory_system/01-technical-research/KNOWLEDGE_GRAPH_RESEARCH_EXCAVATION/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/research/neo4j_memory_system/02-design-patterns/NEO4J_MEMORY_DESIGN_PATTERNS/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/research/neo4j_memory_system/02-design-patterns/NEO4J_MEMORY_PATTERNS_README/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/research/neo4j_memory_system/02-design-patterns/NEO4J_MEMORY_PATTERNS_SUMMARY/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/research/neo4j_memory_system/03-integration-guides/MEMORY_ANALYSIS_SUMMARY/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/research/neo4j_memory_system/03-integration-guides/MEMORY_INTEGRATION_CODE_EXAMPLES/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/research/neo4j_memory_system/03-integration-guides/MEMORY_INTEGRATION_QUICK_REFERENCE/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/research/neo4j_memory_system/03-integration-guides/README_AGENT_MEMORY_ANALYSIS/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/research/neo4j_memory_system/04-external-knowledge/EXTERNAL_KNOWLEDGE_IMPLEMENTATION_GUIDE/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/research/neo4j_memory_system/04-external-knowledge/EXTERNAL_KNOWLEDGE_INTEGRATION_SUMMARY/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/research/neo4j_memory_system/04-external-knowledge/EXTERNAL_KNOWLEDGE_NEO4J_DESIGN/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/research/neo4j_memory_system/04-external-knowledge/EXTERNAL_KNOWLEDGE_QUICK_REFERENCE/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/research/neo4j_memory_system/04-external-knowledge/EXTERNAL_KNOWLEDGE_README/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
          <loc>https://rysweet.github.io/amplihack/security/</loc>
-         <lastmod>2026-01-23</lastmod>
-    </url>
-    <url>
-         <loc>https://rysweet.github.io/amplihack/security/NEO4J_CLEANUP_SECURITY_AUDIT/</loc>
          <lastmod>2026-01-23</lastmod>
     </url>
     <url>
