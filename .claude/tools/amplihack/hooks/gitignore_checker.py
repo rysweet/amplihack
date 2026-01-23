@@ -52,9 +52,9 @@ class GitignoreChecker:
             # Expected: git command hung
             return False
         except Exception as e:
-            # Unexpected: log when logging infrastructure available
-            # TODO: Add logging here when logger is configured
-            # For now, fail safe by returning False
+            # Unexpected: fail safe by returning False
+            # Design decision: Exceptions are silently caught (fail-safe design)
+            # No logging implemented yet to avoid circular dependencies
             return False
 
     def get_repo_root(self) -> Optional[Path]:
@@ -76,9 +76,9 @@ class GitignoreChecker:
             # Expected: git command hung
             return None
         except Exception as e:
-            # Unexpected: log when logging infrastructure available
-            # TODO: Add logging here when logger is configured
-            # For now, fail safe by returning None
+            # Unexpected: fail safe by returning None
+            # Design decision: Exceptions are silently caught (fail-safe design)
+            # No logging implemented yet to avoid circular dependencies
             return None
 
     def parse_gitignore_patterns(self, content: str) -> List[str]:
@@ -93,8 +93,8 @@ class GitignoreChecker:
     def pattern_matches(self, pattern: str, directory: str) -> bool:
         """Check if a pattern matches a directory using exact matching.
 
-        Normalizes trailing slashes before comparison.
-        Simple substring matching - no wildcards or regex.
+        Uses exact equality after normalizing trailing slashes.
+        No wildcards or regex support.
         """
         pattern_norm = pattern.rstrip("/")
         directory_norm = directory.rstrip("/")

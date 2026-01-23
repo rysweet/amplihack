@@ -527,19 +527,5 @@ class TestPerformanceRequirements:
 # =============================================================================
 
 
-@pytest.fixture
-def mock_git_repo(tmp_path):
-    """Create a mock git repository structure for testing."""
-    # Create .git directory to simulate git repo
-    git_dir = tmp_path / ".git"
-    git_dir.mkdir()
-
-    # Create some typical repo structure
-    src_dir = tmp_path / "src"
-    src_dir.mkdir()
-
-    return tmp_path
-
-
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

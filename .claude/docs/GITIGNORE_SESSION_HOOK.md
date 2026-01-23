@@ -12,8 +12,8 @@ The gitignore session start hook automatically ensures that amplihack runtime an
 **Implementation Details**:
 - Written in Python
 - Uses `subprocess` to invoke `git rev-parse --is-inside-work-tree` for Git detection
-- Simple substring matching for pattern validation (exact patterns)
-- Exceptions logged to `.claude/runtime/logs/session_hooks.log`
+- Exact equality matching after normalizing trailing slashes (no wildcards)
+- Exceptions are silently caught (fail-safe design)
 
 ## What It Does
 
@@ -21,11 +21,11 @@ When you start a Claude Code session in a Git repository, the hook:
 
 1. **Detects Git Repository**: Runs `git rev-parse --is-inside-work-tree` via subprocess to check if inside a Git repository
 2. **Locates .gitignore**: Finds the root .gitignore file (or creates one if missing)
-3. **Validates Patterns**: Uses simple substring matching to check if exact patterns `.claude/logs/` and `.claude/runtime/` exist
+3. **Validates Patterns**: Uses exact equality matching after normalizing trailing slashes to check if patterns `.claude/logs/` and `.claude/runtime/` exist
 4. **Updates .gitignore**: Adds missing patterns if needed
 5. **Notifies User**: Shows a brief message if changes were made
 
-**Pattern Matching**: The hook uses exact substring matching - it looks for the literal strings `.claude/logs/` and `.claude/runtime/` in the .gitignore file.
+**Pattern Matching**: The hook uses exact equality matching after normalizing trailing slashes - it compares normalized patterns (without trailing slashes) for equality. No wildcards or regex support.
 
 ### Protected Directories
 
@@ -190,12 +190,6 @@ time ls -la .gitignore
 
 **Cause**: Hook failed silently (fail-safe behavior)
 
-**Check logs**:
-```bash
-# View hook execution logs (if available)
-cat .claude/runtime/logs/session_hooks.log
-```
-
 **Solution**:
 ```bash
 # Check if you're in a Git repository
@@ -227,51 +221,21 @@ git commit -m "chore: Add amplihack runtime directories to .gitignore"
 
 - **Language**: Python
 - **Git Detection**: Uses `subprocess.run()` to execute `git rev-parse --is-inside-work-tree`
-- **Pattern Matching**: Simple substring matching - checks if exact strings `.claude/logs/` and `.claude/runtime/` exist in .gitignore
-- **Error Logging**: All exceptions logged to `.claude/runtime/logs/session_hooks.log`
-
-### Error Logging
-
-When the hook encounters errors, it logs detailed information without breaking the session:
-
-**Log location**: `.claude/runtime/logs/session_hooks.log`
-
-**Logged information**:
-- Exception type and message
-- Timestamp of failure
-- Current working directory
-- Git detection results
-- .gitignore file status
-
-**Example log entry**:
-```
-[2025-01-23 10:15:32] GitIgnore Hook Error
-Exception: PermissionError: [Errno 13] Permission denied: '.gitignore'
-Working directory: /home/user/project
-Git repository: True
-.gitignore exists: True
-.gitignore writable: False
-```
-
-**Accessing logs**:
-```bash
-# View recent errors
-tail -n 50 .claude/runtime/logs/session_hooks.log
-
-# Search for specific errors
-grep "GitIgnore Hook Error" .claude/runtime/logs/session_hooks.log
-```
+- **Pattern Matching**: Exact equality after normalizing trailing slashes - no wildcards or regex
+- **Error Handling**: Exceptions are silently caught (fail-safe design)
 
 ### Fail-Safe Design
 
 The hook is designed to **never break your session**:
 
-- **Exception handling**: Wrapped in try/catch - exceptions are logged to `.claude/runtime/logs/session_hooks.log` but don't propagate
+- **Exception handling**: Wrapped in try/catch - exceptions are silently caught and don't propagate
 - **Performance target**: Aims for < 500ms (not a hard timeout - completes work even if longer)
 - **Read-only fallback**: If .gitignore is unwritable, session continues anyway
 - **Non-Git detection**: Uses `git rev-parse --is-inside-work-tree` to immediately exit in non-Git directories
 
 **Philosophy**: It's better to skip .gitignore updates than to delay or break the user's session start.
+
+**Design Decision**: No logging is implemented to avoid circular dependencies with the logging infrastructure. Exceptions are silently caught to maintain fail-safe operation.
 
 ### Hook Execution Order
 
@@ -305,11 +269,11 @@ def gitignore_hook():
         else:
             gitignore_content = gitignore_path.read_text()
 
-        # Step 3: Check patterns (exact substring match)
+        # Step 3: Check patterns (exact equality after normalization)
         required_patterns = [".claude/logs/", ".claude/runtime/"]
         missing_patterns = [
             p for p in required_patterns
-            if p not in gitignore_content  # Simple substring match
+            if not is_directory_ignored(p, parse_patterns(gitignore_content))
         ]
 
         # Step 4: Update if needed
@@ -322,8 +286,8 @@ def gitignore_hook():
             notify_user(missing_patterns)
 
     except Exception as e:
-        # Log exception, never break session
-        log_to_file(".claude/runtime/logs/session_hooks.log", e)
+        # Silently catch exception, never break session (fail-safe design)
+        pass
 ```
 
 ## Configuration
