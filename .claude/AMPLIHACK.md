@@ -18,17 +18,34 @@ When starting a session, import these files for context:
 [@.claude/context/USER_PREFERENCES.md](.claude/context/USER_PREFERENCES.md)
 [@.claude/context/USER_REQUIREMENT_PRIORITY.md](.claude/context/USER_REQUIREMENT_PRIORITY.md)
 
-## MANDATORY: Workflow Selection (ALWAYS FIRST)
+## MANDATORY: Workflow Classification at Topic Boundaries
 
-**CRITICAL**: You MUST classify every user request into one of three workflows
-BEFORE taking action. No exceptions.
+**CRITICAL**: You MUST classify at topic boundaries (new conversation topics) and follow the corresponding workflow BEFORE taking action. No exceptions.
+
+### When to Classify
+
+Classify when the user:
+- **Starts a new topic** (different domain/goal from current work)
+- **First message of the session** (no prior context)
+- **Explicitly changes direction** ("Now let's...", "Next I want...", "Different question...")
+- **Switches request type** (question → implementation, investigation → coding)
+
+### When NOT to Re-Classify
+
+Do NOT re-classify when the user:
+- **Asks follow-ups** ("Also...", "What about...", "And...")
+- **Provides clarifications** ("I meant...", "To clarify...")
+- **Requests related additions** ("Add logout too", "Also update the tests")
+- **Checks status** ("How's it going?", "What's the progress?")
+
+**Detection rule**: If the request is about the same goal/domain as the last 3 turns, it's the same topic. Continue in the current workflow.
 
 ### Quick Classification (3 seconds max)
 
 | Task Type         | Workflow               | When to Use                                            |
 | ----------------- | ---------------------- | ------------------------------------------------------ |
 | **Q&A**           | Q&A_WORKFLOW           | Simple questions, single-turn answers, no code changes |
-| **Operations**    | Direct execution       | Admin tasks, commands, disk cleanup, repo management   |
+| **Operations**    | OPS_WORKFLOW           | Admin tasks, commands, disk cleanup, repo management   |
 | **Investigation** | INVESTIGATION_WORKFLOW | Understanding code, exploring systems, research        |
 | **Development**   | DEFAULT_WORKFLOW       | Code changes, features, bugs, refactoring              |
 
@@ -47,7 +64,7 @@ BEFORE taking action. No exceptions.
 State your classification before proceeding:
 
 ```
-WORKFLOW: [Q&A | INVESTIGATION | DEFAULT]
+WORKFLOW: [Q&A | OPERATIONS | INVESTIGATION | DEFAULT]
 Reason: [Brief justification]
 Following: .claude/workflow/[WORKFLOW_NAME].md
 ```

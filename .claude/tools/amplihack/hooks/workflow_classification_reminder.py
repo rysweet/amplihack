@@ -22,6 +22,11 @@ class WorkflowClassificationReminder(HookProcessor):
 
     def __init__(self):
         super().__init__("workflow_classification_reminder")
+        # Initialize state directory (created after parent init which sets runtime_dir)
+        self._init_state_dir()
+
+    def _init_state_dir(self):
+        """Initialize state directory after parent sets runtime_dir."""
         self._state_dir = self.runtime_dir / "classification_state"
         self._state_dir.mkdir(parents=True, exist_ok=True)
 
@@ -116,6 +121,9 @@ Quick classification (choose ONE):
 │ Q&A           → Simple question, no code changes            │
 │                 Keywords: "what is", "explain", "how do I"  │
 │                                                              │
+│ OPERATIONS    → Admin tasks, simple commands                │
+│                 Keywords: "cleanup", "delete old", "git status"│
+│                                                              │
 │ INVESTIGATION → Understanding/exploring code                │
 │                 Keywords: "investigate", "analyze", "how does"│
 │                                                              │
@@ -124,9 +132,10 @@ Quick classification (choose ONE):
 └─────────────────────────────────────────────────────────────┘
 
 Required actions:
-1. Output: "WORKFLOW: [Q&A | INVESTIGATION | DEFAULT]"
+1. Output: "WORKFLOW: [Q&A | OPERATIONS | INVESTIGATION | DEFAULT]"
 2. Output: "Reason: [one sentence]"
-3. Execute: recipes(operation="execute", recipe_path="amplifier-bundle/recipes/[workflow]-workflow.yaml", context={{...}})
+3. For Q&A/INVESTIGATION/DEFAULT: Execute recipes tool
+   For OPERATIONS: Execute directly (no recipe needed)
 
 If uncertain, choose DEFAULT.
 

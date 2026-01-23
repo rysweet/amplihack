@@ -52,6 +52,7 @@ Do NOT re-classify when the user:
 | If Request Matches... | Execute This Recipe | When to Use |
 |-----------------------|---------------------|-------------|
 | Simple question, no code changes | `amplifier-bundle/recipes/qa-workflow.yaml` | "what is", "explain", "how do I run" |
+| Admin/operational tasks | Direct execution | "cleanup", "delete old", "git status", "run command" |
 | Need to understand/explore code | `amplifier-bundle/recipes/investigation-workflow.yaml` | "investigate", "analyze", "how does X work" |
 | Any code changes | `amplifier-bundle/recipes/default-workflow.yaml` | "implement", "add", "fix", "refactor", "build" |
 
@@ -60,9 +61,9 @@ Do NOT re-classify when the user:
 State your classification and execute the recipe:
 
 ```
-WORKFLOW: [Q&A | INVESTIGATION | DEFAULT]
+WORKFLOW: [Q&A | OPERATIONS | INVESTIGATION | DEFAULT]
 Reason: [Brief justification]
-Executing: amplifier-bundle/recipes/[workflow]-workflow.yaml
+Executing: amplifier-bundle/recipes/[workflow]-workflow.yaml (or direct execution for OPERATIONS)
 ```
 
 Then use the recipes tool:
