@@ -34,6 +34,7 @@ Console.WriteLine("Mode: CoreCLR");
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>my-hybrid-tool</ToolCommandName>
     <ToolPackageRuntimeIdentifiers>any;osx-arm64;linux-x64</ToolPackageRuntimeIdentifiers>
