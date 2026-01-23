@@ -412,30 +412,20 @@ def _log_sdk_error(consideration_id: str, error: Exception) -> None:
     sys.stderr.flush()
 
 
-def _format_conversation_summary(conversation: list[dict], max_length: int = 5000) -> str:
+def _format_conversation_summary(conversation: list[dict], max_length: int | None = None) -> str:
     """Format conversation summary for analysis.
 
     Args:
         conversation: List of message dicts
-        max_length: Maximum summary length
+        max_length: Optional maximum summary length (None = unlimited, includes all messages)
 
     Returns:
         Formatted conversation summary
 
     Note:
-        Truncates large conversations (>50000 chars) before processing.
+        All messages in the conversation are included in the analysis unless max_length is specified.
+        Individual messages longer than 500 chars are truncated for readability.
     """
-    import sys
-
-    # Security check: validate conversation size before processing
-    if len(conversation) > 100:
-        sys.stderr.write(
-            f"[Power Steering Warning] Large conversation ({len(conversation)} messages), truncating for safety\n"
-        )
-        sys.stderr.flush()
-        # Truncate conversation to first 50 messages
-        conversation = conversation[:50]
-
     summary_parts = []
     current_length = 0
 
@@ -475,15 +465,18 @@ def _format_conversation_summary(conversation: list[dict], max_length: int = 500
                         text_blocks.append(f"[Tool: {tool_name}]")
             content_text = " ".join(text_blocks)
 
-        # Truncate long messages
+        # Truncate long individual messages for readability
         if len(content_text) > 500:
             content_text = content_text[:497] + "..."
 
         msg_summary = f"\n**Message {i + 1} ({role}):** {content_text}\n"
 
-        # Check if adding this would exceed limit
-        if current_length + len(msg_summary) > max_length:
-            summary_parts.append(f"\n[... {len(conversation) - i} more messages ...]")
+        # Only check length limit if max_length is specified
+        if max_length is not None and current_length + len(msg_summary) > max_length:
+            truncation_indicator = f"\n[... {len(conversation) - i} more messages ...]"
+            # Only add truncation indicator if we have room for it
+            if current_length + len(truncation_indicator) <= max_length:
+                summary_parts.append(truncation_indicator)
             break
 
         summary_parts.append(msg_summary)
