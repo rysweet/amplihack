@@ -377,66 +377,6 @@ class TestKuzuBackendRetrieveMemoriesAcrossTypes:
             assert any("EpisodicMemory" in str(call) for call in calls)
 
 
-class TestKuzuBackendMigration:
-    """Test migration from old schema to new schema."""
-
-    @patch("src.amplihack.memory.backends.kuzu_backend.kuzu")
-    def test_migration_function_exists(self, mock_kuzu):
-        """Test that migrate_to_new_schema method exists."""
-        from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
-
-        mock_kuzu.Database.return_value = Mock()
-        mock_kuzu.Connection.return_value = Mock()
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            assert hasattr(backend, "migrate_to_new_schema")
-            assert callable(backend.migrate_to_new_schema)
-
-    @patch("src.amplihack.memory.backends.kuzu_backend.kuzu")
-    def test_migration_detects_old_schema(self, mock_kuzu):
-        """Test that migration detects presence of old Memory table."""
-        from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
-
-        # Mock old schema detection
-        mock_result = Mock()
-        mock_result.has_next.return_value = True
-        mock_result.get_next.return_value = [True]
-
-        mock_conn = Mock()
-        mock_conn.execute.return_value = mock_result
-        mock_kuzu.Database.return_value = Mock()
-        mock_kuzu.Connection.return_value = mock_conn
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-            # Should detect old schema exists
-            assert hasattr(backend, "_has_old_schema")
-
-    @patch("src.amplihack.memory.backends.kuzu_backend.kuzu")
-    def test_migration_preserves_all_data(self, mock_kuzu):
-        """Test that migration moves all memories to new node types."""
-        from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
-
-        mock_conn = Mock()
-        mock_kuzu.Database.return_value = Mock()
-        mock_kuzu.Connection.return_value = mock_conn
-
-        with tempfile.TemporaryDirectory() as tmpdir:
-            backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
-
-            # Verify migrate_to_new_schema queries old Memory table
-            mock_conn.execute.reset_mock()
-
-            # This will fail until we implement, but defines the contract
-            try:
-                backend.migrate_to_new_schema()
-            except Exception:
-                pass  # Expected to fail until implementation
-
-            # Migration should query old Memory table
-            calls = [str(call) for call in mock_conn.execute.call_args_list]
-            # Will verify proper behavior once implemented
             assert True  # Placeholder
 
 

@@ -9,7 +9,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-from ..neo4j.manager import Neo4jManager
 from ..proxy.manager import ProxyManager
 from ..utils.claude_cli import get_claude_cli_path
 from ..utils.claude_trace import get_claude_command
@@ -91,44 +90,40 @@ class ClaudeLauncher:
         if not check_prerequisites():
             return False
 
-        # 2. Check and sync Neo4j credentials from existing containers (if any)
-        self._check_neo4j_credentials()
+        # 2. Blarify code indexing (non-blocking, failure doesn't stop launch)
+        if not self._prompt_blarify_indexing():
+            logger.info("Blarify indexing skipped")
 
-        # 3. Interactive Neo4j startup (blocks until ready or user decides)
-        if not self._interactive_neo4j_startup():
-            # User chose to exit rather than continue without Neo4j
-            return False
-
-        # 4. Handle repository checkout if needed
+        # 3. Handle repository checkout if needed
         if self.checkout_repo:
             if not self._handle_repo_checkout():
                 return False
 
-        # 5. Find and validate target directory
+        # 4. Find and validate target directory
         target_dir = self._find_target_directory()
         if not target_dir:
             print("Failed to determine target directory")
             return False
 
-        # 6. Ensure required runtime directories exist
+        # 5. Ensure required runtime directories exist
         if not self._ensure_runtime_directories(target_dir):
             print("Warning: Could not create runtime directories")
             # Don't fail - just warn
 
-        # 7. Fix hook paths in settings.json to use absolute paths
+        # 6. Fix hook paths in settings.json to use absolute paths
         if not self._fix_hook_paths_in_settings(target_dir):
             print("Warning: Could not fix hook paths in settings.json")
             # Don't fail - hooks might still work
 
-        # 8. Handle directory change if needed (unless UVX with --add-dir)
+        # 7. Handle directory change if needed (unless UVX with --add-dir)
         if not self._handle_directory_change(target_dir):
             return False
 
-        # 9. Start proxy if needed
+        # 8. Start proxy if needed
         if not self._start_proxy_if_needed():
             return False
 
-        # 10. Auto-configure LSP if supported languages detected
+        # 9. Auto-configure LSP if supported languages detected
         self._configure_lsp_auto(target_dir)
 
         return True
@@ -909,88 +904,7 @@ class ClaudeLauncher:
             if self.proxy_manager:
                 self.proxy_manager.stop_proxy()
 
-    def _interactive_neo4j_startup(self) -> bool:
-        """Interactive Neo4j startup with user feedback.
-
-        BLOCKS until Neo4j ready or user decides to continue without it.
-        Neo4j is disabled by default unless AMPLIHACK_ENABLE_NEO4J_MEMORY=1 is set.
-
-        Returns:
-            True to continue, False to exit
-        """
-        import logging
-
-        method_logger = logging.getLogger(__name__)
-
-        # Check if Neo4j is enabled via environment variable (default: disabled)
-        neo4j_enabled = os.environ.get("AMPLIHACK_ENABLE_NEO4J_MEMORY") == "1"
-
-        if not neo4j_enabled:
-            # Neo4j disabled - skip interactive startup entirely
-            return True
-
-        try:
-            from ..memory.neo4j.startup_wizard import interactive_neo4j_startup
-
-            return interactive_neo4j_startup()
-        except ImportError:
-            # Neo4j modules not available - continue without
-            method_logger.debug("Neo4j modules not found")
-            return True
-        except Exception as e:
-            method_logger.error("Neo4j startup failed: %s", e)
-            print(f"\n⚠️  Neo4j startup error: {e}")
-            print("Continuing with basic memory system...\n")
-            return True
-
-    def _auto_setup_and_start_neo4j_OLD(self):
-        """Auto-setup prerequisites and start Neo4j in background.
-
-        Self-healing approach:
-        - Creates .env with password if missing
-        - Starts Docker if not running
-        - Starts Neo4j container
-        All in background thread, non-blocking.
-        """
-        import threading
-
-        def start_neo4j():
-            """Background thread function with auto-setup."""
-            import logging
-
-            thread_logger = logging.getLogger(__name__)
-
-            try:
-                # Auto-setup prerequisites
-                from ..memory.neo4j.auto_setup import ensure_prerequisites
-
-                if not ensure_prerequisites():
-                    thread_logger.warning("Neo4j prerequisites not met, falling back to SQLite")
-                    return
-
-                # Start Neo4j
-                from ..memory.neo4j.diagnostics import verify_neo4j_working
-                from ..memory.neo4j.lifecycle import ensure_neo4j_running
-
-                thread_logger.info("Starting Neo4j memory system...")
-                if ensure_neo4j_running(blocking=True):
-                    # Verify and show stats
-                    verify_neo4j_working()
-
-            except Exception as e:
-                # Never crash session start due to Neo4j issues
-                thread_logger.warning("Neo4j initialization error: %s", e)
-                thread_logger.info("Continuing with existing memory system")
-
-        # Start in background thread
-        thread = threading.Thread(
-            target=start_neo4j,
-            name="neo4j-startup",
-            daemon=True,  # Don't block process exit
-        )
-        thread.start()
-
-        # Don't wait - return immediately
+    # Neo4j startup methods removed (Week 7 cleanup)
 
     def _paths_are_same_with_cache(self, path1: Path, path2: Path) -> bool:
         """Compare paths with caching for resolved paths.
@@ -1027,38 +941,13 @@ class ClaudeLauncher:
         """
         self._cached_uvx_decision = None
 
-    def _check_neo4j_credentials(self) -> None:
-        """Check and sync Neo4j credentials from containers.
-
-        Neo4j is disabled by default unless AMPLIHACK_ENABLE_NEO4J_MEMORY=1 is set.
-        """
-        # Check if Neo4j is enabled via environment variable (default: disabled)
-        neo4j_enabled = os.environ.get("AMPLIHACK_ENABLE_NEO4J_MEMORY") == "1"
-
-        if not neo4j_enabled:
-            # Neo4j disabled - skip credential check entirely
-            return
-
-        try:
-            # Create Neo4j manager (interactive mode)
-            neo4j_manager = Neo4jManager()
-
-            # Check and sync credentials if needed
-            neo4j_manager.check_and_sync()
-
-        except Exception:
-            # Graceful degradation - never crash launcher
-            # No error message needed as Neo4j detection is optional
-            pass
+    # Neo4j credential check removed (Week 7 cleanup)
 
     def _setup_signal_handlers(self) -> None:
         """Setup signal handlers for graceful shutdown.
 
-        Registers handlers for SIGINT (Ctrl-C) and SIGTERM that:
-        1. Trigger Neo4j cleanup via stop hook
-        2. Allow process to exit gracefully
-
-        Also registers atexit handler as fallback.
+        Registers handlers for SIGINT (Ctrl-C) and SIGTERM that allow
+        process to exit gracefully. Also registers atexit handler as fallback.
         """
 
         def signal_handler(signum: int, frame) -> None:
@@ -1066,7 +955,7 @@ class ClaudeLauncher:
             signal_name = "SIGINT" if signum == signal.SIGINT else "SIGTERM"
             logger.info(f"Received {signal_name}, initiating graceful shutdown...")
 
-            # Trigger Neo4j cleanup via stop hook
+            # Trigger cleanup via stop hook
             try:
                 from amplihack.hooks.manager import execute_stop_hook
 
@@ -1104,3 +993,166 @@ class ClaudeLauncher:
         except Exception:
             # Fail silently in atexit - cleanup is best-effort
             pass
+
+    def _get_project_consent_cache_path(self, project_path: Path) -> Path:
+        """Get per-project consent cache path.
+
+        Args:
+            project_path: Project root directory
+
+        Returns:
+            Path to consent cache file
+        """
+        import hashlib
+
+        # Hash project path to create unique identifier
+        project_hash = hashlib.sha256(str(project_path.resolve()).encode()).hexdigest()[:16]
+
+        # Store in ~/.amplihack/.blarify_consent_<hash>
+        cache_dir = Path.home() / ".amplihack"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+
+        return cache_dir / f".blarify_consent_{project_hash}"
+
+    def _has_blarify_consent(self, project_path: Path) -> bool:
+        """Check if user has already consented to blarify indexing for this project.
+
+        Args:
+            project_path: Project root directory
+
+        Returns:
+            True if consent already given, False otherwise
+        """
+        consent_cache = self._get_project_consent_cache_path(project_path)
+        return consent_cache.exists()
+
+    def _save_blarify_consent(self, project_path: Path) -> None:
+        """Save blarify consent for this project.
+
+        Args:
+            project_path: Project root directory
+        """
+        consent_cache = self._get_project_consent_cache_path(project_path)
+        try:
+            consent_cache.touch()
+            logger.debug("Saved blarify consent for %s", project_path)
+        except Exception as e:
+            logger.warning("Failed to save blarify consent: %s", e)
+
+    def _prompt_blarify_indexing(self) -> bool:
+        """Prompt user to run blarify code indexing.
+
+        Features:
+        - 30 second timeout with default yes
+        - Per-project caching (prompts once per project)
+        - Non-blocking (failure doesn't stop launch)
+        - Runs blarify and imports to Kuzu on consent
+
+        Returns:
+            True if indexing completed or skipped, False on error
+        """
+        # Get project directory (current working directory)
+        project_path = Path.cwd()
+
+        # Check if user has already consented for this project
+        if self._has_blarify_consent(project_path):
+            logger.debug("Blarify consent already given for %s", project_path)
+            return True
+
+        try:
+            # Check if running in interactive terminal
+            from .memory_config import is_interactive_terminal
+
+            if not is_interactive_terminal():
+                # Non-interactive mode - use default yes
+                logger.info("Non-interactive environment, running blarify indexing by default")
+                print("\n📊 Code Indexing: Running blarify in non-interactive mode (default: yes)")
+                self._run_blarify_and_import(project_path)
+                self._save_blarify_consent(project_path)
+                return True
+
+            # Interactive mode - prompt user with timeout
+            print("\n" + "="*60)
+            print("Code Indexing with Blarify")
+            print("="*60)
+            print("Blarify will analyze your codebase to enable code-aware features:")
+            print("  • Code context in memory retrieval")
+            print("  • Function and class awareness")
+            print("  • Automatic code-memory linking")
+            print()
+            print("This is a one-time setup per project (~30-60s for most codebases)")
+            print("="*60)
+
+            # Import timeout utilities from memory_config
+            from .memory_config import get_user_input_with_timeout, parse_consent_response
+
+            prompt_msg = "\nRun blarify code indexing? [Y/n] (timeout: 30s): "
+            response = get_user_input_with_timeout(prompt_msg, timeout_seconds=30, logger=logger)
+
+            # Parse response with default yes
+            user_consented = parse_consent_response(response, default=True)
+
+            if user_consented:
+                print("\n📊 Starting blarify code indexing...")
+                success = self._run_blarify_and_import(project_path)
+
+                if success:
+                    # Save consent so we don't prompt again
+                    self._save_blarify_consent(project_path)
+                    print("✅ Code indexing complete\n")
+                    return True
+                else:
+                    print("⚠️  Code indexing failed (non-critical, continuing...)\n")
+                    return True  # Return True - failure is non-blocking
+
+            else:
+                print("\n⏭️  Skipping code indexing (you can run it later with: amplihack index-code)\n")
+                return True
+
+        except KeyboardInterrupt:
+            print("\n⏭️  Skipping code indexing (interrupted)\n")
+            return True
+        except Exception as e:
+            logger.warning("Blarify prompt failed: %s", e)
+            print(f"\n⚠️  Code indexing prompt failed: {e} (continuing...)\n")
+            return True  # Non-blocking - always return True
+
+    def _run_blarify_and_import(self, project_path: Path) -> bool:
+        """Run blarify and import results to Kuzu.
+
+        Args:
+            project_path: Project root directory to index
+
+        Returns:
+            True if successful, False otherwise
+        """
+        try:
+            # Import Kuzu backend and code graph
+            from ..memory.kuzu.connector import KuzuConnector
+            from ..memory.kuzu.code_graph import KuzuCodeGraph
+
+            # Get Kuzu database path (default location)
+            kuzu_db_path = Path.home() / ".amplihack" / "memory_kuzu.db"
+
+            # Create connector
+            connector = KuzuConnector(str(kuzu_db_path))
+            connector.connect()
+
+            # Create code graph instance
+            code_graph = KuzuCodeGraph(connector)
+
+            # Run blarify and import (this handles temp files internally)
+            counts = code_graph.run_blarify(
+                codebase_path=str(project_path),
+                languages=None,  # Auto-detect all languages
+            )
+
+            logger.info("Blarify import complete: %s", counts)
+
+            # No explicit disconnect needed (KuzuConnector uses context manager)
+
+            return True
+
+        except Exception as e:
+            logger.error("Blarify indexing failed: %s", e)
+            return False

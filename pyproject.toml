@@ -19,7 +19,6 @@ dependencies = [
 
     "claude-agent-sdk>=0.1.0", # Claude Python Agent SDK for auto mode streaming
     "rich>=13.0.0", # Required for --ui interactive TUI mode
-    "neo4j>=5.15.0,<6.0.0", # Neo4j driver for memory system
     "blarify>=1.3.0", # Code understanding engine for indexing codebases
     "azure-identity>=1.12.0", # Azure Service Principal authentication for remote execution
     "kuzu>=0.11.0", # Embedded graph database for memory system
