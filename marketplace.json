@@ -8,5 +8,16 @@
         "path": ".claude"
       }
     }
+  ],
+  "mcpServers": [
+    {
+      "name": "workiq",
+      "displayName": "Work IQ",
+      "description": "Microsoft MCP server for querying M365 data (emails, meetings, Teams, documents)",
+      "command": "npx",
+      "args": ["-y", "@microsoft/workiq", "mcp"],
+      "provider": "microsoft",
+      "documentation": "https://github.com/microsoft/work-iq-mcp"
+    }
   ]
 }
