@@ -536,8 +536,8 @@ def test_log_handles_disk_full_errors(tmp_path):
 def test_trace_logger_respects_env_variable(monkeypatch, tmp_path):
     """Test that TraceLogger respects environment variable configuration."""
     log_file = tmp_path / "trace.jsonl"
-    monkeypatch.setenv("CLAUDE_TRACE_ENABLED", "true")
-    monkeypatch.setenv("CLAUDE_TRACE_FILE", str(log_file))
+    monkeypatch.setenv("AMPLIHACK_TRACE_LOGGING", "true")
+    monkeypatch.setenv("AMPLIHACK_TRACE_FILE", str(log_file))
 
     logger = TraceLogger.from_env()
 
@@ -547,7 +547,7 @@ def test_trace_logger_respects_env_variable(monkeypatch, tmp_path):
 
 def test_trace_logger_env_disabled_by_default(monkeypatch):
     """Test that tracing is disabled by default when env var not set."""
-    monkeypatch.delenv("CLAUDE_TRACE_ENABLED", raising=False)
+    monkeypatch.delenv("AMPLIHACK_TRACE_LOGGING", raising=False)
 
     logger = TraceLogger.from_env()
 
@@ -556,8 +556,8 @@ def test_trace_logger_env_disabled_by_default(monkeypatch):
 
 def test_trace_logger_env_handles_invalid_path(monkeypatch):
     """Test handling of invalid log file path from environment."""
-    monkeypatch.setenv("CLAUDE_TRACE_ENABLED", "true")
-    monkeypatch.setenv("CLAUDE_TRACE_FILE", "/invalid/path/trace.jsonl")
+    monkeypatch.setenv("AMPLIHACK_TRACE_LOGGING", "true")
+    monkeypatch.setenv("AMPLIHACK_TRACE_FILE", "/invalid/path/trace.jsonl")
 
     logger = TraceLogger.from_env()
 
