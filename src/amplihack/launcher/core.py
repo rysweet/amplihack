@@ -1051,6 +1051,11 @@ class ClaudeLauncher:
         Returns:
             True if indexing completed or skipped, False on error
         """
+        # Early exit if disabled via AMPLIHACK_DISABLE_BLARIFY environment variable
+        if os.getenv("AMPLIHACK_DISABLE_BLARIFY") == "1":
+            logger.debug("Blarify indexing disabled via AMPLIHACK_DISABLE_BLARIFY")
+            return True
+
         # Get project directory (current working directory)
         project_path = Path.cwd()
 

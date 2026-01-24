@@ -17,6 +17,16 @@ Get started with blarify code graph integration in 5 minutes.
    pip install -e .
    ```
 
+## Configuration
+
+### Disabling Blarify (Optional)
+
+To disable Blarify if it's unavailable or causing issues:
+
+```bash
+AMPLIHACK_DISABLE_BLARIFY=1 amplihack launch
+```
+
 ## Option 1: Test Without Blarify (Recommended First)
 
 Test the integration using sample data (no blarify installation needed):
