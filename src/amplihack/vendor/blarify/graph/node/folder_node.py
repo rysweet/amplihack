@@ -1,7 +1,8 @@
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Optional, Union
 
-from blarify.graph.node import Node, NodeLabels
+from .types.node import Node
+from .types.node_labels import NodeLabels
 from blarify.graph.node.file_node import FileNode
 
 if TYPE_CHECKING:

@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Any, Optional, TypedDict, Unpack
 
-from blarify.graph.node import NodeLabels
+from .types.node_labels import NodeLabels
 
 from .types.node import Node
 
