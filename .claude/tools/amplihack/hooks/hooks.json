@@ -50,6 +50,11 @@
           "type": "command",
           "command": "${CLAUDE_PLUGIN_ROOT}/tools/amplihack/hooks/user_prompt_submit.py",
           "timeout": 10000
+        },
+        {
+          "type": "command",
+          "command": "${CLAUDE_PLUGIN_ROOT}/tools/amplihack/hooks/workflow_classification_reminder.py",
+          "timeout": 5000
         }
       ]
     }
