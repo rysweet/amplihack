@@ -40,6 +40,7 @@ theme:
     - search.highlight
     - search.share
     - toc.follow
+    - toc.integrate
     - content.code.copy
     - content.code.annotate
     - content.action.edit
