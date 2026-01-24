@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 
-from blarify.graph.node import DefinitionNode, NodeLabels
+from .types.definition_node import DefinitionNode
+from .types.node_labels import NodeLabels
 
 if TYPE_CHECKING:
     from blarify.code_references.types import Reference

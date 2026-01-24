@@ -3,7 +3,8 @@ from typing import TYPE_CHECKING, Any
 from blarify.graph.node import NodeLabels
 from blarify.graph.node.commit_node import CommitNode
 from blarify.graph.node.documentation_node import DocumentationNode
-from blarify.graph.relationship import Relationship, RelationshipType, WorkflowStepRelationship
+from .relationship import Relationship, WorkflowStepRelationship
+from .relationship_type import RelationshipType
 from blarify.repositories.graph_db_manager.dtos.code_node_dto import CodeNodeDto
 from blarify.repositories.version_control.dtos.blame_line_range_dto import BlameLineRangeDto
 

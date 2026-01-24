@@ -1,6 +1,6 @@
 from typing import Any
 
-from blarify.graph.node import NodeLabels
+from .types.node_labels import NodeLabels
 
 from .types.node import Node
 

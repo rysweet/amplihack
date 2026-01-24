@@ -1,4 +1,4 @@
-from blarify.graph.node import NodeLabels
+from .types.node_labels import NodeLabels
 from blarify.stats.complexity import CodeComplexityCalculator
 
 from .types.definition_node import DefinitionNode
