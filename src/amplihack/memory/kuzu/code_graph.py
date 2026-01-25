@@ -59,7 +59,7 @@ class KuzuCodeGraph:
 
         Relationship tables:
         - DEFINED_IN (Class → CodeFile)
-        - DEFINED_IN_FUNCTION (Function → CodeFile)
+        - DEFINED_IN (Function → CodeFile)
         - METHOD_OF (Function → Class)
         - CALLS (Function → Function)
         - INHERITS (Class → Class)
@@ -75,6 +75,96 @@ class KuzuCodeGraph:
             connector: Connected KuzuConnector instance
         """
         self.conn = connector
+        self._ensure_code_graph_schema()
+
+    def _ensure_code_graph_schema(self):
+        """Ensure code graph schema tables exist in Kuzu database.
+
+        Creates CodeFile, CodeClass, CodeFunction tables if they don't exist.
+        Safe to call multiple times.
+        """
+        schema_queries = [
+            """
+            CREATE NODE TABLE IF NOT EXISTS CodeFile (
+                file_id STRING,
+                file_path STRING,
+                language STRING,
+                size_bytes INT64,
+                last_modified TIMESTAMP,
+                created_at TIMESTAMP,
+                metadata STRING,
+                PRIMARY KEY (file_id)
+            )
+            """,
+            """
+            CREATE NODE TABLE IF NOT EXISTS CodeClass (
+                class_id STRING,
+                class_name STRING,
+                fully_qualified_name STRING,
+                file_path STRING,
+                line_number INT64,
+                docstring STRING,
+                is_abstract BOOLEAN,
+                created_at TIMESTAMP,
+                metadata STRING,
+                PRIMARY KEY (class_id)
+            )
+            """,
+            """
+            CREATE NODE TABLE IF NOT EXISTS CodeFunction (
+                function_id STRING,
+                function_name STRING,
+                fully_qualified_name STRING,
+                signature STRING,
+                file_path STRING,
+                line_number INT64,
+                parameters STRING,
+                return_type STRING,
+                docstring STRING,
+                is_async BOOLEAN,
+                cyclomatic_complexity INT64,
+                created_at TIMESTAMP,
+                metadata STRING,
+                PRIMARY KEY (function_id)
+            )
+            """,
+            """
+            CREATE REL TABLE IF NOT EXISTS DEFINED_IN (
+                FROM CodeFunction TO CodeFile,
+                line_number INT64,
+                end_line INT64
+            )
+            """,
+            """
+            CREATE REL TABLE IF NOT EXISTS CLASS_DEFINED_IN (
+                FROM CodeClass TO CodeFile
+            )
+            """,
+            """
+            CREATE REL TABLE IF NOT EXISTS METHOD_OF (
+                FROM CodeFunction TO CodeClass
+            )
+            """,
+            """
+            CREATE REL TABLE IF NOT EXISTS CALLS (
+                FROM CodeFunction TO CodeFunction
+            )
+            """,
+            """
+            CREATE REL TABLE IF NOT EXISTS IMPORTS (
+                FROM CodeFile TO CodeFile,
+                symbol STRING,
+                alias STRING
+            )
+            """,
+        ]
+
+        for query in schema_queries:
+            try:
+                self.conn.execute_write(query)
+            except Exception as e:
+                # Table might already exist
+                logger.debug("Schema creation: %s", e)
 
     def run_blarify(
         self,
@@ -205,7 +295,7 @@ class KuzuCodeGraph:
                     MATCH (cf:CodeFile {file_id: $file_id})
                     RETURN cf.file_id
                     """,
-                    {"file_id": file_id}
+                    {"file_id": file_id},
                 )
 
                 if existing:
@@ -221,7 +311,7 @@ class KuzuCodeGraph:
                             "file_id": file_id,
                             "size_bytes": file.get("lines_of_code", 0),
                             "last_modified": last_modified,
-                        }
+                        },
                     )
                 else:
                     # Create new file
@@ -245,7 +335,7 @@ class KuzuCodeGraph:
                             "last_modified": last_modified,
                             "created_at": now,
                             "metadata": json.dumps({}),
-                        }
+                        },
                     )
 
                 count += 1
@@ -278,17 +368,17 @@ class KuzuCodeGraph:
                 # Check if class exists
                 existing = self.conn.execute_query(
                     """
-                    MATCH (c:Class {class_id: $class_id})
+                    MATCH (c:CodeClass {class_id: $class_id})
                     RETURN c.class_id
                     """,
-                    {"class_id": class_id}
+                    {"class_id": class_id},
                 )
 
                 if existing:
                     # Update existing class
                     self.conn.execute_write(
                         """
-                        MATCH (c:Class {class_id: $class_id})
+                        MATCH (c:CodeClass {class_id: $class_id})
                         SET
                             c.docstring = $docstring,
                             c.metadata = $metadata
@@ -297,13 +387,13 @@ class KuzuCodeGraph:
                             "class_id": class_id,
                             "docstring": cls.get("docstring", ""),
                             "metadata": json.dumps({"line_number": cls.get("line_number", 0)}),
-                        }
+                        },
                     )
                 else:
                     # Create new class
                     self.conn.execute_write(
                         """
-                        CREATE (c:Class {
+                        CREATE (c:CodeClass {
                             class_id: $class_id,
                             class_name: $class_name,
                             fully_qualified_name: $fully_qualified_name,
@@ -321,36 +411,31 @@ class KuzuCodeGraph:
                             "is_abstract": cls.get("is_abstract", False),
                             "created_at": now,
                             "metadata": json.dumps({"line_number": cls.get("line_number", 0)}),
-                        }
+                        },
                     )
 
-                # Create DEFINED_IN relationship to file
+                # Create CLASS_DEFINED_IN relationship to file
                 if file_path:
                     # Check if relationship exists
                     rel_exists = self.conn.execute_query(
                         """
-                        MATCH (c:Class {class_id: $class_id})-[r:DEFINED_IN]->(cf:CodeFile {file_id: $file_id})
+                        MATCH (c:CodeClass {class_id: $class_id})-[r:CLASS_DEFINED_IN]->(cf:CodeFile {file_id: $file_id})
                         RETURN count(r) as cnt
                         """,
-                        {"class_id": class_id, "file_id": file_path}
+                        {"class_id": class_id, "file_id": file_path},
                     )
 
                     if not rel_exists or rel_exists[0]["cnt"] == 0:
                         self.conn.execute_write(
                             """
-                            MATCH (c:Class {class_id: $class_id})
+                            MATCH (c:CodeClass {class_id: $class_id})
                             MATCH (cf:CodeFile {file_id: $file_id})
-                            CREATE (c)-[:DEFINED_IN {
-                                line_number: $line_number,
-                                end_line: $end_line
-                            }]->(cf)
+                            CREATE (c)-[:CLASS_DEFINED_IN]->(cf)
                             """,
                             {
                                 "class_id": class_id,
                                 "file_id": file_path,
-                                "line_number": cls.get("line_number", 0),
-                                "end_line": cls.get("line_number", 0),
-                            }
+                            },
                         )
 
                 count += 1
@@ -384,17 +469,17 @@ class KuzuCodeGraph:
                 # Check if function exists
                 existing = self.conn.execute_query(
                     """
-                    MATCH (f:Function {function_id: $function_id})
+                    MATCH (f:CodeFunction {function_id: $function_id})
                     RETURN f.function_id
                     """,
-                    {"function_id": function_id}
+                    {"function_id": function_id},
                 )
 
                 if existing:
                     # Update existing function
                     self.conn.execute_write(
                         """
-                        MATCH (f:Function {function_id: $function_id})
+                        MATCH (f:CodeFunction {function_id: $function_id})
                         SET
                             f.docstring = $docstring,
                             f.cyclomatic_complexity = $cyclomatic_complexity,
@@ -404,18 +489,20 @@ class KuzuCodeGraph:
                             "function_id": function_id,
                             "docstring": func.get("docstring", ""),
                             "cyclomatic_complexity": func.get("complexity", 0),
-                            "metadata": json.dumps({
-                                "line_number": func.get("line_number", 0),
-                                "parameters": func.get("parameters", []),
-                                "return_type": func.get("return_type", ""),
-                            }),
-                        }
+                            "metadata": json.dumps(
+                                {
+                                    "line_number": func.get("line_number", 0),
+                                    "parameters": func.get("parameters", []),
+                                    "return_type": func.get("return_type", ""),
+                                }
+                            ),
+                        },
                     )
                 else:
                     # Create new function
                     self.conn.execute_write(
                         """
-                        CREATE (f:Function {
+                        CREATE (f:CodeFunction {
                             function_id: $function_id,
                             function_name: $function_name,
                             fully_qualified_name: $fully_qualified_name,
@@ -436,30 +523,32 @@ class KuzuCodeGraph:
                             "is_async": func.get("is_async", False),
                             "cyclomatic_complexity": func.get("complexity", 0),
                             "created_at": now,
-                            "metadata": json.dumps({
-                                "line_number": func.get("line_number", 0),
-                                "parameters": func.get("parameters", []),
-                                "return_type": func.get("return_type", ""),
-                            }),
-                        }
+                            "metadata": json.dumps(
+                                {
+                                    "line_number": func.get("line_number", 0),
+                                    "parameters": func.get("parameters", []),
+                                    "return_type": func.get("return_type", ""),
+                                }
+                            ),
+                        },
                     )
 
-                # Create DEFINED_IN_FUNCTION relationship to file
+                # Create DEFINED_IN relationship to file
                 if file_path:
                     rel_exists = self.conn.execute_query(
                         """
-                        MATCH (f:Function {function_id: $function_id})-[r:DEFINED_IN_FUNCTION]->(cf:CodeFile {file_id: $file_id})
+                        MATCH (f:CodeFunction {function_id: $function_id})-[r:DEFINED_IN]->(cf:CodeFile {file_id: $file_id})
                         RETURN count(r) as cnt
                         """,
-                        {"function_id": function_id, "file_id": file_path}
+                        {"function_id": function_id, "file_id": file_path},
                     )
 
                     if not rel_exists or rel_exists[0]["cnt"] == 0:
                         self.conn.execute_write(
                             """
-                            MATCH (f:Function {function_id: $function_id})
+                            MATCH (f:CodeFunction {function_id: $function_id})
                             MATCH (cf:CodeFile {file_id: $file_id})
-                            CREATE (f)-[:DEFINED_IN_FUNCTION {
+                            CREATE (f)-[:DEFINED_IN {
                                 line_number: $line_number,
                                 end_line: $end_line
                             }]->(cf)
@@ -469,24 +558,24 @@ class KuzuCodeGraph:
                                 "file_id": file_path,
                                 "line_number": func.get("line_number", 0),
                                 "end_line": func.get("line_number", 0),
-                            }
+                            },
                         )
 
                 # Create METHOD_OF relationship if function belongs to a class
                 if class_id:
                     rel_exists = self.conn.execute_query(
                         """
-                        MATCH (f:Function {function_id: $function_id})-[r:METHOD_OF]->(c:Class {class_id: $class_id})
+                        MATCH (f:CodeFunction {function_id: $function_id})-[r:METHOD_OF]->(c:Class {class_id: $class_id})
                         RETURN count(r) as cnt
                         """,
-                        {"function_id": function_id, "class_id": class_id}
+                        {"function_id": function_id, "class_id": class_id},
                     )
 
                     if not rel_exists or rel_exists[0]["cnt"] == 0:
                         self.conn.execute_write(
                             """
-                            MATCH (f:Function {function_id: $function_id})
-                            MATCH (c:Class {class_id: $class_id})
+                            MATCH (f:CodeFunction {function_id: $function_id})
+                            MATCH (c:CodeClass {class_id: $class_id})
                             CREATE (f)-[:METHOD_OF {
                                 method_type: $method_type,
                                 visibility: $visibility
@@ -497,7 +586,7 @@ class KuzuCodeGraph:
                                 "class_id": class_id,
                                 "method_type": "instance",
                                 "visibility": "public",
-                            }
+                            },
                         )
 
                 count += 1
@@ -537,7 +626,7 @@ class KuzuCodeGraph:
                     WHERE r.import_type = $symbol
                     RETURN count(r) as cnt
                     """,
-                    {"source_file": source_file, "target_file": target_file, "symbol": symbol}
+                    {"source_file": source_file, "target_file": target_file, "symbol": symbol},
                 )
 
                 if not rel_exists or rel_exists[0]["cnt"] == 0:
@@ -555,7 +644,7 @@ class KuzuCodeGraph:
                             "target_file": target_file,
                             "import_type": symbol,
                             "alias": imp.get("alias", ""),
-                        }
+                        },
                     )
                     count += 1
 
@@ -605,7 +694,7 @@ class KuzuCodeGraph:
                 MATCH (source:Function {function_id: $source_id})-[r:CALLS]->(target:Function {function_id: $target_id})
                 RETURN count(r) as cnt
                 """,
-                {"source_id": source_id, "target_id": target_id}
+                {"source_id": source_id, "target_id": target_id},
             )
 
             if rel_exists and rel_exists[0]["cnt"] > 0:
@@ -625,7 +714,7 @@ class KuzuCodeGraph:
                     "target_id": target_id,
                     "call_count": 1,
                     "context": "",
-                }
+                },
             )
             return 1
 
@@ -642,7 +731,7 @@ class KuzuCodeGraph:
                 MATCH (source:Class {class_id: $source_id})-[r:INHERITS]->(target:Class {class_id: $target_id})
                 RETURN count(r) as cnt
                 """,
-                {"source_id": source_id, "target_id": target_id}
+                {"source_id": source_id, "target_id": target_id},
             )
 
             if rel_exists and rel_exists[0]["cnt"] > 0:
@@ -662,7 +751,7 @@ class KuzuCodeGraph:
                     "target_id": target_id,
                     "inheritance_order": 0,
                     "inheritance_type": "single",
-                }
+                },
             )
             return 1
 
@@ -679,7 +768,7 @@ class KuzuCodeGraph:
                 MATCH (source:Function {function_id: $source_id})-[r:REFERENCES_CLASS]->(target:Class {class_id: $target_id})
                 RETURN count(r) as cnt
                 """,
-                {"source_id": source_id, "target_id": target_id}
+                {"source_id": source_id, "target_id": target_id},
             )
 
             if rel_exists and rel_exists[0]["cnt"] > 0:
@@ -699,7 +788,7 @@ class KuzuCodeGraph:
                     "target_id": target_id,
                     "reference_type": "usage",
                     "context": "",
-                }
+                },
             )
             return 1
 
@@ -741,7 +830,13 @@ class KuzuCodeGraph:
 
         try:
             # Query all memory types that could link to files
-            for memory_type in ["EpisodicMemory", "SemanticMemory", "ProceduralMemory", "ProspectiveMemory", "WorkingMemory"]:
+            for memory_type in [
+                "EpisodicMemory",
+                "SemanticMemory",
+                "ProceduralMemory",
+                "ProspectiveMemory",
+                "WorkingMemory",
+            ]:
                 rel_table = f"RELATES_TO_FILE_{memory_type.replace('Memory', '').upper()}"
 
                 # Get memories with metadata containing file paths
@@ -774,7 +869,7 @@ class KuzuCodeGraph:
                             WHERE cf.file_path CONTAINS $file_path OR $file_path CONTAINS cf.file_path
                             RETURN cf.file_id
                             """,
-                            {"file_path": file_path}
+                            {"file_path": file_path},
                         )
 
                         for file in files:
@@ -786,7 +881,7 @@ class KuzuCodeGraph:
                                 MATCH (m:{memory_type} {{memory_id: $memory_id}})-[r:{rel_table}]->(cf:CodeFile {{file_id: $file_id}})
                                 RETURN count(r) as cnt
                                 """,
-                                {"memory_id": memory_id, "file_id": file_id}
+                                {"memory_id": memory_id, "file_id": file_id},
                             )
 
                             if not rel_exists or rel_exists[0]["cnt"] == 0:
@@ -806,7 +901,7 @@ class KuzuCodeGraph:
                                         "relevance_score": 1.0,
                                         "context": "metadata_file_match",
                                         "timestamp": now,
-                                    }
+                                    },
                                 )
                                 count += 1
 
@@ -825,7 +920,13 @@ class KuzuCodeGraph:
 
         try:
             # Query all memory types
-            for memory_type in ["EpisodicMemory", "SemanticMemory", "ProceduralMemory", "ProspectiveMemory", "WorkingMemory"]:
+            for memory_type in [
+                "EpisodicMemory",
+                "SemanticMemory",
+                "ProceduralMemory",
+                "ProspectiveMemory",
+                "WorkingMemory",
+            ]:
                 rel_table = f"RELATES_TO_FUNCTION_{memory_type.replace('Memory', '').upper()}"
 
                 # Get memories with content
@@ -852,7 +953,7 @@ class KuzuCodeGraph:
                             WHERE $content CONTAINS f.function_name
                             RETURN f.function_id, f.function_name
                             """,
-                            {"content": content}
+                            {"content": content},
                         )
 
                         for func in functions:
@@ -864,7 +965,7 @@ class KuzuCodeGraph:
                                 MATCH (m:{memory_type} {{memory_id: $memory_id}})-[r:{rel_table}]->(f:Function {{function_id: $function_id}})
                                 RETURN count(r) as cnt
                                 """,
-                                {"memory_id": memory_id, "function_id": function_id}
+                                {"memory_id": memory_id, "function_id": function_id},
                             )
 
                             if not rel_exists or rel_exists[0]["cnt"] == 0:
@@ -884,7 +985,7 @@ class KuzuCodeGraph:
                                         "relevance_score": 0.8,
                                         "context": "content_name_match",
                                         "timestamp": now,
-                                    }
+                                    },
                                 )
                                 count += 1
 
@@ -912,13 +1013,19 @@ class KuzuCodeGraph:
         """
         # Try to find memory in each memory type
         memory_type = None
-        for mtype in ["EpisodicMemory", "SemanticMemory", "ProceduralMemory", "ProspectiveMemory", "WorkingMemory"]:
+        for mtype in [
+            "EpisodicMemory",
+            "SemanticMemory",
+            "ProceduralMemory",
+            "ProspectiveMemory",
+            "WorkingMemory",
+        ]:
             result = self.conn.execute_query(
                 f"""
                 MATCH (m:{mtype} {{memory_id: $memory_id}})
                 RETURN m.memory_id
                 """,
-                {"memory_id": memory_id}
+                {"memory_id": memory_id},
             )
             if result:
                 memory_type = mtype
@@ -944,16 +1051,18 @@ class KuzuCodeGraph:
                 MATCH (m:{memory_type} {{memory_id: $memory_id}})-[:{rel_table}]->(cf:CodeFile)
                 RETURN cf.file_path, cf.language, cf.size_bytes
                 """,
-                {"memory_id": memory_id}
+                {"memory_id": memory_id},
             )
 
             for row in file_results:
-                files.append({
-                    "type": "file",
-                    "path": row["cf.file_path"],
-                    "language": row["cf.language"],
-                    "size_bytes": row["cf.size_bytes"],
-                })
+                files.append(
+                    {
+                        "type": "file",
+                        "path": row["cf.file_path"],
+                        "language": row["cf.language"],
+                        "size_bytes": row["cf.size_bytes"],
+                    }
+                )
         except Exception as e:
             logger.debug("Error querying related files: %s", e)
 
@@ -965,17 +1074,19 @@ class KuzuCodeGraph:
                 MATCH (m:{memory_type} {{memory_id: $memory_id}})-[:{rel_table}]->(f:Function)
                 RETURN f.function_name, f.signature, f.docstring, f.cyclomatic_complexity
                 """,
-                {"memory_id": memory_id}
+                {"memory_id": memory_id},
             )
 
             for row in func_results:
-                functions.append({
-                    "type": "function",
-                    "name": row["f.function_name"],
-                    "signature": row["f.signature"],
-                    "docstring": row["f.docstring"],
-                    "complexity": row["f.cyclomatic_complexity"],
-                })
+                functions.append(
+                    {
+                        "type": "function",
+                        "name": row["f.function_name"],
+                        "signature": row["f.signature"],
+                        "docstring": row["f.docstring"],
+                        "complexity": row["f.cyclomatic_complexity"],
+                    }
+                )
         except Exception as e:
             logger.debug("Error querying related functions: %s", e)
 
@@ -986,16 +1097,18 @@ class KuzuCodeGraph:
                 MATCH (m:{memory_type} {{memory_id: $memory_id}})-[:{rel_table}]->(f:Function)-[:METHOD_OF]->(c:Class)
                 RETURN DISTINCT c.class_name, c.fully_qualified_name, c.docstring
                 """,
-                {"memory_id": memory_id}
+                {"memory_id": memory_id},
             )
 
             for row in class_results:
-                classes.append({
-                    "type": "class",
-                    "name": row["c.class_name"],
-                    "fully_qualified_name": row["c.fully_qualified_name"],
-                    "docstring": row["c.docstring"],
-                })
+                classes.append(
+                    {
+                        "type": "class",
+                        "name": row["c.class_name"],
+                        "fully_qualified_name": row["c.fully_qualified_name"],
+                        "docstring": row["c.docstring"],
+                    }
+                )
         except Exception as e:
             logger.debug("Error querying related classes: %s", e)
 
@@ -1031,7 +1144,9 @@ class KuzuCodeGraph:
             stats["function_count"] = result[0]["cnt"] if result else 0
 
             # Total lines of code (size_bytes as proxy)
-            result = self.conn.execute_query("MATCH (cf:CodeFile) RETURN sum(cf.size_bytes) as total")
+            result = self.conn.execute_query(
+                "MATCH (cf:CodeFile) RETURN sum(cf.size_bytes) as total"
+            )
             stats["total_lines"] = result[0]["total"] if result else 0
 
             return stats
@@ -1070,7 +1185,10 @@ def run_blarify(
     output_path: Path,
     languages: list[str] | None = None,
 ) -> bool:
-    """Run blarify on a codebase to generate code graph.
+    """Run blarify on a codebase using vendored blarify with Kuzu backend.
+
+    Uses the vendored blarify package with KuzuManager to analyze the codebase
+    and store results directly in a Kuzu database, then exports to JSON.
 
     Args:
         codebase_path: Path to codebase to analyze
@@ -1080,70 +1198,210 @@ def run_blarify(
     Returns:
         True if successful, False otherwise
     """
-    logger.info("Running blarify on %s", codebase_path)
+    logger.info("Running vendored blarify on %s with Kuzu backend", codebase_path)
 
     try:
-        # Check if blarify is installed
-        subprocess.run(
-            ["blarify", "--version"],
-            check=True,
-            capture_output=True,
+        # Add vendored blarify to path for imports
+        import sys
+
+        vendor_path = Path(__file__).parent.parent.parent / "vendor"
+        if str(vendor_path) not in sys.path:
+            sys.path.insert(0, str(vendor_path))
+
+        # Import vendored blarify components
+        # Create temporary Kuzu database path (don't create directory - Kuzu will do it)
+        import tempfile
+
+        from blarify.prebuilt.graph_builder import GraphBuilder
+        from blarify.repositories.graph_db_manager.kuzu_manager import KuzuManager
+
+        temp_kuzu_dir = (
+            Path(tempfile.gettempdir())
+            / f"blarify_kuzu_{tempfile._get_candidate_names().__next__()}"
         )
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        logger.error(
-            "blarify not found. Install with: pip install blarify\n"
-            "See: https://github.com/blarApp/blarify"
+
+        # Initialize Kuzu manager
+        repo_id = codebase_path.name or "amplihack"
+        entity_id = "amplihack"
+
+        db_manager = KuzuManager(
+            repo_id=repo_id,
+            entity_id=entity_id,
+            db_path=str(temp_kuzu_dir),
         )
-        return False
 
-    # Build blarify command
-    cmd = [
-        "blarify",
-        "create",
-        str(codebase_path),
-        "--output",
-        str(output_path),
-        "--format",
-        "json",
-        "--entity-id",
-        codebase_path.name or "amplihack",  # Use directory name or default
-    ]
+        # Build the graph using vendored blarify (it manages LSP and file iteration internally)
+        logger.info("Building code graph with vendored blarify...")
+        graph_builder = GraphBuilder(
+            root_path=str(codebase_path),
+            db_manager=db_manager,
+            only_hierarchy=False,
+            extensions_to_skip=[".json", ".xml", ".md", ".txt"] if not languages else [],
+            names_to_skip=["__pycache__", "node_modules", ".git", ".github", "venv", ".venv", "vendor"],
+        )
 
-    if languages:
-        cmd.extend(["--languages", ",".join(languages)])
+        # Build and save graph directly to Kuzu
+        graph_builder.build()
 
-    try:
-        # Run blarify with progress indication
-        if RICH_AVAILABLE:
-            try:
-                result = _run_with_progress_indicator(cmd, codebase_path)
-            except Exception as e:
-                logger.warning("Progress indicator failed, falling back to simple execution: %s", e)
-                result = subprocess.run(
-                    cmd,
-                    check=True,
-                    capture_output=True,
-                    text=True,
-                )
-        else:
-            # Fallback to simple execution without progress
-            result = subprocess.run(
-                cmd,
-                check=True,
-                capture_output=True,
-                text=True,
+        logger.info("Blarify analysis complete, data saved to Kuzu")
+
+        # Export from Kuzu to JSON format expected by amplihack
+        output_data = {
+            "files": [],
+            "classes": [],
+            "functions": [],
+            "relationships": [],
+        }
+
+        # Query Kuzu database to extract data with all properties needed by import
+        # Files
+        file_results = db_manager.query("""
+            MATCH (n:NODE)
+            WHERE n.node_type = 'FILE'
+            RETURN n.path as path, n.name as name
+        """)
+        output_data["files"] = [{"path": r["path"], "name": r["name"]} for r in file_results]
+
+        # Classes - query all properties from NODE table
+        class_results = db_manager.conn.execute("""
+            MATCH (n:NODE)
+            WHERE n.node_type = 'CLASS'
+            RETURN n
+        """)
+        classes = []
+        while class_results.has_next():
+            row = class_results.get_next()
+            node = row[0]  # First column is the node
+            # Extract properties from the node dict
+            classes.append(
+                {
+                    "id": node.get("node_id", ""),
+                    "name": node.get("name", ""),
+                    "file_path": node.get("path", ""),
+                    "line_number": node.get("start_line", 0),
+                    "docstring": node.get("text", "")[:200] if node.get("text") else "",
+                }
             )
+        output_data["classes"] = classes
 
-        if result.returncode != 0:
-            logger.error("Blarify failed: %s", result.stderr)
-            return False
+        # Functions - query all properties
+        func_results = db_manager.conn.execute("""
+            MATCH (n:NODE)
+            WHERE n.node_type = 'FUNCTION'
+            RETURN n
+        """)
+        functions = []
+        while func_results.has_next():
+            row = func_results.get_next()
+            node = row[0]
+            functions.append(
+                {
+                    "id": node.get("node_id", ""),
+                    "name": node.get("name", ""),
+                    "file_path": node.get("path", ""),
+                    "line_number": node.get("start_line", 0),
+                    "docstring": node.get("text", "")[:200] if node.get("text") else "",
+                    "parameters": [],  # Would need parsing from text
+                    "complexity": 0,  # Not available in basic parse
+                }
+            )
+        output_data["functions"] = functions
 
-        logger.info("Blarify completed successfully")
-        logger.debug("Blarify output: %s", result.stdout)
+        # Relationships - query each type separately (Kuzu doesn't have type() function)
+        all_relationships = []
+
+        # Query CONTAINS relationships
+        try:
+            contains_results = db_manager.query("""
+                MATCH (source:NODE)-[:CONTAINS]->(target:NODE)
+                RETURN source.node_id as source_id, target.node_id as target_id
+            """)
+            for r in contains_results:
+                all_relationships.append(
+                    {"type": "CONTAINS", "source_id": r["source_id"], "target_id": r["target_id"]}
+                )
+        except Exception:
+            pass
+
+        # Query CALLS relationships
+        try:
+            calls_results = db_manager.query("""
+                MATCH (source:NODE)-[:CALLS]->(target:NODE)
+                RETURN source.node_id as source_id, target.node_id as target_id
+            """)
+            for r in calls_results:
+                all_relationships.append(
+                    {"type": "CALLS", "source_id": r["source_id"], "target_id": r["target_id"]}
+                )
+        except Exception:
+            pass
+
+        # Query REFERENCES relationships
+        try:
+            ref_results = db_manager.query("""
+                MATCH (source:NODE)-[:REFERENCES]->(target:NODE)
+                RETURN source.node_id as source_id, target.node_id as target_id
+            """)
+            for r in ref_results:
+                all_relationships.append(
+                    {"type": "REFERENCES", "source_id": r["source_id"], "target_id": r["target_id"]}
+                )
+        except Exception:
+            pass
+
+        output_data["relationships"] = all_relationships
+
+        # Write JSON output
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_path, "w") as f:
+            json.dump(output_data, f, indent=2)
+
+        logger.info("Blarify output written to %s", output_path)
+
+        # Cleanup
+        db_manager.close()
+
+        # CRITICAL: Clean up temp Kuzu database to prevent leaks
+        import shutil
+        import time
+
+        # Give Kuzu time to fully close files before cleanup
+        time.sleep(0.1)
+
+        try:
+            if temp_kuzu_dir.exists():
+                if temp_kuzu_dir.is_dir():
+                    # It's a directory - remove tree
+                    shutil.rmtree(temp_kuzu_dir, ignore_errors=False)
+                    logger.debug("Cleaned up temp Kuzu directory: %s", temp_kuzu_dir)
+                else:
+                    # It's a file - remove file
+                    temp_kuzu_dir.unlink()
+                    logger.debug("Cleaned up temp Kuzu file: %s", temp_kuzu_dir)
+            else:
+                logger.debug("Temp Kuzu path already cleaned: %s", temp_kuzu_dir)
+        except Exception as e:
+            logger.warning("Error during cleanup of %s: %s", temp_kuzu_dir, e)
+            # Best effort cleanup
+            try:
+                if temp_kuzu_dir.exists() and temp_kuzu_dir.is_dir():
+                    shutil.rmtree(temp_kuzu_dir, ignore_errors=True)
+                elif temp_kuzu_dir.exists():
+                    temp_kuzu_dir.unlink(missing_ok=True)
+            except:
+                pass
+
         return True
 
-    except subprocess.CalledProcessError as e:
-        logger.error("Blarify failed: %s", e.stderr)
+    except ImportError as e:
+        logger.error("Failed to import vendored blarify: %s", e)
+        logger.error("Vendored blarify may not be properly installed")
+        return False
+    except Exception as e:
+        logger.error("Blarify analysis failed: %s", e)
+        import traceback
+
+        logger.debug("Traceback: %s", traceback.format_exc())
         return False
 
 
