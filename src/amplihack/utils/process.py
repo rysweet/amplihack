@@ -1,6 +1,7 @@
 """Cross-platform process management utilities."""
 
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -131,12 +132,28 @@ class ProcessManager:
 
         Returns:
             CompletedProcess instance.
-        """
-        kwargs = {"cwd": cwd, "env": env, "capture_output": capture_output, "text": True}
 
-        # Add shell=True for Windows if needed
-        if ProcessManager.is_windows() and command[0] in ["npm", "npx", "node"]:
-            # These commands often need shell on Windows
-            kwargs["shell"] = True
+        Security:
+            - NEVER uses shell=True (prevents shell injection)
+            - On Windows, resolves full path to .cmd/.bat files using shutil.which()
+            - Uses list[str] commands exclusively (no string interpolation)
+        """
+        kwargs: dict = {
+            "cwd": cwd,
+            "env": env,
+            "capture_output": capture_output,
+            "text": True,
+        }
+
+        # On Windows, npm/npx/node are typically .cmd batch files
+        # Instead of using shell=True (SECURITY RISK), resolve full path
+        if ProcessManager.is_windows() and command and command[0] in ["npm", "npx", "node"]:
+            # Find the full path to the .cmd file (e.g., npm.cmd)
+            resolved_path = shutil.which(command[0])
+            if resolved_path:
+                # Use the resolved path instead of bare command name
+                command = [resolved_path] + command[1:]
+            # If not found, let subprocess.run fail with FileNotFoundError
+            # which is better than shell injection vulnerability
 
         return subprocess.run(command, **kwargs)
