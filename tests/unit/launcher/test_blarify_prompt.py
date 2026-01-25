@@ -10,7 +10,7 @@ Tests the Week 4 implementation:
 import hashlib
 import logging
 from pathlib import Path
-from unittest.mock import MagicMock, patch, Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -315,21 +315,16 @@ class TestIntegrationWithPrepareLaunch:
     """Test integration with prepare_launch method."""
 
     @patch.object(ClaudeLauncher, "_prompt_blarify_indexing")
-    @patch.object(ClaudeLauncher, "_interactive_neo4j_startup")
-    @patch.object(ClaudeLauncher, "_check_neo4j_credentials")
     @patch("amplihack.launcher.core.check_prerequisites")
     def test_prepare_launch_calls_blarify_prompt(
         self,
         mock_prereqs,
-        mock_neo4j_creds,
-        mock_neo4j_startup,
         mock_blarify_prompt,
         launcher,
     ):
         """Test prepare_launch calls blarify prompt at correct point."""
         # Setup mocks to pass early checks
         mock_prereqs.return_value = True
-        mock_neo4j_startup.return_value = True
         mock_blarify_prompt.return_value = True
 
         # Mock other methods to prevent side effects
@@ -347,19 +342,11 @@ class TestIntegrationWithPrepareLaunch:
         # Verify blarify prompt was called
         mock_blarify_prompt.assert_called_once()
 
-        # Verify it's called after Neo4j but before other setup
-        assert mock_neo4j_startup.called
-        assert mock_blarify_prompt.called
-
     @patch.object(ClaudeLauncher, "_prompt_blarify_indexing")
-    @patch.object(ClaudeLauncher, "_interactive_neo4j_startup")
-    @patch.object(ClaudeLauncher, "_check_neo4j_credentials")
     @patch("amplihack.launcher.core.check_prerequisites")
     def test_prepare_launch_continues_if_blarify_fails(
         self,
         mock_prereqs,
-        mock_neo4j_creds,
-        mock_neo4j_startup,
         mock_blarify_prompt,
         launcher,
         caplog,
@@ -367,7 +354,6 @@ class TestIntegrationWithPrepareLaunch:
         """Test prepare_launch continues even if blarify prompt returns False."""
         # Setup mocks
         mock_prereqs.return_value = True
-        mock_neo4j_startup.return_value = True
         mock_blarify_prompt.return_value = False  # Simulate failure
 
         # Mock other methods
