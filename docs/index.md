@@ -121,7 +121,6 @@ amplihack copilot
 - [Proxy Configuration](PROXY_CONFIG_GUIDE.md) - Network proxy setup (Azure OpenAI, custom endpoints)
 - [Hook Configuration](HOOK_CONFIGURATION_GUIDE.md) - Customize framework behavior
 - [Memory Configuration Consent](features/memory-consent-prompt.md) - Intelligent memory settings with timeout protection
-- [Verify .claude/ Staging](howto/verify-claude-staging.md) - Check that framework files are properly staged
 
 ### Deployment
 
@@ -146,7 +145,6 @@ Understand the philosophy and architecture behind amplihack.
 
 - [Project Overview](claude/context/PROJECT.md) - System architecture
 - [Development Patterns](claude/context/PATTERNS.md) - Proven implementation patterns
-- [Unified Staging Architecture](concepts/unified-staging-architecture.md) - How .claude/ staging works across all commands
 - [Blarify Architecture](blarify_architecture.md) - Understanding the Blarify integration
 - [Documentation Knowledge Graph](documentation_knowledge_graph.md) - How docs connect
 
@@ -544,7 +542,6 @@ Quick references, guides, and additional resources.
 
 - [Command Selection Guide](commands/COMMAND_SELECTION_GUIDE.md) - Choose the right command
 - [Platform Bridge API Reference](reference/platform-bridge-api.md) - Complete API documentation
-- [Staging API Reference](reference/staging-api.md) - Developer reference for .claude/ staging
 - [Doc Graph Quick Reference](doc_graph_quick_reference.md) - Navigate documentation
 - [Neo4j Quick Reference](neo4j_memory/quick_reference.md) - Memory system commands
 - [A/B Test Quick Reference](memory/AB_TEST_QUICK_REFERENCE.md) - Test results
