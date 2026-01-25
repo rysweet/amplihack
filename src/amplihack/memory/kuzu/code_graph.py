@@ -1237,7 +1237,7 @@ def run_blarify(
             db_manager=db_manager,
             only_hierarchy=False,
             extensions_to_skip=[".json", ".xml", ".md", ".txt"] if not languages else [],
-            names_to_skip=["__pycache__", "node_modules", ".git", "venv", ".venv"],
+            names_to_skip=["__pycache__", "node_modules", ".git", ".github", "venv", ".venv", "vendor"],
         )
 
         # Build and save graph directly to Kuzu
@@ -1361,14 +1361,35 @@ def run_blarify(
         # Cleanup
         db_manager.close()
 
-        # Clean up temp Kuzu directory (Kuzu creates subdirectories)
+        # CRITICAL: Clean up temp Kuzu database to prevent leaks
         import shutil
+        import time
+
+        # Give Kuzu time to fully close files before cleanup
+        time.sleep(0.1)
 
         try:
             if temp_kuzu_dir.exists():
-                shutil.rmtree(temp_kuzu_dir)
+                if temp_kuzu_dir.is_dir():
+                    # It's a directory - remove tree
+                    shutil.rmtree(temp_kuzu_dir, ignore_errors=False)
+                    logger.debug("Cleaned up temp Kuzu directory: %s", temp_kuzu_dir)
+                else:
+                    # It's a file - remove file
+                    temp_kuzu_dir.unlink()
+                    logger.debug("Cleaned up temp Kuzu file: %s", temp_kuzu_dir)
+            else:
+                logger.debug("Temp Kuzu path already cleaned: %s", temp_kuzu_dir)
         except Exception as e:
-            logger.debug("Failed to clean up temp Kuzu directory: %s", e)
+            logger.warning("Error during cleanup of %s: %s", temp_kuzu_dir, e)
+            # Best effort cleanup
+            try:
+                if temp_kuzu_dir.exists() and temp_kuzu_dir.is_dir():
+                    shutil.rmtree(temp_kuzu_dir, ignore_errors=True)
+                elif temp_kuzu_dir.exists():
+                    temp_kuzu_dir.unlink(missing_ok=True)
+            except:
+                pass
 
         return True
 
