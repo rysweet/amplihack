@@ -2137,7 +2137,15 @@
          <lastmod>2026-01-25</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/features/power-steering/</loc>
+         <lastmod>2026-01-25</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/features/power-steering/changelog-v0.9.1/</loc>
+         <lastmod>2026-01-25</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/features/power-steering/configuration/</loc>
          <lastmod>2026-01-25</lastmod>
     </url>
     <url>
@@ -2166,6 +2174,10 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/howto/platform-bridge-workflows/</loc>
+         <lastmod>2026-01-25</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/howto/power-steering-merge-preferences/</loc>
          <lastmod>2026-01-25</lastmod>
     </url>
     <url>
@@ -2334,6 +2346,10 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/reference/platform-bridge-api/</loc>
+         <lastmod>2026-01-25</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/reference/power-steering-merge-preferences/</loc>
          <lastmod>2026-01-25</lastmod>
     </url>
     <url>
