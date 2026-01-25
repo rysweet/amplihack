@@ -58,52 +58,51 @@ dotnet add package GitHub.Copilot.SDK
 ### Python Example
 
 ```python
-from github_copilot_sdk import CopilotClient
+import asyncio
+from copilot import CopilotClient
 
-# Initialize client
-client = CopilotClient()
+async def main():
+    async with CopilotClient() as client:
+        async with await client.create_session({"model": "gpt-4.1"}) as session:
+            # Set up event handler for responses
+            done = asyncio.Event()
+            
+            def handler(event):
+                if event.type == "assistant.message":
+                    print(event.data.content)
+                elif event.type == "session.idle":
+                    done.set()
+            
+            session.on(handler)
+            
+            # Send message
+            await session.send({"prompt": "Explain Python decorators"})
+            await done.wait()
 
-# Create session
-session = client.create_session()
-
-# Send message and stream response
-for chunk in session.send_message("Explain Python decorators", stream=True):
-    print(chunk.text, end="", flush=True)
-
-# Continue conversation
-response = session.send_message("Show me an example")
-print(response.text)
-
-# Clean up
-session.close()
-client.close()
+asyncio.run(main())
 ```
 
 ### TypeScript Example
 
 ```typescript
-import { CopilotClient } from '@github/copilot-sdk';
+import { CopilotClient } from "@github/copilot-sdk";
 
-// Initialize client
 const client = new CopilotClient();
+const session = await client.createSession({ model: "gpt-4.1" });
 
-// Create session
-const session = await client.createSession();
+// Set up event handler
+session.on((event) => {
+  if (event.type === "assistant.message") {
+    console.log(event.data.content);
+  }
+});
 
-// Send message and stream response
-const stream = await session.sendMessage('Explain TypeScript generics', { stream: true });
+// Send message and wait for completion
+await session.sendAndWait({ prompt: "Explain TypeScript generics" });
 
-for await (const chunk of stream) {
-  process.stdout.write(chunk.text);
-}
-
-// Continue conversation
-const response = await session.sendMessage('Show me an example');
-console.log(response.text);
-
-// Clean up
-await session.close();
-await client.close();
+// Cleanup
+await session.destroy();
+await client.stop();
 ```
 
 ### Go Example
@@ -112,46 +111,38 @@ await client.close();
 package main
 
 import (
-    "context"
     "fmt"
-    "io"
+    "log"
+    "os"
     
     copilot "github.com/github/copilot-sdk/go"
 )
 
 func main() {
-    ctx := context.Background()
-    
-    // Initialize client
-    client, err := copilot.NewClient(ctx)
-    if err != nil {
-        panic(err)
+    client := copilot.NewClient(nil)
+    if err := client.Start(); err != nil {
+        log.Fatal(err)
     }
-    defer client.Close()
+    defer client.Stop()
     
-    // Create session
-    session, err := client.CreateSession(ctx)
+    session, err := client.CreateSession(&copilot.SessionConfig{Model: "gpt-4.1"})
     if err != nil {
-        panic(err)
-    }
-    defer session.Close()
-    
-    // Send message and stream response
-    stream, err := session.SendMessage(ctx, "Explain Go interfaces", &copilot.SendOptions{Stream: true})
-    if err != nil {
-        panic(err)
+        log.Fatal(err)
     }
     
-    for {
-        chunk, err := stream.Recv()
-        if err == io.EOF {
-            break
+    // Set up event handler
+    session.On(func(event copilot.SessionEvent) {
+        if event.Type == "assistant.message" {
+            fmt.Println(*event.Data.Content)
         }
-        if err != nil {
-            panic(err)
-        }
-        fmt.Print(chunk.Text)
+    })
+    
+    // Send and wait
+    _, err = session.SendAndWait(copilot.MessageOptions{Prompt: "Explain Go interfaces"}, 0)
+    if err != nil {
+        log.Fatal(err)
     }
+    os.Exit(0)
 }
 ```
 
@@ -160,24 +151,20 @@ func main() {
 ```csharp
 using GitHub.Copilot.SDK;
 
-// Initialize client
-using var client = new CopilotClient();
+await using var client = new CopilotClient();
+await using var session = await client.CreateSessionAsync(new SessionConfig { Model = "gpt-4.1" });
 
-// Create session
-var session = await client.CreateSessionAsync();
-
-// Send message and stream response
-await foreach (var chunk in session.SendMessageAsync("Explain C# LINQ", stream: true))
+// Set up event handler
+session.On(ev =>
 {
-    Console.Write(chunk.Text);
-}
+    if (ev is AssistantMessageEvent msgEvent)
+    {
+        Console.WriteLine(msgEvent.Data.Content);
+    }
+});
 
-// Continue conversation
-var response = await session.SendMessageAsync("Show me an example");
-Console.WriteLine(response.Text);
-
-// Clean up
-await session.CloseAsync();
+// Send and wait
+await session.SendAndWaitAsync(new MessageOptions { Prompt = "Explain C# LINQ" });
 ```
 
 ## Core Concepts
@@ -186,129 +173,186 @@ await session.CloseAsync();
 |---------|-------------|-------|
 | **CopilotClient** | Main entry point to SDK | Create once, reuse for multiple sessions |
 | **Session** | Isolated conversation context | One per user conversation thread |
-| **Message** | User or assistant text | `send_message()` / `sendMessage()` |
-| **Streaming** | Real-time token delivery | Set `stream=True` for better UX |
-| **Tools** | Custom functions Copilot can call | Register with `register_tool()` |
-| **Events** | Session lifecycle notifications | `on_message`, `on_error`, `on_complete` |
+| **send()** | Send message to session | Returns message ID, use with event handlers |
+| **sendAndWait()** | Send and wait for response | Simpler for single-turn interactions |
+| **Events** | Session lifecycle notifications | `session.on(handler)` for streaming |
+| **Tools** | Custom functions Copilot can call | `defineTool()` to register |
 
 ## Common Patterns
 
-### Basic Conversation Flow
+### Basic Conversation Flow (Python)
 
 ```python
-# 1. Initialize (once per application)
-client = CopilotClient()
+import asyncio
+from copilot import CopilotClient
 
-# 2. Create session (once per conversation)
-session = client.create_session()
-
-# 3. Send messages (multiple times)
-response = session.send_message("Your prompt here")
-print(response.text)
+async def main():
+    async with CopilotClient() as client:
+        async with await client.create_session({"model": "gpt-4.1"}) as session:
+            # Simple send and wait
+            response = await session.send_and_wait({"prompt": "Hello!"})
+            if response:
+                print(response.data.content)
 
 # 4. Clean up (when done)
 session.close()
 client.close()
 ```
 
-### Streaming for Better UX
+### Streaming for Better UX (Python)
 
 ```python
-# Stream tokens as they arrive
-for chunk in session.send_message("Generate a long response", stream=True):
-    print(chunk.text, end="", flush=True)
-print()  # New line after streaming completes
+import asyncio
+import sys
+from copilot import CopilotClient
+
+async def main():
+    async with CopilotClient() as client:
+        session = await client.create_session({"model": "gpt-4.1", "streaming": True})
+        
+        def handler(event):
+            if event.type == "assistant.message.delta":
+                sys.stdout.write(event.data.delta_content)
+                sys.stdout.flush()
+            elif event.type == "session.idle":
+                print()  # New line when done
+        
+        session.on(handler)
+        await session.send_and_wait({"prompt": "Generate a long response"})
+        await session.destroy()
+
+asyncio.run(main())
 ```
 
-### Adding Custom Tools
+### Adding Custom Tools (TypeScript)
 
-```python
-# Define a tool
-def get_weather(location: str) -> str:
-    """Get current weather for a location."""
-    # Your implementation here
-    return f"Weather in {location}: Sunny, 72°F"
+```typescript
+import { defineTool } from "@github/copilot-sdk";
 
-# Register with session
-session.register_tool(
-    name="get_weather",
-    description="Get current weather for any location",
-    function=get_weather,
-    parameters={
-        "type": "object",
-        "properties": {
-            "location": {"type": "string", "description": "City name"}
+const getWeather = defineTool("get_weather", {
+    description: "Get current weather for a city",
+    parameters: {
+        type: "object",
+        properties: {
+            city: { type: "string", description: "City name" }
         },
-        "required": ["location"]
+        required: ["city"]
+    },
+    handler: async ({ city }) => {
+        return { city, temperature: "72°F", condition: "sunny" };
     }
-)
+});
 
-# Now Copilot can call your tool
-response = session.send_message("What's the weather in Seattle?")
+const session = await client.createSession({
+    model: "gpt-4.1",
+    tools: [getWeather]
+});
+
+await session.sendAndWait({ prompt: "What's the weather in Seattle?" });
 ```
 
-### Error Handling
+### Error Handling (Python)
 
 ```python
-from github_copilot_sdk import CopilotError, SessionError
+import asyncio
+from copilot import CopilotClient
 
-try:
-    session = client.create_session()
-    response = session.send_message("Hello")
-except SessionError as e:
-    print(f"Session error: {e}")
-except CopilotError as e:
-    print(f"SDK error: {e}")
-finally:
-    if session:
-        session.close()
+async def main():
+    client = CopilotClient()
+    session = None
+    try:
+        await client.start()
+        session = await client.create_session({"model": "gpt-4.1"})
+        response = await session.send_and_wait({"prompt": "Hello"})
+        if response:
+            print(response.data.content)
+    except Exception as e:
+        print(f"Error: {e}")
+    finally:
+        if session:
+            await session.destroy()
+        await client.stop()
+
+asyncio.run(main())
 ```
 
 ## Event Types Reference
 
-| Event | When Triggered | Use Case |
-|-------|---------------|----------|
-| `on_message` | Each message sent/received | Logging, analytics |
-| `on_stream_chunk` | Each streaming token | Custom rendering |
-| `on_tool_call` | Copilot calls your tool | Validation, logging |
-| `on_error` | Any error occurs | Error handling |
-| `on_complete` | Response fully delivered | Cleanup, metrics |
-| `on_session_start` | Session created | Initialization |
-| `on_session_end` | Session closed | Cleanup |
+| Event Type | When Triggered | Data Available |
+|------------|---------------|----------------|
+| `user.message` | User sends message | `content` |
+| `assistant.message` | Complete response | `content` |
+| `assistant.message.delta` | Streaming chunk | `delta_content` |
+| `tool.executionStart` | Tool call begins | `tool_name`, `arguments` |
+| `tool.executionComplete` | Tool call ends | `result` |
+| `session.start` | Session created | `session_id` |
+| `session.idle` | Processing complete | - |
+| `session.error` | Error occurred | `message` |
 
 ## Configuration Options
 
 ```python
-# Client configuration
-client = CopilotClient(
-    api_key="sk-...",          # Optional: BYOK mode
-    timeout=30,                # Request timeout in seconds
-    max_retries=3,             # Retry failed requests
-    log_level="INFO"           # Logging verbosity
-)
+# Python: Client configuration
+client = CopilotClient({
+    "cli_path": "/path/to/copilot",  # Custom CLI path
+    "port": 0,                        # 0 = random port
+    "auto_start": True,               # Start CLI automatically
+    "log_level": "info"
+})
 
-# Session configuration
-session = client.create_session(
-    model="gpt-4",             # Model selection
-    temperature=0.7,           # Creativity (0.0-1.0)
-    max_tokens=2000,           # Response length limit
-    system_prompt="You are..." # System instructions
-)
+# Session configuration  
+session = await client.create_session({
+    "model": "gpt-4.1",
+    "streaming": True,
+    "system_message": {
+        "mode": "append",
+        "content": "You are a helpful assistant."
+    }
+})
+```
+
+```typescript
+// TypeScript: Client configuration
+const client = new CopilotClient({
+    cliPath: "/path/to/copilot",
+    autoStart: true,
+    logLevel: "debug"
+});
+
+// Session configuration
+const session = await client.createSession({
+    model: "gpt-4.1",
+    streaming: true,
+    systemMessage: {
+        mode: "append",
+        content: "You are a helpful assistant."
+    }
+});
 ```
 
 ## MCP Integration
 
 Connect to Model Context Protocol servers to extend Copilot's capabilities:
 
-```python
-# Connect to MCP server
-session.connect_mcp_server(
-    url="http://localhost:3000",
-    tools=["filesystem", "database", "api"]
-)
+```typescript
+// TypeScript: MCP server configuration
+const session = await client.createSession({
+    model: "gpt-4.1",
+    mcpServers: {
+        github: {
+            type: "http",
+            url: "https://api.githubcopilot.com/mcp/"
+        },
+        filesystem: {
+            type: "stdio",
+            command: "npx",
+            args: ["-y", "@modelcontextprotocol/server-filesystem"]
+        }
+    }
+});
 
-# Now Copilot can use MCP tools
-response = session.send_message("Read the config file")
+// Now Copilot can use MCP tools
+await session.sendAndWait({ prompt: "Read the config file" });
 ```
 
 ## Navigation to Supporting Files
@@ -337,8 +381,8 @@ response = session.send_message("Read the config file")
 - Check GitHub Copilot subscription status
 
 **Streaming not working**
-- Ensure `stream=True` parameter is set
-- Use async iteration (Python) or `await for` (TypeScript)
+- Ensure `streaming: true` in session config
+- Use event handlers with `session.on()` to receive chunks
 - Check network for buffering/proxy issues
 
 ## Best Practices
