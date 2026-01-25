@@ -39,12 +39,12 @@ class TokenSanitizer:
     # Order matters! More specific patterns first, then general patterns
     PATTERNS: ClassVar[list[tuple[str, str]]] = [
         # OpenAI API keys (6+ chars for flexibility in testing, real keys are 20+)
-        (r"sk-[a-zA-Z0-9]{6,}", "sk-***"),
+        (r"sk-[a-zA-Z0-9_-]{6,}", "sk-***"),
         (r"sk-proj-[a-zA-Z0-9_-]{6,}", "sk-proj-***"),
         # GitHub tokens (made more flexible with 20+ characters instead of exact 36)
-        (r"ghp_[a-zA-Z0-9]{20,}", "ghp_***"),  # Personal access token
-        (r"gho_[a-zA-Z0-9]{20,}", "gho_***"),  # OAuth token
-        (r"ghs_[a-zA-Z0-9]{20,}", "ghs_***"),  # Server-to-server token
+        (r"ghp_[a-zA-Z0-9_-]{20,}", "ghp_***"),  # Personal access token
+        (r"gho_[a-zA-Z0-9_-]{20,}", "gho_***"),  # OAuth token
+        (r"ghs_[a-zA-Z0-9_-]{20,}", "ghs_***"),  # Server-to-server token
         (r"github_pat_[a-zA-Z0-9_]{22,255}", "github_pat_***"),  # Fine-grained PAT
         # Azure AD tokens (JWT format) - made more specific
         (r"eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+", "eyJ***.eyJ***.***"),
@@ -101,6 +101,16 @@ class TokenSanitizer:
 
         return sanitized
 
+    # Sensitive key names that should always be fully redacted (no pattern matching)
+    FULLY_REDACT_KEYS: ClassVar[set[str]] = {
+        "password",
+        "secret",
+        "credentials",
+        "private_key",
+        "privatekey",
+        "private-key",
+    }
+
     @classmethod
     def sanitize_dict(cls, data: dict | None) -> dict:
         """
@@ -117,7 +127,14 @@ class TokenSanitizer:
 
         sanitized = {}
         for key, value in data.items():
-            if isinstance(value, dict):
+            # Check if the key name indicates sensitive data that should be fully redacted
+            key_lower = key.lower()
+            should_fully_redact = key_lower in cls.FULLY_REDACT_KEYS
+
+            if should_fully_redact and isinstance(value, str):
+                # Fully redact these sensitive keys
+                sanitized[key] = "***"
+            elif isinstance(value, dict):
                 # Recursively sanitize nested dictionaries
                 sanitized[key] = cls.sanitize_dict(value)
             elif isinstance(value, list):
@@ -129,7 +146,7 @@ class TokenSanitizer:
                     for item in value
                 ]
             elif isinstance(value, str):
-                # Sanitize string values
+                # Sanitize string values (applies pattern matching)
                 sanitized[key] = cls.sanitize(value)
             else:
                 # For non-string types, leave as-is (don't convert to string unnecessarily)

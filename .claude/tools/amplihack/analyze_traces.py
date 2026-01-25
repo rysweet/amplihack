@@ -1,15 +1,29 @@
 #!/usr/bin/env python3
-"""Analyze claude-trace logs and identify improvement opportunities."""
+"""Analyze amplihack trace logs and identify improvement opportunities."""
 
 import subprocess
 from pathlib import Path
 
 
-def find_unprocessed_logs(trace_dir: str) -> list[str]:
+def find_unprocessed_logs(trace_dir: str = ".claude/runtime/amplihack-traces") -> list[str]:
+    """Find unprocessed trace log files.
+
+    Args:
+        trace_dir: Directory containing trace logs (default: .claude/runtime/amplihack-traces)
+
+    Returns:
+        List of trace file paths
+    """
     trace_path = Path(trace_dir)
     if not trace_path.exists():
-        return []
-    return [str(f) for f in trace_path.glob("*.jsonl") if f.parent.name != "already_processed"]
+        # Fallback to old location for backwards compatibility
+        old_trace_path = Path(".claude-trace")
+        if old_trace_path.exists():
+            trace_path = old_trace_path
+        else:
+            return []
+
+    return [str(f) for f in trace_path.glob("**/*.jsonl") if f.parent.name != "already_processed"]
 
 
 def build_analysis_prompt(log_files: list[str]) -> str:
@@ -41,7 +55,7 @@ def process_log(log_file: str) -> None:
 
 
 def main() -> None:
-    log_files = find_unprocessed_logs(".claude-trace")
+    log_files = find_unprocessed_logs()
     if not log_files:
         print("No unprocessed trace logs found.")
         return

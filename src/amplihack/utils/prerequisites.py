@@ -483,12 +483,18 @@ class PrerequisiteChecker:
 
     # Required tools with their version check arguments
     # Note: Claude CLI is checked separately with auto-installation support
+    # Note: Native binaries (rustyclawd) are optional and checked separately
     REQUIRED_TOOLS = {
         "node": "--version",
         "npm": "--version",
         "uv": "--version",
         "git": "--version",
         "rg": "--version",  # ripgrep - required for custom slash commands
+    }
+
+    # Optional tools (checked but not required)
+    OPTIONAL_TOOLS = {
+        "rustyclawd": "--version",  # Native binary for enhanced trace logging
     }
 
     # Installation commands by platform and tool
