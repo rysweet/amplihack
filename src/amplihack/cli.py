@@ -770,6 +770,14 @@ def main(argv: list[str] | None = None) -> int:
     Returns:
         Exit code.
     """
+    # Platform compatibility check FIRST (fail-fast before any operations)
+    from .launcher.platform_check import check_platform_compatibility
+
+    platform_result = check_platform_compatibility()
+    if not platform_result.compatible:
+        print(platform_result.message, file=sys.stderr)
+        return 1
+
     # Parse arguments FIRST to determine which command is being run
     # This allows us to skip Claude Code plugin installation for amplifier command
     args, claude_args = parse_args_with_passthrough(argv)
