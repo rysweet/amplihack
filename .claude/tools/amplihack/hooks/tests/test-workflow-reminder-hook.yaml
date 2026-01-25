@@ -1,0 +1,127 @@
+scenario:
+  name: "Workflow Classification Reminder Hook - Claude Code Integration"
+  description: "End-to-end test of workflow reminder hook as invoked by Claude Code"
+  type: cli
+  tags: [hooks, claude-code, e2e, critical]
+
+  prerequisites:
+    - "Python 3.11+ available"
+    - "Hook script at .claude/tools/amplihack/hooks/workflow_classification_reminder.py exists"
+    - "Hook dependencies (hook_processor.py) exist"
+
+  environment:
+    variables:
+      CLAUDE_PLUGIN_ROOT: "/home/azureuser/src/amplifier-amplihack/.claude"
+      CLAUDE_SESSION_ID: "test-session-12345"
+
+  steps:
+    # Test 1: First turn - should inject reminder
+    - action: launch
+      target: "python"
+      args: [".claude/tools/amplihack/hooks/workflow_classification_reminder.py"]
+      description: "Invoke hook as Claude Code would"
+      cwd: "/home/azureuser/src/amplifier-amplihack"
+
+    - action: send_input
+      value: |
+        {"userMessage": "Implement user authentication", "turnCount": 0}
+      description: "Send first user prompt JSON via stdin"
+
+    - action: verify_output
+      contains: "NEW TOPIC DETECTED"
+      timeout: 5s
+      description: "Hook should detect first turn as new topic"
+
+    - action: verify_output
+      contains: "OPERATIONS"
+      description: "Should include Operations workflow option"
+
+    - action: verify_output
+      contains: "system-reminder"
+      description: "Should wrap in system-reminder XML tags"
+
+    - action: verify_output
+      contains: "additionalContext"
+      description: "Should return JSON with additionalContext field"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "Hook should exit successfully"
+
+    # Test 2: Follow-up - should NOT inject reminder
+    - action: launch
+      target: "python"
+      args: [".claude/tools/amplihack/hooks/workflow_classification_reminder.py"]
+      cwd: "/home/azureuser/src/amplifier-amplihack"
+
+    - action: send_input
+      value: |
+        {"userMessage": "Also add password reset", "turnCount": 2}
+      description: "Send follow-up prompt (contains 'Also')"
+
+    - action: verify_output
+      matches: '^\s*\{\s*\}\s*$'
+      timeout: 5s
+      description: "Hook should return empty JSON object for follow-ups"
+
+    - action: verify_exit_code
+      expected: 0
+
+    # Test 3: Explicit transition - should inject reminder
+    - action: launch
+      target: "python"
+      args: [".claude/tools/amplihack/hooks/workflow_classification_reminder.py"]
+      cwd: "/home/azureuser/src/amplifier-amplihack"
+
+    - action: send_input
+      value: |
+        {"userMessage": "Now lets work on caching", "turnCount": 5}
+      description: "Send explicit topic transition"
+
+    - action: verify_output
+      contains: "NEW TOPIC DETECTED"
+      description: "'Now lets' should trigger new topic detection"
+
+    - action: verify_exit_code
+      expected: 0
+
+    # Test 4: Operations task
+    - action: launch
+      target: "python"
+      args: [".claude/tools/amplihack/hooks/workflow_classification_reminder.py"]
+      cwd: "/home/azureuser/src/amplifier-amplihack"
+
+    - action: send_input
+      value: |
+        {"userMessage": "Clean up old log files", "turnCount": 10}
+
+    - action: verify_output
+      contains: "OPERATIONS"
+      description: "Operations workflow should be available"
+
+    - action: verify_output
+      contains: "Execute directly"
+      description: "Should explain operations execute without recipe"
+
+    - action: verify_exit_code
+      expected: 0
+
+    # Test 5: Invalid JSON input - should fail gracefully
+    - action: launch
+      target: "python"
+      args: [".claude/tools/amplihack/hooks/workflow_classification_reminder.py"]
+      cwd: "/home/azureuser/src/amplifier-amplihack"
+
+    - action: send_input
+      value: "invalid json {{"
+      description: "Send malformed JSON"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "Hook should fail gracefully, not crash (exit 0 with error logged)"
+      continue_on_failure: true
+
+  cleanup:
+    - action: delete_file
+      path: "/home/azureuser/src/amplifier-amplihack/.claude/runtime/logs/classification_state"
+      continue_on_failure: true

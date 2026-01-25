@@ -45,7 +45,7 @@ def generate_site(config: SiteConfig) -> GenerationResult:
     """
 ```
 
-**Source**: [`.claude/skills/documentation-writing/github_pages/generator.py:23`](../claude/skills/documentation-writing/github_pages/generator.py#L23)
+**Source**: [`~/.amplihack/.claude/skills/documentation-writing/github_pages/generator.py:23`](../claude/skills/documentation-writing/github_pages/generator.py#L23)
 
 **Example**:
 
@@ -107,7 +107,7 @@ def validate_site(site_dir: Path | str) -> ValidationResult:
     """
 ```
 
-**Source**: [`.claude/skills/documentation-writing/github_pages/validator.py:53`](../claude/skills/documentation-writing/github_pages/validator.py#L53)
+**Source**: [`~/.amplihack/.claude/skills/documentation-writing/github_pages/validator.py:53`](../claude/skills/documentation-writing/github_pages/validator.py#L53)
 
 **Example**:
 
@@ -187,7 +187,7 @@ def deploy_site(config: DeploymentConfig) -> DeploymentResult:
     """
 ```
 
-**Source**: [`.claude/skills/documentation-writing/github_pages/deployer.py:20`](../claude/skills/documentation-writing/github_pages/deployer.py#L20)
+**Source**: [`~/.amplihack/.claude/skills/documentation-writing/github_pages/deployer.py:20`](../claude/skills/documentation-writing/github_pages/deployer.py#L20)
 
 **Example**:
 
@@ -261,7 +261,7 @@ def preview_locally(config_path: Path | str = "mkdocs.yml", port: int = 8000) ->
     """
 ```
 
-**Source**: [`.claude/skills/documentation-writing/github_pages/generator.py:145`](../claude/skills/documentation-writing/github_pages/generator.py#L145)
+**Source**: [`~/.amplihack/.claude/skills/documentation-writing/github_pages/generator.py:145`](../claude/skills/documentation-writing/github_pages/generator.py#L145)
 
 **Example**:
 
@@ -318,7 +318,7 @@ class SiteConfig:
     nav_structure: dict | None = None
 ```
 
-**Source**: [`.claude/skills/documentation-writing/github_pages/__init__.py:31`](../claude/skills/documentation-writing/github_pages/__init__.py#L31)
+**Source**: [`~/.amplihack/.claude/skills/documentation-writing/github_pages/__init__.py:31`](../claude/skills/documentation-writing/github_pages/__init__.py#L31)
 
 **Example with Defaults**:
 
@@ -406,7 +406,7 @@ class DeploymentConfig:
     force_push: bool = False
 ```
 
-**Source**: [`.claude/skills/documentation-writing/github_pages/__init__.py:54`](../claude/skills/documentation-writing/github_pages/__init__.py#L54)
+**Source**: [`~/.amplihack/.claude/skills/documentation-writing/github_pages/__init__.py:54`](../claude/skills/documentation-writing/github_pages/__init__.py#L54)
 
 **Example**:
 
@@ -466,7 +466,7 @@ class GenerationResult:
     config_file: Path | None
 ```
 
-**Source**: [`.claude/skills/documentation-writing/github_pages/__init__.py:71`](../claude/skills/documentation-writing/github_pages/__init__.py#L71)
+**Source**: [`~/.amplihack/.claude/skills/documentation-writing/github_pages/__init__.py:71`](../claude/skills/documentation-writing/github_pages/__init__.py#L71)
 
 **Example**:
 
@@ -525,7 +525,7 @@ class ValidationResult:
     pass3_grounded_pct: float
 ```
 
-**Source**: [`.claude/skills/documentation-writing/github_pages/__init__.py:111`](../claude/skills/documentation-writing/github_pages/__init__.py#L111)
+**Source**: [`~/.amplihack/.claude/skills/documentation-writing/github_pages/__init__.py:111`](../claude/skills/documentation-writing/github_pages/__init__.py#L111)
 
 **Example**:
 
@@ -578,7 +578,7 @@ class ValidationIssue:
     suggestion: str | None = None
 ```
 
-**Source**: [`.claude/skills/documentation-writing/github_pages/__init__.py:92`](../claude/skills/documentation-writing/github_pages/__init__.py#L92)
+**Source**: [`~/.amplihack/.claude/skills/documentation-writing/github_pages/__init__.py:92`](../claude/skills/documentation-writing/github_pages/__init__.py#L92)
 
 **Example**:
 
@@ -637,7 +637,7 @@ class DeploymentResult:
     errors: list[str]
 ```
 
-**Source**: [`.claude/skills/documentation-writing/github_pages/__init__.py:130`](../claude/skills/documentation-writing/github_pages/__init__.py#L130)
+**Source**: [`~/.amplihack/.claude/skills/documentation-writing/github_pages/__init__.py:130`](../claude/skills/documentation-writing/github_pages/__init__.py#L130)
 
 **Example**:
 

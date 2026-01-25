@@ -172,11 +172,11 @@ If split is rejected (not recommended):
 
 Create test files:
 
-- `.claude/skills/pm-architect/scripts/tests/test_delegate_response.py`
-- `.claude/skills/pm-architect/scripts/tests/test_generate_daily_status.py`
-- `.claude/skills/pm-architect/scripts/tests/test_generate_roadmap_review.py`
-- `.claude/skills/pm-architect/scripts/tests/test_triage_pr.py`
-- `.claude/skills/pm-architect/scripts/tests/conftest.py` (shared fixtures)
+- `~/.amplihack/.claude/skills/pm-architect/scripts/tests/test_delegate_response.py`
+- `~/.amplihack/.claude/skills/pm-architect/scripts/tests/test_generate_daily_status.py`
+- `~/.amplihack/.claude/skills/pm-architect/scripts/tests/test_generate_roadmap_review.py`
+- `~/.amplihack/.claude/skills/pm-architect/scripts/tests/test_triage_pr.py`
+- `~/.amplihack/.claude/skills/pm-architect/scripts/tests/conftest.py` (shared fixtures)
 
 Test requirements:
 

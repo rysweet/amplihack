@@ -249,7 +249,7 @@ This aligns with ruthless simplicity: don't add complexity until proven necessar
 
 **PR**: Add new authentication module
 
-**Code Changed**: New file `.claude/tools/auth/auth.py`
+**Code Changed**: New file `~/.amplihack/.claude/tools/auth/auth.py`
 
 **Review Comment**:
 ```
@@ -565,10 +565,10 @@ The skill produces:
 
 All reviews anchor in these documents:
 
-- `.claude/context/PHILOSOPHY.md` - Core development philosophy
-- `.claude/context/PATTERNS.md` - Approved patterns and anti-patterns
+- `~/.amplihack/.claude/context/PHILOSOPHY.md` - Core development philosophy
+- `~/.amplihack/.claude/context/PATTERNS.md` - Approved patterns and anti-patterns
 - `Specs/` - Module specifications for architecture verification
-- `.claude/context/DISCOVERIES.md` - Known issues and solutions
+- `~/.amplihack/.claude/context/DISCOVERIES.md` - Known issues and solutions
 
 ## Tips for Effective Reviews
 
@@ -600,4 +600,4 @@ This skill should evolve based on usage:
 - What philosophy principles are most violated?
 - How can we catch issues earlier?
 
-Document learnings in `.claude/context/DISCOVERIES.md`.
+Document learnings in `~/.amplihack/.claude/context/DISCOVERIES.md`.

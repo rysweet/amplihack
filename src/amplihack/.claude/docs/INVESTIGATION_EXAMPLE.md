@@ -4,7 +4,7 @@
 
 Investigated how template variable replacement works in the documentation generation system. Found that the system uses simple string replacement with `[VARIABLE]` placeholders in markdown templates. Key findings:
 
-- Templates are pure markdown files stored in `.claude/templates/`
+- Templates are pure markdown files stored in `~/.amplihack/.claude/templates/`
 - Variables use `[BRACKET]` notation for easy identification
 - Replacement is done via simple string substitution (no template engine)
 - Optional sections can be omitted if data not available
@@ -38,9 +38,9 @@ flowchart TD
 
 | File Path                                                         | Purpose                | Key Components                         |
 | ----------------------------------------------------------------- | ---------------------- | -------------------------------------- |
-| `.claude/templates/investigation-doc-template.md`                 | Template structure     | Variable placeholders, section headers |
-| `.claude/templates/architecture-doc-template.md`                  | Architecture template  | Extended sections, design decisions    |
-| `.claude/agents/amplihack/specialized/knowledge-archaeologist.md` | Variable mapping logic | Template Variable Mapping table        |
+| `~/.amplihack/.claude/templates/investigation-doc-template.md`                 | Template structure     | Variable placeholders, section headers |
+| `~/.amplihack/.claude/templates/architecture-doc-template.md`                  | Architecture template  | Extended sections, design decisions    |
+| `~/.amplihack/.claude/agents/amplihack/specialized/knowledge-archaeologist.md` | Variable mapping logic | Template Variable Mapping table        |
 
 ## System Integration
 
@@ -51,7 +51,7 @@ The template system integrates with the knowledge-archaeologist agent through a 
 3. **Agent selects template** based on investigation type
 4. **Variable mapping** applied using table in agent definition
 5. **String replacement** performs `[VARIABLE]` → actual value substitution
-6. **File writing** creates final documentation in `.claude/docs/`
+6. **File writing** creates final documentation in `~/.amplihack/.claude/docs/`
 
 No intermediate processing or complex transformations occur - it's direct string replacement with markdown preservation.
 
@@ -123,16 +123,16 @@ Investigated how template variable replacement works...
 
 **Variable Mapping** (multiple rows):
 
-- Row 1: `.claude/templates/investigation-doc-template.md` | Template structure | Variable placeholders
-- Row 2: `.claude/templates/architecture-doc-template.md` | Architecture template | Extended sections
+- Row 1: `~/.amplihack/.claude/templates/investigation-doc-template.md` | Template structure | Variable placeholders
+- Row 2: `~/.amplihack/.claude/templates/architecture-doc-template.md` | Architecture template | Extended sections
 
 **Generated Output**:
 
 ```markdown
 | File Path                                         | Purpose               | Key Components        |
 | ------------------------------------------------- | --------------------- | --------------------- |
-| `.claude/templates/investigation-doc-template.md` | Template structure    | Variable placeholders |
-| `.claude/templates/architecture-doc-template.md`  | Architecture template | Extended sections     |
+| `~/.amplihack/.claude/templates/investigation-doc-template.md` | Template structure    | Variable placeholders |
+| `~/.amplihack/.claude/templates/architecture-doc-template.md`  | Architecture template | Extended sections     |
 ```
 
 ### Example 3: Optional Mermaid Diagram
@@ -170,8 +170,8 @@ None identified. The template variable replacement system is straightforward and
 
 ## Related Documentation
 
-- `.claude/templates/README.md` - Template usage guide
-- `.claude/agents/amplihack/specialized/knowledge-archaeologist.md` - Variable mapping table
+- `~/.amplihack/.claude/templates/README.md` - Template usage guide
+- `~/.amplihack/.claude/agents/amplihack/specialized/knowledge-archaeologist.md` - Variable mapping table
 - `ARCHITECTURE_EXAMPLE.md` - Example of architecture documentation
 
 ## Generated

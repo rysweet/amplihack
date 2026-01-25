@@ -11,7 +11,7 @@ Each benchmark task creates:
 - **Pull Request** - PR with the implemented code
 - **Worktree** - Isolated git worktree for execution
 - **Trace Logs** - API traces in `.claude-trace/` (gitignored)
-- **Result Files** - Metrics in `.claude/runtime/benchmarks/` (gitignored)
+- **Result Files** - Metrics in `~/.amplihack/.claude/runtime/benchmarks/` (gitignored)
 
 ## Cleanup Checklist
 

@@ -2021,9 +2021,9 @@ echo "Diagnose application performance issues, identify bottlenecks, suggest opt
 
 **Documentation**:
 
-- Review examples in `.claude/skills/goal-seeking-agent-pattern/examples/`
-- Read real agent implementations in `.claude/agents/amplihack/specialized/`
-- Check integration guide in `.claude/skills/goal-seeking-agent-pattern/templates/integration_guide.md`
+- Review examples in `~/.amplihack/.claude/skills/goal-seeking-agent-pattern/examples/`
+- Read real agent implementations in `~/.amplihack/.claude/agents/amplihack/specialized/`
+- Check integration guide in `~/.amplihack/.claude/skills/goal-seeking-agent-pattern/templates/integration_guide.md`
 
 **Practice**:
 

@@ -1,6 +1,6 @@
 # GitHub Copilot Command Reference: ingest-code
 
-**Source**: `.claude/commands/amplihack/ingest-code.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/ingest-code.md`
 
 ---
 

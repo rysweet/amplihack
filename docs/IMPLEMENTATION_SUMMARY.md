@@ -41,7 +41,7 @@ Simple, focused implementation that:
 - Creates execution plans (Turn 2)
 - Executes and evaluates iteratively (Turns 3+)
 - Runs session hooks for Copilot
-- Logs everything to `.claude/runtime/logs/`
+- Logs everything to `~/.amplihack/.claude/runtime/logs/`
 
 ### 3. Documentation
 

@@ -174,7 +174,7 @@ This workflow should be followed for tasks containing these keywords or patterns
 
 ```
 Investigation: "How does the reflection system work?"
-→ [analyzer(.claude/tools/amplihack/hooks/), patterns(reflection), integration(logging)]
+→ [analyzer(~/.amplihack/.claude/tools/amplihack/hooks/), patterns(reflection), integration(logging)]
 
 Investigation: "Why is CI failing?"
 → [analyzer(ci-config), patterns(ci-failures), integration(github-actions)]
@@ -326,7 +326,7 @@ Verification: Examine reflection logs, trace message processing
 - Updated PATTERNS.md (if applicable)
 - Updated project documentation
 - Optional: GitHub issues for improvements
-- Investigation session log in `.claude/runtime/logs/`
+- Investigation session log in `~/.amplihack/.claude/runtime/logs/`
 
 ### 🔄 Transitioning to Development Workflow
 
@@ -421,7 +421,7 @@ Both workflows share core principles:
 
 **UltraThink Workflow Detection:**
 
-When `/ultrathink` is invoked, it automatically detects investigation tasks using the keywords defined in `.claude/commands/amplihack/ultrathink.md`. See the ultrathink command documentation for the complete keyword list and detection logic.
+When `/ultrathink` is invoked, it automatically detects investigation tasks using the keywords defined in `~/.amplihack/.claude/commands/amplihack/ultrathink.md`. See the ultrathink command documentation for the complete keyword list and detection logic.
 
 **Automatic Workflow Suggestion:**
 

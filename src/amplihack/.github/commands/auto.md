@@ -1,6 +1,6 @@
 # GitHub Copilot Command Reference: auto
 
-**Source**: `.claude/commands/amplihack/auto.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/auto.md`
 
 ---
 
@@ -129,6 +129,6 @@ This will:
 ## Notes
 
 - Auto mode runs as a subprocess and streams output to console
-- Progress is logged to `.claude/runtime/logs/auto_claude_*`
+- Progress is logged to `~/.amplihack/.claude/runtime/logs/auto_claude_*`
 - User can interrupt at any time with Ctrl+C
 - See `docs/AUTO_MODE.md` for comprehensive documentation

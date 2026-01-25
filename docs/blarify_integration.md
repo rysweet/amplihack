@@ -69,6 +69,16 @@ Code schema extends existing memory schema:
    npm install -g @sourcegraph/scip-python
    ```
 
+### Configuration
+
+#### Enabling Blarify Indexing
+
+Blarify is disabled by default. To enable Blarify code indexing:
+
+```bash
+AMPLIHACK_ENABLE_BLARIFY=1 amplihack launch
+```
+
 ### Supported Languages
 
 Blarify supports 6 languages:

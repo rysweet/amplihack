@@ -120,7 +120,7 @@ If tools have incompatible formats:
   .copilot-plugin/    # GitHub Copilot plugin (if format differs)
   .codex-plugin/      # Codex plugin (if format differs)
   ```
-- Share common `.claude/` content (agents, commands, skills)
+- Share common `~/.amplihack/.claude/` content (agents, commands, skills)
 - Adapt manifest and hooks per tool
 
 **Implementation:**
@@ -148,7 +148,7 @@ amplihack/
 
 If some tools don't support plugins:
 - Document that plugin mode only works in Claude Code
-- Provide fallback installation (per-project `.claude/` copy)
+- Provide fallback installation (per-project `~/.amplihack/.claude/` copy)
 - Maintain backward compatibility
 
 **Implementation:**
@@ -372,7 +372,7 @@ def test_codex_plugin_installation():
 **Fallback Plan:**
 If Copilot/Codex don't support plugins:
 - Document compatibility clearly
-- Provide per-project `.claude/` copy instructions
+- Provide per-project `~/.amplihack/.claude/` copy instructions
 - Maintain backward compatibility
 
 **This is acceptable** - Issue #1948 requires compatibility *verification*, not necessarily full support.

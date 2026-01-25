@@ -2,12 +2,12 @@
 
 ## Purpose
 
-Ensure existing per-project `.claude/` installations continue working while supporting the new plugin architecture.
+Ensure existing per-project `~/.amplihack/.claude/` installations continue working while supporting the new plugin architecture.
 
 ## Problem
 
 Issue #1948 moves to plugin architecture (`~/.amplihack/.claude/`), but:
-- Existing projects use per-project `.claude/` directories
+- Existing projects use per-project `~/.amplihack/.claude/` directories
 - Users may prefer local over global plugin installation
 - Migration path unclear
 - Risk of breaking existing workflows
@@ -16,7 +16,7 @@ Issue #1948 moves to plugin architecture (`~/.amplihack/.claude/`), but:
 
 Implement dual-mode support:
 1. **Detection:** Automatically detect per-project vs plugin installation
-2. **Preference:** Local `.claude/` takes precedence over plugin
+2. **Preference:** Local `~/.amplihack/.claude/` takes precedence over plugin
 3. **Fallback:** Plugin used if no local installation
 4. **Migration:** Provide tools to migrate between modes
 
@@ -31,7 +31,7 @@ def detect_claude_mode() -> ClaudeMode:
 ```
 
 **Environment:**
-- Current working directory (may have `.claude/`)
+- Current working directory (may have `~/.amplihack/.claude/`)
 - Plugin directory (`~/.amplihack/.claude/`)
 - User preference (explicit override)
 
@@ -46,13 +46,13 @@ class ClaudeMode(Enum):
 ```
 
 **Behavior:**
-- `LOCAL`: Use project's `.claude/` directory
+- `LOCAL`: Use project's `~/.amplihack/.claude/` directory
 - `PLUGIN`: Use plugin installation
 - `NONE`: Install plugin or create local (user choice)
 
 ### Side Effects
 
-- May create `.claude/.mode` file to record user preference
+- May create `~/.amplihack/.claude/.mode` file to record user preference
 - Logs mode selection for debugging
 - No automatic migration (user-initiated only)
 
@@ -552,7 +552,7 @@ def test_migration_workflow(tmp_path, monkeypatch):
 
 ## Success Metrics
 
-- [ ] Local `.claude/` takes precedence over plugin
+- [ ] Local `~/.amplihack/.claude/` takes precedence over plugin
 - [ ] Plugin used when no local installation
 - [ ] Mode detection works correctly
 - [ ] Migration commands work

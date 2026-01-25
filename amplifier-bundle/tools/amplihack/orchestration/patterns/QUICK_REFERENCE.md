@@ -126,7 +126,7 @@ All patterns return `Dict[str, Any]` with:
 
 ## Session Logs
 
-Find logs at: `.claude/runtime/logs/<session_id>/`
+Find logs at: `~/.amplihack/.claude/runtime/logs/<session_id>/`
 
 - `session.log` - Session overview
 - `<process_id>.log` - Individual process logs

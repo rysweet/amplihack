@@ -26,7 +26,7 @@ invokes:
 
 ## Input Validation
 
-@.claude/context/AGENT_INPUT_VALIDATION.md
+@~/.amplihack/.claude/context/AGENT_INPUT_VALIDATION.md
 
 ## Usage
 
@@ -46,14 +46,14 @@ Execute this exact sequence for the task: `{TASK_DESCRIPTION}`
    - **Investigation keywords**: investigate, explain, understand, how does, why does, analyze, research, explore, examine, study
    - **Development keywords**: implement, build, create, add feature, fix, refactor, deploy
    - **If both types detected**: Use hybrid workflow (investigation first, then development)
-   - If only investigation keywords found: Use @.claude/workflow/INVESTIGATION_WORKFLOW.md
-   - If only development keywords found: Use @.claude/workflow/DEFAULT_WORKFLOW.md
+   - If only investigation keywords found: Use @~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md
+   - If only development keywords found: Use @~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md
 2. Mandatory - not doing this wil require rework **Invoke the appropriate workflow skill** using the Skill tool:
    - Investigation: Skill(skill="investigation-workflow")`
    - Development: `Skill(skill="default-workflow")`
    - **FALLBACK**: If skill invocation fails (skill not found), fall back to reading markdown workflows:
-     - Investigation: @.claude/workflow/INVESTIGATION_WORKFLOW.md
-     - Development: @.claude/workflow/DEFAULT_WORKFLOW.md
+     - Investigation: @~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md
+     - Development: @~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md
 3. ALWAYS **Create a comprehensive todo list** using TodoWrite tool that includes all workflow steps/phases
 4. ALWAYS **Execute each step systematically**, marking todos as in_progress and completed
 
@@ -103,7 +103,7 @@ THERE IS NO VALUE in SKIPPING STEPS - DO NOT TAKE SHORTCUTS.
 
 5. **Use the specified agents** for each step (marked with "**Use**" or "**Always use**")
 6. \*\*MANDATORY: Enforce all steps.
-7. **Track decisions** by creating and writing important decisions to `.claude/runtime/logs/<session_timestamp>/DECISIONS.md`
+7. **Track decisions** by creating and writing important decisions to `~/.amplihack/.claude/runtime/logs/<session_timestamp>/DECISIONS.md`
 8. **End with cleanup agent** (development) or knowledge capture (investigation)
 
 ## Task Management
@@ -126,7 +126,7 @@ User: "/ultrathink implement JWT authentication"
 1. Detect: Development task (contains "implement")
 2. Select: default-workflow skill
 3. Try: Skill(skill="default-workflow")
-4. Fallback if needed: Read `.claude/workflow/DEFAULT_WORKFLOW.md`
+4. Fallback if needed: Read `~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md`
 5. Begin executing workflow steps with deep analysis
 6. Orchestrate multiple agents where complexity requires
 7. Follow all workflow steps as defined
@@ -143,7 +143,7 @@ User: "/ultrathink investigate how the reflection system works"
 2. Select: investigation-workflow skill (6 phases)
 3. Inform user: "Detected investigation task. Using investigation-workflow skill"
 4. Try: Skill(skill="investigation-workflow")
-5. Fallback if needed: Read `.claude/workflow/INVESTIGATION_WORKFLOW.md`
+5. Fallback if needed: Read `~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md`
 6. Execute Phase 1: Scope Definition
 7. Execute Phase 2: Exploration Strategy
 8. Execute Phase 3: Parallel Deep Dives (multiple agents simultaneously)

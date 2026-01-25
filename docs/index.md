@@ -13,7 +13,6 @@ amplihack is a development framework for popular coding agent systems (Claude Co
 - [Get Started](#-get-started) - Installation and first steps
 - [Core Concepts](#-core-concepts) - Philosophy and principles
 - [Amplihack Tutorial](tutorials/amplihack-tutorial.md) - Comprehensive 60-90 minute tutorial
-- [First Docs Site Tutorial](tutorials/first-docs-site.md) - Create your first documentation site
 
 **Looking for something specific?**
 
@@ -72,7 +71,7 @@ Centralized plugin system that works across all your projects:
 - [Migration Guide](plugin/MIGRATION.md) - Migrate from per-project to plugin mode
 - [CLI Reference](plugin/CLI_REFERENCE.md) - Complete command-line reference
 
-**Note**: Plugin architecture is **Claude Code only**. Microsoft Amplifier, GitHub Copilot CLI, and Codex use per-project `.claude/` staging instead.
+**Note**: Plugin architecture is **Claude Code only**. Microsoft Amplifier, GitHub Copilot CLI, and Codex use per-project `~/.amplihack/.claude/` staging instead.
 
 ### Installation
 
@@ -88,7 +87,7 @@ Centralized plugin system that works across all your projects:
 
 - Requires: `$ANTHROPIC_API_KEY` environment variable for Anthropic models
 - Plugin mode: Install globally with [Plugin Installation Guide](plugin/INSTALLATION.md)
-- Per-project mode: Copy `.claude/` directory to your project
+- Per-project mode: Copy `~/.amplihack/.claude/` directory to your project
 - Azure OpenAI: Use proxy configuration (see [Proxy Configuration](PROXY_CONFIG_GUIDE.md))
 
 **Microsoft Amplifier**
@@ -112,7 +111,7 @@ amplihack copilot
 
 **Codex**
 
-- Limited support via per-project `.claude/` staging
+- Limited support via per-project `~/.amplihack/.claude/` staging
 - Most features work but may require adaptation
 - Tested primarily with Claude models
 
@@ -343,7 +342,8 @@ Psychological memory model with episodic, semantic, procedural, prospective, and
 - [5-Type Memory Guide](memory/5-TYPE-MEMORY-GUIDE.md) - Complete user guide
 - [Developer Reference](memory/5-TYPE-MEMORY-DEVELOPER.md) - Architecture and API
 - [Quick Reference](memory/5-TYPE-MEMORY-QUICKREF.md) - One-page cheat sheet
-- [Kùzu Schema](memory/KUZU_MEMORY_SCHEMA.md) - Graph database design
+- [Kùzu Memory Schema](memory/KUZU_MEMORY_SCHEMA.md) - Graph database design for 5 memory types
+- [Kùzu Code Schema](memory/KUZU_CODE_SCHEMA.md) - Code graph schema for memory-code linking
 - [Terminal Visualization](memory/MEMORY_TREE_VISUALIZATION.md) - View graph in terminal
 - [Memory System Overview](memory/README.md) - Complete memory documentation
 
@@ -413,15 +413,13 @@ Intelligent guidance system that prevents common mistakes:
 - [Technical Reference](features/power-steering/technical-reference.md) - Developer reference
 - [Changelog v0.9.1](features/power-steering/changelog-v0.9.1.md) - Infinite loop fix release notes
 
-### Trace Logging
+**Compaction Handling** ⭐ NEW
 
-Optional request/response logging for Claude API calls:
+Robust handling of conversation compaction in long sessions:
 
-- [Trace Logging Overview](features/trace-logging.md) - What is trace logging and when to use it
-- [How-To: Trace Logging](howto/trace-logging.md) - Practical recipes for enabling and analyzing traces
-- [Migration: claude-trace to Native](migration/claude-trace-to-native.md) - Upgrade from claude-trace NPM package
-- [API Reference: Trace Logging](reference/trace-logging-api.md) - Technical implementation details
-- [Troubleshooting: Trace Logging](troubleshooting/trace-logging.md) - Fix common trace logging issues
+- [Compaction Overview](power_steering_compaction_overview.md) - What is compaction and how power-steering handles it
+- [Compaction API Reference](power_steering_compaction_api.md) - Developer documentation for CompactionValidator and CompactionContext
+- [How to Customize Power Steering](../.claude/tools/amplihack/HOW_TO_CUSTOMIZE_POWER_STEERING.md#compaction-handling) - Configuration and troubleshooting
 
 ### Other Features
 

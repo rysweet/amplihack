@@ -205,10 +205,10 @@ Plugin installation updates `~/.claude/settings.json`:
 
 ## Backward Compatibility
 
-The plugin system maintains backward compatibility with per-project `.claude/` installations:
+The plugin system maintains backward compatibility with per-project `~/.amplihack/.claude/` installations:
 
 **Mode Detection Precedence:**
-1. **LOCAL**: Project has `.claude/` directory → Use project-local
+1. **LOCAL**: Project has `~/.amplihack/.claude/` directory → Use project-local
 2. **PLUGIN**: Plugin installed at `~/.amplihack/.claude/` → Use plugin
 3. **NONE**: No installation found → Prompt user t' install
 
@@ -237,7 +237,7 @@ AMPLIHACK_MODE=plugin amplihack launch
 
 ### GitHub Copilot ⚠️
 - **Status**: Partial compatibility
-- **Installation**: Manual copy t' project `.claude/` directory
+- **Installation**: Manual copy t' project `~/.amplihack/.claude/` directory
 - **Limitations**: No plugin system (yet), hooks may not work
 - **Workaround**: Use per-project installation mode
 
@@ -340,7 +340,7 @@ cat ~/.amplihack/.claude/tools/amplihack/hooks/hooks.json
 
 ### Mode Conflicts
 
-**Symptom**: Plugin and local `.claude/` both present
+**Symptom**: Plugin and local `~/.amplihack/.claude/` both present
 
 **Diagnosis**:
 ```bash
@@ -364,4 +364,4 @@ amplihack mode status
 
 - **Install Plugin**: See [README.md Plugin Section](../README.md#plugin-installation)
 - **Migrate Project**: See [MIGRATION_GUIDE.md](./MIGRATION_GUIDE.md)
-- **Customize**: Create local `.claude/` fer project-specific agents
+- **Customize**: Create local `~/.amplihack/.claude/` fer project-specific agents

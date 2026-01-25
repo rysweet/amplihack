@@ -331,7 +331,7 @@ This skill is based on amplihack's core principles:
 - **Zero-BS Code**: Only working implementations, no stubs
 - **Single Responsibility**: Each function/class does ONE thing
 
-See `.claude/context/PHILOSOPHY.md` for complete philosophy.
+See `~/.amplihack/.claude/context/PHILOSOPHY.md` for complete philosophy.
 
 ## Success Indicators
 

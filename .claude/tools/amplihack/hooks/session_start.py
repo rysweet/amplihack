@@ -188,6 +188,22 @@ class SessionStartHook(HookProcessor):
             self.log("Neo4j not enabled (use --enable-neo4j-memory to enable)")
             self.save_metric("neo4j_enabled", False)
 
+        # Check and update .gitignore for runtime directories
+        try:
+            from gitignore_checker import GitignoreChecker
+
+            checker = GitignoreChecker()
+            result = checker.run(display_warnings=True)
+            if result.get("modified"):
+                print(result.get("warning_message", ""), file=sys.stderr)
+                self.save_metric("gitignore_modified", True)
+        except ImportError:
+            # gitignore_checker not available (shouldn't happen)
+            self.log("gitignore_checker module not found", "WARNING")
+        except Exception as e:
+            # Fail-safe: don't break session start
+            self.log(f"Gitignore check failed (non-critical): {e}", "WARNING")
+
         # Build context if needed
         context_parts = []
 

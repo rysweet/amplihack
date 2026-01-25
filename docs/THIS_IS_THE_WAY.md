@@ -149,7 +149,7 @@ Please run these agents in parallel:
 
 ## Philosophy: Ruthless Simplicity
 
-Amplihack follows the philosophy documented in `.claude/context/PHILOSOPHY.md`. Understanding and applying these principles makes you vastly more effective.
+Amplihack follows the philosophy documented in `~/.amplihack/.claude/context/PHILOSOPHY.md`. Understanding and applying these principles makes you vastly more effective.
 
 ### The Core Principles in Practice
 

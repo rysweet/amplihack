@@ -154,7 +154,7 @@ All capability skills scored 40.0-50.0 (HIGH priority).
 Skills are automatically discovered from:
 
 - User settings: `~/.config/claude/skills/`
-- Project settings: `.claude/skills/`
+- Project settings: `~/.amplihack/.claude/skills/`
 - Plugin-provided skills
 - Built-in skills
 

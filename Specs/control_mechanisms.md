@@ -8,7 +8,7 @@ Define all ways to enable/disable power-steering mode.
 
 ### Layer 1: Configuration File (Persistent)
 
-- **File**: `.claude/tools/amplihack/.power_steering_config`
+- **File**: `~/.amplihack/.claude/tools/amplihack/.power_steering_config`
 - **Format**: JSON
 - **Scope**: Project-wide, persists across sessions
 - **Priority**: Lowest (overridden by env var and semaphore)
@@ -22,7 +22,7 @@ Define all ways to enable/disable power-steering mode.
 
 ### Layer 3: Semaphore File (Runtime)
 
-- **File**: `.claude/runtime/power-steering/.disabled`
+- **File**: `~/.amplihack/.claude/runtime/power-steering/.disabled`
 - **Format**: Empty file (existence check only)
 - **Scope**: Project-wide, persists until removed
 - **Priority**: Highest (overrides everything)
@@ -45,7 +45,7 @@ Disabling power-steering mode...
 This will create a semaphore file that prevents power-steering from running on session stops.
 ```
 
-**Action**: Create `.claude/runtime/power-steering/.disabled` file
+**Action**: Create `~/.amplihack/.claude/runtime/power-steering/.disabled` file
 
 **Code** (Claude Code handles via simple Write tool):
 
@@ -71,7 +71,7 @@ Enabling power-steering mode...
 This will remove the semaphore file that disables power-steering.
 ```
 
-**Action**: Remove `.claude/runtime/power-steering/.disabled` file
+**Action**: Remove `~/.amplihack/.claude/runtime/power-steering/.disabled` file
 
 **Code** (Claude Code handles via simple Bash tool):
 

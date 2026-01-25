@@ -149,16 +149,7 @@ def _launch_command_impl(
     Returns:
         Exit code.
     """
-    # Set environment variable for Neo4j opt-in (Why: Makes flag accessible to session hooks)
-    if getattr(args, "use_graph_mem", False):
-        os.environ["AMPLIHACK_USE_GRAPH_MEM"] = "1"
-        print("Neo4j graph memory enabled")
-
-        # Set container name if provided
-        if getattr(args, "use_memory_db", None):
-            # Store in environment for session hooks to access
-            os.environ["NEO4J_CONTAINER_NAME_CLI"] = args.use_memory_db
-            print(f"Using Neo4j container: {args.use_memory_db}")
+    # Neo4j flags removed (Week 7 cleanup) - Kuzu is now the only backend
 
     # Check if Docker should be used (CLI flag takes precedence over env var)
     use_docker = getattr(args, "docker", False) or DockerManager.should_use_docker()
@@ -167,7 +158,7 @@ def _launch_command_impl(
     if getattr(args, "no_reflection", False):
         os.environ["AMPLIHACK_SKIP_REFLECTION"] = "1"
 
-    # Handle --auto flag (for Neo4j container selection non-interactive mode)
+    # Handle --auto flag
     if getattr(args, "auto", False):
         os.environ["AMPLIHACK_AUTO_MODE"] = "1"
 
@@ -437,22 +428,7 @@ def add_claude_specific_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def add_neo4j_args(parser: argparse.ArgumentParser) -> None:
-    """Add Neo4j graph memory arguments to a parser.
-
-    Args:
-        parser: ArgumentParser to add arguments to.
-    """
-    parser.add_argument(
-        "--use-graph-mem",
-        action="store_true",
-        help="Enable Neo4j graph memory system (opt-in). Requires Docker. See docs/NEO4J.md for setup.",
-    )
-    parser.add_argument(
-        "--use-memory-db",
-        metavar="NAME",
-        help="Specify Neo4j container name (e.g., amplihack-myproject). Works with --use-graph-mem.",
-    )
+# Neo4j arguments removed (Week 7 cleanup) - Kuzu is now the only backend
 
 
 def create_parser() -> argparse.ArgumentParser:
@@ -504,14 +480,12 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     )
     add_claude_specific_args(launch_parser)
     add_auto_mode_args(launch_parser)
-    add_neo4j_args(launch_parser)
     add_common_sdk_args(launch_parser)
 
     # Claude command (alias for launch)
     claude_parser = subparsers.add_parser("claude", help="Launch Claude Code (alias for launch)")
     add_claude_specific_args(claude_parser)
     add_auto_mode_args(claude_parser)
-    add_neo4j_args(claude_parser)
     add_common_sdk_args(claude_parser)
 
     # RustyClawd command (Rust implementation)
@@ -520,7 +494,6 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     )
     add_claude_specific_args(rustyclawd_parser)
     add_auto_mode_args(rustyclawd_parser)
-    add_neo4j_args(rustyclawd_parser)
     add_common_sdk_args(rustyclawd_parser)
 
     # Copilot command
@@ -683,23 +656,19 @@ def _configure_amplihack_marketplace() -> bool:
 
         # Add marketplace if not present
         if "extraKnownMarketplaces" not in settings:
-            settings["extraKnownMarketplaces"] = []
-        elif not isinstance(settings["extraKnownMarketplaces"], list):
-            # Auto-repair corrupted settings from old bug (dict → list)
-            settings["extraKnownMarketplaces"] = []
+            settings["extraKnownMarketplaces"] = {}
+        elif not isinstance(settings["extraKnownMarketplaces"], dict):
+            # Auto-repair corrupted settings from old bug (list/array → dict)
+            settings["extraKnownMarketplaces"] = {}
 
-        # Check if amplihack marketplace already exists in the list
-        marketplace_exists = any(
-            isinstance(m, dict) and m.get("name") == "amplihack"
-            for m in settings["extraKnownMarketplaces"]
-        )
-
-        if not marketplace_exists:
-            settings["extraKnownMarketplaces"].append({
-                "name": "amplihack",
-                "url": "https://github.com/rysweet/amplihack",
-                "type": "github"
-            })
+        # Check if amplihack marketplace already exists
+        if "amplihack" not in settings["extraKnownMarketplaces"]:
+            settings["extraKnownMarketplaces"]["amplihack"] = {
+                "source": {
+                    "source": "github",
+                    "repo": "rysweet/amplihack",
+                }
+            }
 
             # Write atomically
             with open(settings_path, "w") as f:
@@ -719,13 +688,17 @@ def _configure_amplihack_marketplace() -> bool:
 
 
 def _fallback_to_directory_copy(reason: str = "Plugin installation failed") -> str:
-    """Fallback to directory copy mode when plugin installation is not available.
+    """Copy .claude directory to ~/.amplihack/.claude/ (primary install location).
+
+    This is the primary mechanism for deploying amplihack's .claude components
+    to the user's home directory. Used both as a fallback when Claude Code plugin
+    installation is unavailable AND as the primary method for amplifier command.
 
     Args:
-        reason: Reason for fallback (for debug logging)
+        reason: Reason for using directory copy (for debug logging)
 
     Returns:
-        Path to temporary .claude directory
+        Path to ~/.amplihack/.claude directory
 
     Raises:
         SystemExit: If directory copy fails
@@ -735,15 +708,15 @@ def _fallback_to_directory_copy(reason: str = "Plugin installation failed") -> s
     if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
         print(f"   Reason: {reason}")
 
-    temp_claude_dir = str(Path.home() / ".amplihack" / ".claude")
+    install_dir = str(Path.home() / ".amplihack" / ".claude")
     amplihack_src = Path(amplihack.__file__).parent
-    Path(temp_claude_dir).mkdir(parents=True, exist_ok=True)
-    copied = copytree_manifest(str(amplihack_src), temp_claude_dir, ".claude")
+    Path(install_dir).mkdir(parents=True, exist_ok=True)
+    copied = copytree_manifest(str(amplihack_src), install_dir, ".claude")
     if not copied:
         print("❌ Failed to copy .claude directory")
         sys.exit(1)
 
-    return temp_claude_dir
+    return install_dir
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -806,12 +779,11 @@ def main(argv: list[str] | None = None) -> int:
 
         # Setup plugin architecture
         # .claude-plugin is copied to src/amplihack/.claude-plugin/ by build_hooks.py
-        import amplihack  # noqa: F401 - needed for package path resolution
 
         # Skip Claude Code plugin installation for amplifier command
         # Amplifier uses its own bundle system and doesn't need the Claude Code plugin
         if args.command == "amplifier":
-            # For amplifier, just copy files to ~/.amplihack/.claude (fallback mode)
+            # For amplifier, copy files to ~/.amplihack/.claude (primary install location)
             # The Amplifier bundle system expects files here
             if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                 print("📦 Amplifier command detected - skipping Claude Code plugin installation")
@@ -844,6 +816,34 @@ def main(argv: list[str] | None = None) -> int:
                     env = os.environ.copy()
                     env["TMPDIR"] = str(claude_temp_dir)
 
+                    # Step 2a: Sync marketplace to known_marketplaces.json
+                    # extraKnownMarketplaces in settings.json is for IDE, not CLI
+                    # We need to explicitly add the marketplace for CLI to find it
+                    marketplace_add_result = subprocess.run(
+                        [
+                            claude_path,
+                            "plugin",
+                            "marketplace",
+                            "add",
+                            "https://github.com/rysweet/amplihack",
+                        ],
+                        capture_output=True,
+                        text=True,
+                        timeout=60,
+                        check=False,
+                        env=env,
+                    )
+
+                    if marketplace_add_result.returncode != 0:
+                        if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                            print(
+                                f"⚠️  Marketplace add failed (may already exist): {marketplace_add_result.stderr}"
+                            )
+                    else:
+                        if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                            print("✅ Amplihack marketplace added to known marketplaces")
+
+                    # Step 2b: Install plugin from marketplace
                     result = subprocess.run(
                         [claude_path, "plugin", "install", "amplihack"],
                         capture_output=True,
@@ -1128,11 +1128,11 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "plugin":
         if args.plugin_command == "install":
             return plugin_install_command(args)
-        elif args.plugin_command == "uninstall":
+        if args.plugin_command == "uninstall":
             return plugin_uninstall_command(args)
-        elif args.plugin_command == "verify":
+        if args.plugin_command == "verify":
             return plugin_verify_command(args)
-        elif args.plugin_command == "link":
+        if args.plugin_command == "link":
             plugin_name = args.plugin_name
             plugin_root = Path.home() / ".amplihack" / "plugins"
             plugin_path = plugin_root / plugin_name
@@ -1149,13 +1149,11 @@ def main(argv: list[str] | None = None) -> int:
                 print("  Settings updated in: ~/.claude/settings.json")
                 print("  Plugin should now appear in /plugin command")
                 return 0
-            else:
-                print(f"Error: Failed to link plugin: {plugin_name}")
-                return 1
-
-        else:
-            create_parser().print_help()
+            print(f"Error: Failed to link plugin: {plugin_name}")
             return 1
+
+        create_parser().print_help()
+        return 1
 
     elif args.command == "memory":
         if args.memory_command == "tree":
@@ -1257,7 +1255,7 @@ def main(argv: list[str] | None = None) -> int:
                 print("Install amplihack with: amplihack install")
             return 0
 
-        elif args.mode_command == "to-plugin":
+        if args.mode_command == "to-plugin":
             migrator = MigrationHelper()
             project_dir = Path.cwd()
 
@@ -1281,11 +1279,10 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"{EMOJI['check']} Migrated to plugin mode successfully")
                 print("Local .claude/ removed, using plugin installation")
                 return 0
-            else:
-                print("Migration failed")
-                return 1
+            print("Migration failed")
+            return 1
 
-        elif args.mode_command == "to-local":
+        if args.mode_command == "to-local":
             migrator = MigrationHelper()
             project_dir = Path.cwd()
             info = migrator.get_migration_info(project_dir)
@@ -1310,13 +1307,11 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"{EMOJI['check']} Local .claude/ created successfully")
                 print("Now using project-local installation")
                 return 0
-            else:
-                print("Migration failed")
-                return 1
-
-        else:
-            create_parser().print_help()
+            print("Migration failed")
             return 1
+
+        create_parser().print_help()
+        return 1
 
     else:
         create_parser().print_help()

@@ -356,10 +356,10 @@ python session_state.py show
 
 ## References
 
-- **Source Specification**: `.claude/context/AMPLIFIER_PATTERNS_FOR_PM_ARCHITECT.md`
-- **PM Architect Skill**: `.claude/skills/pm-architect/SKILL.md`
+- **Source Specification**: `~/.amplihack/.claude/context/AMPLIFIER_PATTERNS_FOR_PM_ARCHITECT.md`
+- **PM Architect Skill**: `~/.amplihack/.claude/skills/pm-architect/SKILL.md`
 - **Amplifier Wisdom**: Microsoft Amplifier THIS_IS_THE_WAY.md patterns
-- **Implementation Scripts**: `.claude/skills/pm-architect/scripts/`
+- **Implementation Scripts**: `~/.amplihack/.claude/skills/pm-architect/scripts/`
 
 ---
 

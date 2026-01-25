@@ -23,7 +23,7 @@ CONSIDERATIONS = [
 
 ## Phase 2: External File
 
-Move to `.claude/tools/amplihack/considerations/default.json`:
+Move to `~/.amplihack/.claude/tools/amplihack/considerations/default.json`:
 
 ```json
 {

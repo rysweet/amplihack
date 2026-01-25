@@ -483,7 +483,7 @@ amplihack memory disable
 ### For Users
 
 1. Wait for implementation complete
-2. Enable memory: Edit `.claude/runtime/memory/.config`
+2. Enable memory: Edit `~/.amplihack/.claude/runtime/memory/.config`
 3. Use agents normally
 4. Watch memory context appear in logs
 

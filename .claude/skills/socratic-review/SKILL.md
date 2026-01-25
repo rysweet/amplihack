@@ -267,7 +267,7 @@ This skill is based on:
 
 ## Related
 
-- **Agent**: `.claude/agents/amplihack/specialized/socratic-reviewer.md`
+- **Agent**: `~/.amplihack/.claude/agents/amplihack/specialized/socratic-reviewer.md`
 - **Traditional Review**: `/reviewing-code` skill for direct feedback
 - **Philosophy Check**: `philosophy-guardian` agent for compliance
 

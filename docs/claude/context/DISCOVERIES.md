@@ -59,7 +59,7 @@ What insights should be remembered?
 
 ### Problem
 
-User reported: "amplihack's copytree_manifest fails when .claude/ has uncommitted changes" specifically with `.claude/.version` file modified. Despite having a comprehensive safety system (GitConflictDetector + SafeCopyStrategy), deployment proceeded without warning and created a version mismatch state.
+User reported: "amplihack's copytree_manifest fails when .claude/ has uncommitted changes" specifically with `~/.amplihack/.claude/.version` file modified. Despite having a comprehensive safety system (GitConflictDetector + SafeCopyStrategy), deployment proceeded without warning and created a version mismatch state.
 
 ### Root Cause
 
@@ -77,7 +77,7 @@ The `.version` file is a **system-generated tracking file** that stores the git 
 
 3. **ESSENTIAL_DIRS Are All Subdirectories**: `["agents/amplihack", "commands/amplihack", "context/", ...]` - all contain "/"
 
-4. **Root-Level Files Filtered Out**: `.version` at `.claude/.version` doesn't match any pattern → filtered OUT → `has_conflicts = False`
+4. **Root-Level Files Filtered Out**: `.version` at `~/.amplihack/.claude/.version` doesn't match any pattern → filtered OUT → `has_conflicts = False`
 
 5. **No Warning Issued**: SafeCopyStrategy sees no conflicts, proceeds to working directory without prompting user
 
@@ -158,7 +158,7 @@ def _filter_conflicts(
 Test cases added:
 
 - Uncommitted `.version` doesn't trigger conflict warning ✅
-- Uncommitted user content (`.claude/context/custom.md`) DOES trigger warning ✅
+- Uncommitted user content (`~/.amplihack/.claude/context/custom.md`) DOES trigger warning ✅
 - Deployment proceeds smoothly with modified `.version` ✅
 - Version mismatch detection still works correctly ✅
 
@@ -777,7 +777,7 @@ This discovery strengthens and validates existing principles:
 
 ### Files Referenced
 
-- PBZFT Analysis: `.claude/runtime/logs/[session]/pbzft_analysis.md`
+- PBZFT Analysis: `~/.amplihack/.claude/runtime/logs/[session]/pbzft_analysis.md`
 - N-Version Pattern: Already implemented in amplihack
 - Threat Modeling: Aligns with security agent principles
 - Complexity Analysis: Informed by PHILOSOPHY.md simplicity mandate
@@ -838,8 +838,8 @@ Successfully executed 13 parallel full-workflow tasks simultaneously, converting
    - Quick mode for common issues
 
 4. **Documentation-First Approach**: Templates and workflows provided clear guidance
-   - Message templates (.claude/data/message_templates/)
-   - Fix templates (.claude/data/fix_templates/)
+   - Message templates (~/.amplihack/.claude/data/message_templates/)
+   - Fix templates (~/.amplihack/.claude/data/fix_templates/)
    - Workflow documentation (docs/workflows/)
 
 ### Solution Patterns That Worked
@@ -994,8 +994,8 @@ git cherry-pick origin/main
 
 **Templates Created:**
 
-- `.claude/data/message_templates/` (various)
-- `.claude/data/fix_templates/` (import, config, quality, etc.)
+- `~/.amplihack/.claude/data/message_templates/` (various)
+- `~/.amplihack/.claude/data/fix_templates/` (import, config, quality, etc.)
 
 **Workflows Documented:**
 
@@ -1140,14 +1140,14 @@ Settings validation failed:
 - Schema validation confirms format is correct
 - **Two separate Python processes** spawn anyway (different PIDs)
 
-**From `.claude/runtime/logs/session_start.log`**:
+**From `~/.amplihack/.claude/runtime/logs/session_start.log`**:
 
 ```
 [2025-11-21T13:01:07.113446] INFO: session_start hook starting (Python 3.13.9)
 [2025-11-21T13:01:07.113687] INFO: session_start hook starting (Python 3.13.9)
 ```
 
-**From `.claude/runtime/logs/stop.log`**:
+**From `~/.amplihack/.claude/runtime/logs/stop.log`**:
 
 ```
 [2025-11-20T21:37:05.173846] INFO: stop hook starting (Python 3.13.9)
@@ -1255,10 +1255,10 @@ Configuration correctness verified:
 
 ### Files Analyzed
 
-- `.claude/settings.json` (1 SessionStart hook, 1 Stop hook)
-- `.claude/tools/amplihack/hooks/session_start.py` (hook implementation)
-- `.claude/runtime/logs/session_start.log` (execution evidence)
-- `.claude/runtime/logs/stop.log` (execution evidence)
+- `~/.amplihack/.claude/settings.json` (1 SessionStart hook, 1 Stop hook)
+- `~/.amplihack/.claude/tools/amplihack/hooks/session_start.py` (hook implementation)
+- `~/.amplihack/.claude/runtime/logs/session_start.log` (execution evidence)
+- `~/.amplihack/.claude/runtime/logs/stop.log` (execution evidence)
 - Claude Code schema (hook format requirements)
 
 ---
@@ -1345,8 +1345,8 @@ priority: high
 
 **Expert Agents:**
 
-- `.claude/agents/amplihack/specialized/rust-programming-expert.md` (156 lines)
-- `.claude/agents/amplihack/specialized/azure-kubernetes-expert.md` (262 lines)
+- `~/.amplihack/.claude/agents/amplihack/specialized/rust-programming-expert.md` (156 lines)
+- `~/.amplihack/.claude/agents/amplihack/specialized/azure-kubernetes-expert.md` (262 lines)
 
 **Rust Knowledge Base:**
 
@@ -1356,9 +1356,9 @@ priority: high
 
 **Azure AKS Knowledge Base:**
 
-- `.claude/data/azure_aks_expert/Knowledge.md` (986 lines, 30+ examples)
-- `.claude/data/azure_aks_expert/KeyInfo.md` (172 lines)
-- `.claude/data/azure_aks_expert/HowToUseTheseFiles.md` (275 lines)
+- `~/.amplihack/.claude/data/azure_aks_expert/Knowledge.md` (986 lines, 30+ examples)
+- `~/.amplihack/.claude/data/azure_aks_expert/KeyInfo.md` (172 lines)
+- `~/.amplihack/.claude/data/azure_aks_expert/HowToUseTheseFiles.md` (275 lines)
 
 **Rust Log Parser (demonstrating knowledge application):**
 

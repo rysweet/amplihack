@@ -79,13 +79,13 @@ amplihack copilot --auto -- -p "implement caching layer"
 When using Copilot CLI (not in auto mode), you can manually invoke subagents:
 
 ```bash
-copilot --allow-all-tools -p "Include @.claude/agents/amplihack/core/architect.md -- Design a caching layer for the API"
+copilot --allow-all-tools -p "Include @~/.amplihack/.claude/agents/amplihack/core/architect.md -- Design a caching layer for the API"
 ```
 
 Or use commands:
 
 ```bash
-copilot --allow-all-tools -p "Include @.claude/commands/amplihack/test.md -- Run all unit tests"
+copilot --allow-all-tools -p "Include @~/.amplihack/.claude/commands/amplihack/test.md -- Run all unit tests"
 ```
 
 ## Auto Mode Example Workflow
@@ -215,7 +215,7 @@ cat .claude/runtime/logs/auto_copilot_*/auto.log
 2. **Test prompts**: Run with `-p` first to see how Copilot responds
 3. **Review changes**: Always review what auto mode did before committing
 4. **Use appropriate max-turns**: Don't set too high for simple tasks
-5. **Check logs**: Review `.claude/runtime/logs/` to understand behavior
+5. **Check logs**: Review `~/.amplihack/.claude/runtime/logs/` to understand behavior
 
 ## See Also
 

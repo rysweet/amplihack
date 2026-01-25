@@ -288,14 +288,14 @@ python .claude/scenarios/az-devops-tools/link_parent.py \
 
 ## Tool Implementation
 
-All tools are in `.claude/scenarios/az-devops-tools/`:
+All tools are in `~/.amplihack/.claude/scenarios/az-devops-tools/`:
 
 - Standalone Python programs (can run independently)
 - Importable modules (can use in other scripts)
 - Comprehensive error handling
 - Tests in `tests/` directory
 
-See: [Tool README](.claude/scenarios/az-devops-tools/README.md)
+See: [Tool README](~/.amplihack/.claude/scenarios/az-devops-tools/README.md)
 
 ## Philosophy
 

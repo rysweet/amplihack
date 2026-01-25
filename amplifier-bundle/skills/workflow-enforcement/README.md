@@ -28,7 +28,7 @@ Claude: *loads skill, creates workflow_state.yaml or TodoWrite entries, displays
 
 ## Key Features
 
-1. **State Tracking Pattern**: Track progress via TodoWrite or `.claude/runtime/workflow_state.yaml`
+1. **State Tracking Pattern**: Track progress via TodoWrite or `~/.amplihack/.claude/runtime/workflow_state.yaml`
 2. **Visual Progress**: `[######............] 6/22 Steps Complete` after each step
 3. **Mandatory Gates (Guidance)**: Reminds Claude to complete Step 10 before Step 15 (PR creation)
 4. **Completion Validation (Guidance)**: Steps 10, 16, 17 required before Step 21
@@ -45,8 +45,8 @@ Claude: *loads skill, creates workflow_state.yaml or TodoWrite entries, displays
 
 ## State File Format
 
-**Template**: `.claude/templates/workflow_state.yaml.template`
-**Active**: `.claude/runtime/workflow_state.yaml`
+**Template**: `~/.amplihack/.claude/templates/workflow_state.yaml.template`
+**Active**: `~/.amplihack/.claude/runtime/workflow_state.yaml`
 
 ```yaml
 workflow_id: "session_20251125_143022"
@@ -121,10 +121,10 @@ Mandatory gates: 0[X] 10[>] 16[ ] 17[ ]
 
 ## Related Files
 
-- `.claude/workflow/DEFAULT_WORKFLOW.md` - Canonical workflow definition
-- `.claude/templates/workflow_state.yaml.template` - State file template
-- `.claude/tools/amplihack/hooks/workflow_tracker.py` - Historical logging
-- `.claude/tools/amplihack/considerations.yaml` - Power steering checks
+- `~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md` - Canonical workflow definition
+- `~/.amplihack/.claude/templates/workflow_state.yaml.template` - State file template
+- `~/.amplihack/.claude/tools/amplihack/hooks/workflow_tracker.py` - Historical logging
+- `~/.amplihack/.claude/tools/amplihack/considerations.yaml` - Power steering checks
 
 ## Reference
 

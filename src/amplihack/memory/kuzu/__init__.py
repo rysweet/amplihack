@@ -21,6 +21,7 @@ Installation:
     # (kuzu is now a required dependency)
 """
 
+from .code_graph import KuzuCodeGraph, run_blarify
 from .connector import KUZU_AVAILABLE, KuzuConnector
 
-__all__ = ["KuzuConnector", "KUZU_AVAILABLE"]
+__all__ = ["KuzuConnector", "KUZU_AVAILABLE", "KuzuCodeGraph", "run_blarify"]

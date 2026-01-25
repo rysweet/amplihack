@@ -112,7 +112,7 @@ After completing an investigation, offer to create persistent documentation to p
 >
 > Shall I create a permanent record of this investigation in the ship's logs (documentation)?
 >
-> This would create `.claude/docs/[TYPE]_[TOPIC].md` with:
+> This would create `~/.amplihack/.claude/docs/[TYPE]_[TOPIC].md` with:
 >
 > - Findings summary
 > - Architecture diagrams
@@ -137,7 +137,7 @@ Choose the appropriate documentation type based on investigation focus:
 - Design pattern documentation
 - Architectural decision records
 
-**Template**: `.claude/templates/architecture-doc-template.md`
+**Template**: `~/.amplihack/.claude/templates/architecture-doc-template.md`
 
 #### 2. Investigation Documentation (`INVESTIGATION_[TOPIC].md`)
 
@@ -149,7 +149,7 @@ Choose the appropriate documentation type based on investigation focus:
 - Feature explorations
 - System behavior analysis
 
-**Template**: `.claude/templates/investigation-doc-template.md`
+**Template**: `~/.amplihack/.claude/templates/investigation-doc-template.md`
 
 ### Generation Process
 
@@ -169,7 +169,7 @@ Follow these steps to generate documentation:
    - **System Integration**: How components work together
    - **Verification Steps**: Steps to verify understanding (from testing)
    - **Examples**: Practical examples demonstrating findings
-6. **Generate File**: Create `.claude/docs/[TYPE]_[TOPIC].md` with populated content
+6. **Generate File**: Create `~/.amplihack/.claude/docs/[TYPE]_[TOPIC].md` with populated content
 7. **Confirm**: Notify user of documentation creation and location
 
 ### Template Variable Mapping
@@ -198,7 +198,7 @@ When populating templates, map investigation findings to template variables:
 >
 > Shall I create a permanent record of this investigation in the ship's logs (documentation)?
 >
-> This would create `.claude/docs/ARCHITECTURE_USER_PREFERENCES_HOOKS.md` with:
+> This would create `~/.amplihack/.claude/docs/ARCHITECTURE_USER_PREFERENCES_HOOKS.md` with:
 >
 > - Findings summary explaining the integration pattern
 > - Architecture diagram showing preference → hook flow
@@ -213,10 +213,10 @@ When populating templates, map investigation findings to template variables:
 
 1. Topic: "USER_PREFERENCES_HOOKS"
 2. Type: "ARCHITECTURE" (system integration focus)
-3. Template: `.claude/templates/architecture-doc-template.md`
+3. Template: `~/.amplihack/.claude/templates/architecture-doc-template.md`
 4. Populate sections with investigation findings
-5. Create: `.claude/docs/ARCHITECTURE_USER_PREFERENCES_HOOKS.md`
-6. Confirm: "Documentation created at `.claude/docs/ARCHITECTURE_USER_PREFERENCES_HOOKS.md`"
+5. Create: `~/.amplihack/.claude/docs/ARCHITECTURE_USER_PREFERENCES_HOOKS.md`
+6. Confirm: "Documentation created at `~/.amplihack/.claude/docs/ARCHITECTURE_USER_PREFERENCES_HOOKS.md`"
 
 **If User Declines**:
 
@@ -224,7 +224,7 @@ When populating templates, map investigation findings to template variables:
 - No documentation created
 - No error or negative feedback
 
-### Integration with INVESTIGATION_WORKFLOW.md
+### Integration with Investigation Workflow
 
 This documentation capability integrates with the investigation workflow as **Step 6: Capture Findings in Documentation (Optional)**.
 
@@ -235,7 +235,7 @@ The workflow handles:
 - Optional nature (skippable step)
 - Workflow continuation (whether accepted or declined)
 
-See `.claude/workflow/INVESTIGATION_WORKFLOW.md` for complete integration details.
+See `Skill(skill="investigation-workflow")` for complete integration details.
 
 ### Best Practices
 
@@ -264,19 +264,19 @@ See `.claude/workflow/INVESTIGATION_WORKFLOW.md` for complete integration detail
 
 Documentation templates are located at:
 
-- `.claude/templates/investigation-doc-template.md`
-- `.claude/templates/architecture-doc-template.md`
+- `~/.amplihack/.claude/templates/investigation-doc-template.md`
+- `~/.amplihack/.claude/templates/architecture-doc-template.md`
 
-See `.claude/templates/README.md` for template usage details and examples.
+See `~/.amplihack/.claude/templates/README.md` for template usage details and examples.
 
 ### Documentation Storage
 
 Generated documentation is saved to:
 
-- `.claude/docs/ARCHITECTURE_[TOPIC].md` (architecture investigations)
-- `.claude/docs/INVESTIGATION_[TOPIC].md` (general investigations)
+- `~/.amplihack/.claude/docs/ARCHITECTURE_[TOPIC].md` (architecture investigations)
+- `~/.amplihack/.claude/docs/INVESTIGATION_[TOPIC].md` (general investigations)
 
-The `.claude/docs/` directory is created automatically if it doesn't exist.
+The `~/.amplihack/.claude/docs/` directory is created automatically if it doesn't exist.
 
 ## Remember
 
