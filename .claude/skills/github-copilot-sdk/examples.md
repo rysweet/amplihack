@@ -473,8 +473,7 @@ def analyze_code_file():
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": "Review this code for bugs and improvements:"},
-                    {"type": "text", "text": f"```python\n{code}\n```"}
+                    {"type": "text", "text": "Review this code for bugs and improvements:\n\n" + code}
                 ]
             }
         ],
@@ -500,7 +499,7 @@ def analyze_with_context():
     for filename, code in files.items():
         content_parts.append({
             "type": "text",
-            "text": f"\n\n**{filename}:**\n```python\n{code}\n```"
+            "text": "\n\n**" + filename + ":**\n" + code
         })
     
     response = client.chat.completions.create(

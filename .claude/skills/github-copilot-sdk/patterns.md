@@ -837,6 +837,7 @@ try:
     )
 except asyncio.TimeoutError:
     # Handle timeout
+    response = handle_timeout()
 ```
 
 ---
