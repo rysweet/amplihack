@@ -1,17 +1,17 @@
 # Blarify Code Graph Integration
 
-Complete integration of [blarify](https://github.com/blarApp/blarify) code graph with Neo4j memory system.
+Complete integration of [blarify](https://github.com/blarApp/blarify) code graph with Kuzu embedded database.
 
 ## Overview
 
 This integration allows the memory system to understand code structure by:
 
-1. Converting codebase to graph representation via blarify
-2. Storing code nodes (files, classes, functions) in Neo4j
+1. Converting codebase to graph representation via vendored blarify
+2. Storing code nodes (files, classes, functions) in Kuzu embedded database
 3. Linking code to memories for context-aware retrieval
 4. Querying code relationships for agent decision-making
 
-**Key Feature**: Code graph and memory graph live in the SAME Neo4j database, enabling powerful cross-domain queries.
+**Key Feature**: Uses Kuzu embedded database (NO Neo4j required) - no Docker containers, no server setup!
 
 ## Architecture
 
@@ -57,17 +57,10 @@ Code schema extends existing memory schema:
 
 ### Prerequisites
 
-1. **Neo4j Running**: Memory system Neo4j instance
-2. **Blarify Installed** (optional for testing):
+1. **Kuzu** - Installed automatically with amplihack (embedded database, no setup needed)
+2. **Vendored blarify** - Included in `src/amplihack/vendor/blarify/` (no separate install needed)
 
-   ```bash
-   pip install blarify
-   ```
-
-3. **Optional SCIP for Speed** (330x faster):
-   ```bash
-   npm install -g @sourcegraph/scip-python
-   ```
+**That's it!** No Docker, no Neo4j container, no external database setup required.
 
 ### Supported Languages
 
