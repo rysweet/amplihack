@@ -17,20 +17,20 @@ def get_uv_tool_bin_dir() -> Path | None:
         Path.home() / ".local" / "bin",  # Linux/macOS default
         Path.home() / ".cargo" / "bin",  # Alternative location
     ]
-    
+
     # Also check UV_TOOL_BIN_DIR environment variable
     if env_dir := os.environ.get("UV_TOOL_BIN_DIR"):
         candidates.insert(0, Path(env_dir))
-    
+
     for candidate in candidates:
         if candidate.exists() and (candidate / "amplifier").exists():
             return candidate
-    
+
     # Return first candidate even if amplifier not there yet (for post-install)
     for candidate in candidates:
         if candidate.exists():
             return candidate
-    
+
     return None
 
 
@@ -45,7 +45,7 @@ def check_amplifier() -> bool:
     """Check if Amplifier CLI is installed."""
     # Ensure uv bin dir is in PATH
     ensure_uv_bin_in_path()
-    
+
     try:
         result = subprocess.run(
             ["amplifier", "--version"], capture_output=True, timeout=5, check=False
@@ -233,6 +233,44 @@ def ensure_bundle_registered(bundle_path: Path) -> bool:
         return False
 
 
+def upgrade_amplifier() -> bool:
+    """Upgrade Amplifier CLI to the latest version.
+
+    Returns:
+        True if upgrade succeeded (or was not needed), False otherwise
+    """
+    print("Checking for Amplifier updates...")
+    try:
+        result = subprocess.run(
+            ["uv", "tool", "upgrade", "amplifier"],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=60,
+        )
+        if result.returncode == 0:
+            # Check if actually upgraded or already latest
+            if (
+                "already up-to-date" in result.stdout.lower()
+                or "already installed" in result.stdout.lower()
+            ):
+                print("✓ Amplifier is up-to-date")
+            else:
+                print("✓ Amplifier upgraded to latest version")
+            return True
+        print(f"⚠ Upgrade check failed: {result.stderr[:200]}")
+        return False
+    except FileNotFoundError:
+        print("Warning: uv not found, skipping upgrade check")
+        return False
+    except subprocess.TimeoutExpired:
+        print("Warning: upgrade check timed out, continuing with current version")
+        return False
+    except Exception as e:
+        print(f"Warning: upgrade check error: {e}")
+        return False
+
+
 def launch_amplifier(args: list[str] | None = None) -> int:
     """Launch Amplifier CLI with the amplihack bundle.
 
@@ -250,6 +288,9 @@ def launch_amplifier(args: list[str] | None = None) -> int:
         if not install_amplifier() or not check_amplifier():
             print("Failed to install Amplifier CLI")
             return 1
+    else:
+        # Already installed - check for and install updates automatically
+        upgrade_amplifier()
 
     # Find the bundle path and ensure it's registered
     bundle_path = get_bundle_path()
