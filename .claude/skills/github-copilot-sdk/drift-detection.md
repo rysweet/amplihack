@@ -25,7 +25,7 @@ This skill is based on the following official sources:
 Run the drift detection script to check for source changes:
 
 ```bash
-python .github/skills/github-copilot-sdk/scripts/check_drift.py
+python .claude/skills/github-copilot-sdk/scripts/check_drift.py
 ```
 
 **What it checks:**
