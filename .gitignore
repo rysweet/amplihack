@@ -165,3 +165,6 @@ wave16-dedup/
 wave17-dedup/
 wave*-dedup/
 .claude.backup.*/
+
+# Amplihack runtime directories (auto-generated)
+.claude/logs/

@@ -17,6 +17,16 @@ Get started with blarify code graph integration in 5 minutes.
    pip install -e .
    ```
 
+## Configuration
+
+### Enabling Blarify (Optional)
+
+Blarify is disabled by default. To enable Blarify code indexing:
+
+```bash
+AMPLIHACK_ENABLE_BLARIFY=1 amplihack launch
+```
+
 ## Option 1: Test Without Blarify (Recommended First)
 
 Test the integration using sample data (no blarify installation needed):

@@ -1051,6 +1051,11 @@ class ClaudeLauncher:
         Returns:
             True if indexing completed or skipped, False on error
         """
+        # Blarify is disabled by default - only run if explicitly enabled
+        if os.getenv("AMPLIHACK_ENABLE_BLARIFY") != "1":
+            logger.debug("Blarify indexing disabled by default (set AMPLIHACK_ENABLE_BLARIFY=1 to enable)")
+            return True
+
         # Get project directory (current working directory)
         project_path = Path.cwd()
 
