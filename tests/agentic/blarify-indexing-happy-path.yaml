@@ -1,0 +1,59 @@
+scenario:
+  name: "Blarify Code Indexing - Happy Path"
+  description: "Verify blarify code indexing works when user consents via launcher prompt"
+  type: cli
+  tags: [smoke, critical, blarify]
+  timeout: 120s
+
+  prerequisites:
+    - "amplihack launcher exists"
+    - "Test directory with Python code exists"
+    - "Kuzu is installed"
+
+  environment:
+    variables:
+      AMPLIHACK_BLARIFY_AUTO_INDEX: "false"  # Ensure prompt appears
+
+  steps:
+    # Step 1: Launch amplihack on test codebase
+    - action: launch
+      target: "amplihack"
+      args: []
+      cwd: "${TEST_DIR}"
+      description: "Start amplihack launcher in test directory"
+
+    # Step 2: Wait for blarify prompt to appear
+    - action: wait_for_output
+      contains: "Run blarify code indexing?"
+      timeout: 10s
+      description: "Launcher should prompt for blarify indexing"
+
+    # Step 3: User consents by typing 'Y'
+    - action: send_input
+      value: "Y\n"
+      description: "User answers yes to indexing prompt"
+
+    # Step 4: Wait for indexing to start
+    - action: wait_for_output
+      contains: "Starting blarify code indexing"
+      timeout: 5s
+      description: "Should show indexing start message"
+
+    # Step 5: Wait for indexing completion
+    - action: wait_for_output
+      contains: "Code indexing complete"
+      timeout: 90s
+      description: "Should complete indexing and show success"
+
+    # Step 6: Verify no error messages
+    - action: verify_output
+      not_contains: "Blarify failed"
+      description: "Should not show failure messages"
+
+    - action: verify_output
+      not_contains: "error: unrecognized arguments"
+      description: "Should not show CLI argument errors"
+
+  cleanup:
+    - action: stop_application
+      force: true

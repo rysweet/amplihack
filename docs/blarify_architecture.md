@@ -1,6 +1,6 @@
 # Blarify Code Graph Architecture
 
-Visual representation of the blarify integration with Neo4j memory system.
+Visual representation of the blarify integration with Kuzu embedded database.
 
 ## System Architecture
 
@@ -10,36 +10,45 @@ Visual representation of the blarify integration with Neo4j memory system.
 │  (Python, JavaScript, TypeScript, Ruby, Go, C#)                 │
 └────────────────────────┬────────────────────────────────────────┘
                          │
-                         │ blarify analyze
+                         │ vendored blarify with KuzuManager
+                         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                  TEMPORARY KUZU DATABASE                         │
+│  (blarify uses KuzuManager to analyze and store)                │
+│  - Nodes: FILE, CLASS, FUNCTION                                  │
+│  - Relationships: CONTAINS, CALLS, REFERENCES                    │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         │ Export to JSON
                          ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                    BLARIFY OUTPUT (JSON)                         │
 │  - Files (path, language, LOC)                                  │
-│  - Classes (name, docstring, abstract)                          │
+│  - Classes (name, docstring, line_number)                       │
 │  - Functions (name, params, complexity)                         │
-│  - Imports (source, target, symbol)                             │
-│  - Relationships (CALLS, INHERITS)                              │
+│  - Relationships (CALLS, INHERITS, CONTAINS)                    │
 └────────────────────────┬────────────────────────────────────────┘
                          │
-                         │ BlarifyIntegration.import_blarify_output()
+                         │ KuzuCodeGraph.import_blarify_output()
                          ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                       NEO4J DATABASE                             │
+│                   KUZU EMBEDDED DATABASE                         │
+│                  (amplihack's main database)                     │
 │                                                                  │
 │  ┌─────────────────────────────────────────────────────────┐   │
-│  │  CODE GRAPH (New)                                        │   │
+│  │  CODE GRAPH                                              │   │
 │  │                                                          │   │
-│  │  (:CodeFile {path, language, lines_of_code})           │   │
+│  │  (:CodeFile {file_path, language, size_bytes})         │   │
 │  │       ▲                                                  │   │
-│  │       │ DEFINED_IN                                       │   │
-│  │  (:Class {name, docstring})                             │   │
+│  │       │ DEFINED_IN, CLASS_DEFINED_IN                     │   │
+│  │  (:CodeClass {class_name, docstring})                   │   │
 │  │       ▲                                                  │   │
 │  │       │ METHOD_OF                                        │   │
-│  │  (:Function {name, params, complexity})                 │   │
+│  │  (:CodeFunction {function_name, params, complexity})    │   │
 │  │       │                                                  │   │
 │  │       │ CALLS                                            │   │
 │  │       ▼                                                  │   │
-│  │  (:Function)                                             │   │
+│  │  (:CodeFunction)                                         │   │
 │  └──────────────────────┬───────────────────────────────────┘   │
 │                         │                                        │
 │                         │ RELATES_TO_FILE                        │
