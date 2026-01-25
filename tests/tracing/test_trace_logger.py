@@ -452,12 +452,13 @@ def test_log_handles_unicode_and_special_chars(tmp_path):
     assert "🌍" in entry["message"]
 
 
-def test_log_without_context_manager_raises_error():
-    """Test that logging without context manager raises error."""
+def test_log_without_context_manager_is_noop():
+    """Test that logging without context manager is a silent no-op (graceful degradation)."""
     logger = TraceLogger(enabled=True, log_file=Path("/tmp/test.jsonl"))
 
-    with pytest.raises((RuntimeError, ValueError, AttributeError)):
-        logger.log({"event": "test"})
+    # Should not raise - instead silently does nothing
+    logger.log({"event": "test"})
+    # If we got here without exception, the test passes
 
 
 def test_multiple_context_manager_entries(tmp_path):
@@ -501,17 +502,20 @@ def test_log_appends_to_existing_file(tmp_path):
     assert len(lines) == 2
 
 
-def test_log_handles_permission_errors(tmp_path):
-    """Test handling of permission errors."""
+def test_log_handles_permission_errors_gracefully(tmp_path):
+    """Test graceful handling of permission errors - logs warning to stderr and disables."""
     log_file = tmp_path / "readonly.jsonl"
     log_file.touch()
     log_file.chmod(0o444)  # Read-only
 
     logger = TraceLogger(enabled=True, log_file=log_file)
 
-    with pytest.raises(PermissionError):
-        with logger:
-            logger.log({"event": "test"})
+    # Should not raise - gracefully disables and logs warning
+    with logger:
+        # Logger should be disabled after failing to open
+        assert not logger.enabled
+        # Logging should be a no-op
+        logger.log({"event": "test"})
 
 
 def test_log_handles_disk_full_errors(tmp_path):

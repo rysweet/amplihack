@@ -539,8 +539,8 @@ def test_callback_cleanup_on_unregister(tmp_path):
 def test_callback_respects_env_configuration(monkeypatch, tmp_path):
     """Test that callbacks respect environment configuration."""
     trace_file = tmp_path / "trace.jsonl"
-    monkeypatch.setenv("CLAUDE_TRACE_ENABLED", "true")
-    monkeypatch.setenv("CLAUDE_TRACE_FILE", str(trace_file))
+    monkeypatch.setenv("AMPLIHACK_TRACE_LOGGING", "true")
+    monkeypatch.setenv("AMPLIHACK_TRACE_FILE", str(trace_file))
 
     with patch("litellm.callbacks", new=[]):
         callback = register_trace_callbacks()
@@ -551,7 +551,7 @@ def test_callback_respects_env_configuration(monkeypatch, tmp_path):
 
 def test_callback_disabled_by_default(monkeypatch):
     """Test that callbacks are disabled by default."""
-    monkeypatch.delenv("CLAUDE_TRACE_ENABLED", raising=False)
+    monkeypatch.delenv("AMPLIHACK_TRACE_LOGGING", raising=False)
 
     with patch("litellm.callbacks", new=[]):
         callback = register_trace_callbacks()

@@ -22,6 +22,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import ClassVar
 
+from ..tracing.trace_logger import DEFAULT_TRACE_FILE
+
 
 @dataclass
 class BinaryInfo:
@@ -240,40 +242,6 @@ class ClaudeBinaryManager:
 
         return None
 
-    def detect_trace_support(self, binary: BinaryInfo) -> bool:
-        """
-        Detect if a binary supports trace logging.
-
-        Args:
-            binary: Binary to check
-
-        Returns:
-            True if trace logging is supported, False otherwise
-        """
-        # Check known binaries first
-        if binary.name in self.TRACE_SUPPORTED_BINARIES:
-            return True
-
-        # Try to detect from help output
-        try:
-            result = subprocess.run(
-                [str(binary.path), "--help"],
-                capture_output=True,
-                text=True,
-                timeout=5,
-                check=False,
-            )
-
-            if result.returncode == 0 and result.stdout:
-                stdout_lower = result.stdout.lower()
-                # Look for trace-related flags
-                return "--trace" in stdout_lower or "--log-file" in stdout_lower
-
-        except (subprocess.SubprocessError, OSError):
-            pass
-
-        return False
-
     def build_command(
         self,
         binary: BinaryInfo,
@@ -310,8 +278,7 @@ class ClaudeBinaryManager:
                 cmd.extend(["--log-file", trace_file])
             # If trace_file is None but tracing is enabled, use default location
             else:
-                default_trace = str(Path.home() / ".amplihack" / "trace.jsonl")
-                cmd.extend(["--log-file", default_trace])
+                cmd.extend(["--log-file", str(DEFAULT_TRACE_FILE)])
 
         # Add additional arguments
         if additional_args:

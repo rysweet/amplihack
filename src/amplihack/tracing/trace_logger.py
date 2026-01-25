@@ -11,6 +11,7 @@ Philosophy:
 Public API:
     TraceLogger: Main logging class
     from_env(): Factory method to create from environment variables
+    DEFAULT_TRACE_FILE: Default trace file path constant
 
 Created for Issue #2071: Native Binary Migration with Optional Trace Logging
 """
@@ -22,6 +23,9 @@ from pathlib import Path
 from typing import Any
 
 from ..proxy.token_sanitizer import TokenSanitizer
+
+# Default trace file location - used by trace_logger and litellm_callbacks
+DEFAULT_TRACE_FILE = Path.home() / ".amplihack" / "trace.jsonl"
 
 
 class TraceLogger:
@@ -78,26 +82,38 @@ class TraceLogger:
             if log_file_str:
                 log_file = Path(log_file_str)
             else:
-                # Default location
-                log_file = Path.home() / ".amplihack" / "trace.jsonl"
+                log_file = DEFAULT_TRACE_FILE
 
         return cls(enabled=enabled, log_file=log_file)
 
     def __enter__(self):
         """Enter context manager - open log file if enabled."""
         if self.enabled and self.log_file:
-            # Create parent directories if needed
-            self.log_file.parent.mkdir(parents=True, exist_ok=True)
-            # Open in append mode
-            self._file_handle = open(self.log_file, "a", encoding="utf-8")
+            try:
+                # Create parent directories if needed
+                self.log_file.parent.mkdir(parents=True, exist_ok=True)
+                # Open in append mode
+                self._file_handle = open(self.log_file, "a", encoding="utf-8")
+            except (OSError, PermissionError, IOError) as e:
+                # Clean up and disable logging rather than failing
+                self._file_handle = None
+                self.enabled = False
+                # Log to stderr since we can't log to file
+                import sys
+                print(f"Warning: Could not open trace log file {self.log_file}: {e}", file=sys.stderr)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Exit context manager - close log file."""
         if self._file_handle:
-            self._file_handle.flush()
-            self._file_handle.close()
-            self._file_handle = None
+            try:
+                self._file_handle.flush()
+                self._file_handle.close()
+            except (OSError, IOError):
+                # Ignore errors on close - best effort cleanup
+                pass
+            finally:
+                self._file_handle = None
         return False
 
     async def __aenter__(self):
@@ -130,7 +146,8 @@ class TraceLogger:
 
         # Validate context manager is active
         if self._file_handle is None:
-            raise RuntimeError("TraceLogger.log() called outside of context manager. Use 'with logger:' block.")
+            # Instead of raising, just return silently - logging is optional
+            return
 
         # Handle None or empty data
         if data is None:
@@ -153,15 +170,23 @@ class TraceLogger:
             self._file_handle.flush()  # Ensure immediate write
         except (TypeError, ValueError) as e:
             # Handle non-serializable data gracefully
-            error_entry = {
-                "timestamp": datetime.now(timezone.utc).isoformat(),
-                "event": "trace_logger_error",
-                "error": str(e),
-                "original_event": str(entry.get("event", "unknown")),
-            }
-            json_line = json.dumps(error_entry, ensure_ascii=False)
-            self._file_handle.write(json_line + "\n")
-            self._file_handle.flush()
+            try:
+                error_entry = {
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "event": "trace_logger_error",
+                    "error": str(e),
+                    "original_event": str(entry.get("event", "unknown")),
+                }
+                json_line = json.dumps(error_entry, ensure_ascii=False)
+                self._file_handle.write(json_line + "\n")
+                self._file_handle.flush()
+            except (OSError, IOError):
+                # If we can't even log the error, silently give up
+                pass
+        except (OSError, IOError):
+            # Handle I/O errors (disk full, permissions, etc.)
+            # Trace logging is optional, so silently fail rather than break the caller
+            pass
 
 
 def _json_default(obj: Any) -> str:
@@ -186,4 +211,4 @@ def _json_default(obj: Any) -> str:
     return str(obj)
 
 
-__all__ = ["TraceLogger"]
+__all__ = ["TraceLogger", "DEFAULT_TRACE_FILE"]

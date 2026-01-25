@@ -26,7 +26,7 @@ try:
 except ImportError:
     LITELLM_AVAILABLE = False
 
-from ..tracing.trace_logger import TraceLogger
+from ..tracing.trace_logger import DEFAULT_TRACE_FILE, TraceLogger
 
 
 class TraceCallback:
@@ -62,6 +62,8 @@ class TraceCallback:
             trace_file: Path to trace log file (used if trace_logger not provided)
             trace_logger: Existing TraceLogger instance (optional)
         """
+        self._owns_logger = False  # Track if we need to manage lifecycle
+        
         if trace_logger:
             self.trace_logger = trace_logger
             self.trace_file = str(trace_logger.log_file) if trace_logger.log_file else None
@@ -69,6 +71,15 @@ class TraceCallback:
             log_file = Path(trace_file) if trace_file else None
             self.trace_logger = TraceLogger(enabled=True, log_file=log_file)
             self.trace_file = trace_file
+            self._owns_logger = True
+            # Enter the context immediately since callbacks are long-lived
+            self.trace_logger.__enter__()
+    
+    def close(self) -> None:
+        """Close the trace logger if we own it."""
+        if self._owns_logger and self.trace_logger:
+            self.trace_logger.__exit__(None, None, None)
+            self._owns_logger = False
 
     def on_llm_start(self, kwargs: dict[str, Any]) -> None:
         """
@@ -245,8 +256,7 @@ def register_trace_callbacks(
         if trace_file_str:
             trace_file = trace_file_str
         else:
-            # Default location
-            trace_file = str(Path.home() / ".amplihack" / "trace.jsonl")
+            trace_file = str(DEFAULT_TRACE_FILE)
 
     # Create and register callback
     callback = TraceCallback(trace_file=trace_file)
@@ -266,6 +276,7 @@ def unregister_trace_callbacks(callback: TraceCallback | None) -> None:
 
     Side Effects:
         Removes callback from litellm.callbacks list
+        Closes the trace logger if owned by the callback
 
     Note:
         Handles None callback and missing callback gracefully.
@@ -282,6 +293,9 @@ def unregister_trace_callbacks(callback: TraceCallback | None) -> None:
         # Callback not in list or callbacks list doesn't exist
         # This is fine - callback was never registered or already removed
         pass
+    
+    # Close the trace logger to flush and close the file
+    callback.close()
 
 
 __all__ = ["TraceCallback", "register_trace_callbacks", "unregister_trace_callbacks"]
