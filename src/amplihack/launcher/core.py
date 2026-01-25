@@ -106,44 +106,36 @@ class ClaudeLauncher:
         if not self._prompt_blarify_indexing():
             logger.info("Blarify indexing skipped")
 
-        # 4. Check and sync Neo4j credentials from existing containers (if any)
-        self._check_neo4j_credentials()
-
-        # 5. Interactive Neo4j startup (blocks until ready or user decides)
-        if not self._interactive_neo4j_startup():
-            # User chose to exit rather than continue without Neo4j
-            return False
-
-        # 6. Handle repository checkout if needed
+        # 4. Handle repository checkout if needed
         if self.checkout_repo:
             if not self._handle_repo_checkout():
                 return False
 
-        # 7. Find and validate target directory
+        # 5. Find and validate target directory
         target_dir = self._find_target_directory()
         if not target_dir:
             print("Failed to determine target directory")
             return False
 
-        # 8. Ensure required runtime directories exist
+        # 6. Ensure required runtime directories exist
         if not self._ensure_runtime_directories(target_dir):
             print("Warning: Could not create runtime directories")
             # Don't fail - just warn
 
-        # 9. Fix hook paths in settings.json to use absolute paths
+        # 7. Fix hook paths in settings.json to use absolute paths
         if not self._fix_hook_paths_in_settings(target_dir):
             print("Warning: Could not fix hook paths in settings.json")
             # Don't fail - hooks might still work
 
-        # 10. Handle directory change if needed (unless UVX with --add-dir)
+        # 8. Handle directory change if needed (unless UVX with --add-dir)
         if not self._handle_directory_change(target_dir):
             return False
 
-        # 11. Start proxy if needed
+        # 9. Start proxy if needed
         if not self._start_proxy_if_needed():
             return False
 
-        # 12. Auto-configure LSP if supported languages detected
+        # 10. Auto-configure LSP if supported languages detected
         self._configure_lsp_auto(target_dir)
 
         return True
@@ -738,7 +730,15 @@ class ClaudeLauncher:
             # Check if plugin was installed via Claude Code (AMPLIHACK_PLUGIN_INSTALLED set by cli.py)
             if os.environ.get("AMPLIHACK_PLUGIN_INSTALLED") == "true":
                 # Plugin installed via Claude Code - use installed plugin path
-                installed_plugin_path = Path.home() / ".claude" / "plugins" / "cache" / "amplihack" / "amplihack" / "0.9.0"
+                installed_plugin_path = (
+                    Path.home()
+                    / ".claude"
+                    / "plugins"
+                    / "cache"
+                    / "amplihack"
+                    / "amplihack"
+                    / "0.9.0"
+                )
                 env["CLAUDE_PLUGIN_ROOT"] = str(installed_plugin_path)
             else:
                 # Directory copy mode - use ~/.amplihack/.claude/
@@ -845,7 +845,15 @@ class ClaudeLauncher:
             # Check if plugin was installed via Claude Code (AMPLIHACK_PLUGIN_INSTALLED set by cli.py)
             if os.environ.get("AMPLIHACK_PLUGIN_INSTALLED") == "true":
                 # Plugin installed via Claude Code - use installed plugin path
-                installed_plugin_path = Path.home() / ".claude" / "plugins" / "cache" / "amplihack" / "amplihack" / "0.9.0"
+                installed_plugin_path = (
+                    Path.home()
+                    / ".claude"
+                    / "plugins"
+                    / "cache"
+                    / "amplihack"
+                    / "amplihack"
+                    / "0.9.0"
+                )
                 env["CLAUDE_PLUGIN_ROOT"] = str(installed_plugin_path)
             else:
                 # Directory copy mode - use ~/.amplihack/.claude/
@@ -1049,7 +1057,9 @@ class ClaudeLauncher:
         """
         # Blarify is disabled by default - only run if explicitly enabled
         if os.getenv("AMPLIHACK_ENABLE_BLARIFY") != "1":
-            logger.debug("Blarify indexing disabled by default (set AMPLIHACK_ENABLE_BLARIFY=1 to enable)")
+            logger.debug(
+                "Blarify indexing disabled by default (set AMPLIHACK_ENABLE_BLARIFY=1 to enable)"
+            )
             return True
 
         # Get project directory (current working directory)
@@ -1073,16 +1083,16 @@ class ClaudeLauncher:
                 return True
 
             # Interactive mode - prompt user with timeout
-            print("\n" + "="*60)
+            print("\n" + "=" * 60)
             print("Code Indexing with Blarify")
-            print("="*60)
+            print("=" * 60)
             print("Blarify will analyze your codebase to enable code-aware features:")
             print("  • Code context in memory retrieval")
             print("  • Function and class awareness")
             print("  • Automatic code-memory linking")
             print()
             print("This is a one-time setup per project (~30-60s for most codebases)")
-            print("="*60)
+            print("=" * 60)
 
             # Import timeout utilities from memory_config
             from .memory_config import get_user_input_with_timeout, parse_consent_response
@@ -1102,13 +1112,11 @@ class ClaudeLauncher:
                     self._save_blarify_consent(project_path)
                     print("✅ Code indexing complete\n")
                     return True
-                else:
-                    print("⚠️  Code indexing failed (non-critical, continuing...)\n")
-                    return True  # Return True - failure is non-blocking
+                print("⚠️  Code indexing failed (non-critical, continuing...)\n")
+                return True  # Return True - failure is non-blocking
 
-            else:
-                print("\n⏭️  Skipping code indexing (you can run it later with: amplihack index-code)\n")
-                return True
+            print("\n⏭️  Skipping code indexing (you can run it later with: amplihack index-code)\n")
+            return True
 
         except KeyboardInterrupt:
             print("\n⏭️  Skipping code indexing (interrupted)\n")
@@ -1129,8 +1137,8 @@ class ClaudeLauncher:
         """
         try:
             # Import Kuzu backend and code graph
-            from ..memory.kuzu.connector import KuzuConnector
             from ..memory.kuzu.code_graph import KuzuCodeGraph
+            from ..memory.kuzu.connector import KuzuConnector
 
             # Get Kuzu database path (default location)
             kuzu_db_path = Path.home() / ".amplihack" / "memory_kuzu.db"
