@@ -36,7 +36,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 try:
     from compaction_validator import (
         CompactionContext,
-        CompactionEvent,
         CompactionValidator,
         ValidationResult,
     )
@@ -47,8 +46,6 @@ except ImportError:
     class CompactionValidator:
         pass
     class CompactionContext:
-        pass
-    class CompactionEvent:
         pass
     class ValidationResult:
         pass

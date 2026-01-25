@@ -4214,7 +4214,7 @@ class PowerSteeringChecker:
             PowerSteeringResult with compaction context and considerations
         """
         # Initialize compaction context
-        compaction_context = CompactionContext() if not COMPACTION_AVAILABLE else CompactionContext()
+        compaction_context = CompactionContext()
 
         # Check if compaction handling is enabled
         compaction_enabled = self._is_consideration_enabled("compaction_handling")

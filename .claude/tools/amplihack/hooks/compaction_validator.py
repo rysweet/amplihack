@@ -238,7 +238,7 @@ class CompactionValidator:
             # Security: Check for path traversal
             try:
                 resolved_path = transcript_path.resolve()
-                if not resolved_path.is_relative_to(self.project_root):
+                if not resolved_path.is_relative_to(self.project_root.resolve()):
                     context.has_security_violation = True
                     # Don't load the transcript but continue - will use fallback
                     return context
