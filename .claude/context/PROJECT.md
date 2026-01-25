@@ -10,7 +10,7 @@ Replace the sections below with information about your project.
 
 ---
 
-## Project: amplihack2
+## Project: feat-issue-2125-cli-installation-path-fix
 
 ## Overview
 
