@@ -1977,6 +1977,10 @@
          <lastmod>2026-01-25</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/concepts/unified-staging-architecture/</loc>
+         <lastmod>2026-01-25</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/contributing/file-organization/</loc>
          <lastmod>2026-01-25</lastmod>
     </url>
@@ -2165,6 +2169,10 @@
          <lastmod>2026-01-25</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/howto/verify-claude-staging/</loc>
+         <lastmod>2026-01-25</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/mcp_evaluation/</loc>
          <lastmod>2026-01-25</lastmod>
     </url>
@@ -2326,6 +2334,10 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/reference/platform-bridge-api/</loc>
+         <lastmod>2026-01-25</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/reference/staging-api/</loc>
          <lastmod>2026-01-25</lastmod>
     </url>
     <url>
