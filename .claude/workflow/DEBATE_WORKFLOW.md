@@ -566,7 +566,7 @@ start simple, migrate when data validates the need.
 - [ ] Document full debate transcript
 - [ ] Include all perspective arguments
 - [ ] Record synthesis and final decision
-- [ ] Add to `.claude/context/DISCOVERIES.md`
+- [ ] Add to `~/.amplihack/.claude/context/DISCOVERIES.md`
 - [ ] Update relevant architecture docs
 
 **Decision Record Template:**

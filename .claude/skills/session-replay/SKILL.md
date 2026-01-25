@@ -467,7 +467,7 @@ Issues found: {len(errors)}
 ## Storage Locations
 
 - **Trace files**: `.claude-trace/*.jsonl`
-- **Session logs**: `.claude/runtime/logs/<session_id>/`
+- **Session logs**: `~/.amplihack/.claude/runtime/logs/<session_id>/`
 - **Generated reports**: Output directly (no persistent storage needed)
 
 ## Philosophy Alignment
@@ -553,7 +553,7 @@ User: I keep getting errors, find the pattern
 - **Trace directory**: `.claude-trace/`
 - **Transcripts command**: `/transcripts`
 - **Context management skill**: `context-management`
-- **Philosophy**: `.claude/context/PHILOSOPHY.md`
+- **Philosophy**: `~/.amplihack/.claude/context/PHILOSOPHY.md`
 
 ## Troubleshooting
 

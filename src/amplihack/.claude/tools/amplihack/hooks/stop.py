@@ -65,7 +65,6 @@ class StopHook(HookProcessor):
     def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Check lock flag and block stop if active.
         Run synchronous reflection analysis if enabled.
-        Execute Neo4j cleanup if appropriate.
 
         Args:
             input_data: Input from Claude Code
@@ -120,13 +119,7 @@ class StopHook(HookProcessor):
                 "reason": continuation_prompt,
             }
 
-        # Neo4j cleanup integration (runs before reflection to ensure database state is managed
-        # before any potentially long-running reflection analysis that might timeout the user)
-        self._handle_neo4j_cleanup()
-
-        # Neo4j learning capture (after cleanup, before reflection)
-        # Separated from cleanup for single responsibility and optional nature
-        self._handle_neo4j_learning()
+        # Neo4j cleanup removed (Week 7) - no cleanup needed for Kuzu backend
 
         # Power-steering check (before reflection)
         if not lock_exists and self._should_run_power_steering():
@@ -297,154 +290,8 @@ class StopHook(HookProcessor):
             self.log("=== STOP HOOK ENDED (decision: approve - error occurred) ===")
             return {"decision": "approve"}
 
-    def _is_neo4j_in_use(self) -> bool:
-        """Check if Neo4j service requires cleanup.
-
-        Two-layer detection:
-        1. Environment variables - Are credentials configured?
-        2. Docker container status - Is container actually running?
-
-        Returns:
-            bool: True if Neo4j container is running, False otherwise.
-                  Returns False on any errors (fail-safe).
-        """
-        # Layer 1: Check environment variables (instant)
-        if not os.getenv("NEO4J_USERNAME") or not os.getenv("NEO4J_PASSWORD"):
-            self.log("Neo4j credentials not configured - skipping cleanup", "DEBUG")
-            return False
-
-        # Layer 2: Check Docker container status (authoritative check)
-        try:
-            result = subprocess.run(
-                ["docker", "ps", "--filter", "name=neo4j", "--format", "{{.Names}}"],
-                capture_output=True,
-                text=True,
-                timeout=2.0,
-            )
-
-            if result.returncode != 0:
-                return False
-
-            containers = result.stdout.strip().split("\n")
-            neo4j_running = any("neo4j" in name.lower() for name in containers if name)
-
-            if neo4j_running:
-                self.log("Neo4j container detected - proceeding with cleanup", "DEBUG")
-            else:
-                self.log("No Neo4j containers running - skipping cleanup", "DEBUG")
-
-            return neo4j_running
-
-        except FileNotFoundError:
-            self.log("Docker command not found - skipping Neo4j cleanup", "WARNING")
-            return False
-
-        except subprocess.TimeoutExpired:
-            self.log("Docker command timed out - skipping Neo4j cleanup", "WARNING")
-            return False
-
-        except Exception as e:
-            self.log(f"Error checking Docker status: {e} - skipping Neo4j cleanup", "WARNING")
-            return False
-
-    def _handle_neo4j_cleanup(self) -> None:
-        """Handle Neo4j cleanup on session exit.
-
-        Pre-check gate: Only proceeds if Neo4j is actually in use.
-        Prevents unnecessary initialization of Neo4j components when
-        the service isn't running, avoiding spurious authentication errors.
-
-        Executes Neo4j shutdown coordination if appropriate.
-        Fail-safe: Never raises exceptions.
-
-        Environment Variables Set:
-            AMPLIHACK_CLEANUP_MODE: Set to "1" to signal cleanup context.
-                Prevents interactive prompts during session exit.
-                Checked by container_selection.py to skip container selection dialog.
-        """
-        # PRE-CHECK GATE: Skip if Neo4j not in use
-        if not self._is_neo4j_in_use():
-            self.log("Neo4j not in use - skipping cleanup handler", "DEBUG")
-            return
-
-        self.log("Neo4j cleanup handler started - service detected as active", "INFO")
-
-        try:
-            # Set cleanup mode to prevent interactive prompts during session exit
-            # This is checked by container_selection.resolve_container_name()
-            os.environ["AMPLIHACK_CLEANUP_MODE"] = "1"
-
-            # Import components
-            from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
-            from amplihack.neo4j.connection_tracker import Neo4jConnectionTracker
-            from amplihack.neo4j.shutdown_coordinator import Neo4jShutdownCoordinator
-
-            # Detect auto mode (standardized format)
-            auto_mode = os.getenv("AMPLIHACK_AUTO_MODE", "0") == "1"
-
-            self.log(f"Neo4j cleanup handler started (auto_mode={auto_mode})")
-
-            # Initialize components with credentials from environment
-            # Note: Connection tracker will raise ValueError if password not set and  # pragma: allowlist secret
-            # NEO4J_ALLOW_DEFAULT_PASSWORD != "true". This is intentional for production security.  # pragma: allowlist secret
-            tracker = Neo4jConnectionTracker(
-                username=os.getenv("NEO4J_USERNAME"), password=os.getenv("NEO4J_PASSWORD")
-            )
-            manager = Neo4jContainerManager()
-            coordinator = Neo4jShutdownCoordinator(
-                connection_tracker=tracker,
-                container_manager=manager,
-                auto_mode=auto_mode,
-            )
-
-            # Execute cleanup
-            coordinator.handle_session_exit()
-
-            self.log("Neo4j cleanup handler completed")
-
-        except Exception as e:
-            self.log(
-                f"[CAUSE] Neo4j cleanup failed with exception. [IMPACT] Database may not be properly shut down. [ACTION] Check Neo4j status manually if needed. Error: {e}",
-                "WARNING",
-            )
-            self.save_metric("neo4j_cleanup_errors", 1)
-
-    def _handle_neo4j_learning(self) -> None:
-        """Handle Neo4j learning capture on session exit.
-
-        Extracts learning insights from Neo4j knowledge graph if available.
-        Fail-safe: Never raises exceptions.
-
-        Design Notes:
-            - Called AFTER Neo4j cleanup coordination
-            - Separated from cleanup for single responsibility
-            - Optional feature: Gracefully skips if not yet implemented
-            - Currently planned but not yet implemented (awaiting schema definition)
-        """
-        try:
-            # Import from sibling neo4j module (relative to hooks directory)
-            from neo4j.learning_capture import capture_neo4j_learnings
-
-            session_id = self._get_current_session_id()
-            self.log(f"Starting Neo4j learning capture for session {session_id}")
-
-            # Attempt learning capture (fail-safe design)
-            success = capture_neo4j_learnings(
-                project_root=self.project_root,
-                session_id=session_id,
-                neo4j_connection=None,  # TODO: Pass active connection when available
-            )
-
-            if success:
-                self.log("Neo4j learning capture completed successfully")
-                self.save_metric("neo4j_learning_captures", 1)
-            else:
-                self.log("Neo4j learning capture skipped (Neo4j not available)")
-
-        except ImportError:
-            self.log("Neo4j learning module not available - skipping", "DEBUG")
-        except Exception as e:
-            self.log(f"Neo4j learning capture failed (non-critical): {e}", "WARNING")
+    # Neo4j cleanup methods removed (Week 7 cleanup)
+    # Kuzu backend does not require cleanup on session exit
 
     def read_continuation_prompt(self) -> str:
         """Read custom continuation prompt from file or return default.

@@ -19,8 +19,8 @@ Loading DDD context for comprehensive help...
 @docs/document_driven_development/reference/tips_for_success.md
 @docs/document_driven_development/reference/common_pitfalls.md
 @docs/document_driven_development/reference/faq.md
-@.claude/context/PHILOSOPHY.md
-@.claude/context/PHILOSOPHY.md
+@~/.amplihack/.claude/context/PHILOSOPHY.md
+@~/.amplihack/.claude/context/PHILOSOPHY.md
 
 ---
 

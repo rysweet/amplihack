@@ -1,8 +1,8 @@
 ---
 name: DEFAULT_WORKFLOW
 version: 1.1.0
-description: Standard 22-step workflow (Steps 0-21) for feature development, bug fixes, and refactoring
-steps: 22
+description: Standard 23-step workflow (Steps 0-22) for feature development, bug fixes, and refactoring
+steps: 23
 phases:
   - requirements-clarification
   - design
@@ -36,7 +36,7 @@ customizable: true
 - 🎯 Every step completed brings you closer to a mergeable PR
 - 🔄 Continuous progress maintains context and focus
 
-**Flow Pattern**: Step 0 → Step 1 → Step 2 → ... → Step 21 (PR Mergeable)
+**Flow Pattern**: Step 0 → Step 1 → Step 2 → ... → Step 22 (PR Mergeable)
 
 # Default Coding Workflow
 
@@ -59,7 +59,7 @@ git remote get-url origin
 - **GitHub**: Install and authenticate with `gh` CLI (`gh auth login`)
 - **Azure DevOps**: Install and configure `az` CLI (`az login` and `az devops configure`)
 
-Steps with platform-specific instructions: 3, 15, 16-17, 20, 21
+Steps with platform-specific instructions: 3, 15, 16-17, 21, 22
 
 ## How This Workflow Works
 
@@ -141,7 +141,7 @@ When creating todos during workflow execution, reference the workflow steps dire
 **Example Todo Structure (Single Workflow):**
 
 ```
-Step 0: Workflow Preparation - Read workflow, create todos for ALL steps (0-21)
+Step 0: Workflow Preparation - Read workflow, create todos for ALL steps (0-22)
 Step 1: Prepare the Workspace - Check git status and fetch
 Step 2: Rewrite and Clarify Requirements - Use prompt-writer agent to clarify task
 Step 3: Create GitHub Issue - Define requirements and constraints using gh issue create
@@ -150,17 +150,18 @@ Step 5: Research and Design - Use architect agent for solution design
 ...
 Step 16: Review the PR - MANDATORY code review
 Step 17: Implement Review Feedback - MANDATORY
+Step 19: Outside-In Testing in Real Environment - MANDATORY
 ...
-Step 21: Ensure PR is Mergeable - TASK COMPLETION POINT
+Step 22: Ensure PR is Mergeable - TASK COMPLETION POINT
 ```
 
 **Example Todo Structure (Multiple Parallel Workflows):**
 
 ```
-[PR1090 TASK] Step 0: Workflow Preparation - Create todos for ALL steps (0-21)
+[PR1090 TASK] Step 0: Workflow Preparation - Create todos for ALL steps (0-22)
 [PR1090 TASK] Step 1: Prepare the Workspace - Check git status
 [PR1090 TASK] Step 2: Rewrite and Clarify Requirements - Use prompt-writer agent
-[FEATURE-X] Step 0: Workflow Preparation - Create todos for ALL steps (0-21)
+[FEATURE-X] Step 0: Workflow Preparation - Create todos for ALL steps (0-22)
 [FEATURE-X] Step 3: Setup Worktree and Branch - Create feat/issue-XXX branch
 [BUGFIX-Y] Step 16: Review the PR - MANDATORY code review
 ...
@@ -190,18 +191,18 @@ Agents that skip workflow steps (especially mandatory review steps 10, 16-17) cr
 
 **Checklist:**
 
-- [ ] **Read this entire workflow file** - Understand all 22 steps (0-21) before starting
-- [ ] **Create TodoWrite entries for ALL steps (0-21)** using format: `Step N: [Step Name] - [Specific Action]`
+- [ ] **Read this entire workflow file** - Understand all 23 steps (0-22) before starting
+- [ ] **Create TodoWrite entries for ALL steps (0-22)** using format: `Step N: [Step Name] - [Specific Action]`
 - [ ] **Mark each step complete ONLY when truly done** - No premature completion
-- [ ] **Task is NOT complete until Step 21 is marked complete**
+- [ ] **Task is NOT complete until Step 22 is marked complete**
 
-**Self-Verification:** Before proceeding to Step 1, confirm you have 22 todo items visible (Steps 0-21).
+**Self-Verification:** Before proceeding to Step 1, confirm you have 23 todo items visible (Steps 0-22).
 
 **Anti-Pattern Prevention:**
 
 - ❌ DO NOT skip to implementation after reading requirements
-- ❌ DO NOT consider "PR created" as completion (Step 21 is the completion point)
-- ❌ DO NOT omit Steps 10, 16-17 (mandatory review steps)
+- ❌ DO NOT consider "PR created" as completion (Step 22 is the completion point)
+- ❌ DO NOT omit Steps 10, 16-17, 19 (mandatory review and testing steps)
 - ❌ DO NOT declare task complete with pending steps
 - ✅ DO create all step todos BEFORE starting any implementation
 - ✅ DO mark steps complete sequentially as you finish them
@@ -211,7 +212,7 @@ Agents that skip workflow steps (especially mandatory review steps 10, 16-17) cr
 
 ### Step 1: Prepare the Workspace
 
-**Prerequisite Check:** Verify Step 0 is complete - you should have 22 todos visible (Steps 0-21) before proceeding.
+**Prerequisite Check:** Verify Step 0 is complete - you should have 23 todos visible (Steps 0-22) before proceeding.
 
 - [ ] start with a clean local environment and make sure it is up to date (no unstashed changes, git fetch)
 
@@ -282,7 +283,7 @@ After investigation completes, continue with these tasks:
 - [ ] **Use** database agent for data model design (if applicable)
 - [ ] **Use** security agent to identify security requirements
 - [ ] use other subagents as appropriate if their expertise is applicable to the problem
-- [ ] **💡 TIP**: For diagnostic follow-up questions during research, consider [parallel agent investigation](.claude/CLAUDE.md#parallel-agent-investigation-strategy)
+- [ ] **💡 TIP**: For diagnostic follow-up questions during research, consider [parallel agent investigation](~/.amplihack/.claude/CLAUDE.md#parallel-agent-investigation-strategy)
 - [ ] ask @zen-architect agent to review everything done so far and provide feedback
 - [ ] ask @architect agent to consider the feedback
 - [ ] Document module specifications
@@ -373,7 +374,7 @@ Target Ratios:
 - [ ] Simplify complex logic (without violating user specifications)
 - [ ] Ensure single responsibility principle
 - [ ] Verify no placeholders remain - no stubs, no TODOs, no swallowed exceptions, no unimplemented functions - follow the zero-BS principle.
-- [ ] **VALIDATE: All explicit user requirements still preserved** and still adhering to @.claude/context/PHILOSOPHY.md
+- [ ] **VALIDATE: All explicit user requirements still preserved** and still adhering to @~/.amplihack/.claude/context/PHILOSOPHY.md
 
 ### Step 10: Review Pass Before Commit
 
@@ -407,7 +408,7 @@ Target Ratios:
 - [ ] **Point-in-Time Documents Check**: Identify analysis/investigation documents
   - Pattern: `ANALYSIS_YYYYMMDD.md`, `INVESTIGATION_*.md`, `NOTES_*.txt`
   - Pattern: Date-stamped reports not intended as permanent documentation
-  - Move to `.claude/runtime/logs/` or delete unless required for issue
+  - Move to `~/.amplihack/.claude/runtime/logs/` or delete unless required for issue
 
 - [ ] **Git Hygiene Verification**:
   - `.gitignore` properly configured for new file types introduced?
@@ -435,7 +436,7 @@ Target Ratios:
   - This ensures fresh worktrees work without manual setup
   - ⚠️ **Security Note**: Always review `.pre-commit-config.yaml` changes before running hooks, especially when pulling updates or merging branches
 - [ ] **Use** pre-commit-diagnostic agent if hooks fail
-- [ ] **💡 TIP**: For test failures, use [parallel investigation](.claude/CLAUDE.md#parallel-agent-investigation-strategy) to explore issues while continuing work
+- [ ] **💡 TIP**: For test failures, use [parallel investigation](~/.amplihack/.claude/CLAUDE.md#parallel-agent-investigation-strategy) to explore issues while continuing work
 - [ ] Run all unit tests
 - [ ] Execute `pre-commit run --all-files`
 - [ ] Fix any linting issues
@@ -566,6 +567,7 @@ python .claude/scenarios/az-devops-tools/create_pr.py \
   - [ ] Check PR description has "Step 13: Local Testing Results" section with actual test execution evidence
   - [ ] If missing: BLOCK review, comment on PR, request test results (no approval path - just do the testing)
 - [ ] **Always use** reviewer agent for comprehensive code review
+  - **Alternative**: Use `/socratic-review` for dialogue-based review when learning is as important as fixing (mentoring, design documentation, complex code explanation)
 - [ ] **Use** security agent for security review
 - [ ] Check code quality and standards
 - [ ] Verify philosophy compliance
@@ -627,11 +629,127 @@ az repos pr create-thread \
 - [ ] **Use** patterns agent to verify pattern compliance
 - [ ] Verify ruthless simplicity achieved
 - [ ] Confirm bricks & studs pattern followed
-- [ ] Ensure zero-BS implementation (no stubs, faked apis, swalloed exceptions, etc)
+- [ ] Ensure zero-BS implementation (no stubs, faked apis, swallowed exceptions, etc)
 - [ ] Verify all tests passing
 - [ ] Check documentation completeness and accuracy
 
-### Step 19: Final Cleanup and Verification
+### Step 19: Outside-In Testing in Real Environment
+
+**🚨 VERIFICATION GATE - CANNOT PROCEED WITHOUT:**
+
+- [ ] **Test execution evidence documented** in realistic environment (Amplifier shadow or equivalent)
+- [ ] **Test approach documented** based on interface type (CLI/TUI/Web/Electron/Config)
+- [ ] **Test results added to PR description** (include in Step 21)
+- [ ] **Real user flows tested** - not just unit tests, actual usage scenarios
+
+**CRITICAL: This step complements Step 13 with realistic environment testing.**
+
+Step 13 validates technical functionality locally. Step 19 validates real-world user experience in a production-like environment.
+
+---
+
+**Testing Approach by Interface Type:**
+
+**For CLI/TUI applications:**
+- [ ] Use `/outside-in-testing` skill for guided CLI/TUI testing workflow
+- [ ] Test in fresh terminal session with production-like environment
+- [ ] Execute actual commands with various flags and inputs
+- [ ] Verify output formatting and error messages match expectations
+- [ ] Test help text, autocomplete, and interactive prompts
+- [ ] Document commands executed and their outputs
+
+**For Web applications:**
+- [ ] Deploy to Amplifier shadow environment (staging-like)
+- [ ] Test in actual browser with realistic user flows
+- [ ] Verify UI rendering, responsiveness, and interactions
+- [ ] Test forms, navigation, error states, and loading states
+- [ ] Check console for errors and network requests
+- [ ] Document user flows tested with screenshots
+
+**For Electron/desktop applications:**
+- [ ] Deploy packaged application to test environment
+- [ ] Test window management, menus, and keyboard shortcuts
+- [ ] Verify file system interactions and permissions
+- [ ] Test update mechanisms and crash recovery
+- [ ] Document application behavior and screenshots
+
+**For Configuration/infrastructure changes:**
+- [ ] Deploy to shadow environment with configuration applied
+- [ ] Verify services start correctly with new configuration
+- [ ] Test rollback procedures if applicable
+- [ ] Monitor logs for configuration-related warnings
+- [ ] Document configuration values tested and results
+
+---
+
+**Using Amplifier Shadow Environment:**
+
+Amplifier provides shadow environments for realistic testing without affecting production:
+
+```bash
+# Deploy to shadow environment (example - adapt to your setup)
+amplifier deploy --env shadow --pr <pr_number>
+
+# Or use your project's deployment script
+./scripts/deploy-to-shadow.sh <branch_name>
+```
+
+- [ ] Deploy PR branch to shadow environment
+- [ ] Test with realistic data volumes and user scenarios
+- [ ] Verify integrations with external services work correctly
+- [ ] Check observability (logs, metrics, traces)
+- [ ] Test error handling and edge cases in realistic conditions
+
+**If shadow environment unavailable:**
+- Document alternative realistic testing approach used
+- Provide clear evidence that changes work in production-like conditions
+- Example alternatives: Docker compose stack, local staging environment, isolated test account
+
+---
+
+**Test Results Documentation Template:**
+
+Add this section to your PR description:
+
+```markdown
+## Step 19: Outside-In Testing Results
+
+**Test Environment**: <shadow environment URL, staging server, Docker setup, etc.>
+**Interface Type**: <CLI/TUI/Web/Electron/Config>
+
+**User Flows Tested**:
+1. **Flow 1**: <description> → <result> ✅/❌
+   - Commands/Actions: <specific commands or user actions>
+   - Expected: <expected behavior>
+   - Actual: <actual behavior>
+   - Evidence: <screenshot, log output, command output>
+
+2. **Flow 2**: <description> → <result> ✅/❌
+   - Commands/Actions: <specific commands or user actions>
+   - Expected: <expected behavior>
+   - Actual: <actual behavior>
+   - Evidence: <screenshot, log output, command output>
+
+**Edge Cases Tested**: <unusual inputs, error conditions, etc.> → ✅/❌
+**Integration Points Verified**: <external services, APIs, databases> → ✅/❌
+**Observability Check**: <logs reviewed, metrics checked, traces examined> → ✅/❌
+**Issues Found**: <list any issues discovered and how they were resolved>
+```
+
+---
+
+**Why This Matters:**
+
+- **Step 13** (Mandatory Local Testing) validates technical correctness in isolated environment
+- **Step 19** (Outside-In Testing) validates real-world usability and integration
+- Unit tests can't catch: deployment issues, environment-specific bugs, real user experience problems, integration failures
+- Testing in production-like environment catches issues before production deployment
+- User-centric testing ensures changes actually solve the problem for end users
+- Creates confidence for reviewers and future maintainers
+
+**Remember**: Outside-in means testing from the user's perspective, not from the code's perspective. Start at the interface and verify behavior matches user expectations.
+
+### Step 20: Final Cleanup and Verification
 
 - [ ] **CRITICAL: Provide cleanup agent with original user requirements AGAIN**
 - [ ] **Always use** cleanup agent for final quality pass
@@ -655,7 +773,7 @@ az repos pr create-thread \
   - Pattern: `test_*.py`, `temp_*.js`, `scratch_*.md`, `debug_*.log`, `*.tmp`
   - Pattern: `experiment_*.py`, `test_manual_*.sh`, `playground_*.ts`
   - Pattern: `ANALYSIS_YYYYMMDD.md`, `INVESTIGATION_*.md`, `NOTES_*.txt`
-  - Remove or move to `.claude/runtime/logs/` as appropriate
+  - Remove or move to `~/.amplihack/.claude/runtime/logs/` as appropriate
 
 - [ ] **Debugging Code Sweep**: Final search for debugging statements across all modified files
   - JavaScript/TypeScript: `console.log`, `console.debug`, `debugger;`
@@ -664,7 +782,7 @@ az repos pr create-thread \
   - Remove all debugging artifacts
 
 - [ ] **Documentation Audit**: Verify only permanent documentation is included
-  - Point-in-time analysis docs moved to `.claude/runtime/logs/`
+  - Point-in-time analysis docs moved to `~/.amplihack/.claude/runtime/logs/`
   - Investigation notes not required for feature understanding removed
   - Only architectural/design docs that serve ongoing maintenance included
 
@@ -683,7 +801,7 @@ az repos pr create-thread \
 - [ ] Ensure any cleanup agent changes get committed, validated by pre-commit, pushed to remote
 - [ ] Add a comment to the PR about any work the Cleanup agent did
 
-### Step 20: Convert PR to Ready for Review
+### Step 21: Convert PR to Ready for Review
 
 **For GitHub**:
 ```bash
@@ -718,7 +836,7 @@ az repos pr update \
 - Requests final approval from reviewers
 - Makes PR eligible for merge queue
 
-### Step 21: Ensure PR is Mergeable
+### Step 22: Ensure PR is Mergeable
 
 **Check CI status**:
 
@@ -740,7 +858,7 @@ az repos pr show --id <pr_number> --query "mergeStatus"
 
 - [ ] Verify all CI checks passing
 - [ ] **Always use** ci-diagnostic-workflow agent if CI fails
-- [ ] **💡 TIP**: When investigating CI failures, use [parallel agent investigation](.claude/CLAUDE.md#parallel-agent-investigation-strategy) to explore logs and code simultaneously
+- [ ] **💡 TIP**: When investigating CI failures, use [parallel agent investigation](~/.amplihack/.claude/CLAUDE.md#parallel-agent-investigation-strategy) to explore logs and code simultaneously
 - [ ] Resolve any merge conflicts
 - [ ] Verify all review comments addressed, including check for any that showed up after marking the PR as ready
 - [ ] Confirm PR is approved

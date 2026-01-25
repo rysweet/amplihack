@@ -10,11 +10,11 @@ Replace the sections below with information about your project.
 
 ---
 
-## Project: amplifier-amplihack
+## Project: feat-issue-2128-staging-cleanup-copilot-windows
 
 ## Overview
 
-Development framework for Claude Code with specialized agents and automated workflows.
+Development framework for popular coding agent systems (Claude Code, Github Copilot CLI, Microsoft Amplifier, codex) that provides structured dev workflows, memory, a package of useful skills and agents, goal-seeking agent generator, auto mode, self-improvement with reflection, and commands for getting the most out of agentic coding. Unlikely to work on Windows without WSL. **📚 [View Full Documentation](https://rysweet.github.io/amplihack/)**
 
 ## Architecture
 

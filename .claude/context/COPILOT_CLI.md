@@ -38,8 +38,8 @@ with open(".github/agents/AGENTS.md", "w") as f:
     f.write("""
 # Active Agents and Context
 
-@.claude/context/USER_PREFERENCES.md
-@.claude/context/PHILOSOPHY.md
+@~/.amplihack/.claude/context/USER_PREFERENCES.md
+@~/.amplihack/.claude/context/PHILOSOPHY.md
     """)
 # Copilot reads file via @include on next request
 ```
@@ -76,13 +76,13 @@ See [@docs/COPILOT_CLI.md](../../docs/COPILOT_CLI.md) for:
 
 ## Quick Reference
 
-**Architecture**: Single source of truth in `.claude/`, symlinked from `.github/`
+**Architecture**: Single source of truth in `~/.amplihack/.claude/`, symlinked from `.github/`
 
 **Hook Pattern**: Bash wrappers → Python implementations (zero duplication)
 
 **Key Files**:
 - `.github/copilot-instructions.md` - Base Copilot instructions
-- `.github/agents/amplihack/` - Symlink to `.claude/agents/amplihack/`
-- `.github/agents/skills/` - Symlinks to `.claude/skills/`
-- `.github/hooks/*` - Bash wrappers calling `.claude/tools/amplihack/hooks/*.py`
+- `.github/agents/amplihack/` - Symlink to `~/.amplihack/.claude/agents/amplihack/`
+- `.github/agents/skills/` - Symlinks to `~/.amplihack/.claude/skills/`
+- `.github/hooks/*` - Bash wrappers calling `~/.amplihack/.claude/tools/amplihack/hooks/*.py`
 - `.github/mcp-servers.json` - MCP server configuration

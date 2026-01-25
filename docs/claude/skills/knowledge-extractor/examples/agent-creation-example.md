@@ -183,7 +183,7 @@ Workflow Step 7: CI Check
 
 Agent implementation:
 
-1. Create `.claude/agents/amplihack/ci-diagnostic-workflow.md`
+1. Create `~/.amplihack/.claude/agents/amplihack/ci-diagnostic-workflow.md`
 2. Leverage existing agents:
    - fix-agent (for automated fixes)
    - analyzer (for log analysis)
@@ -241,7 +241,7 @@ Agent is successful when:
 ## Implementation Path
 
 ### Step 1: Agent Creation
-- Create `.claude/agents/amplihack/ci-diagnostic-workflow.md`
+- Create `~/.amplihack/.claude/agents/amplihack/ci-diagnostic-workflow.md`
 - Define clear role and responsibilities
 - Specify integration with parallel agent deployment
 

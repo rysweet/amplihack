@@ -137,5 +137,5 @@ claude --agent concept-extractor "Extract concepts from this architecture docume
 ## See Also
 
 - [Main README](../../README.md) - Project overview and quick start
-- [Philosophy](.claude/context/PHILOSOPHY.md) - Core principles
-- [Patterns](.claude/context/PATTERNS.md) - Common patterns
+- [Philosophy](~/.amplihack/.claude/context/PHILOSOPHY.md) - Core principles
+- [Patterns](~/.amplihack/.claude/context/PATTERNS.md) - Common patterns

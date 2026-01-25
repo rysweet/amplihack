@@ -118,7 +118,7 @@ Use this workflow for:
 - [ ] Command: `git worktree add ./worktrees/{branch-name} -b {branch-name}`
 - [ ] Push branch to remote with tracking: `git push -u origin {branch-name}`
 - [ ] Switch to new worktree directory: `cd ./worktrees/{branch-name}`
-- [ ] Document consensus decisions in `.claude/runtime/logs/<session_id>/CONSENSUS_DECISIONS.md`
+- [ ] Document consensus decisions in `~/.amplihack/.claude/runtime/logs/<session_id>/CONSENSUS_DECISIONS.md`
 
 ### Step 4: Research and Design with TDD (ALWAYS CONSENSUS)
 

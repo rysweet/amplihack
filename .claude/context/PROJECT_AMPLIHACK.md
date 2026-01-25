@@ -2,7 +2,11 @@
 
 ## Overview
 
-Amplihack is a development tool that extends Claude Code with specialized AI agents and automated workflows. It transforms conversational AI assistance into a development orchestrator with autonomous execution, multi-agent coordination, and intelligent automation.
+Amplihack is a **wrapper framework** that creates a consistent engineering environment across three agentic coding tools: Claude Code (Anthropic), GitHub Copilot CLI, and Amplifier. It transforms conversational AI assistance into a development orchestrator with autonomous execution, multi-agent coordination, and intelligent automation.
+
+**CRITICAL**: Amplihack is NOT a standalone tool - it stages files and configures environments for Claude Code, Copilot, and Amplifier to provide a unified development experience.
+
+See `~/.amplihack/.claude/memory/MULTI_TOOL_ARCHITECTURE.md` for detailed architecture and testing requirements.
 
 ## Purpose
 
@@ -67,11 +71,11 @@ Multi-turn agentic loops (Clarify → Plan → Execute → Evaluate) working wit
 
 ### For Amplihack Developers
 
-**Adding Agents**: Create in `.claude/agents/amplihack/specialized/`, define role, add delegation triggers, test, document
+**Adding Agents**: Create in `~/.amplihack/.claude/agents/amplihack/specialized/`, define role, add delegation triggers, test, document
 
 **Modifying Workflows**: Edit DEFAULT_WORKFLOW.md, test with `/ultrathink`, document rationale
 
-**Adding Commands**: Create in `.claude/commands/amplihack/`, implement logic, add help text, test execution
+**Adding Commands**: Create in `~/.amplihack/.claude/commands/amplihack/`, implement logic, add help text, test execution
 
 ### For Amplihack Users
 
@@ -158,11 +162,11 @@ Identify need after 2-3 similar requests, design minimal viable implementation, 
 
 ## Getting Started
 
-1. Review `.claude/context/PHILOSOPHY.md` for core principles
-2. Explore `.claude/agents/amplihack/` for agent capabilities
-3. Study `.claude/context/PATTERNS.md` for proven solutions
+1. Review `~/.amplihack/.claude/context/PHILOSOPHY.md` for core principles
+2. Explore `~/.amplihack/.claude/agents/amplihack/` for agent capabilities
+3. Study `~/.amplihack/.claude/context/PATTERNS.md` for proven solutions
 4. Try `/amplihack:*` commands in practice
-5. Examine `.claude/workflow/DEFAULT_WORKFLOW.md` for process understanding
+5. Examine `~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md` for process understanding
 
 ---
 

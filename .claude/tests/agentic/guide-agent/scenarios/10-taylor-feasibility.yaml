@@ -1,0 +1,170 @@
+# SCENARIO 10: Taylor - Feasibility and Q&A Usage
+# File: .claude/tests/agentic/guide-agent/scenarios/10-taylor-feasibility.yaml
+
+scenario:
+  name: "Guide Agent - Taylor (Non-Technical User) - Feasibility and Q&A Usage"
+  description: "Tests if guide shows non-coder how to use Q&A workflow to understand codebase without changing it"
+  type: cli
+  level: 1
+  persona: taylor_non_technical
+  learning_phase: practice
+  session: 1
+
+  tags: [guide-agent, beginner, q&a-workflow, non-technical, persona-taylor, codebase-exploration]
+
+  prerequisites:
+    - "Scenario 9 completed (Taylor knows Q&A is safe)"
+    - "amplihack installed"
+    - "ANTHROPIC_API_KEY set"
+
+  context:
+    student_state:
+      - "Knows Q&A workflow is safe"
+      - "Wants to understand codebase without modifying it"
+      - "Needs concrete examples of what questions to ask"
+      - "Looking for PM-relevant use cases"
+
+  steps:
+    - action: launch
+      target: "amplihack"
+      args: ["claude", "--", "-p", "Task(subagent_type=\"guide\", prompt=\"I want to understand our codebase without changing anything. Can you show me how to use the Q&A workflow? What kinds of questions can I ask?\")"]
+      description: "Ask about Q&A workflow usage for codebase exploration"
+      timeout: 90s
+
+    - action: wait_for_output
+      contains: "Q&A"
+      timeout: 30s
+      description: "Should discuss Q&A workflow"
+
+    # Metric: Explains Q&A workflow purpose
+    - action: verify_output_or
+      patterns:
+        - "Q&A.*question"
+        - "Q&A.*understand"
+        - "Q&A.*explore"
+        - "Q&A.*learn.*codebase"
+      description: "Should explain Q&A workflow is for understanding code"
+      metric_type: concept_explanation
+
+    # Metric: Reinforces read-only nature
+    - action: verify_output_or
+      patterns:
+        - "read.*only"
+        - "won't.*change"
+        - "safe.*explore"
+        - "no.*modification"
+      description: "Should remind that Q&A is read-only"
+      metric_type: safety_reinforcement
+
+    # Metric: PM-relevant example questions (at least 2)
+    - action: verify_output_or
+      patterns:
+        - "How many.*file"
+        - "What does.*do"
+        - "List.*component"
+        - "Explain.*system"
+        - "What.*API"
+        - "Summarize.*change"
+      description: "Should provide example questions relevant to project managers"
+      metric_type: example_relevance
+
+    # Metric: Provides command template
+    - action: verify_output
+      matches: "amplihack claude.*-p.*\\?"
+      description: "Should provide command template with question format"
+      metric_type: example_quality
+
+    # Metric: Shows code reading vs code writing distinction
+    - action: verify_output_or
+      patterns:
+        - "read.*code.*not.*write"
+        - "understand.*not.*implement"
+        - "ask.*not.*change"
+        - "explore.*not.*modify"
+      description: "Should clarify difference between reading and writing code"
+      metric_type: concept_clarity
+
+    # Metric: Multiple concrete examples (at least 3)
+    - action: verify_output
+      matches: "1\\.|2\\.|3\\."
+      description: "Should provide multiple numbered example questions"
+      metric_type: example_quantity
+
+    # Metric: PM use cases
+    - action: verify_output_or
+      patterns:
+        - "report"
+        - "documentation"
+        - "understand.*team"
+        - "architecture"
+        - "standup"
+        - "progress"
+      description: "Should mention PM-relevant use cases"
+      metric_type: use_case_relevance
+
+    # Metric: Interactive practice prompt
+    - action: verify_output_or
+      patterns:
+        - "TRY IT NOW"
+        - "Try asking"
+        - "Pick one"
+        - "Run this"
+      description: "Should encourage immediate practice"
+      metric_type: interactive_element
+
+    # Metric: Wait for user to try
+    - action: verify_output
+      matches: "\\[WAIT\\]"
+      description: "Should pause for user to try Q&A workflow"
+      metric_type: interactive_element
+
+    # Metric: Validation guidance
+    - action: verify_output_or
+      patterns:
+        - "Did.*get.*answer"
+        - "Was.*useful"
+        - "accurate"
+        - "make sense"
+        - "What.*learn"
+      description: "Should ask user to validate/reflect on results"
+      metric_type: metacognitive_prompt
+
+    # Anti-pattern: Should not suggest code-modifying workflows
+    - action: verify_output
+      not_matches: "Try.*DEFAULT|use.*AUTO.*workflow|recommend.*DDD"
+      description: "Should NOT suggest code-modifying workflows for non-coder"
+      metric_type: safety_check
+
+    # Anti-pattern: Should not use developer-centric examples
+    - action: verify_output
+      not_matches: "refactor|debug|optimize.*performance|write.*test"
+      description: "Should avoid developer-centric tasks (Taylor can't implement changes)"
+      metric_type: audience_appropriateness
+
+  success_criteria:
+    metrics:
+      time_to_first_query:
+        target: "≤ 2 exchanges"
+        measure: "Exchanges until Taylor runs first Q&A successfully"
+
+      example_quality:
+        target: "≥ 3 examples"
+        measure: "At least 3 concrete example questions provided"
+
+      pm_relevance:
+        target: true
+        measure: "Examples include PM use cases (reports, understanding, documentation)"
+
+      confidence_building:
+        target: true
+        measure: "Encourages practice and validates safe exploration"
+
+    student_outcomes:
+      - "Taylor successfully runs Q&A workflow to query codebase"
+      - "Taylor understands types of questions they can ask (architecture, components, changes)"
+      - "Taylor knows Q&A is for reading code, not writing it"
+      - "Taylor sees value for PM tasks (reports, understanding team's work, documentation)"
+      - "Taylor feels confident to explore codebase independently"
+
+  cleanup:
+    - action: stop_application

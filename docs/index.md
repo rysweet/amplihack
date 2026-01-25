@@ -1,10 +1,10 @@
 # amplihack
 
-**Agentic coding framework that uses specialized AI agents to accelerate software development through intelligent automation and collaborative problem-solving.**
+**Agentic coding framework for Claude Code, Microsoft Amplifier, GitHub Copilot CLI, and Codex that uses specialized AI agents to accelerate software development through intelligent automation and collaborative problem-solving.**
 
 ## What is amplihack?
 
-amplihack is a development tool built on Claude Code that leverages multiple specialized AI agents working together to handle complex software development tasks. It combines ruthless simplicity with powerful capabilities to make AI-assisted development more effective and maintainable.
+amplihack is a development framework for popular coding agent systems (Claude Code, Microsoft Amplifier, GitHub Copilot CLI, and Codex) that leverages multiple specialized AI agents working together to handle complex software development tasks. It combines ruthless simplicity with powerful capabilities to make AI-assisted development more effective and maintainable.
 
 ## Quick Navigation
 
@@ -12,7 +12,7 @@ amplihack is a development tool built on Claude Code that leverages multiple spe
 
 - [Get Started](#-get-started) - Installation and first steps
 - [Core Concepts](#-core-concepts) - Philosophy and principles
-- [First Docs Site Tutorial](tutorials/first-docs-site.md) - Create your first documentation site
+- [Amplihack Tutorial](tutorials/amplihack-tutorial.md) - Comprehensive 60-90 minute tutorial
 
 **Looking for something specific?**
 
@@ -27,6 +27,52 @@ amplihack is a development tool built on Claude Code that leverages multiple spe
 
 Everything you need to install and configure amplihack.
 
+### Choose Your Tool
+
+amplihack works with multiple agentic coding tools. Choose the one that fits your workflow:
+
+```sh
+# Launch with Claude Code (default)
+uvx --from git+https://github.com/rysweet/amplihack amplihack claude
+
+# Launch with Microsoft Amplifier
+uvx --from git+https://github.com/rysweet/amplihack amplihack amplifier
+
+# Launch with GitHub Copilot CLI
+uvx --from git+https://github.com/rysweet/amplihack amplihack copilot
+```
+
+**Tool Compatibility Matrix:**
+
+| Feature             | Claude Code | Amplifier | Copilot CLI | Codex      |
+| ------------------- | ----------- | --------- | ----------- | ---------- |
+| Plugin Architecture | ✅ Yes      | ❌ No     | ❌ No       | ❌ No      |
+| Per-Project Staging | ✅ Yes      | ✅ Yes    | ✅ Yes      | ✅ Yes     |
+| All Agents (38)     | ✅ Yes      | ✅ Yes    | ✅ Yes      | ⚠️ Limited |
+| All Skills (73)     | ✅ Yes      | ✅ Yes    | ✅ Yes      | ⚠️ Limited |
+| All Commands (24)   | ✅ Yes      | ✅ Yes    | ✅ Yes      | ⚠️ Limited |
+| Workflows           | ✅ All      | ✅ All    | ✅ All      | ⚠️ Limited |
+| Auto Mode           | ✅ Yes      | ✅ Yes    | ✅ Yes      | ⚠️ Limited |
+
+**New to amplihack?** After launching, try the interactive tutorial:
+
+```
+Task(subagent_type='guide', prompt='I am new to amplihack. Teach me the basics.')
+```
+
+The guide agent will walk you through workflows, prompting strategies, and hands-on exercises (60-90 minutes).
+
+### Plugin Architecture ⭐ NEW
+
+Centralized plugin system that works across all your projects:
+
+- [Plugin Installation Guide](plugin/INSTALLATION.md) - Install amplihack as a global plugin (Claude Code only)
+- [Plugin Architecture Overview](plugin/ARCHITECTURE.md) - How the plugin system works
+- [Migration Guide](plugin/MIGRATION.md) - Migrate from per-project to plugin mode
+- [CLI Reference](plugin/CLI_REFERENCE.md) - Complete command-line reference
+
+**Note**: Plugin architecture is **Claude Code only**. Microsoft Amplifier, GitHub Copilot CLI, and Codex use per-project `~/.amplihack/.claude/` staging instead.
+
 ### Installation
 
 - [Prerequisites](PREREQUISITES.md) - System requirements and dependencies
@@ -35,10 +81,47 @@ Everything you need to install and configure amplihack.
 
 ### Configuration
 
+#### Tool-Specific Setup
+
+**Claude Code (Default)**
+
+- Requires: `$ANTHROPIC_API_KEY` environment variable for Anthropic models
+- Plugin mode: Install globally with [Plugin Installation Guide](plugin/INSTALLATION.md)
+- Per-project mode: Copy `~/.amplihack/.claude/` directory to your project
+- Azure OpenAI: Use proxy configuration (see [Proxy Configuration](PROXY_CONFIG_GUIDE.md))
+
+**Microsoft Amplifier**
+
+```sh
+amplihack amplifier
+```
+
+Amplifier walks you through model configuration on first startup. Supports all Amplifier-compatible models including Claude, GPT-4, and local models.
+
+**GitHub Copilot CLI**
+
+```sh
+amplihack copilot
+```
+
+- Uses GitHub Copilot models (switch with `/model` command)
+- Adaptive hooks enable preference injection and context loading
+- All 38 agents available via `--agent <name>` flag
+- See [GitHub Copilot Integration](github-copilot-litellm-integration.md) for complete guide
+
+**Codex**
+
+- Limited support via per-project `~/.amplihack/.claude/` staging
+- Most features work but may require adaptation
+- Tested primarily with Claude models
+
+#### General Configuration
+
 - [Profile Management](PROFILE_MANAGEMENT.md) - Multiple environment configurations
-- [Proxy Configuration](PROXY_CONFIG_GUIDE.md) - Network proxy setup
+- [Proxy Configuration](PROXY_CONFIG_GUIDE.md) - Network proxy setup (Azure OpenAI, custom endpoints)
 - [Hook Configuration](HOOK_CONFIGURATION_GUIDE.md) - Customize framework behavior
 - [Memory Configuration Consent](features/memory-consent-prompt.md) - Intelligent memory settings with timeout protection
+- [Verify .claude/ Staging](howto/verify-claude-staging.md) - Check that framework files are properly staged
 
 ### Deployment
 
@@ -63,6 +146,7 @@ Understand the philosophy and architecture behind amplihack.
 
 - [Project Overview](claude/context/PROJECT.md) - System architecture
 - [Development Patterns](claude/context/PATTERNS.md) - Proven implementation patterns
+- [Unified Staging Architecture](concepts/unified-staging-architecture.md) - How .claude/ staging works across all commands
 - [Blarify Architecture](blarify_architecture.md) - Understanding the Blarify integration
 - [Documentation Knowledge Graph](documentation_knowledge_graph.md) - How docs connect
 
@@ -128,6 +212,7 @@ Specialized AI agents and tools for every development task.
 ### Core Agents
 
 <!-- - [Agents Overview](claude/agents/amplihack/README.md) - Complete agent catalog (see individual agent docs below) -->
+
 - [Architect](claude/agents/amplihack/core/architect.md) - System design and specifications
 - [Builder](claude/agents/amplihack/core/builder.md) - Code implementation from specs
 - [Reviewer](claude/agents/amplihack/core/reviewer.md) - Quality assurance and compliance
@@ -152,6 +237,19 @@ Specialized AI agents and tools for every development task.
 - [Implementation Summary](goal_agent_generator/IMPLEMENTATION_SUMMARY.md) - Current status
 
 **Key Feature**: Goal-seeking agents work autonomously toward a defined objective, iterating and adapting without requiring user intervention at each step. Perfect for complex, open-ended tasks.
+
+### Meta-Agentic Task Delegation ⭐ NEW
+
+**Run AI agents in isolated subprocess environments with automatic validation and evidence collection.**
+
+- [Meta-Delegation Overview](meta-delegation/README.md) - What is meta-delegation and when to use it
+- [Tutorial](meta-delegation/tutorial.md) - Learn meta-delegation step-by-step (30 minutes)
+- [How-To Guide](meta-delegation/howto.md) - Common tasks and recipes
+- [API Reference](meta-delegation/reference.md) - Complete technical documentation
+- [Concepts](meta-delegation/concepts.md) - Architecture and design principles
+- [Troubleshooting](meta-delegation/troubleshooting.md) - Fix common issues
+
+**Key Feature**: Delegate complex tasks to specialized personas (guide, QA engineer, architect, junior developer) running in isolated environments. The system monitors execution, collects evidence, validates success criteria, and provides detailed reports.
 
 ### Workflow Agents
 
@@ -246,7 +344,8 @@ Psychological memory model with episodic, semantic, procedural, prospective, and
 - [5-Type Memory Guide](memory/5-TYPE-MEMORY-GUIDE.md) - Complete user guide
 - [Developer Reference](memory/5-TYPE-MEMORY-DEVELOPER.md) - Architecture and API
 - [Quick Reference](memory/5-TYPE-MEMORY-QUICKREF.md) - One-page cheat sheet
-- [Kùzu Schema](memory/KUZU_MEMORY_SCHEMA.md) - Graph database design
+- [Kùzu Memory Schema](memory/KUZU_MEMORY_SCHEMA.md) - Graph database design for 5 memory types
+- [Kùzu Code Schema](memory/KUZU_CODE_SCHEMA.md) - Code graph schema for memory-code linking
 - [Terminal Visualization](memory/MEMORY_TREE_VISUALIZATION.md) - View graph in terminal
 - [Memory System Overview](memory/README.md) - Complete memory documentation
 
@@ -256,15 +355,14 @@ Psychological memory model with episodic, semantic, procedural, prospective, and
 - [Agent Memory Quickstart](AGENT_MEMORY_QUICKSTART.md) - Get started with memory
 - [Agent Type Memory Sharing](agent_type_memory_sharing_patterns.md) - Patterns for memory collaboration
 
-### Neo4j Memory System
+### Kuzu Memory System
 
-Advanced graph-based memory for complex knowledge representation:
+Embedded graph-based memory using Kuzu (NO Neo4j required):
 
-- [Neo4j Memory Quick Reference](neo4j_memory/quick_reference.md) - Fast answers
-- [Neo4j Phase 4 Implementation](neo4j_memory_phase4_implementation.md) - Latest features
 - [Documentation Graph](doc_graph_quick_reference.md) - Navigate documentation connections
+- [Code Context Injection](memory/CODE_CONTEXT_INJECTION.md) - Link code to memories
 
-**Research & Deep Dives**:
+**Historical Research** (Neo4j was replaced with Kuzu in Week 7):
 
 - [Executive Summary](research/neo4j_memory_system/00-executive-summary/README.md)
 - [Technical Research](research/neo4j_memory_system/01-technical-research/README.md)
@@ -282,7 +380,7 @@ Advanced graph-based memory for complex knowledge representation:
 ### External Knowledge
 
 - [External Knowledge Integration](external_knowledge_integration.md) - Import external data sources
-- [Blarify Integration](blarify_integration.md) - Connect with Blarify knowledge base
+- [Blarify Integration](blarify_integration.md) - Code indexing with Kuzu (NO Neo4j)
 - [Blarify Quickstart](blarify_quickstart.md) - Get started with Blarify
 
 ---
@@ -296,18 +394,25 @@ Specific features and third-party integrations.
 Intelligent guidance system that prevents common mistakes:
 
 - [Power Steering Overview](features/power-steering/README.md) - What is Power Steering
-- [Architecture](features/power-steering/architecture.md) - How it works
-- [Configuration](features/power-steering/configuration.md) - Setup and customization
-- [Troubleshooting](features/power-steering/troubleshooting.md) - Fix infinite loop and other issues
+- [Configuration Guide](features/power-steering/configuration.md) - Complete configuration reference
+- [Customization Guide](features/power-steering/customization-guide.md) - Customize considerations
+- [Troubleshooting](features/power-steering/troubleshooting.md) - Fix common issues
 - [Migration Guide v0.9.1](features/power-steering/migration-v0.9.1.md) - Upgrade guide
-- [Technical Reference](features/power-steering/technical-reference.md) - Developer reference
 - [Changelog v0.9.1](features/power-steering/changelog-v0.9.1.md) - Infinite loop fix release notes
+
+**Compaction Handling** ⭐ NEW
+
+Robust handling of conversation compaction in long sessions:
+
+- [Compaction Overview](power_steering_compaction_overview.md) - What is compaction and how power-steering handles it
+- [Compaction API Reference](power_steering_compaction_api.md) - Developer documentation for CompactionValidator and CompactionContext
+- [How to Customize Power Steering](../.claude/tools/amplihack/HOW_TO_CUSTOMIZE_POWER_STEERING.md#compaction-handling) - Configuration and troubleshooting
 
 ### Other Features
 
 - [Smart Memory Management](features/smart-memory-management.md) - Automatic Node.js memory optimization for Claude Code
 - [Claude.md Preservation](features/claude-md-preservation.md) - Preserve custom instructions
-- [Neo4j Session Cleanup](features/neo4j-session-cleanup.md) - Automatic resource management
+<!-- Neo4j removed - now using Kuzu embedded database (no session cleanup needed) -->
 <!-- - [Shutdown Detection](concepts/shutdown-detection.md) - Graceful exit handling (see stop-hook-exit-hang in Troubleshooting) -->
 
 ### Third-Party Integrations
@@ -403,6 +508,7 @@ Fix common issues and learn from past solutions.
 ### How-To Guides
 
 - [Configure Memory Consent](howto/configure-memory-consent.md) - Customize prompt behavior, timeouts, and CI/CD integration
+- [Configure Power-Steering Merge Preferences](howto/power-steering-merge-preferences.md) - Set up merge approval workflow
 - [Platform Bridge Quick Start](tutorials/platform-bridge-quickstart.md) - Learn the basics in 10 minutes
 - [Platform Bridge Workflows](howto/platform-bridge-workflows.md) - Common workflows for GitHub and Azure DevOps
 
@@ -414,7 +520,7 @@ Cutting-edge research, experimental features, and deep technical dives.
 
 ### Research Projects
 
-- [Neo4j Memory System Research](research/neo4j_memory_system/README.md) - Complete research archive
+- [Neo4j Memory System Research](research/neo4j_memory_system/README.md) - Historical research (replaced with Kuzu)
   - [Executive Summary](research/neo4j_memory_system/00-executive-summary/README.md)
   - [Technical Research](research/neo4j_memory_system/01-technical-research/README.md)
   - [Design Patterns](research/neo4j_memory_system/02-design-patterns/README.md)
@@ -438,7 +544,7 @@ Quick references, guides, and additional resources.
 - [Command Selection Guide](commands/COMMAND_SELECTION_GUIDE.md) - Choose the right command
 - [Platform Bridge API Reference](reference/platform-bridge-api.md) - Complete API documentation
 - [Doc Graph Quick Reference](doc_graph_quick_reference.md) - Navigate documentation
-- [Neo4j Quick Reference](neo4j_memory/quick_reference.md) - Memory system commands
+<!-- Neo4j Quick Reference removed - now using Kuzu embedded database -->
 - [A/B Test Quick Reference](memory/AB_TEST_QUICK_REFERENCE.md) - Test results
 
 ### Developing amplihack

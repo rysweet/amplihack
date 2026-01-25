@@ -336,6 +336,168 @@ These checkers have sophisticated logic built-in:
 - `_check_tutorial_needed` - New features have examples
 - `_check_presentation_needed` - High-impact work has presentation
 
+## Compaction Handling
+
+Power-steering automatically handles conversation compaction (when Claude's context window fills and old messages are removed). The system provides diagnostics to help you understand and respond to compaction events.
+
+### Understanding Compaction
+
+When a conversation grows too long, Claude automatically removes older messages to stay within token limits. This is called "compaction". Power-steering detects compaction and validates that critical information wasn't lost.
+
+### Compaction Diagnostics
+
+When compaction occurs, power-steering displays diagnostic information:
+
+```
+⚠️  COMPACTION DETECTED
+Conversation was compacted at turn 45
+Messages removed: turns 1-30 (estimated 15,000 tokens)
+Validation: PASSED ✓
+
+Critical data preserved:
+  • Active TODO items
+  • Current objectives
+  • Recent code changes (last 10 turns)
+  • Open issues and blockers
+```
+
+### What Warnings Mean
+
+**"Compaction detected - validation passed"**
+
+Everything is fine. Critical session data was preserved during compaction. Continue working normally.
+
+**"Compaction validation failed - missing TODO items"**
+
+Some TODO items from before compaction are no longer in context. The system will prompt you to recreate the TODO list if needed.
+
+**Solution:**
+- Review recent work and recreate TODO list using `TodoWrite`
+- Check if TODOs are actually still relevant
+- Use completion evidence (test output, commits) to verify completion
+
+**"Compaction validation failed - objectives unclear"**
+
+The original session objectives were removed during compaction and context is now unclear.
+
+**Solution:**
+- Explicitly restate your current goal in the conversation
+- Use completion evidence to validate what was accomplished
+- Consider starting a new session if context is too fragmented
+
+**"Compaction validation warning - recent changes may be incomplete"**
+
+Code changes or discussions from just before compaction may be incomplete.
+
+**Solution:**
+- Review the last few turns before compaction
+- Verify no critical decisions were made that are now missing
+- Re-summarize important decisions if needed
+
+### Configuration Options
+
+Compaction handling is automatic and requires no configuration. However, you can adjust power-steering behavior:
+
+**Disable compaction warnings** (not recommended):
+
+```yaml
+# In considerations.yaml
+- id: compaction_handling
+  category: Session Completion & Progress
+  question: Was compaction handled appropriately?
+  description: Validates critical data preserved after compaction
+  severity: warning  # Change to warning or disable
+  checker: _check_compaction_handling
+  enabled: false     # Set to false to disable
+```
+
+**Adjust compaction sensitivity**:
+
+The system uses `CompactionValidator` which checks:
+- TODO preservation (high priority)
+- Objective clarity (high priority)
+- Recent context (medium priority)
+- Code change continuity (medium priority)
+
+These cannot be tuned via configuration - they're hardcoded for reliability.
+
+### Responding to Compaction
+
+**When compaction is detected:**
+
+1. **Review the diagnostics** - See what was removed and what was preserved
+2. **Check validation status** - If PASSED, continue normally
+3. **If validation failed** - Follow the specific guidance provided
+4. **Update context if needed** - Recreate TODO lists or restate objectives
+
+**Best practices:**
+
+✅ **Complete work before compaction** - Finish TODOs early in long sessions
+✅ **Create checkpoints** - Commit code periodically to preserve state
+✅ **State objectives clearly** - Restate goals after major milestones
+✅ **Keep TODO lists current** - Mark items complete as you finish them
+
+❌ **Don't ignore warnings** - Compaction failures indicate missing context
+❌ **Don't start new work immediately** - Verify context is sound first
+❌ **Don't assume everything is preserved** - Check diagnostics
+
+### Metrics and Monitoring
+
+Compaction events are tracked with these metrics:
+
+**CompactionContext fields:**
+
+- `detected: bool` - Whether compaction occurred this session
+- `turn_at_compaction: int` - Which turn triggered compaction
+- `messages_removed: int` - How many messages were removed
+- `validation_passed: bool` - Whether critical data was preserved
+- `warnings: List[str]` - Specific validation failures
+- `diagnostics: str` - Human-readable summary
+
+**Example usage in logs:**
+
+```python
+if compaction_ctx.detected:
+    logger.info(f"Compaction at turn {compaction_ctx.turn_at_compaction}")
+    logger.info(f"Messages removed: {compaction_ctx.messages_removed}")
+    logger.info(f"Validation: {'PASSED' if compaction_ctx.validation_passed else 'FAILED'}")
+
+    for warning in compaction_ctx.warnings:
+        logger.warning(f"Compaction issue: {warning}")
+```
+
+### Troubleshooting Compaction Issues
+
+**Problem: Frequent compaction warnings**
+
+Long sessions hitting context limits repeatedly.
+
+**Solutions:**
+1. End session and start fresh after major milestones
+2. Commit work more frequently to preserve state
+3. Break large tasks into smaller sessions
+4. Use completion evidence instead of relying on conversation context
+
+**Problem: TODOs lost after compaction**
+
+TODO items created early in session were removed.
+
+**Solutions:**
+1. Recreate TODO list based on recent work
+2. Mark completed items as done earlier in session
+3. Use commit messages as evidence of completion
+4. Consider whether old TODOs are still relevant
+
+**Problem: False compaction warnings**
+
+System reports compaction issues that aren't real.
+
+**Solutions:**
+1. Check if context is actually sufficient for your work
+2. Explicitly restate objectives to clarify context
+3. Report false positive if validation logic is incorrect
+4. Temporarily disable check if blocking incorrectly
+
 ## Troubleshooting
 
 ### Problem: YAML File Not Loading
@@ -347,7 +509,7 @@ These checkers have sophisticated logic built-in:
 
 **Solutions:**
 
-1. Verify file exists: `.claude/tools/amplihack/considerations.yaml`
+1. Verify file exists: `~/.amplihack/.claude/tools/amplihack/considerations.yaml`
 2. Check file permissions (must be readable)
 3. Look for typos in filename
 

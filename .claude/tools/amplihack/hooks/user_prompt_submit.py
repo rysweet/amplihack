@@ -4,6 +4,7 @@ UserPromptSubmit hook - Inject user preferences on every message.
 Ensures preferences persist across all conversation turns in REPL mode.
 """
 
+import os
 import re
 import sys
 from pathlib import Path
@@ -186,6 +187,45 @@ class UserPromptSubmitHook(HookProcessor):
             self.log(f"Error reading preferences: {e}", "WARNING")
             return {}
 
+    def _ensure_claude_md_from_amplihack(self) -> None:
+        """Copy AMPLIHACK.md to CLAUDE.md if CLAUDE.md doesn't exist.
+
+        This enables plugin architecture where AMPLIHACK.md ships with the plugin
+        and gets copied to project root as CLAUDE.md on first use.
+        """
+        try:
+            claude_md = self.project_root / "CLAUDE.md"
+
+            # If CLAUDE.md already exists, don't overwrite
+            if claude_md.exists():
+                return
+
+            # Find AMPLIHACK.md in centralized plugin location (Issue #1948)
+            amplihack_md = None
+
+            # Try centralized plugin location first (plugin architecture)
+            plugin_root = os.environ.get("CLAUDE_PLUGIN_ROOT")
+            if plugin_root:
+                candidate = Path(plugin_root) / "AMPLIHACK.md"
+                if candidate.exists():
+                    amplihack_md = candidate
+
+            # Fallback: Check project .claude/ directory (per-project mode)
+            if not amplihack_md:
+                candidate = self.project_root / ".claude" / "AMPLIHACK.md"
+                if candidate.exists():
+                    amplihack_md = candidate
+
+            if amplihack_md and amplihack_md.exists():
+                # Copy AMPLIHACK.md to CLAUDE.md
+                import shutil
+                shutil.copy2(amplihack_md, claude_md)
+                self.log(f"Created CLAUDE.md from {amplihack_md}")
+
+        except Exception as e:
+            # Don't fail the hook if this doesn't work
+            self.log(f"Could not copy AMPLIHACK.md to CLAUDE.md: {e}", "WARNING")
+
     def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Process user prompt submit event.
 
@@ -195,6 +235,9 @@ class UserPromptSubmitHook(HookProcessor):
         Returns:
             Additional context to inject
         """
+        # FIRST: Handle AMPLIHACK.md → CLAUDE.md copy for plugin architecture
+        self._ensure_claude_md_from_amplihack()
+
         # Detect launcher and select strategy
         self.strategy = self._select_strategy()
         if self.strategy:
@@ -205,8 +248,12 @@ class UserPromptSubmitHook(HookProcessor):
                 self.log("Strategy provided custom prompt handling")
                 return strategy_result
 
-        # Extract user prompt
-        user_prompt = input_data.get("userMessage", {}).get("text", "")
+        # Extract user prompt - handle both string and dict formats
+        user_message = input_data.get("userMessage", "")
+        if isinstance(user_message, dict):
+            user_prompt = user_message.get("text", "")
+        else:
+            user_prompt = str(user_message)
 
         # Build context parts
         context_parts = []

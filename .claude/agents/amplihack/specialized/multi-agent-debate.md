@@ -99,7 +99,7 @@ Consensus: 2/3 agents converged on PostgreSQL
 ### Implementation Pattern
 
 ```markdown
-@.claude/agents/amplihack/specialized/multi-agent-debate.md
+@~/.amplihack/.claude/agents/amplihack/specialized/multi-agent-debate.md
 
 Task: [Your decision or design question]
 Agent Profiles:
@@ -251,7 +251,7 @@ From research (PR #946):
 
 ## Integration with Workflow
 
-**DEFAULT_WORKFLOW.md Integration:**
+**Default Workflow Integration:**
 
 **Step 4 (Design):** Use for architectural decisions
 **Step 5 (Implementation):** Use when multiple approaches viable
@@ -272,7 +272,7 @@ This pattern is implemented as a workflow. Use the `/amplihack:debate` command:
 /amplihack:debate "Should we add Redis for caching?"
 ```
 
-The workflow file `.claude/workflow/DEBATE_WORKFLOW.md` can be customized to adjust:
+The workflow can be accessed via `Skill(skill="debate-workflow")` and customized to adjust:
 
 - Agent perspectives (security, performance, simplicity, etc.)
 - Number of debate rounds

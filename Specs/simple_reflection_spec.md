@@ -155,7 +155,7 @@ if __name__ == "__main__":
 
 ### 1. Stop Hook Integration
 
-Modify `.claude/tools/hooks/stop.py`:
+Modify `~/.amplihack/.claude/tools/hooks/stop.py`:
 
 ```python
 # After transcript handling
@@ -171,7 +171,7 @@ if transcript_path:
 
 ### 2. UltraThink Task Pickup
 
-UltraThink already monitors `.claude/runtime/tasks/` for work.
+UltraThink already monitors `~/.amplihack/.claude/runtime/tasks/` for work.
 No changes needed - it will automatically process our task files.
 
 ### 3. Environment Variables

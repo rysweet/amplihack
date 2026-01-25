@@ -206,7 +206,7 @@ After investigation completes, continue with these tasks:
 - [ ] **Use** database agent for data model design (if applicable)
 - [ ] **Use** security agent to identify security requirements
 - [ ] use other subagents as appropriate if their expertise is applicable to the problem
-- [ ] **💡 TIP**: For diagnostic follow-up questions during research, consider [parallel agent investigation](.claude/CLAUDE.md#parallel-agent-investigation-strategy)
+- [ ] **💡 TIP**: For diagnostic follow-up questions during research, consider [parallel agent investigation](~/.amplihack/.claude/CLAUDE.md#parallel-agent-investigation-strategy)
 - [ ] ask @zen-architect agent to review everything done so far and provide feedback
 - [ ] ask @architect agent to consider the feedback
 - [ ] Document module specifications
@@ -242,7 +242,7 @@ After investigation completes, continue with these tasks:
 - [ ] Simplify complex logic (without violating user specifications)
 - [ ] Ensure single responsibility principle
 - [ ] Verify no placeholders remain - no stubs, no TODOs, no swallowed exceptions, no unimplemented functions - follow the zero-BS principle.
-- [ ] **VALIDATE: All explicit user requirements still preserved** and still adhering to @.claude/context/PHILOSOPHY.md
+- [ ] **VALIDATE: All explicit user requirements still preserved** and still adhering to @~/.amplihack/.claude/context/PHILOSOPHY.md
 
 ### Step 10: Review Pass Before Commit
 
@@ -262,7 +262,7 @@ After investigation completes, continue with these tasks:
 ### Step 12: Run Tests and Pre-commit Hooks
 
 - [ ] **Use** pre-commit-diagnostic agent if hooks fail
-- [ ] **💡 TIP**: For test failures, use [parallel investigation](.claude/CLAUDE.md#parallel-agent-investigation-strategy) to explore issues while continuing work
+- [ ] **💡 TIP**: For test failures, use [parallel investigation](~/.amplihack/.claude/CLAUDE.md#parallel-agent-investigation-strategy) to explore issues while continuing work
 - [ ] Run all unit tests
 - [ ] Execute `pre-commit run --all-files`
 - [ ] Fix any linting issues
@@ -428,7 +428,7 @@ gh pr ready 2>&1 | cat
 
 - [ ] Check CI status (all checks passing)
 - [ ] **Always use** ci-diagnostic-workflow agent if CI fails
-- [ ] **💡 TIP**: When investigating CI failures, use [parallel agent investigation](.claude/CLAUDE.md#parallel-agent-investigation-strategy) to explore logs and code simultaneously
+- [ ] **💡 TIP**: When investigating CI failures, use [parallel agent investigation](~/.amplihack/.claude/CLAUDE.md#parallel-agent-investigation-strategy) to explore logs and code simultaneously
 - [ ] Resolve any merge conflicts
 - [ ] Verify all review comments addressed, including check for any that showed up after marking the PR as ready
 - [ ] Confirm PR is approved

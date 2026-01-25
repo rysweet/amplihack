@@ -1,14 +1,16 @@
 """Passthrough mode handler for Anthropic -> Azure OpenAI fallback."""
 
 import json
-import logging
 import os
 import time
 from typing import Any
 
 import httpx  # type: ignore
 
-logger = logging.getLogger(__name__)
+from .sanitizing_logger import get_sanitizing_logger
+
+# Use sanitizing logger to prevent credential exposure (Issue #1997)
+logger = get_sanitizing_logger(__name__)
 
 
 class PassthroughHandler:

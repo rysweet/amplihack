@@ -24,7 +24,7 @@ Execute weighted multi-agent voting for critical decisions where domain expertis
 
 ## Key Insight from Pattern Analysis
 
-From `.claude/context/DISCOVERIES.md` (Pattern Applicability Analysis):
+From `~/.amplihack/.claude/context/DISCOVERIES.md` (Pattern Applicability Analysis):
 
 > **Voting vs Expert Judgment Selection Criteria**
 >

@@ -750,11 +750,11 @@ After creating your tool:
 
 ## Resources
 
-- **Original Tool**: `.claude/scenarios/analyze-codebase/`
-- **Template Files**: `.claude/scenarios/templates/`
-- **Agent Documentation**: `.claude/agents/`
+- **Original Tool**: `~/.amplihack/.claude/scenarios/analyze-codebase/`
+- **Template Files**: `~/.amplihack/.claude/scenarios/templates/`
+- **Agent Documentation**: `~/.amplihack/.claude/agents/`
 - **Agent Manager**: `src/amplihack/agents/agent_manager.py`
-- **Philosophy Guide**: `.claude/context/PHILOSOPHY.md`
+- **Philosophy Guide**: `~/.amplihack/.claude/context/PHILOSOPHY.md`
 
 ---
 

@@ -20,7 +20,7 @@ invokes:
 
 ## Input Validation
 
-@.claude/context/AGENT_INPUT_VALIDATION.md
+@~/.amplihack/.claude/context/AGENT_INPUT_VALIDATION.md
 
 ## Usage
 
@@ -41,6 +41,35 @@ Claude invokes this skill for non-trivial development and investigation tasks:
 
 **Bypass**: Use explicit commands (`/fix`, `/analyze`) or request "without ultrathink"
 
+## ⛔ BLOCKING REQUIREMENT: Workflow Invocation
+
+When ultrathink-orchestrator skill is triggered (auto-activation or explicit /ultrathink command), you MUST:
+
+1. **IMMEDIATELY invoke the appropriate workflow skill** using the Skill tool:
+   - Development tasks: `Skill(skill="default-workflow")`
+   - Investigation tasks: `Skill(skill="investigation-workflow")`
+   - Q&A tasks: Read `~/.amplihack/.claude/workflow/Q&A_WORKFLOW.md` directly
+
+2. **IF skill invocation fails**, use Read tool as fallback:
+   - Development: `Read(file_path="~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md")`
+   - Investigation: `Read(file_path="~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md")`
+
+3. **NEVER proceed with workflow execution without loading the workflow**
+   - Power-steering will detect this violation at session end
+   - Session will be blocked until proper workflow invocation is added
+
+**Self-Check Protocol:**
+Before proceeding with any workflow steps, verify you have:
+- [ ] Invoked Skill tool with workflow skill name, OR
+- [ ] Used Read tool to load workflow markdown file
+- [ ] Confirmed workflow content is loaded in context
+
+**Error Protocol:**
+If you forget to invoke the workflow:
+1. Power-steering will block session termination
+2. You must retry with proper Skill or Read tool invocation
+3. No shortcuts or workarounds accepted
+
 ## EXECUTION INSTRUCTIONS FOR CLAUDE
 
 When this command is invoked, you MUST:
@@ -51,18 +80,18 @@ Execute this exact sequence for the task: `{TASK_DESCRIPTION}`
    - **Investigation keywords**: investigate, explain, understand, how does, why does, analyze, research, explore, examine, study
    - **Development keywords**: implement, build, create, add feature, fix, refactor, deploy
    - **Priority order**: Q&A detection first (simple questions), then Investigation, then Development
-   - **If Q&A detected**: Use @.claude/workflow/Q&A_WORKFLOW.md (simple, single-turn answers)
-   - **If Investigation keywords found**: Use @.claude/workflow/INVESTIGATION_WORKFLOW.md
-   - **If Development keywords found**: Use @.claude/workflow/DEFAULT_WORKFLOW.md
+   - **If Q&A detected**: Use @~/.amplihack/.claude/workflow/Q&A_WORKFLOW.md (simple, single-turn answers)
+   - **If Investigation keywords found**: Use @~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md
+   - **If Development keywords found**: Use @~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md
    - **If both Investigation and Development detected**: Use hybrid workflow (investigation first, then development)
 2. Mandatory - not doing this wil require rework **Invoke the appropriate workflow skill** using the Skill tool:
-   - Q&A: Read @.claude/workflow/Q&A_WORKFLOW.md directly (no skill wrapper needed for simple Q&A)
+   - Q&A: Read @~/.amplihack/.claude/workflow/Q&A_WORKFLOW.md directly (no skill wrapper needed for simple Q&A)
    - Investigation: Skill(skill="investigation-workflow")`
    - Development: `Skill(skill="default-workflow")`
    - **FALLBACK**: If skill invocation fails (skill not found), fall back to reading markdown workflows:
-     - Q&A: @.claude/workflow/Q&A_WORKFLOW.md
-     - Investigation: @.claude/workflow/INVESTIGATION_WORKFLOW.md
-     - Development: @.claude/workflow/DEFAULT_WORKFLOW.md
+     - Q&A: @~/.amplihack/.claude/workflow/Q&A_WORKFLOW.md
+     - Investigation: @~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md
+     - Development: @~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md
 3. ALWAYS **Create a comprehensive todo list** using TodoWrite tool that includes all workflow steps/phases
 4. ALWAYS **Execute each step systematically**, marking todos as in_progress and completed
 
@@ -112,7 +141,7 @@ THERE IS NO VALUE in SKIPPING STEPS - DO NOT TAKE SHORTCUTS.
 
 5. **Use the specified agents** for each step (marked with "**Use**" or "**Always use**")
 6. \*\*MANDATORY: Enforce all steps.
-7. **Track decisions** by creating and writing important decisions to `.claude/runtime/logs/<session_timestamp>/DECISIONS.md`
+7. **Track decisions** by creating and writing important decisions to `~/.amplihack/.claude/runtime/logs/<session_timestamp>/DECISIONS.md`
 8. **End with cleanup agent** (development) or knowledge capture (investigation)
 
 ## Task Management
@@ -134,7 +163,7 @@ User: "/ultrathink what is the purpose of the workflow system?"
 
 1. Detect: Q&A task (contains "what is")
 2. Select: Q&A workflow (simple, single-turn)
-3. Read: `.claude/workflow/Q&A_WORKFLOW.md`
+3. Read: `~/.amplihack/.claude/workflow/Q&A_WORKFLOW.md`
 4. Follow Q&A workflow steps (typically 3-4 steps)
 5. Provide concise, direct answer
 6. No complex agent orchestration needed
@@ -148,7 +177,7 @@ User: "/ultrathink implement JWT authentication"
 1. Detect: Development task (contains "implement")
 2. Select: default-workflow skill
 3. Try: Skill(skill="default-workflow")
-4. Fallback if needed: Read `.claude/workflow/DEFAULT_WORKFLOW.md`
+4. Fallback if needed: Read `~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md`
 5. Begin executing workflow steps with deep analysis
 6. Orchestrate multiple agents where complexity requires
 7. Follow all workflow steps as defined
@@ -165,7 +194,7 @@ User: "/ultrathink investigate how the reflection system works"
 2. Select: investigation-workflow skill (6 phases)
 3. Inform user: "Detected investigation task. Using investigation-workflow skill"
 4. Try: Skill(skill="investigation-workflow")
-5. Fallback if needed: Read `.claude/workflow/INVESTIGATION_WORKFLOW.md`
+5. Fallback if needed: Read `~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md`
 6. Execute Phase 1: Scope Definition
 7. Execute Phase 2: Exploration Strategy
 8. Execute Phase 3: Parallel Deep Dives (multiple agents simultaneously)

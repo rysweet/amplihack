@@ -29,40 +29,98 @@ This skill acts as a thin wrapper around the canonical ultrathink command, follo
 
 **This skill is a thin wrapper that references canonical sources:**
 
-- **Primary Command**: `.claude/commands/amplihack/ultrathink.md` (278 lines)
+- **Primary Command**: `~/.amplihack/.claude/commands/amplihack/ultrathink.md` (278 lines)
 - **Workflow Sources**:
-  - Development: `.claude/workflow/DEFAULT_WORKFLOW.md`
-  - Investigation: `.claude/workflow/INVESTIGATION_WORKFLOW.md`
+  - Development: `~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md`
+  - Investigation: `~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md`
 
 The canonical command contains complete task detection logic, complexity estimation, and orchestration patterns for both investigation and development workflows.
 
-## Execution Instructions
+## ⛔ MANDATORY EXECUTION PROCESS (5 Steps)
 
-When this skill is activated, you MUST:
+When this skill is activated, you MUST follow this exact 5-step process:
 
-1. **Read the canonical command** for task detection logic:
+### Step 1: Read Canonical Command (MANDATORY)
+```
+Read(file_path="~/.amplihack/.claude/commands/amplihack/ultrathink.md")
+```
+**Validation Checkpoint**: Confirm ultrathink.md content is loaded before proceeding.
 
-   ```
-   Read(file_path=".claude/commands/amplihack/ultrathink.md")
-   ```
+### Step 2: Detect Task Type (MANDATORY)
+Analyze user request using keywords from canonical command:
+- **Q&A keywords**: what is, explain briefly, quick question, how do I run, simple question
+- **Investigation keywords**: investigate, explain, understand, analyze, research, explore
+- **Development keywords**: implement, build, create, add feature, fix, refactor, deploy
+- **Hybrid tasks**: Both investigation and development keywords present
 
-   Note: Path is relative to project root. Claude Code resolves this automatically.
+**Validation Checkpoint**: Task type must be determined (Q&A, Investigation, Development, or Hybrid).
 
-2. **Detect task type** using keywords from the canonical command:
-   - **Investigation keywords**: investigate, explain, understand, analyze, research, explore
-   - **Development keywords**: implement, build, create, add feature, fix, refactor, deploy
-   - **Hybrid tasks**: Both investigation and development keywords present
+### Step 3: Invoke Workflow Skill (MANDATORY - BLOCKING)
+⛔ **THIS IS A BLOCKING REQUIREMENT** - Session will be terminated if skipped.
 
-3. **Invoke appropriate workflow skill**:
-   - Investigation: `Skill(skill="investigation-workflow")`
-   - Development: `Skill(skill="default-workflow")`
-   - Hybrid: Both sequentially (investigation first, then development)
+**For Q&A tasks:**
+```
+Read(file_path="~/.amplihack/.claude/workflow/Q&A_WORKFLOW.md")
+```
 
-4. **Fallback** if skill not found:
-   - Read workflow markdown files directly
-   - Investigation: `.claude/workflow/INVESTIGATION_WORKFLOW.md`
-   - Development: `.claude/workflow/DEFAULT_WORKFLOW.md`
-   - Follow workflow steps as specified
+**For Investigation tasks:**
+```
+Skill(skill="investigation-workflow")
+```
+
+**For Development tasks:**
+```
+Skill(skill="default-workflow")
+```
+
+**For Hybrid tasks:**
+```
+Skill(skill="investigation-workflow")
+# After investigation completes:
+Skill(skill="default-workflow")
+```
+
+**Validation Checkpoint**: Confirm Skill tool was invoked OR proceed to Step 4.
+
+### Step 4: Fallback to Read Tool (IF Step 3 Fails)
+Only if skill invocation fails, use Read tool as fallback:
+
+**Investigation fallback:**
+```
+Read(file_path="~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md")
+```
+
+**Development fallback:**
+```
+Read(file_path="~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md")
+```
+
+**Validation Checkpoint**: Confirm workflow content is loaded in context.
+
+### Step 5: Execute Workflow Steps (MANDATORY)
+Follow all steps from loaded workflow without skipping.
+
+**Validation Checkpoint**: All workflow steps must be completed.
+
+---
+
+## Enforcement
+
+**Power-Steering Detection:**
+- Validates Skill tool invocation occurred
+- Validates Read tool fallback if Skill failed
+- Blocks session termination if workflow not loaded
+
+**Self-Check Protocol:**
+Before proceeding past Step 3, verify:
+- [ ] Skill tool invoked with workflow skill name, OR
+- [ ] Read tool used to load workflow markdown
+- [ ] Workflow content confirmed in context
+
+**No Shortcuts:**
+- You cannot skip workflow invocation
+- You cannot assume workflow content
+- You must use Skill or Read tool explicitly
 
 ## Why This Pattern
 
@@ -82,9 +140,9 @@ This pattern aligns with amplihack philosophy: ruthless simplicity through elimi
 
 ## Related Files
 
-- **Canonical Command**: `.claude/commands/amplihack/ultrathink.md`
-- **Development Workflow Skill**: `.claude/skills/default-workflow/`
-- **Investigation Workflow Skill**: `.claude/skills/investigation-workflow/`
+- **Canonical Command**: `~/.amplihack/.claude/commands/amplihack/ultrathink.md`
+- **Development Workflow Skill**: `~/.amplihack/.claude/skills/default-workflow/`
+- **Investigation Workflow Skill**: `~/.amplihack/.claude/skills/investigation-workflow/`
 - **Canonical Workflows**:
-  - `.claude/workflow/DEFAULT_WORKFLOW.md`
-  - `.claude/workflow/INVESTIGATION_WORKFLOW.md`
+  - `~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md`
+  - `~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md`

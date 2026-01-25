@@ -27,7 +27,7 @@ The Agent Memory System is now fully integrated into the Claude tools framework,
 
 ### ✅ Claude Tools Integration Complete
 
-**Location**: `.claude/tools/amplihack/memory/`
+**Location**: `~/.amplihack/.claude/tools/amplihack/memory/`
 
 - `__init__.py` - Integration interface with graceful degradation
 - `context_preservation.py` - Specialized context preservation utilities
@@ -326,7 +326,7 @@ All implementation requirements have been met:
 The Agent Memory System is now fully integrated and production-ready:
 
 1. **Core Implementation**: Complete and tested
-2. **Claude Tools Integration**: Available in `.claude/tools/amplihack/memory/`
+2. **Claude Tools Integration**: Available in `~/.amplihack/.claude/tools/amplihack/memory/`
 3. **Performance Verified**: Exceeds all requirements
 4. **Thread Safety Confirmed**: 100% success in concurrent testing
 5. **Documentation Complete**: Comprehensive guides and examples

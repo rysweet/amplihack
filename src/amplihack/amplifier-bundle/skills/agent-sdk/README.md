@@ -60,7 +60,7 @@ agent-sdk/
 
 ```python
 # In Claude Code conversations
-@.claude/skills/agent-sdk/SKILL.md
+@~/.amplihack/.claude/skills/agent-sdk/SKILL.md
 ```
 
 ## Usage Patterns

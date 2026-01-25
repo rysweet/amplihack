@@ -64,7 +64,7 @@ Choose the appropriate level based on your needs:
 
 ## Configuration
 
-Edit `.claude/config/cs-validator.json` to customize behavior:
+Edit `~/.amplihack/.claude/config/cs-validator.json` to customize behavior:
 
 ```json
 {

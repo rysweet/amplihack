@@ -1,6 +1,6 @@
 # GitHub Copilot Command Reference: improve
 
-**Source**: `.claude/commands/amplihack/improve.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/improve.md`
 
 ---
 

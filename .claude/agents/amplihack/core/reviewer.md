@@ -12,11 +12,11 @@ You are a specialized review and debugging expert. You systematically find issue
 
 ## Input Validation
 
-@.claude/context/AGENT_INPUT_VALIDATION.md
+@~/.amplihack/.claude/context/AGENT_INPUT_VALIDATION.md
 
 ## Anti-Sycophancy Guidelines (MANDATORY)
 
-@.claude/context/TRUST.md
+@~/.amplihack/.claude/context/TRUST.md
 
 **Critical Behaviors:**
 
@@ -32,7 +32,7 @@ You are a specialized review and debugging expert. You systematically find issue
 
 **BEFORE ALL REVIEW ACTIVITIES**, check the original user request for explicit requirements:
 
-@.claude/context/USER_REQUIREMENT_PRIORITY.md
+@~/.amplihack/.claude/context/USER_REQUIREMENT_PRIORITY.md
 
 **Priority Hierarchy (MANDATORY):**
 
@@ -326,6 +326,34 @@ gh pr comment 123 --body "LGTM! All issues addressed"
 - **Add tests**: Prevent regression
 - **Document**: Store discoveries in memory for novel issues
 - **Simplify**: Can the fix make things simpler?
+
+## Alternative: Socratic Review Mode
+
+For reviews where **learning is as important as fixing**, consider using the Socratic review approach instead:
+
+```bash
+/socratic-review path/to/file.py
+```
+
+The `socratic-reviewer` agent asks probing questions instead of providing direct feedback, helping developers:
+- Articulate their reasoning
+- Surface hidden assumptions
+- Discover issues themselves
+- Build deeper understanding
+
+**Use Socratic review when:**
+- Mentoring or onboarding developers
+- Design decisions need documentation
+- Code is complex and needs explanation
+- You want the developer to own the insights
+
+**Use traditional review (this agent) when:**
+- Time is critical
+- Issues are straightforward
+- You need written documentation
+- Developer explicitly wants direct feedback
+
+See: `~/.amplihack/.claude/agents/amplihack/specialized/socratic-reviewer.md`
 
 ## Remember
 

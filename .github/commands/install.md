@@ -1,6 +1,6 @@
 # GitHub Copilot Command Reference: install
 
-**Source**: `.claude/commands/amplihack/install.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/install.md`
 
 ---
 

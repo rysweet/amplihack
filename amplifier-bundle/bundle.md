@@ -5,11 +5,14 @@ bundle:
   description: "A set of recipes, agents, tools, hooks, and skills from the amplihack toolset which are designed to provide a more complete engineering system on top of Amplifier."
 
 includes:
-  # Note: foundation is NOT explicitly included here because:
-  # 1. Amplifier CLI already loads foundation as the default bundle
-  # 2. amplifier-bundle-recipes includes foundation transitively
-  # Including it again causes a "circular dependency" warning
-  - bundle: git+https://github.com/microsoft/amplifier-bundle-recipes@main
+  # Note: We include the recipes BEHAVIOR bundle, not the main bundle
+  # The main bundle includes foundation, which would create a circular dependency
+  # since foundation already includes recipes:behaviors/recipes
+  # This matches the pattern foundation uses (line 36 of foundation/bundle.md)
+  - bundle: git+https://github.com/microsoft/amplifier-bundle-recipes@main#subdirectory=behaviors/recipes.yaml
+  
+  # GitHub issues integration (NOT in foundation, safe to include directly)
+  - bundle: git+https://github.com/microsoft/amplifier-bundle-issues@main
 
 # Configure tool-skills to find skills
 # The amplihack launcher copies skills to .claude/skills in cwd during setup
@@ -20,6 +23,69 @@ tools:
         - .claude/skills # Amplihack skills (copied by launcher during setup)
         - .amplifier/skills # Standard workspace location
         - ~/.amplifier/skills # User skills
+---
+
+# 🎯 START HERE: Workflow Classification at Topic Boundaries
+
+**CRITICAL - READ THIS FIRST**: You MUST classify at topic boundaries (new conversation topics) and execute the corresponding recipe BEFORE taking any other action. No exceptions.
+
+## When to Classify
+
+Classify when the user:
+- **Starts a new topic** (different domain/goal from current work)
+- **First message of the session** (no prior context)
+- **Explicitly changes direction** ("Now let's...", "Next I want...", "Different question...")
+- **Switches request type** (question → implementation, investigation → coding)
+
+## When NOT to Re-Classify
+
+Do NOT re-classify when the user:
+- **Asks follow-ups** ("Also...", "What about...", "And...")
+- **Provides clarifications** ("I meant...", "To clarify...")
+- **Requests related additions** ("Add logout too", "Also update the tests")
+- **Checks status** ("How's it going?", "What's the progress?")
+
+**Detection rule**: If the request is about the same goal/domain as the last 3 turns, it's the same topic. Continue in the current workflow.
+
+## Quick Classification (3 seconds max)
+
+| If Request Matches... | Execute This Recipe | When to Use |
+|-----------------------|---------------------|-------------|
+| Simple question, no code changes | `amplifier-bundle/recipes/qa-workflow.yaml` | "what is", "explain", "how do I run" |
+| Admin/operational tasks | Direct execution | "cleanup", "delete old", "git status", "run command" |
+| Need to understand/explore code | `amplifier-bundle/recipes/investigation-workflow.yaml` | "investigate", "analyze", "how does X work" |
+| Any code changes | `amplifier-bundle/recipes/default-workflow.yaml` | "implement", "add", "fix", "refactor", "build" |
+
+## Required Announcement
+
+State your classification and execute the recipe:
+
+```
+WORKFLOW: [Q&A | OPERATIONS | INVESTIGATION | DEFAULT]
+Reason: [Brief justification]
+Executing: amplifier-bundle/recipes/[workflow]-workflow.yaml (or direct execution for OPERATIONS)
+```
+
+Then use the recipes tool:
+```python
+recipes(operation="execute", recipe_path="amplifier-bundle/recipes/[workflow]-workflow.yaml", context={...})
+```
+
+## Classification Rules
+
+1. **If keywords match multiple workflows**: Choose DEFAULT (err toward more structure)
+2. **If uncertain**: Choose DEFAULT (never skip workflow)
+3. **Q&A is for simple questions ONLY**: If answer needs exploration, use INVESTIGATION
+4. **DEFAULT for any code changes**: Features, bugs, refactoring - always DEFAULT
+
+## Anti-Patterns (DO NOT)
+
+- Starting work without classifying first
+- Implementing directly without running a recipe
+- Treating workflow classification as optional
+- Using foundation agents when amplihack agents exist
+
+---
 
 # Reference existing Claude Code components via relative paths - NO DUPLICATION
 # Note: The skills section below documents what's available but tool-skills
@@ -150,7 +216,6 @@ agents:
   amplihack:insight-synthesizer: { path: agents/specialized/insight-synthesizer.md }
   amplihack:integration: { path: agents/specialized/integration.md }
   amplihack:knowledge-archaeologist: { path: agents/specialized/knowledge-archaeologist.md }
-  amplihack:memory-manager: { path: agents/specialized/memory-manager.md }
   amplihack:multi-agent-debate: { path: agents/specialized/multi-agent-debate.md }
   amplihack:n-version-validator: { path: agents/specialized/n-version-validator.md }
   amplihack:patterns: { path: agents/specialized/patterns.md }
@@ -258,14 +323,23 @@ agents:
 
 # Amplifier recipes (converted from Claude Code workflows)
 recipes:
+  # Core workflows (3)
   qa-workflow: { path: recipes/qa-workflow.yaml }
+  investigation-workflow: { path: recipes/investigation-workflow.yaml }
+  default-workflow: { path: recipes/default-workflow.yaml }
+  
+  # Verification workflow (1)
+  verification-workflow: { path: recipes/verification-workflow.yaml }
+  
+  # Advanced workflows (4)
   cascade-workflow: { path: recipes/cascade-workflow.yaml }
   consensus-workflow: { path: recipes/consensus-workflow.yaml }
   debate-workflow: { path: recipes/debate-workflow.yaml }
-  default-workflow: { path: recipes/default-workflow.yaml }
-  investigation-workflow: { path: recipes/investigation-workflow.yaml }
   n-version-workflow: { path: recipes/n-version-workflow.yaml }
-  verification-workflow: { path: recipes/verification-workflow.yaml }
+  
+  # Autonomous workflows (2)
+  auto-workflow: { path: recipes/auto-workflow.yaml }
+  guide: { path: recipes/guide.yaml }
 
 context:
   include:
@@ -300,9 +374,27 @@ modules:
 
 You are running with the amplihack bundle, a development framework that uses specialized AI agents and structured workflows to accelerate software development.
 
-## MANDATORY: Workflow Classification (ALWAYS FIRST)
+## MANDATORY: Workflow Classification at Topic Boundaries
 
-**CRITICAL**: You MUST classify every user request into a workflow and execute the corresponding recipe BEFORE taking any other action. No exceptions.
+**CRITICAL**: You MUST classify at topic boundaries (new conversation topics) and execute the corresponding recipe BEFORE taking any other action. No exceptions.
+
+### When to Classify
+
+Classify when the user:
+- **Starts a new topic** (different domain/goal from current work)
+- **First message of the session** (no prior context)
+- **Explicitly changes direction** ("Now let's...", "Next I want...", "Different question...")
+- **Switches request type** (question → implementation, investigation → coding)
+
+### When NOT to Re-Classify
+
+Do NOT re-classify when the user:
+- **Asks follow-ups** ("Also...", "What about...", "And...")
+- **Provides clarifications** ("I meant...", "To clarify...")
+- **Requests related additions** ("Add logout too", "Also update the tests")
+- **Checks status** ("How's it going?", "What's the progress?")
+
+**Detection rule**: If the request is about the same goal/domain as the last 3 turns, it's the same topic. Continue in the current workflow.
 
 ### Quick Classification (3 seconds max)
 

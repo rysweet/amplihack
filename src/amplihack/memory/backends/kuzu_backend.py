@@ -27,12 +27,14 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import kuzu
 
 from ..models import MemoryEntry, MemoryQuery, MemoryType, SessionInfo
 from .base import BackendCapabilities
+from ..kuzu.code_graph import KuzuCodeGraph
+from ..kuzu.connector import KuzuConnector
 
 logger = logging.getLogger(__name__)
 
@@ -46,11 +48,12 @@ class KuzuBackend:
     - Memories can reference other memories
     """
 
-    def __init__(self, db_path: Path | str | None = None):
+    def __init__(self, db_path: Path | str | None = None, enable_auto_linking: bool = True):
         """Initialize Kùzu backend.
 
         Args:
             db_path: Path to Kùzu database directory. Defaults to ~/.amplihack/memory_kuzu/
+            enable_auto_linking: If True, automatically link memories to code on storage (default: True)
         """
         if db_path is None:
             db_path = Path.home() / ".amplihack" / "memory_kuzu.db"
@@ -58,12 +61,17 @@ class KuzuBackend:
             db_path = Path(db_path)
 
         self.db_path = db_path
+        self.enable_auto_linking = enable_auto_linking
+
         # Create parent directory if needed
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
         # Create database connection (Kùzu creates the file)
         self.database = kuzu.Database(str(self.db_path))
         self.connection = kuzu.Connection(self.database)
+
+        # Initialize code graph integration (lazy loaded)
+        self._code_graph: KuzuCodeGraph | None = None
 
     def get_capabilities(self) -> BackendCapabilities:
         """Get Kùzu backend capabilities."""
@@ -78,12 +86,15 @@ class KuzuBackend:
         )
 
     def initialize(self) -> None:
-        """Initialize Kùzu schema with 5 memory node types.
+        """Initialize Kùzu schema with 5 memory types + 3 code types.
 
-        Creates node and relationship tables for the new schema:
+        Creates node and relationship tables:
         - 5 memory node types (Episodic, Semantic, Procedural, Prospective, Working)
+        - 3 code node types (CodeFile, Class, Function)
         - Session and Agent nodes
-        - 11 relationship types for memory interactions
+        - 11 memory relationship types
+        - 8 code relationship types
+        - 10 memory-code link types
 
         Idempotent - safe to call multiple times.
         """
@@ -316,7 +327,217 @@ class KuzuBackend:
                 )
             """)
 
-            logger.info("Kùzu schema initialized successfully with 5 memory node types")
+            # === CODE GRAPH SCHEMA (Week 1: Blarify Migration) ===
+            # Add 3 code node types + 7 code relationships + 10 memory-code links
+
+            # Code Node Type 1: CodeFile
+            self.connection.execute("""
+                CREATE NODE TABLE IF NOT EXISTS CodeFile(
+                    file_id STRING,
+                    file_path STRING,
+                    language STRING,
+                    size_bytes INT64,
+                    last_modified TIMESTAMP,
+                    created_at TIMESTAMP,
+                    metadata STRING,
+                    PRIMARY KEY (file_id)
+                )
+            """)
+
+            # Code Node Type 2: Class
+            self.connection.execute("""
+                CREATE NODE TABLE IF NOT EXISTS Class(
+                    class_id STRING,
+                    class_name STRING,
+                    fully_qualified_name STRING,
+                    docstring STRING,
+                    is_abstract BOOL,
+                    created_at TIMESTAMP,
+                    metadata STRING,
+                    PRIMARY KEY (class_id)
+                )
+            """)
+
+            # Code Node Type 3: Function
+            self.connection.execute("""
+                CREATE NODE TABLE IF NOT EXISTS Function(
+                    function_id STRING,
+                    function_name STRING,
+                    fully_qualified_name STRING,
+                    signature STRING,
+                    docstring STRING,
+                    is_async BOOL,
+                    cyclomatic_complexity INT64,
+                    created_at TIMESTAMP,
+                    metadata STRING,
+                    PRIMARY KEY (function_id)
+                )
+            """)
+
+            # Code Relationship 1: DEFINED_IN (Class → CodeFile)
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS DEFINED_IN(
+                    FROM Class TO CodeFile,
+                    line_number INT64,
+                    end_line INT64
+                )
+            """)
+
+            # Code Relationship 2: DEFINED_IN_FUNCTION (Function → CodeFile)
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS DEFINED_IN_FUNCTION(
+                    FROM Function TO CodeFile,
+                    line_number INT64,
+                    end_line INT64
+                )
+            """)
+
+            # Code Relationship 3: METHOD_OF (Function → Class)
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS METHOD_OF(
+                    FROM Function TO Class,
+                    method_type STRING,
+                    visibility STRING
+                )
+            """)
+
+            # Code Relationship 4: CALLS (Function → Function)
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS CALLS(
+                    FROM Function TO Function,
+                    call_count INT64,
+                    context STRING
+                )
+            """)
+
+            # Code Relationship 5: INHERITS (Class → Class)
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS INHERITS(
+                    FROM Class TO Class,
+                    inheritance_order INT64,
+                    inheritance_type STRING
+                )
+            """)
+
+            # Code Relationship 6: IMPORTS (CodeFile → CodeFile)
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS IMPORTS(
+                    FROM CodeFile TO CodeFile,
+                    import_type STRING,
+                    alias STRING
+                )
+            """)
+
+            # Code Relationship 7: REFERENCES_CLASS (Function → Class)
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS REFERENCES_CLASS(
+                    FROM Function TO Class,
+                    reference_type STRING,
+                    context STRING
+                )
+            """)
+
+            # Code Relationship 8: CONTAINS (CodeFile → CodeFile)
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS CONTAINS(
+                    FROM CodeFile TO CodeFile,
+                    relationship_type STRING
+                )
+            """)
+
+            # Memory-Code Links: RELATES_TO_FILE (5 memory types → CodeFile)
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS RELATES_TO_FILE_EPISODIC(
+                    FROM EpisodicMemory TO CodeFile,
+                    relevance_score DOUBLE,
+                    context STRING,
+                    timestamp TIMESTAMP
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS RELATES_TO_FILE_SEMANTIC(
+                    FROM SemanticMemory TO CodeFile,
+                    relevance_score DOUBLE,
+                    context STRING,
+                    timestamp TIMESTAMP
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS RELATES_TO_FILE_PROCEDURAL(
+                    FROM ProceduralMemory TO CodeFile,
+                    relevance_score DOUBLE,
+                    context STRING,
+                    timestamp TIMESTAMP
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS RELATES_TO_FILE_PROSPECTIVE(
+                    FROM ProspectiveMemory TO CodeFile,
+                    relevance_score DOUBLE,
+                    context STRING,
+                    timestamp TIMESTAMP
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS RELATES_TO_FILE_WORKING(
+                    FROM WorkingMemory TO CodeFile,
+                    relevance_score DOUBLE,
+                    context STRING,
+                    timestamp TIMESTAMP
+                )
+            """)
+
+            # Memory-Code Links: RELATES_TO_FUNCTION (5 memory types → Function)
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS RELATES_TO_FUNCTION_EPISODIC(
+                    FROM EpisodicMemory TO Function,
+                    relevance_score DOUBLE,
+                    context STRING,
+                    timestamp TIMESTAMP
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS RELATES_TO_FUNCTION_SEMANTIC(
+                    FROM SemanticMemory TO Function,
+                    relevance_score DOUBLE,
+                    context STRING,
+                    timestamp TIMESTAMP
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS RELATES_TO_FUNCTION_PROCEDURAL(
+                    FROM ProceduralMemory TO Function,
+                    relevance_score DOUBLE,
+                    context STRING,
+                    timestamp TIMESTAMP
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS RELATES_TO_FUNCTION_PROSPECTIVE(
+                    FROM ProspectiveMemory TO Function,
+                    relevance_score DOUBLE,
+                    context STRING,
+                    timestamp TIMESTAMP
+                )
+            """)
+
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS RELATES_TO_FUNCTION_WORKING(
+                    FROM WorkingMemory TO Function,
+                    relevance_score DOUBLE,
+                    context STRING,
+                    timestamp TIMESTAMP
+                )
+            """)
+
+            logger.info("Kùzu schema initialized successfully: 5 memory types + 3 code types (23 node tables, 28 relationship tables)")
 
         except Exception as e:
             logger.error(f"Error initializing Kùzu schema: {e}")
@@ -628,6 +849,14 @@ class KuzuBackend:
 
             # Create Agent node if not exists
             self._create_agent_node(memory.agent_id, now)
+
+            # Week 3: Auto-link memory to code after successful storage
+            if self.enable_auto_linking:
+                try:
+                    self._auto_link_memory_to_code(memory)
+                except Exception as e:
+                    # Don't fail memory storage if linking fails
+                    logger.warning(f"Auto-linking failed for memory {memory.id}: {e}")
 
             return True
 
@@ -1244,6 +1473,264 @@ class KuzuBackend:
                 del self.database
         except Exception as e:
             logger.error(f"Error closing Kùzu connection: {e}")
+
+    def _get_code_graph(self) -> KuzuCodeGraph:
+        """Lazy-load KuzuCodeGraph instance.
+
+        Returns:
+            KuzuCodeGraph instance using same database connection
+        """
+        if self._code_graph is None:
+            # Create connector wrapping our existing connection
+            connector = KuzuConnector(db_path=str(self.db_path))
+            connector._db = self.database
+            connector._conn = self.connection
+            self._code_graph = KuzuCodeGraph(connector)
+        return self._code_graph
+
+    def get_code_graph(self) -> KuzuCodeGraph | None:
+        """Get code graph instance for querying code-memory relationships.
+
+        Returns:
+            KuzuCodeGraph instance if available, None if code graph not initialized
+
+        Example:
+            >>> backend = KuzuBackend()
+            >>> backend.initialize()
+            >>> code_graph = backend.get_code_graph()
+            >>> if code_graph:
+            ...     context = code_graph.query_code_context(memory_id)
+        """
+        try:
+            return self._get_code_graph()
+        except Exception as e:
+            logger.debug(f"Code graph not available: {e}")
+            return None
+
+    def _auto_link_memory_to_code(self, memory: MemoryEntry) -> int:
+        """Automatically link a memory to relevant code entities.
+
+        Links based on:
+        - File path in metadata (exact or partial match)
+        - Function names in content (substring match)
+        - Relevance scoring (1.0 for metadata, 0.8 for content match)
+
+        Args:
+            memory: Memory entry to link
+
+        Returns:
+            Number of relationships created
+
+        Performance: <100ms per memory (typically 0-5 links)
+        """
+        count = 0
+        now = datetime.now()
+
+        # Determine memory type for relationship table names
+        memory_type_str = memory.memory_type.value.upper()
+        node_label = self._get_node_label_for_type(memory.memory_type)
+
+        # 1. Link to files based on metadata file path
+        file_path = memory.metadata.get("file") or memory.metadata.get("file_path")
+        if file_path:
+            count += self._link_memory_to_file(
+                memory.id,
+                node_label,
+                memory_type_str,
+                file_path,
+                relevance_score=1.0,
+                context="metadata_file_match",
+                timestamp=now,
+            )
+
+        # 2. Link to functions based on content
+        if memory.content:
+            count += self._link_memory_to_functions_by_content(
+                memory.id,
+                node_label,
+                memory_type_str,
+                memory.content,
+                relevance_score=0.8,
+                context="content_name_match",
+                timestamp=now,
+            )
+
+        if count > 0:
+            logger.debug(f"Auto-linked memory {memory.id} to {count} code entities")
+
+        return count
+
+    def _link_memory_to_file(
+        self,
+        memory_id: str,
+        node_label: str,
+        memory_type_str: str,
+        file_path: str,
+        relevance_score: float,
+        context: str,
+        timestamp: datetime,
+    ) -> int:
+        """Link a memory to a code file.
+
+        Args:
+            memory_id: Memory ID
+            node_label: Memory node label (e.g., "EpisodicMemory")
+            memory_type_str: Memory type string (e.g., "EPISODIC")
+            file_path: File path to match
+            relevance_score: Relevance score (0.0-1.0)
+            context: Context string describing link reason
+            timestamp: Link creation timestamp
+
+        Returns:
+            Number of links created
+        """
+        try:
+            # Find matching code files (exact or partial match)
+            result = self.connection.execute(
+                """
+                MATCH (cf:CodeFile)
+                WHERE cf.file_path CONTAINS $file_path OR $file_path CONTAINS cf.file_path
+                RETURN cf.file_id
+                """,
+                {"file_path": file_path},
+            )
+
+            count = 0
+            rel_table = f"RELATES_TO_FILE_{memory_type_str}"
+
+            while result.has_next():
+                row = result.get_next()
+                file_id = row[0]
+
+                # Check if relationship already exists
+                check_result = self.connection.execute(
+                    f"""
+                    MATCH (m:{node_label} {{memory_id: $memory_id}})-[r:{rel_table}]->(cf:CodeFile {{file_id: $file_id}})
+                    RETURN COUNT(r) AS cnt
+                    """,
+                    {"memory_id": memory_id, "file_id": file_id},
+                )
+
+                if check_result.has_next():
+                    existing_count = check_result.get_next()[0]
+                    if existing_count > 0:
+                        continue
+
+                # Create relationship
+                self.connection.execute(
+                    f"""
+                    MATCH (m:{node_label} {{memory_id: $memory_id}})
+                    MATCH (cf:CodeFile {{file_id: $file_id}})
+                    CREATE (m)-[:{rel_table} {{
+                        relevance_score: $relevance_score,
+                        context: $context,
+                        timestamp: $timestamp
+                    }}]->(cf)
+                    """,
+                    {
+                        "memory_id": memory_id,
+                        "file_id": file_id,
+                        "relevance_score": relevance_score,
+                        "context": context,
+                        "timestamp": timestamp,
+                    },
+                )
+                count += 1
+
+            return count
+
+        except Exception as e:
+            logger.debug(f"Error linking memory to file: {e}")
+            return 0
+
+    def _link_memory_to_functions_by_content(
+        self,
+        memory_id: str,
+        node_label: str,
+        memory_type_str: str,
+        content: str,
+        relevance_score: float,
+        context: str,
+        timestamp: datetime,
+    ) -> int:
+        """Link a memory to functions mentioned in content.
+
+        Args:
+            memory_id: Memory ID
+            node_label: Memory node label (e.g., "EpisodicMemory")
+            memory_type_str: Memory type string (e.g., "EPISODIC")
+            content: Memory content to scan for function names
+            relevance_score: Relevance score (0.0-1.0)
+            context: Context string describing link reason
+            timestamp: Link creation timestamp
+
+        Returns:
+            Number of links created
+        """
+        try:
+            # Find functions whose names appear in content
+            # Use CONTAINS for substring matching
+            result = self.connection.execute(
+                """
+                MATCH (f:Function)
+                WHERE $content CONTAINS f.function_name
+                RETURN f.function_id, f.function_name
+                """,
+                {"content": content},
+            )
+
+            count = 0
+            rel_table = f"RELATES_TO_FUNCTION_{memory_type_str}"
+
+            while result.has_next():
+                row = result.get_next()
+                function_id = row[0]
+                function_name = row[1]
+
+                # Skip very short function names to avoid false positives
+                if len(function_name) < 4:
+                    continue
+
+                # Check if relationship already exists
+                check_result = self.connection.execute(
+                    f"""
+                    MATCH (m:{node_label} {{memory_id: $memory_id}})-[r:{rel_table}]->(f:Function {{function_id: $function_id}})
+                    RETURN COUNT(r) AS cnt
+                    """,
+                    {"memory_id": memory_id, "function_id": function_id},
+                )
+
+                if check_result.has_next():
+                    existing_count = check_result.get_next()[0]
+                    if existing_count > 0:
+                        continue
+
+                # Create relationship
+                self.connection.execute(
+                    f"""
+                    MATCH (m:{node_label} {{memory_id: $memory_id}})
+                    MATCH (f:Function {{function_id: $function_id}})
+                    CREATE (m)-[:{rel_table} {{
+                        relevance_score: $relevance_score,
+                        context: $context,
+                        timestamp: $timestamp
+                    }}]->(f)
+                    """,
+                    {
+                        "memory_id": memory_id,
+                        "function_id": function_id,
+                        "relevance_score": relevance_score,
+                        "context": context,
+                        "timestamp": timestamp,
+                    },
+                )
+                count += 1
+
+            return count
+
+        except Exception as e:
+            logger.debug(f"Error linking memory to functions: {e}")
+            return 0
 
     def __enter__(self):
         """Context manager entry."""

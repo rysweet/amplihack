@@ -132,7 +132,7 @@ Tests are scored on reliability (0.0 to 1.0):
 - **0.5-0.9**: Occasional failures (investigate)
 - **< 0.5**: Frequently fails (flaky - excluded from Tier 1)
 
-Reliability is tracked in `.claude/data/test-mapping/reliability.yaml`
+Reliability is tracked in `~/.amplihack/.claude/data/test-mapping/reliability.yaml`
 
 ## Usage
 

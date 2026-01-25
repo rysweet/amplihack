@@ -75,7 +75,7 @@ docker-compose -f docker/docker-compose.yml run amplihack claude -- "task here"
 
 ## For eval-recipes
 
-For eval-recipes benchmarking, use the agent configs in `.claude/agents/eval-recipes/` which follow this same non-root pattern.
+For eval-recipes benchmarking, use the agent configs in `~/.amplihack/.claude/agents/eval-recipes/` which follow this same non-root pattern.
 
 ## Troubleshooting
 

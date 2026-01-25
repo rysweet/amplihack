@@ -1,6 +1,6 @@
 # GitHub Copilot Command Reference: ps-diagnose
 
-**Source**: `.claude/commands/amplihack/ps-diagnose.md`
+**Source**: `~/.amplihack/.claude/commands/amplihack/ps-diagnose.md`
 
 ---
 
@@ -58,7 +58,7 @@ This command analyzes power-steering state and diagnostic logs to detect infinit
 
 You should:
 
-1. **Load State**: Get current power-steering state from `.claude/runtime/power-steering/{session_id}/turn_state.json`
+1. **Load State**: Get current power-steering state from `~/.amplihack/.claude/runtime/power-steering/{session_id}/turn_state.json`
 
 2. **Analyze Diagnostics**: Use `detect_infinite_loop()` from `power_steering_diagnostics.py`
 
@@ -95,12 +95,12 @@ You should:
 
 ## Files to Read
 
-- `.claude/runtime/power-steering/{session_id}/turn_state.json` - Current state
-- `.claude/runtime/power-steering/{session_id}/diagnostic.jsonl` - Diagnostic log
+- `~/.amplihack/.claude/runtime/power-steering/{session_id}/turn_state.json` - Current state
+- `~/.amplihack/.claude/runtime/power-steering/{session_id}/diagnostic.jsonl` - Diagnostic log
 
 ## Implementation Note
 
 Use the TurnStateManager and diagnostic utilities already implemented in:
 
-- `.claude/tools/amplihack/hooks/power_steering_state.py`
-- `.claude/tools/amplihack/hooks/power_steering_diagnostics.py`
+- `~/.amplihack/.claude/tools/amplihack/hooks/power_steering_state.py`
+- `~/.amplihack/.claude/tools/amplihack/hooks/power_steering_diagnostics.py`

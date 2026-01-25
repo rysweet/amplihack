@@ -113,7 +113,7 @@ Works with existing amplihack tools:
 
 ## Related
 
-- `.claude/context/DISCOVERIES.md` - CI Failure Resolution Process Analysis
-- `.claude/agents/amplihack/specialized/fix-agent.md` - Fix templates
-- `.claude/agents/amplihack/specialized/ci-diagnostic-workflow.md` - Post-push CI
+- `~/.amplihack/.claude/context/DISCOVERIES.md` - CI Failure Resolution Process Analysis
+- `~/.amplihack/.claude/agents/amplihack/specialized/fix-agent.md` - Fix templates
+- `~/.amplihack/.claude/agents/amplihack/specialized/ci-diagnostic-workflow.md` - Post-push CI
 - `.github/workflows/ci.yml` - CI configuration source of truth

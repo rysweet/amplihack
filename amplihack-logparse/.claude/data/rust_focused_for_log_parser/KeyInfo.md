@@ -61,7 +61,7 @@ This focused knowledge base covers essential Rust concepts for building a high-p
 
 This knowledge directly applies to:
 
-- Parsing `.claude/runtime/logs/` session files
+- Parsing `~/.amplihack/.claude/runtime/logs/` session files
 - Extracting agent invocations, timings, decisions
 - Building statistics without memory overhead
 - Type-safe error handling throughout
