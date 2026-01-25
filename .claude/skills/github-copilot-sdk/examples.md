@@ -802,10 +802,17 @@ func main() {
 	}
 	defer client.Stop()
 
-	session, _ := client.CreateSession(&copilot.SessionConfig{Model: "gpt-4.1"})
-	response, _ := session.SendAndWait(copilot.MessageOptions{
+	session, err := client.CreateSession(&copilot.SessionConfig{Model: "gpt-4.1"})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	response, err := session.SendAndWait(copilot.MessageOptions{
 		Prompt: "What is the capital of France?",
 	}, 0)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	fmt.Println(*response.Data.Content)
 }

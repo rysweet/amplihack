@@ -199,16 +199,16 @@ const session = await client.createSession({
 - Working copy-paste code for all 4 languages
 - Error handling patterns
 - Multiple sessions management
-- Session persistence and restoration
 - Interactive assistant implementation
+- Custom agent definition examples
 
 **patterns.md** - Read when you need:
 
 - Production-ready architectural patterns
 - Streaming UI integration
 - MCP server integration patterns
-- BYOK (Bring Your Own Key) configuration
-- Performance optimization
+- Rate limiting and retry patterns
+- Structured output extraction
 
 **drift-detection.md** - Read when you need:
 
