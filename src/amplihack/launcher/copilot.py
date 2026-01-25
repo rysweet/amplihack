@@ -105,6 +105,34 @@ def install_copilot() -> bool:
         return False
 
 
+def get_copilot_directories() -> list[str]:
+    """Get list of directories to provide copilot filesystem access.
+
+    Returns:
+        List of existing directory paths as strings.
+        Non-existent directories are silently skipped.
+    """
+    directories = []
+
+    # Collect candidate directories
+    candidates = [
+        Path.home(),
+        Path(tempfile.gettempdir()),
+        Path(os.getcwd()),
+    ]
+
+    # Filter to only existing directories
+    for path in candidates:
+        try:
+            if path.exists() and path.is_dir():
+                directories.append(str(path))
+        except (OSError, RuntimeError):
+            # Skip directories that raise errors (permissions, broken symlinks, etc.)
+            continue
+
+    return directories
+
+
 def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> int:
     """Launch Copilot CLI.
 
@@ -196,23 +224,23 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
         # Fail gracefully - Copilot will work without preferences
         print(f"Warning: Could not prepare Copilot environment: {e}")
 
-    # Build command with full filesystem access (safe in VM environment)
+    # Build command with filesystem access to user directories
     # Model can be overridden via COPILOT_MODEL env var (default: Opus 4.5)
     model = os.getenv("COPILOT_MODEL", "claude-opus-4.5")
-    # Resolve temp directory path (handles symlinks and validates it exists)
-    temp_dir = os.path.realpath(tempfile.gettempdir())
     cmd = [
         "copilot",
         "--allow-all-tools",
         "--model",
         model,
-        "--add-dir",
-        os.getcwd(),  # Add current directory for .github/agents/ access
-        "--add-dir",
-        temp_dir,  # Grant access to system temp directory
-        "--disable-mcp-server",
-        "github-mcp-server",  # Disable to save context tokens, use gh CLI instead
     ]
+
+    # Add all available directories (home, temp, cwd)
+    for directory in get_copilot_directories():
+        cmd.extend(["--add-dir", directory])
+
+    # Disable GitHub MCP server to save context tokens
+    cmd.extend(["--disable-mcp-server", "github-mcp-server"])
+
     if args:
         cmd.extend(args)
 
