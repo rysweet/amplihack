@@ -13,7 +13,6 @@ amplihack is a development framework for popular coding agent systems (Claude Co
 - [Get Started](#-get-started) - Installation and first steps
 - [Core Concepts](#-core-concepts) - Philosophy and principles
 - [Amplihack Tutorial](tutorials/amplihack-tutorial.md) - Comprehensive 60-90 minute tutorial
-- [First Docs Site Tutorial](tutorials/first-docs-site.md) - Create your first documentation site
 
 **Looking for something specific?**
 
@@ -122,6 +121,7 @@ amplihack copilot
 - [Proxy Configuration](PROXY_CONFIG_GUIDE.md) - Network proxy setup (Azure OpenAI, custom endpoints)
 - [Hook Configuration](HOOK_CONFIGURATION_GUIDE.md) - Customize framework behavior
 - [Memory Configuration Consent](features/memory-consent-prompt.md) - Intelligent memory settings with timeout protection
+- [Verify .claude/ Staging](howto/verify-claude-staging.md) - Check that framework files are properly staged
 
 ### Deployment
 
@@ -146,6 +146,7 @@ Understand the philosophy and architecture behind amplihack.
 
 - [Project Overview](claude/context/PROJECT.md) - System architecture
 - [Development Patterns](claude/context/PATTERNS.md) - Proven implementation patterns
+- [Unified Staging Architecture](concepts/unified-staging-architecture.md) - How .claude/ staging works across all commands
 - [Blarify Architecture](blarify_architecture.md) - Understanding the Blarify integration
 - [Documentation Knowledge Graph](documentation_knowledge_graph.md) - How docs connect
 
@@ -400,6 +401,14 @@ Intelligent guidance system that prevents common mistakes:
 - [Migration Guide v0.9.1](features/power-steering/migration-v0.9.1.md) - Upgrade guide
 - [Changelog v0.9.1](features/power-steering/changelog-v0.9.1.md) - Infinite loop fix release notes
 
+**Compaction Handling** ⭐ NEW
+
+Robust handling of conversation compaction in long sessions:
+
+- [Compaction Overview](power_steering_compaction_overview.md) - What is compaction and how power-steering handles it
+- [Compaction API Reference](power_steering_compaction_api.md) - Developer documentation for CompactionValidator and CompactionContext
+- [How to Customize Power Steering](../.claude/tools/amplihack/HOW_TO_CUSTOMIZE_POWER_STEERING.md#compaction-handling) - Configuration and troubleshooting
+
 ### Other Features
 
 - [Smart Memory Management](features/smart-memory-management.md) - Automatic Node.js memory optimization for Claude Code
@@ -535,7 +544,6 @@ Quick references, guides, and additional resources.
 
 - [Command Selection Guide](commands/COMMAND_SELECTION_GUIDE.md) - Choose the right command
 - [Platform Bridge API Reference](reference/platform-bridge-api.md) - Complete API documentation
-- [Power-Steering Merge Preferences API](reference/power-steering-merge-preferences.md) - Technical reference for merge preference awareness
 - [Doc Graph Quick Reference](doc_graph_quick_reference.md) - Navigate documentation
 - [Neo4j Quick Reference](neo4j_memory/quick_reference.md) - Memory system commands
 - [A/B Test Quick Reference](memory/AB_TEST_QUICK_REFERENCE.md) - Test results

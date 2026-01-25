@@ -80,6 +80,22 @@ try:
 except ImportError:
     EVIDENCE_AVAILABLE = False
 
+# Try to import compaction validator
+try:
+    from compaction_validator import (
+        CompactionValidator,
+        CompactionContext,
+        ValidationResult,
+    )
+
+    COMPACTION_AVAILABLE = True
+except ImportError:
+    COMPACTION_AVAILABLE = False
+    # Create placeholder
+    class CompactionContext:
+        def __init__(self):
+            self.has_compaction_event = False
+
 # Security: Maximum transcript size to prevent memory exhaustion
 MAX_TRANSCRIPT_LINES = 50000  # Limit transcript to 50K lines (~10-20MB typical)
 
@@ -175,6 +191,13 @@ class CheckerResult:
     satisfied: bool
     reason: str
     severity: Literal["blocker", "warning"]
+    recovery_steps: list[str] = field(default_factory=list)  # Optional recovery guidance
+    executed: bool = True  # Whether this check was actually executed
+
+    @property
+    def id(self) -> str:
+        """Alias for consideration_id for backward compatibility."""
+        return self.consideration_id
 
 
 @dataclass
@@ -240,6 +263,8 @@ class PowerSteeringResult:
     analysis: Optional["ConsiderationAnalysis"] = None  # Full analysis results for visibility
     is_first_stop: bool = False  # True if this is the first stop attempt in session
     evidence_results: list = field(default_factory=list)  # Concrete evidence from Phase 1
+    compaction_context: Any = None  # Compaction diagnostics (CompactionContext if available)
+    considerations: list = field(default_factory=list)  # List of CheckerResult objects for visibility
 
 
 class PowerSteeringChecker:
@@ -581,7 +606,7 @@ class PowerSteeringChecker:
 
     def check(
         self,
-        transcript_path: Path,
+        transcript_path: Path | list[dict],
         session_id: str,
         progress_callback: Callable | None = None,
     ) -> PowerSteeringResult:
@@ -592,13 +617,17 @@ class PowerSteeringChecker:
         Phase 3: Combine results (evidence can override SDK concerns)
 
         Args:
-            transcript_path: Path to session transcript JSONL file
+            transcript_path: Path to session transcript JSONL file OR transcript list (for testing)
             session_id: Unique session identifier
             progress_callback: Optional callback for progress events (event_type, message, details)
 
         Returns:
             PowerSteeringResult with decision and prompt/summary
         """
+        # Handle transcript list (testing interface)
+        if isinstance(transcript_path, list):
+            return self._check_with_transcript_list(transcript_path, session_id)
+
         # Initialize turn state tracking (outside try block for fail-open)
         turn_state: PowerSteeringTurnState | None = None
         turn_state_manager: TurnStateManager | None = None
@@ -4306,6 +4335,130 @@ class PowerSteeringChecker:
             summary_path.chmod(0o644)  # Owner read/write, others read
         except OSError:
             pass  # Fail-open: Continue even if summary writing fails
+
+    def _check_with_transcript_list(
+        self, transcript: list[dict], session_id: str
+    ) -> PowerSteeringResult:
+        """Testing interface: Check with transcript list instead of file path.
+
+        Args:
+            transcript: Transcript as list of message dicts
+            session_id: Session identifier
+
+        Returns:
+            PowerSteeringResult with compaction context and considerations
+        """
+        # Initialize compaction context
+        compaction_context = CompactionContext()
+
+        # Check if compaction handling is enabled
+        compaction_enabled = self._is_consideration_enabled("compaction_handling")
+
+        # Run compaction validation
+        considerations = []
+        if COMPACTION_AVAILABLE and compaction_enabled:
+            try:
+                validator = CompactionValidator(self.project_root)
+                validation_result = validator.validate(transcript, session_id)
+                compaction_context = validation_result.compaction_context
+
+                # Create consideration result
+                compaction_check = CheckerResult(
+                    consideration_id="compaction_handling",
+                    satisfied=validation_result.passed,
+                    reason="; ".join(validation_result.warnings) if validation_result.warnings else "No compaction issues detected",
+                    severity="warning",
+                    recovery_steps=validation_result.recovery_steps,
+                    executed=True
+                )
+
+                considerations.append(compaction_check)
+            except Exception as e:
+                # Fail-open: Log error but don't block
+                self._log(f"Compaction validation error: {e}", "WARNING")
+                compaction_check = CheckerResult(
+                    consideration_id="compaction_handling",
+                    satisfied=True,  # Fail-open
+                    reason="Compaction validation skipped due to error",
+                    severity="warning",
+                    executed=True
+                )
+                considerations.append(compaction_check)
+        elif not compaction_enabled:
+            # Add disabled marker
+            compaction_check = CheckerResult(
+                consideration_id="compaction_handling",
+                satisfied=True,
+                reason="Compaction handling disabled",
+                severity="warning",
+                executed=False
+            )
+            considerations.append(compaction_check)
+
+        # Return result
+        return PowerSteeringResult(
+            decision="approve",
+            reasons=["test_mode"],
+            compaction_context=compaction_context,
+            considerations=considerations
+        )
+
+    def _is_consideration_enabled(self, consideration_id: str) -> bool:
+        """Check if a consideration is enabled in considerations.yaml.
+
+        Args:
+            consideration_id: ID of consideration to check
+
+        Returns:
+            True if enabled or not found (default enabled), False if explicitly disabled
+        """
+        try:
+            considerations_path = (
+                self.project_root / ".claude" / "tools" / "amplihack" / "considerations.yaml"
+            )
+            if not considerations_path.exists():
+                return True  # Default enabled
+
+            import yaml
+            with open(considerations_path) as f:
+                considerations = yaml.safe_load(f)
+
+            if not considerations:
+                return True
+
+            for consideration in considerations:
+                if consideration.get("id") == consideration_id:
+                    return consideration.get("enabled", True)
+
+            return True  # Not found = default enabled
+        except Exception:
+            return True  # Fail-open
+
+    def _check_compaction_handling(
+        self, transcript: list[dict], session_id: str
+    ) -> bool:
+        """Consideration checker for compaction validation.
+
+        Called by consideration framework. Returns True if compaction
+        was handled appropriately or didn't occur.
+
+        Args:
+            transcript: Full conversation transcript
+            session_id: Session identifier
+
+        Returns:
+            True if no compaction or validation passed, False if failed
+        """
+        if not COMPACTION_AVAILABLE:
+            return True  # Fail-open if validator not available
+
+        try:
+            validator = CompactionValidator(self.project_root)
+            result = validator.validate(transcript, session_id)
+            return result.passed
+        except Exception as e:
+            self._log(f"Compaction validation error: {e}", "WARNING")
+            return True  # Fail-open on errors
 
     def _log(self, message: str, level: str = "INFO") -> None:
         """Log message to power-steering log file.

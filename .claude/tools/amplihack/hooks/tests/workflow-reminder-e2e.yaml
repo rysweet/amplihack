@@ -1,0 +1,103 @@
+scenario:
+  name: "Workflow Classification Reminder Hook - E2E Test"
+  description: "Verifies workflow classification reminder hook triggers correctly in real Claude Code sessions"
+  type: cli
+  tags: [hooks, workflow, classification, e2e]
+
+  prerequisites:
+    - "Hook script exists at .claude/tools/amplihack/hooks/workflow_classification_reminder.py"
+    - "Hook script is executable"
+    - "hooks.json includes workflow_classification_reminder.py in UserPromptSubmit"
+
+  steps:
+    # Test 1: First turn triggers reminder
+    - action: launch
+      target: ".claude/tools/amplihack/hooks/workflow_classification_reminder.py"
+      description: "Invoke hook as Claude Code would on first turn"
+
+    - action: send_input
+      value: '{"userMessage": "Implement user authentication", "turnCount": 0}\n'
+      description: "Simulate first user prompt"
+
+    - action: verify_output
+      contains: "NEW TOPIC DETECTED"
+      timeout: 5s
+      description: "Hook should detect new topic on first turn"
+
+    - action: verify_output
+      contains: "OPERATIONS"
+      description: "Reminder should include Operations workflow category"
+
+    - action: verify_output
+      contains: "additionalContext"
+      description: "Hook should return valid JSON with additionalContext field"
+
+    # Test 2: Follow-up does NOT trigger reminder
+    - action: launch
+      target: ".claude/tools/amplihack/hooks/workflow_classification_reminder.py"
+      description: "New hook invocation for follow-up message"
+
+    - action: send_input
+      value: '{"userMessage": "Also add password reset", "turnCount": 2}\n'
+      description: "Simulate follow-up prompt (contains 'Also')"
+
+    - action: verify_output
+      matches: '^\{\s*\}\s*$|"additionalContext":\s*""'
+      description: "Hook should return empty result or empty context for follow-ups"
+
+    # Test 3: Explicit transition triggers reminder
+    - action: launch
+      target: ".claude/tools/amplihack/hooks/workflow_classification_reminder.py"
+      description: "New hook invocation for topic transition"
+
+    - action: send_input
+      value: '{"userMessage": "Now lets work on caching", "turnCount": 5}\n'
+      description: "Simulate explicit topic transition (contains 'Now lets')"
+
+    - action: verify_output
+      contains: "NEW TOPIC DETECTED"
+      timeout: 5s
+      description: "Hook should detect explicit transition as new topic"
+
+    - action: verify_output
+      contains: "system-reminder"
+      description: "Should wrap in system-reminder tags"
+
+    # Test 4: Operations task triggers reminder with operations category
+    - action: launch
+      target: ".claude/tools/amplihack/hooks/workflow_classification_reminder.py"
+      description: "New hook invocation for operations task"
+
+    - action: send_input
+      value: '{"userMessage": "Clean up old log files", "turnCount": 10}\n'
+      description: "Simulate operations request"
+
+    - action: verify_output
+      contains: "OPERATIONS"
+      description: "Operations workflow should be in classification options"
+
+    - action: verify_output
+      contains: "Execute directly"
+      description: "Should explain operations execute directly without recipe"
+
+    # Test 5: JSON validity
+    - action: launch
+      target: ".claude/tools/amplihack/hooks/workflow_classification_reminder.py"
+      description: "Validate JSON output format"
+
+    - action: send_input
+      value: '{"userMessage": "Test message", "turnCount": 0}\n'
+
+    - action: capture_output
+      save_as: "hook_output.json"
+      description: "Capture hook output for JSON validation"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "Hook should exit cleanly"
+
+  cleanup:
+    - action: delete_file
+      path: "/tmp/test_classification_state"
+      continue_on_failure: true
+      description: "Clean up test state directory"
