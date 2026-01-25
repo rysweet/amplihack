@@ -3,7 +3,7 @@ name: github-copilot-cli-expert
 version: 2.0.0
 description: Expert knowledge of GitHub Copilot CLI - installation, configuration, usage, custom agents, MCP servers, and version management. Use when asking about copilot cli, copilot commands, installing copilot, updating copilot, copilot features.
 tags: [github-copilot, cli, installation, mcp, agents, skills]
-token_budget: 5000
+token_budget: 8000
 source_urls:
   - https://docs.github.com/en/copilot/concepts/agents/about-copilot-cli
   - https://docs.github.com/en/copilot/how-tos/use-copilot-agents/use-copilot-cli
@@ -19,6 +19,8 @@ auto_triggers:
   - "/mcp"
   - "copilot agents"
   - "copilot skills"
+  - "amplihack copilot"
+  - "copilot with amplihack"
 ---
 
 # GitHub Copilot CLI Expert
@@ -151,6 +153,14 @@ Skill(skill="github-copilot-cli-expert")
 - Custom agent creation and invocation examples
 - GitHub integration use cases (issues, Actions, PRs)
 - Delegation to Copilot coding agent workflows
+
+**amplihack-integration.md** - Read when you need:
+
+- How to use amplihack agents from Copilot CLI
+- Integration architecture (symlinks, hooks, MCP servers)
+- Multi-agent workflows with amplihack resources
+- Philosophy alignment and pattern reference
+- Troubleshooting amplihack + Copilot integration
 
 ## Core Capabilities
 
@@ -286,6 +296,7 @@ winget install GitHub.Copilot.Prerelease
 
 ## Related Skills
 
+- **amplihack-integration**: See [amplihack-integration.md](./amplihack-integration.md) for using amplihack agents/skills/philosophy with Copilot CLI
 - **mcp-manager**: Advanced MCP server configuration
 - **agent-sdk**: Building custom agents
 - **documentation-writing**: Clear documentation practices
