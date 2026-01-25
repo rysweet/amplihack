@@ -1,7 +1,7 @@
 ---
 name: DEFAULT_WORKFLOW
 version: 1.1.0
-description: Standard 23-step workflow (Steps 0-22) for feature development, bug fixes, and refactoring
+description: Standard workflow for feature development, bug fixes, and refactoring
 steps: 23
 phases:
   - requirements-clarification
@@ -49,17 +49,20 @@ You can customize this workflow by editing this file.
 This workflow supports both GitHub and Azure DevOps repositories. Platform-specific steps provide instructions for both platforms.
 
 **Platform Detection**: Determine your platform from git remote URL:
+
 ```bash
 git remote get-url origin
 ```
+
 - Contains `github.com` → Use **GitHub** commands
 - Contains `dev.azure.com` or `visualstudio.com` → Use **Azure DevOps** commands
 
 **Prerequisites**:
+
 - **GitHub**: Install and authenticate with `gh` CLI (`gh auth login`)
 - **Azure DevOps**: Install and configure `az` CLI (`az login` and `az devops configure`)
 
-Steps with platform-specific instructions: 3, 15, 16-17, 21, 22
+Steps with platform-specific instructions: 3, 15, 21, 22
 
 ## How This Workflow Works
 
@@ -124,8 +127,8 @@ When creating todos during workflow execution, reference the workflow steps dire
 - When you get to a particular step, you may always decide to break it down into smaller steps - this is preferred.
 
 - **Reference Step Numbers**: Include the workflow step number in todo content
-  - Example: `Step 1: Rewrite and Clarify Requirements - Use prompt-writer agent`
-  - Example: `Step 4: Research and Design - Use architect agent for solution design`
+  - Example: `Step 2: Rewrite and Clarify Requirements - Use prompt-writer agent`
+  - Example: `Step 5: Research and Design - Use architect agent for solution design`
 
 - **Workstream Prefixes** (Optional): When running multiple workflows in parallel, prefix todos with workstream name
   - Format: `[WORKSTREAM] Step N: Description`
@@ -230,13 +233,16 @@ Agents that skip workflow steps (especially mandatory review steps 10, 16-17) cr
 ### Step 3: Create Issue/Work Item
 
 **Platform Detection**: Automatically detect your platform from git remote URL:
+
 ```bash
 git remote get-url origin
 ```
+
 - github.com → Use GitHub commands
 - dev.azure.com or visualstudio.com → Use Azure DevOps commands
 
 **For GitHub**:
+
 ```bash
 gh issue create \
   --title "Title" \
@@ -245,6 +251,7 @@ gh issue create \
 ```
 
 **For Azure DevOps**:
+
 ```bash
 python .claude/scenarios/az-devops-tools/create_work_item.py \
   --type "User Story" \
@@ -325,11 +332,11 @@ If COMPLEX:
 
 - [ ] ask @documentation-writer agent to retcon write the documentation for the finished feature as if it already exists - ie the documentation for the feature as we want it to be. Write ONLY the documentation, not the code.
 - [ ] ask the @architect agent to review the documentation to see if it aligns with their vision correctly or if it highlights any changes that should be made
-- [ ] ask @documentation-writer to make revisions based ont he architect's review
+- [ ] ask @documentation-writer to make revisions based on the architect's review
 
 ### Step 7: Test Driven Development - Writing Tests First
 
-- [ ] Followingg the Test Driven Development methodology - use the tester agent to write failing tests (TDD approach) based upon the work done so far.
+- [ ] Following the Test Driven Development methodology - use the tester agent to write failing tests (TDD approach) based upon the work done so far.
 
 ### Step 7.5: Test Proportionality Validation
 
@@ -461,6 +468,7 @@ Test like a user would use the feature - outside-in - not just unit tests.
 **"But I can't test this because..."**
 
 There's always a way to test:
+
 - **"Need fresh session"** → Open new terminal, start fresh Claude Code session, test there
 - **"Documentation changes"** → Test in fresh session, verify guidance actually works
 - **"Need clean state"** → Create clean state (new directory, fresh checkout, new session)
@@ -494,10 +502,11 @@ There's always a way to test:
 
 **Test Environment**: <branch, method, date>
 **Tests Executed**:
+
 1. Simple: <scenario> → <result> ✅/❌
 2. Complex: <scenario> → <result> ✅/❌
-**Regressions**: <verification> → ✅ None detected
-**Issues Found**: <list any issues discovered and fixed>
+   **Regressions**: <verification> → ✅ None detected
+   **Issues Found**: <list any issues discovered and fixed>
 ```
 
 **Why this matters:**
@@ -520,6 +529,7 @@ There's always a way to test:
 ### Step 15: Open Pull Request as Draft
 
 **For GitHub**:
+
 ```bash
 gh pr create --draft \
   --title "Title" \
@@ -528,6 +538,7 @@ gh pr create --draft \
 ```
 
 **For Azure DevOps**:
+
 ```bash
 python .claude/scenarios/az-devops-tools/create_pr.py \
   --source feature/branch \
@@ -577,11 +588,13 @@ python .claude/scenarios/az-devops-tools/create_pr.py \
 - [ ] Post the review as a comment on the PR:
 
 **For GitHub**:
+
 ```bash
 gh pr comment <pr_number> --body "Review comment text"
 ```
 
 **For Azure DevOps**:
+
 ```bash
 az repos pr create-thread \
   --id <pr_number> \
@@ -608,11 +621,13 @@ az repos pr create-thread \
 - [ ] Respond to review comments by posting replies as comments on the PR:
 
 **For GitHub**:
+
 ```bash
 gh pr comment <pr_number> --body "Response to feedback"
 ```
 
 **For Azure DevOps**:
+
 ```bash
 az repos pr create-thread \
   --id <pr_number> \
@@ -651,6 +666,7 @@ Step 13 validates technical functionality locally. Step 19 validates real-world 
 **Testing Approach by Interface Type:**
 
 **For CLI/TUI applications:**
+
 - [ ] Use `/outside-in-testing` skill for guided CLI/TUI testing workflow
 - [ ] Test in fresh terminal session with production-like environment
 - [ ] Execute actual commands with various flags and inputs
@@ -659,6 +675,7 @@ Step 13 validates technical functionality locally. Step 19 validates real-world 
 - [ ] Document commands executed and their outputs
 
 **For Web applications:**
+
 - [ ] Deploy to Amplifier shadow environment (staging-like)
 - [ ] Test in actual browser with realistic user flows
 - [ ] Verify UI rendering, responsiveness, and interactions
@@ -667,6 +684,7 @@ Step 13 validates technical functionality locally. Step 19 validates real-world 
 - [ ] Document user flows tested with screenshots
 
 **For Electron/desktop applications:**
+
 - [ ] Deploy packaged application to test environment
 - [ ] Test window management, menus, and keyboard shortcuts
 - [ ] Verify file system interactions and permissions
@@ -674,6 +692,7 @@ Step 13 validates technical functionality locally. Step 19 validates real-world 
 - [ ] Document application behavior and screenshots
 
 **For Configuration/infrastructure changes:**
+
 - [ ] Deploy to shadow environment with configuration applied
 - [ ] Verify services start correctly with new configuration
 - [ ] Test rollback procedures if applicable
@@ -701,6 +720,7 @@ amplifier deploy --env shadow --pr <pr_number>
 - [ ] Test error handling and edge cases in realistic conditions
 
 **If shadow environment unavailable:**
+
 - Document alternative realistic testing approach used
 - Provide clear evidence that changes work in production-like conditions
 - Example alternatives: Docker compose stack, local staging environment, isolated test account
@@ -718,6 +738,7 @@ Add this section to your PR description:
 **Interface Type**: <CLI/TUI/Web/Electron/Config>
 
 **User Flows Tested**:
+
 1. **Flow 1**: <description> → <result> ✅/❌
    - Commands/Actions: <specific commands or user actions>
    - Expected: <expected behavior>
@@ -804,11 +825,13 @@ Add this section to your PR description:
 ### Step 21: Convert PR to Ready for Review
 
 **For GitHub**:
+
 ```bash
 gh pr ready 2>&1 | cat
 ```
 
 **For Azure DevOps**:
+
 ```bash
 # Azure DevOps: Mark PR as ready by setting auto-complete or removing draft status
 az repos pr update \
@@ -841,6 +864,7 @@ az repos pr update \
 **Check CI status**:
 
 **For GitHub**:
+
 ```bash
 gh pr checks
 # Or for specific PR:
@@ -848,6 +872,7 @@ gh pr checks <pr_number>
 ```
 
 **For Azure DevOps**:
+
 ```bash
 # Check pipeline runs for current branch
 az pipelines runs list --branch $(git branch --show-current) --top 1
