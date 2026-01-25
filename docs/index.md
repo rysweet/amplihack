@@ -395,11 +395,10 @@ Specific features and third-party integrations.
 Intelligent guidance system that prevents common mistakes:
 
 - [Power Steering Overview](features/power-steering/README.md) - What is Power Steering
-- [Architecture](features/power-steering/architecture.md) - How it works
-- [Configuration](features/power-steering/configuration.md) - Setup and customization
-- [Troubleshooting](features/power-steering/troubleshooting.md) - Fix infinite loop and other issues
+- [Configuration Guide](features/power-steering/configuration.md) - Complete configuration reference
+- [Customization Guide](features/power-steering/customization-guide.md) - Customize considerations
+- [Troubleshooting](features/power-steering/troubleshooting.md) - Fix common issues
 - [Migration Guide v0.9.1](features/power-steering/migration-v0.9.1.md) - Upgrade guide
-- [Technical Reference](features/power-steering/technical-reference.md) - Developer reference
 - [Changelog v0.9.1](features/power-steering/changelog-v0.9.1.md) - Infinite loop fix release notes
 
 **Compaction Handling** ⭐ NEW
@@ -510,6 +509,7 @@ Fix common issues and learn from past solutions.
 ### How-To Guides
 
 - [Configure Memory Consent](howto/configure-memory-consent.md) - Customize prompt behavior, timeouts, and CI/CD integration
+- [Configure Power-Steering Merge Preferences](howto/power-steering-merge-preferences.md) - Set up merge approval workflow
 - [Platform Bridge Quick Start](tutorials/platform-bridge-quickstart.md) - Learn the basics in 10 minutes
 - [Platform Bridge Workflows](howto/platform-bridge-workflows.md) - Common workflows for GitHub and Azure DevOps
 
@@ -544,7 +544,6 @@ Quick references, guides, and additional resources.
 
 - [Command Selection Guide](commands/COMMAND_SELECTION_GUIDE.md) - Choose the right command
 - [Platform Bridge API Reference](reference/platform-bridge-api.md) - Complete API documentation
-- [Staging API Reference](reference/staging-api.md) - Developer reference for .claude/ staging
 - [Doc Graph Quick Reference](doc_graph_quick_reference.md) - Navigate documentation
 - [Neo4j Quick Reference](neo4j_memory/quick_reference.md) - Memory system commands
 - [A/B Test Quick Reference](memory/AB_TEST_QUICK_REFERENCE.md) - Test results
