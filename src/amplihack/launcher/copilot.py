@@ -244,6 +244,10 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
     if args:
         cmd.extend(args)
 
+    # Debug: Print command for verification
+    print(f"\nDEBUG: Launching copilot with command:")
+    print(f"  {' '.join(cmd)}\n")
+
     # Launch using subprocess.run() for proper terminal handling
     # Note: os.execvp() doesn't work properly on Windows - it corrupts stdin/terminal state
     result = subprocess.run(cmd, check=False)
