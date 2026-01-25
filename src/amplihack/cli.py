@@ -717,6 +717,50 @@ def _fallback_to_directory_copy(reason: str = "Plugin installation failed") -> s
     return install_dir
 
 
+def _ensure_amplihack_staged() -> None:
+    """Ensure .claude/ files are staged to ~/.amplihack/.claude/ for non-Claude commands.
+
+    This function populates the unified staging directory used by copilot, amplifier,
+    rustyclawd, and codex commands. Only runs in UVX deployment mode.
+
+    The staging process:
+    1. Creates ~/.amplihack/.claude/ if it doesn't exist
+    2. Copies essential framework files using copytree_manifest()
+    3. Exits with code 1 if staging fails
+
+    Raises:
+        SystemExit: With code 1 if staging fails
+    """
+    # Only run in UVX deployment mode
+    if not is_uvx_deployment():
+        return
+
+    # Debug logging
+    if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+        print("📦 Staging amplihack framework to ~/.amplihack/.claude/")
+
+    # Determine source directory (package installation)
+    import amplihack
+
+    amplihack_src = Path(amplihack.__file__).parent
+
+    # Unified staging directory for all commands
+    staging_dir = Path.home() / ".amplihack" / ".claude"
+    staging_dir.mkdir(parents=True, exist_ok=True)
+
+    # Copy .claude/ files to staging directory
+    copied = copytree_manifest(str(amplihack_src), str(staging_dir), ".claude")
+
+    if not copied:
+        print("❌ Failed to stage amplihack framework to ~/.amplihack/.claude/")
+        print("   This is required for amplihack commands to work in UVX mode.")
+        sys.exit(1)
+
+    # Debug logging
+    if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+        print(f"✓ Staged {len(copied)} directories to {staging_dir}")
+
+
 def main(argv: list[str] | None = None) -> int:
     """Main entry point for amplihack CLI.
 
@@ -726,7 +770,7 @@ def main(argv: list[str] | None = None) -> int:
     Returns:
         Exit code.
     """
-    # Platform compatibility check FIRST (before any operations)
+    # Platform compatibility check FIRST (fail-fast before any operations)
     from .launcher.platform_check import check_platform_compatibility
 
     platform_result = check_platform_compatibility()
@@ -1018,6 +1062,9 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
+        # Ensure amplihack framework is staged
+        _ensure_amplihack_staged()
+
         # Force RustyClawd usage (Rust implementation of Claude Code)
         os.environ["AMPLIHACK_USE_RUSTYCLAWD"] = "1"
         print("Using RustyClawd (Rust implementation)")
@@ -1040,6 +1087,9 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
+        # Ensure amplihack framework is staged
+        _ensure_amplihack_staged()
+
         # Handle auto mode
         exit_code = handle_auto_mode("copilot", args, claude_args)
         if exit_code is not None:
@@ -1060,6 +1110,9 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
+        # Ensure amplihack framework is staged
+        _ensure_amplihack_staged()
+
         # Handle auto mode
         exit_code = handle_auto_mode("codex", args, claude_args)
         if exit_code is not None:
@@ -1079,6 +1132,9 @@ def main(argv: list[str] | None = None) -> int:
         # Early exit: append mode
         if getattr(args, "append", None):
             return handle_append_instruction(args)
+
+        # Ensure amplihack framework is staged
+        _ensure_amplihack_staged()
 
         # Environment setup
         if getattr(args, "no_reflection", False):
