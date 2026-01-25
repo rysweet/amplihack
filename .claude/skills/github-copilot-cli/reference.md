@@ -258,7 +258,7 @@ Override with: `XDG_CONFIG_HOME` environment variable
       "command": "npx",
       "args": ["-y", "@package/mcp-server"],
       "env": {
-        "API_KEY": "value"  # pragma: allowlist secret
+        "MY_ENV_VAR": "my-value"
       }
     }
   }
