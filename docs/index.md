@@ -355,15 +355,14 @@ Psychological memory model with episodic, semantic, procedural, prospective, and
 - [Agent Memory Quickstart](AGENT_MEMORY_QUICKSTART.md) - Get started with memory
 - [Agent Type Memory Sharing](agent_type_memory_sharing_patterns.md) - Patterns for memory collaboration
 
-### Neo4j Memory System
+### Kuzu Memory System
 
-Advanced graph-based memory for complex knowledge representation:
+Embedded graph-based memory using Kuzu (NO Neo4j required):
 
-- [Neo4j Memory Quick Reference](neo4j_memory/quick_reference.md) - Fast answers
-- [Neo4j Phase 4 Implementation](neo4j_memory_phase4_implementation.md) - Latest features
 - [Documentation Graph](doc_graph_quick_reference.md) - Navigate documentation connections
+- [Code Context Injection](memory/CODE_CONTEXT_INJECTION.md) - Link code to memories
 
-**Research & Deep Dives**:
+**Historical Research** (Neo4j was replaced with Kuzu in Week 7):
 
 - [Executive Summary](research/neo4j_memory_system/00-executive-summary/README.md)
 - [Technical Research](research/neo4j_memory_system/01-technical-research/README.md)
@@ -381,7 +380,7 @@ Advanced graph-based memory for complex knowledge representation:
 ### External Knowledge
 
 - [External Knowledge Integration](external_knowledge_integration.md) - Import external data sources
-- [Blarify Integration](blarify_integration.md) - Connect with Blarify knowledge base
+- [Blarify Integration](blarify_integration.md) - Code indexing with Kuzu (NO Neo4j)
 - [Blarify Quickstart](blarify_quickstart.md) - Get started with Blarify
 
 ---
@@ -395,11 +394,10 @@ Specific features and third-party integrations.
 Intelligent guidance system that prevents common mistakes:
 
 - [Power Steering Overview](features/power-steering/README.md) - What is Power Steering
-- [Architecture](features/power-steering/architecture.md) - How it works
-- [Configuration](features/power-steering/configuration.md) - Setup and customization
-- [Troubleshooting](features/power-steering/troubleshooting.md) - Fix infinite loop and other issues
+- [Configuration Guide](features/power-steering/configuration.md) - Complete configuration reference
+- [Customization Guide](features/power-steering/customization-guide.md) - Customize considerations
+- [Troubleshooting](features/power-steering/troubleshooting.md) - Fix common issues
 - [Migration Guide v0.9.1](features/power-steering/migration-v0.9.1.md) - Upgrade guide
-- [Technical Reference](features/power-steering/technical-reference.md) - Developer reference
 - [Changelog v0.9.1](features/power-steering/changelog-v0.9.1.md) - Infinite loop fix release notes
 
 **Compaction Handling** ⭐ NEW
@@ -414,7 +412,7 @@ Robust handling of conversation compaction in long sessions:
 
 - [Smart Memory Management](features/smart-memory-management.md) - Automatic Node.js memory optimization for Claude Code
 - [Claude.md Preservation](features/claude-md-preservation.md) - Preserve custom instructions
-- [Neo4j Session Cleanup](features/neo4j-session-cleanup.md) - Automatic resource management
+<!-- Neo4j removed - now using Kuzu embedded database (no session cleanup needed) -->
 <!-- - [Shutdown Detection](concepts/shutdown-detection.md) - Graceful exit handling (see stop-hook-exit-hang in Troubleshooting) -->
 
 ### Third-Party Integrations
@@ -510,6 +508,7 @@ Fix common issues and learn from past solutions.
 ### How-To Guides
 
 - [Configure Memory Consent](howto/configure-memory-consent.md) - Customize prompt behavior, timeouts, and CI/CD integration
+- [Configure Power-Steering Merge Preferences](howto/power-steering-merge-preferences.md) - Set up merge approval workflow
 - [Platform Bridge Quick Start](tutorials/platform-bridge-quickstart.md) - Learn the basics in 10 minutes
 - [Platform Bridge Workflows](howto/platform-bridge-workflows.md) - Common workflows for GitHub and Azure DevOps
 
@@ -521,7 +520,7 @@ Cutting-edge research, experimental features, and deep technical dives.
 
 ### Research Projects
 
-- [Neo4j Memory System Research](research/neo4j_memory_system/README.md) - Complete research archive
+- [Neo4j Memory System Research](research/neo4j_memory_system/README.md) - Historical research (replaced with Kuzu)
   - [Executive Summary](research/neo4j_memory_system/00-executive-summary/README.md)
   - [Technical Research](research/neo4j_memory_system/01-technical-research/README.md)
   - [Design Patterns](research/neo4j_memory_system/02-design-patterns/README.md)
@@ -544,9 +543,8 @@ Quick references, guides, and additional resources.
 
 - [Command Selection Guide](commands/COMMAND_SELECTION_GUIDE.md) - Choose the right command
 - [Platform Bridge API Reference](reference/platform-bridge-api.md) - Complete API documentation
-- [Staging API Reference](reference/staging-api.md) - Developer reference for .claude/ staging
 - [Doc Graph Quick Reference](doc_graph_quick_reference.md) - Navigate documentation
-- [Neo4j Quick Reference](neo4j_memory/quick_reference.md) - Memory system commands
+<!-- Neo4j Quick Reference removed - now using Kuzu embedded database -->
 - [A/B Test Quick Reference](memory/AB_TEST_QUICK_REFERENCE.md) - Test results
 
 ### Developing amplihack

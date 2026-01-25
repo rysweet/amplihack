@@ -196,7 +196,7 @@ Example: "Always run tests before committing"
 
 **Mandatory End-to-End Testing for Every PR**
 
-I always want you to test each PR like a user would, from the outside in, not just unit testing. For instance you should use "uvx --from git..." syntax to test the branch. You can use agentic test scenarios defined with github.com/rysweet/gadgugi-agentic-test or your own auto mode to test features.
+I always want you to test each PR like a user would, from the outside in, not just unit testing. For instance you should use "uvx --from git..." syntax to test the branch. You can use agentic test scenarios defined with github.com/rysweet/gadugi-agentic-test or your own auto mode to test features.
 
 **Implementation Requirements:**
 
@@ -204,7 +204,7 @@ I always want you to test each PR like a user would, from the outside in, not ju
 - MUST verify the actual user workflow that was broken/enhanced
 - MUST validate error messages, configuration updates, and user experience
 - MUST document test results showing the fix works in realistic conditions
-- Can use gadgugi-agentic-test framework for complex test scenarios
+- Can use gadugi-agentic-test framework for complex test scenarios
 - Can use auto mode for automated feature testing
 
 **This is MANDATORY for Step 8 (Mandatory Local Testing) in DEFAULT_WORKFLOW.md**
