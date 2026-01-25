@@ -224,6 +224,7 @@ Create `.github/agents/frontend-expert.md` in your repo:
 You specialize in React and TypeScript development for this project.
 
 Follow these conventions:
+
 - Use functional components with hooks
 - Prefer TypeScript strict mode
 - Use our component library from @/components
@@ -300,6 +301,7 @@ copilot -p "Generate unit tests for $1" \
 ```
 
 Usage:
+
 ```bash
 ./generate-tests.sh src/utils/validator.ts
 ```
@@ -413,6 +415,7 @@ copilot -p "Audit this codebase for security issues" \
 ### Effective Prompts
 
 **Good prompts are specific:**
+
 ```
 # Instead of:
 Fix the bug

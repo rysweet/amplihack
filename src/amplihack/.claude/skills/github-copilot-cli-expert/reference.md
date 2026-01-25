@@ -6,62 +6,62 @@ Complete reference documentation for GitHub Copilot CLI.
 
 ### Session Management
 
-| Command | Arguments | Description |
-|---------|-----------|-------------|
-| `/clear`, `/new` | - | Clear conversation history |
-| `/compact` | - | Summarize conversation to reduce context |
-| `/context` | - | Show token usage visualization |
-| `/usage` | - | Display session metrics and statistics |
-| `/exit`, `/quit` | - | Exit the CLI |
-| `/session` | `[checkpoints [n]\|files\|plan\|rename <name>]` | Show session info, manage checkpoints |
-| `/rename` | `<name>` | Rename current session |
-| `/resume` | `[sessionId]` | Switch to different session |
-| `/share` | `[file\|gist] [path]` | Export session to markdown or GitHub gist |
+| Command          | Arguments                                       | Description                               |
+| ---------------- | ----------------------------------------------- | ----------------------------------------- |
+| `/clear`, `/new` | -                                               | Clear conversation history                |
+| `/compact`       | -                                               | Summarize conversation to reduce context  |
+| `/context`       | -                                               | Show token usage visualization            |
+| `/usage`         | -                                               | Display session metrics and statistics    |
+| `/exit`, `/quit` | -                                               | Exit the CLI                              |
+| `/session`       | `[checkpoints [n]\|files\|plan\|rename <name>]` | Show session info, manage checkpoints     |
+| `/rename`        | `<name>`                                        | Rename current session                    |
+| `/resume`        | `[sessionId]`                                   | Switch to different session               |
+| `/share`         | `[file\|gist] [path]`                           | Export session to markdown or GitHub gist |
 
 ### Configuration & Tools
 
-| Command | Arguments | Description |
-|---------|-----------|-------------|
-| `/model`, `/models` | `[model]` | Select AI model |
-| `/mcp` | `[show\|add\|edit\|delete\|disable\|enable] [server-name]` | Manage MCP servers |
-| `/agent` | - | Browse and select available agents |
-| `/skills` | `[list\|info\|add\|remove\|reload] [args...]` | Manage skills |
-| `/theme` | `[show\|set\|list] [auto\|dark\|light]` | Configure terminal theme |
-| `/terminal-setup` | - | Configure multiline input support |
-| `/reset-allowed-tools` | - | Reset tool permissions |
+| Command                | Arguments                                                  | Description                        |
+| ---------------------- | ---------------------------------------------------------- | ---------------------------------- |
+| `/model`, `/models`    | `[model]`                                                  | Select AI model                    |
+| `/mcp`                 | `[show\|add\|edit\|delete\|disable\|enable] [server-name]` | Manage MCP servers                 |
+| `/agent`               | -                                                          | Browse and select available agents |
+| `/skills`              | `[list\|info\|add\|remove\|reload] [args...]`              | Manage skills                      |
+| `/theme`               | `[show\|set\|list] [auto\|dark\|light]`                    | Configure terminal theme           |
+| `/terminal-setup`      | -                                                          | Configure multiline input support  |
+| `/reset-allowed-tools` | -                                                          | Reset tool permissions             |
 
 ### File & Directory Access
 
-| Command | Arguments | Description |
-|---------|-----------|-------------|
-| `/add-dir` | `<directory>` | Add directory to allowed list |
-| `/list-dirs` | - | Display all allowed directories |
-| `/cwd`, `/cd` | `[directory]` | Change or show working directory |
-| `/diff` | - | Review changes made in current directory |
+| Command       | Arguments     | Description                              |
+| ------------- | ------------- | ---------------------------------------- |
+| `/add-dir`    | `<directory>` | Add directory to allowed list            |
+| `/list-dirs`  | -             | Display all allowed directories          |
+| `/cwd`, `/cd` | `[directory]` | Change or show working directory         |
+| `/diff`       | -             | Review changes made in current directory |
 
 ### Authentication & User
 
-| Command | Arguments | Description |
-|---------|-----------|-------------|
-| `/login` | - | Log in to Copilot |
-| `/logout` | - | Log out of Copilot |
-| `/user` | `[show\|list\|switch]` | Manage GitHub user accounts |
+| Command   | Arguments              | Description                 |
+| --------- | ---------------------- | --------------------------- |
+| `/login`  | -                      | Log in to Copilot           |
+| `/logout` | -                      | Log out of Copilot          |
+| `/user`   | `[show\|list\|switch]` | Manage GitHub user accounts |
 
 ### Task Delegation
 
-| Command | Arguments | Description |
-|---------|-----------|-------------|
+| Command     | Arguments  | Description                                    |
+| ----------- | ---------- | ---------------------------------------------- |
 | `/delegate` | `<prompt>` | Push session to Copilot coding agent on GitHub |
-| `/plan` | `[prompt]` | Create implementation plan before coding |
-| `/review` | `[prompt]` | Run code review agent |
+| `/plan`     | `[prompt]` | Create implementation plan before coding       |
+| `/review`   | `[prompt]` | Run code review agent                          |
 
 ### Help & Feedback
 
-| Command | Arguments | Description |
-|---------|-----------|-------------|
-| `/help` | - | Show help for interactive commands |
-| `/feedback` | - | Submit feedback, bug reports, feature requests |
-| `/ide` | - | Connect to an IDE workspace |
+| Command     | Arguments | Description                                    |
+| ----------- | --------- | ---------------------------------------------- |
+| `/help`     | -         | Show help for interactive commands             |
+| `/feedback` | -         | Submit feedback, bug reports, feature requests |
+| `/ide`      | -         | Connect to an IDE workspace                    |
 
 ## Command-Line Options
 
@@ -89,6 +89,7 @@ Options:
 ```
 
 **Tool Specification Formats:**
+
 - `'shell'` - All shell commands
 - `'shell(git)'` - Specific command
 - `'shell(git push)'` - Command with subcommand
@@ -106,14 +107,14 @@ Options:
 
 ## Environment Variables
 
-| Variable | Description |
-|----------|-------------|
-| `GH_TOKEN` | GitHub personal access token (highest priority) |
-| `GITHUB_TOKEN` | GitHub personal access token (fallback) |
+| Variable          | Description                                       |
+| ----------------- | ------------------------------------------------- |
+| `GH_TOKEN`        | GitHub personal access token (highest priority)   |
+| `GITHUB_TOKEN`    | GitHub personal access token (fallback)           |
 | `XDG_CONFIG_HOME` | Override config directory (default: `~/.copilot`) |
-| `HOME` | User home directory |
-| `TMPDIR` | Temporary directory |
-| `PWD` | Current working directory |
+| `HOME`            | User home directory                               |
+| `TMPDIR`          | Temporary directory                               |
+| `PWD`             | Current working directory                         |
 
 ## Configuration Files
 
@@ -123,10 +124,7 @@ Options:
 
 ```json
 {
-  "trusted_folders": [
-    "/path/to/trusted/project1",
-    "/path/to/trusted/project2"
-  ],
+  "trusted_folders": ["/path/to/trusted/project1", "/path/to/trusted/project2"],
   "theme": "auto",
   "model": "claude-sonnet-4-5"
 }
@@ -157,6 +155,7 @@ Options:
 ## Custom Instructions Locations
 
 Copilot CLI reads instructions from (in order):
+
 1. `CLAUDE.md` (in git root & cwd)
 2. `GEMINI.md` (in git root & cwd)
 3. `AGENTS.md` (in git root & cwd)
@@ -169,20 +168,20 @@ Copilot CLI reads instructions from (in order):
 
 ### Built-in Agents
 
-| Agent | Description |
-|-------|-------------|
-| `explore` | Fast codebase analysis, answering questions without adding to context |
-| `task` | Execute commands (tests, builds), brief on success, full output on failure |
-| `plan` | Create implementation plans before coding |
-| `code-review` | Review changes, surface only genuine issues |
+| Agent         | Description                                                                |
+| ------------- | -------------------------------------------------------------------------- |
+| `explore`     | Fast codebase analysis, answering questions without adding to context      |
+| `task`        | Execute commands (tests, builds), brief on success, full output on failure |
+| `plan`        | Create implementation plans before coding                                  |
+| `code-review` | Review changes, surface only genuine issues                                |
 
 ### Agent Loading Locations
 
-| Priority | Location | Scope |
-|----------|----------|-------|
-| 1 (highest) | `~/.copilot/agents/` | User-level (all projects) |
-| 2 | `.github/agents/` | Repository-level |
-| 3 (lowest) | `.github-private/agents/` | Organization/Enterprise |
+| Priority    | Location                  | Scope                     |
+| ----------- | ------------------------- | ------------------------- |
+| 1 (highest) | `~/.copilot/agents/`      | User-level (all projects) |
+| 2           | `.github/agents/`         | Repository-level          |
+| 3 (lowest)  | `.github-private/agents/` | Organization/Enterprise   |
 
 ### Invoking Custom Agents
 
@@ -202,6 +201,7 @@ copilot --agent=my-agent --prompt "Do the thing"
 ### Trusted Directories
 
 On first launch, you're asked to trust the current directory:
+
 1. **Yes, proceed** - Trust for this session only
 2. **Yes, and remember** - Trust for all future sessions
 3. **No, exit** - Cancel session
@@ -211,6 +211,7 @@ Edit permanently: `~/.copilot/config.json` → `trusted_folders` array
 ### Tool Approval Flow
 
 When Copilot needs to use a potentially dangerous tool:
+
 1. **Yes** - Allow this time only
 2. **Yes, approve for session** - Allow all uses of this tool type in session
 3. **No (Esc)** - Cancel and provide different instruction
@@ -218,16 +219,19 @@ When Copilot needs to use a potentially dangerous tool:
 ### Permission Scopes
 
 **Path Permissions:**
+
 - Default: Current directory, subdirectories, system temp
 - Limitations: Custom env vars not expanded, symlinks resolved only for existing files
 
 **URL Permissions:**
+
 - Default: All URLs require approval
 - Limitations: URLs in files/configs not detected, obfuscated URLs may bypass
 
 ### Risk Mitigation
 
 For automated workflows with `--allow-all-tools`:
+
 - Use in VMs, containers, or isolated environments
 - Restrict network access
 - Use specific `--deny-tool` for dangerous commands
@@ -237,6 +241,7 @@ For automated workflows with `--allow-all-tools`:
 ### Available Models
 
 Use `/model` to see current options. Typical choices:
+
 - **Claude Sonnet 4.5** (1x) - Default
 - **Claude Sonnet 4** (1x)
 - **GPT-5** (varies)
@@ -343,6 +348,7 @@ Executables available at: https://github.com/github/copilot-cli/releases/
 ### "Copilot not found"
 
 Ensure installation path is in `$PATH`:
+
 - Homebrew: `/opt/homebrew/bin` or `/usr/local/bin`
 - npm: Global npm bin directory
 - Script: `$HOME/.local/bin` or `/usr/local/bin`
