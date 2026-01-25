@@ -133,7 +133,7 @@ ls -1 ~/.amplihack/.claude/agents/*.md | wc -l
 /skills list
 
 # Direct inspection
-ls -1 ~/.amplihack/.claude/skills/*/SKILL.md | sed 's|/.*/||; s|/SKILL.md||'
+ls -1 ~/.amplihack/.claude/skills/*/SKILL.md | sed 's|.*/skills/||; s|/SKILL.md||'
 
 # Count
 find ~/.amplihack/.claude/skills -name SKILL.md | wc -l
