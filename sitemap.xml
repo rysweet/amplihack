@@ -85,6 +85,10 @@
          <lastmod>2026-01-25</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/NATIVE_BINARY_TRACE_LOGGING/</loc>
+         <lastmod>2026-01-25</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/OPENAI_RESPONSES_API/</loc>
          <lastmod>2026-01-25</lastmod>
     </url>
@@ -2137,6 +2141,10 @@
          <lastmod>2026-01-25</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/features/trace-logging/</loc>
+         <lastmod>2026-01-25</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/features/power-steering/</loc>
          <lastmod>2026-01-25</lastmod>
     </url>
@@ -2178,6 +2186,10 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/howto/power-steering-merge-preferences/</loc>
+         <lastmod>2026-01-25</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/howto/trace-logging/</loc>
          <lastmod>2026-01-25</lastmod>
     </url>
     <url>
@@ -2285,6 +2297,14 @@
          <lastmod>2026-01-25</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/migration/</loc>
+         <lastmod>2026-01-25</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/migration/claude-trace-to-native/</loc>
+         <lastmod>2026-01-25</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/packaging/WHEEL_PACKAGING/</loc>
          <lastmod>2026-01-25</lastmod>
     </url>
@@ -2354,6 +2374,10 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/reference/staging-api/</loc>
+         <lastmod>2026-01-25</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/reference/trace-logging-api/</loc>
          <lastmod>2026-01-25</lastmod>
     </url>
     <url>
@@ -2458,6 +2482,10 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/troubleshooting/stop-hook-exit-hang/</loc>
+         <lastmod>2026-01-25</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/troubleshooting/trace-logging/</loc>
          <lastmod>2026-01-25</lastmod>
     </url>
     <url>
