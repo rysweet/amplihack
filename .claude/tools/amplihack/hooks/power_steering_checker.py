@@ -821,7 +821,12 @@ class PowerSteeringChecker:
             user_claims: list[str] = []
             delta_result: DeltaAnalysisResult | None = None
 
-            if TURN_STATE_AVAILABLE and turn_state and turn_state.block_history and turn_state_manager:
+            if (
+                TURN_STATE_AVAILABLE
+                and turn_state
+                and turn_state.block_history
+                and turn_state_manager
+            ):
                 # Get previous block's failures for delta analysis
                 previous_block = turn_state.get_previous_block()
                 if previous_block and previous_block.failed_evidence:
@@ -1264,7 +1269,9 @@ class PowerSteeringChecker:
                 # Check transcripts subdirectory for timestamped copies
                 transcripts_dir = session_dir / "transcripts"
                 if transcripts_dir.exists():
-                    transcript_files = sorted(transcripts_dir.glob("conversation_*.md"), reverse=True)
+                    transcript_files = sorted(
+                        transcripts_dir.glob("conversation_*.md"), reverse=True
+                    )
                     if transcript_files:
                         possible_paths.insert(0, transcript_files[0])
 
@@ -1341,7 +1348,11 @@ class PowerSteeringChecker:
                 for line in content.split("\n"):
                     # Detect role headers like "## User" or "## Assistant" or "**User:**"
                     role_match = None
-                    if line.startswith("## User") or "**User:**" in line or line.startswith("### User"):
+                    if (
+                        line.startswith("## User")
+                        or "**User:**" in line
+                        or line.startswith("### User")
+                    ):
                         role_match = "user"
                     elif (
                         line.startswith("## Assistant")
@@ -1354,7 +1365,10 @@ class PowerSteeringChecker:
                         # Save previous message if exists
                         if current_role and current_content:
                             messages.append(
-                                {"role": current_role, "content": "\n".join(current_content).strip()}
+                                {
+                                    "role": current_role,
+                                    "content": "\n".join(current_content).strip(),
+                                }
                             )
                         current_role = role_match
                         current_content = []
@@ -1436,9 +1450,7 @@ class PowerSteeringChecker:
                                 if check.get("conclusion")  # Ignore pending
                             )
                             # At least some checks must have run
-                            has_completed = any(
-                                check.get("conclusion") for check in status_checks
-                            )
+                            has_completed = any(check.get("conclusion") for check in status_checks)
                             results["ci_passing"] = all_success and has_completed
                             results["details"]["ci_checks"] = len(status_checks)
                             results["details"]["ci_conclusions"] = [
@@ -2769,9 +2781,7 @@ class PowerSteeringChecker:
             # Determine session type from state if available
             session_type = "DEVELOPMENT"  # Default
             try:
-                state_file = (
-                    self.runtime_dir / session_id / "turn_state.json"
-                )
+                state_file = self.runtime_dir / session_id / "turn_state.json"
                 if state_file.exists():
                     state = json.loads(state_file.read_text())
                     session_type = state.get("session_type", "DEVELOPMENT")
@@ -2808,9 +2818,7 @@ class PowerSteeringChecker:
             # Fail-open on errors
             import sys
 
-            sys.stderr.write(
-                f"[Power Steering] Error in _check_workflow_invocation: {e}\n"
-            )
+            sys.stderr.write(f"[Power Steering] Error in _check_workflow_invocation: {e}\n")
             return True
 
     def _transcript_to_text(self, transcript: list[dict]) -> str:
@@ -2856,7 +2864,7 @@ class PowerSteeringChecker:
                         # Include tool invocations in text
                         tool_name = block.get("name", "")
                         tool_input = block.get("input", {})
-                        texts.append(f"<invoke name=\"{tool_name}\">{tool_input}")
+                        texts.append(f'<invoke name="{tool_name}">{tool_input}')
             return " ".join(texts)
 
         return ""
@@ -3047,12 +3055,132 @@ class PowerSteeringChecker:
         # No tests found or tests failed
         return False
 
-    def _check_ci_status(self, transcript: list[dict], session_id: str) -> bool:
-        """Check if CI passing/mergeable.
+    def _user_prefers_no_auto_merge(self) -> bool:
+        """Detect if user has set preference to never auto-merge PRs.
 
-        Heuristics:
+        Searches .claude/context/USER_PREFERENCES.md for pattern:
+        "(never|must not|do not|don't) ... merge ... without ... (permission|approval|explicit)"
+
+        Returns:
+            True if preference detected, False otherwise (fail-open on any error)
+        """
+        try:
+            preferences_path = self.project_root / ".claude" / "context" / "USER_PREFERENCES.md"
+
+            if not preferences_path.exists():
+                return False
+
+            content = preferences_path.read_text(encoding="utf-8")
+
+            # Pattern: (never|must not|do not|don't).*merge.*without.*(permission|approval|explicit)
+            pattern = r"(?i)(never|must not|do not|don\'t).*merge.*without.*(permission|approval|explicit)"
+
+            return re.search(pattern, content, re.DOTALL) is not None
+
+        except Exception as e:
+            # Fail-open: any error returns False
+            self._log(f"Error detecting merge preference: {e}", "WARNING")
+            return False
+
+    def _check_ci_status_no_auto_merge(self, transcript: list[dict]) -> bool:
+        """Check CI status WITHOUT requiring PR merge.
+
+        Used when user preference "never merge without permission" is active.
+        Treats "PR ready + CI passing" as valid completion state.
+
+        Args:
+            transcript: List of message dictionaries
+
+        Returns:
+            True if PR ready and CI passing, False if CI failing or draft PR
+        """
+        # Look for PR and CI indicators
+        pr_mentioned = False
+        ci_mentioned = False
+        ci_passing = False
+        is_draft = False
+
+        for msg in transcript:
+            if msg.get("type") == "assistant" and "message" in msg:
+                content = msg["message"].get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict):
+                            if block.get("type") == "text":
+                                text = str(block.get("text", "")).lower()
+
+                                # Check for PR mentions
+                                if any(
+                                    keyword in text
+                                    for keyword in ["pr #", "pull request", "created pr"]
+                                ):
+                                    pr_mentioned = True
+
+                                # Check for draft PR
+                                if "draft" in text and "pr" in text:
+                                    is_draft = True
+
+                                # Check for CI mentions
+                                if any(
+                                    keyword in text
+                                    for keyword in [
+                                        "ci",
+                                        "github actions",
+                                        "continuous integration",
+                                        "checks",
+                                    ]
+                                ):
+                                    ci_mentioned = True
+
+                                    # Check for passing indicators
+                                    if any(
+                                        keyword in text
+                                        for keyword in [
+                                            "passing",
+                                            "passed",
+                                            "success",
+                                            "ready for review",
+                                            "ready for your review",
+                                        ]
+                                    ):
+                                        ci_passing = True
+
+                                    # Check for failing indicators
+                                    if any(
+                                        keyword in text
+                                        for keyword in ["failing", "failed", "error"]
+                                    ):
+                                        return False
+
+        # If draft PR, not ready
+        if is_draft:
+            return False
+
+        # If CI mentioned and failing, return False
+        if ci_mentioned and not ci_passing:
+            return False
+
+        # If PR mentioned with CI passing, or PR ready indicators
+        if pr_mentioned and (ci_passing or not ci_mentioned):
+            return True
+
+        # If neither PR nor CI mentioned, assume satisfied (fail-open)
+        if not pr_mentioned and not ci_mentioned:
+            return True
+
+        # Default: if we have indicators but unclear state, be conservative
+        return ci_passing or not ci_mentioned
+
+    def _check_ci_status(self, transcript: list[dict], session_id: str) -> bool:
+        """Check if CI passing/mergeable (preference-aware).
+
+        This method delegates to the appropriate CI checker based on user preference:
+        - If user prefers no auto-merge: use _check_ci_status_no_auto_merge()
+        - Otherwise: use standard CI check logic (requires merge indicators)
+
+        Heuristics (standard mode):
         - Look for CI status checks (gh pr view, CI commands)
-        - Check for "passing", "success", "mergeable"
+        - Check for "passing", "success", "mergeable" (strict - requires "mergeable")
         - Look for failure indicators
 
         Args:
@@ -3062,9 +3190,13 @@ class PowerSteeringChecker:
         Returns:
             True if CI passing or not applicable, False if CI failing
         """
-        # Look for CI-related commands
+        # Check user preference first (lazy detection)
+        if self._user_prefers_no_auto_merge():
+            return self._check_ci_status_no_auto_merge(transcript)
+
+        # Standard logic for users without preference (strict - requires "mergeable")
         ci_mentioned = False
-        ci_passing = False
+        mergeable_mentioned = False
 
         for msg in transcript:
             if msg.get("type") == "assistant" and "message" in msg:
@@ -3075,8 +3207,10 @@ class PowerSteeringChecker:
                             # Check text content for CI mentions
                             if block.get("type") == "text":
                                 text = str(block.get("text", ""))
+                                text_lower = text.lower()
+
                                 if any(
-                                    keyword in text.lower()
+                                    keyword in text_lower
                                     for keyword in [
                                         "ci",
                                         "github actions",
@@ -3084,24 +3218,25 @@ class PowerSteeringChecker:
                                     ]
                                 ):
                                     ci_mentioned = True
-                                    # Check for passing/failing
-                                    if any(
-                                        keyword in text.lower()
-                                        for keyword in ["passing", "success", "mergeable"]
-                                    ):
-                                        ci_passing = True
-                                    if any(
-                                        keyword in text.lower()
-                                        for keyword in ["failing", "failed", "error"]
-                                    ):
-                                        return False
+
+                                # Standard mode: only accept explicit "mergeable" or "passing" + "mergeable"
+                                # Don't accept just "ready" or "passing" alone
+                                if "mergeable" in text_lower:
+                                    mergeable_mentioned = True
+
+                                # Check for failure indicators
+                                if any(
+                                    keyword in text_lower
+                                    for keyword in ["failing", "failed", "error"]
+                                ):
+                                    return False
 
         # If CI not mentioned, consider satisfied (not applicable)
         if not ci_mentioned:
             return True
 
-        # If CI mentioned but no clear passing indicator, be conservative
-        return ci_passing
+        # Standard mode requires explicit "mergeable" indicator
+        return mergeable_mentioned
 
     # ========================================================================
     # Phase 2: Additional Checkers (16 new methods)

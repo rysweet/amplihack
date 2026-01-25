@@ -19,7 +19,9 @@ Ahoy! This be the treasure map to amplihack's specific features and third-party 
 Intelligent guidance system that prevents common mistakes and ensures work completeness:
 
 - [Power Steering Overview](power-steering/README.md) - What is Power Steering and why use it
-- [Customization Guide](power-steering/customization-guide.md) - Configure Power Steering for your workflow
+- [Configuration Guide](power-steering/configuration.md) - Complete configuration reference
+- [Customization Guide](power-steering/customization-guide.md) - Customize considerations for your workflow
+- [Troubleshooting](power-steering/troubleshooting.md) - Fix common Power Steering issues
 
 **Key Benefits:**
 
@@ -28,6 +30,7 @@ Intelligent guidance system that prevents common mistakes and ensures work compl
 - ✅ Reduces CI failures by 15+%
 - ✅ Prevents scope creep
 - ✅ Enforces workflow compliance
+- ✅ Respects user preferences (NEW)
 
 ---
 
