@@ -25,6 +25,7 @@ When starting a session, import these files for context:
 ### When to Classify
 
 Classify when the user:
+
 - **Starts a new topic** (different domain/goal from current work)
 - **First message of the session** (no prior context)
 - **Explicitly changes direction** ("Now let's...", "Next I want...", "Different question...")
@@ -33,6 +34,7 @@ Classify when the user:
 ### When NOT to Re-Classify
 
 Do NOT re-classify when the user:
+
 - **Asks follow-ups** ("Also...", "What about...", "And...")
 - **Provides clarifications** ("I meant...", "To clarify...")
 - **Requests related additions** ("Add logout too", "Also update the tests")
@@ -73,12 +75,12 @@ Following: .claude/workflow/[WORKFLOW_NAME].md
 
 **Default Behavior**: Claude invokes ultrathink-orchestrator for non-trivial development and investigation tasks.
 
-| Task Type         | Claude's Action        |
-| ----------------- | ---------------------- |
-| **Q&A**           | Responds directly      |
-| **Operations**    | Responds directly      |
-| **Investigation** | Invokes /ultrathink    |
-| **Development**   | Invokes /ultrathink    |
+| Task Type         | Claude's Action     |
+| ----------------- | ------------------- |
+| **Q&A**           | Responds directly   |
+| **Operations**    | Responds directly   |
+| **Investigation** | Invokes /ultrathink |
+| **Development**   | Invokes /ultrathink |
 
 **Task classification**: See "Classification Keywords" section above for keyword triggers.
 
@@ -90,7 +92,7 @@ Following: .claude/workflow/[WORKFLOW_NAME].md
 2. **If uncertain**: Choose DEFAULT_WORKFLOW (never skip workflow)
 3. **Q&A is for simple questions ONLY**: If answer needs exploration, use
    INVESTIGATION
-4. **For DEFAULT_WORKFLOW**: Create TodoWrite entries for ALL 22 steps before
+4. **For DEFAULT_WORKFLOW**: Create TodoWrite entries for ALL workflow steps before
    implementation
 
 ### Anti-Patterns (DO NOT)
@@ -122,7 +124,7 @@ Following: .claude/workflow/[WORKFLOW_NAME].md
 - **Operate Autonomously and Independently by default**: You must try to
   determine the user's objective, and then pursue that objective autonomously
   and independently, with the highest possible quality and attention to detail,
-  without stopping, unitl it is achieved. When you stop to ask for approval or
+  without stopping, until it is achieved. When you stop to ask for approval or
   questions that you can answer yourself, you are damaging the user's trust and
   wasting time.
 - **Ask for clarity only if really needed**: If requirements are unclear, think
