@@ -309,12 +309,16 @@ var myTool = AIFunctionFactory.Create(
 
 ### Event Types
 
-| Event Type                | Data Fields             | Description           |
-| ------------------------- | ----------------------- | --------------------- |
-| `assistant.message_delta` | `deltaContent`          | Streaming text chunk  |
-| `session.idle`            | -                       | Response complete     |
-| `tool.invocation`         | `toolName`, `toolInput` | Tool being called     |
-| `tool.result`             | `toolName`, `result`    | Tool execution result |
+| Event Type (TS/Go)        | Python Enum                          | Description           |
+| ------------------------- | ------------------------------------ | --------------------- |
+| `assistant.message_delta` | `SessionEventType.ASSISTANT_MESSAGE_DELTA` | Streaming text chunk  |
+| `session.idle`            | `SessionEventType.SESSION_IDLE`      | Response complete     |
+| `tool.invocation`         | `SessionEventType.TOOL_EXECUTION_START` | Tool being called     |
+| `tool.result`             | `SessionEventType.TOOL_EXECUTION_COMPLETE` | Tool execution result |
+
+> **⚠️ Python Note**: Python uses `SessionEventType` enum from 
+> `copilot.generated.session_events`. The enum names differ from TypeScript/Go
+> string literals (e.g., `TOOL_EXECUTION_START` vs `tool.invocation`).
 
 ### Event Handling
 
@@ -345,6 +349,10 @@ def handle_event(event):
     if event.type == SessionEventType.ASSISTANT_MESSAGE_DELTA:
         sys.stdout.write(event.data.delta_content)
         sys.stdout.flush()
+    elif event.type == SessionEventType.TOOL_EXECUTION_START:
+        print(f"[Tool: {event.data.tool_name}]")
+    elif event.type == SessionEventType.TOOL_EXECUTION_COMPLETE:
+        print(f"[Result: {event.data.result}]")
     elif event.type == SessionEventType.SESSION_IDLE:
         print()
 

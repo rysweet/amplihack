@@ -858,3 +858,18 @@ Console.WriteLine(response?.Data.Content);
 | 8   | MCP GitHub        | TS         | MCP integration        |
 | 9   | Custom Agent      | TS         | Agent definition       |
 | 10  | External Server   | All 4      | CLI server mode        |
+
+---
+
+## Complete Runnable Examples
+
+For complete, tested goal-seeking agent implementations, see the `examples/` 
+subdirectory:
+
+- **[goal-seeking-agent-python.py](examples/goal-seeking-agent-python.py)** - 
+  Full autonomous agent with custom tools (tested and working)
+- **[goal-seeking-agent-typescript.ts](examples/goal-seeking-agent-typescript.ts)** - 
+  TypeScript equivalent
+
+These demonstrate combining the Copilot SDK with goal-seeking agent patterns
+for autonomous task completion.
