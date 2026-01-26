@@ -101,6 +101,9 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
         os.chdir(staging_result.temp_root)
         print(f"   📂 CWD changed to: {staging_result.temp_root}\n")
 
+    # Ensure amplihack framework is staged to ~/.amplihack/.claude/
+    _ensure_amplihack_staged()
+
     # Start session tracking
     tracker = SessionTracker()
     is_auto_mode = getattr(args, "auto", False)
