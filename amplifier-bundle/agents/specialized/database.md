@@ -1,7 +1,7 @@
 ---
 name: database
 version: 1.0.0
-description: Database design and optimization specialist. Use for schema design, query optimization, migrations, and data architecture decisions.
+description: Database design and optimization specialist. Use for schema design, query optimization, migrations, indexing strategies, and data architecture decisions.
 role: "Database design and optimization specialist"
 model: inherit
 ---
