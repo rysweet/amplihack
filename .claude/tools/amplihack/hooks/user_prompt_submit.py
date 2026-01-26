@@ -216,7 +216,7 @@ class UserPromptSubmitHook(HookProcessor):
                     amplihack_md = candidate
 
             # If we can't find AMPLIHACK.md, nothing to inject
-            if not amplihack_md or not amplihack_md.exists():
+            if not amplihack_md:
                 self.log("No AMPLIHACK.md found - skipping framework injection")
                 return ""
 
