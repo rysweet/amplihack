@@ -187,18 +187,17 @@ class UserPromptSubmitHook(HookProcessor):
             self.log(f"Error reading preferences: {e}", "WARNING")
             return {}
 
-    def _ensure_claude_md_from_amplihack(self) -> None:
-        """Copy AMPLIHACK.md to CLAUDE.md if CLAUDE.md doesn't exist.
+    def _inject_amplihack_if_different(self) -> str:
+        """Inject AMPLIHACK.md contents if it differs from CLAUDE.md.
 
-        This enables plugin architecture where AMPLIHACK.md ships with the plugin
-        and gets copied to project root as CLAUDE.md on first use.
+        This ensures framework instructions are always present even when users
+        have custom project-specific CLAUDE.md files.
+
+        Returns:
+            AMPLIHACK.md contents if different from CLAUDE.md, empty string otherwise
         """
         try:
             claude_md = self.project_root / "CLAUDE.md"
-
-            # If CLAUDE.md already exists, don't overwrite
-            if claude_md.exists():
-                return
 
             # Find AMPLIHACK.md in centralized plugin location (Issue #1948)
             amplihack_md = None
@@ -216,18 +215,44 @@ class UserPromptSubmitHook(HookProcessor):
                 if candidate.exists():
                     amplihack_md = candidate
 
-            if amplihack_md and amplihack_md.exists():
-                # Copy AMPLIHACK.md to CLAUDE.md
-                import shutil
-                shutil.copy2(amplihack_md, claude_md)
-                self.log(f"Created CLAUDE.md from {amplihack_md}")
+            # If we can't find AMPLIHACK.md, nothing to inject
+            if not amplihack_md or not amplihack_md.exists():
+                self.log("No AMPLIHACK.md found - skipping framework injection")
+                return ""
+
+            # Read both files
+            amplihack_content = amplihack_md.read_text(encoding="utf-8")
+
+            # If CLAUDE.md doesn't exist, inject AMPLIHACK.md
+            if not claude_md.exists():
+                self.log("CLAUDE.md missing - injecting AMPLIHACK.md framework instructions")
+                return amplihack_content
+
+            claude_content = claude_md.read_text(encoding="utf-8")
+
+            # Compare contents (ignore whitespace differences)
+            if claude_content.strip() == amplihack_content.strip():
+                # Files are identical - user doesn't have custom CLAUDE.md
+                # No need to inject since CLAUDE.md already has framework instructions
+                return ""
+
+            # Files differ - user has custom CLAUDE.md
+            # Inject AMPLIHACK.md to ensure framework instructions are present
+            self.log("CLAUDE.md differs from AMPLIHACK.md - injecting framework instructions")
+            return amplihack_content
 
         except Exception as e:
             # Don't fail the hook if this doesn't work
-            self.log(f"Could not copy AMPLIHACK.md to CLAUDE.md: {e}", "WARNING")
+            self.log(f"Could not check AMPLIHACK.md vs CLAUDE.md: {e}", "WARNING")
+            return ""
 
     def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Process user prompt submit event.
+
+        Injection order (intentional):
+        1. User preferences (behavioral guidance)
+        2. Agent memories (context for mentioned agents)
+        3. AMPLIHACK.md framework instructions (if CLAUDE.md differs)
 
         Args:
             input_data: Input from Claude Code
@@ -235,9 +260,6 @@ class UserPromptSubmitHook(HookProcessor):
         Returns:
             Additional context to inject
         """
-        # FIRST: Handle AMPLIHACK.md → CLAUDE.md copy for plugin architecture
-        self._ensure_claude_md_from_amplihack()
-
         # Detect launcher and select strategy
         self.strategy = self._select_strategy()
         if self.strategy:
@@ -255,10 +277,27 @@ class UserPromptSubmitHook(HookProcessor):
         else:
             user_prompt = str(user_message)
 
-        # Build context parts
+        # Build context parts (in order)
         context_parts = []
 
-        # 1. Check for agent references and inject memory if found
+        # 1. Inject user preferences first (behavioral guidance)
+        pref_file = self.find_user_preferences()
+        if pref_file:
+            # Get preferences (with caching for performance)
+            preferences = self.get_cached_preferences(pref_file)
+
+            if preferences:
+                # Build preference context
+                pref_context = self.build_preference_context(preferences)
+                context_parts.append(pref_context)
+
+                # Log activity (for debugging)
+                self.log(f"Injected {len(preferences)} preferences on user prompt")
+                self.save_metric("preferences_injected", len(preferences))
+        else:
+            self.log("No USER_PREFERENCES.md found - skipping preference injection")
+
+        # 2. Inject agent memories (context for mentioned agents)
         memory_context = ""
         try:
             from agent_memory_hook import (
@@ -307,22 +346,12 @@ class UserPromptSubmitHook(HookProcessor):
         if memory_context:
             context_parts.append(memory_context)
 
-        # 2. Find and inject preferences
-        pref_file = self.find_user_preferences()
-        if pref_file:
-            # Get preferences (with caching for performance)
-            preferences = self.get_cached_preferences(pref_file)
-
-            if preferences:
-                # Build preference context
-                pref_context = self.build_preference_context(preferences)
-                context_parts.append(pref_context)
-
-                # Log activity (for debugging)
-                self.log(f"Injected {len(preferences)} preferences on user prompt")
-                self.save_metric("preferences_injected", len(preferences))
-        else:
-            self.log("No USER_PREFERENCES.md found - skipping preference injection")
+        # 3. Inject AMPLIHACK.md framework instructions (if CLAUDE.md differs)
+        amplihack_context = self._inject_amplihack_if_different()
+        if amplihack_context:
+            context_parts.append(amplihack_context)
+            self.log("Injected AMPLIHACK.md framework instructions")
+            self.save_metric("amplihack_injected", 1)
 
         # Combine all context parts
         full_context = "\n\n".join(context_parts)
@@ -348,8 +377,7 @@ class UserPromptSubmitHook(HookProcessor):
 
             if launcher_type == "copilot":
                 return CopilotStrategy(self.project_root, self.log)
-            else:
-                return ClaudeStrategy(self.project_root, self.log)
+            return ClaudeStrategy(self.project_root, self.log)
 
         except ImportError as e:
             self.log(f"Adaptive strategy not available: {e}", "DEBUG")
