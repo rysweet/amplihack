@@ -136,15 +136,19 @@ def load_agent_content(agent_path: Path) -> dict[str, Any] | None:
 
         agent_config: dict[str, Any] = {}
 
-        # Extract meta section
+        # Extract from meta section OR top-level frontmatter
+        # Supports both structures:
+        #   meta: { name: X, description: Y }  (Amplifier convention)
+        #   name: X, description: Y             (amplihack convention)
         meta = frontmatter.get("meta", {})
-        agent_config["name"] = meta.get("name", agent_path.stem)
-        if meta.get("description"):
-            agent_config["description"] = meta["description"]
+        agent_config["name"] = meta.get("name") or frontmatter.get("name", agent_path.stem)
+        agent_config["description"] = (
+            meta.get("description") or frontmatter.get("description") or ""
+        )
 
-        # Copy other frontmatter fields
+        # Copy other frontmatter fields (exclude already-extracted fields)
         for key, value in frontmatter.items():
-            if key != "meta" and key not in agent_config:
+            if key not in {"meta", "name", "description"} and key not in agent_config:
                 agent_config[key] = value
 
         # Set body as system instruction
