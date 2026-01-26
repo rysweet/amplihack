@@ -11,10 +11,10 @@ Testing Strategy:
 - 10% E2E tests (complete migration scenarios)
 """
 
-import pytest
-from pathlib import Path
 import json
-import shutil
+from pathlib import Path
+
+import pytest
 
 
 class TestMigrationHelperUnit:
@@ -117,10 +117,7 @@ class TestMigrationHelperUnit:
         target = tmp_path / "target"
 
         helper = MigrationHelper()
-        plan = helper.create_migration_plan(
-            old_installation=old_install,
-            target_path=target
-        )
+        plan = helper.create_migration_plan(old_installation=old_install, target_path=target)
 
         assert "backup" in plan["steps"]
         assert "preserve_customizations" in plan["steps"]
@@ -154,10 +151,7 @@ class TestMigrationHelperUnit:
         helper = MigrationHelper()
 
         with pytest.raises(ValueError, match="target.*exists|not empty"):
-            helper.validate_preconditions(
-                old_installation=old_install,
-                target_path=target
-            )
+            helper.validate_preconditions(old_installation=old_install, target_path=target)
 
     def test_calculate_migration_size(self, tmp_path):
         """
@@ -213,9 +207,7 @@ class TestMigrationHelperIntegration:
         # Migrate
         helper = MigrationHelper()
         result = helper.migrate(
-            old_installation=old_claude,
-            plugin_root=plugin_root,
-            project_root=old_project
+            old_installation=old_claude, plugin_root=plugin_root, project_root=old_project
         )
 
         assert result["success"]
@@ -249,9 +241,7 @@ class TestMigrationHelperIntegration:
 
         helper = MigrationHelper()
         result = helper.migrate(
-            old_installation=old_claude,
-            plugin_root=plugin_root,
-            project_root=old_project
+            old_installation=old_claude, plugin_root=plugin_root, project_root=old_project
         )
 
         assert result["success"]
@@ -284,9 +274,7 @@ class TestMigrationHelperIntegration:
 
         helper = MigrationHelper()
         result = helper.migrate(
-            old_installation=old_claude,
-            plugin_root=plugin_root,
-            project_root=old_project
+            old_installation=old_claude, plugin_root=plugin_root, project_root=old_project
         )
 
         assert result["success"]
@@ -321,9 +309,7 @@ class TestMigrationHelperIntegration:
 
         helper = MigrationHelper()
         result = helper.migrate(
-            old_installation=old_claude,
-            plugin_root=plugin_root,
-            project_root=old_project
+            old_installation=old_claude, plugin_root=plugin_root, project_root=old_project
         )
 
         assert result["success"]
@@ -361,10 +347,7 @@ class TestMigrationHelperIntegration:
         (new_claude / "settings.json").write_text('{"version": "1.0.0"}')
 
         helper = MigrationHelper()
-        helper.rollback(
-            project_root=old_project,
-            backup_path=backup_dir
-        )
+        helper.rollback(project_root=old_project, backup_path=backup_dir)
 
         # Check old state restored
         restored = old_project / ".claude" / "settings.json"
@@ -405,10 +388,7 @@ class TestMigrationHelperE2E:
         (old_claude / "runtime").mkdir(parents=True)
         (old_claude / "runtime" / "data.json").write_text('{"key": "value"}')
 
-        settings = {
-            "version": "0.9.0",
-            "hooks": {"PreRun": ".claude/tools/hook.sh"}
-        }
+        settings = {"version": "0.9.0", "hooks": {"PreRun": ".claude/tools/hook.sh"}}
         (old_claude / "settings.json").write_text(json.dumps(settings, indent=2))
 
         # Setup plugin root
@@ -432,9 +412,7 @@ class TestMigrationHelperE2E:
 
         # 4. Execute migration
         result = helper.migrate(
-            old_installation=old_claude,
-            plugin_root=plugin_root,
-            project_root=old_project
+            old_installation=old_claude, plugin_root=plugin_root, project_root=old_project
         )
 
         assert result["success"]
@@ -450,10 +428,10 @@ class TestMigrationHelperE2E:
         assert (old_project / ".claude" / "runtime" / "data.json").exists()
 
         # - Settings updated with plugin variables
-        new_settings = json.loads(
-            (old_project / ".claude" / "settings.json").read_text()
+        new_settings = json.loads((old_project / ".claude" / "settings.json").read_text())
+        assert "${CLAUDE_PLUGIN_ROOT}" in str(new_settings) or "CLAUDE_PLUGIN_ROOT" in str(
+            new_settings
         )
-        assert "${CLAUDE_PLUGIN_ROOT}" in str(new_settings) or "CLAUDE_PLUGIN_ROOT" in str(new_settings)
 
     def test_migration_with_conflicts_requires_user_resolution(self, tmp_path):
         """
@@ -484,10 +462,7 @@ class TestMigrationHelperE2E:
         helper = MigrationHelper()
 
         # Should detect conflict
-        conflicts = helper.detect_conflicts(
-            old_installation=old_claude,
-            plugin_root=plugin_root
-        )
+        conflicts = helper.detect_conflicts(old_installation=old_claude, plugin_root=plugin_root)
 
         assert len(conflicts) > 0
         assert any("architect.md" in str(c) for c in conflicts)
@@ -522,9 +497,7 @@ class TestMigrationHelperEdgeCases:
         try:
             with pytest.raises(PermissionError):
                 helper.migrate(
-                    old_installation=old_claude,
-                    plugin_root=plugin_root,
-                    project_root=old_project
+                    old_installation=old_claude, plugin_root=plugin_root, project_root=old_project
                 )
         finally:
             plugin_root.chmod(0o755)
@@ -539,8 +512,9 @@ class TestMigrationHelperEdgeCases:
         - No memory issues
         - Reasonable performance
         """
-        from amplihack.plugin.migration_helper import MigrationHelper
         import time
+
+        from amplihack.plugin.migration_helper import MigrationHelper
 
         old_project = tmp_path / "large_project"
         old_claude = old_project / ".claude"
@@ -556,9 +530,7 @@ class TestMigrationHelperEdgeCases:
         start = time.time()
         helper = MigrationHelper()
         result = helper.migrate(
-            old_installation=old_claude,
-            plugin_root=plugin_root,
-            project_root=old_project
+            old_installation=old_claude, plugin_root=plugin_root, project_root=old_project
         )
         elapsed = time.time() - start
 
@@ -588,9 +560,7 @@ class TestMigrationHelperEdgeCases:
 
         helper = MigrationHelper()
         result = helper.migrate(
-            old_installation=old_claude,
-            plugin_root=plugin_root,
-            project_root=old_project
+            old_installation=old_claude, plugin_root=plugin_root, project_root=old_project
         )
 
         # Should succeed despite broken symlink

@@ -5,7 +5,6 @@ This test verifies that the hook actually calls gitignore_checker
 and that the integration works in a realistic scenario.
 """
 
-import json
 import subprocess
 import tempfile
 from pathlib import Path

@@ -32,7 +32,13 @@ scenario:
   steps:
     - action: launch
       target: "amplihack"
-      args: ["claude", "--", "-p", "Task(subagent_type=\"guide\", prompt=\"I heard about amplihack but I've never used a terminal before. What is it and can I use it?\")"]
+      args:
+        [
+          "claude",
+          "--",
+          "-p",
+          'Task(subagent_type="guide", prompt="I heard about amplihack but I''ve never used a terminal before. What is it and can I use it?")',
+        ]
       description: "Invoke guide agent as absolute beginner"
       timeout: 60s
 
@@ -75,7 +81,7 @@ scenario:
 
     # Metric: Concrete example
     - action: verify_output
-      matches: "amplihack claude -- -p \".*\""
+      matches: 'amplihack claude -- -p ".*"'
       description: "Should provide concrete example command"
       metric_type: example_quality
 

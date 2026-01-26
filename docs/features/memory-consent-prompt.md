@@ -61,6 +61,7 @@ When runnin' in automated environments:
 - **Silent**: Continues without delay
 
 **Detected In**:
+
 - GitHub Actions
 - GitLab CI
 - Jenkins
@@ -143,13 +144,13 @@ Capped at 32768 MB (32 GB) maximum.
 
 **Examples**:
 
-| System RAM | Recommended Limit | Reasoning |
-|-----------|------------------|-----------|
-| 4 GB | 8192 MB (8 GB) | Minimum safe limit |
-| 16 GB | 8192 MB (8 GB) | Quarter of RAM (4 GB) < minimum |
-| 32 GB | 8192 MB (8 GB) | Quarter of RAM equals minimum |
-| 64 GB | 16384 MB (16 GB) | Quarter of RAM |
-| 128 GB | 32768 MB (32 GB) | Capped at maximum |
+| System RAM | Recommended Limit | Reasoning                       |
+| ---------- | ----------------- | ------------------------------- |
+| 4 GB       | 8192 MB (8 GB)    | Minimum safe limit              |
+| 16 GB      | 8192 MB (8 GB)    | Quarter of RAM (4 GB) < minimum |
+| 32 GB      | 8192 MB (8 GB)    | Quarter of RAM equals minimum   |
+| 64 GB      | 16384 MB (16 GB)  | Quarter of RAM                  |
+| 128 GB     | 32768 MB (32 GB)  | Capped at maximum               |
 
 ## Behavior by Environment
 
@@ -207,11 +208,13 @@ $ amplihack
 **Solutions**:
 
 1. Verify stdin is connected:
+
    ```bash
    test -t 0 && echo "Interactive" || echo "Non-interactive"
    ```
 
 2. Check environment variables:
+
    ```bash
    env | grep AMPLIHACK_MEMORY
    ```
@@ -231,6 +234,7 @@ $ amplihack
 **Solutions**:
 
 1. Increase timeout:
+
    ```bash
    export AMPLIHACK_MEMORY_PROMPT_TIMEOUT=60
    amplihack
@@ -251,11 +255,13 @@ $ amplihack
 **Solutions**:
 
 1. Check current NODE_OPTIONS:
+
    ```bash
    echo $NODE_OPTIONS
    ```
 
 2. Verify memory config:
+
    ```python
    from amplihack.launcher.memory_config import get_memory_config
    config = get_memory_config()
@@ -277,6 +283,7 @@ $ amplihack
 **Solutions**:
 
 1. Force non-interactive mode:
+
    ```bash
    export AMPLIHACK_MEMORY_AUTO_ACCEPT=true
    amplihack
@@ -292,29 +299,32 @@ $ amplihack
 
 ### Supported Platforms
 
-| Platform | Interactive | Non-Interactive | Timeout |
-|----------|------------|----------------|---------|
-| Linux | ✅ | ✅ | ✅ |
-| macOS | ✅ | ✅ | ✅ |
-| Windows | ✅ | ✅ | ✅ |
-| WSL | ✅ | ✅ | ✅ |
-| Docker | ❌ | ✅ | N/A |
-| GitHub Actions | ❌ | ✅ | N/A |
-| GitLab CI | ❌ | ✅ | N/A |
+| Platform       | Interactive | Non-Interactive | Timeout |
+| -------------- | ----------- | --------------- | ------- |
+| Linux          | ✅          | ✅              | ✅      |
+| macOS          | ✅          | ✅              | ✅      |
+| Windows        | ✅          | ✅              | ✅      |
+| WSL            | ✅          | ✅              | ✅      |
+| Docker         | ❌          | ✅              | N/A     |
+| GitHub Actions | ❌          | ✅              | N/A     |
+| GitLab CI      | ❌          | ✅              | N/A     |
 
 ### Platform-Specific Notes
 
 **Windows**:
+
 - Uses `select` module for timeout on Windows
 - Fully compatible with Command Prompt and PowerShell
 - Works in Git Bash and WSL terminals
 
 **macOS**:
+
 - Uses `select` module for stdin monitoring
 - Compatible with Terminal.app and iTerm2
 - Works via SSH sessions
 
 **Linux**:
+
 - Uses `select` module for stdin monitoring
 - Compatible with all major terminals
 - Works in tmux and screen sessions
@@ -336,7 +346,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install amplihack
         run: pip install amplihack
@@ -350,7 +360,7 @@ jobs:
 ### Docker Compose
 
 ```yaml
-version: '3.8'
+version: "3.8"
 services:
   amplihack:
     image: python:3.11
@@ -416,6 +426,7 @@ def is_interactive():
 Uses platform-appropriate timeout mechanisms:
 
 **Unix/Linux/macOS**:
+
 ```python
 import select
 
@@ -432,6 +443,7 @@ def prompt_with_timeout(timeout_seconds=30):
 ```
 
 **Windows**:
+
 ```python
 import msvcrt
 import time
@@ -473,6 +485,7 @@ def get_default_consent(config):
 ```
 
 **Reasoning**:
+
 - **Non-interactive**: Automated systems expect smooth operation
 - **Timeout**: User aware but chose not to respond = implicit consent
 - **Safety**: Recommended settings are conservative and safe

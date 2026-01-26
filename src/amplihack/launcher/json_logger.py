@@ -15,10 +15,9 @@ Public API:
 """
 
 import json
-import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 
 class JsonLogger:
@@ -41,10 +40,7 @@ class JsonLogger:
         self.log_dir.mkdir(parents=True, exist_ok=True)
 
     def log_event(
-        self,
-        event_type: str,
-        data: Dict[str, Any] | None = None,
-        level: str = "INFO"
+        self, event_type: str, data: dict[str, Any] | None = None, level: str = "INFO"
     ) -> None:
         """Log a structured event to JSONL file.
 
@@ -60,7 +56,7 @@ class JsonLogger:
         """
         # Build event object
         event = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "level": level,
             "event": event_type,
         }
@@ -77,6 +73,7 @@ class JsonLogger:
         except OSError as e:
             # File write failed - log to stderr but don't crash
             import sys
+
             print(f"Warning: Failed to write JSON log: {e}", file=sys.stderr)
 
 

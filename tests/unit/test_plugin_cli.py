@@ -10,11 +10,8 @@ All tests should FAIL initially.
 """
 
 import argparse
-import subprocess
 from pathlib import Path
-from unittest.mock import MagicMock, patch, call
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 # Import will fail until implementation exists
 try:
@@ -38,17 +35,14 @@ class TestPluginInstallCommand:
     def test_install_from_git_url_success(self):
         """Test installing plugin from git URL succeeds."""
         # Arrange
-        args = argparse.Namespace(
-            source="https://github.com/example/plugin.git",
-            force=False
-        )
+        args = argparse.Namespace(source="https://github.com/example/plugin.git", force=False)
 
-        with patch('amplihack.plugin_cli.PluginManager') as mock_manager:
+        with patch("amplihack.plugin_cli.PluginManager") as mock_manager:
             mock_result = MagicMock(
                 success=True,
                 plugin_name="plugin",
                 installed_path=Path("/home/user/.amplihack/.claude/plugins/plugin"),
-                message="Plugin installed successfully: plugin"
+                message="Plugin installed successfully: plugin",
             )
             mock_manager.return_value.install.return_value = mock_result
 
@@ -58,24 +52,20 @@ class TestPluginInstallCommand:
             # Assert
             assert exit_code == 0
             mock_manager.return_value.install.assert_called_once_with(
-                "https://github.com/example/plugin.git",
-                force=False
+                "https://github.com/example/plugin.git", force=False
             )
 
     def test_install_from_local_path_success(self):
         """Test installing plugin from local directory succeeds."""
         # Arrange
-        args = argparse.Namespace(
-            source="/path/to/local/plugin",
-            force=False
-        )
+        args = argparse.Namespace(source="/path/to/local/plugin", force=False)
 
-        with patch('amplihack.plugin_cli.PluginManager') as mock_manager:
+        with patch("amplihack.plugin_cli.PluginManager") as mock_manager:
             mock_result = MagicMock(
                 success=True,
                 plugin_name="plugin",
                 installed_path=Path("/home/user/.amplihack/.claude/plugins/plugin"),
-                message="Plugin installed successfully: plugin"
+                message="Plugin installed successfully: plugin",
             )
             mock_manager.return_value.install.return_value = mock_result
 
@@ -88,12 +78,9 @@ class TestPluginInstallCommand:
     def test_install_with_force_flag(self):
         """Test force flag overwrites existing plugin."""
         # Arrange
-        args = argparse.Namespace(
-            source="https://github.com/example/plugin.git",
-            force=True
-        )
+        args = argparse.Namespace(source="https://github.com/example/plugin.git", force=True)
 
-        with patch('amplihack.plugin_cli.PluginManager') as mock_manager:
+        with patch("amplihack.plugin_cli.PluginManager") as mock_manager:
             mock_result = MagicMock(success=True, plugin_name="plugin")
             mock_manager.return_value.install.return_value = mock_result
 
@@ -103,24 +90,16 @@ class TestPluginInstallCommand:
             # Assert
             assert exit_code == 0
             mock_manager.return_value.install.assert_called_with(
-                "https://github.com/example/plugin.git",
-                force=True
+                "https://github.com/example/plugin.git", force=True
             )
 
     def test_install_failure_returns_error_code(self):
         """Test failed installation returns non-zero exit code."""
         # Arrange
-        args = argparse.Namespace(
-            source="https://github.com/example/plugin.git",
-            force=False
-        )
+        args = argparse.Namespace(source="https://github.com/example/plugin.git", force=False)
 
-        with patch('amplihack.plugin_cli.PluginManager') as mock_manager:
-            mock_result = MagicMock(
-                success=False,
-                plugin_name="plugin",
-                message="Invalid manifest"
-            )
+        with patch("amplihack.plugin_cli.PluginManager") as mock_manager:
+            mock_result = MagicMock(success=False, plugin_name="plugin", message="Invalid manifest")
             mock_manager.return_value.install.return_value = mock_result
 
             # Act
@@ -132,17 +111,14 @@ class TestPluginInstallCommand:
     def test_install_prints_success_message(self, capsys):
         """Test success message is printed to stdout."""
         # Arrange
-        args = argparse.Namespace(
-            source="https://github.com/example/plugin.git",
-            force=False
-        )
+        args = argparse.Namespace(source="https://github.com/example/plugin.git", force=False)
 
-        with patch('amplihack.plugin_cli.PluginManager') as mock_manager:
+        with patch("amplihack.plugin_cli.PluginManager") as mock_manager:
             mock_result = MagicMock(
                 success=True,
                 plugin_name="my-plugin",
                 installed_path=Path("/home/user/.amplihack/.claude/plugins/my-plugin"),
-                message="Plugin installed successfully: my-plugin"
+                message="Plugin installed successfully: my-plugin",
             )
             mock_manager.return_value.install.return_value = mock_result
 
@@ -157,15 +133,11 @@ class TestPluginInstallCommand:
     def test_install_prints_error_message(self, capsys):
         """Test error message is printed to stdout."""
         # Arrange
-        args = argparse.Namespace(
-            source="https://github.com/example/plugin.git",
-            force=False
-        )
+        args = argparse.Namespace(source="https://github.com/example/plugin.git", force=False)
 
-        with patch('amplihack.plugin_cli.PluginManager') as mock_manager:
+        with patch("amplihack.plugin_cli.PluginManager") as mock_manager:
             mock_result = MagicMock(
-                success=False,
-                message="Invalid manifest: missing required field 'name'"
+                success=False, message="Invalid manifest: missing required field 'name'"
             )
             mock_manager.return_value.install.return_value = mock_result
 
@@ -186,7 +158,7 @@ class TestPluginUninstallCommand:
         # Arrange
         args = argparse.Namespace(plugin_name="my-plugin")
 
-        with patch('amplihack.plugin_cli.PluginManager') as mock_manager:
+        with patch("amplihack.plugin_cli.PluginManager") as mock_manager:
             mock_manager.return_value.uninstall.return_value = True
 
             # Act
@@ -201,7 +173,7 @@ class TestPluginUninstallCommand:
         # Arrange
         args = argparse.Namespace(plugin_name="nonexistent-plugin")
 
-        with patch('amplihack.plugin_cli.PluginManager') as mock_manager:
+        with patch("amplihack.plugin_cli.PluginManager") as mock_manager:
             mock_manager.return_value.uninstall.return_value = False
 
             # Act
@@ -215,7 +187,7 @@ class TestPluginUninstallCommand:
         # Arrange
         args = argparse.Namespace(plugin_name="my-plugin")
 
-        with patch('amplihack.plugin_cli.PluginManager') as mock_manager:
+        with patch("amplihack.plugin_cli.PluginManager") as mock_manager:
             mock_manager.return_value.uninstall.return_value = True
             # Check that uninstall method is called which should handle settings cleanup
 
@@ -231,7 +203,7 @@ class TestPluginUninstallCommand:
         # Arrange
         args = argparse.Namespace(plugin_name="my-plugin")
 
-        with patch('amplihack.plugin_cli.PluginManager') as mock_manager:
+        with patch("amplihack.plugin_cli.PluginManager") as mock_manager:
             mock_manager.return_value.uninstall.return_value = True
 
             # Act
@@ -251,10 +223,11 @@ class TestPluginVerifyCommand:
         # Arrange
         args = argparse.Namespace(plugin_name="amplihack")
 
-        with patch('amplihack.cli.PluginManager') as mock_manager, \
-             patch('pathlib.Path.exists', return_value=True), \
-             patch('builtins.open', create=True):
-
+        with (
+            patch("amplihack.cli.PluginManager") as mock_manager,
+            patch("pathlib.Path.exists", return_value=True),
+            patch("builtins.open", create=True),
+        ):
             # Act
             exit_code = plugin_verify_command(args)
 
@@ -267,7 +240,7 @@ class TestPluginVerifyCommand:
         args = argparse.Namespace(plugin_name="my-plugin")
         plugin_path = Path.home() / ".amplihack" / ".claude" / "plugins" / "my-plugin"
 
-        with patch('pathlib.Path.exists') as mock_exists:
+        with patch("pathlib.Path.exists") as mock_exists:
             mock_exists.return_value = False
 
             # Act
@@ -281,10 +254,11 @@ class TestPluginVerifyCommand:
         # Arrange
         args = argparse.Namespace(plugin_name="my-plugin")
 
-        with patch('pathlib.Path.exists', return_value=True), \
-             patch('builtins.open', create=True) as mock_open, \
-             patch('json.loads') as mock_json:
-
+        with (
+            patch("pathlib.Path.exists", return_value=True),
+            patch("builtins.open", create=True) as mock_open,
+            patch("json.loads") as mock_json,
+        ):
             # Mock settings.json without plugin entry
             mock_json.return_value = {"enabledPlugins": []}
 
@@ -300,7 +274,7 @@ class TestPluginVerifyCommand:
         # Arrange
         args = argparse.Namespace(plugin_name="my-plugin")
 
-        with patch('amplihack.plugin_cli.PluginManager') as mock_manager:
+        with patch("amplihack.plugin_cli.PluginManager") as mock_manager:
             # Setup mock to check hooks file
             mock_manager.return_value.verify_hooks.return_value = True
 
@@ -315,9 +289,10 @@ class TestPluginVerifyCommand:
         # Arrange
         args = argparse.Namespace(plugin_name="amplihack")
 
-        with patch('amplihack.cli.PluginManager') as mock_manager, \
-             patch('pathlib.Path.exists', return_value=True):
-
+        with (
+            patch("amplihack.cli.PluginManager") as mock_manager,
+            patch("pathlib.Path.exists", return_value=True),
+        ):
             # Act
             plugin_verify_command(args)
             captured = capsys.readouterr()
@@ -342,8 +317,8 @@ class TestSetupPluginCommands:
 
         # Assert
         # Should be able to parse 'plugin' subcommand
-        args = parser.parse_args(['plugin', 'install', 'source'])
-        assert hasattr(args, 'plugin_command')
+        args = parser.parse_args(["plugin", "install", "source"])
+        assert hasattr(args, "plugin_command")
 
     def test_setup_adds_install_subcommand(self):
         """Test setup adds 'install' subcommand under plugin."""
@@ -355,8 +330,8 @@ class TestSetupPluginCommands:
         setup_plugin_commands(subparsers)
 
         # Assert
-        args = parser.parse_args(['plugin', 'install', 'https://github.com/example/plugin'])
-        assert args.source == 'https://github.com/example/plugin'
+        args = parser.parse_args(["plugin", "install", "https://github.com/example/plugin"])
+        assert args.source == "https://github.com/example/plugin"
 
     def test_setup_adds_uninstall_subcommand(self):
         """Test setup adds 'uninstall' subcommand under plugin."""
@@ -368,8 +343,8 @@ class TestSetupPluginCommands:
         setup_plugin_commands(subparsers)
 
         # Assert
-        args = parser.parse_args(['plugin', 'uninstall', 'my-plugin'])
-        assert args.plugin_name == 'my-plugin'
+        args = parser.parse_args(["plugin", "uninstall", "my-plugin"])
+        assert args.plugin_name == "my-plugin"
 
     def test_setup_adds_verify_subcommand(self):
         """Test setup adds 'verify' subcommand under plugin."""
@@ -381,8 +356,8 @@ class TestSetupPluginCommands:
         setup_plugin_commands(subparsers)
 
         # Assert
-        args = parser.parse_args(['plugin', 'verify', 'amplihack'])
-        assert args.plugin_name == 'amplihack'
+        args = parser.parse_args(["plugin", "verify", "amplihack"])
+        assert args.plugin_name == "amplihack"
 
     def test_install_has_force_flag(self):
         """Test install command has --force flag."""
@@ -394,5 +369,5 @@ class TestSetupPluginCommands:
         setup_plugin_commands(subparsers)
 
         # Assert
-        args = parser.parse_args(['plugin', 'install', 'source', '--force'])
+        args = parser.parse_args(["plugin", "install", "source", "--force"])
         assert args.force is True

@@ -4,10 +4,10 @@ Pytest fixtures for LSP Auto-Configuration tests.
 Provides common test fixtures and utilities following TDD principles.
 """
 
-import pytest
 from pathlib import Path
-from typing import Dict, List
-from unittest.mock import Mock, MagicMock
+from unittest.mock import MagicMock, Mock
+
+import pytest
 
 
 @pytest.fixture
@@ -24,7 +24,7 @@ def mock_env_file(mock_project_root: Path) -> Path:
 
 
 @pytest.fixture
-def sample_python_files(mock_project_root: Path) -> List[Path]:
+def sample_python_files(mock_project_root: Path) -> list[Path]:
     """Create sample Python files for language detection."""
     files = []
     for name in ["main.py", "utils.py", "tests/test_main.py"]:
@@ -36,7 +36,7 @@ def sample_python_files(mock_project_root: Path) -> List[Path]:
 
 
 @pytest.fixture
-def sample_typescript_files(mock_project_root: Path) -> List[Path]:
+def sample_typescript_files(mock_project_root: Path) -> list[Path]:
     """Create sample TypeScript files for language detection."""
     files = []
     for name in ["index.ts", "utils.ts", "tests/test.ts"]:
@@ -48,7 +48,7 @@ def sample_typescript_files(mock_project_root: Path) -> List[Path]:
 
 
 @pytest.fixture
-def sample_mixed_language_files(mock_project_root: Path) -> Dict[str, List[Path]]:
+def sample_mixed_language_files(mock_project_root: Path) -> dict[str, list[Path]]:
     """Create a project with multiple languages."""
     files = {
         "python": [],
@@ -102,7 +102,7 @@ def mock_shutil_which():
 
 
 @pytest.fixture
-def installed_lsp_binaries() -> Dict[str, str]:
+def installed_lsp_binaries() -> dict[str, str]:
     """Simulate installed LSP binaries."""
     return {
         "pyright": "/usr/local/bin/pyright",
@@ -112,7 +112,7 @@ def installed_lsp_binaries() -> Dict[str, str]:
 
 
 @pytest.fixture
-def missing_lsp_binaries() -> Dict[str, None]:
+def missing_lsp_binaries() -> dict[str, None]:
     """Simulate missing LSP binaries."""
     return {
         "pyright": None,
@@ -124,6 +124,7 @@ def missing_lsp_binaries() -> Dict[str, None]:
 @pytest.fixture
 def mock_npx_cclsp_success(mock_subprocess_run):
     """Mock successful npx cclsp install."""
+
     def mock_run(cmd, *args, **kwargs):
         result = Mock()
         if "cclsp" in cmd and "list" in cmd:
@@ -147,6 +148,7 @@ def mock_npx_cclsp_success(mock_subprocess_run):
 @pytest.fixture
 def mock_npx_cclsp_failure(mock_subprocess_run):
     """Mock failed npx cclsp install."""
+
     def mock_run(cmd, *args, **kwargs):
         result = Mock()
         if "cclsp" in cmd:
@@ -164,7 +166,7 @@ def mock_npx_cclsp_failure(mock_subprocess_run):
 
 
 @pytest.fixture
-def language_to_lsp_mapping() -> Dict[str, Dict[str, str]]:
+def language_to_lsp_mapping() -> dict[str, dict[str, str]]:
     """Standard mapping of languages to LSP servers."""
     return {
         "python": {

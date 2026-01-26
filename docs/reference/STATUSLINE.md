@@ -16,7 +16,7 @@ The statusline shows progress, costs, context usage, and active features for you
 | **Model**             | Active Claude model       | `Opus`, `Sonnet`, `Haiku`                   | Red=Opus, Green=Sonnet, Blue=Haiku                      |
 | **Tokens** 🎫         | Total token usage         | `234K`, `1.2M`, or raw number               | M=millions, K=thousands                                 |
 | **Cost** 💰           | Total session cost        | `$1.23`                                     | USD                                                     |
-| **Duration** ⏱       | Session elapsed time      | `15m`, `1h`, `30s`                          | s/m/h format                                            |
+| **Duration** ⏱        | Session elapsed time      | `15m`, `1h`, `30s`                          | s/m/h format                                            |
 | **Power-Steering** 🚦 | Redirect count            | `🚦×3`                                      | Only when active (purple)                               |
 | **Lock Mode** 🔒      | Lock invocation count     | `🔒×5`                                      | Only when active (yellow)                               |
 

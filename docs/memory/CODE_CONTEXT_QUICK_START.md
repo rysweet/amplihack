@@ -145,6 +145,7 @@ if __name__ == "__main__":
 **Cause**: Code graph data not imported or memory not linked to code
 
 **Solution**:
+
 ```bash
 # Import code structure
 amplihack memory blarify .
@@ -163,6 +164,7 @@ print(code_graph.get_code_stats() if code_graph else 'No code graph')
 **Cause**: Large code graph or many memories
 
 **Solution**:
+
 - Only enable when needed (`include_code_context=True`)
 - Reduce token budget to limit number of memories
 - Use more specific queries

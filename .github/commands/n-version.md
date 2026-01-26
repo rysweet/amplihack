@@ -9,17 +9,17 @@
 - **name**: amplihack:n-version
 - **version**: 1.0.0
 - **description**: N-version programming for Byzantine-robust critical implementations
-- **triggers**: 
-- **invokes**: 
+- **triggers**:
+- **invokes**:
 - **- type**: workflow
 - **path**: .claude/workflow/N_VERSION_WORKFLOW.md
-- **philosophy**: 
+- **philosophy**:
 - **- principle**: Analysis First
 - **application**: Compares implementations to select best
-- **dependencies**: 
-- **required**: 
-- **optional**: 
-- **examples**: 
+- **dependencies**:
+- **required**:
+- **optional**:
+- **examples**:
 - **- "/amplihack**: n-version Create password hashing function"
 
 ---
@@ -30,6 +30,7 @@ This command is designed for Claude Code but the patterns and approaches
 can be referenced when using GitHub Copilot CLI.
 
 **Example**:
+
 ```bash
 # Reference this command's approach
 gh copilot explain .github/commands/n-version.md
@@ -41,7 +42,6 @@ gh copilot suggest --context .github/commands/n-version.md "your task"
 ---
 
 ## Original Command Documentation
-
 
 # N-Version Programming Command
 

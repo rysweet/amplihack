@@ -6,21 +6,21 @@ Ahoy! The comprehensive TDD test suite for LSP Auto-Configuration be ready fer r
 
 ## Test Statistics
 
-- **Total Test Files**: 8 files (including conftest.py and __init__.py)
+- **Total Test Files**: 8 files (including conftest.py and **init**.py)
 - **Total Lines of Test Code**: 2,213 lines
 - **Test Distribution**: 60% Unit, 30% Integration, 10% E2E
 
 ### Detailed Breakdown
 
-| Test File | Tests | Category | Purpose |
-|-----------|-------|----------|---------|
-| `test_language_detector.py` | 33 | Unit (60%) | Language detection for 16 languages |
-| `test_lsp_configurator.py` | 22 | Unit (60%) | .env file management |
-| `test_plugin_manager.py` | 25 | Unit (60%) | Plugin installation via npx cclsp |
-| `test_status_tracker.py` | 26 | Unit (60%) | Three-layer status tracking |
-| `test_integration.py` | 15 | Integration (30%) | Module interactions |
-| `test_e2e.py` | 18 | E2E (10%) | Complete user workflows |
-| `conftest.py` | - | Fixtures | Shared test utilities |
+| Test File                   | Tests | Category          | Purpose                             |
+| --------------------------- | ----- | ----------------- | ----------------------------------- |
+| `test_language_detector.py` | 33    | Unit (60%)        | Language detection for 16 languages |
+| `test_lsp_configurator.py`  | 22    | Unit (60%)        | .env file management                |
+| `test_plugin_manager.py`    | 25    | Unit (60%)        | Plugin installation via npx cclsp   |
+| `test_status_tracker.py`    | 26    | Unit (60%)        | Three-layer status tracking         |
+| `test_integration.py`       | 15    | Integration (30%) | Module interactions                 |
+| `test_e2e.py`               | 18    | E2E (10%)         | Complete user workflows             |
+| `conftest.py`               | -     | Fixtures          | Shared test utilities               |
 
 **Total Tests**: 139 comprehensive tests
 
@@ -41,6 +41,7 @@ Ahoy! The comprehensive TDD test suite for LSP Auto-Configuration be ready fer r
 ## Test Coverage by Module
 
 ### language_detector.py
+
 - ✅ All 16 languages covered (Python, TypeScript, JavaScript, Rust, Go, Java, C++, Ruby, PHP, C#, Kotlin, Swift, Scala, Lua, Elixir, Haskell)
 - ✅ File extension detection
 - ✅ Project structure analysis (Cargo.toml, go.mod, etc.)
@@ -49,6 +50,7 @@ Ahoy! The comprehensive TDD test suite for LSP Auto-Configuration be ready fer r
 - ✅ Directory ignoring (node_modules, .git, venv)
 
 ### lsp_configurator.py
+
 - ✅ .env file creation (new files)
 - ✅ .env file modification (existing files)
 - ✅ ENABLE_LSP_TOOL=1 setting
@@ -61,6 +63,7 @@ Ahoy! The comprehensive TDD test suite for LSP Auto-Configuration be ready fer r
 - ✅ Syntax validation
 
 ### plugin_manager.py
+
 - ✅ Plugin installation (npx cclsp install)
 - ✅ Plugin listing (npx cclsp list)
 - ✅ Plugin status checking
@@ -75,6 +78,7 @@ Ahoy! The comprehensive TDD test suite for LSP Auto-Configuration be ready fer r
 - ✅ Verbose output
 
 ### status_tracker.py
+
 - ✅ Layer 1 checking (LSP binaries)
 - ✅ Layer 2 checking (Claude Code plugins)
 - ✅ Layer 3 checking (.env configuration)
@@ -91,6 +95,7 @@ Ahoy! The comprehensive TDD test suite for LSP Auto-Configuration be ready fer r
 ## Integration Test Coverage
 
 ### Module Interactions
+
 - ✅ Language detection → Status checking
 - ✅ Language detection → .env configuration
 - ✅ Binary checking → Plugin installation
@@ -100,6 +105,7 @@ Ahoy! The comprehensive TDD test suite for LSP Auto-Configuration be ready fer r
 - ✅ Error propagation across modules
 
 ### Error Scenarios
+
 - ✅ Missing npx handling
 - ✅ Plugin installation failures
 - ✅ .env permission errors
@@ -108,6 +114,7 @@ Ahoy! The comprehensive TDD test suite for LSP Auto-Configuration be ready fer r
 ## E2E Test Coverage
 
 ### User Workflows
+
 - ✅ First-time user with binaries installed (auto-setup)
 - ✅ First-time user without binaries (manual guidance)
 - ✅ Multi-language project setup
@@ -116,23 +123,27 @@ Ahoy! The comprehensive TDD test suite for LSP Auto-Configuration be ready fer r
 - ✅ Troubleshooting broken setup
 
 ### Edge Cases
+
 - ✅ Empty project (no source files)
 - ✅ Unsupported language project
 - ✅ Large project (100+ files)
 - ✅ .gitignore exclusions
 
 ### Platform-Specific
+
 - ✅ macOS setup workflow (Homebrew)
 - ✅ Linux setup workflow (apt/dnf)
 
 ## Test Quality Metrics
 
 ### Test Ratio
+
 - **Test Code**: 2,213 lines
 - **Expected Implementation**: ~500-700 lines
 - **Ratio**: 3.2:1 to 4.4:1 ✅ (within target 3:1 to 5:1)
 
 ### Test Characteristics
+
 - ✅ **Fast**: Unit tests run in seconds (heavily mocked)
 - ✅ **Isolated**: No test dependencies
 - ✅ **Repeatable**: Consistent results
@@ -140,6 +151,7 @@ Ahoy! The comprehensive TDD test suite for LSP Auto-Configuration be ready fer r
 - ✅ **Focused**: Each test has ONE purpose
 
 ### Philosophy Compliance
+
 - ✅ **Ruthless Simplicity**: Clear, focused tests
 - ✅ **Proportionality**: Not over-tested (3-5:1 ratio)
 - ✅ **Zero-BS**: No stub tests, all verify real behavior
@@ -149,6 +161,7 @@ Ahoy! The comprehensive TDD test suite for LSP Auto-Configuration be ready fer r
 ## Test Fixtures (conftest.py)
 
 ### 17 Comprehensive Fixtures
+
 1. `mock_project_root` - Temporary project directory
 2. `mock_env_file` - Mock .env file path
 3. `sample_python_files` - Python project structure
@@ -168,7 +181,9 @@ Ahoy! The comprehensive TDD test suite for LSP Auto-Configuration be ready fer r
 All 139 tests are currently **FAILING** (as expected in TDD).
 
 ### Why?
+
 Because the implementation modules don't exist yet:
+
 - ❌ `lsp_setup/language_detector.py` - Not created
 - ❌ `lsp_setup/lsp_configurator.py` - Not created
 - ❌ `lsp_setup/plugin_manager.py` - Not created
@@ -206,16 +221,19 @@ Because the implementation modules don't exist yet:
 ## Running Tests
 
 ### Prerequisites
+
 ```bash
 pip install pytest pytest-cov pytest-mock
 ```
 
 ### Run All Tests
+
 ```bash
 pytest .claude/skills/lsp-setup/tests/ -v
 ```
 
 ### Run by Category
+
 ```bash
 # Unit tests only
 pytest .claude/skills/lsp-setup/tests/test_language_detector.py -v
@@ -231,11 +249,13 @@ pytest .claude/skills/lsp-setup/tests/test_e2e.py -v
 ```
 
 ### Run with Coverage
+
 ```bash
 pytest --cov=lsp_setup --cov-report=html .claude/skills/lsp-setup/tests/
 ```
 
 ### Expected Output (Current)
+
 ```
 ==================== test session starts ====================
 collected 139 items
@@ -249,12 +269,14 @@ test_language_detector.py::TestLanguageDetector::test_detect_single_typescript_p
 ## Test Coverage Goals
 
 ### Module Coverage Targets
+
 - `language_detector.py`: **95%+** coverage
 - `lsp_configurator.py`: **90%+** coverage
 - `plugin_manager.py`: **90%+** coverage
 - `status_tracker.py`: **95%+** coverage
 
 ### Critical Paths (Must be 100%)
+
 - Language detection for all 16 languages
 - Three-layer status checking
 - .env file manipulation
@@ -263,21 +285,25 @@ test_language_detector.py::TestLanguageDetector::test_detect_single_typescript_p
 ## Key Design Decisions
 
 ### 1. Testing Pyramid Distribution
+
 - **60% Unit**: Fast feedback, isolated components
 - **30% Integration**: Real module interactions
 - **10% E2E**: Complete user workflows
 
 ### 2. Strategic Mocking
+
 - Mock external dependencies (subprocess, filesystem, network)
 - Keep business logic testable without external systems
 - Use real file operations in tmp_path for integration tests
 
 ### 3. Fixture Design
+
 - Reusable fixtures for common scenarios
 - Composable fixtures for complex setups
 - Platform-specific mocking for cross-platform support
 
 ### 4. Test Naming
+
 - `test_<action>_<scenario>`: Clear intent
 - Example: `test_detect_single_python_project`
 - Example: `test_enable_lsp_when_already_enabled`
@@ -285,17 +311,21 @@ test_language_detector.py::TestLanguageDetector::test_detect_single_typescript_p
 ## Architecture Verification
 
 ### Three-Layer Architecture Tested
+
 1. **Layer 1** (System LSP binaries): 26 tests
 2. **Layer 2** (Claude Code plugins): 25 tests
 3. **Layer 3** (Project configuration): 22 tests
 
 ### 16 Languages Supported
+
 All languages from specification have test coverage:
+
 - Python, TypeScript, JavaScript, Rust, Go
 - Java, C++, Ruby, PHP, C#
 - Kotlin, Swift, Scala, Lua, Elixir, Haskell
 
 ### User-Guided vs Auto-Install Boundary
+
 - ✅ Layer 1: User-guided (tests verify guidance generation)
 - ✅ Layer 2: Auto-install (tests verify npx cclsp automation)
 - ✅ Layer 3: Auto-config (tests verify .env automation)
@@ -303,6 +333,7 @@ All languages from specification have test coverage:
 ## Documentation Integration
 
 These tests serve as:
+
 1. **Executable Specifications**: Tests define the contract
 2. **Implementation Guide**: Tests show expected behavior
 3. **Regression Prevention**: Future changes must pass all tests

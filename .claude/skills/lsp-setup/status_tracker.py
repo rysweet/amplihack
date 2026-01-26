@@ -16,11 +16,11 @@ Public API:
     generate_user_guidance: Create actionable setup instructions
 """
 
-import shutil
 import platform
-from pathlib import Path
-from typing import Dict, List, Optional, Any
+import shutil
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
 __all__ = ["StatusTracker", "LayerStatus"]
 
@@ -28,9 +28,10 @@ __all__ = ["StatusTracker", "LayerStatus"]
 @dataclass
 class LayerStatus:
     """Status for a single layer."""
+
     installed: bool
-    details: Optional[str] = None
-    install_guide: Optional[str] = None
+    details: str | None = None
+    install_guide: str | None = None
 
 
 class StatusTracker:
@@ -101,7 +102,7 @@ class StatusTracker:
         },
     }
 
-    def __init__(self, project_root: Path, languages: List[str]):
+    def __init__(self, project_root: Path, languages: list[str]):
         """
         Initialize status tracker.
 
@@ -113,7 +114,7 @@ class StatusTracker:
         self.languages = languages
         self.env_file = self.project_root / ".env"
 
-    def check_layer_1(self) -> Dict[str, Dict]:
+    def check_layer_1(self) -> dict[str, dict]:
         """
         Check Layer 1: System LSP binaries.
 
@@ -125,10 +126,7 @@ class StatusTracker:
         for lang in self.languages:
             binary = self.LANGUAGE_TO_BINARY.get(lang)
             if not binary:
-                status[lang] = {
-                    "installed": False,
-                    "error": f"Unknown language: {lang}"
-                }
+                status[lang] = {"installed": False, "error": f"Unknown language: {lang}"}
                 continue
 
             # Check if binary exists
@@ -147,7 +145,7 @@ class StatusTracker:
 
         return status
 
-    def check_layer_2(self) -> Dict[str, Dict]:
+    def check_layer_2(self) -> dict[str, dict]:
         """
         Check Layer 2: Claude Code plugins.
 
@@ -173,7 +171,7 @@ class StatusTracker:
 
         return status
 
-    def check_layer_3(self) -> Dict[str, Any]:
+    def check_layer_3(self) -> dict[str, Any]:
         """
         Check Layer 3: .env configuration.
 
@@ -184,7 +182,7 @@ class StatusTracker:
             return {
                 "enabled": False,
                 "env_file_exists": False,
-                "install_guide": "Run: echo 'ENABLE_LSP_TOOL=1' >> .env"
+                "install_guide": "Run: echo 'ENABLE_LSP_TOOL=1' >> .env",
             }
 
         # Check if ENABLE_LSP_TOOL=1 is set
@@ -195,10 +193,10 @@ class StatusTracker:
             "enabled": enabled,
             "env_file_exists": True,
             "path": str(self.env_file),
-            "install_guide": "Add 'ENABLE_LSP_TOOL=1' to .env file" if not enabled else None
+            "install_guide": "Add 'ENABLE_LSP_TOOL=1' to .env file" if not enabled else None,
         }
 
-    def get_full_status(self) -> Dict[str, Any]:
+    def get_full_status(self) -> dict[str, Any]:
         """
         Get complete status across all three layers.
 
@@ -210,14 +208,8 @@ class StatusTracker:
         layer_3 = self.check_layer_3()
 
         # Check if all layers are ready
-        all_layer_1_ready = all(
-            lang_status["installed"]
-            for lang_status in layer_1.values()
-        )
-        all_layer_2_ready = all(
-            lang_status["installed"]
-            for lang_status in layer_2.values()
-        )
+        all_layer_1_ready = all(lang_status["installed"] for lang_status in layer_1.values())
+        all_layer_2_ready = all(lang_status["installed"] for lang_status in layer_2.values())
         layer_3_ready = layer_3["enabled"]
 
         overall_ready = all_layer_1_ready and all_layer_2_ready and layer_3_ready
@@ -245,9 +237,7 @@ class StatusTracker:
 
         # Layer 1 guidance
         layer_1_issues = [
-            (lang, info)
-            for lang, info in status["layer_1"].items()
-            if not info["installed"]
+            (lang, info) for lang, info in status["layer_1"].items() if not info["installed"]
         ]
 
         if layer_1_issues:
@@ -257,9 +247,7 @@ class StatusTracker:
 
         # Layer 2 guidance
         layer_2_issues = [
-            (lang, info)
-            for lang, info in status["layer_2"].items()
-            if not info["installed"]
+            (lang, info) for lang, info in status["layer_2"].items() if not info["installed"]
         ]
 
         if layer_2_issues:
@@ -285,7 +273,7 @@ class StatusTracker:
         commands = self.INSTALL_COMMANDS.get(language, {})
         return commands.get(platform_key, f"Install {language} LSP server manually")
 
-    def get_setup_progress(self) -> Dict[str, Any]:
+    def get_setup_progress(self) -> dict[str, Any]:
         """
         Get setup progress metrics.
 
@@ -304,28 +292,18 @@ class StatusTracker:
             }
 
         # Layer 1 progress
-        layer_1_installed = sum(
-            1 for info in status["layer_1"].values()
-            if info["installed"]
-        )
+        layer_1_installed = sum(1 for info in status["layer_1"].values() if info["installed"])
         layer_1_progress = (layer_1_installed / total_langs) * 100
 
         # Layer 2 progress
-        layer_2_installed = sum(
-            1 for info in status["layer_2"].values()
-            if info["installed"]
-        )
+        layer_2_installed = sum(1 for info in status["layer_2"].values() if info["installed"])
         layer_2_progress = (layer_2_installed / total_langs) * 100
 
         # Layer 3 progress (binary: 0 or 100)
         layer_3_progress = 100 if status["layer_3"]["enabled"] else 0
 
         # Overall progress (weighted average)
-        overall_progress = (
-            layer_1_progress * 0.4 +
-            layer_2_progress * 0.4 +
-            layer_3_progress * 0.2
-        )
+        overall_progress = layer_1_progress * 0.4 + layer_2_progress * 0.4 + layer_3_progress * 0.2
 
         return {
             "layer_1_progress": round(layer_1_progress, 1),
@@ -334,7 +312,7 @@ class StatusTracker:
             "overall_progress": round(overall_progress, 1),
         }
 
-    def get_next_action(self) -> Optional[str]:
+    def get_next_action(self) -> str | None:
         """Get the next recommended action for setup."""
         status = self.get_full_status()
         if status["overall_ready"]:
@@ -354,7 +332,7 @@ class StatusTracker:
 
         return None
 
-    def get_missing_components(self) -> List[str]:
+    def get_missing_components(self) -> list[str]:
         """Get list of missing components."""
         status = self.get_full_status()
         missing = []
@@ -377,7 +355,7 @@ class StatusTracker:
         progress = self.get_setup_progress()
         return progress["overall_progress"]
 
-    def validate_layer_dependencies(self) -> Dict[str, bool]:
+    def validate_layer_dependencies(self) -> dict[str, bool]:
         """Validate dependencies between layers."""
         status = self.get_full_status()
         return {
@@ -389,10 +367,11 @@ class StatusTracker:
         """Export status report in specified format."""
         if format == "json":
             import json
+
             return json.dumps(self.get_full_status(), indent=2)
         return self.generate_user_guidance()
 
-    def get_troubleshooting_tips(self) -> List[str]:
+    def get_troubleshooting_tips(self) -> list[str]:
         """Get troubleshooting tips based on current status."""
         status = self.get_full_status()
         tips = []
@@ -404,7 +383,7 @@ class StatusTracker:
 
         return tips
 
-    def get_platform_requirements(self) -> Dict[str, List[str]]:
+    def get_platform_requirements(self) -> dict[str, list[str]]:
         """Get platform-specific requirements."""
         system = platform.system().lower()
         platform_name = "darwin" if system == "darwin" else "linux"
@@ -416,7 +395,7 @@ class StatusTracker:
 
         return requirements
 
-    def get_install_commands(self) -> Dict[str, str]:
+    def get_install_commands(self) -> dict[str, str]:
         """Get install commands for all languages."""
         commands = {}
         for lang in self.languages:

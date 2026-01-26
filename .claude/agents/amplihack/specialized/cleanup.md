@@ -167,6 +167,7 @@ The root directory should contain ONLY essential project files. Any file that do
 #### Allowed Root Files (Allowlist)
 
 **Configuration & Build**:
+
 - `.env.example`, `.env.passthrough.example`, `.env.security-template` - Environment templates
 - `.gitignore`, `.gitattributes` - Git configuration
 - `.pre-commit-config.yaml` - Pre-commit hooks
@@ -180,6 +181,7 @@ The root directory should contain ONLY essential project files. Any file that do
 - `MANIFEST.in` - Python manifest
 
 **Documentation (Limited)**:
+
 - `README.md` - Project overview
 - `CHANGELOG.md` - Version history
 - `LICENSE.md` - Legal
@@ -187,38 +189,45 @@ The root directory should contain ONLY essential project files. Any file that do
 - `CLAUDE.md` - AI assistant documentation
 
 **CI/CD & Security**:
+
 - `.github/` directory - GitHub Actions, issue templates
 - `.gitlab-ci.yml` - GitLab CI
 - `.secrets.baseline` - Security scanning baseline
 - `.gitguardian.yaml`, `.gitguardian.yml` - Secret scanning
 
 **Hidden Config Directories**:
+
 - `~/.amplihack/.claude/`, `.amplihack/`, `.devcontainer/` - Tool-specific configuration
 - `.vscode/`, `.idea/` - Editor configuration
 
 #### Forbidden Root Files
 
 **Test Files**:
+
 - ❌ `test_*.py` - Belongs in `tests/`
 - ❌ `*_test.py` - Belongs in `tests/`
 - ❌ `test_*.js` - Belongs in `tests/` or `__tests__/`
 
 **Script Files**:
+
 - ❌ `script.py`, `run_*.py` - Belongs in `scripts/`
 - ❌ `check_*.py` - Belongs in `scripts/` or `~/.amplihack/.claude/ci/`
 - ❌ `fix_*.py` - Belongs in `scripts/` or appropriate module
 
 **Temporary/Debug Files**:
+
 - ❌ `scratch.py`, `temp.py`, `debug.py` - Remove entirely
 - ❌ `test_fix_locally.py` - Ad-hoc debugging scripts
 - ❌ `playground.py`, `experiment.py` - Remove or move to `experiments/`
 
 **Documentation (Beyond Allowlist)**:
+
 - ❌ `DESIGN_*.md`, `SPEC_*.md` - Belongs in `docs/design/` or `docs/specs/`
 - ❌ `TEST_*.md`, `IMPL_*.md` - Belongs in `docs/testing/` or `docs/implementation/`
 - ❌ `NOTES.md`, `TODO.md` - Use issue tracker or `docs/planning/`
 
 **Data Files**:
+
 - ❌ `*.csv`, `*.json` (unless config) - Belongs in `data/` or `fixtures/`
 - ❌ `*.log` - Belongs in `logs/` or `.gitignore`
 
@@ -234,6 +243,7 @@ The root directory should contain ONLY essential project files. Any file that do
    - Data → Move to `data/` or appropriate location
 
 2. **Execute Relocation**:
+
    ```bash
    # Test file example
    mkdir -p tests/
@@ -254,8 +264,10 @@ The root directory should contain ONLY essential project files. Any file that do
    - Update CI/CD scripts if applicable
 
 4. **Report Action**:
+
    ```markdown
    **Root Directory Cleanup**:
+
    - Moved `test_fix_locally.py` → `tests/test_fix_locally.py`
    - Reason: Test files must reside in tests/ directory
    - References updated: None found
@@ -278,6 +290,7 @@ find . -maxdepth 1 -name 'DESIGN_*.md' -o -name 'SPEC_*.md'
 **Decision Framework**:
 
 For every root file, ask:
+
 1. Is this on the allowlist?
 2. Does every developer need this immediately?
 3. Is this consumed by build/CI tools from root?
@@ -288,11 +301,13 @@ If all answers are "no" → **Move or remove**
 #### Exception Process
 
 If a file truly needs to be in root (rare):
+
 1. Document why in this section
 2. Update allowlist in `.github/root-hygiene-config.yml`
 3. Add comment in PR explaining exception
 
 **No exceptions for**:
+
 - Test files
 - Temporary/debug scripts
 - Point-in-time documentation

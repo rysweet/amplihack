@@ -337,12 +337,12 @@ To re-enable manually:
 
 **When to use MCP vs gh CLI:**
 
-| Use gh CLI                         | Use GitHub MCP                           |
-| ---------------------------------- | ---------------------------------------- |
-| Standard issue/PR operations       | Complex multi-step GitHub operations     |
-| CI/CD workflow management          | Bulk operations across many repos        |
-| Quick lookups and status checks    | Advanced GraphQL queries                 |
-| Script automation                  | Operations requiring persistent state    |
+| Use gh CLI                         | Use GitHub MCP                            |
+| ---------------------------------- | ----------------------------------------- |
+| Standard issue/PR operations       | Complex multi-step GitHub operations      |
+| CI/CD workflow management          | Bulk operations across many repos         |
+| Quick lookups and status checks    | Advanced GraphQL queries                  |
+| Script automation                  | Operations requiring persistent state     |
 | **Most daily GitHub interactions** | **Rare, specialized GitHub integrations** |
 
 ## Troubleshooting

@@ -38,6 +38,7 @@ claude --plugin-dir ~/.amplihack/.claude/ --add-dir .
 ```
 
 **In Claude Code TUI:**
+
 1. Press `Enter` to confirm folder permission
 2. Type: `/plugin`
 3. Press `Enter` to execute
@@ -94,6 +95,7 @@ node test-claude-plugin-pty.js
 ### Evidence Files
 
 After the test runs, check:
+
 ```bash
 ls -lh evidence/pty-test-*/
 cat evidence/pty-test-*/REPORT.md
@@ -121,14 +123,17 @@ cat evidence/pty-test-*/output.txt  # Full terminal output with ANSI codes
 **Environment**: Ubuntu Linux, Claude Code v2.1.6
 
 ### Manual Test: ✅ PASSED
+
 - Plugin visible in Installed tab
 - Shown as: `❯ amplihack Plugin · inline · ✔ enabled`
 
 ### Automated Test: ✅ PASSED
+
 - PTY test detected "amplihack" in output
 - Evidence captured in `evidence/pty-test-1768925248693/`
 
 **Evidence Extract**:
+
 ```
 ❯ amplihack Plugin · inline · ✔ enabled
 ```
@@ -140,6 +145,7 @@ cat evidence/pty-test-*/output.txt  # Full terminal output with ANSI codes
 ### Issue: "Plugin directory not found"
 
 **Solution**: Run the UVX install command first:
+
 ```bash
 uvx --refresh --from git+https://github.com/rysweet/amplihack@feat/issue-1948-plugin-architecture amplihack
 ```
@@ -147,6 +153,7 @@ uvx --refresh --from git+https://github.com/rysweet/amplihack@feat/issue-1948-pl
 ### Issue: "Claude Code not found"
 
 **Solution**: Install Claude Code CLI:
+
 ```bash
 npm install -g @anthropic-ai/claude-code
 ```
@@ -154,6 +161,7 @@ npm install -g @anthropic-ai/claude-code
 ### Issue: "amplihack not showing in Installed tab"
 
 **Debug Steps**:
+
 1. Check plugin manifest: `cat ~/.amplihack/.claude/.claude-plugin/plugin.json`
 2. Verify AMPLIHACK.md: `ls -lh ~/.amplihack/.claude/AMPLIHACK.md`
 3. Check Claude Code loads plugin: Look for tweakcc or other indicators
@@ -162,6 +170,7 @@ npm install -g @anthropic-ai/claude-code
 ### Issue: "Automated test fails"
 
 **Solution**:
+
 1. Ensure amplihack is installed first
 2. Check node-pty installed: `npm list node-pty`
 3. Run manual test first to verify plugin works
@@ -173,14 +182,14 @@ npm install -g @anthropic-ai/claude-code
 
 This test validates:
 
-| Component | Test Type | Status |
-|-----------|-----------|--------|
-| Installation (uvx) | Manual | ✅ |
-| File Deployment | Automated | ✅ |
-| Plugin Manifest | Automated | ✅ |
-| Claude Code Launch | Automated | ✅ |
-| /plugin Command | Automated | ✅ |
-| Plugin Detection | Automated | ✅ |
+| Component          | Test Type | Status |
+| ------------------ | --------- | ------ |
+| Installation (uvx) | Manual    | ✅     |
+| File Deployment    | Automated | ✅     |
+| Plugin Manifest    | Automated | ✅     |
+| Claude Code Launch | Automated | ✅     |
+| /plugin Command    | Automated | ✅     |
+| Plugin Detection   | Automated | ✅     |
 
 ---
 
@@ -196,26 +205,28 @@ TUI applications like Claude Code require a real terminal (TTY). Our test uses *
 - ✅ Enables automated TUI testing
 
 **How It Works**:
+
 ```javascript
-const pty = require('node-pty');
+const pty = require("node-pty");
 
 // Creates real virtual terminal
-const ptyProcess = pty.spawn('claude', [
-  '--plugin-dir', '~/.amplihack/.claude/',
-  '--add-dir', '/tmp'
-], {
-  name: 'xterm-256color',
-  cols: 120,
-  rows: 40
-});
+const ptyProcess = pty.spawn(
+  "claude",
+  ["--plugin-dir", "~/.amplihack/.claude/", "--add-dir", "/tmp"],
+  {
+    name: "xterm-256color",
+    cols: 120,
+    rows: 40,
+  }
+);
 
 // Send commands
-ptyProcess.write('/plugin\r');
+ptyProcess.write("/plugin\r");
 
 // Capture output
 ptyProcess.onData((data) => {
-  if (data.includes('amplihack')) {
-    console.log('✓ Plugin detected!');
+  if (data.includes("amplihack")) {
+    console.log("✓ Plugin detected!");
   }
 });
 ```
@@ -232,4 +243,4 @@ ptyProcess.onData((data) => {
 ---
 
 **Generated for PR #1973**
-*2026-01-20 - amplihack agentic testing*
+_2026-01-20 - amplihack agentic testing_

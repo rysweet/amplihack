@@ -46,7 +46,7 @@ class TestAutoLinkingBasics:
         def execute_side_effect(query, params=None):
             if "CodeFile" in query and "CONTAINS" in query:
                 return mock_file_result
-            elif "COUNT(r)" in query:
+            if "COUNT(r)" in query:
                 return mock_check_result
             return Mock(has_next=Mock(return_value=False))
 
@@ -109,7 +109,7 @@ class TestAutoLinkingBasics:
         def execute_side_effect(query, params=None):
             if "Function" in query and "CONTAINS" in query:
                 return mock_func_result
-            elif "COUNT(r)" in query:
+            if "COUNT(r)" in query:
                 return mock_check_result
             return Mock(has_next=Mock(return_value=False))
 
@@ -211,7 +211,7 @@ class TestAutoLinkingRelevanceScoring:
         def execute_side_effect(query, params=None):
             if "CodeFile" in query and "CONTAINS" in query:
                 return mock_file_result
-            elif "COUNT(r)" in query:
+            if "COUNT(r)" in query:
                 return mock_check_result
             return Mock(has_next=Mock(return_value=False))
 
@@ -266,7 +266,7 @@ class TestAutoLinkingRelevanceScoring:
         def execute_side_effect(query, params=None):
             if "Function" in query and "CONTAINS" in query:
                 return mock_func_result
-            elif "COUNT(r)" in query:
+            if "COUNT(r)" in query:
                 return mock_check_result
             return Mock(has_next=Mock(return_value=False))
 
@@ -294,7 +294,9 @@ class TestAutoLinkingRelevanceScoring:
 
             # Find CREATE statement for function link
             calls = [str(call) for call in mock_conn.execute.call_args_list]
-            create_calls = [c for c in calls if "RELATES_TO_FUNCTION" in str(c) and "CREATE" in str(c)]
+            create_calls = [
+                c for c in calls if "RELATES_TO_FUNCTION" in str(c) and "CREATE" in str(c)
+            ]
 
             assert len(create_calls) > 0, "No function link created"
             assert "relevance_score" in str(create_calls[0])
@@ -334,7 +336,7 @@ class TestAutoLinkingDeduplication:
         def execute_side_effect(query, params=None):
             if "CodeFile" in query and "CONTAINS" in query:
                 return mock_file_result
-            elif "COUNT(r)" in query:
+            if "COUNT(r)" in query:
                 return get_check_result()
             return Mock(has_next=Mock(return_value=False))
 
@@ -362,7 +364,9 @@ class TestAutoLinkingDeduplication:
             backend.store_memory(memory)
 
             first_calls = [str(c) for c in mock_conn.execute.call_args_list]
-            first_creates = [c for c in first_calls if "RELATES_TO_FILE" in str(c) and "CREATE" in str(c)]
+            first_creates = [
+                c for c in first_calls if "RELATES_TO_FILE" in str(c) and "CREATE" in str(c)
+            ]
             assert len(first_creates) > 0, "First link not created"
 
             # Second storage - should NOT create duplicate
@@ -371,7 +375,9 @@ class TestAutoLinkingDeduplication:
             backend.store_memory(memory)
 
             second_calls = [str(c) for c in mock_conn.execute.call_args_list]
-            second_creates = [c for c in second_calls if "RELATES_TO_FILE" in str(c) and "CREATE" in str(c)]
+            second_creates = [
+                c for c in second_calls if "RELATES_TO_FILE" in str(c) and "CREATE" in str(c)
+            ]
             assert len(second_creates) == 0, "Duplicate link created"
 
 
@@ -398,7 +404,7 @@ class TestAutoLinkingContextMetadata:
         def execute_side_effect(query, params=None):
             if "CodeFile" in query and "CONTAINS" in query:
                 return mock_file_result
-            elif "COUNT(r)" in query:
+            if "COUNT(r)" in query:
                 return mock_check_result
             return Mock(has_next=Mock(return_value=False))
 
@@ -451,7 +457,7 @@ class TestAutoLinkingContextMetadata:
         def execute_side_effect(query, params=None):
             if "Function" in query and "CONTAINS" in query:
                 return mock_func_result
-            elif "COUNT(r)" in query:
+            if "COUNT(r)" in query:
                 return mock_check_result
             return Mock(has_next=Mock(return_value=False))
 
@@ -478,7 +484,9 @@ class TestAutoLinkingContextMetadata:
             backend.store_memory(memory)
 
             calls = [str(c) for c in mock_conn.execute.call_args_list]
-            create_calls = [c for c in calls if "RELATES_TO_FUNCTION" in str(c) and "CREATE" in str(c)]
+            create_calls = [
+                c for c in calls if "RELATES_TO_FUNCTION" in str(c) and "CREATE" in str(c)
+            ]
 
             assert len(create_calls) > 0, "No function link created"
             assert "context" in str(create_calls[0])
@@ -539,8 +547,9 @@ class TestAutoLinkingPerformance:
     @patch("src.amplihack.memory.backends.kuzu_backend.kuzu")
     def test_auto_linking_completes_quickly(self, mock_kuzu):
         """Test that auto-linking adds minimal overhead to store_memory()."""
-        from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
         import time
+
+        from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
 
         mock_conn = Mock()
         mock_kuzu.Database.return_value = Mock()

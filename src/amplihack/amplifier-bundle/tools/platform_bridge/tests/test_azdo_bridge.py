@@ -10,11 +10,11 @@ Tests cover:
 - Success and failure scenarios
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
-import subprocess
 import json
 import os
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 # This import will fail initially (TDD)
 from ..azdo_bridge import AzureDevOpsBridge
@@ -59,18 +59,14 @@ class TestCreateIssue:
         """Should create work item and return success dict."""
         mock_run.return_value = MagicMock(
             returncode=0,
-            stdout=json.dumps({
-                "id": 789,
-                "url": "https://dev.azure.com/myorg/myproject/_workitems/edit/789"
-            }),
-            stderr=""
+            stdout=json.dumps(
+                {"id": 789, "url": "https://dev.azure.com/myorg/myproject/_workitems/edit/789"}
+            ),
+            stderr="",
         )
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
-        result = bridge.create_issue(
-            title="Test Work Item",
-            body="Work item description"
-        )
+        result = bridge.create_issue(title="Test Work Item", body="Work item description")
 
         assert result["success"] is True
         assert result["issue_number"] == 789
@@ -81,15 +77,14 @@ class TestCreateIssue:
         """Should construct correct az boards command."""
         mock_run.return_value = MagicMock(
             returncode=0,
-            stdout=json.dumps({"id": 789, "url": "https://dev.azure.com/org/project/_workitems/edit/789"}),
-            stderr=""
+            stdout=json.dumps(
+                {"id": 789, "url": "https://dev.azure.com/org/project/_workitems/edit/789"}
+            ),
+            stderr="",
         )
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
-        bridge.create_issue(
-            title="Test Work Item",
-            body="Work item description"
-        )
+        bridge.create_issue(title="Test Work Item", body="Work item description")
 
         # Verify command structure
         args = mock_run.call_args[0][0]
@@ -106,11 +101,7 @@ class TestCreateIssue:
     @patch("subprocess.run")
     def test_create_issue_uses_config_org_and_project(self, mock_run, azdo_config_complete):
         """Should use organization and project from config."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout=json.dumps({"id": 789}),
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout=json.dumps({"id": 789}), stderr="")
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
         bridge.create_issue(title="Test", body="Test")
@@ -134,9 +125,7 @@ class TestCreateIssue:
     def test_create_issue_failure(self, mock_run, azdo_config_complete):
         """Should return error dict on failure."""
         mock_run.return_value = MagicMock(
-            returncode=1,
-            stdout="",
-            stderr="Error: Project not found"
+            returncode=1, stdout="", stderr="Error: Project not found"
         )
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
@@ -167,18 +156,18 @@ class TestCreateDraftPR:
         """Should create draft PR and return success dict."""
         mock_run.return_value = MagicMock(
             returncode=0,
-            stdout=json.dumps({
-                "pullRequestId": 101,
-                "url": "https://dev.azure.com/myorg/myproject/_git/myrepo/pullrequest/101"
-            }),
-            stderr=""
+            stdout=json.dumps(
+                {
+                    "pullRequestId": 101,
+                    "url": "https://dev.azure.com/myorg/myproject/_git/myrepo/pullrequest/101",
+                }
+            ),
+            stderr="",
         )
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
         result = bridge.create_draft_pr(
-            title="Test PR",
-            body="PR description",
-            branch="feature/test"
+            title="Test PR", body="PR description", branch="feature/test"
         )
 
         assert result["success"] is True
@@ -189,17 +178,11 @@ class TestCreateDraftPR:
     def test_create_draft_pr_constructs_correct_command(self, mock_run, azdo_config_complete):
         """Should construct correct az repos command with draft flag."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout=json.dumps({"pullRequestId": 101}),
-            stderr=""
+            returncode=0, stdout=json.dumps({"pullRequestId": 101}), stderr=""
         )
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
-        bridge.create_draft_pr(
-            title="Test PR",
-            body="PR description",
-            branch="feature/test"
-        )
+        bridge.create_draft_pr(title="Test PR", body="PR description", branch="feature/test")
 
         # Verify command structure
         args = mock_run.call_args[0][0]
@@ -217,17 +200,11 @@ class TestCreateDraftPR:
     def test_create_draft_pr_uses_repo_from_config(self, mock_run, azdo_config_complete):
         """Should use repository from config."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout=json.dumps({"pullRequestId": 101}),
-            stderr=""
+            returncode=0, stdout=json.dumps({"pullRequestId": 101}), stderr=""
         )
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
-        bridge.create_draft_pr(
-            title="Test PR",
-            body="PR description",
-            branch="feature/test"
-        )
+        bridge.create_draft_pr(title="Test PR", body="PR description", branch="feature/test")
 
         # Verify repository in command
         args = mock_run.call_args[0][0]
@@ -239,17 +216,12 @@ class TestCreateDraftPR:
     def test_create_draft_pr_with_target_branch(self, mock_run, azdo_config_complete):
         """Should support optional target branch parameter."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout=json.dumps({"pullRequestId": 101}),
-            stderr=""
+            returncode=0, stdout=json.dumps({"pullRequestId": 101}), stderr=""
         )
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
         bridge.create_draft_pr(
-            title="Test PR",
-            body="PR description",
-            branch="feature/test",
-            base="develop"
+            title="Test PR", body="PR description", branch="feature/test", base="develop"
         )
 
         # Verify target branch in command
@@ -261,17 +233,11 @@ class TestCreateDraftPR:
     @patch("subprocess.run")
     def test_create_draft_pr_failure(self, mock_run, azdo_config_complete):
         """Should return error dict on failure."""
-        mock_run.return_value = MagicMock(
-            returncode=1,
-            stdout="",
-            stderr="Error: Branch not found"
-        )
+        mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="Error: Branch not found")
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
         result = bridge.create_draft_pr(
-            title="Test PR",
-            body="PR description",
-            branch="nonexistent"
+            title="Test PR", body="PR description", branch="nonexistent"
         )
 
         assert result["success"] is False
@@ -285,12 +251,7 @@ class TestMarkPRReady:
     def test_mark_pr_ready_success(self, mock_run, azdo_config_complete):
         """Should mark PR as ready for review."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout=json.dumps({
-                "pullRequestId": 101,
-                "isDraft": False
-            }),
-            stderr=""
+            returncode=0, stdout=json.dumps({"pullRequestId": 101, "isDraft": False}), stderr=""
         )
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
@@ -303,9 +264,7 @@ class TestMarkPRReady:
     def test_mark_pr_ready_constructs_correct_command(self, mock_run, azdo_config_complete):
         """Should construct correct az repos command."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout=json.dumps({"pullRequestId": 101, "isDraft": False}),
-            stderr=""
+            returncode=0, stdout=json.dumps({"pullRequestId": 101, "isDraft": False}), stderr=""
         )
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
@@ -322,9 +281,7 @@ class TestMarkPRReady:
     def test_mark_pr_ready_nonexistent_pr(self, mock_run, azdo_config_complete):
         """Should return error for nonexistent PR."""
         mock_run.return_value = MagicMock(
-            returncode=1,
-            stdout="",
-            stderr="Error: Pull request not found"
+            returncode=1, stdout="", stderr="Error: Pull request not found"
         )
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
@@ -342,18 +299,12 @@ class TestAddPRComment:
         """Should add comment to PR."""
         mock_run.return_value = MagicMock(
             returncode=0,
-            stdout=json.dumps({
-                "id": 12345,
-                "content": "This is a test comment"
-            }),
-            stderr=""
+            stdout=json.dumps({"id": 12345, "content": "This is a test comment"}),
+            stderr="",
         )
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
-        result = bridge.add_pr_comment(
-            pr_number=101,
-            comment="This is a test comment"
-        )
+        result = bridge.add_pr_comment(pr_number=101, comment="This is a test comment")
 
         assert result["success"] is True
         assert "comment_id" in result
@@ -361,17 +312,10 @@ class TestAddPRComment:
     @patch("subprocess.run")
     def test_add_pr_comment_constructs_correct_command(self, mock_run, azdo_config_complete):
         """Should construct correct az repos command."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout=json.dumps({"id": 12345}),
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout=json.dumps({"id": 12345}), stderr="")
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
-        bridge.add_pr_comment(
-            pr_number=101,
-            comment="Test comment"
-        )
+        bridge.add_pr_comment(pr_number=101, comment="Test comment")
 
         # Verify command structure
         args = mock_run.call_args[0][0]
@@ -383,18 +327,11 @@ class TestAddPRComment:
     @patch("subprocess.run")
     def test_add_pr_comment_multiline(self, mock_run, azdo_config_complete):
         """Should handle multiline comments."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout=json.dumps({"id": 12345}),
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout=json.dumps({"id": 12345}), stderr="")
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
         multiline_comment = "Line 1\nLine 2\nLine 3"
-        result = bridge.add_pr_comment(
-            pr_number=101,
-            comment=multiline_comment
-        )
+        result = bridge.add_pr_comment(pr_number=101, comment=multiline_comment)
 
         assert result["success"] is True
 
@@ -402,16 +339,11 @@ class TestAddPRComment:
     def test_add_pr_comment_failure(self, mock_run, azdo_config_complete):
         """Should return error dict on failure."""
         mock_run.return_value = MagicMock(
-            returncode=1,
-            stdout="",
-            stderr="Error: Pull request not found"
+            returncode=1, stdout="", stderr="Error: Pull request not found"
         )
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
-        result = bridge.add_pr_comment(
-            pr_number=999,
-            comment="Test comment"
-        )
+        result = bridge.add_pr_comment(pr_number=999, comment="Test comment")
 
         assert result["success"] is False
         assert "error" in result
@@ -425,21 +357,15 @@ class TestCheckCIStatus:
         """Should return success when all checks pass."""
         mock_run.return_value = MagicMock(
             returncode=0,
-            stdout=json.dumps({
-                "value": [
-                    {
-                        "buildNumber": "20241201.1",
-                        "status": "completed",
-                        "result": "succeeded"
-                    },
-                    {
-                        "buildNumber": "20241201.2",
-                        "status": "completed",
-                        "result": "succeeded"
-                    }
-                ]
-            }),
-            stderr=""
+            stdout=json.dumps(
+                {
+                    "value": [
+                        {"buildNumber": "20241201.1", "status": "completed", "result": "succeeded"},
+                        {"buildNumber": "20241201.2", "status": "completed", "result": "succeeded"},
+                    ]
+                }
+            ),
+            stderr="",
         )
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
@@ -454,21 +380,15 @@ class TestCheckCIStatus:
         """Should return failure when any check fails."""
         mock_run.return_value = MagicMock(
             returncode=0,
-            stdout=json.dumps({
-                "value": [
-                    {
-                        "buildNumber": "20241201.1",
-                        "status": "completed",
-                        "result": "failed"
-                    },
-                    {
-                        "buildNumber": "20241201.2",
-                        "status": "completed",
-                        "result": "succeeded"
-                    }
-                ]
-            }),
-            stderr=""
+            stdout=json.dumps(
+                {
+                    "value": [
+                        {"buildNumber": "20241201.1", "status": "completed", "result": "failed"},
+                        {"buildNumber": "20241201.2", "status": "completed", "result": "succeeded"},
+                    ]
+                }
+            ),
+            stderr="",
         )
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
@@ -482,16 +402,10 @@ class TestCheckCIStatus:
         """Should return pending when checks are running."""
         mock_run.return_value = MagicMock(
             returncode=0,
-            stdout=json.dumps({
-                "value": [
-                    {
-                        "buildNumber": "20241201.1",
-                        "status": "inProgress",
-                        "result": None
-                    }
-                ]
-            }),
-            stderr=""
+            stdout=json.dumps(
+                {"value": [{"buildNumber": "20241201.1", "status": "inProgress", "result": None}]}
+            ),
+            stderr="",
         )
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
@@ -503,11 +417,7 @@ class TestCheckCIStatus:
     @patch("subprocess.run")
     def test_check_ci_status_constructs_correct_command(self, mock_run, azdo_config_complete):
         """Should construct correct az pipelines command."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout=json.dumps({"value": []}),
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout=json.dumps({"value": []}), stderr="")
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
         bridge.check_ci_status(ref="feature/test")
@@ -521,11 +431,7 @@ class TestCheckCIStatus:
     @patch("subprocess.run")
     def test_check_ci_status_no_builds(self, mock_run, azdo_config_complete):
         """Should handle branch with no builds."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout=json.dumps({"value": []}),
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout=json.dumps({"value": []}), stderr="")
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
         result = bridge.check_ci_status(ref="main")
@@ -536,11 +442,7 @@ class TestCheckCIStatus:
     @patch("subprocess.run")
     def test_check_ci_status_api_failure(self, mock_run, azdo_config_complete):
         """Should return error dict on API failure."""
-        mock_run.return_value = MagicMock(
-            returncode=1,
-            stdout="",
-            stderr="Error: Not found"
-        )
+        mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="Error: Not found")
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
         result = bridge.check_ci_status(ref="nonexistent")
@@ -552,11 +454,9 @@ class TestCheckCIStatus:
 class TestConfigurationManagement:
     """Test configuration loading and validation."""
 
-    @patch.dict(os.environ, {
-        "AZDO_ORG": "envorg",
-        "AZDO_PROJECT": "envproject",
-        "AZDO_REPO": "envrepo"
-    })
+    @patch.dict(
+        os.environ, {"AZDO_ORG": "envorg", "AZDO_PROJECT": "envproject", "AZDO_REPO": "envrepo"}
+    )
     def test_loads_all_config_from_environment(self):
         """Should load all configuration from environment."""
         bridge = AzureDevOpsBridge()
@@ -602,11 +502,7 @@ class TestResponseFormat:
     @patch("subprocess.run")
     def test_success_response_has_required_keys(self, mock_run, azdo_config_complete):
         """Success responses should have 'success': True."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout=json.dumps({"id": 789}),
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout=json.dumps({"id": 789}), stderr="")
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
         result = bridge.create_issue(title="Test", body="Test")
@@ -617,11 +513,7 @@ class TestResponseFormat:
     @patch("subprocess.run")
     def test_error_response_has_required_keys(self, mock_run, azdo_config_complete):
         """Error responses should have 'success': False and 'error' key."""
-        mock_run.return_value = MagicMock(
-            returncode=1,
-            stdout="",
-            stderr="Error message"
-        )
+        mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="Error message")
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
         result = bridge.create_issue(title="Test", body="Test")
@@ -634,9 +526,7 @@ class TestResponseFormat:
     def test_all_operations_return_dict(self, mock_run, azdo_config_complete):
         """All operations should return dict, never None."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout=json.dumps({"id": 123, "pullRequestId": 456}),
-            stderr=""
+            returncode=0, stdout=json.dumps({"id": 123, "pullRequestId": 456}), stderr=""
         )
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
@@ -665,9 +555,7 @@ class TestJSONParsing:
     def test_valid_json_parsed_correctly(self, mock_run, azdo_config_complete):
         """Should parse valid JSON responses."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout=json.dumps({"id": 789, "url": "https://example.com"}),
-            stderr=""
+            returncode=0, stdout=json.dumps({"id": 789, "url": "https://example.com"}), stderr=""
         )
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
@@ -678,11 +566,7 @@ class TestJSONParsing:
     @patch("subprocess.run")
     def test_invalid_json_handled_gracefully(self, mock_run, azdo_config_complete):
         """Should handle invalid JSON gracefully."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='Not valid JSON',
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout="Not valid JSON", stderr="")
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
         result = bridge.create_issue(title="Test", body="Test")

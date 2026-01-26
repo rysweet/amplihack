@@ -9,8 +9,8 @@
 - **name**: amplihack:ultrathink
 - **version**: 1.0.0
 - **description**: Deep analysis mode with multi-agent orchestration
-- **triggers**: 
-- **invokes**: 
+- **triggers**:
+- **invokes**:
 - **- type**: workflow
 - **path**: .claude/workflow/INVESTIGATION_WORKFLOW.md
 
@@ -22,6 +22,7 @@ This command is designed for Claude Code but the patterns and approaches
 can be referenced when using GitHub Copilot CLI.
 
 **Example**:
+
 ```bash
 # Reference this command's approach
 gh copilot explain .github/commands/ultrathink.md
@@ -33,7 +34,6 @@ gh copilot suggest --context .github/commands/ultrathink.md "your task"
 ---
 
 ## Original Command Documentation
-
 
 # Ultra-Think Command
 

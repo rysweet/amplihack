@@ -20,9 +20,7 @@ def test_checker_method_exists():
     from power_steering_checker import PowerSteeringChecker
 
     # Check method exists
-    assert hasattr(
-        PowerSteeringChecker, "_check_workflow_invocation"
-    ), "Method should exist"
+    assert hasattr(PowerSteeringChecker, "_check_workflow_invocation"), "Method should exist"
     print("✓ _check_workflow_invocation method exists")
 
 
@@ -79,9 +77,7 @@ def test_considerations_yaml_has_workflow_invocation():
 
     import yaml
 
-    considerations_file = (
-        Path(__file__).parent.parent.parent / "considerations.yaml"
-    )
+    considerations_file = Path(__file__).parent.parent.parent / "considerations.yaml"
 
     with open(considerations_file) as f:
         considerations = yaml.safe_load(f)
@@ -91,12 +87,10 @@ def test_considerations_yaml_has_workflow_invocation():
     for consideration in considerations:
         if consideration.get("id") == "workflow_invocation":
             found = True
-            assert (
-                consideration.get("severity") == "blocker"
-            ), "Should be blocker severity"
-            assert (
-                consideration.get("checker") == "_check_workflow_invocation"
-            ), "Should use correct checker"
+            assert consideration.get("severity") == "blocker", "Should be blocker severity"
+            assert consideration.get("checker") == "_check_workflow_invocation", (
+                "Should use correct checker"
+            )
             assert consideration.get("enabled") is True, "Should be enabled"
             break
 
@@ -108,8 +102,9 @@ def test_power_steering_checker_has_method():
     """Test that PowerSteeringChecker class has the new method."""
     print("Testing PowerSteeringChecker has _check_workflow_invocation...")
 
-    from power_steering_checker import PowerSteeringChecker
     import inspect
+
+    from power_steering_checker import PowerSteeringChecker
 
     # Get method
     method = getattr(PowerSteeringChecker, "_check_workflow_invocation", None)
@@ -155,9 +150,9 @@ def run_unit_tests():
             traceback.print_exc()
             failed += 1
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Unit Tests: {passed} passed, {failed} failed")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     return failed == 0
 

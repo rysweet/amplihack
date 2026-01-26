@@ -765,7 +765,7 @@ steps:
     command: |
       # Create output directory if needed
       mkdir -p "{{output_dir}}"
-      
+
       # Output status - actual file updates handled by synthesis agent
       echo '{"discoveries_updated": true, "output_dir": "{{output_dir}}", "investigation_question": "{{investigation_question}}", "investigation_type": "{{investigation_type}}"}'
     output: "discoveries_update"
@@ -785,7 +785,7 @@ steps:
     command: |
       # Create output directory
       mkdir -p "{{output_dir}}"
-      
+
       # Output report metadata - actual report generation handled by synthesis agent
       echo '{"report_path": "{{output_dir}}/investigation_report.md", "status": "created", "investigation_question": "{{investigation_question}}", "investigation_type": "{{investigation_type}}", "depth": "{{depth}}"}'
     output: "report_creation"

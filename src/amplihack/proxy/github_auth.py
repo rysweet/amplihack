@@ -192,7 +192,7 @@ class GitHubAuthManager:
 
                 # Set secure file permissions (0600 - owner read/write only)
                 self._set_secure_permissions(config_path, is_dir=False)
-            except (IOError, OSError) as e:
+            except OSError as e:
                 # File I/O and OS-level errors are warnings (disk full, network issues, filesystem issues)
                 print(f"Warning: Failed to save token to {config_path}: {e}")
         else:
@@ -225,7 +225,7 @@ class GitHubAuthManager:
                 self._set_secure_permissions(github_config, is_dir=False)
 
                 print(f"GitHub token saved to {github_config}")
-            except (IOError, OSError) as e:
+            except OSError as e:
                 # File I/O and OS-level errors are warnings (disk full, network issues, filesystem issues)
                 print(f"Warning: Failed to save token: {e}")
 

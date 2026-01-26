@@ -9,7 +9,7 @@
 - **name**: amplihack:reflect
 - **version**: 1.0.0
 - **description**: Reflection and meta-cognitive analysis of sessions
-- **triggers**: 
+- **triggers**:
 
 ---
 
@@ -19,6 +19,7 @@ This command is designed for Claude Code but the patterns and approaches
 can be referenced when using GitHub Copilot CLI.
 
 **Example**:
+
 ```bash
 # Reference this command's approach
 gh copilot explain .github/commands/reflect.md
@@ -30,7 +31,6 @@ gh copilot suggest --context .github/commands/reflect.md "your task"
 ---
 
 ## Original Command Documentation
-
 
 # /amplihack:reflect - Session Reflection Analysis
 

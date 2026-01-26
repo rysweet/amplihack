@@ -11,6 +11,7 @@ uvx --refresh --from git+https://github.com/rysweet/amplihack@feat/issue-1948-pl
 ```
 
 **What this does:**
+
 - Installs amplihack to `~/.amplihack/.claude/`
 - Deploys all plugin files (AMPLIHACK.md, skills, manifest)
 - Makes plugin available to Claude Code
@@ -31,6 +32,7 @@ cat ~/.amplihack/.claude/.claude-plugin/plugin.json
 ```
 
 **Expected:**
+
 - AMPLIHACK.md: ~33KB
 - Skills: 80+ directories
 - plugin.json: Contains "amplihack"
@@ -69,6 +71,7 @@ node test-claude-plugin-pty.js
 ```
 
 **Expected Output:**
+
 ```
 ✓ Plugin directory found
 ✓ AMPLIHACK.md exists (32.3KB)
@@ -85,18 +88,21 @@ node test-claude-plugin-pty.js
 ## 🐛 TROUBLESHOOTING
 
 ### "Plugin directory not found"
+
 ```bash
 # Re-run UVX install
 uvx --refresh --from git+https://github.com/rysweet/amplihack@feat/issue-1948-plugin-architecture amplihack
 ```
 
 ### "Claude Code not found"
+
 ```bash
 # Install Claude Code
 npm install -g @anthropic-ai/claude-code
 ```
 
 ### "Test failed - amplihack not detected"
+
 ```bash
 # Manual verification
 cat ~/.amplihack/.claude/.claude-plugin/plugin.json

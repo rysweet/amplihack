@@ -12,7 +12,6 @@ Exit Codes:
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Tuple
 
 import yaml
 
@@ -32,7 +31,7 @@ class PointInTimeDocsDetector:
         self.config_path = config_path
         self.config = self._load_config()
 
-    def _load_config(self) -> Dict:
+    def _load_config(self) -> dict:
         """Load configuration from YAML file."""
         if not self.config_path.exists():
             print(f"ERROR: Config file not found: {self.config_path}")
@@ -42,7 +41,7 @@ class PointInTimeDocsDetector:
             config = yaml.safe_load(f)
             return config
 
-    def _get_changed_docs(self) -> List[str]:
+    def _get_changed_docs(self) -> list[str]:
         """
         Get list of changed documentation files in current branch.
 
@@ -52,53 +51,53 @@ class PointInTimeDocsDetector:
         try:
             # Get the merge base with main/master
             result = subprocess.run(
-                ['git', 'merge-base', 'HEAD', 'origin/main'],
+                ["git", "merge-base", "HEAD", "origin/main"],
                 cwd=self.repo_root,
                 capture_output=True,
                 text=True,
-                check=True
+                check=True,
             )
             merge_base = result.stdout.strip()
 
             # Get changed files since merge base
             result = subprocess.run(
-                ['git', 'diff', '--name-only', merge_base, 'HEAD'],
+                ["git", "diff", "--name-only", merge_base, "HEAD"],
                 cwd=self.repo_root,
                 capture_output=True,
                 text=True,
-                check=True
+                check=True,
             )
-            files = result.stdout.strip().split('\n')
+            files = result.stdout.strip().split("\n")
             # Filter for markdown files
-            return [f for f in files if f.endswith('.md') and f]
+            return [f for f in files if f.endswith(".md") and f]
 
         except subprocess.CalledProcessError:
             # Fallback: try master branch
             try:
                 result = subprocess.run(
-                    ['git', 'merge-base', 'HEAD', 'origin/master'],
+                    ["git", "merge-base", "HEAD", "origin/master"],
                     cwd=self.repo_root,
                     capture_output=True,
                     text=True,
-                    check=True
+                    check=True,
                 )
                 merge_base = result.stdout.strip()
 
                 result = subprocess.run(
-                    ['git', 'diff', '--name-only', merge_base, 'HEAD'],
+                    ["git", "diff", "--name-only", merge_base, "HEAD"],
                     cwd=self.repo_root,
                     capture_output=True,
                     text=True,
-                    check=True
+                    check=True,
                 )
-                files = result.stdout.strip().split('\n')
-                return [f for f in files if f.endswith('.md') and f]
+                files = result.stdout.strip().split("\n")
+                return [f for f in files if f.endswith(".md") and f]
 
             except subprocess.CalledProcessError as e:
                 print(f"WARNING: Could not determine changed files: {e}")
                 return []
 
-    def _scan_file_for_temporal_refs(self, filepath: Path) -> List[Tuple[int, str, str]]:
+    def _scan_file_for_temporal_refs(self, filepath: Path) -> list[tuple[int, str, str]]:
         """
         Scan a file for temporal references.
 
@@ -109,13 +108,13 @@ class PointInTimeDocsDetector:
             List of (line_number, line_content, matched_indicator)
         """
         matches = []
-        indicators = self.config.get('point_in_time_indicators', [])
+        indicators = self.config.get("point_in_time_indicators", [])
 
         if not filepath.exists():
             return matches
 
         try:
-            with open(filepath, 'r', encoding='utf-8') as f:
+            with open(filepath, encoding="utf-8") as f:
                 for line_num, line in enumerate(f, 1):
                     line_lower = line.lower()
                     for indicator in indicators:
@@ -138,9 +137,9 @@ class PointInTimeDocsDetector:
         Returns:
             True if file is in root directory
         """
-        return '/' not in filepath
+        return "/" not in filepath
 
-    def analyze(self) -> Tuple[bool, List[Dict]]:
+    def analyze(self) -> tuple[bool, list[dict]]:
         """
         Analyze documentation for point-in-time references.
 
@@ -160,11 +159,7 @@ class PointInTimeDocsDetector:
             if matches:
                 is_root = self._is_root_file(doc_path)
 
-                warning = {
-                    'file': doc_path,
-                    'is_root': is_root,
-                    'matches': matches
-                }
+                warning = {"file": doc_path, "is_root": is_root, "matches": matches}
                 warnings.append(warning)
 
         has_issues = len(warnings) > 0
@@ -188,13 +183,13 @@ class PointInTimeDocsDetector:
         report = [
             "⚠️  Point-in-Time Documentation Check: WARNINGS\n",
             f"Found {len(warnings)} file(s) with temporal references:\n",
-            ""
+            "",
         ]
 
         for warning in warnings:
-            filepath = warning['file']
-            is_root = warning['is_root']
-            matches = warning['matches']
+            filepath = warning["file"]
+            is_root = warning["is_root"]
+            matches = warning["matches"]
 
             if is_root:
                 report.append(f"❌ {filepath} (ROOT - Should not be committed)")
@@ -205,36 +200,40 @@ class PointInTimeDocsDetector:
 
             # Show first 3 matches
             for line_num, line_content, indicator in matches[:3]:
-                report.append(f"   Line {line_num}: \"{indicator}\" in: {line_content[:60]}")
+                report.append(f'   Line {line_num}: "{indicator}" in: {line_content[:60]}')
 
             if len(matches) > 3:
                 report.append(f"   ... and {len(matches) - 3} more")
 
             report.append("")
 
-        report.extend([
-            "---",
-            "Point-in-time documentation contains temporal references that will",
-            "become outdated. Consider:",
-            "",
-            "1. For root directory files: Remove or move to docs/ subdirectory",
-            "2. For transient status: Include in PR description instead",
-            "3. For permanent docs: Remove temporal language, focus on timeless content",
-            "",
-            "Temporal indicators checked:",
-        ])
+        report.extend(
+            [
+                "---",
+                "Point-in-time documentation contains temporal references that will",
+                "become outdated. Consider:",
+                "",
+                "1. For root directory files: Remove or move to docs/ subdirectory",
+                "2. For transient status: Include in PR description instead",
+                "3. For permanent docs: Remove temporal language, focus on timeless content",
+                "",
+                "Temporal indicators checked:",
+            ]
+        )
 
-        indicators = self.config.get('point_in_time_indicators', [])
+        indicators = self.config.get("point_in_time_indicators", [])
         for indicator in indicators[:10]:  # Show first 10
             report.append(f"  - {indicator}")
 
         if len(indicators) > 10:
             report.append(f"  ... and {len(indicators) - 10} more")
 
-        report.extend([
-            "",
-            "These warnings do not block CI, but should be addressed.",
-        ])
+        report.extend(
+            [
+                "",
+                "These warnings do not block CI, but should be addressed.",
+            ]
+        )
 
         return "\n".join(report)
 

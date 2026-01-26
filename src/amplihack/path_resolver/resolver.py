@@ -2,7 +2,7 @@
 
 import os
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any
 
 
 class PathResolver:
@@ -17,8 +17,14 @@ class PathResolver:
 
     # Fields that should be treated as paths
     PATH_FIELDS = {
-        'path', 'cwd', 'script', 'entry_point', 'file', 'files',
-        'absolute', 'relative'  # Common test field names
+        "path",
+        "cwd",
+        "script",
+        "entry_point",
+        "file",
+        "files",
+        "absolute",
+        "relative",  # Common test field names
     }
 
     def __init__(self):
@@ -45,7 +51,7 @@ class PathResolver:
             return str(plugin_root)
 
         # Handle home directory expansion
-        if path.startswith('~'):
+        if path.startswith("~"):
             return str(Path(path).expanduser())
 
         # Convert to Path object
@@ -59,7 +65,7 @@ class PathResolver:
         resolved = plugin_root / path_obj
         return str(resolved.resolve())
 
-    def resolve_dict(self, data: Dict[str, Any], plugin_root: Path) -> Dict[str, Any]:
+    def resolve_dict(self, data: dict[str, Any], plugin_root: Path) -> dict[str, Any]:
         """Resolve paths in dictionary recursively.
 
         Args:
@@ -108,12 +114,12 @@ class PathResolver:
             return self._cached_plugin_root
 
         # Check environment variable first
-        if 'PLUGIN_ROOT' in os.environ:
-            self._cached_plugin_root = Path(os.environ['PLUGIN_ROOT'])
+        if "PLUGIN_ROOT" in os.environ:
+            self._cached_plugin_root = Path(os.environ["PLUGIN_ROOT"])
             return self._cached_plugin_root
 
         # Default to ~/.amplihack/.claude
-        self._cached_plugin_root = Path.home() / '.amplihack' / '.claude'
+        self._cached_plugin_root = Path.home() / ".amplihack" / ".claude"
         return self._cached_plugin_root
 
     def _is_path_field(self, field_name: str) -> bool:
@@ -131,4 +137,4 @@ class PathResolver:
 
         # Fuzzy match for fields containing 'path', 'file', or 'dir'
         field_lower = field_name.lower()
-        return any(keyword in field_lower for keyword in ['path', 'file', 'dir', 'cwd'])
+        return any(keyword in field_lower for keyword in ["path", "file", "dir", "cwd"])

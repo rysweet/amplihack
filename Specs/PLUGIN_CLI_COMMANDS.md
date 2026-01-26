@@ -11,6 +11,7 @@ Issue #1948 requires CLI commands for plugin management, but currently only `Plu
 ## Solution Overview
 
 Create three CLI command handlers that wrap the existing `PluginManager` class:
+
 - `plugin install` - Install plugin from source
 - `plugin uninstall` - Remove plugin cleanly
 - `plugin verify` - Verify installation and discoverability
@@ -20,43 +21,52 @@ Create three CLI command handlers that wrap the existing `PluginManager` class:
 ### Inputs
 
 **Command: `amplihack plugin install [source] [options]`**
+
 - `source` (str): Git URL or local path to plugin
 - `--force` (bool, optional): Overwrite existing plugin
 
 **Command: `amplihack plugin uninstall [plugin_name]`**
+
 - `plugin_name` (str): Name of plugin to remove
 
 **Command: `amplihack plugin verify [plugin_name]`**
+
 - `plugin_name` (str): Name of plugin to verify
 - Returns: Exit code 0 (success) or 1 (failure)
 
 ### Outputs
 
 **Install:**
+
 - Success: Prints installation confirmation, location, exit code 0
 - Failure: Prints error message, exit code 1
 
 **Uninstall:**
+
 - Success: Prints removal confirmation, exit code 0
 - Failure: Prints error message, exit code 1
 
 **Verify:**
+
 - Success: Prints verification report (installed, discoverable, hooks loaded), exit code 0
 - Failure: Prints diagnostics, exit code 1
 
 ### Side Effects
 
 **Install:**
+
 - Creates plugin directory at `~/.amplihack/.claude/plugins/{plugin_name}/`
 - Updates `~/.claude/settings.json` with plugin registration
 - Adds plugin to `enabledPlugins` array
 
 **Uninstall:**
+
 - Removes plugin directory
 - Removes plugin from `~/.claude/settings.json`
 - Removes from `enabledPlugins` array
 
 **Verify:**
+
 - No side effects (read-only operation)
 
 ## Implementation Design
@@ -77,6 +87,7 @@ src/amplihack/
 **Purpose:** Implement command handlers for CLI integration
 
 **Public API:**
+
 ```python
 def handle_plugin_install(args: argparse.Namespace) -> int:
     """Handle plugin install command."""
@@ -95,6 +106,7 @@ __all__ = [
 ```
 
 **Implementation:**
+
 ```python
 def handle_plugin_install(args: argparse.Namespace) -> int:
     """Install plugin from source.
@@ -169,6 +181,7 @@ def handle_plugin_verify(args: argparse.Namespace) -> int:
 **Purpose:** Verify plugin installation and discoverability
 
 **Public API:**
+
 ```python
 @dataclass
 class VerificationResult:
@@ -201,6 +214,7 @@ __all__ = ["PluginVerifier", "VerificationResult"]
 ```
 
 **Implementation:**
+
 ```python
 @dataclass
 class VerificationResult:
@@ -367,16 +381,19 @@ def main(argv=None):
 ### Testing Strategy
 
 **Unit Tests:**
+
 - Test each handler with mocked `PluginManager`
 - Test `PluginVerifier` with fixture directories
 - Test exit codes for success/failure paths
 
 **Integration Tests:**
+
 - Install plugin from test fixture
 - Verify installation
 - Uninstall and verify cleanup
 
 **E2E Tests:**
+
 - Full workflow: install → verify → uninstall
 - Test with real plugin directory structure
 

@@ -31,10 +31,11 @@ import subprocess
 import sys
 import threading
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 try:
     import psutil
+
     HAS_PSUTIL = True
 except ImportError:
     HAS_PSUTIL = False
@@ -59,7 +60,7 @@ MIN_MEMORY_MB = 8192  # 8 GB minimum
 MAX_MEMORY_MB = 32768  # 32 GB maximum
 
 
-def detect_system_ram_gb() -> Optional[int]:
+def detect_system_ram_gb() -> int | None:
     """Detect total system RAM in GB.
 
     Attempts multiple detection methods in order of preference:
@@ -101,7 +102,7 @@ def detect_system_ram_gb() -> Optional[int]:
     if not platform_attempted and HAS_PSUTIL:
         try:
             total_bytes = psutil.virtual_memory().total
-            total_gb = int(total_bytes / (1024 ** 3))
+            total_gb = int(total_bytes / (1024**3))
             return total_gb
         except Exception:
             pass
@@ -122,17 +123,16 @@ def _round_to_power_of_2(gb_float: float) -> int:
     """
     log_gb = math.log2(max(gb_float, 1))
     rounded_log = round(log_gb)
-    nearest_power = 2 ** rounded_log
+    nearest_power = 2**rounded_log
 
     # If within 25% of a power of 2, snap to it
     if abs(gb_float - nearest_power) / nearest_power < 0.25:
         return nearest_power
-    else:
-        # Otherwise just round normally
-        return round(gb_float)
+    # Otherwise just round normally
+    return round(gb_float)
 
 
-def _detect_ram_linux() -> Optional[int]:
+def _detect_ram_linux() -> int | None:
     """Detect RAM on Linux using /proc/meminfo."""
     try:
         meminfo_path = Path("/proc/meminfo")
@@ -151,39 +151,36 @@ def _detect_ram_linux() -> Optional[int]:
     return None
 
 
-def _detect_ram_macos() -> Optional[int]:
+def _detect_ram_macos() -> int | None:
     """Detect RAM on macOS using sysctl."""
     try:
         result = subprocess.run(
-            ["sysctl", "-n", "hw.memsize"],
-            capture_output=True,
-            text=True,
-            timeout=5
+            ["sysctl", "-n", "hw.memsize"], capture_output=True, text=True, timeout=5
         )
         if result.returncode == 0:
             bytes_total = int(result.stdout.strip())
-            gb_float = bytes_total / (1024 ** 3)
+            gb_float = bytes_total / (1024**3)
             return _round_to_power_of_2(gb_float)
     except (subprocess.TimeoutExpired, Exception):
         pass
     return None
 
 
-def _detect_ram_windows() -> Optional[int]:
+def _detect_ram_windows() -> int | None:
     """Detect RAM on Windows using wmic."""
     try:
         result = subprocess.run(
             ["wmic", "ComputerSystem", "get", "TotalPhysicalMemory"],
             capture_output=True,
             text=True,
-            timeout=5
+            timeout=5,
         )
         if result.returncode == 0:
             # Parse output (skip header line)
-            lines = result.stdout.strip().split('\n')
+            lines = result.stdout.strip().split("\n")
             if len(lines) >= 2:
                 bytes_total = int(lines[1].strip())
-                gb_float = bytes_total / (1024 ** 3)
+                gb_float = bytes_total / (1024**3)
                 return _round_to_power_of_2(gb_float)
     except (subprocess.TimeoutExpired, Exception):
         pass
@@ -230,7 +227,7 @@ def calculate_recommended_limit(ram_gb: int) -> int:
     return limit_mb
 
 
-def parse_node_options(options_str: str) -> Dict[str, Any]:
+def parse_node_options(options_str: str) -> dict[str, Any]:
     """Parse NODE_OPTIONS string into dictionary.
 
     Args:
@@ -250,7 +247,7 @@ def parse_node_options(options_str: str) -> Dict[str, Any]:
 
     # Split by spaces, but preserve quoted values
     # Simple approach: split by -- and process each flag
-    parts = options_str.split('--')
+    parts = options_str.split("--")
 
     for part in parts:
         part = part.strip()
@@ -258,9 +255,9 @@ def parse_node_options(options_str: str) -> Dict[str, Any]:
             continue
 
         # Check if it has a value (contains =)
-        if '=' in part:
+        if "=" in part:
             # Handle quoted values
-            key_value = part.split('=', 1)
+            key_value = part.split("=", 1)
             key = key_value[0].strip()
             value = key_value[1].strip()
 
@@ -278,13 +275,13 @@ def parse_node_options(options_str: str) -> Dict[str, Any]:
         else:
             # Boolean flag (no value)
             # Remove trailing space
-            key = part.split()[0] if ' ' in part else part
+            key = part.split()[0] if " " in part else part
             result[key] = True
 
     return result
 
 
-def merge_node_options(existing_options: Dict[str, Any], new_limit_mb: int) -> str:
+def merge_node_options(existing_options: dict[str, Any], new_limit_mb: int) -> str:
     """Merge new memory limit with existing NODE_OPTIONS.
 
     Args:
@@ -300,7 +297,7 @@ def merge_node_options(existing_options: Dict[str, Any], new_limit_mb: int) -> s
     """
     # Create a copy and update with new limit
     merged = existing_options.copy()
-    merged['max-old-space-size'] = new_limit_mb
+    merged["max-old-space-size"] = new_limit_mb
 
     # Convert back to string format
     parts = []
@@ -310,7 +307,7 @@ def merge_node_options(existing_options: Dict[str, Any], new_limit_mb: int) -> s
         else:
             parts.append(f"--{key}={value}")
 
-    return ' '.join(parts)
+    return " ".join(parts)
 
 
 def should_warn_about_limit(limit_mb: int) -> bool:
@@ -349,7 +346,7 @@ def is_interactive_terminal() -> bool:
         # Check if stdin exists and has isatty method
         if sys.stdin is None:
             return False
-        if not hasattr(sys.stdin, 'isatty'):
+        if not hasattr(sys.stdin, "isatty"):
             return False
         # Check if stdin is a TTY
         return sys.stdin.isatty()
@@ -358,7 +355,7 @@ def is_interactive_terminal() -> bool:
         return False
 
 
-def parse_consent_response(response: Optional[str], default: bool) -> bool:
+def parse_consent_response(response: str | None, default: bool) -> bool:
     """Parse user consent response.
 
     Args:
@@ -386,11 +383,11 @@ def parse_consent_response(response: Optional[str], default: bool) -> bool:
     normalized = response.strip().lower()
 
     # Check for yes variants
-    if normalized in ['y', 'yes']:
+    if normalized in ["y", "yes"]:
         return True
 
     # Check for no variants
-    if normalized in ['n', 'no']:
+    if normalized in ["n", "no"]:
         return False
 
     # Invalid response - use default
@@ -398,10 +395,8 @@ def parse_consent_response(response: Optional[str], default: bool) -> bool:
 
 
 def get_user_input_with_timeout(
-    prompt: str,
-    timeout_seconds: int,
-    logger: Optional[logging.Logger] = None
-) -> Optional[str]:
+    prompt: str, timeout_seconds: int, logger: logging.Logger | None = None
+) -> str | None:
     """Get user input with timeout.
 
     Cross-platform implementation:
@@ -432,16 +427,13 @@ def get_user_input_with_timeout(
     if is_windows:
         # Windows: Use threading approach
         return _get_input_with_timeout_threading(prompt, timeout_seconds, logger)
-    else:
-        # Unix/Linux/macOS: Use signal approach
-        return _get_input_with_timeout_signal(prompt, timeout_seconds, logger)
+    # Unix/Linux/macOS: Use signal approach
+    return _get_input_with_timeout_signal(prompt, timeout_seconds, logger)
 
 
 def _get_input_with_timeout_signal(
-    prompt: str,
-    timeout_seconds: int,
-    logger: Optional[logging.Logger]
-) -> Optional[str]:
+    prompt: str, timeout_seconds: int, logger: logging.Logger | None
+) -> str | None:
     """Unix/Linux/macOS implementation using signals."""
 
     class TimeoutException(Exception):
@@ -479,10 +471,8 @@ def _get_input_with_timeout_signal(
 
 
 def _get_input_with_timeout_threading(
-    prompt: str,
-    timeout_seconds: int,
-    logger: Optional[logging.Logger]
-) -> Optional[str]:
+    prompt: str, timeout_seconds: int, logger: logging.Logger | None
+) -> str | None:
     """Windows implementation using threading."""
     result = {"value": None}
 
@@ -511,10 +501,10 @@ def _get_input_with_timeout_threading(
 
 
 def prompt_user_consent(
-    config: Dict[str, Any],
+    config: dict[str, Any],
     timeout_seconds: int = 30,
     default_response: bool = True,
-    logger: Optional[logging.Logger] = None
+    logger: logging.Logger | None = None,
 ) -> bool:
     """Prompt user for consent to update memory configuration.
 
@@ -555,30 +545,32 @@ def prompt_user_consent(
         return default_response
 
     # Interactive mode - display config and prompt
-    current = config.get('current_limit_mb', 'Not set')
-    recommended = config.get('recommended_limit_mb')
-    system_ram = config.get('system_ram_gb', 'Unknown')
+    current = config.get("current_limit_mb", "Not set")
+    recommended = config.get("recommended_limit_mb")
+    system_ram = config.get("system_ram_gb", "Unknown")
 
     try:
         # Try to display config, but continue even if print fails
         try:
-            print("\n" + "="*60)
+            print("\n" + "=" * 60)
             print("Memory Configuration Update")
-            print("="*60)
+            print("=" * 60)
             print(f"System RAM: {system_ram} GB")
             print(f"Current limit: {current} MB")
             print(f"Recommended limit: {recommended} MB")
-            print("="*60)
+            print("=" * 60)
 
             # Show default in prompt
             default_indicator = "[Y/n]" if default_response else "[y/N]"
-            print(f"\nDefault response: {'Yes' if default_response else 'No'} (timeout: {timeout_seconds}s)")
-        except (OSError, IOError):
+            print(
+                f"\nDefault response: {'Yes' if default_response else 'No'} (timeout: {timeout_seconds}s)"
+            )
+        except OSError:
             # If print fails, log it but continue
             if logger:
                 logger.warning("Failed to display configuration (print error)")
 
-        prompt_msg = f"Update NODE_OPTIONS with recommended limit? [Y/n]: "
+        prompt_msg = "Update NODE_OPTIONS with recommended limit? [Y/n]: "
 
         # Get user input with timeout
         response = get_user_input_with_timeout(prompt_msg, timeout_seconds, logger)
@@ -591,7 +583,9 @@ def prompt_user_consent(
                     f"Using default: {'Yes' if default_response else 'No'}"
                 )
             else:
-                print(f"\nTimeout after {timeout_seconds}s. Using default: {'Yes' if default_response else 'No'}")
+                print(
+                    f"\nTimeout after {timeout_seconds}s. Using default: {'Yes' if default_response else 'No'}"
+                )
             return default_response
 
         # Parse user response
@@ -616,7 +610,7 @@ def prompt_user_consent(
         return default_response
 
 
-def get_memory_config(existing_node_options: Optional[str] = None) -> Optional[Dict[str, Any]]:
+def get_memory_config(existing_node_options: str | None = None) -> dict[str, Any] | None:
     """Get complete memory configuration.
 
     Main entry point for memory configuration. Detects system RAM,
@@ -648,9 +642,9 @@ def get_memory_config(existing_node_options: Optional[str] = None) -> Optional[D
 
     if ram_gb is None or ram_gb == 0:
         return {
-            'error': 'Failed to detect system RAM',
-            'recommended_limit_mb': MIN_MEMORY_MB,
-            'node_options': f'--max-old-space-size={MIN_MEMORY_MB}'
+            "error": "Failed to detect system RAM",
+            "recommended_limit_mb": MIN_MEMORY_MB,
+            "node_options": f"--max-old-space-size={MIN_MEMORY_MB}",
         }
 
     # Calculate recommended limit
@@ -658,22 +652,22 @@ def get_memory_config(existing_node_options: Optional[str] = None) -> Optional[D
 
     # Parse existing NODE_OPTIONS
     if existing_node_options is None:
-        existing_node_options = os.environ.get('NODE_OPTIONS', '')
+        existing_node_options = os.environ.get("NODE_OPTIONS", "")
 
     parsed_options = parse_node_options(existing_node_options)
-    current_limit_mb = parsed_options.get('max-old-space-size')
+    current_limit_mb = parsed_options.get("max-old-space-size")
 
     # Build configuration
     config = {
-        'system_ram_gb': ram_gb,
-        'recommended_limit_mb': recommended_limit_mb,
-        'current_limit_mb': current_limit_mb,
+        "system_ram_gb": ram_gb,
+        "recommended_limit_mb": recommended_limit_mb,
+        "current_limit_mb": current_limit_mb,
     }
 
     # Check for warnings - warn if system has low RAM (< 8 GB)
     # This is different from warning about the limit itself
     if ram_gb < 8:
-        config['warning'] = (
+        config["warning"] = (
             f"System has only {ram_gb}GB RAM. "
             f"Using minimum recommended limit of {recommended_limit_mb}MB. "
             f"Performance may be degraded on systems with less than 8GB RAM."
@@ -681,50 +675,49 @@ def get_memory_config(existing_node_options: Optional[str] = None) -> Optional[D
 
     # Prompt for user consent if we're changing the memory limit
     # or if no limit is currently set
-    should_prompt = (current_limit_mb is None or
-                     current_limit_mb != recommended_limit_mb)
+    should_prompt = current_limit_mb is None or current_limit_mb != recommended_limit_mb
 
     if should_prompt:
         try:
             # Try to prompt (will work in interactive mode)
             user_consented = prompt_user_consent(config)
-            config['user_consent'] = user_consented
+            config["user_consent"] = user_consented
         except (EOFError, OSError):
             # Non-interactive mode or input not available
-            config['user_consent'] = None
+            config["user_consent"] = None
 
     # Merge options
     merged_options = merge_node_options(parsed_options, recommended_limit_mb)
-    config['node_options'] = merged_options
+    config["node_options"] = merged_options
 
     return config
 
 
-def display_memory_config(config: Dict[str, Any]) -> None:
+def display_memory_config(config: dict[str, Any]) -> None:
     """Display memory configuration on launch.
 
     Args:
         config: Memory configuration from get_memory_config()
     """
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Memory Configuration")
-    print("="*60)
+    print("=" * 60)
 
-    if 'error' in config:
+    if "error" in config:
         print(f"⚠ {config['error']}")
         print(f"Using default: {config['recommended_limit_mb']} MB")
     else:
         print(f"System RAM: {config['system_ram_gb']} GB")
 
-        if config.get('current_limit_mb'):
+        if config.get("current_limit_mb"):
             print(f"Current limit: {config['current_limit_mb']} MB")
         else:
             print("Current limit: Not set")
 
         print(f"Recommended limit: {config['recommended_limit_mb']} MB")
 
-        if 'warning' in config:
+        if "warning" in config:
             print(f"\n⚠ WARNING: {config['warning']}")
 
     print(f"\nNODE_OPTIONS: {config['node_options']}")
-    print("="*60 + "\n")
+    print("=" * 60 + "\n")

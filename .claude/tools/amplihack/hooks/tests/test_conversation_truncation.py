@@ -8,7 +8,6 @@ These tests verify that _format_conversation_summary() includes ALL messages
 regardless of conversation length, with no 100-message limit.
 """
 
-import pytest
 import sys
 from pathlib import Path
 
@@ -29,10 +28,9 @@ def _create_test_messages(count: int) -> list[dict]:
     """
     messages = []
     for i in range(1, count + 1):
-        messages.append({
-            "role": "user" if i % 2 == 1 else "assistant",
-            "content": f"Message {i:04d}"
-        })
+        messages.append(
+            {"role": "user" if i % 2 == 1 else "assistant", "content": f"Message {i:04d}"}
+        )
     return messages
 
 
@@ -125,12 +123,13 @@ class TestNoTruncationBehavior:
         summary = _format_conversation_summary(messages)
 
         # CRITICAL: Both early and late messages must be present (no truncation)
-        assert "Message 0001" in summary, \
+        assert "Message 0001" in summary, (
             "Message 0001 MUST be in summary (no truncation - full session analyzed)"
-        assert "Message 0050" in summary, \
+        )
+        assert "Message 0050" in summary, (
             "Message 0050 MUST be in summary (early messages included)"
-        assert "Message 0600" in summary, \
-            "Message 0600 MUST be in summary (late messages included)"
+        )
+        assert "Message 0600" in summary, "Message 0600 MUST be in summary (late messages included)"
 
         # Additional verification: messages throughout session should be present
         assert "Message 0300" in summary, "Middle message 0300 should be included"
@@ -150,8 +149,7 @@ class TestTokenBudgetRespected:
         summary = _format_conversation_summary(messages, max_length=5000)
 
         # Summary should not exceed token budget
-        assert len(summary) <= 5000, \
-            f"Summary length {len(summary)} exceeds max_length 5000"
+        assert len(summary) <= 5000, f"Summary length {len(summary)} exceeds max_length 5000"
 
     def test_token_budget_custom_limit(self):
         """Test custom max_length budget is respected.
@@ -162,8 +160,9 @@ class TestTokenBudgetRespected:
         custom_limit = 2000
         summary = _format_conversation_summary(messages, max_length=custom_limit)
 
-        assert len(summary) <= custom_limit, \
+        assert len(summary) <= custom_limit, (
             f"Summary length {len(summary)} exceeds max_length {custom_limit}"
+        )
 
 
 class TestIndividualMessageTruncation:
@@ -201,8 +200,9 @@ class TestIndividualMessageTruncation:
         summary = _format_conversation_summary(messages)
 
         # Should NOT be truncated (exactly at limit)
-        assert exactly_500 not in summary or "..." not in summary, \
+        assert exactly_500 not in summary or "..." not in summary, (
             "Message at exactly 500 chars should be truncated (>500 rule)"
+        )
 
     def test_message_just_over_boundary(self):
         """Test message at 501 chars IS truncated."""
@@ -265,10 +265,12 @@ class TestNoWarningLogging:
 
         # Check stderr - should be NO warnings about truncation
         captured = capsys.readouterr()
-        assert "truncating" not in captured.err.lower(), \
+        assert "truncating" not in captured.err.lower(), (
             "Should NOT log truncation warnings (no truncation behavior)"
-        assert "Large conversation" not in captured.err, \
+        )
+        assert "Large conversation" not in captured.err, (
             "Should NOT log large conversation warnings"
+        )
 
     def test_no_warning_for_600_messages(self, capsys):
         """Test no warning logged even for very large conversations."""
@@ -277,8 +279,7 @@ class TestNoWarningLogging:
 
         captured = capsys.readouterr()
         # Should not log any truncation warnings
-        assert "truncating" not in captured.err.lower(), \
-            "Should NOT log truncation warnings"
+        assert "truncating" not in captured.err.lower(), "Should NOT log truncation warnings"
 
 
 # Test summary for developer reference

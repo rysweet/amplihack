@@ -78,12 +78,7 @@
             "\\bhydration\\b(?! \\()",
             "\\bdependency injection\\b(?! \\()"
           ],
-          "warning": [
-            "\\bREPL\\b",
-            "\\bORM\\b",
-            "\\bserialize\\b",
-            "\\bmonorepo\\b"
-          ]
+          "warning": ["\\bREPL\\b", "\\bORM\\b", "\\bserialize\\b", "\\bmonorepo\\b"]
         },
         "advanced": {
           "forbidden": [],
@@ -174,12 +169,8 @@
           "\\b(?:simply|just|trivial|obvious|easy)\\b",
           "(?:everyone knows|as you know|clearly|of course)"
         ],
-        "assumptive": [
-          "(?:You should already know|I assume you|Obviously you)"
-        ],
-        "dismissive": [
-          "(?:Don't bother|Skip|Ignore) (?:this|that|the details)"
-        ]
+        "assumptive": ["(?:You should already know|I assume you|Obviously you)"],
+        "dismissive": ["(?:Don't bother|Skip|Ignore) (?:this|that|the details)"]
       }
     }
   },
