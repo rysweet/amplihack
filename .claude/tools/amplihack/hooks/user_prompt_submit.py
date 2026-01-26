@@ -218,7 +218,6 @@ class UserPromptSubmitHook(HookProcessor):
             # If we can't find AMPLIHACK.md, nothing to inject
             if not amplihack_md or not amplihack_md.exists():
                 self.log("No AMPLIHACK.md found - skipping framework injection")
-                self.save_metric("amplihack_not_found", 1)
                 return ""
 
             # Check cache validity using mtimes (avoids re-reading ~2000 lines per message)
@@ -231,7 +230,6 @@ class UserPromptSubmitHook(HookProcessor):
                 and self._amplihack_cache_timestamp == (amplihack_mtime, claude_mtime)
             ):
                 # Cache hit - files haven't changed
-                self.save_metric("amplihack_cache_hit", 1)
                 return self._amplihack_cache
 
             # Cache miss - read and compare files
@@ -242,15 +240,8 @@ class UserPromptSubmitHook(HookProcessor):
             # NOTE: In amplihack's own repo, CLAUDE.md == AMPLIHACK.md, so this returns ""
             if claude_content.strip() == amplihack_content.strip():
                 result = ""
-                self.save_metric("amplihack_skipped_identical", 1)
             else:
                 result = amplihack_content
-                metric = (
-                    "amplihack_injected_missing"
-                    if not claude_md.exists()
-                    else "amplihack_injected_different"
-                )
-                self.save_metric(metric, 1)
 
             # Update cache
             self._amplihack_cache = result
@@ -261,7 +252,6 @@ class UserPromptSubmitHook(HookProcessor):
         except Exception as e:
             # Don't fail the hook if this doesn't work
             self.log(f"Could not check AMPLIHACK.md vs CLAUDE.md: {e}", "WARNING")
-            self.save_metric("amplihack_error", 1)
             return ""
 
     def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
@@ -367,7 +357,6 @@ class UserPromptSubmitHook(HookProcessor):
         if amplihack_context:
             context_parts.append(amplihack_context)
             self.log("Injected AMPLIHACK.md framework instructions")
-            self.save_metric("amplihack_injected", 1)
 
         # Combine all context parts
         full_context = "\n\n".join(context_parts)
