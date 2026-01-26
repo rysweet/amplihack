@@ -15,17 +15,11 @@ Philosophy:
 """
 
 import pytest
-from pathlib import Path
 
 from .harness import (
     uvx_launch,
     uvx_launch_with_test_project,
-    assert_agent_invoked,
-    assert_output_contains,
-    assert_log_contains,
-    create_python_project,
 )
-
 
 # Git reference to test
 GIT_REF = "feat/issue-1948-plugin-architecture"
@@ -132,9 +126,7 @@ class TestReviewerAgent:
     def test_reviewer_agent_for_code_review(self):
         """Test reviewer agent performs code review."""
         result = uvx_launch_with_test_project(
-            project_files={
-                "code.py": "def bad_function():\n    x = 1\n    # TODO: implement"
-            },
+            project_files={"code.py": "def bad_function():\n    x = 1\n    # TODO: implement"},
             git_ref=GIT_REF,
             prompt="Review the code in code.py for philosophy compliance",
             timeout=TIMEOUT,

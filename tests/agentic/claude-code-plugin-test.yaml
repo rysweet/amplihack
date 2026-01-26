@@ -8,16 +8,16 @@ version: "1.0.0"
 
 # Test configuration
 config:
-  timeout: 120000  # 2 minutes total
+  timeout: 120000 # 2 minutes total
   retries: 2
   parallel: false
 
 # Environment requirements
 environment:
   requires:
-    - HOME  # Need home directory for ~/.amplihack/.claude/
+    - HOME # Need home directory for ~/.amplihack/.claude/
   optional:
-    - PLUGIN_BRANCH  # Defaults to feat/issue-1948-plugin-architecture
+    - PLUGIN_BRANCH # Defaults to feat/issue-1948-plugin-architecture
 
 # Agents involved in this scenario
 agents:

@@ -27,15 +27,16 @@ Total: **74 tests**, all passing
 
 ### Coverage by Validator
 
-| Validator | Tests | Focus Areas |
-|-----------|-------|-------------|
-| check_root_files.py | 20 | Pattern matching, allowlist/blocklist, report generation |
-| check_unrelated_changes.py | 27 | Scope classification, git integration, warning logic |
-| check_point_in_time_docs.py | 27 | Temporal detection, file scanning, report formatting |
+| Validator                   | Tests | Focus Areas                                              |
+| --------------------------- | ----- | -------------------------------------------------------- |
+| check_root_files.py         | 20    | Pattern matching, allowlist/blocklist, report generation |
+| check_unrelated_changes.py  | 27    | Scope classification, git integration, warning logic     |
+| check_point_in_time_docs.py | 27    | Temporal detection, file scanning, report formatting     |
 
 ## Test Distribution
 
 Following the testing pyramid principle:
+
 - **Unit Tests**: ~60% (48 tests)
 - **Integration Tests**: ~33% (22 tests)
 - **E2E Tests**: ~7% (4 tests)
@@ -50,6 +51,7 @@ Following the testing pyramid principle:
 ## Test Insights
 
 Tests revealed implementation details:
+
 - Pattern matching in `check_unrelated_changes.py` uses literal string matching (not glob)
 - All validators implement proper git branch fallback (main → master)
 - Error handling is comprehensive across all validators

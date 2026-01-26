@@ -15,18 +15,12 @@ Philosophy:
 """
 
 import pytest
-from pathlib import Path
 
 from .harness import (
+    create_python_project,
     uvx_launch,
     uvx_launch_with_test_project,
-    assert_command_executed,
-    assert_output_contains,
-    assert_log_contains,
-    launch_and_test_command,
-    create_python_project,
 )
-
 
 # Git reference to test
 GIT_REF = "feat/issue-1948-plugin-architecture"
@@ -90,9 +84,7 @@ class TestFixCommand:
     def test_fix_command_with_pattern(self):
         """Test /fix command with error pattern."""
         result = uvx_launch_with_test_project(
-            project_files={
-                "broken.py": "import nonexistent_module\nprint('test')"
-            },
+            project_files={"broken.py": "import nonexistent_module\nprint('test')"},
             git_ref=GIT_REF,
             prompt="/fix import error in broken.py",
             timeout=TIMEOUT,

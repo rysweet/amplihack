@@ -5,6 +5,7 @@
 The Kuzu Code Graph Schema extends the 5-type memory system with code structure modeling, enabling memory-code linking for intelligent codebase understanding. This schema adds 3 code node types, 7 code relationship types, and 10 memory-code link types to the existing Kuzu backend.
 
 **Key Capabilities**:
+
 - Map code structure (files, classes, functions)
 - Track code relationships (inheritance, calls, imports)
 - Link memories to code artifacts
@@ -69,6 +70,7 @@ CREATE NODE TABLE CodeFile(
 ```
 
 **Properties**:
+
 - `file_id`: Unique identifier (hash of file_path)
 - `file_path`: Absolute or relative path to file
 - `language`: Programming language (python, typescript, etc.)
@@ -81,6 +83,7 @@ CREATE NODE TABLE CodeFile(
 - `metadata`: JSON string with additional properties
 
 **Example**:
+
 ```python
 backend.connection.execute("""
     CREATE (f:CodeFile {
@@ -119,6 +122,7 @@ CREATE NODE TABLE Class(
 ```
 
 **Properties**:
+
 - `class_id`: Unique identifier (hash of fully_qualified_name)
 - `class_name`: Simple class name
 - `fully_qualified_name`: Full module path + class name
@@ -132,6 +136,7 @@ CREATE NODE TABLE Class(
 - `metadata`: JSON string with additional properties
 
 **Example**:
+
 ```python
 backend.connection.execute("""
     CREATE (c:Class {
@@ -175,6 +180,7 @@ CREATE NODE TABLE Function(
 ```
 
 **Properties**:
+
 - `function_id`: Unique identifier (hash of fully_qualified_name)
 - `function_name`: Simple function/method name
 - `fully_qualified_name`: Full module path + class + function
@@ -192,6 +198,7 @@ CREATE NODE TABLE Function(
 - `metadata`: JSON string with additional properties
 
 **Example**:
+
 ```python
 backend.connection.execute("""
     CREATE (f:Function {
@@ -233,9 +240,11 @@ CREATE REL TABLE DEFINED_IN(
 ```
 
 **Properties**:
+
 - `line_offset`: Line number where definition starts in file
 
 **Example**:
+
 ```cypher
 MATCH (c:Class {class_id: $class_id}),
       (f:CodeFile {file_id: $file_id})
@@ -255,10 +264,12 @@ CREATE REL TABLE METHOD_OF(
 ```
 
 **Properties**:
+
 - `is_constructor`: Whether method is `__init__` or constructor
 - `is_property`: Whether method is a property getter/setter
 
 **Example**:
+
 ```cypher
 MATCH (m:Function {function_name: 'store_memory'}),
       (c:Class {class_name: 'KuzuBackend'})
@@ -278,10 +289,12 @@ CREATE REL TABLE CALLS(
 ```
 
 **Properties**:
+
 - `call_count`: Number of times function is called
 - `line_numbers`: JSON array of line numbers where calls occur
 
 **Example**:
+
 ```cypher
 MATCH (caller:Function {function_id: $caller_id}),
       (callee:Function {function_id: $callee_id})
@@ -300,9 +313,11 @@ CREATE REL TABLE INHERITS(
 ```
 
 **Properties**:
+
 - `inheritance_order`: Position in inheritance list (0 for first parent)
 
 **Example**:
+
 ```cypher
 MATCH (child:Class {class_name: 'KuzuBackend'}),
       (parent:Class {class_name: 'MemoryBackend'})
@@ -322,10 +337,12 @@ CREATE REL TABLE IMPORTS(
 ```
 
 **Properties**:
+
 - `import_type`: 'module', 'from_import', 'relative'
 - `imported_symbols`: JSON array of imported names
 
 **Example**:
+
 ```cypher
 MATCH (importer:CodeFile {file_path: 'src/main.py'}),
       (imported:CodeFile {file_path: 'src/utils.py'})
@@ -348,10 +365,12 @@ CREATE REL TABLE REFERENCES(
 ```
 
 **Properties**:
+
 - `reference_type`: 'instantiation', 'type_annotation', 'usage'
 - `line_numbers`: JSON array of line numbers where references occur
 
 **Example**:
+
 ```cypher
 MATCH (f:Function {function_name: 'create_backend'}),
       (c:Class {class_name: 'MemoryEntry'})
@@ -373,9 +392,11 @@ CREATE REL TABLE CONTAINS(
 ```
 
 **Properties**:
+
 - `relationship_type`: 'package', 'submodule'
 
 **Example**:
+
 ```cypher
 MATCH (pkg:CodeFile {file_path: 'src/amplihack/__init__.py'}),
       (module:CodeFile {file_path: 'src/amplihack/memory/__init__.py'})
@@ -421,10 +442,12 @@ CREATE REL TABLE RELATES_TO_FILE_WORKING(
 ```
 
 **Properties**:
+
 - `relevance_score`: 0.0-1.0 indicating strength of relationship
 - `context`: Why memory relates to this file
 
 **Example**:
+
 ```cypher
 MATCH (m:SemanticMemory {concept: 'kuzu_backend_refactoring'}),
       (f:CodeFile {file_path: 'src/amplihack/memory/backends/kuzu_backend.py'})
@@ -469,10 +492,12 @@ CREATE REL TABLE RELATES_TO_FUNCTION_WORKING(
 ```
 
 **Properties**:
+
 - `relevance_score`: 0.0-1.0 indicating strength of relationship
 - `context`: Why memory relates to this function
 
 **Example**:
+
 ```cypher
 MATCH (m:ProceduralMemory {procedure_name: 'debugging_kuzu_queries'}),
       (f:Function {function_name: 'retrieve_memories'})
@@ -494,6 +519,7 @@ ORDER BY f.line_start
 ```
 
 **Output**:
+
 ```
 function_name       | line_start | complexity_score
 --------------------|------------|------------------
@@ -513,6 +539,7 @@ ORDER BY depth
 ```
 
 **Output**:
+
 ```
 child_name  | ancestor_name  | depth
 ------------|----------------|------
@@ -530,6 +557,7 @@ ORDER BY c.call_count DESC
 ```
 
 **Output**:
+
 ```
 callee_name          | call_count | line_numbers
 ---------------------|------------|-------------
@@ -548,6 +576,7 @@ LIMIT 5
 ```
 
 **Output**:
+
 ```
 concept                    | content                 | relevance | context
 ---------------------------|-------------------------|-----------|------------------
@@ -568,6 +597,7 @@ LIMIT 10
 ```
 
 **Output**:
+
 ```
 fully_qualified_name                                    | complexity | line_start | line_end
 -------------------------------------------------------|------------|------------|----------
@@ -596,6 +626,7 @@ RETURN dep.file_path, i.import_type, i.imported_symbols
 ```
 
 **Output**:
+
 ```
 file_path                      | import_type  | imported_symbols
 -------------------------------|--------------|---------------------------
@@ -671,6 +702,7 @@ result = backend.connection.execute("""
 - **Database size**: ~50KB overhead for empty schema
 
 **Benchmark**:
+
 ```python
 import time
 backend = KuzuBackend()
@@ -689,6 +721,7 @@ print(f"Schema initialization: {elapsed*1000:.1f}ms")
 - **File indexing**: ~500ms per 1000 LOC
 
 **Benchmark**:
+
 ```python
 # Find all functions in a file
 start = time.time()
@@ -710,6 +743,7 @@ print(f"Query time: {elapsed*1000:.1f}ms")
 - **Relationship**: ~100 bytes
 
 **Typical codebase** (10,000 LOC):
+
 - 50 files × 200 bytes = 10KB
 - 100 classes × 300 bytes = 30KB
 - 500 functions × 400 bytes = 200KB
@@ -750,6 +784,7 @@ backend.initialize()      # Adds code schema, preserves memory data
 ```
 
 **Migration guarantees**:
+
 - Zero downtime
 - No data loss
 - Backward compatible queries

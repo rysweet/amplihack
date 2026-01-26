@@ -14,27 +14,28 @@ Built a comprehensive TUI testing solution for Claude Code plugin using **real p
 
 ### Core Test Files
 
-| File | Purpose | Technology | Status |
-|------|---------|-----------|--------|
-| `test-claude-plugin-pty.js` | PTY-based test | node-pty | ✅ **PRIMARY** |
-| `run-plugin-test.sh` | Shell-based test | expect | ✅ Alternative |
-| `claude-code-plugin-test.yaml` | Gadugi scenario | YAML | ✅ Future |
-| `package.json` | Dependencies | npm | ✅ Ready |
+| File                           | Purpose          | Technology | Status         |
+| ------------------------------ | ---------------- | ---------- | -------------- |
+| `test-claude-plugin-pty.js`    | PTY-based test   | node-pty   | ✅ **PRIMARY** |
+| `run-plugin-test.sh`           | Shell-based test | expect     | ✅ Alternative |
+| `claude-code-plugin-test.yaml` | Gadugi scenario  | YAML       | ✅ Future      |
+| `package.json`                 | Dependencies     | npm        | ✅ Ready       |
 
 ### Documentation
 
-| File | Purpose |
-|------|---------|
-| `README.md` | Usage guide, troubleshooting |
-| `PTY_TESTING_EXPLAINED.md` | Deep dive on PTY virtualization |
-| `IMPLEMENTATION_SUMMARY.md` | Technical overview |
-| `FINAL_SUMMARY.md` | This file |
+| File                        | Purpose                         |
+| --------------------------- | ------------------------------- |
+| `README.md`                 | Usage guide, troubleshooting    |
+| `PTY_TESTING_EXPLAINED.md`  | Deep dive on PTY virtualization |
+| `IMPLEMENTATION_SUMMARY.md` | Technical overview              |
+| `FINAL_SUMMARY.md`          | This file                       |
 
 ---
 
 ## 🔑 Key Discovery: Why PTY Matters
 
 ### The Problem
+
 ```bash
 # This FAILS for TUI apps ❌
 claude /plugin > output.txt
@@ -43,6 +44,7 @@ claude /plugin > output.txt
 **Reason**: TUI apps check `isatty()` - returns FALSE for pipes/files.
 
 ### The Solution
+
 ```javascript
 // This WORKS ✅
 const pty = require('node-pty');
@@ -58,6 +60,7 @@ ptyProcess = pty.spawn('claude', [...]);
 ### What is a PTY?
 
 **Pseudo-Terminal (PTY)** = Virtual terminal device with two ends:
+
 - **Master**: Controlled by test program (us)
 - **Slave**: Used by TUI app (Claude Code)
 
@@ -71,30 +74,31 @@ Test Program ←→ PTY Master ←→ PTY Slave ←→ Claude Code
 ### How node-pty Works
 
 ```javascript
-const pty = require('node-pty');
+const pty = require("node-pty");
 
 // Creates OS-level PTY using:
 // - Linux: openpty() syscall
 // - macOS: forkpty() syscall
 // - Windows: ConPTY API
 
-const ptyProcess = pty.spawn('claude', [
-  '--plugin-dir', '~/.amplihack/.claude/',
-  '--add-dir', '/tmp'
-], {
-  name: 'xterm-256color',  // Terminal type
-  cols: 120,               // Width
-  rows: 40,                // Height
-  env: { TERM: 'xterm-256color' }
-});
+const ptyProcess = pty.spawn(
+  "claude",
+  ["--plugin-dir", "~/.amplihack/.claude/", "--add-dir", "/tmp"],
+  {
+    name: "xterm-256color", // Terminal type
+    cols: 120, // Width
+    rows: 40, // Height
+    env: { TERM: "xterm-256color" },
+  }
+);
 
 // Send input (like typing)
-ptyProcess.write('/plugin\r');
+ptyProcess.write("/plugin\r");
 
 // Receive output
 ptyProcess.onData((data) => {
-  if (data.includes('amplihack')) {
-    console.log('✅ Plugin detected!');
+  if (data.includes("amplihack")) {
+    console.log("✅ Plugin detected!");
   }
 });
 ```
@@ -116,6 +120,7 @@ ptyProcess.onData((data) => {
 **File**: `test-claude-plugin-pty.js`
 
 **Pros**:
+
 - ✅ Real PTY virtualization
 - ✅ Professional approach (used by VS Code, Hyper)
 - ✅ Full control over terminal properties
@@ -123,9 +128,11 @@ ptyProcess.onData((data) => {
 - ✅ Cross-platform
 
 **Cons**:
+
 - ⚠️ Requires npm install (compiles native module)
 
 **Usage**:
+
 ```bash
 cd tests/agentic
 npm install  # Installs node-pty
@@ -137,15 +144,18 @@ node test-claude-plugin-pty.js
 **File**: `run-plugin-test.sh`
 
 **Pros**:
+
 - ✅ No compilation needed
 - ✅ Shell script (easy to read)
 - ✅ Battle-tested (since 1990)
 
 **Cons**:
+
 - ⚠️ TCL syntax (less familiar)
 - ⚠️ Less control over PTY
 
 **Usage**:
+
 ```bash
 cd tests/agentic
 ./run-plugin-test.sh
@@ -156,6 +166,7 @@ cd tests/agentic
 **File**: `claude-code-plugin-test.yaml`
 
 **When ready**:
+
 - Multi-agent orchestration
 - Rich reporting
 - Professional test framework
@@ -168,14 +179,14 @@ cd tests/agentic
 
 ### What We Validate
 
-| Test Area | Method | Expected Result |
-|-----------|--------|-----------------|
-| Installation | `uvx --from git+...` | Files in `~/.amplihack/.claude/` |
-| File Deployment | `ls ~/.amplihack/.claude/` | AMPLIHACK.md (33KB), 80+ skills |
-| Plugin Manifest | `cat plugin.json` | Contains "amplihack" |
-| TUI Launch | PTY spawn | Claude Code starts |
-| Plugin Command | Send `/plugin\r` | Output contains "amplihack" |
-| Evidence | Save output | Complete logs |
+| Test Area       | Method                     | Expected Result                  |
+| --------------- | -------------------------- | -------------------------------- |
+| Installation    | `uvx --from git+...`       | Files in `~/.amplihack/.claude/` |
+| File Deployment | `ls ~/.amplihack/.claude/` | AMPLIHACK.md (33KB), 80+ skills  |
+| Plugin Manifest | `cat plugin.json`          | Contains "amplihack"             |
+| TUI Launch      | PTY spawn                  | Claude Code starts               |
+| Plugin Command  | Send `/plugin\r`           | Output contains "amplihack"      |
+| Evidence        | Save output                | Complete logs                    |
 
 ### Test Flow
 
@@ -221,12 +232,12 @@ cd tests/agentic
 
 ### Common Misconceptions Corrected
 
-| Misconception | Reality |
-|--------------|---------|
-| "Set TERM variable" | Doesn't create TTY |
-| "Redirect stdin" | Pipe ≠ Terminal |
-| "Only Electron needs PTY" | ALL TUIs need it |
-| "Just use child_process" | Needs PTY for TUI |
+| Misconception             | Reality            |
+| ------------------------- | ------------------ |
+| "Set TERM variable"       | Doesn't create TTY |
+| "Redirect stdin"          | Pipe ≠ Terminal    |
+| "Only Electron needs PTY" | ALL TUIs need it   |
+| "Just use child_process"  | Needs PTY for TUI  |
 
 ---
 
@@ -279,6 +290,7 @@ evidence/pty-test-TIMESTAMP/
 ```
 
 **Sample Report**:
+
 ```markdown
 # Claude Code Plugin PTY Test Report
 
@@ -286,11 +298,13 @@ evidence/pty-test-TIMESTAMP/
 **Result**: ✅ PASSED
 
 ## Test Details
+
 - Plugin Directory: ~/.amplihack/.claude
 - PTY Used: node-pty (real pseudo-terminal)
 - Command: claude --plugin-dir ~/.amplihack/.claude/ --add-dir /tmp
 
 ## Test Steps
+
 1. ✓ Verified plugin directory exists
 2. ✓ Verified AMPLIHACK.md exists
 3. ✓ Spawned Claude Code with PTY
@@ -298,6 +312,7 @@ evidence/pty-test-TIMESTAMP/
 5. ✓ Detected "amplihack" in output
 
 ## Search for "amplihack"
+
 Found in output ✓
 ```
 
@@ -340,7 +355,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: "18"
 
       - name: Install test dependencies
         run: |
@@ -380,16 +395,19 @@ jobs:
 ## 📚 References
 
 ### PTY Technology
+
 - **node-pty**: https://github.com/microsoft/node-pty
 - **Unix PTY**: `man pty`
 - **POSIX spec**: https://pubs.opengroup.org/onlinepubs/9699919799/
 
 ### Gadugi Framework
+
 - **Repository**: https://github.com/rysweet/gadugi-agentic-test
 - **TUIAgent**: Uses `child_process.spawn` with TERM env
 - **PTYManager**: Uses node-pty for advanced scenarios
 
 ### Our Documentation
+
 - `README.md` - Usage guide
 - `PTY_TESTING_EXPLAINED.md` - Deep technical explanation
 - `IMPLEMENTATION_SUMMARY.md` - Implementation details
@@ -417,6 +435,7 @@ We successfully built **production-quality TUI testing** for the Claude Code plu
 5. **Comprehensive documentation**
 
 The test is **ready to validate PR #1973** and can be run in:
+
 - ✅ Local development
 - ✅ CI/CD pipelines
 - ✅ Fresh test environments
@@ -426,5 +445,5 @@ The test is **ready to validate PR #1973** and can be run in:
 
 ---
 
-*Generated by amplihack agentic testing system*
-*2026-01-20 - Claude Code (Pirate Mode Activated)*
+_Generated by amplihack agentic testing system_
+_2026-01-20 - Claude Code (Pirate Mode Activated)_

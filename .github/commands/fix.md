@@ -9,18 +9,18 @@
 - **name**: amplihack:fix
 - **version**: 2.0.0
 - **description**: Fix command that integrates with DEFAULT_WORKFLOW for quality-focused issue resolution
-- **triggers**: 
+- **triggers**:
 - **invokes**: DEFAULT_WORKFLOW
-- **invokes_details**: 
+- **invokes_details**:
 - **- type**: subagent
 - **path**: .claude/agents/amplihack/specialized/ci-diagnostic-workflow.md
-- **philosophy**: 
+- **philosophy**:
 - **- principle**: Quality Over Speed
 - **application**: Follow all 22 steps of DEFAULT_WORKFLOW for robust fixes
-- **dependencies**: 
-- **required**: 
-- **optional**: 
-- **examples**: 
+- **dependencies**:
+- **required**:
+- **optional**:
+- **examples**:
 
 ---
 
@@ -30,6 +30,7 @@ This command is designed for Claude Code but the patterns and approaches
 can be referenced when using GitHub Copilot CLI.
 
 **Example**:
+
 ```bash
 # Reference this command's approach
 gh copilot explain .github/commands/fix.md
@@ -41,7 +42,6 @@ gh copilot suggest --context .github/commands/fix.md "your task"
 ---
 
 ## Original Command Documentation
-
 
 # Fix Command
 

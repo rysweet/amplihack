@@ -4,17 +4,17 @@ Complete reference for amplihack plugin command-line interface.
 
 ## Command Overview
 
-| Command | Purpose | Common Use |
-|---------|---------|------------|
-| `amplihack plugin install` | Install or upgrade plugin | First-time setup, updates |
-| `amplihack plugin uninstall` | Remove plugin | Cleanup, troubleshooting |
-| `amplihack plugin verify` | Check installation | Verify after install, debug |
-| `amplihack plugin link` | Re-link plugin to IDE | Fix broken links |
-| `amplihack mode to-plugin` | Migrate project | Convert per-project to plugin |
-| `amplihack mode extract-settings` | Extract project settings | Manual migration |
-| `amplihack agents list` | List available agents | Discovery |
-| `amplihack commands list` | List available commands | Discovery |
-| `amplihack skills list` | List available skills | Discovery |
+| Command                           | Purpose                   | Common Use                    |
+| --------------------------------- | ------------------------- | ----------------------------- |
+| `amplihack plugin install`        | Install or upgrade plugin | First-time setup, updates     |
+| `amplihack plugin uninstall`      | Remove plugin             | Cleanup, troubleshooting      |
+| `amplihack plugin verify`         | Check installation        | Verify after install, debug   |
+| `amplihack plugin link`           | Re-link plugin to IDE     | Fix broken links              |
+| `amplihack mode to-plugin`        | Migrate project           | Convert per-project to plugin |
+| `amplihack mode extract-settings` | Extract project settings  | Manual migration              |
+| `amplihack agents list`           | List available agents     | Discovery                     |
+| `amplihack commands list`         | List available commands   | Discovery                     |
+| `amplihack skills list`           | List available skills     | Discovery                     |
 
 ## amplihack plugin install
 
@@ -28,14 +28,14 @@ amplihack plugin install [OPTIONS]
 
 ### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--upgrade` | Upgrade existing installation | false |
-| `--force` | Force reinstall even if up-to-date | false |
-| `--path PATH` | Install to custom path | `~/.amplihack/.claude/` |
-| `--from-git URL` | Install from git repository | Official repo |
-| `--branch BRANCH` | Git branch to install from | main |
-| `--verify` | Verify after installation | true |
+| Option            | Description                        | Default                 |
+| ----------------- | ---------------------------------- | ----------------------- |
+| `--upgrade`       | Upgrade existing installation      | false                   |
+| `--force`         | Force reinstall even if up-to-date | false                   |
+| `--path PATH`     | Install to custom path             | `~/.amplihack/.claude/` |
+| `--from-git URL`  | Install from git repository        | Official repo           |
+| `--branch BRANCH` | Git branch to install from         | main                    |
+| `--verify`        | Verify after installation          | true                    |
 
 ### Examples
 
@@ -46,6 +46,7 @@ amplihack plugin install
 ```
 
 Output:
+
 ```
 Installing amplihack plugin to ~/.amplihack/.claude/
 ✓ Created plugin directory structure
@@ -66,6 +67,7 @@ amplihack plugin install --upgrade
 ```
 
 Output:
+
 ```
 Current version: 0.9.0
 Latest version: 1.0.0
@@ -87,6 +89,7 @@ amplihack plugin install --force
 ```
 
 Output:
+
 ```
 Warning: --force will remove and reinstall the plugin.
 Continue? [y/N] y
@@ -121,13 +124,13 @@ amplihack plugin install --path ~/custom/location/.claude/
 
 ### Exit Codes
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 1 | General error |
-| 2 | Installation failed |
-| 3 | Verification failed |
-| 4 | Permission denied |
+| Code | Meaning             |
+| ---- | ------------------- |
+| 0    | Success             |
+| 1    | General error       |
+| 2    | Installation failed |
+| 3    | Verification failed |
+| 4    | Permission denied   |
 
 ### Notes
 
@@ -150,11 +153,11 @@ amplihack plugin uninstall [OPTIONS]
 
 ### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--keep-runtime` | Preserve runtime data (logs, cache) | false |
-| `--force` | Skip confirmation prompt | false |
-| `--backup` | Create backup before uninstall | true |
+| Option           | Description                         | Default |
+| ---------------- | ----------------------------------- | ------- |
+| `--keep-runtime` | Preserve runtime data (logs, cache) | false   |
+| `--force`        | Skip confirmation prompt            | false   |
+| `--backup`       | Create backup before uninstall      | true    |
 
 ### Examples
 
@@ -165,6 +168,7 @@ amplihack plugin uninstall
 ```
 
 Output:
+
 ```
 This will remove the amplihack plugin from ~/.amplihack/.claude/
 
@@ -192,6 +196,7 @@ amplihack plugin uninstall --keep-runtime
 ```
 
 Output:
+
 ```
 Uninstalling plugin (preserving runtime data)...
 ✓ Removed framework files
@@ -211,12 +216,12 @@ amplihack plugin uninstall --force
 
 ### Exit Codes
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 1 | General error |
-| 2 | Uninstall failed |
-| 4 | Permission denied |
+| Code | Meaning           |
+| ---- | ----------------- |
+| 0    | Success           |
+| 1    | General error     |
+| 2    | Uninstall failed  |
+| 4    | Permission denied |
 
 ### Notes
 
@@ -238,11 +243,11 @@ amplihack plugin verify [OPTIONS]
 
 ### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--check-signature` | Verify cryptographic signature | false |
-| `--compare-upstream` | Compare with official release | false |
-| `--verbose` | Show detailed output | false |
+| Option               | Description                    | Default |
+| -------------------- | ------------------------------ | ------- |
+| `--check-signature`  | Verify cryptographic signature | false   |
+| `--compare-upstream` | Compare with official release  | false   |
+| `--verbose`          | Show detailed output           | false   |
 
 ### Examples
 
@@ -253,6 +258,7 @@ amplihack plugin verify
 ```
 
 Output:
+
 ```
 Verifying amplihack plugin installation...
 
@@ -275,6 +281,7 @@ amplihack plugin verify --check-signature
 ```
 
 Output:
+
 ```
 Verifying amplihack plugin installation...
 
@@ -294,6 +301,7 @@ amplihack plugin verify --compare-upstream
 ```
 
 Output:
+
 ```
 Verifying amplihack plugin installation...
 
@@ -312,6 +320,7 @@ amplihack plugin verify --verbose
 ```
 
 Output:
+
 ```
 Verifying amplihack plugin installation...
 
@@ -347,12 +356,12 @@ All checks passed! Plugin is ready to use.
 
 ### Exit Codes
 
-| Code | Meaning |
-|------|---------|
-| 0 | Verification passed |
-| 1 | Verification failed |
-| 2 | Plugin not found |
-| 3 | Signature invalid |
+| Code | Meaning             |
+| ---- | ------------------- |
+| 0    | Verification passed |
+| 1    | Verification failed |
+| 2    | Plugin not found    |
+| 3    | Signature invalid   |
 
 ### Notes
 
@@ -374,10 +383,10 @@ amplihack plugin link [OPTIONS]
 
 ### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
+| Option      | Description                              | Default     |
+| ----------- | ---------------------------------------- | ----------- |
 | `--ide IDE` | Target IDE (claude-code, copilot, codex) | claude-code |
-| `--force` | Force relink even if already linked | false |
+| `--force`   | Force relink even if already linked      | false       |
 
 ### Examples
 
@@ -388,6 +397,7 @@ amplihack plugin link
 ```
 
 Output:
+
 ```
 Linking amplihack plugin to Claude Code...
 
@@ -406,6 +416,7 @@ amplihack plugin link --ide copilot
 ```
 
 Output:
+
 ```
 Linking amplihack plugin to GitHub Copilot...
 
@@ -424,6 +435,7 @@ amplihack plugin link --ide codex
 ```
 
 Output:
+
 ```
 Linking amplihack plugin to Codex...
 
@@ -443,12 +455,12 @@ amplihack plugin link --force
 
 ### Exit Codes
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 1 | Link failed |
-| 2 | Plugin not found |
-| 3 | IDE config not found |
+| Code | Meaning              |
+| ---- | -------------------- |
+| 0    | Success              |
+| 1    | Link failed          |
+| 2    | Plugin not found     |
+| 3    | IDE config not found |
 
 ### Notes
 
@@ -470,12 +482,12 @@ amplihack mode to-plugin [OPTIONS]
 
 ### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--all` | Migrate all projects in directory | false |
-| `--auto-commit` | Automatically commit changes | false |
-| `--dry-run` | Show what would be done | false |
-| `--backup` | Create backup before migration | true |
+| Option          | Description                       | Default |
+| --------------- | --------------------------------- | ------- |
+| `--all`         | Migrate all projects in directory | false   |
+| `--auto-commit` | Automatically commit changes      | false   |
+| `--dry-run`     | Show what would be done           | false   |
+| `--backup`      | Create backup before migration    | true    |
 
 ### Examples
 
@@ -487,6 +499,7 @@ amplihack mode to-plugin
 ```
 
 Output:
+
 ```
 Migrating project to plugin mode: /home/user/projects/myapp
 
@@ -532,6 +545,7 @@ amplihack mode to-plugin --all
 ```
 
 Output:
+
 ```
 Scanning for projects with .claude/ directories...
 Found 8 projects to migrate
@@ -560,6 +574,7 @@ amplihack mode to-plugin --auto-commit
 ```
 
 Output:
+
 ```
 [... migration output ...]
 
@@ -579,6 +594,7 @@ amplihack mode to-plugin --dry-run
 ```
 
 Output:
+
 ```
 DRY RUN - No changes will be made
 
@@ -606,12 +622,12 @@ Run without --dry-run to execute migration.
 
 ### Exit Codes
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 1 | Migration failed |
-| 2 | No projects found |
-| 3 | Plugin not installed |
+| Code | Meaning              |
+| ---- | -------------------- |
+| 0    | Success              |
+| 1    | Migration failed     |
+| 2    | No projects found    |
+| 3    | Plugin not installed |
 
 ### Notes
 
@@ -634,10 +650,10 @@ amplihack mode extract-settings [OPTIONS]
 
 ### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--output FILE` | Write to file instead of stdout | stdout |
-| `--format FORMAT` | Output format (json, yaml) | json |
+| Option            | Description                     | Default |
+| ----------------- | ------------------------------- | ------- |
+| `--output FILE`   | Write to file instead of stdout | stdout  |
+| `--format FORMAT` | Output format (json, yaml)      | json    |
 
 ### Examples
 
@@ -648,13 +664,11 @@ amplihack mode extract-settings
 ```
 
 Output:
+
 ```json
 {
   "agents": {
-    "custom_agents": [
-      "./agents/custom/domain-expert.md",
-      "./agents/custom/legacy-specialist.md"
-    ]
+    "custom_agents": ["./agents/custom/domain-expert.md", "./agents/custom/legacy-specialist.md"]
   },
   "workflows": {
     "default": "INVESTIGATION_WORKFLOW"
@@ -670,6 +684,7 @@ amplihack mode extract-settings --output .claude/settings.json
 ```
 
 Output:
+
 ```
 Extracting project settings...
 ✓ Analyzed .claude/ directory
@@ -686,6 +701,7 @@ amplihack mode extract-settings --format yaml
 ```
 
 Output:
+
 ```yaml
 agents:
   custom_agents:
@@ -698,11 +714,11 @@ preferred_language: python
 
 ### Exit Codes
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 1 | Extraction failed |
-| 2 | No .claude/ directory |
+| Code | Meaning               |
+| ---- | --------------------- |
+| 0    | Success               |
+| 1    | Extraction failed     |
+| 2    | No .claude/ directory |
 
 ### Notes
 
@@ -724,10 +740,10 @@ amplihack agents list [OPTIONS]
 
 ### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--type TYPE` | Filter by type (core, specialized, workflow, custom) | all |
-| `--format FORMAT` | Output format (table, json, simple) | table |
+| Option            | Description                                          | Default |
+| ----------------- | ---------------------------------------------------- | ------- |
+| `--type TYPE`     | Filter by type (core, specialized, workflow, custom) | all     |
+| `--format FORMAT` | Output format (table, json, simple)                  | table   |
 
 ### Examples
 
@@ -738,6 +754,7 @@ amplihack agents list
 ```
 
 Output:
+
 ```
 Available Agents (45 total)
 
@@ -776,6 +793,7 @@ amplihack agents list --type custom
 ```
 
 Output:
+
 ```
 Custom Agents (3):
   domain-expert          - Project-specific domain knowledge
@@ -790,30 +808,27 @@ amplihack agents list --format json
 ```
 
 Output:
+
 ```json
 {
   "core": [
-    {"name": "architect", "description": "System design and problem decomposition"},
-    {"name": "builder", "description": "Code implementation from specifications"}
+    { "name": "architect", "description": "System design and problem decomposition" },
+    { "name": "builder", "description": "Code implementation from specifications" }
   ],
-  "specialized": [
-    {"name": "security", "description": "Vulnerability assessment"}
-  ],
+  "specialized": [{ "name": "security", "description": "Vulnerability assessment" }],
   "workflow": [
-    {"name": "pre-commit-diagnostic", "description": "Pre-commit hook troubleshooting"}
+    { "name": "pre-commit-diagnostic", "description": "Pre-commit hook troubleshooting" }
   ],
-  "custom": [
-    {"name": "domain-expert", "description": "Project-specific domain knowledge"}
-  ]
+  "custom": [{ "name": "domain-expert", "description": "Project-specific domain knowledge" }]
 }
 ```
 
 ### Exit Codes
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 1 | Plugin not found |
+| Code | Meaning          |
+| ---- | ---------------- |
+| 0    | Success          |
+| 1    | Plugin not found |
 
 ---
 
@@ -829,9 +844,9 @@ amplihack commands list [OPTIONS]
 
 ### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--format FORMAT` | Output format (table, json, simple) | table |
+| Option            | Description                         | Default |
+| ----------------- | ----------------------------------- | ------- |
+| `--format FORMAT` | Output format (table, json, simple) | table   |
 
 ### Examples
 
@@ -842,6 +857,7 @@ amplihack commands list
 ```
 
 Output:
+
 ```
 Available Commands (18 total)
 
@@ -867,10 +883,10 @@ Customization:
 
 ### Exit Codes
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 1 | Plugin not found |
+| Code | Meaning          |
+| ---- | ---------------- |
+| 0    | Success          |
+| 1    | Plugin not found |
 
 ---
 
@@ -886,9 +902,9 @@ amplihack skills list [OPTIONS]
 
 ### Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `--format FORMAT` | Output format (table, json, simple) | table |
+| Option            | Description                         | Default |
+| ----------------- | ----------------------------------- | ------- |
+| `--format FORMAT` | Output format (table, json, simple) | table   |
 
 ### Examples
 
@@ -899,6 +915,7 @@ amplihack skills list
 ```
 
 Output:
+
 ```
 Available Skills (12 total)
 
@@ -919,20 +936,20 @@ Development:
 
 ### Exit Codes
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 1 | Plugin not found |
+| Code | Meaning          |
+| ---- | ---------------- |
+| 0    | Success          |
+| 1    | Plugin not found |
 
 ---
 
 ## Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `AMPLIHACK_PLUGIN_PATH` | Override plugin installation path | `~/.amplihack/.claude/` |
-| `AMPLIHACK_RUNTIME_PATH` | Override runtime data path | `~/.amplihack/runtime/` |
-| `CLAUDE_PLUGIN_ROOT` | Set by IDE, points to plugin root | Set by IDE |
+| Variable                 | Description                       | Default                 |
+| ------------------------ | --------------------------------- | ----------------------- |
+| `AMPLIHACK_PLUGIN_PATH`  | Override plugin installation path | `~/.amplihack/.claude/` |
+| `AMPLIHACK_RUNTIME_PATH` | Override runtime data path        | `~/.amplihack/runtime/` |
+| `CLAUDE_PLUGIN_ROOT`     | Set by IDE, points to plugin root | Set by IDE              |
 
 ### Examples
 
@@ -954,13 +971,13 @@ amplihack plugin verify
 
 ## Exit Code Summary
 
-| Code | Meaning | Commands |
-|------|---------|----------|
-| 0 | Success | All |
-| 1 | General error | All |
-| 2 | Not found / installation failed | install, uninstall, verify, to-plugin |
-| 3 | Verification / signature failed | verify, to-plugin |
-| 4 | Permission denied | install, uninstall |
+| Code | Meaning                         | Commands                              |
+| ---- | ------------------------------- | ------------------------------------- |
+| 0    | Success                         | All                                   |
+| 1    | General error                   | All                                   |
+| 2    | Not found / installation failed | install, uninstall, verify, to-plugin |
+| 3    | Verification / signature failed | verify, to-plugin                     |
+| 4    | Permission denied               | install, uninstall                    |
 
 ---
 

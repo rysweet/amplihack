@@ -7,19 +7,17 @@ Tests the verification of completion claims against concrete signals:
 - Handling ambiguous cases
 """
 
-import pytest
-
+from amplihack.launcher.completion_signals import CompletionSignals
 from amplihack.launcher.completion_verifier import (
     CompletionVerifier,
     VerificationResult,
     VerificationStatus,
 )
-from amplihack.launcher.completion_signals import CompletionSignals
 from amplihack.launcher.work_summary import (
-    WorkSummary,
-    TodoState,
-    GitState,
     GitHubState,
+    GitState,
+    TodoState,
+    WorkSummary,
 )
 
 
@@ -53,7 +51,9 @@ class TestVerificationLogic:
 
     def test_verify_true_completion_claim(self):
         """Should verify when evaluation says complete AND signals confirm."""
-        evaluation_result = "EVALUATION: COMPLETE\n\nAll tasks finished, PR #123 created and passing CI."
+        evaluation_result = (
+            "EVALUATION: COMPLETE\n\nAll tasks finished, PR #123 created and passing CI."
+        )
 
         signals = CompletionSignals(
             all_steps_complete=True,
@@ -180,7 +180,9 @@ class TestDiscrepancyDetection:
 
         # Should identify PR discrepancy
         assert len(result.discrepancies) > 0
-        pr_discrepancy = [d for d in result.discrepancies if "PR" in d or "pull request" in d.lower()]
+        pr_discrepancy = [
+            d for d in result.discrepancies if "PR" in d or "pull request" in d.lower()
+        ]
         assert len(pr_discrepancy) > 0
 
     def test_detect_ci_status_discrepancy(self):
@@ -222,7 +224,9 @@ class TestDiscrepancyDetection:
         result = verifier.verify(evaluation_result, signals)
 
         assert len(result.discrepancies) > 0
-        task_discrepancy = [d for d in result.discrepancies if "task" in d.lower() or "step" in d.lower()]
+        task_discrepancy = [
+            d for d in result.discrepancies if "task" in d.lower() or "step" in d.lower()
+        ]
         assert len(task_discrepancy) > 0
 
     def test_detect_uncommitted_changes_discrepancy(self):
@@ -493,7 +497,9 @@ class TestVerificationIntegrationWithWorkSummary:
 
     def test_verify_realistic_complete_scenario(self):
         """End-to-end test: steps complete, PR created, CI passing."""
-        evaluation_result = "EVALUATION: COMPLETE\n\nAll 5 tasks completed. PR #200 created and CI passing."
+        evaluation_result = (
+            "EVALUATION: COMPLETE\n\nAll 5 tasks completed. PR #200 created and CI passing."
+        )
 
         # Create realistic complete scenario
         summary = WorkSummary(
@@ -524,7 +530,9 @@ class TestVerificationIntegrationWithWorkSummary:
 
     def test_verify_realistic_incomplete_scenario(self):
         """End-to-end test: steps incomplete, no PR."""
-        evaluation_result = "EVALUATION: INCOMPLETE\n\n3 of 5 tasks done, still working on implementation."
+        evaluation_result = (
+            "EVALUATION: INCOMPLETE\n\n3 of 5 tasks done, still working on implementation."
+        )
 
         summary = WorkSummary(
             todo_state=TodoState(total=5, completed=3, in_progress=1, pending=1),

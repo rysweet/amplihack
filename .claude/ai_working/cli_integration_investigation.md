@@ -51,12 +51,14 @@ graph TD
 ### Sequence Details
 
 1. **Entry Point** (`pyproject.toml`):
+
    ```toml
    [project.scripts]
    amplihack = "amplihack:main"
    ```
 
 2. **Main Dispatcher** (`src/amplihack/__init__.py:108-113`):
+
    ```python
    def main():
        """Main CLI entry point."""
@@ -130,6 +132,7 @@ def prompt_user_consent(
 ```
 
 **Key Features**:
+
 - 30-second timeout with signal/threading (cross-platform)
 - Non-interactive detection (`sys.stdin.isatty()`)
 - Default "yes" behavior
@@ -146,6 +149,7 @@ def prompt_user_consent(
 ```
 
 This means:
+
 - Blarify prompt must happen BEFORE memory backend instantiation
 - Best place: In `ClaudeLauncher.prepare_launch()` after Neo4j startup
 
@@ -158,6 +162,7 @@ This means:
 **Location**: `.claude/tools/amplihack/hooks/session_start.py:43-57`
 
 **Insertion Point**:
+
 ```python
 def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
     """Process session start event."""
@@ -176,12 +181,14 @@ def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
 ```
 
 **Pros**:
+
 - Executed once per session
 - Has access to project context
 - Can use HookProcessor logging infrastructure
 - Clean separation from CLI launcher
 
 **Cons**:
+
 - ❌ **AFTER Claude process starts** - too late for indexing
 - ❌ Hook execution is time-sensitive (hooks have timeouts)
 - ❌ Memory backend may already be instantiated
@@ -196,6 +203,7 @@ def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
 **Location**: `src/amplihack/launcher/core.py:84-134`
 
 **Insertion Point**:
+
 ```python
 def prepare_launch(self) -> bool:
     """Prepare environment for launching Claude."""
@@ -312,6 +320,7 @@ def _run_blarify_indexing(self) -> bool:
 ```
 
 **Pros**:
+
 - ✅ **BEFORE Claude session starts** - optimal timing
 - ✅ Follows existing Neo4j prompt pattern (step 3)
 - ✅ Non-blocking - continues even if declined/failed
@@ -321,6 +330,7 @@ def _run_blarify_indexing(self) -> bool:
 - ✅ Access to launcher infrastructure (logger, subprocess, paths)
 
 **Cons**:
+
 - Requires new method in ClaudeLauncher class
 - Adds ~1-2 seconds to first-session startup (acceptable)
 
@@ -333,6 +343,7 @@ def _run_blarify_indexing(self) -> bool:
 **Location**: `src/amplihack/cli.py:135-151`
 
 **Insertion Point**:
+
 ```python
 def _launch_command_impl(args, claude_args, session_id, tracker) -> int:
     """Internal implementation of launch_command with session tracking."""
@@ -350,11 +361,13 @@ def _launch_command_impl(args, claude_args, session_id, tracker) -> int:
 ```
 
 **Pros**:
+
 - Very early in the flow (before launcher)
 - Can check session tracker for first-session detection
 - Easy to add without modifying ClaudeLauncher
 
 **Cons**:
+
 - ❌ Too early - before prerequisite checks
 - ❌ Before launcher infrastructure is available
 - ❌ Awkward placement in flow (not grouped with other interactive prompts)
@@ -383,11 +396,13 @@ def _launch_command_impl(args, claude_args, session_id, tracker) -> int:
 Where `<project_hash>` = first 8 chars of MD5 hash of absolute project path
 
 **Example**:
+
 ```
 /home/user/myproject → MD5 → a1b2c3d4 → ~/.amplihack/.blarify_consent_a1b2c3d4
 ```
 
 **Cache File Content**:
+
 ```
 prompted_at: 2026-01-22T20:30:15.123456
 indexed: true
@@ -413,6 +428,7 @@ def get_user_input_with_timeout(
 ```
 
 Already handles:
+
 - Signal-based timeout (Unix)
 - Thread-based timeout (Windows)
 - KeyboardInterrupt handling
@@ -437,6 +453,7 @@ def is_interactive_terminal() -> bool:
 ```
 
 Handles:
+
 - CI/CD environments
 - Piped input
 - Docker containers
@@ -476,16 +493,16 @@ But this is OPTIONAL and can be added later.
 
 ## Trade-Off Analysis
 
-| Criteria | Option A (SessionStart) | Option B (Launcher) | Option C (CLI Pre-Launch) |
-|----------|------------------------|-------------------|--------------------------|
-| **Timing** | ❌ Too late | ✅ Perfect | ⚠️ Too early |
-| **User Experience** | ❌ Disruptive | ✅ Smooth | ⚠️ Awkward |
-| **Integration Complexity** | ⚠️ Moderate | ✅ Clean | ⚠️ High |
-| **Error Handling** | ⚠️ Hook timeout | ✅ Non-blocking | ⚠️ Unclear |
-| **Code Location** | Hook file | Launcher method | CLI function |
-| **Follows Patterns** | ⚠️ New pattern | ✅ Matches Neo4j | ❌ No precedent |
-| **Infrastructure Access** | ✅ HookProcessor | ✅ Launcher | ⚠️ Limited |
-| **Project Context** | ✅ Easy | ✅ Easy | ⚠️ Harder |
+| Criteria                   | Option A (SessionStart) | Option B (Launcher) | Option C (CLI Pre-Launch) |
+| -------------------------- | ----------------------- | ------------------- | ------------------------- |
+| **Timing**                 | ❌ Too late             | ✅ Perfect          | ⚠️ Too early              |
+| **User Experience**        | ❌ Disruptive           | ✅ Smooth           | ⚠️ Awkward                |
+| **Integration Complexity** | ⚠️ Moderate             | ✅ Clean            | ⚠️ High                   |
+| **Error Handling**         | ⚠️ Hook timeout         | ✅ Non-blocking     | ⚠️ Unclear                |
+| **Code Location**          | Hook file               | Launcher method     | CLI function              |
+| **Follows Patterns**       | ⚠️ New pattern          | ✅ Matches Neo4j    | ❌ No precedent           |
+| **Infrastructure Access**  | ✅ HookProcessor        | ✅ Launcher         | ⚠️ Limited                |
+| **Project Context**        | ✅ Easy                 | ✅ Easy             | ⚠️ Harder                 |
 
 **Winner**: Option B (Launcher) - 7/8 criteria favorable
 
@@ -622,14 +639,14 @@ def test_prompt_happens_before_claude_starts():
 
 ## Risk Assessment
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|-----------|
-| Blarify hangs | Low | Medium | 120s subprocess timeout |
-| Consent file race condition | Low | Low | Single-user assumption |
-| User confusion | Medium | Low | Clear prompt messaging |
-| Performance impact | Low | Low | Only first session per project |
-| Hook timeout conflict | None | N/A | Not using hooks |
-| Memory backend conflict | None | N/A | Independent systems |
+| Risk                        | Likelihood | Impact | Mitigation                     |
+| --------------------------- | ---------- | ------ | ------------------------------ |
+| Blarify hangs               | Low        | Medium | 120s subprocess timeout        |
+| Consent file race condition | Low        | Low    | Single-user assumption         |
+| User confusion              | Medium     | Low    | Clear prompt messaging         |
+| Performance impact          | Low        | Low    | Only first session per project |
+| Hook timeout conflict       | None       | N/A    | Not using hooks                |
+| Memory backend conflict     | None       | N/A    | Independent systems            |
 
 **Overall Risk**: LOW - Well-contained, non-blocking implementation
 
@@ -665,12 +682,14 @@ def test_prompt_happens_before_claude_starts():
 **Chosen**: `ClaudeLauncher.prepare_launch()` (after Neo4j startup)
 
 **Rationale**:
+
 - BEFORE Claude starts (can still prompt user)
 - AFTER prerequisites checked (know environment is ready)
 - Follows existing Neo4j prompt pattern
 - Access to launcher infrastructure
 
 **Alternatives Rejected**:
+
 - SessionStart hook: Too late (Claude already running)
 - CLI pre-launch: Too early (no infrastructure)
 
@@ -679,12 +698,14 @@ def test_prompt_happens_before_claude_starts():
 **Chosen**: Per-project file in `~/.amplihack/`
 
 **Rationale**:
+
 - Simple file-based (no database)
 - Project-specific via MD5 hash
 - User home directory (survives project deletion)
 - Easy to debug/inspect
 
 **Alternatives Rejected**:
+
 - Global flag: Not project-specific
 - Project .claude/ dir: Survives git clean
 - Database: Overkill for simple boolean
@@ -694,12 +715,14 @@ def test_prompt_happens_before_claude_starts():
 **Chosen**: Always continue, never fail launch
 
 **Rationale**:
+
 - Blarify is enhancement, not requirement
 - User can always index manually later
 - Prevents blocking critical workflow
 - Graceful degradation
 
 **Alternatives Rejected**:
+
 - Blocking: User frustration
 - Required: Forces dependency
 - Retry loops: Complexity
@@ -773,6 +796,6 @@ Add blarify prompt in `ClaudeLauncher.prepare_launch()` after Neo4j startup (ste
 
 ---
 
-*Investigation completed: 2026-01-22*
-*Total investigation time: ~45 minutes*
-*Confidence level: High (90%+)*
+_Investigation completed: 2026-01-22_
+_Total investigation time: ~45 minutes_
+_Confidence level: High (90%+)_

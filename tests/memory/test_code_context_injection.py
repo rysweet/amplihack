@@ -10,7 +10,6 @@ Test Coverage:
 - Format of code context in metadata
 """
 
-import json
 import time
 from datetime import datetime
 from pathlib import Path
@@ -74,16 +73,12 @@ async def test_retrieve_with_code_context_flag(coordinator_with_code_graph: Memo
     assert memory_id is not None
 
     # Retrieve without code context
-    query_without = RetrievalQuery(
-        query_text="retrieve_memories", include_code_context=False
-    )
+    query_without = RetrievalQuery(query_text="retrieve_memories", include_code_context=False)
     memories_without = await coordinator_with_code_graph.retrieve(query_without)
     assert len(memories_without) > 0
 
     # Retrieve with code context
-    query_with = RetrievalQuery(
-        query_text="retrieve_memories", include_code_context=True
-    )
+    query_with = RetrievalQuery(query_text="retrieve_memories", include_code_context=True)
     memories_with = await coordinator_with_code_graph.retrieve(query_with)
     assert len(memories_with) > 0
 

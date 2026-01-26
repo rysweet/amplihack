@@ -4,9 +4,9 @@ Provides subprocess-based test harnesses fer plugin lifecycle, hooks, and LSP de
 """
 
 from .subprocess_test_harness import (
-    PluginTestHarness,
     HookTestHarness,
     LSPTestHarness,
+    PluginTestHarness,
     SubprocessResult,
 )
 

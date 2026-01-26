@@ -46,13 +46,13 @@ The platform bridge solves this by:
 
 The platform bridge supports five core operations needed by DEFAULT_WORKFLOW:
 
-| Operation | GitHub Command | Azure DevOps Command | Workflow Step |
-|-----------|---------------|---------------------|---------------|
-| Create Issue | `gh issue create` | `az boards work-item create` | Step 3 |
-| Create Draft PR | `gh pr create --draft` | `az repos pr create --draft` | Step 15 |
-| Mark PR Ready | `gh pr ready` | `az repos pr update --status Active` | Step 20 |
-| Add PR Comment | `gh pr comment` | `az repos pr create-thread` | Steps 16-17 |
-| Check CI Status | `gh pr checks` | `az pipelines runs list` | Step 21 |
+| Operation       | GitHub Command         | Azure DevOps Command                 | Workflow Step |
+| --------------- | ---------------------- | ------------------------------------ | ------------- |
+| Create Issue    | `gh issue create`      | `az boards work-item create`         | Step 3        |
+| Create Draft PR | `gh pr create --draft` | `az repos pr create --draft`         | Step 15       |
+| Mark PR Ready   | `gh pr ready`          | `az repos pr update --status Active` | Step 20       |
+| Add PR Comment  | `gh pr comment`        | `az repos pr create-thread`          | Steps 16-17   |
+| Check CI Status | `gh pr checks`         | `az pipelines runs list`             | Step 21       |
 
 ## How Platform Detection Works
 
@@ -71,6 +71,7 @@ git remote -v
 ```
 
 **Detection Logic**:
+
 1. Runs `git remote -v` to get all remotes
 2. Checks `origin` remote first (most common)
 3. Falls back to first available remote if `origin` doesn't exist
@@ -84,6 +85,7 @@ git remote -v
 Ye need the appropriate CLI tools installed fer yer platform:
 
 **For GitHub repositories:**
+
 ```bash
 # Install GitHub CLI
 brew install gh  # macOS
@@ -92,6 +94,7 @@ sudo apt install gh  # Ubuntu/Debian
 ```
 
 **For Azure DevOps repositories:**
+
 ```bash
 # Install Azure CLI
 curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash  # Ubuntu/Debian
@@ -205,6 +208,7 @@ except CLIToolMissingError as e:
 The platform bridge be integrated into DEFAULT_WORKFLOW.md at these steps:
 
 **Step 3: Create Issue/Work Item**
+
 ```python
 # Platform-agnostic issue creation
 bridge = PlatformBridge()
@@ -212,6 +216,7 @@ issue = bridge.create_issue(title=title, body=body)
 ```
 
 **Step 15: Create Draft PR**
+
 ```python
 # Works on both GitHub and Azure DevOps
 pr = bridge.create_draft_pr(
@@ -223,12 +228,14 @@ pr = bridge.create_draft_pr(
 ```
 
 **Step 20: Mark PR Ready**
+
 ```python
 # Remove draft status
 bridge.mark_pr_ready(pr_number=pr_number)
 ```
 
 **Step 21: Check CI Status**
+
 ```python
 # Platform-agnostic CI status check
 status = bridge.check_ci_status(pr_number=pr_number)
@@ -256,6 +263,7 @@ The platform bridge follows the **Brick Philosophy** - a self-contained module w
 ```
 
 **Public API** (`__all__`):
+
 - `PlatformBridge` - Main entry point
 - `detect_platform()` - Standalone detection function
 - `PlatformDetectionError` - Exception fer detection failures
@@ -269,11 +277,13 @@ The platform bridge delegates authentication to official CLI tools:
 - **Azure DevOps**: Uses `az` CLI authentication (`az login`)
 
 **Input Validation**:
+
 - All subprocess calls use parameterized commands (no shell injection)
 - Branch names, titles, and bodies be validated before passin' to CLI
 - URL parsing uses standard library `urllib.parse`
 
 **Subprocess Safety**:
+
 - Timeouts on all subprocess calls (default 30 seconds)
 - Standard error captured and parsed
 - Exit codes checked before processin' output
@@ -287,6 +297,7 @@ See [Security Documentation](../security/platform-bridge-security.md) fer comple
 **Problem**: `PlatformDetectionError: Could not detect platform`
 
 **Solutions**:
+
 1. Check git remotes: `git remote -v`
 2. Ensure remote URL contains `github.com` or `dev.azure.com`
 3. Add remote if missin': `git remote add origin <url>`
@@ -296,6 +307,7 @@ See [Security Documentation](../security/platform-bridge-security.md) fer comple
 **Problem**: `CLIToolMissingError: GitHub CLI not found`
 
 **Solutions**:
+
 1. Install the required CLI tool (see Prerequisites)
 2. Verify installation: `gh --version` or `az --version`
 3. Ensure CLI be in yer PATH
@@ -305,6 +317,7 @@ See [Security Documentation](../security/platform-bridge-security.md) fer comple
 **Problem**: CLI commands fail with authentication errors
 
 **Solutions**:
+
 1. **GitHub**: Run `gh auth login` and follow prompts
 2. **Azure DevOps**: Run `az login` and authenticate
 3. Verify authentication: `gh auth status` or `az account show`
@@ -314,6 +327,7 @@ See [Security Documentation](../security/platform-bridge-security.md) fer comple
 **Problem**: Bridge detects wrong platform
 
 **Solutions**:
+
 1. Check which remote be detected: `git remote -v`
 2. Ensure `origin` points to correct URL
 3. Platform detection prioritizes `origin` over other remotes

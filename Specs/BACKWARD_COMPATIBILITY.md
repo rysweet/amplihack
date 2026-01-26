@@ -7,6 +7,7 @@ Ensure existing per-project `~/.amplihack/.claude/` installations continue worki
 ## Problem
 
 Issue #1948 moves to plugin architecture (`~/.amplihack/.claude/`), but:
+
 - Existing projects use per-project `~/.amplihack/.claude/` directories
 - Users may prefer local over global plugin installation
 - Migration path unclear
@@ -15,6 +16,7 @@ Issue #1948 moves to plugin architecture (`~/.amplihack/.claude/`), but:
 ## Solution Overview
 
 Implement dual-mode support:
+
 1. **Detection:** Automatically detect per-project vs plugin installation
 2. **Preference:** Local `~/.amplihack/.claude/` takes precedence over plugin
 3. **Fallback:** Plugin used if no local installation
@@ -25,12 +27,14 @@ Implement dual-mode support:
 ### Inputs
 
 **Detection Function:**
+
 ```python
 def detect_claude_mode() -> ClaudeMode:
     """Detect whether to use project-local or plugin mode."""
 ```
 
 **Environment:**
+
 - Current working directory (may have `~/.amplihack/.claude/`)
 - Plugin directory (`~/.amplihack/.claude/`)
 - User preference (explicit override)
@@ -38,6 +42,7 @@ def detect_claude_mode() -> ClaudeMode:
 ### Outputs
 
 **ClaudeMode:**
+
 ```python
 class ClaudeMode(Enum):
     LOCAL = "local"      # Project has .claude/ directory
@@ -46,6 +51,7 @@ class ClaudeMode(Enum):
 ```
 
 **Behavior:**
+
 - `LOCAL`: Use project's `~/.amplihack/.claude/` directory
 - `PLUGIN`: Use plugin installation
 - `NONE`: Install plugin or create local (user choice)
@@ -74,6 +80,7 @@ src/amplihack/
 **Purpose:** Detect which Claude mode to use
 
 **Public API:**
+
 ```python
 from enum import Enum
 from pathlib import Path
@@ -107,6 +114,7 @@ __all__ = ["ClaudeMode", "ModeDetector"]
 ```
 
 **Implementation:**
+
 ```python
 from enum import Enum
 from pathlib import Path
@@ -219,6 +227,7 @@ def detect_claude_mode(project_dir: Optional[Path] = None) -> ClaudeMode:
 **Purpose:** Help users migrate between modes
 
 **Public API:**
+
 ```python
 class MigrationHelper:
     """Help migrate between Claude modes."""
@@ -236,6 +245,7 @@ __all__ = ["MigrationHelper"]
 ```
 
 **Implementation:**
+
 ```python
 from pathlib import Path
 from typing import Optional
@@ -351,6 +361,7 @@ class MigrationHelper:
 3. **Status:** Show current mode to user
 
 **CLI Commands:**
+
 ```bash
 # Show current mode
 amplihack mode
@@ -366,6 +377,7 @@ AMPLIHACK_MODE=plugin amplihack
 ```
 
 **CLI Integration Code:**
+
 ```python
 # In cli.py
 
@@ -572,15 +584,17 @@ def test_migration_workflow(tmp_path, monkeypatch):
 
 **For Users:**
 
-```markdown
+````markdown
 ## When to Use Local vs Plugin
 
 ### Use Plugin Mode (Recommended)
+
 - You want latest amplihack features automatically
 - You work on multiple projects
 - You want zero-configuration setup
 
 ### Use Local Mode
+
 - You need project-specific customizations
 - You want version pinning for a project
 - You're experimenting with custom agents
@@ -600,9 +614,12 @@ amplihack mode migrate-to-local
 # Force plugin mode for one session
 AMPLIHACK_MODE=plugin amplihack
 ```
+````
+
 ```
 
 ## References
 
 - Issue #1948, Requirement: "Existing per-project .claude installations continue working"
 - `ISSUE_1948_REQUIREMENTS.md`, Gap 5 (lines 369-394)
+```

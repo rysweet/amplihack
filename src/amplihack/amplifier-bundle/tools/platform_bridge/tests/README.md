@@ -5,9 +5,11 @@ Comprehensive TDD test suite for the platform bridge module following the testin
 ## Test Files
 
 ### 1. `conftest.py` - Shared Test Fixtures
+
 **Purpose**: Provides common test data, mocks, and utilities for all test modules.
 
 **Key Fixtures**:
+
 - Platform URLs (GitHub, Azure DevOps, unknown platforms)
 - Success/error response examples
 - Mock subprocess results
@@ -20,9 +22,11 @@ Comprehensive TDD test suite for the platform bridge module following the testin
 **Usage**: All fixtures are automatically available to all test files via pytest's fixture discovery.
 
 ### 2. `test_detector.py` - Platform Detection Tests
+
 **Coverage**: 100+ test cases
 
 **Test Categories**:
+
 - Platform enum values (GitHub, AzDO, Unknown)
 - PlatformDetector initialization
 - GitHub URL detection (HTTPS, SSH, git://, shorthand)
@@ -35,6 +39,7 @@ Comprehensive TDD test suite for the platform bridge module following the testin
 - Subprocess call format validation
 
 **Key Test Patterns**:
+
 ```python
 @patch("subprocess.run")
 def test_detect_github_https_url(self, mock_run, git_remote_output_github):
@@ -52,9 +57,11 @@ def test_detect_github_https_url(self, mock_run, git_remote_output_github):
 ```
 
 ### 3. `test_github_bridge.py` - GitHub Bridge Tests
+
 **Coverage**: 70+ test cases
 
 **Test Categories**:
+
 - Bridge initialization
 - `create_issue` operation (success, failure, command construction, labels support)
 - `create_draft_pr` operation (draft flag, base branch support)
@@ -67,6 +74,7 @@ def test_detect_github_https_url(self, mock_run, git_remote_output_github):
 - gh CLI not installed handling
 
 **Key Test Patterns**:
+
 ```python
 @patch("subprocess.run")
 def test_create_issue_success(self, mock_run):
@@ -85,9 +93,11 @@ def test_create_issue_success(self, mock_run):
 ```
 
 ### 4. `test_azdo_bridge.py` - Azure DevOps Bridge Tests
+
 **Coverage**: 75+ test cases
 
 **Test Categories**:
+
 - Bridge initialization with config
 - Environment variable loading
 - `create_issue` operation (work item terminology, org/project config)
@@ -101,6 +111,7 @@ def test_create_issue_success(self, mock_run):
 - az CLI not installed handling
 
 **Key Test Patterns**:
+
 ```python
 @patch("subprocess.run")
 def test_create_issue_uses_config_org_and_project(self, mock_run, azdo_config_complete):
@@ -120,9 +131,11 @@ def test_create_issue_uses_config_org_and_project(self, mock_run, azdo_config_co
 ```
 
 ### 5. `test_cli.py` - CLI Interface Tests
+
 **Coverage**: 85+ test cases
 
 **Test Categories**:
+
 - CLI initialization
 - `create-issue` command (argument parsing, JSON output, labels, missing args)
 - `create-pr` command (draft default, base branch, JSON output)
@@ -137,6 +150,7 @@ def test_create_issue_uses_config_org_and_project(self, mock_run, azdo_config_co
 - JSON output consistency (valid JSON, pretty-printing)
 
 **Key Test Patterns**:
+
 ```python
 @patch("..cli.GitHubBridge")
 def test_create_issue_parses_arguments(self, mock_bridge_class):
@@ -158,9 +172,11 @@ def test_create_issue_parses_arguments(self, mock_bridge_class):
 ```
 
 ### 6. `test_security.py` - Security Tests
+
 **Coverage**: 65+ test cases
 
 **Test Categories**:
+
 - Command injection prevention (PR titles, branch names, comments, issue bodies)
 - Input validation (PR numbers, empty inputs, type checking)
 - Length limits (titles, bodies, comments, branch names)
@@ -173,6 +189,7 @@ def test_create_issue_parses_arguments(self, mock_bridge_class):
 - Timeout configuration (DoS prevention, reasonable limits)
 
 **Key Test Patterns**:
+
 ```python
 @patch("subprocess.run")
 def test_pr_title_injection_prevented(self, mock_run, malicious_pr_title):
@@ -197,11 +214,13 @@ def test_pr_title_injection_prevented(self, mock_run, malicious_pr_title):
 ## Running Tests
 
 ### Run all tests
+
 ```bash
 pytest .claude/tools/platform_bridge/tests/
 ```
 
 ### Run specific test file
+
 ```bash
 pytest .claude/tools/platform_bridge/tests/test_detector.py
 pytest .claude/tools/platform_bridge/tests/test_github_bridge.py
@@ -211,22 +230,26 @@ pytest .claude/tools/platform_bridge/tests/test_security.py
 ```
 
 ### Run specific test class
+
 ```bash
 pytest .claude/tools/platform_bridge/tests/test_detector.py::TestGitHubURLDetection
 pytest .claude/tools/platform_bridge/tests/test_security.py::TestCommandInjectionPrevention
 ```
 
 ### Run specific test
+
 ```bash
 pytest .claude/tools/platform_bridge/tests/test_detector.py::TestGitHubURLDetection::test_detect_github_https_url
 ```
 
 ### Run with coverage
+
 ```bash
 pytest --cov=.claude/tools/platform_bridge --cov-report=html .claude/tools/platform_bridge/tests/
 ```
 
 ### Run with verbose output
+
 ```bash
 pytest -v .claude/tools/platform_bridge/tests/
 ```
@@ -234,15 +257,19 @@ pytest -v .claude/tools/platform_bridge/tests/
 ## Test Philosophy
 
 ### TDD Approach
+
 All tests are written **before** implementation. Tests will fail until corresponding implementation is complete.
 
 ### Testing Pyramid
+
 - **60% Unit tests**: Fast, isolated, heavily mocked
 - **30% Integration tests**: Multiple components working together
 - **10% E2E tests**: Complete workflows
 
 ### Arrange-Act-Assert Pattern
+
 All tests follow AAA pattern:
+
 ```python
 def test_example(self):
     # Arrange - Set up test data and mocks
@@ -256,13 +283,17 @@ def test_example(self):
 ```
 
 ### Clear Test Names
+
 Test names describe behavior being tested:
+
 - ✅ `test_create_issue_success` - Clear what's being tested
 - ✅ `test_pr_title_injection_prevented` - Describes security behavior
 - ❌ `test_case_1` - Unclear purpose
 
 ### Mock External Dependencies
+
 All external dependencies are mocked:
+
 - `subprocess.run` - Mock CLI tool calls
 - Platform detection - Mock git commands
 - File system operations - Use tmp_path fixtures
@@ -280,6 +311,7 @@ from ..cli import CLI, main  # ImportError
 ```
 
 After implementation, expect these test failures:
+
 1. **detector.py**: Missing Platform enum, PlatformDetector class, detection logic
 2. **github_bridge.py**: Missing GitHubBridge class, 5 operations methods
 3. **azdo_bridge.py**: Missing AzureDevOpsBridge class, config loading, 5 operations
@@ -295,6 +327,7 @@ After implementation, expect these test failures:
 ## Security Test Importance
 
 Security tests are **critical** and must pass before any production use:
+
 - Command injection prevention (highest priority)
 - Input validation (required)
 - Error message sanitization (required)
@@ -303,6 +336,7 @@ Security tests are **critical** and must pass before any production use:
 ## Contributing
 
 When adding new functionality:
+
 1. Write tests first (TDD)
 2. Ensure tests fail without implementation
 3. Implement functionality
@@ -312,6 +346,7 @@ When adding new functionality:
 ## Test Data
 
 All test data is centralized in `conftest.py`:
+
 - Realistic URLs for both platforms
 - Example API responses
 - Security attack vectors

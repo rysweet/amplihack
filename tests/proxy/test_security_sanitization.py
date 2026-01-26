@@ -10,7 +10,7 @@ that will be implemented in src/amplihack/proxy/security.py
 """
 
 import time
-from typing import Any, Dict, List
+from typing import Any
 
 import pytest
 
@@ -30,7 +30,9 @@ class TestTokenPatternDetection:
 
         # GitHub OAuth tokens
         assert sanitizer.contains_token("gho_1234567890abcdefghij")  # pragma: allowlist secret
-        assert sanitizer.contains_token("Bearer gho_1234567890abcdefghij")  # pragma: allowlist secret
+        assert sanitizer.contains_token(
+            "Bearer gho_1234567890abcdefghij"
+        )  # pragma: allowlist secret
 
         # GitHub PAT tokens
         assert sanitizer.contains_token("ghp_1234567890abcdefghij")  # pragma: allowlist secret
@@ -76,8 +78,12 @@ class TestTokenPatternDetection:
         sanitizer = TokenSanitizer()
 
         # Valid Bearer tokens
-        assert sanitizer.contains_token("Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9")  # pragma: allowlist secret
-        assert sanitizer.contains_token("Authorization: Bearer abc123xyz")  # pragma: allowlist secret
+        assert sanitizer.contains_token(
+            "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"
+        )  # pragma: allowlist secret
+        assert sanitizer.contains_token(
+            "Authorization: Bearer abc123xyz"
+        )  # pragma: allowlist secret
 
         # Non-tokens
         assert not sanitizer.contains_token("Bearer")
@@ -102,10 +108,14 @@ class TestTokenPatternDetection:
         sanitizer = TokenSanitizer()
 
         # Azure subscription keys
-        assert sanitizer.contains_token("azure-key-1234567890abcdefghij")  # pragma: allowlist secret
+        assert sanitizer.contains_token(
+            "azure-key-1234567890abcdefghij"
+        )  # pragma: allowlist secret
 
         # Azure connection strings
-        assert sanitizer.contains_token("DefaultEndpointsProtocol=https;AccountName=test;AccountKey=abc123==;EndpointSuffix=core.windows.net")  # pragma: allowlist secret
+        assert sanitizer.contains_token(
+            "DefaultEndpointsProtocol=https;AccountName=test;AccountKey=abc123==;EndpointSuffix=core.windows.net"
+        )  # pragma: allowlist secret
 
 
 class TestStringSanitization:
@@ -116,7 +126,9 @@ class TestStringSanitization:
         sanitizer = TokenSanitizer()
 
         # GitHub token
-        result = sanitizer.sanitize("My token is gho_1234567890abcdefghij")  # pragma: allowlist secret
+        result = sanitizer.sanitize(
+            "My token is gho_1234567890abcdefghij"
+        )  # pragma: allowlist secret
         assert "gho_1234567890abcdefghij" not in result
         assert "[REDACTED-GITHUB-TOKEN]" in result
 
@@ -166,7 +178,7 @@ class TestDictSanitization:
         data = {
             "api_key": "sk-1234567890abcdefghij",  # pragma: allowlist secret
             "github_token": "gho_abc123xyz",  # pragma: allowlist secret
-            "safe_field": "no tokens here"
+            "safe_field": "no tokens here",
         }
 
         result = sanitizer.sanitize(data)
@@ -184,9 +196,9 @@ class TestDictSanitization:
                 "auth": {
                     "token": "gho_nested123"  # pragma: allowlist secret
                 },
-                "api_key": "sk-nested456"  # pragma: allowlist secret
+                "api_key": "sk-nested456",  # pragma: allowlist secret
             },
-            "name": "test"
+            "name": "test",
         }
 
         result = sanitizer.sanitize(data)
@@ -201,7 +213,7 @@ class TestDictSanitization:
 
         data = {
             "tokens": ["gho_abc123", "sk-xyz789"],  # pragma: allowlist secret
-            "safe_list": ["item1", "item2"]
+            "safe_list": ["item1", "item2"],
         }
 
         result = sanitizer.sanitize(data)
@@ -248,7 +260,7 @@ class TestListSanitization:
 
         data = [
             {"token": "gho_abc123", "name": "test1"},  # pragma: allowlist secret
-            {"token": "sk-xyz789", "name": "test2"}  # pragma: allowlist secret
+            {"token": "sk-xyz789", "name": "test2"},  # pragma: allowlist secret
         ]
 
         result = sanitizer.sanitize(data)
@@ -351,10 +363,10 @@ class TestRealErrorScenarios:
             "request": {
                 "headers": {
                     "Authorization": "Bearer gho_1234567890",  # pragma: allowlist secret
-                    "X-API-Key": "sk-test123"  # pragma: allowlist secret
+                    "X-API-Key": "sk-test123",  # pragma: allowlist secret
                 }
             },
-            "timestamp": "2024-01-14T12:00:00Z"
+            "timestamp": "2024-01-14T12:00:00Z",
         }
 
         result = sanitizer.sanitize(json_data)
@@ -384,7 +396,7 @@ class TestEdgeCases:
         sanitizer = TokenSanitizer()
 
         # 10 levels deep
-        data: Dict[str, Any] = {"level0": {}}
+        data: dict[str, Any] = {"level0": {}}
         current = data["level0"]
         for i in range(1, 10):
             current[f"level{i}"] = {}
@@ -414,7 +426,7 @@ class TestEdgeCases:
         # These should NOT be detected as tokens (too short, wrong format)
         safe_texts = [
             "gho_",  # Prefix only
-            "sk-",   # Prefix only
+            "sk-",  # Prefix only
             "github oauth",  # Contains keywords but no token
             "bearer token",  # Generic reference
             "sk-short",  # Too short to be real
@@ -440,7 +452,9 @@ class TestEdgeCases:
         """Test sanitizing when same token appears multiple times."""
         sanitizer = TokenSanitizer()
 
-        text = "Token1: gho_abc123, Token2: gho_abc123, Token3: gho_abc123"  # pragma: allowlist secret
+        text = (
+            "Token1: gho_abc123, Token2: gho_abc123, Token3: gho_abc123"  # pragma: allowlist secret
+        )
         result = sanitizer.sanitize(text)
 
         # Token should be redacted everywhere
@@ -456,7 +470,7 @@ class TestEdgeCases:
             123,
             None,
             {"key": "sk-xyz789"},  # pragma: allowlist secret
-            ["nested", "ghs_test456"]  # pragma: allowlist secret
+            ["nested", "ghs_test456"],  # pragma: allowlist secret
         ]
 
         result = sanitizer.sanitize(data)
@@ -495,7 +509,7 @@ class TestPerformance:
         data = {
             "token1": "gho_abc123",  # pragma: allowlist secret
             "token2": "sk-xyz789",  # pragma: allowlist secret
-            "safe": "text"
+            "safe": "text",
         }
 
         start = time.perf_counter()
@@ -587,23 +601,16 @@ class TestEndToEndSanitization:
                 "url": "https://api.github.com/copilot/chat/completions",
                 "headers": {
                     "Authorization": "Bearer gho_1234567890abcdefghij",  # pragma: allowlist secret
-                    "Content-Type": "application/json"
+                    "Content-Type": "application/json",
                 },
-                "body": {
-                    "messages": [
-                        {"role": "user", "content": "Hello"}
-                    ]
-                }
+                "body": {"messages": [{"role": "user", "content": "Hello"}]},
             },
-            "response": {
-                "status": 401,
-                "body": {"message": "Bad credentials"}
-            },
+            "response": {"status": 401, "body": {"message": "Bad credentials"}},
             "traceback": [
                 "File 'proxy/server.py', line 123",
                 "  auth_header = f'Bearer {gho_1234567890abcdefghij}'",  # pragma: allowlist secret
-                "ConnectionError: Authentication failed"
-            ]
+                "ConnectionError: Authentication failed",
+            ],
         }
 
         result = sanitizer.sanitize(error_report)
@@ -645,25 +652,22 @@ class TestEndToEndSanitization:
         sanitizer = TokenSanitizer()
 
         config = {
-            "proxy": {
-                "host": "0.0.0.0",
-                "port": 8000
-            },
+            "proxy": {"host": "0.0.0.0", "port": 8000},
             "github": {
                 "enabled": True,
                 "token": "gho_1234567890abcdefghij",  # pragma: allowlist secret
-                "endpoint": "https://api.github.com"
+                "endpoint": "https://api.github.com",
             },
             "openai": {
                 "enabled": True,
                 "api_key": "sk-1234567890abcdefghij",  # pragma: allowlist secret
-                "model": "gpt-4"
+                "model": "gpt-4",
             },
             "anthropic": {
                 "enabled": True,
                 "api_key": "sk-ant-1234567890abcdefghij",  # pragma: allowlist secret
-                "model": "claude-3-sonnet"
-            }
+                "model": "claude-3-sonnet",
+            },
         }
 
         result = sanitizer.sanitize(config)

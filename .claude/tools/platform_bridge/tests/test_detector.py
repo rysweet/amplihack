@@ -11,13 +11,14 @@ Tests cover:
 - Multiple remotes
 """
 
-import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock
 import subprocess
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 # This import will fail initially (TDD)
-from ..detector import PlatformDetector, Platform
+from ..detector import Platform, PlatformDetector
 
 
 class TestPlatformEnum:
@@ -69,11 +70,7 @@ class TestGitHubURLDetection:
     @patch("subprocess.run")
     def test_detect_github_https_url(self, mock_run, git_remote_output_github):
         """Should detect GitHub from HTTPS URL."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout=git_remote_output_github,
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout=git_remote_output_github, stderr="")
 
         detector = PlatformDetector()
         platform = detector.detect()
@@ -85,9 +82,7 @@ class TestGitHubURLDetection:
     def test_detect_github_ssh_url(self, mock_run):
         """Should detect GitHub from SSH URL (git@github.com:...)."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="origin\tgit@github.com:owner/repo.git (fetch)\n",
-            stderr=""
+            returncode=0, stdout="origin\tgit@github.com:owner/repo.git (fetch)\n", stderr=""
         )
 
         detector = PlatformDetector()
@@ -99,9 +94,7 @@ class TestGitHubURLDetection:
     def test_detect_github_git_protocol(self, mock_run):
         """Should detect GitHub from git:// protocol URL."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="origin\tgit://github.com/owner/repo.git (fetch)\n",
-            stderr=""
+            returncode=0, stdout="origin\tgit://github.com/owner/repo.git (fetch)\n", stderr=""
         )
 
         detector = PlatformDetector()
@@ -113,9 +106,7 @@ class TestGitHubURLDetection:
     def test_detect_github_shorthand_url(self, mock_run):
         """Should detect GitHub from shorthand URL (github.com/owner/repo)."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="origin\tgithub.com/owner/repo (fetch)\n",
-            stderr=""
+            returncode=0, stdout="origin\tgithub.com/owner/repo (fetch)\n", stderr=""
         )
 
         detector = PlatformDetector()
@@ -130,11 +121,7 @@ class TestAzureDevOpsURLDetection:
     @patch("subprocess.run")
     def test_detect_azdo_dev_azure_url(self, mock_run, git_remote_output_azdo):
         """Should detect Azure DevOps from dev.azure.com URL."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout=git_remote_output_azdo,
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout=git_remote_output_azdo, stderr="")
 
         detector = PlatformDetector()
         platform = detector.detect()
@@ -147,7 +134,7 @@ class TestAzureDevOpsURLDetection:
         mock_run.return_value = MagicMock(
             returncode=0,
             stdout="origin\thttps://org.visualstudio.com/project/_git/repo (fetch)\n",
-            stderr=""
+            stderr="",
         )
 
         detector = PlatformDetector()
@@ -159,9 +146,7 @@ class TestAzureDevOpsURLDetection:
     def test_detect_azdo_ssh_url(self, mock_run, azdo_ssh_url):
         """Should detect Azure DevOps from SSH URL."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout=f"origin\t{azdo_ssh_url} (fetch)\n",
-            stderr=""
+            returncode=0, stdout=f"origin\t{azdo_ssh_url} (fetch)\n", stderr=""
         )
 
         detector = PlatformDetector()
@@ -177,9 +162,7 @@ class TestUnknownPlatformDetection:
     def test_detect_unknown_platform_gitlab(self, mock_run):
         """Should return UNKNOWN for GitLab URLs."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="origin\thttps://gitlab.com/owner/repo.git (fetch)\n",
-            stderr=""
+            returncode=0, stdout="origin\thttps://gitlab.com/owner/repo.git (fetch)\n", stderr=""
         )
 
         detector = PlatformDetector()
@@ -191,9 +174,7 @@ class TestUnknownPlatformDetection:
     def test_detect_unknown_platform_bitbucket(self, mock_run):
         """Should return UNKNOWN for Bitbucket URLs."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="origin\thttps://bitbucket.org/owner/repo.git (fetch)\n",
-            stderr=""
+            returncode=0, stdout="origin\thttps://bitbucket.org/owner/repo.git (fetch)\n", stderr=""
         )
 
         detector = PlatformDetector()
@@ -205,9 +186,7 @@ class TestUnknownPlatformDetection:
     def test_detect_unknown_platform_custom(self, mock_run):
         """Should return UNKNOWN for custom git servers."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="origin\thttps://git.company.com/repo.git (fetch)\n",
-            stderr=""
+            returncode=0, stdout="origin\thttps://git.company.com/repo.git (fetch)\n", stderr=""
         )
 
         detector = PlatformDetector()
@@ -223,9 +202,7 @@ class TestErrorHandling:
     def test_missing_git_repo_raises_error(self, mock_run):
         """Should raise error when not in a git repository."""
         mock_run.return_value = MagicMock(
-            returncode=128,
-            stdout="",
-            stderr="fatal: not a git repository"
+            returncode=128, stdout="", stderr="fatal: not a git repository"
         )
 
         detector = PlatformDetector()
@@ -236,11 +213,7 @@ class TestErrorHandling:
     @patch("subprocess.run")
     def test_no_remotes_raises_error(self, mock_run):
         """Should raise error when repository has no remotes."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="",
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
 
         detector = PlatformDetector()
 
@@ -250,10 +223,7 @@ class TestErrorHandling:
     @patch("subprocess.run")
     def test_timeout_raises_error(self, mock_run):
         """Should raise error on subprocess timeout."""
-        mock_run.side_effect = subprocess.TimeoutExpired(
-            cmd=["git", "remote", "-v"],
-            timeout=30
-        )
+        mock_run.side_effect = subprocess.TimeoutExpired(cmd=["git", "remote", "-v"], timeout=30)
 
         detector = PlatformDetector()
 
@@ -278,9 +248,7 @@ class TestMultipleRemotes:
     def test_origin_takes_priority(self, mock_run, git_remote_output_multiple):
         """Should prioritize 'origin' remote when multiple exist."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout=git_remote_output_multiple,
-            stderr=""
+            returncode=0, stdout=git_remote_output_multiple, stderr=""
         )
 
         detector = PlatformDetector()
@@ -294,7 +262,7 @@ class TestMultipleRemotes:
         mock_run.return_value = MagicMock(
             returncode=0,
             stdout="upstream\thttps://dev.azure.com/org/project/_git/repo (fetch)\n",
-            stderr=""
+            stderr="",
         )
 
         detector = PlatformDetector()
@@ -308,7 +276,7 @@ class TestMultipleRemotes:
         mock_run.return_value = MagicMock(
             returncode=0,
             stdout="production\thttps://github.com/owner/repo.git (fetch)\n",
-            stderr=""
+            stderr="",
         )
 
         detector = PlatformDetector()
@@ -324,25 +292,25 @@ class TestGetRemoteURL:
     def test_get_remote_url_returns_origin(self, mock_run, github_https_url):
         """Should return origin remote URL with .git suffix stripped."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout=f"origin\t{github_https_url} (fetch)\n",
-            stderr=""
+            returncode=0, stdout=f"origin\t{github_https_url} (fetch)\n", stderr=""
         )
 
         detector = PlatformDetector()
         url = detector.get_remote_url()
 
         # URL should have .git suffix stripped
-        expected_url = github_https_url.rstrip('.git') if github_https_url.endswith('.git') else github_https_url
+        expected_url = (
+            github_https_url.rstrip(".git")
+            if github_https_url.endswith(".git")
+            else github_https_url
+        )
         assert url == expected_url
 
     @patch("subprocess.run")
     def test_get_remote_url_strips_git_suffix(self, mock_run):
         """Should strip .git suffix from URL."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="origin\thttps://github.com/owner/repo.git (fetch)\n",
-            stderr=""
+            returncode=0, stdout="origin\thttps://github.com/owner/repo.git (fetch)\n", stderr=""
         )
 
         detector = PlatformDetector()
@@ -354,9 +322,7 @@ class TestGetRemoteURL:
     def test_get_remote_url_handles_fetch_and_push(self, mock_run):
         """Should extract URL regardless of (fetch) or (push) label."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout="origin\thttps://github.com/owner/repo.git (push)\n",
-            stderr=""
+            returncode=0, stdout="origin\thttps://github.com/owner/repo.git (push)\n", stderr=""
         )
 
         detector = PlatformDetector()
@@ -371,11 +337,7 @@ class TestCachingBehavior:
     @patch("subprocess.run")
     def test_detection_cached_after_first_call(self, mock_run, git_remote_output_github):
         """Should cache detection result to avoid repeated subprocess calls."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout=git_remote_output_github,
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout=git_remote_output_github, stderr="")
 
         detector = PlatformDetector()
 
@@ -391,11 +353,7 @@ class TestCachingBehavior:
     @patch("subprocess.run")
     def test_force_refresh_bypasses_cache(self, mock_run, git_remote_output_github):
         """Should bypass cache when force_refresh=True."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout=git_remote_output_github,
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout=git_remote_output_github, stderr="")
 
         detector = PlatformDetector()
 
@@ -414,11 +372,7 @@ class TestSubprocessCallFormat:
     @patch("subprocess.run")
     def test_subprocess_uses_correct_command(self, mock_run, git_remote_output_github):
         """Should call 'git remote -v' command."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout=git_remote_output_github,
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout=git_remote_output_github, stderr="")
 
         detector = PlatformDetector()
         detector.detect()
@@ -430,11 +384,7 @@ class TestSubprocessCallFormat:
     @patch("subprocess.run")
     def test_subprocess_uses_configured_timeout(self, mock_run, git_remote_output_github):
         """Should use configured timeout value."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout=git_remote_output_github,
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout=git_remote_output_github, stderr="")
 
         detector = PlatformDetector(timeout=60)
         detector.detect()
@@ -446,11 +396,7 @@ class TestSubprocessCallFormat:
     @patch("subprocess.run")
     def test_subprocess_captures_output(self, mock_run, git_remote_output_github):
         """Should capture stdout and stderr."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout=git_remote_output_github,
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout=git_remote_output_github, stderr="")
 
         detector = PlatformDetector()
         detector.detect()
@@ -463,11 +409,7 @@ class TestSubprocessCallFormat:
     @patch("subprocess.run")
     def test_subprocess_uses_repo_path_as_cwd(self, mock_run, git_remote_output_github, tmp_path):
         """Should execute git command in repository directory."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout=git_remote_output_github,
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout=git_remote_output_github, stderr="")
 
         detector = PlatformDetector(repo_path=tmp_path)
         detector.detect()

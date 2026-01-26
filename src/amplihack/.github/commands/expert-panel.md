@@ -9,16 +9,16 @@
 - **name**: amplihack:expert-panel
 - **version**: 1.0.0
 - **description**: Expert panel review with voting and consensus decision-making
-- **triggers**: 
-- **invokes**: 
+- **triggers**:
+- **invokes**:
 - **- type**: subagent
 - **path**: .claude/agents/amplihack/specialized/philosophy-guardian.md
-- **philosophy**: 
+- **philosophy**:
 - **- principle**: Trust in Emergence
 - **application**: Best decisions emerge from diverse expert perspectives
-- **dependencies**: 
-- **optional**: 
-- **examples**: 
+- **dependencies**:
+- **optional**:
+- **examples**:
 - **- "/amplihack**: expert-panel --unanimous Security-critical code review"
 
 ---
@@ -29,6 +29,7 @@ This command is designed for Claude Code but the patterns and approaches
 can be referenced when using GitHub Copilot CLI.
 
 **Example**:
+
 ```bash
 # Reference this command's approach
 gh copilot explain .github/commands/expert-panel.md
@@ -40,7 +41,6 @@ gh copilot suggest --context .github/commands/expert-panel.md "your task"
 ---
 
 ## Original Command Documentation
-
 
 # Expert Panel Review Command
 

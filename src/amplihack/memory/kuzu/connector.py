@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 class KuzuConnector:
     """Kùzu embedded graph database connector.
 
-    Wraps Kùzu Python library with an interface similar to Neo4jConnector.
+    Wraps Kùzu Python library with an interface similar to the removed connector.
     Supports context manager for automatic resource cleanup.
 
     Example:
@@ -191,7 +191,7 @@ class KuzuConnector:
     ) -> list[dict[str, Any]]:
         """Execute a write query (alias for execute_query).
 
-        For interface parity with Neo4jConnector. In Kuzu, there's no
+        For interface parity with the removed connector. In Kuzu, there's no
         distinction between read and write transactions at the API level.
 
         Args:

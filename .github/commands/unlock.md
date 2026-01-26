@@ -9,7 +9,7 @@
 - **name**: amplihack:unlock
 - **version**: 1.0.0
 - **description**: Disable continuous work mode and resume normal behavior
-- **triggers**: 
+- **triggers**:
 
 ---
 
@@ -19,6 +19,7 @@ This command is designed for Claude Code but the patterns and approaches
 can be referenced when using GitHub Copilot CLI.
 
 **Example**:
+
 ```bash
 # Reference this command's approach
 gh copilot explain .github/commands/unlock.md
@@ -30,7 +31,6 @@ gh copilot suggest --context .github/commands/unlock.md "your task"
 ---
 
 ## Original Command Documentation
-
 
 # Unlock: Disable Continuous Work Mode
 

@@ -9,16 +9,16 @@
 - **name**: /amplihack:knowledge-builder
 - **version**: 1.0.0
 - **description**: Generate Socratic questions for requirements clarification
-- **triggers**: 
-- **invokes**: 
+- **triggers**:
+- **invokes**:
 - **- type**: command
-- **philosophy**: 
+- **philosophy**:
 - **- principle**: Trust in Emergence
 - **application**: Understanding emerges through systematic questioning
-- **dependencies**: 
-- **required**: 
-- **optional**: 
-- **examples**: 
+- **dependencies**:
+- **required**:
+- **optional**:
+- **examples**:
 
 ---
 
@@ -28,6 +28,7 @@ This command is designed for Claude Code but the patterns and approaches
 can be referenced when using GitHub Copilot CLI.
 
 **Example**:
+
 ```bash
 # Reference this command's approach
 gh copilot explain .github/commands/socratic.md
@@ -39,7 +40,6 @@ gh copilot suggest --context .github/commands/socratic.md "your task"
 ---
 
 ## Original Command Documentation
-
 
 # /socratic - Socratic Question Generation
 

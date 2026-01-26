@@ -25,7 +25,13 @@ scenario:
   steps:
     - action: launch
       target: "amplihack"
-      args: ["claude", "--", "-p", "Task(subagent_type=\"guide\", prompt=\"I know bash and git. How do I use amplihack to review code? Do I pass --review flag?\")"]
+      args:
+        [
+          "claude",
+          "--",
+          "-p",
+          'Task(subagent_type="guide", prompt="I know bash and git. How do I use amplihack to review code? Do I pass --review flag?")',
+        ]
       description: "Ask about CLI usage expecting flags"
       timeout: 60s
 
@@ -61,7 +67,7 @@ scenario:
 
     # Metric: Natural language example
     - action: verify_output
-      matches: "amplihack claude -- -p \"[A-Z][^\"]+\""
+      matches: 'amplihack claude -- -p "[A-Z][^"]+"'
       description: "Should show natural language prompt example (starts with capital)"
       metric_type: example_quality
 

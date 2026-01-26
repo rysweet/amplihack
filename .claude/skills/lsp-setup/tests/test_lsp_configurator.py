@@ -5,9 +5,7 @@ Tests LSP configuration logic and .env file management.
 All tests should FAIL initially (TDD red phase).
 """
 
-import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock, mock_open
+from unittest.mock import patch
 
 
 class TestLSPConfigurator:

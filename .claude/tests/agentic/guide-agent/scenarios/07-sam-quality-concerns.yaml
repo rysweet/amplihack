@@ -33,7 +33,13 @@ scenario:
   steps:
     - action: launch
       target: "amplihack"
-      args: ["claude", "--", "-p", "Task(subagent_type=\"guide\", prompt=\"I'm a senior developer who's skeptical about AI tools. How can I trust AI-generated code? What quality controls exist?\")"]
+      args:
+        [
+          "claude",
+          "--",
+          "-p",
+          'Task(subagent_type="guide", prompt="I''m a senior developer who''s skeptical about AI tools. How can I trust AI-generated code? What quality controls exist?")',
+        ]
       description: "Ask about quality validation as skeptical senior dev"
       timeout: 90s
 

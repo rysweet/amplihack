@@ -5,6 +5,7 @@ Learn to use the platform bridge in 10 minutes. This tutorial works fer both Git
 ## What You'll Learn
 
 By the end of this tutorial, ye'll be able to:
+
 - Use platform bridge to create issues
 - Create draft pull requests
 - Check CI status
@@ -13,6 +14,7 @@ By the end of this tutorial, ye'll be able to:
 ## Prerequisites
 
 Before startin', make sure ye have:
+
 - Git repository with a remote (GitHub or Azure DevOps)
 - Appropriate CLI tool installed:
   - **GitHub**: `gh` CLI ([install guide](https://cli.github.com/manual/installation))
@@ -34,6 +36,7 @@ git remote -v
 ```
 
 Ye should see output like:
+
 ```
 origin  https://github.com/owner/repo.git (fetch)
 origin  https://github.com/owner/repo.git (push)
@@ -47,6 +50,7 @@ origin  https://dev.azure.com/org/project/_git/repo (push)
 ```
 
 **What if there be no output?**
+
 ```bash
 # Add a remote
 git remote add origin https://github.com/owner/repo.git
@@ -55,17 +59,20 @@ git remote add origin https://github.com/owner/repo.git
 ### Verify CLI Tool
 
 **For GitHub:**
+
 ```bash
 gh --version
 gh auth status
 ```
 
 Should show:
+
 ```
 ✓ Logged in to github.com as username
 ```
 
 **For Azure DevOps:**
+
 ```bash
 az --version
 az account show
@@ -74,6 +81,7 @@ az account show
 Should show yer account information.
 
 **If authentication fails**, run:
+
 ```bash
 gh auth login  # For GitHub
 # OR
@@ -124,12 +132,14 @@ python create_issue.py
 ```
 
 **Output:**
+
 ```
 Created issue #42
 View it at: https://github.com/owner/repo/issues/42
 ```
 
 **What just happened?**
+
 1. Bridge detected yer platform from git remote
 2. Called appropriate CLI tool (gh or az)
 3. Created issue using platform-specific command
@@ -206,6 +216,7 @@ python create_pr.py
 ```
 
 **Output:**
+
 ```
 Created draft PR #123
 View it at: https://github.com/owner/repo/pull/123
@@ -304,6 +315,7 @@ python check_ci.py
 ```
 
 **Output:**
+
 ```
 Waitin' 10 seconds fer CI to start...
 
@@ -385,11 +397,13 @@ Now that ye understand the basics:
 ### "Platform could not be detected"
 
 Make sure ye have a git remote:
+
 ```bash
 git remote -v
 ```
 
 If empty, add one:
+
 ```bash
 git remote add origin <your-repo-url>
 ```
@@ -397,12 +411,14 @@ git remote add origin <your-repo-url>
 ### "CLI tool not found"
 
 Install the required CLI:
+
 - GitHub: `brew install gh`
 - Azure DevOps: `brew install azure-cli`
 
 ### "Authentication failed"
 
 Run authentication:
+
 ```bash
 gh auth login     # GitHub
 az login          # Azure DevOps

@@ -18,9 +18,7 @@ from datetime import datetime
 from pathlib import Path
 
 from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
-from src.amplihack.memory.kuzu.code_graph import KuzuCodeGraph
-from src.amplihack.memory.kuzu.connector import KuzuConnector
-from src.amplihack.memory.models import MemoryEntry, MemoryQuery, MemoryType
+from src.amplihack.memory.models import MemoryEntry, MemoryType
 
 
 def setup_sample_code_graph(backend: KuzuBackend):
@@ -314,9 +312,7 @@ def demonstrate_disabled_linking(backend: KuzuBackend):
 
     # Create backend with auto-linking disabled
     with tempfile.TemporaryDirectory() as tmpdir:
-        disabled_backend = KuzuBackend(
-            db_path=f"{tmpdir}/disabled_db", enable_auto_linking=False
-        )
+        disabled_backend = KuzuBackend(db_path=f"{tmpdir}/disabled_db", enable_auto_linking=False)
         disabled_backend.initialize()
 
         # Setup same code graph
@@ -380,7 +376,7 @@ def main():
 
         print("\n✓ Database initialized")
         print(f"  Location: {db_path}")
-        print(f"  Auto-linking: enabled")
+        print("  Auto-linking: enabled")
 
         # Setup sample code graph
         setup_sample_code_graph(backend)

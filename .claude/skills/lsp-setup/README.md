@@ -15,6 +15,7 @@ Claude Code's LSP system requires three layers to be configured:
 3. **Layer 3: Project Configuration** - `.env` file with `ENABLE_LSP_TOOL=1` and project-specific settings
 
 **Critical Understanding**: `cclsp` and `claude-code-lsps` work **together**, not as alternatives:
+
 - `cclsp` = The installation command-line tool
 - `claude-code-lsps` = The plugin marketplace that `cclsp` uses
 - They are complementary components of the same system
@@ -22,6 +23,7 @@ Claude Code's LSP system requires three layers to be configured:
 ### What This Module Does
 
 This module automates the `npx cclsp@latest setup` workflow, adding:
+
 - Intelligent language detection across 16 languages
 - Automatic detection of Layer 1 and Layer 2 installation status
 - User-guided installation (NEVER auto-installs system binaries)

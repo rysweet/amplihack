@@ -8,10 +8,8 @@ Testing pyramid:
 
 import json
 import tempfile
-import subprocess
 from pathlib import Path
 from unittest.mock import Mock, patch
-import pytest
 
 
 class TestCompletePluginLifecycle:
@@ -19,8 +17,8 @@ class TestCompletePluginLifecycle:
 
     def test_install_configure_and_use_plugin(self):
         """Test complete workflow: install -> configure -> use plugin."""
-        from amplihack.plugin_manager import PluginManager
         from amplihack.lsp_detector import LSPDetector
+        from amplihack.plugin_manager import PluginManager
         from amplihack.settings_generator import SettingsGenerator
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -39,12 +37,10 @@ class TestCompletePluginLifecycle:
                         "command": "python",
                         "args": ["server.py"],
                         "cwd": "./servers",
-                        "env": {
-                            "PLUGIN_ENV": "production"
-                        }
+                        "env": {"PLUGIN_ENV": "production"},
                     }
                 },
-                "dependencies": ["requests", "pydantic"]
+                "dependencies": ["requests", "pydantic"],
             }
             (plugin_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
 
@@ -105,11 +101,7 @@ class TestCompletePluginLifecycle:
             plugin_dir.mkdir()
 
             # Install v1.0.0
-            manifest_v1 = {
-                "name": "test-plugin",
-                "version": "1.0.0",
-                "entry_point": "main.py"
-            }
+            manifest_v1 = {"name": "test-plugin", "version": "1.0.0", "entry_point": "main.py"}
             (plugin_dir / "manifest.json").write_text(json.dumps(manifest_v1))
 
             manager = PluginManager()
@@ -120,7 +112,7 @@ class TestCompletePluginLifecycle:
                 "name": "test-plugin",
                 "version": "2.0.0",
                 "entry_point": "main.py",
-                "mcpServers": {"new-server": {"command": "node"}}
+                "mcpServers": {"new-server": {"command": "node"}},
             }
             (plugin_dir / "manifest.json").write_text(json.dumps(manifest_v2))
 
@@ -132,7 +124,6 @@ class TestCompletePluginLifecycle:
     def test_uninstall_and_cleanup_workflow(self):
         """Test uninstalling plugin cleans up all artifacts."""
         from amplihack.plugin_manager import PluginManager
-        from amplihack.settings_generator import SettingsGenerator
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Install plugin
@@ -143,7 +134,7 @@ class TestCompletePluginLifecycle:
                 "name": "test-plugin",
                 "version": "1.0.0",
                 "entry_point": "main.py",
-                "mcpServers": {"server": {"command": "node"}}
+                "mcpServers": {"server": {"command": "node"}},
             }
             (plugin_dir / "manifest.json").write_text(json.dumps(manifest))
 
@@ -172,20 +163,12 @@ class TestMultiPluginScenarios:
             # Create two plugins
             plugin1_dir = Path(tmpdir) / "plugin1"
             plugin1_dir.mkdir()
-            manifest1 = {
-                "name": "plugin1",
-                "version": "1.0.0",
-                "entry_point": "main.py"
-            }
+            manifest1 = {"name": "plugin1", "version": "1.0.0", "entry_point": "main.py"}
             (plugin1_dir / "manifest.json").write_text(json.dumps(manifest1))
 
             plugin2_dir = Path(tmpdir) / "plugin2"
             plugin2_dir.mkdir()
-            manifest2 = {
-                "name": "plugin2",
-                "version": "1.0.0",
-                "entry_point": "main.py"
-            }
+            manifest2 = {"name": "plugin2", "version": "1.0.0", "entry_point": "main.py"}
             (plugin2_dir / "manifest.json").write_text(json.dumps(manifest2))
 
             # Install both
@@ -199,7 +182,6 @@ class TestMultiPluginScenarios:
     def test_plugins_with_conflicting_servers(self):
         """Test handling plugins with conflicting MCP server names."""
         from amplihack.plugin_manager import PluginManager
-        from amplihack.settings_generator import SettingsGenerator
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Two plugins with same server name
@@ -209,9 +191,7 @@ class TestMultiPluginScenarios:
                 "name": "plugin1",
                 "version": "1.0.0",
                 "entry_point": "main.py",
-                "mcpServers": {
-                    "shared-server": {"command": "plugin1-server"}
-                }
+                "mcpServers": {"shared-server": {"command": "plugin1-server"}},
             }
             (plugin1_dir / "manifest.json").write_text(json.dumps(manifest1))
 
@@ -221,9 +201,7 @@ class TestMultiPluginScenarios:
                 "name": "plugin2",
                 "version": "1.0.0",
                 "entry_point": "main.py",
-                "mcpServers": {
-                    "shared-server": {"command": "plugin2-server"}
-                }
+                "mcpServers": {"shared-server": {"command": "plugin2-server"}},
             }
             (plugin2_dir / "manifest.json").write_text(json.dumps(manifest2))
 
@@ -263,18 +241,14 @@ class TestMultiPluginScenarios:
 
         # Plugin 1 settings
         plugin1_settings = {
-            "mcpServers": {
-                "server1": {"command": "cmd1"}
-            },
-            "custom": {"plugin1": "value"}
+            "mcpServers": {"server1": {"command": "cmd1"}},
+            "custom": {"plugin1": "value"},
         }
 
         # Plugin 2 settings
         plugin2_settings = {
-            "mcpServers": {
-                "server2": {"command": "cmd2"}
-            },
-            "custom": {"plugin2": "value"}
+            "mcpServers": {"server2": {"command": "cmd2"}},
+            "custom": {"plugin2": "value"},
         }
 
         # User settings
@@ -282,7 +256,7 @@ class TestMultiPluginScenarios:
             "mcpServers": {
                 "server1": {"command": "custom-cmd"}  # Override
             },
-            "user": {"setting": "value"}
+            "user": {"setting": "value"},
         }
 
         generator = SettingsGenerator()

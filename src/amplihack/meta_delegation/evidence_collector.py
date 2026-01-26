@@ -23,12 +23,9 @@ Philosophy:
 """
 
 import fnmatch
-import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
-
 
 # Evidence type to file pattern mapping
 EVIDENCE_PATTERNS = {
@@ -138,7 +135,7 @@ class EvidenceItem:
     excerpt: str
     size_bytes: int
     timestamp: datetime
-    metadata: Dict = field(default_factory=dict)
+    metadata: dict = field(default_factory=dict)
 
     def save_to_file(self, output_path: str) -> None:
         """Save evidence content to file.
@@ -182,7 +179,7 @@ class EvidenceCollector:
     def __init__(
         self,
         working_directory: str,
-        evidence_priorities: Optional[List[str]] = None,
+        evidence_priorities: list[str] | None = None,
     ):
         """Initialize evidence collector.
 
@@ -192,14 +189,14 @@ class EvidenceCollector:
         """
         self.working_directory = Path(working_directory)
         self.evidence_priorities = evidence_priorities or []
-        self._collected_evidence: List[EvidenceItem] = []
+        self._collected_evidence: list[EvidenceItem] = []
 
     def collect_evidence(
         self,
-        execution_log: Optional[str] = None,
-        evidence_types: Optional[List[str]] = None,
-        exclude_patterns: Optional[List[str]] = None,
-    ) -> List[EvidenceItem]:
+        execution_log: str | None = None,
+        evidence_types: list[str] | None = None,
+        exclude_patterns: list[str] | None = None,
+    ) -> list[EvidenceItem]:
         """Collect evidence from working directory.
 
         Args:
@@ -211,7 +208,12 @@ class EvidenceCollector:
             List of evidence items
         """
         evidence = []
-        exclude_patterns = exclude_patterns or ["__pycache__/*", "*.pyc", ".git/*", "node_modules/*"]
+        exclude_patterns = exclude_patterns or [
+            "__pycache__/*",
+            "*.pyc",
+            ".git/*",
+            "node_modules/*",
+        ]
 
         # Determine which types to collect
         types_to_collect = evidence_types or list(EVIDENCE_PATTERNS.keys())
@@ -249,7 +251,7 @@ class EvidenceCollector:
         self._collected_evidence = evidence
         return evidence
 
-    def get_evidence_by_type(self, evidence_type: str) -> List[EvidenceItem]:
+    def get_evidence_by_type(self, evidence_type: str) -> list[EvidenceItem]:
         """Get evidence items of specific type.
 
         Args:
@@ -260,7 +262,7 @@ class EvidenceCollector:
         """
         return [item for item in self._collected_evidence if item.type == evidence_type]
 
-    def get_evidence_by_path_pattern(self, pattern: str) -> List[EvidenceItem]:
+    def get_evidence_by_path_pattern(self, pattern: str) -> list[EvidenceItem]:
         """Get evidence items matching path pattern.
 
         Args:
@@ -269,11 +271,7 @@ class EvidenceCollector:
         Returns:
             List of matching evidence items
         """
-        return [
-            item
-            for item in self._collected_evidence
-            if fnmatch.fnmatch(item.path, pattern)
-        ]
+        return [item for item in self._collected_evidence if fnmatch.fnmatch(item.path, pattern)]
 
     def export_evidence(self, output_directory: str) -> None:
         """Export all collected evidence to directory.
@@ -316,7 +314,7 @@ class EvidenceCollector:
 
             item.save_to_file(str(output_path))
 
-    def _find_files(self, pattern: str, exclude_patterns: List[str]) -> List[Path]:
+    def _find_files(self, pattern: str, exclude_patterns: list[str]) -> list[Path]:
         """Find files matching pattern, excluding specified patterns.
 
         Args:
@@ -396,7 +394,7 @@ class EvidenceCollector:
             metadata=metadata,
         )
 
-    def _extract_metadata(self, file_path: Path, content: str) -> Dict:
+    def _extract_metadata(self, file_path: Path, content: str) -> dict:
         """Extract metadata from file.
 
         Args:

@@ -253,12 +253,24 @@ class TestModelValidation:
         validator = ModelValidator()
 
         # Test Sonnet 4 routing (the conflict case from #1920)
-        assert validator.validate_and_route("claude-sonnet-4.5-20250514") == "anthropic/claude-sonnet-4.5-20250514"
-        assert validator.validate_and_route("claude-sonnet-4-20250514") == "anthropic/claude-sonnet-4-20250514"
+        assert (
+            validator.validate_and_route("claude-sonnet-4.5-20250514")
+            == "anthropic/claude-sonnet-4.5-20250514"
+        )
+        assert (
+            validator.validate_and_route("claude-sonnet-4-20250514")
+            == "anthropic/claude-sonnet-4-20250514"
+        )
 
         # Test other Claude models
-        assert validator.validate_and_route("claude-opus-4-20240229") == "anthropic/claude-opus-4-20240229"
-        assert validator.validate_and_route("claude-3-5-sonnet-20241022") == "anthropic/claude-3-5-sonnet-20241022"
+        assert (
+            validator.validate_and_route("claude-opus-4-20240229")
+            == "anthropic/claude-opus-4-20240229"
+        )
+        assert (
+            validator.validate_and_route("claude-3-5-sonnet-20241022")
+            == "anthropic/claude-3-5-sonnet-20241022"
+        )
 
     def test_sonnet_4_routing_fix_issue_1920(self):
         """Test explicit Sonnet 4 routing fix from Issue #1920.
@@ -297,7 +309,9 @@ class TestModelValidation:
 
         # GitHub Copilot models
         assert validator.validate_and_route("copilot-gpt-4") == "github/copilot-gpt-4"
-        assert validator.validate_and_route("copilot-gpt-3.5-turbo") == "github/copilot-gpt-3.5-turbo"
+        assert (
+            validator.validate_and_route("copilot-gpt-3.5-turbo") == "github/copilot-gpt-3.5-turbo"
+        )
 
     def test_model_validator_provider_prefix_determination(self):
         """Test that ModelValidator determines provider prefixes correctly."""
@@ -334,7 +348,7 @@ class TestModelValidation:
 
     def test_model_validator_constants_used(self):
         """Test that ModelValidator uses constants, not hardcoded strings."""
-        from amplihack.proxy.server import ModelValidator, CLAUDE_MODELS
+        from amplihack.proxy.server import CLAUDE_MODELS, ModelValidator
 
         validator = ModelValidator()
 
@@ -373,12 +387,7 @@ class TestInputValidation:
         mapper = GitHubModelMapper({})
 
         # Valid model names
-        valid_models = [
-            "gpt-4",
-            "gpt-3.5-turbo",
-            "claude-sonnet-4.5-20250514",
-            "copilot-gpt-4"
-        ]
+        valid_models = ["gpt-4", "gpt-3.5-turbo", "claude-sonnet-4.5-20250514", "copilot-gpt-4"]
 
         for model in valid_models:
             # Should not raise exception
@@ -397,7 +406,7 @@ class TestInputValidation:
             "gpt-4' OR '1'='1",
             "gpt-4<script>alert('xss')</script>",
             "../../../etc/passwd",
-            "gpt-4\n\nmalicious-header: value"
+            "gpt-4\n\nmalicious-header: value",
         ]
 
         for attempt in injection_attempts:
@@ -446,9 +455,10 @@ class TestFilePermissions:
 
     def test_token_file_permissions(self, tmp_path):
         """Test that token files have 0600 permissions."""
-        from amplihack.proxy.github_auth import GitHubAuthManager
         import os
         import stat
+
+        from amplihack.proxy.github_auth import GitHubAuthManager
 
         auth_manager = GitHubAuthManager()
         token_file = tmp_path / ".github_token"
@@ -469,9 +479,10 @@ class TestFilePermissions:
 
     def test_token_directory_permissions(self, tmp_path):
         """Test that token directory has 0700 permissions."""
-        from amplihack.proxy.github_auth import GitHubAuthManager
         import os
         import stat
+
+        from amplihack.proxy.github_auth import GitHubAuthManager
 
         auth_manager = GitHubAuthManager()
         token_dir = tmp_path / ".amplihack"
@@ -493,8 +504,9 @@ class TestFilePermissions:
 
     def test_permission_error_handling(self, tmp_path):
         """Test that permission errors are handled gracefully."""
-        from amplihack.proxy.github_auth import GitHubAuthManager
         import os
+
+        from amplihack.proxy.github_auth import GitHubAuthManager
 
         auth_manager = GitHubAuthManager()
 
@@ -514,9 +526,10 @@ class TestFilePermissions:
 
     def test_existing_file_permission_update(self, tmp_path):
         """Test that existing files get permissions updated to 0600."""
-        from amplihack.proxy.github_auth import GitHubAuthManager
         import os
         import stat
+
+        from amplihack.proxy.github_auth import GitHubAuthManager
 
         auth_manager = GitHubAuthManager()
         token_file = tmp_path / ".github_token"
@@ -533,15 +546,13 @@ class TestFilePermissions:
         mode = file_stat.st_mode
         assert stat.S_IMODE(mode) == 0o600, f"Expected 0600, got {oct(stat.S_IMODE(mode))}"
 
-    @pytest.mark.skipif(
-        os.name == "nt",
-        reason="Unix permissions not applicable on Windows"
-    )
+    @pytest.mark.skipif(os.name == "nt", reason="Unix permissions not applicable on Windows")
     def test_umask_does_not_affect_permissions(self, tmp_path):
         """Test that umask does not affect token file permissions."""
-        from amplihack.proxy.github_auth import GitHubAuthManager
         import os
         import stat
+
+        from amplihack.proxy.github_auth import GitHubAuthManager
 
         auth_manager = GitHubAuthManager()
         token_file = tmp_path / ".github_token"
@@ -564,9 +575,10 @@ class TestFilePermissions:
 
     def test_set_secure_permissions_file(self, tmp_path):
         """Test _set_secure_permissions helper method for files."""
-        from amplihack.proxy.github_auth import GitHubAuthManager
         import os
         import stat
+
+        from amplihack.proxy.github_auth import GitHubAuthManager
 
         auth_manager = GitHubAuthManager()
         test_file = tmp_path / "test_file.txt"
@@ -582,9 +594,10 @@ class TestFilePermissions:
 
     def test_set_secure_permissions_directory(self, tmp_path):
         """Test _set_secure_permissions helper method for directories."""
-        from amplihack.proxy.github_auth import GitHubAuthManager
         import os
         import stat
+
+        from amplihack.proxy.github_auth import GitHubAuthManager
 
         auth_manager = GitHubAuthManager()
         test_dir = tmp_path / "test_dir"
@@ -600,8 +613,9 @@ class TestFilePermissions:
 
     def test_set_secure_permissions_error_handling(self, tmp_path):
         """Test _set_secure_permissions error handling."""
-        from amplihack.proxy.github_auth import GitHubAuthManager
         import os
+
+        from amplihack.proxy.github_auth import GitHubAuthManager
 
         auth_manager = GitHubAuthManager()
 

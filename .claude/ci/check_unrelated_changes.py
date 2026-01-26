@@ -13,7 +13,6 @@ import subprocess
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
 
 import yaml
 
@@ -33,7 +32,7 @@ class UnrelatedChangesDetector:
         self.config_path = config_path
         self.config = self._load_config()
 
-    def _load_config(self) -> Dict:
+    def _load_config(self) -> dict:
         """Load configuration from YAML file."""
         if not self.config_path.exists():
             print(f"ERROR: Config file not found: {self.config_path}")
@@ -41,9 +40,9 @@ class UnrelatedChangesDetector:
 
         with open(self.config_path) as f:
             config = yaml.safe_load(f)
-            return config.get('unrelated_change_detection', {})
+            return config.get("unrelated_change_detection", {})
 
-    def _get_changed_files(self) -> List[str]:
+    def _get_changed_files(self) -> list[str]:
         """
         Get list of changed files in current branch.
 
@@ -53,52 +52,52 @@ class UnrelatedChangesDetector:
         try:
             # Get the merge base with main/master
             result = subprocess.run(
-                ['git', 'merge-base', 'HEAD', 'origin/main'],
+                ["git", "merge-base", "HEAD", "origin/main"],
                 cwd=self.repo_root,
                 capture_output=True,
                 text=True,
-                check=True
+                check=True,
             )
             merge_base = result.stdout.strip()
 
             # Get changed files since merge base
             result = subprocess.run(
-                ['git', 'diff', '--name-only', merge_base, 'HEAD'],
+                ["git", "diff", "--name-only", merge_base, "HEAD"],
                 cwd=self.repo_root,
                 capture_output=True,
                 text=True,
-                check=True
+                check=True,
             )
-            files = result.stdout.strip().split('\n')
+            files = result.stdout.strip().split("\n")
             return [f for f in files if f]
 
         except subprocess.CalledProcessError:
             # Fallback: try master branch
             try:
                 result = subprocess.run(
-                    ['git', 'merge-base', 'HEAD', 'origin/master'],
+                    ["git", "merge-base", "HEAD", "origin/master"],
                     cwd=self.repo_root,
                     capture_output=True,
                     text=True,
-                    check=True
+                    check=True,
                 )
                 merge_base = result.stdout.strip()
 
                 result = subprocess.run(
-                    ['git', 'diff', '--name-only', merge_base, 'HEAD'],
+                    ["git", "diff", "--name-only", merge_base, "HEAD"],
                     cwd=self.repo_root,
                     capture_output=True,
                     text=True,
-                    check=True
+                    check=True,
                 )
-                files = result.stdout.strip().split('\n')
+                files = result.stdout.strip().split("\n")
                 return [f for f in files if f]
 
             except subprocess.CalledProcessError as e:
                 print(f"WARNING: Could not determine changed files: {e}")
                 return []
 
-    def _classify_file(self, filepath: str) -> Set[str]:
+    def _classify_file(self, filepath: str) -> set[str]:
         """
         Classify a file into scope categories.
 
@@ -109,12 +108,12 @@ class UnrelatedChangesDetector:
             Set of scope categories (ci, docs, tests, src, config, scripts)
         """
         scopes = set()
-        scope_indicators = self.config.get('scope_indicators', {})
+        scope_indicators = self.config.get("scope_indicators", {})
 
         for scope_name, patterns in scope_indicators.items():
             for pattern in patterns:
                 # Check if filepath matches pattern
-                if pattern.endswith('/'):
+                if pattern.endswith("/"):
                     # Directory pattern
                     if filepath.startswith(pattern):
                         scopes.add(scope_name)
@@ -125,11 +124,11 @@ class UnrelatedChangesDetector:
 
         # If no scope matched, classify as 'other'
         if not scopes:
-            scopes.add('other')
+            scopes.add("other")
 
         return scopes
 
-    def _categorize_changes(self, files: List[str]) -> Dict[str, List[str]]:
+    def _categorize_changes(self, files: list[str]) -> dict[str, list[str]]:
         """
         Categorize changed files by scope.
 
@@ -148,7 +147,7 @@ class UnrelatedChangesDetector:
 
         return dict(categories)
 
-    def _are_scopes_related(self, scopes: Set[str]) -> bool:
+    def _are_scopes_related(self, scopes: set[str]) -> bool:
         """
         Check if a set of scopes are related.
 
@@ -158,7 +157,7 @@ class UnrelatedChangesDetector:
         Returns:
             True if scopes are related
         """
-        related_scopes = self.config.get('related_scopes', [])
+        related_scopes = self.config.get("related_scopes", [])
 
         # Convert scopes to sorted tuple for comparison
         scopes_sorted = tuple(sorted(scopes))
@@ -175,7 +174,7 @@ class UnrelatedChangesDetector:
 
         return False
 
-    def _should_warn(self, scopes: Set[str]) -> bool:
+    def _should_warn(self, scopes: set[str]) -> bool:
         """
         Check if scope combination should trigger a warning.
 
@@ -185,7 +184,7 @@ class UnrelatedChangesDetector:
         Returns:
             True if should warn
         """
-        warn_combinations = self.config.get('warn_on_combinations', [])
+        warn_combinations = self.config.get("warn_on_combinations", [])
 
         for warn_combo in warn_combinations:
             if set(warn_combo).issubset(scopes):
@@ -193,7 +192,7 @@ class UnrelatedChangesDetector:
 
         return False
 
-    def analyze(self) -> Tuple[bool, List[str], Dict[str, List[str]]]:
+    def analyze(self) -> tuple[bool, list[str], dict[str, list[str]]]:
         """
         Analyze changes for unrelated modifications.
 
@@ -210,7 +209,7 @@ class UnrelatedChangesDetector:
         scopes = set(categories.keys())
 
         # Skip if only 'other' scope
-        if scopes == {'other'}:
+        if scopes == {"other"}:
             return False, warnings, categories
 
         # Check if scopes are related
@@ -242,15 +241,12 @@ class UnrelatedChangesDetector:
         has_issues, warnings, categories = self.analyze()
 
         if not has_issues:
-            return (
-                "✅ Unrelated Changes Check: PASSED\n"
-                "Changes appear to be focused and related.\n"
-            )
+            return "✅ Unrelated Changes Check: PASSED\nChanges appear to be focused and related.\n"
 
         report = [
             "⚠️  Unrelated Changes Check: WARNINGS\n",
             f"Found {len(warnings)} potential issue(s):\n",
-            ""
+            "",
         ]
 
         for warning in warnings:
@@ -262,17 +258,19 @@ class UnrelatedChangesDetector:
         for scope, files in sorted(categories.items()):
             report.append(f"  {scope}: {len(files)} file(s)")
 
-        report.extend([
-            "",
-            "---",
-            "These warnings do not block CI, but should be considered.",
-            "PRs should ideally focus on a single concern or related concerns.",
-            "",
-            "Consider:",
-            "- Splitting unrelated changes into separate PRs",
-            "- Ensuring changes serve a cohesive purpose",
-            "- Documenting why multiple scopes are necessary",
-        ])
+        report.extend(
+            [
+                "",
+                "---",
+                "These warnings do not block CI, but should be considered.",
+                "PRs should ideally focus on a single concern or related concerns.",
+                "",
+                "Consider:",
+                "- Splitting unrelated changes into separate PRs",
+                "- Ensuring changes serve a cohesive purpose",
+                "- Documenting why multiple scopes are necessary",
+            ]
+        )
 
         return "\n".join(report)
 

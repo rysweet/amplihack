@@ -14,17 +14,12 @@ Philosophy:
 """
 
 import pytest
-from pathlib import Path
 
 from .harness import (
+    assert_output_contains,
     uvx_launch,
     uvx_launch_with_test_project,
-    assert_skill_loaded,
-    assert_output_contains,
-    assert_log_contains,
-    launch_and_test_skill,
 )
-
 
 # Git reference to test
 GIT_REF = "feat/issue-1948-plugin-architecture"

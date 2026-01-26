@@ -101,18 +101,21 @@ When LSP is configured, Claude Code gains powerful code intelligence:
 ### Real-Time Code Understanding
 
 **Type Information**: Claude sees exact types, not guesses
+
 ```python
 # Claude knows: user is type User | None from models.User
 user = get_current_user()
 ```
 
 **Diagnostics**: Claude receives LSP warnings/errors
+
 ```python
 # Pyright reports: "name" is not accessed
 from typing import List, Set  # Claude sees this warning
 ```
 
 **Navigation**: Claude can jump to definitions
+
 ```python
 # Claude uses LSP goToDefinition to find authenticate() in auth.py
 result = authenticate(credentials)
@@ -127,24 +130,24 @@ result = authenticate(credentials)
 
 ## Supported Languages
 
-| Language   | LSP Server       | Auto-Installed Binary              |
-|------------|------------------|-------------------------------------|
-| Python     | pyright          | `npm install -g pyright`            |
-| TypeScript | vtsls            | `npm install -g @vtsls/language-server` |
-| JavaScript | vtsls            | `npm install -g @vtsls/language-server` |
-| Rust       | rust-analyzer    | `rustup component add rust-analyzer` |
-| Go         | gopls            | `go install golang.org/x/tools/gopls@latest` |
-| Java       | jdtls            | Eclipse JDT LS (manual download)    |
-| C/C++      | clangd           | `brew install llvm` / `apt install clangd` |
-| C#         | omnisharp        | Manual download from omnisharp.net  |
-| Ruby       | ruby-lsp         | `gem install ruby-lsp`              |
-| PHP        | phpactor         | `composer global require phpactor/phpactor` |
-| Bash       | bash-language-server | `npm install -g bash-language-server` |
-| YAML       | yaml-language-server | `npm install -g yaml-language-server` |
-| JSON       | vscode-json-languageserver | `npm install -g vscode-json-languageserver` |
-| HTML       | vscode-html-languageserver | `npm install -g vscode-html-languageserver` |
-| CSS        | vscode-css-languageserver  | `npm install -g vscode-css-languageserver` |
-| Markdown   | marksman         | `brew install marksman` / GitHub download |
+| Language   | LSP Server                 | Auto-Installed Binary                        |
+| ---------- | -------------------------- | -------------------------------------------- |
+| Python     | pyright                    | `npm install -g pyright`                     |
+| TypeScript | vtsls                      | `npm install -g @vtsls/language-server`      |
+| JavaScript | vtsls                      | `npm install -g @vtsls/language-server`      |
+| Rust       | rust-analyzer              | `rustup component add rust-analyzer`         |
+| Go         | gopls                      | `go install golang.org/x/tools/gopls@latest` |
+| Java       | jdtls                      | Eclipse JDT LS (manual download)             |
+| C/C++      | clangd                     | `brew install llvm` / `apt install clangd`   |
+| C#         | omnisharp                  | Manual download from omnisharp.net           |
+| Ruby       | ruby-lsp                   | `gem install ruby-lsp`                       |
+| PHP        | phpactor                   | `composer global require phpactor/phpactor`  |
+| Bash       | bash-language-server       | `npm install -g bash-language-server`        |
+| YAML       | yaml-language-server       | `npm install -g yaml-language-server`        |
+| JSON       | vscode-json-languageserver | `npm install -g vscode-json-languageserver`  |
+| HTML       | vscode-html-languageserver | `npm install -g vscode-html-languageserver`  |
+| CSS        | vscode-css-languageserver  | `npm install -g vscode-css-languageserver`   |
+| Markdown   | marksman                   | `brew install marksman` / GitHub download    |
 
 ## Manual Control
 
@@ -176,6 +179,7 @@ If LSP isn't working after automatic setup:
 ### Manual Skill Documentation
 
 For detailed troubleshooting and manual control, see:
+
 - [LSP Setup Skill Documentation](../../.claude/skills/lsp-setup/SKILL.md)
 - [LSP Usage Examples](../../.claude/skills/lsp-setup/USAGE_EXAMPLES.md)
 
@@ -186,6 +190,7 @@ For detailed troubleshooting and manual control, see:
 After `amplihack claude` launches, verify LSP is active:
 
 **Method 1: Ask Claude to analyze a file**
+
 ```
 You: "What issues do you see in src/main.py?"
 
@@ -197,6 +202,7 @@ If LSP is NOT working:
 ```
 
 **Method 2: Request type information**
+
 ```
 You: "What's the type of the user variable in auth.py line 42?"
 
@@ -208,6 +214,7 @@ If LSP is NOT working:
 ```
 
 **Method 3: Check console output**
+
 ```bash
 $ amplihack claude
 
@@ -237,6 +244,7 @@ $ amplihack claude
 **Cause**: Missing system dependencies or network issues
 
 **Solution**:
+
 1. Manually install system LSP binary: `npm install -g pyright`
 2. Manually install plugin: `npx cclsp install pyright`
 3. Restart amplihack: `amplihack claude`
@@ -246,11 +254,13 @@ $ amplihack claude
 **Symptom**: Claude doesn't show type information or diagnostics
 
 **Causes**:
+
 1. `ENABLE_LSP_TOOL=1` not set in environment
 2. LSP server binary not in PATH
 3. Claude Code plugin not installed
 
 **Solution**:
+
 1. Check `.env` file contains `ENABLE_LSP_TOOL=1`
 2. Verify binary installed: `which pyright-langserver`
 3. Check plugin: `claude plugin list`
@@ -305,12 +315,14 @@ Updated automatically with plugin configuration:
 ## Implementation Details
 
 **Source Code:**
+
 - Launcher Integration: `src/amplihack/launcher/core.py::_configure_lsp_auto()`
 - Language Detection: `~/.amplihack/.claude/skills/lsp-setup/language_detector.py`
 - LSP Configuration: `~/.amplihack/.claude/skills/lsp-setup/lsp_configurator.py`
 - Plugin Management: `~/.amplihack/.claude/skills/lsp-setup/plugin_manager.py`
 
 **Tests:**
+
 - Unit Tests: `~/.amplihack/.claude/skills/lsp-setup/tests/test_*.py`
 - Integration Tests: `~/.amplihack/.claude/skills/lsp-setup/tests/test_integration.py`
 - E2E Tests: `~/.amplihack/.claude/skills/lsp-setup/tests/test_e2e.py`

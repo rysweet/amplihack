@@ -34,22 +34,26 @@ That's it! amplihack is now available in all your Claude Code sessions.
 ### Core Features
 
 **Specialized AI Agents**
+
 - 30+ production-ready agents (architect, builder, tester, security, etc.)
 - Parallel execution by default
 - Auto-detection of which agents to use
 
 **Automated Workflows**
+
 - DEFAULT_WORKFLOW: Standard 22-step development process
 - Investigation workflow: Deep codebase analysis
 - Document-Driven Development: Docs-first approach
 - Fault tolerance patterns: N-version, debate, cascade
 
 **Claude Code Skills**
+
 - 90+ skills auto-load when needed
 - Mermaid diagrams, documentation writing, code analysis
 - Testing, validation, and quality checks
 
 **Multi-Platform Support**
+
 - Claude Code (primary)
 - GitHub Copilot CLI
 - Codex
@@ -58,16 +62,19 @@ That's it! amplihack is now available in all your Claude Code sessions.
 ### Plugin Benefits
 
 **Zero Configuration**
+
 - Installs to `~/.amplihack/.claude/`
 - Works in any project directory
 - No per-project setup needed
 
 **Auto-Detection**
+
 - LSP integration detects project languages
 - Appropriate agents auto-activate
 - Context-aware assistance
 
 **Always Up-to-Date**
+
 - Update once, applies everywhere
 - No scattered installations
 - Consistent experience across projects
@@ -375,6 +382,7 @@ MIT License - see [LICENSE](../../LICENSE) for details.
 ---
 
 **Next Steps:**
+
 - [Install the plugin](./PLUGIN_INSTALLATION.md)
 - [Configure LSP](./LSP_CONFIGURATION.md)
 - [Start developing](./PLUGIN_DEVELOPMENT.md)

@@ -5,6 +5,7 @@
 ### Overview
 
 Comprehensive test suite following TDD testing pyramid:
+
 - **60% Unit Tests** - Fast, heavily mocked
 - **30% Integration Tests** - Multiple components
 - **10% E2E Tests** - Complete workflows
@@ -160,13 +161,13 @@ Comprehensive test suite following TDD testing pyramid:
 
 ### Test Coverage Summary
 
-| Brick | Unit Tests | Integration Tests | E2E Tests | Total |
-|-------|-----------|------------------|-----------|-------|
-| PluginManager | 28 | 7 | 6 | 41 |
-| LSPDetector | 26 | 3 | 2 | 31 |
-| SettingsGenerator | 26 | 2 | 2 | 30 |
-| PathResolver | 27 | 1 | 0 | 28 |
-| **Total** | **107** | **13** | **10** | **130** |
+| Brick             | Unit Tests | Integration Tests | E2E Tests | Total   |
+| ----------------- | ---------- | ----------------- | --------- | ------- |
+| PluginManager     | 28         | 7                 | 6         | 41      |
+| LSPDetector       | 26         | 3                 | 2         | 31      |
+| SettingsGenerator | 26         | 2                 | 2         | 30      |
+| PathResolver      | 27         | 1                 | 0         | 28      |
+| **Total**         | **107**    | **13**            | **10**    | **130** |
 
 ### Test Pyramid Verification
 
@@ -210,6 +211,7 @@ pytest tests/e2e/ -v
 ### Test Dependencies
 
 Required for tests to run:
+
 - `pytest` - Test framework
 - `pytest-mock` - Mocking fixtures
 - `pytest-asyncio` - Async test support (if needed)
@@ -235,6 +237,7 @@ Required for tests to run:
 ### Coverage Goals
 
 After implementation, target coverage:
+
 - **Line coverage**: > 90%
 - **Branch coverage**: > 85%
 - **Function coverage**: > 95%

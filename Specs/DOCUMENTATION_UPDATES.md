@@ -7,6 +7,7 @@ Update all documentation to reflect plugin architecture migration and provide cl
 ## Problem
 
 Issue #1948 requires documentation updates but currently:
+
 - README still describes per-project `~/.amplihack/.claude/` installation
 - No plugin installation instructions
 - No migration guide
@@ -16,6 +17,7 @@ Issue #1948 requires documentation updates but currently:
 ## Solution Overview
 
 Update six documentation files with plugin architecture information:
+
 1. **README.md** - Installation section
 2. **.claude/context/PROJECT.md** - Architecture description
 3. **CLI help text** - Plugin commands
@@ -28,11 +30,13 @@ Update six documentation files with plugin architecture information:
 ### Inputs
 
 **Current Documentation State:**
+
 - README.md: Per-project installation instructions
 - PROJECT.md: Generic template
 - No plugin-specific documentation
 
 **New Content Needed:**
+
 - Plugin installation steps
 - Migration guidance
 - Architecture explanation
@@ -41,6 +45,7 @@ Update six documentation files with plugin architecture information:
 ### Outputs
 
 **Updated Documentation:**
+
 - Clear plugin installation instructions
 - Migration path from per-project mode
 - Architecture diagrams/explanation
@@ -59,16 +64,19 @@ Update six documentation files with plugin architecture information:
 **Section:** Installation
 
 **Current (Per-Project):**
-```markdown
+
+````markdown
 ## Installation
 
 ```bash
 pip install amplihack
 amplihack install
 ```
+````
 
 This copies `~/.amplihack/.claude/` directory to your project.
-```
+
+````
 
 **New (Plugin Mode):**
 ```markdown
@@ -85,7 +93,7 @@ amplihack plugin install https://github.com/rysweet/amplihack
 
 # Launch Claude Code with amplihack
 amplihack
-```
+````
 
 The plugin installs to `~/.amplihack/.claude/` and works across all projects.
 
@@ -102,13 +110,14 @@ This creates a local `~/.amplihack/.claude/` directory in your project.
 
 ### Which Mode Should I Use?
 
-| Mode | Best For | Pros | Cons |
-|------|----------|------|------|
-| **Plugin** (Recommended) | Most users | Auto-updates, zero config per project | Global configuration |
-| **Local** | Custom agents/workflows | Project-specific customization | Manual updates |
+| Mode                     | Best For                | Pros                                  | Cons                 |
+| ------------------------ | ----------------------- | ------------------------------------- | -------------------- |
+| **Plugin** (Recommended) | Most users              | Auto-updates, zero config per project | Global configuration |
+| **Local**                | Custom agents/workflows | Project-specific customization        | Manual updates       |
 
 See [Migration Guide](docs/MIGRATION_GUIDE.md) for switching between modes.
-```
+
+````
 
 ### File 2: PROJECT.md Updates
 
@@ -131,27 +140,29 @@ Supports **plugin architecture** for zero-configuration installation and **per-p
 
 Amplihack uses Claude Code's plugin system for installation:
 
-```
-~/.amplihack/.claude/          # Plugin installation (global)
-├── agents/                    # Specialized AI agents
-├── commands/                  # Slash commands (/ultrathink, /analyze)
-├── skills/                    # Claude Code skills
-├── tools/                     # Hooks and utilities
-│   └── amplihack/
-│       └── hooks/
-│           ├── hooks.json     # Hook configuration
-│           ├── session_start.py
-│           ├── stop.py
-│           ├── pre_tool_use.py
-│           ├── post_tool_use.py
-│           ├── user_prompt_submit.py
-│           └── pre_compact.py
-└── workflows/                 # Multi-step workflows
+````
+
+~/.amplihack/.claude/ # Plugin installation (global)
+├── agents/ # Specialized AI agents
+├── commands/ # Slash commands (/ultrathink, /analyze)
+├── skills/ # Claude Code skills
+├── tools/ # Hooks and utilities
+│ └── amplihack/
+│ └── hooks/
+│ ├── hooks.json # Hook configuration
+│ ├── session_start.py
+│ ├── stop.py
+│ ├── pre_tool_use.py
+│ ├── post_tool_use.py
+│ ├── user_prompt_submit.py
+│ └── pre_compact.py
+└── workflows/ # Multi-step workflows
 
 project/
 └── .claude/
-    └── settings.json          # References plugin via ${CLAUDE_PLUGIN_ROOT}
-```
+└── settings.json # References plugin via ${CLAUDE_PLUGIN_ROOT}
+
+````
 
 **Key Features:**
 - **Global Installation:** One install works for all projects
@@ -210,8 +221,9 @@ amplihack mode migrate-to-local    # Plugin → Local
 # Plugin management
 amplihack plugin verify amplihack  # Verify installation
 amplihack plugin install <source>  # Install from source
-```
-```
+````
+
+````
 
 ### File 3: CLI Help Text Updates
 
@@ -279,14 +291,15 @@ verify_parser = plugin_subparsers.add_parser(
       amplihack plugin verify amplihack
     """
 )
-```
+````
 
 ### File 4: Migration Guide (NEW)
 
 **Location:** `docs/MIGRATION_GUIDE.md`
 
 **Content:**
-```markdown
+
+````markdown
 # Migration Guide: Per-Project → Plugin
 
 This guide helps you migrate from per-project `~/.amplihack/.claude/` installations to the plugin architecture.
@@ -294,12 +307,14 @@ This guide helps you migrate from per-project `~/.amplihack/.claude/` installati
 ## Why Migrate?
 
 **Plugin Benefits:**
+
 - ✅ One-time installation (works across all projects)
 - ✅ Automatic updates
 - ✅ Zero configuration per project
 - ✅ Consistent behavior across projects
 
 **Per-Project Benefits:**
+
 - ✅ Project-specific customization
 - ✅ Version pinning
 - ✅ Experimental agent development
@@ -311,8 +326,10 @@ This guide helps you migrate from per-project `~/.amplihack/.claude/` installati
 ```bash
 amplihack mode status
 ```
+````
 
 Output:
+
 ```
 Current mode: local
   Using: /path/to/project/.claude
@@ -325,6 +342,7 @@ amplihack plugin install https://github.com/rysweet/amplihack
 ```
 
 Output:
+
 ```
 ✅ Plugin installed: amplihack
    Location: /home/user/.amplihack/.claude
@@ -338,6 +356,7 @@ amplihack mode migrate-to-plugin
 ```
 
 This:
+
 1. Checks for custom files (warns if found)
 2. Removes local `~/.amplihack/.claude/` directory
 3. Project now uses plugin
@@ -349,6 +368,7 @@ amplihack mode status
 ```
 
 Output:
+
 ```
 Current mode: plugin
   Using: /home/user/.amplihack/.claude
@@ -361,11 +381,13 @@ If you have custom agents, commands, or workflows:
 ### Option 1: Preserve Customizations
 
 1. **Backup local .claude/:**
+
    ```bash
    cp -r .claude .claude.backup
    ```
 
 2. **Identify custom files:**
+
    ```bash
    # Compare with plugin
    diff -r .claude ~/.amplihack/.claude
@@ -380,6 +402,7 @@ If you have custom agents, commands, or workflows:
 ### Option 2: Keep Local Mode
 
 Stay in per-project mode for this project:
+
 ```bash
 # Do not migrate - keep local .claude/
 ```
@@ -397,10 +420,12 @@ This creates a local `~/.amplihack/.claude/` copy from the plugin.
 ## Multi-Project Workflow
 
 **Recommended Approach:**
+
 - Most projects: Use plugin (zero config)
 - Experimental projects: Use local mode
 
 **Example:**
+
 ```bash
 # Project 1 (standard - use plugin)
 cd ~/project1
@@ -436,6 +461,7 @@ amplihack plugin verify amplihack
 ```
 
 If verification fails:
+
 ```bash
 amplihack plugin install https://github.com/rysweet/amplihack
 ```
@@ -443,12 +469,14 @@ amplihack plugin install https://github.com/rysweet/amplihack
 ### Local .claude/ Won't Delete
 
 Check for uncommitted changes:
+
 ```bash
 cd .claude
 git status
 ```
 
 Backup before migrating:
+
 ```bash
 cp -r .claude .claude.backup
 ```
@@ -456,11 +484,13 @@ cp -r .claude .claude.backup
 ### Mode Override
 
 Temporarily force a mode:
+
 ```bash
 AMPLIHACK_MODE=plugin amplihack  # Force plugin
 AMPLIHACK_MODE=local amplihack   # Force local
 ```
-```
+
+````
 
 ### File 5: Plugin Architecture Documentation (NEW)
 
@@ -478,29 +508,31 @@ Amplihack uses Claude Code's plugin system for installation and discovery.
 
 ## Directory Structure
 
-```
+````
+
 ~/.amplihack/
-├── .claude/                   # Plugin content
-│   ├── agents/                # Specialized AI agents
-│   ├── commands/              # Slash commands
-│   ├── skills/                # Auto-discovered capabilities
-│   ├── tools/
-│   │   └── amplihack/
-│   │       └── hooks/
-│   │           ├── hooks.json          # Hook configuration
-│   │           ├── session_start.py    # SessionStart hook
-│   │           ├── stop.py             # Stop hook
-│   │           ├── pre_tool_use.py     # PreToolUse hook
-│   │           ├── post_tool_use.py    # PostToolUse hook
-│   │           ├── user_prompt_submit.py # UserPromptSubmit hook
-│   │           └── pre_compact.py      # PreCompact hook
-│   └── workflows/             # Multi-step workflows
+├── .claude/ # Plugin content
+│ ├── agents/ # Specialized AI agents
+│ ├── commands/ # Slash commands
+│ ├── skills/ # Auto-discovered capabilities
+│ ├── tools/
+│ │ └── amplihack/
+│ │ └── hooks/
+│ │ ├── hooks.json # Hook configuration
+│ │ ├── session_start.py # SessionStart hook
+│ │ ├── stop.py # Stop hook
+│ │ ├── pre_tool_use.py # PreToolUse hook
+│ │ ├── post_tool_use.py # PostToolUse hook
+│ │ ├── user_prompt_submit.py # UserPromptSubmit hook
+│ │ └── pre_compact.py # PreCompact hook
+│ └── workflows/ # Multi-step workflows
 └── .claude-plugin/
-    └── plugin.json            # Plugin manifest
+└── plugin.json # Plugin manifest
 
 ~/.claude/
-└── settings.json              # Claude Code settings (references plugin)
-```
+└── settings.json # Claude Code settings (references plugin)
+
+````
 
 ## Plugin Manifest
 
@@ -529,20 +561,20 @@ Amplihack uses Claude Code's plugin system for installation and discovery.
     "type": "github"
   }
 }
-```
+````
 
 ## Hook System
 
 ### Lifecycle Hooks
 
-| Hook | When | Purpose |
-|------|------|---------|
-| **SessionStart** | Claude Code starts | Initialize runtime, check version, setup memory |
-| **Stop** | Claude Code exits | Cleanup, save state, shutdown services |
-| **PreToolUse** | Before tool execution | Validate inputs, log tool calls |
-| **PostToolUse** | After tool execution | Process results, update state |
-| **UserPromptSubmit** | User submits prompt | Parse intent, route to workflows |
-| **PreCompact** | Before context compaction | Save important context |
+| Hook                 | When                      | Purpose                                         |
+| -------------------- | ------------------------- | ----------------------------------------------- |
+| **SessionStart**     | Claude Code starts        | Initialize runtime, check version, setup memory |
+| **Stop**             | Claude Code exits         | Cleanup, save state, shutdown services          |
+| **PreToolUse**       | Before tool execution     | Validate inputs, log tool calls                 |
+| **PostToolUse**      | After tool execution      | Process results, update state                   |
+| **UserPromptSubmit** | User submits prompt       | Parse intent, route to workflows                |
+| **PreCompact**       | Before context compaction | Save important context                          |
 
 ### Hook Configuration
 
@@ -613,6 +645,7 @@ Amplihack supports dual-mode operation:
 2. **Local Mode:** Uses `project/.claude/`
 
 **Detection Logic:**
+
 ```python
 def detect_claude_mode():
     if project_has_local_claude():
@@ -626,11 +659,13 @@ def detect_claude_mode():
 ## Installation Process
 
 1. **Install Package:**
+
    ```bash
    pip install amplihack
    ```
 
 2. **Install Plugin:**
+
    ```bash
    amplihack plugin install https://github.com/rysweet/amplihack
    ```
@@ -648,11 +683,11 @@ def detect_claude_mode():
 
 ## Cross-Tool Compatibility
 
-| Tool | Support | Notes |
-|------|---------|-------|
-| **Claude Code** | ✅ Full | Primary target |
+| Tool               | Support            | Notes                 |
+| ------------------ | ------------------ | --------------------- |
+| **Claude Code**    | ✅ Full            | Primary target        |
 | **GitHub Copilot** | ⚠️ Research needed | Plugin format unknown |
-| **Codex** | ⚠️ Research needed | Plugin format unknown |
+| **Codex**          | ⚠️ Research needed | Plugin format unknown |
 
 See [Cross-Tool Compatibility](CROSS_TOOL_COMPATIBILITY.md) for details.
 
@@ -661,7 +696,8 @@ See [Cross-Tool Compatibility](CROSS_TOOL_COMPATIBILITY.md) for details.
 - [Claude Code Plugin Documentation](https://docs.anthropic.com/claude-code/plugins)
 - [Issue #1948: Plugin Architecture](https://github.com/rysweet/amplihack/issues/1948)
 - [ISSUE_1948_REQUIREMENTS.md](../ISSUE_1948_REQUIREMENTS.md)
-```
+
+````
 
 ### File 6: CHANGELOG.md Updates
 
@@ -693,7 +729,7 @@ See [Cross-Tool Compatibility](CROSS_TOOL_COMPATIBILITY.md) for details.
 - Claude Code: Full support ✅
 - GitHub Copilot: Research in progress ⚠️
 - Codex: Research in progress ⚠️
-```
+````
 
 ## Dependencies
 

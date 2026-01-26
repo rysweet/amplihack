@@ -73,7 +73,7 @@ class AgentMemoryHook(Hook):
         try:
             if event == "prompt:submit":
                 return await self._handle_prompt_submit(data)
-            elif event == "session:end":
+            if event == "session:end":
                 return await self._handle_session_end(data)
         except Exception as e:
             # Fail open - log but don't block

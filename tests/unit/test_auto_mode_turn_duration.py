@@ -7,8 +7,7 @@ Tests that each turn's duration is tracked and reported:
 - Session metrics aggregated and logged
 """
 
-from unittest.mock import Mock, patch
-import pytest
+from unittest.mock import patch
 
 from amplihack.launcher.auto_mode import AutoMode
 
@@ -77,6 +76,7 @@ class TestTurnDurationTracking:
         # Capture log calls
         log_calls = []
         original_log = auto_mode.log
+
         def capture_log(msg, level="INFO"):
             log_calls.append({"msg": msg, "level": level})
             original_log(msg, level)
@@ -86,10 +86,7 @@ class TestTurnDurationTracking:
                 auto_mode._run_sync_session()
 
         # Check that session metrics were logged
-        session_metrics_logs = [
-            log for log in log_calls
-            if "Session metrics:" in log["msg"]
-        ]
+        session_metrics_logs = [log for log in log_calls if "Session metrics:" in log["msg"]]
         assert len(session_metrics_logs) > 0
 
         # Verify metrics content

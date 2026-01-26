@@ -63,6 +63,7 @@ Use traditional review when:
 ### 1. Context Analysis
 
 First, I'll analyze the code to understand:
+
 - What files/functions are being reviewed
 - Complexity level and patterns used
 - Areas that warrant deeper questions
@@ -70,6 +71,7 @@ First, I'll analyze the code to understand:
 ### 2. Question Selection
 
 Based on the code, I'll select questions from six categories:
+
 - **Design**: Why was this approach chosen?
 - **Edge Cases**: What happens in unusual situations?
 - **Clarity**: How would you explain this?
@@ -89,6 +91,7 @@ Why did you choose to store session data in memory rather than a database?
 ```
 
 After each answer, I may:
+
 - Ask a follow-up question if the answer reveals uncertainty
 - Move to the next question if understanding is solid
 - Note insights for the final synthesis
@@ -96,6 +99,7 @@ After each answer, I may:
 ### 4. Synthesis
 
 After all questions, I'll summarize:
+
 - **Insights Revealed**: What became clear through dialogue
 - **Assumptions Surfaced**: Hidden assumptions that were exposed
 - **Recommendations**: What should change based on the dialogue
@@ -106,6 +110,7 @@ After all questions, I'll summarize:
 ### Quick (3-5 questions, ~5 min)
 
 Best for:
+
 - Small bug fixes
 - Simple changes
 - Obvious code
@@ -115,6 +120,7 @@ Focus: Highest-risk areas only
 ### Standard (7-10 questions, ~15 min)
 
 Best for:
+
 - Feature implementations
 - Refactoring
 - Typical PRs
@@ -124,6 +130,7 @@ Focus: All question categories covered
 ### Deep (15-20 questions, ~30 min)
 
 Best for:
+
 - Security-sensitive code
 - Core infrastructure
 - Architectural changes
@@ -171,18 +178,22 @@ What happens if a user's session expires while they're submitting a form?
 ## Review Synthesis
 
 ### Insights Revealed
+
 - Session storage is pragmatic but migration path unclear
 - Session timeout during active use is unhandled
 
 ### Assumptions Surfaced
+
 - Single server deployment assumption
 - Users won't have long form submissions
 
 ### Recommendations
+
 1. Document session storage migration criteria
 2. Add graceful session timeout handling
 
 ### Strengths Identified
+
 - Clear awareness of simplicity trade-offs
 - Quick recognition of gaps when prompted
 ```
@@ -199,6 +210,7 @@ A) Standard review - Direct feedback from reviewer agent
 B) Socratic review - Dialogue with socratic-reviewer agent
 
 Use Socratic when:
+
 - Learning is as important as fixing
 - Design decisions need documentation
 - Mentoring/onboarding context
@@ -220,6 +232,7 @@ The key question: how do insights from dialogue become actual improvements?
 ### Interactive Mode (Default)
 
 During live dialogue:
+
 1. Each question and response is captured
 2. Insights are noted inline
 3. At the end, a synthesis is produced
@@ -228,6 +241,7 @@ During live dialogue:
 ### Non-Interactive Mode (CI/Subprocess)
 
 For automated contexts:
+
 1. All questions are asked rhetorically
 2. Agent analyzes code to identify likely issues
 3. Structured JSON output is produced

@@ -23,7 +23,6 @@ Example:
 import subprocess
 import time
 from pathlib import Path
-from typing import Dict, List, Optional
 
 
 class GitignoreChecker:
@@ -31,9 +30,11 @@ class GitignoreChecker:
 
     DEFAULT_DIRECTORIES = [".claude/logs/", ".claude/runtime/"]
 
-    def __init__(self, directories: Optional[List[str]] = None):
+    def __init__(self, directories: list[str] | None = None):
         """Initialize checker with directories to protect."""
-        self.directories = directories if directories is not None else self.DEFAULT_DIRECTORIES.copy()
+        self.directories = (
+            directories if directories is not None else self.DEFAULT_DIRECTORIES.copy()
+        )
 
     def is_git_repo(self) -> bool:
         """Check if current directory is inside a Git repository."""
@@ -51,13 +52,13 @@ class GitignoreChecker:
         except subprocess.TimeoutExpired:
             # Expected: git command hung
             return False
-        except Exception as e:
+        except Exception:
             # Unexpected: fail safe by returning False
             # Design decision: Exceptions are silently caught (fail-safe design)
             # No logging implemented yet to avoid circular dependencies
             return False
 
-    def get_repo_root(self) -> Optional[Path]:
+    def get_repo_root(self) -> Path | None:
         """Get the root directory of the Git repository."""
         try:
             result = subprocess.run(
@@ -75,13 +76,13 @@ class GitignoreChecker:
         except subprocess.TimeoutExpired:
             # Expected: git command hung
             return None
-        except Exception as e:
+        except Exception:
             # Unexpected: fail safe by returning None
             # Design decision: Exceptions are silently caught (fail-safe design)
             # No logging implemented yet to avoid circular dependencies
             return None
 
-    def parse_gitignore_patterns(self, content: str) -> List[str]:
+    def parse_gitignore_patterns(self, content: str) -> list[str]:
         """Parse .gitignore content into list of patterns."""
         patterns = []
         for line in content.splitlines():
@@ -101,14 +102,14 @@ class GitignoreChecker:
 
         return pattern_norm == directory_norm
 
-    def is_directory_ignored(self, directory: str, patterns: List[str]) -> bool:
+    def is_directory_ignored(self, directory: str, patterns: list[str]) -> bool:
         """Check if a directory is already ignored by patterns."""
         for pattern in patterns:
             if self.pattern_matches(pattern, directory):
                 return True
         return False
 
-    def generate_gitignore_entry(self, directories: Optional[List[str]] = None) -> str:
+    def generate_gitignore_entry(self, directories: list[str] | None = None) -> str:
         """Generate .gitignore entry for amplihack directories."""
         dirs_to_add = directories if directories is not None else self.directories
         entry_lines = ["", "# Amplihack runtime directories (auto-generated)"]
@@ -116,7 +117,7 @@ class GitignoreChecker:
         entry_lines.append("")
         return "\n".join(entry_lines)
 
-    def determine_missing_directories(self, patterns: List[str]) -> List[str]:
+    def determine_missing_directories(self, patterns: list[str]) -> list[str]:
         """Identify which directories are missing from .gitignore."""
         missing = []
         for directory in self.directories:
@@ -124,7 +125,7 @@ class GitignoreChecker:
                 missing.append(directory)
         return missing
 
-    def format_warning_message(self, missing_dirs: List[str]) -> str:
+    def format_warning_message(self, missing_dirs: list[str]) -> str:
         """Format user-friendly warning message."""
         if not missing_dirs:
             return ""
@@ -138,13 +139,15 @@ class GitignoreChecker:
         for directory in missing_dirs:
             lines.append(f"    - {directory}")
 
-        lines.extend([
-            "",
-            "  Action Required: Commit the updated .gitignore file",
-            "  $ git add .gitignore",
-            '  $ git commit -m "chore: Add amplihack runtime directories to .gitignore"',
-            "",
-        ])
+        lines.extend(
+            [
+                "",
+                "  Action Required: Commit the updated .gitignore file",
+                "  $ git add .gitignore",
+                '  $ git commit -m "chore: Add amplihack runtime directories to .gitignore"',
+                "",
+            ]
+        )
         return "\n".join(lines)
 
     def read_gitignore(self, gitignore_path: Path) -> str:
@@ -160,7 +163,7 @@ class GitignoreChecker:
             content = existing + content
         gitignore_path.write_text(content)
 
-    def check_and_update_gitignore(self) -> Dict:
+    def check_and_update_gitignore(self) -> dict:
         """Check and update .gitignore with required patterns."""
         if not self.is_git_repo():
             return {"modified": False, "missing_dirs": []}
@@ -182,7 +185,7 @@ class GitignoreChecker:
 
         return {"modified": True, "missing_dirs": missing_dirs}
 
-    def run(self, display_warnings: bool = False) -> Dict:
+    def run(self, display_warnings: bool = False) -> dict:
         """Run the complete gitignore check workflow."""
         start_time = time.time()
 
@@ -211,7 +214,7 @@ class GitignoreChecker:
         }
 
 
-def check_and_update_gitignore(display_warnings: bool = False) -> Dict:
+def check_and_update_gitignore(display_warnings: bool = False) -> dict:
     """Convenience function to check and update .gitignore."""
     checker = GitignoreChecker()
     return checker.run(display_warnings=display_warnings)

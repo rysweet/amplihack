@@ -6,9 +6,9 @@ Testing pyramid:
 - Focus on language detection and LSP config generation
 """
 
-import json
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
+
 import pytest
 
 
@@ -23,10 +23,7 @@ class TestLSPDetectorLanguageDetection:
         project_path = Path("/fake/project")
 
         with patch("pathlib.Path.glob") as mock_glob:
-            mock_glob.return_value = [
-                Path("/fake/project/main.py"),
-                Path("/fake/project/utils.py")
-            ]
+            mock_glob.return_value = [Path("/fake/project/main.py"), Path("/fake/project/utils.py")]
 
             languages = detector.detect_languages(project_path)
 
@@ -40,10 +37,7 @@ class TestLSPDetectorLanguageDetection:
         project_path = Path("/fake/project")
 
         with patch("pathlib.Path.glob") as mock_glob:
-            mock_glob.return_value = [
-                Path("/fake/project/index.js"),
-                Path("/fake/project/app.js")
-            ]
+            mock_glob.return_value = [Path("/fake/project/index.js"), Path("/fake/project/app.js")]
 
             languages = detector.detect_languages(project_path)
 
@@ -59,7 +53,7 @@ class TestLSPDetectorLanguageDetection:
         with patch("pathlib.Path.glob") as mock_glob:
             mock_glob.return_value = [
                 Path("/fake/project/src/main.ts"),
-                Path("/fake/project/src/types.d.ts")
+                Path("/fake/project/src/types.d.ts"),
             ]
 
             languages = detector.detect_languages(project_path)
@@ -78,7 +72,7 @@ class TestLSPDetectorLanguageDetection:
                 "**/*.py": [Path("/fake/project/main.py")],
                 "**/*.js": [Path("/fake/project/index.js")],
                 "**/*.ts": [Path("/fake/project/app.ts")],
-                "**/*.rs": [Path("/fake/project/main.rs")]
+                "**/*.rs": [Path("/fake/project/main.rs")],
             }
             return patterns.get(pattern, [])
 
@@ -112,7 +106,7 @@ class TestLSPDetectorLanguageDetection:
         with patch("pathlib.Path.glob") as mock_glob:
             mock_glob.return_value = [
                 Path("/fake/project/.hidden.py"),
-                Path("/fake/project/main.py")
+                Path("/fake/project/main.py"),
             ]
 
             languages = detector.detect_languages(project_path)
@@ -130,7 +124,7 @@ class TestLSPDetectorLanguageDetection:
         with patch("pathlib.Path.glob") as mock_glob:
             mock_glob.return_value = [
                 Path("/fake/project/src/main.js"),
-                Path("/fake/project/node_modules/lib/index.js")
+                Path("/fake/project/node_modules/lib/index.js"),
             ]
 
             languages = detector.detect_languages(project_path)
@@ -148,7 +142,7 @@ class TestLSPDetectorLanguageDetection:
         with patch("pathlib.Path.glob") as mock_glob:
             mock_glob.return_value = [
                 Path("/fake/project/main.py"),
-                Path("/fake/project/venv/lib/python.py")
+                Path("/fake/project/venv/lib/python.py"),
             ]
 
             languages = detector.detect_languages(project_path)
@@ -163,10 +157,7 @@ class TestLSPDetectorLanguageDetection:
         project_path = Path("/fake/project")
 
         with patch("pathlib.Path.glob") as mock_glob:
-            mock_glob.return_value = [
-                Path("/fake/project/main.go"),
-                Path("/fake/project/utils.go")
-            ]
+            mock_glob.return_value = [Path("/fake/project/main.go"), Path("/fake/project/utils.go")]
 
             languages = detector.detect_languages(project_path)
 
@@ -182,7 +173,7 @@ class TestLSPDetectorLanguageDetection:
         with patch("pathlib.Path.glob") as mock_glob:
             mock_glob.return_value = [
                 Path("/fake/project/src/main.rs"),
-                Path("/fake/project/src/lib.rs")
+                Path("/fake/project/src/lib.rs"),
             ]
 
             languages = detector.detect_languages(project_path)
@@ -291,14 +282,8 @@ class TestLSPDetectorSettingsUpdate:
         from amplihack.lsp_detector import LSPDetector
 
         detector = LSPDetector()
-        existing_settings = {
-            "some_setting": "value"
-        }
-        lsp_config = {
-            "python-lsp-server": {
-                "command": "pylsp"
-            }
-        }
+        existing_settings = {"some_setting": "value"}
+        lsp_config = {"python-lsp-server": {"command": "pylsp"}}
 
         updated = detector.update_settings_json(existing_settings, lsp_config)
 
@@ -311,18 +296,8 @@ class TestLSPDetectorSettingsUpdate:
         from amplihack.lsp_detector import LSPDetector
 
         detector = LSPDetector()
-        existing_settings = {
-            "mcpServers": {
-                "existing-server": {
-                    "command": "existing"
-                }
-            }
-        }
-        lsp_config = {
-            "python-lsp-server": {
-                "command": "pylsp"
-            }
-        }
+        existing_settings = {"mcpServers": {"existing-server": {"command": "existing"}}}
+        lsp_config = {"python-lsp-server": {"command": "pylsp"}}
 
         updated = detector.update_settings_json(existing_settings, lsp_config)
 
@@ -334,18 +309,8 @@ class TestLSPDetectorSettingsUpdate:
         from amplihack.lsp_detector import LSPDetector
 
         detector = LSPDetector()
-        existing_settings = {
-            "mcpServers": {
-                "python-lsp-server": {
-                    "command": "old-command"
-                }
-            }
-        }
-        lsp_config = {
-            "python-lsp-server": {
-                "command": "new-command"
-            }
-        }
+        existing_settings = {"mcpServers": {"python-lsp-server": {"command": "old-command"}}}
+        lsp_config = {"python-lsp-server": {"command": "new-command"}}
 
         updated = detector.update_settings_json(existing_settings, lsp_config)
 
@@ -356,9 +321,7 @@ class TestLSPDetectorSettingsUpdate:
         from amplihack.lsp_detector import LSPDetector
 
         detector = LSPDetector()
-        existing_settings = {
-            "some_setting": "value"
-        }
+        existing_settings = {"some_setting": "value"}
         lsp_config = {}
 
         updated = detector.update_settings_json(existing_settings, lsp_config)

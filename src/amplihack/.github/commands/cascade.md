@@ -9,17 +9,17 @@
 - **name**: amplihack:cascade
 - **version**: 1.0.0
 - **description**: Fallback cascade pattern for resilient operations
-- **triggers**: 
-- **invokes**: 
+- **triggers**:
+- **invokes**:
 - **- type**: workflow
 - **path**: .claude/workflow/CASCADE_WORKFLOW.md
-- **philosophy**: 
+- **philosophy**:
 - **- principle**: Ruthless Simplicity
 - **application**: Simple fallback hierarchy ensures completion
-- **dependencies**: 
-- **required**: 
-- **optional**: 
-- **examples**: 
+- **dependencies**:
+- **required**:
+- **optional**:
+- **examples**:
 - **- "/amplihack**: cascade Retrieve user data with multiple sources"
 
 ---
@@ -30,6 +30,7 @@ This command is designed for Claude Code but the patterns and approaches
 can be referenced when using GitHub Copilot CLI.
 
 **Example**:
+
 ```bash
 # Reference this command's approach
 gh copilot explain .github/commands/cascade.md
@@ -41,7 +42,6 @@ gh copilot suggest --context .github/commands/cascade.md "your task"
 ---
 
 ## Original Command Documentation
-
 
 # Fallback Cascade Command
 

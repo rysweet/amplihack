@@ -13,7 +13,6 @@ Exit Codes:
 import fnmatch
 import sys
 from pathlib import Path
-from typing import Dict, List, Set, Tuple
 
 import yaml
 
@@ -33,7 +32,7 @@ class RootFileValidator:
         self.config_path = config_path
         self.config = self._load_config()
 
-    def _load_config(self) -> Dict:
+    def _load_config(self) -> dict:
         """Load configuration from YAML file."""
         if not self.config_path.exists():
             print(f"ERROR: Config file not found: {self.config_path}")
@@ -42,7 +41,7 @@ class RootFileValidator:
         with open(self.config_path) as f:
             return yaml.safe_load(f)
 
-    def _get_root_entries(self) -> Tuple[Set[str], Set[str]]:
+    def _get_root_entries(self) -> tuple[set[str], set[str]]:
         """
         Get all files and directories in root.
 
@@ -55,7 +54,7 @@ class RootFileValidator:
         try:
             for entry in self.repo_root.iterdir():
                 # Skip .git directory
-                if entry.name == '.git':
+                if entry.name == ".git":
                     continue
 
                 if entry.is_file():
@@ -77,7 +76,7 @@ class RootFileValidator:
         Returns:
             True if file is allowed
         """
-        allowed_patterns = self.config.get('allowed_patterns', [])
+        allowed_patterns = self.config.get("allowed_patterns", [])
 
         for pattern in allowed_patterns:
             if fnmatch.fnmatch(filename, pattern):
@@ -85,7 +84,7 @@ class RootFileValidator:
 
         return False
 
-    def _check_forbidden(self, filename: str) -> Tuple[bool, str, str]:
+    def _check_forbidden(self, filename: str) -> tuple[bool, str, str]:
         """
         Check if a file matches forbidden patterns.
 
@@ -95,16 +94,16 @@ class RootFileValidator:
         Returns:
             Tuple of (is_forbidden, message, suggested_location)
         """
-        forbidden_patterns = self.config.get('forbidden_patterns', [])
+        forbidden_patterns = self.config.get("forbidden_patterns", [])
 
         for item in forbidden_patterns:
-            pattern = item.get('pattern', '')
+            pattern = item.get("pattern", "")
             if fnmatch.fnmatch(filename, pattern):
-                message = item.get('message', 'File should not be in root')
-                suggested_location = item.get('suggested_location', 'appropriate subdirectory')
+                message = item.get("message", "File should not be in root")
+                suggested_location = item.get("suggested_location", "appropriate subdirectory")
                 return True, message, suggested_location
 
-        return False, '', ''
+        return False, "", ""
 
     def _is_directory_allowed(self, dirname: str) -> bool:
         """
@@ -116,10 +115,10 @@ class RootFileValidator:
         Returns:
             True if directory is allowed
         """
-        allowed_directories = self.config.get('allowed_directories', [])
+        allowed_directories = self.config.get("allowed_directories", [])
         return dirname in allowed_directories
 
-    def validate(self) -> Tuple[bool, List[str]]:
+    def validate(self) -> tuple[bool, list[str]]:
         """
         Validate root directory contents.
 
@@ -136,9 +135,7 @@ class RootFileValidator:
 
             if is_forbidden:
                 warnings.append(
-                    f"❌ {filename}\n"
-                    f"   Reason: {message}\n"
-                    f"   Suggested: {suggested_location}"
+                    f"❌ {filename}\n   Reason: {message}\n   Suggested: {suggested_location}"
                 )
                 continue
 
@@ -172,30 +169,29 @@ class RootFileValidator:
         is_valid, warnings = self.validate()
 
         if is_valid:
-            return (
-                "✅ Root Directory Check: PASSED\n"
-                "All root files and directories are approved.\n"
-            )
+            return "✅ Root Directory Check: PASSED\nAll root files and directories are approved.\n"
 
         report = [
             "⚠️  Root Directory Check: WARNINGS\n",
             f"Found {len(warnings)} issue(s) in root directory:\n",
-            ""
+            "",
         ]
 
         for warning in warnings:
             report.append(warning)
             report.append("")
 
-        report.extend([
-            "---",
-            "These warnings do not block CI, but should be addressed.",
-            "Root directory should contain only essential project files.",
-            "",
-            "For more information, see:",
-            "- .github/root-hygiene-config.yml",
-            "- .claude/agents/amplihack/specialized/cleanup.md (Section 6)",
-        ])
+        report.extend(
+            [
+                "---",
+                "These warnings do not block CI, but should be addressed.",
+                "Root directory should contain only essential project files.",
+                "",
+                "For more information, see:",
+                "- .github/root-hygiene-config.yml",
+                "- .claude/agents/amplihack/specialized/cleanup.md (Section 6)",
+            ]
+        )
 
         return "\n".join(report)
 

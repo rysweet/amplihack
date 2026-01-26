@@ -17,7 +17,6 @@ from hook_processor import HookProcessor
 sys.path.insert(0, str(Path(__file__).parent.parent))
 try:
     from context_preservation import ContextPreserver
-    from paths import get_project_root
     from settings_migrator import migrate_global_hooks
 
     from amplihack.context.adaptive.detector import LauncherDetector
@@ -25,7 +24,6 @@ try:
     from amplihack.utils.paths import FrameworkPathResolver
 except ImportError:
     # Fallback imports for standalone execution
-    get_project_root = None
     ContextPreserver = None
     FrameworkPathResolver = None
     migrate_global_hooks = None
@@ -159,33 +157,22 @@ class SessionStartHook(HookProcessor):
             self.log(f"Settings merge failed (non-critical): {e}", "WARNING")
             self.save_metric("settings_update_error", True)
 
-        # Neo4j Startup (Conditional - Opt-In Only)
-        # Why opt-in: Neo4j requires Docker, external dependencies (Blarify), and adds complexity
-        # Most users don't need advanced graph memory features
+        # Neo4j Startup (Removed)
+        # Neo4j has been removed from amplihack. This section is preserved
+        # as a no-op to maintain backward compatibility with existing hooks.
         import os
 
         neo4j_enabled = os.environ.get("AMPLIHACK_ENABLE_NEO4J_MEMORY") == "1"
 
         if neo4j_enabled:
-            self.log("Neo4j opt-in flag detected, starting memory system...")
-            try:
-                from amplihack.memory.neo4j.startup_wizard import interactive_neo4j_startup
-
-                # Interactive startup with user feedback
-                success = interactive_neo4j_startup()
-
-                if success:
-                    self.log("✅ Neo4j memory system ready")
-                    self.save_metric("neo4j_enabled", True)
-                else:
-                    self.log("⚠️ Neo4j startup declined or failed, using basic memory", "WARNING")
-                    self.save_metric("neo4j_enabled", False)
-
-            except Exception as e:
-                self.log(f"Neo4j startup failed: {e}", "ERROR")
-                self.save_metric("neo4j_enabled", False)
+            self.log(
+                "Neo4j startup skipped - Neo4j removed from amplihack. "
+                "Use Kuzu for graph memory features.",
+                "WARNING",
+            )
+            self.save_metric("neo4j_enabled", False)
         else:
-            self.log("Neo4j not enabled (use --enable-neo4j-memory to enable)")
+            self.log("Neo4j not enabled (Neo4j removed - use Kuzu instead)", "DEBUG")
             self.save_metric("neo4j_enabled", False)
 
         # Check and update .gitignore for runtime directories

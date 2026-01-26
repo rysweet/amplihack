@@ -21,6 +21,7 @@ def prepare_launch(self) -> bool:
 ```
 
 **Why here?**
+
 - ✅ AFTER prerequisites checked (environment ready)
 - ✅ BEFORE Claude starts (user can decide)
 - ✅ Matches Neo4j pattern (consistent UX)
@@ -63,6 +64,7 @@ def _run_blarify_indexing(self) -> bool:
 ```
 
 **Insert call** at line 100:
+
 ```python
 # 4. NEW: Interactive blarify indexing prompt
 self._prompt_for_blarify_indexing()
@@ -75,12 +77,14 @@ self._prompt_for_blarify_indexing()
 **Location**: `~/.amplihack/.blarify_consent_<project_hash>`
 
 **Hash calculation**:
+
 ```python
 import hashlib
 project_hash = hashlib.md5(str(Path.cwd()).encode()).hexdigest()[:8]
 ```
 
 **File contents**:
+
 ```
 prompted_at: 2026-01-22T20:30:15.123456
 accepted: true
@@ -110,6 +114,7 @@ Index codebase now? [Y/n]:
 ```
 
 **Behavior**:
+
 - Empty/timeout → **yes** (default)
 - "y" or "yes" → **yes**
 - "n" or "no" → **no**
@@ -187,6 +192,7 @@ T+92.5s   Memory backend initialized
 ## TESTING CHECKLIST
 
 ### Unit Tests
+
 - [ ] Consent file caching works
 - [ ] Timeout defaults to yes
 - [ ] Blarify unavailable → skip gracefully
@@ -194,12 +200,14 @@ T+92.5s   Memory backend initialized
 - [ ] Non-interactive mode → auto-skip
 
 ### Integration Tests
+
 - [ ] First session shows prompt
 - [ ] Second session skips prompt
 - [ ] Prompt before Claude starts
 - [ ] code_graph.json created
 
 ### Manual Tests
+
 - [ ] Works on Linux (signal timeout)
 - [ ] Works on Windows (threading timeout)
 - [ ] Works on macOS (signal timeout)
@@ -212,11 +220,13 @@ T+92.5s   Memory backend initialized
 ## OUTPUT FILES
 
 **Consent file**:
+
 ```
 ~/.amplihack/.blarify_consent_a1b2c3d4
 ```
 
 **Code graph JSON**:
+
 ```
 <project>/.claude/runtime/code_graph.json
 ```
@@ -228,6 +238,7 @@ T+92.5s   Memory backend initialized
 **Total effort**: 2-3 hours
 
 **Breakdown**:
+
 - Add 3 methods to ClaudeLauncher: 1 hour
 - Insert call in prepare_launch(): 5 minutes
 - Write unit tests: 1 hour
@@ -240,20 +251,22 @@ T+92.5s   Memory backend initialized
 
 **Why Option B (Launcher)?**
 
-| Criteria | Score | Reason |
-|----------|-------|--------|
-| Timing | 10/10 | Before Claude, after prereqs |
-| UX | 10/10 | Matches Neo4j pattern |
-| Risk | 9/10 | Non-blocking, proven utilities |
-| Integration | 9/10 | Clean, single insertion point |
-| **Total** | **9.5/10** | Clear winner |
+| Criteria    | Score      | Reason                         |
+| ----------- | ---------- | ------------------------------ |
+| Timing      | 10/10      | Before Claude, after prereqs   |
+| UX          | 10/10      | Matches Neo4j pattern          |
+| Risk        | 9/10       | Non-blocking, proven utilities |
+| Integration | 9/10       | Clean, single insertion point  |
+| **Total**   | **9.5/10** | Clear winner                   |
 
 **Why NOT Option A (Hook)?**
+
 - ❌ Claude already started (too late)
 - ❌ Hook timeout constraints (10s)
 - ❌ Disruptive to user
 
 **Why NOT Option C (CLI)?**
+
 - ❌ Before prerequisites (too early)
 - ❌ Limited infrastructure
 - ❌ Awkward placement
@@ -386,6 +399,7 @@ def _run_blarify_indexing(self) -> bool:
 ```
 
 **Then insert call at line 100**:
+
 ```python
 def prepare_launch(self) -> bool:
     """Prepare environment for launching Claude."""
@@ -402,6 +416,7 @@ def prepare_launch(self) -> bool:
 ## KEY REMINDERS
 
 ✅ **DO**:
+
 - Return True always (non-blocking)
 - Check consent cache first
 - Use 30s timeout with default yes
@@ -410,6 +425,7 @@ def prepare_launch(self) -> bool:
 - Reuse memory_config utilities
 
 ❌ **DON'T**:
+
 - Return False (would block launch)
 - Prompt more than once per project
 - Skip consent file creation
@@ -422,12 +438,14 @@ def prepare_launch(self) -> bool:
 ## REFERENCES
 
 **Full Analysis**:
+
 - Main report: `.claude/ai_working/cli_integration_investigation.md`
 - Sequence diagrams: `.claude/ai_working/cli_initialization_sequence.md`
 - Options comparison: `.claude/ai_working/blarify_prompt_integration_options.md`
 - Summary: `.claude/ai_working/INVESTIGATION_SUMMARY.md`
 
 **Code Locations**:
+
 - Integration point: `src/amplihack/launcher/core.py:100`
 - Pattern to follow: `src/amplihack/launcher/core.py:912-944` (Neo4j startup)
 - Utilities to reuse: `src/amplihack/launcher/memory_config.py:400-617`
@@ -439,5 +457,5 @@ def prepare_launch(self) -> bool:
 
 ---
 
-*Quick reference created: 2026-01-22*
-*For detailed analysis, see INVESTIGATION_SUMMARY.md*
+_Quick reference created: 2026-01-22_
+_For detailed analysis, see INVESTIGATION_SUMMARY.md_

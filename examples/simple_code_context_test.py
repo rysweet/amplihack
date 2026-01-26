@@ -100,7 +100,7 @@ async def test_code_context_parameter():
         code_graph = coordinator.backend.get_code_graph()
         print(f"   - Code graph available: {code_graph is not None}")
     else:
-        print(f"   - Code graph: Not supported")
+        print("   - Code graph: Not supported")
 
     # Summary
     print("\n6. Summary:")

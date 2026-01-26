@@ -7,6 +7,7 @@ Ensure amplihack plugin works with Claude Code, GitHub Copilot, AND Codex by ver
 ## Problem
 
 Issue #1948 requirement #6: "Compatibility: Claude Code, GitHub Copilot, AND Codex". Currently:
+
 - Plugin designed for Claude Code
 - Unknown compatibility with GitHub Copilot plugin format
 - Unknown compatibility with Codex plugin format
@@ -15,6 +16,7 @@ Issue #1948 requirement #6: "Compatibility: Claude Code, GitHub Copilot, AND Cod
 ## Solution Overview
 
 Three-phase approach:
+
 1. **Research Phase:** Document plugin formats for each tool
 2. **Compatibility Matrix:** Identify differences and required adaptations
 3. **Testing Phase:** Verify plugin works or document limitations
@@ -24,22 +26,26 @@ Three-phase approach:
 ### Inputs
 
 **Plugin Manifest (`.claude-plugin/plugin.json`):**
+
 - Current format (Claude Code)
 - May need variants for other tools
 
 **Hook Configuration (`hooks.json`):**
+
 - Current format uses Claude Code lifecycle hooks
 - May need adaptation for other tools
 
 ### Outputs
 
 **Compatibility Report:**
+
 - Document what works out-of-box
 - Document required adaptations
 - Document known limitations
 - Provide migration guidance
 
 **Adapted Configurations (if needed):**
+
 - `.copilot-plugin/plugin.json` (if format differs)
 - `.codex-plugin/plugin.json` (if format differs)
 - Tool-specific hook configurations
@@ -68,6 +74,7 @@ Three-phase approach:
    - Does it support path variable substitution?
 
 **Research Sources:**
+
 - Official documentation for each tool
 - GitHub repositories (search for "copilot plugin", "codex plugin")
 - Community forums and discussions
@@ -77,36 +84,38 @@ Three-phase approach:
 
 **Plugin Manifest Compatibility:**
 
-| Feature | Claude Code | GitHub Copilot | Codex |
-|---------|-------------|----------------|-------|
-| Plugin support | ✅ Yes | ❓ Research | ❓ Research |
-| Manifest format | `plugin.json` | ❓ Research | ❓ Research |
-| Required fields | `name`, `version`, `entry_point` | ❓ | ❓ |
-| Hook support | ✅ Yes | ❓ | ❓ |
-| Path variables | ✅ `${CLAUDE_PLUGIN_ROOT}` | ❓ | ❓ |
-| Marketplace | ✅ `extraKnownMarketplaces` | ❓ | ❓ |
+| Feature         | Claude Code                      | GitHub Copilot | Codex       |
+| --------------- | -------------------------------- | -------------- | ----------- |
+| Plugin support  | ✅ Yes                           | ❓ Research    | ❓ Research |
+| Manifest format | `plugin.json`                    | ❓ Research    | ❓ Research |
+| Required fields | `name`, `version`, `entry_point` | ❓             | ❓          |
+| Hook support    | ✅ Yes                           | ❓             | ❓          |
+| Path variables  | ✅ `${CLAUDE_PLUGIN_ROOT}`       | ❓             | ❓          |
+| Marketplace     | ✅ `extraKnownMarketplaces`      | ❓             | ❓          |
 
 **Hook Lifecycle Compatibility:**
 
-| Hook Type | Claude Code | GitHub Copilot | Codex |
-|-----------|-------------|----------------|-------|
-| SessionStart | ✅ Supported | ❓ | ❓ |
-| Stop | ✅ Supported | ❓ | ❓ |
-| PreToolUse | ✅ Supported | ❓ | ❓ |
-| PostToolUse | ✅ Supported | ❓ | ❓ |
-| UserPromptSubmit | ✅ Supported | ❓ | ❓ |
-| PreCompact | ✅ Supported | ❓ | ❓ |
+| Hook Type        | Claude Code  | GitHub Copilot | Codex |
+| ---------------- | ------------ | -------------- | ----- |
+| SessionStart     | ✅ Supported | ❓             | ❓    |
+| Stop             | ✅ Supported | ❓             | ❓    |
+| PreToolUse       | ✅ Supported | ❓             | ❓    |
+| PostToolUse      | ✅ Supported | ❓             | ❓    |
+| UserPromptSubmit | ✅ Supported | ❓             | ❓    |
+| PreCompact       | ✅ Supported | ❓             | ❓    |
 
 ### Phase 3: Compatibility Strategy
 
 **Strategy 1: Universal Plugin (Ideal)**
 
 If all tools support similar plugin formats:
+
 - Single `plugin.json` works for all tools
 - Hooks use common lifecycle events
 - Path variables work across tools
 
 **Implementation:**
+
 - Keep current plugin structure
 - Document tested compatibility
 - Provide tool-specific installation instructions
@@ -114,6 +123,7 @@ If all tools support similar plugin formats:
 **Strategy 2: Tool-Specific Variants (If Needed)**
 
 If tools have incompatible formats:
+
 - Create tool-specific plugin directories:
   ```
   .claude-plugin/     # Claude Code plugin
@@ -124,6 +134,7 @@ If tools have incompatible formats:
 - Adapt manifest and hooks per tool
 
 **Implementation:**
+
 ```
 amplihack/
 ├── .claude-plugin/           # Claude Code manifest
@@ -147,11 +158,13 @@ amplihack/
 **Strategy 3: Graceful Degradation (Fallback)**
 
 If some tools don't support plugins:
+
 - Document that plugin mode only works in Claude Code
 - Provide fallback installation (per-project `~/.amplihack/.claude/` copy)
 - Maintain backward compatibility
 
 **Implementation:**
+
 - Keep existing per-project copy mode as fallback
 - Document tool compatibility in README
 - Provide migration guide for each tool
@@ -161,18 +174,21 @@ If some tools don't support plugins:
 ### Test Plan
 
 **Claude Code (Primary Target):**
+
 1. Install plugin via `amplihack plugin install`
 2. Verify hooks load in new Claude Code session
 3. Verify commands, agents, skills discoverable
 4. Test in real project workflow
 
 **GitHub Copilot (Secondary):**
+
 1. Research Copilot plugin architecture
 2. If supported: Adapt manifest and test installation
 3. If not supported: Document limitation, provide workaround
 4. Test agent/command functionality if available
 
 **Codex (Tertiary):**
+
 1. Research Codex plugin architecture
 2. If supported: Adapt manifest and test installation
 3. If not supported: Document limitation, provide workaround
@@ -181,11 +197,13 @@ If some tools don't support plugins:
 ### Success Criteria
 
 **Minimum Viable Compatibility:**
+
 - ✅ Plugin works in Claude Code (primary requirement)
-- ⚠️  Copilot/Codex compatibility documented (even if "not supported")
+- ⚠️ Copilot/Codex compatibility documented (even if "not supported")
 - ✅ Fallback mode available for unsupported tools
 
 **Ideal Compatibility:**
+
 - ✅ Plugin works in all three tools
 - ✅ Single manifest supports all tools
 - ✅ Hooks work across tools (or gracefully degrade)
@@ -198,12 +216,14 @@ If some tools don't support plugins:
 ## Research Checklist
 
 ### GitHub Copilot
+
 - [ ] Check official Copilot documentation for plugin support
 - [ ] Search GitHub for "copilot plugin" examples
 - [ ] Test if Copilot supports `.copilot-plugin/` directory
 - [ ] Document findings in COPILOT_COMPATIBILITY.md
 
 ### Codex
+
 - [ ] Check official Codex documentation for plugin support
 - [ ] Search GitHub for "codex plugin" examples
 - [ ] Test if Codex supports plugin architecture
@@ -232,16 +252,19 @@ Create compatibility guide in README:
 ## Cross-Tool Compatibility
 
 ### Claude Code ✅
+
 - **Status:** Fully supported
 - **Installation:** `amplihack plugin install`
 - **Features:** Hooks, agents, commands, skills, marketplace
 
 ### GitHub Copilot ⚠️
+
 - **Status:** [Research result]
 - **Installation:** [Tool-specific instructions or "Not supported"]
 - **Limitations:** [List any limitations]
 
 ### Codex ⚠️
+
 - **Status:** [Research result]
 - **Installation:** [Tool-specific instructions or "Not supported"]
 - **Limitations:** [List any limitations]
@@ -318,21 +341,25 @@ def test_codex_plugin_installation():
 ## Success Metrics
 
 **Research Phase:**
+
 - [ ] Copilot plugin support status documented
 - [ ] Codex plugin support status documented
 - [ ] Compatibility matrix complete
 
 **Adaptation Phase (if needed):**
+
 - [ ] Tool-specific manifests created
 - [ ] Tool-specific hooks configured
 - [ ] Installation instructions provided
 
 **Documentation Phase:**
+
 - [ ] README updated with compatibility info
 - [ ] Tool-specific guides created
 - [ ] Migration instructions provided
 
 **Testing Phase:**
+
 - [ ] Claude Code plugin tested (primary)
 - [ ] Copilot compatibility verified or limitation documented
 - [ ] Codex compatibility verified or limitation documented
@@ -365,17 +392,19 @@ def test_codex_plugin_installation():
 ## Realistic Expectations
 
 **Most Likely Outcome:**
+
 - Claude Code: ✅ Full support (this is the primary target)
-- GitHub Copilot: ⚠️  Limited or no plugin support (focus on Copilot Chat)
-- Codex: ⚠️  Unknown (less public documentation)
+- GitHub Copilot: ⚠️ Limited or no plugin support (focus on Copilot Chat)
+- Codex: ⚠️ Unknown (less public documentation)
 
 **Fallback Plan:**
 If Copilot/Codex don't support plugins:
+
 - Document compatibility clearly
 - Provide per-project `~/.amplihack/.claude/` copy instructions
 - Maintain backward compatibility
 
-**This is acceptable** - Issue #1948 requires compatibility *verification*, not necessarily full support.
+**This is acceptable** - Issue #1948 requires compatibility _verification_, not necessarily full support.
 
 ## References
 

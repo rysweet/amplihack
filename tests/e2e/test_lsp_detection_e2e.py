@@ -7,7 +7,7 @@ Tests complete LSP workflows from outside-in perspective:
 """
 
 import pytest
-from pathlib import Path
+
 from tests.harness import LSPTestHarness
 
 
@@ -97,9 +97,9 @@ class TestLanguageDetection:
         if result.success:
             # Should indicate no languages found
             assert (
-                "no languages" in result.stdout.lower() or
-                "0 languages" in result.stdout.lower() or
-                result.stdout.strip() == ""
+                "no languages" in result.stdout.lower()
+                or "0 languages" in result.stdout.lower()
+                or result.stdout.strip() == ""
             )
         else:
             # Should have clear error message
@@ -246,17 +246,14 @@ class TestLSPConfiguration:
         # Should fail or skip with clear message
         if not result.success:
             assert (
-                "invalid" in result.stderr.lower() or
-                "invalid" in result.stdout.lower() or
-                "unsupported" in result.stderr.lower() or
-                "unsupported" in result.stdout.lower()
+                "invalid" in result.stderr.lower()
+                or "invalid" in result.stdout.lower()
+                or "unsupported" in result.stderr.lower()
+                or "unsupported" in result.stdout.lower()
             )
         else:
             # If it succeeds, should mention skipping
-            assert (
-                "skipped" in result.stdout.lower() or
-                "not supported" in result.stdout.lower()
-            )
+            assert "skipped" in result.stdout.lower() or "not supported" in result.stdout.lower()
 
     def test_reconfigure_existing_lsp(self, harness):
         """Test reconfigurin' existing LSP.

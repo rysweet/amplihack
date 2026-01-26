@@ -10,17 +10,16 @@ Tests the generation of WorkSummary from session state including:
 import json
 import subprocess
 from dataclasses import asdict
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 import pytest
 
 from amplihack.launcher.work_summary import (
+    GitHubState,
+    GitState,
+    TodoState,
     WorkSummary,
     WorkSummaryGenerator,
-    TodoState,
-    GitState,
-    GitHubState,
 )
 
 
@@ -229,9 +228,7 @@ class TestGitStateExtraction:
             # git status --porcelain
             Mock(returncode=0, stdout="", stderr=""),
             # git rev-list --count @{u}..HEAD (fails - no upstream)
-            subprocess.CalledProcessError(
-                128, "git", stderr="no upstream configured"
-            ),
+            subprocess.CalledProcessError(128, "git", stderr="no upstream configured"),
         ]
 
         generator = WorkSummaryGenerator()
@@ -255,9 +252,7 @@ class TestGitHubStateExtraction:
                     {
                         "number": 123,
                         "state": "OPEN",
-                        "statusCheckRollup": [
-                            {"status": "COMPLETED", "conclusion": "SUCCESS"}
-                        ],
+                        "statusCheckRollup": [{"status": "COMPLETED", "conclusion": "SUCCESS"}],
                         "mergeable": "MERGEABLE",
                     }
                 ]
@@ -283,9 +278,7 @@ class TestGitHubStateExtraction:
                     {
                         "number": 124,
                         "state": "OPEN",
-                        "statusCheckRollup": [
-                            {"status": "COMPLETED", "conclusion": "FAILURE"}
-                        ],
+                        "statusCheckRollup": [{"status": "COMPLETED", "conclusion": "FAILURE"}],
                         "mergeable": "CONFLICTING",
                     }
                 ]
@@ -329,9 +322,7 @@ class TestGitHubStateExtraction:
     @patch("subprocess.run")
     def test_extract_github_state_network_error(self, mock_run):
         """Should handle network errors when querying GitHub."""
-        mock_run.side_effect = subprocess.CalledProcessError(
-            1, "gh", stderr="network error"
-        )
+        mock_run.side_effect = subprocess.CalledProcessError(1, "gh", stderr="network error")
 
         generator = WorkSummaryGenerator()
         github_state = generator._extract_github_state("feat/test")
@@ -349,9 +340,7 @@ class TestGitHubStateExtraction:
                     {
                         "number": 125,
                         "state": "OPEN",
-                        "statusCheckRollup": [
-                            {"status": "IN_PROGRESS", "conclusion": None}
-                        ],
+                        "statusCheckRollup": [{"status": "IN_PROGRESS", "conclusion": None}],
                         "mergeable": "UNKNOWN",
                     }
                 ]
@@ -389,9 +378,7 @@ class TestWorkSummaryGeneration:
                         {
                             "number": 100,
                             "state": "OPEN",
-                            "statusCheckRollup": [
-                                {"status": "COMPLETED", "conclusion": "SUCCESS"}
-                            ],
+                            "statusCheckRollup": [{"status": "COMPLETED", "conclusion": "SUCCESS"}],
                             "mergeable": "MERGEABLE",
                         }
                     ]

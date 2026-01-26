@@ -1235,7 +1235,9 @@ class PowerSteeringChecker:
                 # Check transcripts subdirectory for timestamped copies
                 transcripts_dir = session_dir / "transcripts"
                 if transcripts_dir.exists():
-                    transcript_files = sorted(transcripts_dir.glob("conversation_*.md"), reverse=True)
+                    transcript_files = sorted(
+                        transcripts_dir.glob("conversation_*.md"), reverse=True
+                    )
                     if transcript_files:
                         possible_paths.insert(0, transcript_files[0])
 
@@ -1312,7 +1314,11 @@ class PowerSteeringChecker:
                 for line in content.split("\n"):
                     # Detect role headers like "## User" or "## Assistant" or "**User:**"
                     role_match = None
-                    if line.startswith("## User") or "**User:**" in line or line.startswith("### User"):
+                    if (
+                        line.startswith("## User")
+                        or "**User:**" in line
+                        or line.startswith("### User")
+                    ):
                         role_match = "user"
                     elif (
                         line.startswith("## Assistant")
@@ -1325,7 +1331,10 @@ class PowerSteeringChecker:
                         # Save previous message if exists
                         if current_role and current_content:
                             messages.append(
-                                {"role": current_role, "content": "\n".join(current_content).strip()}
+                                {
+                                    "role": current_role,
+                                    "content": "\n".join(current_content).strip(),
+                                }
                             )
                         current_role = role_match
                         current_content = []
@@ -1407,9 +1416,7 @@ class PowerSteeringChecker:
                                 if check.get("conclusion")  # Ignore pending
                             )
                             # At least some checks must have run
-                            has_completed = any(
-                                check.get("conclusion") for check in status_checks
-                            )
+                            has_completed = any(check.get("conclusion") for check in status_checks)
                             results["ci_passing"] = all_success and has_completed
                             results["details"]["ci_checks"] = len(status_checks)
                             results["details"]["ci_conclusions"] = [

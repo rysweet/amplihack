@@ -27,6 +27,7 @@ gh auth login
 ## Usage
 
 The skill auto-activates when you mention:
+
 - GitHub issues, PRs, repos
 - `gh` CLI commands
 - GitHub Actions/workflows
@@ -35,6 +36,7 @@ The skill auto-activates when you mention:
 ## When to Use GitHub MCP Instead
 
 The GitHub MCP server may be better for:
+
 - Complex multi-step GitHub operations
 - Bulk operations across many repositories
 - Advanced GraphQL queries requiring state

@@ -26,16 +26,16 @@ class TestPointInTimeDocsDetector:
     def mock_config(self):
         """Mock configuration for tests."""
         return {
-            'point_in_time_indicators': [
-                'Q1 2025',
-                'Q2 2025',
-                'Sprint',
-                'Week of',
-                'As of 20',
-                'Current status:',
-                'Today\'s',
-                'This week\'s',
-                'Last week\'s',
+            "point_in_time_indicators": [
+                "Q1 2025",
+                "Q2 2025",
+                "Sprint",
+                "Week of",
+                "As of 20",
+                "Current status:",
+                "Today's",
+                "This week's",
+                "Last week's",
             ]
         }
 
@@ -49,7 +49,7 @@ class TestPointInTimeDocsDetector:
         config_dir.mkdir()
         config_path = config_dir / "root-hygiene-config.yml"
 
-        with open(config_path, 'w') as f:
+        with open(config_path, "w") as f:
             yaml.dump(mock_config, f)
 
         return repo_root, config_path
@@ -79,18 +79,18 @@ class TestPointInTimeDocsDetector:
         repo_root, config_path = temp_repo
         detector = PointInTimeDocsDetector(repo_root, config_path)
 
-        assert detector._is_root_file('README.md') is True
-        assert detector._is_root_file('CHANGELOG.md') is True
-        assert detector._is_root_file('STATUS.md') is True
+        assert detector._is_root_file("README.md") is True
+        assert detector._is_root_file("CHANGELOG.md") is True
+        assert detector._is_root_file("STATUS.md") is True
 
     def test_is_root_file_false(self, temp_repo):
         """Test identifying non-root files."""
         repo_root, config_path = temp_repo
         detector = PointInTimeDocsDetector(repo_root, config_path)
 
-        assert detector._is_root_file('docs/guide.md') is False
-        assert detector._is_root_file('src/README.md') is False
-        assert detector._is_root_file('.github/workflows/test.yml') is False
+        assert detector._is_root_file("docs/guide.md") is False
+        assert detector._is_root_file("src/README.md") is False
+        assert detector._is_root_file(".github/workflows/test.yml") is False
 
     def test_scan_file_for_temporal_refs_found(self, temp_repo):
         """Test scanning file with temporal references."""
@@ -114,9 +114,9 @@ As of 2025-01-15, we have completed 80% of tasks.
         assert len(matches) > 0
         # Should find "Current status:", "Q1 2025", and "As of 20"
         indicators = [m[2] for m in matches]
-        assert 'Current status:' in indicators
-        assert 'Q1 2025' in indicators
-        assert 'As of 20' in indicators
+        assert "Current status:" in indicators
+        assert "Q1 2025" in indicators
+        assert "As of 20" in indicators
 
     def test_scan_file_for_temporal_refs_not_found(self, temp_repo):
         """Test scanning file without temporal references."""
@@ -190,7 +190,7 @@ Line 4: Q1 2025 goals
 
         doc_file = repo_root / "bad.md"
         # Write binary data that's not valid UTF-8
-        doc_file.write_bytes(b'\xff\xfe invalid utf-8')
+        doc_file.write_bytes(b"\xff\xfe invalid utf-8")
 
         detector = PointInTimeDocsDetector(repo_root, config_path)
         matches = detector._scan_file_for_temporal_refs(doc_file)
@@ -211,59 +211,59 @@ Line 4: Q1 2025 goals
         # Should only report one match per line
         assert len(matches) == 1
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_get_changed_docs_main_branch(self, mock_run, temp_repo):
         """Test getting changed docs from main branch."""
         repo_root, config_path = temp_repo
 
         mock_run.side_effect = [
-            Mock(stdout='abc123\n', returncode=0),
-            Mock(stdout='README.md\ndocs/guide.md\nsrc/main.py\n', returncode=0),
+            Mock(stdout="abc123\n", returncode=0),
+            Mock(stdout="README.md\ndocs/guide.md\nsrc/main.py\n", returncode=0),
         ]
 
         detector = PointInTimeDocsDetector(repo_root, config_path)
         docs = detector._get_changed_docs()
 
-        assert 'README.md' in docs
-        assert 'docs/guide.md' in docs
-        assert 'src/main.py' not in docs  # Not a .md file
+        assert "README.md" in docs
+        assert "docs/guide.md" in docs
+        assert "src/main.py" not in docs  # Not a .md file
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_get_changed_docs_master_fallback(self, mock_run, temp_repo):
         """Test fallback to master branch."""
         repo_root, config_path = temp_repo
 
         mock_run.side_effect = [
-            subprocess.CalledProcessError(1, 'git'),
-            Mock(stdout='abc123\n', returncode=0),
-            Mock(stdout='README.md\n', returncode=0),
+            subprocess.CalledProcessError(1, "git"),
+            Mock(stdout="abc123\n", returncode=0),
+            Mock(stdout="README.md\n", returncode=0),
         ]
 
         detector = PointInTimeDocsDetector(repo_root, config_path)
         docs = detector._get_changed_docs()
 
-        assert docs == ['README.md']
+        assert docs == ["README.md"]
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_get_changed_docs_error(self, mock_run, temp_repo):
         """Test error handling when git fails."""
         repo_root, config_path = temp_repo
 
-        mock_run.side_effect = subprocess.CalledProcessError(1, 'git')
+        mock_run.side_effect = subprocess.CalledProcessError(1, "git")
 
         detector = PointInTimeDocsDetector(repo_root, config_path)
         docs = detector._get_changed_docs()
 
         assert docs == []
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_get_changed_docs_empty(self, mock_run, temp_repo):
         """Test getting changed docs with no changes."""
         repo_root, config_path = temp_repo
 
         mock_run.side_effect = [
-            Mock(stdout='abc123\n', returncode=0),
-            Mock(stdout='', returncode=0),
+            Mock(stdout="abc123\n", returncode=0),
+            Mock(stdout="", returncode=0),
         ]
 
         detector = PointInTimeDocsDetector(repo_root, config_path)
@@ -271,14 +271,14 @@ Line 4: Q1 2025 goals
 
         assert docs == []
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_analyze_no_changes(self, mock_run, temp_repo):
         """Test analysis with no changed docs."""
         repo_root, config_path = temp_repo
 
         mock_run.side_effect = [
-            Mock(stdout='abc123\n', returncode=0),
-            Mock(stdout='', returncode=0),
+            Mock(stdout="abc123\n", returncode=0),
+            Mock(stdout="", returncode=0),
         ]
 
         detector = PointInTimeDocsDetector(repo_root, config_path)
@@ -287,7 +287,7 @@ Line 4: Q1 2025 goals
         assert has_issues is False
         assert len(warnings) == 0
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_analyze_no_temporal_refs(self, mock_run, temp_repo):
         """Test analysis with clean documentation."""
         repo_root, config_path = temp_repo
@@ -296,8 +296,8 @@ Line 4: Q1 2025 goals
         doc_file.write_text("# Clean documentation\n\nNo temporal references here.")
 
         mock_run.side_effect = [
-            Mock(stdout='abc123\n', returncode=0),
-            Mock(stdout='README.md\n', returncode=0),
+            Mock(stdout="abc123\n", returncode=0),
+            Mock(stdout="README.md\n", returncode=0),
         ]
 
         detector = PointInTimeDocsDetector(repo_root, config_path)
@@ -306,7 +306,7 @@ Line 4: Q1 2025 goals
         assert has_issues is False
         assert len(warnings) == 0
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_analyze_temporal_refs_in_root(self, mock_run, temp_repo):
         """Test analysis with temporal refs in root file."""
         repo_root, config_path = temp_repo
@@ -315,8 +315,8 @@ Line 4: Q1 2025 goals
         doc_file.write_text("Current status: Working on Q1 2025 goals")
 
         mock_run.side_effect = [
-            Mock(stdout='abc123\n', returncode=0),
-            Mock(stdout='STATUS.md\n', returncode=0),
+            Mock(stdout="abc123\n", returncode=0),
+            Mock(stdout="STATUS.md\n", returncode=0),
         ]
 
         detector = PointInTimeDocsDetector(repo_root, config_path)
@@ -324,11 +324,11 @@ Line 4: Q1 2025 goals
 
         assert has_issues is True
         assert len(warnings) == 1
-        assert warnings[0]['file'] == 'STATUS.md'
-        assert warnings[0]['is_root'] is True
-        assert len(warnings[0]['matches']) > 0
+        assert warnings[0]["file"] == "STATUS.md"
+        assert warnings[0]["is_root"] is True
+        assert len(warnings[0]["matches"]) > 0
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_analyze_temporal_refs_in_subdir(self, mock_run, temp_repo):
         """Test analysis with temporal refs in subdirectory."""
         repo_root, config_path = temp_repo
@@ -339,8 +339,8 @@ Line 4: Q1 2025 goals
         doc_file.write_text("Sprint planning for Q1 2025")
 
         mock_run.side_effect = [
-            Mock(stdout='abc123\n', returncode=0),
-            Mock(stdout='docs/status.md\n', returncode=0),
+            Mock(stdout="abc123\n", returncode=0),
+            Mock(stdout="docs/status.md\n", returncode=0),
         ]
 
         detector = PointInTimeDocsDetector(repo_root, config_path)
@@ -348,10 +348,10 @@ Line 4: Q1 2025 goals
 
         assert has_issues is True
         assert len(warnings) == 1
-        assert warnings[0]['file'] == 'docs/status.md'
-        assert warnings[0]['is_root'] is False
+        assert warnings[0]["file"] == "docs/status.md"
+        assert warnings[0]["is_root"] is False
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_analyze_multiple_files(self, mock_run, temp_repo):
         """Test analysis with multiple files containing temporal refs."""
         repo_root, config_path = temp_repo
@@ -367,8 +367,8 @@ Line 4: Q1 2025 goals
         sub_doc.write_text("Q1 2025 roadmap")
 
         mock_run.side_effect = [
-            Mock(stdout='abc123\n', returncode=0),
-            Mock(stdout='STATUS.md\ndocs/planning.md\n', returncode=0),
+            Mock(stdout="abc123\n", returncode=0),
+            Mock(stdout="STATUS.md\ndocs/planning.md\n", returncode=0),
         ]
 
         detector = PointInTimeDocsDetector(repo_root, config_path)
@@ -377,7 +377,7 @@ Line 4: Q1 2025 goals
         assert has_issues is True
         assert len(warnings) == 2
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_generate_report_pass(self, mock_run, temp_repo):
         """Test report generation for passing check."""
         repo_root, config_path = temp_repo
@@ -386,8 +386,8 @@ Line 4: Q1 2025 goals
         doc_file.write_text("# Clean docs")
 
         mock_run.side_effect = [
-            Mock(stdout='abc123\n', returncode=0),
-            Mock(stdout='README.md\n', returncode=0),
+            Mock(stdout="abc123\n", returncode=0),
+            Mock(stdout="README.md\n", returncode=0),
         ]
 
         detector = PointInTimeDocsDetector(repo_root, config_path)
@@ -396,7 +396,7 @@ Line 4: Q1 2025 goals
         assert "PASSED" in report
         assert "No temporal references" in report
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_generate_report_warnings_root_file(self, mock_run, temp_repo):
         """Test report generation with root file warnings."""
         repo_root, config_path = temp_repo
@@ -405,8 +405,8 @@ Line 4: Q1 2025 goals
         doc_file.write_text("Current status: Q1 2025")
 
         mock_run.side_effect = [
-            Mock(stdout='abc123\n', returncode=0),
-            Mock(stdout='STATUS.md\n', returncode=0),
+            Mock(stdout="abc123\n", returncode=0),
+            Mock(stdout="STATUS.md\n", returncode=0),
         ]
 
         detector = PointInTimeDocsDetector(repo_root, config_path)
@@ -417,7 +417,7 @@ Line 4: Q1 2025 goals
         assert "ROOT" in report
         assert "Should not be committed" in report
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_generate_report_warnings_subdir_file(self, mock_run, temp_repo):
         """Test report generation with subdirectory warnings."""
         repo_root, config_path = temp_repo
@@ -428,8 +428,8 @@ Line 4: Q1 2025 goals
         doc_file.write_text("Sprint goals")
 
         mock_run.side_effect = [
-            Mock(stdout='abc123\n', returncode=0),
-            Mock(stdout='docs/status.md\n', returncode=0),
+            Mock(stdout="abc123\n", returncode=0),
+            Mock(stdout="docs/status.md\n", returncode=0),
         ]
 
         detector = PointInTimeDocsDetector(repo_root, config_path)
@@ -440,7 +440,7 @@ Line 4: Q1 2025 goals
         # Should not have ROOT marker
         assert "ROOT" not in report or report.index("docs/status.md") > report.index("ROOT")
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_generate_report_multiple_matches(self, mock_run, temp_repo):
         """Test report with multiple temporal references."""
         repo_root, config_path = temp_repo
@@ -454,8 +454,8 @@ Line 5: As of 2025
 """)
 
         mock_run.side_effect = [
-            Mock(stdout='abc123\n', returncode=0),
-            Mock(stdout='STATUS.md\n', returncode=0),
+            Mock(stdout="abc123\n", returncode=0),
+            Mock(stdout="STATUS.md\n", returncode=0),
         ]
 
         detector = PointInTimeDocsDetector(repo_root, config_path)
@@ -466,7 +466,7 @@ Line 5: As of 2025
         # Should show first 3 matches
         assert "Line 1" in report or "Line 2" in report
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_generate_report_many_matches_truncated(self, mock_run, temp_repo):
         """Test report truncates when many matches exist."""
         repo_root, config_path = temp_repo
@@ -476,8 +476,8 @@ Line 5: As of 2025
         doc_file.write_text("".join(lines))
 
         mock_run.side_effect = [
-            Mock(stdout='abc123\n', returncode=0),
-            Mock(stdout='STATUS.md\n', returncode=0),
+            Mock(stdout="abc123\n", returncode=0),
+            Mock(stdout="STATUS.md\n", returncode=0),
         ]
 
         detector = PointInTimeDocsDetector(repo_root, config_path)
@@ -487,7 +487,7 @@ Line 5: As of 2025
         # Should show "... and N more"
         assert "more" in report.lower()
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_generate_report_shows_indicators(self, mock_run, temp_repo):
         """Test report includes list of temporal indicators."""
         repo_root, config_path = temp_repo
@@ -496,8 +496,8 @@ Line 5: As of 2025
         doc_file.write_text("Current status: Active")
 
         mock_run.side_effect = [
-            Mock(stdout='abc123\n', returncode=0),
-            Mock(stdout='STATUS.md\n', returncode=0),
+            Mock(stdout="abc123\n", returncode=0),
+            Mock(stdout="STATUS.md\n", returncode=0),
         ]
 
         detector = PointInTimeDocsDetector(repo_root, config_path)

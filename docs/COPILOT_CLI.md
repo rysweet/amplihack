@@ -67,6 +67,7 @@ This document describes the complete integration between GitHub Copilot CLI and 
 ### Symlink Architecture
 
 **CORRECT Pattern** (What We Use):
+
 ```
 .claude/agents/amplihack/          ← REAL FILES (source)
 .github/agents/amplihack/          ← SYMLINK to ../../.claude/agents/amplihack/
@@ -76,12 +77,14 @@ This document describes the complete integration between GitHub Copilot CLI and 
 ```
 
 **Why This Works**:
+
 - Build tools (`build_hooks.py`) can process with `followlinks=True`
 - No circular symlinks
 - Single source of truth
 - Changes in `~/.amplihack/.claude/` automatically available in `.github/`
 
 **INCORRECT Pattern** (What Breaks):
+
 ```
 .claude/agents/amplihack/ ← symlink
 .github/agents/amplihack/ ← symlink
@@ -93,11 +96,13 @@ This document describes the complete integration between GitHub Copilot CLI and 
 ### Installation
 
 1. **Install GitHub Copilot CLI** (if not already installed):
+
    ```bash
    gh extension install github/gh-copilot
    ```
 
 2. **Verify Integration**:
+
    ```bash
    # Check agents are accessible
    ls -la .github/agents/amplihack/
@@ -110,6 +115,7 @@ This document describes the complete integration between GitHub Copilot CLI and 
    ```
 
 3. **Test Basic Functionality**:
+
    ```bash
    # Use Copilot with amplihack context
    gh copilot explain .github/copilot-instructions.md
@@ -121,11 +127,13 @@ This document describes the complete integration between GitHub Copilot CLI and 
 ### First Steps
 
 1. Read the base instructions:
+
    ```bash
    gh copilot explain .github/copilot-instructions.md
    ```
 
 2. Understand available agents:
+
    ```bash
    gh copilot explain .github/agents/README.md
    ```
@@ -144,6 +152,7 @@ This document describes the complete integration between GitHub Copilot CLI and 
 **Purpose**: Provides core amplihack philosophy and patterns to GitHub Copilot
 
 **Key Sections**:
+
 - Core Philosophy (Zen of Simple Code, Brick Philosophy)
 - Architecture Overview
 - User Preferences and Autonomy Guidelines
@@ -152,6 +161,7 @@ This document describes the complete integration between GitHub Copilot CLI and 
 - Getting Started Guide
 
 **Usage**:
+
 ```bash
 # Copilot automatically loads this file when working in the repo
 # You can also reference it explicitly:
@@ -161,6 +171,7 @@ gh copilot suggest --context .github/copilot-instructions.md "your task"
 ### 2. Agents Directory
 
 **Structure**:
+
 ```
 .github/agents/
 ├── amplihack/ -> ../../.claude/agents/amplihack/  (symlink to all agents)
@@ -172,6 +183,7 @@ gh copilot suggest --context .github/copilot-instructions.md "your task"
 **Available Agents**:
 
 #### Core Agents (in `.github/agents/amplihack/core/`)
+
 - **architect.md**: Solution design and architecture
 - **builder.md**: Code implementation from specs
 - **reviewer.md**: Code review and quality checks
@@ -180,6 +192,7 @@ gh copilot suggest --context .github/copilot-instructions.md "your task"
 - **api-designer.md**: API contract design
 
 #### Specialized Agents (in `.github/agents/amplihack/specialized/`)
+
 - **analyzer.md**: Deep code analysis
 - **cleanup.md**: Code simplification
 - **ambiguity.md**: Requirement clarification
@@ -190,6 +203,7 @@ gh copilot suggest --context .github/copilot-instructions.md "your task"
 - And many more...
 
 **Usage**:
+
 ```bash
 # Reference an agent in your query
 gh copilot suggest -a .github/agents/amplihack/core/architect.md \
@@ -203,6 +217,7 @@ gh copilot suggest --context .github/agents/amplihack/core/builder.md \
 ### 3. Skills Directory
 
 **Structure**:
+
 ```
 .github/agents/skills/
 ├── [skill-name]/ -> ../../../.claude/skills/[skill-name]/  (symlinks)
@@ -213,6 +228,7 @@ gh copilot suggest --context .github/agents/amplihack/core/builder.md \
 **Available Skills** (70+ skills):
 
 #### Development Skills
+
 - **agent-sdk**: Agent SDK architecture and patterns
 - **code-smell-detector**: Anti-pattern detection
 - **design-patterns-expert**: GoF design patterns
@@ -221,6 +237,7 @@ gh copilot suggest --context .github/agents/amplihack/core/builder.md \
 - **outside-in-testing**: Agentic testing framework
 
 #### Workflow Skills
+
 - **default-workflow**: Standard development workflow
 - **investigation-workflow**: Deep system analysis
 - **cascade-workflow**: Graceful degradation
@@ -229,6 +246,7 @@ gh copilot suggest --context .github/agents/amplihack/core/builder.md \
 - **consensus-voting**: Consensus decision making
 
 #### Domain Expert Skills (30+ analyst skills)
+
 - **architect-analyst**: Architecture analysis
 - **security-analyst**: Security review
 - **performance-analyst**: Performance optimization
@@ -237,12 +255,14 @@ gh copilot suggest --context .github/agents/amplihack/core/builder.md \
 - And 25+ more domain experts...
 
 #### Collaboration Skills
+
 - **email-drafter**: Professional email generation
 - **meeting-synthesizer**: Meeting notes processing
 - **knowledge-extractor**: Learning capture
 - **mermaid-diagram-generator**: Architecture diagrams
 
 **Usage**:
+
 ```bash
 # Use a skill in your query
 gh copilot suggest --context .github/agents/skills/code-smell-detector/ \
@@ -258,6 +278,7 @@ gh copilot suggest \
 ### 4. Commands Directory
 
 **Structure**:
+
 ```
 .github/commands/
 └── [command-name].md           # Converted slash command documentation
@@ -266,6 +287,7 @@ gh copilot suggest \
 **Purpose**: Converts Claude Code slash commands (e.g., `/ultrathink`, `/analyze`) into documentation that Copilot can reference.
 
 **Available Commands**:
+
 - **ultrathink**: Multi-agent orchestration
 - **analyze**: Codebase analysis
 - **improve**: Self-improvement workflow
@@ -277,6 +299,7 @@ gh copilot suggest \
 - **cascade**: Fallback cascade
 
 **Usage**:
+
 ```bash
 # Reference a command's approach
 gh copilot explain .github/commands/ultrathink.md
@@ -289,6 +312,7 @@ gh copilot suggest --context .github/commands/analyze.md \
 ### 5. Hooks
 
 **Structure**:
+
 ```
 .github/hooks/
 ├── pre-commit               # Bash wrapper -> Python implementation
@@ -302,6 +326,7 @@ gh copilot suggest --context .github/commands/analyze.md \
 **Hook Types**:
 
 #### Git Hooks
+
 - **pre-commit**: Linting, formatting, type checking
 - **commit-msg**: Commit message validation
 - **pre-push**: Run tests before push
@@ -309,6 +334,7 @@ gh copilot suggest --context .github/commands/analyze.md \
 - **post-merge**: Cleanup after merge
 
 #### Session Hooks
+
 - **session-start**: Initialize session, check version, load preferences
 - **session-end**: Cleanup, Neo4j shutdown (if applicable)
 
@@ -317,6 +343,7 @@ gh copilot suggest --context .github/commands/analyze.md \
 Each hook is a **bash wrapper** that calls a **Python implementation**:
 
 **Bash Wrapper** (`.github/hooks/pre-commit`):
+
 ```bash
 #!/usr/bin/env bash
 # GitHub Copilot compatible pre-commit hook
@@ -326,6 +353,7 @@ python3 .claude/tools/amplihack/hooks/pre_commit.py "$@"
 ```
 
 **Python Implementation** (`~/.amplihack/.claude/tools/amplihack/hooks/pre_commit.py`):
+
 ```python
 #!/usr/bin/env python3
 """Pre-commit hook implementation."""
@@ -339,6 +367,7 @@ if __name__ == "__main__":
 ```
 
 **Why This Pattern**:
+
 1. Bash wrappers are simple and GitHub Copilot compatible
 2. Python implementations can be complex and tested
 3. Clear separation of concerns
@@ -353,18 +382,20 @@ if __name__ == "__main__":
 #### Platform Detection
 
 The hook system automatically detects the calling platform by checking:
+
 1. Environment variables (`CLAUDE_CODE`, `GITHUB_COPILOT`)
 2. Process name patterns
 3. Fallback to Claude Code behavior (safe default)
 
 #### Context Injection Strategies
 
-| Platform | Strategy | Method |
-|----------|----------|--------|
-| **Claude Code** | Direct injection | `hookSpecificOutput.additionalContext` or stdout |
+| Platform        | Strategy             | Method                                                         |
+| --------------- | -------------------- | -------------------------------------------------------------- |
+| **Claude Code** | Direct injection     | `hookSpecificOutput.additionalContext` or stdout               |
 | **Copilot CLI** | File-based injection | Write to `.github/agents/AGENTS.md` with `@include` directives |
 
 **Claude Code** (Direct Injection):
+
 ```python
 # Hook returns JSON with context
 return {
@@ -376,6 +407,7 @@ return {
 ```
 
 **Copilot CLI** (File-Based Injection):
+
 ```python
 # Hook writes to AGENTS.md
 with open(".github/agents/AGENTS.md", "w") as f:
@@ -393,6 +425,7 @@ with open(".github/agents/AGENTS.md", "w") as f:
 **Copilot CLI Limitation**: Hook output is ignored for context injection (except `preToolUse` permission decisions). See [docs/HOOKS_COMPARISON.md](HOOKS_COMPARISON.md) for detailed comparison.
 
 **Our Solution Benefits**:
+
 - ✅ Preference injection works on both platforms
 - ✅ Context loading works everywhere
 - ✅ Zero duplication (single Python implementation)
@@ -415,6 +448,7 @@ For complete hook capability comparison, see [HOOKS_COMPARISON.md](HOOKS_COMPARI
 **Purpose**: Configures Model Context Protocol (MCP) servers for GitHub Copilot to access filesystem, git, and other services.
 
 **Default Configuration**:
+
 ```json
 {
   "mcpServers": {
@@ -435,18 +469,21 @@ For complete hook capability comparison, see [HOOKS_COMPARISON.md](HOOKS_COMPARI
 ```
 
 **Available MCP Servers**:
+
 - **filesystem**: Safe file operations with path restrictions
 - **git**: Git operations (status, diff, log, etc.)
 - **github**: GitHub API access (issues, PRs, etc.)
 - **docker**: Docker container management (if installed)
 
 **Security**:
+
 - Filesystem server restricted to project directory
 - Git server restricted to current repository
 - No destructive operations without confirmation
 - Environment variable isolation
 
 **Usage**:
+
 ```bash
 # MCP servers are automatically loaded by GitHub Copilot
 # when mcp-servers.json is present in .github/
@@ -460,12 +497,14 @@ npx -y @modelcontextprotocol/server-filesystem /path/to/project
 ### Basic Workflow
 
 1. **Start with Context**:
+
    ```bash
    # Load amplihack philosophy
    gh copilot explain .github/copilot-instructions.md
    ```
 
 2. **Use Agents for Guidance**:
+
    ```bash
    # Get architectural guidance
    gh copilot suggest -a .github/agents/amplihack/core/architect.md \
@@ -473,6 +512,7 @@ npx -y @modelcontextprotocol/server-filesystem /path/to/project
    ```
 
 3. **Reference Patterns**:
+
    ```bash
    # Check for existing patterns
    gh copilot explain .claude/context/PATTERNS.md
@@ -483,6 +523,7 @@ npx -y @modelcontextprotocol/server-filesystem /path/to/project
    ```
 
 4. **Implement with Builder**:
+
    ```bash
    # Generate implementation
    gh copilot suggest -a .github/agents/amplihack/core/builder.md \
@@ -499,6 +540,7 @@ npx -y @modelcontextprotocol/server-filesystem /path/to/project
 ### Advanced Patterns
 
 #### Multi-Agent Consultation
+
 ```bash
 # Consult multiple agents
 gh copilot suggest \
@@ -509,6 +551,7 @@ gh copilot suggest \
 ```
 
 #### Pattern-Driven Development
+
 ```bash
 # Reference specific pattern
 gh copilot suggest \
@@ -518,6 +561,7 @@ gh copilot suggest \
 ```
 
 #### Philosophy-Guided Review
+
 ```bash
 # Review for philosophy compliance
 gh copilot explain --review src/module/ \
@@ -535,6 +579,7 @@ GitHub Copilot CLI and Claude Code can work together:
 4. **Complementary Tools**: Different strengths, same philosophy
 
 **Example Workflow**:
+
 ```bash
 # 1. Claude Code for high-level design
 # (In Claude Code)
@@ -553,35 +598,35 @@ gh copilot suggest -a .github/agents/amplihack/core/builder.md \
 
 ### Core Development Agents
 
-| Agent | Purpose | When to Use |
-|-------|---------|-------------|
-| **architect** | Solution design and architecture | Designing new features, system redesign |
-| **builder** | Code implementation from specs | Implementing features, writing code |
-| **reviewer** | Code review and quality checks | Before commits, PR reviews |
-| **tester** | Test generation and validation | Writing tests, TDD |
-| **optimizer** | Performance improvements | Bottleneck analysis, optimization |
-| **api-designer** | API contract design | Designing APIs, defining interfaces |
+| Agent            | Purpose                          | When to Use                             |
+| ---------------- | -------------------------------- | --------------------------------------- |
+| **architect**    | Solution design and architecture | Designing new features, system redesign |
+| **builder**      | Code implementation from specs   | Implementing features, writing code     |
+| **reviewer**     | Code review and quality checks   | Before commits, PR reviews              |
+| **tester**       | Test generation and validation   | Writing tests, TDD                      |
+| **optimizer**    | Performance improvements         | Bottleneck analysis, optimization       |
+| **api-designer** | API contract design              | Designing APIs, defining interfaces     |
 
 ### Specialized Agents
 
-| Agent | Purpose | When to Use |
-|-------|---------|-------------|
-| **analyzer** | Deep code analysis | Understanding complex code, refactoring |
-| **cleanup** | Code simplification | Removing complexity, simplifying code |
-| **ambiguity** | Requirement clarification | Unclear requirements, edge cases |
-| **fix-agent** | Rapid error resolution | Quick fixes, common error patterns |
-| **ci-diagnostic** | CI failure diagnosis | CI failures, build issues |
-| **pre-commit-diagnostic** | Pre-commit hook issues | Pre-commit failures, formatting issues |
-| **knowledge-archaeologist** | Deep investigation | Understanding legacy code, research |
+| Agent                       | Purpose                   | When to Use                             |
+| --------------------------- | ------------------------- | --------------------------------------- |
+| **analyzer**                | Deep code analysis        | Understanding complex code, refactoring |
+| **cleanup**                 | Code simplification       | Removing complexity, simplifying code   |
+| **ambiguity**               | Requirement clarification | Unclear requirements, edge cases        |
+| **fix-agent**               | Rapid error resolution    | Quick fixes, common error patterns      |
+| **ci-diagnostic**           | CI failure diagnosis      | CI failures, build issues               |
+| **pre-commit-diagnostic**   | Pre-commit hook issues    | Pre-commit failures, formatting issues  |
+| **knowledge-archaeologist** | Deep investigation        | Understanding legacy code, research     |
 
 ### Workflow Agents
 
-| Agent | Purpose | When to Use |
-|-------|---------|-------------|
-| **prompt-writer** | Task clarification | Clarifying requirements, defining scope |
-| **documentation-writer** | Documentation generation | Writing docs, API documentation |
-| **philosophy-guardian** | Philosophy compliance | Ensuring simplicity, catching over-engineering |
-| **worktree-manager** | Git worktree operations | Managing multiple branches, parallel work |
+| Agent                    | Purpose                  | When to Use                                    |
+| ------------------------ | ------------------------ | ---------------------------------------------- |
+| **prompt-writer**        | Task clarification       | Clarifying requirements, defining scope        |
+| **documentation-writer** | Documentation generation | Writing docs, API documentation                |
+| **philosophy-guardian**  | Philosophy compliance    | Ensuring simplicity, catching over-engineering |
+| **worktree-manager**     | Git worktree operations  | Managing multiple branches, parallel work      |
 
 ## Available Skills
 
@@ -607,6 +652,7 @@ gh copilot suggest -a .github/agents/amplihack/core/builder.md \
 ### Domain Expert Skills (30+)
 
 #### STEM Analysts
+
 - **computer-scientist-analyst**: Computational complexity, algorithms
 - **engineer-analyst**: Technical systems, first principles
 - **physicist-analyst**: Physics-based analysis
@@ -615,6 +661,7 @@ gh copilot suggest -a .github/agents/amplihack/core/builder.md \
 - **cybersecurity-analyst**: Security, threat modeling
 
 #### Social Science Analysts
+
 - **economist-analyst**: Economic impact, incentives
 - **psychologist-analyst**: Human behavior, UX
 - **sociologist-analyst**: Social systems, culture
@@ -623,6 +670,7 @@ gh copilot suggest -a .github/agents/amplihack/core/builder.md \
 - **historian-analyst**: Historical patterns, precedents
 
 #### Humanities Analysts
+
 - **philosopher-analyst**: Logic, ethics, reasoning
 - **novelist-analyst**: Narrative analysis
 - **poet-analyst**: Creative expression
@@ -631,6 +679,7 @@ gh copilot suggest -a .github/agents/amplihack/core/builder.md \
 - **ethicist-analyst**: Moral reasoning, ethics
 
 #### Specialized Analysts
+
 - **futurist-analyst**: Scenario planning, trends
 - **urban-planner-analyst**: System design, infrastructure
 - **environmentalist-analyst**: Sustainability, ecology
@@ -665,6 +714,7 @@ gh copilot suggest -a .github/agents/amplihack/core/builder.md \
 **Purpose**: Safe file operations with path restrictions
 
 **Capabilities**:
+
 - Read files
 - Write files
 - List directories
@@ -672,11 +722,13 @@ gh copilot suggest -a .github/agents/amplihack/core/builder.md \
 - Create directories
 
 **Security**:
+
 - Restricted to project directory
 - No access outside allowed paths
 - Safe deletion with confirmations
 
 **Configuration**:
+
 ```json
 {
   "filesystem": {
@@ -693,6 +745,7 @@ gh copilot suggest -a .github/agents/amplihack/core/builder.md \
 **Purpose**: Git operations without shell access
 
 **Capabilities**:
+
 - `git status`
 - `git diff`
 - `git log`
@@ -702,12 +755,14 @@ gh copilot suggest -a .github/agents/amplihack/core/builder.md \
 - No destructive operations (reset, force push, etc.)
 
 **Security**:
+
 - Restricted to current repository
 - No force operations
 - Commit requires message
 - No remote operations without confirmation
 
 **Configuration**:
+
 ```json
 {
   "git": {
@@ -724,6 +779,7 @@ gh copilot suggest -a .github/agents/amplihack/core/builder.md \
 **Purpose**: GitHub API access for issues, PRs, etc.
 
 **Capabilities**:
+
 - Create issues
 - List PRs
 - Comment on PRs
@@ -731,11 +787,13 @@ gh copilot suggest -a .github/agents/amplihack/core/builder.md \
 - No merge operations
 
 **Security**:
+
 - Requires GitHub token
 - Read-only by default
 - No destructive operations
 
 **Configuration**:
+
 ```json
 {
   "github": {
@@ -754,17 +812,20 @@ gh copilot suggest -a .github/agents/amplihack/core/builder.md \
 **Purpose**: Docker container management
 
 **Capabilities**:
+
 - List containers
 - Start/stop containers
 - View logs
 - No volume mounts outside project
 
 **Security**:
+
 - Restricted to project containers
 - No privileged mode
 - No host network access
 
 **Configuration**:
+
 ```json
 {
   "docker": {
@@ -789,6 +850,7 @@ All git hooks follow the bash wrapper → Python implementation pattern:
 **Purpose**: Run linting, formatting, and type checking before commit
 
 **Wrapper** (`.github/hooks/pre-commit`):
+
 ```bash
 #!/usr/bin/env bash
 python3 .claude/tools/amplihack/hooks/pre_commit.py "$@"
@@ -797,6 +859,7 @@ python3 .claude/tools/amplihack/hooks/pre_commit.py "$@"
 **Implementation**: `~/.amplihack/.claude/tools/amplihack/hooks/pre_commit.py`
 
 **Checks**:
+
 - Linting (ruff, pylint, etc.)
 - Formatting (black, prettier, etc.)
 - Type checking (mypy, pyright, etc.)
@@ -807,6 +870,7 @@ python3 .claude/tools/amplihack/hooks/pre_commit.py "$@"
 **Purpose**: Validate commit message format
 
 **Wrapper** (`.github/hooks/commit-msg`):
+
 ```bash
 #!/usr/bin/env bash
 python3 .claude/tools/amplihack/hooks/commit_msg.py "$@"
@@ -815,6 +879,7 @@ python3 .claude/tools/amplihack/hooks/commit_msg.py "$@"
 **Implementation**: `~/.amplihack/.claude/tools/amplihack/hooks/commit_msg.py`
 
 **Validation**:
+
 - Conventional commits format
 - Maximum line length
 - Issue reference (optional)
@@ -824,6 +889,7 @@ python3 .claude/tools/amplihack/hooks/commit_msg.py "$@"
 **Purpose**: Run tests before pushing
 
 **Wrapper** (`.github/hooks/pre-push`):
+
 ```bash
 #!/usr/bin/env bash
 python3 .claude/tools/amplihack/hooks/pre_push.py "$@"
@@ -832,6 +898,7 @@ python3 .claude/tools/amplihack/hooks/pre_push.py "$@"
 **Implementation**: `~/.amplihack/.claude/tools/amplihack/hooks/pre_push.py`
 
 **Checks**:
+
 - Unit tests
 - Integration tests (optional)
 - Coverage threshold (optional)
@@ -841,6 +908,7 @@ python3 .claude/tools/amplihack/hooks/pre_push.py "$@"
 **Purpose**: Setup environment after branch switch
 
 **Wrapper** (`.github/hooks/post-checkout`):
+
 ```bash
 #!/usr/bin/env bash
 python3 .claude/tools/amplihack/hooks/post_checkout.py "$@"
@@ -849,6 +917,7 @@ python3 .claude/tools/amplihack/hooks/post_checkout.py "$@"
 **Implementation**: `~/.amplihack/.claude/tools/amplihack/hooks/post_checkout.py`
 
 **Actions**:
+
 - Install dependencies (if needed)
 - Clear caches (if needed)
 - Update submodules (if any)
@@ -858,6 +927,7 @@ python3 .claude/tools/amplihack/hooks/post_checkout.py "$@"
 **Purpose**: Cleanup after merge
 
 **Wrapper** (`.github/hooks/post-merge`):
+
 ```bash
 #!/usr/bin/env bash
 python3 .claude/tools/amplihack/hooks/post_merge.py "$@"
@@ -866,6 +936,7 @@ python3 .claude/tools/amplihack/hooks/post_merge.py "$@"
 **Implementation**: `~/.amplihack/.claude/tools/amplihack/hooks/post_merge.py`
 
 **Actions**:
+
 - Remove merged branches
 - Update dependencies (if changed)
 - Clear caches (if needed)
@@ -877,6 +948,7 @@ python3 .claude/tools/amplihack/hooks/post_merge.py "$@"
 **Purpose**: Initialize session, check version, load preferences
 
 **Wrapper** (`.github/hooks/session-start`):
+
 ```bash
 #!/usr/bin/env bash
 python3 .claude/tools/amplihack/hooks/session_start.py "$@"
@@ -885,6 +957,7 @@ python3 .claude/tools/amplihack/hooks/session_start.py "$@"
 **Implementation**: `~/.amplihack/.claude/tools/amplihack/hooks/session_start.py`
 
 **Actions**:
+
 - Check amplihack version
 - Load user preferences
 - Initialize logging
@@ -895,6 +968,7 @@ python3 .claude/tools/amplihack/hooks/session_start.py "$@"
 **Purpose**: Cleanup on session end
 
 **Wrapper** (`.github/hooks/session-end`):
+
 ```bash
 #!/usr/bin/env bash
 python3 .claude/tools/amplihack/hooks/session_end.py "$@"
@@ -903,6 +977,7 @@ python3 .claude/tools/amplihack/hooks/session_end.py "$@"
 **Implementation**: `~/.amplihack/.claude/tools/amplihack/hooks/session_end.py`
 
 **Actions**:
+
 - Save session logs
 - Shutdown Neo4j (if auto_shutdown enabled)
 - Clear temporary files
@@ -910,12 +985,14 @@ python3 .claude/tools/amplihack/hooks/session_end.py "$@"
 ### Hook Installation
 
 **Automatic Installation**:
+
 ```bash
 # Install all hooks
 python3 .claude/tools/amplihack/install_hooks.py
 ```
 
 **Manual Installation**:
+
 ```bash
 # Install specific hook
 ln -s ../../.github/hooks/pre-commit .git/hooks/pre-commit
@@ -923,6 +1000,7 @@ chmod +x .git/hooks/pre-commit
 ```
 
 **Using pre-commit Framework**:
+
 ```bash
 # Install using pre-commit
 pre-commit install
@@ -963,6 +1041,7 @@ tests/
 ### Testing Hooks
 
 **Unit Test Example**:
+
 ```python
 def test_pre_commit_hook():
     """Test pre-commit hook runs successfully."""
@@ -974,6 +1053,7 @@ def test_pre_commit_hook():
 ```
 
 **Integration Test Example**:
+
 ```python
 def test_hook_calls_python():
     """Test bash wrapper calls Python implementation."""
@@ -987,6 +1067,7 @@ def test_hook_calls_python():
 ### Testing MCP Servers
 
 **Unit Test Example**:
+
 ```python
 def test_mcp_servers_config():
     """Test MCP servers configuration is valid."""
@@ -1007,6 +1088,7 @@ def test_mcp_servers_config():
 **Problem**: Symlinks don't resolve correctly
 
 **Solution**:
+
 ```bash
 # Verify symlinks exist
 ls -la .github/agents/amplihack
@@ -1028,6 +1110,7 @@ ln -s ../../../.claude/skills/[skill-name] [skill-name]
 **Problem**: Git hooks don't run
 
 **Solution**:
+
 ```bash
 # Check hook permissions
 ls -la .git/hooks/
@@ -1044,6 +1127,7 @@ python3 .claude/tools/amplihack/install_hooks.py
 **Problem**: MCP servers fail to start
 
 **Solution**:
+
 ```bash
 # Check npx is installed
 npx --version
@@ -1063,6 +1147,7 @@ sed -i 's|/path/to/project|'$(pwd)'|g' .github/mcp-servers.json
 **Problem**: GitHub Copilot doesn't recognize agents
 
 **Solution**:
+
 ```bash
 # Verify agents directory exists
 ls -la .github/agents/
@@ -1097,6 +1182,7 @@ tail -f .claude/runtime/logs/debug.log
 ### Ruthless Simplicity
 
 **Applied to Integration**:
+
 - Single source of truth (`~/.amplihack/.claude/`)
 - Symlinks instead of duplication
 - Bash wrappers for hooks (simple)
@@ -1104,6 +1190,7 @@ tail -f .claude/runtime/logs/debug.log
 - No complex sync systems
 
 **What We Avoid**:
+
 - ❌ Duplicating files between `~/.amplihack/.claude/` and `.github/`
 - ❌ Complex synchronization scripts
 - ❌ Circular symlinks
@@ -1112,6 +1199,7 @@ tail -f .claude/runtime/logs/debug.log
 ### Zero-BS Implementation
 
 **Applied to Integration**:
+
 - All hooks actually work (no stubs)
 - All agents are functional
 - All MCP servers are configured correctly
@@ -1120,6 +1208,7 @@ tail -f .claude/runtime/logs/debug.log
 ### Modular Design
 
 **Applied to Integration**:
+
 - Hooks are self-contained
 - MCP servers are independent
 - Agents are modular
@@ -1128,6 +1217,7 @@ tail -f .claude/runtime/logs/debug.log
 ### Testing Strategy
 
 **Applied to Integration**:
+
 - 60% unit tests (hook wrappers, configs)
 - 30% integration tests (hook → Python, MCP servers)
 - 10% E2E tests (full workflows)

@@ -10,15 +10,14 @@ Tests the detection and scoring of completion signals from WorkSummary:
 import pytest
 
 from amplihack.launcher.completion_signals import (
-    CompletionSignals,
     CompletionSignalDetector,
-    SignalScore,
+    CompletionSignals,
 )
 from amplihack.launcher.work_summary import (
-    WorkSummary,
-    TodoState,
-    GitState,
     GitHubState,
+    GitState,
+    TodoState,
+    WorkSummary,
 )
 
 

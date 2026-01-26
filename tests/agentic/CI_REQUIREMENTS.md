@@ -22,6 +22,7 @@
 5. Click **Add secret**
 
 **Why Required**:
+
 - Claude Code needs authentication to connect to Anthropic API
 - Without it, `claude` command will fail with auth error
 - Test will show: `Auth conflict: Using ANTHROPIC_API_KEY...`
@@ -69,6 +70,7 @@ export ANTHROPIC_API_KEY="your-key-here"
 **Purpose**: Automated test using node-pty for PTY virtualization
 
 **Steps**:
+
 1. Install dependencies
 2. Install amplihack from branch via UVX
 3. Verify plugin deployment
@@ -76,6 +78,7 @@ export ANTHROPIC_API_KEY="your-key-here"
 5. Upload evidence artifacts
 
 **Requirements**:
+
 - ✅ Node.js 18+ (for node-pty)
 - ✅ Python 3.11+ (for uvx)
 - ✅ ANTHROPIC_API_KEY secret
@@ -86,11 +89,13 @@ export ANTHROPIC_API_KEY="your-key-here"
 **Purpose**: Alternative test using expect (no Node.js compilation)
 
 **Steps**:
+
 1. Install dependencies (expect)
 2. Run shell test (`./run-plugin-test.sh`)
 3. Upload evidence artifacts
 
 **Requirements**:
+
 - ✅ Python 3.11+ (for uvx)
 - ✅ expect package
 - ✅ ANTHROPIC_API_KEY secret
@@ -105,6 +110,7 @@ export ANTHROPIC_API_KEY="your-key-here"
 **Issue**: Tests will fail if `ANTHROPIC_API_KEY` is not set in GitHub secrets.
 
 **Error Message**:
+
 ```
 Error: No API key found. Please set ANTHROPIC_API_KEY or run `claude login`
 ```
@@ -118,6 +124,7 @@ Error: No API key found. Please set ANTHROPIC_API_KEY or run `claude login`
 **Solution**: We use PTY virtualization (node-pty) which creates a virtual terminal that works in CI.
 
 **Why it works**:
+
 - PTY makes Claude Code think it's in a real terminal
 - No display/X11 required
 - Fully automated interaction
@@ -127,6 +134,7 @@ Error: No API key found. Please set ANTHROPIC_API_KEY or run `claude login`
 **Issue**: CI runners might be slower than local machines.
 
 **Solution**:
+
 - Tests use generous timeouts (3-5 second waits)
 - `continue-on-error: true` for initial testing phase
 - Evidence artifacts uploaded even on failure
@@ -160,6 +168,7 @@ Error: No API key found. Please set ANTHROPIC_API_KEY or run `claude login`
 ### Failure Scenarios
 
 #### Missing API Key
+
 ```
 ✗ Install Claude Code CLI
   Error: ANTHROPIC_API_KEY not set
@@ -168,6 +177,7 @@ Error: No API key found. Please set ANTHROPIC_API_KEY or run `claude login`
 **Fix**: Add secret to repository settings
 
 #### node-pty Compilation Failure
+
 ```
 ✗ Install test dependencies (node-pty)
   Error: Could not compile native module
@@ -176,6 +186,7 @@ Error: No API key found. Please set ANTHROPIC_API_KEY or run `claude login`
 **Fix**: Usually works on ubuntu-latest runner. Check Node.js version.
 
 #### Plugin Not Installed
+
 ```
 ✗ Run PTY test
   Error: Plugin directory not found
@@ -200,6 +211,7 @@ Go to: **Actions** tab > **Claude Code Plugin Test** > Click failed run
 ### Step 3: Check Secrets
 
 Verify `ANTHROPIC_API_KEY` is set:
+
 - Settings > Secrets > Actions
 - Should see `ANTHROPIC_API_KEY` in list (value is hidden)
 
@@ -227,8 +239,9 @@ node test-claude-plugin-pty.js
 ### Disable Tests Temporarily
 
 Add to workflow file:
+
 ```yaml
-if: false  # Disable entire job
+if: false # Disable entire job
 ```
 
 ### Test Only on PR (Not Push)
@@ -247,8 +260,8 @@ on:
 on:
   push:
     paths:
-      - 'tests/agentic/**'
-      - '.github/workflows/plugin-test.yml'
+      - "tests/agentic/**"
+      - ".github/workflows/plugin-test.yml"
 ```
 
 ---
@@ -281,6 +294,7 @@ Before merging PR #1973, verify:
 ### 2. Matrix Testing
 
 Test across multiple platforms:
+
 ```yaml
 strategy:
   matrix:
@@ -298,10 +312,11 @@ strategy:
 ### 4. Scheduled Tests
 
 Run tests daily:
+
 ```yaml
 on:
   schedule:
-    - cron: '0 0 * * *'  # Daily at midnight
+    - cron: "0 0 * * *" # Daily at midnight
 ```
 
 ---
@@ -317,6 +332,7 @@ on:
 5. Run test locally with same Node/Python versions
 
 **Common Issues**:
+
 - Missing ANTHROPIC_API_KEY secret
 - node-pty compilation issues (rare on ubuntu-latest)
 - Network issues fetching from GitHub
@@ -330,5 +346,5 @@ The tests use `continue-on-error: true` during initial CI setup. Once CI is stab
 
 ---
 
-*Generated for PR #1973 - Claude Code Plugin Architecture*
-*2026-01-20*
+_Generated for PR #1973 - Claude Code Plugin Architecture_
+_2026-01-20_

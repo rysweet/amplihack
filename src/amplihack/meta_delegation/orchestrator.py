@@ -24,7 +24,7 @@ import select
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .evidence_collector import EvidenceCollector, EvidenceItem
 from .persona import get_persona_strategy
@@ -49,7 +49,7 @@ class DelegationTimeout(Exception):
 class DelegationError(Exception):
     """Exception raised for delegation errors."""
 
-    def __init__(self, reason: str, exit_code: Optional[int] = None):
+    def __init__(self, reason: str, exit_code: int | None = None):
         self.reason = reason
         self.exit_code = exit_code
         super().__init__(f"Delegation failed: {reason}")
@@ -75,17 +75,17 @@ class MetaDelegationResult:
 
     status: str
     success_score: int
-    evidence: List[EvidenceItem]
+    evidence: list[EvidenceItem]
     execution_log: str
     duration_seconds: float
     persona_used: str
     platform_used: str
-    failure_reason: Optional[str] = None
-    partial_completion_notes: Optional[str] = None
-    subprocess_pid: Optional[int] = None
-    test_scenarios: Optional[List[TestScenario]] = None
+    failure_reason: str | None = None
+    partial_completion_notes: str | None = None
+    subprocess_pid: int | None = None
+    test_scenarios: list[TestScenario] | None = None
 
-    def get_evidence_by_type(self, evidence_type: str) -> List[EvidenceItem]:
+    def get_evidence_by_type(self, evidence_type: str) -> list[EvidenceItem]:
         """Get evidence items of specific type.
 
         Args:
@@ -149,12 +149,12 @@ class MetaDelegationOrchestrator:
 
     def __init__(self):
         """Initialize orchestrator."""
-        self.platform_cli: Optional[Any] = None
-        self.persona_strategy: Optional[Any] = None
-        self.state_machine: Optional[SubprocessStateMachine] = None
-        self.evidence_collector: Optional[EvidenceCollector] = None
-        self.success_evaluator: Optional[SuccessCriteriaEvaluator] = None
-        self.scenario_generator: Optional[GadugiScenarioGenerator] = None
+        self.platform_cli: Any | None = None
+        self.persona_strategy: Any | None = None
+        self.state_machine: SubprocessStateMachine | None = None
+        self.evidence_collector: EvidenceCollector | None = None
+        self.success_evaluator: SuccessCriteriaEvaluator | None = None
+        self.scenario_generator: GadugiScenarioGenerator | None = None
 
     def orchestrate_delegation(
         self,
@@ -165,8 +165,8 @@ class MetaDelegationOrchestrator:
         context: str = "",
         timeout_minutes: int = 30,
         enable_scenarios: bool = False,
-        working_directory: Optional[str] = None,
-        environment: Optional[Dict[str, str]] = None,
+        working_directory: str | None = None,
+        environment: dict[str, str] | None = None,
     ) -> MetaDelegationResult:
         """Orchestrate complete delegation workflow.
 
@@ -358,7 +358,7 @@ class MetaDelegationOrchestrator:
         goal: str,
         persona: str,
         working_dir: str,
-        environment: Dict[str, str],
+        environment: dict[str, str],
         context: str = "",
     ) -> Any:
         """Spawn AI assistant subprocess.
@@ -434,7 +434,7 @@ class MetaDelegationOrchestrator:
                         # Read available data (non-blocking)
                         chunk = os.read(self.state_machine.process.stdout.fileno(), 4096)
                         if chunk:
-                            execution_log_parts.append(chunk.decode('utf-8', errors='replace'))
+                            execution_log_parts.append(chunk.decode("utf-8", errors="replace"))
                 except Exception:
                     # Handle any I/O errors gracefully (process may have terminated)
                     pass
@@ -452,14 +452,20 @@ class MetaDelegationOrchestrator:
                 execution_log_parts.append(f"Error reading output: {e}")
 
         # Transition to completed (only if not already completing/completed)
-        if not self.state_machine.has_failed() and self.state_machine.current_state not in [ProcessState.COMPLETING, ProcessState.COMPLETED]:
+        if not self.state_machine.has_failed() and self.state_machine.current_state not in [
+            ProcessState.COMPLETING,
+            ProcessState.COMPLETED,
+        ]:
             self.state_machine.transition_to(ProcessState.COMPLETING)
-        if not self.state_machine.has_failed() and self.state_machine.current_state == ProcessState.COMPLETING:
+        if (
+            not self.state_machine.has_failed()
+            and self.state_machine.current_state == ProcessState.COMPLETING
+        ):
             self.state_machine.transition_to(ProcessState.COMPLETED)
 
         return "\n".join(execution_log_parts)
 
-    def collect_evidence(self, execution_log: str) -> List[EvidenceItem]:
+    def collect_evidence(self, execution_log: str) -> list[EvidenceItem]:
         """Collect evidence from working directory.
 
         Args:
@@ -476,7 +482,7 @@ class MetaDelegationOrchestrator:
     def evaluate_success(
         self,
         criteria: str,
-        evidence: List[EvidenceItem],
+        evidence: list[EvidenceItem],
         execution_log: str,
     ) -> Any:
         """Evaluate success against criteria.
@@ -501,7 +507,7 @@ class MetaDelegationOrchestrator:
         goal: str,
         success_criteria: str,
         context: str,
-    ) -> List[TestScenario]:
+    ) -> list[TestScenario]:
         """Generate test scenarios.
 
         Args:
@@ -542,8 +548,8 @@ def run_meta_delegation(
     context: str = "",
     timeout_minutes: int = 30,
     enable_scenarios: bool = False,
-    working_directory: Optional[str] = None,
-    environment: Optional[Dict[str, str]] = None,
+    working_directory: str | None = None,
+    environment: dict[str, str] | None = None,
 ) -> MetaDelegationResult:
     """Run meta-delegation with specified parameters.
 

@@ -15,14 +15,14 @@ amplihack plugin status
 
 ## Essential Commands
 
-| Command | Purpose |
-|---------|---------|
-| `amplihack plugin status` | Check plugin status |
-| `amplihack plugin update` | Update to latest version |
-| `amplihack plugin lsp-detect` | Detect project languages |
-| `amplihack plugin lsp-status` | Show LSP configuration |
-| `amplihack config show` | View preferences |
-| `amplihack config set KEY VALUE` | Set preference |
+| Command                          | Purpose                  |
+| -------------------------------- | ------------------------ |
+| `amplihack plugin status`        | Check plugin status      |
+| `amplihack plugin update`        | Update to latest version |
+| `amplihack plugin lsp-detect`    | Detect project languages |
+| `amplihack plugin lsp-status`    | Show LSP configuration   |
+| `amplihack config show`          | View preferences         |
+| `amplihack config set KEY VALUE` | Set preference           |
 
 ## Directory Structure
 
@@ -52,13 +52,13 @@ claude
 
 ## Supported Languages
 
-| Language | LSP Server | Auto-Detect |
-|----------|-----------|-------------|
-| TypeScript | tsserver | ✓ |
-| Python | pylsp | ✓ |
-| Rust | rust-analyzer | ✓ |
-| Go | gopls | ✓ |
-| Java | jdtls | ✓ |
+| Language   | LSP Server    | Auto-Detect |
+| ---------- | ------------- | ----------- |
+| TypeScript | tsserver      | ✓           |
+| Python     | pylsp         | ✓           |
+| Rust       | rust-analyzer | ✓           |
+| Go         | gopls         | ✓           |
+| Java       | jdtls         | ✓           |
 
 ## Configuration
 
@@ -77,12 +77,12 @@ cat ~/.amplihack/config/lsp/python.json
 
 ## Troubleshooting
 
-| Problem | Solution |
-|---------|----------|
-| Plugin not found | `amplihack plugin install --force` |
-| Commands unavailable | `amplihack plugin link --force` |
-| LSP not working | `amplihack plugin lsp-detect --force` |
-| Version mismatch | `amplihack plugin update --sync` |
+| Problem              | Solution                              |
+| -------------------- | ------------------------------------- |
+| Plugin not found     | `amplihack plugin install --force`    |
+| Commands unavailable | `amplihack plugin link --force`       |
+| LSP not working      | `amplihack plugin lsp-detect --force` |
+| Version mismatch     | `amplihack plugin update --sync`      |
 
 ## Key Concepts
 

@@ -26,7 +26,13 @@ scenario:
   steps:
     - action: launch
       target: "amplihack"
-      args: ["claude", "--", "-p", "Task(subagent_type=\"guide\", prompt=\"I see there are multiple workflows. When do I use Q&A vs DEFAULT vs AUTO?\")"]
+      args:
+        [
+          "claude",
+          "--",
+          "-p",
+          'Task(subagent_type="guide", prompt="I see there are multiple workflows. When do I use Q&A vs DEFAULT vs AUTO?")',
+        ]
       description: "Ask about workflow selection"
       timeout: 90s
 

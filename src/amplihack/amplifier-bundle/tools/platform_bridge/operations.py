@@ -9,11 +9,11 @@ Philosophy:
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Optional
 
 
 class PRStatus(Enum):
     """Pull request status."""
+
     OPEN = "open"
     CLOSED = "closed"
     MERGED = "merged"
@@ -23,6 +23,7 @@ class PRStatus(Enum):
 @dataclass
 class PRInfo:
     """Pull request information."""
+
     number: int
     title: str
     status: PRStatus
@@ -50,7 +51,7 @@ class PlatformOperations(ABC):
         body: str,
         source_branch: str,
         target_branch: str = "main",
-        draft: bool = False
+        draft: bool = False,
     ) -> PRInfo:
         """Create a pull request.
 
@@ -68,7 +69,6 @@ class PlatformOperations(ABC):
             RuntimeError: If PR creation fails
             ValueError: If inputs are invalid
         """
-        pass
 
     @abstractmethod
     def get_pr(self, pr_number: int) -> PRInfo:
@@ -84,14 +84,9 @@ class PlatformOperations(ABC):
             RuntimeError: If PR retrieval fails
             ValueError: If PR not found
         """
-        pass
 
     @abstractmethod
-    def list_prs(
-        self,
-        status: Optional[PRStatus] = None,
-        author: Optional[str] = None
-    ) -> list[PRInfo]:
+    def list_prs(self, status: PRStatus | None = None, author: str | None = None) -> list[PRInfo]:
         """List pull requests.
 
         Args:
@@ -104,14 +99,10 @@ class PlatformOperations(ABC):
         Raises:
             RuntimeError: If listing fails
         """
-        pass
 
     @abstractmethod
     def update_pr(
-        self,
-        pr_number: int,
-        title: Optional[str] = None,
-        body: Optional[str] = None
+        self, pr_number: int, title: str | None = None, body: str | None = None
     ) -> PRInfo:
         """Update pull request.
 
@@ -127,7 +118,6 @@ class PlatformOperations(ABC):
             RuntimeError: If update fails
             ValueError: If PR not found
         """
-        pass
 
     @abstractmethod
     def check_ci_status(self, pr_number: int) -> dict:
@@ -147,4 +137,3 @@ class PlatformOperations(ABC):
             RuntimeError: If status check fails
             ValueError: If PR not found
         """
-        pass

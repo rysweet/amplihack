@@ -5,7 +5,6 @@ These tests will FAIL until the evidence_collector module is implemented.
 """
 
 from datetime import datetime
-from pathlib import Path
 
 import pytest
 

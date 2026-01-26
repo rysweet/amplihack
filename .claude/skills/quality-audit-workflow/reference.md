@@ -393,7 +393,7 @@ Create bidirectional links between issues and PRs for future prevention:
 
 **In Child Issues** (via template updates):
 
-````markdown
+```markdown
 ## Cross-Reference Instructions
 
 **To prevent future false positives**, when fixing this issue:
@@ -405,7 +405,7 @@ Create bidirectional links between issues and PRs for future prevention:
 **Unique ID**: `audit-${category}-${key_term}`
 **Keywords**: `${keyword_list}`
 **Files**: `${file_list}`
-````
+```
 
 **In PR Comments** (auto-added by Phase 3.5):
 
@@ -433,18 +433,18 @@ Generate summary report of validation results:
 
 ## Validation Results
 
-| Issue | Confidence | Action         | PR     | Reason                    |
-| ----- | ---------- | -------------- | ------ | ------------------------- |
-| #101  | 95%        | Auto-closed    | #201   | File + keyword + ref      |
-| #102  | 92%        | Auto-closed    | #202   | File + keyword match      |
-| #103  | 91%        | Auto-closed    | #203   | File + ref + category     |
-| #104  | 78%        | Needs-verify   | #204   | File match only           |
-| #105  | 45%        | Remains open   | -      | Low confidence            |
-| #106  | 12%        | Remains open   | -      | No match                  |
-| #107  | 0%         | Remains open   | -      | No PR found               |
-| #108  | 0%         | Remains open   | -      | No PR found               |
-| #109  | 0%         | Remains open   | -      | No PR found               |
-| #110  | 0%         | Remains open   | -      | No PR found               |
+| Issue | Confidence | Action       | PR   | Reason                |
+| ----- | ---------- | ------------ | ---- | --------------------- |
+| #101  | 95%        | Auto-closed  | #201 | File + keyword + ref  |
+| #102  | 92%        | Auto-closed  | #202 | File + keyword match  |
+| #103  | 91%        | Auto-closed  | #203 | File + ref + category |
+| #104  | 78%        | Needs-verify | #204 | File match only       |
+| #105  | 45%        | Remains open | -    | Low confidence        |
+| #106  | 12%        | Remains open | -    | No match              |
+| #107  | 0%         | Remains open | -    | No PR found           |
+| #108  | 0%         | Remains open | -    | No PR found           |
+| #109  | 0%         | Remains open | -    | No PR found           |
+| #110  | 0%         | Remains open | -    | No PR found           |
 
 ## Summary
 
@@ -889,8 +889,9 @@ This helps Phase 3.5 auto-detect fixes in future audits.
 {if UI changes}
 
 ---
-*Audit PR - Review with context of issue #{issue_number}*
-````
+
+_Audit PR - Review with context of issue #{issue_number}_
+```
 
 ---
 

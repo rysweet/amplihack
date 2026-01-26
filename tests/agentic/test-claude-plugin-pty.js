@@ -12,16 +12,16 @@
  * in a terminal and enabling proper TUI behavior.
  */
 
-const pty = require('node-pty');
-const path = require('path');
-const fs = require('fs');
-const os = require('os');
+const pty = require("node-pty");
+const path = require("path");
+const fs = require("fs");
+const os = require("os");
 
 // Configuration
 const HOME = os.homedir();
-const PLUGIN_DIR = path.join(HOME, '.amplihack', '.claude');
+const PLUGIN_DIR = path.join(HOME, ".amplihack", ".claude");
 const TIMEOUT = 60000; // 60 seconds
-const EVIDENCE_DIR = path.join(__dirname, 'evidence', `pty-test-${Date.now()}`);
+const EVIDENCE_DIR = path.join(__dirname, "evidence", `pty-test-${Date.now()}`);
 
 // Create evidence directory
 if (!fs.existsSync(EVIDENCE_DIR)) {
@@ -30,12 +30,12 @@ if (!fs.existsSync(EVIDENCE_DIR)) {
 
 // Colors for output
 const colors = {
-  reset: '\x1b[0m',
-  bright: '\x1b[1m',
-  red: '\x1b[31m',
-  green: '\x1b[32m',
-  yellow: '\x1b[33m',
-  blue: '\x1b[34m',
+  reset: "\x1b[0m",
+  bright: "\x1b[1m",
+  red: "\x1b[31m",
+  green: "\x1b[32m",
+  yellow: "\x1b[33m",
+  blue: "\x1b[34m",
 };
 
 function log(msg) {
@@ -56,21 +56,23 @@ function logWarning(msg) {
 
 // Main test function
 async function testClaudeCodePlugin() {
-  log('Starting Claude Code Plugin PTY Test');
+  log("Starting Claude Code Plugin PTY Test");
 
   // Check prerequisites
   if (!fs.existsSync(PLUGIN_DIR)) {
     logError(`Plugin directory not found: ${PLUGIN_DIR}`);
-    logError('Run: uvx --refresh --from git+https://github.com/rysweet/amplihack@feat/issue-1948-plugin-architecture amplihack --help');
+    logError(
+      "Run: uvx --refresh --from git+https://github.com/rysweet/amplihack@feat/issue-1948-plugin-architecture amplihack --help"
+    );
     process.exit(1);
   }
 
   logSuccess(`Plugin directory found: ${PLUGIN_DIR}`);
 
   // Check AMPLIHACK.md
-  const amplihackMd = path.join(PLUGIN_DIR, 'AMPLIHACK.md');
+  const amplihackMd = path.join(PLUGIN_DIR, "AMPLIHACK.md");
   if (!fs.existsSync(amplihackMd)) {
-    logError('AMPLIHACK.md not found');
+    logError("AMPLIHACK.md not found");
     process.exit(1);
   }
 
@@ -78,34 +80,31 @@ async function testClaudeCodePlugin() {
   logSuccess(`AMPLIHACK.md exists (${(stats.size / 1024).toFixed(1)}KB)`);
 
   // Create PTY with Claude Code
-  log('Spawning Claude Code with PTY...');
+  log("Spawning Claude Code with PTY...");
 
-  const ptyProcess = pty.spawn('claude', [
-    '--plugin-dir', PLUGIN_DIR,
-    '--add-dir', '/tmp'
-  ], {
-    name: 'xterm-256color',
+  const ptyProcess = pty.spawn("claude", ["--plugin-dir", PLUGIN_DIR, "--add-dir", "/tmp"], {
+    name: "xterm-256color",
     cols: 120,
     rows: 40,
-    cwd: '/tmp',
+    cwd: "/tmp",
     env: {
       ...process.env,
-      TERM: 'xterm-256color',
-      COLORTERM: 'truecolor'
-    }
+      TERM: "xterm-256color",
+      COLORTERM: "truecolor",
+    },
   });
 
   logSuccess(`PTY spawned (PID: ${ptyProcess.pid})`);
 
   // Output buffer
-  let outputBuffer = '';
+  let outputBuffer = "";
   let testPassed = false;
   let testComplete = false;
 
   // Set up timeout
   const timeoutHandle = setTimeout(() => {
     if (!testComplete) {
-      logError('Test timeout after 60 seconds');
+      logError("Test timeout after 60 seconds");
       ptyProcess.kill();
       saveEvidence(outputBuffer, false);
       process.exit(1);
@@ -118,7 +117,7 @@ async function testClaudeCodePlugin() {
     process.stdout.write(data); // Echo to console
 
     // Check if amplihack appears in output
-    if (data.includes('amplihack')) {
+    if (data.includes("amplihack")) {
       logSuccess('Found "amplihack" in output!');
       testPassed = true;
     }
@@ -134,66 +133,66 @@ async function testClaudeCodePlugin() {
     saveEvidence(outputBuffer, testPassed);
 
     if (testPassed) {
-      console.log('\n' + '='.repeat(50));
-      logSuccess('TEST PASSED: amplihack plugin detected!');
-      console.log('='.repeat(50) + '\n');
+      console.log("\n" + "=".repeat(50));
+      logSuccess("TEST PASSED: amplihack plugin detected!");
+      console.log("=".repeat(50) + "\n");
       process.exit(0);
     } else {
-      console.log('\n' + '='.repeat(50));
-      logError('TEST FAILED: amplihack not detected');
-      console.log('='.repeat(50) + '\n');
+      console.log("\n" + "=".repeat(50));
+      logError("TEST FAILED: amplihack not detected");
+      console.log("=".repeat(50) + "\n");
       process.exit(1);
     }
   });
 
   // Wait for Claude Code to initialize
-  log('Waiting for Claude Code to initialize...');
+  log("Waiting for Claude Code to initialize...");
   await sleep(3000);
 
   // Claude Code asks for permission to work in /tmp - press Enter to confirm
-  log('Confirming folder permission...');
-  ptyProcess.write('\r'); // Press Enter
+  log("Confirming folder permission...");
+  ptyProcess.write("\r"); // Press Enter
 
   // Wait for Claude Code to fully load
   await sleep(3000);
 
   // Send /plugin command
-  log('Sending /plugin command...');
-  ptyProcess.write('/plugin');
+  log("Sending /plugin command...");
+  ptyProcess.write("/plugin");
 
   // Wait for autocomplete to show
   await sleep(1000);
 
   // Press Enter to execute
-  log('Executing /plugin command...');
-  ptyProcess.write('\r');
+  log("Executing /plugin command...");
+  ptyProcess.write("\r");
 
   // Wait for Plugins screen to load
   await sleep(3000);
 
   // Navigate to "Installed" tab (press Tab or Right arrow)
-  log('Navigating to Installed tab...');
-  ptyProcess.write('\t'); // Tab key to switch tabs
+  log("Navigating to Installed tab...");
+  ptyProcess.write("\t"); // Tab key to switch tabs
 
   // Wait for Installed tab to load
   await sleep(3000);
 
   // Try to exit gracefully
-  log('Attempting graceful exit...');
-  ptyProcess.write('\x04'); // Ctrl+D
+  log("Attempting graceful exit...");
+  ptyProcess.write("\x04"); // Ctrl+D
 
   await sleep(2000);
 
   // Force kill if still running
   if (!testComplete) {
-    log('Force killing process...');
+    log("Force killing process...");
     ptyProcess.kill();
   }
 }
 
 function saveEvidence(output, passed) {
-  const evidenceFile = path.join(EVIDENCE_DIR, 'output.txt');
-  const reportFile = path.join(EVIDENCE_DIR, 'REPORT.md');
+  const evidenceFile = path.join(EVIDENCE_DIR, "output.txt");
+  const reportFile = path.join(EVIDENCE_DIR, "REPORT.md");
 
   // Save raw output
   fs.writeFileSync(evidenceFile, output);
@@ -203,7 +202,7 @@ function saveEvidence(output, passed) {
   const report = `# Claude Code Plugin PTY Test Report
 
 **Date**: ${new Date().toISOString()}
-**Result**: ${passed ? '✅ PASSED' : '❌ FAILED'}
+**Result**: ${passed ? "✅ PASSED" : "❌ FAILED"}
 
 ## Test Details
 
@@ -217,7 +216,7 @@ function saveEvidence(output, passed) {
 2. ✓ Verified AMPLIHACK.md exists
 3. ✓ Spawned Claude Code with PTY
 4. ✓ Sent /plugin command
-5. ${passed ? '✓' : '✗'} Detected "amplihack" in output
+5. ${passed ? "✓" : "✗"} Detected "amplihack" in output
 
 ## Evidence
 
@@ -225,7 +224,7 @@ See \`output.txt\` for complete terminal output.
 
 ## Search for "amplihack"
 
-${passed ? 'Found in output ✓' : 'NOT found in output ✗'}
+${passed ? "Found in output ✓" : "NOT found in output ✗"}
 
 ---
 *Generated by test-claude-plugin-pty.js*
@@ -236,7 +235,7 @@ ${passed ? 'Found in output ✓' : 'NOT found in output ✗'}
 }
 
 function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 // Run test

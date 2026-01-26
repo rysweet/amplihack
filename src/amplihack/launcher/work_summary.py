@@ -13,9 +13,8 @@ Philosophy:
 
 import json
 import subprocess
-from dataclasses import dataclass, field
-from typing import Optional, List, Any
-from pathlib import Path
+from dataclasses import dataclass
+from typing import Any
 
 
 @dataclass
@@ -39,19 +38,19 @@ class TodoState:
 class GitState:
     """Git repository state."""
 
-    current_branch: Optional[str]
+    current_branch: str | None
     has_uncommitted_changes: bool
-    commits_ahead: Optional[int]
+    commits_ahead: int | None
 
 
 @dataclass
 class GitHubState:
     """GitHub PR state (optional, requires gh CLI)."""
 
-    pr_number: Optional[int]
-    pr_state: Optional[str]  # OPEN, CLOSED, MERGED
-    ci_status: Optional[str]  # SUCCESS, FAILURE, PENDING
-    pr_mergeable: Optional[bool]
+    pr_number: int | None
+    pr_state: str | None  # OPEN, CLOSED, MERGED
+    ci_status: str | None  # SUCCESS, FAILURE, PENDING
+    pr_mergeable: bool | None
 
 
 @dataclass
@@ -67,7 +66,7 @@ class WorkSummaryGenerator:
     """Generate WorkSummary from session state and external tools."""
 
     def __init__(self):
-        self._cache: Optional[WorkSummary] = None
+        self._cache: WorkSummary | None = None
 
     def generate(self, message_capture: Any) -> WorkSummary:
         """Generate complete WorkSummary.
@@ -86,13 +85,13 @@ class WorkSummaryGenerator:
 
         # Extract GitHub state using current branch
         branch = git_state.current_branch
-        github_state = self._extract_github_state(branch) if branch else GitHubState(
-            pr_number=None, pr_state=None, ci_status=None, pr_mergeable=None
+        github_state = (
+            self._extract_github_state(branch)
+            if branch
+            else GitHubState(pr_number=None, pr_state=None, ci_status=None, pr_mergeable=None)
         )
 
-        summary = WorkSummary(
-            todo_state=todo_state, git_state=git_state, github_state=github_state
-        )
+        summary = WorkSummary(todo_state=todo_state, git_state=git_state, github_state=github_state)
 
         self._cache = summary
         return summary
@@ -197,9 +196,7 @@ class WorkSummaryGenerator:
 
         except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
             # Not in git repo or git not available
-            return GitState(
-                current_branch=None, has_uncommitted_changes=False, commits_ahead=None
-            )
+            return GitState(current_branch=None, has_uncommitted_changes=False, commits_ahead=None)
 
     def _extract_github_state(self, branch: str) -> GitHubState:
         """Extract GitHub PR state using gh CLI.
@@ -232,9 +229,7 @@ class WorkSummaryGenerator:
 
             prs = json.loads(result.stdout)
             if not prs:
-                return GitHubState(
-                    pr_number=None, pr_state=None, ci_status=None, pr_mergeable=None
-                )
+                return GitHubState(pr_number=None, pr_state=None, ci_status=None, pr_mergeable=None)
 
             # Use first PR (most recent)
             pr = prs[0]
@@ -253,7 +248,7 @@ class WorkSummaryGenerator:
                     if status == "IN_PROGRESS":
                         ci_status = "PENDING"
                         break
-                    elif status == "COMPLETED":
+                    if status == "COMPLETED":
                         ci_status = conclusion  # SUCCESS, FAILURE, etc.
                         break
 
@@ -279,9 +274,7 @@ class WorkSummaryGenerator:
             subprocess.TimeoutExpired,
         ):
             # gh CLI not available or error
-            return GitHubState(
-                pr_number=None, pr_state=None, ci_status=None, pr_mergeable=None
-            )
+            return GitHubState(pr_number=None, pr_state=None, ci_status=None, pr_mergeable=None)
 
     def format_for_prompt(self, summary: WorkSummary) -> str:
         """Format WorkSummary for LLM prompt injection.

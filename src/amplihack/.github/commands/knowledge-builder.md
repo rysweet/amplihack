@@ -9,16 +9,16 @@
 - **name**: /socratic
 - **version**: 1.0.0
 - **description**: Build comprehensive knowledge base using Socratic method and web search
-- **triggers**: 
-- **invokes**: 
+- **triggers**:
+- **invokes**:
 - **- type**: command
-- **philosophy**: 
+- **philosophy**:
 - **- principle**: Modular Design
 - **application**: Structured output in 5 self-contained markdown files
-- **dependencies**: 
-- **required**: 
-- **optional**: 
-- **examples**: 
+- **dependencies**:
+- **required**:
+- **optional**:
+- **examples**:
 - **- "/amplihack**: knowledge-builder Rust memory safety model"
 
 ---
@@ -29,6 +29,7 @@ This command is designed for Claude Code but the patterns and approaches
 can be referenced when using GitHub Copilot CLI.
 
 **Example**:
+
 ```bash
 # Reference this command's approach
 gh copilot explain .github/commands/knowledge-builder.md
@@ -40,7 +41,6 @@ gh copilot suggest --context .github/commands/knowledge-builder.md "your task"
 ---
 
 ## Original Command Documentation
-
 
 # Knowledge Builder
 

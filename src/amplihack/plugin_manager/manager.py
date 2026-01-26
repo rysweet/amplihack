@@ -7,12 +7,12 @@ import subprocess
 import threading
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
 
 
 @dataclass
 class InstallResult:
     """Result of plugin installation."""
+
     success: bool
     plugin_name: str
     installed_path: Path
@@ -22,6 +22,7 @@ class InstallResult:
 @dataclass
 class ValidationResult:
     """Result of manifest validation."""
+
     valid: bool
     errors: list
     warnings: list
@@ -38,17 +39,17 @@ class PluginManager:
     """
 
     # Semantic version pattern (major.minor.patch)
-    VERSION_PATTERN = re.compile(r'^\d+\.\d+\.\d+$')
+    VERSION_PATTERN = re.compile(r"^\d+\.\d+\.\d+$")
 
     # Plugin name pattern (lowercase letters, numbers, hyphens)
-    NAME_PATTERN = re.compile(r'^[a-z0-9-]+$')
+    NAME_PATTERN = re.compile(r"^[a-z0-9-]+$")
 
-    REQUIRED_FIELDS = ['name', 'version', 'entry_point']
+    REQUIRED_FIELDS = ["name", "version", "entry_point"]
 
     # Fields that should be resolved to absolute paths
-    PATH_FIELDS = {'entry_point', 'files', 'cwd', 'script', 'path'}
+    PATH_FIELDS = {"entry_point", "files", "cwd", "script", "path"}
 
-    def __init__(self, plugin_root: Optional[Path] = None):
+    def __init__(self, plugin_root: Path | None = None):
         """Initialize plugin manager.
 
         Args:
@@ -104,26 +105,26 @@ class PluginManager:
                 errors.append(f"Missing required field: {field}")
 
         # Validate version format if present
-        if 'version' in manifest:
-            if not self.VERSION_PATTERN.match(str(manifest['version'])):
-                errors.append(f"Invalid version format: {manifest['version']} (expected semver like 1.0.0)")
+        if "version" in manifest:
+            if not self.VERSION_PATTERN.match(str(manifest["version"])):
+                errors.append(
+                    f"Invalid version format: {manifest['version']} (expected semver like 1.0.0)"
+                )
 
         # Validate name format if present
-        if 'name' in manifest:
-            if not self.NAME_PATTERN.match(str(manifest['name'])):
-                errors.append(f"Invalid name format: {manifest['name']} (must be lowercase letters, numbers, hyphens only)")
+        if "name" in manifest:
+            if not self.NAME_PATTERN.match(str(manifest["name"])):
+                errors.append(
+                    f"Invalid name format: {manifest['name']} (must be lowercase letters, numbers, hyphens only)"
+                )
 
         # Check for optional but recommended fields
-        recommended_fields = ['description', 'author']
+        recommended_fields = ["description", "author"]
         for field in recommended_fields:
             if field not in manifest:
                 warnings.append(f"Missing recommended field: {field}")
 
-        return ValidationResult(
-            valid=len(errors) == 0,
-            errors=errors,
-            warnings=warnings
-        )
+        return ValidationResult(valid=len(errors) == 0, errors=errors, warnings=warnings)
 
     def install(self, source: str, force: bool = False) -> InstallResult:
         """Install a plugin from git URL or local path.
@@ -142,7 +143,7 @@ class PluginManager:
                     success=False,
                     plugin_name="",
                     installed_path=Path(),
-                    message="Empty source provided"
+                    message="Empty source provided",
                 )
 
             # Determine if source is git URL or local path
@@ -152,8 +153,8 @@ class PluginManager:
 
             if is_git_url:
                 # Extract plugin name from URL
-                plugin_name = source.rstrip('/').split('/')[-1]
-                if plugin_name.endswith('.git'):
+                plugin_name = source.rstrip("/").split("/")[-1]
+                if plugin_name.endswith(".git"):
                     plugin_name = plugin_name[:-4]
 
                 # Validate plugin name to prevent path traversal
@@ -162,20 +163,21 @@ class PluginManager:
                         success=False,
                         plugin_name=plugin_name,
                         installed_path=Path(),
-                        message=f"Invalid plugin name from URL: {plugin_name} (must be lowercase letters, numbers, hyphens only)"
+                        message=f"Invalid plugin name from URL: {plugin_name} (must be lowercase letters, numbers, hyphens only)",
                     )
 
                 # Create temp directory for cloning with cleanup tracking
                 import tempfile
+
                 temp_dir = Path(tempfile.mkdtemp())
                 temp_cleanup_needed = True
 
                 try:
                     # Clone repository
                     result = subprocess.run(
-                        ['git', 'clone', source, str(temp_dir / plugin_name)],
+                        ["git", "clone", source, str(temp_dir / plugin_name)],
                         capture_output=True,
-                        text=True
+                        text=True,
                     )
 
                     if result.returncode != 0:
@@ -183,11 +185,11 @@ class PluginManager:
                             success=False,
                             plugin_name=plugin_name,
                             installed_path=Path(),
-                            message=f"Git clone failed: {result.stderr}"
+                            message=f"Git clone failed: {result.stderr}",
                         )
 
                     source_path = temp_dir / plugin_name
-                except Exception as e:
+                except Exception:
                     # Clean up temp directory on error
                     if temp_cleanup_needed and temp_dir.exists():
                         shutil.rmtree(temp_dir)
@@ -202,7 +204,7 @@ class PluginManager:
                         success=False,
                         plugin_name="",
                         installed_path=Path(),
-                        message=f"Source must be a directory: {source}"
+                        message=f"Source must be a directory: {source}",
                     )
 
                 plugin_name = source_path.name
@@ -216,7 +218,7 @@ class PluginManager:
                     success=False,
                     plugin_name=plugin_name,
                     installed_path=Path(),
-                    message="Manifest path traversal detected"
+                    message="Manifest path traversal detected",
                 )
 
             validation = self.validate_manifest(manifest_path)
@@ -226,7 +228,7 @@ class PluginManager:
                     success=False,
                     plugin_name=plugin_name,
                     installed_path=Path(),
-                    message=f"Invalid manifest: {', '.join(validation.errors)}"
+                    message=f"Invalid manifest: {', '.join(validation.errors)}",
                 )
 
             # Check if plugin already exists
@@ -236,7 +238,7 @@ class PluginManager:
                     success=False,
                     plugin_name=plugin_name,
                     installed_path=target_path,
-                    message=f"Plugin already installed: {plugin_name} (use force=True to overwrite)"
+                    message=f"Plugin already installed: {plugin_name} (use force=True to overwrite)",
                 )
 
             # Remove existing if force
@@ -254,7 +256,7 @@ class PluginManager:
                     success=False,
                     plugin_name=plugin_name,
                     installed_path=target_path,
-                    message=f"Failed to copy plugin files: {e}"
+                    message=f"Failed to copy plugin files: {e}",
                 )
 
             # Register plugin in Claude Code settings
@@ -269,14 +271,14 @@ class PluginManager:
                     success=False,
                     plugin_name=plugin_name,
                     installed_path=target_path,
-                    message=f"Plugin copied but registration failed: {plugin_name}"
+                    message=f"Plugin copied but registration failed: {plugin_name}",
                 )
 
             return InstallResult(
                 success=True,
                 plugin_name=plugin_name,
                 installed_path=target_path,
-                message=f"Plugin installed successfully: {plugin_name}"
+                message=f"Plugin installed successfully: {plugin_name}",
             )
 
     def uninstall(self, plugin_name: str) -> bool:
@@ -299,7 +301,7 @@ class PluginManager:
         except (PermissionError, OSError):
             return False
 
-    def resolve_paths(self, manifest: dict, plugin_path: Optional[Path] = None) -> dict:
+    def resolve_paths(self, manifest: dict, plugin_path: Path | None = None) -> dict:
         """Resolve relative paths in manifest to absolute paths.
 
         Args:
@@ -323,8 +325,7 @@ class PluginManager:
             elif key in self.PATH_FIELDS and isinstance(value, list):
                 # Resolve list of paths
                 resolved[key] = [
-                    str(base_path / Path(p)) if not Path(p).is_absolute() else p
-                    for p in value
+                    str(base_path / Path(p)) if not Path(p).is_absolute() else p for p in value
                 ]
             elif isinstance(value, dict):
                 # Recursively resolve nested dictionaries
@@ -385,11 +386,11 @@ class PluginManager:
                 settings = {}
 
             # Add to enabledPlugins array
-            if 'enabledPlugins' not in settings:
-                settings['enabledPlugins'] = []
+            if "enabledPlugins" not in settings:
+                settings["enabledPlugins"] = []
 
-            if plugin_name not in settings['enabledPlugins']:
-                settings['enabledPlugins'].append(plugin_name)
+            if plugin_name not in settings["enabledPlugins"]:
+                settings["enabledPlugins"].append(plugin_name)
 
             # Write updated settings
             settings_path.write_text(json.dumps(settings, indent=2))
@@ -398,5 +399,6 @@ class PluginManager:
         except (OSError, json.JSONDecodeError, PermissionError) as e:
             # Log error for debugging instead of swallowing silently
             import logging
+
             logging.error(f"Failed to register plugin {plugin_name}: {e}")
             return False

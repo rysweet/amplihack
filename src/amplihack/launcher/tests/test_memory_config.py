@@ -12,14 +12,10 @@ Formula: N = max(8192, total_ram_mb // 4) capped at 32GB
 """
 
 import os
-import platform
 import subprocess
-from pathlib import Path
-from typing import Dict, Optional
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
-
 
 # =============================================================================
 # UNIT TESTS (60%)
@@ -130,12 +126,12 @@ class TestCalculateRecommendedLimit:
 
         # Test various RAM sizes
         test_cases = [
-            (4, 8192),    # 4 GB → 8 GB minimum
-            (8, 8192),    # 8 GB → 8 GB minimum
-            (32, 8192),   # 32 GB → 8 GB (32*1024/4 = 8192)
+            (4, 8192),  # 4 GB → 8 GB minimum
+            (8, 8192),  # 8 GB → 8 GB minimum
+            (32, 8192),  # 32 GB → 8 GB (32*1024/4 = 8192)
             (48, 12288),  # 48 GB → 12 GB
             (96, 24576),  # 96 GB → 24 GB
-            (192, 32768), # 192 GB → 32 GB (capped)
+            (192, 32768),  # 192 GB → 32 GB (capped)
         ]
 
         for ram_gb, expected_mb in test_cases:
@@ -218,7 +214,7 @@ class TestMergeNodeOptions:
             "max-old-space-size": 4096,
             "expose-gc": True,
             "no-deprecation": True,
-            "stack-size": 2048
+            "stack-size": 2048,
         }
         result = merge_node_options(existing, 8192)
 
@@ -277,11 +273,7 @@ class TestPromptUserConsent:
         """Test that prompt shows both current and recommended limits."""
         from amplihack.launcher.memory_config import prompt_user_consent
 
-        config = {
-            "current_limit_mb": 4096,
-            "recommended_limit_mb": 8192,
-            "system_ram_gb": 32
-        }
+        config = {"current_limit_mb": 4096, "recommended_limit_mb": 8192, "system_ram_gb": 32}
 
         with patch("builtins.input", return_value="y"):
             result = prompt_user_consent(config)
@@ -336,8 +328,8 @@ class TestMemoryConfigIntegration:
         with patch("pathlib.Path.exists", return_value=True):
             with patch("pathlib.Path.read_text", return_value=mock_meminfo):
                 from amplihack.launcher.memory_config import (
+                    calculate_recommended_limit,
                     detect_system_ram_gb,
-                    calculate_recommended_limit
                 )
 
                 ram_gb = detect_system_ram_gb()
@@ -348,10 +340,7 @@ class TestMemoryConfigIntegration:
 
     def test_parse_and_merge_workflow(self):
         """Test parsing existing options and merging new limit."""
-        from amplihack.launcher.memory_config import (
-            parse_node_options,
-            merge_node_options
-        )
+        from amplihack.launcher.memory_config import merge_node_options, parse_node_options
 
         original = "--max-old-space-size=4096 --no-warnings"
         parsed = parse_node_options(original)
@@ -367,9 +356,9 @@ class TestMemoryConfigIntegration:
         with patch("pathlib.Path.exists", return_value=True):
             with patch("pathlib.Path.read_text", return_value=mock_meminfo):
                 from amplihack.launcher.memory_config import (
-                    detect_system_ram_gb,
                     calculate_recommended_limit,
-                    should_warn_about_limit
+                    detect_system_ram_gb,
+                    should_warn_about_limit,
                 )
 
                 ram_gb = detect_system_ram_gb()
@@ -382,10 +371,7 @@ class TestMemoryConfigIntegration:
 
     def test_environment_variable_update_workflow(self):
         """Test updating environment variable with new limit."""
-        from amplihack.launcher.memory_config import (
-            parse_node_options,
-            merge_node_options
-        )
+        from amplihack.launcher.memory_config import merge_node_options, parse_node_options
 
         # Simulate existing environment
         existing = os.environ.get("NODE_OPTIONS", "")
@@ -524,10 +510,7 @@ class TestEdgeCases:
 
     def test_concurrent_modifications_to_node_options(self):
         """Test handling of concurrent NODE_OPTIONS modifications."""
-        from amplihack.launcher.memory_config import (
-            parse_node_options,
-            merge_node_options
-        )
+        from amplihack.launcher.memory_config import merge_node_options, parse_node_options
 
         # Simulate race condition scenario
         original = "--max-old-space-size=4096"
@@ -655,16 +638,17 @@ class TestFormulaCorrectness:
 
         # Systems where 1/4 RAM < 8GB should get 8GB
         test_cases = [
-            (4, 8192),   # 4GB / 4 = 1GB → 8GB minimum
-            (8, 8192),   # 8GB / 4 = 2GB → 8GB minimum
+            (4, 8192),  # 4GB / 4 = 1GB → 8GB minimum
+            (8, 8192),  # 8GB / 4 = 2GB → 8GB minimum
             (16, 8192),  # 16GB / 4 = 4GB → 8GB minimum
             (31, 8192),  # 31GB / 4 = 7.75GB → 8GB minimum
         ]
 
         for ram_gb, expected_mb in test_cases:
             actual_mb = calculate_recommended_limit(ram_gb)
-            assert actual_mb == expected_mb, \
+            assert actual_mb == expected_mb, (
                 f"RAM {ram_gb}GB should yield {expected_mb}MB, got {actual_mb}MB"
+            )
 
     def test_formula_quarter_calculation(self):
         """Verify formula correctly calculates 1/4 of RAM."""
@@ -672,15 +656,16 @@ class TestFormulaCorrectness:
 
         # Systems where 1/4 RAM > 8GB and < 32GB
         test_cases = [
-            (64, 16384),   # 64GB / 4 = 16GB
-            (96, 24576),   # 96GB / 4 = 24GB
+            (64, 16384),  # 64GB / 4 = 16GB
+            (96, 24576),  # 96GB / 4 = 24GB
             (120, 30720),  # 120GB / 4 = 30GB
         ]
 
         for ram_gb, expected_mb in test_cases:
             actual_mb = calculate_recommended_limit(ram_gb)
-            assert actual_mb == expected_mb, \
+            assert actual_mb == expected_mb, (
                 f"RAM {ram_gb}GB should yield {expected_mb}MB, got {actual_mb}MB"
+            )
 
     def test_formula_maximum_cap(self):
         """Verify formula caps at 32GB."""
@@ -691,13 +676,14 @@ class TestFormulaCorrectness:
             (128, 32768),  # 128GB / 4 = 32GB (exactly at cap)
             (256, 32768),  # 256GB / 4 = 64GB → 32GB cap
             (512, 32768),  # 512GB / 4 = 128GB → 32GB cap
-            (1024, 32768), # 1TB / 4 = 256GB → 32GB cap
+            (1024, 32768),  # 1TB / 4 = 256GB → 32GB cap
         ]
 
         for ram_gb, expected_mb in test_cases:
             actual_mb = calculate_recommended_limit(ram_gb)
-            assert actual_mb == expected_mb, \
+            assert actual_mb == expected_mb, (
                 f"RAM {ram_gb}GB should be capped at {expected_mb}MB, got {actual_mb}MB"
+            )
 
     def test_formula_exact_boundaries(self):
         """Test formula at exact boundary conditions."""

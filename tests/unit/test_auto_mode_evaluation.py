@@ -8,20 +8,19 @@ into the auto-mode evaluation loop:
 - Graceful degradation when tools unavailable
 """
 
-from unittest.mock import Mock, patch, MagicMock
-import pytest
+from unittest.mock import MagicMock, Mock, patch
 
 from amplihack.launcher.auto_mode import AutoMode
-from amplihack.launcher.work_summary import (
-    WorkSummary,
-    TodoState,
-    GitState,
-    GitHubState,
-)
 from amplihack.launcher.completion_signals import CompletionSignals
 from amplihack.launcher.completion_verifier import (
     VerificationResult,
     VerificationStatus,
+)
+from amplihack.launcher.work_summary import (
+    GitHubState,
+    GitState,
+    TodoState,
+    WorkSummary,
 )
 
 
@@ -45,7 +44,9 @@ class TestWorkSummaryPromptInjection:
             ),
         )
         mock_generator.generate.return_value = mock_summary
-        mock_generator.format_for_prompt.return_value = "Work Summary: 3/5 tasks done, PR #123 (CI pending)"
+        mock_generator.format_for_prompt.return_value = (
+            "Work Summary: 3/5 tasks done, PR #123 (CI pending)"
+        )
         mock_generator_class.return_value = mock_generator
 
         # Create AutoMode instance
@@ -61,9 +62,7 @@ class TestWorkSummaryPromptInjection:
         assert "PR #123" in evaluation_prompt or "123" in evaluation_prompt
 
     @patch("amplihack.launcher.auto_mode.WorkSummaryGenerator")
-    def test_evaluation_prompt_graceful_degradation_no_summary(
-        self, mock_generator_class
-    ):
+    def test_evaluation_prompt_graceful_degradation_no_summary(self, mock_generator_class):
         """Should handle gracefully if WorkSummary generation fails."""
         # Setup mock to raise exception
         mock_generator = Mock()
@@ -85,9 +84,7 @@ class TestCompletionSignalIntegration:
 
     @patch("amplihack.launcher.auto_mode.WorkSummaryGenerator")
     @patch("amplihack.launcher.auto_mode.CompletionSignalDetector")
-    def test_evaluation_uses_completion_signals(
-        self, mock_detector_class, mock_generator_class
-    ):
+    def test_evaluation_uses_completion_signals(self, mock_detector_class, mock_generator_class):
         """Evaluation should use CompletionSignals for concrete markers."""
         # Setup mocks
         mock_generator = Mock()
@@ -172,7 +169,11 @@ class TestCompletionSignalIntegration:
         evaluation_prompt = auto_mode._build_evaluation_prompt(mock_capture)
 
         # Should mention score or completion percentage
-        assert "0.4" in evaluation_prompt or "40%" in evaluation_prompt or "score" in evaluation_prompt.lower()
+        assert (
+            "0.4" in evaluation_prompt
+            or "40%" in evaluation_prompt
+            or "score" in evaluation_prompt.lower()
+        )
 
 
 class TestVerificationBeforeLoopExit:
@@ -344,9 +345,7 @@ class TestVerificationBeforeLoopExit:
 
         evaluation_result = "EVALUATION: COMPLETE\n\nReady to merge."
 
-        feedback = auto_mode._get_verification_feedback(
-            evaluation_result, mock_verification
-        )
+        feedback = auto_mode._get_verification_feedback(evaluation_result, mock_verification)
 
         # Should include discrepancies in feedback
         assert "CI" in feedback or "failing" in feedback.lower()
@@ -385,10 +384,7 @@ class TestGracefulDegradation:
         evaluation_prompt = auto_mode._build_evaluation_prompt(mock_capture)
 
         # Should mention GitHub unavailable
-        assert (
-            "github" in evaluation_prompt.lower()
-            or "unavailable" in evaluation_prompt.lower()
-        )
+        assert "github" in evaluation_prompt.lower() or "unavailable" in evaluation_prompt.lower()
 
     @patch("amplihack.launcher.auto_mode.WorkSummaryGenerator")
     def test_evaluation_continues_without_git(self, mock_generator_class):
@@ -606,9 +602,11 @@ class TestEvaluationDecisionLogging:
         # Capture log output
         logged_messages = []
         original_log = auto_mode.log
+
         def capture_log(msg, level="INFO"):
             logged_messages.append(msg)
             original_log(msg, level=level)
+
         auto_mode.log = capture_log
 
         evaluation_result = "Auto-Mode Evaluation: COMPLETE\n\nAll tasks done."
@@ -692,8 +690,10 @@ class TestEvaluationDecisionLogging:
 
         # Capture log output
         logged_messages = []
+
         def capture_log(msg, level="INFO"):
             logged_messages.append(msg)
+
         auto_mode.log = capture_log
 
         evaluation_result = "EVALUATION: COMPLETE\n\nDone!"

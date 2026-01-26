@@ -48,10 +48,7 @@ class TestAutoModeJsonLogging:
                 mock_message = MagicMock()
                 mock_message.__class__.__name__ = "AssistantMessage"
                 mock_message.content = [
-                    MagicMock(
-                        type="text",
-                        text="Test response - objective clarified"
-                    )
+                    MagicMock(type="text", text="Test response - objective clarified")
                 ]
                 yield mock_message
 
@@ -67,7 +64,7 @@ class TestAutoModeJsonLogging:
                     # Log turn start event
                     auto.json_logger.log_event(
                         "turn_start",
-                        {"turn": auto.turn, "phase": "clarifying", "max_turns": auto.max_turns}
+                        {"turn": auto.turn, "phase": "clarifying", "max_turns": auto.max_turns},
                     )
 
                     # Verify the event was logged

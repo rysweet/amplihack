@@ -1,8 +1,8 @@
 """Tests for session_start hook strategy selection and usage."""
 
 import json
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from datetime import UTC
+from unittest.mock import patch
 
 import pytest
 
@@ -26,7 +26,7 @@ def mock_project_root(tmp_path):
 
 def test_session_start_detects_copilot_launcher(mock_project_root):
     """Test that session_start hook detects copilot launcher."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     # Write launcher context
     context_file = mock_project_root / ".claude" / "runtime" / "launcher_context.json"
@@ -36,7 +36,7 @@ def test_session_start_detects_copilot_launcher(mock_project_root):
                 "launcher": "copilot",  # Fixed: was "launcher_type"
                 "command": "amplihack copilot",
                 "environment": {"AMPLIHACK_LAUNCHER": "copilot"},
-                "timestamp": datetime.now(timezone.utc).isoformat(),  # Fixed: use current time
+                "timestamp": datetime.now(UTC).isoformat(),  # Fixed: use current time
             }
         )
     )
@@ -64,7 +64,7 @@ def test_session_start_detects_claude_launcher(mock_project_root):
 
 def test_session_start_uses_copilot_strategy(mock_project_root):
     """Test that copilot launcher uses CopilotStrategy."""
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     # Write launcher context for copilot
     context_file = mock_project_root / ".claude" / "runtime" / "launcher_context.json"
@@ -74,7 +74,7 @@ def test_session_start_uses_copilot_strategy(mock_project_root):
                 "launcher": "copilot",  # Fixed: was "launcher_type"
                 "command": "amplihack copilot",
                 "environment": {"AMPLIHACK_LAUNCHER": "copilot"},
-                "timestamp": datetime.now(timezone.utc).isoformat(),  # Fixed: use current time
+                "timestamp": datetime.now(UTC).isoformat(),  # Fixed: use current time
             }
         )
     )

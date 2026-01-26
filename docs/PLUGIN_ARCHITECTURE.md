@@ -118,6 +118,7 @@ All hooks use `${CLAUDE_PLUGIN_ROOT}` variable substitution t' reference the plu
 ```
 
 **Key Points:**
+
 - All hooks use `${CLAUDE_PLUGIN_ROOT}` fer absolute paths
 - Hooks be loaded once when plugin initializes
 - Changes t' hooks require plugin reinstall or Claude Code restart
@@ -199,6 +200,7 @@ Plugin installation updates `~/.claude/settings.json`:
 ```
 
 **Key Properties:**
+
 - `enabledPlugins`: Array o' plugin names t' load
 - `extraKnownMarketplaces`: Plugin discovery sources
 - `hooks`: Lifecycle hook registrations with `${CLAUDE_PLUGIN_ROOT}` paths
@@ -208,6 +210,7 @@ Plugin installation updates `~/.claude/settings.json`:
 The plugin system maintains backward compatibility with per-project `~/.amplihack/.claude/` installations:
 
 **Mode Detection Precedence:**
+
 1. **LOCAL**: Project has `~/.amplihack/.claude/` directory → Use project-local
 2. **PLUGIN**: Plugin installed at `~/.amplihack/.claude/` → Use plugin
 3. **NONE**: No installation found → Prompt user t' install
@@ -231,17 +234,20 @@ AMPLIHACK_MODE=plugin amplihack launch
 ## Cross-Tool Compatibility
 
 ### Claude Code ✅
+
 - **Status**: Fully supported
 - **Installation**: `amplihack plugin install`
 - **Features**: Hooks, agents, commands, skills, marketplace
 
 ### GitHub Copilot ⚠️
+
 - **Status**: Partial compatibility
 - **Installation**: Manual copy t' project `~/.amplihack/.claude/` directory
 - **Limitations**: No plugin system (yet), hooks may not work
 - **Workaround**: Use per-project installation mode
 
 ### Codex ⚠️
+
 - **Status**: Unknown - requires research
 - **Installation**: Test with per-project mode first
 - **Limitations**: Plugin support unknown
@@ -314,11 +320,13 @@ Plugin be fully functional!
 **Symptom**: Commands and agents not available
 
 **Diagnosis**:
+
 ```bash
 amplihack plugin verify amplihack
 ```
 
 **Solutions**:
+
 1. Check `~/.claude/settings.json` contains plugin name
 2. Verify plugin directory exists at `~/.amplihack/.claude/`
 3. Restart Claude Code t' reload plugin
@@ -328,11 +336,13 @@ amplihack plugin verify amplihack
 **Symptom**: Session start/stop hooks not executing
 
 **Diagnosis**:
+
 ```bash
 cat ~/.amplihack/.claude/tools/amplihack/hooks/hooks.json
 ```
 
 **Solutions**:
+
 1. Verify `hooks.json` be valid JSON
 2. Check all hook scripts exist at specified paths
 3. Verify `${CLAUDE_PLUGIN_ROOT}` variable be set
@@ -343,11 +353,13 @@ cat ~/.amplihack/.claude/tools/amplihack/hooks/hooks.json
 **Symptom**: Plugin and local `~/.amplihack/.claude/` both present
 
 **Diagnosis**:
+
 ```bash
 amplihack mode status
 ```
 
 **Solutions**:
+
 - Local takes precedence by design (expected behavior)
 - T' use plugin, migrate: `amplihack mode migrate-to-plugin`
 - T' use local, keep both (local overrides plugin)

@@ -3,15 +3,17 @@
 Test meta-delegator with REAL coding task
 Goal: Get 100/100 score by having subprocess create actual code, tests, docs
 """
+
 import sys
-sys.path.insert(0, '/home/azureuser/src/amplihack/worktrees/feat/issue-2030-meta-delegator/src')
-import os
+
+sys.path.insert(0, "/home/azureuser/src/amplihack/worktrees/feat/issue-2030-meta-delegator/src")
 from pathlib import Path
 
 # Clean workspace
 workspace = Path("/tmp/meta-real-coding-task")
 if workspace.exists():
     import shutil
+
     shutil.rmtree(workspace)
 workspace.mkdir(parents=True)
 
@@ -41,20 +43,18 @@ Each function should:
 
 Keep it SIMPLE - just basic functionality, no error handling needed.
 This is a learning exercise.""",
-
     success_criteria="""
 - calculator.py file exists with add() and subtract() functions
 - test_calculator.py exists with at least 2 test functions
 - README.md exists with usage examples
 - All files have actual content (not empty)
 """,
-
     persona_type="guide",  # Guide will help subprocess learn
     platform="claude-code",
     timeout_minutes=10,  # Real tasks need more time
     working_directory=str(workspace),
     enable_scenarios=False,  # Keep it simple
-    context="This is a learning exercise to create a basic calculator module. Focus on simplicity and completeness."
+    context="This is a learning exercise to create a basic calculator module. Focus on simplicity and completeness.",
 )
 
 print("\n" + "=" * 70)
@@ -62,7 +62,7 @@ print("RESULTS")
 print("=" * 70)
 print(f"Status: {result.status}")
 print(f"Success Score: {result.success_score}/100")
-print(f"Duration: {result.duration_seconds:.1f}s ({result.duration_seconds/60:.1f} minutes)")
+print(f"Duration: {result.duration_seconds:.1f}s ({result.duration_seconds / 60:.1f} minutes)")
 print(f"Evidence Items Collected: {len(result.evidence)}")
 print()
 
@@ -71,7 +71,7 @@ if result.evidence:
     print("Evidence Collected:")
     for item in result.evidence:
         print(f"  - {item.type:20} {item.path}")
-        if item.type in ['code_file', 'test_file', 'documentation']:
+        if item.type in ["code_file", "test_file", "documentation"]:
             print(f"    Preview: {item.excerpt[:80]}...")
 
 # Check if files were actually created

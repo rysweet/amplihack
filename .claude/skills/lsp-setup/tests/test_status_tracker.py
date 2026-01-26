@@ -5,9 +5,7 @@ Tests three-layer status tracking and user guidance generation.
 All tests should FAIL initially (TDD red phase).
 """
 
-import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 
 class TestStatusTracker:
@@ -36,9 +34,7 @@ class TestStatusTracker:
                 assert status["layer_3"]["enabled"] is True
                 assert status["overall_ready"] is True
 
-    def test_check_layer_1_missing_binaries(
-        self, mock_project_root, missing_lsp_binaries
-    ):
+    def test_check_layer_1_missing_binaries(self, mock_project_root, missing_lsp_binaries):
         """Test status when Layer 1 (LSP binaries) are missing."""
         from lsp_setup.status_tracker import StatusTracker
 
@@ -49,9 +45,7 @@ class TestStatusTracker:
             assert status["python"]["installed"] is False
             assert "install_guide" in status["python"]
 
-    def test_check_layer_1_with_installed_binaries(
-        self, mock_project_root, installed_lsp_binaries
-    ):
+    def test_check_layer_1_with_installed_binaries(self, mock_project_root, installed_lsp_binaries):
         """Test status when Layer 1 (LSP binaries) are installed."""
         from lsp_setup.status_tracker import StatusTracker
 

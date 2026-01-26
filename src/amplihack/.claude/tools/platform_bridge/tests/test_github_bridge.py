@@ -10,10 +10,9 @@ Tests cover:
 - Error handling
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
-import subprocess
 import json
+import subprocess
+from unittest.mock import MagicMock, patch
 
 # This import will fail initially (TDD)
 from ..github_bridge import GitHubBridge
@@ -48,14 +47,11 @@ class TestCreateIssue:
         mock_run.return_value = MagicMock(
             returncode=0,
             stdout='{"number": 123, "url": "https://github.com/owner/repo/issues/123"}',
-            stderr=""
+            stderr="",
         )
 
         bridge = GitHubBridge()
-        result = bridge.create_issue(
-            title="Test Issue",
-            body="Issue description"
-        )
+        result = bridge.create_issue(title="Test Issue", body="Issue description")
 
         assert result["success"] is True
         assert result["issue_number"] == 123
@@ -67,14 +63,11 @@ class TestCreateIssue:
         mock_run.return_value = MagicMock(
             returncode=0,
             stdout='{"number": 123, "url": "https://github.com/owner/repo/issues/123"}',
-            stderr=""
+            stderr="",
         )
 
         bridge = GitHubBridge()
-        bridge.create_issue(
-            title="Test Issue",
-            body="Issue description"
-        )
+        bridge.create_issue(title="Test Issue", body="Issue description")
 
         # Verify command structure
         args = mock_run.call_args[0][0]
@@ -89,16 +82,11 @@ class TestCreateIssue:
     def test_create_issue_failure(self, mock_run):
         """Should return error dict on failure."""
         mock_run.return_value = MagicMock(
-            returncode=1,
-            stdout="",
-            stderr="Error: Repository not found"
+            returncode=1, stdout="", stderr="Error: Repository not found"
         )
 
         bridge = GitHubBridge()
-        result = bridge.create_issue(
-            title="Test Issue",
-            body="Issue description"
-        )
+        result = bridge.create_issue(title="Test Issue", body="Issue description")
 
         assert result["success"] is False
         assert "error" in result
@@ -107,16 +95,10 @@ class TestCreateIssue:
     @patch("subprocess.run")
     def test_create_issue_timeout(self, mock_run):
         """Should handle timeout gracefully."""
-        mock_run.side_effect = subprocess.TimeoutExpired(
-            cmd=["gh", "issue", "create"],
-            timeout=30
-        )
+        mock_run.side_effect = subprocess.TimeoutExpired(cmd=["gh", "issue", "create"], timeout=30)
 
         bridge = GitHubBridge()
-        result = bridge.create_issue(
-            title="Test Issue",
-            body="Issue description"
-        )
+        result = bridge.create_issue(title="Test Issue", body="Issue description")
 
         assert result["success"] is False
         assert "timeout" in result["error"].lower()
@@ -127,14 +109,12 @@ class TestCreateIssue:
         mock_run.return_value = MagicMock(
             returncode=0,
             stdout='{"number": 123, "url": "https://github.com/owner/repo/issues/123"}',
-            stderr=""
+            stderr="",
         )
 
         bridge = GitHubBridge()
         bridge.create_issue(
-            title="Test Issue",
-            body="Issue description",
-            labels=["bug", "high-priority"]
+            title="Test Issue", body="Issue description", labels=["bug", "high-priority"]
         )
 
         # Verify labels in command
@@ -147,10 +127,7 @@ class TestCreateIssue:
         mock_run.side_effect = FileNotFoundError("gh command not found")
 
         bridge = GitHubBridge()
-        result = bridge.create_issue(
-            title="Test Issue",
-            body="Issue description"
-        )
+        result = bridge.create_issue(title="Test Issue", body="Issue description")
 
         assert result["success"] is False
         assert "gh" in result["error"].lower()
@@ -166,14 +143,12 @@ class TestCreateDraftPR:
         mock_run.return_value = MagicMock(
             returncode=0,
             stdout='{"number": 456, "url": "https://github.com/owner/repo/pull/456"}',
-            stderr=""
+            stderr="",
         )
 
         bridge = GitHubBridge()
         result = bridge.create_draft_pr(
-            title="Test PR",
-            body="PR description",
-            branch="feature/test"
+            title="Test PR", body="PR description", branch="feature/test"
         )
 
         assert result["success"] is True
@@ -186,15 +161,11 @@ class TestCreateDraftPR:
         mock_run.return_value = MagicMock(
             returncode=0,
             stdout='{"number": 456, "url": "https://github.com/owner/repo/pull/456"}',
-            stderr=""
+            stderr="",
         )
 
         bridge = GitHubBridge()
-        bridge.create_draft_pr(
-            title="Test PR",
-            body="PR description",
-            branch="feature/test"
-        )
+        bridge.create_draft_pr(title="Test PR", body="PR description", branch="feature/test")
 
         # Verify command structure
         args = mock_run.call_args[0][0]
@@ -210,17 +181,11 @@ class TestCreateDraftPR:
     @patch("subprocess.run")
     def test_create_draft_pr_failure(self, mock_run):
         """Should return error dict on failure."""
-        mock_run.return_value = MagicMock(
-            returncode=1,
-            stdout="",
-            stderr="Error: Branch not found"
-        )
+        mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="Error: Branch not found")
 
         bridge = GitHubBridge()
         result = bridge.create_draft_pr(
-            title="Test PR",
-            body="PR description",
-            branch="nonexistent"
+            title="Test PR", body="PR description", branch="nonexistent"
         )
 
         assert result["success"] is False
@@ -233,15 +198,12 @@ class TestCreateDraftPR:
         mock_run.return_value = MagicMock(
             returncode=0,
             stdout='{"number": 456, "url": "https://github.com/owner/repo/pull/456"}',
-            stderr=""
+            stderr="",
         )
 
         bridge = GitHubBridge()
         bridge.create_draft_pr(
-            title="Test PR",
-            body="PR description",
-            branch="feature/test",
-            base="develop"
+            title="Test PR", body="PR description", branch="feature/test", base="develop"
         )
 
         # Verify base branch in command
@@ -257,9 +219,7 @@ class TestMarkPRReady:
     def test_mark_pr_ready_success(self, mock_run):
         """Should mark PR as ready for review."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='{"number": 456, "isDraft": false}',
-            stderr=""
+            returncode=0, stdout='{"number": 456, "isDraft": false}', stderr=""
         )
 
         bridge = GitHubBridge()
@@ -272,9 +232,7 @@ class TestMarkPRReady:
     def test_mark_pr_ready_constructs_correct_command(self, mock_run):
         """Should construct correct gh CLI command."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='{"number": 456, "isDraft": false}',
-            stderr=""
+            returncode=0, stdout='{"number": 456, "isDraft": false}', stderr=""
         )
 
         bridge = GitHubBridge()
@@ -289,9 +247,7 @@ class TestMarkPRReady:
     def test_mark_pr_ready_nonexistent_pr(self, mock_run):
         """Should return error for nonexistent PR."""
         mock_run.return_value = MagicMock(
-            returncode=1,
-            stdout="",
-            stderr="Error: Pull request not found"
+            returncode=1, stdout="", stderr="Error: Pull request not found"
         )
 
         bridge = GitHubBridge()
@@ -304,9 +260,7 @@ class TestMarkPRReady:
     def test_mark_pr_ready_already_ready(self, mock_run):
         """Should handle PR that's already ready."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='{"number": 456, "isDraft": false}',
-            stderr=""
+            returncode=0, stdout='{"number": 456, "isDraft": false}', stderr=""
         )
 
         bridge = GitHubBridge()
@@ -325,14 +279,11 @@ class TestAddPRComment:
         mock_run.return_value = MagicMock(
             returncode=0,
             stdout='{"id": "IC_123", "url": "https://github.com/owner/repo/pull/456#issuecomment-123"}',
-            stderr=""
+            stderr="",
         )
 
         bridge = GitHubBridge()
-        result = bridge.add_pr_comment(
-            pr_number=456,
-            comment="This is a test comment"
-        )
+        result = bridge.add_pr_comment(pr_number=456, comment="This is a test comment")
 
         assert result["success"] is True
         assert "comment_id" in result
@@ -340,17 +291,10 @@ class TestAddPRComment:
     @patch("subprocess.run")
     def test_add_pr_comment_constructs_correct_command(self, mock_run):
         """Should construct correct gh CLI command."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='{"id": "IC_123"}',
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout='{"id": "IC_123"}', stderr="")
 
         bridge = GitHubBridge()
-        bridge.add_pr_comment(
-            pr_number=456,
-            comment="Test comment"
-        )
+        bridge.add_pr_comment(pr_number=456, comment="Test comment")
 
         # Verify command structure
         args = mock_run.call_args[0][0]
@@ -362,18 +306,11 @@ class TestAddPRComment:
     @patch("subprocess.run")
     def test_add_pr_comment_multiline(self, mock_run):
         """Should handle multiline comments."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='{"id": "IC_123"}',
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout='{"id": "IC_123"}', stderr="")
 
         bridge = GitHubBridge()
         multiline_comment = "Line 1\nLine 2\nLine 3"
-        result = bridge.add_pr_comment(
-            pr_number=456,
-            comment=multiline_comment
-        )
+        result = bridge.add_pr_comment(pr_number=456, comment=multiline_comment)
 
         assert result["success"] is True
 
@@ -381,16 +318,11 @@ class TestAddPRComment:
     def test_add_pr_comment_failure(self, mock_run):
         """Should return error dict on failure."""
         mock_run.return_value = MagicMock(
-            returncode=1,
-            stdout="",
-            stderr="Error: Pull request not found"
+            returncode=1, stdout="", stderr="Error: Pull request not found"
         )
 
         bridge = GitHubBridge()
-        result = bridge.add_pr_comment(
-            pr_number=999,
-            comment="Test comment"
-        )
+        result = bridge.add_pr_comment(pr_number=999, comment="Test comment")
 
         assert result["success"] is False
         assert "error" in result
@@ -404,13 +336,15 @@ class TestCheckCIStatus:
         """Should return success when all checks pass."""
         mock_run.return_value = MagicMock(
             returncode=0,
-            stdout=json.dumps({
-                "statusCheckRollup": [
-                    {"name": "test", "status": "COMPLETED", "conclusion": "SUCCESS"},
-                    {"name": "lint", "status": "COMPLETED", "conclusion": "SUCCESS"}
-                ]
-            }),
-            stderr=""
+            stdout=json.dumps(
+                {
+                    "statusCheckRollup": [
+                        {"name": "test", "status": "COMPLETED", "conclusion": "SUCCESS"},
+                        {"name": "lint", "status": "COMPLETED", "conclusion": "SUCCESS"},
+                    ]
+                }
+            ),
+            stderr="",
         )
 
         bridge = GitHubBridge()
@@ -425,13 +359,15 @@ class TestCheckCIStatus:
         """Should return failure when any check fails."""
         mock_run.return_value = MagicMock(
             returncode=0,
-            stdout=json.dumps({
-                "statusCheckRollup": [
-                    {"name": "test", "status": "COMPLETED", "conclusion": "FAILURE"},
-                    {"name": "lint", "status": "COMPLETED", "conclusion": "SUCCESS"}
-                ]
-            }),
-            stderr=""
+            stdout=json.dumps(
+                {
+                    "statusCheckRollup": [
+                        {"name": "test", "status": "COMPLETED", "conclusion": "FAILURE"},
+                        {"name": "lint", "status": "COMPLETED", "conclusion": "SUCCESS"},
+                    ]
+                }
+            ),
+            stderr="",
         )
 
         bridge = GitHubBridge()
@@ -445,13 +381,15 @@ class TestCheckCIStatus:
         """Should return pending when checks are running."""
         mock_run.return_value = MagicMock(
             returncode=0,
-            stdout=json.dumps({
-                "statusCheckRollup": [
-                    {"name": "test", "status": "IN_PROGRESS", "conclusion": None},
-                    {"name": "lint", "status": "COMPLETED", "conclusion": "SUCCESS"}
-                ]
-            }),
-            stderr=""
+            stdout=json.dumps(
+                {
+                    "statusCheckRollup": [
+                        {"name": "test", "status": "IN_PROGRESS", "conclusion": None},
+                        {"name": "lint", "status": "COMPLETED", "conclusion": "SUCCESS"},
+                    ]
+                }
+            ),
+            stderr="",
         )
 
         bridge = GitHubBridge()
@@ -464,9 +402,7 @@ class TestCheckCIStatus:
     def test_check_ci_status_constructs_correct_command(self, mock_run):
         """Should construct correct gh CLI command."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='{"statusCheckRollup": []}',
-            stderr=""
+            returncode=0, stdout='{"statusCheckRollup": []}', stderr=""
         )
 
         bridge = GitHubBridge()
@@ -482,9 +418,7 @@ class TestCheckCIStatus:
     def test_check_ci_status_no_checks(self, mock_run):
         """Should handle PR with no CI checks."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='{"statusCheckRollup": []}',
-            stderr=""
+            returncode=0, stdout='{"statusCheckRollup": []}', stderr=""
         )
 
         bridge = GitHubBridge()
@@ -496,11 +430,7 @@ class TestCheckCIStatus:
     @patch("subprocess.run")
     def test_check_ci_status_api_failure(self, mock_run):
         """Should return error dict on API failure."""
-        mock_run.return_value = MagicMock(
-            returncode=1,
-            stdout="",
-            stderr="Error: Not found"
-        )
+        mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="Error: Not found")
 
         bridge = GitHubBridge()
         result = bridge.check_ci_status(ref="nonexistent")
@@ -518,7 +448,7 @@ class TestResponseFormat:
         mock_run.return_value = MagicMock(
             returncode=0,
             stdout='{"number": 123, "url": "https://github.com/owner/repo/issues/123"}',
-            stderr=""
+            stderr="",
         )
 
         bridge = GitHubBridge()
@@ -530,11 +460,7 @@ class TestResponseFormat:
     @patch("subprocess.run")
     def test_error_response_has_required_keys(self, mock_run):
         """Error responses should have 'success': False and 'error' key."""
-        mock_run.return_value = MagicMock(
-            returncode=1,
-            stdout="",
-            stderr="Error message"
-        )
+        mock_run.return_value = MagicMock(returncode=1, stdout="", stderr="Error message")
 
         bridge = GitHubBridge()
         result = bridge.create_issue(title="Test", body="Test")
@@ -546,11 +472,7 @@ class TestResponseFormat:
     @patch("subprocess.run")
     def test_all_operations_return_dict(self, mock_run):
         """All operations should return dict, never None or raise exceptions."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='{"number": 123}',
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout='{"number": 123}', stderr="")
 
         bridge = GitHubBridge()
 
@@ -577,11 +499,7 @@ class TestTimeoutConfiguration:
     @patch("subprocess.run")
     def test_operations_use_configured_timeout(self, mock_run):
         """Operations should use bridge's timeout value."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='{"number": 123}',
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout='{"number": 123}', stderr="")
 
         bridge = GitHubBridge(timeout=60)
         bridge.create_issue(title="Test", body="Test")
@@ -598,9 +516,7 @@ class TestJSONParsing:
     def test_valid_json_parsed_correctly(self, mock_run):
         """Should parse valid JSON responses."""
         mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='{"number": 123, "url": "https://example.com"}',
-            stderr=""
+            returncode=0, stdout='{"number": 123, "url": "https://example.com"}', stderr=""
         )
 
         bridge = GitHubBridge()
@@ -611,11 +527,7 @@ class TestJSONParsing:
     @patch("subprocess.run")
     def test_invalid_json_handled_gracefully(self, mock_run):
         """Should handle invalid JSON gracefully."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='Not valid JSON',
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout="Not valid JSON", stderr="")
 
         bridge = GitHubBridge()
         result = bridge.create_issue(title="Test", body="Test")
@@ -627,11 +539,7 @@ class TestJSONParsing:
     @patch("subprocess.run")
     def test_empty_response_handled(self, mock_run):
         """Should handle empty responses."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='',
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
 
         bridge = GitHubBridge()
         result = bridge.create_issue(title="Test", body="Test")

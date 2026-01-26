@@ -13,11 +13,11 @@ Before installing the plugin, ensure you have:
 
 ### System Requirements
 
-| Platform | Requirement |
-|----------|-------------|
-| macOS | 10.15+ (Catalina or later) |
-| Linux | Ubuntu 20.04+, Fedora 35+, or equivalent |
-| Windows | Windows 10+ with WSL2 |
+| Platform | Requirement                              |
+| -------- | ---------------------------------------- |
+| macOS    | 10.15+ (Catalina or later)               |
+| Linux    | Ubuntu 20.04+, Fedora 35+, or equivalent |
+| Windows  | Windows 10+ with WSL2                    |
 
 ### Claude Code Requirement
 
@@ -48,6 +48,7 @@ amplihack plugin status
 ```
 
 **Output:**
+
 ```
 ✓ Plugin installed at ~/.amplihack/.claude/
 ✓ LSP integration configured
@@ -218,6 +219,7 @@ cat ~/.amplihack/config/lsp/python.json
 ```
 
 **Example LSP config**:
+
 ```json
 {
   "language": "python",
@@ -226,8 +228,8 @@ cat ~/.amplihack/config/lsp/python.json
   "initialization_options": {
     "pylsp": {
       "plugins": {
-        "pycodestyle": {"enabled": true},
-        "pyflakes": {"enabled": true}
+        "pycodestyle": { "enabled": true },
+        "pyflakes": { "enabled": true }
       }
     }
   }
@@ -365,6 +367,7 @@ ls ~/.amplihack/
 **Issue**: `amplihack plugin install` fails with permission error
 
 **Solution**:
+
 ```bash
 # Check permissions
 ls -la ~/.amplihack/
@@ -381,6 +384,7 @@ amplihack plugin install --force
 **Issue**: `amplihack plugin status` says "Not installed"
 
 **Solution**:
+
 ```bash
 # Check installation directory
 ls -la ~/.amplihack/.claude/
@@ -398,6 +402,7 @@ echo $CLAUDE_PLUGIN_ROOT
 **Issue**: `/ultrathink` and other commands not recognized
 
 **Solution**:
+
 ```bash
 # Verify plugin registration
 amplihack plugin status
@@ -414,6 +419,7 @@ amplihack plugin link --force
 **Issue**: Language servers not auto-configuring
 
 **Solution**:
+
 ```bash
 # Force LSP detection
 amplihack plugin lsp-detect --force
@@ -430,6 +436,7 @@ amplihack plugin lsp-configure --lang typescript --server tsserver
 **Issue**: Plugin version doesn't match package version
 
 **Solution**:
+
 ```bash
 # Check versions
 amplihack --version        # Package version
@@ -447,6 +454,7 @@ amplihack plugin status
 **Issue**: Installation fails with "Permission denied" on macOS
 
 **Solution**:
+
 ```bash
 # Don't use sudo with pip
 pip3 install --user amplihack
@@ -463,6 +471,7 @@ sudo chown -R $USER:staff ~/.amplihack/
 **Issue**: Windows paths not working in WSL
 
 **Solution**:
+
 ```bash
 # Use WSL paths only
 cd ~/projects/my-app  # Not /mnt/c/Users/...
@@ -479,6 +488,7 @@ amplihack plugin status --verbose
 **Issue**: `ImportError: No module named 'amplihack'`
 
 **Solution**:
+
 ```bash
 # Verify installation
 pip list | grep amplihack

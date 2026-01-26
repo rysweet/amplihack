@@ -7,7 +7,9 @@ End-to-end tests that verify plugin architecture from outside-in perspective usi
 ## Test Files
 
 ### `test_plugin_manager_e2e.py`
+
 Tests complete plugin lifecycle:
+
 - Installation (local and Git)
 - Uninstallation
 - Plugin listin'
@@ -17,7 +19,9 @@ Tests complete plugin lifecycle:
 **Tests**: 11
 
 ### `test_hook_protocol_e2e.py`
+
 Tests hook execution and lifecycle:
+
 - Python and Bash hooks
 - Hook arguments
 - Error handlin'
@@ -27,7 +31,9 @@ Tests hook execution and lifecycle:
 **Tests**: 12
 
 ### `test_lsp_detection_e2e.py`
+
 Tests LSP detection and configuration:
+
 - Language detection (Python, TypeScript, Rust)
 - Multi-language projects
 - LSP configuration generation
@@ -147,15 +153,18 @@ def test_with_multi_language_project(multi_language_project):
 ## Troubleshootin'
 
 **Tests timeout:**
+
 - Check timeout settings in harness initialization
 - Verify commands aren't waitin' fer user input
 
 **Command not found:**
+
 - Install amplihack: `pip install -e .`
 - Verify PATH includes installation directory
 - Check virtual environment is activated
 
 **Import errors:**
+
 - Install test dependencies: `pip install pytest`
 - Verify harness module: `python -c "from tests.harness import PluginTestHarness"`
 
@@ -172,6 +181,7 @@ def test_with_multi_language_project(multi_language_project):
 **Status**: ✅ Tests written, ready fer implementation
 
 Fer more details, see:
+
 - `tests/harness/README.md` - Harness documentation
 - `tests/PLUGIN_TEST_HARNESS_SUMMARY.md` - Complete summary
 - `tests/TEST_PLAN_PLUGIN_ARCHITECTURE.md` - Full test plan

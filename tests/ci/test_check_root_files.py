@@ -24,29 +24,29 @@ class TestRootFileValidator:
     def mock_config(self):
         """Mock configuration for tests."""
         return {
-            'allowed_patterns': [
-                'README.md',
-                'LICENSE.md',
-                '.gitignore',
-                'requirements*.txt',
-                '*.yml',
+            "allowed_patterns": [
+                "README.md",
+                "LICENSE.md",
+                ".gitignore",
+                "requirements*.txt",
+                "*.yml",
             ],
-            'allowed_directories': [
-                'src',
-                'tests',
-                'docs',
-                '.github',
+            "allowed_directories": [
+                "src",
+                "tests",
+                "docs",
+                ".github",
             ],
-            'forbidden_patterns': [
+            "forbidden_patterns": [
                 {
-                    'pattern': 'test_*.py',
-                    'message': 'Test files belong in tests/ directory',
-                    'suggested_location': 'tests/',
+                    "pattern": "test_*.py",
+                    "message": "Test files belong in tests/ directory",
+                    "suggested_location": "tests/",
                 },
                 {
-                    'pattern': 'scratch.py',
-                    'message': 'Scratch files should never be committed',
-                    'suggested_location': 'DELETE',
+                    "pattern": "scratch.py",
+                    "message": "Scratch files should never be committed",
+                    "suggested_location": "DELETE",
                 },
             ],
         }
@@ -61,7 +61,7 @@ class TestRootFileValidator:
         config_dir.mkdir()
         config_path = config_dir / "root-hygiene-config.yml"
 
-        with open(config_path, 'w') as f:
+        with open(config_path, "w") as f:
             yaml.dump(mock_config, f)
 
         return repo_root, config_path
@@ -91,68 +91,68 @@ class TestRootFileValidator:
         repo_root, config_path = temp_repo
         validator = RootFileValidator(repo_root, config_path)
 
-        assert validator._is_allowed('README.md') is True
-        assert validator._is_allowed('LICENSE.md') is True
-        assert validator._is_allowed('.gitignore') is True
-        assert validator._is_allowed('requirements.txt') is True
-        assert validator._is_allowed('requirements-dev.txt') is True
+        assert validator._is_allowed("README.md") is True
+        assert validator._is_allowed("LICENSE.md") is True
+        assert validator._is_allowed(".gitignore") is True
+        assert validator._is_allowed("requirements.txt") is True
+        assert validator._is_allowed("requirements-dev.txt") is True
 
     def test_is_allowed_pattern_no_match(self, temp_repo):
         """Test files not matching allowed patterns."""
         repo_root, config_path = temp_repo
         validator = RootFileValidator(repo_root, config_path)
 
-        assert validator._is_allowed('random.py') is False
-        assert validator._is_allowed('script.py') is False
-        assert validator._is_allowed('test_something.py') is False
+        assert validator._is_allowed("random.py") is False
+        assert validator._is_allowed("script.py") is False
+        assert validator._is_allowed("test_something.py") is False
 
     def test_check_forbidden_match(self, temp_repo):
         """Test forbidden pattern matching."""
         repo_root, config_path = temp_repo
         validator = RootFileValidator(repo_root, config_path)
 
-        is_forbidden, message, location = validator._check_forbidden('test_example.py')
+        is_forbidden, message, location = validator._check_forbidden("test_example.py")
         assert is_forbidden is True
-        assert 'Test files belong in tests/' in message
-        assert location == 'tests/'
+        assert "Test files belong in tests/" in message
+        assert location == "tests/"
 
     def test_check_forbidden_scratch_file(self, temp_repo):
         """Test forbidden scratch file detection."""
         repo_root, config_path = temp_repo
         validator = RootFileValidator(repo_root, config_path)
 
-        is_forbidden, message, location = validator._check_forbidden('scratch.py')
+        is_forbidden, message, location = validator._check_forbidden("scratch.py")
         assert is_forbidden is True
-        assert 'should never be committed' in message
-        assert location == 'DELETE'
+        assert "should never be committed" in message
+        assert location == "DELETE"
 
     def test_check_forbidden_no_match(self, temp_repo):
         """Test files not matching forbidden patterns."""
         repo_root, config_path = temp_repo
         validator = RootFileValidator(repo_root, config_path)
 
-        is_forbidden, message, location = validator._check_forbidden('README.md')
+        is_forbidden, message, location = validator._check_forbidden("README.md")
         assert is_forbidden is False
-        assert message == ''
-        assert location == ''
+        assert message == ""
+        assert location == ""
 
     def test_is_directory_allowed(self, temp_repo):
         """Test directory allowlist checking."""
         repo_root, config_path = temp_repo
         validator = RootFileValidator(repo_root, config_path)
 
-        assert validator._is_directory_allowed('src') is True
-        assert validator._is_directory_allowed('tests') is True
-        assert validator._is_directory_allowed('docs') is True
-        assert validator._is_directory_allowed('.github') is True
+        assert validator._is_directory_allowed("src") is True
+        assert validator._is_directory_allowed("tests") is True
+        assert validator._is_directory_allowed("docs") is True
+        assert validator._is_directory_allowed(".github") is True
 
     def test_is_directory_not_allowed(self, temp_repo):
         """Test directories not in allowlist."""
         repo_root, config_path = temp_repo
         validator = RootFileValidator(repo_root, config_path)
 
-        assert validator._is_directory_allowed('random') is False
-        assert validator._is_directory_allowed('old_stuff') is False
+        assert validator._is_directory_allowed("random") is False
+        assert validator._is_directory_allowed("old_stuff") is False
 
     def test_get_root_entries_files_and_dirs(self, temp_repo):
         """Test getting root files and directories."""
@@ -168,11 +168,11 @@ class TestRootFileValidator:
         validator = RootFileValidator(repo_root, config_path)
         files, directories = validator._get_root_entries()
 
-        assert 'README.md' in files
-        assert 'LICENSE.md' in files
-        assert 'src' in directories
-        assert 'tests' in directories
-        assert '.git' not in directories  # Should be excluded
+        assert "README.md" in files
+        assert "LICENSE.md" in files
+        assert "src" in directories
+        assert "tests" in directories
+        assert ".git" not in directories  # Should be excluded
 
     def test_get_root_entries_empty(self, temp_repo):
         """Test getting entries from empty root."""
@@ -183,7 +183,7 @@ class TestRootFileValidator:
 
         # Only .github should exist (created by fixture)
         assert len(files) == 0
-        assert '.github' in directories
+        assert ".github" in directories
 
     def test_validate_all_allowed(self, temp_repo):
         """Test validation when all files are allowed."""
@@ -210,8 +210,8 @@ class TestRootFileValidator:
 
         assert is_valid is False
         assert len(warnings) == 1
-        assert 'test_something.py' in warnings[0]
-        assert 'Test files belong in tests/' in warnings[0]
+        assert "test_something.py" in warnings[0]
+        assert "Test files belong in tests/" in warnings[0]
 
     def test_validate_not_allowed_file(self, temp_repo):
         """Test validation with file not in allowlist."""
@@ -224,8 +224,8 @@ class TestRootFileValidator:
 
         assert is_valid is False
         assert len(warnings) == 1
-        assert 'random_script.py' in warnings[0]
-        assert 'Not in allowlist' in warnings[0]
+        assert "random_script.py" in warnings[0]
+        assert "Not in allowlist" in warnings[0]
 
     def test_validate_forbidden_directory(self, temp_repo):
         """Test validation with directory not in allowlist."""
@@ -238,17 +238,17 @@ class TestRootFileValidator:
 
         assert is_valid is False
         assert len(warnings) == 1
-        assert 'old_stuff/' in warnings[0]
-        assert 'not in allowlist' in warnings[0]
+        assert "old_stuff/" in warnings[0]
+        assert "not in allowlist" in warnings[0]
 
     def test_validate_mixed_issues(self, temp_repo):
         """Test validation with multiple issues."""
         repo_root, config_path = temp_repo
 
         (repo_root / "test_foo.py").touch()  # Forbidden
-        (repo_root / "random.py").touch()    # Not allowed
-        (repo_root / "old_stuff").mkdir()    # Dir not allowed
-        (repo_root / "README.md").touch()    # OK
+        (repo_root / "random.py").touch()  # Not allowed
+        (repo_root / "old_stuff").mkdir()  # Dir not allowed
+        (repo_root / "README.md").touch()  # OK
 
         validator = RootFileValidator(repo_root, config_path)
         is_valid, warnings = validator.validate()
@@ -296,7 +296,7 @@ class TestRootFileValidator:
         _, warnings = validator.validate()
 
         # Extract filenames from warnings
-        filenames = [w.split('\n')[0].split()[1] for w in warnings]
+        filenames = [w.split("\n")[0].split()[1] for w in warnings]
         assert filenames == sorted(filenames)
 
     def test_empty_config_sections(self, tmp_path):
@@ -309,12 +309,15 @@ class TestRootFileValidator:
         config_path = config_dir / "root-hygiene-config.yml"
 
         # Write config with empty sections
-        with open(config_path, 'w') as f:
-            yaml.dump({
-                'allowed_patterns': [],
-                'allowed_directories': [],
-                'forbidden_patterns': [],
-            }, f)
+        with open(config_path, "w") as f:
+            yaml.dump(
+                {
+                    "allowed_patterns": [],
+                    "allowed_directories": [],
+                    "forbidden_patterns": [],
+                },
+                f,
+            )
 
         (repo_root / "README.md").touch()
 

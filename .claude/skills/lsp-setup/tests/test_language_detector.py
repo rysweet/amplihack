@@ -5,10 +5,7 @@ Tests language detection from file extensions and project structure.
 All tests should FAIL initially (TDD red phase).
 """
 
-import pytest
 from pathlib import Path
-from typing import Dict, List
-from unittest.mock import patch, MagicMock
 
 
 class TestLanguageDetector:
@@ -94,7 +91,9 @@ class TestLanguageDetector:
         # Create pom.xml
         (mock_project_root / "pom.xml").write_text("<project></project>")
         (mock_project_root / "src" / "main" / "java").mkdir(parents=True, exist_ok=True)
-        (mock_project_root / "src" / "main" / "java" / "Main.java").write_text("public class Main {}")
+        (mock_project_root / "src" / "main" / "java" / "Main.java").write_text(
+            "public class Main {}"
+        )
 
         detector = LanguageDetector(mock_project_root)
         languages = detector.detect_languages()
@@ -172,7 +171,7 @@ class TestLanguageDetector:
 
         # Create Swift files
         (mock_project_root / "Package.swift").write_text("// swift-tools-version:5.5")
-        (mock_project_root / "main.swift").write_text("print(\"Hello\")")
+        (mock_project_root / "main.swift").write_text('print("Hello")')
 
         detector = LanguageDetector(mock_project_root)
         languages = detector.detect_languages()
@@ -184,7 +183,7 @@ class TestLanguageDetector:
         from lsp_setup.language_detector import LanguageDetector
 
         # Create Scala files
-        (mock_project_root / "build.sbt").write_text("name := \"test\"")
+        (mock_project_root / "build.sbt").write_text('name := "test"')
         (mock_project_root / "src" / "main" / "scala").mkdir(parents=True, exist_ok=True)
         (mock_project_root / "src" / "main" / "scala" / "Main.scala").write_text("object Main {}")
 
@@ -226,7 +225,7 @@ class TestLanguageDetector:
 
         # Create Haskell files
         (mock_project_root / "test.cabal").write_text("name: test")
-        (mock_project_root / "Main.hs").write_text("main = putStrLn \"Hello\"")
+        (mock_project_root / "Main.hs").write_text('main = putStrLn "Hello"')
 
         detector = LanguageDetector(mock_project_root)
         languages = detector.detect_languages()

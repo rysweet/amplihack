@@ -11,6 +11,7 @@
 Comprehensive guide from basics to advanced topics. 60-90 minutes of hands-on learning with progressive disclosure.
 
 **Topics Covered**:
+
 - First workflow execution
 - All 8 workflow types
 - Prompting techniques
@@ -19,6 +20,7 @@ Comprehensive guide from basics to advanced topics. 60-90 minutes of hands-on le
 - Advanced features (skills, hooks, memory)
 
 **Start Learning**:
+
 ```
 "Start the amplihack tutorial"
 ```
@@ -67,6 +69,7 @@ gh copilot explain "Explain amplihack workflows"
 ### Progressive Disclosure
 
 Content adapts to your skill level:
+
 - **[BEGINNER]** - Detailed explanations
 - **[INTERMEDIATE]** - Practical applications
 - **[ADVANCED]** - Deep technical details
@@ -74,6 +77,7 @@ Content adapts to your skill level:
 ### Interactive Navigation
 
 Jump between sections:
+
 - "Section 2" - First Workflow
 - "Section 5" - Continuous Work
 - "Menu" - Show all sections
@@ -82,6 +86,7 @@ Jump between sections:
 ### Hands-On Exercises
 
 Try real examples:
+
 - Execute workflows
 - Create goal agents
 - Use auto mode
@@ -90,6 +95,7 @@ Try real examples:
 ### Platform Support
 
 Examples for all platforms:
+
 - Claude Code
 - Amplifier
 - GitHub Copilot CLI
@@ -154,6 +160,7 @@ Examples for all platforms:
 ### Tutorial Won't Start
 
 **Solution**: Ensure amplihack installed and environment configured
+
 ```bash
 amplihack --version
 echo $ANTHROPIC_API_KEY
@@ -162,6 +169,7 @@ echo $ANTHROPIC_API_KEY
 ### Can't Navigate Sections
 
 **Solution**: Use explicit section names in quotes
+
 ```
 "Take me to Section 3: Workflows Deep Dive"
 ```
@@ -169,6 +177,7 @@ echo $ANTHROPIC_API_KEY
 ### Exercises Don't Work
 
 **Solution**: Check prerequisites and platform CLIs
+
 - Git authentication: `gh auth status`
 - API keys: Environment variables set
 - Platform CLI: `which claude` or `which gh`
@@ -188,4 +197,3 @@ Help us improve tutorials:
 ---
 
 **Ready to learn?** [Start the tutorial](amplihack-tutorial.md) now!
-

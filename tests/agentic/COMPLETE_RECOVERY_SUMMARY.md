@@ -10,6 +10,7 @@
 ## 🏴‍☠️ What We Recovered and Built
 
 ### Before Crash
+
 - Working on PR #1973 (Claude Code plugin architecture)
 - Had 101 TDD tests in `tests/plugin/` (unit/integration tests)
 - User requested gadugi-agentic-test for TUI testing
@@ -17,18 +18,21 @@
 ### After Recovery - Complete Implementation
 
 #### 1. Investigated gadugi-agentic-test Framework
+
 - ✅ Cloned and analyzed source code
 - ✅ Discovered node-pty for PTY virtualization
 - ✅ Understood TUI testing requirements
 - ✅ Found PTYManager implementation
 
 #### 2. Built Complete Test Suite
+
 - ✅ `test-claude-plugin-pty.js` - PTY-based automated test
 - ✅ `run-plugin-test.sh` - Shell-based alternative
 - ✅ `claude-code-plugin-test.yaml` - Gadugi scenario (future)
 - ✅ `package.json` - Dependencies management
 
 #### 3. Created Comprehensive Documentation
+
 - ✅ `README.md` - Usage guide
 - ✅ `PTY_TESTING_EXPLAINED.md` - Technical deep dive
 - ✅ `TESTING_INSTRUCTIONS.md` - Step-by-step guide
@@ -39,12 +43,14 @@
 - ✅ `PR_TEST_SUMMARY.md` - PR validation summary
 
 #### 4. GitHub Actions CI/CD
+
 - ✅ `.github/workflows/plugin-test.yml` - Automated testing workflow
 - ✅ Dual jobs: PTY test + shell test
 - ✅ Evidence artifact upload
 - ✅ Documentation for ANTHROPIC_API_KEY requirement
 
 #### 5. Ran and Validated Test
+
 - ✅ **TEST PASSED!** - amplihack detected in /plugin command
 - ✅ Evidence saved: `evidence/pty-test-1768925248693/`
 - ✅ Verified output shows: `❯ amplihack Plugin · inline · ✔ enabled`
@@ -71,6 +77,7 @@ uvx --refresh --from git+https://github.com/rysweet/amplihack@feat/issue-1948-pl
 ```
 
 **After installation, test manually:**
+
 ```bash
 cd /tmp && mkdir test_$(date +%s) && cd $_
 claude --plugin-dir ~/.amplihack/.claude/ --add-dir .
@@ -78,6 +85,7 @@ claude --plugin-dir ~/.amplihack/.claude/ --add-dir .
 ```
 
 **Or run automated test:**
+
 ```bash
 cd tests/agentic
 npm install
@@ -99,6 +107,7 @@ node test-claude-plugin-pty.js
 ### Step 2: Verify Workflow Runs
 
 After merging PR #1973:
+
 1. Go to **Actions** tab
 2. Look for "Claude Code Plugin Test" workflow
 3. Check both jobs pass:
@@ -109,11 +118,13 @@ After merging PR #1973:
 ### Step 3: Known CI Considerations
 
 **Current Setup:**
+
 - ✅ Tests use `continue-on-error: true` (won't fail PR)
 - ✅ Evidence uploaded even on failure
 - ✅ Both PTY and shell tests run
 
 **After API Key Added:**
+
 - Change `continue-on-error: false` to enforce passing
 - Tests will block PR if plugin detection fails
 
@@ -122,12 +133,14 @@ After merging PR #1973:
 ## 📂 Files Created (Total: 15)
 
 ### Test Implementation (4 files)
+
 1. `test-claude-plugin-pty.js` - PTY test (node-pty)
 2. `run-plugin-test.sh` - Shell test (expect)
 3. `test-claude-code-plugin-installation.yaml` - Early TUI attempt
 4. `claude-code-plugin-test.yaml` - Gadugi scenario
 
 ### Documentation (8 files)
+
 5. `README.md` - Main usage guide
 6. `PTY_TESTING_EXPLAINED.md` - PTY deep dive
 7. `TESTING_INSTRUCTIONS.md` - PR testing guide
@@ -138,6 +151,7 @@ After merging PR #1973:
 12. `PR_TEST_SUMMARY.md` - PR validation
 
 ### Configuration (3 files)
+
 13. `package.json` - npm dependencies
 14. `setup-plugin-test-env.sh` - Setup script
 15. `.github/workflows/plugin-test.yml` - CI workflow
@@ -160,6 +174,7 @@ After merging PR #1973:
 ```
 
 **Evidence**:
+
 ```
 ❯ amplihack Plugin · inline · ✔ enabled
 ```
@@ -169,12 +184,14 @@ After merging PR #1973:
 ## 🚢 Next Steps
 
 ### Option 1: Keep Commits on Main (Current)
+
 ```bash
 # Just push to main
 git push origin main
 ```
 
 ### Option 2: Move to Feature Branch (Recommended for PR)
+
 ```bash
 # Cherry-pick commits to feature branch
 git checkout feat/issue-1948-plugin-architecture
@@ -188,6 +205,7 @@ git push origin feat/issue-1948-plugin-architecture
 ```
 
 ### Option 3: Reset Main and Push to Feature Branch
+
 ```bash
 # Reset main to origin
 git checkout main
@@ -247,5 +265,5 @@ Before merging:
 
 ---
 
-*Session recovered and completed successfully - 2026-01-20*
-*All treasure secured in git! 🏴‍☠️*
+_Session recovered and completed successfully - 2026-01-20_
+_All treasure secured in git! 🏴‍☠️_

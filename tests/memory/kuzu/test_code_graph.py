@@ -9,7 +9,6 @@ Validates:
 """
 
 import json
-import tempfile
 from datetime import datetime
 from pathlib import Path
 
@@ -306,9 +305,7 @@ def test_import_files(code_graph, sample_blarify_data, tmp_path):
     assert counts["relationships"] == 1
 
     # Verify files exist in database
-    result = code_graph.conn.execute_query(
-        "MATCH (cf:CodeFile) RETURN count(cf) as cnt"
-    )
+    result = code_graph.conn.execute_query("MATCH (cf:CodeFile) RETURN count(cf) as cnt")
     assert result[0]["cnt"] == 2
 
     # Verify file properties
@@ -317,7 +314,7 @@ def test_import_files(code_graph, sample_blarify_data, tmp_path):
         MATCH (cf:CodeFile {file_id: $file_id})
         RETURN cf.file_path, cf.language, cf.size_bytes
         """,
-        {"file_id": "src/example/module.py"}
+        {"file_id": "src/example/module.py"},
     )
     assert len(result) == 1
     assert result[0]["cf.file_path"] == "src/example/module.py"
@@ -340,7 +337,7 @@ def test_import_classes(code_graph, sample_blarify_data, tmp_path):
         MATCH (c:Class {class_id: $class_id})
         RETURN c.class_name, c.docstring, c.is_abstract
         """,
-        {"class_id": "class:Example"}
+        {"class_id": "class:Example"},
     )
     assert len(result) == 1
     assert result[0]["c.class_name"] == "Example"
@@ -353,7 +350,7 @@ def test_import_classes(code_graph, sample_blarify_data, tmp_path):
         MATCH (c:Class {class_id: $class_id})-[r:DEFINED_IN]->(cf:CodeFile)
         RETURN cf.file_id, r.line_number
         """,
-        {"class_id": "class:Example"}
+        {"class_id": "class:Example"},
     )
     assert len(result) == 1
     assert result[0]["cf.file_id"] == "src/example/module.py"
@@ -375,7 +372,7 @@ def test_import_functions(code_graph, sample_blarify_data, tmp_path):
         MATCH (f:Function {function_id: $function_id})
         RETURN f.function_name, f.signature, f.is_async, f.cyclomatic_complexity
         """,
-        {"function_id": "func:Example.process"}
+        {"function_id": "func:Example.process"},
     )
     assert len(result) == 1
     assert result[0]["f.function_name"] == "process"
@@ -388,7 +385,7 @@ def test_import_functions(code_graph, sample_blarify_data, tmp_path):
         MATCH (f:Function {function_id: $function_id})-[r:METHOD_OF]->(c:Class)
         RETURN c.class_id, r.method_type
         """,
-        {"function_id": "func:Example.process"}
+        {"function_id": "func:Example.process"},
     )
     assert len(result) == 1
     assert result[0]["c.class_id"] == "class:Example"
@@ -400,7 +397,7 @@ def test_import_functions(code_graph, sample_blarify_data, tmp_path):
         MATCH (f:Function {function_id: $function_id})
         RETURN f.function_name
         """,
-        {"function_id": "func:helper"}
+        {"function_id": "func:helper"},
     )
     assert len(result) == 1
     assert result[0]["f.function_name"] == "helper"
@@ -421,7 +418,7 @@ def test_import_relationships(code_graph, sample_blarify_data, tmp_path):
         MATCH (source:Function {function_id: $source_id})-[r:CALLS]->(target:Function {function_id: $target_id})
         RETURN r.call_count, r.context
         """,
-        {"source_id": "func:Example.process", "target_id": "func:helper"}
+        {"source_id": "func:Example.process", "target_id": "func:helper"},
     )
     assert len(result) == 1
     assert result[0]["r.call_count"] == 1
@@ -442,7 +439,7 @@ def test_import_imports(code_graph, sample_blarify_data, tmp_path):
         MATCH (source:CodeFile {file_id: $source_id})-[r:IMPORTS]->(target:CodeFile {file_id: $target_id})
         RETURN r.import_type, r.alias
         """,
-        {"source_id": "src/example/module.py", "target_id": "src/example/utils.py"}
+        {"source_id": "src/example/module.py", "target_id": "src/example/utils.py"},
     )
     assert len(result) == 1
     assert result[0]["r.import_type"] == "helper"
@@ -463,9 +460,7 @@ def test_incremental_update(code_graph, sample_blarify_data, tmp_path):
     assert counts2["files"] == 2
 
     # Verify no duplicates
-    result = code_graph.conn.execute_query(
-        "MATCH (cf:CodeFile) RETURN count(cf) as cnt"
-    )
+    result = code_graph.conn.execute_query("MATCH (cf:CodeFile) RETURN count(cf) as cnt")
     assert result[0]["cnt"] == 2
 
 
@@ -511,7 +506,7 @@ def test_link_memories_to_files(code_graph, sample_blarify_data, tmp_path):
             "accessed_at": now,
             "expires_at": None,
             "agent_id": "test-agent",
-        }
+        },
     )
 
     # Link memories to code
@@ -524,7 +519,7 @@ def test_link_memories_to_files(code_graph, sample_blarify_data, tmp_path):
         MATCH (m:EpisodicMemory {memory_id: $memory_id})-[r:RELATES_TO_FILE_EPISODIC]->(cf:CodeFile)
         RETURN cf.file_path, r.relevance_score, r.context
         """,
-        {"memory_id": "mem-1"}
+        {"memory_id": "mem-1"},
     )
     assert len(result) > 0
     assert result[0]["r.relevance_score"] == 1.0
@@ -573,7 +568,7 @@ def test_link_memories_to_functions(code_graph, sample_blarify_data, tmp_path):
             "created_at": now,
             "accessed_at": now,
             "agent_id": "test-agent",
-        }
+        },
     )
 
     # Link memories to code
@@ -586,7 +581,7 @@ def test_link_memories_to_functions(code_graph, sample_blarify_data, tmp_path):
         MATCH (m:SemanticMemory {memory_id: $memory_id})-[r:RELATES_TO_FUNCTION_SEMANTIC]->(f:Function)
         RETURN f.function_name, r.relevance_score, r.context
         """,
-        {"memory_id": "mem-2"}
+        {"memory_id": "mem-2"},
     )
     assert len(result) > 0
     assert result[0]["f.function_name"] == "helper"
@@ -636,7 +631,7 @@ def test_query_code_context(code_graph, sample_blarify_data, tmp_path):
             "accessed_at": now,
             "expires_at": None,
             "agent_id": "test-agent",
-        }
+        },
     )
 
     code_graph.link_code_to_memories()
@@ -669,7 +664,9 @@ def test_empty_import(code_graph, tmp_path):
     """Test importing empty blarify output."""
     json_path = tmp_path / "empty.json"
     with open(json_path, "w") as f:
-        json.dump({"files": [], "classes": [], "functions": [], "imports": [], "relationships": []}, f)
+        json.dump(
+            {"files": [], "classes": [], "functions": [], "imports": [], "relationships": []}, f
+        )
 
     counts = code_graph.import_blarify_output(json_path)
 
@@ -739,7 +736,7 @@ def test_inheritance_relationship(code_graph, tmp_path):
         MATCH (source:Class {class_id: $source_id})-[r:INHERITS]->(target:Class {class_id: $target_id})
         RETURN r.inheritance_type
         """,
-        {"source_id": "class:Derived", "target_id": "class:Base"}
+        {"source_id": "class:Derived", "target_id": "class:Base"},
     )
     assert len(result) == 1
     assert result[0]["r.inheritance_type"] == "single"

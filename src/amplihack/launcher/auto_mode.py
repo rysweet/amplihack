@@ -38,12 +38,12 @@ except ImportError:
     Markdown = None
 
 # Import session management components
-from amplihack.launcher.fork_manager import ForkManager
-from amplihack.launcher.session_capture import MessageCapture
-from amplihack.launcher.work_summary import WorkSummaryGenerator
 from amplihack.launcher.completion_signals import CompletionSignalDetector
 from amplihack.launcher.completion_verifier import CompletionVerifier
+from amplihack.launcher.fork_manager import ForkManager
 from amplihack.launcher.json_logger import JsonLogger
+from amplihack.launcher.session_capture import MessageCapture
+from amplihack.launcher.work_summary import WorkSummaryGenerator
 
 # Security constants for content sanitization
 MAX_INJECTED_CONTENT_SIZE = 50 * 1024  # 50KB limit for injected content
@@ -519,7 +519,7 @@ Document your decisions and reasoning in comments/logs."""
             signal_explanation = self.completion_detector.explain(signals)
 
             # Add completion score explicitly (for test compatibility)
-            if hasattr(signals, 'completion_score'):
+            if hasattr(signals, "completion_score"):
                 signal_explanation += f"\n\nCompletion score: {signals.completion_score:.1%}"
 
         except Exception as e:
@@ -580,10 +580,19 @@ Current Turn: {self.turn}/{self.max_turns}"""
 
             # Work summary
             self.log("Work Summary:", level="INFO")
-            self.log(f"  Workflow: {summary.todo_state.completed}/{summary.todo_state.total} steps", level="INFO")
-            self.log(f"  Git: {summary.git_state.current_branch}, commits={summary.git_state.commits_ahead}", level="INFO")
+            self.log(
+                f"  Workflow: {summary.todo_state.completed}/{summary.todo_state.total} steps",
+                level="INFO",
+            )
+            self.log(
+                f"  Git: {summary.git_state.current_branch}, commits={summary.git_state.commits_ahead}",
+                level="INFO",
+            )
             if summary.github_state.pr_number:
-                self.log(f"  GitHub: PR#{summary.github_state.pr_number}, CI={summary.github_state.ci_status}, mergeable={summary.github_state.pr_mergeable}", level="INFO")
+                self.log(
+                    f"  GitHub: PR#{summary.github_state.pr_number}, CI={summary.github_state.ci_status}, mergeable={summary.github_state.pr_mergeable}",
+                    level="INFO",
+                )
 
             # Completion signals
             self.log("", level="INFO")
@@ -595,7 +604,9 @@ Current Turn: {self.turn}/{self.max_turns}"""
 
             # Score and decision
             self.log("", level="INFO")
-            self.log(f"Completion Score: {signals.completion_score:.1%} (threshold: 80%)", level="INFO")
+            self.log(
+                f"Completion Score: {signals.completion_score:.1%} (threshold: 80%)", level="INFO"
+            )
             self.log(f"Verification: {verification.status.value}", level="INFO")
 
             # Determine should_continue before logging final decision
@@ -613,7 +624,9 @@ Current Turn: {self.turn}/{self.max_turns}"""
                 should_continue = True
 
             # Final decision
-            decision = "EXIT LOOP (task complete)" if not should_continue else "CONTINUE (work remaining)"
+            decision = (
+                "EXIT LOOP (task complete)" if not should_continue else "CONTINUE (work remaining)"
+            )
             self.log(f"Decision: {decision}", level="INFO")
             self.log("=" * 70, level="INFO")
 
@@ -836,8 +849,7 @@ Current Turn: {self.turn}/{self.max_turns}"""
                                     # Log agent invocation (any tool_use indicates agent activity)
                                     if tool_name:
                                         self.json_logger.log_event(
-                                            "agent_invoked",
-                                            {"agent": tool_name, "turn": self.turn}
+                                            "agent_invoked", {"agent": tool_name, "turn": self.turn}
                                         )
 
                                     if tool_name == "TodoWrite":
@@ -913,7 +925,7 @@ Current Turn: {self.turn}/{self.max_turns}"""
             self.json_logger.log_event(
                 "error",
                 {"turn": self.turn, "error_type": "timeout", "message": error_msg},
-                level="ERROR"
+                level="ERROR",
             )
 
             if partial_output:
@@ -944,7 +956,7 @@ Current Turn: {self.turn}/{self.max_turns}"""
             self.json_logger.log_event(
                 "error",
                 {"turn": self.turn, "error_type": type(e).__name__, "message": str(e)},
-                level="ERROR"
+                level="ERROR",
             )
 
             return (1, f"SDK Error: {e!s}")
@@ -1304,7 +1316,7 @@ Current Turn: {turn}/{self.max_turns}"""
                     f"Session metrics: {len(self.turn_durations)} turns, "
                     f"avg {avg_duration:.1f}s, max {max_duration:.1f}s, "
                     f"total {total_duration:.1f}s",
-                    level="INFO"
+                    level="INFO",
                 )
 
             # Summary - display it directly
@@ -1365,7 +1377,7 @@ Current Turn: {turn}/{self.max_turns}"""
             # Log turn start event
             self.json_logger.log_event(
                 "turn_start",
-                {"turn": self.turn, "phase": "clarifying", "max_turns": self.max_turns}
+                {"turn": self.turn, "phase": "clarifying", "max_turns": self.max_turns},
             )
 
             self.log(f"\n--- {self._progress_str('Clarifying')} Clarify Objective ---")
@@ -1388,7 +1400,7 @@ User Request:
             # Log turn complete event
             self.json_logger.log_event(
                 "turn_complete",
-                {"turn": self.turn, "duration_sec": round(turn_duration, 2), "success": code == 0}
+                {"turn": self.turn, "duration_sec": round(turn_duration, 2), "success": code == 0},
             )
 
             if code != 0:
@@ -1405,8 +1417,7 @@ User Request:
 
             # Log turn start event
             self.json_logger.log_event(
-                "turn_start",
-                {"turn": self.turn, "phase": "planning", "max_turns": self.max_turns}
+                "turn_start", {"turn": self.turn, "phase": "planning", "max_turns": self.max_turns}
             )
 
             self.log(f"\n--- {self._progress_str('Planning')} Create Plan ---")
@@ -1441,7 +1452,7 @@ Objective:
             # Log turn complete event
             self.json_logger.log_event(
                 "turn_complete",
-                {"turn": self.turn, "duration_sec": round(turn_duration, 2), "success": code == 0}
+                {"turn": self.turn, "duration_sec": round(turn_duration, 2), "success": code == 0},
             )
 
             if code != 0:
@@ -1485,7 +1496,7 @@ Objective:
                 # Log turn start event
                 self.json_logger.log_event(
                     "turn_start",
-                    {"turn": self.turn, "phase": "executing", "max_turns": self.max_turns}
+                    {"turn": self.turn, "phase": "executing", "max_turns": self.max_turns},
                 )
 
                 self.log(f"\n--- {self._progress_str('Executing')} Execute ---")
@@ -1541,7 +1552,11 @@ Current Turn: {turn}/{self.max_turns}"""
                 # Log turn complete event (after evaluation)
                 self.json_logger.log_event(
                     "turn_complete",
-                    {"turn": self.turn, "duration_sec": round(turn_duration, 2), "success": code == 0}
+                    {
+                        "turn": self.turn,
+                        "duration_sec": round(turn_duration, 2),
+                        "success": code == 0,
+                    },
                 )
 
                 # Check completion with verification
@@ -1566,7 +1581,7 @@ Current Turn: {turn}/{self.max_turns}"""
                     f"Session metrics: {len(self.turn_durations)} turns, "
                     f"avg {avg_duration:.1f}s, max {max_duration:.1f}s, "
                     f"total {total_duration:.1f}s",
-                    level="INFO"
+                    level="INFO",
                 )
 
             # Summary - display it directly

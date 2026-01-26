@@ -32,30 +32,22 @@ def create_qa_session_transcript(transcript_path: Path) -> None:
     transcript = [
         {
             "type": "user",
-            "message": {
-                "role": "user",
-                "content": "What hooks are currently configured?"
-            }
+            "message": {"role": "user", "content": "What hooks are currently configured?"},
         },
         {
             "type": "assistant",
             "message": {
                 "role": "assistant",
                 "content": [
-                    {
-                        "type": "text",
-                        "text": "Let me check the hooks configuration for you."
-                    },
+                    {"type": "text", "text": "Let me check the hooks configuration for you."},
                     {
                         "type": "tool_use",
                         "id": "toolu_01ABC123",
                         "name": "Read",
-                        "input": {
-                            "file_path": ".claude/tools/amplihack/hooks/"
-                        }
-                    }
-                ]
-            }
+                        "input": {"file_path": ".claude/tools/amplihack/hooks/"},
+                    },
+                ],
+            },
         },
         {
             "type": "user",
@@ -65,24 +57,24 @@ def create_qa_session_transcript(transcript_path: Path) -> None:
                     {
                         "type": "tool_result",
                         "tool_use_id": "toolu_01ABC123",
-                        "content": "stop.py\nsession_stop.py\nerror_protocol.py\nhook_processor.py"
+                        "content": "stop.py\nsession_stop.py\nerror_protocol.py\nhook_processor.py",
                     }
-                ]
-            }
+                ],
+            },
         },
         {
             "type": "assistant",
             "message": {
                 "role": "assistant",
-                "content": "The currently configured hooks are:\n\n1. **stop.py** - Stop hook that handles session termination\n2. **session_stop.py** - Session stop event handler\n\nThese hooks are located in `.claude/tools/amplihack/hooks/`."
-            }
-        }
+                "content": "The currently configured hooks are:\n\n1. **stop.py** - Stop hook that handles session termination\n2. **session_stop.py** - Session stop event handler\n\nThese hooks are located in `.claude/tools/amplihack/hooks/`.",
+            },
+        },
     ]
 
     # Write as JSONL format (one JSON object per line)
-    with open(transcript_path, 'w') as f:
+    with open(transcript_path, "w") as f:
         for entry in transcript:
-            f.write(json.dumps(entry) + '\n')
+            f.write(json.dumps(entry) + "\n")
 
     print(f"✅ Created transcript with {len(transcript)} entries")
 
@@ -95,25 +87,19 @@ def create_simple_question_transcript(transcript_path: Path) -> None:
     print(f"📝 Creating simple question transcript at {transcript_path}")
 
     transcript = [
-        {
-            "type": "user",
-            "message": {
-                "role": "user",
-                "content": "tell me what agents you have"
-            }
-        },
+        {"type": "user", "message": {"role": "user", "content": "tell me what agents you have"}},
         {
             "type": "assistant",
             "message": {
                 "role": "assistant",
-                "content": "I have the following specialized agents available:\n\n- **architect** - System design and specifications\n- **builder** - Code generation from specs\n- **tester** - Test generation and validation\n- **reviewer** - Code review and debugging\n- **api-designer** - API contract design\n- **optimizer** - Performance optimization\n\nThese agents can be invoked using the Task tool with the appropriate subagent_type."
-            }
-        }
+                "content": "I have the following specialized agents available:\n\n- **architect** - System design and specifications\n- **builder** - Code generation from specs\n- **tester** - Test generation and validation\n- **reviewer** - Code review and debugging\n- **api-designer** - API contract design\n- **optimizer** - Performance optimization\n\nThese agents can be invoked using the Task tool with the appropriate subagent_type.",
+            },
+        },
     ]
 
-    with open(transcript_path, 'w') as f:
+    with open(transcript_path, "w") as f:
         for entry in transcript:
-            f.write(json.dumps(entry) + '\n')
+            f.write(json.dumps(entry) + "\n")
 
     print(f"✅ Created simple transcript with {len(transcript)} entries")
 
@@ -137,9 +123,8 @@ def test_qa_session_detection(checker: PowerSteeringChecker, transcript_path: Pa
     if session_type == "INFORMATIONAL":
         print("✅ PASS: Session correctly detected as INFORMATIONAL")
         return True
-    else:
-        print(f"❌ FAIL: Expected INFORMATIONAL, got {session_type}")
-        return False
+    print(f"❌ FAIL: Expected INFORMATIONAL, got {session_type}")
+    return False
 
 
 def test_no_applicable_checks(checker: PowerSteeringChecker) -> bool:
@@ -154,15 +139,16 @@ def test_no_applicable_checks(checker: PowerSteeringChecker) -> bool:
     if len(applicable) == 0:
         print("✅ PASS: No checks apply to INFORMATIONAL sessions")
         return True
-    else:
-        print(f"❌ FAIL: Expected 0 applicable checks, got {len(applicable)}")
-        print("\nApplicable checks:")
-        for check in applicable:
-            print(f"  - {check['id']}: {check['question']}")
-        return False
+    print(f"❌ FAIL: Expected 0 applicable checks, got {len(applicable)}")
+    print("\nApplicable checks:")
+    for check in applicable:
+        print(f"  - {check['id']}: {check['question']}")
+    return False
 
 
-def test_auto_approval(checker: PowerSteeringChecker, transcript_path: Path, session_id: str) -> bool:
+def test_auto_approval(
+    checker: PowerSteeringChecker, transcript_path: Path, session_id: str
+) -> bool:
     """Test that INFORMATIONAL sessions auto-approve without blocking."""
     print("\n🔍 TEST 3: Auto-Approval Behavior")
     print("=" * 60)
@@ -189,13 +175,13 @@ def test_auto_approval(checker: PowerSteeringChecker, transcript_path: Path, ses
         if has_expected_reason:
             print(f"✅ PASS: Session auto-approved with reason: {result.reasons}")
             return True
-        else:
-            print(f"❌ FAIL: Expected reason in {expected_reasons}, got {result.reasons}")
-            return False
+        print(f"❌ FAIL: Expected reason in {expected_reasons}, got {result.reasons}")
+        return False
 
     except Exception as e:
         print(f"❌ FAIL: Exception during check: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -218,16 +204,19 @@ def run_all_tests():
         tools_dir.mkdir(parents=True)
 
         # Copy considerations.yaml to temp project
-        source_considerations = Path(__file__).parent.parent / ".claude" / "tools" / "amplihack" / "considerations.yaml"
+        source_considerations = (
+            Path(__file__).parent.parent / ".claude" / "tools" / "amplihack" / "considerations.yaml"
+        )
         dest_considerations = tools_dir / "considerations.yaml"
 
         if source_considerations.exists():
             import shutil
+
             shutil.copy(source_considerations, dest_considerations)
-            print(f"📋 Copied considerations.yaml to test project")
+            print("📋 Copied considerations.yaml to test project")
         else:
             print(f"⚠️  Warning: Could not find considerations.yaml at {source_considerations}")
-            print(f"   Tests will use default considerations")
+            print("   Tests will use default considerations")
 
         # Create power-steering directory
         ps_dir = claude_dir / "runtime" / "power-steering"
@@ -288,10 +277,9 @@ def run_all_tests():
             print("- Sessions auto-approve without blocking")
             print("\n⚓ Fair winds and following seas! The bugs be fixed!")
             return 0
-        else:
-            print("⚠️  SOME TESTS FAILED")
-            print(f"\n{total - passed} test(s) failed - review output above for details")
-            return 1
+        print("⚠️  SOME TESTS FAILED")
+        print(f"\n{total - passed} test(s) failed - review output above for details")
+        return 1
 
 
 if __name__ == "__main__":

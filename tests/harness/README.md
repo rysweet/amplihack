@@ -39,6 +39,7 @@ harness.cleanup()
 ```
 
 **Key Methods:**
+
 - `install_plugin(source, force=False)` - Install plugin from source
 - `uninstall_plugin(plugin_name, purge=False)` - Uninstall plugin
 - `list_plugins()` - List installed plugins
@@ -74,6 +75,7 @@ harness.cleanup()
 ```
 
 **Key Methods:**
+
 - `create_hook(hook_name, script_content, language)` - Create test hook
 - `trigger_hook(hook_name, extra_args=None)` - Execute hook
 - `list_hooks()` - List available hooks
@@ -112,6 +114,7 @@ harness.cleanup()
 ```
 
 **Key Methods:**
+
 - `create_python_project()` - Create Python test project
 - `create_typescript_project()` - Create TypeScript test project
 - `create_rust_project()` - Create Rust test project
@@ -220,16 +223,19 @@ Follows 60/30/10 testing pyramid:
 ### Troubleshootin'
 
 **Tests timeout:**
+
 - Increase timeout in harness initialization
 - Check if commands are hangin' on user input
 - Verify commands are available in PATH
 
 **Tests fail with "command not found":**
+
 - Ensure amplihack is installed: `pip install -e .`
 - Check PATH includes installation directory
 - Verify running in correct virtual environment
 
 **Cleanup failures:**
+
 - Tests should use fixtures with `yield` fer automatic cleanup
 - Check permissions on temp directories
 - Verify no processes holdin' file locks
@@ -254,6 +260,7 @@ See the E2E test files fer complete examples:
 ---
 
 **Philosophy Alignment:**
+
 - ✅ Outside-in testin' (user perspective)
 - ✅ Real subprocess execution (no mockin')
 - ✅ Fast execution (< 5 minutes)

@@ -36,8 +36,8 @@ flowchart TD
 
 ## Key Files
 
-| File Path                                                         | Purpose                | Key Components                         |
-| ----------------------------------------------------------------- | ---------------------- | -------------------------------------- |
+| File Path                                                                      | Purpose                | Key Components                         |
+| ------------------------------------------------------------------------------ | ---------------------- | -------------------------------------- |
 | `~/.amplihack/.claude/templates/investigation-doc-template.md`                 | Template structure     | Variable placeholders, section headers |
 | `~/.amplihack/.claude/templates/architecture-doc-template.md`                  | Architecture template  | Extended sections, design decisions    |
 | `~/.amplihack/.claude/agents/amplihack/specialized/knowledge-archaeologist.md` | Variable mapping logic | Template Variable Mapping table        |
@@ -129,8 +129,8 @@ Investigated how template variable replacement works...
 **Generated Output**:
 
 ```markdown
-| File Path                                         | Purpose               | Key Components        |
-| ------------------------------------------------- | --------------------- | --------------------- |
+| File Path                                                      | Purpose               | Key Components        |
+| -------------------------------------------------------------- | --------------------- | --------------------- |
 | `~/.amplihack/.claude/templates/investigation-doc-template.md` | Template structure    | Variable placeholders |
 | `~/.amplihack/.claude/templates/architecture-doc-template.md`  | Architecture template | Extended sections     |
 ```

@@ -500,18 +500,18 @@ Phase 3.5: Post-Audit Validation [NEW]
 
 ## Validation Results
 
-| Issue | Confidence | Action         | PR   | Reason                |
-| ----- | ---------- | -------------- | ---- | --------------------- |
-| #101  | 95%        | Auto-closed    | #201 | File+keyword+ref      |
-| #102  | 92%        | Auto-closed    | #202 | File+keyword          |
-| #103  | 91%        | Auto-closed    | #203 | File+ref+category     |
-| #104  | 78%        | Needs-verify   | #204 | File match only       |
-| #105  | 45%        | Remains open   | -    | Low confidence        |
-| #106  | 0%         | Remains open   | -    | No PR found           |
-| #107  | 0%         | Remains open   | -    | No PR found           |
-| #108  | 0%         | Remains open   | -    | No PR found           |
-| #109  | 0%         | Remains open   | -    | No PR found           |
-| #110  | 0%         | Remains open   | -    | No PR found           |
+| Issue | Confidence | Action       | PR   | Reason            |
+| ----- | ---------- | ------------ | ---- | ----------------- |
+| #101  | 95%        | Auto-closed  | #201 | File+keyword+ref  |
+| #102  | 92%        | Auto-closed  | #202 | File+keyword      |
+| #103  | 91%        | Auto-closed  | #203 | File+ref+category |
+| #104  | 78%        | Needs-verify | #204 | File match only   |
+| #105  | 45%        | Remains open | -    | Low confidence    |
+| #106  | 0%         | Remains open | -    | No PR found       |
+| #107  | 0%         | Remains open | -    | No PR found       |
+| #108  | 0%         | Remains open | -    | No PR found       |
+| #109  | 0%         | Remains open | -    | No PR found       |
+| #110  | 0%         | Remains open | -    | No PR found       |
 
 ## Summary
 

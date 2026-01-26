@@ -20,7 +20,7 @@ Public API (the "studs"):
 
 import re
 from pathlib import Path
-from typing import List, Optional, Pattern
+from re import Pattern
 
 __all__ = [
     "assert_output_contains",
@@ -69,7 +69,7 @@ def assert_output_contains(
 
 
 def assert_log_contains(
-    log_files: List[Path],
+    log_files: list[Path],
     expected: str,
     message: str = "",
     case_sensitive: bool = True,
@@ -145,7 +145,7 @@ def assert_stderr_contains(
 
 def assert_hook_executed(
     stdout: str,
-    log_files: List[Path],
+    log_files: list[Path],
     hook_name: str,
     message: str = "",
 ) -> None:
@@ -203,7 +203,7 @@ def assert_hook_executed(
 
 def assert_skill_loaded(
     stdout: str,
-    log_files: List[Path],
+    log_files: list[Path],
     skill_name: str,
     message: str = "",
 ) -> None:
@@ -253,7 +253,7 @@ def assert_skill_loaded(
 
 def assert_command_executed(
     stdout: str,
-    log_files: List[Path],
+    log_files: list[Path],
     command: str,
     message: str = "",
 ) -> None:
@@ -310,7 +310,7 @@ def assert_command_executed(
 
 def assert_agent_invoked(
     stdout: str,
-    log_files: List[Path],
+    log_files: list[Path],
     agent_name: str,
     message: str = "",
 ) -> None:
@@ -365,7 +365,7 @@ def assert_agent_invoked(
 
 def assert_lsp_detected(
     stdout: str,
-    log_files: List[Path],
+    log_files: list[Path],
     language: str,
     message: str = "",
 ) -> None:
@@ -448,12 +448,13 @@ def assert_settings_generated(
 
 # Pattern-based assertions for advanced validation
 
+
 def assert_pattern_in_output(
     stdout: str,
     pattern: Pattern[str],
     message: str = "",
-) -> Optional[re.Match]:
-    """Assert that stdout matches a regex pattern.
+) -> re.Match | None:
+    r"""Assert that stdout matches a regex pattern.
 
     Args:
         stdout: Standard output
@@ -484,11 +485,11 @@ def assert_pattern_in_output(
 
 
 def assert_pattern_in_logs(
-    log_files: List[Path],
+    log_files: list[Path],
     pattern: Pattern[str],
     message: str = "",
-) -> Optional[re.Match]:
-    """Assert that log files match a regex pattern.
+) -> re.Match | None:
+    r"""Assert that log files match a regex pattern.
 
     Args:
         log_files: Log file paths

@@ -14,7 +14,6 @@ All tests should FAIL initially.
 
 import json
 from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 import pytest
 
@@ -38,8 +37,8 @@ class TestMarketplaceConfigGeneration:
             "marketplace": {
                 "name": "amplihack",
                 "url": "https://github.com/rysweet/amplihack",
-                "type": "github"
-            }
+                "type": "github",
+            },
         }
 
     def test_generate_includes_marketplace_config(self, sample_manifest):
@@ -110,10 +109,7 @@ class TestMarketplaceConfigGeneration:
         """Test manifests without marketplace section don't add config."""
         # Arrange
         generator = SettingsGenerator()
-        manifest = {
-            "name": "simple-plugin",
-            "version": "1.0.0"
-        }
+        manifest = {"name": "simple-plugin", "version": "1.0.0"}
 
         # Act
         settings = generator.generate(manifest)
@@ -133,18 +129,12 @@ class TestMarketplaceConfigMerging:
         generator = SettingsGenerator()
         base_settings = {
             "extraKnownMarketplaces": [
-                {
-                    "name": "custom-marketplace",
-                    "url": "https://example.com/marketplace"
-                }
+                {"name": "custom-marketplace", "url": "https://example.com/marketplace"}
             ]
         }
         overlay_settings = {
             "extraKnownMarketplaces": [
-                {
-                    "name": "amplihack",
-                    "url": "https://github.com/rysweet/amplihack"
-                }
+                {"name": "amplihack", "url": "https://github.com/rysweet/amplihack"}
             ]
         }
 
@@ -161,16 +151,9 @@ class TestMarketplaceConfigMerging:
         """Test merging doesn't create duplicate marketplace entries."""
         # Arrange
         generator = SettingsGenerator()
-        amplihack_marketplace = {
-            "name": "amplihack",
-            "url": "https://github.com/rysweet/amplihack"
-        }
-        base_settings = {
-            "extraKnownMarketplaces": [amplihack_marketplace]
-        }
-        overlay_settings = {
-            "extraKnownMarketplaces": [amplihack_marketplace]
-        }
+        amplihack_marketplace = {"name": "amplihack", "url": "https://github.com/rysweet/amplihack"}
+        base_settings = {"extraKnownMarketplaces": [amplihack_marketplace]}
+        overlay_settings = {"extraKnownMarketplaces": [amplihack_marketplace]}
 
         # Act
         merged = generator.merge_settings(base_settings, overlay_settings)
@@ -187,12 +170,7 @@ class TestMarketplaceValidation:
         """Test marketplace URL validation (must be valid URL)."""
         # Arrange
         generator = SettingsGenerator()
-        invalid_manifest = {
-            "name": "plugin",
-            "marketplace": {
-                "url": "not-a-valid-url"
-            }
-        }
+        invalid_manifest = {"name": "plugin", "marketplace": {"url": "not-a-valid-url"}}
 
         # Act & Assert
         with pytest.raises(ValueError, match="Invalid marketplace URL"):
@@ -206,8 +184,8 @@ class TestMarketplaceValidation:
             "name": "plugin",
             "marketplace": {
                 "name": "Invalid_Name",  # Underscores not allowed
-                "url": "https://github.com/example/repo"
-            }
+                "url": "https://github.com/example/repo",
+            },
         }
 
         # Act & Assert
@@ -223,8 +201,8 @@ class TestMarketplaceValidation:
             "marketplace": {
                 "name": "plugin",
                 "url": "https://github.com/invalid",  # Missing repo name
-                "type": "github"
-            }
+                "type": "github",
+            },
         }
 
         # Act & Assert
@@ -282,8 +260,8 @@ class TestSettingsJsonOutput:
             "marketplace": {
                 "name": "amplihack",
                 "url": "https://github.com/rysweet/amplihack",
-                "type": "github"
-            }
+                "type": "github",
+            },
         }
         settings = generator.generate(manifest)
         target_path = tmp_path / "settings.json"
@@ -302,10 +280,7 @@ class TestSettingsJsonOutput:
         generator = SettingsGenerator()
         manifest = {
             "name": "amplihack",
-            "marketplace": {
-                "name": "amplihack",
-                "url": "https://github.com/rysweet/amplihack"
-            }
+            "marketplace": {"name": "amplihack", "url": "https://github.com/rysweet/amplihack"},
         }
         settings = generator.generate(manifest)
         target_path = tmp_path / "settings.json"

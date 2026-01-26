@@ -3,9 +3,9 @@
 Integrates blarify-generated code graphs into the same Kuzu database
 as the memory system, creating relationships between code and memories.
 
-This is a port from Neo4j (src/amplihack/memory/neo4j/code_graph.py).
+This is a port from the removed graph database.
 Key differences:
-- Uses Kuzu connector instead of Neo4j connector
+- Uses Kuzu connector instead of the removed connector
 - No MERGE - uses explicit INSERT pattern with checks
 - Schema matches kuzu_backend.py (CodeFile, Class, Function nodes)
 - Query syntax is 90% compatible with Cypher

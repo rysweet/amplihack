@@ -71,20 +71,20 @@ context:
   # ==========================================================================
   # REQUIRED INPUTS
   # ==========================================================================
-  
+
   # The decision question to debate (frame as question, not predetermined answer)
   decision_question: ""
-  
+
   # Context: why this decision matters, background information
   decision_context: ""
-  
+
   # Non-negotiable constraints and technical limitations
   constraints: ""
 
   # ==========================================================================
   # CONFIGURATION OPTIONS
   # ==========================================================================
-  
+
   # Perspectives to include (comma-separated)
   # Options: security, performance, simplicity, maintainability, ux, scalability, cost
   # Default: 3 perspectives (security, performance, simplicity)
@@ -171,7 +171,7 @@ steps:
       {{framing_draft}}
 
       Create the final decision framing that will be shared with all perspective agents:
-      
+
       ```json
       {
         "title": "{{framing_draft.title}}",
@@ -186,7 +186,7 @@ steps:
           "rounds": {{debate_rounds}},
           "convergence_criteria": "{{convergence}}",
           "round_1": "Independent position formation",
-          "round_2": "Challenge and cross-examination", 
+          "round_2": "Challenge and cross-examination",
           "round_3": "Find common ground and hybrid approaches"
         }
       }
@@ -204,13 +204,13 @@ steps:
   # STEP 2: INITIALIZE PERSPECTIVES (Parallel Subprocess Execution)
   # Each perspective forms initial position INDEPENDENTLY - no context sharing
   # ==========================================================================
-  
+
   # PERSPECTIVE 1: SECURITY
   - id: "perspective-security"
     agent: "amplihack:security"
     prompt: |
       **SECURITY PERSPECTIVE ANALYSIS**
-      
+
       Analyze this decision from a SECURITY perspective:
 
       **Decision:** {{framing.question}}
@@ -260,7 +260,7 @@ steps:
     agent: "amplihack:optimizer"
     prompt: |
       **PERFORMANCE PERSPECTIVE ANALYSIS**
-      
+
       Analyze this decision from a PERFORMANCE perspective:
 
       **Decision:** {{framing.question}}
@@ -314,7 +314,7 @@ steps:
     agent: "amplihack:cleanup"
     prompt: |
       **SIMPLICITY PERSPECTIVE ANALYSIS**
-      
+
       Analyze this decision from a SIMPLICITY perspective:
 
       **Decision:** {{framing.question}}
@@ -367,7 +367,7 @@ steps:
     agent: "amplihack:reviewer"
     prompt: |
       **MAINTAINABILITY PERSPECTIVE ANALYSIS**
-      
+
       Analyze this decision from a MAINTAINABILITY perspective:
 
       **Decision:** {{framing.question}}
@@ -423,7 +423,7 @@ steps:
     agent: "amplihack:api-designer"
     prompt: |
       **USER EXPERIENCE PERSPECTIVE ANALYSIS**
-      
+
       Analyze this decision from a USER EXPERIENCE perspective:
 
       **Decision:** {{framing.question}}
@@ -478,7 +478,7 @@ steps:
     agent: "amplihack:architect"
     prompt: |
       **SCALABILITY PERSPECTIVE ANALYSIS**
-      
+
       Analyze this decision from a SCALABILITY perspective:
 
       **Decision:** {{framing.question}}
@@ -535,7 +535,7 @@ steps:
     agent: "amplihack:analyzer"
     prompt: |
       **COST PERSPECTIVE ANALYSIS**
-      
+
       Analyze this decision from a COST perspective:
 
       **Decision:** {{framing.question}}
@@ -917,7 +917,7 @@ steps:
       [All options that were debated]
 
       ## Debate Summary
-      
+
       ### Perspective Positions
       | Perspective | Recommendation | Confidence | Key Argument |
       |-------------|----------------|------------|--------------|
@@ -993,24 +993,24 @@ steps:
     type: "bash"
     command: |
       set -euo pipefail
-      
+
       # Create decisions directory if it doesn't exist
       WORKING_DIR='{{working_dir}}'
       mkdir -p "$WORKING_DIR"
-      
+
       # Generate filename with date
       DATE=$(date +%Y-%m-%d)
-      
+
       # Sanitize title for filename (extract from framing, use question if not available)
       TITLE='decision'
       FILENAME="${DATE}-${TITLE}.md"
       FILEPATH="$WORKING_DIR/$FILENAME"
-      
+
       # Write the decision record
       cat << 'DECISION_EOF' > "$FILEPATH"
       {{decision_record}}
       DECISION_EOF
-      
+
       echo "Decision record saved to: $FILEPATH"
       echo ""
       echo "To add to DISCOVERIES.md, run:"

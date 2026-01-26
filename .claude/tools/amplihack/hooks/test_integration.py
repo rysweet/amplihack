@@ -53,10 +53,10 @@ def test_gitignore_checker_integration():
         import sys
 
         sys.path.insert(0, str(Path(__file__).parent))
-        from gitignore_checker import GitignoreChecker
-
         # Change to test repo
         import os
+
+        from gitignore_checker import GitignoreChecker
 
         original_dir = os.getcwd()
         try:

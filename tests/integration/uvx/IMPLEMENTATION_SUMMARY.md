@@ -15,11 +15,13 @@ Implemented complete UVX-based integration test harness fer outside-in testin' o
 #### `uvx_launcher.py` (404 lines)
 
 **Public API ("studs"):**
+
 - `uvx_launch()` - Launch amplihack via UVX with non-interactive prompt
 - `uvx_launch_with_test_project()` - Launch with temporary test project
 - `UVXLaunchResult` - Dataclass with assertion helpers
 
 **Key Features:**
+
 - Real UVX execution using `uvx --from git+...`
 - Non-interactive mode with `-p` flag
 - Configurable timeout (default 60s)
@@ -30,6 +32,7 @@ Implemented complete UVX-based integration test harness fer outside-in testin' o
 #### `output_validator.py` (509 lines)
 
 **Public API ("studs"):**
+
 - `assert_output_contains()` - Check stdout contains text
 - `assert_log_contains()` - Check log files contain text
 - `assert_stderr_contains()` - Check stderr contains text
@@ -41,6 +44,7 @@ Implemented complete UVX-based integration test harness fer outside-in testin' o
 - `assert_settings_generated()` - Verify settings.json creation
 
 **Key Features:**
+
 - Clear, informative error messages
 - Pattern-based matching
 - Case-sensitive and case-insensitive options
@@ -49,6 +53,7 @@ Implemented complete UVX-based integration test harness fer outside-in testin' o
 #### `test_helpers.py` (390 lines)
 
 **Public API ("studs"):**
+
 - `collect_log_files()` - Collect logs from directory
 - `create_test_project()` - Create temp project with files
 - `wait_for_log_entry()` - Poll logs for expected entry
@@ -60,6 +65,7 @@ Implemented complete UVX-based integration test harness fer outside-in testin' o
 - `create_multi_language_project()` - Create multi-language project
 
 **Key Features:**
+
 - Language-specific project templates
 - Automatic cleanup
 - Log file polling with timeout
@@ -74,6 +80,7 @@ Implemented complete UVX-based integration test harness fer outside-in testin' o
 #### `test_hooks.py` (240 lines - 11 tests)
 
 **Test Classes:**
+
 - `TestSessionStartHook` (2 tests)
   - SessionStart hook execution
   - Context file loading
@@ -94,6 +101,7 @@ Implemented complete UVX-based integration test harness fer outside-in testin' o
 #### `test_skills.py` (226 lines - 13 tests)
 
 **Test Classes:**
+
 - `TestSkillDiscovery` (2 tests)
   - Skill auto-discovery
   - Skill listing with descriptions
@@ -115,6 +123,7 @@ Implemented complete UVX-based integration test harness fer outside-in testin' o
 #### `test_commands.py` (234 lines - 16 tests)
 
 **Test Classes:**
+
 - `TestUltrathinkCommand` (3 tests)
   - Command availability
   - Command execution
@@ -140,6 +149,7 @@ Implemented complete UVX-based integration test harness fer outside-in testin' o
 #### `test_agents.py` (229 lines - 14 tests)
 
 **Test Classes:**
+
 - `TestArchitectAgent` (2 tests)
   - Agent availability
   - Design tasks
@@ -166,6 +176,7 @@ Implemented complete UVX-based integration test harness fer outside-in testin' o
 #### `test_lsp_detection.py` (268 lines - 16 tests)
 
 **Test Classes:**
+
 - `TestPythonDetection` (2 tests)
   - Python project detection
   - Python LSP configuration
@@ -191,6 +202,7 @@ Implemented complete UVX-based integration test harness fer outside-in testin' o
 #### `test_settings_generation.py` (292 lines - 17 tests)
 
 **Test Classes:**
+
 - `TestSettingsGeneration` (2 tests)
   - settings.json creation
   - JSON structure validation
@@ -219,6 +231,7 @@ Implemented complete UVX-based integration test harness fer outside-in testin' o
 #### `README.md` (398 lines)
 
 Complete usage guide with:
+
 - Philosophy and approach
 - Test structure overview
 - Running tests guide
@@ -232,15 +245,15 @@ Complete usage guide with:
 
 ## Test Coverage Summary
 
-| Test File | Lines | Tests | Coverage Area |
-|-----------|-------|-------|---------------|
-| test_hooks.py | 240 | 11 | Hook validation |
-| test_skills.py | 226 | 13 | Skill auto-discovery |
-| test_commands.py | 234 | 16 | Slash commands |
-| test_agents.py | 229 | 14 | Agent invocation |
-| test_lsp_detection.py | 268 | 16 | LSP detection |
-| test_settings_generation.py | 292 | 17 | Settings generation |
-| **Total** | **1,489** | **87** | **Complete** |
+| Test File                   | Lines     | Tests  | Coverage Area        |
+| --------------------------- | --------- | ------ | -------------------- |
+| test_hooks.py               | 240       | 11     | Hook validation      |
+| test_skills.py              | 226       | 13     | Skill auto-discovery |
+| test_commands.py            | 234       | 16     | Slash commands       |
+| test_agents.py              | 229       | 14     | Agent invocation     |
+| test_lsp_detection.py       | 268       | 16     | LSP detection        |
+| test_settings_generation.py | 292       | 17     | Settings generation  |
+| **Total**                   | **1,489** | **87** | **Complete**         |
 
 ## File Structure
 
@@ -267,24 +280,28 @@ tests/integration/uvx/
 ## Philosophy Compliance
 
 ✅ **Ruthless Simplicity**
+
 - Direct, focused implementations
 - No complex abstractions
 - Simple assertion helpers
 - Clear test structure
 
 ✅ **Zero-BS Implementation**
+
 - All code works (no stubs)
 - Real UVX execution
 - Real subprocess calls
 - Comprehensive error handling
 
 ✅ **Modular Design (Bricks & Studs)**
+
 - Self-contained harness module
 - Clear public API via `__all__`
 - Each test file is independent
 - Harness modules are focused
 
 ✅ **Outside-In Testing**
+
 - Tests from user perspective
 - Real UVX installation flow
 - Validates actual CLI usage
@@ -295,6 +312,7 @@ tests/integration/uvx/
 ### 1. UVX Launch Wrapper
 
 Real UVX execution with:
+
 - Git reference specification (branch/tag/commit)
 - Non-interactive prompts (-p flag)
 - Timeout enforcement (configurable)
@@ -306,6 +324,7 @@ Real UVX execution with:
 ### 2. Assertion Helpers
 
 Comprehensive validators fer:
+
 - Output text matching
 - Log file searching
 - Hook execution verification
@@ -318,6 +337,7 @@ Comprehensive validators fer:
 ### 3. Test Utilities
 
 Helper functions fer:
+
 - Creating test projects (Python, TypeScript, Rust, multi-language)
 - Collecting log files
 - Waiting fer log entries
@@ -329,6 +349,7 @@ Helper functions fer:
 ### 4. CI-Ready Tests
 
 All tests designed fer CI:
+
 - Non-interactive mode
 - Configurable timeouts (60-90s)
 - Clear error messages
@@ -403,6 +424,7 @@ pytest tests/integration/uvx/ --cov=src/amplihack --cov-report=html
 ### 1. Implement Plugin Architecture
 
 Create the plugin management system:
+
 - Plugin discovery and loading
 - Hook execution framework
 - Skill auto-discovery
@@ -413,6 +435,7 @@ Create the plugin management system:
 ### 2. Implement Hook System
 
 Create hook execution infrastructure:
+
 - SessionStart hook
 - Stop hook
 - PostToolUse hook
@@ -423,6 +446,7 @@ Create hook execution infrastructure:
 ### 3. Implement Skill System
 
 Create skill auto-discovery and loading:
+
 - Skill directory scanning
 - Context-based triggers
 - Skill tool invocation
@@ -432,6 +456,7 @@ Create skill auto-discovery and loading:
 ### 4. Implement LSP Detection
 
 Create language detection and configuration:
+
 - File extension analysis
 - Hidden file exclusion
 - LSP configuration generation
@@ -441,6 +466,7 @@ Create language detection and configuration:
 ### 5. Full Integration
 
 Connect all systems:
+
 - Plugin installation triggers LSP detection
 - Hooks execute at lifecycle points
 - Skills auto-load on context
@@ -451,6 +477,7 @@ Connect all systems:
 ## Quality Metrics
 
 After implementation, target:
+
 - **Line coverage**: > 90%
 - **Branch coverage**: > 85%
 - **Function coverage**: > 95%
@@ -487,6 +514,7 @@ These tests validate the architect's design by:
 **✅ COMPLETE - UVX Integration Test Harness Implementation Successful**
 
 All deliverables met:
+
 - ✅ Core harness classes (UVXLaunchResult, uvx_launch, validators, helpers)
 - ✅ Integration test suites (87 tests across 6 files)
 - ✅ Complete harness API (30+ public functions)
@@ -494,6 +522,7 @@ All deliverables met:
 - ✅ Philosophy compliance (ruthless simplicity, zero-BS, modular, outside-in)
 
 Ready fer:
+
 1. Plugin architecture implementation
 2. Hook system implementation
 3. Skill system implementation
@@ -505,6 +534,7 @@ Ready fer:
 ---
 
 **Builder Notes**:
+
 - All code follows amplihack philosophy
 - Tests verify behavior from user perspective
 - Clear, simple, direct implementations

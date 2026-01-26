@@ -15,14 +15,16 @@ This module provides blarify integration for the Kuzu memory system, allowing co
 Main integration class for blarify code graphs with Kuzu.
 
 **Capabilities:**
+
 - Import blarify JSON into Kuzu database
 - Create code nodes (CodeFile, Class, Function)
 - Create code relationships (DEFINED_IN, METHOD_OF, CALLS, INHERITS, IMPORTS)
-- Link memories to code (RELATES_TO_FILE_*, RELATES_TO_FUNCTION_*)
+- Link memories to code (RELATES*TO_FILE*_, RELATES*TO_FUNCTION*_)
 - Query code context for memories
 - Incremental updates
 
 **Example:**
+
 ```python
 from amplihack.memory.kuzu import KuzuConnector, KuzuCodeGraph
 
@@ -47,6 +49,7 @@ with KuzuConnector() as conn:
 Standalone function to run blarify CLI and generate JSON output.
 
 **Example:**
+
 ```python
 from pathlib import Path
 from amplihack.memory.kuzu import run_blarify
@@ -64,38 +67,39 @@ Uses node and relationship tables from `kuzu_backend.py` (created in Week 1).
 
 ### Code Nodes
 
-| Node Type | Primary Key | Key Fields |
-|-----------|-------------|------------|
-| `CodeFile` | file_id | file_path, language, size_bytes, last_modified |
-| `Class` | class_id | class_name, fully_qualified_name, docstring, is_abstract |
+| Node Type  | Primary Key | Key Fields                                                           |
+| ---------- | ----------- | -------------------------------------------------------------------- |
+| `CodeFile` | file_id     | file_path, language, size_bytes, last_modified                       |
+| `Class`    | class_id    | class_name, fully_qualified_name, docstring, is_abstract             |
 | `Function` | function_id | function_name, signature, docstring, is_async, cyclomatic_complexity |
 
 ### Code Relationships
 
-| Relationship | From → To | Properties |
-|--------------|-----------|------------|
-| `DEFINED_IN` | Class → CodeFile | line_number, end_line |
-| `DEFINED_IN_FUNCTION` | Function → CodeFile | line_number, end_line |
-| `METHOD_OF` | Function → Class | method_type, visibility |
-| `CALLS` | Function → Function | call_count, context |
-| `INHERITS` | Class → Class | inheritance_order, inheritance_type |
-| `IMPORTS` | CodeFile → CodeFile | import_type, alias |
-| `REFERENCES_CLASS` | Function → Class | reference_type, context |
+| Relationship          | From → To           | Properties                          |
+| --------------------- | ------------------- | ----------------------------------- |
+| `DEFINED_IN`          | Class → CodeFile    | line_number, end_line               |
+| `DEFINED_IN_FUNCTION` | Function → CodeFile | line_number, end_line               |
+| `METHOD_OF`           | Function → Class    | method_type, visibility             |
+| `CALLS`               | Function → Function | call_count, context                 |
+| `INHERITS`            | Class → Class       | inheritance_order, inheritance_type |
+| `IMPORTS`             | CodeFile → CodeFile | import_type, alias                  |
+| `REFERENCES_CLASS`    | Function → Class    | reference_type, context             |
 
 ### Memory-Code Links
 
-| Relationship | From → To | Properties |
-|--------------|-----------|------------|
-| `RELATES_TO_FILE_*` | Memory → CodeFile | relevance_score, context, timestamp |
+| Relationship            | From → To         | Properties                          |
+| ----------------------- | ----------------- | ----------------------------------- |
+| `RELATES_TO_FILE_*`     | Memory → CodeFile | relevance_score, context, timestamp |
 | `RELATES_TO_FUNCTION_*` | Memory → Function | relevance_score, context, timestamp |
 
-*Note: 5 memory types × 2 link types = 10 relationship tables*
+_Note: 5 memory types × 2 link types = 10 relationship tables_
 
 ## Migration Notes
 
 ### Differences from Neo4j
 
 1. **No MERGE**: Kuzu doesn't have MERGE, so we use explicit INSERT pattern:
+
    ```python
    # Neo4j (before)
    MERGE (cf:CodeFile {path: $path})
@@ -117,6 +121,7 @@ Uses node and relationship tables from `kuzu_backend.py` (created in Week 1).
 ### Schema Alignment
 
 The schema matches `kuzu_backend.py` exactly:
+
 - ✅ Same node table names (CodeFile, Class, Function)
 - ✅ Same relationship table names (DEFINED_IN, METHOD_OF, etc.)
 - ✅ Same field names and types
@@ -139,6 +144,7 @@ pytest tests/memory/kuzu/test_code_graph.py -v
 ```
 
 **Tests:**
+
 - ✅ Import files, classes, functions
 - ✅ Create relationships (CALLS, INHERITS, METHOD_OF)
 - ✅ Link memories to code
@@ -153,6 +159,7 @@ python scripts/test_kuzu_blarify_integration.py
 ```
 
 **Validates:**
+
 1. Schema initialization
 2. Sample code import (3 files, 3 classes, 4 functions)
 3. Code-memory relationships
@@ -162,12 +169,14 @@ python scripts/test_kuzu_blarify_integration.py
 ## Performance
 
 **Import benchmarks** (tested on amplihack codebase):
+
 - Files: ~50ms per 100 files
 - Classes: ~30ms per 100 classes
 - Functions: ~40ms per 100 functions
 - Relationships: ~20ms per 100 relationships
 
 **Query benchmarks:**
+
 - Code stats: <50ms
 - Code context: <100ms
 - Memory-code links: <200ms

@@ -13,10 +13,10 @@ context information for hooks to consume.
 import json
 import os
 import sys
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Any
 
 
 @dataclass
@@ -26,14 +26,14 @@ class LauncherInfo:
     launcher_type: str  # "claude", "copilot", "codex", "unknown"
     command: str  # Original command that launched amplihack
     detected_at: str  # ISO timestamp
-    environment: Dict[str, str]  # Relevant env vars
+    environment: dict[str, str]  # Relevant env vars
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary for JSON serialization."""
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "LauncherInfo":
+    def from_dict(cls, data: dict[str, Any]) -> "LauncherInfo":
         """Create from dictionary."""
         return cls(**data)
 
@@ -72,16 +72,11 @@ class LauncherDetector:
             launcher_type=launcher_type,
             command=command,
             detected_at=detected_at,
-            environment=environment
+            environment=environment,
         )
 
     @classmethod
-    def write_context(
-        cls,
-        launcher_type: str,
-        command: str,
-        **kwargs
-    ) -> Path:
+    def write_context(cls, launcher_type: str, command: str, **kwargs) -> Path:
         """Write launcher context to file.
 
         Args:
@@ -99,7 +94,7 @@ class LauncherDetector:
             launcher_type=launcher_type,
             command=command,
             detected_at=datetime.now().isoformat(),
-            environment=kwargs
+            environment=kwargs,
         )
 
         # Ensure directory exists
@@ -111,7 +106,7 @@ class LauncherDetector:
         return cls.CONTEXT_FILE
 
     @classmethod
-    def read_context(cls) -> Optional[LauncherInfo]:
+    def read_context(cls) -> LauncherInfo | None:
         """Read launcher context from file.
 
         Returns:
@@ -128,7 +123,7 @@ class LauncherDetector:
             return None
 
     @classmethod
-    def is_stale(cls, context: Optional[LauncherInfo] = None) -> bool:
+    def is_stale(cls, context: LauncherInfo | None = None) -> bool:
         """Check if launcher context is stale (> 5 minutes old).
 
         Args:
@@ -171,9 +166,9 @@ class LauncherDetector:
             parent_lower = parent_cmd.lower()
             if "claude" in parent_lower:
                 return "claude"
-            elif "copilot" in parent_lower or "github" in parent_lower:
+            if "copilot" in parent_lower or "github" in parent_lower:
                 return "copilot"
-            elif "codex" in parent_lower or "openai" in parent_lower:
+            if "codex" in parent_lower or "openai" in parent_lower:
                 return "codex"
 
         return "unknown"
@@ -188,7 +183,7 @@ class LauncherDetector:
         return " ".join(sys.argv)
 
     @classmethod
-    def _gather_environment(cls) -> Dict[str, str]:
+    def _gather_environment(cls) -> dict[str, str]:
         """Gather relevant environment variables.
 
         Returns:
@@ -197,11 +192,7 @@ class LauncherDetector:
         env = {}
 
         # Collect all launcher markers
-        all_markers = [
-            marker
-            for markers in cls.LAUNCHER_MARKERS.values()
-            for marker in markers
-        ]
+        all_markers = [marker for markers in cls.LAUNCHER_MARKERS.values() for marker in markers]
 
         for marker in all_markers:
             value = os.environ.get(marker)
@@ -220,7 +211,7 @@ class LauncherDetector:
         return env
 
     @classmethod
-    def _get_parent_process_name(cls) -> Optional[str]:
+    def _get_parent_process_name(cls) -> str | None:
         """Get parent process name (best effort).
 
         Returns:
@@ -228,11 +219,12 @@ class LauncherDetector:
         """
         try:
             import subprocess
+
             result = subprocess.run(
                 ["ps", "-o", "comm=", "-p", str(os.getppid())],
                 capture_output=True,
                 text=True,
-                timeout=1
+                timeout=1,
             )
             if result.returncode == 0:
                 return result.stdout.strip()
@@ -242,12 +234,7 @@ class LauncherDetector:
         return None
 
     @classmethod
-    def _write_with_retry(
-        cls,
-        filepath: Path,
-        data: Dict[str, Any],
-        max_retries: int = 3
-    ) -> None:
+    def _write_with_retry(cls, filepath: Path, data: dict[str, Any], max_retries: int = 3) -> None:
         """Write JSON file with retry for cloud sync resilience.
 
         Args:

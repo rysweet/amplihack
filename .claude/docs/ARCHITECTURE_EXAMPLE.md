@@ -79,8 +79,8 @@ sequenceDiagram
 
 ## Key Files
 
-| File Path                                                         | Purpose                                                | Key Components                          |
-| ----------------------------------------------------------------- | ------------------------------------------------------ | --------------------------------------- |
+| File Path                                                                      | Purpose                                                | Key Components                          |
+| ------------------------------------------------------------------------------ | ------------------------------------------------------ | --------------------------------------- |
 | `~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md`                      | Defines investigation workflow with documentation step | Step 6: Documentation generation        |
 | `~/.amplihack/.claude/agents/amplihack/specialized/knowledge-archaeologist.md` | Agent with documentation generation capability         | Documentation Generation section        |
 | `~/.amplihack/.claude/templates/investigation-doc-template.md`                 | Template for general investigations                    | Findings, Files, Integration, Examples  |

@@ -337,6 +337,7 @@ If the consideration is not applicable to this session (e.g., no relevant work w
 
     return prompt
 
+
 def _extract_reason_from_response(response: str) -> str | None:
     """Extract failure reason from SDK response.
 

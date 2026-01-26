@@ -34,6 +34,7 @@ You MUST use one of the workflow skills - either default-workflow or investigati
 ## Default Behavior
 
 Claude invokes this skill for non-trivial development and investigation tasks:
+
 - Development: "implement", "add", "fix", "create", "refactor"
 - Investigation: "investigate", "analyze", "explore", "understand"
 - Q&A: Responds directly (no orchestration needed)
@@ -60,12 +61,14 @@ When ultrathink-orchestrator skill is triggered (auto-activation or explicit /ul
 
 **Self-Check Protocol:**
 Before proceeding with any workflow steps, verify you have:
+
 - [ ] Invoked Skill tool with workflow skill name, OR
 - [ ] Used Read tool to load workflow markdown file
 - [ ] Confirmed workflow content is loaded in context
 
 **Error Protocol:**
 If you forget to invoke the workflow:
+
 1. Power-steering will block session termination
 2. You must retry with proper Skill or Read tool invocation
 3. No shortcuts or workarounds accepted

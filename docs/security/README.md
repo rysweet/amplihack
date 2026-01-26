@@ -26,6 +26,7 @@ Ahoy! This be where ye learn to keep yer ship secure from digital pirates.
 Automatically detect and redact sensitive tokens from logs, errors, and debug output.
 
 **Quick Start**:
+
 ```python
 from amplihack.proxy.security import TokenSanitizer
 
@@ -35,7 +36,8 @@ safe_msg = sanitizer.sanitize("Token: gho_abc123xyz")
 ```
 
 **Supported Token Types**:
-- GitHub tokens (gho_, ghp_, ghs_, ghu_, ghr_)
+
+- GitHub tokens (gho*, ghp*, ghs*, ghu*, ghr\_)
 - OpenAI API keys (sk-, sk-proj-)
 - Anthropic API keys (sk-ant-)
 - Bearer tokens
@@ -43,6 +45,7 @@ safe_msg = sanitizer.sanitize("Token: gho_abc123xyz")
 - Azure keys and connection strings
 
 **Documentation**:
+
 - [Token Sanitization Guide](./TOKEN_SANITIZATION_GUIDE.md) - Usage examples and patterns
 - [Security API Reference](./SECURITY_API_REFERENCE.md) - Complete API documentation
 
@@ -51,6 +54,7 @@ safe_msg = sanitizer.sanitize("Token: gho_abc123xyz")
 Unified model validation preventing routing conflicts and injection attacks.
 
 **Features**:
+
 - Type checking and validation
 - Format verification (alphanumeric + hyphens/dots)
 - Path traversal prevention
@@ -64,6 +68,7 @@ Unified model validation preventing routing conflicts and injection attacks.
 Security-focused input validation for all external data.
 
 **Features**:
+
 - Model name validation (prevents injection)
 - Length checks (reasonable limits)
 - Character pattern validation
@@ -77,6 +82,7 @@ Security-focused input validation for all external data.
 Automatic secure permissions for sensitive files.
 
 **Features**:
+
 - Token files: 0600 (read/write owner only)
 - Config directories: 0700 (rwx owner only)
 - Automatic permission enforcement on save
@@ -139,6 +145,7 @@ How to test and validate security implementations:
 - Testing pyramid: 60% unit, 30% integration, 10% E2E
 
 **Run Security Tests**:
+
 ```bash
 # All security tests
 pytest tests/proxy/test_security_sanitization.py -v

@@ -16,7 +16,6 @@ All tests should FAIL initially for missing hooks.
 
 import json
 from pathlib import Path
-from unittest.mock import patch, mock_open
 
 import pytest
 
@@ -119,8 +118,9 @@ class TestHookRegistration:
             for entry in hook_entries:
                 for hook in entry.get("hooks", []):
                     command = hook.get("command", "")
-                    assert "${CLAUDE_PLUGIN_ROOT}" in command, \
+                    assert "${CLAUDE_PLUGIN_ROOT}" in command, (
                         f"Hook {hook_name} does not use ${{CLAUDE_PLUGIN_ROOT}}"
+                    )
 
     def test_no_absolute_paths_in_hooks(self, hooks_json_path):
         """Test hooks don't use absolute paths (must use variable)."""
@@ -133,10 +133,12 @@ class TestHookRegistration:
                 for hook in entry.get("hooks", []):
                     command = hook.get("command", "")
                     # Should not start with / or contain /home/ etc
-                    assert not command.startswith("/"), \
+                    assert not command.startswith("/"), (
                         f"Hook {hook_name} uses absolute path: {command}"
-                    assert "/home/" not in command, \
+                    )
+                    assert "/home/" not in command, (
                         f"Hook {hook_name} contains hardcoded path: {command}"
+                    )
 
 
 class TestHookFileExecutability:
@@ -215,7 +217,8 @@ class TestHookDiscovery:
 
         # Act
         hook_files = {
-            f.stem: f for f in hooks_dir.glob("*.py")
+            f.stem: f
+            for f in hooks_dir.glob("*.py")
             if not f.name.startswith("test_") and f.is_file()
         }
 
@@ -235,8 +238,9 @@ class TestHookDiscovery:
         # Assert
         for file_stem, expected_hook in file_to_hook_map.items():
             if file_stem in hook_files:
-                assert expected_hook in registered_hooks, \
+                assert expected_hook in registered_hooks, (
                     f"Hook file {file_stem}.py exists but {expected_hook} not in hooks.json"
+                )
 
 
 class TestHookTimeouts:

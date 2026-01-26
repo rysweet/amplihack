@@ -9,16 +9,16 @@
 - **name**: amplihack:analyze
 - **version**: 1.0.0
 - **description**: Comprehensive code analysis and philosophy compliance review
-- **triggers**: 
-- **invokes**: 
+- **triggers**:
+- **invokes**:
 - **- type**: subagent
 - **path**: .claude/agents/amplihack/specialized/philosophy-guardian.md
-- **philosophy**: 
+- **philosophy**:
 - **- principle**: Modular Design
 - **application**: Assesses brick boundaries and self-containment
-- **dependencies**: 
-- **required**: 
-- **examples**: 
+- **dependencies**:
+- **required**:
+- **examples**:
 
 ---
 
@@ -28,6 +28,7 @@ This command is designed for Claude Code but the patterns and approaches
 can be referenced when using GitHub Copilot CLI.
 
 **Example**:
+
 ```bash
 # Reference this command's approach
 gh copilot explain .github/commands/analyze.md
@@ -39,7 +40,6 @@ gh copilot suggest --context .github/commands/analyze.md "your task"
 ---
 
 ## Original Command Documentation
-
 
 # Analyze Command
 

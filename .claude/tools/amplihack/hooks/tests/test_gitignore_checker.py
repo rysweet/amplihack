@@ -11,13 +11,11 @@ All tests will FAIL initially - this is TDD!
 
 import subprocess
 from pathlib import Path
-from typing import List, Optional
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
 from ..gitignore_checker import GitignoreChecker
-
 
 # =============================================================================
 # UNIT TESTS (60%) - Fast, isolated, heavily mocked
@@ -395,7 +393,9 @@ class TestPatternMatchingIntegration:
 
         for pattern, directory, should_match in test_cases:
             result = checker.pattern_matches(pattern, directory)
-            assert result == should_match, f"Pattern '{pattern}' vs '{directory}' should be {should_match}"
+            assert result == should_match, (
+                f"Pattern '{pattern}' vs '{directory}' should be {should_match}"
+            )
 
     def test_preserves_existing_formatting(self, tmp_path):
         """Test workflow preserves existing .gitignore formatting."""

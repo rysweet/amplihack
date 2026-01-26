@@ -19,7 +19,7 @@ When `KuzuBackend.store_memory()` is called, the system automatically:
 
 ### Link Types
 
-#### File Links (RELATES_TO_FILE_*)
+#### File Links (RELATES*TO_FILE*\*)
 
 Created when memory metadata contains a file path:
 
@@ -35,7 +35,7 @@ memory = MemoryEntry(
 
 **Relevance Score**: 1.0 (metadata is explicit and reliable)
 
-#### Function Links (RELATES_TO_FUNCTION_*)
+#### Function Links (RELATES*TO_FUNCTION*\*)
 
 Created when function names appear in memory content:
 
@@ -204,21 +204,25 @@ for row in results:
 ### Matching Logic
 
 #### File Matching
+
 - Uses substring matching: `cf.file_path CONTAINS $file_path OR $file_path CONTAINS cf.file_path`
 - Supports both absolute and relative paths
 - Handles partial path matches
 
 #### Function Matching
+
 - Uses substring matching: `$content CONTAINS f.function_name`
 - Filters out very short names (< 4 chars) to avoid false positives
 - Case-sensitive matching
 
 ### Deduplication
+
 - Checks for existing links before creating new ones
 - Uses MATCH query to verify relationship doesn't exist
 - Prevents duplicate links within same transaction
 
 ### Error Handling
+
 - Auto-linking failures do NOT fail memory storage
 - Errors are logged as warnings
 - Graceful degradation ensures data integrity
@@ -237,6 +241,7 @@ Comprehensive test suite in `tests/memory/backends/test_kuzu_auto_linking.py`:
 - ✅ Disable functionality
 
 Run tests:
+
 ```bash
 uv run pytest tests/memory/backends/test_kuzu_auto_linking.py -v
 ```
@@ -244,11 +249,13 @@ uv run pytest tests/memory/backends/test_kuzu_auto_linking.py -v
 ## Demo
 
 Run the interactive demo:
+
 ```bash
 python -m examples.memory_code_auto_linking_example
 ```
 
 Output shows:
+
 - File-based auto-linking (relevance=1.0)
 - Function-based auto-linking (relevance=0.8)
 - Mixed linking (both file and function)

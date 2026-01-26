@@ -18,15 +18,15 @@ def check_file_exists(filepath: Path, description: str) -> bool:
     if filepath.exists():
         print(f"{GREEN}✓{RESET} {description}: {filepath.name}")
         return True
-    else:
-        print(f"{RED}✗{RESET} {description}: {filepath.name} (NOT FOUND)")
-        return False
+    print(f"{RED}✗{RESET} {description}: {filepath.name} (NOT FOUND)")
+    return False
 
 
 def check_python_syntax(filepath: Path) -> bool:
     """Check if Python file has valid syntax."""
     try:
         import py_compile
+
         py_compile.compile(filepath, doraise=True)
         return True
     except Exception as e:
@@ -54,9 +54,7 @@ def main():
     ]
 
     for filepath, description in harness_files:
-        if not check_file_exists(filepath, description):
-            all_good = False
-        elif not check_python_syntax(filepath):
+        if not check_file_exists(filepath, description) or not check_python_syntax(filepath):
             all_good = False
 
     # Check test files
@@ -71,9 +69,7 @@ def main():
     ]
 
     for filepath, description in test_files:
-        if not check_file_exists(filepath, description):
-            all_good = False
-        elif not check_python_syntax(filepath):
+        if not check_file_exists(filepath, description) or not check_python_syntax(filepath):
             all_good = False
 
     # Check documentation
@@ -91,6 +87,7 @@ def main():
     print("\n4. Test Count:")
     try:
         import subprocess
+
         result = subprocess.run(
             ["grep", "-r", "def test_", str(base_dir)],
             capture_output=True,
@@ -133,10 +130,9 @@ def main():
         print(f"{GREEN}✓ ALL CHECKS PASSED{RESET}")
         print("\nImplementation is complete and ready fer testing!")
         return 0
-    else:
-        print(f"{RED}✗ SOME CHECKS FAILED{RESET}")
-        print("\nPlease review errors above.")
-        return 1
+    print(f"{RED}✗ SOME CHECKS FAILED{RESET}")
+    print("\nPlease review errors above.")
+    return 1
 
 
 if __name__ == "__main__":

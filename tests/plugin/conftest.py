@@ -4,11 +4,10 @@ Shared pytest fixtures for plugin tests.
 Provides common test fixtures and utilities for all plugin tests.
 """
 
-import pytest
-from pathlib import Path
 import json
-import tempfile
-import shutil
+from pathlib import Path
+
+import pytest
 
 
 @pytest.fixture
@@ -38,10 +37,8 @@ def plugin_source(tmp_path):
     # Create base settings
     settings = {
         "version": "1.0.0",
-        "hooks": {
-            "PreRun": "${CLAUDE_PLUGIN_ROOT}/tools/hook.sh"
-        },
-        "lspServers": {}
+        "hooks": {"PreRun": "${CLAUDE_PLUGIN_ROOT}/tools/hook.sh"},
+        "lspServers": {},
     }
     (claude_dir / "settings.json").write_text(json.dumps(settings, indent=2))
 
@@ -88,12 +85,7 @@ def old_installation(tmp_path):
     (claude_dir / "logs" / "app.log").write_text("Log entry")
 
     # Old settings (no variables)
-    settings = {
-        "version": "0.9.0",
-        "hooks": {
-            "PreRun": ".claude/tools/hook.sh"
-        }
-    }
+    settings = {"version": "0.9.0", "hooks": {"PreRun": ".claude/tools/hook.sh"}}
     (claude_dir / "settings.json").write_text(json.dumps(settings, indent=2))
 
     return project_dir
@@ -145,10 +137,7 @@ def typescript_project(tmp_path):
     package_json = {
         "name": "test-project",
         "version": "1.0.0",
-        "dependencies": {
-            "typescript": "^5.0.0",
-            "react": "^18.0.0"
-        }
+        "dependencies": {"typescript": "^5.0.0", "react": "^18.0.0"},
     }
     (project / "package.json").write_text(json.dumps(package_json, indent=2))
 
@@ -192,12 +181,7 @@ def multipage_project(tmp_path):
     # TypeScript frontend
     frontend = project / "frontend"
     frontend.mkdir()
-    frontend_package = {
-        "dependencies": {
-            "typescript": "^5.0.0",
-            "react": "^18.0.0"
-        }
-    }
+    frontend_package = {"dependencies": {"typescript": "^5.0.0", "react": "^18.0.0"}}
     (frontend / "package.json").write_text(json.dumps(frontend_package, indent=2))
     (frontend / "index.tsx").write_text("console.log('app');")
 
@@ -225,19 +209,10 @@ def sample_settings():
         "version": "1.0.0",
         "hooks": {
             "PreRun": "${CLAUDE_PLUGIN_ROOT}/tools/pre_run.sh",
-            "PostRun": "${CLAUDE_PLUGIN_ROOT}/tools/post_run.sh"
+            "PostRun": "${CLAUDE_PLUGIN_ROOT}/tools/post_run.sh",
         },
-        "lspServers": {
-            "python": {
-                "command": "pylsp",
-                "args": []
-            }
-        },
-        "exclude": [
-            "node_modules",
-            ".git",
-            ".venv"
-        ]
+        "lspServers": {"python": {"command": "pylsp", "args": []}},
+        "exclude": ["node_modules", ".git", ".venv"],
     }
 
 
@@ -251,11 +226,12 @@ def sample_variables():
     """
     return {
         "CLAUDE_PLUGIN_ROOT": "/home/user/.amplihack/.claude",
-        "PROJECT_ROOT": "/home/user/projects/myproject"
+        "PROJECT_ROOT": "/home/user/projects/myproject",
     }
 
 
 # Helper functions for tests
+
 
 def create_minimal_plugin(path: Path) -> Path:
     """

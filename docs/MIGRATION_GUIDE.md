@@ -19,21 +19,25 @@ Before (Per-Project)              After (Plugin)
 ## Benefits o' Plugin Mode
 
 ### Automatic Updates
+
 - Plugin updates affect all projects instantly
 - No need t' copy `~/.amplihack/.claude/` to each project
 - Always use latest agents and commands
 
 ### Consistent Behavior
+
 - Same workflow across all projects
 - Standardized agent responses
 - Predictable hook behavior
 
 ### Simplified Management
+
 - One location fer all customizations
 - Easier t' track changes
 - Simpler backup and version control
 
 ### Disk Space Savings
+
 - One `~/.amplihack/.claude/` directory instead o' N copies
 - 50MB saved per project (typical)
 - Example: 10 projects = 500MB saved
@@ -43,12 +47,14 @@ Before (Per-Project)              After (Plugin)
 ### Recommended Cases
 
 **✅ Migrate t' Plugin When:**
+
 - Ye work on multiple projects
 - Ye want automatic updates across all projects
 - Ye use standard amplihack without customizations
 - Ye want zero-configuration setup
 
 **Example Workflow:**
+
 ```bash
 # Install plugin once
 amplihack plugin install
@@ -62,12 +68,14 @@ cd ~/project3 && amplihack launch  # Still uses plugin
 ### Keep Per-Project Mode
 
 **🏴‍☠️ Stay Per-Project When:**
+
 - Ye need project-specific agent customizations
 - Ye want t' pin amplihack version fer stability
 - Ye be experimentin' with custom workflows
 - Ye need different configurations per project
 
 **Example Workflow:**
+
 ```bash
 # Each project has own .claude/
 cd ~/project1 && amplihack launch  # Uses project1/.claude/
@@ -98,6 +106,7 @@ amplihack plugin install https://github.com/rysweet/amplihack
 ```
 
 Output:
+
 ```
 ✅ Plugin installed: amplihack
    Location: /home/user/.amplihack/.claude/
@@ -112,6 +121,7 @@ amplihack mode migrate-to-plugin
 ```
 
 Output:
+
 ```
 Removing local .claude/ from /home/user/project
 Migration complete. Project now uses plugin.
@@ -124,6 +134,7 @@ amplihack mode status
 ```
 
 Output:
+
 ```
 Current mode: plugin
   Using: /home/user/.amplihack/.claude
@@ -221,6 +232,7 @@ amplihack launch  # Uses local .claude/ (precedence)
 ```
 
 **Mode Detection:**
+
 - Projects without `~/.amplihack/.claude/` → Use plugin
 - Projects with `~/.amplihack/.claude/` → Use local (override)
 
@@ -282,6 +294,7 @@ amplihack mode migrate-to-local
 ```
 
 Output:
+
 ```
 Creating local .claude/ from plugin
 Migration complete. Project now uses local .claude/
@@ -301,6 +314,7 @@ amplihack mode status
 ```
 
 Expected output:
+
 ```
 Current mode: plugin
   Using: /home/user/.amplihack/.claude
@@ -313,6 +327,7 @@ amplihack plugin verify amplihack
 ```
 
 Expected output:
+
 ```
 Plugin: amplihack
   Installed: ✅
@@ -328,6 +343,7 @@ amplihack launch -- -p "analyze src/file.py"
 ```
 
 Verify:
+
 - [ ] Commands available (`/amplihack:ultrathink`, `/analyze`)
 - [ ] Agents load correctly
 - [ ] Hooks execute (session start, prompt wrap)
@@ -350,6 +366,7 @@ Both should use same plugin.
 ### Migration Fails with Custom Files
 
 **Symptom**:
+
 ```
 Warning: Local .claude/ has custom files:
   - agents/my-custom-agent.md
@@ -359,6 +376,7 @@ These will be lost. Backup first or use --preserve-custom
 ```
 
 **Solution**:
+
 1. Backup custom files (see "Preservin' Customizations")
 2. Migrate: `amplihack mode migrate-to-plugin`
 3. Add custom files t' plugin manually
@@ -366,17 +384,20 @@ These will be lost. Backup first or use --preserve-custom
 ### Plugin Not Found After Migration
 
 **Symptom**:
+
 ```
 Current mode: none
   No .claude installation found
 ```
 
 **Diagnosis**:
+
 ```bash
 amplihack plugin verify amplihack
 ```
 
 **Solution**:
+
 ```bash
 # Reinstall plugin
 amplihack plugin install https://github.com/rysweet/amplihack
@@ -390,11 +411,13 @@ amplihack plugin verify amplihack
 **Symptom**: Project still uses local `~/.amplihack/.claude/` after migration.
 
 **Diagnosis**:
+
 ```bash
 ls -la .claude/  # Directory still exists
 ```
 
 **Solution**:
+
 ```bash
 # Migration didn't complete - try again
 amplihack mode migrate-to-plugin --force
@@ -405,6 +428,7 @@ amplihack mode migrate-to-plugin --force
 **Symptom**: Migrated but want per-project mode back.
 
 **Solution**:
+
 ```bash
 # Revert to local mode
 amplihack mode migrate-to-local

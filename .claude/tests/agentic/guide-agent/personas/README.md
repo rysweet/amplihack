@@ -9,6 +9,7 @@ Each persona represents a different learner profile with specific needs, expecta
 ## Persona Definitions
 
 ### Beginner
+
 - **Display Name**: Complete Beginner
 - **Background**: New to programming
 - **Needs**: Extensive scaffolding, analogies, encouragement
@@ -17,6 +18,7 @@ Each persona represents a different learner profile with specific needs, expecta
 - **Success Criteria**: Zero jargon violations, 2+ [WAIT] patterns, 3+ checkpoints
 
 ### Intermediate
+
 - **Display Name**: Intermediate Learner
 - **Background**: Some programming experience
 - **Needs**: Context, moderate scaffolding
@@ -25,6 +27,7 @@ Each persona represents a different learner profile with specific needs, expecta
 - **Success Criteria**: Zero critical violations, 1+ [WAIT] patterns, 2+ checkpoints
 
 ### Advanced
+
 - **Display Name**: Advanced Developer
 - **Background**: Experienced programmer
 - **Needs**: Concise explanations, technical depth
@@ -46,19 +49,19 @@ characteristics:
   learningStyle: "visual-and-analogical"
   motivationLevel: "high-but-fragile"
   frustrationTolerance: "low"
-  
+
 expectations:
   maxJargonViolations: 0
   minWaitUsage: 2
   minCheckpoints: 3
   requiresEncouragement: true
-  
+
 responses:
   confusion:
     - "I don't understand what that means"
     - "Can you explain that differently?"
     - "I'm lost"
-  
+
   understanding:
     - "Oh, I think I get it!"
     - "So it's like..."

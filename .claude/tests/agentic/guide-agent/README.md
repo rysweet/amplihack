@@ -7,6 +7,7 @@ Complete test infrastructure for the guide agent using gadugi-agentic-test frame
 This test suite validates the guide agent's ability to adapt teaching approach based on learner persona (beginner, intermediate, advanced).
 
 **Key Features:**
+
 - Persona-based scenario testing
 - Automatic metric collection
 - Jargon validation
@@ -95,6 +96,7 @@ cat evidence/metrics/beginner-first-project-*.json | jq '.metrics.overallSuccess
 ### Metrics Schema (`config/metrics-schema.json`)
 
 Defines the complete structure of collected metrics:
+
 - Pedagogical quality (clarity, scaffolding, checkpoints)
 - Jargon control (violations, warnings, score)
 - Resource guidance (links, quality)
@@ -105,6 +107,7 @@ Defines the complete structure of collected metrics:
 ### Validation Patterns (`config/validation-patterns.json`)
 
 Contains regex patterns for:
+
 - **Jargon Detection**: Persona-specific forbidden/warning terms
 - **[WAIT] Patterns**: Pacing control validation
 - **Links**: Documentation, tutorials, interactive resources
@@ -116,6 +119,7 @@ Contains regex patterns for:
 ### Test Configuration (`config/test-config.yaml`)
 
 Main configuration for gadugi-agentic-test:
+
 - Persona definitions and expectations
 - Scenario organization
 - Metrics collection settings
@@ -127,7 +131,9 @@ Main configuration for gadugi-agentic-test:
 ## Persona Testing
 
 ### Beginner
+
 **Success Criteria:**
+
 - Zero jargon violations
 - 2+ [WAIT] patterns for pacing
 - 3+ comprehension checkpoints
@@ -135,6 +141,7 @@ Main configuration for gadugi-agentic-test:
 - No overwhelming anti-patterns
 
 **Example Scenario:**
+
 ```yaml
 name: "beginner-variables-introduction"
 persona: "beginner"
@@ -146,14 +153,18 @@ validation:
 ```
 
 ### Intermediate
+
 **Success Criteria:**
+
 - Zero critical jargon violations (some warnings OK)
 - 1+ [WAIT] patterns
 - 2+ checkpoints
 - Moderate scaffolding
 
 ### Advanced
+
 **Success Criteria:**
+
 - Strong scaffolding progression
 - High-quality resource links
 - Technical depth
@@ -163,6 +174,7 @@ validation:
 The `collect-metrics.py` script analyzes conversations and generates metrics:
 
 **Collected Automatically:**
+
 - Jargon violation count and type
 - [WAIT] pattern frequency
 - Checkpoint frequency and distribution
@@ -171,6 +183,7 @@ The `collect-metrics.py` script analyzes conversations and generates metrics:
 - Encouragement instances
 
 **Requires Implementation:**
+
 - Concept clarity scoring (currently manual)
 - Response adaptation quality (requires conversation analysis)
 - Link relevance scoring (requires validation)
@@ -202,6 +215,7 @@ gadugi-agentic-test run scenarios/beginner/*.yaml \
 6. Add to test suite
 
 Example:
+
 ```yaml
 name: "beginner-loops-introduction"
 description: "Teaching loop concepts to beginners"
@@ -211,7 +225,7 @@ category: "core-concepts"
 interaction:
   - role: user
     message: "I need to do something 10 times. How do I do that?"
-  
+
   - role: agent
     expectedBehaviors:
       - "uses-analogy"
@@ -264,6 +278,7 @@ Without gadugi-agentic-test installed:
 ## Support
 
 For issues or questions:
+
 - Review configuration files in `config/`
 - Check READMEs in subdirectories
 - Examine existing scenarios for examples

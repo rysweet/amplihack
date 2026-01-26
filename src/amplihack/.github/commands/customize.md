@@ -10,8 +10,8 @@
 - **version**: 1.0.0
 - **description**: Manage user-specific preferences and customizations
 - **argument-hint**: <action> [preference] [value]
-- **triggers**: 
-- **invokes**: 
+- **triggers**:
+- **invokes**:
 - **- type**: file
 - **path**: .claude/context/USER_PREFERENCES.md
 
@@ -23,6 +23,7 @@ This command is designed for Claude Code but the patterns and approaches
 can be referenced when using GitHub Copilot CLI.
 
 **Example**:
+
 ```bash
 # Reference this command's approach
 gh copilot explain .github/commands/customize.md
@@ -34,7 +35,6 @@ gh copilot suggest --context .github/commands/customize.md "your task"
 ---
 
 ## Original Command Documentation
-
 
 # User Customization Command
 

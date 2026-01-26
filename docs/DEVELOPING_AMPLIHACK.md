@@ -120,8 +120,8 @@ amplihack copilot
 
 #### Slash Commands
 
-| Command                         | Purpose                           | Implementation                             |
-| ------------------------------- | --------------------------------- | ------------------------------------------ |
+| Command                         | Purpose                           | Implementation                                          |
+| ------------------------------- | --------------------------------- | ------------------------------------------------------- |
 | `/amplihack:ultrathink <task>`  | Orchestrate multi-agent workflows | `~/.amplihack/.claude/commands/amplihack/ultrathink.md` |
 | `/amplihack:analyze <path>`     | Code review and analysis          | `~/.amplihack/.claude/commands/amplihack/analyze.md`    |
 | `/amplihack:fix [pattern]`      | Intelligent fix workflow          | `~/.amplihack/.claude/commands/amplihack/fix.md`        |
@@ -142,17 +142,17 @@ amplihack copilot
 
 #### Configuration Files
 
-| File                       | Purpose                  | Location                    |
-| -------------------------- | ------------------------ | --------------------------- |
-| **azure.env**              | Azure OpenAI config      | Project root (user-created) |
-| **settings.json**          | Claude settings          | `~/.amplihack/.claude/settings.json`     |
-| **.env.security-template** | Security config template | Project root                |
-| **pyproject.toml**         | Project metadata         | Project root                |
+| File                       | Purpose                  | Location                             |
+| -------------------------- | ------------------------ | ------------------------------------ |
+| **azure.env**              | Azure OpenAI config      | Project root (user-created)          |
+| **settings.json**          | Claude settings          | `~/.amplihack/.claude/settings.json` |
+| **.env.security-template** | Security config template | Project root                         |
+| **pyproject.toml**         | Project metadata         | Project root                         |
 
 #### Agent Locations
 
-| Type                   | Location                                | Count |
-| ---------------------- | --------------------------------------- | ----- |
+| Type                   | Location                                             | Count |
+| ---------------------- | ---------------------------------------------------- | ----- |
 | **Core Agents**        | `~/.amplihack/.claude/agents/amplihack/core/`        | 10+   |
 | **Specialized Agents** | `~/.amplihack/.claude/agents/amplihack/specialized/` | 15+   |
 | **Workflow Agents**    | `~/.amplihack/.claude/agents/amplihack/workflows/`   | 5+    |
@@ -496,15 +496,15 @@ amplihack is a **development framework** that enhances Claude Code and GitHub Co
 
 ### 3.5 Agent System Features
 
-| Feature                 | Description                   | Implementation                             | Status          |
-| ----------------------- | ----------------------------- | ------------------------------------------ | --------------- |
+| Feature                 | Description                   | Implementation                                          | Status          |
+| ----------------------- | ----------------------------- | ------------------------------------------------------- | --------------- |
 | **Core Agents**         | 10+ pre-built core agents     | `~/.amplihack/.claude/agents/amplihack/core/`           | ✅ Stable       |
 | **Specialized Agents**  | 15+ specialized agents        | `~/.amplihack/.claude/agents/amplihack/specialized/`    | ✅ Stable       |
 | **Workflow Agents**     | 5+ workflow agents            | `~/.amplihack/.claude/agents/amplihack/workflows/`      | ✅ Stable       |
 | **Agent Orchestration** | Multi-agent task coordination | `~/.amplihack/.claude/commands/amplihack/ultrathink.md` | ✅ Stable       |
-| **Parallel Execution**  | Concurrent agent execution    | `CLAUDE.md:200-350`                        | ✅ Stable       |
-| **Agent Communication** | Inter-agent messaging         | Security validation available              | 🚧 Experimental |
-| **Custom Agents**       | User-created agents           | Bundle Generator                           | ✅ Stable       |
+| **Parallel Execution**  | Concurrent agent execution    | `CLAUDE.md:200-350`                                     | ✅ Stable       |
+| **Agent Communication** | Inter-agent messaging         | Security validation available                           | 🚧 Experimental |
+| **Custom Agents**       | User-created agents           | Bundle Generator                                        | ✅ Stable       |
 | **Agent Catalog**       | Browse available agents       | `~/.amplihack/.claude/agents/CATALOG.md`                | ✅ Stable       |
 | **Context Injection**   | Automatic context loading     | `~/.amplihack/.claude/context/` files                   | ✅ Stable       |
 | **Session Logging**     | Agent decision logging        | `~/.amplihack/.claude/runtime/logs/`                    | ✅ Stable       |
@@ -4055,22 +4055,22 @@ if __name__ == "__main__":
 
 #### Configuration Files
 
-| File                             | Purpose                  | Location   |
-| -------------------------------- | ------------------------ | ---------- |
-| `pyproject.toml`                 | Project metadata         | Root       |
-| `setup.py`                       | Setup configuration      | Root       |
-| `.pre-commit-config.yaml`        | Pre-commit hooks         | Root       |
-| `.gitignore`                     | Git ignore patterns      | Root       |
-| `.env.security-template`         | Security config template | Root       |
-| `litellm_standalone_config.yaml` | LiteLLM config           | Root       |
-| `~/.amplihack/.claude/settings.json`          | Claude settings          | `~/.amplihack/.claude/` |
+| File                                 | Purpose                  | Location                |
+| ------------------------------------ | ------------------------ | ----------------------- |
+| `pyproject.toml`                     | Project metadata         | Root                    |
+| `setup.py`                           | Setup configuration      | Root                    |
+| `.pre-commit-config.yaml`            | Pre-commit hooks         | Root                    |
+| `.gitignore`                         | Git ignore patterns      | Root                    |
+| `.env.security-template`             | Security config template | Root                    |
+| `litellm_standalone_config.yaml`     | LiteLLM config           | Root                    |
+| `~/.amplihack/.claude/settings.json` | Claude settings          | `~/.amplihack/.claude/` |
 
 ---
 
 #### Claude Configuration
 
-| Directory                               | Purpose               | Count |
-| --------------------------------------- | --------------------- | ----- |
+| Directory                                            | Purpose               | Count |
+| ---------------------------------------------------- | --------------------- | ----- |
 | `~/.amplihack/.claude/agents/amplihack/core/`        | Core agents           | 10+   |
 | `~/.amplihack/.claude/agents/amplihack/specialized/` | Specialized agents    | 15+   |
 | `~/.amplihack/.claude/agents/amplihack/workflows/`   | Workflow agents       | 5+    |

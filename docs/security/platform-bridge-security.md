@@ -30,12 +30,14 @@ issue = bridge.create_issue(title="Test", body="Body")
 ```
 
 **User Authentication Flow**:
+
 1. User runs: `gh auth login`
 2. GitHub CLI authenticates through OAuth
 3. Credentials stored in `~/.config/gh/hosts.yml`
 4. Bridge calls `gh` commands which use stored credentials
 
 **Benefits**:
+
 - Bridge code never sees tokens
 - GitHub handles token refresh
 - Standard gh security model applies
@@ -54,12 +56,14 @@ issue = bridge.create_issue(title="Test", body="Body")
 ```
 
 **User Authentication Flow**:
+
 1. User runs: `az login`
 2. Azure CLI authenticates through browser
 3. Credentials stored in `~/.azure/`
 4. Bridge calls `az` commands which use stored credentials
 
 **Benefits**:
+
 - Bridge code never sees tokens or PATs
 - Azure handles token refresh
 - Standard az security model applies
@@ -136,6 +140,7 @@ subprocess.run(
 ```
 
 **Why this be safe**:
+
 - Command and arguments passed as list
 - No shell interpretation
 - Arguments can't be interpreted as commands
@@ -153,6 +158,7 @@ subprocess.run(
 ```
 
 **Why this be dangerous**:
+
 - Shell interprets the entire string
 - Special characters in title/body can execute commands
 - Example attack: `title = "test'; rm -rf /; echo '"`
@@ -171,6 +177,7 @@ result = subprocess.run(
 ```
 
 **Timeout Values**:
+
 - Standard operations: 30 seconds
 - CI status checks: 60 seconds (can be slow)
 - Large file uploads: 120 seconds
@@ -200,11 +207,13 @@ except Exception as e:
 ### Information Leakage Prevention
 
 **What we DON'T expose**:
+
 - Full subprocess commands (might contain sensitive args)
 - File system paths (might reveal directory structure)
 - Internal stack traces (might reveal implementation details)
 
 **What we DO expose**:
+
 - Operation type (e.g., "create issue failed")
 - User-actionable guidance (e.g., "run gh auth login")
 - Error categories (e.g., "authentication required")
@@ -231,6 +240,7 @@ def _get_git_remote(repo_path: Path) -> str:
 ### No Filesystem Writes
 
 The bridge **never** writes to:
+
 - Git configuration (`.git/config`)
 - Credential files (`~/.config/gh/`, `~/.azure/`)
 - System directories
@@ -271,6 +281,7 @@ User Code → PlatformBridge → gh/az CLI → GitHub/Azure DevOps API
 ```
 
 **Trust Assumptions**:
+
 - User input be UNTRUSTED (validate everything)
 - gh/az CLI tools be TRUSTED (official tools)
 - Platform APIs be TRUSTED (GitHub/Azure)
@@ -281,6 +292,7 @@ User Code → PlatformBridge → gh/az CLI → GitHub/Azure DevOps API
 ### For Users
 
 1. **Keep CLI Tools Updated**:
+
    ```bash
    # GitHub CLI
    gh version  # Check current version
@@ -292,6 +304,7 @@ User Code → PlatformBridge → gh/az CLI → GitHub/Azure DevOps API
    ```
 
 2. **Use Secure Authentication**:
+
    ```bash
    # GitHub - Use OAuth, not PATs
    gh auth login  # Follow OAuth flow
@@ -301,6 +314,7 @@ User Code → PlatformBridge → gh/az CLI → GitHub/Azure DevOps API
    ```
 
 3. **Review Permissions**:
+
    ```bash
    # GitHub - Check token permissions
    gh auth status
@@ -310,6 +324,7 @@ User Code → PlatformBridge → gh/az CLI → GitHub/Azure DevOps API
    ```
 
 4. **Rotate Credentials Regularly**:
+
    ```bash
    # GitHub - Refresh auth
    gh auth refresh
@@ -321,6 +336,7 @@ User Code → PlatformBridge → gh/az CLI → GitHub/Azure DevOps API
 ### For Developers
 
 1. **Never Add Credential Parameters**:
+
    ```python
    # ❌ WRONG - Don't add token parameters
    def create_issue(self, title: str, token: str):
@@ -332,6 +348,7 @@ User Code → PlatformBridge → gh/az CLI → GitHub/Azure DevOps API
    ```
 
 2. **Always Validate Inputs**:
+
    ```python
    # ✅ RIGHT - Validate before subprocess
    def create_issue(self, title: str, body: str):
@@ -341,6 +358,7 @@ User Code → PlatformBridge → gh/az CLI → GitHub/Azure DevOps API
    ```
 
 3. **Use Parameterized Commands**:
+
    ```python
    # ✅ RIGHT - List of args
    subprocess.run(["gh", "issue", "create", "--title", title])
@@ -350,6 +368,7 @@ User Code → PlatformBridge → gh/az CLI → GitHub/Azure DevOps API
    ```
 
 4. **Set Timeouts**:
+
    ```python
    # ✅ RIGHT - Always set timeout
    subprocess.run(cmd, timeout=30)

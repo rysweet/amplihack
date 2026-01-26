@@ -1,7 +1,7 @@
 """Language detection and LSP configuration generation."""
 
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import Any
 
 
 class LSPDetector:
@@ -15,54 +15,63 @@ class LSPDetector:
 
     # Language file patterns
     LANGUAGE_PATTERNS = {
-        'python': ['**/*.py'],
-        'javascript': ['**/*.js', '**/*.jsx'],
-        'typescript': ['**/*.ts', '**/*.tsx', '**/*.d.ts'],
-        'rust': ['**/*.rs'],
-        'go': ['**/*.go'],
+        "python": ["**/*.py"],
+        "javascript": ["**/*.js", "**/*.jsx"],
+        "typescript": ["**/*.ts", "**/*.tsx", "**/*.d.ts"],
+        "rust": ["**/*.rs"],
+        "go": ["**/*.go"],
     }
 
     # Directories to ignore during detection
     IGNORED_DIRS = {
-        'node_modules', '.git', 'venv', '.venv', 'env', '.env',
-        '__pycache__', '.pytest_cache', 'dist', 'build', 'target'
+        "node_modules",
+        ".git",
+        "venv",
+        ".venv",
+        "env",
+        ".env",
+        "__pycache__",
+        ".pytest_cache",
+        "dist",
+        "build",
+        "target",
     }
 
     # LSP server configurations
     LSP_CONFIGS = {
-        'python': {
-            'python-lsp-server': {
-                'command': 'pylsp',
-                'args': [],
+        "python": {
+            "python-lsp-server": {
+                "command": "pylsp",
+                "args": [],
             }
         },
-        'typescript': {
-            'typescript-language-server': {
-                'command': 'typescript-language-server',
-                'args': ['--stdio'],
+        "typescript": {
+            "typescript-language-server": {
+                "command": "typescript-language-server",
+                "args": ["--stdio"],
             }
         },
-        'rust': {
-            'rust-analyzer': {
-                'command': 'rust-analyzer',
-                'args': [],
+        "rust": {
+            "rust-analyzer": {
+                "command": "rust-analyzer",
+                "args": [],
             }
         },
-        'go': {
-            'gopls': {
-                'command': 'gopls',
-                'args': [],
+        "go": {
+            "gopls": {
+                "command": "gopls",
+                "args": [],
             }
         },
-        'javascript': {
-            'typescript-language-server': {
-                'command': 'typescript-language-server',
-                'args': ['--stdio'],
+        "javascript": {
+            "typescript-language-server": {
+                "command": "typescript-language-server",
+                "args": ["--stdio"],
             }
         },
     }
 
-    def detect_languages(self, project_path: Path) -> List[str]:
+    def detect_languages(self, project_path: Path) -> list[str]:
         """Detect languages used in project.
 
         Args:
@@ -81,9 +90,12 @@ class LSPDetector:
 
                     # Filter out files in ignored directories and hidden files
                     filtered_matches = [
-                        m for m in matches
+                        m
+                        for m in matches
                         if not any(ignored in m.parts for ignored in self.IGNORED_DIRS)
-                        and not any(part.startswith('.') for part in m.parts[len(project_path.parts):])
+                        and not any(
+                            part.startswith(".") for part in m.parts[len(project_path.parts) :]
+                        )
                     ]
 
                     if filtered_matches:
@@ -96,7 +108,7 @@ class LSPDetector:
 
         return sorted(list(detected))
 
-    def generate_lsp_config(self, languages: List[str]) -> Dict[str, Any]:
+    def generate_lsp_config(self, languages: list[str]) -> dict[str, Any]:
         """Generate LSP configurations for detected languages.
 
         Args:
@@ -118,10 +130,8 @@ class LSPDetector:
         return config
 
     def update_settings_json(
-        self,
-        existing_settings: Dict[str, Any],
-        lsp_config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, existing_settings: dict[str, Any], lsp_config: dict[str, Any]
+    ) -> dict[str, Any]:
         """Update settings.json with LSP configurations.
 
         Args:
@@ -145,10 +155,10 @@ class LSPDetector:
         updated = dict(existing_settings)
 
         # Ensure mcpServers exists
-        if 'mcpServers' not in updated:
-            updated['mcpServers'] = {}
+        if "mcpServers" not in updated:
+            updated["mcpServers"] = {}
 
         # Merge LSP configs into mcpServers
-        updated['mcpServers'].update(lsp_config)
+        updated["mcpServers"].update(lsp_config)
 
         return updated

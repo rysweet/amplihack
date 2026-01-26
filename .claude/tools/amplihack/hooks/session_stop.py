@@ -54,17 +54,24 @@ def main():
         # Extract key learnings (simplified - production would use more sophisticated extraction)
         learning_content = f"Agent {agent_type}: {agent_output[:500]}"
 
-        memory_id = coordinator.store(
+        # Build storage request
+        from amplihack.memory.coordinator import StorageRequest
+
+        request = StorageRequest(
             content=learning_content,
             memory_type=MemoryType.SEMANTIC,
-            agent_type=agent_type,
-            tags=["learning", "session_end"],
+            context={"agent_type": agent_type},
             metadata={
+                "tags": ["learning", "session_end"],
                 "task": task_description,
                 "success": success,
                 "project_id": os.getenv("AMPLIHACK_PROJECT_ID", "amplihack"),
             },
         )
+
+        import asyncio
+
+        memory_id = asyncio.run(coordinator.store(request))
 
         if memory_id:
             print("[INFO] Stored 1 learning in memory system", file=sys.stderr)

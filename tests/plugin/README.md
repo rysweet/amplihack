@@ -27,6 +27,7 @@ tests/plugin/
 - **Tests**: ~1600 lines
 
 **Testing Pyramid**:
+
 - 60% Unit tests (fast, isolated)
 - 30% Integration tests (multiple components)
 - 10% E2E tests (complete workflows)
@@ -83,6 +84,7 @@ pytest tests/plugin/ -vv
 ### test_installer.py (PluginInstaller)
 
 **Unit Tests** (60%):
+
 - Install validation
 - Target directory creation
 - Runtime directory exclusion
@@ -92,11 +94,13 @@ pytest tests/plugin/ -vv
 - Uninstall cleanup
 
 **Integration Tests** (30%):
+
 - Full installation workflow
 - Upgrade with backup
 - Real file operations
 
 **Edge Cases** (10%):
+
 - Symlink handling
 - Permission errors
 - Nonexistent installations
@@ -105,6 +109,7 @@ pytest tests/plugin/ -vv
 ### test_settings_merger.py (SettingsMerger)
 
 **Unit Tests** (60%):
+
 - Empty override handling
 - Non-conflicting key merging
 - Conflicting value resolution
@@ -115,11 +120,13 @@ pytest tests/plugin/ -vv
 - Hook path resolution
 
 **Integration Tests** (30%):
+
 - File-based merging
 - Save/load workflows
 - Complete merge workflow
 
 **Edge Cases** (10%):
+
 - Null value handling
 - Deeply nested structures
 - Circular reference detection
@@ -129,6 +136,7 @@ pytest tests/plugin/ -vv
 ### test_variable_substitutor.py (VariableSubstitutor)
 
 **Unit Tests** (70%):
+
 - Simple variable substitution
 - Multiple variables
 - Unknown variable errors
@@ -139,6 +147,7 @@ pytest tests/plugin/ -vv
 - Recursive dict substitution
 
 **Security Tests** (20%):
+
 - Path traversal prevention
 - Absolute path escape prevention
 - Symlink traversal prevention
@@ -146,6 +155,7 @@ pytest tests/plugin/ -vv
 - Environment variable leakage prevention
 
 **Integration Tests** (10%):
+
 - Real file system verification
 - Multiple path substitution
 - Complete workflow
@@ -153,6 +163,7 @@ pytest tests/plugin/ -vv
 ### test_lsp_detector.py (LSPDetector)
 
 **Unit Tests** (60%):
+
 - Python detection (requirements.txt, pyproject.toml, .py files)
 - TypeScript detection (package.json with typescript)
 - JavaScript detection (package.json without typescript)
@@ -163,12 +174,14 @@ pytest tests/plugin/ -vv
 - Empty project handling
 
 **Integration Tests** (30%):
+
 - Nested directory detection
 - Monorepo detection
 - Fullstack project detection
 - Config file saving
 
 **Edge Cases** (10%):
+
 - Symlink handling
 - Hidden file/directory handling
 - Invalid manifest files
@@ -179,6 +192,7 @@ pytest tests/plugin/ -vv
 ### test_migration_helper.py (MigrationHelper)
 
 **Unit Tests** (50%):
+
 - Old installation detection
 - Customization identification
 - Migration plan creation
@@ -186,6 +200,7 @@ pytest tests/plugin/ -vv
 - Size calculation
 
 **Integration Tests** (40%):
+
 - User preferences preservation
 - Custom agent preservation
 - Runtime data migration
@@ -193,6 +208,7 @@ pytest tests/plugin/ -vv
 - Rollback functionality
 
 **E2E Tests** (10%):
+
 - Complete migration workflow
 - Conflict resolution
 - Partial migration handling
@@ -200,11 +216,13 @@ pytest tests/plugin/ -vv
 ### test_integration.py (Complete System)
 
 **Integration Tests** (30%):
+
 - Plugin installation + project settings
 - LSP auto-detection integration
 - Multi-project shared plugin
 
 **E2E Tests** (70%):
+
 - Migration workflow preservation
 - Migration rollback
 - Hook execution with variables
@@ -231,6 +249,7 @@ These tests are written BEFORE implementation. They define the expected behavior
 All tests follow these standards:
 
 ### AAA Pattern
+
 ```python
 def test_example():
     # Arrange - Setup test conditions
@@ -244,6 +263,7 @@ def test_example():
 ```
 
 ### Clear Docstrings
+
 ```python
 def test_example():
     """
@@ -257,6 +277,7 @@ def test_example():
 ```
 
 ### Descriptive Names
+
 ```python
 # Good
 def test_merge_conflicting_values_prefers_override():
@@ -268,6 +289,7 @@ def test_merge():
 ```
 
 ### Fixture Usage
+
 ```python
 def test_with_fixture(tmp_path, plugin_source):
     # Use fixtures for common test data
@@ -275,6 +297,7 @@ def test_with_fixture(tmp_path, plugin_source):
 ```
 
 ### Isolation
+
 - No test dependencies
 - Clean state for each test
 - tmp_path for file operations

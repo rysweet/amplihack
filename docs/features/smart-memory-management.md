@@ -41,13 +41,13 @@ Where:
 
 **Example Calculations:**
 
-| System RAM | Formula | Result | Notes |
-|-----------|---------|--------|-------|
-| 16 GB | max(8192, 4096) | 8192 MB | Uses minimum |
-| 32 GB | max(8192, 8192) | 8192 MB | Balanced |
-| 64 GB | max(8192, 16384) | 16384 MB | 25% allocation |
-| 128 GB | max(8192, 32768) | 32768 MB | Capped at max |
-| 256 GB | max(8192, 64000) | 32768 MB | Capped at max |
+| System RAM | Formula          | Result   | Notes          |
+| ---------- | ---------------- | -------- | -------------- |
+| 16 GB      | max(8192, 4096)  | 8192 MB  | Uses minimum   |
+| 32 GB      | max(8192, 8192)  | 8192 MB  | Balanced       |
+| 64 GB      | max(8192, 16384) | 16384 MB | 25% allocation |
+| 128 GB     | max(8192, 32768) | 32768 MB | Capped at max  |
+| 256 GB     | max(8192, 64000) | 32768 MB | Capped at max  |
 
 ## Quick Start
 
@@ -152,12 +152,12 @@ Launchin' Claude Code with maximum memory allocation...
 
 Smart Memory Management supports these environment variables:
 
-| Variable | Purpose | Values | Default |
-|----------|---------|--------|---------|
-| `NODE_OPTIONS` | Manual memory control | `--max-old-space-size=N` | None |
-| `AMPLIHACK_SKIP_MEMORY_CHECK` | Disable detection | `1` or `true` | Not set |
-| `AMPLIHACK_MINIMAL_MEMORY` | Force minimum | `1` or `true` | Not set |
-| `AMPLIHACK_MEMORY_LIMIT` | Override formula | Integer (MB) | Calculated |
+| Variable                      | Purpose               | Values                   | Default    |
+| ----------------------------- | --------------------- | ------------------------ | ---------- |
+| `NODE_OPTIONS`                | Manual memory control | `--max-old-space-size=N` | None       |
+| `AMPLIHACK_SKIP_MEMORY_CHECK` | Disable detection     | `1` or `true`            | Not set    |
+| `AMPLIHACK_MINIMAL_MEMORY`    | Force minimum         | `1` or `true`            | Not set    |
+| `AMPLIHACK_MEMORY_LIMIT`      | Override formula      | Integer (MB)             | Calculated |
 
 ### Override Memory Calculation
 
@@ -184,24 +184,28 @@ source ~/.bashrc
 ### Problem: Still Getting OOM Crashes
 
 **Symptoms:**
+
 - Claude Code crashes with "JavaScript heap out of memory"
 - Process terminates unexpectedly during large operations
 
 **Solutions:**
 
 1. Check if settings be applied:
+
    ```bash
    echo $NODE_OPTIONS
    # Should show: --max-old-space-size=NNNN
    ```
 
 2. Manually increase memory:
+
    ```bash
    export NODE_OPTIONS="--max-old-space-size=16384"
    amplihack
    ```
 
 3. Verify system has enough free RAM:
+
    ```bash
    # Linux/Mac
    free -h
@@ -212,18 +216,21 @@ source ~/.bashrc
 ### Problem: Memory Detection Not Working
 
 **Symptoms:**
+
 - No memory detection message at launch
 - Launches directly without memory check
 
 **Solutions:**
 
 1. Check if ye have existing NODE_OPTIONS:
+
    ```bash
    echo $NODE_OPTIONS
    # If set, amplihack honors yer choice
    ```
 
 2. Check if memory check be disabled:
+
    ```bash
    echo $AMPLIHACK_SKIP_MEMORY_CHECK
    # If "1", detection be disabled
@@ -239,6 +246,7 @@ source ~/.bashrc
 ### Problem: Warning About Low Memory
 
 **Symptoms:**
+
 - Warning message: "System has less than 32 GB RAM"
 - Performance slowdowns during large operations
 
@@ -247,6 +255,7 @@ source ~/.bashrc
 1. This be informational - Claude Code will still work with 8 GB minimum
 
 2. If experiencing performance issues, close other memory-heavy applications:
+
    ```bash
    # Check memory usage
    top -o MEM
@@ -264,6 +273,7 @@ source ~/.bashrc
 ### Problem: Custom NODE_OPTIONS Be Ignored
 
 **Symptoms:**
+
 - Set NODE_OPTIONS but amplihack changes it
 - Memory settings don't match what ye specified
 
@@ -272,6 +282,7 @@ source ~/.bashrc
 Smart Memory Management always honors existing NODE_OPTIONS. If this be happenin':
 
 1. Verify yer NODE_OPTIONS be exported:
+
    ```bash
    export NODE_OPTIONS="--max-old-space-size=20480"
    echo $NODE_OPTIONS  # Should show yer value
@@ -292,18 +303,21 @@ Smart Memory Management always honors existing NODE_OPTIONS. If this be happenin
 Smart Memory Management detects system RAM using platform-specific methods:
 
 **Linux:**
+
 ```bash
 # Uses /proc/meminfo
 grep MemTotal /proc/meminfo | awk '{print $2 / 1024}'
 ```
 
 **macOS:**
+
 ```bash
 # Uses sysctl
 sysctl -n hw.memsize | awk '{print $1 / 1024 / 1024}'
 ```
 
 **Windows (WSL/Git Bash):**
+
 ```bash
 # Uses wmic or systeminfo
 wmic OS get TotalVisibleMemorySize | tail -1 | awk '{print $1 / 1024}'
@@ -320,12 +334,12 @@ The formula `max(8192, total_ram_mb // 4)` capped at 32GB be based on:
 
 ### Memory Formula Rationale
 
-| Factor | Reasoning |
-|--------|-----------|
-| Minimum 8GB | Prevents crashes during large context operations |
-| 25% of RAM | Balances performance with system stability |
-| Maximum 32GB | V8 garbage collection optimizations, diminishing returns beyond 32GB |
-| User override | Power users may need different allocations fer specific workloads |
+| Factor        | Reasoning                                                            |
+| ------------- | -------------------------------------------------------------------- |
+| Minimum 8GB   | Prevents crashes during large context operations                     |
+| 25% of RAM    | Balances performance with system stability                           |
+| Maximum 32GB  | V8 garbage collection optimizations, diminishing returns beyond 32GB |
+| User override | Power users may need different allocations fer specific workloads    |
 
 ## Advanced Usage
 

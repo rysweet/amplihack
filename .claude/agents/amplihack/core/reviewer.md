@@ -336,18 +336,21 @@ For reviews where **learning is as important as fixing**, consider using the Soc
 ```
 
 The `socratic-reviewer` agent asks probing questions instead of providing direct feedback, helping developers:
+
 - Articulate their reasoning
 - Surface hidden assumptions
 - Discover issues themselves
 - Build deeper understanding
 
 **Use Socratic review when:**
+
 - Mentoring or onboarding developers
 - Design decisions need documentation
 - Code is complex and needs explanation
 - You want the developer to own the insights
 
 **Use traditional review (this agent) when:**
+
 - Time is critical
 - Issues are straightforward
 - You need written documentation

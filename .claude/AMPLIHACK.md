@@ -25,6 +25,7 @@ When starting a session, import these files for context:
 ### When to Classify
 
 Classify when the user:
+
 - **Starts a new topic** (different domain/goal from current work)
 - **First message of the session** (no prior context)
 - **Explicitly changes direction** ("Now let's...", "Next I want...", "Different question...")
@@ -33,6 +34,7 @@ Classify when the user:
 ### When NOT to Re-Classify
 
 Do NOT re-classify when the user:
+
 - **Asks follow-ups** ("Also...", "What about...", "And...")
 - **Provides clarifications** ("I meant...", "To clarify...")
 - **Requests related additions** ("Add logout too", "Also update the tests")
@@ -73,12 +75,12 @@ Following: .claude/workflow/[WORKFLOW_NAME].md
 
 **Default Behavior**: Claude invokes ultrathink-orchestrator for non-trivial development and investigation tasks.
 
-| Task Type         | Claude's Action        |
-| ----------------- | ---------------------- |
-| **Q&A**           | Responds directly      |
-| **Operations**    | Responds directly      |
-| **Investigation** | Invokes /ultrathink    |
-| **Development**   | Invokes /ultrathink    |
+| Task Type         | Claude's Action     |
+| ----------------- | ------------------- |
+| **Q&A**           | Responds directly   |
+| **Operations**    | Responds directly   |
+| **Investigation** | Invokes /ultrathink |
+| **Development**   | Invokes /ultrathink |
 
 **Task classification**: See "Classification Keywords" section above for keyword triggers.
 

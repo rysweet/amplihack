@@ -9,8 +9,6 @@ Testing pyramid:
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch
-import pytest
 
 
 class TestPluginInstallationWorkflow:
@@ -19,8 +17,6 @@ class TestPluginInstallationWorkflow:
     def test_install_plugin_from_local_directory(self):
         """Test installing plugin from local directory with all components."""
         from amplihack.plugin_manager import PluginManager
-        from amplihack.settings_generator import SettingsGenerator
-        from amplihack.path_resolver import PathResolver
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Setup fake plugin directory
@@ -31,12 +27,7 @@ class TestPluginInstallationWorkflow:
                 "name": "test-plugin",
                 "version": "1.0.0",
                 "entry_point": "main.py",
-                "mcpServers": {
-                    "test-server": {
-                        "command": "node",
-                        "cwd": "./servers"
-                    }
-                }
+                "mcpServers": {"test-server": {"command": "node", "cwd": "./servers"}},
             }
             (plugin_dir / "manifest.json").write_text(json.dumps(manifest))
             (plugin_dir / "main.py").write_text("# Plugin code")
@@ -51,7 +42,6 @@ class TestPluginInstallationWorkflow:
     def test_install_plugin_generates_settings(self):
         """Test installation generates correct settings.json."""
         from amplihack.plugin_manager import PluginManager
-        from amplihack.settings_generator import SettingsGenerator
 
         with tempfile.TemporaryDirectory() as tmpdir:
             plugin_dir = Path(tmpdir) / "test-plugin"
@@ -61,12 +51,7 @@ class TestPluginInstallationWorkflow:
                 "name": "test-plugin",
                 "version": "1.0.0",
                 "entry_point": "main.py",
-                "mcpServers": {
-                    "test-server": {
-                        "command": "python",
-                        "args": ["server.py"]
-                    }
-                }
+                "mcpServers": {"test-server": {"command": "python", "args": ["server.py"]}},
             }
             (plugin_dir / "manifest.json").write_text(json.dumps(manifest))
 
@@ -81,7 +66,6 @@ class TestPluginInstallationWorkflow:
     def test_install_plugin_resolves_paths(self):
         """Test installation resolves relative paths to absolute."""
         from amplihack.plugin_manager import PluginManager
-        from amplihack.path_resolver import PathResolver
 
         with tempfile.TemporaryDirectory() as tmpdir:
             plugin_dir = Path(tmpdir) / "test-plugin"
@@ -91,12 +75,7 @@ class TestPluginInstallationWorkflow:
                 "name": "test-plugin",
                 "version": "1.0.0",
                 "entry_point": "./src/main.py",
-                "mcpServers": {
-                    "server": {
-                        "command": "node",
-                        "cwd": "../servers"
-                    }
-                }
+                "mcpServers": {"server": {"command": "node", "cwd": "../servers"}},
             }
             (plugin_dir / "manifest.json").write_text(json.dumps(manifest))
 
@@ -140,7 +119,7 @@ class TestPluginInstallationWorkflow:
                 "name": "test-plugin",
                 "version": "1.0.0",
                 "entry_point": "main.py",
-                "dependencies": ["numpy", "requests"]
+                "dependencies": ["numpy", "requests"],
             }
             (plugin_dir / "manifest.json").write_text(json.dumps(manifest))
 
@@ -163,11 +142,7 @@ class TestPluginUninstallationWorkflow:
             plugin_dir = Path(tmpdir) / "test-plugin"
             plugin_dir.mkdir()
 
-            manifest = {
-                "name": "test-plugin",
-                "version": "1.0.0",
-                "entry_point": "main.py"
-            }
+            manifest = {"name": "test-plugin", "version": "1.0.0", "entry_point": "main.py"}
             (plugin_dir / "manifest.json").write_text(json.dumps(manifest))
 
             manager = PluginManager()
@@ -182,7 +157,6 @@ class TestPluginUninstallationWorkflow:
     def test_uninstall_updates_settings(self):
         """Test uninstallation removes plugin from settings."""
         from amplihack.plugin_manager import PluginManager
-        from amplihack.settings_generator import SettingsGenerator
 
         with tempfile.TemporaryDirectory() as tmpdir:
             # Install then uninstall
@@ -193,7 +167,7 @@ class TestPluginUninstallationWorkflow:
                 "name": "test-plugin",
                 "version": "1.0.0",
                 "entry_point": "main.py",
-                "mcpServers": {"server": {"command": "node"}}
+                "mcpServers": {"server": {"command": "node"}},
             }
             (plugin_dir / "manifest.json").write_text(json.dumps(manifest))
 
@@ -212,7 +186,6 @@ class TestLSPDetectionAndConfiguration:
     def test_detect_and_configure_python_project(self):
         """Test detecting Python and generating LSP config."""
         from amplihack.lsp_detector import LSPDetector
-        from amplihack.settings_generator import SettingsGenerator
 
         with tempfile.TemporaryDirectory() as tmpdir:
             project_path = Path(tmpdir)
@@ -248,22 +221,13 @@ class TestLSPDetectionAndConfiguration:
     def test_update_existing_settings_with_lsp(self):
         """Test updating existing settings.json with LSP config."""
         from amplihack.lsp_detector import LSPDetector
-        from amplihack.settings_generator import SettingsGenerator
 
         existing_settings = {
             "some_setting": "value",
-            "mcpServers": {
-                "existing-server": {
-                    "command": "existing"
-                }
-            }
+            "mcpServers": {"existing-server": {"command": "existing"}},
         }
 
-        lsp_config = {
-            "python-lsp-server": {
-                "command": "pylsp"
-            }
-        }
+        lsp_config = {"python-lsp-server": {"command": "pylsp"}}
 
         detector = LSPDetector()
         updated = detector.update_settings_json(existing_settings, lsp_config)

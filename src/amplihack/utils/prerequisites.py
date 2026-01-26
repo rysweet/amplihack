@@ -29,7 +29,7 @@ import shutil
 import subprocess
 import sys
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 
@@ -345,7 +345,7 @@ class InteractiveInstaller:
             5. Log attempt to audit log
             6. Return result
         """
-        timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        timestamp = datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
         # Check for interactive environment
         if not self.is_interactive_environment():

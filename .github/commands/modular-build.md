@@ -9,7 +9,7 @@
 - **name**: amplihack:modular-build
 - **version**: 1.0.0
 - **description**: Build modular code following brick philosophy
-- **triggers**: 
+- **triggers**:
 
 ---
 
@@ -19,6 +19,7 @@ This command is designed for Claude Code but the patterns and approaches
 can be referenced when using GitHub Copilot CLI.
 
 **Example**:
+
 ```bash
 # Reference this command's approach
 gh copilot explain .github/commands/modular-build.md
@@ -30,7 +31,6 @@ gh copilot suggest --context .github/commands/modular-build.md "your task"
 ---
 
 ## Original Command Documentation
-
 
 # Modular Build Command
 

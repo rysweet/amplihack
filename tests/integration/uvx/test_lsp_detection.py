@@ -15,20 +15,15 @@ Philosophy:
 """
 
 import pytest
-from pathlib import Path
 
 from .harness import (
-    uvx_launch_with_test_project,
-    launch_with_lsp_detection,
     assert_lsp_detected,
     assert_output_contains,
-    assert_log_contains,
-    create_python_project,
-    create_typescript_project,
-    create_rust_project,
     create_multi_language_project,
+    create_python_project,
+    launch_with_lsp_detection,
+    uvx_launch_with_test_project,
 )
-
 
 # Git reference to test
 GIT_REF = "feat/issue-1948-plugin-architecture"
@@ -49,10 +44,7 @@ class TestPythonDetection:
         result.assert_success("Python project should be detected")
         # Should detect Python
         assert_lsp_detected(
-            result.stdout,
-            result.log_files,
-            "Python",
-            "Should detect Python language"
+            result.stdout, result.log_files, "Python", "Should detect Python language"
         )
 
     def test_python_lsp_configuration(self):

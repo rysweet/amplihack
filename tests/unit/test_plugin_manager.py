@@ -7,11 +7,9 @@ Testing pyramid:
 """
 
 import json
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
-import pytest
 from dataclasses import dataclass
-
+from pathlib import Path
+from unittest.mock import Mock, patch
 
 # Placeholder for actual implementation imports
 # from amplihack.plugin_manager import PluginManager, InstallResult, ValidationResult
@@ -20,6 +18,7 @@ from dataclasses import dataclass
 @dataclass
 class InstallResult:
     """Result of plugin installation."""
+
     success: bool
     plugin_name: str
     installed_path: Path
@@ -29,6 +28,7 @@ class InstallResult:
 @dataclass
 class ValidationResult:
     """Result of manifest validation."""
+
     valid: bool
     errors: list
     warnings: list
@@ -82,11 +82,7 @@ class TestPluginManagerValidation:
         from amplihack.plugin_manager import PluginManager
 
         manager = PluginManager()
-        manifest = {
-            "name": "test-plugin",
-            "version": "not-a-version",
-            "entry_point": "main.py"
-        }
+        manifest = {"name": "test-plugin", "version": "not-a-version", "entry_point": "main.py"}
 
         with patch("pathlib.Path.exists", return_value=True):
             with patch("pathlib.Path.read_text", return_value=json.dumps(manifest)):
@@ -103,7 +99,7 @@ class TestPluginManagerValidation:
         manifest = {
             "name": "Invalid Name!",  # Spaces and special chars not allowed
             "version": "1.0.0",
-            "entry_point": "main.py"
+            "entry_point": "main.py",
         }
 
         with patch("pathlib.Path.exists", return_value=True):
@@ -118,11 +114,7 @@ class TestPluginManagerValidation:
         from amplihack.plugin_manager import PluginManager
 
         manager = PluginManager()
-        manifest = {
-            "name": "test-plugin",
-            "version": "1.0.0",
-            "entry_point": "main.py"
-        }
+        manifest = {"name": "test-plugin", "version": "1.0.0", "entry_point": "main.py"}
 
         with patch("pathlib.Path.exists", return_value=True):
             with patch("pathlib.Path.read_text", return_value=json.dumps(manifest)):
@@ -143,12 +135,7 @@ class TestPluginManagerValidation:
             "description": "A test plugin",
             "author": "Test Author",
             "dependencies": ["dep1", "dep2"],
-            "mcpServers": {
-                "server1": {
-                    "command": "node",
-                    "args": ["server.js"]
-                }
-            }
+            "mcpServers": {"server1": {"command": "node", "args": ["server.js"]}},
         }
 
         with patch("pathlib.Path.exists", return_value=True):
@@ -209,9 +196,7 @@ class TestPluginManagerInstallation:
         with patch("pathlib.Path.is_dir", return_value=True):
             with patch.object(manager, "validate_manifest") as mock_validate:
                 mock_validate.return_value = ValidationResult(
-                    False,
-                    ["Missing required field: version"],
-                    []
+                    False, ["Missing required field: version"], []
                 )
 
                 result = manager.install(source)
@@ -340,10 +325,7 @@ class TestPluginManagerPathResolution:
         from amplihack.plugin_manager import PluginManager
 
         manager = PluginManager()
-        manifest = {
-            "entry_point": "src/main.py",
-            "files": ["lib/utils.py", "config.json"]
-        }
+        manifest = {"entry_point": "src/main.py", "files": ["lib/utils.py", "config.json"]}
 
         result = manager.resolve_paths(manifest)
 
@@ -357,9 +339,7 @@ class TestPluginManagerPathResolution:
 
         manager = PluginManager()
         absolute_path = "/absolute/path/to/file.py"
-        manifest = {
-            "entry_point": absolute_path
-        }
+        manifest = {"entry_point": absolute_path}
 
         result = manager.resolve_paths(manifest)
 
@@ -370,14 +350,7 @@ class TestPluginManagerPathResolution:
         from amplihack.plugin_manager import PluginManager
 
         manager = PluginManager()
-        manifest = {
-            "mcpServers": {
-                "server1": {
-                    "command": "node",
-                    "cwd": "servers/mcp1"
-                }
-            }
-        }
+        manifest = {"mcpServers": {"server1": {"command": "node", "cwd": "servers/mcp1"}}}
 
         result = manager.resolve_paths(manifest)
 
@@ -388,11 +361,7 @@ class TestPluginManagerPathResolution:
         from amplihack.plugin_manager import PluginManager
 
         manager = PluginManager()
-        manifest = {
-            "name": "test-plugin",
-            "version": "1.0.0",
-            "description": "Not a path"
-        }
+        manifest = {"name": "test-plugin", "version": "1.0.0", "description": "Not a path"}
 
         result = manager.resolve_paths(manifest)
 
@@ -486,7 +455,7 @@ class TestPluginManagerEdgeCases:
         manifest = {
             "name": "test-plugin",
             "version": "1.0.0",
-            "entry_point": "main.py"
+            "entry_point": "main.py",
             # Missing optional fields like description, author
         }
 
@@ -500,8 +469,9 @@ class TestPluginManagerEdgeCases:
 
     def test_concurrent_installation_safety(self):
         """Test installation is thread-safe."""
-        from amplihack.plugin_manager import PluginManager
         import threading
+
+        from amplihack.plugin_manager import PluginManager
 
         manager = PluginManager()
         results = []

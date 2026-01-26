@@ -4,9 +4,10 @@ Memory System Session Stop Hook
 
 Captures learnings from the session and stores them using MemoryCoordinator.
 Extracts patterns, decisions, and outcomes for future agent use.
-Works with SQLite or Neo4j backend.
+Works with Kuzu backend.
 """
 
+import asyncio
 import json
 import os
 import sys
@@ -30,7 +31,7 @@ def main():
     """Capture session learnings and store using MemoryCoordinator."""
     try:
         # Import memory coordinator
-        from amplihack.memory.coordinator import MemoryCoordinator
+        from amplihack.memory.coordinator import MemoryCoordinator, StorageRequest
         from amplihack.memory.types import MemoryType
 
         # Get session context from environment or stdin
@@ -54,16 +55,20 @@ def main():
         # Extract key learnings (simplified - production would use more sophisticated extraction)
         learning_content = f"Agent {agent_type}: {agent_output[:500]}"
 
-        memory_id = coordinator.store(
-            content=learning_content,
-            memory_type=MemoryType.SEMANTIC,
-            agent_type=agent_type,
-            tags=["learning", "session_end"],
-            metadata={
-                "task": task_description,
-                "success": success,
-                "project_id": os.getenv("AMPLIHACK_PROJECT_ID", "amplihack"),
-            },
+        memory_id = asyncio.run(
+            coordinator.store(
+                StorageRequest(
+                    content=learning_content,
+                    memory_type=MemoryType.SEMANTIC,
+                    context={"agent_type": agent_type},
+                    metadata={
+                        "task": task_description,
+                        "success": success,
+                        "project_id": os.getenv("AMPLIHACK_PROJECT_ID", "amplihack"),
+                        "tags": ["learning", "session_end"],
+                    },
+                )
+            )
         )
 
         if memory_id:

@@ -9,7 +9,7 @@
 - **name**: amplihack:install
 - **version**: 1.0.0
 - **description**: Install amplihack framework and tools
-- **triggers**: 
+- **triggers**:
 
 ---
 
@@ -19,6 +19,7 @@ This command is designed for Claude Code but the patterns and approaches
 can be referenced when using GitHub Copilot CLI.
 
 **Example**:
+
 ```bash
 # Reference this command's approach
 gh copilot explain .github/commands/install.md
@@ -30,7 +31,6 @@ gh copilot suggest --context .github/commands/install.md "your task"
 ---
 
 ## Original Command Documentation
-
 
 # Install the amplihack tools
 

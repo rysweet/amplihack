@@ -4,10 +4,7 @@ Tests all platform implementations following TDD methodology.
 These tests will FAIL until the platform_cli module is implemented.
 """
 
-import subprocess
-from pathlib import Path
-from typing import Dict
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -389,13 +386,11 @@ class TestPlatformCLIPromptTemplates:
         }
 
         for persona, keywords in personas.items():
-            prompt = claude_cli.format_prompt(
-                goal="Create a module", persona=persona, context=""
-            )
+            prompt = claude_cli.format_prompt(goal="Create a module", persona=persona, context="")
             # At least one keyword should be present
-            assert any(
-                keyword in prompt.lower() for keyword in keywords
-            ), f"Persona '{persona}' prompt missing characteristic keywords"
+            assert any(keyword in prompt.lower() for keyword in keywords), (
+                f"Persona '{persona}' prompt missing characteristic keywords"
+            )
 
     def test_prompt_includes_goal_clearly(self, claude_cli):
         """Test prompt clearly presents the goal."""

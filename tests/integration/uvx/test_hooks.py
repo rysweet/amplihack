@@ -14,17 +14,14 @@ Philosophy:
 """
 
 import pytest
-from pathlib import Path
 
 from .harness import (
+    assert_hook_executed,
+    assert_log_contains,
+    assert_output_contains,
     uvx_launch,
     uvx_launch_with_test_project,
-    assert_hook_executed,
-    assert_output_contains,
-    assert_log_contains,
-    create_python_project,
 )
-
 
 # Git reference to test (customize fer yer branch)
 GIT_REF = "feat/issue-1948-plugin-architecture"
@@ -47,7 +44,7 @@ class TestSessionStartHook:
             result.stdout,
             result.log_files,
             "SessionStart",
-            "SessionStart hook should be triggered on launch"
+            "SessionStart hook should be triggered on launch",
         )
 
     def test_session_start_loads_context(self):
@@ -92,7 +89,7 @@ class TestStopHook:
                 result.log_files,
                 "Stop",
                 case_sensitive=False,
-                message="Stop hook should execute on session end"
+                message="Stop hook should execute on session end",
             )
 
     def test_stop_hook_cleanup(self):
@@ -133,7 +130,6 @@ class TestPostToolUseHook:
         # Check for tool usage logging
         result.assert_in_output("test.py", "Should read the file")
 
-
     def test_post_tool_use_logging(self):
         """Test that PostToolUse hook logs tool invocations."""
         result = uvx_launch(
@@ -163,7 +159,6 @@ class TestPreCompactHook:
         result.assert_success()
         # PreCompact may be mentioned in hook list
         # This is a light test since triggering compact is complex
-
 
     def test_pre_compact_not_triggered_in_short_session(self):
         """Test that PreCompact doesn't trigger in short sessions."""
@@ -222,7 +217,6 @@ class TestHookIntegration:
         # Order verification would require timestamp analysis in logs
         # For now, just verify session completes
         assert result.duration < TIMEOUT
-
 
     def test_hook_error_handling(self):
         """Test that hook errors don't crash session."""

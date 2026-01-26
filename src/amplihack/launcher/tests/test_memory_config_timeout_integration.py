@@ -17,15 +17,10 @@ Integration test scenarios:
 """
 
 import logging
-import os
 import platform
-import sys
-import time
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch, call
+from unittest.mock import Mock, patch
 
 import pytest
-
 
 # =============================================================================
 # INTEGRATION TESTS (30%)
@@ -39,19 +34,12 @@ class TestFullConsentWorkflow:
         """Test full workflow: non-interactive -> auto-accept with default."""
         from amplihack.launcher.memory_config import prompt_user_consent
 
-        config = {
-            'system_ram_gb': 32,
-            'current_limit_mb': 4096,
-            'recommended_limit_mb': 8192
-        }
+        config = {"system_ram_gb": 32, "current_limit_mb": 4096, "recommended_limit_mb": 8192}
 
         # Simulate non-interactive environment
         with patch("sys.stdin.isatty", return_value=False):
             result = prompt_user_consent(
-                config,
-                timeout_seconds=30,
-                default_response=True,
-                logger=None
+                config, timeout_seconds=30, default_response=True, logger=None
             )
 
             # Should use default without prompting
@@ -61,14 +49,11 @@ class TestFullConsentWorkflow:
         """Test full workflow: non-interactive -> auto-reject with default."""
         from amplihack.launcher.memory_config import prompt_user_consent
 
-        config = {'recommended_limit_mb': 8192}
+        config = {"recommended_limit_mb": 8192}
 
         with patch("sys.stdin.isatty", return_value=False):
             result = prompt_user_consent(
-                config,
-                timeout_seconds=30,
-                default_response=False,
-                logger=None
+                config, timeout_seconds=30, default_response=False, logger=None
             )
 
             assert result is False
@@ -77,11 +62,7 @@ class TestFullConsentWorkflow:
         """Test full workflow: interactive -> user types yes -> consent granted."""
         from amplihack.launcher.memory_config import prompt_user_consent
 
-        config = {
-            'system_ram_gb': 64,
-            'current_limit_mb': None,
-            'recommended_limit_mb': 16384
-        }
+        config = {"system_ram_gb": 64, "current_limit_mb": None, "recommended_limit_mb": 16384}
 
         # Simulate interactive terminal with user input
         with patch("sys.stdin.isatty", return_value=True):
@@ -89,13 +70,12 @@ class TestFullConsentWorkflow:
             def mock_input_with_timeout(prompt, timeout_seconds, logger):
                 return "yes"
 
-            with patch("amplihack.launcher.memory_config.get_user_input_with_timeout",
-                      side_effect=mock_input_with_timeout):
+            with patch(
+                "amplihack.launcher.memory_config.get_user_input_with_timeout",
+                side_effect=mock_input_with_timeout,
+            ):
                 result = prompt_user_consent(
-                    config,
-                    timeout_seconds=30,
-                    default_response=False,
-                    logger=None
+                    config, timeout_seconds=30, default_response=False, logger=None
                 )
 
                 assert result is True
@@ -104,23 +84,19 @@ class TestFullConsentWorkflow:
         """Test full workflow: interactive -> user types no -> consent denied."""
         from amplihack.launcher.memory_config import prompt_user_consent
 
-        config = {
-            'system_ram_gb': 16,
-            'current_limit_mb': 8192,
-            'recommended_limit_mb': 8192
-        }
+        config = {"system_ram_gb": 16, "current_limit_mb": 8192, "recommended_limit_mb": 8192}
 
         with patch("sys.stdin.isatty", return_value=True):
+
             def mock_input_with_timeout(prompt, timeout_seconds, logger):
                 return "no"
 
-            with patch("amplihack.launcher.memory_config.get_user_input_with_timeout",
-                      side_effect=mock_input_with_timeout):
+            with patch(
+                "amplihack.launcher.memory_config.get_user_input_with_timeout",
+                side_effect=mock_input_with_timeout,
+            ):
                 result = prompt_user_consent(
-                    config,
-                    timeout_seconds=30,
-                    default_response=True,
-                    logger=None
+                    config, timeout_seconds=30, default_response=True, logger=None
                 )
 
                 assert result is False
@@ -129,17 +105,16 @@ class TestFullConsentWorkflow:
         """Test full workflow: interactive -> timeout -> uses default."""
         from amplihack.launcher.memory_config import prompt_user_consent
 
-        config = {'recommended_limit_mb': 8192}
+        config = {"recommended_limit_mb": 8192}
         mock_logger = Mock(spec=logging.Logger)
 
         with patch("sys.stdin.isatty", return_value=True):
             # Simulate timeout by returning None
-            with patch("amplihack.launcher.memory_config.get_user_input_with_timeout", return_value=None):
+            with patch(
+                "amplihack.launcher.memory_config.get_user_input_with_timeout", return_value=None
+            ):
                 result = prompt_user_consent(
-                    config,
-                    timeout_seconds=30,
-                    default_response=True,
-                    logger=mock_logger
+                    config, timeout_seconds=30, default_response=True, logger=mock_logger
                 )
 
                 assert result is True
@@ -150,17 +125,16 @@ class TestFullConsentWorkflow:
         """Test full workflow: interactive -> Ctrl+C -> returns False."""
         from amplihack.launcher.memory_config import prompt_user_consent
 
-        config = {'recommended_limit_mb': 8192}
+        config = {"recommended_limit_mb": 8192}
 
         with patch("sys.stdin.isatty", return_value=True):
             # Simulate KeyboardInterrupt during input
-            with patch("amplihack.launcher.memory_config.get_user_input_with_timeout",
-                      side_effect=KeyboardInterrupt()):
+            with patch(
+                "amplihack.launcher.memory_config.get_user_input_with_timeout",
+                side_effect=KeyboardInterrupt(),
+            ):
                 result = prompt_user_consent(
-                    config,
-                    timeout_seconds=30,
-                    default_response=True,
-                    logger=None
+                    config, timeout_seconds=30, default_response=True, logger=None
                 )
 
                 # Ctrl+C should always return False, regardless of default
@@ -174,14 +148,11 @@ class TestTerminalDetectionIntegration:
         """Test sys.stdin=None triggers non-interactive flow."""
         from amplihack.launcher.memory_config import prompt_user_consent
 
-        config = {'recommended_limit_mb': 8192}
+        config = {"recommended_limit_mb": 8192}
 
         with patch("sys.stdin", None):
             result = prompt_user_consent(
-                config,
-                timeout_seconds=30,
-                default_response=True,
-                logger=None
+                config, timeout_seconds=30, default_response=True, logger=None
             )
 
             # Should use default without prompting
@@ -191,15 +162,12 @@ class TestTerminalDetectionIntegration:
         """Test sys.stdin without isatty() triggers non-interactive flow."""
         from amplihack.launcher.memory_config import prompt_user_consent
 
-        config = {'recommended_limit_mb': 8192}
+        config = {"recommended_limit_mb": 8192}
 
         mock_stdin = Mock(spec=[])  # No isatty method
         with patch("sys.stdin", mock_stdin):
             result = prompt_user_consent(
-                config,
-                timeout_seconds=30,
-                default_response=False,
-                logger=None
+                config, timeout_seconds=30, default_response=False, logger=None
             )
 
             assert result is False
@@ -208,17 +176,14 @@ class TestTerminalDetectionIntegration:
         """Test exception from isatty() triggers non-interactive flow."""
         from amplihack.launcher.memory_config import prompt_user_consent
 
-        config = {'recommended_limit_mb': 8192}
+        config = {"recommended_limit_mb": 8192}
 
         mock_stdin = Mock()
         mock_stdin.isatty.side_effect = OSError("Not a terminal")
 
         with patch("sys.stdin", mock_stdin):
             result = prompt_user_consent(
-                config,
-                timeout_seconds=30,
-                default_response=True,
-                logger=None
+                config, timeout_seconds=30, default_response=True, logger=None
             )
 
             assert result is True
@@ -231,18 +196,17 @@ class TestResponseParsingIntegration:
         """Test various 'yes' formats all grant consent."""
         from amplihack.launcher.memory_config import prompt_user_consent
 
-        config = {'recommended_limit_mb': 8192}
-        yes_variants = ['y', 'Y', 'yes', 'YES', 'Yes', '  y  ', '\nyes\n']
+        config = {"recommended_limit_mb": 8192}
+        yes_variants = ["y", "Y", "yes", "YES", "Yes", "  y  ", "\nyes\n"]
 
         for response in yes_variants:
             with patch("sys.stdin.isatty", return_value=True):
-                with patch("amplihack.launcher.memory_config.get_user_input_with_timeout",
-                          return_value=response):
+                with patch(
+                    "amplihack.launcher.memory_config.get_user_input_with_timeout",
+                    return_value=response,
+                ):
                     result = prompt_user_consent(
-                        config,
-                        timeout_seconds=30,
-                        default_response=False,
-                        logger=None
+                        config, timeout_seconds=30, default_response=False, logger=None
                     )
 
                     assert result is True, f"Expected True for response '{response}'"
@@ -251,18 +215,17 @@ class TestResponseParsingIntegration:
         """Test various 'no' formats all deny consent."""
         from amplihack.launcher.memory_config import prompt_user_consent
 
-        config = {'recommended_limit_mb': 8192}
-        no_variants = ['n', 'N', 'no', 'NO', 'No', '  n  ', '\nno\n']
+        config = {"recommended_limit_mb": 8192}
+        no_variants = ["n", "N", "no", "NO", "No", "  n  ", "\nno\n"]
 
         for response in no_variants:
             with patch("sys.stdin.isatty", return_value=True):
-                with patch("amplihack.launcher.memory_config.get_user_input_with_timeout",
-                          return_value=response):
+                with patch(
+                    "amplihack.launcher.memory_config.get_user_input_with_timeout",
+                    return_value=response,
+                ):
                     result = prompt_user_consent(
-                        config,
-                        timeout_seconds=30,
-                        default_response=True,
-                        logger=None
+                        config, timeout_seconds=30, default_response=True, logger=None
                     )
 
                     assert result is False, f"Expected False for response '{response}'"
@@ -271,36 +234,38 @@ class TestResponseParsingIntegration:
         """Test invalid responses fall back to default."""
         from amplihack.launcher.memory_config import prompt_user_consent
 
-        config = {'recommended_limit_mb': 8192}
-        invalid_responses = ['maybe', 'sure', '123', 'yep', 'nope', 'xyz', '']
+        config = {"recommended_limit_mb": 8192}
+        invalid_responses = ["maybe", "sure", "123", "yep", "nope", "xyz", ""]
 
         # Test with default=True
         for response in invalid_responses:
             with patch("sys.stdin.isatty", return_value=True):
-                with patch("amplihack.launcher.memory_config.get_user_input_with_timeout",
-                          return_value=response):
+                with patch(
+                    "amplihack.launcher.memory_config.get_user_input_with_timeout",
+                    return_value=response,
+                ):
                     result = prompt_user_consent(
-                        config,
-                        timeout_seconds=30,
-                        default_response=True,
-                        logger=None
+                        config, timeout_seconds=30, default_response=True, logger=None
                     )
 
-                    assert result is True, f"Expected True (default) for invalid response '{response}'"
+                    assert result is True, (
+                        f"Expected True (default) for invalid response '{response}'"
+                    )
 
         # Test with default=False
         for response in invalid_responses:
             with patch("sys.stdin.isatty", return_value=True):
-                with patch("amplihack.launcher.memory_config.get_user_input_with_timeout",
-                          return_value=response):
+                with patch(
+                    "amplihack.launcher.memory_config.get_user_input_with_timeout",
+                    return_value=response,
+                ):
                     result = prompt_user_consent(
-                        config,
-                        timeout_seconds=30,
-                        default_response=False,
-                        logger=None
+                        config, timeout_seconds=30, default_response=False, logger=None
                     )
 
-                    assert result is False, f"Expected False (default) for invalid response '{response}'"
+                    assert result is False, (
+                        f"Expected False (default) for invalid response '{response}'"
+                    )
 
 
 class TestConfigDisplayIntegration:
@@ -310,67 +275,81 @@ class TestConfigDisplayIntegration:
         """Test displays system RAM in prompt when available."""
         from amplihack.launcher.memory_config import prompt_user_consent
 
-        config = {
-            'system_ram_gb': 32,
-            'recommended_limit_mb': 8192
-        }
+        config = {"system_ram_gb": 32, "recommended_limit_mb": 8192}
 
         with patch("sys.stdin.isatty", return_value=True):
-            with patch("amplihack.launcher.memory_config.get_user_input_with_timeout", return_value="y"):
+            with patch(
+                "amplihack.launcher.memory_config.get_user_input_with_timeout", return_value="y"
+            ):
                 with patch("builtins.print") as mock_print:
-                    prompt_user_consent(config, timeout_seconds=30, default_response=False, logger=None)
+                    prompt_user_consent(
+                        config, timeout_seconds=30, default_response=False, logger=None
+                    )
 
                     # Should display system RAM
-                    print_calls = ' '.join(str(call) for call in mock_print.call_args_list)
-                    assert '32' in print_calls
+                    print_calls = " ".join(str(call) for call in mock_print.call_args_list)
+                    assert "32" in print_calls
 
     def test_displays_current_and_recommended_limits(self):
         """Test displays both current and recommended limits."""
         from amplihack.launcher.memory_config import prompt_user_consent
 
-        config = {
-            'current_limit_mb': 4096,
-            'recommended_limit_mb': 8192
-        }
+        config = {"current_limit_mb": 4096, "recommended_limit_mb": 8192}
 
         with patch("sys.stdin.isatty", return_value=True):
-            with patch("amplihack.launcher.memory_config.get_user_input_with_timeout", return_value="n"):
+            with patch(
+                "amplihack.launcher.memory_config.get_user_input_with_timeout", return_value="n"
+            ):
                 with patch("builtins.print") as mock_print:
-                    prompt_user_consent(config, timeout_seconds=30, default_response=True, logger=None)
+                    prompt_user_consent(
+                        config, timeout_seconds=30, default_response=True, logger=None
+                    )
 
-                    print_calls = ' '.join(str(call) for call in mock_print.call_args_list)
-                    assert '4096' in print_calls
-                    assert '8192' in print_calls
+                    print_calls = " ".join(str(call) for call in mock_print.call_args_list)
+                    assert "4096" in print_calls
+                    assert "8192" in print_calls
 
     def test_displays_timeout_information(self):
         """Test displays timeout information in prompt."""
         from amplihack.launcher.memory_config import prompt_user_consent
 
-        config = {'recommended_limit_mb': 8192}
+        config = {"recommended_limit_mb": 8192}
 
         with patch("sys.stdin.isatty", return_value=True):
-            with patch("amplihack.launcher.memory_config.get_user_input_with_timeout", return_value="y"):
+            with patch(
+                "amplihack.launcher.memory_config.get_user_input_with_timeout", return_value="y"
+            ):
                 with patch("builtins.print") as mock_print:
-                    prompt_user_consent(config, timeout_seconds=45, default_response=True, logger=None)
+                    prompt_user_consent(
+                        config, timeout_seconds=45, default_response=True, logger=None
+                    )
 
-                    print_calls = ' '.join(str(call) for call in mock_print.call_args_list).lower()
+                    print_calls = " ".join(str(call) for call in mock_print.call_args_list).lower()
                     # Should mention timeout somewhere
-                    assert 'timeout' in print_calls or '45' in print_calls or 'seconds' in print_calls
+                    assert (
+                        "timeout" in print_calls or "45" in print_calls or "seconds" in print_calls
+                    )
 
     def test_displays_default_response_indication(self):
         """Test displays which response is the default."""
         from amplihack.launcher.memory_config import prompt_user_consent
 
-        config = {'recommended_limit_mb': 8192}
+        config = {"recommended_limit_mb": 8192}
 
         with patch("sys.stdin.isatty", return_value=True):
-            with patch("amplihack.launcher.memory_config.get_user_input_with_timeout", return_value="y"):
+            with patch(
+                "amplihack.launcher.memory_config.get_user_input_with_timeout", return_value="y"
+            ):
                 with patch("builtins.print") as mock_print:
-                    prompt_user_consent(config, timeout_seconds=30, default_response=True, logger=None)
+                    prompt_user_consent(
+                        config, timeout_seconds=30, default_response=True, logger=None
+                    )
 
-                    print_calls = ' '.join(str(call) for call in mock_print.call_args_list).lower()
+                    print_calls = " ".join(str(call) for call in mock_print.call_args_list).lower()
                     # Should indicate default (could be "default: yes" or "[Y/n]" style)
-                    assert 'default' in print_calls or '[y/n]' in print_calls or 'y/n' in print_calls
+                    assert (
+                        "default" in print_calls or "[y/n]" in print_calls or "y/n" in print_calls
+                    )
 
 
 class TestLoggingIntegration:
@@ -380,11 +359,13 @@ class TestLoggingIntegration:
         """Test logs when non-interactive mode detected."""
         from amplihack.launcher.memory_config import prompt_user_consent
 
-        config = {'recommended_limit_mb': 8192}
+        config = {"recommended_limit_mb": 8192}
         mock_logger = Mock(spec=logging.Logger)
 
         with patch("sys.stdin.isatty", return_value=False):
-            prompt_user_consent(config, timeout_seconds=30, default_response=True, logger=mock_logger)
+            prompt_user_consent(
+                config, timeout_seconds=30, default_response=True, logger=mock_logger
+            )
 
             # Should log non-interactive detection
             assert mock_logger.info.called or mock_logger.warning.called or mock_logger.debug.called
@@ -393,12 +374,16 @@ class TestLoggingIntegration:
         """Test logs when timeout occurs."""
         from amplihack.launcher.memory_config import prompt_user_consent
 
-        config = {'recommended_limit_mb': 8192}
+        config = {"recommended_limit_mb": 8192}
         mock_logger = Mock(spec=logging.Logger)
 
         with patch("sys.stdin.isatty", return_value=True):
-            with patch("amplihack.launcher.memory_config.get_user_input_with_timeout", return_value=None):
-                prompt_user_consent(config, timeout_seconds=30, default_response=True, logger=mock_logger)
+            with patch(
+                "amplihack.launcher.memory_config.get_user_input_with_timeout", return_value=None
+            ):
+                prompt_user_consent(
+                    config, timeout_seconds=30, default_response=True, logger=mock_logger
+                )
 
                 # Should log timeout
                 assert mock_logger.warning.called
@@ -407,12 +392,16 @@ class TestLoggingIntegration:
         """Test logs user's response."""
         from amplihack.launcher.memory_config import prompt_user_consent
 
-        config = {'recommended_limit_mb': 8192}
+        config = {"recommended_limit_mb": 8192}
         mock_logger = Mock(spec=logging.Logger)
 
         with patch("sys.stdin.isatty", return_value=True):
-            with patch("amplihack.launcher.memory_config.get_user_input_with_timeout", return_value="yes"):
-                prompt_user_consent(config, timeout_seconds=30, default_response=False, logger=mock_logger)
+            with patch(
+                "amplihack.launcher.memory_config.get_user_input_with_timeout", return_value="yes"
+            ):
+                prompt_user_consent(
+                    config, timeout_seconds=30, default_response=False, logger=mock_logger
+                )
 
                 # Should log user's decision
                 assert mock_logger.info.called or mock_logger.debug.called
@@ -421,13 +410,17 @@ class TestLoggingIntegration:
         """Test logs when KeyboardInterrupt occurs."""
         from amplihack.launcher.memory_config import prompt_user_consent
 
-        config = {'recommended_limit_mb': 8192}
+        config = {"recommended_limit_mb": 8192}
         mock_logger = Mock(spec=logging.Logger)
 
         with patch("sys.stdin.isatty", return_value=True):
-            with patch("amplihack.launcher.memory_config.get_user_input_with_timeout",
-                      side_effect=KeyboardInterrupt()):
-                prompt_user_consent(config, timeout_seconds=30, default_response=True, logger=mock_logger)
+            with patch(
+                "amplihack.launcher.memory_config.get_user_input_with_timeout",
+                side_effect=KeyboardInterrupt(),
+            ):
+                prompt_user_consent(
+                    config, timeout_seconds=30, default_response=True, logger=mock_logger
+                )
 
                 # Should log interrupt
                 assert mock_logger.info.called or mock_logger.warning.called
@@ -441,7 +434,7 @@ class TestPlatformSpecificIntegration:
         """Test Unix signal-based timeout integrates correctly."""
         from amplihack.launcher.memory_config import prompt_user_consent
 
-        config = {'recommended_limit_mb': 8192}
+        config = {"recommended_limit_mb": 8192}
 
         with patch("sys.stdin.isatty", return_value=True):
             # Mock signal module usage
@@ -449,10 +442,7 @@ class TestPlatformSpecificIntegration:
                 with patch("signal.alarm") as mock_alarm:
                     with patch("builtins.input", return_value="yes"):
                         result = prompt_user_consent(
-                            config,
-                            timeout_seconds=30,
-                            default_response=False,
-                            logger=None
+                            config, timeout_seconds=30, default_response=False, logger=None
                         )
 
                         assert result is True
@@ -465,15 +455,12 @@ class TestPlatformSpecificIntegration:
         """Test Windows threading-based timeout integrates correctly."""
         from amplihack.launcher.memory_config import prompt_user_consent
 
-        config = {'recommended_limit_mb': 8192}
+        config = {"recommended_limit_mb": 8192}
 
         with patch("sys.stdin.isatty", return_value=True):
             with patch("builtins.input", return_value="yes"):
                 result = prompt_user_consent(
-                    config,
-                    timeout_seconds=30,
-                    default_response=False,
-                    logger=None
+                    config, timeout_seconds=30, default_response=False, logger=None
                 )
 
                 assert result is True
@@ -486,17 +473,16 @@ class TestErrorRecoveryIntegration:
         """Test recovers gracefully from input() exception."""
         from amplihack.launcher.memory_config import prompt_user_consent
 
-        config = {'recommended_limit_mb': 8192}
+        config = {"recommended_limit_mb": 8192}
 
         with patch("sys.stdin.isatty", return_value=True):
-            with patch("amplihack.launcher.memory_config.get_user_input_with_timeout",
-                      side_effect=OSError("Input failed")):
+            with patch(
+                "amplihack.launcher.memory_config.get_user_input_with_timeout",
+                side_effect=OSError("Input failed"),
+            ):
                 # Should recover and use default
                 result = prompt_user_consent(
-                    config,
-                    timeout_seconds=30,
-                    default_response=True,
-                    logger=None
+                    config, timeout_seconds=30, default_response=True, logger=None
                 )
 
                 assert result is True
@@ -505,17 +491,16 @@ class TestErrorRecoveryIntegration:
         """Test recovers gracefully from print() exception."""
         from amplihack.launcher.memory_config import prompt_user_consent
 
-        config = {'recommended_limit_mb': 8192}
+        config = {"recommended_limit_mb": 8192}
 
         with patch("sys.stdin.isatty", return_value=True):
             with patch("builtins.print", side_effect=OSError("Print failed")):
                 # Should still work even if print fails
-                with patch("amplihack.launcher.memory_config.get_user_input_with_timeout", return_value="y"):
+                with patch(
+                    "amplihack.launcher.memory_config.get_user_input_with_timeout", return_value="y"
+                ):
                     result = prompt_user_consent(
-                        config,
-                        timeout_seconds=30,
-                        default_response=False,
-                        logger=None
+                        config, timeout_seconds=30, default_response=False, logger=None
                     )
 
                     # Should still get result even if display failed
@@ -528,8 +513,8 @@ class TestErrorRecoveryIntegration:
         # Various malformed configs
         malformed_configs = [
             {},  # Empty
-            {'wrong_key': 123},  # Wrong keys
-            {'recommended_limit_mb': 'not_a_number'},  # Wrong type
+            {"wrong_key": 123},  # Wrong keys
+            {"recommended_limit_mb": "not_a_number"},  # Wrong type
             None,  # None instead of dict
         ]
 
@@ -537,10 +522,7 @@ class TestErrorRecoveryIntegration:
             try:
                 with patch("sys.stdin.isatty", return_value=False):
                     result = prompt_user_consent(
-                        config,
-                        timeout_seconds=30,
-                        default_response=True,
-                        logger=None
+                        config, timeout_seconds=30, default_response=True, logger=None
                     )
 
                     # Should either return default or raise clear error

@@ -40,6 +40,7 @@ print(f"Status: {result.status}")
 ```
 
 **Default behavior**:
+
 - Platform: `claude-code`
 - Persona: `guide`
 - Timeout: 30 minutes

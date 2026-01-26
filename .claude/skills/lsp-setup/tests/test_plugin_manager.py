@@ -5,10 +5,8 @@ Tests Claude Code plugin installation and management via npx cclsp.
 All tests should FAIL initially (TDD red phase).
 """
 
-import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock
 import subprocess
+from unittest.mock import MagicMock, patch
 
 
 class TestPluginManager:

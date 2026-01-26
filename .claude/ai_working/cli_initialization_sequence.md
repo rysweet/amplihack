@@ -129,11 +129,11 @@ T+62.5s   Claude ready for user interaction
 
 ### Integration Point Comparison
 
-| Integration Point | Timing | Claude State | Memory State | User Experience |
-|-------------------|--------|--------------|--------------|-----------------|
-| **CLI Pre-Launch** | T+0.3s | Not started | Not created | Too early |
-| **Launcher Prepare (RECOMMENDED)** | T+30-60s | Not started | Not created | ✅ Perfect |
-| **SessionStart Hook** | T+62s | Running | Creating | Too late |
+| Integration Point                  | Timing   | Claude State | Memory State | User Experience |
+| ---------------------------------- | -------- | ------------ | ------------ | --------------- |
+| **CLI Pre-Launch**                 | T+0.3s   | Not started  | Not created  | Too early       |
+| **Launcher Prepare (RECOMMENDED)** | T+30-60s | Not started  | Not created  | ✅ Perfect      |
+| **SessionStart Hook**              | T+62s    | Running      | Creating     | Too late        |
 
 ---
 
@@ -272,26 +272,26 @@ This integration is OPTIONAL and can be added in Phase 2 without affecting the p
 
 ### Similarities (Pattern to Follow)
 
-| Aspect | Neo4j Startup | Blarify Indexing |
-|--------|--------------|------------------|
-| **Location** | `prepare_launch()` step 3 | `prepare_launch()` step 4 |
-| **Timing** | Before Claude starts | Before Claude starts |
-| **Blocking** | Yes (waits for decision) | Yes (waits for decision) |
-| **User Choice** | Start/Skip/Exit | Index/Skip |
-| **Timeout** | Yes (varies) | Yes (30s) |
-| **Default** | Continue without | Continue without |
-| **Error Handling** | Non-blocking | Non-blocking |
-| **First Session** | Every session | Once per project |
+| Aspect             | Neo4j Startup             | Blarify Indexing          |
+| ------------------ | ------------------------- | ------------------------- |
+| **Location**       | `prepare_launch()` step 3 | `prepare_launch()` step 4 |
+| **Timing**         | Before Claude starts      | Before Claude starts      |
+| **Blocking**       | Yes (waits for decision)  | Yes (waits for decision)  |
+| **User Choice**    | Start/Skip/Exit           | Index/Skip                |
+| **Timeout**        | Yes (varies)              | Yes (30s)                 |
+| **Default**        | Continue without          | Continue without          |
+| **Error Handling** | Non-blocking              | Non-blocking              |
+| **First Session**  | Every session             | Once per project          |
 
 ### Differences
 
-| Aspect | Neo4j Startup | Blarify Indexing |
-|--------|--------------|------------------|
-| **Frequency** | Every session | First session only |
-| **Caching** | None | Consent file per project |
-| **Infrastructure** | Docker container | CLI command |
-| **Opt-in** | Environment variable | User prompt |
-| **Failure Mode** | Fallback to SQLite | Continue without indexing |
+| Aspect             | Neo4j Startup        | Blarify Indexing          |
+| ------------------ | -------------------- | ------------------------- |
+| **Frequency**      | Every session        | First session only        |
+| **Caching**        | None                 | Consent file per project  |
+| **Infrastructure** | Docker container     | CLI command               |
+| **Opt-in**         | Environment variable | User prompt               |
+| **Failure Mode**   | Fallback to SQLite   | Continue without indexing |
 
 ---
 
@@ -459,6 +459,7 @@ gantt
 ```
 
 **Analysis**:
+
 - **First session**: +60s (30s prompt + 30s indexing) - acceptable for one-time setup
 - **Subsequent sessions**: +10ms (file check) - negligible impact
 - **User perception**: Smooth (happening during natural "setup" phase)
@@ -468,11 +469,13 @@ gantt
 ## Appendix: Mermaid Source Files
 
 All diagrams in this document are in mermaid format and can be:
+
 1. Rendered in GitHub markdown
 2. Edited in mermaid.live
 3. Exported to PNG/SVG for documentation
 
 To regenerate any diagram:
+
 1. Copy the mermaid code block
 2. Paste into https://mermaid.live
 3. Edit as needed
@@ -480,5 +483,5 @@ To regenerate any diagram:
 
 ---
 
-*Diagram documentation created: 2026-01-22*
-*Reference document: cli_integration_investigation.md*
+_Diagram documentation created: 2026-01-22_
+_Reference document: cli_integration_investigation.md_

@@ -14,20 +14,20 @@ Public API (the "studs"):
 import os
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 
 class ClaudeMode(Enum):
     """Claude installation mode."""
-    LOCAL = "local"    # Project has .claude/ directory
+
+    LOCAL = "local"  # Project has .claude/ directory
     PLUGIN = "plugin"  # Use plugin from ~/.amplihack/.claude/
-    NONE = "none"      # No installation found
+    NONE = "none"  # No installation found
 
 
 class ModeDetector:
     """Detect Claude installation mode with precedence: LOCAL > PLUGIN > NONE."""
 
-    def __init__(self, project_dir: Optional[Path] = None):
+    def __init__(self, project_dir: Path | None = None):
         """Initialize detector.
 
         Args:
@@ -53,18 +53,17 @@ class ModeDetector:
         if override:
             if override.lower() == "local" and self.has_local_installation():
                 return ClaudeMode.LOCAL
-            elif override.lower() == "plugin" and self.has_plugin_installation():
+            if override.lower() == "plugin" and self.has_plugin_installation():
                 return ClaudeMode.PLUGIN
 
         # Standard precedence: LOCAL > PLUGIN > NONE
         if self.has_local_installation():
             return ClaudeMode.LOCAL
-        elif self.has_plugin_installation():
+        if self.has_plugin_installation():
             return ClaudeMode.PLUGIN
-        else:
-            return ClaudeMode.NONE
+        return ClaudeMode.NONE
 
-    def get_claude_dir(self, mode: ClaudeMode) -> Optional[Path]:
+    def get_claude_dir(self, mode: ClaudeMode) -> Path | None:
         """Get .claude directory path for mode.
 
         Args:
@@ -75,10 +74,9 @@ class ModeDetector:
         """
         if mode == ClaudeMode.LOCAL:
             return self.local_claude if self.has_local_installation() else None
-        elif mode == ClaudeMode.PLUGIN:
+        if mode == ClaudeMode.PLUGIN:
             return self.plugin_claude if self.has_plugin_installation() else None
-        else:
-            return None
+        return None
 
     def has_local_installation(self) -> bool:
         """Check if project has valid .claude/ directory.
@@ -107,7 +105,7 @@ class ModeDetector:
         return manifest.exists()
 
 
-def detect_claude_mode(project_dir: Optional[Path] = None) -> ClaudeMode:
+def detect_claude_mode(project_dir: Path | None = None) -> ClaudeMode:
     """Convenience function to detect Claude mode.
 
     Args:

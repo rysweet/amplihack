@@ -14,11 +14,9 @@ Public API (the "studs"):
 
 import subprocess
 import tempfile
+import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Dict, List
-import shutil
-import time
 
 __all__ = ["uvx_launch", "uvx_launch_with_test_project", "UVXLaunchResult"]
 
@@ -36,12 +34,13 @@ class UVXLaunchResult:
         log_files: Paths to generated log files
         command: Full command that was executed
     """
+
     success: bool
     exit_code: int
     stdout: str
     stderr: str
     duration: float
-    log_files: List[Path]
+    log_files: list[Path]
     command: str
 
     def assert_success(self, message: str = "") -> None:
@@ -78,11 +77,11 @@ class UVXLaunchResult:
 
 def uvx_launch(
     git_ref: str = "feat/issue-1948-plugin-architecture",
-    prompt: Optional[str] = None,
-    cwd: Optional[Path] = None,
+    prompt: str | None = None,
+    cwd: Path | None = None,
     timeout: int = 60,
-    env: Optional[Dict[str, str]] = None,
-    extra_args: Optional[List[str]] = None,
+    env: dict[str, str] | None = None,
+    extra_args: list[str] | None = None,
 ) -> UVXLaunchResult:
     """Launch amplihack via UVX with non-interactive prompt.
 
@@ -129,10 +128,12 @@ def uvx_launch(
 
     # Prepare environment
     launch_env = env.copy() if env else {}
-    launch_env.update({
-        "AMPLIHACK_CI_MODE": "1",  # Non-interactive mode
-        "AMPLIHACK_LOG_LEVEL": "DEBUG",  # Verbose logging
-    })
+    launch_env.update(
+        {
+            "AMPLIHACK_CI_MODE": "1",  # Non-interactive mode
+            "AMPLIHACK_LOG_LEVEL": "DEBUG",  # Verbose logging
+        }
+    )
 
     # Execute command
     try:
@@ -159,7 +160,7 @@ def uvx_launch(
         success = False
         exit_code = 1
         stdout = ""
-        stderr = f"Unexpected error: {str(e)}"
+        stderr = f"Unexpected error: {e!s}"
 
     duration = time.time() - start_time
 
@@ -178,12 +179,12 @@ def uvx_launch(
 
 
 def uvx_launch_with_test_project(
-    project_files: Dict[str, str],
+    project_files: dict[str, str],
     git_ref: str = "feat/issue-1948-plugin-architecture",
-    prompt: Optional[str] = None,
+    prompt: str | None = None,
     timeout: int = 60,
-    env: Optional[Dict[str, str]] = None,
-    extra_args: Optional[List[str]] = None,
+    env: dict[str, str] | None = None,
+    extra_args: list[str] | None = None,
 ) -> UVXLaunchResult:
     """Launch amplihack with a temporary test project.
 
@@ -236,7 +237,7 @@ def uvx_launch_with_test_project(
         pass
 
 
-def _collect_log_files(directory: Path) -> List[Path]:
+def _collect_log_files(directory: Path) -> list[Path]:
     """Collect all log files from directory and subdirectories.
 
     Args:
@@ -263,6 +264,7 @@ def _collect_log_files(directory: Path) -> List[Path]:
 
 # Convenience functions for common test scenarios
 
+
 def launch_and_test_hook(
     hook_name: str,
     git_ref: str = "feat/issue-1948-plugin-architecture",
@@ -278,7 +280,7 @@ def launch_and_test_hook(
     Returns:
         UVXLaunchResult
     """
-    prompt = f"Run SessionStart hook and show logs"
+    prompt = "Run SessionStart hook and show logs"
     return uvx_launch(
         git_ref=git_ref,
         prompt=prompt,
@@ -301,7 +303,7 @@ def launch_and_test_skill(
     Returns:
         UVXLaunchResult
     """
-    prompt = f"List all available skills"
+    prompt = "List all available skills"
     return uvx_launch(
         git_ref=git_ref,
         prompt=prompt,
@@ -337,7 +339,7 @@ def launch_and_test_command(
 
 
 def launch_with_lsp_detection(
-    languages: List[str],
+    languages: list[str],
     git_ref: str = "feat/issue-1948-plugin-architecture",
     timeout: int = 60,
 ) -> UVXLaunchResult:
@@ -363,7 +365,7 @@ def launch_with_lsp_detection(
     if "javascript" in languages:
         project_files["app.js"] = "console.log('hello');"
     if "go" in languages:
-        project_files["main.go"] = 'package main\n\nfunc main() {}'
+        project_files["main.go"] = "package main\n\nfunc main() {}"
 
     prompt = "Detect languages in this project and configure LSP"
 

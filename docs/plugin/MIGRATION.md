@@ -176,10 +176,7 @@ Create a new minimal `settings.json` with only your overrides:
 ```json
 {
   "agents": {
-    "custom_agents": [
-      "./agents/custom/domain-expert.md",
-      "./agents/custom/legacy-specialist.md"
-    ]
+    "custom_agents": ["./agents/custom/domain-expert.md", "./agents/custom/legacy-specialist.md"]
   },
   "workflows": {
     "default": "INVESTIGATION_WORKFLOW"
@@ -228,6 +225,7 @@ rm -rf .claude/context/
 ```
 
 Keep only:
+
 - `~/.amplihack/.claude/settings.json`
 - `~/.amplihack/.claude/agents/custom/` (if exists)
 - `~/.amplihack/.claude/commands/custom/` (if exists)
@@ -485,6 +483,7 @@ After migration, you'll experience:
 ### Disk Savings
 
 Before:
+
 ```
 project1/.claude/  5.3 MB
 project2/.claude/  5.3 MB
@@ -493,6 +492,7 @@ Total: 15.9 MB
 ```
 
 After:
+
 ```
 ~/.amplihack/.claude/  5.3 MB (shared)
 project1/.claude/      23 KB
@@ -504,6 +504,7 @@ Total: 5.37 MB (savings: 66%)
 ### Simplified Updates
 
 Before:
+
 ```bash
 cd project1 && amplihack upgrade  # 30s
 cd project2 && amplihack upgrade  # 30s
@@ -512,6 +513,7 @@ Total: 90 seconds
 ```
 
 After:
+
 ```bash
 amplihack plugin install --upgrade  # 30s
 # All projects updated instantly
@@ -521,6 +523,7 @@ Total: 30 seconds (3× faster)
 ### No More Merge Conflicts
 
 Before migration:
+
 ```
 CONFLICT (content): Merge conflict in .claude/agents/amplihack/core/architect.md
 CONFLICT (content): Merge conflict in .claude/context/PATTERNS.md
@@ -528,6 +531,7 @@ CONFLICT (content): Merge conflict in .claude/tools/PostInit.sh
 ```
 
 After migration:
+
 ```
 # No conflicts - projects only contain settings.json
 # Framework code in plugin (never touched)

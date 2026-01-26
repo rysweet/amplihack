@@ -32,7 +32,13 @@ scenario:
   steps:
     - action: launch
       target: "amplihack"
-      args: ["claude", "--", "-p", "Task(subagent_type=\"guide\", prompt=\"I can already use ChatGPT for coding help. Why would I use amplihack instead? What's the difference?\")"]
+      args:
+        [
+          "claude",
+          "--",
+          "-p",
+          'Task(subagent_type="guide", prompt="I can already use ChatGPT for coding help. Why would I use amplihack instead? What''s the difference?")',
+        ]
       description: "Riley asks about value proposition vs ChatGPT"
       timeout: 60s
 
@@ -81,7 +87,7 @@ scenario:
 
     # Metric: Concrete example provided
     - action: verify_output
-      matches: "amplihack claude -- -p \".*\""
+      matches: 'amplihack claude -- -p ".*"'
       description: "Should provide concrete command example"
       metric_type: example_quality
 

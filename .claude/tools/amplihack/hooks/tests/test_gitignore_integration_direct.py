@@ -5,11 +5,11 @@ Tests the hook behavior in real git repositories with direct module imports.
 This is outside-in testing from a user's perspective.
 """
 
-import subprocess
-import tempfile
 import shutil
-from pathlib import Path
+import subprocess
 import sys
+import tempfile
+from pathlib import Path
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -83,7 +83,7 @@ class TestGitignoreDirectIntegration:
         assert result["modified"] is True
         assert len(result["missing_dirs"]) == 2
 
-        print(f"\n✅ SIMPLE SCENARIO PASSED")
+        print("\n✅ SIMPLE SCENARIO PASSED")
         print(f"Created .gitignore with {len(content.splitlines())} lines")
         print(f"Patterns added: {result['missing_dirs']}")
 
@@ -128,8 +128,8 @@ dist/
         assert result["modified"] is True
         assert ".claude/runtime/" in result["missing_dirs"]
 
-        print(f"\n✅ COMPLEX SCENARIO PASSED")
-        print(f"Preserved existing content")
+        print("\n✅ COMPLEX SCENARIO PASSED")
+        print("Preserved existing content")
         print(f"Added missing: {result['missing_dirs']}")
 
     def test_idempotency_run_twice(self):
@@ -168,10 +168,10 @@ dist/
         assert result2["modified"] is False, "Second run should be no-op"
         assert content1 == content2, "Content should be unchanged"
 
-        print(f"\n✅ IDEMPOTENCY TEST PASSED")
+        print("\n✅ IDEMPOTENCY TEST PASSED")
         print(f"First run: modified={result1['modified']}")
         print(f"Second run: modified={result2['modified']}")
-        print(f"Content stable across runs")
+        print("Content stable across runs")
 
     def test_non_git_directory(self):
         """
@@ -200,8 +200,8 @@ dist/
         assert not gitignore_path.exists(), "Should not create .gitignore"
         assert result["modified"] is False
 
-        print(f"\n✅ NON-GIT SCENARIO PASSED")
-        print(f"Gracefully skipped non-git directory")
+        print("\n✅ NON-GIT SCENARIO PASSED")
+        print("Gracefully skipped non-git directory")
 
 
 def generate_pr_test_results():

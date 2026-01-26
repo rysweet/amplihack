@@ -2340,6 +2340,7 @@ cp -r .claude docs/.claude
 **Root Cause**: Hook integration has async/await bug where async memory functions are called without `await` keyword.
 
 **Evidence**:
+
 - Kuzu v0.11.3 installed and importable ✓
 - Database file exists at `~/.amplihack/memory_kuzu.db` (36KB) ✓
 - Database has 0 nodes (verified with `MATCH (n) RETURN count(n)`) ✗
@@ -2359,6 +2360,7 @@ enhanced_prompt, memory_metadata = inject_memory_for_agents(
 ```
 
 **Fix Required**:
+
 ```python
 # Make hook method async
 async def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
@@ -2369,17 +2371,20 @@ async def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
 ```
 
 **Impact**:
+
 - Memory system completely non-functional despite correct architecture
 - Silent failure - no errors shown to user
 - Database initializes but never stores data
 - Hooks execute but memory operations are no-ops
 
 **Supporting Evidence**:
+
 - `agent_memory_hook.py` lines 96-169: `async def inject_memory_for_agents()`
 - `agent_memory_hook.py` lines 171-244: `async def extract_learnings_from_conversation()`
 - Both are async but called without await in hooks
 
 **Architecture Findings**:
+
 - Kuzu auto-selection works correctly ✓
 - Auto-installation feature works (AMPLIHACK_NO_AUTO_INSTALL to disable) ✓
 - Lazy initialization pattern works ✓
@@ -2387,11 +2392,13 @@ async def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
 - Graceful fallback to SQLite works ✓
 
 **Related Issues**:
+
 - Similar async bugs may exist in other hooks
 - Error swallowing prevents bug detection (logged as warnings only)
 - No runtime verification of memory system functionality
 
 **Solution Path**:
+
 1. Fix async/await in user_prompt_submit.py hook
 2. Make hook process() method async
 3. Verify Claude Code hooks support async execution
@@ -2399,12 +2406,14 @@ async def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
 5. Make errors visible instead of silently logged
 
 **Prevention**:
+
 - Add async/await linting checks
 - Require type hints showing async functions
 - Add integration tests that verify memory storage
 - Create `/amplihack:memory-status` command to verify system works
 
 **Related Patterns**:
+
 - Async Context Management (PATTERNS.md)
 - Fail-Fast Prerequisite Checking (PATTERNS.md)
 

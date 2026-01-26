@@ -328,7 +328,6 @@ def inject_memory_for_agents_sync(
         try:
             loop = asyncio.get_running_loop()
             # Loop is running - must use thread to avoid nested loop error
-            import concurrent.futures
             import threading
 
             result = [None]
@@ -357,10 +356,9 @@ def inject_memory_for_agents_sync(
 
             if result[0]:
                 return result[0]
-            else:
-                # Timeout or no result
-                logger.warning("Memory injection timed out in thread")
-                return prompt, {"memory_available": False, "error": "timeout"}
+            # Timeout or no result
+            logger.warning("Memory injection timed out in thread")
+            return prompt, {"memory_available": False, "error": "timeout"}
 
         except RuntimeError:
             # No running loop - safe to create one
@@ -413,7 +411,6 @@ def extract_learnings_from_conversation_sync(
         try:
             loop = asyncio.get_running_loop()
             # Loop is running - must use thread to avoid nested loop error
-            import concurrent.futures
             import threading
 
             result = [None]
@@ -444,10 +441,9 @@ def extract_learnings_from_conversation_sync(
 
             if result[0]:
                 return result[0]
-            else:
-                # Timeout or no result
-                logger.warning("Learning extraction timed out in thread")
-                return {"memory_available": False, "error": "timeout", "learnings_stored": 0}
+            # Timeout or no result
+            logger.warning("Learning extraction timed out in thread")
+            return {"memory_available": False, "error": "timeout", "learnings_stored": 0}
 
         except RuntimeError:
             # No running loop - safe to create one

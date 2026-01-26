@@ -25,11 +25,13 @@ This document defines comprehensive behavioral verification scenarios for testin
 **Objective**: Verify Claude responds directly to simple Q&A questions without invoking ultrathink
 
 **Test Input**:
+
 ```
 User: "What is the amplihack philosophy?"
 ```
 
 **Expected Behavior**:
+
 - Claude reads .claude/context/PHILOSOPHY.md
 - Claude provides direct answer
 - NO ultrathink invocation
@@ -37,6 +39,7 @@ User: "What is the amplihack philosophy?"
 - Response completes in single turn
 
 **Success Criteria**:
+
 - ✅ Direct answer provided
 - ✅ No ultrathink orchestration triggered
 - ✅ No workflow files read
@@ -44,6 +47,7 @@ User: "What is the amplihack philosophy?"
 - ✅ User gets immediate answer
 
 **Verification Method**:
+
 - Monitor tool calls for absence of Skill(ultrathink-orchestrator)
 - Monitor for absence of workflow file reads
 - Confirm response provides answer directly
@@ -55,23 +59,27 @@ User: "What is the amplihack philosophy?"
 **Objective**: Verify Claude executes operations tasks directly without orchestration
 
 **Test Input**:
+
 ```
 User: "Delete all .pyc files in the project"
 ```
 
 **Expected Behavior**:
+
 - Claude uses Bash tool with find/rm commands
 - Direct execution without ultrathink
 - NO workflow invocation
 - Completes operation immediately
 
 **Success Criteria**:
+
 - ✅ Operation executed directly
 - ✅ No ultrathink invocation
 - ✅ No workflow overhead
 - ✅ Task completes efficiently
 
 **Verification Method**:
+
 - Monitor for direct Bash tool usage
 - Confirm no Skill(ultrathink-orchestrator) call
 - Verify efficient execution pattern
@@ -83,11 +91,13 @@ User: "Delete all .pyc files in the project"
 **Objective**: Verify Claude automatically invokes ultrathink for investigation tasks
 
 **Test Input**:
+
 ```
 User: "Investigate how the memory system works in amplihack"
 ```
 
 **Expected Behavior**:
+
 - Claude detects investigation keywords: "investigate", "how", "works"
 - Claude automatically invokes Skill(ultrathink-orchestrator)
 - Ultrathink reads INVESTIGATION_WORKFLOW.md
@@ -96,6 +106,7 @@ User: "Investigate how the memory system works in amplihack"
 - Findings documented comprehensively
 
 **Success Criteria**:
+
 - ✅ Ultrathink invoked automatically
 - ✅ INVESTIGATION_WORKFLOW.md followed
 - ✅ Systematic exploration conducted
@@ -103,6 +114,7 @@ User: "Investigate how the memory system works in amplihack"
 - ✅ Final report provided with findings
 
 **Verification Method**:
+
 - Monitor for Skill(ultrathink-orchestrator) invocation
 - Confirm INVESTIGATION_WORKFLOW.md read
 - Verify knowledge-archaeologist agent usage
@@ -115,11 +127,13 @@ User: "Investigate how the memory system works in amplihack"
 **Objective**: Verify Claude automatically invokes ultrathink for development tasks
 
 **Test Input**:
+
 ```
 User: "Add a feature to export memory graphs as PNG images"
 ```
 
 **Expected Behavior**:
+
 - Claude detects development keywords: "add", "feature"
 - Claude automatically invokes Skill(ultrathink-orchestrator)
 - Ultrathink reads DEFAULT_WORKFLOW.md
@@ -128,6 +142,7 @@ User: "Add a feature to export memory graphs as PNG images"
 - PR created with proper testing
 
 **Success Criteria**:
+
 - ✅ Ultrathink invoked automatically
 - ✅ DEFAULT_WORKFLOW.md followed
 - ✅ All 22 steps tracked
@@ -135,6 +150,7 @@ User: "Add a feature to export memory graphs as PNG images"
 - ✅ PR created and mergeable
 
 **Verification Method**:
+
 - Monitor for Skill(ultrathink-orchestrator) invocation
 - Confirm DEFAULT_WORKFLOW.md read
 - Verify TodoWrite shows all 22 steps
@@ -148,23 +164,27 @@ User: "Add a feature to export memory graphs as PNG images"
 **Objective**: Verify explicit commands bypass ultrathink and execute directly
 
 **Test Input**:
+
 ```
 User: "/fix import errors in the codebase"
 ```
 
 **Expected Behavior**:
+
 - Claude recognizes explicit /fix command
 - Fix-agent executes directly
 - NO ultrathink invocation
 - Fast, focused fix workflow used
 
 **Success Criteria**:
+
 - ✅ /fix command recognized
 - ✅ No ultrathink invocation
 - ✅ Fix-agent executes directly
 - ✅ Efficient targeted fix completed
 
 **Verification Method**:
+
 - Monitor for direct fix-agent usage
 - Confirm no Skill(ultrathink-orchestrator) call
 - Verify fast execution pattern
@@ -176,23 +196,27 @@ User: "/fix import errors in the codebase"
 **Objective**: Verify explicit bypass request prevents ultrathink invocation
 
 **Test Input**:
+
 ```
 User: "Implement user authentication without ultrathink"
 ```
 
 **Expected Behavior**:
+
 - Claude recognizes "without ultrathink" override
 - Direct implementation without orchestration
 - No workflow file reading
 - User request honored
 
 **Success Criteria**:
+
 - ✅ Bypass request recognized
 - ✅ No ultrathink invocation
 - ✅ Direct implementation executed
 - ✅ User control preserved
 
 **Verification Method**:
+
 - Monitor for absence of Skill(ultrathink-orchestrator)
 - Confirm direct implementation approach
 - Verify user override respected
@@ -204,11 +228,13 @@ User: "Implement user authentication without ultrathink"
 **Objective**: Verify Claude handles tasks with both investigation and development keywords appropriately
 
 **Test Input**:
+
 ```
 User: "Investigate the authentication system and fix the session timeout bug"
 ```
 
 **Expected Behavior**:
+
 - Claude detects both investigation and development keywords
 - Claude invokes ultrathink
 - Investigation phase executes first (INVESTIGATION_WORKFLOW)
@@ -216,6 +242,7 @@ User: "Investigate the authentication system and fix the session timeout bug"
 - Systematic hybrid workflow
 
 **Success Criteria**:
+
 - ✅ Ultrathink invoked for hybrid task
 - ✅ Investigation conducted first
 - ✅ Development work follows investigation
@@ -223,6 +250,7 @@ User: "Investigate the authentication system and fix the session timeout bug"
 - ✅ Final deliverable includes both understanding and fix
 
 **Verification Method**:
+
 - Monitor for Skill(ultrathink-orchestrator) invocation
 - Verify both workflows referenced
 - Confirm sequential execution (investigation → development)
@@ -244,6 +272,7 @@ User: "Investigate the authentication system and fix the session timeout bug"
 ### Automated Testing (Future)
 
 Consider implementing automated behavioral tests using:
+
 - Claude Code SDK test framework
 - Behavioral assertion checking
 - Tool call pattern matching
@@ -252,6 +281,7 @@ Consider implementing automated behavioral tests using:
 ### Test Environment
 
 **Requirements**:
+
 - Fresh Claude Code session
 - PR branch checked out: `feat/issue-1942-ultrathink-default`
 - No stale context from previous sessions
@@ -260,6 +290,7 @@ Consider implementing automated behavioral tests using:
 ## Success Metrics
 
 **Feature considered successful when**:
+
 - All 7 scenarios pass verification
 - No false positives (Q&A/Operations don't trigger ultrathink)
 - No false negatives (Investigation/Development do trigger ultrathink)

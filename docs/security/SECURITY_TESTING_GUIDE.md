@@ -41,6 +41,7 @@ pytest tests/proxy/test_security_sanitization.py --cov=amplihack.proxy.security 
 ```
 
 Expected output:
+
 ```
 tests/proxy/test_security_sanitization.py::TestTokenPatternDetection::test_github_token_detection PASSED
 tests/proxy/test_security_sanitization.py::TestTokenPatternDetection::test_openai_token_detection PASSED
@@ -148,6 +149,7 @@ def test_github_token_detection():
 ```
 
 **Key points**:
+
 - Clear docstring explaining what's tested
 - Test both valid and invalid cases
 - Use `# pragma: allowlist secret` for test tokens
@@ -183,6 +185,7 @@ def test_sanitize_github_api_error():
 ```
 
 **Key points**:
+
 - Use realistic error formats
 - Test multiple token types together
 - Verify both redaction and preservation
@@ -230,6 +233,7 @@ def test_complete_error_sanitization_workflow():
 ```
 
 **Key points**:
+
 - Test complete user workflows
 - Use realistic data structures
 - Verify end-to-end behavior

@@ -7,6 +7,7 @@ Configure amplihack plugin to be discoverable in Claude Code's plugin marketplac
 ## Problem
 
 Issue #1948 requirement #5 mandates marketplace source: `github.com/rysweet/amplihack`. Currently:
+
 - No marketplace configuration exists
 - Plugin won't appear in Claude Code `/plugin` command
 - Users cannot discover amplihack via marketplace
@@ -14,6 +15,7 @@ Issue #1948 requirement #5 mandates marketplace source: `github.com/rysweet/ampl
 ## Solution Overview
 
 Add `extraKnownMarketplaces` configuration to settings generation:
+
 1. Add marketplace config to `.claude-plugin/plugin.json`
 2. Update `SettingsGenerator` to include marketplace in generated settings
 3. Ensure marketplace appears in `~/.claude/settings.json`
@@ -23,6 +25,7 @@ Add `extraKnownMarketplaces` configuration to settings generation:
 ### Inputs
 
 **Plugin Manifest (`.claude-plugin/plugin.json`):**
+
 ```json
 {
   "name": "amplihack",
@@ -35,12 +38,14 @@ Add `extraKnownMarketplaces` configuration to settings generation:
 ```
 
 **Settings Generator:**
+
 - Reads manifest marketplace config
 - Merges into user settings
 
 ### Outputs
 
 **Generated `~/.claude/settings.json`:**
+
 ```json
 {
   "extraKnownMarketplaces": [
@@ -75,6 +80,7 @@ src/amplihack/settings_generator/
 **Location:** `.claude-plugin/plugin.json`
 
 **Current State (lines 1-17):**
+
 ```json
 {
   "name": "amplihack",
@@ -93,6 +99,7 @@ src/amplihack/settings_generator/
 ```
 
 **New State (add marketplace section):**
+
 ```json
 {
   "name": "amplihack",
@@ -224,16 +231,19 @@ settings = {
 ### Testing Strategy
 
 **Unit Tests:**
+
 - Test `SettingsGenerator.generate()` includes marketplace
 - Test marketplace deduplication (don't add duplicates)
 - Test backward compatibility (manifest without marketplace)
 
 **Integration Tests:**
+
 - Generate settings from real manifest
 - Verify marketplace appears in settings.json
 - Verify no duplicates on repeated generation
 
 **E2E Tests:**
+
 - Install plugin
 - Check `~/.claude/settings.json` contains marketplace
 - Verify `/plugin` command shows amplihack (manual test)
@@ -348,15 +358,19 @@ def test_marketplace_in_generated_settings(tmp_path):
 After implementation:
 
 1. **Check Manifest:**
+
    ```bash
    cat .claude-plugin/plugin.json | jq '.marketplace'
    ```
+
    Should show marketplace config.
 
 2. **Check Generated Settings:**
+
    ```bash
    cat ~/.claude/settings.json | jq '.extraKnownMarketplaces'
    ```
+
    Should show amplihack marketplace.
 
 3. **Check Claude Code:**

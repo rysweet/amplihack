@@ -6,21 +6,18 @@ Testing pyramid:
 - 10% E2E tests (complete workflows)
 """
 
-import subprocess
-import tempfile
 from pathlib import Path
-from unittest.mock import patch, MagicMock, call
+from unittest.mock import patch
 
 import pytest
-
 from amplihack.hooks.strategies.base import HookStrategy
 from amplihack.hooks.strategies.claude_strategy import ClaudeStrategy
 from amplihack.hooks.strategies.copilot_strategy import CopilotStrategy
 
-
 # ============================================================================
 # UNIT TESTS (60%)
 # ============================================================================
+
 
 class TestHookStrategyBase:
     """Unit tests for HookStrategy abstract base class."""
@@ -42,8 +39,8 @@ class TestHookStrategyBase:
     def test_concrete_strategy_implements_abstract_methods(self):
         """Test that concrete strategies implement all abstract methods."""
         strategy = ClaudeStrategy()
-        assert hasattr(strategy, 'inject_context')
-        assert hasattr(strategy, 'power_steer')
+        assert hasattr(strategy, "inject_context")
+        assert hasattr(strategy, "power_steer")
         assert callable(strategy.inject_context)
         assert callable(strategy.power_steer)
 
@@ -112,8 +109,8 @@ class TestCopilotStrategy:
         """Test that inject_context returns empty dict (file-based)."""
         strategy = CopilotStrategy()
 
-        with patch.object(strategy, '_write_with_retry'):
-            with patch.object(strategy, '_update_agents_file'):
+        with patch.object(strategy, "_write_with_retry"):
+            with patch.object(strategy, "_update_agents_file"):
                 result = strategy.inject_context("test context")
                 assert result == {}
 
@@ -124,13 +121,9 @@ class TestCopilotStrategy:
 
         context_file = tmp_path / "dynamic_context.md"
 
-        with patch.object(
-            CopilotStrategy, 'CONTEXT_DIR', tmp_path
-        ):
-            with patch.object(
-                CopilotStrategy, 'DYNAMIC_CONTEXT_FILE', context_file
-            ):
-                with patch.object(strategy, '_update_agents_file'):
+        with patch.object(CopilotStrategy, "CONTEXT_DIR", tmp_path):
+            with patch.object(CopilotStrategy, "DYNAMIC_CONTEXT_FILE", context_file):
+                with patch.object(strategy, "_update_agents_file"):
                     strategy.inject_context(context)
 
                     assert context_file.exists()
@@ -145,11 +138,9 @@ class TestCopilotStrategy:
         context_file = context_dir / "dynamic_context.md"
         agents_file = agents_dir / "AGENTS.md"
 
-        with patch.object(CopilotStrategy, 'CONTEXT_DIR', context_dir):
-            with patch.object(
-                CopilotStrategy, 'DYNAMIC_CONTEXT_FILE', context_file
-            ):
-                with patch.object(CopilotStrategy, 'AGENTS_FILE', agents_file):
+        with patch.object(CopilotStrategy, "CONTEXT_DIR", context_dir):
+            with patch.object(CopilotStrategy, "DYNAMIC_CONTEXT_FILE", context_file):
+                with patch.object(CopilotStrategy, "AGENTS_FILE", agents_file):
                     strategy.inject_context("test")
 
                     assert context_dir.exists()
@@ -159,7 +150,7 @@ class TestCopilotStrategy:
         """Test that power_steer checks for gh CLI."""
         strategy = CopilotStrategy()
 
-        with patch('shutil.which', return_value=None):
+        with patch("shutil.which", return_value=None):
             result = strategy.power_steer("test prompt")
             assert result is False
 
@@ -167,12 +158,9 @@ class TestCopilotStrategy:
         """Test that power_steer spawns correct subprocess."""
         strategy = CopilotStrategy()
 
-        with patch('shutil.which', return_value="/usr/bin/gh"):
-            with patch('subprocess.Popen') as mock_popen:
-                result = strategy.power_steer(
-                    "test prompt",
-                    session_id="test-session"
-                )
+        with patch("shutil.which", return_value="/usr/bin/gh"):
+            with patch("subprocess.Popen") as mock_popen:
+                result = strategy.power_steer("test prompt", session_id="test-session")
 
                 assert result is True
                 mock_popen.assert_called_once()
@@ -191,8 +179,8 @@ class TestCopilotStrategy:
         """Test power_steer without session ID."""
         strategy = CopilotStrategy()
 
-        with patch('shutil.which', return_value="/usr/bin/gh"):
-            with patch('subprocess.Popen') as mock_popen:
+        with patch("shutil.which", return_value="/usr/bin/gh"):
+            with patch("subprocess.Popen") as mock_popen:
                 result = strategy.power_steer("test prompt")
 
                 assert result is True
@@ -204,11 +192,8 @@ class TestCopilotStrategy:
         """Test power_steer handles subprocess failures gracefully."""
         strategy = CopilotStrategy()
 
-        with patch('shutil.which', return_value="/usr/bin/gh"):
-            with patch(
-                'subprocess.Popen',
-                side_effect=OSError("Failed to spawn")
-            ):
+        with patch("shutil.which", return_value="/usr/bin/gh"):
+            with patch("subprocess.Popen", side_effect=OSError("Failed to spawn")):
                 result = strategy.power_steer("test prompt")
                 assert result is False
 
@@ -226,10 +211,9 @@ class TestCopilotAgentsFileUpdate:
         strategy = CopilotStrategy()
         agents_file = tmp_path / "AGENTS.md"
 
-        with patch.object(CopilotStrategy, 'AGENTS_FILE', agents_file):
+        with patch.object(CopilotStrategy, "AGENTS_FILE", agents_file):
             with patch.object(
-                CopilotStrategy, 'DYNAMIC_CONTEXT_FILE',
-                Path("runtime/copilot/dynamic_context.md")
+                CopilotStrategy, "DYNAMIC_CONTEXT_FILE", Path("runtime/copilot/dynamic_context.md")
             ):
                 strategy._update_agents_file()
 
@@ -245,10 +229,9 @@ class TestCopilotAgentsFileUpdate:
         agents_file = tmp_path / "AGENTS.md"
         agents_file.write_text("# Existing Content\n\nSome stuff here.\n")
 
-        with patch.object(CopilotStrategy, 'AGENTS_FILE', agents_file):
+        with patch.object(CopilotStrategy, "AGENTS_FILE", agents_file):
             with patch.object(
-                CopilotStrategy, 'DYNAMIC_CONTEXT_FILE',
-                Path("runtime/copilot/dynamic_context.md")
+                CopilotStrategy, "DYNAMIC_CONTEXT_FILE", Path("runtime/copilot/dynamic_context.md")
             ):
                 strategy._update_agents_file()
 
@@ -266,10 +249,9 @@ class TestCopilotAgentsFileUpdate:
         agents_file.write_text(f"# Content\n\n{include_line}\n")
         original_content = agents_file.read_text()
 
-        with patch.object(CopilotStrategy, 'AGENTS_FILE', agents_file):
+        with patch.object(CopilotStrategy, "AGENTS_FILE", agents_file):
             with patch.object(
-                CopilotStrategy, 'DYNAMIC_CONTEXT_FILE',
-                Path("runtime/copilot/dynamic_context.md")
+                CopilotStrategy, "DYNAMIC_CONTEXT_FILE", Path("runtime/copilot/dynamic_context.md")
             ):
                 strategy._update_agents_file()
 
@@ -280,6 +262,7 @@ class TestCopilotAgentsFileUpdate:
 # ============================================================================
 # INTEGRATION TESTS (30%)
 # ============================================================================
+
 
 class TestClaudeStrategyIntegration:
     """Integration tests for ClaudeStrategy."""
@@ -330,11 +313,9 @@ class TestCopilotStrategyIntegration:
         context_file = context_dir / "dynamic_context.md"
         agents_file = tmp_path / ".github" / "agents" / "AGENTS.md"
 
-        with patch.object(CopilotStrategy, 'CONTEXT_DIR', context_dir):
-            with patch.object(
-                CopilotStrategy, 'DYNAMIC_CONTEXT_FILE', context_file
-            ):
-                with patch.object(CopilotStrategy, 'AGENTS_FILE', agents_file):
+        with patch.object(CopilotStrategy, "CONTEXT_DIR", context_dir):
+            with patch.object(CopilotStrategy, "DYNAMIC_CONTEXT_FILE", context_file):
+                with patch.object(CopilotStrategy, "AGENTS_FILE", agents_file):
                     context = "# Dynamic Context\n\nTest content."
                     result = strategy.inject_context(context)
 
@@ -354,12 +335,9 @@ class TestCopilotStrategyIntegration:
         """Test complete Copilot power steering."""
         strategy = CopilotStrategy()
 
-        with patch('shutil.which', return_value="/usr/bin/gh"):
-            with patch('subprocess.Popen') as mock_popen:
-                result = strategy.power_steer(
-                    "Implement feature Y",
-                    session_id="session-456"
-                )
+        with patch("shutil.which", return_value="/usr/bin/gh"):
+            with patch("subprocess.Popen") as mock_popen:
+                result = strategy.power_steer("Implement feature Y", session_id="session-456")
 
                 assert result is True
 
@@ -375,6 +353,7 @@ class TestCopilotStrategyIntegration:
 # ============================================================================
 # E2E TESTS (10%)
 # ============================================================================
+
 
 class TestStrategyEndToEnd:
     """End-to-end tests for strategy workflows."""
@@ -404,11 +383,9 @@ class TestStrategyEndToEnd:
         context_file = context_dir / "dynamic_context.md"
         agents_file = tmp_path / ".github" / "agents" / "AGENTS.md"
 
-        with patch.object(CopilotStrategy, 'CONTEXT_DIR', context_dir):
-            with patch.object(
-                CopilotStrategy, 'DYNAMIC_CONTEXT_FILE', context_file
-            ):
-                with patch.object(CopilotStrategy, 'AGENTS_FILE', agents_file):
+        with patch.object(CopilotStrategy, "CONTEXT_DIR", context_dir):
+            with patch.object(CopilotStrategy, "DYNAMIC_CONTEXT_FILE", context_file):
+                with patch.object(CopilotStrategy, "AGENTS_FILE", agents_file):
                     # Step 1: Inject context
                     context = "# Task Context\n\nImplement feature Z"
                     inject_result = strategy.inject_context(context)
@@ -418,13 +395,10 @@ class TestStrategyEndToEnd:
                     assert agents_file.exists()
 
                     # Step 2: Power steer
-                    with patch('shutil.which', return_value="/usr/bin/gh"):
-                        with patch('subprocess.Popen') as mock_popen:
+                    with patch("shutil.which", return_value="/usr/bin/gh"):
+                        with patch("subprocess.Popen") as mock_popen:
                             prompt = "Continue implementation"
-                            steer_result = strategy.power_steer(
-                                prompt,
-                                session_id="test-789"
-                            )
+                            steer_result = strategy.power_steer(prompt, session_id="test-789")
 
                             assert steer_result is True
                             assert mock_popen.called
@@ -433,6 +407,7 @@ class TestStrategyEndToEnd:
 # ============================================================================
 # FIXTURES
 # ============================================================================
+
 
 @pytest.fixture
 def tmp_path(tmp_path_factory):

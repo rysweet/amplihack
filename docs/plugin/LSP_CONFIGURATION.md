@@ -13,18 +13,18 @@ The amplihack plugin automatically detects and configures language servers for y
 
 ## Supported Languages
 
-| Language | LSP Server | Auto-Detect | Status |
-|----------|-----------|-------------|---------|
-| TypeScript | tsserver | ✓ | Production |
-| JavaScript | tsserver | ✓ | Production |
-| Python | pylsp | ✓ | Production |
-| Rust | rust-analyzer | ✓ | Production |
-| Go | gopls | ✓ | Production |
-| Java | jdtls | ✓ | Beta |
-| C++ | clangd | ✓ | Beta |
-| Ruby | solargraph | ✓ | Beta |
-| PHP | intelephense | - | Experimental |
-| C# | omnisharp | - | Experimental |
+| Language   | LSP Server    | Auto-Detect | Status       |
+| ---------- | ------------- | ----------- | ------------ |
+| TypeScript | tsserver      | ✓           | Production   |
+| JavaScript | tsserver      | ✓           | Production   |
+| Python     | pylsp         | ✓           | Production   |
+| Rust       | rust-analyzer | ✓           | Production   |
+| Go         | gopls         | ✓           | Production   |
+| Java       | jdtls         | ✓           | Beta         |
+| C++        | clangd        | ✓           | Beta         |
+| Ruby       | solargraph    | ✓           | Beta         |
+| PHP        | intelephense  | -           | Experimental |
+| C#         | omnisharp     | -           | Experimental |
 
 ## Quick Start
 
@@ -131,12 +131,12 @@ LSP configurations stored in `~/.amplihack/config/lsp/`:
           "enabled": true,
           "maxLineLength": 100
         },
-        "pyflakes": {"enabled": true},
-        "pylint": {"enabled": false},
-        "jedi_completion": {"enabled": true},
-        "jedi_hover": {"enabled": true},
-        "jedi_references": {"enabled": true},
-        "jedi_signature_help": {"enabled": true}
+        "pyflakes": { "enabled": true },
+        "pylint": { "enabled": false },
+        "jedi_completion": { "enabled": true },
+        "jedi_hover": { "enabled": true },
+        "jedi_references": { "enabled": true },
+        "jedi_signature_help": { "enabled": true }
       }
     }
   },
@@ -207,6 +207,7 @@ When multiple languages detected:
 3. **Tertiary languages**: Present but < 20%
 
 Example:
+
 ```bash
 Project files:
 - 50 TypeScript files  → Primary (71%)
@@ -404,6 +405,7 @@ clangd --version
 **Issue**: "Language server 'tsserver' not found"
 
 **Solution**:
+
 ```bash
 # Check if server is installed
 which typescript-language-server
@@ -420,6 +422,7 @@ amplihack plugin lsp-test --lang typescript
 **Issue**: Languages not detected automatically
 
 **Solution**:
+
 ```bash
 # Force re-detection
 amplihack plugin lsp-detect --force --verbose
@@ -436,6 +439,7 @@ amplihack plugin lsp-configure --lang typescript
 **Issue**: Language server crashes on startup
 
 **Solution**:
+
 ```bash
 # Check server logs
 amplihack plugin lsp-logs --lang python
@@ -453,6 +457,7 @@ amplihack plugin lsp-configure --lang python
 **Issue**: Project detected as wrong language
 
 **Solution**:
+
 ```bash
 # View detection results
 amplihack plugin lsp-detect --dry-run
@@ -469,6 +474,7 @@ echo '{"lsp": {"auto_detect": false}}' > .amplihack/local/config.json
 **Issue**: LSP causing Claude Code to slow down
 
 **Solution**:
+
 ```bash
 # Disable LSP for large projects
 amplihack local lsp-disable
@@ -498,6 +504,7 @@ amplihack plugin lsp-configure --lang python --server jedi-language-server
 ```
 
 **Switch between servers**:
+
 ```bash
 # Current project
 amplihack local lsp-set --lang python --server pyright
@@ -623,6 +630,7 @@ Agents use LSP information to provide context-aware assistance:
 ### 1. Let Auto-Detection Work
 
 Trust auto-detection for standard projects:
+
 ```bash
 # Good: Let plugin detect
 cd my-project
@@ -635,6 +643,7 @@ claude
 ### 2. Use Project Configs for Exceptions
 
 Override only when necessary:
+
 ```bash
 # Project needs specific settings
 echo '{"lsp": {"python": {"server": "pyright"}}}' > .amplihack/local/lsp.json
@@ -643,6 +652,7 @@ echo '{"lsp": {"python": {"server": "pyright"}}}' > .amplihack/local/lsp.json
 ### 3. Install LSP Servers Globally
 
 Install servers once for all projects:
+
 ```bash
 npm install -g typescript-language-server
 pip install python-lsp-server[all]
@@ -651,6 +661,7 @@ pip install python-lsp-server[all]
 ### 4. Check Status When Troubleshooting
 
 Always start with status check:
+
 ```bash
 amplihack plugin lsp-status
 amplihack plugin lsp-logs
@@ -659,6 +670,7 @@ amplihack plugin lsp-logs
 ### 5. Update LSP Servers Regularly
 
 Keep servers updated:
+
 ```bash
 # Update TypeScript
 npm update -g typescript-language-server typescript
@@ -671,16 +683,16 @@ pip install --upgrade python-lsp-server[all]
 
 ### Commands Summary
 
-| Command | Purpose |
-|---------|---------|
-| `amplihack plugin lsp-detect` | Detect project languages |
-| `amplihack plugin lsp-status` | Show LSP configuration |
+| Command                          | Purpose                   |
+| -------------------------------- | ------------------------- |
+| `amplihack plugin lsp-detect`    | Detect project languages  |
+| `amplihack plugin lsp-status`    | Show LSP configuration    |
 | `amplihack plugin lsp-configure` | Configure language server |
-| `amplihack plugin lsp-add` | Add new language support |
-| `amplihack plugin lsp-test` | Test LSP server |
-| `amplihack plugin lsp-logs` | View LSP logs |
-| `amplihack plugin lsp-reset` | Reset LSP configuration |
-| `amplihack plugin lsp-stats` | Show LSP statistics |
+| `amplihack plugin lsp-add`       | Add new language support  |
+| `amplihack plugin lsp-test`      | Test LSP server           |
+| `amplihack plugin lsp-logs`      | View LSP logs             |
+| `amplihack plugin lsp-reset`     | Reset LSP configuration   |
+| `amplihack plugin lsp-stats`     | Show LSP statistics       |
 
 ### Configuration Schema
 
@@ -688,17 +700,19 @@ Complete LSP configuration schema:
 
 ```typescript
 interface LSPConfig {
-  language: string;              // Language name
-  server: string;                // LSP server name
-  command: string;               // Server executable
-  args?: string[];               // Command arguments
-  initialization_options?: any;  // Server-specific options
-  file_extensions: string[];     // Recognized extensions
-  root_markers: string[];        // Project root indicators
-  workspace?: {                  // Workspace settings
+  language: string; // Language name
+  server: string; // LSP server name
+  command: string; // Server executable
+  args?: string[]; // Command arguments
+  initialization_options?: any; // Server-specific options
+  file_extensions: string[]; // Recognized extensions
+  root_markers: string[]; // Project root indicators
+  workspace?: {
+    // Workspace settings
     [key: string]: any;
   };
-  features?: {                   // Feature toggles
+  features?: {
+    // Feature toggles
     hover?: boolean;
     completion?: boolean;
     diagnostics?: boolean;

@@ -10,9 +10,8 @@ Testing Strategy:
 - 10% E2E tests (complete LSP configuration generation)
 """
 
-import pytest
-from pathlib import Path
 import json
+from pathlib import Path
 
 
 class TestLSPDetectorUnit:
@@ -97,12 +96,7 @@ version = "0.1.0"
         project_root.mkdir()
 
         # TypeScript project
-        package_json = {
-            "name": "myproject",
-            "dependencies": {
-                "typescript": "^5.0.0"
-            }
-        }
+        package_json = {"name": "myproject", "dependencies": {"typescript": "^5.0.0"}}
         (project_root / "package.json").write_text(json.dumps(package_json))
 
         detector = LSPDetector(project_root)
@@ -123,12 +117,7 @@ version = "0.1.0"
         project_root = tmp_path / "project"
         project_root.mkdir()
 
-        package_json = {
-            "name": "myproject",
-            "dependencies": {
-                "express": "^4.0.0"
-            }
-        }
+        package_json = {"name": "myproject", "dependencies": {"express": "^4.0.0"}}
         (project_root / "package.json").write_text(json.dumps(package_json))
 
         detector = LSPDetector(project_root)
@@ -202,9 +191,7 @@ go 1.21
         (project_root / "main.py").write_text("print('hello')")
 
         # TypeScript
-        package_json = {
-            "dependencies": {"typescript": "^5.0.0"}
-        }
+        package_json = {"dependencies": {"typescript": "^5.0.0"}}
         (project_root / "package.json").write_text(json.dumps(package_json))
         (project_root / "index.ts").write_text("console.log('hello');")
 
@@ -367,12 +354,7 @@ class TestLSPDetectorIntegration:
         # Frontend
         frontend = project_root / "frontend"
         frontend.mkdir(parents=True)
-        frontend_package = {
-            "dependencies": {
-                "react": "^18.0.0",
-                "typescript": "^5.0.0"
-            }
-        }
+        frontend_package = {"dependencies": {"react": "^18.0.0", "typescript": "^5.0.0"}}
         (frontend / "package.json").write_text(json.dumps(frontend_package))
 
         # Detect from root
@@ -545,8 +527,9 @@ class TestLSPDetectorEdgeCases:
         - Memory usage is reasonable
         - Accurate results despite size
         """
-        from amplihack.plugin.lsp_detector import LSPDetector
         import time
+
+        from amplihack.plugin.lsp_detector import LSPDetector
 
         project_root = tmp_path / "large_project"
         project_root.mkdir()

@@ -11,14 +11,15 @@ Tests cover:
 - Special character handling
 """
 
+from unittest.mock import MagicMock, patch
+
 import pytest
-from unittest.mock import patch, MagicMock
-import subprocess
+
+from ..azdo_bridge import AzureDevOpsBridge
+from ..cli import CLI
 
 # These imports will fail initially (TDD)
 from ..github_bridge import GitHubBridge
-from ..azdo_bridge import AzureDevOpsBridge
-from ..cli import CLI
 
 
 class TestCommandInjectionPrevention:
@@ -27,17 +28,11 @@ class TestCommandInjectionPrevention:
     @patch("subprocess.run")
     def test_pr_title_injection_prevented(self, mock_run, malicious_pr_title):
         """Should prevent command injection via PR title."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='{"number": 123}',
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout='{"number": 123}', stderr="")
 
         bridge = GitHubBridge()
         result = bridge.create_draft_pr(
-            title=malicious_pr_title,
-            body="Normal body",
-            branch="feature/test"
+            title=malicious_pr_title, body="Normal body", branch="feature/test"
         )
 
         # Verify subprocess.run was called with list, not shell=True
@@ -54,17 +49,11 @@ class TestCommandInjectionPrevention:
     @patch("subprocess.run")
     def test_branch_name_injection_prevented(self, mock_run, malicious_branch_name):
         """Should prevent command injection via branch name."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='{"number": 123}',
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout='{"number": 123}', stderr="")
 
         bridge = GitHubBridge()
         result = bridge.create_draft_pr(
-            title="Test PR",
-            body="Test body",
-            branch=malicious_branch_name
+            title="Test PR", body="Test body", branch=malicious_branch_name
         )
 
         # Verify subprocess called safely
@@ -79,17 +68,10 @@ class TestCommandInjectionPrevention:
         """Should prevent command injection via PR comment."""
         malicious_comment = 'Test comment"; gh pr close 123; echo "'
 
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='{"id": "IC_123"}',
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout='{"id": "IC_123"}', stderr="")
 
         bridge = GitHubBridge()
-        result = bridge.add_pr_comment(
-            pr_number=456,
-            comment=malicious_comment
-        )
+        result = bridge.add_pr_comment(pr_number=456, comment=malicious_comment)
 
         # Verify subprocess called safely
         args = mock_run.call_args[0][0]
@@ -103,17 +85,10 @@ class TestCommandInjectionPrevention:
         """Should prevent command injection via issue body."""
         malicious_body = 'Body content"; rm -rf /; echo "'
 
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='{"number": 123}',
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout='{"number": 123}', stderr="")
 
         bridge = GitHubBridge()
-        result = bridge.create_issue(
-            title="Test Issue",
-            body=malicious_body
-        )
+        result = bridge.create_issue(title="Test Issue", body=malicious_body)
 
         # Verify subprocess called safely
         kwargs = mock_run.call_args[1]
@@ -183,21 +158,14 @@ class TestLengthLimits:
         bridge = GitHubBridge()
 
         with pytest.raises(ValueError, match="title.*too long|exceeds.*limit"):
-            bridge.create_draft_pr(
-                title=oversized_input,
-                body="Test",
-                branch="test"
-            )
+            bridge.create_draft_pr(title=oversized_input, body="Test", branch="test")
 
     def test_issue_title_length_limit(self, oversized_input):
         """Issue titles should have reasonable length limit."""
         bridge = GitHubBridge()
 
         with pytest.raises(ValueError, match="title.*too long|exceeds.*limit"):
-            bridge.create_issue(
-                title=oversized_input,
-                body="Test"
-            )
+            bridge.create_issue(title=oversized_input, body="Test")
 
     def test_body_length_limit(self, oversized_input):
         """Issue/PR bodies should have reasonable length limit."""
@@ -211,7 +179,7 @@ class TestLengthLimits:
         with pytest.raises(ValueError, match="body.*too long|exceeds.*limit"):
             bridge.create_issue(
                 title="Test",
-                body=oversized_input * 10  # Way too long
+                body=oversized_input * 10,  # Way too long
             )
 
     def test_comment_length_limit(self, oversized_input):
@@ -219,10 +187,7 @@ class TestLengthLimits:
         bridge = GitHubBridge()
 
         with pytest.raises(ValueError, match="comment.*too long|exceeds.*limit"):
-            bridge.add_pr_comment(
-                pr_number=123,
-                comment=oversized_input * 10
-            )
+            bridge.add_pr_comment(pr_number=123, comment=oversized_input * 10)
 
     def test_branch_name_length_limit(self):
         """Branch names should have reasonable length limit."""
@@ -230,11 +195,7 @@ class TestLengthLimits:
         very_long_branch = "feature/" + "x" * 500
 
         with pytest.raises(ValueError, match="branch.*too long|exceeds.*limit"):
-            bridge.create_draft_pr(
-                title="Test",
-                body="Test",
-                branch=very_long_branch
-            )
+            bridge.create_draft_pr(title="Test", body="Test", branch=very_long_branch)
 
 
 class TestSpecialCharacterHandling:
@@ -245,18 +206,10 @@ class TestSpecialCharacterHandling:
         """Should handle Unicode characters safely."""
         unicode_title = "Test PR with émojis 🚀 and spëcial çhars"
 
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='{"number": 123}',
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout='{"number": 123}', stderr="")
 
         bridge = GitHubBridge()
-        result = bridge.create_draft_pr(
-            title=unicode_title,
-            body="Test",
-            branch="test"
-        )
+        result = bridge.create_draft_pr(title=unicode_title, body="Test", branch="test")
 
         assert result["success"] is True
 
@@ -265,17 +218,10 @@ class TestSpecialCharacterHandling:
         """Should handle newlines in body text."""
         multiline_body = "Line 1\nLine 2\nLine 3"
 
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='{"number": 123}',
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout='{"number": 123}', stderr="")
 
         bridge = GitHubBridge()
-        result = bridge.create_issue(
-            title="Test",
-            body=multiline_body
-        )
+        result = bridge.create_issue(title="Test", body=multiline_body)
 
         assert result["success"] is True
 
@@ -284,28 +230,17 @@ class TestSpecialCharacterHandling:
         bridge = GitHubBridge()
 
         with pytest.raises(ValueError, match="invalid.*character|null"):
-            bridge.create_issue(
-                title=unicode_injection_attempt,
-                body="Test"
-            )
+            bridge.create_issue(title=unicode_injection_attempt, body="Test")
 
     @patch("subprocess.run")
     def test_quotes_in_title_escaped(self, mock_run):
         """Should properly escape quotes in titles."""
         title_with_quotes = 'Test "quoted" PR'
 
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='{"number": 123}',
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout='{"number": 123}', stderr="")
 
         bridge = GitHubBridge()
-        result = bridge.create_draft_pr(
-            title=title_with_quotes,
-            body="Test",
-            branch="test"
-        )
+        result = bridge.create_draft_pr(title=title_with_quotes, body="Test", branch="test")
 
         # Verify quotes didn't break command structure
         assert result["success"] is True
@@ -320,9 +255,7 @@ class TestErrorMessageSanitization:
     def test_error_message_no_token_leakage(self, mock_run):
         """Error messages should not contain authentication tokens."""
         mock_run.return_value = MagicMock(
-            returncode=1,
-            stdout="",
-            stderr="Error: Bad credentials (token: ghp_secrettoken123456)"
+            returncode=1, stdout="", stderr="Error: Bad credentials (token: ghp_secrettoken123456)"
         )
 
         bridge = GitHubBridge()
@@ -331,7 +264,10 @@ class TestErrorMessageSanitization:
         # Error message should not contain the actual token
         assert "ghp_secrettoken123456" not in result.get("error", "")
         # But should indicate authentication failed
-        assert "credential" in result.get("error", "").lower() or "auth" in result.get("error", "").lower()
+        assert (
+            "credential" in result.get("error", "").lower()
+            or "auth" in result.get("error", "").lower()
+        )
 
     @patch("subprocess.run")
     def test_error_message_no_password_leakage(self, mock_run):
@@ -339,7 +275,7 @@ class TestErrorMessageSanitization:
         mock_run.return_value = MagicMock(
             returncode=1,
             stdout="",
-            stderr="Error: Authentication failed for 'https://user:password123@github.com/repo.git'"
+            stderr="Error: Authentication failed for 'https://user:password123@github.com/repo.git'",
         )
 
         bridge = GitHubBridge()
@@ -354,7 +290,7 @@ class TestErrorMessageSanitization:
         mock_run.return_value = MagicMock(
             returncode=1,
             stdout="",
-            stderr="Error: File not found: /home/user/.secrets/credentials.json"
+            stderr="Error: File not found: /home/user/.secrets/credentials.json",
         )
 
         bridge = GitHubBridge()
@@ -371,11 +307,7 @@ class TestSubprocessArgumentEscaping:
     @patch("subprocess.run")
     def test_arguments_passed_as_list(self, mock_run):
         """Arguments should always be passed as list, never as string."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='{"number": 123}',
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout='{"number": 123}', stderr="")
 
         bridge = GitHubBridge()
         bridge.create_issue(title="Test", body="Test")
@@ -388,11 +320,7 @@ class TestSubprocessArgumentEscaping:
     @patch("subprocess.run")
     def test_shell_never_enabled(self, mock_run):
         """shell=True should never be used."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='{"number": 123}',
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout='{"number": 123}', stderr="")
 
         bridge = GitHubBridge()
         bridge.create_issue(title="Test", body="Test")
@@ -406,17 +334,10 @@ class TestSubprocessArgumentEscaping:
         """Semicolons in input should not cause command chaining."""
         malicious_title = "Test; rm -rf /; echo"
 
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='{"number": 123}',
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout='{"number": 123}', stderr="")
 
         bridge = GitHubBridge()
-        bridge.create_issue(
-            title=malicious_title,
-            body="Test"
-        )
+        bridge.create_issue(title=malicious_title, body="Test")
 
         # Should only call subprocess.run once
         assert mock_run.call_count == 1
@@ -430,17 +351,10 @@ class TestSubprocessArgumentEscaping:
         """Backticks should not cause command substitution."""
         malicious_title = "Test `whoami` PR"
 
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='{"number": 123}',
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout='{"number": 123}', stderr="")
 
         bridge = GitHubBridge()
-        bridge.create_issue(
-            title=malicious_title,
-            body="Test"
-        )
+        bridge.create_issue(title=malicious_title, body="Test")
 
         # Should handle safely
         assert mock_run.call_count == 1
@@ -452,17 +366,10 @@ class TestSubprocessArgumentEscaping:
         """Dollar signs should not cause variable expansion."""
         malicious_title = "Test $HOME PR"
 
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='{"number": 123}',
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout='{"number": 123}', stderr="")
 
         bridge = GitHubBridge()
-        bridge.create_issue(
-            title=malicious_title,
-            body="Test"
-        )
+        bridge.create_issue(title=malicious_title, body="Test")
 
         # Should handle safely
         assert mock_run.call_count == 1
@@ -484,11 +391,7 @@ class TestBranchNameValidation:
             try:
                 # If validation is strict, should raise
                 with pytest.raises(ValueError, match="branch.*invalid"):
-                    bridge.create_draft_pr(
-                        title="Test",
-                        body="Test",
-                        branch=dangerous_branch
-                    )
+                    bridge.create_draft_pr(title="Test", body="Test", branch=dangerous_branch)
             except AssertionError:
                 # If validation allows but escapes, that's also acceptable
                 # Just ensure subprocess.run is called safely
@@ -498,39 +401,25 @@ class TestBranchNameValidation:
         """Branch names should not allow path traversal."""
         bridge = GitHubBridge()
 
-        dangerous_branches = [
-            "../../../etc/passwd",
-            "feature/../../../danger",
-            "./../danger"
-        ]
+        dangerous_branches = ["../../../etc/passwd", "feature/../../../danger", "./../danger"]
 
         for branch in dangerous_branches:
             with pytest.raises(ValueError, match="branch.*invalid|path traversal"):
-                bridge.create_draft_pr(
-                    title="Test",
-                    body="Test",
-                    branch=branch
-                )
+                bridge.create_draft_pr(title="Test", body="Test", branch=branch)
 
 
 class TestAzureDevOpsSecurityParity:
     """Ensure Azure DevOps bridge has same security measures."""
 
     @patch("subprocess.run")
-    def test_azdo_prevents_title_injection(self, mock_run, malicious_pr_title, azdo_config_complete):
+    def test_azdo_prevents_title_injection(
+        self, mock_run, malicious_pr_title, azdo_config_complete
+    ):
         """Azure DevOps bridge should prevent title injection."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='{"pullRequestId": 123}',
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout='{"pullRequestId": 123}', stderr="")
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
-        bridge.create_draft_pr(
-            title=malicious_pr_title,
-            body="Test",
-            branch="test"
-        )
+        bridge.create_draft_pr(title=malicious_pr_title, body="Test", branch="test")
 
         # Verify subprocess called safely
         kwargs = mock_run.call_args[1]
@@ -542,10 +431,7 @@ class TestAzureDevOpsSecurityParity:
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
 
         with pytest.raises(ValueError, match="too long|exceeds.*limit"):
-            bridge.create_issue(
-                title=oversized_input,
-                body="Test"
-            )
+            bridge.create_issue(title=oversized_input, body="Test")
 
     def test_azdo_validates_work_item_id(self, azdo_config_complete):
         """Azure DevOps bridge should validate work item IDs."""
@@ -558,9 +444,7 @@ class TestAzureDevOpsSecurityParity:
     def test_azdo_sanitizes_error_messages(self, mock_run, azdo_config_complete):
         """Azure DevOps bridge should sanitize error messages."""
         mock_run.return_value = MagicMock(
-            returncode=1,
-            stdout="",
-            stderr="Error: PAT token abc123xyz failed"
+            returncode=1, stdout="", stderr="Error: PAT token abc123xyz failed"
         )
 
         bridge = AzureDevOpsBridge(config=azdo_config_complete)
@@ -583,11 +467,7 @@ class TestCLISecurityIntegration:
 
     def test_cli_rejects_dangerous_platform_names(self):
         """CLI should reject potentially dangerous platform names."""
-        dangerous_platforms = [
-            "../github",
-            "github; rm -rf /",
-            "github`whoami`"
-        ]
+        dangerous_platforms = ["../github", "github; rm -rf /", "github`whoami`"]
 
         for platform in dangerous_platforms:
             with pytest.raises(ValueError, match="invalid.*platform"):
@@ -621,11 +501,7 @@ class TestTimeoutConfiguration:
     @patch("subprocess.run")
     def test_subprocess_has_timeout(self, mock_run):
         """All subprocess calls should have timeout configured."""
-        mock_run.return_value = MagicMock(
-            returncode=0,
-            stdout='{"number": 123}',
-            stderr=""
-        )
+        mock_run.return_value = MagicMock(returncode=0, stdout='{"number": 123}', stderr="")
 
         bridge = GitHubBridge(timeout=30)
         bridge.create_issue(title="Test", body="Test")

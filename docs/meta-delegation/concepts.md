@@ -107,14 +107,14 @@ CREATED → STARTING → RUNNING → COMPLETING → COMPLETED
 
 **State Definitions:**
 
-| State        | Description                               | Next States                |
-| ------------ | ----------------------------------------- | -------------------------- |
-| `CREATED`    | Subprocess object created, not started    | `STARTING`                 |
-| `STARTING`   | Process launching, waiting for ready      | `RUNNING`, `FAILED`        |
-| `RUNNING`    | Agent actively working on task            | `COMPLETING`, `FAILED`     |
-| `COMPLETING` | Task done, collecting evidence            | `COMPLETED`, `FAILED`      |
-| `COMPLETED`  | Evidence collected, ready for evaluation  | (terminal)                 |
-| `FAILED`     | Error occurred, process terminated        | (terminal)                 |
+| State        | Description                              | Next States            |
+| ------------ | ---------------------------------------- | ---------------------- |
+| `CREATED`    | Subprocess object created, not started   | `STARTING`             |
+| `STARTING`   | Process launching, waiting for ready     | `RUNNING`, `FAILED`    |
+| `RUNNING`    | Agent actively working on task           | `COMPLETING`, `FAILED` |
+| `COMPLETING` | Task done, collecting evidence           | `COMPLETED`, `FAILED`  |
+| `COMPLETED`  | Evidence collected, ready for evaluation | (terminal)             |
+| `FAILED`     | Error occurred, process terminated       | (terminal)             |
 
 **Example State Flow:**
 
@@ -179,6 +179,7 @@ GUIDE = PersonaStrategy(
 ```
 
 **Behavior:**
+
 - Emphasizes explanations and rationale
 - Creates tutorial-style documentation
 - Includes learning exercises
@@ -213,6 +214,7 @@ QA_ENGINEER = PersonaStrategy(
 ```
 
 **Behavior:**
+
 - Tests every scenario exhaustively
 - Generates extensive test coverage
 - Produces detailed validation reports
@@ -247,6 +249,7 @@ ARCHITECT = PersonaStrategy(
 ```
 
 **Behavior:**
+
 - Emphasizes system design
 - Creates architecture diagrams
 - Defines clear interfaces
@@ -280,6 +283,7 @@ JUNIOR_DEV = PersonaStrategy(
 ```
 
 **Behavior:**
+
 - Implementation-focused
 - Follows specs closely
 - Clean, working code
@@ -388,12 +392,12 @@ def evaluate_success(
 
 **Evaluation Factors:**
 
-| Factor                    | Weight | Description                           |
-| ------------------------- | ------ | ------------------------------------- |
-| Required artifacts exist  | 30%    | Code, tests, docs present             |
-| Success criteria met      | 40%    | Explicit criteria satisfied           |
-| Quality indicators        | 20%    | Tests pass, no errors, clean code     |
-| Completeness              | 10%    | No partial implementations            |
+| Factor                   | Weight | Description                       |
+| ------------------------ | ------ | --------------------------------- |
+| Required artifacts exist | 30%    | Code, tests, docs present         |
+| Success criteria met     | 40%    | Explicit criteria satisfied       |
+| Quality indicators       | 20%    | Tests pass, no errors, clean code |
+| Completeness             | 10%    | No partial implementations        |
 
 **Score Ranges:**
 
@@ -528,6 +532,7 @@ finally:
 **Decision**: Use subprocess isolation.
 
 **Rationale:**
+
 1. **True Isolation**: Subprocess can't access parent memory
 2. **Platform CLI Support**: Platforms expect separate process invocations
 3. **Resource Limits**: Can enforce CPU/memory limits via OS
@@ -535,6 +540,7 @@ finally:
 5. **Monitoring**: Process state visible via OS tools
 
 **Trade-offs:**
+
 - ✓ Strong isolation guarantees
 - ✓ Platform compatibility
 - ✗ Higher resource overhead (~100 MB per subprocess)
@@ -549,6 +555,7 @@ finally:
 **Decision**: Collect and validate evidence independently.
 
 **Rationale:**
+
 1. **Objectivity**: Evidence is factual, not subjective
 2. **Verification**: Can verify claims with artifacts
 3. **Debugging**: Evidence helps diagnose failures
@@ -556,6 +563,7 @@ finally:
 5. **Accountability**: Permanent record of what was produced
 
 **Trade-offs:**
+
 - ✓ Objective validation
 - ✓ Comprehensive audit trail
 - ✗ Storage overhead (evidence size)
@@ -570,6 +578,7 @@ finally:
 **Decision**: Multiple specialized personas.
 
 **Rationale:**
+
 1. **Task Alignment**: Match agent behavior to task needs
 2. **Predictability**: Known behavior patterns
 3. **Optimization**: Tuned for specific objectives
@@ -577,6 +586,7 @@ finally:
 5. **Evidence Quality**: Better artifacts from specialized agents
 
 **Trade-offs:**
+
 - ✓ Better task alignment
 - ✓ Predictable behavior
 - ✗ User must choose persona
@@ -588,21 +598,21 @@ finally:
 
 ### Time Complexity
 
-| Operation              | Complexity | Notes                        |
-| ---------------------- | ---------- | ---------------------------- |
-| Subprocess spawn       | O(1)       | Constant overhead            |
-| Evidence collection    | O(n)       | n = number of files          |
-| Success evaluation     | O(m)       | m = criteria complexity      |
-| Overall delegation     | O(t)       | t = task completion time     |
+| Operation           | Complexity | Notes                    |
+| ------------------- | ---------- | ------------------------ |
+| Subprocess spawn    | O(1)       | Constant overhead        |
+| Evidence collection | O(n)       | n = number of files      |
+| Success evaluation  | O(m)       | m = criteria complexity  |
+| Overall delegation  | O(t)       | t = task completion time |
 
 ### Space Complexity
 
-| Component              | Size       | Notes                        |
-| ---------------------- | ---------- | ---------------------------- |
-| Subprocess overhead    | ~100 MB    | Platform CLI + runtime       |
-| Evidence storage       | ~file size | Proportional to artifacts    |
-| Result object          | ~10 KB     | Metadata + references        |
-| Total per delegation   | ~100 MB    | Plus evidence size           |
+| Component            | Size       | Notes                     |
+| -------------------- | ---------- | ------------------------- |
+| Subprocess overhead  | ~100 MB    | Platform CLI + runtime    |
+| Evidence storage     | ~file size | Proportional to artifacts |
+| Result object        | ~10 KB     | Metadata + references     |
+| Total per delegation | ~100 MB    | Plus evidence size        |
 
 ### Concurrency
 
@@ -639,6 +649,7 @@ async def run_concurrent_delegations():
 **Threat**: Subprocess could access parent environment or file system.
 
 **Mitigation:**
+
 - Run subprocess in restricted directory
 - Don't pass sensitive environment variables
 - Use minimal file system permissions
@@ -649,6 +660,7 @@ async def run_concurrent_delegations():
 **Threat**: Evidence could be manipulated or forged.
 
 **Mitigation:**
+
 - Collect evidence from file system directly (not from agent output)
 - Timestamp all evidence collection
 - Hash evidence files for integrity
@@ -659,6 +671,7 @@ async def run_concurrent_delegations():
 **Threat**: Subprocess could exhaust system resources.
 
 **Mitigation:**
+
 - Enforce timeout limits
 - Monitor CPU and memory usage
 - Kill runaway processes

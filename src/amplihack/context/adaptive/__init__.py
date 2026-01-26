@@ -17,6 +17,6 @@ Public API:
 """
 
 from .detector import LauncherDetector
-from .strategies import HookStrategy, ClaudeStrategy, CopilotStrategy
+from .strategies import ClaudeStrategy, CopilotStrategy, HookStrategy
 
 __all__ = ["LauncherDetector", "HookStrategy", "ClaudeStrategy", "CopilotStrategy"]

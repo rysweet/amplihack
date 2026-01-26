@@ -437,8 +437,7 @@ with noted enhancements in future sprint.
 
         security_content = security_tests[0].content
         assert any(
-            term in security_content.lower()
-            for term in ["sql injection", "xss", "rate limit"]
+            term in security_content.lower() for term in ["sql injection", "xss", "rate limit"]
         )
 
         # Verify test results

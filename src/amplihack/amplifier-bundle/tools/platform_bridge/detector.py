@@ -9,13 +9,12 @@ Philosophy:
 import re
 import subprocess
 from enum import Enum
-from functools import lru_cache
 from pathlib import Path
-from typing import Optional
 
 
 class Platform(Enum):
     """Supported platforms."""
+
     GITHUB = "github"
     AZDO = "azdo"
     UNKNOWN = "unknown"
@@ -24,7 +23,7 @@ class Platform(Enum):
 class PlatformDetector:
     """Detect platform from git remote URL."""
 
-    def __init__(self, repo_path: Optional[str | Path] = None, timeout: int = 30):
+    def __init__(self, repo_path: str | Path | None = None, timeout: int = 30):
         """Initialize detector.
 
         Args:
@@ -36,7 +35,7 @@ class PlatformDetector:
         else:
             self.repo_path = Path(repo_path)
         self.timeout = timeout
-        self._cache: Optional[Platform] = None
+        self._cache: Platform | None = None
 
     def get_remote_url(self, remote: str = "origin") -> str:
         """Get remote URL for repository.
@@ -57,7 +56,7 @@ class PlatformDetector:
                 text=True,
                 check=True,
                 timeout=self.timeout,
-                cwd=self.repo_path
+                cwd=self.repo_path,
             )
 
             # Check for error conditions even if check=True didn't raise
@@ -65,11 +64,13 @@ class PlatformDetector:
             if result.returncode != 0:
                 if result.stderr and "not a git repository" in result.stderr.lower():
                     raise RuntimeError(f"not a git repository: {self.repo_path}")
-                raise RuntimeError(f"Git command failed: {result.stderr if result.stderr else 'unknown error'}")
+                raise RuntimeError(
+                    f"Git command failed: {result.stderr if result.stderr else 'unknown error'}"
+                )
 
             # Parse git remote -v output
             # Format: "remotename\turl (fetch|push)"
-            lines = result.stdout.strip().split('\n')
+            lines = result.stdout.strip().split("\n")
             if not lines or not lines[0]:
                 raise RuntimeError("no remote configured")
 
@@ -81,7 +82,7 @@ class PlatformDetector:
                         if len(parts) >= 2:
                             url = parts[1]
                             # Strip .git suffix if present
-                            if url.endswith('.git'):
+                            if url.endswith(".git"):
                                 url = url[:-4]
                             return url
 
@@ -91,7 +92,7 @@ class PlatformDetector:
                 if len(parts) >= 2:
                     url = parts[1]
                     # Strip .git suffix if present
-                    if url.endswith('.git'):
+                    if url.endswith(".git"):
                         url = url[:-4]
                     return url
 
@@ -105,7 +106,9 @@ class PlatformDetector:
             # Check if it's because we're not in a git repository
             if e.stderr and "not a git repository" in e.stderr.lower():
                 raise RuntimeError(f"not a git repository: {self.repo_path}")
-            raise RuntimeError(f"Failed to get git remote: {e.stderr if e.stderr else 'unknown error'}")
+            raise RuntimeError(
+                f"Failed to get git remote: {e.stderr if e.stderr else 'unknown error'}"
+            )
 
     def detect(self, force_refresh: bool = False) -> Platform:
         """Detect platform from git remote URL.

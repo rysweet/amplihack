@@ -14,19 +14,15 @@ Philosophy:
 - Fast execution (< 5 minutes total)
 """
 
-import pytest
 import json
-from pathlib import Path
+
+import pytest
 
 from .harness import (
+    create_python_project,
     uvx_launch,
     uvx_launch_with_test_project,
-    assert_settings_generated,
-    assert_output_contains,
-    assert_log_contains,
-    create_python_project,
 )
-
 
 # Git reference to test
 GIT_REF = "feat/issue-1948-plugin-architecture"
@@ -209,7 +205,9 @@ class TestSettingsValidation:
         if settings_path.exists():
             content = settings_path.read_text()
             # Should be indented (not minified)
-            assert "  " in content or "\t" in content, "Settings should be formatted with indentation"
+            assert "  " in content or "\t" in content, (
+                "Settings should be formatted with indentation"
+            )
 
 
 class TestSettingsUpdate:

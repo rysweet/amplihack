@@ -28,8 +28,9 @@ class TestSuccessCriteriaEvaluator:
     @pytest.fixture
     def sample_evidence(self):
         """Create sample evidence items."""
-        from amplihack.meta_delegation.evidence_collector import EvidenceItem
         from datetime import datetime
+
+        from amplihack.meta_delegation.evidence_collector import EvidenceItem
 
         return [
             EvidenceItem(
@@ -76,8 +77,9 @@ class TestSuccessCriteriaEvaluator:
 
     def test_evaluate_with_all_criteria_met(self, evaluator):
         """Test evaluation when all criteria are met."""
-        from amplihack.meta_delegation.evidence_collector import EvidenceItem
         from datetime import datetime
+
+        from amplihack.meta_delegation.evidence_collector import EvidenceItem
 
         criteria = """
         - Has login.py file
@@ -129,8 +131,9 @@ class TestSuccessCriteriaEvaluator:
 
     def test_evaluate_with_partial_completion(self, evaluator):
         """Test evaluation with partial criteria completion."""
-        from amplihack.meta_delegation.evidence_collector import EvidenceItem
         from datetime import datetime
+
+        from amplihack.meta_delegation.evidence_collector import EvidenceItem
 
         criteria = """
         - Has user model
@@ -180,8 +183,9 @@ class TestSuccessCriteriaEvaluator:
 
     def test_evaluate_bonus_for_documentation(self, evaluator):
         """Test bonus points for including documentation."""
-        from amplihack.meta_delegation.evidence_collector import EvidenceItem
         from datetime import datetime
+
+        from amplihack.meta_delegation.evidence_collector import EvidenceItem
 
         criteria = "Has code"
 
@@ -364,8 +368,9 @@ class TestSuccessEvaluationEdgeCases:
 
     def test_evaluate_with_conflicting_evidence(self, evaluator):
         """Test evaluation when evidence conflicts with criteria."""
-        from amplihack.meta_delegation.evidence_collector import EvidenceItem
         from datetime import datetime
+
+        from amplihack.meta_delegation.evidence_collector import EvidenceItem
 
         criteria = "Tests must pass"
 
@@ -390,8 +395,9 @@ class TestSuccessEvaluationEdgeCases:
 
     def test_evaluate_recognizes_test_patterns(self, evaluator):
         """Test evaluator recognizes various test output patterns."""
-        from amplihack.meta_delegation.evidence_collector import EvidenceItem
         from datetime import datetime
+
+        from amplihack.meta_delegation.evidence_collector import EvidenceItem
 
         criteria = "Tests pass"
         evidence = [

@@ -15,12 +15,14 @@ Implemented complete subprocess-based test harness fer outside-in plugin testin'
 #### `subprocess_test_harness.py` (720 lines)
 
 **Public API (the "studs"):**
+
 - `SubprocessResult` - Dataclass with assertion helpers
 - `PluginTestHarness` - Plugin lifecycle testin'
 - `HookTestHarness` - Hook protocol testin'
 - `LSPTestHarness` - LSP detection testin'
 
 **Key Features:**
+
 - Real subprocess execution (no mockin')
 - Comprehensive error handlin' with timeouts
 - Helper assertions fer clear test output
@@ -32,6 +34,7 @@ Implemented complete subprocess-based test harness fer outside-in plugin testin'
 #### `test_plugin_manager_e2e.py` (350 lines)
 
 **Test Classes:**
+
 - `TestPluginLifecycle` (9 tests)
   - Local plugin installation
   - Git repository installation
@@ -50,6 +53,7 @@ Implemented complete subprocess-based test harness fer outside-in plugin testin'
 #### `test_hook_protocol_e2e.py` (350 lines)
 
 **Test Classes:**
+
 - `TestHookExecution` (7 tests)
   - Python hook execution
   - Bash hook execution
@@ -71,6 +75,7 @@ Implemented complete subprocess-based test harness fer outside-in plugin testin'
 #### `test_lsp_detection_e2e.py` (400 lines)
 
 **Test Classes:**
+
 - `TestLanguageDetection` (6 tests)
   - Python project detection
   - TypeScript project detection
@@ -98,6 +103,7 @@ Implemented complete subprocess-based test harness fer outside-in plugin testin'
 ### 3. Additional Fixtures (`tests/conftest.py`)
 
 Added 4 new fixtures:
+
 - `sample_plugin` - Pre-built valid plugin fer testin'
 - `invalid_plugin` - Invalid plugin fer error handlin'
 - `multi_language_project` - Multi-language project fer LSP tests
@@ -106,6 +112,7 @@ Added 4 new fixtures:
 ### 4. Documentation (`tests/harness/README.md`)
 
 Complete usage guide with:
+
 - Philosophy and approach
 - API reference fer all harnesses
 - Code examples
@@ -115,12 +122,12 @@ Complete usage guide with:
 
 ## Test Coverage Summary
 
-| Harness Class | E2E Tests | Key Features |
-|--------------|-----------|--------------|
-| PluginTestHarness | 11 | Install, uninstall, list, verify |
-| HookTestHarness | 12 | Create, trigger, list, lifecycle |
-| LSPTestHarness | 16 | Detect, configure, multi-language |
-| **Total** | **39** | **Complete outside-in coverage** |
+| Harness Class     | E2E Tests | Key Features                      |
+| ----------------- | --------- | --------------------------------- |
+| PluginTestHarness | 11        | Install, uninstall, list, verify  |
+| HookTestHarness   | 12        | Create, trigger, list, lifecycle  |
+| LSPTestHarness    | 16        | Detect, configure, multi-language |
+| **Total**         | **39**    | **Complete outside-in coverage**  |
 
 ## File Structure
 
@@ -143,21 +150,25 @@ tests/
 ## Philosophy Alignment
 
 ✅ **Ruthless Simplicity**
+
 - Simple, direct implementations
 - No complex abstractions
 - Clear, focused classes
 
 ✅ **Zero-BS Implementation**
+
 - All code is workin' (no stubs)
 - Real subprocess execution
 - Comprehensive error handlin'
 
 ✅ **Modular Design (Bricks & Studs)**
+
 - Self-contained harness module
 - Clear public API via `__all__`
 - Each harness has single responsibility
 
 ✅ **Outside-In Testin'**
+
 - Tests from user perspective
 - Real command execution
 - Verifies actual behavior
@@ -167,6 +178,7 @@ tests/
 ### 1. SubprocessResult Helper
 
 Provides clear assertion methods:
+
 ```python
 result.assert_success("Custom message")
 result.assert_failure("Expected to fail")
@@ -177,6 +189,7 @@ result.assert_in_stderr("error text")
 ### 2. Automatic Cleanup
 
 All harnesses have cleanup methods:
+
 ```python
 harness = PluginTestHarness()
 try:
@@ -188,6 +201,7 @@ finally:
 ### 3. Timeout Enforcement
 
 All commands have configurable timeouts:
+
 ```python
 harness = PluginTestHarness(timeout=60)  # 60-second timeout
 result = harness.install_plugin(source)  # Times out if too slow
@@ -196,6 +210,7 @@ result = harness.install_plugin(source)  # Times out if too slow
 ### 4. Clear Error Messages
 
 Failed commands show full context:
+
 ```
 Command failed: amplihack plugin install /path/to/plugin
 Exit code: 1
@@ -206,6 +221,7 @@ Stderr: <error details>
 ## Test Pyramid Distribution
 
 Current distribution:
+
 - **E2E Tests**: 39 tests (this implementation)
 - **Integration Tests**: 10 tests (from TEST_PLAN_PLUGIN_ARCHITECTURE.md)
 - **Unit Tests**: 102 tests (from TEST_PLAN_PLUGIN_ARCHITECTURE.md)
@@ -213,6 +229,7 @@ Current distribution:
 **Total**: 151 tests fer plugin architecture
 
 **Pyramid**:
+
 ```
 E2E:         39/151 = 26% (Target: 10%)
 Integration: 10/151 = 7%  (Target: 30%)
@@ -284,6 +301,7 @@ PASSED test_lsp_detection_e2e.py::TestLanguageDetection::test_detect_python_proj
 ### 1. Implement Plugin Manager Brick
 
 Create `src/amplihack/plugin_manager/` with:
+
 - `install()` - Plugin installation
 - `uninstall()` - Plugin removal
 - `list()` - List installed plugins
@@ -294,6 +312,7 @@ Create `src/amplihack/plugin_manager/` with:
 ### 2. Implement Hook Protocol Brick
 
 Create hook execution system with:
+
 - Hook creation and registration
 - Hook triggerin' with arguments
 - Error handlin' and timeouts
@@ -304,6 +323,7 @@ Create hook execution system with:
 ### 3. Implement LSP Detection Brick
 
 Create LSP detection with:
+
 - Language detection from file extensions
 - LSP configuration generation
 - Multi-language support
@@ -314,6 +334,7 @@ Create LSP detection with:
 ### 4. Integration
 
 Integrate all bricks:
+
 - Plugin installation triggers LSP detection
 - Hooks run at appropriate lifecycle points
 - Settings.json merges MCP servers and LSP configs
@@ -323,6 +344,7 @@ Integrate all bricks:
 ## Quality Metrics
 
 After implementation, target:
+
 - **Line coverage**: > 90%
 - **Branch coverage**: > 85%
 - **Function coverage**: > 95%

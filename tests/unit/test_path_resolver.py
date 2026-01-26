@@ -8,7 +8,8 @@ Testing pyramid:
 
 import os
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import patch
+
 import pytest
 
 
@@ -127,10 +128,7 @@ class TestPathResolverDictResolution:
         from amplihack.path_resolver import PathResolver
 
         resolver = PathResolver()
-        data = {
-            "file": "relative/path.py",
-            "other": "another/file.js"
-        }
+        data = {"file": "relative/path.py", "other": "another/file.js"}
         plugin_root = Path("/plugin/root")
 
         resolved = resolver.resolve_dict(data, plugin_root)
@@ -143,14 +141,7 @@ class TestPathResolverDictResolution:
         from amplihack.path_resolver import PathResolver
 
         resolver = PathResolver()
-        data = {
-            "mcpServers": {
-                "server1": {
-                    "cwd": "servers/mcp1",
-                    "script": "server.js"
-                }
-            }
-        }
+        data = {"mcpServers": {"server1": {"cwd": "servers/mcp1", "script": "server.js"}}}
         plugin_root = Path("/plugin/root")
 
         resolved = resolver.resolve_dict(data, plugin_root)
@@ -168,7 +159,7 @@ class TestPathResolverDictResolution:
             "version": "1.0.0",
             "count": 42,
             "enabled": True,
-            "path": "relative/path.py"
+            "path": "relative/path.py",
         }
         plugin_root = Path("/plugin/root")
 
@@ -185,9 +176,7 @@ class TestPathResolverDictResolution:
         from amplihack.path_resolver import PathResolver
 
         resolver = PathResolver()
-        data = {
-            "files": ["file1.py", "file2.js", "file3.ts"]
-        }
+        data = {"files": ["file1.py", "file2.js", "file3.ts"]}
         plugin_root = Path("/plugin/root")
 
         resolved = resolver.resolve_dict(data, plugin_root)
@@ -201,9 +190,7 @@ class TestPathResolverDictResolution:
         from amplihack.path_resolver import PathResolver
 
         resolver = PathResolver()
-        data = {
-            "mixed": ["file.py", 42, True, "another/file.js"]
-        }
+        data = {"mixed": ["file.py", 42, True, "another/file.js"]}
         plugin_root = Path("/plugin/root")
 
         resolved = resolver.resolve_dict(data, plugin_root)
@@ -229,15 +216,7 @@ class TestPathResolverDictResolution:
         from amplihack.path_resolver import PathResolver
 
         resolver = PathResolver()
-        data = {
-            "level1": {
-                "level2": {
-                    "level3": {
-                        "path": "deep/path.py"
-                    }
-                }
-            }
-        }
+        data = {"level1": {"level2": {"level3": {"path": "deep/path.py"}}}}
         plugin_root = Path("/plugin/root")
 
         resolved = resolver.resolve_dict(data, plugin_root)
@@ -251,10 +230,7 @@ class TestPathResolverDictResolution:
 
         resolver = PathResolver()
         absolute = "/absolute/path/file.py"
-        data = {
-            "absolute": absolute,
-            "relative": "relative/path.py"
-        }
+        data = {"absolute": absolute, "relative": "relative/path.py"}
         plugin_root = Path("/plugin/root")
 
         resolved = resolver.resolve_dict(data, plugin_root)
@@ -384,10 +360,7 @@ class TestPathResolverEdgeCases:
         from amplihack.path_resolver import PathResolver
 
         resolver = PathResolver()
-        data = {
-            "valid_path": "file.py",
-            "null_value": None
-        }
+        data = {"valid_path": "file.py", "null_value": None}
         plugin_root = Path("/plugin/root")
 
         resolved = resolver.resolve_dict(data, plugin_root)

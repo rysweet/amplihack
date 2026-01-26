@@ -131,7 +131,6 @@ markers = [
     "gadugi: marks tests as requiring gadugi-agentic-test",
     "slow_tui: marks tests as slow TUI tests (takes >30 seconds)",
     "asyncio: marks tests as async tests",
-    "neo4j: marks tests as Neo4j memory system tests",
     "requires_docker: marks tests as requiring Docker daemon",
 ]
 filterwarnings = [

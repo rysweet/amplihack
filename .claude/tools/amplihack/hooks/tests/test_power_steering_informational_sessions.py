@@ -9,7 +9,7 @@ Tests for issues #2021 and #2011.
 import json
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -185,11 +185,15 @@ class TestInformationalSessions:
                     transcript.append(json.loads(line))
 
         session_type = checker.detect_session_type(transcript)
-        assert session_type == "INFORMATIONAL", f"Simple question should be INFORMATIONAL, got {session_type}"
+        assert session_type == "INFORMATIONAL", (
+            f"Simple question should be INFORMATIONAL, got {session_type}"
+        )
 
         # Should have no applicable checks
         applicable = checker.get_applicable_considerations("INFORMATIONAL")
-        assert len(applicable) == 0, f"INFORMATIONAL sessions should have no applicable checks, got {len(applicable)}"
+        assert len(applicable) == 0, (
+            f"INFORMATIONAL sessions should have no applicable checks, got {len(applicable)}"
+        )
 
 
 if __name__ == "__main__":

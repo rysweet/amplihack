@@ -3,7 +3,6 @@
 import re
 from typing import Any
 
-
 # Claude model constants (exported for use in server.py)
 CLAUDE_MODELS = [
     "claude-3-opus-20240229",
@@ -354,25 +353,25 @@ class GitHubModelMapper:
 
         # Valid pattern: lowercase alphanumeric, hyphens, dots, underscores only
         # Must start with lowercase letter (model names are always lowercase)
-        valid_pattern = re.compile(r'^[a-z][a-z0-9\-\.]{0,199}$')
+        valid_pattern = re.compile(r"^[a-z][a-z0-9\-\.]{0,199}$")
 
         if not valid_pattern.match(model_name):
             raise ValueError(f"Invalid model name: {model_name}")
 
         # Check for path traversal (legitimate security concern)
-        if '..' in model_name or '/' in model_name or '\\' in model_name:
-            raise ValueError(f"Invalid model name: contains forbidden characters")
+        if ".." in model_name or "/" in model_name or "\\" in model_name:
+            raise ValueError("Invalid model name: contains forbidden characters")
 
         # Check for newlines (header injection - legitimate concern)
-        if '\n' in model_name or '\r' in model_name:
-            raise ValueError(f"Invalid model name: contains newline characters")
+        if "\n" in model_name or "\r" in model_name:
+            raise ValueError("Invalid model name: contains newline characters")
 
         # Check for null bytes (legitimate security concern)
-        if '\x00' in model_name:
-            raise ValueError(f"Invalid model name: contains null byte")
+        if "\x00" in model_name:
+            raise ValueError("Invalid model name: contains null byte")
 
         # Check for non-ASCII characters (unicode)
         if not model_name.isascii():
-            raise ValueError(f"Invalid model name: contains non-ASCII characters")
+            raise ValueError("Invalid model name: contains non-ASCII characters")
 
         return True

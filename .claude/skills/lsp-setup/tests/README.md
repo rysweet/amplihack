@@ -20,6 +20,7 @@ tests/
 ## Testing Pyramid
 
 ### 60% Unit Tests (Fast, Heavily Mocked)
+
 - **test_language_detector.py**: 33 tests
   - Language detection for all 16 languages
   - File extension mapping
@@ -50,6 +51,7 @@ tests/
 **Total Unit Tests**: 106 tests
 
 ### 30% Integration Tests (Multiple Components)
+
 - **test_integration.py**: 15 tests
   - Language detection + status checking
   - Plugin installation workflows
@@ -58,6 +60,7 @@ tests/
   - Status reporting
 
 ### 10% E2E Tests (Complete Workflows)
+
 - **test_e2e.py**: 18 tests
   - First-time user auto-setup
   - Manual setup with guidance
@@ -71,11 +74,13 @@ tests/
 ## Running Tests
 
 ### Run All Tests
+
 ```bash
 pytest .claude/skills/lsp-setup/tests/
 ```
 
 ### Run by Category
+
 ```bash
 # Unit tests only (fast)
 pytest .claude/skills/lsp-setup/tests/test_language_detector.py
@@ -91,11 +96,13 @@ pytest .claude/skills/lsp-setup/tests/test_e2e.py
 ```
 
 ### Run with Coverage
+
 ```bash
 pytest --cov=lsp_setup --cov-report=html .claude/skills/lsp-setup/tests/
 ```
 
 ### Run Specific Test
+
 ```bash
 pytest .claude/skills/lsp-setup/tests/test_language_detector.py::TestLanguageDetector::test_detect_single_python_project
 ```
@@ -103,21 +110,25 @@ pytest .claude/skills/lsp-setup/tests/test_language_detector.py::TestLanguageDet
 ## Test Fixtures (conftest.py)
 
 ### Directory Fixtures
+
 - `mock_project_root`: Temporary project directory
 - `mock_env_file`: Mock .env file path
 
 ### File Fixtures
+
 - `sample_python_files`: Python project structure
 - `sample_typescript_files`: TypeScript project structure
 - `sample_mixed_language_files`: Multi-language project
 
 ### Mock Fixtures
+
 - `mock_subprocess_run`: Mock subprocess calls
 - `mock_shutil_which`: Mock binary detection
 - `mock_npx_cclsp_success`: Mock successful plugin installation
 - `mock_npx_cclsp_failure`: Mock failed plugin installation
 
 ### Data Fixtures
+
 - `installed_lsp_binaries`: Simulated installed LSP servers
 - `missing_lsp_binaries`: Simulated missing LSP servers
 - `language_to_lsp_mapping`: Language to LSP server mapping
@@ -125,12 +136,14 @@ pytest .claude/skills/lsp-setup/tests/test_language_detector.py::TestLanguageDet
 ## Test Coverage Goals
 
 ### Module Coverage Targets
+
 - `language_detector.py`: 95%+ coverage
 - `lsp_configurator.py`: 90%+ coverage
 - `plugin_manager.py`: 90%+ coverage
 - `status_tracker.py`: 95%+ coverage
 
 ### Critical Paths (Must be 100%)
+
 - Language detection for all 16 languages
 - Three-layer status checking
 - .env file manipulation
@@ -139,9 +152,11 @@ pytest .claude/skills/lsp-setup/tests/test_language_detector.py::TestLanguageDet
 ## TDD Red-Green-Refactor Cycle
 
 ### Current State: RED ❌
+
 All tests currently FAIL because implementation doesn't exist yet.
 
 ### Next Steps (GREEN ✅)
+
 1. Implement `language_detector.py` to pass unit tests
 2. Implement `lsp_configurator.py` to pass unit tests
 3. Implement `plugin_manager.py` to pass unit tests
@@ -150,7 +165,9 @@ All tests currently FAIL because implementation doesn't exist yet.
 6. Verify E2E tests pass
 
 ### Refactor Phase
+
 Once all tests pass:
+
 1. Identify code duplication
 2. Extract common patterns
 3. Optimize performance
@@ -160,6 +177,7 @@ Once all tests pass:
 ## Test Ratio Analysis
 
 ### Current Test-to-Code Ratio
+
 - **139 comprehensive tests** written
 - **~350 lines per test file** (average)
 - **Total test code**: ~2,100 lines
@@ -167,6 +185,7 @@ Once all tests pass:
 - **Ratio**: 3:1 to 4:1 (within target 3:1 to 5:1)
 
 This ratio ensures:
+
 - Comprehensive coverage without over-testing
 - Fast test execution (unit tests run in seconds)
 - Clear test intent (each test tests ONE thing)
@@ -175,7 +194,9 @@ This ratio ensures:
 ## Key Testing Patterns Used
 
 ### 1. Arrange-Act-Assert
+
 Every test follows AAA pattern:
+
 ```python
 def test_example(self, mock_project_root):
     # Arrange
@@ -190,7 +211,9 @@ def test_example(self, mock_project_root):
 ```
 
 ### 2. Strategic Mocking
+
 Mock external dependencies (filesystem, subprocess, network):
+
 ```python
 with patch("subprocess.run", mock_subprocess_run):
     manager = PluginManager()
@@ -198,7 +221,9 @@ with patch("subprocess.run", mock_subprocess_run):
 ```
 
 ### 3. Parametrized Tests (Not Used Here)
+
 Could be added for testing all 16 languages:
+
 ```python
 @pytest.mark.parametrize("language,extension", [
     ("python", ".py"),
@@ -218,6 +243,7 @@ pip install pytest pytest-cov pytest-mock
 ## CI Integration
 
 ### GitHub Actions Example
+
 ```yaml
 - name: Run Tests
   run: |
@@ -230,7 +256,9 @@ pip install pytest pytest-cov pytest-mock
 ## Troubleshooting
 
 ### Import Errors
+
 If tests fail with import errors:
+
 ```bash
 # Ensure lsp_setup package is in PYTHONPATH
 export PYTHONPATH="${PYTHONPATH}:.claude/skills"
@@ -238,10 +266,13 @@ pytest .claude/skills/lsp-setup/tests/
 ```
 
 ### Fixture Not Found
+
 Ensure `conftest.py` is in the same directory as test files.
 
 ### Mock Not Working
+
 Check that patches are applied in correct order (innermost first):
+
 ```python
 with patch("shutil.which", mock_which):
     with patch("subprocess.run", mock_run):

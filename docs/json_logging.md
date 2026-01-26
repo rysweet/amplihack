@@ -51,6 +51,7 @@ Logged at the beginning of each turn.
 ```
 
 **Fields:**
+
 - `turn`: Current turn number (1-indexed)
 - `phase`: Current phase (`clarifying`, `planning`, `executing`, `evaluating`, `summarizing`)
 - `max_turns`: Maximum turns configured for the session
@@ -71,6 +72,7 @@ Logged when a turn finishes execution.
 ```
 
 **Fields:**
+
 - `turn`: Turn number that completed
 - `duration_sec`: Duration of the turn in seconds (rounded to 2 decimal places)
 - `success`: Boolean indicating if the turn succeeded (exit code 0)
@@ -90,6 +92,7 @@ Logged when an agent or tool is invoked during execution.
 ```
 
 **Fields:**
+
 - `agent`: Name of the agent/tool invoked (e.g., `TodoWrite`, `builder`, `tester`)
 - `turn`: Turn number during which the agent was invoked
 
@@ -109,6 +112,7 @@ Logged when an error occurs during execution.
 ```
 
 **Fields:**
+
 - `turn`: Turn number when the error occurred
 - `error_type`: Type of error (e.g., `timeout`, `TimeoutError`, `ValueError`)
 - `message`: Human-readable error message

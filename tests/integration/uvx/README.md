@@ -5,6 +5,7 @@
 ## Overview
 
 This test suite validates amplihack functionality from the user's perspective by:
+
 - Launching amplihack via `uvx --from git+...`
 - Using non-interactive prompts (`-p` flag)
 - Validating output through stdout, stderr, and log files
@@ -246,6 +247,7 @@ result = uvx_launch(
 ### Environment Variables
 
 Tests set these automatically:
+
 - `AMPLIHACK_CI_MODE=1` - Non-interactive mode
 - `AMPLIHACK_LOG_LEVEL=DEBUG` - Verbose logging
 
@@ -273,7 +275,7 @@ result = uvx_launch(
 ```yaml
 - script: |
     pytest tests/integration/uvx/ -v --timeout=300
-  displayName: 'UVX Integration Tests'
+  displayName: "UVX Integration Tests"
 ```
 
 ## Performance Targets
@@ -356,21 +358,25 @@ print(f"Cleaned {count} temp directories")
 ## Philosophy Compliance
 
 ✅ **Ruthless Simplicity**
+
 - Direct, focused tests
 - No complex test frameworks
 - Simple assertion helpers
 
 ✅ **Zero-BS Implementation**
+
 - All tests verify real behavior
 - No mocking of UVX or amplihack
 - Real subprocess execution
 
 ✅ **Modular Design (Bricks & Studs)**
+
 - Self-contained harness module
 - Clear public API via `__all__`
 - Tests are independent
 
 ✅ **Outside-In Testing**
+
 - Tests from user perspective
 - Validates actual UVX workflow
 - Verifies end-to-end functionality
@@ -378,6 +384,7 @@ print(f"Cleaned {count} temp directories")
 ## Contributing
 
 When adding tests:
+
 1. Follow existing test structure
 2. Use harness helpers consistently
 3. Keep tests under 60 seconds

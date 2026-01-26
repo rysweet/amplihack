@@ -13,7 +13,6 @@ Public API (the "studs"):
 
 import argparse
 import platform
-from pathlib import Path
 
 from ..plugin_manager import PluginManager
 from .verifier import PluginVerifier
@@ -34,16 +33,15 @@ def plugin_install_command(args: argparse.Namespace) -> int:
         0 on success, 1 on failure
     """
     manager = PluginManager()
-    result = manager.install(args.source, force=getattr(args, 'force', False))
+    result = manager.install(args.source, force=getattr(args, "force", False))
 
     if result.success:
         print(f"{SUCCESS} Plugin installed: {result.plugin_name}")
         print(f"   Location: {result.installed_path}")
         print(f"   {result.message}")
         return 0
-    else:
-        print(f"{FAILURE} Installation failed: {result.message}")
-        return 1
+    print(f"{FAILURE} Installation failed: {result.message}")
+    return 1
 
 
 def plugin_uninstall_command(args: argparse.Namespace) -> int:
@@ -61,10 +59,9 @@ def plugin_uninstall_command(args: argparse.Namespace) -> int:
     if success:
         print(f"{SUCCESS} Plugin removed: {args.plugin_name}")
         return 0
-    else:
-        print(f"{FAILURE} Failed to remove plugin: {args.plugin_name}")
-        print("   Plugin may not be installed or removal failed")
-        return 1
+    print(f"{FAILURE} Failed to remove plugin: {args.plugin_name}")
+    print("   Plugin may not be installed or removal failed")
+    return 1
 
 
 def plugin_verify_command(args: argparse.Namespace) -> int:

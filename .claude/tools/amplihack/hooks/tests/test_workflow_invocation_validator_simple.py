@@ -178,9 +178,9 @@ def run_all_tests():
             print(f"✗ {test.__name__}: Unexpected error: {e}")
             failed += 1
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Results: {passed} passed, {failed} failed out of {passed + failed} tests")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     return failed == 0
 

@@ -10,9 +10,9 @@ Testing Strategy:
 - 10% E2E tests (complete substitution workflows)
 """
 
-import pytest
 from pathlib import Path
-from unittest.mock import Mock, patch
+
+import pytest
 
 
 class TestVariableSubstitutorUnit:
@@ -49,10 +49,7 @@ class TestVariableSubstitutorUnit:
         """
         from amplihack.plugin.variable_substitutor import VariableSubstitutor
 
-        variables = {
-            "ROOT": "/home/user",
-            "PROJECT": "myproject"
-        }
+        variables = {"ROOT": "/home/user", "PROJECT": "myproject"}
 
         substitutor = VariableSubstitutor(variables)
 
@@ -136,12 +133,7 @@ class TestVariableSubstitutorUnit:
         substitutor = VariableSubstitutor(variables)
 
         # These should all be valid
-        safe_paths = [
-            "/absolute/path",
-            "relative/path",
-            "${ROOT}/subdir/file",
-            "tools/hook.sh"
-        ]
+        safe_paths = ["/absolute/path", "relative/path", "${ROOT}/subdir/file", "tools/hook.sh"]
 
         for path in safe_paths:
             assert substitutor.validate_path(path)  # Should not raise
@@ -185,10 +177,8 @@ class TestVariableSubstitutorUnit:
         data = {
             "path": "${ROOT}/file.txt",
             "count": 42,
-            "nested": {
-                "inner_path": "${ROOT}/nested/file"
-            },
-            "list": ["${ROOT}/item1", "${ROOT}/item2"]
+            "nested": {"inner_path": "${ROOT}/nested/file"},
+            "list": ["${ROOT}/item1", "${ROOT}/item2"],
         }
 
         result = substitutor.substitute_dict(data)
@@ -241,8 +231,7 @@ class TestVariableSubstitutorSecurity:
         # Try to escape to /etc
         with pytest.raises(SecurityError):
             substitutor.validate_path_within_root(
-                "/etc/passwd",
-                allowed_root=Path("/home/user/.amplihack")
+                "/etc/passwd", allowed_root=Path("/home/user/.amplihack")
             )
 
     def test_prevent_symlink_traversal(self):
@@ -264,8 +253,7 @@ class TestVariableSubstitutorSecurity:
         with pytest.raises(SecurityError):
             # Simulated symlink that points outside allowed root
             substitutor.validate_symlink(
-                Path("/home/user/link_to_etc"),
-                allowed_root=Path("/home/user/.amplihack")
+                Path("/home/user/link_to_etc"), allowed_root=Path("/home/user/.amplihack")
             )
 
     def test_prevent_variable_injection(self):
@@ -293,8 +281,9 @@ class TestVariableSubstitutorSecurity:
         - No access to os.environ or system variables
         - Attempts to use undefined variables fail
         """
-        from amplihack.plugin.variable_substitutor import VariableSubstitutor
         import os
+
+        from amplihack.plugin.variable_substitutor import VariableSubstitutor
 
         # Set environment variable
         os.environ["SECRET_KEY"] = "sensitive_value"
@@ -356,14 +345,8 @@ class TestVariableSubstitutorIntegration:
         substitutor = VariableSubstitutor(variables)
 
         settings = {
-            "hooks": {
-                "PreRun": "${ROOT}/tools/pre.sh",
-                "PostRun": "${ROOT}/tools/post.sh"
-            },
-            "include_paths": [
-                "${ROOT}/context",
-                "${ROOT}/agents"
-            ]
+            "hooks": {"PreRun": "${ROOT}/tools/pre.sh", "PostRun": "${ROOT}/tools/post.sh"},
+            "include_paths": ["${ROOT}/context", "${ROOT}/agents"],
         }
 
         result = substitutor.substitute_dict(settings)
@@ -382,18 +365,15 @@ class TestVariableSubstitutorIntegration:
         - Security validation occurs
         - Result can be used for file operations
         """
-        from amplihack.plugin.variable_substitutor import VariableSubstitutor
         import json
+
+        from amplihack.plugin.variable_substitutor import VariableSubstitutor
 
         plugin_root = tmp_path / "plugin"
         plugin_root.mkdir()
 
         # Create settings template with variables
-        template = {
-            "hooks": {
-                "PreRun": "${PLUGIN_ROOT}/tools/hook.sh"
-            }
-        }
+        template = {"hooks": {"PreRun": "${PLUGIN_ROOT}/tools/hook.sh"}}
 
         variables = {"PLUGIN_ROOT": str(plugin_root)}
         substitutor = VariableSubstitutor(variables)
@@ -492,7 +472,7 @@ class TestVariableSubstitutorEdgeCases:
         text = "${ROOT}/file.txt"
         result = substitutor.substitute(text)
 
-        assert "/home/user/文档/file.txt" == result
+        assert result == "/home/user/文档/file.txt"
 
     def test_substitute_with_very_long_paths(self):
         """

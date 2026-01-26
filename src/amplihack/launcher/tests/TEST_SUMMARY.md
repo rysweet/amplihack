@@ -8,6 +8,7 @@
 ## Test Strategy
 
 Following the testing pyramid:
+
 - **60% Unit Tests**: Fast, heavily mocked, test individual functions
 - **30% Integration Tests**: Test multiple components working together
 - **10% E2E Tests**: Complete workflow validation
@@ -19,6 +20,7 @@ N = max(8192, total_ram_mb // 4)  # Capped at 32GB (32768 MB)
 ```
 
 Where:
+
 - `N` = Recommended Node.js memory limit in MB
 - `total_ram_mb` = Total system RAM in MB
 - Minimum limit: 8192 MB (8 GB)
@@ -75,6 +77,7 @@ Where:
 ### Integration Tests (30%) - 1 Test Class
 
 **TestMemoryConfigIntegration** (4 tests)
+
 - Full detection → calculation workflow
 - Parse → merge workflow
 - Detection → calculation → warning workflow
@@ -83,6 +86,7 @@ Where:
 ### E2E Tests (10%) - 1 Test Class
 
 **TestGetMemoryConfigE2E** (5 tests)
+
 - Normal system (16+ GB) complete flow
 - With existing NODE_OPTIONS
 - User declines update
@@ -92,6 +96,7 @@ Where:
 ### Additional Test Coverage
 
 **TestEdgeCases** (5 tests)
+
 - Maximum possible RAM (1TB+)
 - Very small RAM (< 4GB)
 - Fractional GB values
@@ -99,12 +104,14 @@ Where:
 - Concurrent modifications
 
 **TestErrorHandling** (4 tests)
+
 - Invalid RAM GB input
 - Malformed NODE_OPTIONS
 - Permission denied reading meminfo
 - Subprocess timeout
 
 **TestPlatformSpecifics** (3 tests)
+
 - Linux meminfo parsing variants
 - macOS sysctl bytes parsing
 - Windows wmic output parsing
@@ -133,6 +140,7 @@ Where:
 ## Expected Test Results (Before Implementation)
 
 All tests should **FAIL** with:
+
 ```
 ModuleNotFoundError: No module named 'amplihack.launcher.memory_config'
 ```
@@ -192,6 +200,7 @@ These tests follow amplihack philosophy:
 ## Success Criteria
 
 Implementation is complete when:
+
 1. All 56 tests pass
 2. Tests run in < 5 seconds (unit tests are fast)
 3. No test mocking is excessive (60% unit test guideline)

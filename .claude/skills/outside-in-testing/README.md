@@ -78,6 +78,7 @@ Use `test-gap-analyzer` skill for unit test guidance, and this skill for behavio
 ### 1. Install Framework
 
 **Option A: From GitHub (Recommended - Latest)**
+
 ```bash
 # Install globally
 npm install -g github:rysweet/gadugi-agentic-test
@@ -94,6 +95,7 @@ node dist/cli.js run scenarios/your-test.yaml
 ```
 
 **Option B: From npm (when published)**
+
 ```bash
 npm install -g gadugi-agentic-test
 gadugi-test run test.yaml
@@ -125,17 +127,20 @@ scenario:
 ### 3. Run the Test
 
 **If installed globally**:
+
 ```bash
 gadugi-test run test-hello.yaml
 ```
 
 **If using from source**:
+
 ```bash
 cd /path/to/gadugi-agentic-test
 node dist/cli.js run /path/to/test-hello.yaml
 ```
 
 **Run all tests in directory**:
+
 ```bash
 node dist/cli.js run -d ./my-test-scenarios
 ```
@@ -486,6 +491,7 @@ cleanup:
 **Problem**: `@types/node-pty` not found error
 
 **Solution**: This was fixed in gadugi-agentic-test. If you see this:
+
 ```bash
 # Update to latest version
 npm install -g github:rysweet/gadugi-agentic-test
@@ -499,6 +505,7 @@ npm run build
 **Problem**: `tsc: command not found` when building
 
 **Solution**: TypeScript not installed
+
 ```bash
 npm install  # Installs all dependencies including TypeScript
 npm run build  # Now will work
@@ -693,7 +700,7 @@ description: "Test how guide responds to complete beginner"
 version: "1.0.0"
 
 config:
-  timeout: 180000  # 3 minutes for AI response
+  timeout: 180000 # 3 minutes for AI response
   retries: 1
   parallel: false
 
@@ -711,7 +718,7 @@ steps:
     agent: "student-cli"
     action: "execute_command"
     params:
-      command: "mkdir -p /tmp/test-student && uvx --from git+https://github.com/rysweet/amplihack amplihack claude -- -p \"Task(subagent_type='guide', prompt='I am new. What is amplihack?')\" 2>&1 | head -100"
+      command: 'mkdir -p /tmp/test-student && uvx --from git+https://github.com/rysweet/amplihack amplihack claude -- -p "Task(subagent_type=''guide'', prompt=''I am new. What is amplihack?'')" 2>&1 | head -100'
     expect:
       exit_code: 0
       stdout_contains:
@@ -750,9 +757,9 @@ node dist/cli.js run scenarios/amplihack-guide-test.yaml --verbose
 ### What We Learned
 
 **From testing amplihack guide agent**:
+
 - Long-running AI commands need 180s+ timeouts
 - Testing in clean `/tmp` directory avoids state pollution
 - Combining `uvx --from git+...` with gadugi tests unreleased branches
 - Checking file content (guide.md) verifies features beyond just output
 - Real-world tests exposed gaps (guide showing bash commands in REPL context)
-

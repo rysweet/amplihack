@@ -10,11 +10,10 @@ Philosophy:
 import argparse
 import json
 import sys
-from typing import Optional
 
-from .detector import PlatformDetector, Platform, detect_platform
-from .github_bridge import GitHubBridge
 from .azdo_bridge import AzureDevOpsBridge
+from .detector import Platform, PlatformDetector, detect_platform
+from .github_bridge import GitHubBridge
 
 
 def create_bridge(repo_path: str = "."):
@@ -34,16 +33,15 @@ def create_bridge(repo_path: str = "."):
 
     if platform == Platform.GITHUB:
         return GitHubBridge()
-    elif platform == Platform.AZDO:
+    if platform == Platform.AZDO:
         return AzureDevOpsBridge()
-    else:
-        raise ValueError(f"Unsupported platform: {platform}")
+    raise ValueError(f"Unsupported platform: {platform}")
 
 
 class CLI:
     """Command-line interface for platform bridge operations."""
 
-    def __init__(self, platform: Optional[str] = None):
+    def __init__(self, platform: str | None = None):
         """Initialize CLI.
 
         Args:
@@ -70,12 +68,11 @@ class CLI:
         """Get appropriate bridge for detected platform."""
         if self.platform == Platform.GITHUB:
             return GitHubBridge()
-        elif self.platform == Platform.AZDO:
+        if self.platform == Platform.AZDO:
             return AzureDevOpsBridge()
-        elif self.platform == Platform.UNKNOWN or self.platform is None:
+        if self.platform == Platform.UNKNOWN or self.platform is None:
             raise RuntimeError("Unknown or unsupported platform detected")
-        else:
-            raise RuntimeError(f"Unsupported platform: {self.platform}")
+        raise RuntimeError(f"Unsupported platform: {self.platform}")
 
     def run(self, args: list[str]) -> int:
         """Run CLI command.
@@ -87,15 +84,14 @@ class CLI:
             Exit code (0 for success, non-zero for error)
         """
         parser = argparse.ArgumentParser(
-            prog="platform-bridge",
-            description="Unified CLI for GitHub and Azure DevOps operations"
+            prog="platform-bridge", description="Unified CLI for GitHub and Azure DevOps operations"
         )
 
         # Global options
         parser.add_argument(
             "--platform",
             choices=["github", "azdo"],
-            help="Platform override (auto-detected if not specified)"
+            help="Platform override (auto-detected if not specified)",
         )
 
         subparsers = parser.add_subparsers(dest="command", help="Command to execute")
@@ -130,7 +126,7 @@ class CLI:
             parsed_args = parser.parse_args(args)
 
             # Handle --platform override
-            if hasattr(parsed_args, 'platform') and parsed_args.platform:
+            if hasattr(parsed_args, "platform") and parsed_args.platform:
                 if parsed_args.platform == "github":
                     self.platform = Platform.GITHUB
                 elif parsed_args.platform == "azdo":
@@ -152,17 +148,16 @@ class CLI:
             # Execute command
             if parsed_args.command == "create-issue":
                 return self._create_issue(bridge, parsed_args)
-            elif parsed_args.command == "create-pr":
+            if parsed_args.command == "create-pr":
                 return self._create_pr(bridge, parsed_args)
-            elif parsed_args.command == "mark-pr-ready":
+            if parsed_args.command == "mark-pr-ready":
                 return self._mark_pr_ready(bridge, parsed_args)
-            elif parsed_args.command == "add-pr-comment":
+            if parsed_args.command == "add-pr-comment":
                 return self._add_pr_comment(bridge, parsed_args)
-            elif parsed_args.command == "check-ci-status":
+            if parsed_args.command == "check-ci-status":
                 return self._check_ci_status(bridge, parsed_args)
-            else:
-                sys.stderr.write(f"Error: Unknown command: {parsed_args.command}\n")
-                return 1
+            sys.stderr.write(f"Error: Unknown command: {parsed_args.command}\n")
+            return 1
 
         except SystemExit as e:
             # argparse calls sys.exit() on error
@@ -174,11 +169,8 @@ class CLI:
     def _create_issue(self, bridge, args) -> int:
         """Handle create-issue command."""
         try:
-            kwargs = {
-                "title": args.title,
-                "body": args.body
-            }
-            if hasattr(args, 'labels') and args.labels:
+            kwargs = {"title": args.title, "body": args.body}
+            if hasattr(args, "labels") and args.labels:
                 kwargs["labels"] = args.labels
 
             result = bridge.create_issue(**kwargs)
@@ -192,12 +184,8 @@ class CLI:
     def _create_pr(self, bridge, args) -> int:
         """Handle create-pr command."""
         try:
-            kwargs = {
-                "title": args.title,
-                "body": args.body,
-                "branch": args.branch
-            }
-            if hasattr(args, 'base') and args.base:
+            kwargs = {"title": args.title, "body": args.body, "branch": args.branch}
+            if hasattr(args, "base") and args.base:
                 kwargs["base"] = args.base
 
             result = bridge.create_draft_pr(**kwargs)
@@ -225,10 +213,7 @@ class CLI:
             # Get comment from args or stdin
             comment = args.comment if args.comment else sys.stdin.read()
 
-            result = bridge.add_pr_comment(
-                pr_number=args.pr_number,
-                comment=comment
-            )
+            result = bridge.add_pr_comment(pr_number=args.pr_number, comment=comment)
             print(json.dumps(result, indent=2))
             return 0 if result.get("success") else 1
         except Exception as e:
@@ -248,7 +233,7 @@ class CLI:
             return 1
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     """Main CLI entry point.
 
     Args:

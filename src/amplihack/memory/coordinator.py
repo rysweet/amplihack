@@ -725,9 +725,7 @@ Return: {{"importance_score": <number>, "reasoning": "<brief reason>"}}
         scored.sort(key=lambda x: x[1], reverse=True)
         return scored
 
-    async def _enrich_with_code_context(
-        self, memories: list[MemoryEntry]
-    ) -> list[MemoryEntry]:
+    async def _enrich_with_code_context(self, memories: list[MemoryEntry]) -> list[MemoryEntry]:
         """Enrich memories with related code context.
 
         Queries Kuzu graph fer code files and functions linked to each memory

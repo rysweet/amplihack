@@ -8,11 +8,8 @@ Testing pyramid:
 
 import json
 import os
-import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from amplihack.launcher.session_tracker import (
     SessionEntry,
@@ -98,9 +95,7 @@ class TestSessionTrackerInit:
         runtime_dir = test_dir / ".claude" / "runtime"
         runtime_dir.mkdir(parents=True, exist_ok=True)
 
-        with patch.object(
-            SessionTracker, "RUNTIME_LOG", runtime_dir / "sessions.jsonl"
-        ):
+        with patch.object(SessionTracker, "RUNTIME_LOG", runtime_dir / "sessions.jsonl"):
             tracker = SessionTracker()
             assert runtime_dir.exists()
 

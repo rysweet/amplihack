@@ -23,18 +23,22 @@ __all__ = [
 Main entry point fer platform-agnostic git operations.
 
 **Constructor**:
+
 ```python
 PlatformBridge(repo_path: str = ".") -> PlatformBridge
 ```
 
 **Parameters**:
+
 - `repo_path` (str, optional): Path to git repository. Defaults to current directory.
 
 **Raises**:
+
 - `PlatformDetectionError`: If platform cannot be determined from git remotes
 - `NotAGitRepositoryError`: If repo_path not be a git repository
 
 **Example**:
+
 ```python
 from claude.tools.platform_bridge import PlatformBridge
 
@@ -46,6 +50,7 @@ bridge = PlatformBridge("/path/to/repo")
 ```
 
 **Attributes**:
+
 - `platform` (Platform): Detected platform (GitHub or AzureDevOps)
 - `repo_path` (Path): Absolute path to repository
 
@@ -56,6 +61,7 @@ bridge = PlatformBridge("/path/to/repo")
 Create an issue (GitHub) or work item (Azure DevOps).
 
 **Signature**:
+
 ```python
 def create_issue(
     self,
@@ -66,11 +72,13 @@ def create_issue(
 ```
 
 **Parameters**:
+
 - `title` (str): Issue/work item title (required, max 256 characters)
 - `body` (str): Issue/work item description (required)
 - `labels` (List[str], optional): Labels/tags to apply (GitHub only)
 
 **Returns**:
+
 ```python
 {
     "number": 42,                    # Issue/work item number
@@ -81,10 +89,12 @@ def create_issue(
 ```
 
 **Raises**:
+
 - `CLIToolMissingError`: If gh/az CLI not installed
 - `subprocess.CalledProcessError`: If CLI command fails
 
 **Example**:
+
 ```python
 issue = bridge.create_issue(
     title="Add authentication",
@@ -96,11 +106,13 @@ print(f"Created issue #{issue['number']}: {issue['url']}")
 ```
 
 **GitHub Command**:
+
 ```bash
 gh issue create --title "..." --body "..." --label "enhancement,security"
 ```
 
 **Azure DevOps Command**:
+
 ```bash
 az boards work-item create --type "User Story" --title "..." --description "..."
 ```
@@ -112,6 +124,7 @@ az boards work-item create --type "User Story" --title "..." --description "..."
 Create a draft pull request on both platforms.
 
 **Signature**:
+
 ```python
 def create_draft_pr(
     self,
@@ -123,12 +136,14 @@ def create_draft_pr(
 ```
 
 **Parameters**:
+
 - `title` (str): PR title (required, max 256 characters)
 - `body` (str): PR description in markdown (required)
 - `source_branch` (str): Source branch name (required)
 - `target_branch` (str): Target branch name (default: "main")
 
 **Returns**:
+
 ```python
 {
     "number": 123,                   # PR number
@@ -141,11 +156,13 @@ def create_draft_pr(
 ```
 
 **Raises**:
+
 - `CLIToolMissingError`: If gh/az CLI not installed
 - `BranchNotFoundError`: If source branch doesn't exist
 - `subprocess.CalledProcessError`: If CLI command fails
 
 **Example**:
+
 ```python
 pr = bridge.create_draft_pr(
     title="feat: Add JWT authentication",
@@ -158,11 +175,13 @@ print(f"Draft PR #{pr['number']}: {pr['url']}")
 ```
 
 **GitHub Command**:
+
 ```bash
 gh pr create --draft --title "..." --body "..." --head feat/auth --base main
 ```
 
 **Azure DevOps Command**:
+
 ```bash
 az repos pr create --draft true --title "..." --description "..." --source-branch feat/auth --target-branch main
 ```
@@ -174,14 +193,17 @@ az repos pr create --draft true --title "..." --description "..." --source-branc
 Mark a draft PR as ready fer review.
 
 **Signature**:
+
 ```python
 def mark_pr_ready(self, pr_number: int) -> Dict[str, Any]
 ```
 
 **Parameters**:
+
 - `pr_number` (int): Pull request number (required)
 
 **Returns**:
+
 ```python
 {
     "number": 123,              # PR number
@@ -191,11 +213,13 @@ def mark_pr_ready(self, pr_number: int) -> Dict[str, Any]
 ```
 
 **Raises**:
+
 - `CLIToolMissingError`: If gh/az CLI not installed
 - `PRNotFoundError`: If PR number doesn't exist
 - `subprocess.CalledProcessError`: If CLI command fails
 
 **Example**:
+
 ```python
 result = bridge.mark_pr_ready(pr_number=123)
 
@@ -204,11 +228,13 @@ if result['success']:
 ```
 
 **GitHub Command**:
+
 ```bash
 gh pr ready 123
 ```
 
 **Azure DevOps Command**:
+
 ```bash
 az repos pr update --id 123 --status Active
 ```
@@ -220,6 +246,7 @@ az repos pr update --id 123 --status Active
 Add a comment to a pull request.
 
 **Signature**:
+
 ```python
 def add_pr_comment(
     self,
@@ -229,10 +256,12 @@ def add_pr_comment(
 ```
 
 **Parameters**:
+
 - `pr_number` (int): Pull request number (required)
 - `comment` (str): Comment text in markdown (required)
 
 **Returns**:
+
 ```python
 {
     "comment_id": "456",         # Comment identifier
@@ -243,11 +272,13 @@ def add_pr_comment(
 ```
 
 **Raises**:
+
 - `CLIToolMissingError`: If gh/az CLI not installed
 - `PRNotFoundError`: If PR number doesn't exist
 - `subprocess.CalledProcessError`: If CLI command fails
 
 **Example**:
+
 ```python
 comment = bridge.add_pr_comment(
     pr_number=123,
@@ -258,11 +289,13 @@ print(f"Added comment: {comment['url']}")
 ```
 
 **GitHub Command**:
+
 ```bash
 gh pr comment 123 --body "All tests be passin'! Ready fer merge. 🚢"
 ```
 
 **Azure DevOps Command**:
+
 ```bash
 az repos pr create-thread --id 123 --comment-text "All tests be passin'! Ready fer merge. 🚢"
 ```
@@ -274,14 +307,17 @@ az repos pr create-thread --id 123 --comment-text "All tests be passin'! Ready f
 Check CI/CD pipeline status fer a pull request.
 
 **Signature**:
+
 ```python
 def check_ci_status(self, pr_number: int) -> Dict[str, Any]
 ```
 
 **Parameters**:
+
 - `pr_number` (int): Pull request number (required)
 
 **Returns**:
+
 ```python
 {
     "all_passing": True,           # All checks passed
@@ -305,11 +341,13 @@ def check_ci_status(self, pr_number: int) -> Dict[str, Any]
 ```
 
 **Raises**:
+
 - `CLIToolMissingError`: If gh/az CLI not installed
 - `PRNotFoundError`: If PR number doesn't exist
 - `subprocess.CalledProcessError`: If CLI command fails
 
 **Example**:
+
 ```python
 status = bridge.check_ci_status(pr_number=123)
 
@@ -325,11 +363,13 @@ else:
 ```
 
 **GitHub Command**:
+
 ```bash
 gh pr checks 123
 ```
 
 **Azure DevOps Command**:
+
 ```bash
 az pipelines runs list --branch refs/pull/123/merge
 ```
@@ -343,22 +383,27 @@ az pipelines runs list --branch refs/pull/123/merge
 Standalone function to detect platform from git remotes without creatin' a PlatformBridge instance.
 
 **Signature**:
+
 ```python
 def detect_platform(repo_path: str = ".") -> Platform
 ```
 
 **Parameters**:
+
 - `repo_path` (str, optional): Path to git repository. Defaults to current directory.
 
 **Returns**:
+
 - `Platform.GITHUB` - Repository hosted on GitHub
 - `Platform.AZDO` - Repository hosted on Azure DevOps
 
 **Raises**:
+
 - `PlatformDetectionError`: If platform cannot be determined
 - `NotAGitRepositoryError`: If repo_path not be a git repository
 
 **Example**:
+
 ```python
 from claude.tools.platform_bridge import detect_platform, Platform
 
@@ -371,6 +416,7 @@ elif platform == Platform.AZDO:
 ```
 
 **Detection Logic**:
+
 1. Run `git remote -v` in repo_path
 2. Extract URLs from output
 3. Check `origin` remote first
@@ -395,10 +441,12 @@ class Platform(Enum):
 ```
 
 **Members**:
+
 - `Platform.GITHUB` - GitHub platform
 - `Platform.AZDO` - Azure DevOps platform
 
 **Example**:
+
 ```python
 from claude.tools.platform_bridge import Platform
 
@@ -417,11 +465,13 @@ Raised when platform cannot be determined from git remotes.
 **Inheritance**: `Exception`
 
 **Common Causes**:
+
 - No git remotes configured
 - Remote URL doesn't match known patterns
 - Not a git repository
 
 **Example**:
+
 ```python
 from claude.tools.platform_bridge import PlatformBridge, PlatformDetectionError
 
@@ -441,10 +491,12 @@ Raised when required CLI tool (gh or az) not be installed.
 **Inheritance**: `Exception`
 
 **Attributes**:
+
 - `tool_name` (str): Name of missing tool ("gh" or "az")
 - `install_command` (str): Platform-specific installation command
 
 **Example**:
+
 ```python
 from claude.tools.platform_bridge import PlatformBridge, CLIToolMissingError
 
@@ -465,9 +517,11 @@ Raised when specified PR number doesn't exist.
 **Inheritance**: `Exception`
 
 **Attributes**:
+
 - `pr_number` (int): PR number that wasn't found
 
 **Example**:
+
 ```python
 from claude.tools.platform_bridge import PRNotFoundError
 
@@ -486,9 +540,11 @@ Raised when specified branch doesn't exist in repository.
 **Inheritance**: `Exception`
 
 **Attributes**:
+
 - `branch_name` (str): Branch name that wasn't found
 
 **Example**:
+
 ```python
 from claude.tools.platform_bridge import BranchNotFoundError
 
@@ -538,6 +594,7 @@ class PlatformBridge:
 The platform bridge be **thread-safe** fer read operations but **not thread-safe** fer write operations:
 
 **Safe** (multiple threads):
+
 ```python
 # Multiple threads can check CI status simultaneously
 status1 = bridge.check_ci_status(pr_number=123)
@@ -545,6 +602,7 @@ status2 = bridge.check_ci_status(pr_number=456)
 ```
 
 **Unsafe** (avoid):
+
 ```python
 # Don't create multiple PRs from different threads
 # Results be unpredictable

@@ -5,17 +5,13 @@ Tests interactions between multiple modules.
 All tests should FAIL initially (TDD red phase).
 """
 
-import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 
 class TestLanguageDetectionIntegration:
     """Integration tests for language detection with configurator."""
 
-    def test_detect_languages_and_check_status(
-        self, mock_project_root, sample_python_files
-    ):
+    def test_detect_languages_and_check_status(self, mock_project_root, sample_python_files):
         """Test detecting languages and checking their LSP status."""
         from lsp_setup.language_detector import LanguageDetector
         from lsp_setup.status_tracker import StatusTracker
@@ -60,8 +56,8 @@ class TestPluginInstallationIntegration:
         self, mock_project_root, installed_lsp_binaries, mock_npx_cclsp_success
     ):
         """Test checking Layer 1 before installing Layer 2."""
-        from lsp_setup.status_tracker import StatusTracker
         from lsp_setup.plugin_manager import PluginManager
+        from lsp_setup.status_tracker import StatusTracker
 
         # Check Layer 1
         with patch("shutil.which", side_effect=lambda x: installed_lsp_binaries.get(x)):
@@ -110,8 +106,8 @@ class TestFullSetupWorkflow:
     ):
         """Test complete auto-setup workflow: detect -> install -> configure."""
         from lsp_setup.language_detector import LanguageDetector
-        from lsp_setup.plugin_manager import PluginManager
         from lsp_setup.lsp_configurator import LSPConfigurator
+        from lsp_setup.plugin_manager import PluginManager
         from lsp_setup.status_tracker import StatusTracker
 
         # Step 1: Detect languages
@@ -142,9 +138,7 @@ class TestFullSetupWorkflow:
                 final_status = tracker.get_full_status()
                 assert final_status["overall_ready"] is True
 
-    def test_manual_setup_workflow_with_user_guidance(
-        self, mock_project_root, sample_python_files
-    ):
+    def test_manual_setup_workflow_with_user_guidance(self, mock_project_root, sample_python_files):
         """Test manual setup workflow with user guidance generation."""
         from lsp_setup.language_detector import LanguageDetector
         from lsp_setup.status_tracker import StatusTracker
@@ -176,7 +170,6 @@ class TestFullSetupWorkflow:
     ):
         """Test recovering from partial setup (Layer 1 complete, Layer 2 failed)."""
         from lsp_setup.status_tracker import StatusTracker
-        from lsp_setup.plugin_manager import PluginManager
 
         # Layer 1 complete
         with patch("shutil.which", side_effect=lambda x: installed_lsp_binaries.get(x)):
@@ -263,9 +256,7 @@ class TestMultiLanguageIntegration:
                     result = manager.install_plugin(lang)
                     assert result is True
 
-    def test_prioritize_primary_language(
-        self, mock_project_root, sample_mixed_language_files
-    ):
+    def test_prioritize_primary_language(self, mock_project_root, sample_mixed_language_files):
         """Test prioritizing primary language (most files) in setup."""
         from lsp_setup.language_detector import LanguageDetector
 

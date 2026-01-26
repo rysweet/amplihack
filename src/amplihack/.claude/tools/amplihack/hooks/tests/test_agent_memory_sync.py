@@ -22,11 +22,9 @@ Solution: Create sync wrapper functions that:
 """
 
 import asyncio
-import json
 import sys
-from io import StringIO
 from pathlib import Path
-from unittest.mock import AsyncMock, Mock, call, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -36,9 +34,6 @@ sys.path.insert(0, str(hooks_dir))
 
 from agent_memory_hook import (
     detect_agent_references,
-    detect_slash_command_agent,
-    extract_learnings_from_conversation,
-    inject_memory_for_agents,
 )
 
 # ============================================================================
@@ -57,9 +52,9 @@ class TestInjectMemoryForAgentsSync:
 
     def test_sync_wrapper_signature(self):
         """Test sync wrapper has same signature as async version"""
-        from agent_memory_hook import inject_memory_for_agents_sync
-
         import inspect
+
+        from agent_memory_hook import inject_memory_for_agents_sync
 
         sig = inspect.signature(inject_memory_for_agents_sync)
         params = list(sig.parameters.keys())
@@ -210,9 +205,9 @@ class TestExtractLearningsFromConversationSync:
 
     def test_sync_wrapper_signature(self):
         """Test sync wrapper has same signature as async version"""
-        from agent_memory_hook import extract_learnings_from_conversation_sync
-
         import inspect
+
+        from agent_memory_hook import extract_learnings_from_conversation_sync
 
         sig = inspect.signature(extract_learnings_from_conversation_sync)
         params = list(sig.parameters.keys())
@@ -338,9 +333,7 @@ class TestSyncWrapperIntegration:
 
         # Mock the MemoryCoordinator to avoid actual database calls
         # Must patch where it's imported (inside the async function)
-        with patch(
-            "amplihack.memory.coordinator.MemoryCoordinator"
-        ) as mock_coordinator_class:
+        with patch("amplihack.memory.coordinator.MemoryCoordinator") as mock_coordinator_class:
             mock_coordinator = Mock()
             mock_coordinator.retrieve = AsyncMock(return_value=[])
             mock_coordinator_class.return_value = mock_coordinator
@@ -366,9 +359,7 @@ class TestSyncWrapperIntegration:
         from agent_memory_hook import extract_learnings_from_conversation_sync
 
         # Must patch where it's imported (inside the async function)
-        with patch(
-            "amplihack.memory.coordinator.MemoryCoordinator"
-        ) as mock_coordinator_class:
+        with patch("amplihack.memory.coordinator.MemoryCoordinator") as mock_coordinator_class:
             mock_coordinator = Mock()
             mock_coordinator.store = AsyncMock(return_value="memory_id_123")
             mock_coordinator_class.return_value = mock_coordinator
@@ -387,8 +378,9 @@ class TestSyncWrapperIntegration:
 
     def test_sync_wrapper_thread_safety(self):
         """Test sync wrappers are thread-safe"""
-        from agent_memory_hook import inject_memory_for_agents_sync
         import threading
+
+        from agent_memory_hook import inject_memory_for_agents_sync
 
         results = []
         errors = []
@@ -429,7 +421,6 @@ class TestSyncWrapperEndToEnd:
     def test_user_prompt_submit_workflow(self):
         """Test complete user_prompt_submit hook workflow using sync wrappers"""
         from agent_memory_hook import (
-            detect_agent_references,
             inject_memory_for_agents_sync,
         )
 
@@ -441,9 +432,7 @@ class TestSyncWrapperEndToEnd:
 
         # Step 2: Inject memory using sync wrapper
         # Must patch where it's imported (inside the async function)
-        with patch(
-            "amplihack.memory.coordinator.MemoryCoordinator"
-        ) as mock_coordinator_class:
+        with patch("amplihack.memory.coordinator.MemoryCoordinator") as mock_coordinator_class:
             mock_coordinator = Mock()
             mock_coordinator.retrieve = AsyncMock(return_value=[])
             mock_coordinator_class.return_value = mock_coordinator
@@ -470,9 +459,7 @@ class TestSyncWrapperEndToEnd:
 
         # Extract learnings using sync wrapper
         # Must patch where it's imported (inside the async function)
-        with patch(
-            "amplihack.memory.coordinator.MemoryCoordinator"
-        ) as mock_coordinator_class:
+        with patch("amplihack.memory.coordinator.MemoryCoordinator") as mock_coordinator_class:
             mock_coordinator = Mock()
             mock_coordinator.store = AsyncMock(return_value="memory_123")
             mock_coordinator_class.return_value = mock_coordinator
@@ -490,15 +477,12 @@ class TestSyncWrapperEndToEnd:
     def test_complete_session_lifecycle(self):
         """Test complete session: prompt submission -> conversation -> extraction"""
         from agent_memory_hook import (
-            detect_agent_references,
             extract_learnings_from_conversation_sync,
             inject_memory_for_agents_sync,
         )
 
         # Must patch where it's imported (inside the async functions)
-        with patch(
-            "amplihack.memory.coordinator.MemoryCoordinator"
-        ) as mock_coordinator_class:
+        with patch("amplihack.memory.coordinator.MemoryCoordinator") as mock_coordinator_class:
             mock_coordinator = Mock()
             mock_coordinator.retrieve = AsyncMock(return_value=[])
             mock_coordinator.store = AsyncMock(return_value="memory_456")
@@ -570,9 +554,7 @@ class TestSyncWrapperEdgeCases:
             await asyncio.sleep(10)  # Simulate slow operation
             return ("Enhanced", {"test": "data"})
 
-        with patch(
-            "agent_memory_hook.inject_memory_for_agents", side_effect=slow_async_function
-        ):
+        with patch("agent_memory_hook.inject_memory_for_agents", side_effect=slow_async_function):
             # Should handle timeout gracefully (if timeout implemented)
             # For now, just ensure it doesn't hang forever
             result = inject_memory_for_agents_sync(
@@ -611,15 +593,14 @@ class TestSyncWrapperPerformance:
 
     def test_sync_wrapper_overhead_minimal(self):
         """Test sync wrapper adds minimal overhead compared to async version"""
-        from agent_memory_hook import inject_memory_for_agents_sync
         import time
+
+        from agent_memory_hook import inject_memory_for_agents_sync
 
         start_time = time.time()
 
         for _ in range(10):
-            inject_memory_for_agents_sync(
-                prompt="Test", agent_types=[], session_id="perf_test"
-            )
+            inject_memory_for_agents_sync(prompt="Test", agent_types=[], session_id="perf_test")
 
         elapsed = time.time() - start_time
 
@@ -628,8 +609,9 @@ class TestSyncWrapperPerformance:
 
     def test_sync_wrapper_no_memory_leaks(self):
         """Test sync wrapper doesn't leak event loops or resources"""
-        from agent_memory_hook import inject_memory_for_agents_sync
         import gc
+
+        from agent_memory_hook import inject_memory_for_agents_sync
 
         # Capture initial object count
         gc.collect()

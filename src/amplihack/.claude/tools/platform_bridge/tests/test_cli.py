@@ -11,11 +11,9 @@ Tests cover:
 - Argument validation
 """
 
-import pytest
-from unittest.mock import patch, MagicMock
 import json
-import sys
 from io import StringIO
+from unittest.mock import MagicMock, patch
 
 # This import will fail initially (TDD)
 from ..cli import CLI, main
@@ -50,24 +48,16 @@ class TestCreateIssueCommand:
         """Should parse create-issue command arguments."""
         mock_bridge = MagicMock()
         mock_bridge_class.return_value = mock_bridge
-        mock_bridge.create_issue.return_value = {
-            "success": True,
-            "issue_number": 123
-        }
+        mock_bridge.create_issue.return_value = {"success": True, "issue_number": 123}
 
         cli = CLI(platform="github")
-        args = [
-            "create-issue",
-            "--title", "Test Issue",
-            "--body", "Issue description"
-        ]
+        args = ["create-issue", "--title", "Test Issue", "--body", "Issue description"]
 
         result = cli.run(args)
 
         assert result == 0
         mock_bridge.create_issue.assert_called_once_with(
-            title="Test Issue",
-            body="Issue description"
+            title="Test Issue", body="Issue description"
         )
 
     @patch("..cli.GitHubBridge")
@@ -78,7 +68,7 @@ class TestCreateIssueCommand:
         mock_bridge.create_issue.return_value = {
             "success": True,
             "issue_number": 123,
-            "url": "https://github.com/owner/repo/issues/123"
+            "url": "https://github.com/owner/repo/issues/123",
         }
 
         cli = CLI(platform="github")
@@ -101,9 +91,13 @@ class TestCreateIssueCommand:
         cli = CLI(platform="github")
         args = [
             "create-issue",
-            "--title", "Test",
-            "--body", "Test",
-            "--labels", "bug", "high-priority"
+            "--title",
+            "Test",
+            "--body",
+            "Test",
+            "--labels",
+            "bug",
+            "high-priority",
         ]
 
         cli.run(args)
@@ -144,17 +138,17 @@ class TestCreatePRCommand:
         """Should parse create-pr command arguments."""
         mock_bridge = MagicMock()
         mock_bridge_class.return_value = mock_bridge
-        mock_bridge.create_draft_pr.return_value = {
-            "success": True,
-            "pr_number": 456
-        }
+        mock_bridge.create_draft_pr.return_value = {"success": True, "pr_number": 456}
 
         cli = CLI(platform="github")
         args = [
             "create-pr",
-            "--title", "Test PR",
-            "--body", "PR description",
-            "--branch", "feature/test"
+            "--title",
+            "Test PR",
+            "--body",
+            "PR description",
+            "--branch",
+            "feature/test",
         ]
 
         result = cli.run(args)
@@ -170,12 +164,7 @@ class TestCreatePRCommand:
         mock_bridge.create_draft_pr.return_value = {"success": True}
 
         cli = CLI(platform="github")
-        args = [
-            "create-pr",
-            "--title", "Test",
-            "--body", "Test",
-            "--branch", "test"
-        ]
+        args = ["create-pr", "--title", "Test", "--body", "Test", "--branch", "test"]
 
         cli.run(args)
 
@@ -192,10 +181,14 @@ class TestCreatePRCommand:
         cli = CLI(platform="github")
         args = [
             "create-pr",
-            "--title", "Test",
-            "--body", "Test",
-            "--branch", "feature/test",
-            "--base", "develop"
+            "--title",
+            "Test",
+            "--body",
+            "Test",
+            "--branch",
+            "feature/test",
+            "--base",
+            "develop",
         ]
 
         cli.run(args)
@@ -209,18 +202,10 @@ class TestCreatePRCommand:
         """Should output JSON response."""
         mock_bridge = MagicMock()
         mock_bridge_class.return_value = mock_bridge
-        mock_bridge.create_draft_pr.return_value = {
-            "success": True,
-            "pr_number": 456
-        }
+        mock_bridge.create_draft_pr.return_value = {"success": True, "pr_number": 456}
 
         cli = CLI(platform="github")
-        args = [
-            "create-pr",
-            "--title", "Test",
-            "--body", "Test",
-            "--branch", "test"
-        ]
+        args = ["create-pr", "--title", "Test", "--body", "Test", "--branch", "test"]
         cli.run(args)
 
         captured = capsys.readouterr()
@@ -251,10 +236,7 @@ class TestMarkPRReadyCommand:
         """Should output JSON response."""
         mock_bridge = MagicMock()
         mock_bridge_class.return_value = mock_bridge
-        mock_bridge.mark_pr_ready.return_value = {
-            "success": True,
-            "pr_number": 456
-        }
+        mock_bridge.mark_pr_ready.return_value = {"success": True, "pr_number": 456}
 
         cli = CLI(platform="github")
         args = ["mark-pr-ready", "456"]
@@ -294,18 +276,13 @@ class TestAddPRCommentCommand:
         mock_bridge.add_pr_comment.return_value = {"success": True}
 
         cli = CLI(platform="github")
-        args = [
-            "add-pr-comment",
-            "456",
-            "--comment", "This is a test comment"
-        ]
+        args = ["add-pr-comment", "456", "--comment", "This is a test comment"]
 
         result = cli.run(args)
 
         assert result == 0
         mock_bridge.add_pr_comment.assert_called_once_with(
-            pr_number=456,
-            comment="This is a test comment"
+            pr_number=456, comment="This is a test comment"
         )
 
     @patch("..cli.GitHubBridge")
@@ -332,10 +309,7 @@ class TestAddPRCommentCommand:
         """Should output JSON response."""
         mock_bridge = MagicMock()
         mock_bridge_class.return_value = mock_bridge
-        mock_bridge.add_pr_comment.return_value = {
-            "success": True,
-            "comment_id": "IC_123"
-        }
+        mock_bridge.add_pr_comment.return_value = {"success": True, "comment_id": "IC_123"}
 
         cli = CLI(platform="github")
         args = ["add-pr-comment", "456", "--comment", "Test"]
@@ -354,10 +328,7 @@ class TestCheckCIStatusCommand:
         """Should parse ref (branch/PR) argument."""
         mock_bridge = MagicMock()
         mock_bridge_class.return_value = mock_bridge
-        mock_bridge.check_ci_status.return_value = {
-            "success": True,
-            "status": "success"
-        }
+        mock_bridge.check_ci_status.return_value = {"success": True, "status": "success"}
 
         cli = CLI(platform="github")
         args = ["check-ci-status", "main"]
@@ -375,9 +346,7 @@ class TestCheckCIStatusCommand:
         mock_bridge.check_ci_status.return_value = {
             "success": True,
             "status": "success",
-            "checks": [
-                {"name": "test", "status": "completed", "conclusion": "success"}
-            ]
+            "checks": [{"name": "test", "status": "completed", "conclusion": "success"}],
         }
 
         cli = CLI(platform="github")
@@ -468,12 +437,7 @@ class TestPlatformOverride:
         mock_bridge_class.return_value = mock_bridge
 
         cli = CLI()
-        args = [
-            "--platform", "github",
-            "create-issue",
-            "--title", "Test",
-            "--body", "Test"
-        ]
+        args = ["--platform", "github", "create-issue", "--title", "Test", "--body", "Test"]
         cli.run(args)
 
         # Should use GitHub bridge regardless of detection
@@ -487,12 +451,7 @@ class TestPlatformOverride:
         mock_bridge_class.return_value = mock_bridge
 
         cli = CLI()
-        args = [
-            "--platform", "azdo",
-            "create-issue",
-            "--title", "Test",
-            "--body", "Test"
-        ]
+        args = ["--platform", "azdo", "create-issue", "--title", "Test", "--body", "Test"]
         cli.run(args)
 
         mock_bridge_class.assert_called_once()
@@ -500,12 +459,7 @@ class TestPlatformOverride:
     def test_invalid_platform_flag_shows_error(self, capsys):
         """Should show error for invalid --platform value."""
         cli = CLI()
-        args = [
-            "--platform", "gitlab",
-            "create-issue",
-            "--title", "Test",
-            "--body", "Test"
-        ]
+        args = ["--platform", "gitlab", "create-issue", "--title", "Test", "--body", "Test"]
 
         exit_code = cli.run(args)
 
@@ -519,10 +473,7 @@ class TestErrorHandling:
     def test_bridge_error_returns_nonzero_exit(self, mock_bridge_class, capsys):
         """Should return non-zero exit code on bridge error."""
         mock_bridge = MagicMock()
-        mock_bridge.create_issue.return_value = {
-            "success": False,
-            "error": "Repository not found"
-        }
+        mock_bridge.create_issue.return_value = {"success": False, "error": "Repository not found"}
         mock_bridge_class.return_value = mock_bridge
 
         cli = CLI(platform="github")
@@ -536,10 +487,7 @@ class TestErrorHandling:
     def test_bridge_error_outputs_error_json(self, mock_bridge_class, capsys):
         """Should output error JSON on bridge failure."""
         mock_bridge = MagicMock()
-        mock_bridge.create_issue.return_value = {
-            "success": False,
-            "error": "Repository not found"
-        }
+        mock_bridge.create_issue.return_value = {"success": False, "error": "Repository not found"}
         mock_bridge_class.return_value = mock_bridge
 
         cli = CLI(platform="github")
@@ -630,7 +578,10 @@ class TestMainFunction:
         mock_cli.run.assert_called_once()
 
     @patch("..cli.CLI")
-    @patch("sys.argv", ["cli.py", "--platform", "github", "create-issue", "--title", "Test", "--body", "Test"])
+    @patch(
+        "sys.argv",
+        ["cli.py", "--platform", "github", "create-issue", "--title", "Test", "--body", "Test"],
+    )
     def test_main_passes_platform_override(self, mock_cli_class):
         """Should pass platform override to CLI."""
         mock_cli = MagicMock()
@@ -666,7 +617,7 @@ class TestJSONOutput:
             ["create-pr", "--title", "Test", "--body", "Test", "--branch", "test"],
             ["mark-pr-ready", "123"],
             ["add-pr-comment", "123", "--comment", "Test"],
-            ["check-ci-status", "main"]
+            ["check-ci-status", "main"],
         ]
 
         for cmd in commands:
@@ -682,10 +633,7 @@ class TestJSONOutput:
     def test_json_output_pretty_printed(self, mock_bridge_class, capsys):
         """JSON output should be pretty-printed (indented)."""
         mock_bridge = MagicMock()
-        mock_bridge.create_issue.return_value = {
-            "success": True,
-            "issue_number": 123
-        }
+        mock_bridge.create_issue.return_value = {"success": True, "issue_number": 123}
         mock_bridge_class.return_value = mock_bridge
 
         cli = CLI(platform="github")
