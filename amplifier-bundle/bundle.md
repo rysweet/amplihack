@@ -168,7 +168,7 @@ agents:
     description: "Use this agent when processing articles, papers, or documents to extract knowledge components for synthesis. This agent should be used proactively after reading or importing articles to build a structured knowledge base. It excels at identifying atomic concepts, relationships between ideas, and preserving productive tensions or contradictions in the source material. Examples: <example>Context: The user has just imported or read an article about distributed systems. user: \"I've added a new article about CAP theorem to the knowledge base\" assistant: \"I'll use the concept-extractor agent to extract the key concepts and relationships from this article\" <commentary>Since new article content has been added, use the concept-extractor agent to process it and extract structured knowledge components.</commentary></example> <example>Context: The user is building a knowledge synthesis system and needs to process multiple articles. user: \"Process these three articles on microservices architecture\" assistant: \"Let me use the concept-extractor agent to extract and structure the knowledge from these articles\" <commentary>Multiple articles need processing for knowledge extraction, perfect use case for the concept-extractor agent.</commentary></example> <example>Context: The user wants to understand contradictions between different sources. user: \"These two papers seem to disagree about event sourcing benefits\" assistant: \"I'll use the concept-extractor agent to extract and preserve the tensions between these viewpoints\" <commentary>When dealing with conflicting information that needs to be preserved rather than resolved, the concept-extractor agent is ideal.</commentary></example>"
   amplihack:database:
     path: agents/specialized/database.md
-    description: "Database design and optimization specialist. Use for schema design, query optimization, migrations, and data architecture decisions."
+    description: "Database design and optimization specialist. Use for schema design, query optimization, migrations, indexing strategies, and data architecture decisions."
   amplihack:documentation-writer:
     path: agents/specialized/documentation-writer.md
     description: "Documentation specialist agent. Creates discoverable, well-structured documentation following the Eight Rules and Diataxis framework. Use for README files, API docs, tutorials, how-to guides, and any technical documentation. Ensures docs go in docs/ directory and are always linked."
@@ -231,7 +231,7 @@ agents:
     description: "Integration pattern between PromptWriter and Architect agents for prompt review and refinement."
   amplihack:guide:
     name: guide
-    description: "Interactive guide to amplihack features. Walks users through workflows, recipes, skills, agents, and hooks. Use this agent to learn what amplihack can do."
+    description: "Interactive guide to amplihack features. Walks users through workflows, recipes, skills, agents, and hooks. Use this agent to learn what amplihack can do and how to use it effectively."
     system:
       instruction: |
         # Amplihack Guide Agent
