@@ -28,9 +28,10 @@ class UserPromptSubmitHook(HookProcessor):
     def __init__(self):
         super().__init__("user_prompt_submit")
         self.strategy = None
-        # Cache preferences to avoid repeated file reads
         self._preferences_cache: dict[str, str] | None = None
         self._cache_timestamp: float | None = None
+        self._amplihack_cache: str | None = None
+        self._amplihack_cache_timestamp: tuple[float, float] | None = None
 
     def find_user_preferences(self) -> Path | None:
         """Find USER_PREFERENCES.md file using FrameworkPathResolver or fallback."""
@@ -164,13 +165,8 @@ class UserPromptSubmitHook(HookProcessor):
             Dictionary of preferences
         """
         try:
-            # Check if cache is valid (file hasn't changed)
             current_mtime = pref_file.stat().st_mtime
-            if (
-                self._preferences_cache is not None
-                and self._cache_timestamp is not None
-                and current_mtime == self._cache_timestamp
-            ):
+            if self._cache_timestamp == current_mtime:
                 return self._preferences_cache
 
             # Read and parse preferences
@@ -193,6 +189,8 @@ class UserPromptSubmitHook(HookProcessor):
         This ensures framework instructions are always present even when users
         have custom project-specific CLAUDE.md files.
 
+        Uses caching with mtime checks to avoid repeated file reads (performance).
+
         Returns:
             AMPLIHACK.md contents if different from CLAUDE.md, empty string otherwise
         """
@@ -205,9 +203,11 @@ class UserPromptSubmitHook(HookProcessor):
             # Try centralized plugin location first (plugin architecture)
             plugin_root = os.environ.get("CLAUDE_PLUGIN_ROOT")
             if plugin_root:
-                candidate = Path(plugin_root) / "AMPLIHACK.md"
-                if candidate.exists():
-                    amplihack_md = candidate
+                plugin_path = Path(plugin_root)
+                if plugin_path.exists() and plugin_path.is_dir():
+                    candidate = plugin_path / "AMPLIHACK.md"
+                    if candidate.exists():
+                        amplihack_md = candidate
 
             # Fallback: Check project .claude/ directory (per-project mode)
             if not amplihack_md:
@@ -218,32 +218,50 @@ class UserPromptSubmitHook(HookProcessor):
             # If we can't find AMPLIHACK.md, nothing to inject
             if not amplihack_md or not amplihack_md.exists():
                 self.log("No AMPLIHACK.md found - skipping framework injection")
+                self.save_metric("amplihack_not_found", 1)
                 return ""
 
-            # Read both files
+            # Check cache validity using mtimes (avoids re-reading ~2000 lines per message)
+            amplihack_mtime = amplihack_md.stat().st_mtime
+            claude_mtime = claude_md.stat().st_mtime if claude_md.exists() else 0
+
+            if (
+                self._amplihack_cache is not None
+                and self._amplihack_cache_timestamp is not None
+                and self._amplihack_cache_timestamp == (amplihack_mtime, claude_mtime)
+            ):
+                # Cache hit - files haven't changed
+                self.save_metric("amplihack_cache_hit", 1)
+                return self._amplihack_cache
+
+            # Cache miss - read and compare files
             amplihack_content = amplihack_md.read_text(encoding="utf-8")
+            claude_content = claude_md.read_text(encoding="utf-8") if claude_md.exists() else ""
 
-            # If CLAUDE.md doesn't exist, inject AMPLIHACK.md
-            if not claude_md.exists():
-                self.log("CLAUDE.md missing - injecting AMPLIHACK.md framework instructions")
-                return amplihack_content
-
-            claude_content = claude_md.read_text(encoding="utf-8")
-
-            # Compare contents (ignore whitespace differences)
+            # Compare contents (whitespace-normalized to avoid formatting differences)
+            # NOTE: In amplihack's own repo, CLAUDE.md == AMPLIHACK.md, so this returns ""
             if claude_content.strip() == amplihack_content.strip():
-                # Files are identical - user doesn't have custom CLAUDE.md
-                # No need to inject since CLAUDE.md already has framework instructions
-                return ""
+                result = ""
+                self.save_metric("amplihack_skipped_identical", 1)
+            else:
+                result = amplihack_content
+                metric = (
+                    "amplihack_injected_missing"
+                    if not claude_md.exists()
+                    else "amplihack_injected_different"
+                )
+                self.save_metric(metric, 1)
 
-            # Files differ - user has custom CLAUDE.md
-            # Inject AMPLIHACK.md to ensure framework instructions are present
-            self.log("CLAUDE.md differs from AMPLIHACK.md - injecting framework instructions")
-            return amplihack_content
+            # Update cache
+            self._amplihack_cache = result
+            self._amplihack_cache_timestamp = (amplihack_mtime, claude_mtime)
+
+            return result
 
         except Exception as e:
             # Don't fail the hook if this doesn't work
             self.log(f"Could not check AMPLIHACK.md vs CLAUDE.md: {e}", "WARNING")
+            self.save_metric("amplihack_error", 1)
             return ""
 
     def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
@@ -327,6 +345,8 @@ class UserPromptSubmitHook(HookProcessor):
                 # Extract memory context (everything before the original prompt)
                 if enhanced_prompt != user_prompt:
                     memory_context = enhanced_prompt.replace(user_prompt, "").strip()
+                    if memory_context:
+                        context_parts.append(memory_context)
 
                 # Log memory injection
                 notice = format_memory_injection_notice(memory_metadata)
@@ -341,10 +361,6 @@ class UserPromptSubmitHook(HookProcessor):
 
         except Exception as e:
             self.log(f"Memory injection failed (non-fatal): {e}", "WARNING")
-
-        # Add memory context if we have it
-        if memory_context:
-            context_parts.append(memory_context)
 
         # 3. Inject AMPLIHACK.md framework instructions (if CLAUDE.md differs)
         amplihack_context = self._inject_amplihack_if_different()
