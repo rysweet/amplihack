@@ -34,6 +34,15 @@ If not installed, install with:
 curl -fsSL https://claude.ai/install.sh | bash
 ```
 
+> **Security Note**: For additional security, you can inspect the installation script before running it:
+> ```bash
+> curl -fsSL https://claude.ai/install.sh -o install.sh
+> # Review the script contents
+> less install.sh
+> # Then run it
+> bash install.sh
+> ```
+
 ## Installation Methods
 
 ### Method 1: Quick Install (Recommended)
