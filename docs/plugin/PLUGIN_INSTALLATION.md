@@ -28,7 +28,11 @@ claude --version
 # Should output: Claude Code v1.x.x or later
 ```
 
-If not installed, see [Claude Code Installation](https://claude.ai/docs/code).
+If not installed, install with:
+
+```bash
+curl -fsSL https://claude.ai/install.sh | bash
+```
 
 ## Installation Methods
 
