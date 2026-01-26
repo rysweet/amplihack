@@ -26,7 +26,13 @@ scenario:
   steps:
     - action: launch
       target: "amplihack"
-      args: ["claude", "--", "-p", "Task(subagent_type=\"guide\", prompt=\"Okay, I opened the terminal. What should I type to try amplihack?\")"]
+      args:
+        [
+          "claude",
+          "--",
+          "-p",
+          'Task(subagent_type="guide", prompt="Okay, I opened the terminal. What should I type to try amplihack?")',
+        ]
       description: "Ask guide for first command to try"
       timeout: 60s
 
@@ -37,7 +43,7 @@ scenario:
 
     # Metric: Exact command provided
     - action: verify_output
-      matches: "amplihack claude -- -p \"[^\"]+\""
+      matches: 'amplihack claude -- -p "[^"]+"'
       description: "Should provide complete command with proper quoting"
       metric_type: example_quality
 

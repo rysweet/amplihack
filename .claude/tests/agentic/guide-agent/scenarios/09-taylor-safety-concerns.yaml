@@ -27,7 +27,13 @@ scenario:
   steps:
     - action: launch
       target: "amplihack"
-      args: ["claude", "--", "-p", "Task(subagent_type=\"guide\", prompt=\"I'm a project manager who doesn't write code. What if I accidentally break something using amplihack? Is this safe for me?\")"]
+      args:
+        [
+          "claude",
+          "--",
+          "-p",
+          'Task(subagent_type="guide", prompt="I''m a project manager who doesn''t write code. What if I accidentally break something using amplihack? Is this safe for me?")',
+        ]
       description: "Ask about safety concerns as non-technical user"
       timeout: 90s
 

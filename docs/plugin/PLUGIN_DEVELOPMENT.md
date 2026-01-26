@@ -266,7 +266,7 @@ mkdir -p .claude/agents/specialized
 vim .claude/agents/specialized/my-agent.md
 ```
 
-```markdown
+````markdown
 ---
 agent_name: my-agent
 agent_type: specialized
@@ -285,6 +285,7 @@ Specialized agent for [specific task].
 ## When to Use
 
 Use this agent when:
+
 - [Specific scenario 1]
 - [Specific scenario 2]
 
@@ -304,11 +305,13 @@ Use this agent when:
 # Invoke via Task tool
 Task(subagent_type="my-agent", prompt="Analyze X")
 ```
+````
 
 ## Examples
 
 [Working examples]
-```
+
+````
 
 2. **Test the agent**:
 
@@ -322,7 +325,7 @@ claude
 
 # Use the agent
 /ultrathink "Use my-agent to analyze X"
-```
+````
 
 3. **Add tests**:
 

@@ -15,11 +15,11 @@ Public API (the "studs"):
     StatusTracker: Track three-layer LSP setup status
 """
 
-from .language_detector import LanguageDetector, LanguageDetection
+from .language_detector import LanguageDetection, LanguageDetector
 from .lsp_configurator import LSPConfigurator
-from .plugin_manager import PluginManager, PluginInstallResult
-from .status_tracker import StatusTracker, LayerStatus
-from .mcp_configurator import MCPConfigurator, CCLSPConfig
+from .mcp_configurator import CCLSPConfig, MCPConfigurator
+from .plugin_manager import PluginInstallResult, PluginManager
+from .status_tracker import LayerStatus, StatusTracker
 
 __all__ = [
     "LanguageDetector",

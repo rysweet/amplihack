@@ -7,6 +7,7 @@ Verify ALL amplihack hooks are registered in `hooks.json` with `${CLAUDE_PLUGIN_
 ## Problem
 
 Issue #1948 requirement #2: "ALL hooks with ${CLAUDE_PLUGIN_ROOT}". Currently:
+
 - `hooks.json` has 4 hooks registered (SessionStart, Stop, PostToolUse, PreCompact)
 - Directory `~/.amplihack/.claude/tools/amplihack/hooks/` contains 7 Python hook files
 - 3 hooks may be missing from `hooks.json`: `pre_tool_use.py`, `user_prompt_submit.py`, `power_steering_checker.py`
@@ -23,10 +24,12 @@ Issue #1948 requirement #2: "ALL hooks with ${CLAUDE_PLUGIN_ROOT}". Currently:
 ### Inputs
 
 **Directory Audit:**
+
 - Scan `~/.amplihack/.claude/tools/amplihack/hooks/*.py` for hook files
 - Exclude test files (`test_*.py`) and `__init__.py`
 
 **Current `hooks.json`:**
+
 ```json
 {
   "SessionStart": [...],
@@ -39,6 +42,7 @@ Issue #1948 requirement #2: "ALL hooks with ${CLAUDE_PLUGIN_ROOT}". Currently:
 ### Outputs
 
 **Updated `hooks.json`:**
+
 ```json
 {
   "SessionStart": [...],
@@ -60,11 +64,13 @@ Issue #1948 requirement #2: "ALL hooks with ${CLAUDE_PLUGIN_ROOT}". Currently:
 ### Step 1: Audit Hook Files
 
 **Command:**
+
 ```bash
 ls .claude/tools/amplihack/hooks/*.py | grep -v test_ | grep -v __init__
 ```
 
 **Expected Files (from git status):**
+
 ```
 .claude/tools/amplihack/hooks/
 ├── session_start.py          ✅ In hooks.json (SessionStart)
@@ -89,6 +95,7 @@ ls .claude/tools/amplihack/hooks/*.py | grep -v test_ | grep -v __init__
 6. **PreCompact** - Runs before context window compaction
 
 **Analysis Method:**
+
 - Read each missing hook file
 - Identify hook type from function signature or imports
 - Determine appropriate hook lifecycle event
@@ -96,6 +103,7 @@ ls .claude/tools/amplihack/hooks/*.py | grep -v test_ | grep -v __init__
 ### Step 3: Hook Configurations
 
 **PreToolUse Hook (if applicable):**
+
 ```json
 {
   "PreToolUse": [
@@ -113,6 +121,7 @@ ls .claude/tools/amplihack/hooks/*.py | grep -v test_ | grep -v __init__
 ```
 
 **UserPromptSubmit Hook (if applicable):**
+
 ```json
 {
   "UserPromptSubmit": [
@@ -130,6 +139,7 @@ ls .claude/tools/amplihack/hooks/*.py | grep -v test_ | grep -v __init__
 ```
 
 **Note on `power_steering_checker.py` and `agent_memory_hook.py`:**
+
 - These may be utility modules called by other hooks (not standalone hooks)
 - Verify by checking if they have `if __name__ == "__main__"` entry points
 - Only add if they are executable hooks
@@ -230,11 +240,13 @@ cat .claude/tools/amplihack/hooks/agent_memory_hook.py | head -50
 ### Step 2: Verify Hook Executability
 
 **Criteria for Inclusion:**
+
 - Has `if __name__ == "__main__"` block OR
 - Is imported/called by Claude Code lifecycle hooks OR
 - Has docstring indicating hook purpose
 
 **Exclusion Criteria:**
+
 - Utility module (no standalone execution)
 - Test file
 - Import-only library
@@ -252,6 +264,7 @@ cp .claude/tools/amplihack/hooks/hooks.json .claude/tools/amplihack/hooks/hooks.
 ### Step 4: Verify Paths Use Variable
 
 **Check all paths:**
+
 ```bash
 cat .claude/tools/amplihack/hooks/hooks.json | grep -o 'command.*' | grep -v CLAUDE_PLUGIN_ROOT
 ```
@@ -268,6 +281,7 @@ Should return **nothing** (all paths should use `${CLAUDE_PLUGIN_ROOT}`).
 ### Verification Tests
 
 1. **Path Variable Test:**
+
    ```bash
    # All paths should use ${CLAUDE_PLUGIN_ROOT}
    cat .claude/tools/amplihack/hooks/hooks.json | jq -r '.. | .command? // empty' | grep -v 'CLAUDE_PLUGIN_ROOT'
@@ -275,6 +289,7 @@ Should return **nothing** (all paths should use `${CLAUDE_PLUGIN_ROOT}`).
    ```
 
 2. **Hook Count Test:**
+
    ```bash
    # Count hooks in directory (excluding tests, __init__)
    ls .claude/tools/amplihack/hooks/*.py | grep -v test_ | grep -v __init__ | wc -l

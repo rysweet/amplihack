@@ -41,13 +41,17 @@ The canonical command contains complete task detection logic, complexity estimat
 When this skill is activated, you MUST follow this exact 5-step process:
 
 ### Step 1: Read Canonical Command (MANDATORY)
+
 ```
 Read(file_path="~/.amplihack/.claude/commands/amplihack/ultrathink.md")
 ```
+
 **Validation Checkpoint**: Confirm ultrathink.md content is loaded before proceeding.
 
 ### Step 2: Detect Task Type (MANDATORY)
+
 Analyze user request using keywords from canonical command:
+
 - **Q&A keywords**: what is, explain briefly, quick question, how do I run, simple question
 - **Investigation keywords**: investigate, explain, understand, analyze, research, explore
 - **Development keywords**: implement, build, create, add feature, fix, refactor, deploy
@@ -56,24 +60,29 @@ Analyze user request using keywords from canonical command:
 **Validation Checkpoint**: Task type must be determined (Q&A, Investigation, Development, or Hybrid).
 
 ### Step 3: Invoke Workflow Skill (MANDATORY - BLOCKING)
+
 ⛔ **THIS IS A BLOCKING REQUIREMENT** - Session will be terminated if skipped.
 
 **For Q&A tasks:**
+
 ```
 Read(file_path="~/.amplihack/.claude/workflow/Q&A_WORKFLOW.md")
 ```
 
 **For Investigation tasks:**
+
 ```
 Skill(skill="investigation-workflow")
 ```
 
 **For Development tasks:**
+
 ```
 Skill(skill="default-workflow")
 ```
 
 **For Hybrid tasks:**
+
 ```
 Skill(skill="investigation-workflow")
 # After investigation completes:
@@ -83,14 +92,17 @@ Skill(skill="default-workflow")
 **Validation Checkpoint**: Confirm Skill tool was invoked OR proceed to Step 4.
 
 ### Step 4: Fallback to Read Tool (IF Step 3 Fails)
+
 Only if skill invocation fails, use Read tool as fallback:
 
 **Investigation fallback:**
+
 ```
 Read(file_path="~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md")
 ```
 
 **Development fallback:**
+
 ```
 Read(file_path="~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md")
 ```
@@ -98,6 +110,7 @@ Read(file_path="~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md")
 **Validation Checkpoint**: Confirm workflow content is loaded in context.
 
 ### Step 5: Execute Workflow Steps (MANDATORY)
+
 Follow all steps from loaded workflow without skipping.
 
 **Validation Checkpoint**: All workflow steps must be completed.
@@ -107,17 +120,20 @@ Follow all steps from loaded workflow without skipping.
 ## Enforcement
 
 **Power-Steering Detection:**
+
 - Validates Skill tool invocation occurred
 - Validates Read tool fallback if Skill failed
 - Blocks session termination if workflow not loaded
 
 **Self-Check Protocol:**
 Before proceeding past Step 3, verify:
+
 - [ ] Skill tool invoked with workflow skill name, OR
 - [ ] Read tool used to load workflow markdown
 - [ ] Workflow content confirmed in context
 
 **No Shortcuts:**
+
 - You cannot skip workflow invocation
 - You cannot assume workflow content
 - You must use Skill or Read tool explicitly

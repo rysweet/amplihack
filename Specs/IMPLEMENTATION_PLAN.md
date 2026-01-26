@@ -7,6 +7,7 @@ Complete implementation plan fer th' 6 remainin' gaps in Issue #1948 plugin arch
 ## Executive Summary
 
 **Current State (60% Complete):**
+
 - ✅ Plugin infrastructure at `~/.amplihack/.claude/`
 - ✅ Plugin manifest (`.claude-plugin/plugin.json`)
 - ✅ Hooks using `${CLAUDE_PLUGIN_ROOT}` (4/6-7 hooks verified)
@@ -16,9 +17,10 @@ Complete implementation plan fer th' 6 remainin' gaps in Issue #1948 plugin arch
 - ✅ Test coverage (45 tests, 1,084 lines)
 
 **Remaining Gaps (40%):**
+
 1. ❌ CLI command integration (~200 lines, 3-5 hours)
 2. ❌ Marketplace configuration (~30 lines, 1-2 hours)
-3. ⚠️  Hook registration audit (0-50 lines, 1-2 hours)
+3. ⚠️ Hook registration audit (0-50 lines, 1-2 hours)
 4. ❌ Cross-tool compatibility (0 lines code, 7-18 hours research)
 5. ❌ Backward compatibility (~300 lines, 4-6 hours)
 6. ❌ Documentation updates (~1000 lines docs, 2-3 hours)
@@ -53,6 +55,7 @@ Complete implementation plan fer th' 6 remainin' gaps in Issue #1948 plugin arch
 **Phase 1 Total:** 5-9 hours
 
 **Deliverables:**
+
 - ✅ All hooks registered and verified
 - ✅ `amplihack plugin` commands working
 - ✅ Plugin discoverable in Claude Code `/plugin`
@@ -78,6 +81,7 @@ Complete implementation plan fer th' 6 remainin' gaps in Issue #1948 plugin arch
 **Phase 2 Total:** 11-24 hours
 
 **Deliverables:**
+
 - ✅ Per-project installations still work
 - ✅ Migration commands functional
 - ✅ Cross-tool compatibility documented
@@ -98,6 +102,7 @@ Complete implementation plan fer th' 6 remainin' gaps in Issue #1948 plugin arch
 **Phase 3 Total:** 2-3 hours
 
 **Deliverables:**
+
 - ✅ README has plugin installation instructions
 - ✅ Migration guide complete
 - ✅ Architecture documented
@@ -109,11 +114,13 @@ Complete implementation plan fer th' 6 remainin' gaps in Issue #1948 plugin arch
 **Spec:** `Specs/PLUGIN_CLI_COMMANDS.md`
 
 **Modules:**
+
 - `src/amplihack/plugin_manager/cli_handlers.py` (NEW, ~80 lines)
 - `src/amplihack/plugin_manager/verifier.py` (NEW, ~100 lines)
 - `src/amplihack/cli.py` (MODIFIED, ~20 lines)
 
 **Commands:**
+
 ```bash
 amplihack plugin install <source> [--force]
 amplihack plugin uninstall <plugin_name>
@@ -121,6 +128,7 @@ amplihack plugin verify <plugin_name>
 ```
 
 **Testing:**
+
 - Unit: 5 test functions
 - Integration: 2 test functions
 - E2E: 1 workflow test
@@ -132,11 +140,13 @@ amplihack plugin verify <plugin_name>
 **Spec:** `Specs/PLUGIN_MARKETPLACE_CONFIG.md`
 
 **Changes:**
+
 - `.claude-plugin/plugin.json` (MODIFIED, +8 lines)
 - `src/amplihack/settings_generator/generator.py` (MODIFIED, +15 lines)
 - `src/amplihack/cli.py` (MODIFIED, +7 lines for UVX mode)
 
 **Configuration:**
+
 ```json
 {
   "marketplace": {
@@ -148,6 +158,7 @@ amplihack plugin verify <plugin_name>
 ```
 
 **Testing:**
+
 - Unit: 3 test functions
 - Integration: 1 test function
 
@@ -158,15 +169,18 @@ amplihack plugin verify <plugin_name>
 **Spec:** `Specs/HOOK_REGISTRATION_AUDIT.md`
 
 **Actions:**
+
 1. Read hook files: `pre_tool_use.py`, `user_prompt_submit.py`, `power_steering_checker.py`, `agent_memory_hook.py`
 2. Determine which are executable hooks
 3. Update `hooks.json` with verified hooks
 4. Verify all paths use `${CLAUDE_PLUGIN_ROOT}`
 
 **Configuration:**
+
 - `~/.amplihack/.claude/tools/amplihack/hooks/hooks.json` (MODIFIED, 0-50 lines)
 
 **Testing:**
+
 - Verification: 3 bash commands
 - Runtime: 2 test functions
 
@@ -177,18 +191,21 @@ amplihack plugin verify <plugin_name>
 **Spec:** `Specs/CROSS_TOOL_COMPATIBILITY.md`
 
 **Research Questions:**
+
 - Does Copilot support plugins?
 - Does Codex support plugins?
 - What are manifest format differences?
 - Do hooks work across tools?
 
 **Deliverables:**
+
 - `docs/COPILOT_COMPATIBILITY.md` (research findings)
 - `docs/CODEX_COMPATIBILITY.md` (research findings)
 - Tool-specific configs (if needed)
 - Compatibility matrix in README
 
 **Testing:**
+
 - Research-based documentation tests
 - Integration tests (if tools support plugins)
 
@@ -199,11 +216,13 @@ amplihack plugin verify <plugin_name>
 **Spec:** `Specs/BACKWARD_COMPATIBILITY.md`
 
 **Modules:**
+
 - `src/amplihack/mode_detector/detector.py` (NEW, ~150 lines)
 - `src/amplihack/mode_detector/migrator.py` (NEW, ~100 lines)
 - `src/amplihack/cli.py` (MODIFIED, ~50 lines)
 
 **Commands:**
+
 ```bash
 amplihack mode status
 amplihack mode migrate-to-plugin
@@ -211,11 +230,13 @@ amplihack mode migrate-to-local
 ```
 
 **Mode Detection:**
+
 ```python
 LOCAL > PLUGIN > NONE  # Precedence order
 ```
 
 **Testing:**
+
 - Unit: 5 test functions
 - Integration: 2 test functions
 
@@ -226,6 +247,7 @@ LOCAL > PLUGIN > NONE  # Precedence order
 **Spec:** `Specs/DOCUMENTATION_UPDATES.md`
 
 **Files:**
+
 1. `README.md` (MODIFIED, installation section)
 2. `~/.amplihack/.claude/context/PROJECT.md` (MODIFIED, architecture section)
 3. `docs/MIGRATION_GUIDE.md` (NEW, ~400 lines)
@@ -234,6 +256,7 @@ LOCAL > PLUGIN > NONE  # Precedence order
 6. CLI help text in `cli.py` (MODIFIED, +50 lines)
 
 **Testing:**
+
 - Documentation tests: 5 test functions
 
 **Complexity:** Simple (documentation only, 2-3 hours, low risk)
@@ -243,6 +266,7 @@ LOCAL > PLUGIN > NONE  # Precedence order
 ### Unit Tests (Add 20 tests)
 
 **New Test Files:**
+
 - `tests/unit/test_cli_handlers.py` (5 tests)
 - `tests/unit/test_verifier.py` (3 tests)
 - `tests/unit/test_mode_detector.py` (5 tests)
@@ -250,11 +274,13 @@ LOCAL > PLUGIN > NONE  # Precedence order
 - `tests/unit/test_documentation.py` (5 tests)
 
 **Existing Modified:**
+
 - `tests/unit/test_settings_generator.py` (+3 marketplace tests)
 
 ### Integration Tests (Add 8 tests)
 
 **New Test Files:**
+
 - `tests/integration/test_plugin_cli_integration.py` (2 tests)
 - `tests/integration/test_marketplace_config.py` (1 test)
 - `tests/integration/test_mode_migration.py` (2 tests)
@@ -263,6 +289,7 @@ LOCAL > PLUGIN > NONE  # Precedence order
 ### E2E Tests (Add 4 tests)
 
 **Existing Modified:**
+
 - `tests/e2e/test_plugin_manager_e2e.py` (+4 workflow tests)
 
 **Total New Tests:** 32 tests
@@ -272,6 +299,7 @@ LOCAL > PLUGIN > NONE  # Precedence order
 ### Internal Dependencies
 
 All gaps depend on existing implementation:
+
 - `PluginManager` (already exists)
 - `SettingsGenerator` (already exists)
 - Plugin directory structure (already exists)
@@ -294,18 +322,20 @@ All gaps depend on existing implementation:
 
 ### Medium Risk (Requires testing)
 
-- ⚠️  Backward Compatibility (affects existing workflows)
-- ⚠️  Cross-Tool Compatibility (external dependencies)
+- ⚠️ Backward Compatibility (affects existing workflows)
+- ⚠️ Cross-Tool Compatibility (external dependencies)
 
 ### Mitigation Strategies
 
 **Backward Compatibility:**
+
 - Implement detection before migration
 - Test with existing projects
 - Provide rollback mechanism
 - Document clearly
 
 **Cross-Tool Compatibility:**
+
 - Start with documentation research
 - Test in isolated environments
 - Provide fallback mode if unsupported
@@ -358,6 +388,7 @@ Progress against acceptance criteria:
 ## Next Actions
 
 1. **Immediate (Phase 1):**
+
    ```bash
    # Start with Hook Audit (1 hour)
    Read .claude/tools/amplihack/hooks/pre_tool_use.py

@@ -9,7 +9,7 @@
 - **name**: amplihack:transcripts
 - **version**: 1.0.0
 - **description**: Manage and analyze conversation transcripts
-- **triggers**: 
+- **triggers**:
 
 ---
 
@@ -19,6 +19,7 @@ This command is designed for Claude Code but the patterns and approaches
 can be referenced when using GitHub Copilot CLI.
 
 **Example**:
+
 ```bash
 # Reference this command's approach
 gh copilot explain .github/commands/transcripts.md
@@ -30,7 +31,6 @@ gh copilot suggest --context .github/commands/transcripts.md "your task"
 ---
 
 ## Original Command Documentation
-
 
 # /transcripts - Conversation Transcript Management
 

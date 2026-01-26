@@ -4,8 +4,6 @@ Tests comprehensive test scenario generation for QA validation.
 These tests will FAIL until the scenario_generator module is implemented.
 """
 
-from enum import Enum
-
 import pytest
 
 # These imports will fail until implementation exists
@@ -186,9 +184,9 @@ class TestGadugiScenarioGenerator:
         for scenario in scenarios:
             assert isinstance(scenario.steps, list)
             assert len(scenario.steps) > 0, f"Scenario '{scenario.name}' has no steps"
-            assert all(
-                isinstance(step, str) and len(step) > 0 for step in scenario.steps
-            ), "Invalid step format"
+            assert all(isinstance(step, str) and len(step) > 0 for step in scenario.steps), (
+                "Invalid step format"
+            )
 
     def test_scenarios_have_expected_outcomes(self, generator):
         """Test all scenarios define expected outcomes."""
@@ -304,8 +302,7 @@ class TestGadugiScenarioGenerator:
         # Check for auth-related security tests
         security_text = " ".join([s.description for s in security_scenarios]).lower()
         assert any(
-            keyword in security_text
-            for keyword in ["auth", "permission", "unauthorized", "access"]
+            keyword in security_text for keyword in ["auth", "permission", "unauthorized", "access"]
         )
 
     def test_performance_scenarios_for_high_load_systems(self, generator):
@@ -332,8 +329,7 @@ class TestGadugiScenarioGenerator:
         # Should test edge cases
         boundary_text = " ".join([s.description for s in boundary_scenarios]).lower()
         assert any(
-            keyword in boundary_text
-            for keyword in ["zero", "empty", "maximum", "minimum", "limit"]
+            keyword in boundary_text for keyword in ["zero", "empty", "maximum", "minimum", "limit"]
         )
 
     def test_scenario_generation_is_deterministic(self, generator):

@@ -27,6 +27,7 @@ amplihack launch
 ```
 
 **Benefits:**
+
 - ✅ Install once, available everywhere
 - ✅ Automatic updates across all projects
 - ✅ Zero per-project configuration
@@ -47,6 +48,7 @@ cp -r ~/.claude ./.claude
 ```
 
 **When to use per-project:**
+
 - Project needs custom agents or workflows
 - Version pinning required
 - Experimenting with modifications
@@ -54,6 +56,7 @@ cp -r ~/.claude ./.claude
 ### Plugin Location
 
 Plugin installs at:
+
 ```
 ~/.amplihack/.claude/
 ├── agents/          # 29 specialized agents
@@ -67,6 +70,7 @@ Plugin installs at:
 ```
 
 Settings registered in:
+
 ```
 ~/.claude/settings.json
 {
@@ -91,6 +95,7 @@ Mode Precedence (Highest to Lowest)
 ```
 
 Check current mode:
+
 ```bash
 cd ~/project
 amplihack mode status
@@ -172,6 +177,7 @@ Changes apply t' ALL projects automatically.
 ### Troubleshooting
 
 **Plugin not found:**
+
 ```bash
 # Reinstall
 amplihack plugin install https://github.com/rysweet/amplihack
@@ -181,6 +187,7 @@ amplihack plugin verify amplihack
 ```
 
 **Commands not available:**
+
 ```bash
 # Check mode
 amplihack mode status
@@ -190,6 +197,7 @@ amplihack mode status
 ```
 
 **Local .claude/ takes precedence:**
+
 ```bash
 # Expected behavior - local overrides plugin
 # To use plugin, migrate:
@@ -205,11 +213,11 @@ amplihack mode migrate-to-plugin
 
 ### Cross-Tool Support
 
-| Tool | Status | Installation |
-|------|--------|--------------|
-| **Claude Code** | ✅ Full support | `amplihack plugin install` |
-| **GitHub Copilot** | ⚠️ Partial | Manual copy to `~/.amplihack/.claude/` |
-| **Codex** | ⚠️ Unknown | Test with per-project mode |
+| Tool               | Status          | Installation                           |
+| ------------------ | --------------- | -------------------------------------- |
+| **Claude Code**    | ✅ Full support | `amplihack plugin install`             |
+| **GitHub Copilot** | ⚠️ Partial      | Manual copy to `~/.amplihack/.claude/` |
+| **Codex**          | ⚠️ Unknown      | Test with per-project mode             |
 
 See [Plugin Architecture](./docs/PLUGIN_ARCHITECTURE.md#cross-tool-compatibility) fer details.
 

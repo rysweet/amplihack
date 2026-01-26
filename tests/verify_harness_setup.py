@@ -15,11 +15,12 @@ def verify_imports():
 
     try:
         from tests.harness import (
-            PluginTestHarness,
             HookTestHarness,
             LSPTestHarness,
+            PluginTestHarness,
             SubprocessResult,
         )
+
         print("✓ All harness classes importable")
         return True
     except ImportError as e:
@@ -130,9 +131,8 @@ def count_tests():
 
             print("✗ Could not parse test count")
             return False
-        else:
-            print(f"✗ pytest collection failed: {result.stderr}")
-            return False
+        print(f"✗ pytest collection failed: {result.stderr}")
+        return False
 
     except FileNotFoundError:
         print("⚠ pytest not installed (expected if not in development mode)")
@@ -178,9 +178,8 @@ def main():
         print("  2. Run E2E tests: pytest tests/e2e/ -v")
         print("  3. Implement plugin bricks to make tests pass")
         return 0
-    else:
-        print("\n❌ Some checks failed. Review errors above.")
-        return 1
+    print("\n❌ Some checks failed. Review errors above.")
+    return 1
 
 
 if __name__ == "__main__":

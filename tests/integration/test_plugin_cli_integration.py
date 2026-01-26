@@ -12,8 +12,7 @@ All tests should FAIL initially.
 
 import json
 import subprocess
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
@@ -42,7 +41,7 @@ class TestPluginInstallIntegration:
             "name": "test-plugin",
             "version": "1.0.0",
             "description": "Test plugin",
-            "entry_point": "./plugin.py"
+            "entry_point": "./plugin.py",
         }
         (plugin_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
 
@@ -61,7 +60,7 @@ class TestPluginInstallIntegration:
     def test_install_creates_plugin_directory(self, plugin_source, home_dir):
         """Test install creates ~/.amplihack/.claude/plugins/ directory."""
         # Arrange
-        with patch('pathlib.Path.home', return_value=home_dir):
+        with patch("pathlib.Path.home", return_value=home_dir):
             manager = PluginManager()
 
             # Act
@@ -76,7 +75,7 @@ class TestPluginInstallIntegration:
     def test_install_updates_settings_json(self, plugin_source, home_dir):
         """Test install adds plugin to ~/.claude/settings.json."""
         # Arrange
-        with patch('pathlib.Path.home', return_value=home_dir):
+        with patch("pathlib.Path.home", return_value=home_dir):
             manager = PluginManager()
 
             # Act
@@ -94,7 +93,7 @@ class TestPluginInstallIntegration:
     def test_install_force_overwrites_existing(self, plugin_source, home_dir):
         """Test install with --force overwrites existing plugin."""
         # Arrange
-        with patch('pathlib.Path.home', return_value=home_dir):
+        with patch("pathlib.Path.home", return_value=home_dir):
             manager = PluginManager()
 
             # Install first time
@@ -114,7 +113,7 @@ class TestPluginInstallIntegration:
     def test_install_without_force_fails_if_exists(self, plugin_source, home_dir):
         """Test install without force fails if plugin already exists."""
         # Arrange
-        with patch('pathlib.Path.home', return_value=home_dir):
+        with patch("pathlib.Path.home", return_value=home_dir):
             manager = PluginManager()
 
             # Install first time
@@ -137,11 +136,7 @@ class TestPluginVerifyIntegration:
         plugin_dir = home_dir / ".amplihack" / ".claude" / "plugins" / "test-plugin"
         plugin_dir.mkdir(parents=True)
 
-        manifest = {
-            "name": "test-plugin",
-            "version": "1.0.0",
-            "entry_point": "./plugin.py"
-        }
+        manifest = {"name": "test-plugin", "version": "1.0.0", "entry_point": "./plugin.py"}
         (plugin_dir / "manifest.json").write_text(json.dumps(manifest))
 
         # Add to settings.json
@@ -155,13 +150,11 @@ class TestPluginVerifyIntegration:
     def test_verify_installed_plugin_succeeds(self, installed_plugin, home_dir):
         """Test verifying installed plugin returns success."""
         # Arrange
-        with patch('pathlib.Path.home', return_value=home_dir):
+        with patch("pathlib.Path.home", return_value=home_dir):
             # Act - simulate amplihack plugin verify test-plugin
             # This will fail until CLI implementation exists
             result = subprocess.run(
-                ["amplihack", "plugin", "verify", "test-plugin"],
-                capture_output=True,
-                text=True
+                ["amplihack", "plugin", "verify", "test-plugin"], capture_output=True, text=True
             )
 
             # Assert
@@ -170,12 +163,10 @@ class TestPluginVerifyIntegration:
     def test_verify_checks_directory_exists(self, home_dir):
         """Test verify fails if plugin directory doesn't exist."""
         # Arrange
-        with patch('pathlib.Path.home', return_value=home_dir):
+        with patch("pathlib.Path.home", return_value=home_dir):
             # Act - verify non-existent plugin
             result = subprocess.run(
-                ["amplihack", "plugin", "verify", "nonexistent"],
-                capture_output=True,
-                text=True
+                ["amplihack", "plugin", "verify", "nonexistent"], capture_output=True, text=True
             )
 
             # Assert
@@ -189,12 +180,10 @@ class TestPluginVerifyIntegration:
         settings = {"enabledPlugins": []}  # Remove plugin from list
         settings_path.write_text(json.dumps(settings))
 
-        with patch('pathlib.Path.home', return_value=home_dir):
+        with patch("pathlib.Path.home", return_value=home_dir):
             # Act
             result = subprocess.run(
-                ["amplihack", "plugin", "verify", "test-plugin"],
-                capture_output=True,
-                text=True
+                ["amplihack", "plugin", "verify", "test-plugin"], capture_output=True, text=True
             )
 
             # Assert
@@ -207,20 +196,20 @@ class TestPluginVerifyIntegration:
         hooks_dir = installed_plugin / "tools" / "amplihack" / "hooks"
         hooks_dir.mkdir(parents=True)
         hooks_json = {
-            "SessionStart": [{
-                "hooks": [{
-                    "command": "${CLAUDE_PLUGIN_ROOT}/tools/amplihack/hooks/session_start.py"
-                }]
-            }]
+            "SessionStart": [
+                {
+                    "hooks": [
+                        {"command": "${CLAUDE_PLUGIN_ROOT}/tools/amplihack/hooks/session_start.py"}
+                    ]
+                }
+            ]
         }
         (hooks_dir / "hooks.json").write_text(json.dumps(hooks_json))
 
-        with patch('pathlib.Path.home', return_value=home_dir):
+        with patch("pathlib.Path.home", return_value=home_dir):
             # Act
             result = subprocess.run(
-                ["amplihack", "plugin", "verify", "test-plugin"],
-                capture_output=True,
-                text=True
+                ["amplihack", "plugin", "verify", "test-plugin"], capture_output=True, text=True
             )
 
             # Assert
@@ -237,10 +226,7 @@ class TestPluginUninstallIntegration:
         plugin_dir = home_dir / ".amplihack" / ".claude" / "plugins" / "test-plugin"
         plugin_dir.mkdir(parents=True)
 
-        manifest = {
-            "name": "test-plugin",
-            "version": "1.0.0"
-        }
+        manifest = {"name": "test-plugin", "version": "1.0.0"}
         (plugin_dir / "manifest.json").write_text(json.dumps(manifest))
 
         # Add to settings.json
@@ -254,7 +240,7 @@ class TestPluginUninstallIntegration:
     def test_uninstall_removes_directory(self, installed_plugin, home_dir):
         """Test uninstall removes plugin directory."""
         # Arrange
-        with patch('pathlib.Path.home', return_value=home_dir):
+        with patch("pathlib.Path.home", return_value=home_dir):
             manager = PluginManager()
 
             # Act
@@ -267,7 +253,7 @@ class TestPluginUninstallIntegration:
     def test_uninstall_removes_settings_entry(self, installed_plugin, home_dir):
         """Test uninstall removes plugin from settings.json."""
         # Arrange
-        with patch('pathlib.Path.home', return_value=home_dir):
+        with patch("pathlib.Path.home", return_value=home_dir):
             manager = PluginManager()
 
             # Act
@@ -283,7 +269,7 @@ class TestPluginUninstallIntegration:
     def test_uninstall_nonexistent_plugin_fails(self, home_dir):
         """Test uninstalling non-existent plugin fails gracefully."""
         # Arrange
-        with patch('pathlib.Path.home', return_value=home_dir):
+        with patch("pathlib.Path.home", return_value=home_dir):
             manager = PluginManager()
 
             # Act
@@ -310,8 +296,8 @@ class TestEndToEndWorkflow:
             "entry_point": "./cli.py",
             "marketplace": {
                 "name": "amplihack-test",
-                "url": "https://github.com/test/amplihack-test"
-            }
+                "url": "https://github.com/test/amplihack-test",
+            },
         }
         (plugin_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
 
@@ -323,12 +309,16 @@ class TestEndToEndWorkflow:
         hooks_dir.mkdir(parents=True)
 
         hooks_config = {
-            "SessionStart": [{
-                "hooks": [{
-                    "command": "${CLAUDE_PLUGIN_ROOT}/tools/amplihack/hooks/session_start.py",
-                    "timeout": 10000
-                }]
-            }]
+            "SessionStart": [
+                {
+                    "hooks": [
+                        {
+                            "command": "${CLAUDE_PLUGIN_ROOT}/tools/amplihack/hooks/session_start.py",
+                            "timeout": 10000,
+                        }
+                    ]
+                }
+            ]
         }
         (hooks_dir / "hooks.json").write_text(json.dumps(hooks_config))
         (hooks_dir / "session_start.py").write_text("#!/usr/bin/env python3\nprint('Hook loaded')")
@@ -341,7 +331,7 @@ class TestEndToEndWorkflow:
         home_dir = tmp_path / "home"
         home_dir.mkdir()
 
-        with patch('pathlib.Path.home', return_value=home_dir):
+        with patch("pathlib.Path.home", return_value=home_dir):
             manager = PluginManager()
 
             # Act 1: Install
@@ -354,9 +344,7 @@ class TestEndToEndWorkflow:
 
             # Act 2: Verify
             verify_result = subprocess.run(
-                ["amplihack", "plugin", "verify", "amplihack-test"],
-                capture_output=True,
-                text=True
+                ["amplihack", "plugin", "verify", "amplihack-test"], capture_output=True, text=True
             )
 
             # Assert 2: Verification successful
@@ -371,9 +359,7 @@ class TestEndToEndWorkflow:
 
             # Act 4: Verify after uninstall
             verify_after = subprocess.run(
-                ["amplihack", "plugin", "verify", "amplihack-test"],
-                capture_output=True,
-                text=True
+                ["amplihack", "plugin", "verify", "amplihack-test"], capture_output=True, text=True
             )
 
             # Assert 4: Verification fails after uninstall
@@ -385,7 +371,7 @@ class TestEndToEndWorkflow:
         home_dir = tmp_path / "home"
         home_dir.mkdir()
 
-        with patch('pathlib.Path.home', return_value=home_dir):
+        with patch("pathlib.Path.home", return_value=home_dir):
             manager = PluginManager()
             settings_path = home_dir / ".claude" / "settings.json"
 
@@ -414,11 +400,7 @@ class TestSettingsJsonGeneration:
         manifest = {
             "name": "amplihack",
             "version": "0.9.0",
-            "lsp": {
-                "python": {
-                    "command": "pylsp"
-                }
-            }
+            "lsp": {"python": {"command": "pylsp"}},
         }
 
         # Act
@@ -435,10 +417,7 @@ class TestSettingsJsonGeneration:
         manifest = {
             "name": "amplihack",
             "version": "0.9.0",
-            "marketplace": {
-                "name": "amplihack",
-                "url": "https://github.com/rysweet/amplihack"
-            }
+            "marketplace": {"name": "amplihack", "url": "https://github.com/rysweet/amplihack"},
         }
 
         # Act
@@ -453,13 +432,8 @@ class TestSettingsJsonGeneration:
         """Test merge doesn't overwrite user customizations."""
         # Arrange
         generator = SettingsGenerator()
-        user_settings = {
-            "customSetting": "user-value",
-            "enabledPlugins": ["existing-plugin"]
-        }
-        plugin_settings = {
-            "enabledPlugins": ["amplihack"]
-        }
+        user_settings = {"customSetting": "user-value", "enabledPlugins": ["existing-plugin"]}
+        plugin_settings = {"enabledPlugins": ["amplihack"]}
 
         # Act
         merged = generator.merge_settings(user_settings, plugin_settings)

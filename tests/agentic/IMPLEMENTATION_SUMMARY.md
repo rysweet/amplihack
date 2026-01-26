@@ -43,22 +43,26 @@ We successfully created a complete outside-in agentic testing solution for the C
 ### What the Test Validates
 
 ✅ **Installation Process**
+
 - `uvx --from git+...` installs amplihack
 - Files deploy to `~/.amplihack/.claude/`
 - AMPLIHACK.md exists (33KB)
 - 80+ skills deployed
 
 ✅ **Plugin Manifest**
+
 - `.claude-plugin/plugin.json` exists
 - Contains "amplihack" ID
 - Valid JSON structure
 
 ✅ **Claude Code Integration**
+
 - Launches with `--plugin-dir ~/.amplihack/.claude/`
 - `/plugin` command executes
 - "amplihack" appears in plugin list
 
 ✅ **Evidence Collection**
+
 - Installation logs
 - File listings
 - TUI interaction captures
@@ -121,6 +125,7 @@ expect "amplihack"
 ```
 
 This approach:
+
 - ✅ Works with ANY TUI application
 - ✅ No framework dependencies
 - ✅ Battle-tested (expect used since 1990)
@@ -129,11 +134,13 @@ This approach:
 ### Why Not Gadugi Yet?
 
 The gadugi-agentic-test framework is excellent but:
+
 - ❌ NPM dependency issues (`@types/node-pty` not found)
 - ❌ Not published to NPM yet
 - ❌ Requires significant setup
 
 **Solution**: We created TWO tests:
+
 1. Standalone script (works NOW)
 2. Gadugi YAML (ready when framework is stable)
 
@@ -158,6 +165,7 @@ evidence/claude-code-plugin-test-TIMESTAMP/
 **Decision**: Use expect for TUI automation
 
 **Rationale**:
+
 - Claude Code is a TUI (terminal), not a web app
 - Playwright/Puppeteer for web browsers only
 - expect is THE standard for TUI automation
@@ -168,6 +176,7 @@ evidence/claude-code-plugin-test-TIMESTAMP/
 **Decision**: Create both
 
 **Rationale**:
+
 - Standalone works immediately (no blockers)
 - Gadugi YAML documents ideal structure
 - Users choose based on needs
@@ -178,6 +187,7 @@ evidence/claude-code-plugin-test-TIMESTAMP/
 **Decision**: Bash shell script
 
 **Rationale**:
+
 - ✅ Zero dependencies (bash + expect already installed)
 - ✅ Easy to read and modify
 - ✅ Fast execution
@@ -199,7 +209,7 @@ This test validates the core claim of PR #1973:
 
 ### Sample PR Comment
 
-```markdown
+````markdown
 ## ✅ Plugin Test Results
 
 Ran outside-in agentic test in fresh environment:
@@ -207,6 +217,7 @@ Ran outside-in agentic test in fresh environment:
 ```bash
 ./tests/agentic/run-plugin-test.sh
 ```
+````
 
 **Results**: All 5 assertions passed!
 
@@ -217,7 +228,8 @@ Ran outside-in agentic test in fresh environment:
 - ✅ TUI test: "amplihack" detected in /plugin output
 
 Evidence: `evidence/claude-code-plugin-test-1705724890/TEST_REPORT.md`
-```
+
+````
 
 ## Future Enhancements
 
@@ -321,10 +333,10 @@ cat evidence/claude-code-plugin-test-*/TEST_REPORT.md
 
 # View TUI log
 cat evidence/claude-code-plugin-test-*/05-tui-test.log
-```
+````
 
 ---
 
 **🏴‍☠️ Conclusion**: We've built a complete, working, outside-in test fer the Claude Code plugin! Arrr! 🏴‍☠️
 
-*Generated: 2026-01-20 by Claude Code (Pirate Mode Activated)*
+_Generated: 2026-01-20 by Claude Code (Pirate Mode Activated)_

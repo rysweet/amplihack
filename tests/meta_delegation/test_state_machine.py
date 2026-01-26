@@ -6,8 +6,7 @@ These tests will FAIL until the state_machine module is implemented.
 
 import time
 from datetime import datetime, timedelta
-from enum import Enum
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 import pytest
 

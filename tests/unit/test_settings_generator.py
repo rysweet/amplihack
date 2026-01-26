@@ -8,7 +8,8 @@ Testing pyramid:
 
 import json
 from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
+
 import pytest
 
 
@@ -20,10 +21,7 @@ class TestSettingsGeneratorGeneration:
         from amplihack.settings_generator import SettingsGenerator
 
         generator = SettingsGenerator()
-        plugin_manifest = {
-            "name": "test-plugin",
-            "version": "1.0.0"
-        }
+        plugin_manifest = {"name": "test-plugin", "version": "1.0.0"}
 
         settings = generator.generate(plugin_manifest)
 
@@ -38,12 +36,7 @@ class TestSettingsGeneratorGeneration:
         plugin_manifest = {
             "name": "test-plugin",
             "version": "1.0.0",
-            "mcpServers": {
-                "server1": {
-                    "command": "node",
-                    "args": ["server.js"]
-                }
-            }
+            "mcpServers": {"server1": {"command": "node", "args": ["server.js"]}},
         }
 
         settings = generator.generate(plugin_manifest)
@@ -60,7 +53,7 @@ class TestSettingsGeneratorGeneration:
         plugin_manifest = {
             "name": "test-plugin",
             "version": "1.0.0",
-            "description": "A test plugin"
+            "description": "A test plugin",
         }
 
         settings = generator.generate(plugin_manifest)
@@ -76,19 +69,9 @@ class TestSettingsGeneratorGeneration:
         plugin_manifest = {
             "name": "test-plugin",
             "version": "1.0.0",
-            "mcpServers": {
-                "server1": {
-                    "command": "default-command"
-                }
-            }
+            "mcpServers": {"server1": {"command": "default-command"}},
         }
-        user_settings = {
-            "mcpServers": {
-                "server1": {
-                    "command": "custom-command"
-                }
-            }
-        }
+        user_settings = {"mcpServers": {"server1": {"command": "custom-command"}}}
 
         settings = generator.generate(plugin_manifest, user_settings)
 
@@ -115,12 +98,7 @@ class TestSettingsGeneratorGeneration:
         plugin_manifest = {
             "name": "test-plugin",
             "version": "1.0.0",
-            "mcpServers": {
-                "server1": {
-                    "command": "node",
-                    "cwd": "./servers"
-                }
-            }
+            "mcpServers": {"server1": {"command": "node", "cwd": "./servers"}},
         }
 
         settings = generator.generate(plugin_manifest)
@@ -137,14 +115,7 @@ class TestSettingsGeneratorGeneration:
         plugin_manifest = {
             "name": "test-plugin",
             "version": "1.0.0",
-            "mcpServers": {
-                "server1": {
-                    "command": "node",
-                    "env": {
-                        "NODE_ENV": "production"
-                    }
-                }
-            }
+            "mcpServers": {"server1": {"command": "node", "env": {"NODE_ENV": "production"}}},
         }
 
         settings = generator.generate(plugin_manifest)
@@ -186,18 +157,8 @@ class TestSettingsGeneratorMerging:
         from amplihack.settings_generator import SettingsGenerator
 
         generator = SettingsGenerator()
-        base = {
-            "mcpServers": {
-                "server1": {"command": "base"},
-                "server2": {"command": "base2"}
-            }
-        }
-        overlay = {
-            "mcpServers": {
-                "server1": {"args": ["--flag"]},
-                "server3": {"command": "new"}
-            }
-        }
+        base = {"mcpServers": {"server1": {"command": "base"}, "server2": {"command": "base2"}}}
+        overlay = {"mcpServers": {"server1": {"args": ["--flag"]}, "server3": {"command": "new"}}}
 
         merged = generator.merge_settings(base, overlay)
 
@@ -261,12 +222,7 @@ class TestSettingsGeneratorMerging:
         from amplihack.settings_generator import SettingsGenerator
 
         generator = SettingsGenerator()
-        base = {
-            "string": "value",
-            "number": 42,
-            "boolean": True,
-            "null": None
-        }
+        base = {"string": "value", "number": 42, "boolean": True, "null": None}
         overlay = {}
 
         merged = generator.merge_settings(base, overlay)
@@ -332,6 +288,7 @@ class TestSettingsGeneratorWriting:
         target_path = Path("/fake/settings.json")
 
         written_content = None
+
         def capture_write(content):
             nonlocal written_content
             written_content = content
@@ -380,10 +337,7 @@ class TestSettingsGeneratorEdgeCases:
         from amplihack.settings_generator import SettingsGenerator
 
         generator = SettingsGenerator()
-        plugin_manifest = {
-            "name": "test-plugin",
-            "version": "1.0.0"
-        }
+        plugin_manifest = {"name": "test-plugin", "version": "1.0.0"}
         # Create circular reference
         plugin_manifest["self"] = plugin_manifest
 
@@ -409,10 +363,7 @@ class TestSettingsGeneratorEdgeCases:
         from amplihack.settings_generator import SettingsGenerator
 
         generator = SettingsGenerator()
-        plugin_manifest = {
-            "name": "Invalid Name!",
-            "version": "1.0.0"
-        }
+        plugin_manifest = {"name": "Invalid Name!", "version": "1.0.0"}
 
         with pytest.raises(ValueError):
             settings = generator.generate(plugin_manifest)

@@ -14,16 +14,16 @@ This is a **thin bundle** that references existing Claude Code components withou
 
 Amplihack integrates with the Microsoft Amplifier ecosystem bundles:
 
-| Bundle | Purpose | Dependency |
-|--------|---------|------------|
-| `amplifier-bundle-recipes` | Core workflow recipes | Foundation (transitive) |
-| `amplifier-bundle-lsp` | LSP infrastructure (base) | Foundation |
-| `amplifier-bundle-lsp-python` | Python LSP integration | lsp (base) |
-| `amplifier-bundle-lsp-typescript` | TypeScript LSP integration | lsp (base) |
-| `amplifier-bundle-python-dev` | Python dev tools | Foundation |
-| `amplifier-bundle-ts-dev` | TypeScript dev tools | Foundation |
-| `amplifier-bundle-shadow` | Shadow mode observability | Foundation |
-| `amplifier-bundle-issues` | GitHub issues integration | Foundation |
+| Bundle                            | Purpose                    | Dependency              |
+| --------------------------------- | -------------------------- | ----------------------- |
+| `amplifier-bundle-recipes`        | Core workflow recipes      | Foundation (transitive) |
+| `amplifier-bundle-lsp`            | LSP infrastructure (base)  | Foundation              |
+| `amplifier-bundle-lsp-python`     | Python LSP integration     | lsp (base)              |
+| `amplifier-bundle-lsp-typescript` | TypeScript LSP integration | lsp (base)              |
+| `amplifier-bundle-python-dev`     | Python dev tools           | Foundation              |
+| `amplifier-bundle-ts-dev`         | TypeScript dev tools       | Foundation              |
+| `amplifier-bundle-shadow`         | Shadow mode observability  | Foundation              |
+| `amplifier-bundle-issues`         | GitHub issues integration  | Foundation              |
 
 **Total**: 7 external bundles + amplihack = 8 bundles
 
@@ -44,14 +44,14 @@ includes:
 
 ## What's Referenced
 
-| Component | Location                   | Count      |
-| --------- | -------------------------- | ---------- |
-| Skills    | `../.claude/skills/`       | 74         |
-| Agents    | `../.claude/agents/`       | 36         |
-| Recipes   | `amplifier-bundle/recipes/` | 10         |
-| Context   | `../.claude/context/`      | 3 files    |
-| Workflows | `../.claude/workflow/`     | 7 docs     |
-| Bundles   | External includes          | 7 + amplihack = 8 |
+| Component | Location                    | Count             |
+| --------- | --------------------------- | ----------------- |
+| Skills    | `../.claude/skills/`        | 74                |
+| Agents    | `../.claude/agents/`        | 36                |
+| Recipes   | `amplifier-bundle/recipes/` | 10                |
+| Context   | `../.claude/context/`       | 3 files           |
+| Workflows | `../.claude/workflow/`      | 7 docs            |
+| Bundles   | External includes           | 7 + amplihack = 8 |
 
 ## Tool Integration
 
@@ -60,10 +60,12 @@ includes:
 The LSP bundles provide intelligent code analysis and completion:
 
 **Prerequisites**:
+
 - Python: `pip install pyright` (or `npm install -g pyright`)
 - TypeScript: `npm install -g typescript typescript-language-server`
 
 **What they provide**:
+
 - Type checking and inference
 - Go-to-definition and find-references
 - Symbol search and code navigation
@@ -74,12 +76,14 @@ The LSP bundles provide intelligent code analysis and completion:
 ### Development Tool Bundles
 
 **Python Dev** (`amplifier-bundle-python-dev`):
+
 - pytest integration
 - pip/poetry package management
 - Virtual environment handling
 - Python-specific code quality tools
 
 **TypeScript Dev** (`amplifier-bundle-ts-dev`):
+
 - npm/yarn/pnpm support
 - TypeScript compilation
 - ESLint/Prettier integration
@@ -88,12 +92,14 @@ The LSP bundles provide intelligent code analysis and completion:
 ### Workflow Enhancement Bundles
 
 **Shadow Mode** (`amplifier-bundle-shadow`):
+
 - Observability for agent execution
 - Performance metrics and timing
 - Debug logging and tracing
 - Workflow introspection
 
 **GitHub Issues** (`amplifier-bundle-issues`):
+
 - GitHub issue creation and management
 - Issue-to-code linking
 - Automated issue triage
@@ -103,13 +109,14 @@ The LSP bundles provide intelligent code analysis and completion:
 
 Amplihack provides three complementary task tracking systems:
 
-| System | Purpose | Persistence | Use Case |
-|--------|---------|-------------|----------|
-| **todo** | Short-term task tracking within session | Session-only | Multi-step implementations, progress tracking |
+| System     | Purpose                                   | Persistence               | Use Case                                           |
+| ---------- | ----------------------------------------- | ------------------------- | -------------------------------------------------- |
+| **todo**   | Short-term task tracking within session   | Session-only              | Multi-step implementations, progress tracking      |
 | **memory** | Long-term knowledge and context retention | Persistent (SQLite/Neo4j) | Cross-session learnings, discoveries, agent memory |
-| **issues** | External GitHub issue tracking | GitHub API | Bug reports, feature requests, backlog management |
+| **issues** | External GitHub issue tracking            | GitHub API                | Bug reports, feature requests, backlog management  |
 
 **When to use what**:
+
 - `todo`: Breaking down current work into tracked steps (e.g., "Implement auth", "Write tests", "Update docs")
 - `memory`: Storing decisions, patterns, or discoveries for future sessions (e.g., "Why we chose X over Y")
 - `issues`: Managing external work items, PRs, and project tracking (e.g., GitHub issue #2015)
@@ -138,9 +145,9 @@ All hook modules wrap existing Claude Code hooks via lazy imports, delegating to
 
 ### Lock Mode Hook (1)
 
-| Module             | Wraps              | Purpose                                                       |
-| ------------------ | ------------------ | ------------------------------------------------------------- |
-| `hook-lock-mode`   | `lock_mode.py`     | Continuous work mode via context injection                    |
+| Module           | Wraps          | Purpose                                    |
+| ---------------- | -------------- | ------------------------------------------ |
+| `hook-lock-mode` | `lock_mode.py` | Continuous work mode via context injection |
 
 **Total**: 3 lifecycle + 5 feature + 1 lock = **9 hooks**
 

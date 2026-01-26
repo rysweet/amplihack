@@ -20,7 +20,7 @@ import os
 import tempfile
 import threading
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -112,7 +112,9 @@ Example usage here.
 
         # Context injected at top
         lines = content.split("\n")
-        context_line_idx = next(i for i, line in enumerate(lines) if "AMPLIHACK_CONTEXT_START" in line)
+        context_line_idx = next(
+            i for i, line in enumerate(lines) if "AMPLIHACK_CONTEXT_START" in line
+        )
         existing_content_idx = next(i for i, line in enumerate(lines) if "Existing Agent" in line)
         assert context_line_idx < existing_content_idx
 
@@ -190,7 +192,7 @@ class TestCorruptedState:
         context_file.parent.mkdir(parents=True, exist_ok=True)
         context_data = {
             "command": "amplihack copilot",
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(UTC).isoformat(),
             # Missing "launcher" field!
         }
         context_file.write_text(json.dumps(context_data))
@@ -212,11 +214,11 @@ class TestCorruptedState:
         context_file = tmp_path / ".claude" / "runtime" / "launcher_context.json"
         context_file.parent.mkdir(parents=True, exist_ok=True)
 
-        old_timestamp = datetime.now(timezone.utc) - timedelta(hours=48)
+        old_timestamp = datetime.now(UTC) - timedelta(hours=48)
         context_data = {
             "launcher": "copilot",
             "command": "amplihack copilot",
-            "timestamp": old_timestamp.isoformat()
+            "timestamp": old_timestamp.isoformat(),
         }
         context_file.write_text(json.dumps(context_data))
 
@@ -240,11 +242,11 @@ class TestCorruptedState:
         context_file.parent.mkdir(parents=True, exist_ok=True)
 
         # Exactly 24 hours + 1 second (just over threshold)
-        old_timestamp = datetime.now(timezone.utc) - timedelta(hours=24, seconds=1)
+        old_timestamp = datetime.now(UTC) - timedelta(hours=24, seconds=1)
         context_data = {
             "launcher": "copilot",
             "command": "amplihack copilot",
-            "timestamp": old_timestamp.isoformat()
+            "timestamp": old_timestamp.isoformat(),
         }
         context_file.write_text(json.dumps(context_data))
 
@@ -265,11 +267,11 @@ class TestCorruptedState:
         context_file = tmp_path / ".claude" / "runtime" / "launcher_context.json"
         context_file.parent.mkdir(parents=True, exist_ok=True)
 
-        fresh_timestamp = datetime.now(timezone.utc) - timedelta(hours=23)
+        fresh_timestamp = datetime.now(UTC) - timedelta(hours=23)
         context_data = {
             "launcher": "copilot",
             "command": "amplihack copilot",
-            "timestamp": fresh_timestamp.isoformat()
+            "timestamp": fresh_timestamp.isoformat(),
         }
         context_file.write_text(json.dumps(context_data))
 
@@ -294,7 +296,7 @@ class TestCorruptedState:
         context_data = {
             "launcher": "invalid_launcher_name",  # Not "claude" or "copilot"
             "command": "amplihack invalid",
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(UTC).isoformat(),
         }
         context_file.write_text(json.dumps(context_data))
 
@@ -325,10 +327,7 @@ class TestConcurrentAccess:
         def start_session(session_id):
             try:
                 strategy = CopilotStrategy(tmp_path)
-                context = {
-                    "session": session_id,
-                    "timestamp": datetime.now(timezone.utc).isoformat()
-                }
+                context = {"session": session_id, "timestamp": datetime.now(UTC).isoformat()}
                 result = strategy.inject_context(context)
                 results.append((session_id, result))
             except Exception as e:
@@ -718,7 +717,7 @@ class TestGracefulDegradation:
         context_data = {
             "launcher": "copilot",
             "command": "amplihack copilot",
-            "timestamp": "not-a-valid-timestamp"
+            "timestamp": "not-a-valid-timestamp",
         }
         context_file.write_text(json.dumps(context_data))
 

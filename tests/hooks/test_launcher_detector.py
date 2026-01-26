@@ -9,19 +9,17 @@ Testing pyramid:
 import json
 import os
 import sys
-import tempfile
 from datetime import datetime, timedelta
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
 from amplihack.hooks.launcher_detector import LauncherDetector, LauncherInfo
 
-
 # ============================================================================
 # UNIT TESTS (60%)
 # ============================================================================
+
 
 class TestLauncherInfo:
     """Unit tests for LauncherInfo dataclass."""
@@ -32,7 +30,7 @@ class TestLauncherInfo:
             launcher_type="claude",
             command="amplihack test",
             detected_at="2025-01-17T12:00:00",
-            environment={"USER": "testuser"}
+            environment={"USER": "testuser"},
         )
         data = info.to_dict()
 
@@ -47,7 +45,7 @@ class TestLauncherInfo:
             "launcher_type": "copilot",
             "command": "amplihack test",
             "detected_at": "2025-01-17T12:00:00",
-            "environment": {"USER": "testuser"}
+            "environment": {"USER": "testuser"},
         }
         info = LauncherInfo.from_dict(data)
 
@@ -62,7 +60,7 @@ class TestLauncherInfo:
             launcher_type="codex",
             command="amplihack --help",
             detected_at="2025-01-17T12:00:00",
-            environment={"HOME": "/home/test"}
+            environment={"HOME": "/home/test"},
         )
         data = original.to_dict()
         restored = LauncherInfo.from_dict(data)
@@ -98,32 +96,32 @@ class TestLauncherDetection:
         """Test unknown detection when no markers present."""
         # Clear environment
         env_vars = [
-            "CLAUDE_CODE_SESSION", "CLAUDE_SESSION_ID", "ANTHROPIC_API_KEY",
-            "GITHUB_COPILOT_TOKEN", "GITHUB_TOKEN", "COPILOT_SESSION",
-            "OPENAI_API_KEY", "CODEX_SESSION"
+            "CLAUDE_CODE_SESSION",
+            "CLAUDE_SESSION_ID",
+            "ANTHROPIC_API_KEY",
+            "GITHUB_COPILOT_TOKEN",
+            "GITHUB_TOKEN",
+            "COPILOT_SESSION",
+            "OPENAI_API_KEY",
+            "CODEX_SESSION",
         ]
-        env_patch = {var: None for var in env_vars}
+        env_patch = dict.fromkeys(env_vars)
 
         with patch.dict(os.environ, env_patch, clear=False):
-            with patch.object(
-                LauncherDetector, '_get_parent_process_name', return_value=None
-            ):
+            with patch.object(LauncherDetector, "_get_parent_process_name", return_value=None):
                 launcher_type = LauncherDetector._detect_launcher_type()
                 assert launcher_type == "unknown"
 
     def test_detect_claude_from_parent_process(self):
         """Test Claude detection from parent process name."""
-        with patch.object(
-            LauncherDetector, '_get_parent_process_name', return_value="claude-code"
-        ):
+        with patch.object(LauncherDetector, "_get_parent_process_name", return_value="claude-code"):
             launcher_type = LauncherDetector._detect_launcher_type()
             assert launcher_type == "claude"
 
     def test_detect_copilot_from_parent_process(self):
         """Test Copilot detection from parent process name."""
         with patch.object(
-            LauncherDetector, '_get_parent_process_name',
-            return_value="github-copilot"
+            LauncherDetector, "_get_parent_process_name", return_value="github-copilot"
         ):
             launcher_type = LauncherDetector._detect_launcher_type()
             assert launcher_type == "copilot"
@@ -134,13 +132,13 @@ class TestCommandGathering:
 
     def test_get_command(self):
         """Test command line gathering."""
-        with patch.object(sys, 'argv', ["amplihack", "test", "--verbose"]):
+        with patch.object(sys, "argv", ["amplihack", "test", "--verbose"]):
             command = LauncherDetector._get_command()
             assert command == "amplihack test --verbose"
 
     def test_get_command_single_arg(self):
         """Test command with single argument."""
-        with patch.object(sys, 'argv', ["amplihack"]):
+        with patch.object(sys, "argv", ["amplihack"]):
             command = LauncherDetector._get_command()
             assert command == "amplihack"
 
@@ -150,10 +148,7 @@ class TestEnvironmentGathering:
 
     def test_gather_environment_sanitizes_keys(self):
         """Test that API keys are sanitized."""
-        with patch.dict(
-            os.environ,
-            {"ANTHROPIC_API_KEY": "sk_test_1234567890abcdefghij"}
-        ):
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk_test_1234567890abcdefghij"}):
             env = LauncherDetector._gather_environment()
             # Should be sanitized
             assert env["ANTHROPIC_API_KEY"] == "sk_t...ghij"
@@ -189,7 +184,7 @@ class TestStalenessCheck:
             launcher_type="claude",
             command="test",
             detected_at=datetime.now().isoformat(),
-            environment={}
+            environment={},
         )
         assert not LauncherDetector.is_stale(context)
 
@@ -197,10 +192,7 @@ class TestStalenessCheck:
         """Test that old context is stale."""
         old_time = datetime.now() - timedelta(seconds=400)
         context = LauncherInfo(
-            launcher_type="claude",
-            command="test",
-            detected_at=old_time.isoformat(),
-            environment={}
+            launcher_type="claude", command="test", detected_at=old_time.isoformat(), environment={}
         )
         assert LauncherDetector.is_stale(context)
 
@@ -211,10 +203,7 @@ class TestStalenessCheck:
     def test_is_stale_with_invalid_timestamp(self):
         """Test that invalid timestamp is treated as stale."""
         context = LauncherInfo(
-            launcher_type="claude",
-            command="test",
-            detected_at="invalid-timestamp",
-            environment={}
+            launcher_type="claude", command="test", detected_at="invalid-timestamp", environment={}
         )
         assert LauncherDetector.is_stale(context)
 
@@ -225,7 +214,7 @@ class TestStalenessCheck:
             launcher_type="claude",
             command="test",
             detected_at=threshold_time.isoformat(),
-            environment={}
+            environment={},
         )
         # Exactly at threshold should not be stale
         # (uses > not >=)
@@ -235,6 +224,7 @@ class TestStalenessCheck:
 # ============================================================================
 # INTEGRATION TESTS (30%)
 # ============================================================================
+
 
 class TestDetectionIntegration:
     """Integration tests for full detection workflow."""
@@ -252,10 +242,7 @@ class TestDetectionIntegration:
 
     def test_detect_captures_environment(self):
         """Test that detect() captures environment variables."""
-        with patch.dict(
-            os.environ,
-            {"CLAUDE_CODE_SESSION": "test", "USER": "testuser"}
-        ):
+        with patch.dict(os.environ, {"CLAUDE_CODE_SESSION": "test", "USER": "testuser"}):
             info = LauncherDetector.detect()
             assert "CLAUDE_CODE_SESSION" in info.environment
             assert "USER" in info.environment
@@ -267,14 +254,10 @@ class TestFileOperations:
     def test_write_and_read_context(self, tmp_path):
         """Test writing and reading context file."""
         # Use temporary directory
-        with patch.object(
-            LauncherDetector, 'CONTEXT_FILE', tmp_path / "context.json"
-        ):
+        with patch.object(LauncherDetector, "CONTEXT_FILE", tmp_path / "context.json"):
             # Write context
             context_file = LauncherDetector.write_context(
-                launcher_type="claude",
-                command="test",
-                extra_key="extra_value"
+                launcher_type="claude", command="test", extra_key="extra_value"
             )
 
             assert context_file.exists()
@@ -289,10 +272,7 @@ class TestFileOperations:
 
     def test_read_context_missing_file(self, tmp_path):
         """Test reading when file doesn't exist."""
-        with patch.object(
-            LauncherDetector, 'CONTEXT_FILE',
-            tmp_path / "nonexistent.json"
-        ):
+        with patch.object(LauncherDetector, "CONTEXT_FILE", tmp_path / "nonexistent.json"):
             context = LauncherDetector.read_context()
             assert context is None
 
@@ -301,7 +281,7 @@ class TestFileOperations:
         invalid_file = tmp_path / "invalid.json"
         invalid_file.write_text("not valid json {")
 
-        with patch.object(LauncherDetector, 'CONTEXT_FILE', invalid_file):
+        with patch.object(LauncherDetector, "CONTEXT_FILE", invalid_file):
             context = LauncherDetector.read_context()
             assert context is None
 
@@ -310,7 +290,7 @@ class TestFileOperations:
         incomplete_file = tmp_path / "incomplete.json"
         incomplete_file.write_text('{"launcher_type": "claude"}')
 
-        with patch.object(LauncherDetector, 'CONTEXT_FILE', incomplete_file):
+        with patch.object(LauncherDetector, "CONTEXT_FILE", incomplete_file):
             context = LauncherDetector.read_context()
             assert context is None
 
@@ -319,14 +299,13 @@ class TestFileOperations:
 # E2E TESTS (10%)
 # ============================================================================
 
+
 class TestEndToEnd:
     """End-to-end tests for complete workflows."""
 
     def test_complete_detection_and_persistence_workflow(self, tmp_path):
         """Test complete workflow from detection to persistence."""
-        with patch.object(
-            LauncherDetector, 'CONTEXT_FILE', tmp_path / "context.json"
-        ):
+        with patch.object(LauncherDetector, "CONTEXT_FILE", tmp_path / "context.json"):
             with patch.dict(os.environ, {"CLAUDE_CODE_SESSION": "test-session"}):
                 # Step 1: Detect launcher
                 info = LauncherDetector.detect()
@@ -336,7 +315,7 @@ class TestEndToEnd:
                 context_file = LauncherDetector.write_context(
                     launcher_type=info.launcher_type,
                     command=info.command,
-                    session_id="test-session-123"
+                    session_id="test-session-123",
                 )
                 assert context_file.exists()
 
@@ -350,16 +329,14 @@ class TestEndToEnd:
 
     def test_stale_context_detection_workflow(self, tmp_path):
         """Test workflow for detecting stale context."""
-        with patch.object(
-            LauncherDetector, 'CONTEXT_FILE', tmp_path / "context.json"
-        ):
+        with patch.object(LauncherDetector, "CONTEXT_FILE", tmp_path / "context.json"):
             # Write old context
             old_time = datetime.now() - timedelta(seconds=400)
             old_context = LauncherInfo(
                 launcher_type="claude",
                 command="old command",
                 detected_at=old_time.isoformat(),
-                environment={}
+                environment={},
             )
 
             tmp_path.joinpath("context.json").write_text(
@@ -379,6 +356,7 @@ class TestEndToEnd:
 # ============================================================================
 # FIXTURES
 # ============================================================================
+
 
 @pytest.fixture
 def tmp_path(tmp_path_factory):

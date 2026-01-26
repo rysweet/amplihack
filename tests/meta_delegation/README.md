@@ -31,6 +31,7 @@ tests/
 ### Unit Tests (7 modules)
 
 **test_platform_cli.py** - Platform CLI Abstraction
+
 - Tests for ClaudeCodeCLI, CopilotCLI, AmplifierCLI implementations
 - Platform registration and retrieval
 - Prompt formatting for different personas
@@ -39,6 +40,7 @@ tests/
 - **Total tests**: ~40
 
 **test_state_machine.py** - Subprocess State Machine
+
 - State transition validation (CREATED → STARTING → RUNNING → COMPLETING → COMPLETED)
 - Failure state handling from any state
 - Timeout detection
@@ -47,6 +49,7 @@ tests/
 - **Total tests**: ~35
 
 **test_persona.py** - Persona Strategy Module
+
 - GUIDE, QA_ENGINEER, ARCHITECT, JUNIOR_DEV persona configurations
 - Communication styles and thoroughness levels
 - Evidence collection priorities
@@ -55,6 +58,7 @@ tests/
 - **Total tests**: ~30
 
 **test_scenario_generator.py** - Gadugi Scenario Generator
+
 - Scenario generation for different goal types
 - Category coverage (happy_path, error_handling, boundary, security, performance)
 - Priority assignment
@@ -63,6 +67,7 @@ tests/
 - **Total tests**: ~25
 
 **test_success_evaluator.py** - Success Criteria Evaluator
+
 - Success criteria parsing
 - Evidence-based scoring (0-100)
 - Bonus scoring for tests and documentation
@@ -71,6 +76,7 @@ tests/
 - **Total tests**: ~20
 
 **test_evidence_collector.py** - Evidence Collector
+
 - File discovery and classification
 - Content extraction and excerpt generation
 - Evidence type organization
@@ -80,6 +86,7 @@ tests/
 - **Total tests**: ~30
 
 **test_orchestrator.py** - Meta-Delegator Orchestrator
+
 - Complete delegation lifecycle
 - Component initialization and coordination
 - Monitoring and evidence collection phases
@@ -91,6 +98,7 @@ tests/
 ### Integration Tests (2 suites)
 
 **test_persona_integration.py** - Persona System Integration
+
 - Persona strategies with platform CLI prompt generation
 - Persona priorities with evidence collector
 - Persona criteria with success evaluator
@@ -98,6 +106,7 @@ tests/
 - **Total tests**: ~15
 
 **test_gadugi_integration.py** - Gadugi System Integration
+
 - Scenario generation aligned with success criteria
 - Scenarios validated against collected evidence
 - Coverage measurement from evidence
@@ -107,6 +116,7 @@ tests/
 ### End-to-End Tests (2 scenarios)
 
 **test_guide_teaches_beginner.py** - Guide Persona Complete Workflow
+
 - Guide teaches REST API concepts to beginner
 - Educational content generation (tutorial, examples, documentation)
 - Beginner-friendly characteristics validation
@@ -114,6 +124,7 @@ tests/
 - **Total tests**: ~4
 
 **test_qa_validates_feature.py** - QA Engineer Complete Workflow
+
 - QA performs comprehensive feature validation
 - Test suite generation (happy path, errors, security, edge cases, performance)
 - Security vulnerability identification
@@ -123,26 +134,31 @@ tests/
 ## Running Tests
 
 ### Run All Tests
+
 ```bash
 pytest src/amplihack/meta_delegation/tests/ -v
 ```
 
 ### Run Unit Tests Only
+
 ```bash
 pytest src/amplihack/meta_delegation/tests/test_*.py -v
 ```
 
 ### Run Integration Tests
+
 ```bash
 pytest src/amplihack/meta_delegation/tests/integration/ -v -m integration
 ```
 
 ### Run E2E Tests
+
 ```bash
 pytest src/amplihack/meta_delegation/tests/e2e/ -v -m e2e
 ```
 
 ### Run Tests for Specific Module
+
 ```bash
 # Platform CLI tests
 pytest src/amplihack/meta_delegation/tests/test_platform_cli.py -v
@@ -155,11 +171,13 @@ pytest src/amplihack/meta_delegation/tests/test_persona.py -v
 ```
 
 ### Run with Coverage
+
 ```bash
 pytest src/amplihack/meta_delegation/tests/ --cov=amplihack.meta_delegation --cov-report=html
 ```
 
 ### Skip Tests Requiring Platform Installation
+
 ```bash
 pytest src/amplihack/meta_delegation/tests/ -v -m "not requires_platform"
 ```
@@ -182,12 +200,12 @@ Tests use pytest markers for categorization:
 
 ## Test Statistics
 
-| Category | Test Files | Test Count | Modules Tested |
-|----------|------------|------------|----------------|
-| Unit | 7 | ~205 | All 7 modules |
-| Integration | 2 | ~27 | Cross-module interactions |
-| E2E | 2 | ~8 | Complete workflows |
-| **Total** | **11** | **~240** | **All components** |
+| Category    | Test Files | Test Count | Modules Tested            |
+| ----------- | ---------- | ---------- | ------------------------- |
+| Unit        | 7          | ~205       | All 7 modules             |
+| Integration | 2          | ~27        | Cross-module interactions |
+| E2E         | 2          | ~8         | Complete workflows        |
+| **Total**   | **11**     | **~240**   | **All components**        |
 
 ## Fixtures (conftest.py)
 
@@ -223,18 +241,21 @@ Shared fixtures available to all tests:
 When tests fail, they indicate what to implement:
 
 **ImportError**: Module doesn't exist yet
+
 ```
 ModuleNotFoundError: No module named 'amplihack.meta_delegation.platform_cli'
 → Create the platform_cli.py module
 ```
 
 **AttributeError**: Class/function missing
+
 ```
 AttributeError: module 'amplihack.meta_delegation.platform_cli' has no attribute 'ClaudeCodeCLI'
 → Implement the ClaudeCodeCLI class
 ```
 
 **AssertionError**: Logic not implemented correctly
+
 ```
 AssertionError: assert 'guide' == 'guide'
 → Implement the persona name property

@@ -399,7 +399,7 @@ def test_code_memory_relationships(
                 "accessed_at": now,
                 "expires_at": None,
                 "agent_id": "builder",
-            }
+            },
         )
 
         logger.info("Created test memory: test-memory-1")

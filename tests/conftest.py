@@ -812,12 +812,7 @@ def sample_plugin(tmp_path):
         "version": "1.0.0",
         "description": "Sample plugin fer testin'",
         "author": "Test Author",
-        "mcpServers": {
-            "sample-server": {
-                "command": "node",
-                "args": ["server.js"]
-            }
-        }
+        "mcpServers": {"sample-server": {"command": "node", "args": ["server.js"]}},
     }
 
     manifest_path = plugin_dir / "manifest.json"

@@ -27,14 +27,14 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import kuzu
 
-from ..models import MemoryEntry, MemoryQuery, MemoryType, SessionInfo
-from .base import BackendCapabilities
 from ..kuzu.code_graph import KuzuCodeGraph
 from ..kuzu.connector import KuzuConnector
+from ..models import MemoryEntry, MemoryQuery, MemoryType, SessionInfo
+from .base import BackendCapabilities
 
 logger = logging.getLogger(__name__)
 
@@ -537,7 +537,9 @@ class KuzuBackend:
                 )
             """)
 
-            logger.info("Kùzu schema initialized successfully: 5 memory types + 3 code types (23 node tables, 28 relationship tables)")
+            logger.info(
+                "Kùzu schema initialized successfully: 5 memory types + 3 code types (23 node tables, 28 relationship tables)"
+            )
 
         except Exception as e:
             logger.error(f"Error initializing Kùzu schema: {e}")

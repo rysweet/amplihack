@@ -6,9 +6,9 @@ framework: gadugi-agentic-test
 
 # Test execution settings
 execution:
-  parallel: false  # Run tests sequentially for guide agent
-  timeout: 300000  # 5 minutes per test scenario
-  retries: 0  # No automatic retries - tests should be deterministic
+  parallel: false # Run tests sequentially for guide agent
+  timeout: 300000 # 5 minutes per test scenario
+  retries: 0 # No automatic retries - tests should be deterministic
   captureOutput: true
   captureMetrics: true
 
@@ -18,7 +18,7 @@ agent:
   version: "3.0.0"
   type: "conversational-tutor"
   platform: "claude-code"
-  
+
   capabilities:
     - "interactive-teaching"
     - "persona-adaptation"
@@ -41,7 +41,7 @@ personas:
       scaffoldingDepth: "maximum"
       pacing: "slow"
       checkpointFrequency: "high"
-      
+
   intermediate:
     displayName: "Intermediate Learner"
     description: "Some programming experience, building skills"
@@ -55,7 +55,7 @@ personas:
       scaffoldingDepth: "medium"
       pacing: "moderate"
       checkpointFrequency: "medium"
-      
+
   advanced:
     displayName: "Advanced Developer"
     description: "Experienced, seeking specific knowledge"
@@ -74,24 +74,24 @@ personas:
 scenarios:
   directory: "./scenarios"
   namingPattern: "{persona}-{topic}-{variant}.yaml"
-  
+
   categories:
     - name: "getting-started"
       description: "Initial onboarding and setup scenarios"
       personas: ["beginner", "intermediate"]
-      
+
     - name: "core-concepts"
       description: "Teaching fundamental programming concepts"
       personas: ["beginner", "intermediate", "advanced"]
-      
+
     - name: "troubleshooting"
       description: "Debugging and error resolution scenarios"
       personas: ["beginner", "intermediate", "advanced"]
-      
+
     - name: "best-practices"
       description: "Code quality and professional patterns"
       personas: ["intermediate", "advanced"]
-      
+
     - name: "advanced-topics"
       description: "Complex architectural and design patterns"
       personas: ["advanced"]
@@ -100,24 +100,24 @@ scenarios:
 metrics:
   schemaFile: "./config/metrics-schema.json"
   validationFile: "./config/validation-patterns.json"
-  
+
   autoCollect:
     enabled: true
     outputDir: "../../../evidence"
     format: "json"
     includeConversationLog: true
     includeTimestamps: true
-    
+
   calculated:
     - name: "jargonScore"
       formula: "max(0, 10 - (violations * 3 + warnings * 1))"
-      
+
     - name: "pedagogicalScore"
       formula: "(conceptClarity + scaffolding + waitUsage) / 3"
-      
+
     - name: "engagementScore"
       formula: "(questionPrompts * 0.3 + checkpoints * 0.4 + encouragement * 0.3)"
-      
+
     - name: "compositeScore"
       formula: "(pedagogicalScore * 0.4 + jargonScore * 0.3 + engagementScore * 0.2 + linkQuality * 0.1) * 10"
       weights:
@@ -136,7 +136,7 @@ passingCriteria:
       - "checkpoints >= 3"
       - "jargonViolations == 0"
       - "antipatternsTotal == 0"
-      
+
   intermediate:
     minCompositeScore: 65
     requiredMetrics:
@@ -144,7 +144,7 @@ passingCriteria:
       - "waitUsage >= 1"
       - "checkpoints >= 2"
       - "jargonViolations == 0"
-      
+
   advanced:
     minCompositeScore: 60
     requiredMetrics:
@@ -154,13 +154,13 @@ passingCriteria:
 # Evidence collection
 evidence:
   baseDir: "../../../evidence"
-  
+
   structure:
-    - "conversations/"  # Full conversation logs
-    - "screenshots/"    # Visual evidence
-    - "metrics/"        # Raw metric data
-    - "annotations/"    # Manual test notes
-    
+    - "conversations/" # Full conversation logs
+    - "screenshots/" # Visual evidence
+    - "metrics/" # Raw metric data
+    - "annotations/" # Manual test notes
+
   naming:
     conversation: "{persona}-{scenario}-{timestamp}.log"
     metrics: "{persona}-{scenario}-{timestamp}.json"
@@ -169,16 +169,16 @@ evidence:
 # Reporting
 reports:
   baseDir: "../../../reports"
-  
+
   formats:
     - "json"
     - "markdown"
     - "html"
-    
+
   templates:
     summary: "./templates/summary.md.hbs"
     detail: "./templates/detail.md.hbs"
-    
+
   sections:
     - "executive-summary"
     - "metrics-overview"
@@ -190,17 +190,17 @@ reports:
 # Iterative testing support
 iterativeTesting:
   enabled: true
-  
+
   versionTracking:
     enabled: true
     baselineVersion: "3.0.0"
-    
+
   comparison:
     enabled: true
-    compareAgainst: "previous"  # or "baseline"
+    compareAgainst: "previous" # or "baseline"
     showImprovement: true
     highlightRegressions: true
-    
+
   retesting:
     strategy: "failed-scenarios-first"
     preserveEvidence: true
@@ -210,7 +210,7 @@ iterativeTesting:
 debug:
   verbose: false
   dryRun: false
-  logLevel: "info"  # trace, debug, info, warn, error
+  logLevel: "info" # trace, debug, info, warn, error
   preserveTempFiles: false
 
 # Integration hooks

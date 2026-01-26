@@ -77,12 +77,14 @@ Execute the requested operation and report results.
 ### Safety Considerations
 
 **STOP and confirm with user if:**
+
 - Deleting many files (>10) or large directories
 - Running destructive commands (`rm -rf`, `git reset --hard`)
 - Modifying critical configuration files
 - Operations affecting production systems
 
 **Safe to execute directly:**
+
 - Listing files/directories
 - Reading git status
 - Checking versions
@@ -97,11 +99,13 @@ Execute the requested operation and report results.
 **Request**: "Clean up old log files from .claude/runtime/logs/"
 
 **Execution**:
+
 ```bash
 find .claude/runtime/logs/ -name "*.log" -mtime +30 -delete
 ```
 
 **Report**:
+
 ```
 Cleaned up old log files:
 - Removed 15 log files older than 30 days
@@ -114,11 +118,13 @@ Cleaned up old log files:
 **Request**: "Delete local branches that are merged to main"
 
 **Execution**:
+
 ```bash
 git branch --merged main | grep -v "^\*" | grep -v "main" | xargs -r git branch -d
 ```
 
 **Report**:
+
 ```
 Cleaned up merged branches:
 - Deleted: feature/old-work, fix/typo, feat/completed
@@ -131,11 +137,13 @@ Cleaned up merged branches:
 **Request**: "Show git status"
 
 **Execution**:
+
 ```bash
 git status
 ```
 
 **Report**:
+
 ```
 Repository status:
 - Branch: main
@@ -156,12 +164,12 @@ Then STOP and re-classify to the appropriate workflow.
 
 ## Workflow Comparison
 
-| Workflow      | When to Use                     | Steps | Complexity |
-| ------------- | ------------------------------- | ----- | ---------- |
-| OPS           | Admin tasks, simple operations  | 1     | Minimal    |
-| Q&A           | Simple questions                | 3     | Low        |
-| INVESTIGATION | Understanding existing systems  | 6     | Medium     |
-| DEFAULT       | Code changes, features, bugs    | 22    | High       |
+| Workflow      | When to Use                    | Steps | Complexity |
+| ------------- | ------------------------------ | ----- | ---------- |
+| OPS           | Admin tasks, simple operations | 1     | Minimal    |
+| Q&A           | Simple questions               | 3     | Low        |
+| INVESTIGATION | Understanding existing systems | 6     | Medium     |
+| DEFAULT       | Code changes, features, bugs   | 22    | High       |
 
 ## Philosophy Notes
 

@@ -185,6 +185,7 @@ junior_dev   | Score:  78/100 | Evidence:  6 items
 - **Junior Dev**: Task-focused, less comprehensive but fast
 
 **Lesson**: Choose persona based on what you need:
+
 - Need teaching? → `guide`
 - Need thoroughness? → `qa_engineer`
 - Need design? → `architect`
@@ -237,12 +238,14 @@ Deliverables:
 Try improving these criteria:
 
 **Original:**
+
 ```python
 goal = "Create a REST API"
 success_criteria = "API works"
 ```
 
 **Improved:**
+
 ```python
 goal = "Create a REST API for user management"
 success_criteria = """

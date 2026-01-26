@@ -5,7 +5,6 @@ These tests will FAIL until the persona module is implemented.
 """
 
 from dataclasses import is_dataclass
-from typing import List
 
 import pytest
 
@@ -114,9 +113,9 @@ class TestGuidePersona:
         template = GUIDE.prompt_template.lower()
 
         teaching_keywords = ["teach", "learn", "explain", "understand", "guide", "educate"]
-        assert any(
-            keyword in template for keyword in teaching_keywords
-        ), "Guide prompt missing teaching emphasis"
+        assert any(keyword in template for keyword in teaching_keywords), (
+            "Guide prompt missing teaching emphasis"
+        )
 
     def test_guide_prompt_template_has_required_fields(self):
         """Test GUIDE prompt template has goal and success_criteria placeholders."""
@@ -153,9 +152,7 @@ class TestQAEngineerPersona:
 
         # QA should prioritize tests first
         assert (
-            priorities[0] == "test_file"
-            or "test" in priorities[0]
-            or "validation" in priorities[0]
+            priorities[0] == "test_file" or "test" in priorities[0] or "validation" in priorities[0]
         )
 
     def test_qa_engineer_prompt_template_emphasizes_testing(self):
@@ -163,9 +160,9 @@ class TestQAEngineerPersona:
         template = QA_ENGINEER.prompt_template.lower()
 
         qa_keywords = ["test", "quality", "validate", "verify", "qa", "edge case"]
-        assert any(
-            keyword in template for keyword in qa_keywords
-        ), "QA Engineer prompt missing testing emphasis"
+        assert any(keyword in template for keyword in qa_keywords), (
+            "QA Engineer prompt missing testing emphasis"
+        )
 
     def test_qa_engineer_prompt_template_has_required_fields(self):
         """Test QA_ENGINEER prompt template has goal and success_criteria."""
@@ -202,9 +199,7 @@ class TestArchitectPersona:
 
         # Architect should prioritize architecture docs
         priority_str = " ".join(priorities).lower()
-        assert any(
-            keyword in priority_str for keyword in ["architecture", "design", "spec", "api"]
-        )
+        assert any(keyword in priority_str for keyword in ["architecture", "design", "spec", "api"])
 
     def test_architect_prompt_template_emphasizes_design(self):
         """Test ARCHITECT prompt emphasizes design and architecture."""
@@ -218,9 +213,9 @@ class TestArchitectPersona:
             "interface",
             "pattern",
         ]
-        assert any(
-            keyword in template for keyword in architect_keywords
-        ), "Architect prompt missing design emphasis"
+        assert any(keyword in template for keyword in architect_keywords), (
+            "Architect prompt missing design emphasis"
+        )
 
     def test_architect_prompt_template_has_required_fields(self):
         """Test ARCHITECT prompt template has goal and success_criteria."""
@@ -263,9 +258,9 @@ class TestJuniorDevPersona:
         template = JUNIOR_DEV.prompt_template.lower()
 
         dev_keywords = ["implement", "code", "build", "develop", "create", "follow"]
-        assert any(
-            keyword in template for keyword in dev_keywords
-        ), "Junior dev prompt missing implementation emphasis"
+        assert any(keyword in template for keyword in dev_keywords), (
+            "Junior dev prompt missing implementation emphasis"
+        )
 
     def test_junior_dev_prompt_template_has_required_fields(self):
         """Test JUNIOR_DEV prompt template has goal and success_criteria."""
@@ -393,9 +388,9 @@ class TestPersonaBehaviorCharacteristics:
         personas = [GUIDE, QA_ENGINEER, ARCHITECT, JUNIOR_DEV]
 
         for persona in personas:
-            assert (
-                persona.thoroughness_level in valid_levels
-            ), f"{persona.name} has invalid thoroughness level"
+            assert persona.thoroughness_level in valid_levels, (
+                f"{persona.name} has invalid thoroughness level"
+            )
 
     def test_qa_engineer_has_highest_thoroughness(self):
         """Test QA_ENGINEER has most exhaustive thoroughness."""
@@ -411,9 +406,9 @@ class TestPersonaBehaviorCharacteristics:
         personas = [GUIDE, QA_ENGINEER, ARCHITECT, JUNIOR_DEV]
 
         for persona in personas:
-            assert (
-                len(persona.evidence_collection_priority) > 0
-            ), f"{persona.name} has empty evidence priorities"
+            assert len(persona.evidence_collection_priority) > 0, (
+                f"{persona.name} has empty evidence priorities"
+            )
 
     def test_prompt_templates_are_substantial(self):
         """Test all persona prompts are substantial (not trivial)."""
@@ -421,6 +416,4 @@ class TestPersonaBehaviorCharacteristics:
 
         for persona in personas:
             # Prompt should be more than just the placeholders
-            assert (
-                len(persona.prompt_template) > 100
-            ), f"{persona.name} prompt template too short"
+            assert len(persona.prompt_template) > 100, f"{persona.name} prompt template too short"

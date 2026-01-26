@@ -13,7 +13,6 @@ Philosophy:
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import List
 
 from amplihack.launcher.completion_signals import CompletionSignals
 
@@ -34,7 +33,7 @@ class VerificationResult:
     status: VerificationStatus
     verified: bool
     explanation: str
-    discrepancies: List[str]
+    discrepancies: list[str]
 
 
 class CompletionVerifier:
@@ -48,9 +47,7 @@ class CompletionVerifier:
         """
         self.completion_threshold = completion_threshold
 
-    def verify(
-        self, evaluation_result: str, signals: CompletionSignals
-    ) -> VerificationResult:
+    def verify(self, evaluation_result: str, signals: CompletionSignals) -> VerificationResult:
         """Verify evaluation result against signals.
 
         Args:
@@ -67,9 +64,7 @@ class CompletionVerifier:
         signals_complete = signals.completion_score >= self.completion_threshold
 
         # Detect discrepancies
-        discrepancies = self._detect_discrepancies(
-            evaluation_result, signals, claimed_complete
-        )
+        discrepancies = self._detect_discrepancies(evaluation_result, signals, claimed_complete)
 
         # Determine verification status
         if claimed_complete and signals_complete and not discrepancies:
@@ -80,13 +75,21 @@ class CompletionVerifier:
                 explanation="Work is complete - evaluation verified by concrete signals",
                 discrepancies=[],
             )
-        elif claimed_complete and not signals_complete:
+        if claimed_complete and not signals_complete:
             # False completion claim - but check if evaluation acknowledges CI pending
             ci_pending = any("CI not passing" in d for d in discrepancies)
             score_close = signals.completion_score >= 0.7  # Within 10% of threshold
-            eval_acknowledges_ci = "waiting" in evaluation_result.lower() or "pending" in evaluation_result.lower()
+            eval_acknowledges_ci = (
+                "waiting" in evaluation_result.lower() or "pending" in evaluation_result.lower()
+            )
 
-            if ci_pending and score_close and signals.pr_created and signals.all_steps_complete and eval_acknowledges_ci:
+            if (
+                ci_pending
+                and score_close
+                and signals.pr_created
+                and signals.all_steps_complete
+                and eval_acknowledges_ci
+            ):
                 # Work is essentially complete, evaluation acknowledges CI is pending
                 return VerificationResult(
                     status=VerificationStatus.INCOMPLETE,
@@ -94,22 +97,21 @@ class CompletionVerifier:
                     explanation="Work mostly complete but CI checks still running",
                     discrepancies=discrepancies,
                 )
-            else:
-                # False completion claim
-                explanation_parts = [
-                    f"Evaluation claims complete but score is {signals.completion_score:.1%} (threshold {self.completion_threshold:.1%})"
-                ]
-                if discrepancies:
-                    explanation_parts.append(f"Issues: {', '.join(discrepancies[:2])}")
-                explanation = ". ".join(explanation_parts)
+            # False completion claim
+            explanation_parts = [
+                f"Evaluation claims complete but score is {signals.completion_score:.1%} (threshold {self.completion_threshold:.1%})"
+            ]
+            if discrepancies:
+                explanation_parts.append(f"Issues: {', '.join(discrepancies[:2])}")
+            explanation = ". ".join(explanation_parts)
 
-                return VerificationResult(
-                    status=VerificationStatus.DISPUTED,
-                    verified=False,
-                    explanation=explanation,
-                    discrepancies=discrepancies,
-                )
-        elif not claimed_complete and not signals_complete:
+            return VerificationResult(
+                status=VerificationStatus.DISPUTED,
+                verified=False,
+                explanation=explanation,
+                discrepancies=discrepancies,
+            )
+        if not claimed_complete and not signals_complete:
             # Both agree incomplete - but check for discrepancies in details
             if discrepancies:
                 # Incomplete but with wrong details
@@ -119,15 +121,14 @@ class CompletionVerifier:
                     explanation=f"Evaluation and signals both show incomplete, but details conflict: {', '.join(discrepancies[:2])}",
                     discrepancies=discrepancies,
                 )
-            else:
-                # Accurate incomplete claim
-                return VerificationResult(
-                    status=VerificationStatus.VERIFIED,
-                    verified=True,
-                    explanation="Evaluation correctly identifies work as incomplete",
-                    discrepancies=[],
-                )
-        elif not claimed_complete and signals_complete:
+            # Accurate incomplete claim
+            return VerificationResult(
+                status=VerificationStatus.VERIFIED,
+                verified=True,
+                explanation="Evaluation correctly identifies work as incomplete",
+                discrepancies=[],
+            )
+        if not claimed_complete and signals_complete:
             # Overly conservative claim
             return VerificationResult(
                 status=VerificationStatus.DISPUTED,
@@ -135,14 +136,13 @@ class CompletionVerifier:
                 explanation=f"Evaluation claims incomplete but score is {signals.completion_score:.1%}",
                 discrepancies=discrepancies,
             )
-        else:
-            # Ambiguous case
-            return VerificationResult(
-                status=VerificationStatus.AMBIGUOUS,
-                verified=False,
-                explanation="Cannot determine verification status",
-                discrepancies=discrepancies,
-            )
+        # Ambiguous case
+        return VerificationResult(
+            status=VerificationStatus.AMBIGUOUS,
+            verified=False,
+            explanation="Cannot determine verification status",
+            discrepancies=discrepancies,
+        )
 
     def _parse_completion_claim(self, evaluation_result: str) -> bool:
         """Parse completion claim from evaluation text.
@@ -198,7 +198,7 @@ class CompletionVerifier:
 
     def _detect_discrepancies(
         self, evaluation_result: str, signals: CompletionSignals, claimed_complete: bool
-    ) -> List[str]:
+    ) -> list[str]:
         """Detect discrepancies between claim and signals.
 
         Args:
@@ -237,17 +237,23 @@ class CompletionVerifier:
             discrepancies.append("Claims complete but CI not passing")
 
         # Check tasks complete claim vs reality
-        if ("all tasks" in text_lower or "tasks completed" in text_lower) and not signals.all_steps_complete:
+        if (
+            "all tasks" in text_lower or "tasks completed" in text_lower
+        ) and not signals.all_steps_complete:
             discrepancies.append("Claims all tasks complete but TodoWrite shows pending tasks")
         elif claimed_complete and not signals.all_steps_complete:
             discrepancies.append("Claims complete but not all TodoWrite tasks finished")
 
         # Check uncommitted changes
-        if ("committed" in text_lower or "pushed" in text_lower) and not signals.no_uncommitted_changes:
+        if (
+            "committed" in text_lower or "pushed" in text_lower
+        ) and not signals.no_uncommitted_changes:
             discrepancies.append("Claims changes committed but uncommitted changes exist")
 
         # Check mergeable status
-        if ("ready to merge" in text_lower or "mergeable" in text_lower) and not signals.pr_mergeable:
+        if (
+            "ready to merge" in text_lower or "mergeable" in text_lower
+        ) and not signals.pr_mergeable:
             discrepancies.append("Claims ready to merge but PR has conflicts or is not mergeable")
 
         return discrepancies

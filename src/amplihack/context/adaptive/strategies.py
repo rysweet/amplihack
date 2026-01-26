@@ -12,6 +12,7 @@ Philosophy:
 """
 
 from abc import ABC, abstractmethod
+from datetime import UTC
 from pathlib import Path
 from typing import Any
 
@@ -48,12 +49,10 @@ class HookStrategy(ABC):
         Returns:
             Formatted context string for the launcher
         """
-        pass
 
     @abstractmethod
     def cleanup(self) -> None:
         """Clean up any injected context."""
-        pass
 
     @abstractmethod
     def handle_stop(self, input_data: dict[str, Any]) -> dict[str, Any] | None:
@@ -65,7 +64,6 @@ class HookStrategy(ABC):
         Returns:
             Strategy-specific modifications to stop behavior, or None for default
         """
-        pass
 
     @abstractmethod
     def handle_pre_tool_use(self, input_data: dict[str, Any]) -> dict[str, Any] | None:
@@ -77,7 +75,6 @@ class HookStrategy(ABC):
         Returns:
             Strategy-specific modifications (block decisions, etc.), or None for default
         """
-        pass
 
     @abstractmethod
     def handle_post_tool_use(self, input_data: dict[str, Any]) -> dict[str, Any] | None:
@@ -89,7 +86,6 @@ class HookStrategy(ABC):
         Returns:
             Strategy-specific output (warnings, metadata), or None for default
         """
-        pass
 
     @abstractmethod
     def handle_user_prompt_submit(self, input_data: dict[str, Any]) -> dict[str, Any] | None:
@@ -101,7 +97,6 @@ class HookStrategy(ABC):
         Returns:
             Strategy-specific additional context, or None for default
         """
-        pass
 
 
 class ClaudeStrategy(HookStrategy):
@@ -136,7 +131,7 @@ class ClaudeStrategy(HookStrategy):
             ... })
         """
         import json
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         # Handle string context (like preferences)
         if isinstance(context, str):
@@ -149,7 +144,7 @@ class ClaudeStrategy(HookStrategy):
 
         # Add timestamp if not present
         if "timestamp" not in context:
-            context["timestamp"] = datetime.now(timezone.utc).isoformat()
+            context["timestamp"] = datetime.now(UTC).isoformat()
 
         # Write context with error handling
         try:
@@ -272,12 +267,14 @@ class CopilotStrategy(HookStrategy):
             >>> # Context now in AGENTS.md at repository root
         """
         import json
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         # Security: Prevent resource exhaustion
         context_str = context if isinstance(context, str) else json.dumps(context)
         if len(context_str) > self.MAX_CONTEXT_SIZE:
-            raise ValueError(f"Context too large: {len(context_str)} bytes (max {self.MAX_CONTEXT_SIZE})")
+            raise ValueError(
+                f"Context too large: {len(context_str)} bytes (max {self.MAX_CONTEXT_SIZE})"
+            )
 
         agents_path = self.project_root / self.AGENTS_FILE
 
@@ -299,7 +296,7 @@ class CopilotStrategy(HookStrategy):
         else:
             # Add timestamp if not present
             if "timestamp" not in context:
-                context["timestamp"] = datetime.now(timezone.utc).isoformat()
+                context["timestamp"] = datetime.now(UTC).isoformat()
             # Format context as markdown
             context_md = self._format_context_markdown(context)
 

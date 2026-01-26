@@ -10,8 +10,8 @@
 - **version**: 1.0.0
 - **description**: Build new Claude Code skills with guided workflow and agent orchestration
 - **argument-hint**: <skill-name> <skill-type> <description>
-- **triggers**: 
-- **invokes**: 
+- **triggers**:
+- **invokes**:
 - **- type**: subagent
 - **path**: .claude/agents/amplihack/core/architect.md
 
@@ -23,6 +23,7 @@ This command is designed for Claude Code but the patterns and approaches
 can be referenced when using GitHub Copilot CLI.
 
 **Example**:
+
 ```bash
 # Reference this command's approach
 gh copilot explain .github/commands/skill-builder.md
@@ -34,7 +35,6 @@ gh copilot suggest --context .github/commands/skill-builder.md "your task"
 ---
 
 ## Original Command Documentation
-
 
 # Skill Builder Command
 

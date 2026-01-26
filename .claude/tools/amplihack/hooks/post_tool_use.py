@@ -170,8 +170,7 @@ class PostToolUseHook(HookProcessor):
 
             if launcher_type == "copilot":
                 return CopilotStrategy(self.project_root, self.log)
-            else:
-                return ClaudeStrategy(self.project_root, self.log)
+            return ClaudeStrategy(self.project_root, self.log)
 
         except ImportError as e:
             self.log(f"Adaptive strategy not available: {e}", "DEBUG")

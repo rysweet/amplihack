@@ -7,7 +7,7 @@ Tests complete hook workflows from outside-in perspective:
 """
 
 import pytest
-from pathlib import Path
+
 from tests.harness import HookTestHarness
 
 
@@ -123,10 +123,7 @@ time.sleep(60)  # Sleep fer 60 seconds
         harness.create_hook("slow_hook", hook_script, language="python")
 
         # Create harness with 1-second timeout
-        short_timeout_harness = HookTestHarness(
-            project_dir=harness.project_dir,
-            timeout=1
-        )
+        short_timeout_harness = HookTestHarness(project_dir=harness.project_dir, timeout=1)
 
         # Trigger hook (should timeout)
         result = short_timeout_harness.trigger_hook("slow_hook")

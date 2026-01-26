@@ -8,7 +8,7 @@ Tests complete plugin workflows from outside-in perspective:
 """
 
 import pytest
-from pathlib import Path
+
 from tests.harness import PluginTestHarness
 
 
@@ -35,11 +35,11 @@ class TestPluginLifecycle:
         # Create sample plugin
         plugin_dir = tmp_path / "sample-plugin"
         plugin_dir.mkdir()
-        (plugin_dir / "manifest.json").write_text('''{
+        (plugin_dir / "manifest.json").write_text("""{
             "name": "sample-plugin",
             "version": "1.0.0",
             "description": "Sample plugin fer testin'"
-        }''')
+        }""")
 
         # Install plugin
         result = harness.install_plugin(str(plugin_dir))
@@ -96,20 +96,20 @@ class TestPluginLifecycle:
         # Create plugin v1.0.0
         plugin_dir = tmp_path / "upgrade-plugin"
         plugin_dir.mkdir()
-        (plugin_dir / "manifest.json").write_text('''{
+        (plugin_dir / "manifest.json").write_text("""{
             "name": "upgrade-plugin",
             "version": "1.0.0"
-        }''')
+        }""")
 
         # Install v1.0.0
         result = harness.install_plugin(str(plugin_dir))
         result.assert_success()
 
         # Update plugin to v1.0.1
-        (plugin_dir / "manifest.json").write_text('''{
+        (plugin_dir / "manifest.json").write_text("""{
             "name": "upgrade-plugin",
             "version": "1.0.1"
-        }''')
+        }""")
 
         # Force reinstall (upgrade)
         upgrade_result = harness.install_plugin(str(plugin_dir), force=True)
@@ -133,10 +133,7 @@ class TestPluginLifecycle:
         result.assert_failure("Invalid plugin should fail to install")
 
         # Should have error message about missing manifest
-        assert (
-            "manifest" in result.stderr.lower() or
-            "manifest" in result.stdout.lower()
-        )
+        assert "manifest" in result.stderr.lower() or "manifest" in result.stdout.lower()
 
     def test_uninstall_nonexistent_plugin(self, harness):
         """Test uninstallin' a plugin that doesn't exist.
@@ -150,10 +147,10 @@ class TestPluginLifecycle:
 
         # Should have error message
         assert (
-            "not found" in result.stderr.lower() or
-            "not found" in result.stdout.lower() or
-            "not installed" in result.stderr.lower() or
-            "not installed" in result.stdout.lower()
+            "not found" in result.stderr.lower()
+            or "not found" in result.stdout.lower()
+            or "not installed" in result.stderr.lower()
+            or "not installed" in result.stdout.lower()
         )
 
     def test_install_duplicate_plugin(self, harness, tmp_path):
@@ -167,10 +164,10 @@ class TestPluginLifecycle:
         # Create plugin
         plugin_dir = tmp_path / "duplicate-plugin"
         plugin_dir.mkdir()
-        (plugin_dir / "manifest.json").write_text('''{
+        (plugin_dir / "manifest.json").write_text("""{
             "name": "duplicate-plugin",
             "version": "1.0.0"
-        }''')
+        }""")
 
         # First install
         result1 = harness.install_plugin(str(plugin_dir))
@@ -182,10 +179,10 @@ class TestPluginLifecycle:
         # Should either succeed (idempotent) or fail with clear message
         if not result2.success:
             assert (
-                "already installed" in result2.stderr.lower() or
-                "already installed" in result2.stdout.lower() or
-                "already exists" in result2.stderr.lower() or
-                "already exists" in result2.stdout.lower()
+                "already installed" in result2.stderr.lower()
+                or "already installed" in result2.stdout.lower()
+                or "already exists" in result2.stderr.lower()
+                or "already exists" in result2.stdout.lower()
             )
 
     def test_list_installed_plugins(self, harness, tmp_path):
@@ -199,19 +196,19 @@ class TestPluginLifecycle:
         # Create and install plugin 1
         plugin1_dir = tmp_path / "plugin1"
         plugin1_dir.mkdir()
-        (plugin1_dir / "manifest.json").write_text('''{
+        (plugin1_dir / "manifest.json").write_text("""{
             "name": "plugin1",
             "version": "1.0.0"
-        }''')
+        }""")
         harness.install_plugin(str(plugin1_dir)).assert_success()
 
         # Create and install plugin 2
         plugin2_dir = tmp_path / "plugin2"
         plugin2_dir.mkdir()
-        (plugin2_dir / "manifest.json").write_text('''{
+        (plugin2_dir / "manifest.json").write_text("""{
             "name": "plugin2",
             "version": "1.0.0"
-        }''')
+        }""")
         harness.install_plugin(str(plugin2_dir)).assert_success()
 
         # List plugins
@@ -233,24 +230,24 @@ class TestPluginLifecycle:
         # Create plugin with dependencies
         plugin_dir = tmp_path / "deps-plugin"
         plugin_dir.mkdir()
-        (plugin_dir / "manifest.json").write_text('''{
+        (plugin_dir / "manifest.json").write_text("""{
             "name": "deps-plugin",
             "version": "1.0.0",
             "dependencies": {
                 "python": ">=3.9",
                 "node": ">=18.0.0"
             }
-        }''')
+        }""")
 
         result = harness.install_plugin(str(plugin_dir))
 
         # Should either succeed or fail with dependency error
         if not result.success:
             assert (
-                "dependency" in result.stderr.lower() or
-                "dependency" in result.stdout.lower() or
-                "requires" in result.stderr.lower() or
-                "requires" in result.stdout.lower()
+                "dependency" in result.stderr.lower()
+                or "dependency" in result.stdout.lower()
+                or "requires" in result.stderr.lower()
+                or "requires" in result.stdout.lower()
             )
 
 
@@ -275,7 +272,7 @@ class TestPluginConfiguration:
         # Create plugin with MCP servers
         plugin_dir = tmp_path / "mcp-plugin"
         plugin_dir.mkdir()
-        (plugin_dir / "manifest.json").write_text('''{
+        (plugin_dir / "manifest.json").write_text("""{
             "name": "mcp-plugin",
             "version": "1.0.0",
             "mcpServers": {
@@ -284,7 +281,7 @@ class TestPluginConfiguration:
                     "args": ["server.js"]
                 }
             }
-        }''')
+        }""")
 
         # Install plugin
         result = harness.install_plugin(str(plugin_dir))
@@ -316,20 +313,13 @@ class TestPluginConfiguration:
         settings_dir.mkdir(parents=True, exist_ok=True)
         settings_path = settings_dir / "settings.json"
 
-        existing_settings = {
-            "mcpServers": {
-                "existing-server": {
-                    "command": "existing",
-                    "args": []
-                }
-            }
-        }
+        existing_settings = {"mcpServers": {"existing-server": {"command": "existing", "args": []}}}
         settings_path.write_text(json.dumps(existing_settings, indent=2))
 
         # Create and install plugin
         plugin_dir = tmp_path / "merge-plugin"
         plugin_dir.mkdir()
-        (plugin_dir / "manifest.json").write_text('''{
+        (plugin_dir / "manifest.json").write_text("""{
             "name": "merge-plugin",
             "version": "1.0.0",
             "mcpServers": {
@@ -338,7 +328,7 @@ class TestPluginConfiguration:
                     "args": []
                 }
             }
-        }''')
+        }""")
 
         result = harness.install_plugin(str(plugin_dir))
         result.assert_success()

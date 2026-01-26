@@ -5,10 +5,7 @@ Tests complete user workflows from start to finish.
 All tests should FAIL initially (TDD red phase).
 """
 
-import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock
-import json
+from unittest.mock import MagicMock, patch
 
 
 class TestCompleteSetupWorkflows:
@@ -27,8 +24,8 @@ class TestCompleteSetupWorkflows:
         Expected: Full auto-setup completes all 3 layers.
         """
         from lsp_setup.language_detector import LanguageDetector
-        from lsp_setup.plugin_manager import PluginManager
         from lsp_setup.lsp_configurator import LSPConfigurator
+        from lsp_setup.plugin_manager import PluginManager
         from lsp_setup.status_tracker import StatusTracker
 
         # User starts with Python project, pyright installed
@@ -52,9 +49,7 @@ class TestCompleteSetupWorkflows:
                 assert status["overall_ready"] is True
                 assert configurator.is_lsp_enabled() is True
 
-    def test_first_time_user_no_binaries_manual_setup(
-        self, mock_project_root, sample_python_files
-    ):
+    def test_first_time_user_no_binaries_manual_setup(self, mock_project_root, sample_python_files):
         """
         E2E: First-time user with Python project, no LSP binaries installed.
         Expected: Generate user guidance for manual installation.
@@ -94,8 +89,8 @@ class TestCompleteSetupWorkflows:
         Expected: Setup all detected languages.
         """
         from lsp_setup.language_detector import LanguageDetector
-        from lsp_setup.plugin_manager import PluginManager
         from lsp_setup.lsp_configurator import LSPConfigurator
+        from lsp_setup.plugin_manager import PluginManager
         from lsp_setup.status_tracker import StatusTracker
 
         # Mock all binaries installed
@@ -373,7 +368,11 @@ class TestPlatformSpecific:
                 guidance = tracker.generate_user_guidance()
 
                 # Should include Linux-specific commands (apt/dnf)
-                assert "apt" in guidance.lower() or "dnf" in guidance.lower() or "linux" in guidance.lower()
+                assert (
+                    "apt" in guidance.lower()
+                    or "dnf" in guidance.lower()
+                    or "linux" in guidance.lower()
+                )
 
 
 class TestUserExperience:
@@ -391,9 +390,9 @@ class TestUserExperience:
         Expected: Percentage completion updates correctly.
         """
         from lsp_setup.language_detector import LanguageDetector
-        from lsp_setup.status_tracker import StatusTracker
-        from lsp_setup.plugin_manager import PluginManager
         from lsp_setup.lsp_configurator import LSPConfigurator
+        from lsp_setup.plugin_manager import PluginManager
+        from lsp_setup.status_tracker import StatusTracker
 
         detector = LanguageDetector(mock_project_root)
         languages = detector.detect_languages()

@@ -72,15 +72,18 @@ Code context is formatted as markdown-style text for LLM consumption:
 
 ```markdown
 **Related Files:**
+
 - src/amplihack/memory/coordinator.py (python)
 - src/amplihack/memory/backends/kuzu_backend.py (python)
 
 **Related Functions:**
+
 - `async def retrieve(self, query: RetrievalQuery) -> list[MemoryEntry]`
   Retrieve memories matching query.
   (complexity: 12.5)
 
 **Related Classes:**
+
 - amplihack.memory.coordinator.MemoryCoordinator
   Coordinates memory storage and retrieval with quality control.
 ```
@@ -165,6 +168,7 @@ for memory in relevant_memories:
 ### Kuzu Backend
 
 **Full support** for code context injection:
+
 - Graph queries: ✓ Native Cypher support
 - Code graph: ✓ Via `KuzuCodeGraph`
 - Memory-code links: ✓ `RELATES_TO_FILE_*` and `RELATES_TO_FUNCTION_*` relationships
@@ -172,6 +176,7 @@ for memory in relevant_memories:
 ### SQLite Backend
 
 **Graceful fallback**:
+
 - Graph queries: ✗ Not supported
 - Code context injection: Skipped silently
 - No errors, memories returned without code context
@@ -347,11 +352,13 @@ None required - feature is opt-in via `include_code_context` parameter.
 ### Code context is empty
 
 **Possible causes:**
+
 1. No code graph data imported (run blarify first)
 2. Memory not linked to code (auto-linking didn't find matches)
 3. Code graph not initialized
 
 **Solution:**
+
 ```bash
 # Import code graph using blarify
 amplihack memory blarify /path/to/codebase
@@ -369,11 +376,13 @@ if code_graph:
 ### Performance degradation
 
 **Possible causes:**
+
 1. Large code graph (thousands of files)
 2. Deep relationship traversal
 3. Many memories with code links
 
 **Solution:**
+
 - Limit number of memories retrieved (reduce `token_budget`)
 - Only use `include_code_context` when needed
 - Consider caching code context for frequently accessed memories

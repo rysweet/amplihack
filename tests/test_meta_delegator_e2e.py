@@ -5,12 +5,10 @@ Actually spawns subprocess and verifies system works
 """
 
 import sys
-import os
-import time
 from pathlib import Path
 
 # Add meta-delegator to path
-sys.path.insert(0, '/home/azureuser/src/amplihack/worktrees/feat/issue-2030-meta-delegator/src')
+sys.path.insert(0, "/home/azureuser/src/amplihack/worktrees/feat/issue-2030-meta-delegator/src")
 
 print("=" * 70)
 print("META-DELEGATOR REAL E2E TEST")
@@ -44,10 +42,10 @@ try:
         platform="claude-code",
         timeout_minutes=2,
         working_directory=str(test_workspace),
-        enable_scenarios=False  # Disable scenarios for simpler test
+        enable_scenarios=False,  # Disable scenarios for simpler test
     )
 
-    print(f"\n📊 RESULT:")
+    print("\n📊 RESULT:")
     print(f"   Status: {result.status}")
     print(f"   Success Score: {result.success_score}/100")
     print(f"   Duration: {result.duration_seconds:.1f}s")
@@ -55,7 +53,7 @@ try:
     print(f"   Subprocess PID: {result.subprocess_pid}")
 
     if result.execution_log:
-        print(f"\n📝 Execution Log (first 500 chars):")
+        print("\n📝 Execution Log (first 500 chars):")
         print(result.execution_log[:500])
         print("..." if len(result.execution_log) > 500 else "")
 
@@ -69,21 +67,22 @@ try:
         print(f"\n✅ FILE CREATED: {output_file}")
         print(f"   Content: {content}")
     else:
-        print(f"\n⚠️  File not created (expected if subprocess timed out)")
+        print("\n⚠️  File not created (expected if subprocess timed out)")
 
     # Evaluate test
     if result.status == "completed" and result.success_score >= 70:
-        print(f"\n✅ TEST 1 PASSED")
+        print("\n✅ TEST 1 PASSED")
     elif result.status == "in_progress":
-        print(f"\n⏸️  TEST 1 INCOMPLETE (timeout expected for complex tasks)")
-        print(f"   This is normal - subprocess may take longer than 2 minute timeout")
+        print("\n⏸️  TEST 1 INCOMPLETE (timeout expected for complex tasks)")
+        print("   This is normal - subprocess may take longer than 2 minute timeout")
     else:
         print(f"\n⚠️  TEST 1 STATUS: {result.status} (Score: {result.success_score})")
 
 except Exception as e:
-    print(f"\n❌ TEST 1 FAILED WITH EXCEPTION:")
+    print("\n❌ TEST 1 FAILED WITH EXCEPTION:")
     print(f"   {type(e).__name__}: {e}")
     import traceback
+
     traceback.print_exc()
 
 print("\n" + "=" * 70)

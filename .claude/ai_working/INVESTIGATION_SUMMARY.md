@@ -10,6 +10,7 @@
 ## Mission Statement
 
 Investigate the CLI startup flow to determine where to add the blarify prompt with:
+
 - 30-second timeout
 - Default "yes" behavior
 - First-session per project detection
@@ -20,9 +21,11 @@ Investigate the CLI startup flow to determine where to add the blarify prompt wi
 ## Key Deliverables
 
 ### 1. Complete Investigation Report
+
 **File**: `.claude/ai_working/cli_integration_investigation.md`
 
 **Contents**:
+
 - Full CLI initialization trace (pyproject.toml → memory backend)
 - Existing consent prompt pattern analysis (memory_config.py)
 - 3 integration options with detailed trade-offs
@@ -33,9 +36,11 @@ Investigate the CLI startup flow to determine where to add the blarify prompt wi
 **Key Finding**: Memory backend (Kuzu) is instantiated in SessionStart hook (AFTER Claude starts), not during CLI launch. This means blarify prompt must happen BEFORE SessionStart.
 
 ### 2. Sequence Diagrams
+
 **File**: `.claude/ai_working/cli_initialization_sequence.md`
 
 **Contents**:
+
 - Complete initialization sequence (from user command to memory ready)
 - Timing analysis (showing where prompt fits)
 - Integration point comparison diagrams
@@ -45,9 +50,11 @@ Investigate the CLI startup flow to determine where to add the blarify prompt wi
 **Key Visualization**: Shows exactly when blarify prompt should appear in the 0-62 second startup window.
 
 ### 3. Options Comparison
+
 **File**: `.claude/ai_working/blarify_prompt_integration_options.md`
 
 **Contents**:
+
 - Detailed analysis of all 3 integration options
 - Pros/cons with risk assessment for each
 - Feature matrix and decision matrix
@@ -85,6 +92,7 @@ Flow: pyproject.toml → cli.py → launcher.prepare_launch()
 ```
 
 **Timing is perfect**:
+
 - AFTER prerequisites checked (know environment is ready)
 - BEFORE Claude starts (user can still make decisions)
 - Matches Neo4j pattern (consistent UX)
@@ -125,6 +133,7 @@ def _run_blarify_indexing(self) -> bool:
 ### 1. CLI Flow Traced
 
 **Entry Point Chain**:
+
 ```
 pyproject.toml [project.scripts]
     ↓
@@ -158,6 +167,7 @@ KuzuBackend instantiated  (SessionStart hook, line ~150+)
 **Location**: `src/amplihack/launcher/memory_config.py:513-617`
 
 **Pattern**:
+
 ```python
 def prompt_user_consent(
     config: Dict[str, Any],
@@ -188,11 +198,13 @@ def prompt_user_consent(
 ```
 
 **Reusable utilities found**:
+
 - `is_interactive_terminal()` - detects TTY
 - `get_user_input_with_timeout()` - cross-platform timeout (Unix signals + Windows threading)
 - `parse_consent_response()` - handles yes/no/empty responses
 
 **Already handles**:
+
 - CI/CD environments (non-interactive)
 - Keyboard interrupts
 - EOF errors
@@ -203,6 +215,7 @@ def prompt_user_consent(
 **Location**: `src/amplihack/launcher/core.py:912-944`
 
 **Pattern to follow**:
+
 ```python
 def prepare_launch(self) -> bool:
     """Prepare environment for launching Claude."""
@@ -232,6 +245,7 @@ def prepare_launch(self) -> bool:
 **Cache location**: `~/.amplihack/.blarify_consent_<project_hash>`
 
 **Hash calculation**:
+
 ```python
 import hashlib
 from pathlib import Path
@@ -242,6 +256,7 @@ project_hash = hashlib.md5(str(project_root).encode()).hexdigest()[:8]
 ```
 
 **Cache file contents**:
+
 ```
 prompted_at: 2026-01-22T20:30:15.123456
 accepted: true
@@ -249,6 +264,7 @@ project_root: /home/user/myproject
 ```
 
 **Why this works**:
+
 - Per-project (different projects have different hashes)
 - Survives project deletion (in user home directory)
 - Simple to debug (plain text file)
@@ -261,15 +277,16 @@ project_root: /home/user/myproject
 
 ### All Options Evaluated
 
-| Option | Location | Timing | Score | Recommendation |
-|--------|----------|--------|-------|----------------|
-| **A** | SessionStart hook | AFTER Claude starts | 3.65/10 | ❌ Not Recommended |
-| **B** | Launcher prepare | BEFORE Claude starts | 9.5/10 | ✅ STRONGLY RECOMMENDED |
-| **C** | CLI pre-launch | BEFORE prerequisites | 5.15/10 | ⚠️ Not Ideal |
+| Option | Location          | Timing               | Score   | Recommendation          |
+| ------ | ----------------- | -------------------- | ------- | ----------------------- |
+| **A**  | SessionStart hook | AFTER Claude starts  | 3.65/10 | ❌ Not Recommended      |
+| **B**  | Launcher prepare  | BEFORE Claude starts | 9.5/10  | ✅ STRONGLY RECOMMENDED |
+| **C**  | CLI pre-launch    | BEFORE prerequisites | 5.15/10 | ⚠️ Not Ideal            |
 
 ### Option A: SessionStart Hook (REJECTED)
 
 **Why rejected**:
+
 - ❌ Claude process already started (user can't back out)
 - ❌ Hook has strict 10-second timeout
 - ❌ Blarify indexing takes 30-60 seconds
@@ -283,6 +300,7 @@ project_root: /home/user/myproject
 ### Option B: Launcher Prepare (RECOMMENDED)
 
 **Why recommended**:
+
 - ✅ Perfect timing (after prerequisites, before Claude)
 - ✅ Follows Neo4j pattern (step 3 → step 4)
 - ✅ Full launcher infrastructure available
@@ -297,6 +315,7 @@ project_root: /home/user/myproject
 ### Option C: CLI Pre-Launch (REJECTED)
 
 **Why rejected**:
+
 - ❌ Too early (before prerequisites checked)
 - ❌ Limited infrastructure (no launcher logger, paths, etc.)
 - ❌ Awkward placement (breaks logical flow)
@@ -315,6 +334,7 @@ project_root: /home/user/myproject
 **File**: `src/amplihack/launcher/core.py`
 
 **Methods to add** (around line 946):
+
 1. `_prompt_for_blarify_indexing()` - main prompt logic (~100 lines)
 2. `_is_blarify_available()` - check if blarify in PATH (~5 lines)
 3. `_run_blarify_indexing()` - run blarify subprocess (~30 lines)
@@ -329,11 +349,13 @@ self._prompt_for_blarify_indexing()
 ### Dependencies
 
 **Reuse from memory_config.py**:
+
 - `get_user_input_with_timeout()` - cross-platform timeout
 - `is_interactive_terminal()` - TTY detection
 - `parse_consent_response()` - yes/no parsing
 
 **Standard library**:
+
 - `hashlib` - MD5 for project hash
 - `subprocess` - run blarify command
 - `pathlib` - path manipulation
@@ -344,6 +366,7 @@ self._prompt_for_blarify_indexing()
 ### Behavior Specification
 
 **First session in project**:
+
 1. Calculate project hash from `Path.cwd()`
 2. Check if `~/.amplihack/.blarify_consent_<hash>` exists
 3. If not exists:
@@ -356,12 +379,14 @@ self._prompt_for_blarify_indexing()
 4. Continue launch normally (non-blocking)
 
 **Subsequent sessions**:
+
 1. Calculate project hash
 2. Check if consent file exists
 3. If exists: Skip prompt, continue launch
 4. Total overhead: ~10ms (file check)
 
 **Non-interactive mode** (CI/CD):
+
 1. Detect non-interactive terminal
 2. Auto-create consent file (skip indexing)
 3. Continue launch without prompt
@@ -371,14 +396,14 @@ self._prompt_for_blarify_indexing()
 
 **All errors are non-blocking**:
 
-| Error Scenario | Handling | User Impact |
-|---------------|----------|-------------|
-| Blarify not installed | Skip prompt, log debug | None |
-| Blarify hangs | 120s subprocess timeout | 2-minute delay (first session only) |
-| Indexing fails | Log warning, continue | Indexing unavailable, manual retry |
-| Consent file write fails | Log warning, continue | Will re-prompt next session |
-| User interrupts (Ctrl+C) | Catch KeyboardInterrupt, create consent | Prompt skipped, launch continues |
-| Non-interactive mode | Auto-skip, create consent | No prompt shown |
+| Error Scenario           | Handling                                | User Impact                         |
+| ------------------------ | --------------------------------------- | ----------------------------------- |
+| Blarify not installed    | Skip prompt, log debug                  | None                                |
+| Blarify hangs            | 120s subprocess timeout                 | 2-minute delay (first session only) |
+| Indexing fails           | Log warning, continue                   | Indexing unavailable, manual retry  |
+| Consent file write fails | Log warning, continue                   | Will re-prompt next session         |
+| User interrupts (Ctrl+C) | Catch KeyboardInterrupt, create consent | Prompt skipped, launch continues    |
+| Non-interactive mode     | Auto-skip, create consent               | No prompt shown                     |
 
 **Philosophy**: Blarify is an enhancement, never a blocker.
 
@@ -391,6 +416,7 @@ self._prompt_for_blarify_indexing()
 **File**: `tests/launcher/test_blarify_prompt.py`
 
 **Test cases**:
+
 ```python
 def test_consent_file_caching():
     """Test that consent file prevents re-prompting."""
@@ -430,6 +456,7 @@ def test_non_interactive_mode():
 **File**: `tests/launcher/test_blarify_integration.py`
 
 **Test cases**:
+
 ```python
 def test_prompt_happens_before_claude_starts():
     """Test timing: prompt before Claude subprocess."""
@@ -473,21 +500,22 @@ def test_code_graph_json_created():
 
 ### Overall Risk: 🟢 LOW
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|-----------|--------|-----------|
-| **Blarify hangs** | Low | Medium | 120s subprocess timeout |
-| **User confusion** | Low | Low | Clear prompt messaging, matches Neo4j |
-| **Performance impact** | Low | Low | Only first session, ~30s one-time cost |
-| **Consent file race** | Very Low | Low | Single-user assumption, atomic file writes |
-| **Cross-platform issues** | Very Low | Low | Reusing battle-tested memory_config utilities |
-| **Hook conflicts** | None | N/A | Not using hooks, launcher-only |
-| **Memory backend conflicts** | None | N/A | Memory init happens later, no overlap |
+| Risk                         | Likelihood | Impact | Mitigation                                    |
+| ---------------------------- | ---------- | ------ | --------------------------------------------- |
+| **Blarify hangs**            | Low        | Medium | 120s subprocess timeout                       |
+| **User confusion**           | Low        | Low    | Clear prompt messaging, matches Neo4j         |
+| **Performance impact**       | Low        | Low    | Only first session, ~30s one-time cost        |
+| **Consent file race**        | Very Low   | Low    | Single-user assumption, atomic file writes    |
+| **Cross-platform issues**    | Very Low   | Low    | Reusing battle-tested memory_config utilities |
+| **Hook conflicts**           | None       | N/A    | Not using hooks, launcher-only                |
+| **Memory backend conflicts** | None       | N/A    | Memory init happens later, no overlap         |
 
 ### Confidence Level
 
 **Implementation confidence**: ✅ Very High (95%)
 
 **Reasons**:
+
 - Reusing proven patterns (Neo4j startup, memory_config timeout)
 - Non-blocking design (failure never stops launch)
 - Simple file-based caching (no database complexity)
@@ -626,6 +654,7 @@ def test_code_graph_json_created():
 ### Blocked Items
 
 None - all dependencies resolved:
+
 - ✅ Reusable utilities identified (memory_config.py)
 - ✅ Integration point confirmed (launcher.py:100)
 - ✅ Caching strategy designed (~/.amplihack/)
@@ -708,17 +737,19 @@ None - all dependencies resolved:
 ## Contact & Questions
 
 For questions about this investigation:
+
 - Review detailed analysis: `cli_integration_investigation.md`
 - View sequence diagrams: `cli_initialization_sequence.md`
 - Compare all options: `blarify_prompt_integration_options.md`
 
 For implementation questions:
+
 - Code location: `src/amplihack/launcher/core.py:100`
 - Pattern to follow: Neo4j startup (line 912-944)
 - Utilities to reuse: `memory_config.py`
 
 ---
 
-*Investigation completed: 2026-01-22*
-*Status: ✅ COMPLETE - Ready for implementation*
-*Next action: Team review and approval*
+_Investigation completed: 2026-01-22_
+_Status: ✅ COMPLETE - Ready for implementation_
+_Next action: Team review and approval_

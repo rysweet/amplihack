@@ -27,7 +27,13 @@ scenario:
   steps:
     - action: launch
       target: "amplihack"
-      args: ["claude", "--", "-p", "Task(subagent_type=\"guide\", prompt=\"I need to refactor our authentication system to add OAuth support. This is security-critical code. How do I ensure quality and avoid introducing vulnerabilities?\")"]
+      args:
+        [
+          "claude",
+          "--",
+          "-p",
+          'Task(subagent_type="guide", prompt="I need to refactor our authentication system to add OAuth support. This is security-critical code. How do I ensure quality and avoid introducing vulnerabilities?")',
+        ]
       description: "Ask about quality assurance for security-critical change"
       timeout: 90s
 
