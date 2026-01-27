@@ -38,7 +38,7 @@ SETTINGS_TEMPLATE = {
                     {
                         "type": "command",
                         "command": "$HOME/.claude/tools/amplihack/hooks/session_start.py",
-                        "timeout": 10000,
+                        "timeout": 10,
                     }
                 ]
             }
@@ -49,7 +49,7 @@ SETTINGS_TEMPLATE = {
                     {
                         "type": "command",
                         "command": "$HOME/.claude/tools/amplihack/hooks/stop.py",
-                        "timeout": 30000,
+                        "timeout": 120,
                     }
                 ]
             }
@@ -71,7 +71,7 @@ SETTINGS_TEMPLATE = {
                     {
                         "type": "command",
                         "command": "$HOME/.claude/tools/amplihack/hooks/pre_compact.py",
-                        "timeout": 30000,
+                        "timeout": 30,
                     }
                 ]
             }
