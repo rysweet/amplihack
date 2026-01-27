@@ -130,7 +130,7 @@ ls .claude/tools/amplihack/hooks/*.py | grep -v test_ | grep -v __init__
         {
           "type": "command",
           "command": "${CLAUDE_PLUGIN_ROOT}/tools/amplihack/hooks/user_prompt_submit.py",
-          "timeout": 10000
+          "timeout": 10
         }
       ]
     }
@@ -156,7 +156,7 @@ ls .claude/tools/amplihack/hooks/*.py | grep -v test_ | grep -v __init__
         {
           "type": "command",
           "command": "${CLAUDE_PLUGIN_ROOT}/tools/amplihack/hooks/session_start.py",
-          "timeout": 10000
+          "timeout": 10
         }
       ]
     }
@@ -167,7 +167,7 @@ ls .claude/tools/amplihack/hooks/*.py | grep -v test_ | grep -v __init__
         {
           "type": "command",
           "command": "${CLAUDE_PLUGIN_ROOT}/tools/amplihack/hooks/stop.py",
-          "timeout": 30000
+          "timeout": 120
         }
       ]
     }
@@ -200,7 +200,7 @@ ls .claude/tools/amplihack/hooks/*.py | grep -v test_ | grep -v __init__
         {
           "type": "command",
           "command": "${CLAUDE_PLUGIN_ROOT}/tools/amplihack/hooks/user_prompt_submit.py",
-          "timeout": 10000
+          "timeout": 10
         }
       ]
     }
@@ -211,7 +211,7 @@ ls .claude/tools/amplihack/hooks/*.py | grep -v test_ | grep -v __init__
         {
           "type": "command",
           "command": "${CLAUDE_PLUGIN_ROOT}/tools/amplihack/hooks/pre_compact.py",
-          "timeout": 30000
+          "timeout": 120
         }
       ]
     }
