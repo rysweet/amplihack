@@ -59,7 +59,7 @@ Edit your project's `~/.amplihack/.claude/settings.json` and add the amplihack h
           {
             "type": "command",
             "command": "/Users/YOUR_USERNAME/.claude/tools/amplihack/hooks/session_start.py",
-            "timeout": 10000
+            "timeout": 10
           }
         ]
       }
@@ -72,7 +72,7 @@ Edit your project's `~/.amplihack/.claude/settings.json` and add the amplihack h
           {
             "type": "command",
             "command": "/Users/YOUR_USERNAME/.claude/tools/amplihack/hooks/stop.py",
-            "timeout": 30000
+            "timeout": 120
           }
         ]
       }
@@ -203,12 +203,12 @@ Here's a complete example of a project's `~/.amplihack/.claude/settings.json` wi
           {
             "type": "command",
             "command": "./my-project/startup.sh",
-            "timeout": 5000
+            "timeout": 5
           },
           {
             "type": "command",
             "command": "/Users/johndoe/.claude/tools/amplihack/hooks/session_start.py",
-            "timeout": 10000
+            "timeout": 10
           }
         ]
       }
@@ -219,12 +219,12 @@ Here's a complete example of a project's `~/.amplihack/.claude/settings.json` wi
           {
             "type": "command",
             "command": "./my-project/cleanup.sh",
-            "timeout": 5000
+            "timeout": 5
           },
           {
             "type": "command",
             "command": "/Users/johndoe/.claude/tools/amplihack/hooks/stop.py",
-            "timeout": 30000
+            "timeout": 120
           }
         ]
       }
