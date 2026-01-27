@@ -46,7 +46,7 @@
           {
             "type": "command",
             "command": ".claude/tools/amplihack/hooks/stop.py",
-            "timeout": 30000
+            "timeout": 120000
           }
         ]
       }
@@ -69,6 +69,17 @@
             "type": "command",
             "command": ".claude/tools/amplihack/hooks/pre_compact.py",
             "timeout": 30000
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/tools/amplihack/hooks/session_end.py",
+            "timeout": 10000
           }
         ]
       }
