@@ -103,8 +103,18 @@ class StopHook(HookProcessor):
         self.log("=== STOP HOOK STARTED ===")
         self.log(f"Input keys: {list(input_data.keys())}")
 
+        # Atomic lock check: Use touch() to atomically test and create if missing
+        # This eliminates TOCTOU race between exists() check and subsequent usage
         try:
-            lock_exists = self.lock_flag.exists()
+            # touch(exist_ok=False) will raise FileExistsError if lock exists
+            # This atomically tests presence without separate exists() call
+            self.lock_flag.touch(exist_ok=False)
+            # If we get here, lock didn't exist, we just created it, so remove it
+            self.lock_flag.unlink()
+            lock_exists = False
+        except FileExistsError:
+            # Lock exists - this is the only case where lock is truly active
+            lock_exists = True
         except (PermissionError, OSError) as e:
             self.log(f"Cannot access lock file: {e}", "WARNING")
             self.log("=== STOP HOOK ENDED (fail-safe: approve) ===")
@@ -340,13 +350,10 @@ class StopHook(HookProcessor):
         Returns:
             str: Custom prompt content or DEFAULT_CONTINUATION_PROMPT
         """
-        # Check if custom prompt file exists
-        if not self.continuation_prompt_file.exists():
-            self.log("No custom continuation prompt file - using default")
-            return DEFAULT_CONTINUATION_PROMPT
-
+        # Atomic read: Directly attempt read_text() and catch FileNotFoundError
+        # This eliminates TOCTOU race between exists() check and read_text()
         try:
-            # Read prompt content
+            # Read prompt content directly without prior exists() check
             content = self.continuation_prompt_file.read_text(encoding="utf-8").strip()
 
             # Check if empty
@@ -376,6 +383,10 @@ class StopHook(HookProcessor):
             self.log(f"Using custom continuation prompt ({content_len} chars)")
             return content
 
+        except FileNotFoundError:
+            # File doesn't exist - use default (expected case)
+            self.log("No custom continuation prompt file - using default")
+            return DEFAULT_CONTINUATION_PROMPT
         except (PermissionError, OSError, UnicodeDecodeError) as e:
             self.log(f"Error reading custom prompt: {e} - using default", "WARNING")
             return DEFAULT_CONTINUATION_PROMPT
