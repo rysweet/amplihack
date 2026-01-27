@@ -234,7 +234,7 @@ def ensure_bundle_registered(bundle_path: Path) -> bool:
 
 
 def upgrade_amplifier() -> bool:
-    """Upgrade Amplifier CLI to the latest version.
+    """Upgrade Amplifier CLI to the latest version using amplifier's built-in update.
 
     Returns:
         True if upgrade succeeded (or was not needed), False otherwise
@@ -242,7 +242,7 @@ def upgrade_amplifier() -> bool:
     print("Checking for Amplifier updates...")
     try:
         result = subprocess.run(
-            ["uv", "tool", "upgrade", "amplifier"],
+            ["amplifier", "update", "-y"],
             check=False,
             capture_output=True,
             text=True,
@@ -252,7 +252,8 @@ def upgrade_amplifier() -> bool:
             # Check if actually upgraded or already latest
             if (
                 "already up-to-date" in result.stdout.lower()
-                or "already installed" in result.stdout.lower()
+                or "already at latest" in result.stdout.lower()
+                or "no updates" in result.stdout.lower()
             ):
                 print("✓ Amplifier is up-to-date")
             else:
@@ -261,7 +262,7 @@ def upgrade_amplifier() -> bool:
         print(f"⚠ Upgrade check failed: {result.stderr[:200]}")
         return False
     except FileNotFoundError:
-        print("Warning: uv not found, skipping upgrade check")
+        print("Warning: amplifier update command not found, skipping upgrade check")
         return False
     except subprocess.TimeoutExpired:
         print("Warning: upgrade check timed out, continuing with current version")
