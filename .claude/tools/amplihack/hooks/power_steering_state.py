@@ -23,13 +23,28 @@ Public API (the "studs"):
 import json
 import os
 import tempfile
+import time
 from collections.abc import Callable
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import ClassVar
 
-from .fallback_heuristics import AddressedChecker
+# Platform-specific imports (Windows compatibility)
+try:
+    import fcntl
+
+    LOCKING_AVAILABLE = True
+except ImportError:
+    # Windows doesn't have fcntl - graceful degradation
+    LOCKING_AVAILABLE = False
+
+# Import with both relative and absolute fallback
+try:
+    from .fallback_heuristics import AddressedChecker
+except ImportError:
+    from fallback_heuristics import AddressedChecker
 
 __all__ = [
     "FailureEvidence",
@@ -38,7 +53,10 @@ __all__ = [
     "TurnStateManager",
     "DeltaAnalyzer",
     "DeltaAnalysisResult",
+    "LOCKING_AVAILABLE",
 ]
+
+# Note: atomic_increment_turn() is a method of TurnStateManager, not exported separately
 
 
 @dataclass
@@ -453,7 +471,12 @@ class TurnStateManager:
         log: Optional logging callback
         _previous_turn_count: Track previous turn count for monotonicity validation
         _diagnostic_logger: Diagnostic logger for instrumentation
+        _lock_timeout_seconds: Timeout for file lock acquisition (default 2.0)
     """
+
+    # File locking constants
+    LOCK_TIMEOUT_SECONDS = 2.0
+    LOCK_RETRY_INTERVAL = 0.05  # 50ms between retry attempts
 
     def __init__(
         self,
@@ -472,6 +495,7 @@ class TurnStateManager:
         self.session_id = session_id
         self.log = log or (lambda msg: None)
         self._previous_turn_count: int | None = None
+        self._lock_timeout_seconds = self.LOCK_TIMEOUT_SECONDS
 
         # Import DiagnosticLogger - try both relative and absolute imports
         self._diagnostic_logger = None
@@ -489,6 +513,10 @@ class TurnStateManager:
             except ImportError as e:
                 # Fail-open: Continue without diagnostic logging
                 self.log(f"Warning: Could not load diagnostic logger: {e}")
+
+        # Log Windows degraded mode warning once during initialization
+        if not LOCKING_AVAILABLE:
+            self.log("File locking unavailable (Windows) - operating in degraded mode")
 
     def get_state_file_path(self) -> Path:
         """Get path to the state file for this session.
@@ -568,10 +596,194 @@ class TurnStateManager:
             # Fail-open: Don't raise, just log
             self.log(f"State validation warning: {e}")
 
+    def _do_save_state_write(
+        self,
+        state_file: Path,
+        state: PowerSteeringTurnState,
+        attempt: int,
+        locked: bool,
+    ) -> None:
+        """Perform the actual save state write operation.
+
+        This is extracted to a helper method to avoid code duplication between
+        the locked and non-locked paths.
+
+        Args:
+            state_file: Path to state file
+            state: State to save
+            attempt: Current attempt number
+            locked: Whether file lock was acquired
+        """
+        # Atomic write: temp file + fsync + rename
+        fd, temp_path = tempfile.mkstemp(
+            dir=state_file.parent,
+            prefix="turn_state_",
+            suffix=".tmp",
+        )
+
+        try:
+            # Write to temp file
+            with os.fdopen(fd, "w") as f:
+                state_data = state.to_dict()
+                json.dump(state_data, f, indent=2)
+
+                # Phase 3: fsync to ensure data is written to disk
+                f.flush()
+                os.fsync(f.fileno())
+
+            if locked:
+                self.log("State written with file lock protection")
+            else:
+                self.log("State written without lock (fail-open)")
+
+            # Phase 3: Verification read from temp file
+            temp_path_obj = Path(temp_path)
+            if not temp_path_obj.exists():
+                raise OSError("Temp file doesn't exist after write")
+
+            # Verify content matches
+            verified_data = json.loads(temp_path_obj.read_text())
+            if verified_data.get("turn_count") != state.turn_count:
+                # Diagnostic logging: Verification failed
+                if self._diagnostic_logger:
+                    self._diagnostic_logger.log_verification_failed(
+                        state.turn_count,
+                        verified_data.get("turn_count", -1),
+                    )
+                raise OSError("Verification failed: turn_count mismatch")
+
+            # Atomic rename
+            os.rename(temp_path, state_file)
+
+            # Fsync directory to ensure rename is durable
+            try:
+                dir_fd = os.open(state_file.parent, os.O_RDONLY)
+                try:
+                    os.fsync(dir_fd)
+                finally:
+                    os.close(dir_fd)
+            except (OSError, AttributeError):
+                # Fail-open: Some filesystems don't support directory fsync
+                pass
+
+            # Phase 3: Verify final path exists
+            if not state_file.exists():
+                raise OSError("State file doesn't exist after rename")
+
+            # Verify final file content
+            final_data = json.loads(state_file.read_text())
+            if final_data.get("turn_count") != state.turn_count:
+                if self._diagnostic_logger:
+                    self._diagnostic_logger.log_verification_failed(
+                        state.turn_count,
+                        final_data.get("turn_count", -1),
+                    )
+                raise OSError("Final verification failed: turn_count mismatch")
+
+            # Success! Update tracked value
+            self._previous_turn_count = state.turn_count
+
+            # Diagnostic logging: Success
+            if self._diagnostic_logger:
+                self._diagnostic_logger.log_state_write_success(
+                    state.turn_count,
+                    attempt,
+                )
+
+            self.log(f"Saved turn state to {state_file} (attempt {attempt})")
+
+        except Exception as e:
+            # Clean up temp file on error
+            try:
+                if Path(temp_path).exists():
+                    os.unlink(temp_path)
+            except OSError:
+                pass
+            raise e
+
+    @contextmanager
+    def _acquire_file_lock(self, file_handle, timeout_seconds: float | None = None):
+        """Acquire exclusive file lock with timeout (context manager pattern).
+
+        Uses fcntl.flock() on Linux/macOS for advisory file locking.
+        On Windows, gracefully degrades (no locking).
+
+        Args:
+            file_handle: Open file object to lock
+            timeout_seconds: Lock acquisition timeout (default: LOCK_TIMEOUT_SECONDS)
+
+        Yields:
+            True if lock acquired, False if timeout/unavailable (fail-open)
+
+        Example:
+            with open(path, 'r+') as f:
+                with self._acquire_file_lock(f) as locked:
+                    if locked:
+                        # Critical section with lock protection
+                        pass
+                    else:
+                        # Proceed without lock (fail-open)
+                        pass
+        """
+        if timeout_seconds is None:
+            timeout_seconds = self._lock_timeout_seconds
+
+        # Windows degradation: Skip locking
+        if not LOCKING_AVAILABLE:
+            self.log("Locking unavailable (Windows) - proceeding without lock")
+            yield False
+            return
+
+        # Try to acquire lock with timeout
+        start_time = time.time()
+        lock_acquired = False
+
+        try:
+            while True:
+                try:
+                    # Non-blocking exclusive lock
+                    fcntl.flock(file_handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    lock_acquired = True
+                    self.log("File lock acquired")
+                    break
+
+                except BlockingIOError:
+                    # Lock unavailable - check timeout
+                    elapsed = time.time() - start_time
+                    if elapsed >= timeout_seconds:
+                        self.log(
+                            f"Lock timeout after {timeout_seconds}s - proceeding without lock (fail-open)"
+                        )
+                        break
+
+                    # Wait briefly before retry
+                    time.sleep(self.LOCK_RETRY_INTERVAL)
+
+            # Yield lock status
+            yield lock_acquired
+
+        except (PermissionError, OSError) as e:
+            # Fail-open: Log error and proceed without lock
+            self.log(
+                f"Lock acquisition failed ({type(e).__name__}: {e}) - proceeding without lock (fail-open)"
+            )
+            yield False
+
+        finally:
+            # Release lock if acquired
+            if lock_acquired:
+                try:
+                    fcntl.flock(file_handle.fileno(), fcntl.LOCK_UN)
+                    self.log("File lock released")
+                except Exception as e:
+                    # Non-critical: Lock will be released when file closes
+                    self.log(f"Warning: Lock release failed: {e}")
+
     def save_state(
         self,
         state: PowerSteeringTurnState,
         previous_state: PowerSteeringTurnState | None = None,
+        _skip_locking: bool = False,
     ) -> None:
         """Save state to disk using atomic write pattern with enhancements.
 
@@ -581,6 +793,15 @@ class TurnStateManager:
         - Verification read: Read back temp file to verify
         - Retry logic: 3 attempts with exponential backoff
         - Diagnostic logging: Track all write attempts
+
+        [PLANNED] File Locking (Issue #2155):
+        - fcntl.flock() for exclusive access during read-modify-write
+        - 2-second timeout prevents indefinite hangs
+        - LOCK_EX | LOCK_NB for non-blocking exclusive lock
+        - Automatic release on file close
+        - Fail-open: Timeout/error proceeds without lock
+        - Platform support: Linux/macOS (full), Windows (graceful degradation)
+        - Prevents race condition: Multiple concurrent increments read same value
 
         Fail-open: Logs error but does not raise on failure.
 
@@ -642,77 +863,17 @@ class TurnStateManager:
                 # Ensure parent directory exists
                 state_file.parent.mkdir(parents=True, exist_ok=True)
 
-                # Atomic write: temp file + fsync + rename
-                fd, temp_path = tempfile.mkstemp(
-                    dir=state_file.parent,
-                    prefix="turn_state_",
-                    suffix=".tmp",
-                )
-
-                try:
-                    # Write to temp file
-                    with os.fdopen(fd, "w") as f:
-                        state_data = state.to_dict()
-                        json.dump(state_data, f, indent=2)
-
-                        # Phase 3: fsync to ensure data is written to disk
-                        f.flush()
-                        os.fsync(f.fileno())
-
-                    # Phase 3: Verification read from temp file
-                    temp_path_obj = Path(temp_path)
-                    if not temp_path_obj.exists():
-                        raise OSError("Temp file doesn't exist after write")
-
-                    # Verify content matches
-                    verified_data = json.loads(temp_path_obj.read_text())
-                    if verified_data.get("turn_count") != state.turn_count:
-                        # Diagnostic logging: Verification failed
-                        if self._diagnostic_logger:
-                            self._diagnostic_logger.log_verification_failed(
-                                state.turn_count,
-                                verified_data.get("turn_count", -1),
-                            )
-                        raise OSError("Verification failed: turn_count mismatch")
-
-                    # Atomic rename
-                    os.rename(temp_path, state_file)
-
-                    # Phase 3: Verify final path exists
-                    if not state_file.exists():
-                        raise OSError("State file doesn't exist after rename")
-
-                    # Verify final file content
-                    final_data = json.loads(state_file.read_text())
-                    if final_data.get("turn_count") != state.turn_count:
-                        if self._diagnostic_logger:
-                            self._diagnostic_logger.log_verification_failed(
-                                state.turn_count,
-                                final_data.get("turn_count", -1),
-                            )
-                        raise OSError("Final verification failed: turn_count mismatch")
-
-                    # Success! Update tracked value
-                    self._previous_turn_count = state.turn_count
-
-                    # Diagnostic logging: Success
-                    if self._diagnostic_logger:
-                        self._diagnostic_logger.log_state_write_success(
-                            state.turn_count,
-                            attempt,
-                        )
-
-                    self.log(f"Saved turn state to {state_file} (attempt {attempt})")
-                    return  # Success - exit retry loop
-
-                except Exception as e:
-                    # Clean up temp file on error
-                    try:
-                        if Path(temp_path).exists():
-                            os.unlink(temp_path)
-                    except OSError:
-                        pass
-                    raise e
+                # Determine if we need locking
+                if _skip_locking:
+                    # Already holding lock from caller (atomic_increment_turn)
+                    self._do_save_state_write(state_file, state, attempt, locked=True)
+                    return
+                # Acquire lock for write operation
+                lock_file = state_file.parent / ".turn_state.lock"
+                with open(lock_file, "a+") as lock_f:
+                    with self._acquire_file_lock(lock_f) as locked:
+                        self._do_save_state_write(state_file, state, attempt, locked)
+                        return
 
             except OSError as e:
                 error_msg = str(e)
@@ -749,6 +910,49 @@ class TurnStateManager:
         state.turn_count += 1
         self.log(f"Turn count incremented to {state.turn_count}")
         return state
+
+    def atomic_increment_turn(self) -> PowerSteeringTurnState:
+        """Atomically load, increment, and save turn state with file locking.
+
+        This method ensures the entire read-modify-write cycle is protected
+        by a file lock, preventing race conditions during concurrent increments.
+
+        Returns:
+            Updated state after increment
+
+        Example:
+            manager = TurnStateManager(project_root, session_id)
+            state = manager.atomic_increment_turn()
+            print(f"New turn count: {state.turn_count}")
+        """
+        state_file = self.get_state_file_path()
+        lock_file = state_file.parent / ".turn_state.lock"
+
+        # Ensure directory exists
+        state_file.parent.mkdir(parents=True, exist_ok=True)
+
+        # Acquire lock for entire read-modify-write cycle
+        with open(lock_file, "a+") as lock_f:
+            with self._acquire_file_lock(lock_f) as locked:
+                # Load current state
+                state = self.load_state()
+
+                # Increment
+                state = self.increment_turn(state)
+
+                # Save back (skip locking since we're already holding it)
+                self.save_state(state, _skip_locking=True)
+
+                if locked:
+                    self.log(
+                        f"Atomic increment completed with lock (new count: {state.turn_count})"
+                    )
+                else:
+                    self.log(
+                        f"Atomic increment completed without lock (new count: {state.turn_count})"
+                    )
+
+                return state
 
     def record_block_with_evidence(
         self,
