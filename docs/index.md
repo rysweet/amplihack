@@ -120,6 +120,7 @@ amplihack copilot
 - [Profile Management](PROFILE_MANAGEMENT.md) - Multiple environment configurations
 - [Proxy Configuration](PROXY_CONFIG_GUIDE.md) - Network proxy setup (Azure OpenAI, custom endpoints)
 - [Hook Configuration](HOOK_CONFIGURATION_GUIDE.md) - Customize framework behavior
+- [Configure Hook Timeouts](howto/configure-hook-timeouts.md) - Adjust timeout thresholds for stop hook operations
 - [Memory Configuration Consent](features/memory-consent-prompt.md) - Intelligent memory settings with timeout protection
 - [Verify .claude/ Staging](howto/verify-claude-staging.md) - Check that framework files are properly staged
 
@@ -147,6 +148,7 @@ Understand the philosophy and architecture behind amplihack.
 - [Project Overview](claude/context/PROJECT.md) - System architecture
 - [Development Patterns](claude/context/PATTERNS.md) - Proven implementation patterns
 - [Unified Staging Architecture](concepts/unified-staging-architecture.md) - How .claude/ staging works across all commands
+- [Hook Timeout Tracking](concepts/hook-timeout-tracking.md) - How stop hook manages 30s timeout budget
 - [Blarify Architecture](blarify_architecture.md) - Understanding the Blarify integration
 - [Documentation Knowledge Graph](documentation_knowledge_graph.md) - How docs connect
 
@@ -425,8 +427,8 @@ Robust handling of conversation compaction in long sessions:
 
 - [Smart Memory Management](features/smart-memory-management.md) - Automatic Node.js memory optimization for Claude Code
 - [Claude.md Preservation](features/claude-md-preservation.md) - Preserve custom instructions
-<!-- Neo4j removed - now using Kuzu embedded database (no session cleanup needed) -->
-<!-- - [Shutdown Detection](concepts/shutdown-detection.md) - Graceful exit handling (see stop-hook-exit-hang in Troubleshooting) -->
+  <!-- Neo4j removed - now using Kuzu embedded database (no session cleanup needed) -->
+  <!-- - [Shutdown Detection](concepts/shutdown-detection.md) - Graceful exit handling (see stop-hook-exit-hang in Troubleshooting) -->
 
 ### Third-Party Integrations
 
@@ -555,6 +557,7 @@ Quick references, guides, and additional resources.
 ### Quick References
 
 - [Command Selection Guide](commands/COMMAND_SELECTION_GUIDE.md) - Choose the right command
+- [Hook Timeout API Reference](reference/hook-timeout-api.md) - TimeoutTracker implementation details
 - [Platform Bridge API Reference](reference/platform-bridge-api.md) - Complete API documentation
 - [Doc Graph Quick Reference](doc_graph_quick_reference.md) - Navigate documentation
 <!-- Neo4j Quick Reference removed - now using Kuzu embedded database -->
