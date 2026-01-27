@@ -158,9 +158,8 @@ class SessionStartHook(HookProcessor):
             self.log(f"Settings merge failed (non-critical): {e}", "WARNING")
             self.save_metric("settings_update_error", True)
 
-        # Neo4j has been removed from this project (Week 7 cleanup)
-        # Memory functionality now uses Kuzu backend exclusively
-        self.log("Using Kuzu memory backend (Neo4j removed)")
+        # Memory functionality uses Kuzu backend
+        self.log("Using Kuzu memory backend")
         self.save_metric("kuzu_backend", True)
 
         # Build context if needed

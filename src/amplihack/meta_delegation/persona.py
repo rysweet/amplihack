@@ -17,7 +17,6 @@ Philosophy:
 """
 
 from dataclasses import dataclass
-from typing import Dict, List
 
 
 @dataclass(frozen=True)
@@ -35,7 +34,7 @@ class PersonaStrategy:
     name: str
     communication_style: str
     thoroughness_level: str
-    evidence_collection_priority: List[str]
+    evidence_collection_priority: list[str]
     prompt_template: str
 
 
@@ -194,7 +193,7 @@ Focus on delivering working code that meets the stated requirements. Follow best
 
 
 # Persona registry
-_PERSONA_REGISTRY: Dict[str, PersonaStrategy] = {
+_PERSONA_REGISTRY: dict[str, PersonaStrategy] = {
     "guide": GUIDE,
     "qa_engineer": QA_ENGINEER,
     "architect": ARCHITECT,

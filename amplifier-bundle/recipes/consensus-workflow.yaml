@@ -2,7 +2,17 @@ name: "consensus-workflow"
 description: "Enhanced workflow with multi-agent consensus at critical decision points - 15 steps with 7 mandatory consensus gates"
 version: "2.0.0"
 author: "Amplihack Team"
-tags: ["consensus", "quality", "multi-agent", "critical", "validation", "debate", "n-version", "expert-panel"]
+tags:
+  [
+    "consensus",
+    "quality",
+    "multi-agent",
+    "critical",
+    "validation",
+    "debate",
+    "n-version",
+    "expert-panel",
+  ]
 
 # CONSENSUS_WORKFLOW: Multi-Agent Consensus for Critical Work
 #

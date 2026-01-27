@@ -10,7 +10,6 @@ Stop Hook Protocol (https://docs.claude.com/en/docs/claude-code/hooks):
 
 import json
 import os
-import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -118,8 +117,6 @@ class StopHook(HookProcessor):
                 "decision": "block",
                 "reason": continuation_prompt,
             }
-
-        # Neo4j cleanup removed (Week 7) - no cleanup needed for Kuzu backend
 
         # Power-steering check (before reflection)
         if not lock_exists and self._should_run_power_steering():
@@ -289,9 +286,6 @@ class StopHook(HookProcessor):
             self.save_metric("reflection_errors", 1)
             self.log("=== STOP HOOK ENDED (decision: approve - error occurred) ===")
             return {"decision": "approve"}
-
-    # Neo4j cleanup methods removed (Week 7 cleanup)
-    # Kuzu backend does not require cleanup on session exit
 
     def read_continuation_prompt(self) -> str:
         """Read custom continuation prompt from file or return default.
@@ -745,8 +739,7 @@ After presenting the findings and getting the user's decision, you may proceed a
 
             if launcher_type == "copilot":
                 return CopilotStrategy(self.project_root, self.log)
-            else:
-                return ClaudeStrategy(self.project_root, self.log)
+            return ClaudeStrategy(self.project_root, self.log)
 
         except ImportError as e:
             self.log(f"Adaptive strategy not available: {e}", "DEBUG")

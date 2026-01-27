@@ -9,7 +9,7 @@
 - **name**: amplihack:remote
 - **version**: 1.0.0
 - **description**: Execute amplihack commands on remote Azure VMs using azlin
-- **triggers**: 
+- **triggers**:
 
 ---
 
@@ -19,6 +19,7 @@ This command is designed for Claude Code but the patterns and approaches
 can be referenced when using GitHub Copilot CLI.
 
 **Example**:
+
 ```bash
 # Reference this command's approach
 gh copilot explain .github/commands/remote.md
@@ -30,7 +31,6 @@ gh copilot suggest --context .github/commands/remote.md "your task"
 ---
 
 ## Original Command Documentation
-
 
 # Remote Execution Command
 

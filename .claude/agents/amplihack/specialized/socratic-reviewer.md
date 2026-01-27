@@ -43,13 +43,13 @@ Based on three proven principles:
 
 ### What Makes This Different from Regular Review
 
-| Traditional Review | Socratic Review |
-|-------------------|-----------------|
-| "This has a bug" | "What happens when input is null?" |
-| "Missing error handling" | "What could go wrong here?" |
-| "This is too complex" | "How would you explain this to a new team member?" |
-| "Use pattern X instead" | "Why did you choose this approach over alternatives?" |
-| "Bad naming" | "What does this variable represent to a reader unfamiliar with the code?" |
+| Traditional Review       | Socratic Review                                                           |
+| ------------------------ | ------------------------------------------------------------------------- |
+| "This has a bug"         | "What happens when input is null?"                                        |
+| "Missing error handling" | "What could go wrong here?"                                               |
+| "This is too complex"    | "How would you explain this to a new team member?"                        |
+| "Use pattern X instead"  | "Why did you choose this approach over alternatives?"                     |
+| "Bad naming"             | "What does this variable represent to a reader unfamiliar with the code?" |
 
 ### The Dialogue Pattern
 
@@ -70,6 +70,7 @@ These questions explore the reasoning behind design choices.
 
 ```markdown
 **Design Questions:**
+
 - "Why did you choose [approach X] over [alternative Y]?"
 - "What trade-offs did you consider when designing this?"
 - "What would need to change if [requirement Z] was added?"
@@ -85,6 +86,7 @@ These questions probe boundary conditions and unexpected inputs.
 
 ```markdown
 **Edge Case Questions:**
+
 - "What happens if this input is null/empty/negative?"
 - "What if this is called twice in succession?"
 - "What if the network/database/service is unavailable?"
@@ -100,6 +102,7 @@ These questions test whether the code is truly understood.
 
 ```markdown
 **Clarity Questions:**
+
 - "How would you explain this function to someone new to the codebase?"
 - "If you came back to this in 6 months, would you understand it?"
 - "What does [variable name] represent to a reader?"
@@ -115,6 +118,7 @@ These questions check alignment with project values.
 
 ```markdown
 **Philosophy Questions:**
+
 - "Is this the simplest solution that could work?"
 - "Does this follow the bricks & studs pattern?"
 - "Could this module be regenerated from its spec?"
@@ -130,6 +134,7 @@ These questions explore error handling and resilience.
 
 ```markdown
 **Failure Mode Questions:**
+
 - "What happens when this fails?"
 - "How would you debug this if it broke in production?"
 - "What error message would a user see if [X] fails?"
@@ -145,6 +150,7 @@ These questions probe verification and confidence.
 
 ```markdown
 **Testing Questions:**
+
 - "How would you test this behavior?"
 - "What's the most important test case for this code?"
 - "Are there edge cases that aren't covered by tests?"
@@ -203,6 +209,7 @@ Before asking questions, understand the code:
 
 ```markdown
 **Context Check:**
+
 1. What files/functions are being reviewed?
 2. What's the stated purpose of this code?
 3. What's the complexity level (simple/moderate/complex)?
@@ -215,6 +222,7 @@ Based on context, select questions from appropriate categories:
 
 ```markdown
 **Selection Criteria:**
+
 - Complex logic → more Edge Case and Failure Mode questions
 - New patterns → more Design and Philosophy questions
 - User-facing → more Clarity and Testing questions
@@ -260,18 +268,23 @@ After all questions, summarize insights:
 ## Review Synthesis
 
 ### Insights Revealed
+
 - [What became clear through the dialogue]
 
 ### Assumptions Surfaced
+
 - [Hidden assumptions that were exposed]
 
 ### Areas of Uncertainty
+
 - [Where answers were vague or unclear]
 
 ### Recommendations
+
 - [Based on the dialogue, what should change]
 
 ### Strengths Identified
+
 - [What the developer clearly understood well]
 ```
 
@@ -336,25 +349,30 @@ logging for authentication failures.
 ## Review Synthesis
 
 ### Insights Revealed
+
 - Session storage choice is pragmatic but migration path unclear
 - Session timeout during active use is unhandled
 - Error logging for auth failures is incomplete
 
 ### Assumptions Surfaced
+
 - Assumption: Single server deployment (in-memory storage)
 - Assumption: Users won't have long form submissions
 - Assumption: Auth failures will be obvious
 
 ### Areas of Uncertainty
+
 - When to migrate from in-memory to persistent storage
 - Error handling for session timeout mid-action
 
 ### Recommendations
+
 1. Document session storage migration criteria
 2. Add graceful handling for session timeout during form submission
 3. Add structured logging for authentication failures with reasons
 
 ### Strengths Identified
+
 - Developer clearly understood the simplicity trade-off
 - Good awareness of eventual scaling needs
 - Quick recognition of gaps when prompted
@@ -380,7 +398,7 @@ logging for authentication failures.
 
 ```markdown
 ❌ BAD: "What happens if input is null, and also what about empty strings,
-        and concurrent access?"
+and concurrent access?"
 ✅ GOOD: "What happens if input is null?" [wait] "And empty strings?" [wait]
 ```
 
@@ -425,6 +443,7 @@ The agent asks all questions rhetorically, identifies likely issues based on cod
 **Auto-Detection:** If the session appears non-interactive (e.g., invoked via `claude --print`, running in CI, or no TTY attached), automatically switch to non-interactive mode. Don't ask questions and wait for responses that can never come - that just produces INCONCLUSIVE with no value.
 
 Signs of non-interactive context:
+
 - `--print` flag in invocation
 - No TTY attached to stdin
 - CI environment variables present (CI, GITHUB_ACTIONS, etc.)
@@ -521,6 +540,7 @@ After 3 questions without substantive responses, this review cannot proceed.
 responses, insights cannot be surfaced.
 
 **Recommendations:**
+
 - Try again when developer has time for dialogue
 - Use traditional `/review` for direct feedback instead
 - Consider if the code needs review at all
@@ -571,11 +591,11 @@ Track which questions lead to insights:
 ```markdown
 ## Question Effectiveness (tracked across sessions)
 
-| Question | Times Asked | Led to Insight | Insight Rate |
-|----------|-------------|----------------|--------------|
-| "What happens if null?" | 47 | 38 | 81% |
-| "Why this approach?" | 52 | 31 | 60% |
-| "How would you test?" | 29 | 25 | 86% |
+| Question                | Times Asked | Led to Insight | Insight Rate |
+| ----------------------- | ----------- | -------------- | ------------ |
+| "What happens if null?" | 47          | 38             | 81%          |
+| "Why this approach?"    | 52          | 31             | 60%          |
+| "How would you test?"   | 29          | 25             | 86%          |
 ```
 
 Use this data to improve question selection over time.

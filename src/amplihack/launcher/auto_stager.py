@@ -49,9 +49,7 @@ class AutoStager:
         >>> print(f"Staged to: {result.staged_claude}")
     """
 
-    def stage_for_nested_execution(
-        self, original_cwd: Path, session_id: str
-    ) -> StagingResult:
+    def stage_for_nested_execution(self, original_cwd: Path, session_id: str) -> StagingResult:
         """Create temp dir, copy .claude components, set env vars.
 
         Args:
@@ -69,12 +67,10 @@ class AutoStager:
             >>> # Now .claude/ is safely staged in temp directory
         """
         # Sanitize session_id to prevent path traversal attacks
-        safe_session_id = re.sub(r'[^a-zA-Z0-9_-]', '_', session_id)
+        safe_session_id = re.sub(r"[^a-zA-Z0-9_-]", "_", session_id)
 
         # Create temp directory with session-specific name
-        temp_root = Path(
-            tempfile.mkdtemp(prefix=f"amplihack-stage-{safe_session_id}-")
-        )
+        temp_root = Path(tempfile.mkdtemp(prefix=f"amplihack-stage-{safe_session_id}-"))
 
         # Create .claude subdirectory in temp
         staged_claude = temp_root / ".claude"
@@ -142,12 +138,7 @@ class AutoStager:
                 dest_dir = dest / dir_name
                 try:
                     # Use symlinks=False and copy_function=shutil.copy for security
-                    shutil.copytree(
-                        source_dir,
-                        dest_dir,
-                        symlinks=False,
-                        copy_function=shutil.copy
-                    )
+                    shutil.copytree(source_dir, dest_dir, symlinks=False, copy_function=shutil.copy)
                 except Exception as e:
                     # If copy fails, warn user and continue with other directories
                     print(f"Warning: Failed to copy {dir_name} directory: {e}")

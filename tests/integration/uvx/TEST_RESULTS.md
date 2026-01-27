@@ -22,6 +22,7 @@ uvx --from git+https://github.com/rysweet/amplihack@feat/issue-1948-plugin-archi
 ## Current Results
 
 **Hook Tests**: 3/11 passing (27%)
+
 - ✅ Stop hook executes
 - ✅ Stop hook cleanup
 - ✅ PostToolUse logging

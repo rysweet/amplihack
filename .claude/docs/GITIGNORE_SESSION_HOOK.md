@@ -10,6 +10,7 @@
 The gitignore session start hook automatically ensures that amplihack runtime and log directories are properly excluded from Git tracking. It runs silently at the start of every Claude Code session in Git repositories.
 
 **Implementation Details**:
+
 - Written in Python
 - Uses `subprocess` to invoke `git rev-parse --is-inside-work-tree` for Git detection
 - Exact equality matching after normalizing trailing slashes (no wildcards)
@@ -37,6 +38,7 @@ The hook ensures these directories are always in .gitignore:
 ```
 
 These directories contain:
+
 - Session logs (conversation history, debug info)
 - Runtime state (cache files, temporary data)
 - Agent outputs (analysis results, generated files)
@@ -59,6 +61,7 @@ $ claude-code
 **You see**: A brief notification that .gitignore was updated.
 
 **Before** (.gitignore contents):
+
 ```
 node_modules/
 *.pyc
@@ -66,6 +69,7 @@ __pycache__/
 ```
 
 **After** (.gitignore contents):
+
 ```
 node_modules/
 *.pyc
@@ -75,6 +79,7 @@ __pycache__/
 ```
 
 **Terminal output**:
+
 ```
 $ claude-code
 
@@ -107,11 +112,13 @@ $ claude-code
 When you first install amplihack in a Git repository:
 
 1. **Review the changes**: Check what was added to .gitignore
+
    ```bash
    git diff .gitignore
    ```
 
 2. **Commit the changes**: Add the updated .gitignore to your repository
+
    ```bash
    git add .gitignore
    git commit -m "chore: Add amplihack runtime directories to .gitignore"
@@ -134,6 +141,7 @@ When you first install amplihack in a Git repository:
 **Cause**: .gitignore file has restrictive permissions or is owned by another user
 
 **Solution**:
+
 ```bash
 # Check file permissions
 ls -la .gitignore
@@ -151,6 +159,7 @@ chmod u+w .gitignore
 **Cause**: Another tool or process is removing the patterns
 
 **Solution**:
+
 ```bash
 # Check if patterns are actually in .gitignore
 grep ".claude/logs/" .gitignore
@@ -171,6 +180,7 @@ git log --oneline -n 20 -- .gitignore
 **Note**: The 500ms is a **performance target**, not a hard timeout. The hook will complete its work even if it takes longer.
 
 **Solution**:
+
 ```bash
 # Check .gitignore size
 ls -lh .gitignore
@@ -191,6 +201,7 @@ time ls -la .gitignore
 **Cause**: Hook failed silently (fail-safe behavior)
 
 **Solution**:
+
 ```bash
 # Check if you're in a Git repository
 git status
@@ -297,6 +308,7 @@ def gitignore_hook():
 The hook cannot be disabled (by design). Runtime directories should always be excluded from Git.
 
 **Rationale**: Committing runtime files causes:
+
 - Repository bloat (logs can be > 100MB)
 - Merge conflicts (everyone's logs are different)
 - Security risks (logs may contain API keys, secrets)
@@ -316,6 +328,7 @@ git rm --cached .claude/runtime/specific-file.json
 ### Customizing Patterns
 
 The hook always enforces these patterns:
+
 - `.claude/logs/`
 - `.claude/runtime/`
 
@@ -336,6 +349,7 @@ The gitignore session hook runs **before** pre-commit hooks (it runs at session 
 **Fully supported** - Git worktrees share the same .gitignore file with the main repository (not separate files).
 
 **How it works**:
+
 - Worktrees share the repository's .git directory structure
 - The .gitignore file at the repository root applies to all worktrees
 - Hook detects Git repository using `git rev-parse --is-inside-work-tree`
@@ -358,6 +372,7 @@ claude-code
 **Fully supported** - when run inside a submodule, the hook updates the submodule's own .gitignore file.
 
 **How it works**:
+
 - `git rev-parse --is-inside-work-tree` returns true when inside a submodule
 - Hook treats the submodule as an independent Git repository
 - Updates the submodule's .gitignore (not the parent repository's)
@@ -390,6 +405,7 @@ Use `git add -f <file>` to force-add specific files. The hook won't remove them 
 **Yes** - the hook respects Git repository boundaries and updates the appropriate .gitignore for each repository.
 
 In a monorepo with multiple .gitignore files:
+
 - Hook updates the root .gitignore if it exists
 - Falls back to creating .gitignore if missing
 - Respects subdirectory .gitignore files
@@ -401,6 +417,7 @@ The hook only works with `.gitignore`. If you're using custom ignore files (rare
 ### Does this hook run in CI/CD?
 
 **No** - CI/CD environments typically:
+
 1. Don't run Claude Code (no session start)
 2. Use clean checkouts (runtime dirs don't exist)
 3. Don't commit changes (read-only)

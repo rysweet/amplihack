@@ -5,10 +5,11 @@ Tests the hook behavior in real git repositories with subprocess isolation.
 This is outside-in testing - we test the behavior from a user's perspective.
 """
 
+import shutil
 import subprocess
 import tempfile
-import shutil
 from pathlib import Path
+
 import pytest
 
 
@@ -125,10 +126,10 @@ if result.get('warning'):
         # Check warning was displayed
         assert "Modified: True" in stdout or "warning" in stdout.lower()
 
-        print(f"\n✅ SIMPLE SCENARIO PASSED")
+        print("\n✅ SIMPLE SCENARIO PASSED")
         print(f"Test directory: {repo_dir}")
         print(f"Created .gitignore with {len(content.splitlines())} lines")
-        print(f"Patterns added: .claude/logs/, .claude/runtime/")
+        print("Patterns added: .claude/logs/, .claude/runtime/")
 
     # ===== Test Scenario 2: Complex - Existing .gitignore =====
 
@@ -197,10 +198,10 @@ dist/
         # Check warning was displayed (modified = True)
         assert "Modified: True" in stdout or "missing" in stdout.lower()
 
-        print(f"\n✅ COMPLEX SCENARIO PASSED")
+        print("\n✅ COMPLEX SCENARIO PASSED")
         print(f"Test directory: {repo_dir}")
         print(f"Preserved {existing_content.count(chr(10))} original lines")
-        print(f"Added missing pattern: .claude/runtime/")
+        print("Added missing pattern: .claude/runtime/")
         print(f"Final .gitignore: {len(content.splitlines())} lines")
 
     # ===== Test Scenario 3: Idempotency =====
@@ -243,17 +244,19 @@ dist/
         content_after_second = gitignore_path.read_text()
 
         # Assert: Second run should be no-op
-        assert "Modified: False" in stdout2 or "modified: False" in stdout2.lower(), \
+        assert "Modified: False" in stdout2 or "modified: False" in stdout2.lower(), (
             "Second run should not modify"
+        )
 
         # Content should be identical
-        assert content_after_first == content_after_second, \
+        assert content_after_first == content_after_second, (
             "Content should be unchanged on second run"
+        )
 
-        print(f"\n✅ IDEMPOTENCY TEST PASSED")
-        print(f"First run: Modified .gitignore")
-        print(f"Second run: No changes (idempotent)")
-        print(f"Content remained stable across runs")
+        print("\n✅ IDEMPOTENCY TEST PASSED")
+        print("First run: Modified .gitignore")
+        print("Second run: No changes (idempotent)")
+        print("Content remained stable across runs")
 
     # ===== Test Scenario 4: Non-Git Directory =====
 
@@ -290,12 +293,13 @@ dist/
         # Should not display warnings
         assert "warning" not in stdout.lower(), "Should not warn in non-git dir"
 
-        print(f"\n✅ NON-GIT SCENARIO PASSED")
-        print(f"Hook gracefully skipped non-git directory")
-        print(f"No .gitignore created, no warnings displayed")
+        print("\n✅ NON-GIT SCENARIO PASSED")
+        print("Hook gracefully skipped non-git directory")
+        print("No .gitignore created, no warnings displayed")
 
 
 # ===== Test Results Summary for PR Description =====
+
 
 def generate_test_summary():
     """

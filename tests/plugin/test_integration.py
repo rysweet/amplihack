@@ -9,10 +9,10 @@ Testing Strategy:
 - 70% E2E tests (complete user workflows)
 """
 
-import pytest
-from pathlib import Path
 import json
 import subprocess
+
+import pytest
 
 
 class TestPluginInstallationIntegration:
@@ -45,9 +45,7 @@ class TestPluginInstallationIntegration:
 
         base_settings = {
             "version": "1.0.0",
-            "hooks": {
-                "PreRun": "${CLAUDE_PLUGIN_ROOT}/tools/hook.sh"
-            }
+            "hooks": {"PreRun": "${CLAUDE_PLUGIN_ROOT}/tools/hook.sh"},
         }
         (plugin_claude / "settings.json").write_text(json.dumps(base_settings, indent=2))
 
@@ -55,10 +53,7 @@ class TestPluginInstallationIntegration:
         plugin_home = tmp_path / "home" / ".amplihack"
 
         installer = PluginInstaller()
-        install_result = installer.install(
-            source_path=plugin_source,
-            target_path=plugin_home
-        )
+        install_result = installer.install(source_path=plugin_source, target_path=plugin_home)
 
         assert install_result["success"]
         assert installer.verify_installation(plugin_home)
@@ -67,9 +62,7 @@ class TestPluginInstallationIntegration:
         project_root = tmp_path / "myproject"
         project_root.mkdir()
 
-        project_overrides = {
-            "custom_key": "custom_value"
-        }
+        project_overrides = {"custom_key": "custom_value"}
 
         merger = SettingsMerger()
         base = json.loads((plugin_home / ".claude" / "settings.json").read_text())
@@ -126,9 +119,7 @@ class TestPluginInstallationIntegration:
         lsp_config = detector.generate_lsp_config()
 
         # Merge with plugin settings
-        base_settings = json.loads(
-            (plugin_home / ".claude" / "settings.json").read_text()
-        )
+        base_settings = json.loads((plugin_home / ".claude" / "settings.json").read_text())
         merger = SettingsMerger()
         final_settings = merger.merge(base=base_settings, overrides=lsp_config)
 
@@ -167,9 +158,7 @@ class TestPluginInstallationIntegration:
         overrides_a = {"project_name": "Project A"}
 
         merger = SettingsMerger()
-        substitutor = VariableSubstitutor(
-            {"CLAUDE_PLUGIN_ROOT": str(plugin_home / ".claude")}
-        )
+        substitutor = VariableSubstitutor({"CLAUDE_PLUGIN_ROOT": str(plugin_home / ".claude")})
 
         base = json.loads((plugin_home / ".claude" / "settings.json").read_text())
         merged_a = merger.merge(base=base, overrides=overrides_a)
@@ -215,8 +204,8 @@ class TestMigrationWorkflowIntegration:
         - Runtime data migrated
         - Settings updated with variables
         """
-        from amplihack.plugin.migration_helper import MigrationHelper
         from amplihack.plugin.installer import PluginInstaller
+        from amplihack.plugin.migration_helper import MigrationHelper
 
         # Old-style installation
         old_project = tmp_path / "old_project"
@@ -231,10 +220,7 @@ class TestMigrationWorkflowIntegration:
         (old_claude / "runtime").mkdir(parents=True)
         (old_claude / "runtime" / "data.json").write_text('{"session": "abc"}')
 
-        old_settings = {
-            "version": "0.9.0",
-            "hooks": {"PreRun": ".claude/tools/hook.sh"}
-        }
+        old_settings = {"version": "0.9.0", "hooks": {"PreRun": ".claude/tools/hook.sh"}}
         (old_claude / "settings.json").write_text(json.dumps(old_settings, indent=2))
 
         # Plugin source
@@ -245,7 +231,7 @@ class TestMigrationWorkflowIntegration:
 
         new_settings = {
             "version": "1.0.0",
-            "hooks": {"PreRun": "${CLAUDE_PLUGIN_ROOT}/tools/hook.sh"}
+            "hooks": {"PreRun": "${CLAUDE_PLUGIN_ROOT}/tools/hook.sh"},
         }
         (plugin_claude / "settings.json").write_text(json.dumps(new_settings, indent=2))
 
@@ -257,9 +243,7 @@ class TestMigrationWorkflowIntegration:
         # Migrate
         migration_helper = MigrationHelper()
         result = migration_helper.migrate(
-            old_installation=old_claude,
-            plugin_root=plugin_home,
-            project_root=old_project
+            old_installation=old_claude, plugin_root=plugin_home, project_root=old_project
         )
 
         assert result["success"]
@@ -272,9 +256,7 @@ class TestMigrationWorkflowIntegration:
         assert (old_project / ".claude" / "runtime" / "data.json").exists()
 
         # Verify settings updated
-        final_settings = json.loads(
-            (old_project / ".claude" / "settings.json").read_text()
-        )
+        final_settings = json.loads((old_project / ".claude" / "settings.json").read_text())
         assert final_settings["version"] == "1.0.0"
 
     def test_migration_rollback_on_failure(self, tmp_path):
@@ -305,9 +287,7 @@ class TestMigrationWorkflowIntegration:
         try:
             with pytest.raises(Exception):  # Migration should fail
                 migration_helper.migrate(
-                    old_installation=old_claude,
-                    plugin_root=plugin_home,
-                    project_root=old_project
+                    old_installation=old_claude, plugin_root=plugin_home, project_root=old_project
                 )
         finally:
             plugin_home.chmod(0o755)
@@ -342,11 +322,7 @@ class TestHookExecutionIntegration:
         hook_script.chmod(0o755)
 
         # Settings with variable
-        settings = {
-            "hooks": {
-                "PreRun": "${CLAUDE_PLUGIN_ROOT}/tools/test_hook.sh"
-            }
-        }
+        settings = {"hooks": {"PreRun": "${CLAUDE_PLUGIN_ROOT}/tools/test_hook.sh"}}
 
         # Substitute variables
         variables = {"CLAUDE_PLUGIN_ROOT": str(plugin_root)}
@@ -355,11 +331,7 @@ class TestHookExecutionIntegration:
 
         # Execute hook
         hook_path = resolved_settings["hooks"]["PreRun"]
-        result = subprocess.run(
-            [hook_path],
-            capture_output=True,
-            text=True
-        )
+        result = subprocess.run([hook_path], capture_output=True, text=True)
 
         assert result.returncode == 0
         assert "Hook executed successfully" in result.stdout
@@ -392,7 +364,7 @@ class TestHookExecutionIntegration:
         settings = {
             "hooks": {
                 "PreRun": "${CLAUDE_PLUGIN_ROOT}/tools/pre.sh",
-                "PostRun": "${CLAUDE_PLUGIN_ROOT}/tools/post.sh"
+                "PostRun": "${CLAUDE_PLUGIN_ROOT}/tools/post.sh",
             }
         }
 
@@ -403,11 +375,7 @@ class TestHookExecutionIntegration:
         # Execute hooks
         outputs = []
         for hook_name in ["PreRun", "PostRun"]:
-            result = subprocess.run(
-                [resolved["hooks"][hook_name]],
-                capture_output=True,
-                text=True
-            )
+            result = subprocess.run([resolved["hooks"][hook_name]], capture_output=True, text=True)
             outputs.append(result.stdout.strip())
 
         assert outputs == ["PRE", "POST"]
@@ -430,7 +398,7 @@ class TestPluginCLIIntegration:
 
         plugin_source = tmp_path / "amplihack"
         (plugin_source / ".claude").mkdir(parents=True)
-        (plugin_source / ".claude" / "settings.json").write_text('{}')
+        (plugin_source / ".claude" / "settings.json").write_text("{}")
 
         target = tmp_path / "target"
 
@@ -462,11 +430,7 @@ class TestPluginCLIIntegration:
         plugin_root = tmp_path / "plugin"
 
         cli = PluginCLI()
-        result = cli.run([
-            "migrate",
-            str(old_project),
-            "--plugin-root", str(plugin_root)
-        ])
+        result = cli.run(["migrate", str(old_project), "--plugin-root", str(plugin_root)])
 
         assert result["success"]
 
@@ -486,7 +450,7 @@ class TestPluginCLIIntegration:
         claude_dir = target / ".claude"
         (claude_dir / "context").mkdir(parents=True)
         (claude_dir / "tools").mkdir(parents=True)
-        (claude_dir / "settings.json").write_text('{}')
+        (claude_dir / "settings.json").write_text("{}")
 
         cli = PluginCLI()
         result = cli.run(["verify", str(target)])
@@ -507,9 +471,10 @@ class TestEdgeIntegration:
         - Each project gets correct settings
         - Plugin remains stable
         """
+        import concurrent.futures
+
         from amplihack.plugin.installer import PluginInstaller
         from amplihack.plugin.settings_merger import SettingsMerger
-        import concurrent.futures
 
         # Install plugin
         plugin_source = tmp_path / "amplihack"
@@ -536,10 +501,7 @@ class TestEdgeIntegration:
 
         # Setup 5 projects concurrently
         with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
-            futures = [
-                executor.submit(setup_project, f"project_{i}")
-                for i in range(5)
-            ]
+            futures = [executor.submit(setup_project, f"project_{i}") for i in range(5)]
             results = [f.result() for f in concurrent.futures.as_completed(futures)]
 
         assert len(results) == 5

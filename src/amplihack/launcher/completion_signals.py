@@ -15,7 +15,6 @@ Philosophy:
 """
 
 from dataclasses import dataclass
-from typing import Optional
 
 from amplihack.launcher.work_summary import WorkSummary
 
@@ -40,14 +39,12 @@ class CompletionSignals:
     has_commits: bool
     no_uncommitted_changes: bool
     completion_score: float
-    pr_number: Optional[int] = None
+    pr_number: int | None = None
 
     def __post_init__(self):
         """Validate completion score range."""
         if not 0.0 <= self.completion_score <= 1.0:
-            raise ValueError(
-                f"Completion score must be 0.0-1.0, got {self.completion_score}"
-            )
+            raise ValueError(f"Completion score must be 0.0-1.0, got {self.completion_score}")
 
 
 class CompletionSignalDetector:
@@ -213,8 +210,7 @@ class CompletionSignalDetector:
         """
         if self.is_complete(signals):
             return self._explain_complete(signals)
-        else:
-            return self._explain_incomplete(signals)
+        return self._explain_incomplete(signals)
 
     def _explain_complete(self, signals: CompletionSignals) -> str:
         """Explain why signals indicate completion.

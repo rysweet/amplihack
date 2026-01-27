@@ -376,7 +376,6 @@ class TestKuzuBackendRetrieveMemoriesAcrossTypes:
             # Should only query EpisodicMemory when type is specified
             assert any("EpisodicMemory" in str(call) for call in calls)
 
-
             assert True  # Placeholder
 
 

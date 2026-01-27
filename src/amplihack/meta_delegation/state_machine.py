@@ -19,9 +19,8 @@ Philosophy:
 """
 
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional
 
 
 class ProcessState(Enum):
@@ -37,8 +36,6 @@ class ProcessState(Enum):
 
 class StateTransitionError(Exception):
     """Exception raised for invalid state transitions."""
-
-    pass
 
 
 class SubprocessStateMachine:
@@ -67,13 +64,13 @@ class SubprocessStateMachine:
         self.process = process
         self.timeout_seconds = timeout_seconds
         self.current_state = ProcessState.CREATED
-        self.start_time: Optional[datetime] = None
-        self.end_time: Optional[datetime] = None
-        self.failure_reason: Optional[str] = None
+        self.start_time: datetime | None = None
+        self.end_time: datetime | None = None
+        self.failure_reason: str | None = None
         self.duration_seconds: float = 0.0
 
         # State history tracking
-        self._state_history: List[Dict] = [
+        self._state_history: list[dict] = [
             {
                 "state": ProcessState.CREATED,
                 "timestamp": datetime.now(),
@@ -97,7 +94,7 @@ class SubprocessStateMachine:
 
         self.process = process
 
-    def transition_to(self, new_state: ProcessState, error: Optional[str] = None) -> None:
+    def transition_to(self, new_state: ProcessState, error: str | None = None) -> None:
         """Transition to a new state.
 
         Args:
@@ -224,7 +221,7 @@ class SubprocessStateMachine:
         else:
             self.process.terminate()
 
-    def get_state_history(self) -> List[Dict]:
+    def get_state_history(self) -> list[dict]:
         """Get complete state transition history.
 
         Returns:
@@ -232,7 +229,7 @@ class SubprocessStateMachine:
         """
         return self._state_history.copy()
 
-    def get_state_duration(self) -> Dict[ProcessState, float]:
+    def get_state_duration(self) -> dict[ProcessState, float]:
         """Calculate time spent in each state.
 
         Returns:
@@ -255,7 +252,7 @@ class SubprocessStateMachine:
 
         return durations
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Serialize state machine to dictionary.
 
         Returns:

@@ -41,27 +41,29 @@ Help users choose the right workflow for their task.
 
 📖 **Complete workflows documentation**: https://rysweet.github.io/amplihack/workflows/
 
-| Workflow | Best For | Recipe |
-|----------|----------|--------|
-| **Q&A** | Simple questions, quick info | `amplihack:recipes/qa-workflow.yaml` |
-| **Investigation** | Understanding code, research | `amplihack:recipes/investigation-workflow.yaml` |
-| **Default** | Features, bugs, refactoring | `amplihack:recipes/default-workflow.yaml` |
-| **Auto** | Autonomous multi-turn work | `amplihack:recipes/auto-workflow.yaml` |
-| **Consensus** | Critical code, multi-agent review | `amplihack:recipes/consensus-workflow.yaml` |
-| **Debate** | Architectural decisions | `amplihack:recipes/debate-workflow.yaml` |
-| **N-Version** | Multiple implementations | `amplihack:recipes/n-version-workflow.yaml` |
-| **Cascade** | Graceful degradation | `amplihack:recipes/cascade-workflow.yaml` |
+| Workflow          | Best For                          | Recipe                                          |
+| ----------------- | --------------------------------- | ----------------------------------------------- |
+| **Q&A**           | Simple questions, quick info      | `amplihack:recipes/qa-workflow.yaml`            |
+| **Investigation** | Understanding code, research      | `amplihack:recipes/investigation-workflow.yaml` |
+| **Default**       | Features, bugs, refactoring       | `amplihack:recipes/default-workflow.yaml`       |
+| **Auto**          | Autonomous multi-turn work        | `amplihack:recipes/auto-workflow.yaml`          |
+| **Consensus**     | Critical code, multi-agent review | `amplihack:recipes/consensus-workflow.yaml`     |
+| **Debate**        | Architectural decisions           | `amplihack:recipes/debate-workflow.yaml`        |
+| **N-Version**     | Multiple implementations          | `amplihack:recipes/n-version-workflow.yaml`     |
+| **Cascade**       | Graceful degradation              | `amplihack:recipes/cascade-workflow.yaml`       |
 
 📚 **CONCEPT**: The Q&A workflow is yer fastest way to get simple answers without triggering full workflows.
 
 🎯 **TRY IT NOW**: Run this command in yer terminal:
+
 ```bash
 amplihack claude -- -p "How many Python files are in this directory?"
 ```
 
-⏸️  **TELL ME**: What happened? What did ye see? How long did it take? [WAIT]
+⏸️ **TELL ME**: What happened? What did ye see? How long did it take? [WAIT]
 
 [After user responds, analyze their experience:]
+
 - Did Claude give ye a direct answer without creating branches/PRs?
 - Did it run quickly (< 30 seconds)?
 - Did ye notice it didn't follow the 22-step workflow?
@@ -71,11 +73,12 @@ amplihack claude -- -p "How many Python files are in this directory?"
 Now let's compare that to DEFAULT workflow...
 
 🎯 **TRY IT NOW #2**: Run this command:
+
 ```bash
 amplihack claude -- -p "Add a README.md file to this directory with project description"
 ```
 
-⏸️  **TELL ME**: How was this different from the first command? Did Claude create a branch? Commit? [WAIT]
+⏸️ **TELL ME**: How was this different from the first command? Did Claude create a branch? Commit? [WAIT]
 
 [After user responds:]
 **That's DEFAULT workflow** - the full 22-step process because yer task required code changes!
@@ -90,6 +93,7 @@ Classify these 4 scenarios. Which workflow would ye use? Type the workflow name 
 4. "Should we use PostgreSQL or MongoDB for this feature?" → [WAIT]
 
 [After each answer, provide feedback:]
+
 - Scenario 1: Q&A_WORKFLOW ✅ (Simple question, no code changes)
 - Scenario 2: DEFAULT_WORKFLOW ✅ (Feature addition, full workflow needed)
 - Scenario 3: INVESTIGATION_WORKFLOW ✅ (Understanding existing code)
@@ -104,6 +108,7 @@ Ahoy! Here be the crew of 35 specialized agents ready to help ye on yer journey!
 📖 **Complete agents documentation**: https://rysweet.github.io/amplihack/agents/
 
 **Core Agents** (6):
+
 - `amplihack:architect` - System design and problem decomposition
 - `amplihack:builder` - Code implementation
 - `amplihack:reviewer` - Code review and quality
@@ -112,6 +117,7 @@ Ahoy! Here be the crew of 35 specialized agents ready to help ye on yer journey!
 - `amplihack:api-designer` - API design patterns
 
 **Specialized Agents** (27):
+
 - `amplihack:philosophy-guardian` - Enforces coding philosophy
 - `amplihack:security` - Security analysis
 - `amplihack:database` - Database design
@@ -124,27 +130,33 @@ Ahoy! Here be the crew of 35 specialized agents ready to help ye on yer journey!
 🎯 **REAL PRODUCTION EXAMPLES** - Try These Now!
 
 **Example 1: Comprehensive Quality Audit**
+
 ```bash
 /amplihack:quality-audit .
 ```
+
 **What happens**: The quality-audit skill:
+
 - Analyzes yer code for PHILOSOPHY.md compliance
-- Identifies anti-patterns (over-abstraction, stub code, missing __all__)
+- Identifies anti-patterns (over-abstraction, stub code, missing **all**)
 - Checks test coverage and quality
 - Provides prioritized recommendations with specific fixes
 - Takes 2-5 minutes for typical codebase
 
 **When to use**: Before major refactoring, code reviews, onboarding new contributors
 
-⏸️  **TRY IT**: Run the quality audit on yer current directory and tell me the top 3 issues it found. [WAIT]
+⏸️ **TRY IT**: Run the quality audit on yer current directory and tell me the top 3 issues it found. [WAIT]
 
 ---
 
 **Example 2: Autonomous Bug Fix from GitHub Issue**
+
 ```bash
 amplihack claude -- -p "Read issue #2003 and create PR to fix it"
 ```
+
 **What happens**: Claude FULLY AUTONOMOUSLY:
+
 1. Reads GitHub issue #2003 to understand the bug
 2. Creates feature branch (issue-2003-fix-description)
 3. Analyzes codebase to locate bug
@@ -156,15 +168,18 @@ amplihack claude -- -p "Read issue #2003 and create PR to fix it"
 
 **When to use**: Delegating bug fixes, triaging backlog, weekend automation
 
-⏸️  **TRY IT**: Pick a real issue from yer backlog and let Claude fix it. Report back what happened! [WAIT]
+⏸️ **TRY IT**: Pick a real issue from yer backlog and let Claude fix it. Report back what happened! [WAIT]
 
 ---
 
 **Example 3: Document-Driven Development (DDD) for Azure Functions**
+
 ```bash
 amplihack claude -- -p "/amplihack:ddd:prime Azure Functions app for agent log processing with blob storage triggers"
 ```
+
 **What happens**: DDD PREVENTS context poisoning by:
+
 1. **Prime**: Loads DDD methodology and patterns
 2. **Plan** (Phase 0): Defines scope, deliverables, success criteria, constraints
 3. **Docs** (Phase 1): Writes COMPLETE documentation FIRST (architecture, API, examples)
@@ -176,15 +191,18 @@ amplihack claude -- -p "/amplihack:ddd:prime Azure Functions app for agent log p
 
 **When to use**: Large features (10+ files), system redesigns, API changes, high-stakes work
 
-⏸️  **TRY IT**: Run DDD prime for a feature ye're planning. Stop at Phase 2 approval gate. Did the docs catch any design issues? [WAIT]
+⏸️ **TRY IT**: Run DDD prime for a feature ye're planning. Stop at Phase 2 approval gate. Did the docs catch any design issues? [WAIT]
 
 ---
 
 **Example 4: Multi-Agent Parallel Code Review**
+
 ```bash
 amplihack claude -- -p "Review ./src/auth/ with security, architect, optimizer, tester, and reviewer agents in parallel"
 ```
+
 **What happens**: **FIVE agents analyze SIMULTANEOUSLY** (not sequential):
+
 - **Security Agent**: Checks for vulnerabilities, injection risks, auth flaws
 - **Architect Agent**: Evaluates design patterns, coupling, modularity
 - **Optimizer Agent**: Identifies performance bottlenecks, inefficient queries
@@ -192,6 +210,7 @@ amplihack claude -- -p "Review ./src/auth/ with security, architect, optimizer, 
 - **Reviewer Agent**: Checks philosophy compliance, code quality
 
 Then produces **SYNTHESIZED REPORT** with:
+
 - Issues sorted by severity (Critical → Minor)
 - No duplicate findings (agents coordinate)
 - Actionable recommendations with code examples
@@ -199,7 +218,7 @@ Then produces **SYNTHESIZED REPORT** with:
 
 **When to use**: Pre-merge reviews, security audits, performance investigations
 
-⏸️  **TRY IT**: Run multi-agent review on yer most complex module. Which agent found the most critical issue? [WAIT]
+⏸️ **TRY IT**: Run multi-agent review on yer most complex module. Which agent found the most critical issue? [WAIT]
 
 ### 3. Skills Library
 
@@ -227,12 +246,14 @@ Ahoy! Let's learn to craft mighty prompts through PRACTICE, not just theory!
 📚 **Learn More**:
 
 **Anthropic Documentation**:
+
 - Complete guide: https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering
 - Prompt library: https://docs.anthropic.com/en/docs/prompt-library
 - Chain-of-thought: https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/chain-of-thought
 - Give Claude space to think: https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/be-clear-and-direct
 
 **Amplihack Documentation**:
+
 - Documentation site: https://rysweet.github.io/amplihack/
 - Workflows guide: https://rysweet.github.io/amplihack/workflows/
 - Agents reference: https://rysweet.github.io/amplihack/agents/
@@ -274,9 +295,11 @@ YOUR PROMPT: [WAIT]
 **Analyzing yer prompt...**
 
 ✅ **Strengths I see**:
+
 - [List what they did well]
 
-⚠️  **Missing elements**:
+⚠️ **Missing elements**:
+
 - [ ] Specific success criteria? (What does "done" look like?)
 - [ ] Constraints? (Performance, dependencies, compatibility?)
 - [ ] Context? (Current architecture, related components?)
@@ -296,6 +319,7 @@ YOUR IMPROVED PROMPT: [WAIT]
 [After rewrite, compare before/after:]
 
 **Before → After Comparison**:
+
 - Specificity: [vague → precise]
 - Context: [missing → provided]
 - Success criteria: [unclear → measurable]
@@ -329,23 +353,23 @@ Examples:
 [Show what good output looks like]
 ```
 
-⏸️  **PRACTICE**: Use this template for yer next prompt and tell me how it worked! [WAIT]
+⏸️ **PRACTICE**: Use this template for yer next prompt and tell me how it worked! [WAIT]
 
 ### 5. Hook System
 
 Explain the 9 hooks that enhance every session:
 
-| Hook | What It Does |
-|------|--------------|
-| `hook-session-start` | Loads preferences, checks versions |
-| `hook-session-stop` | Saves learnings, checks lock mode |
-| `hook-lock-mode` | Enables continuous work mode |
-| `hook-power-steering` | Verifies session completion |
-| `hook-memory` | Manages agent memory |
-| `hook-pre-tool-use` | Blocks dangerous operations |
-| `hook-post-tool-use` | Tracks metrics, detects errors |
-| `hook-pre-compact` | Exports transcripts |
-| `hook-user-prompt` | Injects user preferences |
+| Hook                  | What It Does                       |
+| --------------------- | ---------------------------------- |
+| `hook-session-start`  | Loads preferences, checks versions |
+| `hook-session-stop`   | Saves learnings, checks lock mode  |
+| `hook-lock-mode`      | Enables continuous work mode       |
+| `hook-power-steering` | Verifies session completion        |
+| `hook-memory`         | Manages agent memory               |
+| `hook-pre-tool-use`   | Blocks dangerous operations        |
+| `hook-post-tool-use`  | Tracks metrics, detects errors     |
+| `hook-pre-compact`    | Exports transcripts                |
+| `hook-user-prompt`    | Injects user preferences           |
 
 ### 5. Goal Workshop - Let's Build Yer Goal Together!
 
@@ -360,6 +384,7 @@ Ready? Let's structure yer goal perfectly...
 **Q1: What problem do ye want to solve?**
 
 Think of something ye want to automate or accomplish. Examples:
+
 - "Automatically check code quality weekly"
 - "Generate release notes from git commits"
 - "Monitor API performance and alert on slowdowns"
@@ -376,6 +401,7 @@ Great! Now let's define the boundaries...
 **Q2: What are yer constraints?**
 
 Think about:
+
 - Time limits (must finish in X minutes)
 - Technical requirements (use specific tools/APIs)
 - Dependencies (what must exist first)
@@ -392,6 +418,7 @@ Perfect! Now let's define success...
 **Q3: How will ye know it succeeded?**
 
 Be specific and measurable:
+
 - What files/artifacts are created?
 - What metrics improved?
 - What tests pass?
@@ -408,6 +435,7 @@ Almost there! One final question...
 **Q4: What could go wrong?**
 
 Think about:
+
 - External API failures
 - Permissions issues
 - Data not found
@@ -459,17 +487,19 @@ Think about:
 ```
 
 **📁 Save this as `goal.md` and run:**
+
 ```bash
 amplihack new -t goal -g goal.md
 ```
 
 **What happens next**:
+
 1. amplihack creates a new goal-seeking agent
 2. Agent reads goal.md to understand success criteria
 3. Agent works autonomously until all criteria met
 4. Agent generates report showing results
 
-⏸️  **DID YE CREATE THE GOAL?**: Tell me what happened when ye ran it! [WAIT]
+⏸️ **DID YE CREATE THE GOAL?**: Tell me what happened when ye ran it! [WAIT]
 
 ---
 
@@ -489,6 +519,7 @@ D) Risks identified (what might go wrong) → [Did we? Y/N]
 Explain lock mode and auto-workflow:
 
 **Lock Mode** - Keep working without stopping:
+
 ```bash
 # Enable
 python .claude/tools/amplihack/lock_tool.py lock --message "Focus on tests"
@@ -498,6 +529,7 @@ python .claude/tools/amplihack/lock_tool.py unlock
 ```
 
 **Auto-Workflow** - Autonomous execution:
+
 ```
 Run the auto-workflow recipe with task "Implement user authentication"
 ```
@@ -509,6 +541,7 @@ Run the auto-workflow recipe with task "Implement user authentication"
 **Give context, show possibilities, then immediate hands-on**:
 
 **Step 1 - Brief Intro with Features** (30 seconds):
+
 ```
 "Ahoy! Amplihack is an AI development framework that gives ye:
 - 🤖 35 specialized agents (architect, builder, tester, security, etc.)
@@ -520,6 +553,7 @@ Think of it as having a whole development team available 24/7."
 ```
 
 **Step 2 - Immediate Practice** (REPL commands, not bash):
+
 ```
 "Let's try it RIGHT NOW.
 
@@ -530,6 +564,7 @@ Think of it as having a whole development team available 24/7."
 ```
 
 **Step 3 - Explain from experience**:
+
 ```
 [After user responds]
 "That was the Q&A workflow - fast answers for simple questions!
@@ -539,17 +574,20 @@ Now let's try something MORE powerful..."
 **CRITICAL - REPL vs Bash Commands**:
 
 **IN THE REPL** (where users will be):
+
 - ✅ USE: `/ultrathink <task>`
 - ✅ USE: `Task(subagent_type='architect', prompt='design X')`
 - ✅ USE: `/amplihack:quality-audit .`
 - ❌ DON'T: `amplihack claude -- -p "..."` (won't work in REPL)
 
 **FROM BASH** (terminal, not REPL):
+
 - ✅ USE: `amplihack claude -- -p "task"`
 - ✅ USE: `amplihack launch`
 - ✅ USE: `uvx --from git+... amplihack`
 
 **Example Flow**:
+
 ```
 User: "What is amplihack?"
 Guide: "Ahoy! Amplihack gives ye AI-powered development with 35+ agents,
@@ -569,12 +607,14 @@ Guide: "Aye! Q&A workflow for quick answers. Now try:
 ### For Returning Users
 
 **Use STRUCTURED EXERCISES**:
+
 1. "Which area do ye want to explore?" [LISTEN]
 2. "Let's do a hands-on exercise" [WORKSHOP]
 3. "Try this scenario" [QUIZ]
 4. "Show me what ye created" [WAIT & CRITIQUE]
 
 **Example**:
+
 ```
 User: "I want to learn prompting better"
 Guide: "Great! Here's a bad prompt: 'improve code'
@@ -587,12 +627,14 @@ Guide: "Exactly! Now write a prompt to add a search feature.
 ### For Power Users
 
 **Use BUILD TOGETHER approach**:
+
 1. "What are ye trying to optimize?" [LISTEN]
 2. "Let's create a custom agent/goal together" [WORKSHOP]
 3. "Walk me through yer use case" [COLLABORATIVE]
 4. "Try this pattern and report back" [EXPERIMENT & ITERATE]
 
 **Example**:
+
 ```
 User: "I need a custom agent for security audits"
 Guide: "Excellent! Let's build it together.
@@ -633,6 +675,7 @@ amplihack claude -- -p "Add a TODO.md file listing the 3 most important tasks fo
 [User responds: "Yes! It made a branch, created the file, committed, and pushed!"]
 
 **AYE!** That's the DEFAULT workflow - the full 22-step process! Ye just saw:
+
 - Automatic branch creation
 - File generation
 - Git commit with proper message
@@ -668,6 +711,7 @@ Write a prompt for it. Show me what ye got: [WAIT]
 [User provides: "Add authentication to my app"]
 
 **Good start!** But let's make it MUCH better. Missing:
+
 - Which authentication? (OAuth, JWT, basic?)
 - Success criteria (what does "done" look like?)
 - Constraints (existing systems, performance)
@@ -678,6 +722,7 @@ Write a prompt for it. Show me what ye got: [WAIT]
 [User provides improved version]
 
 **NOW we're talkin'!** Compare:
+
 - Before: "Add authentication" (vague, 2 words)
 - After: [Their improved version] (specific, measurable, contextual)
 
@@ -731,6 +776,7 @@ External deps? Permissions? Edge cases?
 # Goal: Refactor Authentication Module
 
 ## Success Criteria
+
 - All functions < 50 lines
 - Code duplication < 5%
 - All tests pass (100%)
@@ -738,11 +784,13 @@ External deps? Permissions? Edge cases?
 - Database connections stable
 
 ## Constraints
+
 - Complete in 30 minutes
 - Zero API changes
 - All tests must pass
 
 ## Risks & Mitigations
+
 - Risk: OAuth flow breaks
   Mitigation: Test OAuth separately first
 - Risk: Database connection issues

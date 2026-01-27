@@ -32,9 +32,9 @@
               "type": "object",
               "properties": {
                 "count": { "type": "integer", "minimum": 0 },
-                "appropriateness": { 
-                  "type": "number", 
-                  "minimum": 0, 
+                "appropriateness": {
+                  "type": "number",
+                  "minimum": 0,
                   "maximum": 10,
                   "description": "How appropriately [WAIT] is used for pacing"
                 }
@@ -50,7 +50,7 @@
               "type": "object",
               "properties": {
                 "count": { "type": "integer", "minimum": 0 },
-                "distribution": { 
+                "distribution": {
                   "type": "string",
                   "enum": ["too-frequent", "balanced", "too-sparse"]
                 }
@@ -94,10 +94,10 @@
                 "properties": {
                   "url": { "type": "string", "format": "uri" },
                   "context": { "type": "string" },
-                  "relevance": { 
-                    "type": "number", 
-                    "minimum": 0, 
-                    "maximum": 10 
+                  "relevance": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 10
                   }
                 }
               }
@@ -178,12 +178,18 @@
           "required": ["compositeScore", "verdict"]
         }
       },
-      "required": ["pedagogicalQuality", "jargonControl", "resourceGuidance", "interactiveEngagement", "overallSuccess"]
+      "required": [
+        "pedagogicalQuality",
+        "jargonControl",
+        "resourceGuidance",
+        "interactiveEngagement",
+        "overallSuccess"
+      ]
     },
     "evidence": {
       "type": "object",
       "properties": {
-        "conversationLog": { 
+        "conversationLog": {
           "type": "string",
           "description": "Path to full conversation log"
         },

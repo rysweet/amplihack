@@ -7,7 +7,6 @@ All sys.path manipulations are centralized here to maintain clean module boundar
 
 import sys
 from pathlib import Path
-from typing import Optional
 
 # One-time path setup - executed only when package is imported
 _PROJECT_ROOT: Path | None = None

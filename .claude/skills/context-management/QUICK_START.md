@@ -173,8 +173,8 @@ result = list_snapshots()
 
 ## File Locations
 
-| What         | Where                                                          |
-| ------------ | -------------------------------------------------------------- |
+| What         | Where                                                                       |
+| ------------ | --------------------------------------------------------------------------- |
 | Snapshots    | `~/.amplihack/.claude/runtime/context-snapshots/*.json`                     |
 | Transcripts  | `~/.amplihack/.claude/runtime/logs/<session_id>/CONVERSATION_TRANSCRIPT.md` |
 | Session logs | `~/.amplihack/.claude/runtime/logs/<session_id>/`                           |

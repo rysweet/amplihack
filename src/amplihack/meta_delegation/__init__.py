@@ -37,6 +37,8 @@ Philosophy:
 """
 
 # Main entry point
+# Core modules (for advanced usage)
+from .evidence_collector import EVIDENCE_PATTERNS, EvidenceCollector, EvidenceItem
 from .orchestrator import (
     DelegationError,
     DelegationTimeout,
@@ -44,9 +46,6 @@ from .orchestrator import (
     MetaDelegationResult,
     run_meta_delegation,
 )
-
-# Core modules (for advanced usage)
-from .evidence_collector import EVIDENCE_PATTERNS, EvidenceCollector, EvidenceItem
 from .persona import (
     ARCHITECT,
     GUIDE,

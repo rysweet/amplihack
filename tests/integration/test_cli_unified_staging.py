@@ -126,6 +126,36 @@ class TestUnifiedStaging:
 
                         assert exit_code == 0
 
+    def test_launch_command_stages_amplihack(self, clean_staging_dir):
+        """Test that 'amplihack launch' populates ~/.amplihack/.claude/."""
+        from src.amplihack.cli import main
+
+        with patch("src.amplihack.cli.is_uvx_deployment", return_value=True):
+            with patch("src.amplihack.cli.copytree_manifest") as mock_copy:
+                with patch("src.amplihack.cli.ClaudeLauncher") as mock_launcher:
+                    with patch(
+                        "src.amplihack.launcher.session_tracker.SessionTracker"
+                    ) as mock_tracker:
+                        # Mock git conflict detection to avoid prompts
+                        with patch("src.amplihack.safety.GitConflictDetector") as mock_detector:
+                            mock_detector.return_value.detect_conflicts.return_value.has_conflicts = False
+                            mock_copy.return_value = True
+                            # Mock launcher to return 0 for successful launch
+                            mock_launcher_instance = mock_launcher.return_value
+                            mock_launcher_instance.launch_interactive.return_value = 0
+                            # Mock tracker methods
+                            mock_tracker.return_value.start_session.return_value = "test-session-id"
+
+                            # Run launch command
+                            exit_code = main(["launch"])
+
+                            # Verify staging was called
+                            assert mock_copy.called, "copytree_manifest should have been called"
+                            call_args = str(mock_copy.call_args)
+                            assert ".amplihack/.claude" in call_args
+
+                            assert exit_code == 0
+
     def test_staged_directory_contains_expected_subdirs(self, clean_staging_dir):
         """Test that staging creates expected subdirectories."""
         from src.amplihack.cli import main

@@ -849,11 +849,7 @@ root@container:/app# /lsp-setup --status-only
 ```json
 // workspace.code-workspace
 {
-  "folders": [
-    {"path": "frontend"},
-    {"path": "backend"},
-    {"path": "shared"}
-  ]
+  "folders": [{ "path": "frontend" }, { "path": "backend" }, { "path": "shared" }]
 }
 ```
 

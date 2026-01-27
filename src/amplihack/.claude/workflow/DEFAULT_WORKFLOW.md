@@ -49,13 +49,16 @@ You can customize this workflow by editing this file.
 This workflow supports both GitHub and Azure DevOps repositories. Platform-specific steps provide instructions for both platforms.
 
 **Platform Detection**: Determine your platform from git remote URL:
+
 ```bash
 git remote get-url origin
 ```
+
 - Contains `github.com` → Use **GitHub** commands
 - Contains `dev.azure.com` or `visualstudio.com` → Use **Azure DevOps** commands
 
 **Prerequisites**:
+
 - **GitHub**: Install and authenticate with `gh` CLI (`gh auth login`)
 - **Azure DevOps**: Install and configure `az` CLI (`az login` and `az devops configure`)
 
@@ -229,13 +232,16 @@ Agents that skip workflow steps (especially mandatory review steps 10, 16-17) cr
 ### Step 3: Create Issue/Work Item
 
 **Platform Detection**: Automatically detect your platform from git remote URL:
+
 ```bash
 git remote get-url origin
 ```
+
 - github.com → Use GitHub commands
 - dev.azure.com or visualstudio.com → Use Azure DevOps commands
 
 **For GitHub**:
+
 ```bash
 gh issue create \
   --title "Title" \
@@ -244,6 +250,7 @@ gh issue create \
 ```
 
 **For Azure DevOps**:
+
 ```bash
 python .claude/scenarios/az-devops-tools/create_work_item.py \
   --type "User Story" \
@@ -460,6 +467,7 @@ Test like a user would use the feature - outside-in - not just unit tests.
 **"But I can't test this because..."**
 
 There's always a way to test:
+
 - **"Need fresh session"** → Open new terminal, start fresh Claude Code session, test there
 - **"Documentation changes"** → Test in fresh session, verify guidance actually works
 - **"Need clean state"** → Create clean state (new directory, fresh checkout, new session)
@@ -493,10 +501,11 @@ There's always a way to test:
 
 **Test Environment**: <branch, method, date>
 **Tests Executed**:
+
 1. Simple: <scenario> → <result> ✅/❌
 2. Complex: <scenario> → <result> ✅/❌
-**Regressions**: <verification> → ✅ None detected
-**Issues Found**: <list any issues discovered and fixed>
+   **Regressions**: <verification> → ✅ None detected
+   **Issues Found**: <list any issues discovered and fixed>
 ```
 
 **Why this matters:**
@@ -519,6 +528,7 @@ There's always a way to test:
 ### Step 15: Open Pull Request as Draft
 
 **For GitHub**:
+
 ```bash
 gh pr create --draft \
   --title "Title" \
@@ -527,6 +537,7 @@ gh pr create --draft \
 ```
 
 **For Azure DevOps**:
+
 ```bash
 python .claude/scenarios/az-devops-tools/create_pr.py \
   --source feature/branch \
@@ -575,11 +586,13 @@ python .claude/scenarios/az-devops-tools/create_pr.py \
 - [ ] Post the review as a comment on the PR:
 
 **For GitHub**:
+
 ```bash
 gh pr comment <pr_number> --body "Review comment text"
 ```
 
 **For Azure DevOps**:
+
 ```bash
 az repos pr create-thread \
   --id <pr_number> \
@@ -606,11 +619,13 @@ az repos pr create-thread \
 - [ ] Respond to review comments by posting replies as comments on the PR:
 
 **For GitHub**:
+
 ```bash
 gh pr comment <pr_number> --body "Response to feedback"
 ```
 
 **For Azure DevOps**:
+
 ```bash
 az repos pr create-thread \
   --id <pr_number> \
@@ -686,11 +701,13 @@ az repos pr create-thread \
 ### Step 20: Convert PR to Ready for Review
 
 **For GitHub**:
+
 ```bash
 gh pr ready 2>&1 | cat
 ```
 
 **For Azure DevOps**:
+
 ```bash
 # Azure DevOps: Mark PR as ready by setting auto-complete or removing draft status
 az repos pr update \
@@ -723,6 +740,7 @@ az repos pr update \
 **Check CI status**:
 
 **For GitHub**:
+
 ```bash
 gh pr checks
 # Or for specific PR:
@@ -730,6 +748,7 @@ gh pr checks <pr_number>
 ```
 
 **For Azure DevOps**:
+
 ```bash
 # Check pipeline runs for current branch
 az pipelines runs list --branch $(git branch --show-current) --top 1

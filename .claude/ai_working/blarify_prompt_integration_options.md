@@ -101,12 +101,12 @@ def _prompt_for_blarify_indexing(self) -> bool:
 
 ### Risk Assessment
 
-| Risk | Likelihood | Impact | Severity |
-|------|-----------|--------|----------|
-| Hook timeout | High | Medium | 🔴 High |
-| User confusion | High | Medium | 🔴 High |
-| Race condition | Medium | Low | 🟡 Medium |
-| Async complexity | Medium | High | 🟡 Medium |
+| Risk             | Likelihood | Impact | Severity  |
+| ---------------- | ---------- | ------ | --------- |
+| Hook timeout     | High       | Medium | 🔴 High   |
+| User confusion   | High       | Medium | 🔴 High   |
+| Race condition   | Medium     | Low    | 🟡 Medium |
+| Async complexity | Medium     | High   | 🟡 Medium |
 
 **Overall Risk**: 🔴 **HIGH** - Too many unknowns, disruptive timing
 
@@ -314,13 +314,13 @@ def _run_blarify_indexing(self) -> bool:
 
 ### Risk Assessment
 
-| Risk | Likelihood | Impact | Severity |
-|------|-----------|--------|----------|
-| Blarify hangs | Low | Medium | 🟢 Low |
-| User confusion | Low | Low | 🟢 Low |
-| Performance impact | Low | Low | 🟢 Low |
-| Integration complexity | Low | Low | 🟢 Low |
-| Cross-platform issues | Very Low | Low | 🟢 Very Low |
+| Risk                   | Likelihood | Impact | Severity    |
+| ---------------------- | ---------- | ------ | ----------- |
+| Blarify hangs          | Low        | Medium | 🟢 Low      |
+| User confusion         | Low        | Low    | 🟢 Low      |
+| Performance impact     | Low        | Low    | 🟢 Low      |
+| Integration complexity | Low        | Low    | 🟢 Low      |
+| Cross-platform issues  | Very Low   | Low    | 🟢 Very Low |
 
 **Overall Risk**: 🟢 **LOW** - Well-contained, proven patterns
 
@@ -437,12 +437,12 @@ def _launch_command_impl(...):
 
 ### Risk Assessment
 
-| Risk | Likelihood | Impact | Severity |
-|------|-----------|--------|----------|
-| Prerequisites not checked | High | Medium | 🔴 High |
-| Infrastructure missing | High | Medium | 🔴 High |
-| Awkward user flow | High | Low | 🟡 Medium |
-| Testing complexity | Medium | Medium | 🟡 Medium |
+| Risk                      | Likelihood | Impact | Severity  |
+| ------------------------- | ---------- | ------ | --------- |
+| Prerequisites not checked | High       | Medium | 🔴 High   |
+| Infrastructure missing    | High       | Medium | 🔴 High   |
+| Awkward user flow         | High       | Low    | 🟡 Medium |
+| Testing complexity        | Medium     | Medium | 🟡 Medium |
 
 **Overall Risk**: 🟡 **MEDIUM** - Workable but suboptimal
 
@@ -469,30 +469,31 @@ Option C (CLI Pre-Launch):         [Blarify Prompt] → [Prerequisites][Neo4j][P
 
 ### Feature Matrix
 
-| Feature | Option A | Option B | Option C |
-|---------|----------|----------|----------|
-| **Timing** | ❌ After Claude starts | ✅ Before Claude starts | ⚠️ Before prerequisites |
-| **User Experience** | ❌ Disruptive | ✅ Smooth | ⚠️ Awkward |
-| **Infrastructure** | ⚠️ Hook-specific | ✅ Full launcher access | ❌ Limited |
-| **Pattern Consistency** | ⚠️ New pattern | ✅ Matches Neo4j | ❌ No precedent |
-| **Error Handling** | ⚠️ Hook timeout | ✅ Non-blocking | ⚠️ Unclear |
-| **Testing** | ⚠️ Hook testing | ✅ Unit testable | ⚠️ CLI testing |
-| **Code Location** | Hook file | Launcher method | CLI function |
-| **Lines of Code** | ~100 | ~150 | ~120 |
-| **Integration Risk** | 🔴 High | 🟢 Low | 🟡 Medium |
+| Feature                 | Option A               | Option B                | Option C                |
+| ----------------------- | ---------------------- | ----------------------- | ----------------------- |
+| **Timing**              | ❌ After Claude starts | ✅ Before Claude starts | ⚠️ Before prerequisites |
+| **User Experience**     | ❌ Disruptive          | ✅ Smooth               | ⚠️ Awkward              |
+| **Infrastructure**      | ⚠️ Hook-specific       | ✅ Full launcher access | ❌ Limited              |
+| **Pattern Consistency** | ⚠️ New pattern         | ✅ Matches Neo4j        | ❌ No precedent         |
+| **Error Handling**      | ⚠️ Hook timeout        | ✅ Non-blocking         | ⚠️ Unclear              |
+| **Testing**             | ⚠️ Hook testing        | ✅ Unit testable        | ⚠️ CLI testing          |
+| **Code Location**       | Hook file              | Launcher method         | CLI function            |
+| **Lines of Code**       | ~100                   | ~150                    | ~120                    |
+| **Integration Risk**    | 🔴 High                | 🟢 Low                  | 🟡 Medium               |
 
 ### Decision Matrix
 
-| Criteria | Weight | Option A Score | Option B Score | Option C Score |
-|----------|--------|----------------|----------------|----------------|
-| Timing correctness | 30% | 2/10 | 10/10 | 5/10 |
-| User experience | 25% | 3/10 | 10/10 | 6/10 |
-| Code quality | 15% | 6/10 | 9/10 | 5/10 |
-| Pattern consistency | 15% | 5/10 | 10/10 | 3/10 |
-| Risk level | 10% | 3/10 | 9/10 | 6/10 |
-| Testing ease | 5% | 5/10 | 9/10 | 5/10 |
+| Criteria            | Weight | Option A Score | Option B Score | Option C Score |
+| ------------------- | ------ | -------------- | -------------- | -------------- |
+| Timing correctness  | 30%    | 2/10           | 10/10          | 5/10           |
+| User experience     | 25%    | 3/10           | 10/10          | 6/10           |
+| Code quality        | 15%    | 6/10           | 9/10           | 5/10           |
+| Pattern consistency | 15%    | 5/10           | 10/10          | 3/10           |
+| Risk level          | 10%    | 3/10           | 9/10           | 6/10           |
+| Testing ease        | 5%     | 5/10           | 9/10           | 5/10           |
 
 **Weighted Scores**:
+
 - Option A: **3.65/10** (36.5%)
 - Option B: **9.5/10** (95%)
 - Option C: **5.15/10** (51.5%)
@@ -508,6 +509,7 @@ Option C (CLI Pre-Launch):         [Blarify Prompt] → [Prerequisites][Neo4j][P
 **Estimated time**: 2-3 hours
 
 **Tasks**:
+
 1. Add `_prompt_for_blarify_indexing()` to ClaudeLauncher (1 hour)
 2. Add `_is_blarify_available()` helper (15 minutes)
 3. Add `_run_blarify_indexing()` helper (30 minutes)
@@ -515,6 +517,7 @@ Option C (CLI Pre-Launch):         [Blarify Prompt] → [Prerequisites][Neo4j][P
 5. Write unit tests (1 hour)
 
 **Deliverables**:
+
 - [ ] Core prompt functionality working
 - [ ] Consent file caching implemented
 - [ ] Non-blocking error handling
@@ -525,12 +528,14 @@ Option C (CLI Pre-Launch):         [Blarify Prompt] → [Prerequisites][Neo4j][P
 **Estimated time**: 1-2 hours
 
 **Tasks**:
+
 1. Integration testing with real launcher (30 minutes)
 2. Cross-platform testing (Windows, Linux, macOS) (1 hour)
 3. Edge case handling (blarify not found, indexing fails, etc.) (30 minutes)
 4. Documentation updates (30 minutes)
 
 **Deliverables**:
+
 - [ ] All tests passing on all platforms
 - [ ] Edge cases handled gracefully
 - [ ] User documentation updated
@@ -540,6 +545,7 @@ Option C (CLI Pre-Launch):         [Blarify Prompt] → [Prerequisites][Neo4j][P
 **Estimated time**: 4-6 hours (optional)
 
 **Tasks**:
+
 1. Progress bar for indexing (1 hour)
 2. Statistics display (files/functions indexed) (1 hour)
 3. Re-indexing detection (check code_graph.json age) (1 hour)
@@ -547,6 +553,7 @@ Option C (CLI Pre-Launch):         [Blarify Prompt] → [Prerequisites][Neo4j][P
 5. Integration with Kuzu backend (import code graph) (2 hours)
 
 **Deliverables**:
+
 - [ ] Enhanced user feedback
 - [ ] Manual control over indexing
 - [ ] Memory-to-code linking
@@ -562,6 +569,7 @@ If we later decide to change from Option B to another option:
 **Reason to migrate**: Want to leverage hook infrastructure
 
 **Steps**:
+
 1. Move `_prompt_for_blarify_indexing()` to SessionStartHook class
 2. Call in `process()` method instead of `prepare_launch()`
 3. Adjust timeout to fit within hook constraints
@@ -576,6 +584,7 @@ If we later decide to change from Option B to another option:
 **Reason to migrate**: Want earlier timing
 
 **Steps**:
+
 1. Extract `_prompt_for_blarify_indexing()` to standalone function
 2. Move to CLI module
 3. Call in `_launch_command_impl()`
@@ -592,6 +601,7 @@ If we later decide to change from Option B to another option:
 ### Winner: Option B - Memory Initialization in Launcher
 
 **Rationale**:
+
 1. **Optimal timing**: Before Claude starts, after prerequisites checked
 2. **Perfect integration**: Follows Neo4j startup pattern (step 3 → step 4)
 3. **Low risk**: Non-blocking, proven patterns, full infrastructure access
@@ -791,6 +801,6 @@ def _run_blarify_indexing(self) -> bool:
 
 ---
 
-*Options analysis completed: 2026-01-22*
-*Recommendation: Option B (Launcher Prepare)*
-*Confidence: Very High (95%)*
+_Options analysis completed: 2026-01-22_
+_Recommendation: Option B (Launcher Prepare)_
+_Confidence: Very High (95%)_

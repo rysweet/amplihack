@@ -110,9 +110,8 @@ def main():
         print("  - Ignores follow-ups and clarifications")
         print("  - Injects system reminders at the right times")
         return 0
-    else:
-        print(f"\n✗ {total - passed} integration test(s) FAILED")
-        return 1
+    print(f"\n✗ {total - passed} integration test(s) FAILED")
+    return 1
 
 
 if __name__ == "__main__":

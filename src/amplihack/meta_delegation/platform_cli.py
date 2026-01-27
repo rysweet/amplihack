@@ -19,11 +19,10 @@ import os
 import re
 import subprocess
 from pathlib import Path
-from typing import Dict, List, Optional, Protocol, Set
-
+from typing import Protocol
 
 # Whitelist of allowed extra_args for security
-ALLOWED_EXTRA_ARGS: Set[str] = {
+ALLOWED_EXTRA_ARGS: set[str] = {
     "--debug",
     "--verbose",
     "-v",
@@ -63,7 +62,7 @@ def _validate_working_dir(working_dir: str) -> None:
         raise ValueError(f"working_dir is not a directory: {working_dir}")
 
 
-def _validate_extra_args(extra_args: List[str]) -> None:
+def _validate_extra_args(extra_args: list[str]) -> None:
     """Validate extra arguments against whitelist.
 
     Args:
@@ -80,7 +79,7 @@ def _validate_extra_args(extra_args: List[str]) -> None:
             )
 
 
-def _validate_cli_command(command: List[str], timeout: int = 5) -> bool:
+def _validate_cli_command(command: list[str], timeout: int = 5) -> bool:
     """Validate that a CLI command is available.
 
     Args:
@@ -102,7 +101,7 @@ def _validate_cli_command(command: List[str], timeout: int = 5) -> bool:
         return False
 
 
-def _get_cli_version(command: List[str], timeout: int = 5) -> str:
+def _get_cli_version(command: list[str], timeout: int = 5) -> str:
     """Get version from CLI command.
 
     Args:
@@ -121,7 +120,7 @@ def _get_cli_version(command: List[str], timeout: int = 5) -> str:
         )
         if result.returncode == 0:
             # Parse version from output like "Tool v1.2.3" or "1.2.3"
-            match = re.search(r'(\d+\.\d+\.\d+)', result.stdout)
+            match = re.search(r"(\d+\.\d+\.\d+)", result.stdout)
             if match:
                 return match.group(1)
         return "unknown"
@@ -143,7 +142,7 @@ class PlatformCLI(Protocol):
         goal: str,
         persona: str,
         working_dir: str,
-        environment: Dict[str, str],
+        environment: dict[str, str],
         **kwargs,
     ) -> subprocess.Popen:
         """Spawn subprocess for AI assistant with given parameters.
@@ -173,7 +172,7 @@ class PlatformCLI(Protocol):
         """
         ...
 
-    def parse_output(self, output: str) -> Dict[str, str]:
+    def parse_output(self, output: str) -> dict[str, str]:
         """Parse output from the subprocess.
 
         Args:
@@ -283,7 +282,7 @@ Focus on delivering working code that meets the stated requirements.""",
         goal: str,
         persona: str,
         working_dir: str,
-        environment: Dict[str, str],
+        environment: dict[str, str],
         **kwargs,
     ) -> subprocess.Popen:
         """Spawn Claude Code subprocess."""
@@ -321,7 +320,7 @@ Focus on delivering working code that meets the stated requirements.""",
 
         return process
 
-    def parse_output(self, output: str) -> Dict[str, str]:
+    def parse_output(self, output: str) -> dict[str, str]:
         """Parse Claude Code output."""
         return {
             "stdout": output,
@@ -361,7 +360,7 @@ class CopilotCLI:
         goal: str,
         persona: str,
         working_dir: str,
-        environment: Dict[str, str],
+        environment: dict[str, str],
         **kwargs,
     ) -> subprocess.Popen:
         """Spawn GitHub Copilot subprocess."""
@@ -392,7 +391,7 @@ class CopilotCLI:
 
         return process
 
-    def parse_output(self, output: str) -> Dict[str, str]:
+    def parse_output(self, output: str) -> dict[str, str]:
         """Parse GitHub Copilot output."""
         return {
             "stdout": output,
@@ -423,7 +422,7 @@ class AmplifierCLI:
         goal: str,
         persona: str,
         working_dir: str,
-        environment: Dict[str, str],
+        environment: dict[str, str],
         **kwargs,
     ) -> subprocess.Popen:
         """Spawn Amplifier subprocess."""
@@ -454,7 +453,7 @@ class AmplifierCLI:
 
         return process
 
-    def parse_output(self, output: str) -> Dict[str, str]:
+    def parse_output(self, output: str) -> dict[str, str]:
         """Parse Amplifier output."""
         return {
             "stdout": output,
@@ -462,7 +461,7 @@ class AmplifierCLI:
 
 
 # Platform registry
-_PLATFORM_REGISTRY: Dict[str, PlatformCLI] = {
+_PLATFORM_REGISTRY: dict[str, PlatformCLI] = {
     "claude-code": ClaudeCodeCLI(),
     "copilot": CopilotCLI(),
     "amplifier": AmplifierCLI(),
@@ -479,7 +478,7 @@ def register_platform(name: str, platform: PlatformCLI) -> None:
     _PLATFORM_REGISTRY[name] = platform
 
 
-def get_platform_cli(platform: Optional[str] = None) -> PlatformCLI:
+def get_platform_cli(platform: str | None = None) -> PlatformCLI:
     """Get platform CLI implementation.
 
     Args:
