@@ -1639,7 +1639,7 @@ Investigation triggered by system reminder messages showing "SessionStart:startu
       {
         "type": "command",
         "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
-        "timeout": 10000
+        "timeout": 10
       }
     ]
   }
@@ -1726,7 +1726,7 @@ Our configuration **matches the official schema exactly**:
       {
         "type": "command",
         "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
-        "timeout": 10000
+        "timeout": 10
       }
     ]
   }

@@ -60,13 +60,13 @@ RUNTIME_DIRS = [
 # Hook configurations for amplihack and xpia systems
 HOOK_CONFIGS = {
     "amplihack": [
-        {"type": "SessionStart", "file": "session_start.py", "timeout": 10000},
-        {"type": "Stop", "file": "stop.py", "timeout": 30000},
+        {"type": "SessionStart", "file": "session_start.py", "timeout": 10},
+        {"type": "Stop", "file": "stop.py", "timeout": 120},
         {"type": "PostToolUse", "file": "post_tool_use.py", "matcher": "*"},
-        {"type": "PreCompact", "file": "pre_compact.py", "timeout": 30000},
+        {"type": "PreCompact", "file": "pre_compact.py", "timeout": 30},
     ],
     "xpia": [
-        {"type": "SessionStart", "file": "session_start.py", "timeout": 10000},
+        {"type": "SessionStart", "file": "session_start.py", "timeout": 10},
         {"type": "PostToolUse", "file": "post_tool_use.py", "matcher": "*"},
         {"type": "PreToolUse", "file": "pre_tool_use.py", "matcher": "*"},
     ],
