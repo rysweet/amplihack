@@ -19,8 +19,11 @@ from .plugin_cli import (
 )
 from .plugin_manager import PluginManager
 from .proxy import ProxyConfig, ProxyManager
+from .staging_cleanup import cleanup_legacy_skills
 from .utils import is_uvx_deployment
 from .utils.claude_cli import get_claude_cli_path
+
+logger = logging.getLogger(__name__)
 
 # Platform-specific emoji support
 IS_WINDOWS = platform.system() == "Windows"
@@ -737,6 +740,31 @@ def _ensure_amplihack_staged() -> None:
     # Only run in UVX deployment mode
     if not is_uvx_deployment():
         return
+
+    # Clean up legacy skill directories before staging
+    try:
+        result = cleanup_legacy_skills()
+
+        # Report cleaned directories (user-visible in debug mode)
+        if result.cleaned:
+            if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                print(f"✓ Cleaned up {len(result.cleaned)} legacy skill directories")
+                for cleaned_dir in result.cleaned:
+                    logger.debug(f"  Removed: {cleaned_dir}")
+
+        # Report skipped directories (user-visible, not just debug)
+        if result.skipped:
+            for skipped_dir, reason in result.skipped:
+                logger.info(f"Skipped cleanup of {skipped_dir}: {reason}")
+
+        # Report errors (user-visible, not just debug)
+        if result.errors:
+            for error_dir, error_msg in result.errors:
+                logger.error(f"Failed to clean up {error_dir}: {error_msg}")
+
+    except Exception as e:
+        # Log error but don't fail staging
+        logger.warning(f"Legacy skills cleanup failed: {e}")
 
     # Debug logging
     if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
