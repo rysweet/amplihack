@@ -321,7 +321,7 @@ steps:
   # Uses: analyzer (primary), patterns (secondary), architect (tertiary)
   # ==========================================================================
   - id: "deep-dive-primary"
-    agent: "amplihack:analyzer"
+    agent: "amplihack:architect"
     prompt: |
       Conduct a deep dive exploration as the PRIMARY investigator.
 
@@ -473,7 +473,7 @@ steps:
   # Uses: analyzer (verification), reviewer (validation)
   # ==========================================================================
   - id: "formulate-hypotheses"
-    agent: "amplihack:analyzer"
+    agent: "amplihack:architect"
     prompt: |
       Formulate hypotheses based on the consolidated findings.
 
@@ -514,7 +514,7 @@ steps:
     parse_json: true
 
   - id: "execute-verification"
-    agent: "amplihack:analyzer"
+    agent: "amplihack:architect"
     prompt: |
       Execute practical verification tests for each hypothesis.
 

@@ -140,7 +140,7 @@ steps:
     parse_json: true
 
   - id: "step1-codebase-analysis"
-    agent: "amplihack:analyzer"
+    agent: "amplihack:architect"
     prompt: |
       Analyze the existing codebase context for this task:
 

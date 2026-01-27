@@ -788,7 +788,7 @@ steps:
   # Build comparison matrix with 6 dimensions
   # ==========================================================================
   - id: "analyze-compare"
-    agent: "amplihack:analyzer"
+    agent: "amplihack:architect"
     prompt: |
       Analyze and compare ALL {{num_versions}} implementations.
 
