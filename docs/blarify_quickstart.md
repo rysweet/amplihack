@@ -19,12 +19,12 @@ Get started with blarify code graph integration in 5 minutes.
 
 ## Configuration
 
-### Enabling Blarify (Optional)
+### Disabling Blarify (Optional)
 
-Blarify is disabled by default. To enable Blarify code indexing:
+To disable Blarify if it's unavailable or causing issues:
 
 ```bash
-AMPLIHACK_ENABLE_BLARIFY=1 amplihack launch
+AMPLIHACK_DISABLE_BLARIFY=1 amplihack launch
 ```
 
 ## Option 1: Test Without Blarify (Recommended First)
