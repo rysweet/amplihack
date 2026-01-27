@@ -130,6 +130,7 @@ class KuzuBackend:
             self.connection.execute("""
                 CREATE NODE TABLE IF NOT EXISTS EpisodicMemory(
                     memory_id STRING,
+                    session_id STRING,
                     timestamp TIMESTAMP,
                     content STRING,
                     event_type STRING,
@@ -150,6 +151,7 @@ class KuzuBackend:
             self.connection.execute("""
                 CREATE NODE TABLE IF NOT EXISTS SemanticMemory(
                     memory_id STRING,
+                    session_id STRING,
                     concept STRING,
                     content STRING,
                     category STRING,
@@ -170,6 +172,7 @@ class KuzuBackend:
             self.connection.execute("""
                 CREATE NODE TABLE IF NOT EXISTS ProceduralMemory(
                     memory_id STRING,
+                    session_id STRING,
                     procedure_name STRING,
                     description STRING,
                     steps STRING,
@@ -193,6 +196,7 @@ class KuzuBackend:
             self.connection.execute("""
                 CREATE NODE TABLE IF NOT EXISTS ProspectiveMemory(
                     memory_id STRING,
+                    session_id STRING,
                     intention STRING,
                     trigger_condition STRING,
                     priority STRING,
@@ -216,6 +220,7 @@ class KuzuBackend:
             self.connection.execute("""
                 CREATE NODE TABLE IF NOT EXISTS WorkingMemory(
                     memory_id STRING,
+                    session_id STRING,
                     content STRING,
                     memory_type STRING,
                     priority INT64,
@@ -229,6 +234,27 @@ class KuzuBackend:
                     agent_id STRING,
                     PRIMARY KEY (memory_id)
                 )
+            """)
+
+            # Create indexes on session_id for efficient session-based queries
+            self.connection.execute("""
+                CREATE INDEX IF NOT EXISTS idx_episodic_session ON EpisodicMemory(session_id)
+            """)
+
+            self.connection.execute("""
+                CREATE INDEX IF NOT EXISTS idx_semantic_session ON SemanticMemory(session_id)
+            """)
+
+            self.connection.execute("""
+                CREATE INDEX IF NOT EXISTS idx_procedural_session ON ProceduralMemory(session_id)
+            """)
+
+            self.connection.execute("""
+                CREATE INDEX IF NOT EXISTS idx_prospective_session ON ProspectiveMemory(session_id)
+            """)
+
+            self.connection.execute("""
+                CREATE INDEX IF NOT EXISTS idx_working_session ON WorkingMemory(session_id)
             """)
 
             # Create Session → Memory relationship tables
@@ -578,6 +604,7 @@ class KuzuBackend:
                     """
                     CREATE (m:EpisodicMemory {
                         memory_id: $memory_id,
+                        session_id: $session_id,
                         timestamp: $timestamp,
                         content: $content,
                         event_type: $event_type,
@@ -594,6 +621,7 @@ class KuzuBackend:
                 """,
                     {
                         "memory_id": memory.id,
+                        "session_id": memory.session_id,
                         "timestamp": memory.created_at,
                         "content": memory.content,
                         "event_type": memory.metadata.get("event_type", "general"),
@@ -629,6 +657,7 @@ class KuzuBackend:
                     """
                     CREATE (m:SemanticMemory {
                         memory_id: $memory_id,
+                        session_id: $session_id,
                         concept: $concept,
                         content: $content,
                         category: $category,
@@ -645,6 +674,7 @@ class KuzuBackend:
                 """,
                     {
                         "memory_id": memory.id,
+                        "session_id": memory.session_id,
                         "concept": memory.title,  # Use title as concept
                         "content": memory.content,
                         "category": memory.metadata.get("category", "general"),
@@ -686,6 +716,7 @@ class KuzuBackend:
                     """
                     CREATE (m:ProceduralMemory {
                         memory_id: $memory_id,
+                        session_id: $session_id,
                         procedure_name: $procedure_name,
                         description: $description,
                         steps: $steps,
@@ -705,6 +736,7 @@ class KuzuBackend:
                 """,
                     {
                         "memory_id": memory.id,
+                        "session_id": memory.session_id,
                         "procedure_name": memory.title,
                         "description": memory.content,
                         "steps": json.dumps(memory.metadata.get("steps", [])),
@@ -749,6 +781,7 @@ class KuzuBackend:
                     """
                     CREATE (m:ProspectiveMemory {
                         memory_id: $memory_id,
+                        session_id: $session_id,
                         intention: $intention,
                         trigger_condition: $trigger_condition,
                         priority: $priority,
@@ -768,6 +801,7 @@ class KuzuBackend:
                 """,
                     {
                         "memory_id": memory.id,
+                        "session_id": memory.session_id,
                         "intention": memory.content,
                         "trigger_condition": memory.metadata.get("trigger_condition", ""),
                         "priority": memory.metadata.get("priority", "medium"),
@@ -806,6 +840,7 @@ class KuzuBackend:
                     """
                     CREATE (m:WorkingMemory {
                         memory_id: $memory_id,
+                        session_id: $session_id,
                         content: $content,
                         memory_type: $memory_type,
                         priority: $priority,
@@ -821,6 +856,7 @@ class KuzuBackend:
                 """,
                     {
                         "memory_id": memory.id,
+                        "session_id": memory.session_id,
                         "content": memory.content,
                         "memory_type": memory.metadata.get("memory_type", "goal"),
                         "priority": memory.metadata.get("priority", 0),
@@ -974,6 +1010,10 @@ class KuzuBackend:
         # Build WHERE conditions
         where_conditions = []
         params = {}
+
+        if query.session_id:
+            where_conditions.append("m.session_id = $session_id")
+            params["session_id"] = query.session_id
 
         if query.agent_id:
             where_conditions.append("m.agent_id = $agent_id")
