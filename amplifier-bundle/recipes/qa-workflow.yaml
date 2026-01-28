@@ -75,7 +75,7 @@ steps:
   # Answer directly and clearly (only if classified as Q&A)
   # ==========================================================================
   - id: "provide-response"
-    condition: "{{classification.is_qa}} == 'true'"
+    condition: "classification.is_qa == 'true'"
     agent: "foundation:zen-architect"
     prompt: |
       Answer this question directly and clearly:
@@ -98,7 +98,7 @@ steps:
   # Verify answer fully addresses question or suggest escalation
   # ==========================================================================
   - id: "escalation-check"
-    condition: "{{classification.is_qa}} == 'true'"
+    condition: "classification.is_qa == 'true'"
     agent: "foundation:zen-architect"
     mode: "REVIEW"
     prompt: |

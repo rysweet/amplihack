@@ -18,6 +18,9 @@ from typing import Any
 # Clean import structure
 sys.path.insert(0, str(Path(__file__).parent))
 
+# Import shared file locking utilities
+from file_lock_utils import acquire_file_lock
+
 # Import error protocol first for structured errors
 try:
     from error_protocol import HookError, HookErrorSeverity, HookImportError
@@ -92,8 +95,12 @@ class StopHook(HookProcessor):
         self.log("=== STOP HOOK STARTED ===")
         self.log(f"Input keys: {list(input_data.keys())}")
 
+        # TOCTOU FIX: Use atomic stat() to check existence
         try:
-            lock_exists = self.lock_flag.exists()
+            self.lock_flag.stat()
+            lock_exists = True
+        except FileNotFoundError:
+            lock_exists = False
         except (PermissionError, OSError) as e:
             self.log(f"Cannot access lock file: {e}", "WARNING")
             self.log("=== STOP HOOK ENDED (fail-safe: approve) ===")
@@ -329,13 +336,9 @@ class StopHook(HookProcessor):
         Returns:
             str: Custom prompt content or DEFAULT_CONTINUATION_PROMPT
         """
-        # Check if custom prompt file exists
-        if not self.continuation_prompt_file.exists():
-            self.log("No custom continuation prompt file - using default")
-            return DEFAULT_CONTINUATION_PROMPT
-
+        # TOCTOU FIX: Direct read with FileNotFoundError handling
         try:
-            # Read prompt content
+            # Read prompt content (atomic operation)
             content = self.continuation_prompt_file.read_text(encoding="utf-8").strip()
 
             # Check if empty
@@ -365,6 +368,9 @@ class StopHook(HookProcessor):
             self.log(f"Using custom continuation prompt ({content_len} chars)")
             return content
 
+        except FileNotFoundError:
+            self.log("No custom continuation prompt file - using default")
+            return DEFAULT_CONTINUATION_PROMPT
         except (PermissionError, OSError, UnicodeDecodeError) as e:
             self.log(f"Error reading custom prompt: {e} - using default", "WARNING")
             return DEFAULT_CONTINUATION_PROMPT
@@ -374,6 +380,8 @@ class StopHook(HookProcessor):
 
         Writes counter to .claude/runtime/power-steering/{session_id}/session_count
         for statusline to read. Session-specific like lock counter.
+
+        Uses file locking to prevent race conditions during concurrent increments.
 
         Args:
             session_id: Session identifier
@@ -392,18 +400,42 @@ class StopHook(HookProcessor):
             )
             counter_file.parent.mkdir(parents=True, exist_ok=True)
 
-            # Read current count (default to 0)
-            current_count = 0
-            if counter_file.exists():
-                try:
-                    current_count = int(counter_file.read_text().strip())
-                except (ValueError, OSError):
-                    current_count = 0
+            # Initialize file if it doesn't exist
+            if not counter_file.exists():
+                counter_file.write_text("0")
 
-            # Increment and write
-            new_count = current_count + 1
-            counter_file.write_text(str(new_count))
-            return new_count
+            # Read-modify-write with file locking
+            with open(counter_file, "r+") as f:
+                with acquire_file_lock(f, log=self.log) as locked:
+                    # Read current count
+                    try:
+                        f.seek(0)
+                        content = f.read().strip()
+                        current_count = int(content) if content else 0
+                    except (ValueError, OSError):
+                        current_count = 0
+
+                    # Increment
+                    new_count = current_count + 1
+
+                    # Write back
+                    f.seek(0)
+                    f.truncate()
+                    f.write(str(new_count))
+                    f.flush()
+
+                    if locked:
+                        self.log(
+                            f"Power-steering counter incremented to {new_count} (with lock)",
+                            "DEBUG",
+                        )
+                    else:
+                        self.log(
+                            f"Power-steering counter incremented to {new_count} (without lock)",
+                            "DEBUG",
+                        )
+
+                    return new_count
 
         except Exception as e:
             # Fail-safe: Don't break hook if counter write fails
@@ -412,6 +444,8 @@ class StopHook(HookProcessor):
 
     def _increment_lock_counter(self, session_id: str) -> int:
         """Increment lock mode invocation counter for session.
+
+        Uses file locking to prevent race conditions during concurrent increments.
 
         Args:
             session_id: Session identifier
@@ -430,20 +464,36 @@ class StopHook(HookProcessor):
             )
             counter_file.parent.mkdir(parents=True, exist_ok=True)
 
-            # Read current count (default to 0)
-            current_count = 0
-            if counter_file.exists():
-                try:
-                    current_count = int(counter_file.read_text().strip())
-                except (ValueError, OSError):
-                    current_count = 0
+            # Initialize file if it doesn't exist
+            if not counter_file.exists():
+                counter_file.write_text("0")
 
-            # Increment and write
-            new_count = current_count + 1
-            counter_file.write_text(str(new_count))
+            # Read-modify-write with file locking
+            with open(counter_file, "r+") as f:
+                with acquire_file_lock(f, log=self.log) as locked:
+                    # Read current count
+                    try:
+                        f.seek(0)
+                        content = f.read().strip()
+                        current_count = int(content) if content else 0
+                    except (ValueError, OSError):
+                        current_count = 0
 
-            self.log(f"Lock mode invocation count: {new_count}")
-            return new_count
+                    # Increment
+                    new_count = current_count + 1
+
+                    # Write back
+                    f.seek(0)
+                    f.truncate()
+                    f.write(str(new_count))
+                    f.flush()
+
+                    if locked:
+                        self.log(f"Lock mode invocation count: {new_count} (with lock)")
+                    else:
+                        self.log(f"Lock mode invocation count: {new_count} (without lock)")
+
+                    return new_count
 
         except Exception as e:
             # Fail-safe: Don't break hook if counter write fails

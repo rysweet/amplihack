@@ -95,13 +95,16 @@ class MemoryCoordinator:
         Examples:
             >>> # Use default backend (Kùzu or SQLite)
             >>> coordinator = MemoryCoordinator()
+            >>> await coordinator.initialize()
 
             >>> # Use specific backend
             >>> coordinator = MemoryCoordinator(backend_type="sqlite")
+            >>> await coordinator.initialize()
 
             >>> # Use custom backend instance
             >>> from .backends import SQLiteBackend
             >>> backend = SQLiteBackend(db_path="/tmp/memory.db")
+            >>> await backend.initialize()
             >>> coordinator = MemoryCoordinator(backend=backend)
         """
         # Create or use provided backend
@@ -111,6 +114,7 @@ class MemoryCoordinator:
             self.backend = backend
 
         self.session_id = session_id or f"session-{uuid.uuid4().hex[:8]}"
+        self._initialized = False
 
         # Statistics tracking
         self._stats = {
@@ -119,6 +123,15 @@ class MemoryCoordinator:
             "total_rejected": 0,
         }
         self.last_retrieval_tokens = 0
+
+    async def initialize(self) -> None:
+        """Initialize the backend.
+
+        Must be called after __init__ before using the coordinator.
+        """
+        if not self._initialized:
+            await self.backend.initialize()
+            self._initialized = True
 
     async def store(self, request: StorageRequest) -> str | None:
         """Store a memory with quality review.
@@ -186,7 +199,7 @@ class MemoryCoordinator:
                 importance=importance_score,
             )
 
-            success = self.backend.store_memory(memory_entry)
+            success = await self.backend.store_memory(memory_entry)
             if success:
                 self._stats["total_stored"] += 1
                 logger.info(f"Stored memory {memory_id} (type={request.memory_type.value})")
@@ -230,7 +243,7 @@ class MemoryCoordinator:
             )
 
             # Retrieve from database
-            memories = self.backend.retrieve_memories(db_query)
+            memories = await self.backend.retrieve_memories(db_query)
 
             # Note: memories use old MemoryType from models.py
             # New memory type is stored in metadata["new_memory_type"]
@@ -307,7 +320,7 @@ class MemoryCoordinator:
                 limit=1000,  # Get all
             )
 
-            memories = self.backend.retrieve_memories(query)
+            memories = await self.backend.retrieve_memories(query)
 
             # Filter fer WORKING type (stored in metadata)
             working_memories = [
@@ -316,7 +329,7 @@ class MemoryCoordinator:
 
             # Delete each working memory
             for memory in working_memories:
-                self.backend.delete_memory(memory.id)
+                await self.backend.delete_memory(memory.id)
 
             logger.info(
                 f"Cleared {len(working_memories)} working memories fer session {target_session}"
@@ -351,7 +364,7 @@ class MemoryCoordinator:
                 limit=10000,  # Get all
             )
 
-            memories = self.backend.retrieve_memories(query)
+            memories = await self.backend.retrieve_memories(query)
 
             # Verify all memories belong to target session before deletion
             for memory in memories:
@@ -360,7 +373,7 @@ class MemoryCoordinator:
                         f"Session isolation violation: Found memory {memory.id} "
                         f"from session {memory.session_id} when clearing {target_session}"
                     )
-                self.backend.delete_memory(memory.id)
+                await self.backend.delete_memory(memory.id)
 
             logger.info(f"Cleared all {len(memories)} memories fer session {target_session}")
 
@@ -382,7 +395,7 @@ class MemoryCoordinator:
                 limit=1000,
             )
 
-            memories = self.backend.retrieve_memories(query)
+            memories = await self.backend.retrieve_memories(query)
 
             # Filter fer WORKING type with matching task_id
             task_memories = [
@@ -394,7 +407,7 @@ class MemoryCoordinator:
 
             # Delete task-specific working memories
             for memory in task_memories:
-                self.backend.delete_memory(memory.id)
+                await self.backend.delete_memory(memory.id)
 
             logger.info(f"Cleared {len(task_memories)} working memories fer task {task_id}")
 
@@ -402,13 +415,13 @@ class MemoryCoordinator:
             logger.error(f"Error marking task complete: {e}")
             raise  # Propagate exception - don't swallow
 
-    def get_statistics(self) -> dict[str, Any]:
+    async def get_statistics(self) -> dict[str, Any]:
         """Get memory statistics.
 
         Returns:
             Statistics dictionary
         """
-        db_stats = self.backend.get_stats()
+        db_stats = await self.backend.get_stats()
         return {
             **self._stats,
             "total_memories": db_stats.get("total_memories", 0),
@@ -479,9 +492,6 @@ class MemoryCoordinator:
             True if duplicate exists
         """
         # Compute composite fingerprint
-        import hashlib
-
-        content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
         content_length = len(content)
         content_prefix = content[:100] if len(content) >= 100 else content
         content_suffix = content[-100:] if len(content) >= 100 else content
@@ -492,7 +502,7 @@ class MemoryCoordinator:
         # For now, retrieve all memories from current session and check manually
         # TODO: Add content_hash to MemoryQuery fer more efficient duplicate detection
         query = MemoryQuery(session_id=self.session_id, limit=1000)
-        memories = self.backend.retrieve_memories(query)
+        memories = await self.backend.retrieve_memories(query)
 
         # Check fer exact duplicates
         for memory in memories:
@@ -813,7 +823,6 @@ Return: {{"importance_score": <number>, "reasoning": "<brief reason>"}}
                 lines.append("")
             lines.append("**Related Functions:**")
             for func_info in functions[:5]:  # Limit to top 5
-                name = func_info.get("name", "")
                 signature = func_info.get("signature", "")
                 docstring = func_info.get("docstring", "")
                 complexity = func_info.get("complexity", 0)
@@ -833,7 +842,6 @@ Return: {{"importance_score": <number>, "reasoning": "<brief reason>"}}
                 lines.append("")
             lines.append("**Related Classes:**")
             for class_info in classes[:3]:  # Limit to top 3
-                name = class_info.get("name", "")
                 fqn = class_info.get("fully_qualified_name", "")
                 docstring = class_info.get("docstring", "")
 
