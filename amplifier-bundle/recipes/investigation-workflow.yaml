@@ -143,7 +143,7 @@ steps:
 
   - id: "clarify-ambiguities"
     agent: "amplihack:ambiguity"
-    condition: "{{scope.has_ambiguities}}"
+    condition: "scope.has_ambiguities"
     prompt: |
       The scope definition identified ambiguities that need clarification.
 
@@ -283,7 +283,7 @@ steps:
 
   - id: "historical-research"
     agent: "amplihack:knowledge-archaeologist"
-    condition: "{{strategy.historical_context_needed}}"
+    condition: "strategy.historical_context_needed"
     prompt: |
       Research historical context for this investigation.
 
@@ -403,7 +403,7 @@ steps:
 
   - id: "deep-dive-specialist"
     agent: "amplihack:security"
-    condition: "{{strategy.parallel_deployment.specialist_agent}}"
+    condition: "strategy.parallel_deployment.specialist_agent"
     prompt: |
       Conduct a SPECIALIST deep dive for this investigation.
 
@@ -773,7 +773,7 @@ steps:
 
   - id: "update-patterns"
     type: "bash"
-    condition: "{{patterns_analysis.patterns_discovered}}"
+    condition: "patterns_analysis.patterns_discovered"
     command: |
       # Output status - actual file updates handled by synthesis agent
       echo '{"patterns_updated": true, "patterns_path": "{{patterns_path}}", "investigation_type": "{{investigation_type}}"}'

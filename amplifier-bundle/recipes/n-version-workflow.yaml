@@ -445,7 +445,7 @@ steps:
   # Novel approaches, creative solutions, optimization opportunities
   # ==========================================================================
   - id: "version-4-innovative"
-    condition: "{{num_versions}} >= 4"
+    condition: "num_versions >= 4"
     agent: "amplihack:builder"
     prompt: |
       Implement this task using an INNOVATIVE approach.
@@ -508,7 +508,7 @@ steps:
   # Optimize for speed, efficiency, resource usage
   # ==========================================================================
   - id: "version-5-performance"
-    condition: "{{num_versions}} >= 5"
+    condition: "num_versions >= 5"
     agent: "amplihack:builder"
     prompt: |
       Implement this task using a PERFORMANCE-FOCUSED approach.
@@ -572,7 +572,7 @@ steps:
   # Rotates to conservative for balance
   # ==========================================================================
   - id: "version-6-additional"
-    condition: "{{num_versions}} >= 6"
+    condition: "num_versions >= 6"
     agent: "amplihack:builder"
     prompt: |
       Implement this task with fresh perspective (second conservative pass).
@@ -682,7 +682,7 @@ steps:
   # STEP 12: TEST EXECUTION - VERSION 4 (conditional)
   # ==========================================================================
   - id: "test-version-4"
-    condition: "{{num_versions}} >= 4"
+    condition: "num_versions >= 4"
     agent: "amplihack:tester"
     prompt: |
       Execute tests for Version 4 (Innovative approach).
@@ -700,7 +700,7 @@ steps:
   # STEP 13: TEST EXECUTION - VERSION 5 (conditional)
   # ==========================================================================
   - id: "test-version-5"
-    condition: "{{num_versions}} >= 5"
+    condition: "num_versions >= 5"
     agent: "amplihack:tester"
     prompt: |
       Execute tests for Version 5 (Performance-focused approach).
@@ -718,7 +718,7 @@ steps:
   # STEP 14: TEST EXECUTION - VERSION 6 (conditional)
   # ==========================================================================
   - id: "test-version-6"
-    condition: "{{num_versions}} >= 6"
+    condition: "num_versions >= 6"
     agent: "amplihack:tester"
     prompt: |
       Execute tests for Version 6.
@@ -1034,7 +1034,7 @@ steps:
   # Architect designs the hybrid solution
   # ==========================================================================
   - id: "synthesis-design"
-    condition: "{{selection_decision.final_selection.type}} == 'hybrid'"
+    condition: "selection_decision.final_selection.type == 'hybrid'"
     agent: "amplihack:architect"
     prompt: |
       Design the HYBRID SYNTHESIS combining best parts of multiple versions.

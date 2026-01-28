@@ -173,7 +173,7 @@ steps:
   # ---------------------------------------------------------------------------
 
   - id: "step1-debate-round1-architect"
-    condition: "{{initial_requirements.requires_debate}} == true"
+    condition: "initial_requirements.requires_debate == True"
     agent: "amplihack:architect"
     prompt: |
       MULTI-AGENT DEBATE - ROUND 1: Independent Analysis (Architect Perspective)
@@ -205,7 +205,7 @@ steps:
     parse_json: true
 
   - id: "step1-debate-round1-security"
-    condition: "{{initial_requirements.requires_debate}} == true"
+    condition: "initial_requirements.requires_debate == True"
     agent: "amplihack:security"
     prompt: |
       MULTI-AGENT DEBATE - ROUND 1: Independent Analysis (Security Perspective)
@@ -237,7 +237,7 @@ steps:
     parse_json: true
 
   - id: "step1-debate-round1-api"
-    condition: "{{initial_requirements.requires_debate}} == true"
+    condition: "initial_requirements.requires_debate == True"
     agent: "amplihack:api-designer"
     prompt: |
       MULTI-AGENT DEBATE - ROUND 1: Independent Analysis (API Designer Perspective)
@@ -269,7 +269,7 @@ steps:
     parse_json: true
 
   - id: "step1-debate-round1-database"
-    condition: "{{initial_requirements.requires_debate}} == true"
+    condition: "initial_requirements.requires_debate == True"
     agent: "amplihack:database"
     prompt: |
       MULTI-AGENT DEBATE - ROUND 1: Independent Analysis (Database Perspective)
@@ -301,7 +301,7 @@ steps:
     parse_json: true
 
   - id: "step1-debate-round1-tester"
-    condition: "{{initial_requirements.requires_debate}} == true"
+    condition: "initial_requirements.requires_debate == True"
     agent: "amplihack:tester"
     prompt: |
       MULTI-AGENT DEBATE - ROUND 1: Independent Analysis (Tester Perspective)
@@ -333,7 +333,7 @@ steps:
     parse_json: true
 
   - id: "step1-debate-round2-cross-examination"
-    condition: "{{initial_requirements.requires_debate}} == true"
+    condition: "initial_requirements.requires_debate == True"
     agent: "amplihack:architect"
     prompt: |
       MULTI-AGENT DEBATE - ROUND 2: Cross-Examination
@@ -382,7 +382,7 @@ steps:
     parse_json: true
 
   - id: "step1-debate-round3-consensus"
-    condition: "{{initial_requirements.requires_debate}} == true"
+    condition: "initial_requirements.requires_debate == True"
     agent: "amplihack:architect"
     prompt: |
       MULTI-AGENT DEBATE - ROUND 3: Consensus Building
@@ -913,7 +913,7 @@ steps:
   # ============================================================================
 
   - id: "step5-standard-implementation"
-    condition: "{{is_critical_code}} == 'false'"
+    condition: "is_critical_code == 'false'"
     agent: "amplihack:builder"
     prompt: |
       Implement the solution following the consensus design:
@@ -949,7 +949,7 @@ steps:
   # ---------------------------------------------------------------------------
 
   - id: "step5-nversion-identify-critical"
-    condition: "{{is_critical_code}} == 'true'"
+    condition: "is_critical_code == 'true'"
     agent: "amplihack:architect"
     prompt: |
       Identify critical code sections for N-Version programming:
@@ -983,7 +983,7 @@ steps:
     parse_json: true
 
   - id: "step5-nversion-builder1-conservative"
-    condition: "{{is_critical_code}} == 'true'"
+    condition: "is_critical_code == 'true'"
     agent: "amplihack:builder"
     prompt: |
       N-VERSION IMPLEMENTATION - Version 1: CONSERVATIVE Approach
@@ -1015,7 +1015,7 @@ steps:
     parse_json: true
 
   - id: "step5-nversion-builder2-pragmatic"
-    condition: "{{is_critical_code}} == 'true'"
+    condition: "is_critical_code == 'true'"
     agent: "amplihack:builder"
     prompt: |
       N-VERSION IMPLEMENTATION - Version 2: PRAGMATIC Approach
@@ -1047,7 +1047,7 @@ steps:
     parse_json: true
 
   - id: "step5-nversion-builder3-minimalist"
-    condition: "{{is_critical_code}} == 'true'"
+    condition: "is_critical_code == 'true'"
     agent: "amplihack:builder"
     prompt: |
       N-VERSION IMPLEMENTATION - Version 3: MINIMALIST Approach
@@ -1079,7 +1079,7 @@ steps:
     parse_json: true
 
   - id: "step5-nversion-compare"
-    condition: "{{is_critical_code}} == 'true'"
+    condition: "is_critical_code == 'true'"
     agent: "amplihack:architect"
     prompt: |
       N-VERSION COMPARISON: Evaluate all implementations
@@ -1125,7 +1125,7 @@ steps:
     parse_json: true
 
   - id: "step5-nversion-synthesize"
-    condition: "{{is_critical_code}} == 'true'"
+    condition: "is_critical_code == 'true'"
     agent: "amplihack:builder"
     prompt: |
       N-VERSION SYNTHESIS: Create final implementation
@@ -1147,7 +1147,7 @@ steps:
     output: "implementation"
 
   - id: "step5-nversion-vote"
-    condition: "{{is_critical_code}} == 'true'"
+    condition: "is_critical_code == 'true'"
     agent: "amplihack:architect"
     prompt: |
       N-VERSION CONSENSUS VOTE: Final approval for critical code
@@ -1417,7 +1417,7 @@ steps:
     parse_json: true
 
   - id: "step7-fix-issues"
-    condition: "{{test_results.tests_run}} == true"
+    condition: "test_results.tests_run == True"
     agent: "amplihack:pre-commit-diagnostic"
     prompt: |
       Diagnose and fix any test or pre-commit failures:
@@ -1772,7 +1772,7 @@ steps:
   # ============================================================================
 
   - id: "step12-implement-feedback"
-    condition: "{{pr_review_consensus.final_verdict}} == 'needs_work'"
+    condition: "pr_review_consensus.final_verdict == 'needs_work'"
     agent: "amplihack:builder"
     prompt: |
       Implement required changes from PR review:
@@ -1788,7 +1788,7 @@ steps:
     output: "refined_implementation"
 
   - id: "step12-push-updates"
-    condition: "{{pr_review_consensus.final_verdict}} == 'needs_work'"
+    condition: "pr_review_consensus.final_verdict == 'needs_work'"
     type: "bash"
     command: |
       echo "Pushing review updates..."
@@ -1943,7 +1943,7 @@ steps:
     parse_json: true
 
   - id: "step14-diagnose-ci"
-    condition: "{{ci_status.ci_checked}} == true"
+    condition: "ci_status.ci_checked == True"
     agent: "amplihack:ci-diagnostic-workflow"
     prompt: |
       Diagnose any CI failures:
