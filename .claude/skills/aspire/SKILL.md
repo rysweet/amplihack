@@ -2,10 +2,15 @@
 name: aspire
 description: Aspire orchestration for cloud-native distributed applications in any language (C#, Python, Node.js, Go). Handles dependency management, local dev with Docker, Azure deployment, service discovery, and observability dashboards. Use when setting up microservices, containerized apps, or polyglot distributed systems.
 version: 1.0.0
-last_updated: 2025-01-28
 source_urls:
-  - https://aspire.dev
-  - https://learn.microsoft.com/en-us/dotnet/aspire
+  - https://learn.microsoft.com/dotnet/aspire/get-started/aspire-overview
+  - https://learn.microsoft.com/dotnet/aspire/fundamentals/setup-tooling
+  - https://github.com/dotnet/aspire
+  - https://learn.microsoft.com/dotnet/aspire/database/postgresql-component
+  - https://learn.microsoft.com/dotnet/aspire/caching/stackexchange-redis-component
+  - https://learn.microsoft.com/dotnet/aspire/deployment/azure/aca-deployment
+  - https://learn.microsoft.com/dotnet/aspire/service-discovery/overview
+  - https://learn.microsoft.com/dotnet/aspire/fundamentals/dashboard
 activation_keywords:
   - aspire
   - distributed app
@@ -22,28 +27,19 @@ token_budget: 1800
 
 ## Overview
 
-Aspire orchestrates distributed cloud-native apps in **any language** (C#, Python, Node.js, Go), eliminating manual wiring of containers, databases, and microservices.
+Code-first orchestration for polyglot distributed apps. [AppHost](https://learn.microsoft.com/dotnet/aspire/fundamentals/app-host-overview) defines topology, [DCP](https://learn.microsoft.com/dotnet/aspire/fundamentals/networking-overview#aspire-orchestration) orchestrates locally, [azd](https://learn.microsoft.com/azure/developer/azure-developer-cli) deploys to Azure.
 
-**Key Components:**
-- **AppHost** (.NET): Code-first resource topology for all services regardless of language
-- **DCP**: Kubernetes-compatible orchestration engine
-- **Dashboard**: OpenTelemetry observability UI showing all services
-
-**Workflow:**
-```
-Local:  aspire run → Docker containers for all services + Dashboard
-Cloud:  azd deploy → Azure Container Apps (any language)
-```
-
-**Language Support:** AppHost is .NET, but orchestrates services in C#, Python, Node.js, Go, Java, Ruby - any language.
-**Infrastructure:** PostgreSQL, Redis, SQL Server, MongoDB, RabbitMQ, Kafka, Elasticsearch.
+**Stack:** PostgreSQL, Redis, MongoDB, RabbitMQ, Kafka + any language (C#, Python, Node.js, Go)
+**Local:** `aspire run` → Docker + [Dashboard](https://learn.microsoft.com/dotnet/aspire/fundamentals/dashboard)
+**Cloud:** `azd deploy` → Azure Container Apps
 
 ## Quick Start
 
 ```bash
-# Install
-curl -sSL https://aspire.dev/install.sh | bash  # macOS/Linux
-irm https://aspire.dev/install.ps1 | iex         # Windows
+# Install .NET 8+ and Aspire workload
+# See: https://learn.microsoft.com/dotnet/aspire/fundamentals/setup-tooling
+dotnet workload update
+dotnet workload install aspire
 
 # Create AppHost (orchestrates services in ANY language)
 dotnet new aspire-apphost -n MyApp
@@ -52,19 +48,19 @@ dotnet new aspire-apphost -n MyApp
 var builder = DistributedApplication.CreateBuilder(args);
 var redis = builder.AddRedis("cache");
 
-// Add Python service
+// Python service
 var pythonApi = builder.AddExecutable("python-api", "python", ".").WithArgs("app.py").WithReference(redis);
 
-// Add Node.js service
+// Node.js service
 var nodeApi = builder.AddExecutable("node-api", "node", ".").WithArgs("server.js").WithReference(redis);
 
-// Add .NET service
+// .NET service
 var dotnetApi = builder.AddProject<Projects.Api>("api").WithReference(redis);
 
 builder.Build().Run();
 
 # Run (orchestrates ALL languages)
-aspire run  # Opens Dashboard at http://localhost:15888
+aspire run  # Dashboard opens at http://localhost:15888
 ```
 
 ## Core Workflows
@@ -115,30 +111,24 @@ aspire run  # Starts all services
 
 ### Cloud Deployment
 
+See [Azure deployment guide](https://learn.microsoft.com/dotnet/aspire/deployment/azure/aca-deployment).
+
 ```bash
-azd init  # Initialize
+azd init  # Initialize Azure Developer CLI
 azd up    # Deploy (generates Bicep → Azure Container Apps)
 azd deploy -e production  # Deploy to specific environment
 ```
 
-**Process**: AppHost → Bicep generation → Container Apps + networking + managed identities
-
-**Environment-specific config:**
-```csharp
-if (builder.Environment.IsProduction())
-{
-    postgres.WithReplicas(3);
-    redis.WithPersistence();
-}
-```
+**Generates:** Bicep → Container Apps + networking + managed identities
 
 ## Navigation Guide
 
 **Read when you need:**
-- **reference.md** - Complete API reference, DCP internals, advanced config (health checks, volumes, ports)
-- **examples.md** - Working code for Python/Node.js/Go integration, multi-service templates, Azure deployment
-- **patterns.md** - Production strategies (HA, multi-region), security (Key Vault, managed identities), performance
-- **troubleshooting.md** - Debug orchestration, dependency conflicts, deployment failures, polyglot issues
+- **reference.md** - Complete API reference, [DCP internals](https://learn.microsoft.com/dotnet/aspire/fundamentals/networking-overview#aspire-orchestration), advanced config
+- **examples.md** - Polyglot integration (Python, Node.js, Go), multi-service templates, Azure deployment
+- **patterns.md** - Production strategies (HA, multi-region), [security](https://learn.microsoft.com/dotnet/aspire/security/overview), performance, polyglot communication
+- **commands.md** - Complete CLI reference (installation, development, deployment, debugging - all platforms)
+- **troubleshooting.md** - Debug orchestration, dependency conflicts, deployment failures
 
 ## Quick Reference
 
@@ -169,10 +159,9 @@ azd down            # Tear down resources
 ```
 
 **Best Practices:**
-1. Keep AppHost simple (topology only, no business logic)
-2. Use `WithReference()` over hardcoded connection strings
-3. Use `builder.Environment` for env-specific config
-4. Use Dashboard for debugging (no separate logging)
+1. Keep AppHost simple (topology only)
+2. Use `WithReference()` for service discovery
+3. Use Dashboard for debugging
 
 **Polyglot Patterns:**
 ```csharp
@@ -196,4 +185,10 @@ var conn = builder.Configuration.GetConnectionString("cache");  // Service reads
 - builder uses examples.md for implementation → reviewer checks patterns.md for best practices
 - tester uses troubleshooting.md for validation
 
-**Agent-Skill mapping**: architect→reference.md, builder→examples.md, reviewer→patterns.md, tester→troubleshooting.md
+**Agent-Skill mapping**:
+- architect → reference.md (API design)
+- builder → examples.md (implementation)
+- reviewer → patterns.md (best practices)
+- tester → troubleshooting.md (validation)
+- all agents → commands.md (CLI operations)
+

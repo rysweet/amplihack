@@ -29,6 +29,7 @@ REQUIRED_FILES = [
     "examples.md",
     "patterns.md",
     "troubleshooting.md",
+    "commands.md",
 ]
 
 # Token budget constants
