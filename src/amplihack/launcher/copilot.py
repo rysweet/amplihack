@@ -3,11 +3,9 @@
 import json
 import os
 import platform
-import select
 import shlex
 import signal
 import subprocess
-import sys
 import tempfile
 import threading
 from pathlib import Path
