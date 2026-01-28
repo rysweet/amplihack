@@ -96,11 +96,12 @@ class TestSQLiteBackend:
             assert capabilities.supports_graph_queries is False
             assert capabilities.supports_vector_search is False
 
-    def test_sqlite_backend_store_and_retrieve(self):
+    @pytest.mark.asyncio
+    async def test_sqlite_backend_store_and_retrieve(self):
         """SQLite backend can store and retrieve memories."""
         with tempfile.TemporaryDirectory() as tmpdir:
             backend = SQLiteBackend(db_path=Path(tmpdir) / "test.db")
-            backend.initialize()
+            await backend.initialize()
 
             # Create test memory
             memory = MemoryEntry(
@@ -116,11 +117,11 @@ class TestSQLiteBackend:
             )
 
             # Store memory
-            success = backend.store_memory(memory)
+            success = await backend.store_memory(memory)
             assert success is True
 
             # Retrieve memory
-            retrieved = backend.get_memory_by_id("test-123")
+            retrieved = await backend.get_memory_by_id("test-123")
             assert retrieved is not None
             assert retrieved.id == "test-123"
             assert retrieved.content == "This be a test memory"
@@ -135,6 +136,7 @@ class TestCoordinatorBackendIntegration:
         with tempfile.TemporaryDirectory() as tmpdir:
             # Create coordinator with SQLite backend
             coordinator = MemoryCoordinator(backend_type="sqlite", db_path=Path(tmpdir) / "test.db")
+            await coordinator.initialize()
 
             # Store a memory
             request = StorageRequest(

@@ -778,7 +778,7 @@ steps:
   # Use analyzer agent for intelligent metrics capture and pattern detection
   # ════════════════════════════════════════════════════════════════════════════
   - id: "log-cascade-metrics"
-    agent: "amplihack:analyzer"
+    agent: "amplihack:architect"
     mode: "LOG"
     prompt: |
       **STEP 6: Log Cascade Metrics**
@@ -859,7 +859,7 @@ steps:
   # Use analyzer agent for intelligent pattern recognition and recommendations
   # ════════════════════════════════════════════════════════════════════════════
   - id: "continuous-optimization"
-    agent: "amplihack:analyzer"
+    agent: "amplihack:architect"
     mode: "OPTIMIZE"
     prompt: |
       **STEP 7: Continuous Optimization**
