@@ -66,8 +66,8 @@ class PrerequisiteResult:
 class PrerequisiteChecker:
     """Check prerequisites for Blarify indexing tools."""
 
-    # Supported dotnet versions (excluding 10.x which is unsupported)
-    SUPPORTED_DOTNET_VERSIONS = ["6", "7", "8", "9"]
+    # Supported dotnet versions (6 LTS, 7, 8 LTS, 9, 10)
+    SUPPORTED_DOTNET_VERSIONS = ["6", "7", "8", "9", "10"]
 
     def check_language(self, language: str, indexer_type: str | None = None) -> LanguageStatus:
         """Check prerequisites for a specific language.
@@ -220,15 +220,6 @@ class PrerequisiteChecker:
             if result.returncode == 0:
                 version = result.stdout.strip()
                 major_version = version.split(".")[0]
-
-                # Check if version 10.x (unsupported)
-                if major_version == "10":
-                    return LanguageStatus(
-                        language="csharp",
-                        available=False,
-                        error_message=f"dotnet version {version} is not supported (unsupported version)",
-                        missing_tools=["dotnet"],
-                    )
 
                 # Check if version is supported
                 if major_version not in self.SUPPORTED_DOTNET_VERSIONS:
