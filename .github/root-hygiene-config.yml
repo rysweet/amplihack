@@ -216,13 +216,13 @@ unrelated_change_detection:
 
   # These combinations are usually related (won't warn)
   related_scopes:
-    - ["src", "tests"]  # Code and tests are related
-    - ["src", "docs"]   # Code and documentation are related
-    - ["tests", "ci"]   # Tests and CI are related
-    - ["config", "ci"]  # Config and CI are related
+    - ["src", "tests"] # Code and tests are related
+    - ["src", "docs"] # Code and documentation are related
+    - ["tests", "ci"] # Tests and CI are related
+    - ["config", "ci"] # Config and CI are related
     - ["scripts", "ci"] # Scripts and CI are related
 
   # These combinations trigger warnings
   warn_on_combinations:
-    - ["docs", "ci", "src"]  # Too broad
-    - ["config", "docs", "tests"]  # Mixing concerns
+    - ["docs", "ci", "src"] # Too broad
+    - ["config", "docs", "tests"] # Mixing concerns

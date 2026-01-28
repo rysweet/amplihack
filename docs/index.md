@@ -121,6 +121,8 @@ amplihack copilot
 - [Proxy Configuration](PROXY_CONFIG_GUIDE.md) - Network proxy setup (Azure OpenAI, custom endpoints)
 - [Hook Configuration](HOOK_CONFIGURATION_GUIDE.md) - Customize framework behavior
 - [Memory Configuration Consent](features/memory-consent-prompt.md) - Intelligent memory settings with timeout protection
+- [Verify .claude/ Staging](howto/verify-claude-staging.md) - Check that framework files are properly staged
+- [Verify Framework Injection](howto/verify-framework-injection.md) - Check that AMPLIHACK.md injection is working
 
 ### Deployment
 
@@ -145,6 +147,8 @@ Understand the philosophy and architecture behind amplihack.
 
 - [Project Overview](claude/context/PROJECT.md) - System architecture
 - [Development Patterns](claude/context/PATTERNS.md) - Proven implementation patterns
+- [Unified Staging Architecture](concepts/unified-staging-architecture.md) - How .claude/ staging works across all commands
+- [Framework Injection Architecture](concepts/framework-injection-architecture.md) - How AMPLIHACK.md injection works
 - [Blarify Architecture](blarify_architecture.md) - Understanding the Blarify integration
 - [Documentation Knowledge Graph](documentation_knowledge_graph.md) - How docs connect
 
@@ -353,15 +357,14 @@ Psychological memory model with episodic, semantic, procedural, prospective, and
 - [Agent Memory Quickstart](AGENT_MEMORY_QUICKSTART.md) - Get started with memory
 - [Agent Type Memory Sharing](agent_type_memory_sharing_patterns.md) - Patterns for memory collaboration
 
-### Neo4j Memory System
+### Kuzu Memory System
 
-Advanced graph-based memory for complex knowledge representation:
+Embedded graph-based memory using Kuzu (NO Neo4j required):
 
-- [Neo4j Memory Quick Reference](neo4j_memory/quick_reference.md) - Fast answers
-- [Neo4j Phase 4 Implementation](neo4j_memory_phase4_implementation.md) - Latest features
 - [Documentation Graph](doc_graph_quick_reference.md) - Navigate documentation connections
+- [Code Context Injection](memory/CODE_CONTEXT_INJECTION.md) - Link code to memories
 
-**Research & Deep Dives**:
+**Historical Research** (Neo4j was replaced with Kuzu in Week 7):
 
 - [Executive Summary](research/neo4j_memory_system/00-executive-summary/README.md)
 - [Technical Research](research/neo4j_memory_system/01-technical-research/README.md)
@@ -379,7 +382,7 @@ Advanced graph-based memory for complex knowledge representation:
 ### External Knowledge
 
 - [External Knowledge Integration](external_knowledge_integration.md) - Import external data sources
-- [Blarify Integration](blarify_integration.md) - Connect with Blarify knowledge base
+- [Blarify Integration](blarify_integration.md) - Code indexing with Kuzu (NO Neo4j)
 - [Blarify Quickstart](blarify_quickstart.md) - Get started with Blarify
 
 ---
@@ -388,23 +391,43 @@ Advanced graph-based memory for complex knowledge representation:
 
 Specific features and third-party integrations.
 
+### Native Binary Trace Logging ⭐ NEW
+
+Optional request/response logging using Anthropic's native Claude binary:
+
+- **[Native Binary Trace Logging Overview](NATIVE_BINARY_TRACE_LOGGING.md)** - Complete feature documentation hub
+- [Trace Logging Feature Guide](features/trace-logging.md) - What it is and when to use it
+- [How-To: Trace Logging](howto/trace-logging.md) - Practical recipes
+- [Migration: claude-trace to Native](migration/claude-trace-to-native.md) - Upgrade from NPM package
+- [API Reference: Trace Logging](reference/trace-logging-api.md) - Technical details
+- [Troubleshooting: Trace Logging](troubleshooting/trace-logging.md) - Fix common issues
+
+**Key Features**: Zero overhead when disabled (<0.1ms), automatic security sanitization, session-scoped JSONL logs, no NPM dependencies.
+
 ### Power Steering
 
 Intelligent guidance system that prevents common mistakes:
 
 - [Power Steering Overview](features/power-steering/README.md) - What is Power Steering
-- [Architecture](features/power-steering/architecture.md) - How it works
-- [Configuration](features/power-steering/configuration.md) - Setup and customization
-- [Troubleshooting](features/power-steering/troubleshooting.md) - Fix infinite loop and other issues
+- [Configuration Guide](features/power-steering/configuration.md) - Complete configuration reference
+- [Customization Guide](features/power-steering/customization-guide.md) - Customize considerations
+- [Troubleshooting](features/power-steering/troubleshooting.md) - Fix common issues
 - [Migration Guide v0.9.1](features/power-steering/migration-v0.9.1.md) - Upgrade guide
-- [Technical Reference](features/power-steering/technical-reference.md) - Developer reference
 - [Changelog v0.9.1](features/power-steering/changelog-v0.9.1.md) - Infinite loop fix release notes
+
+**Compaction Handling** ⭐ NEW
+
+Robust handling of conversation compaction in long sessions:
+
+- [Compaction Overview](power_steering_compaction_overview.md) - What is compaction and how power-steering handles it
+- [Compaction API Reference](power_steering_compaction_api.md) - Developer documentation for CompactionValidator and CompactionContext
+- [How to Customize Power Steering](../.claude/tools/amplihack/HOW_TO_CUSTOMIZE_POWER_STEERING.md#compaction-handling) - Configuration and troubleshooting
 
 ### Other Features
 
 - [Smart Memory Management](features/smart-memory-management.md) - Automatic Node.js memory optimization for Claude Code
 - [Claude.md Preservation](features/claude-md-preservation.md) - Preserve custom instructions
-- [Neo4j Session Cleanup](features/neo4j-session-cleanup.md) - Automatic resource management
+<!-- Neo4j removed - now using Kuzu embedded database (no session cleanup needed) -->
 <!-- - [Shutdown Detection](concepts/shutdown-detection.md) - Graceful exit handling (see stop-hook-exit-hang in Troubleshooting) -->
 
 ### Third-Party Integrations
@@ -500,6 +523,7 @@ Fix common issues and learn from past solutions.
 ### How-To Guides
 
 - [Configure Memory Consent](howto/configure-memory-consent.md) - Customize prompt behavior, timeouts, and CI/CD integration
+- [Configure Power-Steering Merge Preferences](howto/power-steering-merge-preferences.md) - Set up merge approval workflow
 - [Platform Bridge Quick Start](tutorials/platform-bridge-quickstart.md) - Learn the basics in 10 minutes
 - [Platform Bridge Workflows](howto/platform-bridge-workflows.md) - Common workflows for GitHub and Azure DevOps
 
@@ -511,7 +535,7 @@ Cutting-edge research, experimental features, and deep technical dives.
 
 ### Research Projects
 
-- [Neo4j Memory System Research](research/neo4j_memory_system/README.md) - Complete research archive
+- [Neo4j Memory System Research](research/neo4j_memory_system/README.md) - Historical research (replaced with Kuzu)
   - [Executive Summary](research/neo4j_memory_system/00-executive-summary/README.md)
   - [Technical Research](research/neo4j_memory_system/01-technical-research/README.md)
   - [Design Patterns](research/neo4j_memory_system/02-design-patterns/README.md)
@@ -534,8 +558,9 @@ Quick references, guides, and additional resources.
 
 - [Command Selection Guide](commands/COMMAND_SELECTION_GUIDE.md) - Choose the right command
 - [Platform Bridge API Reference](reference/platform-bridge-api.md) - Complete API documentation
+- [UserPromptSubmit Hook API Reference](reference/user-prompt-submit-hook-api.md) - Framework injection API
 - [Doc Graph Quick Reference](doc_graph_quick_reference.md) - Navigate documentation
-- [Neo4j Quick Reference](neo4j_memory/quick_reference.md) - Memory system commands
+<!-- Neo4j Quick Reference removed - now using Kuzu embedded database -->
 - [A/B Test Quick Reference](memory/AB_TEST_QUICK_REFERENCE.md) - Test results
 
 ### Developing amplihack

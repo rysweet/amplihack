@@ -15,11 +15,9 @@ Public API:
     list_installed_plugins: Get all installed plugins
 """
 
+import re
 import subprocess
 import time
-import re
-from pathlib import Path
-from typing import List, Optional, Tuple
 from dataclasses import dataclass
 
 __all__ = ["PluginManager", "PluginInstallResult"]
@@ -28,10 +26,11 @@ __all__ = ["PluginManager", "PluginInstallResult"]
 @dataclass
 class PluginInstallResult:
     """Result of plugin installation operation."""
+
     success: bool
     plugin_name: str
-    error: Optional[str] = None
-    output: Optional[str] = None
+    error: str | None = None
+    output: str | None = None
 
 
 class PluginManager:
@@ -58,7 +57,7 @@ class PluginManager:
         Raises:
             ValueError: If plugin name contains unsafe characters
         """
-        if not re.match(r'^[a-zA-Z0-9_-]+$', plugin_name):
+        if not re.match(r"^[a-zA-Z0-9_-]+$", plugin_name):
             raise ValueError(f"Invalid plugin name: {plugin_name}")
 
     def check_npx_available(self) -> bool:
@@ -69,12 +68,7 @@ class PluginManager:
             True if npx is available, False otherwise
         """
         try:
-            result = subprocess.run(
-                ["npx", "--version"],
-                capture_output=True,
-                text=True,
-                timeout=5
-            )
+            result = subprocess.run(["npx", "--version"], capture_output=True, text=True, timeout=5)
             return result.returncode == 0
         except (FileNotFoundError, subprocess.TimeoutExpired):
             return False
@@ -93,7 +87,7 @@ class PluginManager:
         installed = self.list_installed_plugins()
         return plugin_name in installed
 
-    def list_installed_plugins(self) -> List[str]:
+    def list_installed_plugins(self) -> list[str]:
         """
         List all installed Claude Code LSP plugins.
 
@@ -105,29 +99,20 @@ class PluginManager:
 
         try:
             result = subprocess.run(
-                ["npx", "cclsp", "list"],
-                capture_output=True,
-                text=True,
-                timeout=self.timeout
+                ["npx", "cclsp", "list"], capture_output=True, text=True, timeout=self.timeout
             )
 
             if result.returncode == 0:
                 # Parse plugin list from stdout (one per line)
                 plugins = [
-                    line.strip()
-                    for line in result.stdout.strip().split("\n")
-                    if line.strip()
+                    line.strip() for line in result.stdout.strip().split("\n") if line.strip()
                 ]
                 return plugins
             return []
         except (subprocess.TimeoutExpired, Exception):
             return []
 
-    def install_plugin(
-        self,
-        plugin_name: str,
-        dry_run: bool = False
-    ) -> bool:
+    def install_plugin(self, plugin_name: str, dry_run: bool = False) -> bool:
         """
         Install a Claude Code LSP plugin via npx cclsp.
 
@@ -158,7 +143,7 @@ class PluginManager:
                     ["npx", "cclsp", "install", plugin_name],
                     capture_output=True,
                     text=True,
-                    timeout=self.timeout
+                    timeout=self.timeout,
                 )
 
                 if result.returncode == 0:
@@ -166,21 +151,19 @@ class PluginManager:
 
                 # Retry on failure (except last attempt)
                 if attempt < self.max_retries - 1:
-                    time.sleep(2 ** attempt)  # Exponential backoff
+                    time.sleep(2**attempt)  # Exponential backoff
 
             except subprocess.TimeoutExpired:
                 if attempt < self.max_retries - 1:
-                    time.sleep(2 ** attempt)
+                    time.sleep(2**attempt)
                     continue
                 return False
 
         return False
 
     def install_multiple_plugins(
-        self,
-        plugin_names: List[str],
-        dry_run: bool = False
-    ) -> Tuple[List[str], List[str]]:
+        self, plugin_names: list[str], dry_run: bool = False
+    ) -> tuple[list[str], list[str]]:
         """
         Install multiple plugins.
 
@@ -226,14 +209,14 @@ class PluginManager:
                 ["npx", "cclsp", "uninstall", plugin_name],
                 capture_output=True,
                 text=True,
-                timeout=self.timeout
+                timeout=self.timeout,
             )
 
             return result.returncode == 0
         except (subprocess.TimeoutExpired, Exception):
             return False
 
-    def get_plugin_info(self, plugin_name: str) -> Optional[dict]:
+    def get_plugin_info(self, plugin_name: str) -> dict | None:
         """
         Get information about a plugin.
 
@@ -246,11 +229,7 @@ class PluginManager:
         if not self.is_plugin_installed(plugin_name):
             return None
 
-        return {
-            "name": plugin_name,
-            "installed": True,
-            "source": "npx cclsp"
-        }
+        return {"name": plugin_name, "installed": True, "source": "npx cclsp"}
 
     def update_plugin(self, plugin_name: str) -> bool:
         """
@@ -266,4 +245,3 @@ class PluginManager:
         if self.uninstall_plugin(plugin_name):
             return self.install_plugin(plugin_name)
         return False
-

@@ -30,6 +30,7 @@ persistenceThreshold: 20
 **You probably don't need this skill!** LSP is configured automatically when you run `amplihack claude`.
 
 **When amplihack launches Claude Code, it automatically:**
+
 - Detects programming languages in your project
 - Sets `ENABLE_LSP_TOOL=1` environment variable
 - Installs required LSP plugins via Claude Code plugin marketplace
@@ -59,18 +60,21 @@ When LSP is properly configured, Claude Code gains powerful code intelligence ca
 ### Real-Time Code Intelligence
 
 **Type Information** - Claude can see the exact types of variables, functions, and classes:
+
 ```python
 # Claude can hover over 'user' and see: Type: User (class from models.py)
 user = get_current_user()
 ```
 
 **Go to Definition** - Claude can jump to where symbols are defined:
+
 ```python
 # Claude can navigate from 'authenticate()' call to its definition in auth.py
 result = authenticate(credentials)
 ```
 
 **Code Diagnostics** - Claude receives real-time error detection from LSP servers:
+
 ```python
 # Pyright reports: "Set" is not accessed
 from typing import List, Set  # Claude sees this warning
@@ -79,18 +83,21 @@ from typing import List, Set  # Claude sees this warning
 ### How Claude Uses LSP
 
 **Better Code Understanding** - Instead of guessing types and behavior, Claude gets precise information from LSP servers about:
+
 - Function signatures and return types
 - Class hierarchies and inheritance
 - Import paths and module structure
 - Errors and warnings before runtime
 
 **Smarter Suggestions** - With LSP data, Claude provides:
+
 - Accurate refactoring recommendations
 - Type-safe code completions
 - Precise error fixes
 - Context-aware code generation
 
 **Example Workflow**:
+
 ```
 You: "Fix the type error in user_service.py"
 
@@ -112,7 +119,7 @@ After `/lsp-setup` configures your project:
 
 ### Important Note
 
-LSP enhances Claude's capabilities *behind the scenes*. You don't interact with LSP directly - it makes Claude smarter about your code automatically.
+LSP enhances Claude's capabilities _behind the scenes_. You don't interact with LSP directly - it makes Claude smarter about your code automatically.
 
 ## When to Use This Skill
 
@@ -131,17 +138,20 @@ Use `/lsp-setup` when you:
 Claude Code's LSP system uses a three-layer architecture that must all be configured for LSP features to work:
 
 **Layer 1: System LSP Binaries** (User-installed)
+
 - LSP server executables installed on your system via npm, brew, rustup, etc.
 - Example: `npm install -g pyright` installs the Pyright LSP server binary
 - These are the actual language analysis engines
 
 **Layer 2: Claude Code LSP Plugins** (Installed via cclsp)
+
 - Claude Code plugins that connect to Layer 1 binaries
 - Installed using: `npx cclsp install <server-name>`
 - The `cclsp` tool uses the `claude-code-lsps` plugin marketplace
 - These act as bridges between Claude Code and LSP servers
 
 **Layer 3: Project Configuration** (.env file)
+
 - Project-specific settings: virtual environments, project roots, etc.
 - Must include `ENABLE_LSP_TOOL=1` to activate LSP features
 - Stored in `.env` at project root
@@ -159,6 +169,7 @@ Scans your project directory to identify programming languages based on file ext
 #### Phase 2: LSP Configuration
 
 Generates the appropriate LSP server configuration for each detected language. Checks if:
+
 1. System LSP binaries are installed (Layer 1)
 2. Claude Code plugins are installed (Layer 2)
 
@@ -167,6 +178,7 @@ Provides installation guidance if either is missing. **NEVER auto-installs** - u
 #### Phase 3: Project Configuration
 
 Creates or updates `.env` file with project-specific LSP settings (Layer 3):
+
 - Workspace-specific options (Python virtual environments, Node.js project roots, etc.)
 - **ENABLE_LSP_TOOL=1** (required for LSP features to activate)
 
@@ -230,24 +242,24 @@ The `/lsp-setup` skill automates the `npx cclsp@latest setup` workflow, adding i
 
 ## Supported Languages
 
-| Language   | LSP Server       | System Binary Installation (Layer 1) | Claude Code Plugin (Layer 2) |
-|------------|------------------|--------------------------------------|------------------------------|
-| Python     | pyright          | `npm install -g pyright`             | `npx cclsp install pyright`  |
-| TypeScript | vtsls            | `npm install -g @vtsls/language-server` | `npx cclsp install vtsls` |
-| JavaScript | vtsls            | `npm install -g @vtsls/language-server` | `npx cclsp install vtsls` |
-| Rust       | rust-analyzer    | `rustup component add rust-analyzer` | `npx cclsp install rust-analyzer` |
-| Go         | gopls            | `go install golang.org/x/tools/gopls@latest` | `npx cclsp install gopls` |
-| Java       | jdtls            | Download from eclipse.org/jdtls      | `npx cclsp install jdtls`    |
-| C/C++      | clangd           | `brew install llvm` (macOS) / `apt install clangd` (Linux) | `npx cclsp install clangd` |
-| C#         | omnisharp        | Download from omnisharp.net          | `npx cclsp install omnisharp` |
-| Ruby       | ruby-lsp         | `gem install ruby-lsp`               | `npx cclsp install ruby-lsp` |
-| PHP        | phpactor         | `composer global require phpactor/phpactor` | `npx cclsp install phpactor` |
-| Bash       | bash-language-server | `npm install -g bash-language-server` | `npx cclsp install bash-language-server` |
-| YAML       | yaml-language-server | `npm install -g yaml-language-server` | `npx cclsp install yaml-language-server` |
-| JSON       | vscode-json-languageserver | `npm install -g vscode-json-languageserver` | `npx cclsp install vscode-json-languageserver` |
-| HTML       | vscode-html-languageserver | `npm install -g vscode-html-languageserver` | `npx cclsp install vscode-html-languageserver` |
-| CSS        | vscode-css-languageserver | `npm install -g vscode-css-languageserver` | `npx cclsp install vscode-css-languageserver` |
-| Markdown   | marksman         | `brew install marksman` (macOS) / Download from GitHub | `npx cclsp install marksman` |
+| Language   | LSP Server                 | System Binary Installation (Layer 1)                       | Claude Code Plugin (Layer 2)                   |
+| ---------- | -------------------------- | ---------------------------------------------------------- | ---------------------------------------------- |
+| Python     | pyright                    | `npm install -g pyright`                                   | `npx cclsp install pyright`                    |
+| TypeScript | vtsls                      | `npm install -g @vtsls/language-server`                    | `npx cclsp install vtsls`                      |
+| JavaScript | vtsls                      | `npm install -g @vtsls/language-server`                    | `npx cclsp install vtsls`                      |
+| Rust       | rust-analyzer              | `rustup component add rust-analyzer`                       | `npx cclsp install rust-analyzer`              |
+| Go         | gopls                      | `go install golang.org/x/tools/gopls@latest`               | `npx cclsp install gopls`                      |
+| Java       | jdtls                      | Download from eclipse.org/jdtls                            | `npx cclsp install jdtls`                      |
+| C/C++      | clangd                     | `brew install llvm` (macOS) / `apt install clangd` (Linux) | `npx cclsp install clangd`                     |
+| C#         | omnisharp                  | Download from omnisharp.net                                | `npx cclsp install omnisharp`                  |
+| Ruby       | ruby-lsp                   | `gem install ruby-lsp`                                     | `npx cclsp install ruby-lsp`                   |
+| PHP        | phpactor                   | `composer global require phpactor/phpactor`                | `npx cclsp install phpactor`                   |
+| Bash       | bash-language-server       | `npm install -g bash-language-server`                      | `npx cclsp install bash-language-server`       |
+| YAML       | yaml-language-server       | `npm install -g yaml-language-server`                      | `npx cclsp install yaml-language-server`       |
+| JSON       | vscode-json-languageserver | `npm install -g vscode-json-languageserver`                | `npx cclsp install vscode-json-languageserver` |
+| HTML       | vscode-html-languageserver | `npm install -g vscode-html-languageserver`                | `npx cclsp install vscode-html-languageserver` |
+| CSS        | vscode-css-languageserver  | `npm install -g vscode-css-languageserver`                 | `npx cclsp install vscode-css-languageserver`  |
+| Markdown   | marksman                   | `brew install marksman` (macOS) / Download from GitHub     | `npx cclsp install marksman`                   |
 
 **Note**: Both Layer 1 (system binary) and Layer 2 (Claude Code plugin) must be installed for LSP features to work.
 
@@ -325,6 +337,7 @@ After running `/lsp-setup`, here's how to confirm LSP is providing code intellig
 ### Method 1: Check for Diagnostics
 
 **Ask Claude to analyze a file with intentional errors**:
+
 ```
 You: "What issues do you see in src/main.py?"
 
@@ -340,6 +353,7 @@ If LSP is NOT working: Claude only sees what's in the file content
 ### Method 2: Request Type Information
 
 **Ask Claude about types in your code**:
+
 ```
 You: "What's the type of the 'user' variable in auth.py line 42?"
 
@@ -353,6 +367,7 @@ If LSP is NOT working: Claude guesses based on context
 ### Method 3: Test Navigation
 
 **Ask Claude to find definitions**:
+
 ```
 You: "Where is the authenticate() function defined?"
 
@@ -366,11 +381,13 @@ If LSP is NOT working: Claude searches file contents
 ### Method 4: Check Status Command
 
 **Run the status check**:
+
 ```bash
 /lsp-setup --status-only
 ```
 
 **Expected Output (LSP Working)**:
+
 ```
 [LSP Setup] Configuration Status:
 
@@ -388,6 +405,7 @@ Overall Status: ✓ All LSP servers ready (2/2)
 ```
 
 **Problem Output (LSP NOT Working)**:
+
 ```
 [LSP Setup] Configuration Status:
 

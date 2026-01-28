@@ -10,7 +10,7 @@ Replace the sections below with information about your project.
 
 ---
 
-## Project: amplihack2
+## Project: amplifier-amplihack
 
 ## Overview
 

@@ -10,10 +10,10 @@ Testing Strategy:
 - 10% E2E tests (complete settings workflow)
 """
 
-import pytest
 import json
 from pathlib import Path
-from unittest.mock import Mock, patch
+
+import pytest
 
 
 class TestSettingsMergerUnit:
@@ -30,10 +30,7 @@ class TestSettingsMergerUnit:
         """
         from amplihack.plugin.settings_merger import SettingsMerger
 
-        base = {
-            "version": "1.0",
-            "hooks": {"PreRun": "hook.sh"}
-        }
+        base = {"version": "1.0", "hooks": {"PreRun": "hook.sh"}}
 
         merger = SettingsMerger()
         result = merger.merge(base=base, overrides={})
@@ -52,15 +49,9 @@ class TestSettingsMergerUnit:
         """
         from amplihack.plugin.settings_merger import SettingsMerger
 
-        base = {
-            "version": "1.0",
-            "hooks": {"PreRun": "hook.sh"}
-        }
+        base = {"version": "1.0", "hooks": {"PreRun": "hook.sh"}}
 
-        overrides = {
-            "custom_key": "custom_value",
-            "project_name": "my_project"
-        }
+        overrides = {"custom_key": "custom_value", "project_name": "my_project"}
 
         merger = SettingsMerger()
         result = merger.merge(base=base, overrides=overrides)
@@ -100,25 +91,15 @@ class TestSettingsMergerUnit:
         """
         from amplihack.plugin.settings_merger import SettingsMerger
 
-        base = {
-            "hooks": {
-                "PreRun": "base_hook.sh",
-                "PostRun": "cleanup.sh"
-            }
-        }
+        base = {"hooks": {"PreRun": "base_hook.sh", "PostRun": "cleanup.sh"}}
 
-        overrides = {
-            "hooks": {
-                "PreRun": "custom_hook.sh",
-                "CustomHook": "my_hook.sh"
-            }
-        }
+        overrides = {"hooks": {"PreRun": "custom_hook.sh", "CustomHook": "my_hook.sh"}}
 
         merger = SettingsMerger()
         result = merger.merge(base=base, overrides=overrides)
 
         assert result["hooks"]["PreRun"] == "custom_hook.sh"  # Override wins
-        assert result["hooks"]["PostRun"] == "cleanup.sh"     # Base preserved
+        assert result["hooks"]["PostRun"] == "cleanup.sh"  # Base preserved
         assert result["hooks"]["CustomHook"] == "my_hook.sh"  # Override added
 
     def test_merge_array_values_append_mode(self):
@@ -152,25 +133,12 @@ class TestSettingsMergerUnit:
         """
         from amplihack.plugin.settings_merger import SettingsMerger
 
-        base = {
-            "lspServers": {
-                "python": {
-                    "command": "pylsp",
-                    "args": []
-                }
-            }
-        }
+        base = {"lspServers": {"python": {"command": "pylsp", "args": []}}}
 
         overrides = {
             "lspServers": {
-                "typescript": {
-                    "command": "typescript-language-server",
-                    "args": ["--stdio"]
-                },
-                "python": {
-                    "command": "pyright-langserver",
-                    "args": ["--stdio"]
-                }
+                "typescript": {"command": "typescript-language-server", "args": ["--stdio"]},
+                "python": {"command": "pyright-langserver", "args": ["--stdio"]},
             }
         }
 
@@ -216,9 +184,7 @@ class TestSettingsMergerUnit:
         valid = {
             "version": "1.0",
             "hooks": {"PreRun": "hook.sh"},
-            "lspServers": {
-                "python": {"command": "pylsp"}
-            }
+            "lspServers": {"python": {"command": "pylsp"}},
         }
 
         merger = SettingsMerger()
@@ -238,7 +204,7 @@ class TestSettingsMergerUnit:
         settings = {
             "hooks": {
                 "PreRun": "${CLAUDE_PLUGIN_ROOT}/tools/hook.sh",
-                "PostRun": "/absolute/path/hook.sh"
+                "PostRun": "/absolute/path/hook.sh",
             }
         }
 
@@ -269,26 +235,17 @@ class TestSettingsMergerIntegration:
 
         # Create base settings file
         base_file = tmp_path / "base.json"
-        base_settings = {
-            "version": "1.0",
-            "hooks": {"PreRun": "base_hook.sh"}
-        }
+        base_settings = {"version": "1.0", "hooks": {"PreRun": "base_hook.sh"}}
         base_file.write_text(json.dumps(base_settings, indent=2))
 
         # Create override settings file
         override_file = tmp_path / "override.json"
-        override_settings = {
-            "hooks": {"CustomHook": "custom.sh"},
-            "custom_key": "value"
-        }
+        override_settings = {"hooks": {"CustomHook": "custom.sh"}, "custom_key": "value"}
         override_file.write_text(json.dumps(override_settings, indent=2))
 
         # Merge
         merger = SettingsMerger()
-        result = merger.merge_from_files(
-            base_path=base_file,
-            override_path=override_file
-        )
+        result = merger.merge_from_files(base_path=base_file, override_path=override_file)
 
         assert result["version"] == "1.0"
         assert result["hooks"]["PreRun"] == "base_hook.sh"
@@ -306,10 +263,7 @@ class TestSettingsMergerIntegration:
         """
         from amplihack.plugin.settings_merger import SettingsMerger
 
-        settings = {
-            "version": "1.0",
-            "hooks": {"PreRun": "hook.sh"}
-        }
+        settings = {"version": "1.0", "hooks": {"PreRun": "hook.sh"}}
 
         output_file = tmp_path / "output.json"
 
@@ -341,12 +295,8 @@ class TestSettingsMergerIntegration:
         base_file = plugin_root / "settings.json"
         base = {
             "version": "1.0",
-            "hooks": {
-                "PreRun": "${CLAUDE_PLUGIN_ROOT}/tools/hook.sh"
-            },
-            "lspServers": {
-                "python": {"command": "pylsp"}
-            }
+            "hooks": {"PreRun": "${CLAUDE_PLUGIN_ROOT}/tools/hook.sh"},
+            "lspServers": {"python": {"command": "pylsp"}},
         }
         base_file.write_text(json.dumps(base, indent=2))
 
@@ -355,12 +305,8 @@ class TestSettingsMergerIntegration:
         project_root.mkdir()
         override_file = project_root / "settings_override.json"
         override = {
-            "hooks": {
-                "CustomHook": "custom.sh"
-            },
-            "lspServers": {
-                "typescript": {"command": "tsserver"}
-            }
+            "hooks": {"CustomHook": "custom.sh"},
+            "lspServers": {"typescript": {"command": "tsserver"}},
         }
         override_file.write_text(json.dumps(override, indent=2))
 
@@ -419,25 +365,10 @@ class TestSettingsMergerEdgeCases:
         """
         from amplihack.plugin.settings_merger import SettingsMerger
 
-        base = {
-            "level1": {
-                "level2": {
-                    "level3": {
-                        "key": "base_value"
-                    }
-                }
-            }
-        }
+        base = {"level1": {"level2": {"level3": {"key": "base_value"}}}}
 
         overrides = {
-            "level1": {
-                "level2": {
-                    "level3": {
-                        "key": "override_value",
-                        "new_key": "new_value"
-                    }
-                }
-            }
+            "level1": {"level2": {"level3": {"key": "override_value", "new_key": "new_value"}}}
         }
 
         merger = SettingsMerger()
@@ -476,16 +407,9 @@ class TestSettingsMergerEdgeCases:
         """
         from amplihack.plugin.settings_merger import SettingsMerger
 
-        base = {
-            "timeout": 30,
-            "debug": False,
-            "threshold": 0.95
-        }
+        base = {"timeout": 30, "debug": False, "threshold": 0.95}
 
-        overrides = {
-            "timeout": 60,
-            "debug": True
-        }
+        overrides = {"timeout": 60, "debug": True}
 
         merger = SettingsMerger()
         result = merger.merge(base=base, overrides=overrides)
@@ -507,11 +431,7 @@ class TestSettingsMergerEdgeCases:
         """
         from amplihack.plugin.settings_merger import SettingsMerger
 
-        settings = {
-            "hooks": {
-                "PreRun": "${CLAUDE_PLUGIN_ROOT}\\tools\\hook.sh"
-            }
-        }
+        settings = {"hooks": {"PreRun": "${CLAUDE_PLUGIN_ROOT}\\tools\\hook.sh"}}
 
         plugin_root = Path("C:/Users/test/.amplihack/.claude")
 

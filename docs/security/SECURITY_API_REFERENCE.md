@@ -26,6 +26,7 @@ sanitizer = TokenSanitizer()
 TokenSanitizer detects and redacts sensitive tokens from strings and data structures. Designed for production use with < 1ms performance for typical operations.
 
 **Philosophy**:
+
 - Single responsibility: Token detection and sanitization
 - Zero-BS: Fully functional with no stubs
 - Performance-first: Compiled regex, minimal overhead
@@ -43,6 +44,7 @@ Initializes TokenSanitizer with compiled regex patterns for all supported token 
 **Returns**: TokenSanitizer instance
 
 **Example**:
+
 ```python
 from amplihack.proxy.security import TokenSanitizer
 
@@ -64,15 +66,18 @@ sanitizer.contains_token(text: str) -> bool
 Check if text contains any sensitive tokens.
 
 **Arguments**:
+
 - `text` (str): Text to check for tokens
 
 **Returns**: `bool`
+
 - `True` if tokens detected
 - `False` otherwise
 
 **Raises**: None
 
 **Example**:
+
 ```python
 sanitizer = TokenSanitizer()
 
@@ -85,6 +90,7 @@ print(sanitizer.contains_token("no tokens here"))  # False
 ```
 
 **Performance**: O(n) where n is text length
+
 - Average: < 0.1ms for 1KB text
 - Worst case: < 0.5ms for 10KB text
 
@@ -101,9 +107,11 @@ sanitizer.sanitize(data: Any) -> Any
 Sanitize tokens from data structure. Recursively processes strings, dicts, and lists. Preserves non-sensitive data and structure.
 
 **Arguments**:
+
 - `data` (Any): Data to sanitize (str, dict, list, or other types)
 
 **Returns**: `Any`
+
 - Sanitized copy with tokens redacted
 - Same type as input
 - Non-token data preserved
@@ -113,6 +121,7 @@ Sanitize tokens from data structure. Recursively processes strings, dicts, and l
 **Examples**:
 
 **String sanitization**:
+
 ```python
 sanitizer = TokenSanitizer()
 
@@ -122,6 +131,7 @@ print(result)
 ```
 
 **Dictionary sanitization**:
+
 ```python
 data = {
     "github_token": "gho_1234567890",
@@ -139,6 +149,7 @@ print(result)
 ```
 
 **List sanitization**:
+
 ```python
 logs = [
     "2024-01-14 INFO Server started",
@@ -151,6 +162,7 @@ sanitized_logs = sanitizer.sanitize(logs)
 ```
 
 **Nested structure sanitization**:
+
 ```python
 config = {
     "auth": {
@@ -165,9 +177,10 @@ safe_config = sanitizer.sanitize(config)
 ```
 
 **Performance**:
+
 - Strings: O(n) where n is string length
-- Dicts: O(k*v) where k is keys, v is average value size
-- Lists: O(n*m) where n is items, m is average item size
+- Dicts: O(k\*v) where k is keys, v is average value size
+- Lists: O(n\*m) where n is items, m is average item size
 - Average: < 1ms for typical data structures
 
 **Thread Safety**: Yes - creates new objects, doesn't modify input
@@ -189,6 +202,7 @@ TokenSanitizer uses compiled regex patterns to detect tokens. All patterns are i
 **Redaction**: `[REDACTED-GITHUB-TOKEN]`
 
 **Examples**:
+
 ```python
 # Detected
 "gho_1234567890abcdefghij"  # OAuth token
@@ -211,6 +225,7 @@ TokenSanitizer uses compiled regex patterns to detect tokens. All patterns are i
 **Redaction**: `[REDACTED-OPENAI-KEY]`
 
 **Examples**:
+
 ```python
 # Detected
 "sk-1234567890abcdefghij"       # Standard key
@@ -230,6 +245,7 @@ TokenSanitizer uses compiled regex patterns to detect tokens. All patterns are i
 **Redaction**: `[REDACTED-ANTHROPIC-KEY]`
 
 **Examples**:
+
 ```python
 # Detected
 "sk-ant-1234567890abcdefghij"
@@ -246,6 +262,7 @@ TokenSanitizer uses compiled regex patterns to detect tokens. All patterns are i
 **Redaction**: `[REDACTED-BEARER-TOKEN]`
 
 **Examples**:
+
 ```python
 # Detected
 "Bearer abc123xyz"
@@ -263,6 +280,7 @@ TokenSanitizer uses compiled regex patterns to detect tokens. All patterns are i
 **Redaction**: `[REDACTED-JWT-TOKEN]`
 
 **Examples**:
+
 ```python
 # Detected (header.payload.signature)
 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.dozjgNryP4J3jVmNHl0w5N_XgL0n3I9PlFUP0THsR8U"
@@ -279,6 +297,7 @@ TokenSanitizer uses compiled regex patterns to detect tokens. All patterns are i
 **Redaction**: `[REDACTED-AZURE-KEY]`
 
 **Examples**:
+
 ```python
 # Detected
 "azure-key-1234567890abcdefghij"
@@ -295,6 +314,7 @@ TokenSanitizer uses compiled regex patterns to detect tokens. All patterns are i
 **Redaction**: `[REDACTED-AZURE-CONNECTION]`
 
 **Examples**:
+
 ```python
 # Detected
 "DefaultEndpointsProtocol=https;AccountName=myaccount;AccountKey=abc123==;EndpointSuffix=core.windows.net"
@@ -333,20 +353,20 @@ Patterns match tokens even when embedded in text:
 
 ### Time Complexity
 
-| Operation | Complexity | Average Time | Notes |
-|-----------|------------|--------------|-------|
-| `__init__()` | O(1) | < 0.01ms | Patterns compiled once |
-| `contains_token(text)` | O(n) | < 0.1ms | n = text length |
-| `sanitize(str)` | O(n) | < 1ms | n = string length |
-| `sanitize(dict)` | O(k*v) | < 1ms | k = keys, v = avg value size |
-| `sanitize(list)` | O(n*m) | < 1ms | n = items, m = avg item size |
+| Operation              | Complexity | Average Time | Notes                        |
+| ---------------------- | ---------- | ------------ | ---------------------------- |
+| `__init__()`           | O(1)       | < 0.01ms     | Patterns compiled once       |
+| `contains_token(text)` | O(n)       | < 0.1ms      | n = text length              |
+| `sanitize(str)`        | O(n)       | < 1ms        | n = string length            |
+| `sanitize(dict)`       | O(k\*v)    | < 1ms        | k = keys, v = avg value size |
+| `sanitize(list)`       | O(n\*m)    | < 1ms        | n = items, m = avg item size |
 
 ### Space Complexity
 
-| Operation | Complexity | Notes |
-|-----------|------------|-------|
-| TokenSanitizer instance | O(1) | Fixed pattern storage |
-| `sanitize()` | O(n) | Creates new objects, input preserved |
+| Operation               | Complexity | Notes                                |
+| ----------------------- | ---------- | ------------------------------------ |
+| TokenSanitizer instance | O(1)       | Fixed pattern storage                |
+| `sanitize()`            | O(n)       | Creates new objects, input preserved |
 
 ### Benchmark Results
 

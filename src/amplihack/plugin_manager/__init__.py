@@ -11,6 +11,6 @@ Public API (the "studs"):
     ValidationResult: Result of manifest validation
 """
 
-from .manager import PluginManager, InstallResult, ValidationResult
+from .manager import InstallResult, PluginManager, ValidationResult
 
 __all__ = ["PluginManager", "InstallResult", "ValidationResult"]

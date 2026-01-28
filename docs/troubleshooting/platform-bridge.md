@@ -7,6 +7,7 @@ Solutions to common problems when usin' the platform bridge.
 ### Problem: "Could not detect platform from git remotes"
 
 **Symptoms**:
+
 ```python
 PlatformDetectionError: Could not detect platform from git remotes
 ```
@@ -16,11 +17,13 @@ PlatformDetectionError: Could not detect platform from git remotes
 **Solutions**:
 
 1. **Check if ye have remotes**:
+
    ```bash
    git remote -v
    ```
 
    If empty, add a remote:
+
    ```bash
    git remote add origin https://github.com/owner/repo.git
    # OR
@@ -42,11 +45,13 @@ PlatformDetectionError: Could not detect platform from git remotes
    ```
 
 3. **Check if origin exists**:
+
    ```bash
    git remote show origin
    ```
 
    If origin doesn't exist but other remotes do:
+
    ```bash
    # Rename existing remote to origin
    git remote rename upstream origin
@@ -63,17 +68,20 @@ PlatformDetectionError: Could not detect platform from git remotes
 **Solution**:
 
 1. **Check all remotes**:
+
    ```bash
    git remote -v
    ```
 
    Output might show:
+
    ```
    origin    https://github.com/mirror/repo.git (fetch)
    upstream  https://dev.azure.com/real/repo/_git/main (fetch)
    ```
 
 2. **Fix the origin remote**:
+
    ```bash
    # Remove incorrect origin
    git remote remove origin
@@ -83,6 +91,7 @@ PlatformDetectionError: Could not detect platform from git remotes
    ```
 
 3. **Verify detection**:
+
    ```python
    from claude.tools.platform_bridge import detect_platform, Platform
 
@@ -98,6 +107,7 @@ PlatformDetectionError: Could not detect platform from git remotes
 ### Problem: "GitHub CLI not found"
 
 **Symptoms**:
+
 ```python
 CLIToolMissingError: GitHub CLI not found. Install with: brew install gh
 ```
@@ -107,17 +117,20 @@ CLIToolMissingError: GitHub CLI not found. Install with: brew install gh
 **Solutions by Platform**:
 
 1. **macOS**:
+
    ```bash
    brew install gh
    ```
 
 2. **Ubuntu/Debian**:
+
    ```bash
    sudo apt update
    sudo apt install gh
    ```
 
 3. **Windows**:
+
    ```powershell
    winget install GitHub.cli
    ```
@@ -133,6 +146,7 @@ CLIToolMissingError: GitHub CLI not found. Install with: brew install gh
 ### Problem: "Azure CLI not found"
 
 **Symptoms**:
+
 ```python
 CLIToolMissingError: Azure CLI not found. Install with: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
 ```
@@ -142,16 +156,19 @@ CLIToolMissingError: Azure CLI not found. Install with: curl -sL https://aka.ms/
 **Solutions by Platform**:
 
 1. **macOS**:
+
    ```bash
    brew install azure-cli
    ```
 
 2. **Ubuntu/Debian**:
+
    ```bash
    curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
    ```
 
 3. **Windows**:
+
    ```powershell
    winget install Microsoft.AzureCLI
    ```
@@ -169,6 +186,7 @@ CLIToolMissingError: Azure CLI not found. Install with: curl -sL https://aka.ms/
 ### Problem: "GitHub CLI not authenticated"
 
 **Symptoms**:
+
 ```bash
 gh: To get started with GitHub CLI, please run: gh auth login
 ```
@@ -178,6 +196,7 @@ gh: To get started with GitHub CLI, please run: gh auth login
 **Solution**:
 
 1. **Run authentication**:
+
    ```bash
    gh auth login
    ```
@@ -189,11 +208,13 @@ gh: To get started with GitHub CLI, please run: gh auth login
    - Follow browser prompts
 
 3. **Verify authentication**:
+
    ```bash
    gh auth status
    ```
 
    Should show:
+
    ```
    ✓ Logged in to github.com as username
    ```
@@ -203,6 +224,7 @@ gh: To get started with GitHub CLI, please run: gh auth login
 ### Problem: "Azure CLI not authenticated"
 
 **Symptoms**:
+
 ```bash
 Please run 'az login' to setup account.
 ```
@@ -212,6 +234,7 @@ Please run 'az login' to setup account.
 **Solution**:
 
 1. **Run authentication**:
+
    ```bash
    az login
    ```
@@ -222,11 +245,13 @@ Please run 'az login' to setup account.
    - Grant permissions
 
 3. **Verify authentication**:
+
    ```bash
    az account show
    ```
 
    Should show account details:
+
    ```json
    {
      "name": "Your Subscription",
@@ -241,10 +266,13 @@ Please run 'az login' to setup account.
 ### Problem: "Token expired"
 
 **Symptoms**:
+
 ```bash
 gh: HTTP 401: Bad credentials
 ```
+
 or
+
 ```bash
 az: Token has expired
 ```
@@ -254,16 +282,19 @@ az: Token has expired
 **Solution**:
 
 1. **Refresh GitHub token**:
+
    ```bash
    gh auth refresh
    ```
 
 2. **Refresh Azure token**:
+
    ```bash
    az account get-access-token --query accessToken
    ```
 
    If still expired:
+
    ```bash
    az logout
    az login
@@ -276,6 +307,7 @@ az: Token has expired
 ### Problem: "Branch not found"
 
 **Symptoms**:
+
 ```python
 BranchNotFoundError: Branch 'feat/test' doesn't exist
 ```
@@ -285,11 +317,13 @@ BranchNotFoundError: Branch 'feat/test' doesn't exist
 **Solution**:
 
 1. **Check local branches**:
+
    ```bash
    git branch
    ```
 
 2. **Push branch to remote**:
+
    ```bash
    git push -u origin feat/test
    ```
@@ -309,6 +343,7 @@ BranchNotFoundError: Branch 'feat/test' doesn't exist
 ### Problem: "PR not found"
 
 **Symptoms**:
+
 ```python
 PRNotFoundError: PR #999 doesn't exist
 ```
@@ -318,6 +353,7 @@ PRNotFoundError: PR #999 doesn't exist
 **Solution**:
 
 1. **List all PRs**:
+
    ```bash
    # GitHub
    gh pr list
@@ -337,10 +373,13 @@ PRNotFoundError: PR #999 doesn't exist
 ### Problem: "Permission denied"
 
 **Symptoms**:
+
 ```bash
 gh: HTTP 403: Forbidden
 ```
+
 or
+
 ```bash
 az: AuthorizationFailed
 ```
@@ -354,6 +393,7 @@ az: AuthorizationFailed
    - Azure DevOps: Need "Contribute" permission
 
 2. **Verify permissions**:
+
    ```bash
    # GitHub - Check if ye can create issue
    gh issue list
@@ -379,6 +419,7 @@ az: AuthorizationFailed
 **Solution**:
 
 1. **Increase timeout** (if needed):
+
    ```python
    # Default timeout be 60 seconds fer CI checks
    # If yer CI be slower, wait longer before checkin'
@@ -388,6 +429,7 @@ az: AuthorizationFailed
    ```
 
 2. **Poll instead of block**:
+
    ```python
    import time
 
@@ -412,6 +454,7 @@ az: AuthorizationFailed
 ### Problem: "Operation times out"
 
 **Symptoms**:
+
 ```python
 subprocess.TimeoutExpired: Command timed out after 30 seconds
 ```
@@ -423,6 +466,7 @@ subprocess.TimeoutExpired: Command timed out after 30 seconds
 This be controlled internally by the bridge, but if ye frequently see timeouts:
 
 1. **Check network connection**:
+
    ```bash
    ping github.com
    # OR
@@ -430,6 +474,7 @@ This be controlled internally by the bridge, but if ye frequently see timeouts:
    ```
 
 2. **Check CLI tool directly**:
+
    ```bash
    # GitHub - Test gh directly
    time gh issue list
@@ -519,6 +564,7 @@ bridge = PlatformBridge()  # Will print debug info
 ```
 
 Debug output shows:
+
 - Detected platform
 - Git commands executed
 - CLI commands run
@@ -527,6 +573,7 @@ Debug output shows:
 ### Check CLI Tool Logs
 
 **GitHub CLI logs**:
+
 ```bash
 # See what gh commands be run
 export GH_DEBUG=api
@@ -535,6 +582,7 @@ export GH_DEBUG=api
 ```
 
 **Azure CLI logs**:
+
 ```bash
 # Enable Azure CLI logging
 az config set core.logging_enable=true
@@ -553,6 +601,7 @@ If ye still be havin' trouble:
    - [GitHub Issues](https://github.com/amplihack/amplihack/issues)
 
 2. **Gather information**:
+
    ```bash
    # Platform info
    uname -a

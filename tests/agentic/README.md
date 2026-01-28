@@ -13,6 +13,7 @@ node test-claude-plugin-pty.js
 ```
 
 This uses **node-pty** to create a real pseudo-terminal (PTY):
+
 - ✅ True virtual terminal (like SSH or tmux)
 - ✅ Claude Code detects proper TTY
 - ✅ Works in CI/CD without a display
@@ -27,6 +28,7 @@ cd tests/agentic
 ```
 
 This uses **expect** for TUI automation:
+
 - ✅ No Node.js dependencies
 - ✅ Simple bash script
 - ✅ Human-readable logs
@@ -35,6 +37,7 @@ This uses **expect** for TUI automation:
 ### View Results
 
 After running, check:
+
 ```bash
 # View test report
 cat evidence/claude-code-plugin-test-*/TEST_REPORT.md
@@ -111,32 +114,35 @@ ls -lh evidence/claude-code-plugin-test-*/
 A pseudo-terminal (PTY) is a pair of virtual character devices that provide a bidirectional communication channel. One end appears to be a real terminal (for the application), the other end is controlled by a program (our test).
 
 **How node-pty works:**
+
 ```javascript
-const pty = require('node-pty');
+const pty = require("node-pty");
 
 // Creates a real virtual terminal
-const ptyProcess = pty.spawn('claude', [
-  '--plugin-dir', '~/.amplihack/.claude/',
-  '--add-dir', '/tmp'
-], {
-  name: 'xterm-256color',  // Terminal type
-  cols: 120,               // Terminal width
-  rows: 40,                // Terminal height
-  env: { TERM: 'xterm-256color' }
-});
+const ptyProcess = pty.spawn(
+  "claude",
+  ["--plugin-dir", "~/.amplihack/.claude/", "--add-dir", "/tmp"],
+  {
+    name: "xterm-256color", // Terminal type
+    cols: 120, // Terminal width
+    rows: 40, // Terminal height
+    env: { TERM: "xterm-256color" },
+  }
+);
 
 // Send input
-ptyProcess.write('/plugin\r');
+ptyProcess.write("/plugin\r");
 
 // Receive output
 ptyProcess.onData((data) => {
-  if (data.includes('amplihack')) {
-    console.log('Plugin detected!');
+  if (data.includes("amplihack")) {
+    console.log("Plugin detected!");
   }
 });
 ```
 
 **Benefits:**
+
 - ✅ Claude Code sees a real terminal (isatty() returns true)
 - ✅ Works in CI/CD (no display needed)
 - ✅ TUI apps behave normally
@@ -146,6 +152,7 @@ ptyProcess.onData((data) => {
 #### Approach 2: expect (TCL Automation)
 
 **How expect works:**
+
 ```tcl
 #!/usr/bin/expect -f
 spawn claude --plugin-dir ~/.amplihack/.claude/ --add-dir /tmp
@@ -155,12 +162,14 @@ expect "amplihack"
 ```
 
 **Benefits:**
+
 - ✅ No compilation needed (pure script)
 - ✅ Battle-tested (since 1990)
 - ✅ Human-readable logs
 - ⚠️ Requires TTY in some environments
 
 **Evidence Collection** (Both Approaches):
+
 - Installation logs
 - File listings
 - TUI interaction captures
@@ -197,6 +206,7 @@ View TUI test log:
 ### Failure Output
 
 Each failed assertion shows:
+
 - ✗ Clear error message
 - Evidence file location
 - Debugging instructions
@@ -241,6 +251,7 @@ jobs:
 **Symptom**: Expect script timeouts waiting for Claude Code
 
 **Solutions**:
+
 1. Check Claude Code is installed: `which claude`
 2. Test manual launch: `claude --version`
 3. Increase timeout in expect script (default: 60s)
@@ -250,6 +261,7 @@ jobs:
 **Symptom**: TUI test fails to find amplihack in /plugin output
 
 **Debug Steps**:
+
 1. Check installation: `ls -lh ~/.amplihack/.claude/`
 2. Verify plugin.json: `cat ~/.amplihack/.claude/.claude-plugin/plugin.json`
 3. Manual test:
@@ -264,6 +276,7 @@ jobs:
 **Symptom**: uvx fails to install amplihack
 
 **Solutions**:
+
 1. Check network: `ping github.com`
 2. Verify branch exists: `git ls-remote https://github.com/rysweet/amplihack`
 3. Try different branch: `PLUGIN_BRANCH=main ./run-plugin-test.sh`
@@ -283,6 +296,7 @@ gadugi-agentic-test run claude-code-plugin-test.yaml
 ```
 
 Benefits:
+
 - Multi-agent orchestration
 - Richer reporting
 - Parallel test execution
@@ -291,6 +305,7 @@ Benefits:
 ### Additional Tests
 
 Planned test scenarios:
+
 - **Plugin updates**: Upgrade existing installation
 - **Multiple projects**: Shared plugin across projects
 - **LSP auto-detection**: Verify LSP servers configured
@@ -330,4 +345,4 @@ These tests follow amplihack's core principles:
 
 **Remember**: These tests verify the plugin works from the user's perspective. If the test passes, the plugin is working correctly!
 
-🏴‍☠️ *"We test like a pirate: direct, honest, and focused on the treasure (working software)!"* 🏴‍☠️
+🏴‍☠️ _"We test like a pirate: direct, honest, and focused on the treasure (working software)!"_ 🏴‍☠️

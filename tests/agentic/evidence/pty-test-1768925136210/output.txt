@@ -1,21 +1,21 @@
-[?2026h                                                                                                                        
+[?2026h
 [38;2;255;193;7m────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-[39m [38;2;255;193;7m[1mDo you want to work in this folder?[22m[39m                                                                                    
-                                                                                                                        
- [1m/tmp[22m                                                                                                                   
-                                                                                                                        
- In order to work in this folder, we need your permission for Claude Code to read, edit, and execute files.             
-                                                                                                                        
- If this folder has malicious code or untrusted scripts, Claude Code could run them while trying to help.               
-                                                                                                                        
- Only continue if this is your code or a project you trust.                                                             
-                                                                                                                        
- [38;2;153;153;153mSecurity details[39m                                                                                                       
-                                                                                                                        
- [38;2;177;185;249m❯[39m [38;2;153;153;153m1. [38;2;177;185;249mYes, continue[39m                                                                                                     
-   [38;2;153;153;153m2. [39mNo, exit                                                                                                          
-                                                                                                                        
- [38;2;153;153;153mEnter to confirm · Esc to cancel[39m                                                                                       
-[?2026l[?25l[?2004h[?1004h[?2026h[1C[1A[38;2;153;153;153mPress[1CCtrl-D again[1Cto exit[39m      
-[?2026l[?2026h[1C[1A[38;2;153;153;153mEnter[1Cto confirm ·[1CEsc to cancel[39m
+[39m [38;2;255;193;7m[1mDo you want to work in this folder?[22m[39m
+
+ [1m/tmp[22m
+
+ In order to work in this folder, we need your permission for Claude Code to read, edit, and execute files.
+
+ If this folder has malicious code or untrusted scripts, Claude Code could run them while trying to help.
+
+ Only continue if this is your code or a project you trust.
+
+ [38;2;153;153;153mSecurity details[39m
+
+ [38;2;177;185;249m❯[39m [38;2;153;153;153m1. [38;2;177;185;249mYes, continue[39m
+   [38;2;153;153;153m2. [39mNo, exit
+
+ [38;2;153;153;153mEnter to confirm · Esc to cancel[39m
+[?2026l[?25l[?2004h[?1004h[?2026h[1C[1A[38;2;153;153;153mPress[1CCtrl-D again[1Cto exit[39m
+[?2026l[?2026h[1C[1A[38;2;153;153;153mEnter[1Cto confirm ·[1CEsc to cancel[39m
 [?2026l[<u[?1004l[?2004l[?25h[?25h

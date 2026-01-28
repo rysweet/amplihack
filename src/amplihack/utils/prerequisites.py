@@ -29,7 +29,7 @@ import shutil
 import subprocess
 import sys
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 
@@ -345,7 +345,7 @@ class InteractiveInstaller:
             5. Log attempt to audit log
             6. Return result
         """
-        timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        timestamp = datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
         # Check for interactive environment
         if not self.is_interactive_environment():
@@ -483,12 +483,18 @@ class PrerequisiteChecker:
 
     # Required tools with their version check arguments
     # Note: Claude CLI is checked separately with auto-installation support
+    # Note: Native binaries (rustyclawd) are optional and checked separately
     REQUIRED_TOOLS = {
         "node": "--version",
         "npm": "--version",
         "uv": "--version",
         "git": "--version",
         "rg": "--version",  # ripgrep - required for custom slash commands
+    }
+
+    # Optional tools (checked but not required)
+    OPTIONAL_TOOLS = {
+        "rustyclawd": "--version",  # Native binary for enhanced trace logging
     }
 
     # Installation commands by platform and tool

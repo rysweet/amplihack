@@ -64,13 +64,13 @@ A **pseudo-terminal (PTY)** is a software-emulated terminal. It consists of two 
 - **Windows**: Uses ConPTY (Windows 10+) or WinPTY API
 
 ```javascript
-const pty = require('node-pty');
+const pty = require("node-pty");
 
 // This creates a REAL pseudo-terminal
-const ptyProcess = pty.spawn('claude', ['--help'], {
-  name: 'xterm-256color',
+const ptyProcess = pty.spawn("claude", ["--help"], {
+  name: "xterm-256color",
   cols: 80,
-  rows: 24
+  rows: 24,
 });
 
 // Now claude thinks it's running in a terminal!
@@ -100,11 +100,13 @@ expect "amplihack"
 **How it works**: `expect`'s `spawn` command creates a PTY internally.
 
 **Pros**:
+
 - ✅ Creates real PTY
 - ✅ No compilation needed
 - ✅ Simple syntax
 
 **Cons**:
+
 - ⚠️ TCL language (not mainstream)
 - ⚠️ Harder to debug
 - ⚠️ Less control over PTY settings
@@ -112,32 +114,34 @@ expect "amplihack"
 ### ✅ Approach 3: node-pty (BEST)
 
 ```javascript
-const pty = require('node-pty');
+const pty = require("node-pty");
 
-const ptyProcess = pty.spawn('claude', [
-  '--plugin-dir', '~/.amplihack/.claude/',
-  '--add-dir', '/tmp'
-], {
-  name: 'xterm-256color',
-  cols: 120,
-  rows: 40,
-  env: {
-    ...process.env,
-    TERM: 'xterm-256color'
+const ptyProcess = pty.spawn(
+  "claude",
+  ["--plugin-dir", "~/.amplihack/.claude/", "--add-dir", "/tmp"],
+  {
+    name: "xterm-256color",
+    cols: 120,
+    rows: 40,
+    env: {
+      ...process.env,
+      TERM: "xterm-256color",
+    },
   }
-});
+);
 
-ptyProcess.write('/plugin\r');
+ptyProcess.write("/plugin\r");
 
 ptyProcess.onData((data) => {
-  console.log('Received:', data);
-  if (data.includes('amplihack')) {
-    console.log('✅ Plugin detected!');
+  console.log("Received:", data);
+  if (data.includes("amplihack")) {
+    console.log("✅ Plugin detected!");
   }
 });
 ```
 
 **Why this is best**:
+
 - ✅ **Real PTY**: Creates actual pseudo-terminal (like SSH or tmux)
 - ✅ **Full control**: Set terminal size, type, environment
 - ✅ **Cross-platform**: Works on Linux, macOS, Windows
@@ -153,7 +157,7 @@ Gadugi-agentic-test framework uses node-pty for TUI testing:
 
 ```typescript
 // From gadugi-agentic-test/src/utils/terminal/PTYManager.ts
-import * as pty from 'node-pty';
+import * as pty from "node-pty";
 
 export class PTYManager extends EventEmitter {
   private pty: pty.IPty | null = null;
@@ -168,7 +172,7 @@ export class PTYManager extends EventEmitter {
 
     // Real PTY created!
     this.pty.onData((data: string) => {
-      this.emit('data', data);
+      this.emit("data", data);
     });
   }
 
@@ -188,6 +192,7 @@ export class PTYManager extends EventEmitter {
 ## Real-World Analogy
 
 ### Without PTY (Pipe)
+
 ```
 Test → stdout (pipe) → File
               ↓
@@ -197,6 +202,7 @@ Test → stdout (pipe) → File
 ```
 
 ### With PTY
+
 ```
 Test ←→ PTY Master ←→ PTY Slave ←→ TUI App
                                     ↓
@@ -205,6 +211,7 @@ Test ←→ PTY Master ←→ PTY Slave ←→ TUI App
 ```
 
 **It's like**:
+
 - **Without PTY**: Talking to someone through a hole in the wall (pipe)
 - **With PTY**: Using a phone (bidirectional, feels like they're there)
 
@@ -227,37 +234,43 @@ fn main() {
 ```
 
 **With regular pipe**:
+
 ```c
 isatty(STDIN_FILENO)  // Returns 0 (false) - not a TTY
 ```
 
 **With PTY**:
+
 ```c
 isatty(STDIN_FILENO)  // Returns 1 (true) - IS a TTY!
 ```
 
 ## Comparison Table
 
-| Method | Creates Real PTY? | Works in CI? | Cross-platform? | Easy to Debug? | Recommended |
-|--------|------------------|--------------|-----------------|----------------|-------------|
-| `command > file` | ❌ No | ✅ Yes | ✅ Yes | ✅ Yes | ❌ Doesn't work for TUIs |
-| `TERM=xterm` | ❌ No | ✅ Yes | ✅ Yes | ✅ Yes | ❌ Doesn't create TTY |
-| `expect` | ✅ Yes | ✅ Yes | ✅ Yes | ⚠️ Moderate | ✅ Good option |
-| `node-pty` | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes | ✅ **BEST** |
-| `script` command | ✅ Yes | ⚠️ Sometimes | ⚠️ Unix only | ⚠️ Moderate | ⚠️ Okay |
+| Method           | Creates Real PTY? | Works in CI? | Cross-platform? | Easy to Debug? | Recommended              |
+| ---------------- | ----------------- | ------------ | --------------- | -------------- | ------------------------ |
+| `command > file` | ❌ No             | ✅ Yes       | ✅ Yes          | ✅ Yes         | ❌ Doesn't work for TUIs |
+| `TERM=xterm`     | ❌ No             | ✅ Yes       | ✅ Yes          | ✅ Yes         | ❌ Doesn't create TTY    |
+| `expect`         | ✅ Yes            | ✅ Yes       | ✅ Yes          | ⚠️ Moderate    | ✅ Good option           |
+| `node-pty`       | ✅ Yes            | ✅ Yes       | ✅ Yes          | ✅ Yes         | ✅ **BEST**              |
+| `script` command | ✅ Yes            | ⚠️ Sometimes | ⚠️ Unix only    | ⚠️ Moderate    | ⚠️ Okay                  |
 
 ## Common Misconceptions
 
 ### ❌ "Setting TERM variable creates a terminal"
+
 **False**. `TERM` just tells programs what terminal features are available. It doesn't create a TTY.
 
 ### ❌ "Redirecting stdin creates an interactive session"
+
 **False**. `echo "/plugin" | claude` still shows stdin as a pipe, not a TTY.
 
 ### ❌ "Only Electron apps need PTY"
+
 **False**. ANY TUI application (vim, htop, Claude Code) needs a real terminal or PTY.
 
 ### ✅ "PTY is like SSH for local processes"
+
 **True**! SSH creates a PTY on the remote machine. node-pty does the same locally.
 
 ## Our Final Implementation
@@ -265,25 +278,30 @@ isatty(STDIN_FILENO)  // Returns 1 (true) - IS a TTY!
 We provide **three test options**:
 
 ### 1. **node-pty Test** (Recommended)
+
 ```bash
 cd tests/agentic
 npm install
 node test-claude-plugin-pty.js
 ```
+
 - Uses real PTY
 - Production-quality approach
 - What professionals use
 
 ### 2. **expect Test** (Alternative)
+
 ```bash
 cd tests/agentic
 ./run-plugin-test.sh
 ```
+
 - Uses expect (TCL)
 - No compilation needed
 - Simpler but less control
 
 ### 3. **Gadugi Framework** (Future)
+
 ```yaml
 # claude-code-plugin-test.yaml
 steps:
@@ -291,6 +309,7 @@ steps:
     command: claude
     # Gadugi uses PTYManager internally
 ```
+
 - Full framework integration
 - When gadugi is stable
 
@@ -312,7 +331,8 @@ steps:
 ---
 
 **🏴‍☠️ In pirate terms**:
+
 - **Regular pipe** = Messagin' in a bottle (one-way, no confirmation)
 - **PTY** = Ship-to-ship speakin' trumpet (two-way, feels like ye be there!)
 
-*Generated by amplihack agentic testing system on 2026-01-20*
+_Generated by amplihack agentic testing system on 2026-01-20_

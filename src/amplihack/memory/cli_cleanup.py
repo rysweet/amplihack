@@ -10,21 +10,24 @@ Philosophy:
 - User confirmation: Prompts before destructive operations
 
 Public API:
-    cleanup_memory_sessions: Main cleanup function
+    cleanup_memory_sessions: Main cleanup function (sync wrapper)
+    cleanup_memory_sessions_async: Async implementation
 """
 
+import asyncio
+import inspect
 import re
 import sys
 from typing import Any
 
 
-def cleanup_memory_sessions(
+async def cleanup_memory_sessions_async(
     backend: Any,
     pattern: str = "test_*",
     dry_run: bool = True,
     confirm: bool = False,
 ) -> dict[str, Any]:
-    """Clean up memory sessions matchin' a pattern.
+    """Clean up memory sessions matchin' a pattern (async version).
 
     Args:
         backend: Memory backend instance (must have list_sessions() and delete_session())
@@ -42,19 +45,24 @@ def cleanup_memory_sessions(
     Example:
         >>> from amplihack.memory.backends.kuzu_backend import KuzuBackend
         >>> backend = KuzuBackend()
-        >>> backend.initialize()
+        >>> await backend.initialize()
         >>> # Dry run (safe preview)
-        >>> result = cleanup_memory_sessions(backend, pattern="test_*")
+        >>> result = await cleanup_memory_sessions_async(backend, pattern="test_*")
         >>> print(f"Would delete {result['matched']} sessions")
         >>> # Actual deletion with confirmation
-        >>> result = cleanup_memory_sessions(backend, pattern="test_*", dry_run=False, confirm=True)
+        >>> result = await cleanup_memory_sessions_async(backend, pattern="test_*", dry_run=False, confirm=True)
     """
     # Convert glob pattern to regex
     regex_pattern = pattern.replace("*", ".*").replace("?", ".")
     regex = re.compile(f"^{regex_pattern}$")
 
     # Get all sessions from backend
-    sessions = backend.list_sessions()
+    sessions_result = backend.list_sessions()
+    # Handle both sync and async backends
+    if inspect.iscoroutine(sessions_result):
+        sessions = await sessions_result
+    else:
+        sessions = sessions_result
 
     # Filter sessions by pattern
     matched_sessions = [s for s in sessions if regex.match(s.session_id)]
@@ -102,7 +110,12 @@ def cleanup_memory_sessions(
 
     for session in matched_sessions:
         try:
-            success = backend.delete_session(session.session_id)
+            delete_result = backend.delete_session(session.session_id)
+            # Handle both sync and async backends
+            if inspect.iscoroutine(delete_result):
+                success = await delete_result
+            else:
+                success = delete_result
             if success:
                 deleted_count += 1
                 deleted_ids.append(session.session_id)
@@ -124,4 +137,41 @@ def cleanup_memory_sessions(
     }
 
 
-__all__ = ["cleanup_memory_sessions"]
+def cleanup_memory_sessions(
+    backend: Any,
+    pattern: str = "test_*",
+    dry_run: bool = True,
+    confirm: bool = False,
+) -> dict[str, Any]:
+    """Clean up memory sessions matchin' a pattern (sync wrapper).
+
+    This is a synchronous wrapper around cleanup_memory_sessions_async for
+    convenience in non-async contexts (CLI, tests, etc).
+
+    Args:
+        backend: Memory backend instance (must have list_sessions() and delete_session())
+        pattern: Session ID pattern (supports * wildcards, default: "test_*")
+        dry_run: If True, only show what would be deleted (default: True)
+        confirm: If True, skip confirmation prompt (default: False)
+
+    Returns:
+        Dictionary with cleanup statistics:
+            - matched: Number of sessions matched
+            - deleted: Number of sessions deleted
+            - errors: Number of errors encountered
+            - session_ids: List of affected session IDs
+
+    Example:
+        >>> from amplihack.memory.backends.kuzu_backend import KuzuBackend
+        >>> backend = KuzuBackend()
+        >>> backend.initialize()
+        >>> # Dry run (safe preview)
+        >>> result = cleanup_memory_sessions(backend, pattern="test_*")
+        >>> print(f"Would delete {result['matched']} sessions")
+        >>> # Actual deletion with confirmation
+        >>> result = cleanup_memory_sessions(backend, pattern="test_*", dry_run=False, confirm=True)
+    """
+    return asyncio.run(cleanup_memory_sessions_async(backend, pattern, dry_run, confirm))
+
+
+__all__ = ["cleanup_memory_sessions", "cleanup_memory_sessions_async"]

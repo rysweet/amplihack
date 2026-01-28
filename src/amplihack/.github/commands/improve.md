@@ -9,16 +9,16 @@
 - **name**: /reflect
 - **version**: 2.0.0
 - **description**: Continuous self-improvement with simplicity validation
-- **triggers**: 
-- **invokes**: 
+- **triggers**:
+- **invokes**:
 - **- type**: command
 - **path**: .claude/agents/amplihack/security.md
-- **philosophy**: 
+- **philosophy**:
 - **- principle**: Zero-BS Implementation
 - **application**: Progressive review prevents complexity accumulation
-- **dependencies**: 
-- **required**: 
-- **examples**: 
+- **dependencies**:
+- **required**:
+- **examples**:
 
 ---
 
@@ -28,6 +28,7 @@ This command is designed for Claude Code but the patterns and approaches
 can be referenced when using GitHub Copilot CLI.
 
 **Example**:
+
 ```bash
 # Reference this command's approach
 gh copilot explain .github/commands/improve.md
@@ -39,7 +40,6 @@ gh copilot suggest --context .github/commands/improve.md "your task"
 ---
 
 ## Original Command Documentation
-
 
 # Improve Command
 

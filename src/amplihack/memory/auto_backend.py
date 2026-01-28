@@ -130,10 +130,9 @@ class BackendDetector:
 
         # Check for environment override
         env_backend = os.getenv("AMPLIHACK_GRAPH_BACKEND", "").lower()
-        if env_backend == "neo4j":
-            raise RuntimeError(
-                "AMPLIHACK_GRAPH_BACKEND=neo4j but Neo4j support has been removed. "
-                "Use AMPLIHACK_GRAPH_BACKEND=kuzu or remove the variable."
+        if env_backend and env_backend != "kuzu":
+            logger.warning(
+                f"AMPLIHACK_GRAPH_BACKEND={env_backend} not recognized. Using Kuzu (only supported backend)."
             )
 
         # Check if Kùzu available
@@ -179,7 +178,9 @@ class BackendDetector:
         """
         return {
             "kuzu_available": self.kuzu_available,
-            "recommended_backend": self.detect_best_backend().value if self.kuzu_available else "none",
+            "recommended_backend": self.detect_best_backend().value
+            if self.kuzu_available
+            else "none",
         }
 
 
@@ -190,7 +191,7 @@ def get_connector() -> Any:
     """Get a graph database connector using auto-detection.
 
     Returns:
-        KuzuConnector or Neo4jConnector instance
+        KuzuConnector instance
 
     Example:
         with get_connector() as conn:

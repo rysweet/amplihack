@@ -13,20 +13,19 @@ Public API:
     LanguageDetector: Main language detection class
 """
 
-from pathlib import Path
-from dataclasses import dataclass
-from typing import List, Dict, Optional, Set
 import fnmatch
+from dataclasses import dataclass
+from pathlib import Path
 
 
 @dataclass
 class LanguageDetection:
     """Result of language detection scan."""
 
-    language: str           # e.g., "python", "typescript"
-    file_count: int        # Number of files detected
-    primary: bool          # True if this is primary project language
-    markers: List[str]     # Framework markers found (e.g., "package.json")
+    language: str  # e.g., "python", "typescript"
+    file_count: int  # Number of files detected
+    primary: bool  # True if this is primary project language
+    markers: list[str]  # Framework markers found (e.g., "package.json")
 
 
 class LanguageDetector:
@@ -131,7 +130,7 @@ class LanguageDetector:
         ".nuxt",
     }
 
-    def __init__(self, project_root: Path, max_languages: Optional[int] = None):
+    def __init__(self, project_root: Path, max_languages: int | None = None):
         """Initialize language detector.
 
         Args:
@@ -140,11 +139,11 @@ class LanguageDetector:
         """
         self.project_root = Path(project_root)
         self.max_languages = max_languages
-        self._gitignore_patterns: Optional[List[str]] = None
+        self._gitignore_patterns: list[str] | None = None
         # Load gitignore patterns on init
         self._load_gitignore()
 
-    def detect_languages(self, max_languages: Optional[int] = None) -> Dict[str, int]:
+    def detect_languages(self, max_languages: int | None = None) -> dict[str, int]:
         """Detect all programming languages in project.
 
         Args:
@@ -157,7 +156,7 @@ class LanguageDetector:
             >>> detector.detect_languages()
             {'python': 23, 'yaml': 2}
         """
-        language_counts: Dict[str, int] = {}
+        language_counts: dict[str, int] = {}
 
         # Scan all files in project
         for file_path in self._scan_project_files():
@@ -167,9 +166,7 @@ class LanguageDetector:
                     language_counts[language] = language_counts.get(language, 0) + 1
 
         # Sort by count descending
-        sorted_languages = dict(
-            sorted(language_counts.items(), key=lambda x: x[1], reverse=True)
-        )
+        sorted_languages = dict(sorted(language_counts.items(), key=lambda x: x[1], reverse=True))
 
         # Apply max limit from parameter or init
         limit = max_languages if max_languages is not None else self.max_languages
@@ -178,7 +175,7 @@ class LanguageDetector:
 
         return sorted_languages
 
-    def detect_languages_with_confidence(self) -> Dict[str, int]:
+    def detect_languages_with_confidence(self) -> dict[str, int]:
         """Detect languages with confidence scores (file counts).
 
         Returns:
@@ -190,7 +187,7 @@ class LanguageDetector:
         """
         return self.detect_languages()
 
-    def get_primary_language(self) -> Optional[str]:
+    def get_primary_language(self) -> str | None:
         """Identify the primary language of the project.
 
         Primary language determined by:
@@ -218,7 +215,7 @@ class LanguageDetector:
 
         return None
 
-    def detect_language_frameworks(self, language: str) -> List[str]:
+    def detect_language_frameworks(self, language: str) -> list[str]:
         """Detect frameworks for a specific language.
 
         Args:
@@ -244,7 +241,7 @@ class LanguageDetector:
 
         return markers_found
 
-    def _scan_project_files(self) -> List[Path]:
+    def _scan_project_files(self) -> list[Path]:
         """Scan project directory for all files, respecting ignored dirs.
 
         Returns:
@@ -283,16 +280,13 @@ class LanguageDetector:
 
             for pattern in self._gitignore_patterns:
                 # Handle directory patterns (ending with /)
-                if pattern.endswith('/'):
+                if pattern.endswith("/"):
                     dir_pattern = pattern[:-1]
                     # Check if path is inside this directory
                     if dir_pattern in parts:
                         return True
                 # Handle wildcard patterns
-                elif fnmatch.fnmatch(filename, pattern):
-                    return True
-                # Handle exact path matches
-                elif fnmatch.fnmatch(relative_path, pattern):
+                elif fnmatch.fnmatch(filename, pattern) or fnmatch.fnmatch(relative_path, pattern):
                     return True
 
         return False
@@ -305,11 +299,11 @@ class LanguageDetector:
             return
 
         patterns = []
-        with open(gitignore_path, 'r') as f:
+        with open(gitignore_path) as f:
             for line in f:
                 line = line.strip()
                 # Skip comments and empty lines
-                if line and not line.startswith('#'):
+                if line and not line.startswith("#"):
                     patterns.append(line)
 
         self._gitignore_patterns = patterns
@@ -330,7 +324,7 @@ class LanguageDetector:
         extensions = self.LANGUAGE_DEFINITIONS[language]["extensions"]
         return file_path.suffix in extensions
 
-    def get_file_extensions_for_language(self, language: str) -> List[str]:
+    def get_file_extensions_for_language(self, language: str) -> list[str]:
         """Get file extensions for a specific language.
 
         Args:
@@ -344,7 +338,7 @@ class LanguageDetector:
 
         return self.LANGUAGE_DEFINITIONS[language]["extensions"]
 
-    def get_extensions_for_language(self, language: str) -> List[str]:
+    def get_extensions_for_language(self, language: str) -> list[str]:
         """Alias for get_file_extensions_for_language.
 
         Args:

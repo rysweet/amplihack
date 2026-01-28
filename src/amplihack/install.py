@@ -296,7 +296,7 @@ def _local_install(repo_root, profile_uri=None):
     pyproject_path = os.path.join(os.getcwd(), "pyproject.toml")
     if os.path.exists(pyproject_path):
         try:
-            with open(pyproject_path, 'r') as f:
+            with open(pyproject_path) as f:
                 content = f.read()
                 is_source_repo = 'name = "amplihack"' in content
         except Exception:

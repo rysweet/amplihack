@@ -35,10 +35,12 @@ def test_bundle_registration_removed():
     content = bundle_file.read_text()
 
     # Should NOT contain memory-manager registration
-    assert "amplihack:memory-manager:" not in content, \
+    assert "amplihack:memory-manager:" not in content, (
         "bundle.md should not contain memory-manager registration"
-    assert "agents/specialized/memory-manager.md" not in content, \
+    )
+    assert "agents/specialized/memory-manager.md" not in content, (
         "bundle.md should not reference memory-manager.md"
+    )
 
 
 def test_agent_performance_skill_removed():
@@ -67,8 +69,9 @@ def test_readme_agent_table_updated():
 
     # Should NOT contain memory-manager row in agent table
     # Looking for the pattern: | [**memory-manager**]
-    assert "[**memory-manager**]" not in content, \
+    assert "[**memory-manager**]" not in content, (
         "README.md should not have memory-manager in agent table"
+    )
 
 
 def test_memory_hook_still_exists():
@@ -77,15 +80,18 @@ def test_memory_hook_still_exists():
     memory_hook = repo_root / ".claude/tools/amplihack/hooks/agent_memory_hook.py"
 
     # File should exist
-    assert memory_hook.exists(), \
+    assert memory_hook.exists(), (
         "agent_memory_hook.py should still exist (actual memory implementation)"
+    )
 
     # Should contain core memory functionality
     content = memory_hook.read_text()
-    assert "def detect_agent_references" in content, \
+    assert "def detect_agent_references" in content, (
         "Memory hook should contain detect_agent_references function"
-    assert "def inject_memory_for_agents" in content or "MemoryCoordinator" in content, \
+    )
+    assert "def inject_memory_for_agents" in content or "MemoryCoordinator" in content, (
         "Memory hook should contain memory injection functionality"
+    )
 
 
 def test_no_code_references_memory_manager():
@@ -94,18 +100,28 @@ def test_no_code_references_memory_manager():
 
     # Search for any code references (excluding test files and archives)
     result = subprocess.run(
-        ["git", "grep", "-l", "amplihack:memory-manager",
-         "--", "*.py", "*.yaml", "*.json", "*.md",
-         ":!tests/test_memory_manager_removed.py",
-         ":!*.backup.*"],
+        [
+            "git",
+            "grep",
+            "-l",
+            "amplihack:memory-manager",
+            "--",
+            "*.py",
+            "*.yaml",
+            "*.json",
+            "*.md",
+            ":!tests/test_memory_manager_removed.py",
+            ":!*.backup.*",
+        ],
         cwd=repo_root,
         capture_output=True,
-        text=True
+        text=True,
     )
 
     # Should find no matches (exit code 1 means no matches in git grep)
-    assert result.returncode == 1, \
+    assert result.returncode == 1, (
         f"Found code references to amplihack:memory-manager:\n{result.stdout}"
+    )
 
 
 if __name__ == "__main__":

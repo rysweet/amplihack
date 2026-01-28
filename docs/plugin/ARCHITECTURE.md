@@ -126,10 +126,7 @@ Location: `~/.amplihack/.claude/.claude-plugin/plugin.json`
 
   "lsp": {
     "auto_detect": true,
-    "supported_languages": [
-      "python", "javascript", "typescript",
-      "rust", "go", "java", "cpp"
-    ]
+    "supported_languages": ["python", "javascript", "typescript", "rust", "go", "java", "cpp"]
   },
 
   "settings_merger": {
@@ -251,6 +248,7 @@ The plugin automatically detects project languages and configures appropriate La
    - Go: `*.go`, `go.mod`
 
 2. Check if LSP server is installed:
+
    ```bash
    # Python
    which pylsp
@@ -263,6 +261,7 @@ The plugin automatically detects project languages and configures appropriate La
    ```
 
 3. Generate LSP configuration:
+
    ```json
    {
      "lsp": {
@@ -377,10 +376,12 @@ The plugin registers itself in Claude Code's configuration at:
 
 ```json
 {
-  "plugins": [{
-    "name": "amplihack",
-    "path": "~/.amplihack/.claude/"
-  }]
+  "plugins": [
+    {
+      "name": "amplihack",
+      "path": "~/.amplihack/.claude/"
+    }
+  ]
 }
 ```
 
@@ -447,15 +448,15 @@ Plugin loading adds minimal overhead to IDE startup:
 
 ## Comparison with Per-Project Mode
 
-| Aspect | Per-Project Mode | Plugin Mode |
-|--------|------------------|-------------|
-| **Installation Size** | 5.2 MB × N projects | 5.2 MB (shared) |
-| **Updates** | Per project | Single command |
-| **Version Consistency** | Drift possible | Always consistent |
-| **Merge Conflicts** | Frequent | None (settings only) |
-| **Disk Usage (10 projects)** | ~52 MB | ~5.2 MB |
-| **Update Time** | N × 30 seconds | 30 seconds |
-| **Configuration** | Duplicate settings | Override pattern |
+| Aspect                       | Per-Project Mode    | Plugin Mode          |
+| ---------------------------- | ------------------- | -------------------- |
+| **Installation Size**        | 5.2 MB × N projects | 5.2 MB (shared)      |
+| **Updates**                  | Per project         | Single command       |
+| **Version Consistency**      | Drift possible      | Always consistent    |
+| **Merge Conflicts**          | Frequent            | None (settings only) |
+| **Disk Usage (10 projects)** | ~52 MB              | ~5.2 MB              |
+| **Update Time**              | N × 30 seconds      | 30 seconds           |
+| **Configuration**            | Duplicate settings  | Override pattern     |
 
 ## Extensibility
 
@@ -491,9 +492,7 @@ Projects can override or extend commands:
 // project/.claude/settings.json
 {
   "commands": {
-    "custom_commands": [
-      "./local-commands/domain-analyze.py"
-    ],
+    "custom_commands": ["./local-commands/domain-analyze.py"],
     "override_commands": {
       "/analyze": "./local-commands/custom-analyze.py"
     }
@@ -509,9 +508,7 @@ Projects can define custom workflows:
 // project/.claude/settings.json
 {
   "workflows": {
-    "custom_workflows": [
-      "./workflows/COMPLIANCE_WORKFLOW.md"
-    ],
+    "custom_workflows": ["./workflows/COMPLIANCE_WORKFLOW.md"],
     "default": "COMPLIANCE_WORKFLOW"
   }
 }

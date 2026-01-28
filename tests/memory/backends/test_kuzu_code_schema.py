@@ -311,15 +311,16 @@ class TestKuzuCodeSchemaTableStructure:
             calls = [str(call) for call in mock_conn.execute.call_args_list]
             codefile_calls = [c for c in calls if "CodeFile" in str(c)]
 
-            # Minimal schema as implemented in PR #2087
-            # Full schema documented in KUZU_CODE_SCHEMA.md can be added later
             required_properties = [
                 "file_id",
                 "file_path",
                 "language",
                 "size_bytes",
+                "line_count",
                 "last_modified",
-                "created_at",
+                "git_hash",
+                "module_name",
+                "is_test",
                 "metadata",
             ]
 
@@ -344,15 +345,17 @@ class TestKuzuCodeSchemaTableStructure:
             calls = [str(call) for call in mock_conn.execute.call_args_list]
             class_calls = [c for c in calls if "Class" in str(c) and "NODE TABLE" in str(c)]
 
-            # Minimal schema as implemented in PR #2087
-            # Full schema documented in KUZU_CODE_SCHEMA.md can be added later
             required_properties = [
                 "class_id",
                 "class_name",
                 "fully_qualified_name",
+                "line_start",
+                "line_end",
                 "docstring",
                 "is_abstract",
-                "created_at",
+                "is_interface",
+                "access_modifier",
+                "decorators",
                 "metadata",
             ]
 
@@ -377,17 +380,21 @@ class TestKuzuCodeSchemaTableStructure:
             calls = [str(call) for call in mock_conn.execute.call_args_list]
             func_calls = [c for c in calls if "Function" in str(c) and "NODE TABLE" in str(c)]
 
-            # Minimal schema as implemented in PR #2087
-            # Full schema documented in KUZU_CODE_SCHEMA.md can be added later
             required_properties = [
                 "function_id",
                 "function_name",
                 "fully_qualified_name",
-                "signature",
+                "line_start",
+                "line_end",
                 "docstring",
+                "signature",
+                "return_type",
                 "is_async",
-                "cyclomatic_complexity",
-                "created_at",
+                "is_method",
+                "is_static",
+                "access_modifier",
+                "decorators",
+                "complexity_score",
                 "metadata",
             ]
 

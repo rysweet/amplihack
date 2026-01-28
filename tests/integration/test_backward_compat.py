@@ -13,17 +13,18 @@ These tests are written BEFORE implementation (TDD).
 All tests should FAIL initially.
 """
 
-import os
 import json
+import os
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
 # Import will fail until implementation exists
 try:
-    from amplihack.launcher import detect_claude_directory, ModeDetector
     from amplihack.migration import MigrationHelper
+
+    from amplihack.launcher import ModeDetector, detect_claude_directory
 except ImportError:
     detect_claude_directory = None
     ModeDetector = None
@@ -63,7 +64,7 @@ class TestClaudeDirectoryDetection:
         # Arrange
         os.chdir(project_dir)
 
-        with patch('pathlib.Path.home') as mock_home:
+        with patch("pathlib.Path.home") as mock_home:
             mock_home.return_value = Path("/nonexistent")
 
             # Act
@@ -79,7 +80,7 @@ class TestClaudeDirectoryDetection:
         # Arrange
         os.chdir(project_dir)
 
-        with patch('pathlib.Path.home', return_value=plugin_claude_dir.parent.parent):
+        with patch("pathlib.Path.home", return_value=plugin_claude_dir.parent.parent):
             # Act
             detected = detect_claude_directory()
 
@@ -92,20 +93,21 @@ class TestClaudeDirectoryDetection:
         # Arrange
         os.chdir(project_dir)
 
-        with patch('pathlib.Path.home', return_value=plugin_claude_dir.parent.parent):
+        with patch("pathlib.Path.home", return_value=plugin_claude_dir.parent.parent):
             # Act
             detected = detect_claude_directory()
 
             # Assert - LOCAL must take precedence
-            assert detected == local_claude_dir, \
+            assert detected == local_claude_dir, (
                 "Local .claude must take precedence over plugin when both exist"
+            )
 
     def test_returns_none_when_neither_exists(self, project_dir):
         """Test returns None when no .claude directory found."""
         # Arrange
         os.chdir(project_dir)
 
-        with patch('pathlib.Path.home') as mock_home:
+        with patch("pathlib.Path.home") as mock_home:
             mock_home.return_value = Path("/nonexistent")
 
             # Act
@@ -119,7 +121,7 @@ class TestClaudeDirectoryDetection:
         # Arrange
         os.chdir(project_dir)
 
-        with patch('pathlib.Path.home', return_value=Path("/nonexistent")):
+        with patch("pathlib.Path.home", return_value=Path("/nonexistent")):
             # Act
             detect_claude_directory()
             captured = capsys.readouterr()
@@ -152,7 +154,7 @@ class TestModeDetector:
         project_dir = tmp_path / "project"
         project_dir.mkdir()
 
-        with patch('pathlib.Path.home') as mock_home:
+        with patch("pathlib.Path.home") as mock_home:
             home = tmp_path / "home"
             home.mkdir()
             (home / ".amplihack" / ".claude").mkdir(parents=True)
@@ -171,7 +173,7 @@ class TestModeDetector:
         project_dir = tmp_path / "project"
         project_dir.mkdir()
 
-        with patch('pathlib.Path.home', return_value=Path("/nonexistent")):
+        with patch("pathlib.Path.home", return_value=Path("/nonexistent")):
             # Act
             mode = detector.detect(project_dir)
 
@@ -186,7 +188,7 @@ class TestModeDetector:
         project_dir.mkdir()
         (project_dir / ".claude").mkdir()
 
-        with patch('pathlib.Path.home') as mock_home:
+        with patch("pathlib.Path.home") as mock_home:
             home = tmp_path / "home"
             home.mkdir()
             (home / ".amplihack" / ".claude").mkdir(parents=True)
@@ -217,7 +219,7 @@ class TestPrecedenceRules:
         (local_context / "PHILOSOPHY.md").write_text("# Local Philosophy")
 
         # Create plugin context
-        with patch('pathlib.Path.home') as mock_home:
+        with patch("pathlib.Path.home") as mock_home:
             home = tmp_path / "home"
             home.mkdir()
             plugin_claude = home / ".amplihack" / ".claude"
@@ -250,7 +252,7 @@ class TestPrecedenceRules:
         hooks_json.write_text(json.dumps({"source": "local"}))
 
         # Create plugin hooks
-        with patch('pathlib.Path.home') as mock_home:
+        with patch("pathlib.Path.home") as mock_home:
             home = tmp_path / "home"
             plugin_claude = home / ".amplihack" / ".claude"
             (plugin_claude / "tools" / "amplihack" / "hooks").mkdir(parents=True)
@@ -306,7 +308,7 @@ class TestMigrationHelper:
         project_dir.mkdir()
         (project_dir / ".claude").mkdir()
 
-        with patch('pathlib.Path.home') as mock_home:
+        with patch("pathlib.Path.home") as mock_home:
             home = tmp_path / "home"
             home.mkdir()
             mock_home.return_value = home
@@ -332,7 +334,7 @@ class TestMigrationHelper:
         (local_claude / "context").mkdir()
         (local_claude / "context" / "PROJECT.md").write_text("# Custom Project")
 
-        with patch('pathlib.Path.home') as mock_home:
+        with patch("pathlib.Path.home") as mock_home:
             home = tmp_path / "home"
             home.mkdir()
             mock_home.return_value = home
@@ -356,7 +358,7 @@ class TestMigrationHelper:
         local_claude = project_dir / ".claude"
         local_claude.mkdir()
 
-        with patch('pathlib.Path.home') as mock_home:
+        with patch("pathlib.Path.home") as mock_home:
             home = tmp_path / "home"
             home.mkdir()
             mock_home.return_value = home
@@ -379,7 +381,7 @@ class TestDualModeScenarios:
         project_dir.mkdir()
         (project_dir / ".claude").mkdir()
 
-        with patch('pathlib.Path.home') as mock_home:
+        with patch("pathlib.Path.home") as mock_home:
             home = tmp_path / "home"
             (home / ".amplihack" / ".claude").mkdir(parents=True)
             mock_home.return_value = home
@@ -402,7 +404,7 @@ class TestDualModeScenarios:
         local_claude.mkdir()
         (local_claude / "marker.txt").write_text("local")
 
-        with patch('pathlib.Path.home') as mock_home:
+        with patch("pathlib.Path.home") as mock_home:
             home = tmp_path / "home"
             plugin_claude = home / ".amplihack" / ".claude"
             plugin_claude.mkdir(parents=True)
@@ -425,7 +427,7 @@ class TestDualModeScenarios:
         project_dir.mkdir()
         (project_dir / ".claude").mkdir()
 
-        with patch('pathlib.Path.home') as mock_home:
+        with patch("pathlib.Path.home") as mock_home:
             home = tmp_path / "home"
             plugin_claude = home / ".amplihack" / ".claude"
             plugin_claude.mkdir(parents=True)

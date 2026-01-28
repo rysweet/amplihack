@@ -2,7 +2,7 @@
 """
 Analyze Trace Logs
 
-Analyze claude-trace JSONL logs to extract user prompt and response patterns.
+Analyze amplihack trace JSONL logs to extract user prompt and response patterns.
 """
 
 import argparse
@@ -16,7 +16,7 @@ from typing import Any
 
 
 class TraceLogAnalyzer:
-    """Analyzes claude-trace JSONL logs for user patterns."""
+    """Analyzes amplihack trace JSONL logs for user patterns."""
 
     def __init__(self):
         """Initialize analyzer."""
@@ -66,7 +66,7 @@ class TraceLogAnalyzer:
         user_messages = []
         for entry in entries:
             try:
-                # Handle claude-trace format: request.body.messages
+                # Handle amplihack trace format: request.body.messages
                 if "request" in entry and "body" in entry["request"]:
                     messages = entry["request"]["body"].get("messages", [])
                 elif "request" in entry:
@@ -508,13 +508,13 @@ class TraceLogAnalyzer:
 def main():
     """Main entry point for trace log analysis."""
     parser = argparse.ArgumentParser(
-        description="Analyze claude-trace JSONL logs for user patterns"
+        description="Analyze amplihack trace JSONL logs for user patterns"
     )
     parser.add_argument(
         "log_dir",
         nargs="?",
         default=None,
-        help="Directory containing trace logs (default: .claude-trace in project root)",
+        help="Directory containing trace logs (default: .claude/runtime/amplihack-traces)",
     )
     parser.add_argument(
         "--output",
@@ -536,9 +536,14 @@ def main():
     if args.log_dir:
         log_dir = Path(args.log_dir).resolve()
     else:
-        # Find project root and use .claude-trace
+        # Find project root and use .claude/runtime/amplihack-traces (new location)
+        # Fallback to .amplihack trace for backwards compatibility
         project_root = Path(__file__).parent.parent.parent.parent
-        log_dir = project_root / ".claude-trace"
+        log_dir = project_root / ".claude" / "runtime" / "amplihack-traces"
+        if not log_dir.exists():
+            old_log_dir = project_root / ".amplihack trace"
+            if old_log_dir.exists():
+                log_dir = old_log_dir
 
     # Determine output path
     if args.output:

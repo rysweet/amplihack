@@ -182,9 +182,9 @@ def run_integration_tests():
             traceback.print_exc()
             failed += 1
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Integration Tests: {passed} passed, {failed} failed")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     return failed == 0
 

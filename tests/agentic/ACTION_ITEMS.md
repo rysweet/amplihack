@@ -12,12 +12,14 @@
 **Where**: https://github.com/rysweet/amplihack/settings/secrets/actions
 
 **Steps**:
+
 1. Click **"New repository secret"**
 2. Name: `ANTHROPIC_API_KEY`
 3. Value: Your Anthropic API key (get from https://console.anthropic.com)
 4. Click **"Add secret"**
 
 **Why**: The Claude Code CLI needs authentication to run. Without this secret, CI tests will fail with:
+
 ```
 Error: No API key found
 ```
@@ -27,15 +29,18 @@ Error: No API key found
 ### 2. Decide: Push to Main or Feature Branch?
 
 **Current Situation**:
+
 - We have 5 commits on `main` branch
 - PR #1973 is on `feat/issue-1948-plugin-architecture` branch
 
 **Option A: Push to Main (Simplest)**
+
 ```bash
 git push origin main
 ```
 
 **Option B: Move to Feature Branch (For PR)**
+
 ```bash
 # Checkout feature branch
 git checkout feat/issue-1948-plugin-architecture
@@ -136,28 +141,30 @@ See `tests/agentic/CI_REQUIREMENTS.md` for setup instructions.
 
 ## 📊 What Gets Tested in CI
 
-| Test Step | PTY Job | Shell Job |
-|-----------|---------|-----------|
-| Install amplihack via UVX | ✅ | ✅ |
-| Verify AMPLIHACK.md deployed | ✅ | ✅ |
-| Verify 80+ skills deployed | ✅ | ✅ |
-| Verify plugin.json | ✅ | ✅ |
-| Launch Claude Code with PTY | ✅ | ✅ |
-| Send /plugin command | ✅ | ✅ |
-| Detect "amplihack" | ✅ | ✅ |
-| Upload evidence | ✅ | ✅ |
+| Test Step                    | PTY Job | Shell Job |
+| ---------------------------- | ------- | --------- |
+| Install amplihack via UVX    | ✅      | ✅        |
+| Verify AMPLIHACK.md deployed | ✅      | ✅        |
+| Verify 80+ skills deployed   | ✅      | ✅        |
+| Verify plugin.json           | ✅      | ✅        |
+| Launch Claude Code with PTY  | ✅      | ✅        |
+| Send /plugin command         | ✅      | ✅        |
+| Detect "amplihack"           | ✅      | ✅        |
+| Upload evidence              | ✅      | ✅        |
 
 ---
 
 ## 🎯 SUCCESS METRICS
 
 ### Local Test: ✅ PASSED
+
 ```
 ✓ TEST PASSED: amplihack plugin detected!
 Evidence: tests/agentic/evidence/pty-test-1768925248693/
 ```
 
 ### Expected CI Result: ✅ PASS (after API key added)
+
 ```
 ✓ test-plugin job completed
 ✓ test-plugin-shell job completed
@@ -176,6 +183,7 @@ uvx --refresh --from git+https://github.com/rysweet/amplihack@feat/issue-1948-pl
 ```
 
 **Then verify:**
+
 ```bash
 claude --plugin-dir ~/.amplihack/.claude/ --add-dir /tmp
 # Type: /plugin
@@ -193,6 +201,7 @@ claude --plugin-dir ~/.amplihack/.claude/ --add-dir /tmp
 **CI workflow created**: ✅
 
 **BLOCKERS**:
+
 - ⚠️ Need ANTHROPIC_API_KEY in GitHub secrets
 - ⚠️ May want to move commits to feature branch
 
@@ -200,4 +209,4 @@ claude --plugin-dir ~/.amplihack/.claude/ --add-dir /tmp
 
 ---
 
-*Generated 2026-01-20 - amplihack agentic testing complete*
+_Generated 2026-01-20 - amplihack agentic testing complete_

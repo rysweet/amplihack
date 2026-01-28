@@ -27,7 +27,13 @@ scenario:
   steps:
     - action: launch
       target: "amplihack"
-      args: ["claude", "--", "-p", "Task(subagent_type=\"guide\", prompt=\"I want to understand our codebase without changing anything. Can you show me how to use the Q&A workflow? What kinds of questions can I ask?\")"]
+      args:
+        [
+          "claude",
+          "--",
+          "-p",
+          'Task(subagent_type="guide", prompt="I want to understand our codebase without changing anything. Can you show me how to use the Q&A workflow? What kinds of questions can I ask?")',
+        ]
       description: "Ask about Q&A workflow usage for codebase exploration"
       timeout: 90s
 

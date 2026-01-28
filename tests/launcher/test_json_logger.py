@@ -10,10 +10,7 @@ import json
 import tempfile
 from pathlib import Path
 
-import pytest
-
 from amplihack.launcher.json_logger import JsonLogger
-
 
 # UNIT TESTS (70%)
 
@@ -51,10 +48,7 @@ class TestJsonLoggerEventFormat:
         with tempfile.TemporaryDirectory() as tmpdir:
             logger = JsonLogger(Path(tmpdir))
 
-            logger.log_event(
-                "turn_start",
-                {"turn": 1, "phase": "clarifying", "max_turns": 20}
-            )
+            logger.log_event("turn_start", {"turn": 1, "phase": "clarifying", "max_turns": 20})
 
             # Read and parse the JSONL file
             with open(logger.log_file) as f:
@@ -72,10 +66,7 @@ class TestJsonLoggerEventFormat:
         with tempfile.TemporaryDirectory() as tmpdir:
             logger = JsonLogger(Path(tmpdir))
 
-            logger.log_event(
-                "turn_complete",
-                {"turn": 5, "duration_sec": 135.42, "success": True}
-            )
+            logger.log_event("turn_complete", {"turn": 5, "duration_sec": 135.42, "success": True})
 
             with open(logger.log_file) as f:
                 event = json.loads(f.readline())
@@ -90,10 +81,7 @@ class TestJsonLoggerEventFormat:
         with tempfile.TemporaryDirectory() as tmpdir:
             logger = JsonLogger(Path(tmpdir))
 
-            logger.log_event(
-                "agent_invoked",
-                {"agent": "builder", "turn": 5}
-            )
+            logger.log_event("agent_invoked", {"agent": "builder", "turn": 5})
 
             with open(logger.log_file) as f:
                 event = json.loads(f.readline())
@@ -110,7 +98,7 @@ class TestJsonLoggerEventFormat:
             logger.log_event(
                 "error",
                 {"turn": 3, "error_type": "timeout", "message": "Turn timed out"},
-                level="ERROR"
+                level="ERROR",
             )
 
             with open(logger.log_file) as f:
@@ -168,6 +156,7 @@ class TestJsonLoggerMultipleEvents:
             assert "timestamp" in events[1]
             # Timestamps should be different (or at least not fail parsing)
             from datetime import datetime
+
             datetime.fromisoformat(events[0]["timestamp"])
             datetime.fromisoformat(events[1]["timestamp"])
 
@@ -232,7 +221,7 @@ class TestJsonLoggerFullWorkflow:
             logger.log_event(
                 "error",
                 {"turn": 4, "error_type": "timeout", "message": "Turn timed out"},
-                level="ERROR"
+                level="ERROR",
             )
             logger.log_event("turn_complete", {"turn": 4, "duration_sec": 600.0, "success": False})
 

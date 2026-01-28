@@ -47,6 +47,7 @@ This file documents non-obvious problems, solutions, and patterns discovered dur
 During LSP auto-configuration work (PR #1958), I incorrectly concluded that LSP tools weren't working in Claude Code 2.1.6 and created elaborate "race condition bug" explanations for a non-existent problem.
 
 **What I Did Wrong**:
+
 - Never actually tested the LSP tool using the `LSP()` function
 - Only tested external observation (asking Claude to "list tools")
 - Assumed LSP wasn't working based on indirect evidence
@@ -54,6 +55,7 @@ During LSP auto-configuration work (PR #1958), I incorrectly concluded that LSP 
 - Filed issue #1978 documenting this incorrect analysis
 
 **The Reality**:
+
 - LSP tool was fully functional the entire time
 - Plugins were correctly installed
 - Binaries were in PATH
@@ -63,6 +65,7 @@ During LSP auto-configuration work (PR #1958), I incorrectly concluded that LSP 
 ### Root Cause
 
 **Confusion between "tool visibility" and "tool availability"**:
+
 - ✅ **Tool availability**: Can Claude Code USE the tool? (The important question)
 - ❌ **Tool visibility**: Does tool appear in some list? (Irrelevant)
 
@@ -94,6 +97,7 @@ LSP(operation="hover", filePath="file.py", line=10, character=5)
 4. **Assumptions are dangerous** - Direct testing trumps all theory
 
 **Example Applied to LSP**:
+
 ```python
 # Step 1: Test if it works (FIRST)
 result = LSP(operation="hover", filePath="test.py", line=1, character=1)
@@ -115,12 +119,14 @@ if error → Check plugin installation, binaries, config, etc.
 ### Impact
 
 **Wasted Effort**:
+
 - Created comprehensive "upstream bug" analysis that was incorrect
 - Filed issue #1978 based on wrong assumptions
 - Delayed PR #1958 merge based on non-existent blocker
 - Generated 6 separate "test approaches" for a working feature
 
 **Corrected Analysis**:
+
 - LSP auto-configuration works perfectly in Claude Code 2.1.6
 - All infrastructure is production-ready
 - PR #1958 ready to merge immediately
@@ -136,6 +142,7 @@ if error → Check plugin installation, binaries, config, etc.
 ### Lesson for Future Investigations
 
 **Before concluding a tool doesn't work**:
+
 1. ✅ Call the tool directly with realistic parameters
 2. ✅ Verify actual functionality with multiple operations
 3. ✅ Test in current session (not theoretical future sessions)
@@ -233,6 +240,7 @@ When state verification passes (PR mergeable + CI passing), it can override tran
 **Root Cause**: Hook integration has async/await bug where async memory functions are called without `await` keyword.
 
 **Evidence**:
+
 - Kuzu v0.11.3 installed and importable ✓
 - Database file exists at `~/.amplihack/memory_kuzu.db` (36KB) ✓
 - Database has 0 nodes (verified with `MATCH (n) RETURN count(n)`) ✗
@@ -252,6 +260,7 @@ enhanced_prompt, memory_metadata = inject_memory_for_agents(
 ```
 
 **Fix Required**:
+
 ```python
 # Make hook method async
 async def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
@@ -262,17 +271,20 @@ async def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
 ```
 
 **Impact**:
+
 - Memory system completely non-functional despite correct architecture
 - Silent failure - no errors shown to user
 - Database initializes but never stores data
 - Hooks execute but memory operations are no-ops
 
 **Supporting Evidence**:
+
 - `agent_memory_hook.py` lines 96-169: `async def inject_memory_for_agents()`
 - `agent_memory_hook.py` lines 171-244: `async def extract_learnings_from_conversation()`
 - Both are async but called without await in hooks
 
 **Architecture Findings**:
+
 - Kuzu auto-selection works correctly ✓
 - Auto-installation feature works (AMPLIHACK_NO_AUTO_INSTALL to disable) ✓
 - Lazy initialization pattern works ✓
@@ -280,11 +292,13 @@ async def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
 - Graceful fallback to SQLite works ✓
 
 **Related Issues**:
+
 - Similar async bugs may exist in other hooks
 - Error swallowing prevents bug detection (logged as warnings only)
 - No runtime verification of memory system functionality
 
 **Solution Path**:
+
 1. Fix async/await in user_prompt_submit.py hook
 2. Make hook process() method async
 3. Verify Claude Code hooks support async execution
@@ -292,12 +306,14 @@ async def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
 5. Make errors visible instead of silently logged
 
 **Prevention**:
+
 - Add async/await linting checks
 - Require type hints showing async functions
 - Add integration tests that verify memory storage
 - Create `/amplihack:memory-status` command to verify system works
 
 **Related Patterns**:
+
 - Async Context Management (PATTERNS.md)
 - Fail-Fast Prerequisite Checking (PATTERNS.md)
 
@@ -1623,7 +1639,7 @@ Investigation triggered by system reminder messages showing "SessionStart:startu
       {
         "type": "command",
         "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
-        "timeout": 10000
+        "timeout": 10
       }
     ]
   }
@@ -1710,7 +1726,7 @@ Our configuration **matches the official schema exactly**:
       {
         "type": "command",
         "command": "$CLAUDE_PROJECT_DIR/.claude/tools/amplihack/hooks/session_start.py",
-        "timeout": 10000
+        "timeout": 10
       }
     ]
   }

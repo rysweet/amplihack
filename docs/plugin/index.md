@@ -26,18 +26,18 @@ The amplihack Claude Code plugin transforms amplihack from a directory-based dis
 
 For users who want to install and use amplihack:
 
-| Document | Purpose | Audience |
-|----------|---------|----------|
-| [README](./README.md) | Overview and quick start | All users |
-| [PLUGIN_INSTALLATION](./PLUGIN_INSTALLATION.md) | Installation and setup | New users |
-| [LSP_CONFIGURATION](./LSP_CONFIGURATION.md) | Language server setup | Power users |
+| Document                                        | Purpose                  | Audience    |
+| ----------------------------------------------- | ------------------------ | ----------- |
+| [README](./README.md)                           | Overview and quick start | All users   |
+| [PLUGIN_INSTALLATION](./PLUGIN_INSTALLATION.md) | Installation and setup   | New users   |
+| [LSP_CONFIGURATION](./LSP_CONFIGURATION.md)     | Language server setup    | Power users |
 
 ### Developer Guides
 
 For contributors and plugin developers:
 
-| Document | Purpose | Audience |
-|----------|---------|----------|
+| Document                                      | Purpose            | Audience   |
+| --------------------------------------------- | ------------------ | ---------- |
 | [PLUGIN_DEVELOPMENT](./PLUGIN_DEVELOPMENT.md) | Contributing guide | Developers |
 
 ## Quick Start
@@ -138,16 +138,19 @@ See detailed troubleshooting in:
 ### Quick Fixes
 
 **Plugin not found**:
+
 ```bash
 amplihack plugin install --force
 ```
 
 **Commands not available**:
+
 ```bash
 amplihack plugin link --force
 ```
 
 **LSP not working**:
+
 ```bash
 amplihack plugin lsp-detect --force
 ```

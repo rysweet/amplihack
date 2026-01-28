@@ -23,8 +23,10 @@ Schema:
         (Memory)-[CHILD_OF]->(Memory)  # For hierarchical memories
 """
 
+import asyncio
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -73,6 +75,9 @@ class KuzuBackend:
         # Initialize code graph integration (lazy loaded)
         self._code_graph: KuzuCodeGraph | None = None
 
+        # Thread pool for async operations (4 workers for Kuzu's multi-threading)
+        self._executor = ThreadPoolExecutor(max_workers=4)
+
     def get_capabilities(self) -> BackendCapabilities:
         """Get Kùzu backend capabilities."""
         return BackendCapabilities(
@@ -85,19 +90,8 @@ class KuzuBackend:
             backend_version="0.x",
         )
 
-    def initialize(self) -> None:
-        """Initialize Kùzu schema with 5 memory types + 3 code types.
-
-        Creates node and relationship tables:
-        - 5 memory node types (Episodic, Semantic, Procedural, Prospective, Working)
-        - 3 code node types (CodeFile, Class, Function)
-        - Session and Agent nodes
-        - 11 memory relationship types
-        - 8 code relationship types
-        - 10 memory-code link types
-
-        Idempotent - safe to call multiple times.
-        """
+    def _initialize_sync(self) -> None:
+        """Synchronous initialization helper for executor."""
         try:
             # Create Session node table (first-class citizen)
             self.connection.execute("""
@@ -130,7 +124,6 @@ class KuzuBackend:
             self.connection.execute("""
                 CREATE NODE TABLE IF NOT EXISTS EpisodicMemory(
                     memory_id STRING,
-                    session_id STRING,
                     timestamp TIMESTAMP,
                     content STRING,
                     event_type STRING,
@@ -151,7 +144,6 @@ class KuzuBackend:
             self.connection.execute("""
                 CREATE NODE TABLE IF NOT EXISTS SemanticMemory(
                     memory_id STRING,
-                    session_id STRING,
                     concept STRING,
                     content STRING,
                     category STRING,
@@ -172,7 +164,6 @@ class KuzuBackend:
             self.connection.execute("""
                 CREATE NODE TABLE IF NOT EXISTS ProceduralMemory(
                     memory_id STRING,
-                    session_id STRING,
                     procedure_name STRING,
                     description STRING,
                     steps STRING,
@@ -196,7 +187,6 @@ class KuzuBackend:
             self.connection.execute("""
                 CREATE NODE TABLE IF NOT EXISTS ProspectiveMemory(
                     memory_id STRING,
-                    session_id STRING,
                     intention STRING,
                     trigger_condition STRING,
                     priority STRING,
@@ -220,7 +210,6 @@ class KuzuBackend:
             self.connection.execute("""
                 CREATE NODE TABLE IF NOT EXISTS WorkingMemory(
                     memory_id STRING,
-                    session_id STRING,
                     content STRING,
                     memory_type STRING,
                     priority INT64,
@@ -542,42 +531,6 @@ class KuzuBackend:
                 )
             """)
 
-            # Create indexes for session_id on all 5 memory node types for performance
-            try:
-                self.connection.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_episodic_session ON EpisodicMemory(session_id)"
-                )
-            except Exception:
-                pass  # Index may already exist
-
-            try:
-                self.connection.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_semantic_session ON SemanticMemory(session_id)"
-                )
-            except Exception:
-                pass
-
-            try:
-                self.connection.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_procedural_session ON ProceduralMemory(session_id)"
-                )
-            except Exception:
-                pass
-
-            try:
-                self.connection.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_prospective_session ON ProspectiveMemory(session_id)"
-                )
-            except Exception:
-                pass
-
-            try:
-                self.connection.execute(
-                    "CREATE INDEX IF NOT EXISTS idx_working_session ON WorkingMemory(session_id)"
-                )
-            except Exception:
-                pass
-
             logger.info(
                 "Kùzu schema initialized successfully: 5 memory types + 3 code types (23 node tables, 28 relationship tables)"
             )
@@ -586,8 +539,24 @@ class KuzuBackend:
             logger.error(f"Error initializing Kùzu schema: {e}")
             raise
 
-    def store_memory(self, memory: MemoryEntry) -> bool:
-        """Store a memory entry in appropriate node type based on memory_type.
+    async def initialize(self) -> None:
+        """Initialize Kùzu schema with 5 memory types + 3 code types.
+
+        Creates node and relationship tables:
+        - 5 memory node types (Episodic, Semantic, Procedural, Prospective, Working)
+        - 3 code node types (CodeFile, Class, Function)
+        - Session and Agent nodes
+        - 11 memory relationship types
+        - 8 code relationship types
+        - 10 memory-code link types
+
+        Idempotent - safe to call multiple times.
+        """
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(self._executor, self._initialize_sync)
+
+    def _store_memory_sync(self, memory: MemoryEntry) -> bool:
+        """Store a memory entry in appropriate node type based on memory_type (sync helper).
 
         Routes to one of 5 node types:
         - EPISODIC → EpisodicMemory (session-specific events)
@@ -619,7 +588,6 @@ class KuzuBackend:
                     """
                     CREATE (m:EpisodicMemory {
                         memory_id: $memory_id,
-                        session_id: $session_id,
                         timestamp: $timestamp,
                         content: $content,
                         event_type: $event_type,
@@ -636,7 +604,6 @@ class KuzuBackend:
                 """,
                     {
                         "memory_id": memory.id,
-                        "session_id": memory.session_id,
                         "timestamp": memory.created_at,
                         "content": memory.content,
                         "event_type": memory.metadata.get("event_type", "general"),
@@ -672,7 +639,6 @@ class KuzuBackend:
                     """
                     CREATE (m:SemanticMemory {
                         memory_id: $memory_id,
-                        session_id: $session_id,
                         concept: $concept,
                         content: $content,
                         category: $category,
@@ -689,7 +655,6 @@ class KuzuBackend:
                 """,
                     {
                         "memory_id": memory.id,
-                        "session_id": memory.session_id,
                         "concept": memory.title,  # Use title as concept
                         "content": memory.content,
                         "category": memory.metadata.get("category", "general"),
@@ -731,7 +696,6 @@ class KuzuBackend:
                     """
                     CREATE (m:ProceduralMemory {
                         memory_id: $memory_id,
-                        session_id: $session_id,
                         procedure_name: $procedure_name,
                         description: $description,
                         steps: $steps,
@@ -751,7 +715,6 @@ class KuzuBackend:
                 """,
                     {
                         "memory_id": memory.id,
-                        "session_id": memory.session_id,
                         "procedure_name": memory.title,
                         "description": memory.content,
                         "steps": json.dumps(memory.metadata.get("steps", [])),
@@ -796,7 +759,6 @@ class KuzuBackend:
                     """
                     CREATE (m:ProspectiveMemory {
                         memory_id: $memory_id,
-                        session_id: $session_id,
                         intention: $intention,
                         trigger_condition: $trigger_condition,
                         priority: $priority,
@@ -816,7 +778,6 @@ class KuzuBackend:
                 """,
                     {
                         "memory_id": memory.id,
-                        "session_id": memory.session_id,
                         "intention": memory.content,
                         "trigger_condition": memory.metadata.get("trigger_condition", ""),
                         "priority": memory.metadata.get("priority", "medium"),
@@ -855,7 +816,6 @@ class KuzuBackend:
                     """
                     CREATE (m:WorkingMemory {
                         memory_id: $memory_id,
-                        session_id: $session_id,
                         content: $content,
                         memory_type: $memory_type,
                         priority: $priority,
@@ -871,7 +831,6 @@ class KuzuBackend:
                 """,
                     {
                         "memory_id": memory.id,
-                        "session_id": memory.session_id,
                         "content": memory.content,
                         "memory_type": memory.metadata.get("memory_type", "goal"),
                         "priority": memory.metadata.get("priority", 0),
@@ -917,6 +876,29 @@ class KuzuBackend:
             logger.error(f"Error storing memory in Kùzu: {e}", exc_info=True)
             return False
 
+    async def store_memory(self, memory: MemoryEntry) -> bool:
+        """Store a memory entry in appropriate node type based on memory_type.
+
+        Routes to one of 5 node types:
+        - EPISODIC → EpisodicMemory (session-specific events)
+        - SEMANTIC → SemanticMemory (cross-session knowledge)
+        - PROCEDURAL → ProceduralMemory (how-to knowledge)
+        - PROSPECTIVE → ProspectiveMemory (future intentions)
+        - WORKING → WorkingMemory (active task state)
+
+        Creates appropriate relationships to Session and Agent.
+
+        Args:
+            memory: Memory entry to store
+
+        Returns:
+            True if successful, False otherwise
+
+        Performance: <500ms (node + edge creation)
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(self._executor, self._store_memory_sync, memory)
+
     def _create_session_node(self, session_id: str, timestamp: datetime) -> None:
         """Create or update Session node."""
         self.connection.execute(
@@ -961,8 +943,8 @@ class KuzuBackend:
             },
         )
 
-    def retrieve_memories(self, query: MemoryQuery) -> list[MemoryEntry]:
-        """Retrieve memories matching the query.
+    def _retrieve_memories_sync(self, query: MemoryQuery) -> list[MemoryEntry]:
+        """Retrieve memories matching the query (sync helper).
 
         Uses Cypher queries fer graph traversal across all 5 memory node types.
 
@@ -1009,6 +991,22 @@ class KuzuBackend:
             logger.error(f"Error retrieving memories from Kùzu: {e}")
             return []
 
+    async def retrieve_memories(self, query: MemoryQuery) -> list[MemoryEntry]:
+        """Retrieve memories matching the query.
+
+        Uses Cypher queries fer graph traversal across all 5 memory node types.
+
+        Args:
+            query: Query parameters
+
+        Returns:
+            List of matching memory entries
+
+        Performance: <50ms (indexed lookups)
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(self._executor, self._retrieve_memories_sync, query)
+
     def _get_node_label_for_type(self, memory_type: MemoryType) -> str:
         """Map MemoryType to node label."""
         type_to_label = {
@@ -1026,10 +1024,6 @@ class KuzuBackend:
         where_conditions = []
         params = {}
 
-        if query.session_id:
-            where_conditions.append("m.session_id = $session_id")
-            params["session_id"] = query.session_id
-
         if query.agent_id:
             where_conditions.append("m.agent_id = $agent_id")
             params["agent_id"] = query.agent_id
@@ -1046,13 +1040,7 @@ class KuzuBackend:
             where_conditions.append("m.created_at <= $created_before")
             params["created_before"] = query.created_before
 
-        # Only check expires_at for node types that have it
-        # (EpisodicMemory, ProspectiveMemory, WorkingMemory have expires_at)
-        if not query.include_expired and node_label in [
-            "EpisodicMemory",
-            "ProspectiveMemory",
-            "WorkingMemory",
-        ]:
+        if not query.include_expired:
             where_conditions.append("(m.expires_at IS NULL OR m.expires_at > $now)")
             params["now"] = datetime.now()
 
@@ -1090,7 +1078,7 @@ class KuzuBackend:
             # Parse node properties
             memory = MemoryEntry(
                 id=memory_node["memory_id"],
-                session_id=memory_node["session_id"],
+                session_id=memory_node.get("session_id", "unknown"),
                 agent_id=memory_node["agent_id"],
                 memory_type=memory_type,
                 title=memory_node["title"],
@@ -1132,8 +1120,8 @@ class KuzuBackend:
         }
         return label_to_type.get(node_label, MemoryType.EPISODIC)  # Default fallback
 
-    def get_memory_by_id(self, memory_id: str) -> MemoryEntry | None:
-        """Get a specific memory by ID.
+    def _get_memory_by_id_sync(self, memory_id: str) -> MemoryEntry | None:
+        """Get a specific memory by ID (sync helper).
 
         Searches across all 5 node types to find the memory.
 
@@ -1181,7 +1169,7 @@ class KuzuBackend:
                     # Parse to MemoryEntry
                     return MemoryEntry(
                         id=memory_node["memory_id"],
-                        session_id=memory_node["session_id"],
+                        session_id=memory_node.get("session_id", "unknown"),
                         agent_id=memory_node["agent_id"],
                         memory_type=memory_type,
                         title=memory_node["title"],
@@ -1204,8 +1192,24 @@ class KuzuBackend:
             logger.error(f"Error getting memory by ID from Kùzu: {e}")
             return None
 
-    def delete_memory(self, memory_id: str) -> bool:
-        """Delete a memory entry and its relationships.
+    async def get_memory_by_id(self, memory_id: str) -> MemoryEntry | None:
+        """Get a specific memory by ID.
+
+        Searches across all 5 node types to find the memory.
+
+        Args:
+            memory_id: Unique memory identifier
+
+        Returns:
+            Memory entry if found, None otherwise
+
+        Performance: <50ms (primary key lookup)
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(self._executor, self._get_memory_by_id_sync, memory_id)
+
+    def _delete_memory_sync(self, memory_id: str) -> bool:
+        """Delete a memory entry and its relationships (sync helper).
 
         Searches across all 5 node types to find and delete the memory.
 
@@ -1255,8 +1259,24 @@ class KuzuBackend:
             logger.error(f"Error deleting memory from Kùzu: {e}")
             return False
 
-    def cleanup_expired(self) -> int:
-        """Remove expired memory entries.
+    async def delete_memory(self, memory_id: str) -> bool:
+        """Delete a memory entry and its relationships.
+
+        Searches across all 5 node types to find and delete the memory.
+
+        Args:
+            memory_id: Unique memory identifier
+
+        Returns:
+            True if deleted, False otherwise
+
+        Performance: <100ms (node + edge deletion)
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(self._executor, self._delete_memory_sync, memory_id)
+
+    def _cleanup_expired_sync(self) -> int:
+        """Remove expired memory entries (sync helper).
 
         Returns:
             Number of entries removed
@@ -1284,8 +1304,19 @@ class KuzuBackend:
             logger.error(f"Error cleaning up expired memories from Kùzu: {e}")
             return 0
 
-    def get_session_info(self, session_id: str) -> SessionInfo | None:
-        """Get information about a session.
+    async def cleanup_expired(self) -> int:
+        """Remove expired memory entries.
+
+        Returns:
+            Number of entries removed
+
+        Performance: No strict limit (periodic maintenance)
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(self._executor, self._cleanup_expired_sync)
+
+    def _get_session_info_sync(self, session_id: str) -> SessionInfo | None:
+        """Get information about a session (sync helper).
 
         Args:
             session_id: Session identifier
@@ -1329,8 +1360,22 @@ class KuzuBackend:
             logger.error(f"Error getting session info from Kùzu: {e}")
             return None
 
-    def list_sessions(self, limit: int | None = None) -> list[SessionInfo]:
-        """List all sessions ordered by last accessed.
+    async def get_session_info(self, session_id: str) -> SessionInfo | None:
+        """Get information about a session.
+
+        Args:
+            session_id: Session identifier
+
+        Returns:
+            Session information if found
+
+        Performance: <50ms (graph traversal)
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(self._executor, self._get_session_info_sync, session_id)
+
+    def _list_sessions_sync(self, limit: int | None = None) -> list[SessionInfo]:
+        """List all sessions ordered by last accessed (sync helper).
 
         Args:
             limit: Maximum number of sessions to return
@@ -1382,8 +1427,22 @@ class KuzuBackend:
             logger.error(f"Error listing sessions from Kùzu: {e}")
             return []
 
-    def delete_session(self, session_id: str) -> bool:
-        """Delete a session and all its associated memories.
+    async def list_sessions(self, limit: int | None = None) -> list[SessionInfo]:
+        """List all sessions ordered by last accessed.
+
+        Args:
+            limit: Maximum number of sessions to return
+
+        Returns:
+            List of session information
+
+        Performance: <100ms (graph scan)
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(self._executor, self._list_sessions_sync, limit)
+
+    def _delete_session_sync(self, session_id: str) -> bool:
+        """Delete a session and all its associated memories (sync helper).
 
         Args:
             session_id: Session identifier to delete
@@ -1435,8 +1494,22 @@ class KuzuBackend:
             logger.error(f"Error deletin' session from Kùzu: {e}")
             return False
 
-    def get_stats(self) -> dict[str, Any]:
-        """Get database statistics.
+    async def delete_session(self, session_id: str) -> bool:
+        """Delete a session and all its associated memories.
+
+        Args:
+            session_id: Session identifier to delete
+
+        Returns:
+            True if session was deleted, False otherwise
+
+        Performance: <500ms (cascading delete of session + all memories)
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(self._executor, self._delete_session_sync, session_id)
+
+    def _get_stats_sync(self) -> dict[str, Any]:
+        """Get database statistics (sync helper).
 
         Counts across all 5 memory node types.
 
@@ -1524,8 +1597,21 @@ class KuzuBackend:
             logger.error(f"Error getting stats from Kùzu: {e}")
             return {}
 
-    def close(self) -> None:
-        """Close Kùzu connection and cleanup resources.
+    async def get_stats(self) -> dict[str, Any]:
+        """Get database statistics.
+
+        Counts across all 5 memory node types.
+
+        Returns:
+            Dictionary with backend statistics
+
+        Performance: <100ms (graph aggregations)
+        """
+        loop = asyncio.get_event_loop()
+        return await loop.run_in_executor(self._executor, self._get_stats_sync)
+
+    def _close_sync(self) -> None:
+        """Close Kùzu connection and cleanup resources (sync helper).
 
         Idempotent - safe to call multiple times.
         """
@@ -1536,6 +1622,15 @@ class KuzuBackend:
                 del self.database
         except Exception as e:
             logger.error(f"Error closing Kùzu connection: {e}")
+
+    async def close(self) -> None:
+        """Close Kùzu connection and cleanup resources.
+
+        Idempotent - safe to call multiple times.
+        """
+        loop = asyncio.get_event_loop()
+        await loop.run_in_executor(self._executor, self._close_sync)
+        self._executor.shutdown(wait=True)
 
     def _get_code_graph(self) -> KuzuCodeGraph:
         """Lazy-load KuzuCodeGraph instance.
@@ -1795,14 +1890,62 @@ class KuzuBackend:
             logger.debug(f"Error linking memory to functions: {e}")
             return 0
 
-    def __enter__(self):
-        """Context manager entry."""
+    async def __aenter__(self):
+        """Async context manager entry."""
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit with proper cleanup."""
-        self.close()
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """Async context manager exit with proper cleanup."""
+        await self.close()
         return False
+
+    def _has_old_schema(self) -> bool:
+        """Check if old Memory table exists in database.
+
+        Returns:
+            True if old schema exists, False otherwise
+        """
+        try:
+            # Try to query old Memory table
+            result = self.connection.execute(
+                """
+                MATCH (m:Memory)
+                RETURN COUNT(m) AS count
+                LIMIT 1
+            """
+            )
+            # If query succeeds, old schema exists
+            return result.has_next()
+        except Exception:
+            # If query fails, old schema doesn't exist
+            return False
+
+    def migrate_to_new_schema(self) -> bool:
+        """Migrate data from old Memory table to new 5-node schema.
+
+        This is a stub for future migration implementation.
+
+        Returns:
+            True if migration successful, False otherwise
+        """
+        try:
+            if not self._has_old_schema():
+                logger.info("No old schema detected, skipping migration")
+                return True
+
+            logger.warning("Migration from old schema not yet implemented")
+            # TODO: Implement migration logic
+            # 1. Query all nodes from old Memory table
+            # 2. Route each to appropriate new node type based on memory_type
+            # 3. Create proper relationships (Session, Agent)
+            # 4. Verify data integrity
+            # 5. Optionally remove old Memory table
+
+            return False
+
+        except Exception as e:
+            logger.error(f"Error during schema migration: {e}")
+            return False
 
 
 __all__ = ["KuzuBackend"]

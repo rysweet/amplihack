@@ -20,17 +20,15 @@ Options:
 """
 
 import argparse
-import json
 import re
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional
 
 
 class CommandsConverter:
     """Converts Claude Code commands to Copilot-friendly docs."""
 
-    def __init__(self, root_dir: Optional[Path] = None):
+    def __init__(self, root_dir: Path | None = None):
         """Initialize converter.
 
         Args:
@@ -49,7 +47,7 @@ class CommandsConverter:
             current = current.parent
         raise RuntimeError("Could not find repository root (.claude/ directory)")
 
-    def convert_all(self) -> Dict[str, bool]:
+    def convert_all(self) -> dict[str, bool]:
         """Convert all commands.
 
         Returns:
@@ -141,11 +139,11 @@ class CommandsConverter:
         lines.append("")
         lines.append("**Example**:")
         lines.append("```bash")
-        lines.append(f"# Reference this command's approach")
+        lines.append("# Reference this command's approach")
         lines.append(f"gh copilot explain .github/commands/{command_name}.md")
         lines.append("")
-        lines.append(f"# Use patterns from this command")
-        lines.append(f"gh copilot suggest --context .github/commands/{command_name}.md \"your task\"")
+        lines.append("# Use patterns from this command")
+        lines.append(f'gh copilot suggest --context .github/commands/{command_name}.md "your task"')
         lines.append("```")
         lines.append("")
         lines.append("---")
@@ -159,7 +157,7 @@ class CommandsConverter:
 
         return "\n".join(lines)
 
-    def _extract_frontmatter(self, content: str) -> Dict[str, str]:
+    def _extract_frontmatter(self, content: str) -> dict[str, str]:
         """Extract YAML frontmatter.
 
         Args:
@@ -176,7 +174,7 @@ class CommandsConverter:
         if not end_match:
             return {}
 
-        frontmatter_text = content[3:end_match.start()]
+        frontmatter_text = content[3 : end_match.start()]
 
         # Parse simple YAML (key: value pairs)
         frontmatter = {}
@@ -204,7 +202,7 @@ class CommandsConverter:
         if not end_match:
             return content
 
-        return content[end_match.end():]
+        return content[end_match.end() :]
 
     def _convert_at_notation(self, content: str) -> str:
         """Convert @ notation to relative paths.
@@ -219,11 +217,7 @@ class CommandsConverter:
         content = content.replace("@.claude/", "../../.claude/")
 
         # Replace [@file](path) with relative path
-        content = re.sub(
-            r"\[@([^\]]+)\]\(([^)]+)\)",
-            r"[\1](../../\2)",
-            content
-        )
+        content = re.sub(r"\[@([^\]]+)\]\(([^)]+)\)", r"[\1](../../\2)", content)
 
         return content
 
@@ -244,11 +238,9 @@ class CommandsConverter:
             content = command_file.read_text()
             description = self._extract_description(content)
 
-            commands.append({
-                "name": command_name,
-                "file": command_file.name,
-                "description": description
-            })
+            commands.append(
+                {"name": command_name, "file": command_file.name, "description": description}
+            )
 
         # Create README
         lines = []
@@ -264,8 +256,8 @@ class CommandsConverter:
             lines.append("")
             lines.append(f"**File**: `{cmd['file']}`")
             lines.append("")
-            if cmd['description']:
-                lines.append(cmd['description'])
+            if cmd["description"]:
+                lines.append(cmd["description"])
                 lines.append("")
             lines.append(f"**View**: `gh copilot explain .github/commands/{cmd['file']}`")
             lines.append("")
@@ -312,7 +304,9 @@ class CommandsConverter:
 
 def main():
     """Main entry point."""
-    parser = argparse.ArgumentParser(description="Convert Claude Code commands to Copilot-friendly docs")
+    parser = argparse.ArgumentParser(
+        description="Convert Claude Code commands to Copilot-friendly docs"
+    )
     parser.add_argument("--watch", action="store_true", help="Watch for changes and auto-convert")
     parser.add_argument("--command", help="Convert specific command only")
 

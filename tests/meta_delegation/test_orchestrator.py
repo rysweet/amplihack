@@ -61,8 +61,9 @@ class TestMetaDelegationResult:
 
     def test_result_get_evidence_by_type(self):
         """Test filtering evidence by type."""
-        from amplihack.meta_delegation.evidence_collector import EvidenceItem
         from datetime import datetime
+
+        from amplihack.meta_delegation.evidence_collector import EvidenceItem
 
         evidence = [
             EvidenceItem(
@@ -110,12 +111,15 @@ class TestRunMetaDelegation:
     @pytest.fixture
     def mock_components(self):
         """Mock all orchestrator components."""
-        with patch("amplihack.meta_delegation.platform_cli.get_platform_cli") as mock_platform, \
-             patch("amplihack.meta_delegation.persona.get_persona_strategy") as mock_persona, \
-             patch("amplihack.meta_delegation.state_machine.SubprocessStateMachine") as mock_sm, \
-             patch("amplihack.meta_delegation.evidence_collector.EvidenceCollector") as mock_ec, \
-             patch("amplihack.meta_delegation.success_evaluator.SuccessCriteriaEvaluator") as mock_se:
-
+        with (
+            patch("amplihack.meta_delegation.platform_cli.get_platform_cli") as mock_platform,
+            patch("amplihack.meta_delegation.persona.get_persona_strategy") as mock_persona,
+            patch("amplihack.meta_delegation.state_machine.SubprocessStateMachine") as mock_sm,
+            patch("amplihack.meta_delegation.evidence_collector.EvidenceCollector") as mock_ec,
+            patch(
+                "amplihack.meta_delegation.success_evaluator.SuccessCriteriaEvaluator"
+            ) as mock_se,
+        ):
             # Configure mocks
             mock_platform_instance = Mock()
             mock_platform_instance.spawn_subprocess.return_value = Mock(pid=123)
@@ -243,13 +247,14 @@ class TestMetaDelegationOrchestrator:
 
     def test_orchestrate_delegation_complete_flow(self, orchestrator):
         """Test complete delegation orchestration flow."""
-        with patch.object(orchestrator, "initialize_components"), \
-             patch.object(orchestrator, "spawn_subprocess"), \
-             patch.object(orchestrator, "monitor_execution"), \
-             patch.object(orchestrator, "collect_evidence"), \
-             patch.object(orchestrator, "evaluate_success"), \
-             patch.object(orchestrator, "cleanup"):
-
+        with (
+            patch.object(orchestrator, "initialize_components"),
+            patch.object(orchestrator, "spawn_subprocess"),
+            patch.object(orchestrator, "monitor_execution"),
+            patch.object(orchestrator, "collect_evidence"),
+            patch.object(orchestrator, "evaluate_success"),
+            patch.object(orchestrator, "cleanup"),
+        ):
             result = orchestrator.orchestrate_delegation(
                 goal="Task",
                 success_criteria="Done",
@@ -396,7 +401,9 @@ class TestMetaDelegationErrorHandling:
         """Test timeout raises DelegationTimeout exception."""
         from amplihack.meta_delegation import DelegationTimeout
 
-        with patch("amplihack.meta_delegation.orchestrator.MetaDelegationOrchestrator") as mock_orch:
+        with patch(
+            "amplihack.meta_delegation.orchestrator.MetaDelegationOrchestrator"
+        ) as mock_orch:
             mock_instance = Mock()
             mock_instance.orchestrate_delegation.side_effect = DelegationTimeout(
                 elapsed_minutes=31.0,
