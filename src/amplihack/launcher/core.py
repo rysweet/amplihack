@@ -1167,10 +1167,11 @@ class ClaudeLauncher:
                 print(f"✓ Available languages: {', '.join(result.available_languages)}")
             if result.unavailable_languages:
                 print(f"⚠️  Skipping languages: {', '.join(result.unavailable_languages)}")
-                for lang in result.unavailable_languages:
-                    status = result.language_statuses.get(lang)
-                    if status and status.error_message:
-                        print(f"   - {lang}: {status.error_message}")
+                if result.language_statuses:
+                    for lang in result.unavailable_languages:
+                        status = result.language_statuses.get(lang)
+                        if status and status.error_message:
+                            print(f"   - {lang}: {status.error_message}")
 
             # Step 2: Get Kuzu connector
             kuzu_db_path = Path.home() / ".amplihack" / "memory_kuzu.db"
@@ -1187,8 +1188,8 @@ class ClaudeLauncher:
             )
 
             if indexing_result.success:
-                print(f"\n✅ Indexed {indexing_result.files_indexed} files")
-                logger.info("Blarify import complete: %s files", indexing_result.files_indexed)
+                print(f"\n✅ Indexed {indexing_result.total_files} files")
+                logger.info("Blarify import complete: %s files", indexing_result.total_files)
                 return True
             print("\n⚠️  Indexing completed with errors")
             if indexing_result.errors:
