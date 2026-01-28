@@ -588,7 +588,7 @@ Amplihack uses Claude Code's plugin system for installation and discovery.
         {
           "type": "command",
           "command": "${CLAUDE_PLUGIN_ROOT}/tools/amplihack/hooks/session_start.py",
-          "timeout": 10000
+          "timeout": 10
         }
       ]
     }

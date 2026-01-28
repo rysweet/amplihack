@@ -122,6 +122,7 @@ amplihack copilot
 - [Hook Configuration](HOOK_CONFIGURATION_GUIDE.md) - Customize framework behavior
 - [Memory Configuration Consent](features/memory-consent-prompt.md) - Intelligent memory settings with timeout protection
 - [Verify .claude/ Staging](howto/verify-claude-staging.md) - Check that framework files are properly staged
+- [Verify Framework Injection](howto/verify-framework-injection.md) - Check that AMPLIHACK.md injection is working
 
 ### Deployment
 
@@ -147,6 +148,7 @@ Understand the philosophy and architecture behind amplihack.
 - [Project Overview](claude/context/PROJECT.md) - System architecture
 - [Development Patterns](claude/context/PATTERNS.md) - Proven implementation patterns
 - [Unified Staging Architecture](concepts/unified-staging-architecture.md) - How .claude/ staging works across all commands
+- [Framework Injection Architecture](concepts/framework-injection-architecture.md) - How AMPLIHACK.md injection works
 - [Blarify Architecture](blarify_architecture.md) - Understanding the Blarify integration
 - [Documentation Knowledge Graph](documentation_knowledge_graph.md) - How docs connect
 
@@ -425,8 +427,8 @@ Robust handling of conversation compaction in long sessions:
 
 - [Smart Memory Management](features/smart-memory-management.md) - Automatic Node.js memory optimization for Claude Code
 - [Claude.md Preservation](features/claude-md-preservation.md) - Preserve custom instructions
-<!-- Neo4j removed - now using Kuzu embedded database (no session cleanup needed) -->
-<!-- - [Shutdown Detection](concepts/shutdown-detection.md) - Graceful exit handling (see stop-hook-exit-hang in Troubleshooting) -->
+  <!-- Neo4j removed - now using Kuzu embedded database (no session cleanup needed) -->
+  <!-- - [Shutdown Detection](concepts/shutdown-detection.md) - Graceful exit handling (see stop-hook-exit-hang in Troubleshooting) -->
 
 ### Third-Party Integrations
 
@@ -557,6 +559,7 @@ Quick references, guides, and additional resources.
 - [Command Selection Guide](commands/COMMAND_SELECTION_GUIDE.md) - Choose the right command
 - [Platform Bridge API Reference](reference/platform-bridge-api.md) - Complete API documentation
 - [Power Steering File Locking](reference/power-steering-file-locking.md) - Prevents counter race conditions
+- [UserPromptSubmit Hook API Reference](reference/user-prompt-submit-hook-api.md) - Framework injection API
 - [Doc Graph Quick Reference](doc_graph_quick_reference.md) - Navigate documentation
 <!-- Neo4j Quick Reference removed - now using Kuzu embedded database -->
 - [A/B Test Quick Reference](memory/AB_TEST_QUICK_REFERENCE.md) - Test results

@@ -10,25 +10,28 @@ Philosophy:
 - Backend agnostic: Works with any backend implementing the interface
 
 Public API:
-    visualize_memory_tree: Main visualization function
-    build_memory_tree: Build Rich Tree from backend data
+    visualize_memory_tree: Main visualization function (sync wrapper)
+    visualize_memory_tree_async: Async visualization function
+    build_memory_tree: Build Rich Tree from backend data (async)
     format_importance_score: Format importance score as stars
     get_memory_emoji: Get emoji fer memory type
 """
 
+import asyncio
+import inspect
 import logging
 from datetime import datetime
 from typing import Any
 
 try:
-    from rich.console import Console
-    from rich.tree import Tree
+    from rich.console import Console  # type: ignore[import-untyped]
+    from rich.tree import Tree  # type: ignore[import-untyped]
 
     RICH_AVAILABLE = True
 except ImportError:
     RICH_AVAILABLE = False
-    Console = None  # type: ignore
-    Tree = None  # type: ignore
+    Console = None  # type: ignore[assignment]
+    Tree = None  # type: ignore[assignment]
 
 from .models import MemoryQuery, MemoryType
 
@@ -77,13 +80,13 @@ def format_importance_score(importance: int | None) -> str:
     return f"{filled}{empty} {importance}/10"
 
 
-def build_memory_tree(
+async def build_memory_tree_async(
     backend: Any,
     session_id: str | None = None,
     memory_type: MemoryType | None = None,
     depth: int | None = None,
 ) -> Any:  # Returns Tree if Rich available, None otherwise
-    """Build Rich Tree from backend data.
+    """Build Rich Tree from backend data (async version).
 
     Args:
         backend: Memory backend (KuzuBackend or MemoryDatabase)
@@ -107,11 +110,17 @@ def build_memory_tree(
         backend_name = caps.backend_name if hasattr(caps, "backend_name") else backend_name
 
     # Create root
+    assert Tree is not None, "Rich library required"
     root = Tree(f"🧠 [bold blue]Memory Graph[/bold blue] (Backend: {backend_name})")
 
     try:
         # Get sessions
-        sessions = backend.list_sessions()
+        sessions_result = backend.list_sessions()
+        # Handle both sync and async backends
+        if inspect.iscoroutine(sessions_result):
+            sessions = await sessions_result
+        else:
+            sessions = sessions_result
 
         if not sessions:
             root.add("[yellow](empty - no memories found)[/yellow]")
@@ -138,7 +147,12 @@ def build_memory_tree(
                 limit=1000,  # Reasonable limit
             )
 
-            memories = backend.retrieve_memories(query)
+            memories_result = backend.retrieve_memories(query)
+            # Handle both sync and async backends
+            if inspect.iscoroutine(memories_result):
+                memories = await memories_result
+            else:
+                memories = memories_result
 
             # Add memories
             for memory in memories:
@@ -192,7 +206,12 @@ def build_memory_tree(
                 # Count memories per agent
                 for agent_id in sorted(all_agent_ids):
                     query = MemoryQuery(agent_id=agent_id, limit=10000)
-                    agent_memories = backend.retrieve_memories(query)
+                    agent_memories_result = backend.retrieve_memories(query)
+                    # Handle both sync and async backends
+                    if inspect.iscoroutine(agent_memories_result):
+                        agent_memories = await agent_memories_result
+                    else:
+                        agent_memories = agent_memories_result
                     count = len(agent_memories)
                     agents_branch.add(f"[magenta]{agent_id}[/magenta] ({count} memories)")
 
@@ -203,13 +222,103 @@ def build_memory_tree(
     return root
 
 
+async def visualize_memory_tree_async(
+    backend: Any,
+    session_id: str | None = None,
+    memory_type: MemoryType | None = None,
+    depth: int | None = None,
+) -> None:
+    """Visualize memory graph as terminal tree (async version).
+
+    Displays the graph hierarchy with:
+    - Color-coded memory types
+    - Emoji indicators
+    - Importance/confidence scores
+    - Hierarchical structure
+
+    Args:
+        backend: Memory backend (KuzuBackend or MemoryDatabase)
+        session_id: Filter by session (optional)
+        memory_type: Filter by memory type (optional)
+        depth: Maximum tree depth (optional)
+
+    Raises:
+        ImportError: If Rich library not installed
+
+    Example:
+        >>> from amplihack.memory.backends.kuzu_backend import KuzuBackend
+        >>> backend = KuzuBackend()
+        >>> await visualize_memory_tree_async(backend)
+
+        🧠 Memory Graph (Backend: kuzu)
+        ├── 📅 Sessions (2)
+        │   ├── Session-2026-01-11 (5 memories)
+        │   │   ├── 📝 Episodic: User discussed auth (★★★★★★★★☆☆ 8/10)
+        │   │   ├── 💡 Semantic: Pattern - JWT (confidence: 0.95)
+        │   │   └── 📌 Prospective: TODO - Review PR
+        │   └── Session-2026-01-10
+        └── 👥 Agents (3)
+            ├── architect (8 memories)
+            └── builder (12 memories)
+    """
+    if not RICH_AVAILABLE:
+        raise ImportError("Rich library required. Install with: pip install rich")
+
+    try:
+        # Build tree
+        tree = await build_memory_tree_async(
+            backend=backend,
+            session_id=session_id,
+            memory_type=memory_type,
+            depth=depth,
+        )
+
+        # Display using Rich console
+        assert Console is not None, "Rich library required"
+        console = Console()
+        console.print(tree)
+
+    except Exception as e:
+        logger.error(f"Error visualizing memory tree: {e}", exc_info=True)
+        print(f"Error: {e!s}")
+
+
+def build_memory_tree(
+    backend: Any,
+    session_id: str | None = None,
+    memory_type: MemoryType | None = None,
+    depth: int | None = None,
+) -> Any:  # Returns Tree if Rich available, None otherwise
+    """Build Rich Tree from backend data (sync wrapper).
+
+    This is a synchronous wrapper around build_memory_tree_async for
+    convenience in non-async contexts (tests, etc).
+
+    Args:
+        backend: Memory backend (KuzuBackend or MemoryDatabase)
+        session_id: Filter by session (optional)
+        memory_type: Filter by memory type (optional)
+        depth: Maximum tree depth (optional)
+
+    Returns:
+        Rich Tree ready fer display (or None if Rich not available)
+
+    Raises:
+        ImportError: If Rich library not installed
+    """
+    return asyncio.run(build_memory_tree_async(backend, session_id, memory_type, depth))
+
+
 def visualize_memory_tree(
     backend: Any,
     session_id: str | None = None,
     memory_type: MemoryType | None = None,
     depth: int | None = None,
 ) -> None:
-    """Visualize memory graph as terminal tree.
+    """Visualize memory graph as terminal tree (sync wrapper).
+
+    This is a synchronous wrapper around visualize_memory_tree_async for
+    convenience in non-async contexts (CLI, tests, etc).
 
     Displays the graph hierarchy with:
     - Color-coded memory types
@@ -242,29 +351,12 @@ def visualize_memory_tree(
             ├── architect (8 memories)
             └── builder (12 memories)
     """
-    if not RICH_AVAILABLE:
-        raise ImportError("Rich library required. Install with: pip install rich")
-
-    try:
-        # Build tree
-        tree = build_memory_tree(
-            backend=backend,
-            session_id=session_id,
-            memory_type=memory_type,
-            depth=depth,
-        )
-
-        # Display using Rich console
-        console = Console()
-        console.print(tree)
-
-    except Exception as e:
-        logger.error(f"Error visualizing memory tree: {e}", exc_info=True)
-        print(f"Error: {e!s}")
+    asyncio.run(visualize_memory_tree_async(backend, session_id, memory_type, depth))
 
 
 __all__ = [
     "visualize_memory_tree",
+    "visualize_memory_tree_async",
     "build_memory_tree",
     "format_importance_score",
     "get_memory_emoji",

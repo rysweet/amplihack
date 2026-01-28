@@ -1057,9 +1057,7 @@ class ClaudeLauncher:
         """
         # Blarify is disabled by default - only run if explicitly enabled
         if os.getenv("AMPLIHACK_ENABLE_BLARIFY") != "1":
-            logger.debug(
-                "Blarify indexing disabled by default (set AMPLIHACK_ENABLE_BLARIFY=1 to enable)"
-            )
+            logger.debug("Blarify indexing disabled by default (set AMPLIHACK_ENABLE_BLARIFY=1 to enable)")
             return True
 
         # Get project directory (current working directory)
@@ -1097,11 +1095,11 @@ class ClaudeLauncher:
             # Import timeout utilities from memory_config
             from .memory_config import get_user_input_with_timeout, parse_consent_response
 
-            prompt_msg = "\nRun blarify code indexing? [Y/n] (timeout: 30s): "
+            prompt_msg = "\nRun blarify code indexing? [y/N] (timeout: 30s): "
             response = get_user_input_with_timeout(prompt_msg, timeout_seconds=30, logger=logger)
 
-            # Parse response with default yes
-            user_consented = parse_consent_response(response, default=True)
+            # Parse response with default no (opt-in, not opt-out)
+            user_consented = parse_consent_response(response, default=False)
 
             if user_consented:
                 print("\n📊 Starting blarify code indexing...")

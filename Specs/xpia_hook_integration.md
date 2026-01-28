@@ -70,7 +70,7 @@ def validate_settings_format(settings_path: str) -> bool
    {
      "type": "command",
      "command": "~/.claude/tools/xpia/hooks/session_start.py",
-     "timeout": 10000
+     "timeout": 10
    }
    ```
 

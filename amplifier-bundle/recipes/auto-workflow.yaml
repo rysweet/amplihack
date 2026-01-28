@@ -82,7 +82,7 @@ steps:
   # Step 4: Execute iteration 2 (conditional)
   - id: "execute-iteration-2"
     type: "agent"
-    condition: "'CONTINUE' in str(iteration_1)"
+    condition: "'CONTINUE' in iteration_1"
     agent: "foundation:modular-builder"
     prompt: |
       **AUTONOMOUS EXECUTION - CONTINUING**
@@ -100,7 +100,7 @@ steps:
   # Step 5: Execute iteration 3 (conditional)
   - id: "execute-iteration-3"
     type: "agent"
-    condition: "iteration_2 is defined and 'CONTINUE' in str(iteration_2)"
+    condition: "iteration_2 and 'CONTINUE' in iteration_2"
     agent: "foundation:modular-builder"
     prompt: |
       **AUTONOMOUS EXECUTION - CONTINUING**
@@ -114,7 +114,7 @@ steps:
   # Step 6: Execute iteration 4 (conditional)
   - id: "execute-iteration-4"
     type: "agent"
-    condition: "iteration_3 is defined and 'CONTINUE' in str(iteration_3)"
+    condition: "iteration_3 and 'CONTINUE' in iteration_3"
     agent: "foundation:modular-builder"
     prompt: |
       **AUTONOMOUS EXECUTION - CONTINUING**
@@ -128,7 +128,7 @@ steps:
   # Step 7: Execute iteration 5 (conditional - final)
   - id: "execute-iteration-5"
     type: "agent"
-    condition: "iteration_4 is defined and 'CONTINUE' in str(iteration_4)"
+    condition: "iteration_4 and 'CONTINUE' in iteration_4"
     agent: "foundation:modular-builder"
     prompt: |
       **AUTONOMOUS EXECUTION - FINAL ITERATION**
