@@ -27,14 +27,14 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 import kuzu
 
-from ..models import MemoryEntry, MemoryQuery, MemoryType, SessionInfo
-from .base import BackendCapabilities
 from ..kuzu.code_graph import KuzuCodeGraph
 from ..kuzu.connector import KuzuConnector
+from ..models import MemoryEntry, MemoryQuery, MemoryType, SessionInfo
+from .base import BackendCapabilities
 
 logger = logging.getLogger(__name__)
 
@@ -130,6 +130,7 @@ class KuzuBackend:
             self.connection.execute("""
                 CREATE NODE TABLE IF NOT EXISTS EpisodicMemory(
                     memory_id STRING,
+                    session_id STRING,
                     timestamp TIMESTAMP,
                     content STRING,
                     event_type STRING,
@@ -150,6 +151,7 @@ class KuzuBackend:
             self.connection.execute("""
                 CREATE NODE TABLE IF NOT EXISTS SemanticMemory(
                     memory_id STRING,
+                    session_id STRING,
                     concept STRING,
                     content STRING,
                     category STRING,
@@ -170,6 +172,7 @@ class KuzuBackend:
             self.connection.execute("""
                 CREATE NODE TABLE IF NOT EXISTS ProceduralMemory(
                     memory_id STRING,
+                    session_id STRING,
                     procedure_name STRING,
                     description STRING,
                     steps STRING,
@@ -193,6 +196,7 @@ class KuzuBackend:
             self.connection.execute("""
                 CREATE NODE TABLE IF NOT EXISTS ProspectiveMemory(
                     memory_id STRING,
+                    session_id STRING,
                     intention STRING,
                     trigger_condition STRING,
                     priority STRING,
@@ -216,6 +220,7 @@ class KuzuBackend:
             self.connection.execute("""
                 CREATE NODE TABLE IF NOT EXISTS WorkingMemory(
                     memory_id STRING,
+                    session_id STRING,
                     content STRING,
                     memory_type STRING,
                     priority INT64,
@@ -537,7 +542,45 @@ class KuzuBackend:
                 )
             """)
 
-            logger.info("Kùzu schema initialized successfully: 5 memory types + 3 code types (23 node tables, 28 relationship tables)")
+            # Create indexes for session_id on all 5 memory node types for performance
+            try:
+                self.connection.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_episodic_session ON EpisodicMemory(session_id)"
+                )
+            except Exception:
+                pass  # Index may already exist
+
+            try:
+                self.connection.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_semantic_session ON SemanticMemory(session_id)"
+                )
+            except Exception:
+                pass
+
+            try:
+                self.connection.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_procedural_session ON ProceduralMemory(session_id)"
+                )
+            except Exception:
+                pass
+
+            try:
+                self.connection.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_prospective_session ON ProspectiveMemory(session_id)"
+                )
+            except Exception:
+                pass
+
+            try:
+                self.connection.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_working_session ON WorkingMemory(session_id)"
+                )
+            except Exception:
+                pass
+
+            logger.info(
+                "Kùzu schema initialized successfully: 5 memory types + 3 code types (23 node tables, 28 relationship tables)"
+            )
 
         except Exception as e:
             logger.error(f"Error initializing Kùzu schema: {e}")
@@ -576,6 +619,7 @@ class KuzuBackend:
                     """
                     CREATE (m:EpisodicMemory {
                         memory_id: $memory_id,
+                        session_id: $session_id,
                         timestamp: $timestamp,
                         content: $content,
                         event_type: $event_type,
@@ -592,6 +636,7 @@ class KuzuBackend:
                 """,
                     {
                         "memory_id": memory.id,
+                        "session_id": memory.session_id,
                         "timestamp": memory.created_at,
                         "content": memory.content,
                         "event_type": memory.metadata.get("event_type", "general"),
@@ -627,6 +672,7 @@ class KuzuBackend:
                     """
                     CREATE (m:SemanticMemory {
                         memory_id: $memory_id,
+                        session_id: $session_id,
                         concept: $concept,
                         content: $content,
                         category: $category,
@@ -643,6 +689,7 @@ class KuzuBackend:
                 """,
                     {
                         "memory_id": memory.id,
+                        "session_id": memory.session_id,
                         "concept": memory.title,  # Use title as concept
                         "content": memory.content,
                         "category": memory.metadata.get("category", "general"),
@@ -684,6 +731,7 @@ class KuzuBackend:
                     """
                     CREATE (m:ProceduralMemory {
                         memory_id: $memory_id,
+                        session_id: $session_id,
                         procedure_name: $procedure_name,
                         description: $description,
                         steps: $steps,
@@ -703,6 +751,7 @@ class KuzuBackend:
                 """,
                     {
                         "memory_id": memory.id,
+                        "session_id": memory.session_id,
                         "procedure_name": memory.title,
                         "description": memory.content,
                         "steps": json.dumps(memory.metadata.get("steps", [])),
@@ -747,6 +796,7 @@ class KuzuBackend:
                     """
                     CREATE (m:ProspectiveMemory {
                         memory_id: $memory_id,
+                        session_id: $session_id,
                         intention: $intention,
                         trigger_condition: $trigger_condition,
                         priority: $priority,
@@ -766,6 +816,7 @@ class KuzuBackend:
                 """,
                     {
                         "memory_id": memory.id,
+                        "session_id": memory.session_id,
                         "intention": memory.content,
                         "trigger_condition": memory.metadata.get("trigger_condition", ""),
                         "priority": memory.metadata.get("priority", "medium"),
@@ -804,6 +855,7 @@ class KuzuBackend:
                     """
                     CREATE (m:WorkingMemory {
                         memory_id: $memory_id,
+                        session_id: $session_id,
                         content: $content,
                         memory_type: $memory_type,
                         priority: $priority,
@@ -819,6 +871,7 @@ class KuzuBackend:
                 """,
                     {
                         "memory_id": memory.id,
+                        "session_id": memory.session_id,
                         "content": memory.content,
                         "memory_type": memory.metadata.get("memory_type", "goal"),
                         "priority": memory.metadata.get("priority", 0),
@@ -973,6 +1026,10 @@ class KuzuBackend:
         where_conditions = []
         params = {}
 
+        if query.session_id:
+            where_conditions.append("m.session_id = $session_id")
+            params["session_id"] = query.session_id
+
         if query.agent_id:
             where_conditions.append("m.agent_id = $agent_id")
             params["agent_id"] = query.agent_id
@@ -989,7 +1046,13 @@ class KuzuBackend:
             where_conditions.append("m.created_at <= $created_before")
             params["created_before"] = query.created_before
 
-        if not query.include_expired:
+        # Only check expires_at for node types that have it
+        # (EpisodicMemory, ProspectiveMemory, WorkingMemory have expires_at)
+        if not query.include_expired and node_label in [
+            "EpisodicMemory",
+            "ProspectiveMemory",
+            "WorkingMemory",
+        ]:
             where_conditions.append("(m.expires_at IS NULL OR m.expires_at > $now)")
             params["now"] = datetime.now()
 
@@ -1027,7 +1090,7 @@ class KuzuBackend:
             # Parse node properties
             memory = MemoryEntry(
                 id=memory_node["memory_id"],
-                session_id=memory_node.get("session_id", "unknown"),
+                session_id=memory_node["session_id"],
                 agent_id=memory_node["agent_id"],
                 memory_type=memory_type,
                 title=memory_node["title"],
@@ -1118,7 +1181,7 @@ class KuzuBackend:
                     # Parse to MemoryEntry
                     return MemoryEntry(
                         id=memory_node["memory_id"],
-                        session_id=memory_node.get("session_id", "unknown"),
+                        session_id=memory_node["session_id"],
                         agent_id=memory_node["agent_id"],
                         memory_type=memory_type,
                         title=memory_node["title"],
@@ -1740,54 +1803,6 @@ class KuzuBackend:
         """Context manager exit with proper cleanup."""
         self.close()
         return False
-
-    def _has_old_schema(self) -> bool:
-        """Check if old Memory table exists in database.
-
-        Returns:
-            True if old schema exists, False otherwise
-        """
-        try:
-            # Try to query old Memory table
-            result = self.connection.execute(
-                """
-                MATCH (m:Memory)
-                RETURN COUNT(m) AS count
-                LIMIT 1
-            """
-            )
-            # If query succeeds, old schema exists
-            return result.has_next()
-        except Exception:
-            # If query fails, old schema doesn't exist
-            return False
-
-    def migrate_to_new_schema(self) -> bool:
-        """Migrate data from old Memory table to new 5-node schema.
-
-        This is a stub for future migration implementation.
-
-        Returns:
-            True if migration successful, False otherwise
-        """
-        try:
-            if not self._has_old_schema():
-                logger.info("No old schema detected, skipping migration")
-                return True
-
-            logger.warning("Migration from old schema not yet implemented")
-            # TODO: Implement migration logic
-            # 1. Query all nodes from old Memory table
-            # 2. Route each to appropriate new node type based on memory_type
-            # 3. Create proper relationships (Session, Agent)
-            # 4. Verify data integrity
-            # 5. Optionally remove old Memory table
-
-            return False
-
-        except Exception as e:
-            logger.error(f"Error during schema migration: {e}")
-            return False
 
 
 __all__ = ["KuzuBackend"]
