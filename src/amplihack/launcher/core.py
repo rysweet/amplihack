@@ -1076,7 +1076,7 @@ class ClaudeLauncher:
                 # Non-interactive mode - use default yes
                 logger.info("Non-interactive environment, running blarify indexing by default")
                 print("\n📊 Code Indexing: Running blarify in non-interactive mode (default: yes)")
-                self._run_blarify_and_import(project_path)
+                self._run_blarify_and_import(project_path, background=False)
                 self._save_blarify_consent(project_path)
                 return True
 
@@ -1095,20 +1095,33 @@ class ClaudeLauncher:
             # Import timeout utilities from memory_config
             from .memory_config import get_user_input_with_timeout, parse_consent_response
 
-            prompt_msg = "\nRun blarify code indexing? [y/N] (timeout: 30s): "
+            prompt_msg = "\nRun blarify code indexing? [y/N/b] (b=background, timeout: 30s): "
             response = get_user_input_with_timeout(prompt_msg, timeout_seconds=30, logger=logger)
 
-            # Parse response with default no (opt-in, not opt-out)
-            user_consented = parse_consent_response(response, default=False)
+            # Check for background mode
+            background_mode = False
+            if response and response.lower().strip() in ["b", "background"]:
+                background_mode = True
+                user_consented = True
+            else:
+                # Parse response with default no (opt-in, not opt-out)
+                user_consented = parse_consent_response(response, default=False)
 
             if user_consented:
-                print("\n📊 Starting blarify code indexing...")
-                success = self._run_blarify_and_import(project_path)
+                if background_mode:
+                    print("\n📊 Starting blarify code indexing in background...")
+                else:
+                    print("\n📊 Starting blarify code indexing...")
+
+                success = self._run_blarify_and_import(project_path, background=background_mode)
 
                 if success:
                     # Save consent so we don't prompt again
                     self._save_blarify_consent(project_path)
-                    print("✅ Code indexing complete\n")
+                    if background_mode:
+                        print("✅ Code indexing started in background\n")
+                    else:
+                        print("✅ Code indexing complete\n")
                     return True
                 print("⚠️  Code indexing failed (non-critical, continuing...)\n")
                 return True  # Return True - failure is non-blocking
@@ -1124,42 +1137,66 @@ class ClaudeLauncher:
             print(f"\n⚠️  Code indexing prompt failed: {e} (continuing...)\n")
             return True  # Non-blocking - always return True
 
-    def _run_blarify_and_import(self, project_path: Path) -> bool:
+    def _run_blarify_and_import(self, project_path: Path, background: bool = False) -> bool:
         """Run blarify and import results to Kuzu.
 
         Args:
             project_path: Project root directory to index
+            background: If True, run indexing in background
 
         Returns:
             True if successful, False otherwise
         """
         try:
-            # Import Kuzu backend and code graph
-            from ..memory.kuzu.code_graph import KuzuCodeGraph
+            # Import prerequisite checker and orchestrator
             from ..memory.kuzu.connector import KuzuConnector
+            from ..memory.kuzu.indexing.orchestrator import Orchestrator
+            from ..memory.kuzu.indexing.prerequisite_checker import PrerequisiteChecker
 
-            # Get Kuzu database path (default location)
+            # Step 1: Check prerequisites
+            print("\n🔍 Checking prerequisites...")
+            checker = PrerequisiteChecker()
+            result = checker.check_all(["python", "javascript", "typescript", "csharp"])
+
+            if not result.can_proceed:
+                print("❌ No indexing tools available. Install scip-python, node, or dotnet.")
+                return False
+
+            # Show what's available
+            if result.available_languages:
+                print(f"✓ Available languages: {', '.join(result.available_languages)}")
+            if result.unavailable_languages:
+                print(f"⚠️  Skipping languages: {', '.join(result.unavailable_languages)}")
+                for lang in result.unavailable_languages:
+                    status = result.language_statuses.get(lang)
+                    if status and status.error_message:
+                        print(f"   - {lang}: {status.error_message}")
+
+            # Step 2: Get Kuzu connector
             kuzu_db_path = Path.home() / ".amplihack" / "memory_kuzu.db"
-
-            # Create connector
             connector = KuzuConnector(str(kuzu_db_path))
             connector.connect()
 
-            # Create code graph instance
-            code_graph = KuzuCodeGraph(connector)
+            # Step 3: Create orchestrator and run indexing
+            orchestrator = Orchestrator(connector=connector)
 
-            # Run blarify and import (this handles temp files internally)
-            counts = code_graph.run_blarify(
-                codebase_path=str(project_path),
-                languages=None,  # Auto-detect all languages
+            indexing_result = orchestrator.run(
+                codebase_path=project_path,
+                languages=result.available_languages,
+                background=background,
             )
 
-            logger.info("Blarify import complete: %s", counts)
-
-            # No explicit disconnect needed (KuzuConnector uses context manager)
-
-            return True
+            if indexing_result.success:
+                print(f"\n✅ Indexed {indexing_result.files_indexed} files")
+                logger.info("Blarify import complete: %s files", indexing_result.files_indexed)
+                return True
+            print("\n⚠️  Indexing completed with errors")
+            if indexing_result.errors:
+                for error in indexing_result.errors[:3]:  # Show first 3 errors
+                    print(f"   - {error.language}: {error.message}")
+            return False
 
         except Exception as e:
             logger.error("Blarify indexing failed: %s", e)
+            print(f"\n❌ Indexing failed: {e}")
             return False
