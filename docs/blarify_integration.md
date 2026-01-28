@@ -64,12 +64,12 @@ Code schema extends existing memory schema:
 
 ### Configuration
 
-#### Enabling Blarify Indexing
+#### Disabling Blarify Indexing
 
-Blarify is disabled by default. To enable Blarify code indexing:
+To disable Blarify if unavailable or causing issues:
 
 ```bash
-AMPLIHACK_ENABLE_BLARIFY=1 amplihack launch
+AMPLIHACK_DISABLE_BLARIFY=1 amplihack launch
 ```
 
 ### Supported Languages
