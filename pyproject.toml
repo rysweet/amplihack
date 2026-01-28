@@ -20,11 +20,10 @@ dependencies = [
     "claude-agent-sdk>=0.1.0", # Claude Python Agent SDK for auto mode streaming
     "github-copilot-sdk>=0.1.0", # GitHub Copilot SDK for embedding Copilot in applications
     "rich>=13.0.0", # Required for --ui interactive TUI mode
-    "blarify>=1.3.0", # Code understanding engine for indexing codebases
     "azure-identity>=1.12.0", # Azure Service Principal authentication for remote execution
     "kuzu>=0.11.0", # Embedded graph database for memory system
 
-    # Blarify vendored code dependencies (required for src/amplihack/vendor/blarify)
+    # Blarify vendored code dependencies (using vendored copy in src/amplihack/vendor/blarify, not PyPI package)
     "json-repair>=0.47.7", # JSON repair for blarify LLM provider
     "langchain>=1.2.3", # Langchain core for blarify agents
     "langchain-openai>=1.1.7", # Langchain OpenAI integration
