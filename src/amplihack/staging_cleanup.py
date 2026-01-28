@@ -81,7 +81,7 @@ def cleanup_legacy_skills(
                     shutil.rmtree(directory)
                     result.cleaned.append(directory)
                     logger.info(f"Removed legacy skill directory: {directory}")
-                except Exception as e:
+                except (OSError, PermissionError, shutil.Error) as e:
                     logger.error(f"Failed to remove {directory}: {e}")
                     result.errors.append((directory, str(e)))
 
