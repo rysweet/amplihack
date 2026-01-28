@@ -31,9 +31,15 @@ from typing import ClassVar
 
 # Import shared file locking utilities
 try:
-    from .file_lock_utils import LOCKING_AVAILABLE, acquire_file_lock
+    from . import file_lock_utils
+    from .file_lock_utils import acquire_file_lock
+
+    LOCKING_AVAILABLE = file_lock_utils.LOCKING_AVAILABLE
 except ImportError:
-    from file_lock_utils import LOCKING_AVAILABLE, acquire_file_lock
+    import file_lock_utils
+    from file_lock_utils import acquire_file_lock
+
+    LOCKING_AVAILABLE = file_lock_utils.LOCKING_AVAILABLE
 
 # Import with both relative and absolute fallback
 try:
@@ -486,6 +492,7 @@ class TurnStateManager:
         self.session_id = session_id
         self.log = log or (lambda msg, level="INFO": None)
         self._previous_turn_count: int | None = None
+        self._lock_timeout_seconds: float = 2.0  # Default timeout for file lock acquisition
 
         # Import DiagnosticLogger - try both relative and absolute imports
         self._diagnostic_logger = None
@@ -505,7 +512,7 @@ class TurnStateManager:
                 self.log(f"Warning: Could not load diagnostic logger: {e}")
 
         # Log Windows degraded mode warning once during initialization
-        if not LOCKING_AVAILABLE:
+        if not file_lock_utils.LOCKING_AVAILABLE:
             self.log("File locking unavailable (Windows) - operating in degraded mode")
 
     def get_state_file_path(self) -> Path:
@@ -783,7 +790,9 @@ class TurnStateManager:
                 # Acquire lock for write operation
                 lock_file = state_file.parent / ".turn_state.lock"
                 with open(lock_file, "a+") as lock_f:
-                    with acquire_file_lock(lock_f, log=self.log) as locked:
+                    with acquire_file_lock(
+                        lock_f, timeout_seconds=self._lock_timeout_seconds, log=self.log
+                    ) as locked:
                         self._do_save_state_write(state_file, state, attempt, locked)
                         return
 
@@ -845,7 +854,9 @@ class TurnStateManager:
 
         # Acquire lock for entire read-modify-write cycle
         with open(lock_file, "a+") as lock_f:
-            with acquire_file_lock(lock_f, log=self.log) as locked:
+            with acquire_file_lock(
+                lock_f, timeout_seconds=self._lock_timeout_seconds, log=self.log
+            ) as locked:
                 # Load current state
                 state = self.load_state()
 
