@@ -794,7 +794,7 @@ class TurnStateManager:
         - Retry logic: 3 attempts with exponential backoff
         - Diagnostic logging: Track all write attempts
 
-        [PLANNED] File Locking (Issue #2155):
+        [IMPLEMENTED] File Locking (Issue #2155):
         - fcntl.flock() for exclusive access during read-modify-write
         - 2-second timeout prevents indefinite hangs
         - LOCK_EX | LOCK_NB for non-blocking exclusive lock
