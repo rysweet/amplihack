@@ -1,0 +1,294 @@
+"""Prerequisite checking for Blarify indexing tools.
+
+Validates that required tools and configurations are available before indexing.
+"""
+
+import shutil
+import subprocess
+from dataclasses import dataclass
+from pathlib import Path
+
+
+@dataclass
+class LanguageStatus:
+    """Status of a language's prerequisites."""
+
+    language: str
+    available: bool
+    error_message: str | None
+    missing_tools: list[str]
+
+
+@dataclass
+class PrerequisiteResult:
+    """Result of prerequisite checking for all languages."""
+
+    can_proceed: bool
+    available_languages: list[str]
+    unavailable_languages: list[str]
+    partial_success: bool
+    language_statuses: dict[str, LanguageStatus] | None = None
+
+    def __post_init__(self):
+        if self.language_statuses is None:
+            self.language_statuses = {}
+
+    def generate_report(self) -> str:
+        """Generate human-readable report of prerequisite status."""
+        lines = []
+        lines.append("Prerequisite Check Report")
+        lines.append("=" * 40)
+
+        if self.available_languages:
+            lines.append(f"\nAvailable Languages ({len(self.available_languages)}):")
+            for lang in self.available_languages:
+                lines.append(f"  ✓ {lang}")
+
+        if self.unavailable_languages:
+            lines.append(f"\nUnavailable Languages ({len(self.unavailable_languages)}):")
+            for lang in self.unavailable_languages:
+                if self.language_statuses:
+                    status = self.language_statuses.get(lang)
+                else:
+                    status = None
+                if status and status.error_message:
+                    lines.append(f"  ✗ {lang}: {status.error_message}")
+                else:
+                    lines.append(f"  ✗ {lang}")
+
+        lines.append(f"\nCan Proceed: {self.can_proceed}")
+        if self.partial_success:
+            lines.append("Note: Partial success - some languages unavailable")
+
+        return "\n".join(lines)
+
+
+class PrerequisiteChecker:
+    """Check prerequisites for Blarify indexing tools."""
+
+    # Supported dotnet versions (excluding 10.x which is unsupported)
+    SUPPORTED_DOTNET_VERSIONS = ["6", "7", "8", "9"]
+
+    def check_language(self, language: str, indexer_type: str | None = None) -> LanguageStatus:
+        """Check prerequisites for a specific language.
+
+        Args:
+            language: Language to check (python, javascript, typescript, csharp)
+            indexer_type: Optional indexer type (e.g., "jedi" for Python)
+
+        Returns:
+            LanguageStatus with availability and error information
+        """
+        if language == "python":
+            return self._check_python(indexer_type)
+        if language == "javascript":
+            return self._check_javascript()
+        if language == "typescript":
+            return self._check_typescript()
+        if language == "csharp":
+            return self._check_csharp()
+        return LanguageStatus(
+            language=language,
+            available=False,
+            error_message=f"Unknown language: {language}",
+            missing_tools=[],
+        )
+
+    def _check_python(self, indexer_type: str | None = None) -> LanguageStatus:
+        """Check Python prerequisites."""
+        if indexer_type == "jedi":
+            # Check for jedi initialize_params.json
+            python_bin = shutil.which("python") or shutil.which("python3")
+            if not python_bin:
+                return LanguageStatus(
+                    language="python",
+                    available=False,
+                    error_message="Python binary not found in PATH",
+                    missing_tools=["python"],
+                )
+
+            # Check for initialize_params.json
+            # This would typically be in a config directory
+            config_paths = [
+                Path.home() / ".config" / "jedi" / "initialize_params.json",
+                Path("/etc/jedi/initialize_params.json"),
+            ]
+
+            if not any(p.exists() for p in config_paths):
+                return LanguageStatus(
+                    language="python",
+                    available=False,
+                    error_message="initialize_params.json not found for jedi",
+                    missing_tools=["initialize_params.json"],
+                )
+
+            return LanguageStatus(
+                language="python",
+                available=True,
+                error_message=None,
+                missing_tools=[],
+            )
+
+        # Check for scip-python binary (default)
+        scip_python = shutil.which("scip-python")
+        if not scip_python:
+            return LanguageStatus(
+                language="python",
+                available=False,
+                error_message="scip-python binary not found in PATH",
+                missing_tools=["scip-python"],
+            )
+
+        return LanguageStatus(
+            language="python",
+            available=True,
+            error_message=None,
+            missing_tools=[],
+        )
+
+    def _check_javascript(self) -> LanguageStatus:
+        """Check JavaScript prerequisites."""
+        node_bin = shutil.which("node")
+        if not node_bin:
+            return LanguageStatus(
+                language="javascript",
+                available=False,
+                error_message="Node.js binary not found in PATH",
+                missing_tools=["node"],
+            )
+
+        return LanguageStatus(
+            language="javascript",
+            available=True,
+            error_message=None,
+            missing_tools=[],
+        )
+
+    def _check_typescript(self) -> LanguageStatus:
+        """Check TypeScript prerequisites."""
+        node_bin = shutil.which("node")
+        if not node_bin:
+            return LanguageStatus(
+                language="typescript",
+                available=False,
+                error_message="Node.js binary not found in PATH",
+                missing_tools=["node"],
+            )
+
+        # Check for runtime_dependencies.json
+        config_paths = [
+            Path.home() / ".config" / "typescript" / "runtime_dependencies.json",
+            Path("/etc/typescript/runtime_dependencies.json"),
+        ]
+
+        if not any(p.exists() for p in config_paths):
+            return LanguageStatus(
+                language="typescript",
+                available=False,
+                error_message="runtime_dependencies.json not found for TypeScript",
+                missing_tools=["runtime_dependencies.json"],
+            )
+
+        return LanguageStatus(
+            language="typescript",
+            available=True,
+            error_message=None,
+            missing_tools=[],
+        )
+
+    def _check_csharp(self) -> LanguageStatus:
+        """Check C# prerequisites."""
+        # Check for dotnet binary
+        dotnet_bin = shutil.which("dotnet")
+        if not dotnet_bin:
+            return LanguageStatus(
+                language="csharp",
+                available=False,
+                error_message="dotnet binary not found in PATH",
+                missing_tools=["dotnet"],
+            )
+
+        # Check dotnet version
+        try:
+            result = subprocess.run(
+                ["dotnet", "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+
+            if result.returncode == 0:
+                version = result.stdout.strip()
+                major_version = version.split(".")[0]
+
+                # Check if version 10.x (unsupported)
+                if major_version == "10":
+                    return LanguageStatus(
+                        language="csharp",
+                        available=False,
+                        error_message=f"dotnet version {version} is not supported (unsupported version)",
+                        missing_tools=["dotnet"],
+                    )
+
+                # Check if version is supported
+                if major_version not in self.SUPPORTED_DOTNET_VERSIONS:
+                    return LanguageStatus(
+                        language="csharp",
+                        available=False,
+                        error_message=f"dotnet version {version} is not supported",
+                        missing_tools=["dotnet"],
+                    )
+
+                return LanguageStatus(
+                    language="csharp",
+                    available=True,
+                    error_message=None,
+                    missing_tools=[],
+                )
+            return LanguageStatus(
+                language="csharp",
+                available=False,
+                error_message="Failed to check dotnet version",
+                missing_tools=["dotnet"],
+            )
+
+        except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+            return LanguageStatus(
+                language="csharp",
+                available=False,
+                error_message=f"Error checking dotnet: {e}",
+                missing_tools=["dotnet"],
+            )
+
+    def check_all(self, languages: list[str]) -> PrerequisiteResult:
+        """Check prerequisites for all specified languages.
+
+        Args:
+            languages: List of language names to check
+
+        Returns:
+            PrerequisiteResult with overall status
+        """
+        available = []
+        unavailable = []
+        statuses = {}
+
+        for language in languages:
+            status = self.check_language(language)
+            statuses[language] = status
+
+            if status.available:
+                available.append(language)
+            else:
+                unavailable.append(language)
+
+        can_proceed = len(available) > 0
+        partial_success = can_proceed and len(unavailable) > 0
+
+        return PrerequisiteResult(
+            can_proceed=can_proceed,
+            available_languages=available,
+            unavailable_languages=unavailable,
+            partial_success=partial_success,
+            language_statuses=statuses,
+        )
