@@ -11,23 +11,15 @@ Stop Hook Protocol (https://docs.claude.com/en/docs/claude-code/hooks):
 import json
 import os
 import sys
-import time
-from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-# Platform-specific imports (Windows compatibility)
-try:
-    import fcntl
-
-    LOCKING_AVAILABLE = True
-except ImportError:
-    # Windows doesn't have fcntl - graceful degradation
-    LOCKING_AVAILABLE = False
-
 # Clean import structure
 sys.path.insert(0, str(Path(__file__).parent))
+
+# Import shared file locking utilities
+from file_lock_utils import acquire_file_lock
 
 # Import error protocol first for structured errors
 try:
@@ -380,77 +372,6 @@ class StopHook(HookProcessor):
             self.log(f"Error reading custom prompt: {e} - using default", "WARNING")
             return DEFAULT_CONTINUATION_PROMPT
 
-    @contextmanager
-    def _acquire_file_lock(self, file_handle, timeout_seconds: float | None = 2.0):
-        """Acquire exclusive file lock with timeout (context manager pattern).
-
-        Uses fcntl.flock() on Linux/macOS for advisory file locking.
-        On Windows, gracefully degrades (no locking).
-
-        Args:
-            file_handle: Open file object to lock
-            timeout_seconds: Lock acquisition timeout (default: 2.0s)
-
-        Yields:
-            True if lock acquired, False if timeout/unavailable (fail-open)
-
-        Example:
-            with open(path, 'r+') as f:
-                with self._acquire_file_lock(f) as locked:
-                    if locked:
-                        # Critical section with lock protection
-                        pass
-                    else:
-                        # Proceed without lock (fail-open)
-                        pass
-        """
-        # Windows degradation: Skip locking
-        if not LOCKING_AVAILABLE:
-            yield False
-            return
-
-        # Try to acquire lock with timeout
-        start_time = time.time()
-        lock_acquired = False
-
-        try:
-            while True:
-                try:
-                    # Non-blocking exclusive lock
-                    fcntl.flock(file_handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                    lock_acquired = True
-                    break
-
-                except BlockingIOError:
-                    # Lock unavailable - check timeout
-                    elapsed = time.time() - start_time
-                    if timeout_seconds is not None and elapsed >= timeout_seconds:
-                        self.log(
-                            f"Lock timeout after {timeout_seconds}s - proceeding without lock",
-                            "DEBUG",
-                        )
-                        break
-
-                    # Wait briefly before retry
-                    time.sleep(0.05)  # 50ms
-
-            # Yield lock status
-            yield lock_acquired
-
-        except (PermissionError, OSError) as e:
-            # Fail-open: Log error and proceed without lock
-            self.log(f"Lock error ({type(e).__name__}): {e} - proceeding without lock", "DEBUG")
-            yield False
-
-        finally:
-            # Release lock if acquired
-            if lock_acquired:
-                try:
-                    fcntl.flock(file_handle.fileno(), fcntl.LOCK_UN)
-                except Exception:
-                    # Non-critical: Lock will be released when file closes
-                    pass
-
     def _increment_power_steering_counter(self, session_id: str) -> int:
         """Increment power-steering invocation counter for statusline display.
 
@@ -482,7 +403,7 @@ class StopHook(HookProcessor):
 
             # Read-modify-write with file locking
             with open(counter_file, "r+") as f:
-                with self._acquire_file_lock(f) as locked:
+                with acquire_file_lock(f, log=self.log) as locked:
                     # Read current count
                     try:
                         f.seek(0)
@@ -546,7 +467,7 @@ class StopHook(HookProcessor):
 
             # Read-modify-write with file locking
             with open(counter_file, "r+") as f:
-                with self._acquire_file_lock(f) as locked:
+                with acquire_file_lock(f, log=self.log) as locked:
                     # Read current count
                     try:
                         f.seek(0)

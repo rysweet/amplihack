@@ -23,22 +23,17 @@ Public API (the "studs"):
 import json
 import os
 import tempfile
-import time
 from collections.abc import Callable
-from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import ClassVar
 
-# Platform-specific imports (Windows compatibility)
+# Import shared file locking utilities
 try:
-    import fcntl
-
-    LOCKING_AVAILABLE = True
+    from .file_lock_utils import LOCKING_AVAILABLE, acquire_file_lock
 except ImportError:
-    # Windows doesn't have fcntl - graceful degradation
-    LOCKING_AVAILABLE = False
+    from file_lock_utils import LOCKING_AVAILABLE, acquire_file_lock
 
 # Import with both relative and absolute fallback
 try:
@@ -286,7 +281,7 @@ class DeltaAnalyzer:
         Args:
             log: Optional logging callback
         """
-        self.log = log or (lambda msg: None)
+        self.log = log or (lambda msg, level="INFO": None)
         self._fallback_checker = AddressedChecker()
 
     def analyze_delta(
@@ -474,10 +469,6 @@ class TurnStateManager:
         _lock_timeout_seconds: Timeout for file lock acquisition (default 2.0)
     """
 
-    # File locking constants
-    LOCK_TIMEOUT_SECONDS = 2.0
-    LOCK_RETRY_INTERVAL = 0.05  # 50ms between retry attempts
-
     def __init__(
         self,
         project_root: Path,
@@ -493,9 +484,8 @@ class TurnStateManager:
         """
         self.project_root = project_root
         self.session_id = session_id
-        self.log = log or (lambda msg: None)
+        self.log = log or (lambda msg, level="INFO": None)
         self._previous_turn_count: int | None = None
-        self._lock_timeout_seconds = self.LOCK_TIMEOUT_SECONDS
 
         # Import DiagnosticLogger - try both relative and absolute imports
         self._diagnostic_logger = None
@@ -701,84 +691,6 @@ class TurnStateManager:
                 pass
             raise e
 
-    @contextmanager
-    def _acquire_file_lock(self, file_handle, timeout_seconds: float | None = None):
-        """Acquire exclusive file lock with timeout (context manager pattern).
-
-        Uses fcntl.flock() on Linux/macOS for advisory file locking.
-        On Windows, gracefully degrades (no locking).
-
-        Args:
-            file_handle: Open file object to lock
-            timeout_seconds: Lock acquisition timeout (default: LOCK_TIMEOUT_SECONDS)
-
-        Yields:
-            True if lock acquired, False if timeout/unavailable (fail-open)
-
-        Example:
-            with open(path, 'r+') as f:
-                with self._acquire_file_lock(f) as locked:
-                    if locked:
-                        # Critical section with lock protection
-                        pass
-                    else:
-                        # Proceed without lock (fail-open)
-                        pass
-        """
-        if timeout_seconds is None:
-            timeout_seconds = self._lock_timeout_seconds
-
-        # Windows degradation: Skip locking
-        if not LOCKING_AVAILABLE:
-            self.log("Locking unavailable (Windows) - proceeding without lock")
-            yield False
-            return
-
-        # Try to acquire lock with timeout
-        start_time = time.time()
-        lock_acquired = False
-
-        try:
-            while True:
-                try:
-                    # Non-blocking exclusive lock
-                    fcntl.flock(file_handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-                    lock_acquired = True
-                    self.log("File lock acquired")
-                    break
-
-                except BlockingIOError:
-                    # Lock unavailable - check timeout
-                    elapsed = time.time() - start_time
-                    if elapsed >= timeout_seconds:
-                        self.log(
-                            f"Lock timeout after {timeout_seconds}s - proceeding without lock (fail-open)"
-                        )
-                        break
-
-                    # Wait briefly before retry
-                    time.sleep(self.LOCK_RETRY_INTERVAL)
-
-            # Yield lock status
-            yield lock_acquired
-
-        except (PermissionError, OSError) as e:
-            # Fail-open: Log error and proceed without lock
-            self.log(
-                f"Lock acquisition failed ({type(e).__name__}: {e}) - proceeding without lock (fail-open)"
-            )
-            yield False
-
-        finally:
-            # Release lock if acquired
-            if lock_acquired:
-                try:
-                    fcntl.flock(file_handle.fileno(), fcntl.LOCK_UN)
-                    self.log("File lock released")
-                except Exception as e:
-                    # Non-critical: Lock will be released when file closes
-                    self.log(f"Warning: Lock release failed: {e}")
-
     def save_state(
         self,
         state: PowerSteeringTurnState,
@@ -871,7 +783,7 @@ class TurnStateManager:
                 # Acquire lock for write operation
                 lock_file = state_file.parent / ".turn_state.lock"
                 with open(lock_file, "a+") as lock_f:
-                    with self._acquire_file_lock(lock_f) as locked:
+                    with acquire_file_lock(lock_f, log=self.log) as locked:
                         self._do_save_state_write(state_file, state, attempt, locked)
                         return
 
@@ -933,7 +845,7 @@ class TurnStateManager:
 
         # Acquire lock for entire read-modify-write cycle
         with open(lock_file, "a+") as lock_f:
-            with self._acquire_file_lock(lock_f) as locked:
+            with acquire_file_lock(lock_f, log=self.log) as locked:
                 # Load current state
                 state = self.load_state()
 

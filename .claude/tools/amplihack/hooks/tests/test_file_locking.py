@@ -31,6 +31,7 @@ import pytest  # type: ignore
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+import file_lock_utils
 from power_steering_state import PowerSteeringTurnState, TurnStateManager
 
 # ============================================================================
@@ -57,17 +58,15 @@ class TestFileLockAcquisition:
         - No locking implemented
         - fcntl.flock() never called
         """
-        # Patch at module level where it's actually used
-        import power_steering_state
-
+        # Patch at module level where it's actually used (file_lock_utils)
         mock_fcntl = MagicMock()
         mock_fcntl.LOCK_EX = 2
         mock_fcntl.LOCK_NB = 4
         mock_fcntl.LOCK_UN = 8
 
         # Patch both the module reference and LOCKING_AVAILABLE flag
-        with patch.object(power_steering_state, "fcntl", mock_fcntl):
-            with patch.object(power_steering_state, "LOCKING_AVAILABLE", True):
+        with patch.object(file_lock_utils, "fcntl", mock_fcntl):
+            with patch.object(file_lock_utils, "LOCKING_AVAILABLE", True):
                 manager = TurnStateManager(tmp_path, "test_session")
                 state = PowerSteeringTurnState(session_id="test_session", turn_count=1)
                 manager.save_state(state)
@@ -92,15 +91,13 @@ class TestFileLockAcquisition:
 
         Only one process should be able to hold the lock at a time.
         """
-        import power_steering_state
-
         mock_fcntl = MagicMock()
         mock_fcntl.LOCK_EX = 2
         mock_fcntl.LOCK_NB = 4
         mock_fcntl.LOCK_UN = 8
 
-        with patch.object(power_steering_state, "fcntl", mock_fcntl):
-            with patch.object(power_steering_state, "LOCKING_AVAILABLE", True):
+        with patch.object(file_lock_utils, "fcntl", mock_fcntl):
+            with patch.object(file_lock_utils, "LOCKING_AVAILABLE", True):
                 manager = TurnStateManager(tmp_path, "test_session")
                 state = PowerSteeringTurnState(session_id="test_session", turn_count=1)
                 manager.save_state(state)
@@ -122,15 +119,14 @@ class TestFileLockAcquisition:
         Non-blocking mode raises BlockingIOError immediately if lock unavailable,
         allowing timeout logic to work correctly.
         """
-        import power_steering_state
 
         mock_fcntl = MagicMock()
         mock_fcntl.LOCK_EX = 2
         mock_fcntl.LOCK_NB = 4
         mock_fcntl.LOCK_UN = 8
 
-        with patch.object(power_steering_state, "fcntl", mock_fcntl):
-            with patch.object(power_steering_state, "LOCKING_AVAILABLE", True):
+        with patch.object(file_lock_utils, "fcntl", mock_fcntl):
+            with patch.object(file_lock_utils, "LOCKING_AVAILABLE", True):
                 manager = TurnStateManager(tmp_path, "test_session")
                 state = PowerSteeringTurnState(session_id="test_session", turn_count=1)
                 manager.save_state(state)
@@ -204,7 +200,6 @@ class TestFileLockTimeout:
         Current behavior:
         - No timeout logic implemented
         """
-        import power_steering_state
 
         mock_fcntl = MagicMock()
         mock_fcntl.LOCK_EX = 2
@@ -217,8 +212,8 @@ class TestFileLockTimeout:
 
         mock_fcntl.flock.side_effect = raise_blocking_error
 
-        with patch.object(power_steering_state, "fcntl", mock_fcntl):
-            with patch.object(power_steering_state, "LOCKING_AVAILABLE", True):
+        with patch.object(file_lock_utils, "fcntl", mock_fcntl):
+            with patch.object(file_lock_utils, "LOCKING_AVAILABLE", True):
                 manager = TurnStateManager(tmp_path, "test_session")
                 state = PowerSteeringTurnState(session_id="test_session", turn_count=1)
 
@@ -247,7 +242,6 @@ class TestFileLockTimeout:
         - Retry with exponential backoff
         - Continue until 2s timeout
         """
-        import power_steering_state
 
         mock_fcntl = MagicMock()
         mock_fcntl.LOCK_EX = 2
@@ -263,8 +257,8 @@ class TestFileLockTimeout:
 
         mock_fcntl.flock.side_effect = counting_flock
 
-        with patch.object(power_steering_state, "fcntl", mock_fcntl):
-            with patch.object(power_steering_state, "LOCKING_AVAILABLE", True):
+        with patch.object(file_lock_utils, "fcntl", mock_fcntl):
+            with patch.object(file_lock_utils, "LOCKING_AVAILABLE", True):
                 manager = TurnStateManager(tmp_path, "test_session")
                 state = PowerSteeringTurnState(session_id="test_session", turn_count=1)
                 manager.save_state(state)
@@ -395,15 +389,14 @@ class TestWindowsGracefulDegradation:
 
         Windows users should be informed that locking is unavailable.
         """
-        import power_steering_state
 
         log_messages = []
 
-        def mock_log(msg):
+        def mock_log(msg, level="INFO"):
             log_messages.append(msg)
 
         # Simulate Windows by disabling locking
-        with patch.object(power_steering_state, "LOCKING_AVAILABLE", False):
+        with patch.object(file_lock_utils, "LOCKING_AVAILABLE", False):
             manager = TurnStateManager(tmp_path, "test_session", log=mock_log)
             state = PowerSteeringTurnState(session_id="test_session", turn_count=1)
             manager.save_state(state)
@@ -430,10 +423,9 @@ class TestWindowsGracefulDegradation:
             LOCKING_AVAILABLE = False
         """
         # THIS WILL FAIL
-        # Check if power_steering_state module has LOCKING_AVAILABLE
-        import power_steering_state
+        # Check if file_lock_utils module has LOCKING_AVAILABLE
 
-        assert hasattr(power_steering_state, "LOCKING_AVAILABLE"), (
+        assert hasattr(file_lock_utils, "LOCKING_AVAILABLE"), (
             "Should have LOCKING_AVAILABLE constant for platform detection"
         )
 
@@ -808,7 +800,7 @@ class TestFileLockingLogging:
         """
         log_messages = []
 
-        def mock_log(msg):
+        def mock_log(msg, level="INFO"):
             log_messages.append(msg)
 
         manager = TurnStateManager(tmp_path, "test_session", log=mock_log)
@@ -832,11 +824,10 @@ class TestFileLockingLogging:
         Log format:
         {"event": "lock_timeout", "timestamp": "...", "timeout_ms": 2000}
         """
-        import power_steering_state
 
         log_messages = []
 
-        def mock_log(msg):
+        def mock_log(msg, level="INFO"):
             log_messages.append(msg)
 
         mock_fcntl = MagicMock()
@@ -845,8 +836,8 @@ class TestFileLockingLogging:
         mock_fcntl.LOCK_UN = 8
         mock_fcntl.flock.side_effect = BlockingIOError("Lock unavailable")
 
-        with patch.object(power_steering_state, "fcntl", mock_fcntl):
-            with patch.object(power_steering_state, "LOCKING_AVAILABLE", True):
+        with patch.object(file_lock_utils, "fcntl", mock_fcntl):
+            with patch.object(file_lock_utils, "LOCKING_AVAILABLE", True):
                 manager = TurnStateManager(tmp_path, "test_session", log=mock_log)
                 state = PowerSteeringTurnState(session_id="test_session", turn_count=1)
                 manager.save_state(state)
@@ -862,15 +853,14 @@ class TestFileLockingLogging:
 
     def test_log_windows_degraded_mode(self, tmp_path):
         """MUST FAIL: Should log Windows degraded mode (no locking)."""
-        import power_steering_state
 
         log_messages = []
 
-        def mock_log(msg):
+        def mock_log(msg, level="INFO"):
             log_messages.append(msg)
 
         # Simulate Windows by disabling locking
-        with patch.object(power_steering_state, "LOCKING_AVAILABLE", False):
+        with patch.object(file_lock_utils, "LOCKING_AVAILABLE", False):
             manager = TurnStateManager(tmp_path, "test_session", log=mock_log)
             state = PowerSteeringTurnState(session_id="test_session", turn_count=1)
             manager.save_state(state)
