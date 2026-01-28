@@ -237,25 +237,42 @@ class KuzuBackend:
             """)
 
             # Create indexes on session_id for efficient session-based queries
-            self.connection.execute("""
-                CREATE INDEX IF NOT EXISTS idx_episodic_session ON EpisodicMemory(session_id)
-            """)
+            # Note: Kuzu doesn't support IF NOT EXISTS for indexes
+            # Indexes are created once during schema initialization
+            try:
+                self.connection.execute(
+                    "CREATE INDEX idx_episodic_session ON EpisodicMemory(session_id)"
+                )
+            except Exception:
+                pass  # Index already exists
 
-            self.connection.execute("""
-                CREATE INDEX IF NOT EXISTS idx_semantic_session ON SemanticMemory(session_id)
-            """)
+            try:
+                self.connection.execute(
+                    "CREATE INDEX idx_semantic_session ON SemanticMemory(session_id)"
+                )
+            except Exception:
+                pass  # Index already exists
 
-            self.connection.execute("""
-                CREATE INDEX IF NOT EXISTS idx_procedural_session ON ProceduralMemory(session_id)
-            """)
+            try:
+                self.connection.execute(
+                    "CREATE INDEX idx_procedural_session ON ProceduralMemory(session_id)"
+                )
+            except Exception:
+                pass  # Index already exists
 
-            self.connection.execute("""
-                CREATE INDEX IF NOT EXISTS idx_prospective_session ON ProspectiveMemory(session_id)
-            """)
+            try:
+                self.connection.execute(
+                    "CREATE INDEX idx_prospective_session ON ProspectiveMemory(session_id)"
+                )
+            except Exception:
+                pass  # Index already exists
 
-            self.connection.execute("""
-                CREATE INDEX IF NOT EXISTS idx_working_session ON WorkingMemory(session_id)
-            """)
+            try:
+                self.connection.execute(
+                    "CREATE INDEX idx_working_session ON WorkingMemory(session_id)"
+                )
+            except Exception:
+                pass  # Index already exists
 
             # Create Session → Memory relationship tables
             self.connection.execute("""
@@ -1031,7 +1048,14 @@ class KuzuBackend:
             where_conditions.append("m.created_at <= $created_before")
             params["created_before"] = query.created_before
 
-        if not query.include_expired:
+        # Only check expires_at for memory types that have this field
+        # EpisodicMemory, ProspectiveMemory, and WorkingMemory have expires_at
+        # SemanticMemory and ProceduralMemory do not
+        if not query.include_expired and node_label in [
+            "EpisodicMemory",
+            "ProspectiveMemory",
+            "WorkingMemory",
+        ]:
             where_conditions.append("(m.expires_at IS NULL OR m.expires_at > $now)")
             params["now"] = datetime.now()
 
@@ -1802,33 +1826,6 @@ class KuzuBackend:
             return result.has_next()
         except Exception:
             # If query fails, old schema doesn't exist
-            return False
-
-    def migrate_to_new_schema(self) -> bool:
-        """Migrate data from old Memory table to new 5-node schema.
-
-        This is a stub for future migration implementation.
-
-        Returns:
-            True if migration successful, False otherwise
-        """
-        try:
-            if not self._has_old_schema():
-                logger.info("No old schema detected, skipping migration")
-                return True
-
-            logger.warning("Migration from old schema not yet implemented")
-            # TODO: Implement migration logic
-            # 1. Query all nodes from old Memory table
-            # 2. Route each to appropriate new node type based on memory_type
-            # 3. Create proper relationships (Session, Agent)
-            # 4. Verify data integrity
-            # 5. Optionally remove old Memory table
-
-            return False
-
-        except Exception as e:
-            logger.error(f"Error during schema migration: {e}")
             return False
 
 

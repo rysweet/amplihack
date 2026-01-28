@@ -445,3 +445,164 @@ class TestKuzuBackendSessionRelationships:
             calls = [str(call) for call in mock_conn.execute.call_args_list]
             # Should create CONTAINS_WORKING relationship
             assert any("CONTAINS_WORKING" in str(call) for call in calls)
+
+
+class TestKuzuBackendSessionIsolation:
+    """Integration tests for session_id filtering (no mocks)."""
+
+    def test_retrieve_memories_filters_by_session_id(self):
+        """CRITICAL: Verify session_id filtering actually works end-to-end.
+
+        This is an integration test that uses a real Kuzu database to verify
+        that session isolation works correctly. It stores memories in two
+        different sessions and verifies that queries return only memories
+        from the requested session.
+
+        Philosophy: Test behavior at module boundaries with real database.
+        """
+        from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
+            backend.initialize()
+
+            # Store memories in two different sessions
+            memory_s1 = MemoryEntry(
+                id="mem-1",
+                session_id="session-1",
+                agent_id="agent-1",
+                memory_type=MemoryType.EPISODIC,
+                title="Session 1 Memory",
+                content="Data from session 1",
+                metadata={},
+                created_at=datetime.now(),
+                accessed_at=datetime.now(),
+            )
+            memory_s2 = MemoryEntry(
+                id="mem-2",
+                session_id="session-2",
+                agent_id="agent-1",
+                memory_type=MemoryType.EPISODIC,
+                title="Session 2 Memory",
+                content="Data from session 2",
+                metadata={},
+                created_at=datetime.now(),
+                accessed_at=datetime.now(),
+            )
+
+            backend.store_memory(memory_s1)
+            backend.store_memory(memory_s2)
+
+            # Query session-1 - should get ONLY session-1 memories
+            query = MemoryQuery(session_id="session-1")
+            results = backend.retrieve_memories(query)
+
+            assert len(results) == 1, f"Expected 1 memory, got {len(results)}"
+            assert results[0].session_id == "session-1"
+            assert results[0].content == "Data from session 1"
+            assert results[0].id == "mem-1"
+
+            # Query session-2 - should get ONLY session-2 memories
+            query = MemoryQuery(session_id="session-2")
+            results = backend.retrieve_memories(query)
+
+            assert len(results) == 1, f"Expected 1 memory, got {len(results)}"
+            assert results[0].session_id == "session-2"
+            assert results[0].content == "Data from session 2"
+            assert results[0].id == "mem-2"
+
+    def test_session_isolation_across_memory_types(self):
+        """Verify session_id filtering works across all 5 memory types."""
+        from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
+            backend.initialize()
+
+            # Store different memory types in two sessions
+            memory_types = [
+                MemoryType.EPISODIC,
+                MemoryType.SEMANTIC,
+                MemoryType.PROCEDURAL,
+                MemoryType.PROSPECTIVE,
+                MemoryType.WORKING,
+            ]
+
+            for i, mem_type in enumerate(memory_types):
+                # Session 1 memory
+                backend.store_memory(
+                    MemoryEntry(
+                        id=f"s1-{mem_type.value}-{i}",
+                        session_id="session-1",
+                        agent_id="agent-1",
+                        memory_type=mem_type,
+                        title=f"Session 1 {mem_type.value}",
+                        content=f"Session 1 content for {mem_type.value}",
+                        metadata={},
+                        created_at=datetime.now(),
+                        accessed_at=datetime.now(),
+                    )
+                )
+
+                # Session 2 memory
+                backend.store_memory(
+                    MemoryEntry(
+                        id=f"s2-{mem_type.value}-{i}",
+                        session_id="session-2",
+                        agent_id="agent-1",
+                        memory_type=mem_type,
+                        title=f"Session 2 {mem_type.value}",
+                        content=f"Session 2 content for {mem_type.value}",
+                        metadata={},
+                        created_at=datetime.now(),
+                        accessed_at=datetime.now(),
+                    )
+                )
+
+            # Query session-1 - should get exactly 5 memories (one of each type)
+            query = MemoryQuery(session_id="session-1")
+            results = backend.retrieve_memories(query)
+
+            assert len(results) == 5, f"Expected 5 memories from session-1, got {len(results)}"
+            session_ids = [r.session_id for r in results]
+            assert all(sid == "session-1" for sid in session_ids), "Found memory from wrong session"
+
+            # Query session-2 - should get exactly 5 memories
+            query = MemoryQuery(session_id="session-2")
+            results = backend.retrieve_memories(query)
+
+            assert len(results) == 5, f"Expected 5 memories from session-2, got {len(results)}"
+            session_ids = [r.session_id for r in results]
+            assert all(sid == "session-2" for sid in session_ids), "Found memory from wrong session"
+
+    def test_query_without_session_id_returns_all_sessions(self):
+        """Verify that querying without session_id returns memories from all sessions."""
+        from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            backend = KuzuBackend(db_path=f"{tmpdir}/test_db")
+            backend.initialize()
+
+            # Store memories in multiple sessions
+            for session_num in range(1, 4):
+                backend.store_memory(
+                    MemoryEntry(
+                        id=f"mem-session-{session_num}",
+                        session_id=f"session-{session_num}",
+                        agent_id="agent-1",
+                        memory_type=MemoryType.EPISODIC,
+                        title=f"Memory {session_num}",
+                        content=f"Content {session_num}",
+                        metadata={},
+                        created_at=datetime.now(),
+                        accessed_at=datetime.now(),
+                    )
+                )
+
+            # Query without session_id - should get all 3 memories
+            query = MemoryQuery()
+            results = backend.retrieve_memories(query)
+
+            assert len(results) == 3, f"Expected 3 memories from all sessions, got {len(results)}"
+            session_ids = {r.session_id for r in results}
+            assert session_ids == {"session-1", "session-2", "session-3"}
