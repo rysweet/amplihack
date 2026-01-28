@@ -83,27 +83,29 @@ except ImportError:
 # Try to import compaction validator
 try:
     from compaction_validator import (
-        CompactionValidator,
         CompactionContext,
-        ValidationResult,
+        CompactionValidator,
     )
 
     COMPACTION_AVAILABLE = True
 except ImportError:
     COMPACTION_AVAILABLE = False
+
     # Create placeholder
     class CompactionContext:
         def __init__(self):
             self.has_compaction_event = False
 
+
 # Security: Maximum transcript size to prevent memory exhaustion
 MAX_TRANSCRIPT_LINES = 50000  # Limit transcript to 50K lines (~10-20MB typical)
 
-# Timeout for individual checker execution (seconds)
-CHECKER_TIMEOUT = 10
+# Timeout hierarchy: HOOK_TIMEOUT (120s) > PARALLEL_TIMEOUT (60s) > CHECKER_TIMEOUT (25s)
+# Individual checker execution budget (within parallel execution budget)
+CHECKER_TIMEOUT = 25
 
-# Timeout for parallel execution of all checkers (seconds)
-# With parallel execution, all 22 checks should complete in ~15-20s instead of 220s
+# Parallel execution budget: All 21 checks complete in ~15-20s typically, 60s provides buffer
+# Must be less than HOOK_TIMEOUT (120s) to avoid being killed by framework
 PARALLEL_TIMEOUT = 60
 
 # Public API (the "studs" for this brick)
@@ -264,7 +266,9 @@ class PowerSteeringResult:
     is_first_stop: bool = False  # True if this is the first stop attempt in session
     evidence_results: list = field(default_factory=list)  # Concrete evidence from Phase 1
     compaction_context: Any = None  # Compaction diagnostics (CompactionContext if available)
-    considerations: list = field(default_factory=list)  # List of CheckerResult objects for visibility
+    considerations: list = field(
+        default_factory=list
+    )  # List of CheckerResult objects for visibility
 
 
 class PowerSteeringChecker:
@@ -4366,10 +4370,12 @@ class PowerSteeringChecker:
                 compaction_check = CheckerResult(
                     consideration_id="compaction_handling",
                     satisfied=validation_result.passed,
-                    reason="; ".join(validation_result.warnings) if validation_result.warnings else "No compaction issues detected",
+                    reason="; ".join(validation_result.warnings)
+                    if validation_result.warnings
+                    else "No compaction issues detected",
                     severity="warning",
                     recovery_steps=validation_result.recovery_steps,
-                    executed=True
+                    executed=True,
                 )
 
                 considerations.append(compaction_check)
@@ -4381,7 +4387,7 @@ class PowerSteeringChecker:
                     satisfied=True,  # Fail-open
                     reason="Compaction validation skipped due to error",
                     severity="warning",
-                    executed=True
+                    executed=True,
                 )
                 considerations.append(compaction_check)
         elif not compaction_enabled:
@@ -4391,7 +4397,7 @@ class PowerSteeringChecker:
                 satisfied=True,
                 reason="Compaction handling disabled",
                 severity="warning",
-                executed=False
+                executed=False,
             )
             considerations.append(compaction_check)
 
@@ -4400,7 +4406,7 @@ class PowerSteeringChecker:
             decision="approve",
             reasons=["test_mode"],
             compaction_context=compaction_context,
-            considerations=considerations
+            considerations=considerations,
         )
 
     def _is_consideration_enabled(self, consideration_id: str) -> bool:
@@ -4420,6 +4426,7 @@ class PowerSteeringChecker:
                 return True  # Default enabled
 
             import yaml
+
             with open(considerations_path) as f:
                 considerations = yaml.safe_load(f)
 
@@ -4434,9 +4441,7 @@ class PowerSteeringChecker:
         except Exception:
             return True  # Fail-open
 
-    def _check_compaction_handling(
-        self, transcript: list[dict], session_id: str
-    ) -> bool:
+    def _check_compaction_handling(self, transcript: list[dict], session_id: str) -> bool:
         """Consideration checker for compaction validation.
 
         Called by consideration framework. Returns True if compaction
