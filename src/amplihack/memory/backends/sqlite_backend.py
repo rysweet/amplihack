@@ -187,8 +187,8 @@ class SQLiteBackend:
         """
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(self._executor, self.database.close)
-        # Shutdown executor in thread to avoid blocking
-        self._executor.shutdown(wait=False)
+        # Shutdown executor properly waiting for completion
+        self._executor.shutdown(wait=True)
 
     async def __aenter__(self):
         """Async context manager entry."""
