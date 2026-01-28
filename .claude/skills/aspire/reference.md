@@ -2,6 +2,8 @@
 
 Complete API reference and architectural details for .NET Aspire orchestration.
 
+**See also:** [Official API documentation](https://learn.microsoft.com/dotnet/api/aspire.hosting) for complete method signatures.
+
 ## AppHost API Reference
 
 ### DistributedApplication Builder
@@ -24,9 +26,11 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 ### Resource Types
 
+See [component overview](https://learn.microsoft.com/dotnet/aspire/fundamentals/components-overview) for all available resource types.
+
 #### AddProject
 
-Adds a .NET project to the application model.
+Adds a .NET project to the application model. [API docs](https://learn.microsoft.com/dotnet/api/aspire.hosting.projectresourcebuilderextensions.addproject).
 
 ```csharp
 builder.AddProject<Projects.Api>("api")
@@ -46,7 +50,7 @@ builder.AddProject<Projects.Api>("api")
 
 #### AddRedis
 
-Adds Redis cache server.
+Adds Redis cache server. [Component docs](https://learn.microsoft.com/dotnet/aspire/caching/stackexchange-redis-component).
 
 ```csharp
 builder.AddRedis("cache")
@@ -67,7 +71,7 @@ builder.AddRedis("cache")
 
 #### AddPostgres
 
-Adds PostgreSQL database server.
+Adds PostgreSQL database server. [Component docs](https://learn.microsoft.com/dotnet/aspire/database/postgresql-component).
 
 ```csharp
 builder.AddPostgres("pg")
@@ -195,6 +199,8 @@ builder.AddProject<Projects.Api>("api").WithReference(externalApi);
 
 ## Service Discovery & Environment Injection
 
+See [service discovery overview](https://learn.microsoft.com/dotnet/aspire/service-discovery/overview).
+
 ### Automatic Connection String Generation
 
 When you add a reference:
@@ -250,7 +256,7 @@ var api = builder.AddProject<Projects.Api>("api")
 
 ### Developer Control Plane (DCP)
 
-DCP is the orchestration engine that manages resource lifecycles.
+[DCP](https://learn.microsoft.com/dotnet/aspire/fundamentals/networking-overview#aspire-orchestration) is the orchestration engine managing resource lifecycles.
 
 **Architecture:**
 ```
@@ -390,6 +396,8 @@ var api = builder.AddProject<Projects.Api>("api")
 
 ## Dashboard API
 
+See [Dashboard documentation](https://learn.microsoft.com/dotnet/aspire/fundamentals/dashboard).
+
 ### Accessing Dashboard Programmatically
 
 ```bash
@@ -428,9 +436,11 @@ logger.LogInformation("User {UserId} performed {Action}", userId, action);
 
 ## Azure Deployment Details
 
+See [Azure deployment guide](https://learn.microsoft.com/dotnet/aspire/deployment/azure/aca-deployment).
+
 ### Bicep Generation
 
-`azd deploy` analyzes AppHost and generates:
+`azd deploy` analyzes AppHost and generates [Bicep templates](https://learn.microsoft.com/dotnet/aspire/deployment/azure/aca-deployment#deployment-manifest-and-bicep-template):
 
 ```bicep
 // Generated from AddRedis("cache")
@@ -543,5 +553,17 @@ var api = builder.AddProject<Projects.Api>("api")
     .WithReference(primaryDb)      // Write operations
     .WithReference(replicaDb);     // Read operations
 ```
+
+## Resources
+
+**API Reference:**
+- [Aspire.Hosting Namespace](https://learn.microsoft.com/dotnet/api/aspire.hosting) - Complete API documentation
+- [Component Overview](https://learn.microsoft.com/dotnet/aspire/fundamentals/components-overview) - All available integrations
+- [AppHost Reference](https://learn.microsoft.com/dotnet/aspire/fundamentals/app-host-overview) - Detailed AppHost guide
+
+**Advanced Topics:**
+- [Networking & Service Discovery](https://learn.microsoft.com/dotnet/aspire/fundamentals/networking-overview)
+- [Health Checks](https://learn.microsoft.com/dotnet/aspire/fundamentals/health-checks)
+- [Testing Aspire Apps](https://learn.microsoft.com/dotnet/aspire/fundamentals/testing)
 
 See patterns.md for complete production deployment strategies.

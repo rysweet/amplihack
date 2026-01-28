@@ -1,6 +1,8 @@
 # Aspire Working Examples
 
-Complete, copy-paste ready examples for common Aspire scenarios.
+Copy-paste examples for common Aspire scenarios. All examples tested with .NET 8 and Aspire 9.0+.
+
+**See also:** [Official samples](https://github.com/dotnet/aspire-samples) for production-ready applications.
 
 ## Basic Project Setup
 
@@ -517,6 +519,8 @@ azd down  # Deletes all Azure resources
 
 ### Polyglot Application with Python Service
 
+See [Python integration guide](https://learn.microsoft.com/dotnet/aspire/get-started/build-aspire-apps-with-python).
+
 **AppHost:**
 ```csharp
 var builder = DistributedApplication.CreateBuilder(args);
@@ -535,6 +539,13 @@ var dotnetApi = builder.AddProject<Projects.DotNetApi>("dotnet-api")
     .WithReference(redis);
 
 builder.Build().Run();
+```
+
+**Python Dependencies (python_api/requirements.txt):**
+```txt
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+redis==5.0.8
 ```
 
 **Python Service (python_api/app.py):**
@@ -600,6 +611,8 @@ curl http://localhost:5000/combined
 
 ### .NET + Node.js Express API
 
+See [Node.js integration guide](https://learn.microsoft.com/dotnet/aspire/get-started/build-aspire-apps-with-nodejs).
+
 **AppHost:**
 ```csharp
 var builder = DistributedApplication.CreateBuilder(args);
@@ -617,6 +630,16 @@ var dotnetApi = builder.AddProject<Projects.DotNetApi>("dotnet-api")
     .WithReference(postgres);
 
 builder.Build().Run();
+```
+
+**Node.js Dependencies (node_api/package.json):**
+```json
+{
+  "dependencies": {
+    "express": "^4.19.2",
+    "pg": "^8.12.0"
+  }
+}
 ```
 
 **Node.js Service (node_api/server.js):**
@@ -645,6 +668,105 @@ curl http://localhost:3000/node/users
 curl http://localhost:5000/users  # Proxies to Node.js
 ```
 
+## Go Integration
+
+### API with Go Fiber Framework
+
+See [Go integration patterns](https://learn.microsoft.com/dotnet/aspire/get-started/build-aspire-apps-with-python) (concepts apply to all languages).
+
+**AppHost:**
+```csharp
+var builder = DistributedApplication.CreateBuilder(args);
+
+var redis = builder.AddRedis("cache");
+
+// Go Fiber API service
+var goApi = builder.AddExecutable("go-api", "go", "go_api")
+    .WithArgs("run", "main.go")
+    .WithHttpEndpoint(port: 8080)
+    .WithReference(redis);
+
+var dotnetApi = builder.AddProject<Projects.DotNetApi>("dotnet-api")
+    .WithReference(goApi)
+    .WithReference(redis);
+
+builder.Build().Run();
+```
+
+**Go Dependencies (go_api/go.mod):**
+```go
+module go-api
+
+go 1.21
+
+require (
+    github.com/gofiber/fiber/v2 v2.52.0
+    github.com/redis/go-redis/v9 v9.5.1
+)
+```
+
+**Go Service (go_api/main.go):**
+```go
+package main
+
+import (
+    "context"
+    "log"
+    "os"
+
+    "github.com/gofiber/fiber/v2"
+    "github.com/redis/go-redis/v9"
+)
+
+func main() {
+    app := fiber.New()
+    ctx := context.Background()
+
+    // Get Redis connection from Aspire
+    redisAddr := os.Getenv("ConnectionStrings__cache")
+    if redisAddr == "" {
+        redisAddr = "localhost:6379"
+    }
+
+    rdb := redis.NewClient(&redis.Options{
+        Addr: redisAddr,
+    })
+
+    app.Get("/go/data", func(c *fiber.Ctx) error {
+        val, err := rdb.Get(ctx, "go-data").Result()
+        if err == redis.Nil {
+            return c.JSON(fiber.Map{"data": nil})
+        } else if err != nil {
+            return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+        }
+        return c.JSON(fiber.Map{"data": val})
+    })
+
+    app.Post("/go/data", func(c *fiber.Ctx) error {
+        value := c.Query("value")
+        err := rdb.Set(ctx, "go-data", value, 0).Err()
+        if err != nil {
+            return c.Status(500).JSON(fiber.Map{"error": err.Error()})
+        }
+        return c.JSON(fiber.Map{"status": "ok"})
+    })
+
+    log.Fatal(app.Listen(":8080"))
+}
+```
+
+**Test:**
+```bash
+aspire run
+
+# Set data in Go API
+curl -X POST http://localhost:8080/go/data?value=hello
+
+# Get data from Go API
+curl http://localhost:8080/go/data
+# Returns: {"data":"hello"}
+```
+
 ## Custom Component Integration
 
 ### Add Elasticsearch
@@ -653,7 +775,8 @@ curl http://localhost:5000/users  # Proxies to Node.js
 ```csharp
 var builder = DistributedApplication.CreateBuilder(args);
 
-var elasticsearch = builder.AddContainer("elasticsearch", "elasticsearch", "8.11.0")
+var elasticsearch = builder.AddContainer("elasticsearch", "elasticsearch")
+    .WithImageTag("8")
     .WithEnvironment("discovery.type", "single-node")
     .WithEnvironment("xpack.security.enabled", "false")
     .WithHttpEndpoint(port: 9200, name: "http")
@@ -682,4 +805,14 @@ app.MapGet("/search", async (string query, ElasticClient elastic) =>
 });
 ```
 
-All examples are production-ready and tested. Use as-is or adapt to your specific needs.
+## Resources
+
+**More Examples:**
+- [Official Aspire Samples](https://github.com/dotnet/aspire-samples) - eShop, Orleans, Dapr integrations
+- [Community Samples](https://github.com/topics/dotnet-aspire) - GitHub projects using Aspire
+- [Component Documentation](https://learn.microsoft.com/dotnet/aspire/fundamentals/components-overview) - All available integrations
+
+**Language Guides:**
+- [Python with Aspire](https://learn.microsoft.com/dotnet/aspire/get-started/build-aspire-apps-with-python)
+- [Node.js with Aspire](https://learn.microsoft.com/dotnet/aspire/get-started/build-aspire-apps-with-nodejs)
+- [Go Service Examples](https://github.com/dotnet/aspire-samples/tree/main/samples/AspireWithGo)

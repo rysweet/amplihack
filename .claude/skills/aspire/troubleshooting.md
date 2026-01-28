@@ -2,6 +2,8 @@
 
 Common issues, debugging strategies, and solutions for .NET Aspire development.
 
+**See also:** [GitHub Issues](https://github.com/dotnet/aspire/issues) for known problems and community solutions.
+
 ## Orchestration Issues
 
 ### Services Not Starting
@@ -545,9 +547,21 @@ az containerapp logs show --name my-api --resource-group mygroup
 1. Check [GitHub Issues](https://github.com/dotnet/aspire/issues)
 2. Search for error message
 3. Include diagnostic information:
-   - Aspire version (`dotnet --version`)
+   - Aspire version (`dotnet workload list`)
    - OS and Docker version
    - AppHost code (minimal repro)
    - Full error message and stack trace
 
-Most issues are resolved by ensuring dependencies are properly referenced and health checks are configured correctly.
+## Resources
+
+**Troubleshooting Guides:**
+- [Common Issues FAQ](https://learn.microsoft.com/dotnet/aspire/troubleshooting/overview) - Official troubleshooting guide
+- [Health Checks](https://learn.microsoft.com/dotnet/aspire/fundamentals/health-checks) - Debugging health check failures
+- [Networking Issues](https://learn.microsoft.com/dotnet/aspire/fundamentals/networking-overview#troubleshooting) - Service discovery problems
+
+**Community Support:**
+- [GitHub Discussions](https://github.com/dotnet/aspire/discussions) - Q&A and community help
+- [Stack Overflow](https://stackoverflow.com/questions/tagged/dotnet-aspire) - Tagged questions
+- [Discord Server](https://aka.ms/dotnet-discord) - Real-time community support
+
+Most issues resolve by ensuring dependencies are properly referenced and health checks configured correctly.
