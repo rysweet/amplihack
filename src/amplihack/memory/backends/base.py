@@ -54,7 +54,7 @@ class MemoryBackend(Protocol):
         """
         ...
 
-    def initialize(self) -> None:
+    async def initialize(self) -> None:
         """Initialize backend (create schema, indexes, etc).
 
         MUST be called before first use.
@@ -62,7 +62,7 @@ class MemoryBackend(Protocol):
         """
         ...
 
-    def store_memory(self, memory: MemoryEntry) -> bool:
+    async def store_memory(self, memory: MemoryEntry) -> bool:
         """Store a memory entry.
 
         Args:
@@ -75,7 +75,7 @@ class MemoryBackend(Protocol):
         """
         ...
 
-    def retrieve_memories(self, query: MemoryQuery) -> list[MemoryEntry]:
+    async def retrieve_memories(self, query: MemoryQuery) -> list[MemoryEntry]:
         """Retrieve memories matching the query.
 
         Args:
@@ -88,7 +88,7 @@ class MemoryBackend(Protocol):
         """
         ...
 
-    def get_memory_by_id(self, memory_id: str) -> MemoryEntry | None:
+    async def get_memory_by_id(self, memory_id: str) -> MemoryEntry | None:
         """Get a specific memory by ID.
 
         Args:
@@ -101,7 +101,7 @@ class MemoryBackend(Protocol):
         """
         ...
 
-    def delete_memory(self, memory_id: str) -> bool:
+    async def delete_memory(self, memory_id: str) -> bool:
         """Delete a memory entry.
 
         Args:
@@ -114,7 +114,7 @@ class MemoryBackend(Protocol):
         """
         ...
 
-    def cleanup_expired(self) -> int:
+    async def cleanup_expired(self) -> int:
         """Remove expired memory entries.
 
         Returns:
@@ -124,7 +124,7 @@ class MemoryBackend(Protocol):
         """
         ...
 
-    def get_session_info(self, session_id: str) -> SessionInfo | None:
+    async def get_session_info(self, session_id: str) -> SessionInfo | None:
         """Get information about a session.
 
         Args:
@@ -137,7 +137,7 @@ class MemoryBackend(Protocol):
         """
         ...
 
-    def list_sessions(self, limit: int | None = None) -> list[SessionInfo]:
+    async def list_sessions(self, limit: int | None = None) -> list[SessionInfo]:
         """List all sessions ordered by last accessed.
 
         Args:
@@ -150,7 +150,7 @@ class MemoryBackend(Protocol):
         """
         ...
 
-    def get_stats(self) -> dict[str, Any]:
+    async def get_stats(self) -> dict[str, Any]:
         """Get database statistics.
 
         Returns:
@@ -160,7 +160,7 @@ class MemoryBackend(Protocol):
         """
         ...
 
-    def close(self) -> None:
+    async def close(self) -> None:
         """Close backend connection and cleanup resources.
 
         Should be idempotent (safe to call multiple times).

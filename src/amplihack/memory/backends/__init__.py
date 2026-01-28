@@ -16,7 +16,6 @@ Public API:
 import logging
 import os
 from enum import Enum
-from pathlib import Path
 from typing import Any
 
 from .base import BackendCapabilities, MemoryBackend
@@ -100,10 +99,10 @@ def create_backend(backend_type: str | BackendType | None = None, **config: Any)
             logger.info(f"Kùzu not available ({e}), using SQLite backend")
 
     # Create backend instance
+    # Note: Caller must call await backend.initialize() after creation
     if backend_type == BackendType.SQLITE:
         db_path = config.get("db_path")
         backend = SQLiteBackend(db_path=db_path)
-        backend.initialize()
         return backend
 
     if backend_type == BackendType.KUZU:
@@ -116,7 +115,6 @@ def create_backend(backend_type: str | BackendType | None = None, **config: Any)
 
         db_path = config.get("db_path")
         backend = KuzuBackend(db_path=db_path)
-        backend.initialize()
         return backend
 
     raise ValueError(f"Unknown backend type: {backend_type}")
