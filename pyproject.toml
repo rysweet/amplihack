@@ -37,6 +37,7 @@ dependencies = [
     "tree-sitter-c-sharp>=0.23.1", # C# grammar
     "psutil>=7.0.0", # Process utilities for blarify
     "protobuf==6.31.1", # Protobuf for SCIP index format
+    "typing-extensions>=4.12.2", # Backport for Python 3.10 (NotRequired, etc.)
 ]
 
 [project.optional-dependencies]
