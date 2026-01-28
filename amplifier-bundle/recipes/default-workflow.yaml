@@ -177,7 +177,7 @@ steps:
     parse_json: true
 
   - id: "step-02b-analyze-codebase"
-    agent: "amplihack:analyzer"
+    agent: "amplihack:architect"
     prompt: |
       # Step 2b: Analyze Existing Codebase Context
 
@@ -191,6 +191,7 @@ steps:
       3. Dependencies and integration points
       4. Potential conflicts or considerations
 
+      Use glob and grep to explore the codebase. Avoid web searches.
       Provide a codebase context summary for subsequent agents.
     output: "codebase_analysis"
 
@@ -320,7 +321,7 @@ steps:
 
   - id: "step-05b-api-design"
     agent: "amplihack:api-designer"
-    condition: "'API' in str(architecture_design) or 'endpoint' in str(architecture_design)"
+    condition: "'API' in architecture_design or 'endpoint' in architecture_design"
     prompt: |
       # Step 5b: API Design (if applicable)
 
@@ -338,7 +339,7 @@ steps:
 
   - id: "step-05c-database-design"
     agent: "amplihack:database"
-    condition: "'database' in str(architecture_design) or 'model' in str(architecture_design) or 'schema' in str(architecture_design)"
+    condition: "'database' in architecture_design or 'model' in architecture_design or 'schema' in architecture_design"
     prompt: |
       # Step 5c: Database Design (if applicable)
 
@@ -514,7 +515,7 @@ steps:
 
   - id: "step-08b-integration"
     agent: "amplihack:integration"
-    condition: "'external' in str(design_spec) or 'integration' in str(design_spec) or 'service' in str(design_spec)"
+    condition: "'external' in design_spec or 'integration' in design_spec or 'service' in design_spec"
     prompt: |
       # Step 8b: External Service Integration
 
@@ -978,7 +979,7 @@ steps:
 
   - id: "step-19b-push-cleanup"
     type: "bash"
-    condition: "'changes made' in str(final_cleanup) or 'updated' in str(final_cleanup)"
+    condition: "'changes made' in final_cleanup or 'updated' in final_cleanup"
     command: |
       cd "{{repo_path}}" && \
       echo "=== Pushing Cleanup Changes ===" && \

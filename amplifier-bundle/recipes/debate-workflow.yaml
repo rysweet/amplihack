@@ -532,7 +532,7 @@ steps:
 
   # PERSPECTIVE 7: COST
   - id: "perspective-cost"
-    agent: "amplihack:analyzer"
+    agent: "amplihack:architect"
     prompt: |
       **COST PERSPECTIVE ANALYSIS**
 
@@ -594,7 +594,7 @@ steps:
   # Collect and synthesize all initial positions
   # ==========================================================================
   - id: "round1-synthesis"
-    agent: "amplihack:analyzer"
+    agent: "amplihack:architect"
     prompt: |
       **DEBATE ROUND 1: INITIAL POSITIONS SYNTHESIS**
 
@@ -661,7 +661,7 @@ steps:
   # Cross-examination of positions
   # ==========================================================================
   - id: "round2-challenges"
-    agent: "amplihack:analyzer"
+    agent: "amplihack:architect"
     prompt: |
       **DEBATE ROUND 2: CHALLENGE AND CROSS-EXAMINATION**
 
@@ -883,7 +883,7 @@ steps:
   # Create comprehensive decision record
   # ==========================================================================
   - id: "create-decision-record"
-    agent: "amplihack:analyzer"
+    agent: "amplihack:architect"
     prompt: |
       **CREATE DECISION RECORD**
 
