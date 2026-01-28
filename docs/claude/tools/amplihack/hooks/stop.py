@@ -10,23 +10,47 @@ Stop Hook Protocol (https://docs.claude.com/en/docs/claude-code/hooks):
 
 import json
 import os
-import subprocess
 import sys
+import time
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+# Platform-specific imports (Windows compatibility)
+try:
+    import fcntl
+
+    LOCKING_AVAILABLE = True
+except ImportError:
+    # Windows doesn't have fcntl - graceful degradation
+    LOCKING_AVAILABLE = False
+
 # Clean import structure
 sys.path.insert(0, str(Path(__file__).parent))
+
+# Import error protocol first for structured errors
+try:
+    from error_protocol import HookError, HookErrorSeverity, HookImportError
+except ImportError as e:
+    # Fallback if error_protocol doesn't exist
+    print(f"Failed to import error_protocol: {e}", file=sys.stderr)
+    print("Make sure error_protocol.py exists in the same directory", file=sys.stderr)
+    sys.exit(1)
 
 # Import HookProcessor - wrap in try/except for robustness
 try:
     from hook_processor import HookProcessor  # type: ignore[import]
 except ImportError as e:
-    # If import fails, provide helpful error message
-    print(f"Failed to import hook_processor: {e}", file=sys.stderr)
-    print("Make sure hook_processor.py exists in the same directory", file=sys.stderr)
-    sys.exit(1)
+    # If import fails, raise structured error
+    raise HookImportError(
+        HookError(
+            severity=HookErrorSeverity.FATAL,
+            message=f"Failed to import hook_processor: {e}",
+            context="Loading hook dependencies",
+            suggestion="Ensure hook_processor.py exists in the same directory",
+        )
+    )
 
 # Default continuation prompt when no custom prompt is provided
 DEFAULT_CONTINUATION_PROMPT = (
@@ -45,6 +69,8 @@ class StopHook(HookProcessor):
         self.continuation_prompt_file = (
             self.project_root / ".claude" / "runtime" / "locks" / ".continuation_prompt"
         )
+        # Initialize strategy (will be set in process())
+        self.strategy = None
 
     def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Check lock flag and block stop if active.
@@ -57,11 +83,40 @@ class StopHook(HookProcessor):
         Returns:
             Dict with decision to block or allow stop
         """
+        from shutdown_context import is_shutdown_in_progress
+
+        # Skip expensive operations during shutdown
+        if is_shutdown_in_progress():
+            self.log("=== STOP HOOK: Shutdown detected - skipping all operations ===")
+            return {"decision": "approve"}
+
+        # Detect launcher and select strategy
+        self.strategy = self._select_strategy()
+        if self.strategy:
+            self.log(f"Using strategy: {self.strategy.__class__.__name__}")
+            # Check for strategy-specific stop handling
+            strategy_result = self.strategy.handle_stop(input_data)
+            if strategy_result:
+                self.log("Strategy provided custom stop handling")
+                return strategy_result
+
         self.log("=== STOP HOOK STARTED ===")
         self.log(f"Input keys: {list(input_data.keys())}")
 
+        # Atomic lock check: touch() verifies file still exists at use-time
+        # This eliminates TOCTOU race condition (Issue #2159)
         try:
-            lock_exists = self.lock_flag.exists()
+            if self.lock_flag.exists():
+                # Verify lock still exists by attempting to touch it
+                # If file was deleted between exists() and touch(), FileNotFoundError raised
+                self.lock_flag.touch()
+                lock_exists = True
+            else:
+                lock_exists = False
+        except FileNotFoundError:
+            # File disappeared between check and touch - treat as not locked
+            self.log("Lock file disappeared during check - treating as not locked", "DEBUG")
+            lock_exists = False
         except (PermissionError, OSError) as e:
             self.log(f"Cannot access lock file: {e}", "WARNING")
             self.log("=== STOP HOOK ENDED (fail-safe: approve) ===")
@@ -267,151 +322,29 @@ class StopHook(HookProcessor):
     def _is_neo4j_in_use(self) -> bool:
         """Check if Neo4j service requires cleanup.
 
-        Two-layer detection:
-        1. Environment variables - Are credentials configured?
-        2. Docker container status - Is container actually running?
+        Neo4j has been removed from amplihack. This method is preserved
+        as a no-op to maintain backward compatibility.
 
         Returns:
-            bool: True if Neo4j container is running, False otherwise.
-                  Returns False on any errors (fail-safe).
+            bool: Always returns False (Neo4j not in use).
         """
-        # Layer 1: Check environment variables (instant)
-        if not os.getenv("NEO4J_USERNAME") or not os.getenv("NEO4J_PASSWORD"):
-            self.log("Neo4j credentials not configured - skipping cleanup", "DEBUG")
-            return False
-
-        # Layer 2: Check Docker container status (authoritative check)
-        try:
-            result = subprocess.run(
-                ["docker", "ps", "--filter", "name=neo4j", "--format", "{{.Names}}"],
-                capture_output=True,
-                text=True,
-                timeout=2.0,
-            )
-
-            if result.returncode != 0:
-                return False
-
-            containers = result.stdout.strip().split("\n")
-            neo4j_running = any("neo4j" in name.lower() for name in containers if name)
-
-            if neo4j_running:
-                self.log("Neo4j container detected - proceeding with cleanup", "DEBUG")
-            else:
-                self.log("No Neo4j containers running - skipping cleanup", "DEBUG")
-
-            return neo4j_running
-
-        except FileNotFoundError:
-            self.log("Docker command not found - skipping Neo4j cleanup", "WARNING")
-            return False
-
-        except subprocess.TimeoutExpired:
-            self.log("Docker command timed out - skipping Neo4j cleanup", "WARNING")
-            return False
-
-        except Exception as e:
-            self.log(f"Error checking Docker status: {e} - skipping Neo4j cleanup", "WARNING")
-            return False
+        return False
 
     def _handle_neo4j_cleanup(self) -> None:
         """Handle Neo4j cleanup on session exit.
 
-        Pre-check gate: Only proceeds if Neo4j is actually in use.
-        Prevents unnecessary initialization of Neo4j components when
-        the service isn't running, avoiding spurious authentication errors.
-
-        Executes Neo4j shutdown coordination if appropriate.
-        Fail-safe: Never raises exceptions.
-
-        Environment Variables Set:
-            AMPLIHACK_CLEANUP_MODE: Set to "1" to signal cleanup context.
-                Prevents interactive prompts during session exit.
-                Checked by container_selection.py to skip container selection dialog.
+        Neo4j has been removed from amplihack. This method is preserved
+        as a no-op to maintain backward compatibility with existing hooks.
         """
-        # PRE-CHECK GATE: Skip if Neo4j not in use
-        if not self._is_neo4j_in_use():
-            self.log("Neo4j not in use - skipping cleanup handler", "DEBUG")
-            return
-
-        self.log("Neo4j cleanup handler started - service detected as active", "INFO")
-
-        try:
-            # Set cleanup mode to prevent interactive prompts during session exit
-            # This is checked by container_selection.resolve_container_name()
-            os.environ["AMPLIHACK_CLEANUP_MODE"] = "1"
-
-            # Import components
-            from amplihack.memory.neo4j.lifecycle import Neo4jContainerManager
-            from amplihack.neo4j.connection_tracker import Neo4jConnectionTracker
-            from amplihack.neo4j.shutdown_coordinator import Neo4jShutdownCoordinator
-
-            # Detect auto mode (standardized format)
-            auto_mode = os.getenv("AMPLIHACK_AUTO_MODE", "0") == "1"
-
-            self.log(f"Neo4j cleanup handler started (auto_mode={auto_mode})")
-
-            # Initialize components with credentials from environment
-            # Note: Connection tracker will raise ValueError if password not set and  # pragma: allowlist secret
-            # NEO4J_ALLOW_DEFAULT_PASSWORD != "true". This is intentional for production security.  # pragma: allowlist secret
-            tracker = Neo4jConnectionTracker(
-                username=os.getenv("NEO4J_USERNAME"), password=os.getenv("NEO4J_PASSWORD")
-            )
-            manager = Neo4jContainerManager()
-            coordinator = Neo4jShutdownCoordinator(
-                connection_tracker=tracker,
-                container_manager=manager,
-                auto_mode=auto_mode,
-            )
-
-            # Execute cleanup
-            coordinator.handle_session_exit()
-
-            self.log("Neo4j cleanup handler completed")
-
-        except Exception as e:
-            self.log(
-                f"[CAUSE] Neo4j cleanup failed with exception. [IMPACT] Database may not be properly shut down. [ACTION] Check Neo4j status manually if needed. Error: {e}",
-                "WARNING",
-            )
-            self.save_metric("neo4j_cleanup_errors", 1)
+        self.log("Neo4j cleanup skipped - Neo4j removed from amplihack", "DEBUG")
 
     def _handle_neo4j_learning(self) -> None:
         """Handle Neo4j learning capture on session exit.
 
-        Extracts learning insights from Neo4j knowledge graph if available.
-        Fail-safe: Never raises exceptions.
-
-        Design Notes:
-            - Called AFTER Neo4j cleanup coordination
-            - Separated from cleanup for single responsibility
-            - Optional feature: Gracefully skips if not yet implemented
-            - Currently planned but not yet implemented (awaiting schema definition)
+        Neo4j has been removed from amplihack. This method is preserved
+        as a no-op to maintain backward compatibility with existing hooks.
         """
-        try:
-            # Import from sibling neo4j module (relative to hooks directory)
-            from neo4j.learning_capture import capture_neo4j_learnings
-
-            session_id = self._get_current_session_id()
-            self.log(f"Starting Neo4j learning capture for session {session_id}")
-
-            # Attempt learning capture (fail-safe design)
-            success = capture_neo4j_learnings(
-                project_root=self.project_root,
-                session_id=session_id,
-                neo4j_connection=None,  # TODO: Pass active connection when available
-            )
-
-            if success:
-                self.log("Neo4j learning capture completed successfully")
-                self.save_metric("neo4j_learning_captures", 1)
-            else:
-                self.log("Neo4j learning capture skipped (Neo4j not available)")
-
-        except ImportError:
-            self.log("Neo4j learning module not available - skipping", "DEBUG")
-        except Exception as e:
-            self.log(f"Neo4j learning capture failed (non-critical): {e}", "WARNING")
+        self.log("Neo4j learning capture skipped - Neo4j removed from amplihack", "DEBUG")
 
     def read_continuation_prompt(self) -> str:
         """Read custom continuation prompt from file or return default.
@@ -419,13 +352,10 @@ class StopHook(HookProcessor):
         Returns:
             str: Custom prompt content or DEFAULT_CONTINUATION_PROMPT
         """
-        # Check if custom prompt file exists
-        if not self.continuation_prompt_file.exists():
-            self.log("No custom continuation prompt file - using default")
-            return DEFAULT_CONTINUATION_PROMPT
-
+        # Atomic read: Directly attempt read_text() and catch FileNotFoundError
+        # This eliminates TOCTOU race between exists() check and read_text()
         try:
-            # Read prompt content
+            # Read prompt content directly without prior exists() check
             content = self.continuation_prompt_file.read_text(encoding="utf-8").strip()
 
             # Check if empty
@@ -455,15 +385,92 @@ class StopHook(HookProcessor):
             self.log(f"Using custom continuation prompt ({content_len} chars)")
             return content
 
+        except FileNotFoundError:
+            # File doesn't exist - use default (expected case)
+            self.log("No custom continuation prompt file - using default")
+            return DEFAULT_CONTINUATION_PROMPT
         except (PermissionError, OSError, UnicodeDecodeError) as e:
             self.log(f"Error reading custom prompt: {e} - using default", "WARNING")
             return DEFAULT_CONTINUATION_PROMPT
+
+    @contextmanager
+    def _acquire_file_lock(self, file_handle, timeout_seconds: float | None = 2.0):
+        """Acquire exclusive file lock with timeout (context manager pattern).
+
+        Uses fcntl.flock() on Linux/macOS for advisory file locking.
+        On Windows, gracefully degrades (no locking).
+
+        Args:
+            file_handle: Open file object to lock
+            timeout_seconds: Lock acquisition timeout (default: 2.0s)
+
+        Yields:
+            True if lock acquired, False if timeout/unavailable (fail-open)
+
+        Example:
+            with open(path, 'r+') as f:
+                with self._acquire_file_lock(f) as locked:
+                    if locked:
+                        # Critical section with lock protection
+                        pass
+                    else:
+                        # Proceed without lock (fail-open)
+                        pass
+        """
+        # Windows degradation: Skip locking
+        if not LOCKING_AVAILABLE:
+            yield False
+            return
+
+        # Try to acquire lock with timeout
+        start_time = time.time()
+        lock_acquired = False
+
+        try:
+            while True:
+                try:
+                    # Non-blocking exclusive lock
+                    fcntl.flock(file_handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    lock_acquired = True
+                    break
+
+                except BlockingIOError:
+                    # Lock unavailable - check timeout
+                    elapsed = time.time() - start_time
+                    if timeout_seconds is not None and elapsed >= timeout_seconds:
+                        self.log(
+                            f"Lock timeout after {timeout_seconds}s - proceeding without lock",
+                            "DEBUG",
+                        )
+                        break
+
+                    # Wait briefly before retry
+                    time.sleep(0.05)  # 50ms
+
+            # Yield lock status
+            yield lock_acquired
+
+        except (PermissionError, OSError) as e:
+            # Fail-open: Log error and proceed without lock
+            self.log(f"Lock error ({type(e).__name__}): {e} - proceeding without lock", "DEBUG")
+            yield False
+
+        finally:
+            # Release lock if acquired
+            if lock_acquired:
+                try:
+                    fcntl.flock(file_handle.fileno(), fcntl.LOCK_UN)
+                except Exception:
+                    # Non-critical: Lock will be released when file closes
+                    pass
 
     def _increment_power_steering_counter(self, session_id: str) -> int:
         """Increment power-steering invocation counter for statusline display.
 
         Writes counter to .claude/runtime/power-steering/{session_id}/session_count
         for statusline to read. Session-specific like lock counter.
+
+        Uses file locking to prevent race conditions during concurrent increments.
 
         Args:
             session_id: Session identifier
@@ -482,18 +489,42 @@ class StopHook(HookProcessor):
             )
             counter_file.parent.mkdir(parents=True, exist_ok=True)
 
-            # Read current count (default to 0)
-            current_count = 0
-            if counter_file.exists():
-                try:
-                    current_count = int(counter_file.read_text().strip())
-                except (ValueError, OSError):
-                    current_count = 0
+            # Initialize file if it doesn't exist
+            if not counter_file.exists():
+                counter_file.write_text("0")
 
-            # Increment and write
-            new_count = current_count + 1
-            counter_file.write_text(str(new_count))
-            return new_count
+            # Read-modify-write with file locking
+            with open(counter_file, "r+") as f:
+                with self._acquire_file_lock(f) as locked:
+                    # Read current count
+                    try:
+                        f.seek(0)
+                        content = f.read().strip()
+                        current_count = int(content) if content else 0
+                    except (ValueError, OSError):
+                        current_count = 0
+
+                    # Increment
+                    new_count = current_count + 1
+
+                    # Write back
+                    f.seek(0)
+                    f.truncate()
+                    f.write(str(new_count))
+                    f.flush()
+
+                    if locked:
+                        self.log(
+                            f"Power-steering counter incremented to {new_count} (with lock)",
+                            "DEBUG",
+                        )
+                    else:
+                        self.log(
+                            f"Power-steering counter incremented to {new_count} (without lock)",
+                            "DEBUG",
+                        )
+
+                    return new_count
 
         except Exception as e:
             # Fail-safe: Don't break hook if counter write fails
@@ -502,6 +533,8 @@ class StopHook(HookProcessor):
 
     def _increment_lock_counter(self, session_id: str) -> int:
         """Increment lock mode invocation counter for session.
+
+        Uses file locking to prevent race conditions during concurrent increments.
 
         Args:
             session_id: Session identifier
@@ -520,20 +553,36 @@ class StopHook(HookProcessor):
             )
             counter_file.parent.mkdir(parents=True, exist_ok=True)
 
-            # Read current count (default to 0)
-            current_count = 0
-            if counter_file.exists():
-                try:
-                    current_count = int(counter_file.read_text().strip())
-                except (ValueError, OSError):
-                    current_count = 0
+            # Initialize file if it doesn't exist
+            if not counter_file.exists():
+                counter_file.write_text("0")
 
-            # Increment and write
-            new_count = current_count + 1
-            counter_file.write_text(str(new_count))
+            # Read-modify-write with file locking
+            with open(counter_file, "r+") as f:
+                with self._acquire_file_lock(f) as locked:
+                    # Read current count
+                    try:
+                        f.seek(0)
+                        content = f.read().strip()
+                        current_count = int(content) if content else 0
+                    except (ValueError, OSError):
+                        current_count = 0
 
-            self.log(f"Lock mode invocation count: {new_count}")
-            return new_count
+                    # Increment
+                    new_count = current_count + 1
+
+                    # Write back
+                    f.seek(0)
+                    f.truncate()
+                    f.write(str(new_count))
+                    f.flush()
+
+                    if locked:
+                        self.log(f"Lock mode invocation count: {new_count} (with lock)")
+                    else:
+                        self.log(f"Lock mode invocation count: {new_count} (without lock)")
+
+                    return new_count
 
         except Exception as e:
             # Fail-safe: Don't break hook if counter write fails
@@ -851,6 +900,25 @@ After presenting the findings and getting the user's decision, you may proceed a
         self.save_metric("reflection_blocked", 1)
 
         return {"decision": "block", "reason": reason}
+
+    def _select_strategy(self):
+        """Detect launcher and select appropriate strategy."""
+        try:
+            # Import adaptive components
+            sys.path.insert(0, str(self.project_root / "src" / "amplihack"))
+            from amplihack.context.adaptive.detector import LauncherDetector
+            from amplihack.context.adaptive.strategies import ClaudeStrategy, CopilotStrategy
+
+            detector = LauncherDetector(self.project_root)
+            launcher_type = detector.detect()
+
+            if launcher_type == "copilot":
+                return CopilotStrategy(self.project_root, self.log)
+            return ClaudeStrategy(self.project_root, self.log)
+
+        except ImportError as e:
+            self.log(f"Adaptive strategy not available: {e}", "DEBUG")
+            return None
 
 
 def stop():

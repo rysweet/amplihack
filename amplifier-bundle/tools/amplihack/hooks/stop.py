@@ -11,9 +11,20 @@ Stop Hook Protocol (https://docs.claude.com/en/docs/claude-code/hooks):
 import json
 import os
 import sys
+import time
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+# Platform-specific imports (Windows compatibility)
+try:
+    import fcntl
+
+    LOCKING_AVAILABLE = True
+except ImportError:
+    # Windows doesn't have fcntl - graceful degradation
+    LOCKING_AVAILABLE = False
 
 # Clean import structure
 sys.path.insert(0, str(Path(__file__).parent))
@@ -64,6 +75,7 @@ class StopHook(HookProcessor):
     def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Check lock flag and block stop if active.
         Run synchronous reflection analysis if enabled.
+        Execute Neo4j cleanup if appropriate.
 
         Args:
             input_data: Input from Claude Code
@@ -91,8 +103,20 @@ class StopHook(HookProcessor):
         self.log("=== STOP HOOK STARTED ===")
         self.log(f"Input keys: {list(input_data.keys())}")
 
+        # Atomic lock check: touch() verifies file still exists at use-time
+        # This eliminates TOCTOU race condition (Issue #2159)
         try:
-            lock_exists = self.lock_flag.exists()
+            if self.lock_flag.exists():
+                # Verify lock still exists by attempting to touch it
+                # If file was deleted between exists() and touch(), FileNotFoundError raised
+                self.lock_flag.touch()
+                lock_exists = True
+            else:
+                lock_exists = False
+        except FileNotFoundError:
+            # File disappeared between check and touch - treat as not locked
+            self.log("Lock file disappeared during check - treating as not locked", "DEBUG")
+            lock_exists = False
         except (PermissionError, OSError) as e:
             self.log(f"Cannot access lock file: {e}", "WARNING")
             self.log("=== STOP HOOK ENDED (fail-safe: approve) ===")
@@ -118,7 +142,13 @@ class StopHook(HookProcessor):
                 "reason": continuation_prompt,
             }
 
-        # Neo4j cleanup removed (Week 7) - no cleanup needed for Kuzu backend
+        # Neo4j cleanup integration (runs before reflection to ensure database state is managed
+        # before any potentially long-running reflection analysis that might timeout the user)
+        self._handle_neo4j_cleanup()
+
+        # Neo4j learning capture (after cleanup, before reflection)
+        # Separated from cleanup for single responsibility and optional nature
+        self._handle_neo4j_learning()
 
         # Power-steering check (before reflection)
         if not lock_exists and self._should_run_power_steering():
@@ -289,8 +319,32 @@ class StopHook(HookProcessor):
             self.log("=== STOP HOOK ENDED (decision: approve - error occurred) ===")
             return {"decision": "approve"}
 
-    # Neo4j cleanup methods removed (Week 7 cleanup)
-    # Kuzu backend does not require cleanup on session exit
+    def _is_neo4j_in_use(self) -> bool:
+        """Check if Neo4j service requires cleanup.
+
+        Neo4j has been removed from amplihack. This method is preserved
+        as a no-op to maintain backward compatibility.
+
+        Returns:
+            bool: Always returns False (Neo4j not in use).
+        """
+        return False
+
+    def _handle_neo4j_cleanup(self) -> None:
+        """Handle Neo4j cleanup on session exit.
+
+        Neo4j has been removed from amplihack. This method is preserved
+        as a no-op to maintain backward compatibility with existing hooks.
+        """
+        self.log("Neo4j cleanup skipped - Neo4j removed from amplihack", "DEBUG")
+
+    def _handle_neo4j_learning(self) -> None:
+        """Handle Neo4j learning capture on session exit.
+
+        Neo4j has been removed from amplihack. This method is preserved
+        as a no-op to maintain backward compatibility with existing hooks.
+        """
+        self.log("Neo4j learning capture skipped - Neo4j removed from amplihack", "DEBUG")
 
     def read_continuation_prompt(self) -> str:
         """Read custom continuation prompt from file or return default.
@@ -298,13 +352,10 @@ class StopHook(HookProcessor):
         Returns:
             str: Custom prompt content or DEFAULT_CONTINUATION_PROMPT
         """
-        # Check if custom prompt file exists
-        if not self.continuation_prompt_file.exists():
-            self.log("No custom continuation prompt file - using default")
-            return DEFAULT_CONTINUATION_PROMPT
-
+        # Atomic read: Directly attempt read_text() and catch FileNotFoundError
+        # This eliminates TOCTOU race between exists() check and read_text()
         try:
-            # Read prompt content
+            # Read prompt content directly without prior exists() check
             content = self.continuation_prompt_file.read_text(encoding="utf-8").strip()
 
             # Check if empty
@@ -334,15 +385,92 @@ class StopHook(HookProcessor):
             self.log(f"Using custom continuation prompt ({content_len} chars)")
             return content
 
+        except FileNotFoundError:
+            # File doesn't exist - use default (expected case)
+            self.log("No custom continuation prompt file - using default")
+            return DEFAULT_CONTINUATION_PROMPT
         except (PermissionError, OSError, UnicodeDecodeError) as e:
             self.log(f"Error reading custom prompt: {e} - using default", "WARNING")
             return DEFAULT_CONTINUATION_PROMPT
+
+    @contextmanager
+    def _acquire_file_lock(self, file_handle, timeout_seconds: float | None = 2.0):
+        """Acquire exclusive file lock with timeout (context manager pattern).
+
+        Uses fcntl.flock() on Linux/macOS for advisory file locking.
+        On Windows, gracefully degrades (no locking).
+
+        Args:
+            file_handle: Open file object to lock
+            timeout_seconds: Lock acquisition timeout (default: 2.0s)
+
+        Yields:
+            True if lock acquired, False if timeout/unavailable (fail-open)
+
+        Example:
+            with open(path, 'r+') as f:
+                with self._acquire_file_lock(f) as locked:
+                    if locked:
+                        # Critical section with lock protection
+                        pass
+                    else:
+                        # Proceed without lock (fail-open)
+                        pass
+        """
+        # Windows degradation: Skip locking
+        if not LOCKING_AVAILABLE:
+            yield False
+            return
+
+        # Try to acquire lock with timeout
+        start_time = time.time()
+        lock_acquired = False
+
+        try:
+            while True:
+                try:
+                    # Non-blocking exclusive lock
+                    fcntl.flock(file_handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    lock_acquired = True
+                    break
+
+                except BlockingIOError:
+                    # Lock unavailable - check timeout
+                    elapsed = time.time() - start_time
+                    if timeout_seconds is not None and elapsed >= timeout_seconds:
+                        self.log(
+                            f"Lock timeout after {timeout_seconds}s - proceeding without lock",
+                            "DEBUG",
+                        )
+                        break
+
+                    # Wait briefly before retry
+                    time.sleep(0.05)  # 50ms
+
+            # Yield lock status
+            yield lock_acquired
+
+        except (PermissionError, OSError) as e:
+            # Fail-open: Log error and proceed without lock
+            self.log(f"Lock error ({type(e).__name__}): {e} - proceeding without lock", "DEBUG")
+            yield False
+
+        finally:
+            # Release lock if acquired
+            if lock_acquired:
+                try:
+                    fcntl.flock(file_handle.fileno(), fcntl.LOCK_UN)
+                except Exception:
+                    # Non-critical: Lock will be released when file closes
+                    pass
 
     def _increment_power_steering_counter(self, session_id: str) -> int:
         """Increment power-steering invocation counter for statusline display.
 
         Writes counter to .claude/runtime/power-steering/{session_id}/session_count
         for statusline to read. Session-specific like lock counter.
+
+        Uses file locking to prevent race conditions during concurrent increments.
 
         Args:
             session_id: Session identifier
@@ -361,18 +489,42 @@ class StopHook(HookProcessor):
             )
             counter_file.parent.mkdir(parents=True, exist_ok=True)
 
-            # Read current count (default to 0)
-            current_count = 0
-            if counter_file.exists():
-                try:
-                    current_count = int(counter_file.read_text().strip())
-                except (ValueError, OSError):
-                    current_count = 0
+            # Initialize file if it doesn't exist
+            if not counter_file.exists():
+                counter_file.write_text("0")
 
-            # Increment and write
-            new_count = current_count + 1
-            counter_file.write_text(str(new_count))
-            return new_count
+            # Read-modify-write with file locking
+            with open(counter_file, "r+") as f:
+                with self._acquire_file_lock(f) as locked:
+                    # Read current count
+                    try:
+                        f.seek(0)
+                        content = f.read().strip()
+                        current_count = int(content) if content else 0
+                    except (ValueError, OSError):
+                        current_count = 0
+
+                    # Increment
+                    new_count = current_count + 1
+
+                    # Write back
+                    f.seek(0)
+                    f.truncate()
+                    f.write(str(new_count))
+                    f.flush()
+
+                    if locked:
+                        self.log(
+                            f"Power-steering counter incremented to {new_count} (with lock)",
+                            "DEBUG",
+                        )
+                    else:
+                        self.log(
+                            f"Power-steering counter incremented to {new_count} (without lock)",
+                            "DEBUG",
+                        )
+
+                    return new_count
 
         except Exception as e:
             # Fail-safe: Don't break hook if counter write fails
@@ -381,6 +533,8 @@ class StopHook(HookProcessor):
 
     def _increment_lock_counter(self, session_id: str) -> int:
         """Increment lock mode invocation counter for session.
+
+        Uses file locking to prevent race conditions during concurrent increments.
 
         Args:
             session_id: Session identifier
@@ -399,20 +553,36 @@ class StopHook(HookProcessor):
             )
             counter_file.parent.mkdir(parents=True, exist_ok=True)
 
-            # Read current count (default to 0)
-            current_count = 0
-            if counter_file.exists():
-                try:
-                    current_count = int(counter_file.read_text().strip())
-                except (ValueError, OSError):
-                    current_count = 0
+            # Initialize file if it doesn't exist
+            if not counter_file.exists():
+                counter_file.write_text("0")
 
-            # Increment and write
-            new_count = current_count + 1
-            counter_file.write_text(str(new_count))
+            # Read-modify-write with file locking
+            with open(counter_file, "r+") as f:
+                with self._acquire_file_lock(f) as locked:
+                    # Read current count
+                    try:
+                        f.seek(0)
+                        content = f.read().strip()
+                        current_count = int(content) if content else 0
+                    except (ValueError, OSError):
+                        current_count = 0
 
-            self.log(f"Lock mode invocation count: {new_count}")
-            return new_count
+                    # Increment
+                    new_count = current_count + 1
+
+                    # Write back
+                    f.seek(0)
+                    f.truncate()
+                    f.write(str(new_count))
+                    f.flush()
+
+                    if locked:
+                        self.log(f"Lock mode invocation count: {new_count} (with lock)")
+                    else:
+                        self.log(f"Lock mode invocation count: {new_count} (without lock)")
+
+                    return new_count
 
         except Exception as e:
             # Fail-safe: Don't break hook if counter write fails

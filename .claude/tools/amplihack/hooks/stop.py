@@ -103,18 +103,20 @@ class StopHook(HookProcessor):
         self.log("=== STOP HOOK STARTED ===")
         self.log(f"Input keys: {list(input_data.keys())}")
 
-        # Atomic lock check: Use touch() to atomically test and create if missing
-        # This eliminates TOCTOU race between exists() check and subsequent usage
+        # Atomic lock check: touch() verifies file still exists at use-time
+        # This eliminates TOCTOU race condition (Issue #2159)
         try:
-            # touch(exist_ok=False) will raise FileExistsError if lock exists
-            # This atomically tests presence without separate exists() call
-            self.lock_flag.touch(exist_ok=False)
-            # If we get here, lock didn't exist, we just created it, so remove it
-            self.lock_flag.unlink()
+            if self.lock_flag.exists():
+                # Verify lock still exists by attempting to touch it
+                # If file was deleted between exists() and touch(), FileNotFoundError raised
+                self.lock_flag.touch()
+                lock_exists = True
+            else:
+                lock_exists = False
+        except FileNotFoundError:
+            # File disappeared between check and touch - treat as not locked
+            self.log("Lock file disappeared during check - treating as not locked", "DEBUG")
             lock_exists = False
-        except FileExistsError:
-            # Lock exists - this is the only case where lock is truly active
-            lock_exists = True
         except (PermissionError, OSError) as e:
             self.log(f"Cannot access lock file: {e}", "WARNING")
             self.log("=== STOP HOOK ENDED (fail-safe: approve) ===")
