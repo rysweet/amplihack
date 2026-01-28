@@ -92,8 +92,12 @@ class StopHook(HookProcessor):
         self.log("=== STOP HOOK STARTED ===")
         self.log(f"Input keys: {list(input_data.keys())}")
 
+        # TOCTOU FIX: Use atomic stat() to check existence
         try:
-            lock_exists = self.lock_flag.exists()
+            self.lock_flag.stat()
+            lock_exists = True
+        except FileNotFoundError:
+            lock_exists = False
         except (PermissionError, OSError) as e:
             self.log(f"Cannot access lock file: {e}", "WARNING")
             self.log("=== STOP HOOK ENDED (fail-safe: approve) ===")
@@ -329,13 +333,9 @@ class StopHook(HookProcessor):
         Returns:
             str: Custom prompt content or DEFAULT_CONTINUATION_PROMPT
         """
-        # Check if custom prompt file exists
-        if not self.continuation_prompt_file.exists():
-            self.log("No custom continuation prompt file - using default")
-            return DEFAULT_CONTINUATION_PROMPT
-
+        # TOCTOU FIX: Direct read with FileNotFoundError handling
         try:
-            # Read prompt content
+            # Read prompt content (atomic operation)
             content = self.continuation_prompt_file.read_text(encoding="utf-8").strip()
 
             # Check if empty
@@ -365,6 +365,9 @@ class StopHook(HookProcessor):
             self.log(f"Using custom continuation prompt ({content_len} chars)")
             return content
 
+        except FileNotFoundError:
+            self.log("No custom continuation prompt file - using default")
+            return DEFAULT_CONTINUATION_PROMPT
         except (PermissionError, OSError, UnicodeDecodeError) as e:
             self.log(f"Error reading custom prompt: {e} - using default", "WARNING")
             return DEFAULT_CONTINUATION_PROMPT
