@@ -37,6 +37,10 @@ dependencies = [
     "psutil>=7.0.0", # Process utilities for blarify
     "protobuf==6.31.1", # Protobuf for SCIP index format
     "typing-extensions>=4.12.2", # Backport for Python 3.10 (NotRequired, etc.)
+    "falkordb>=1.0.10", # FalkorDB graph database (blarify vendored code imports)
+    "neo4j>=5.25.0", # Neo4j graph database (blarify vendored code imports)
+    "jedi-language-server>=0.43.1", # Jedi LSP for Python code intelligence
+    "docker>=7.1.0", # Docker client for blarify containers
 ]
 
 [project.optional-dependencies]
