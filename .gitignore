@@ -27,6 +27,7 @@ htmlcov/
 *.bak
 *.backup
 *.backup.*
+.claude.backup.*
 **/.metadata/versions.json
 
 # Project specific
