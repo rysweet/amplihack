@@ -1,6 +1,6 @@
 ---
 name: aspire
-description: .NET Aspire orchestration for cloud-native distributed applications. Handles dependency management, local dev with Docker, Azure deployment, service discovery, and observability dashboards. Use when setting up microservices, containerized apps, or distributed systems with .NET.
+description: Aspire orchestration for cloud-native distributed applications in any language (C#, Python, Node.js, Go). Handles dependency management, local dev with Docker, Azure deployment, service discovery, and observability dashboards. Use when setting up microservices, containerized apps, or polyglot distributed systems.
 version: 1.0.0
 last_updated: 2025-01-28
 source_urls:
@@ -18,24 +18,25 @@ auto_activate: true
 token_budget: 1800
 ---
 
-# .NET Aspire Orchestration
+# Aspire Orchestration
 
 ## Overview
 
-.NET Aspire orchestrates distributed cloud-native apps, eliminating manual wiring of containers, databases, and microservices.
+Aspire orchestrates distributed cloud-native apps in **any language** (C#, Python, Node.js, Go), eliminating manual wiring of containers, databases, and microservices.
 
 **Key Components:**
-- **AppHost**: Code-first resource topology definition
+- **AppHost** (.NET): Code-first resource topology for all services regardless of language
 - **DCP**: Kubernetes-compatible orchestration engine
-- **Dashboard**: OpenTelemetry observability UI
+- **Dashboard**: OpenTelemetry observability UI showing all services
 
 **Workflow:**
 ```
-Local:  dotnet new aspire → aspire run → Docker + Dashboard
-Cloud:  Same AppHost → azd deploy → Azure Container Apps
+Local:  aspire run → Docker containers for all services + Dashboard
+Cloud:  azd deploy → Azure Container Apps (any language)
 ```
 
-**Supports:** PostgreSQL, Redis, SQL Server, MongoDB, RabbitMQ, Kafka. Polyglot: C#, Python, Node.js, Go.
+**Language Support:** AppHost is .NET, but orchestrates services in C#, Python, Node.js, Go, Java, Ruby - any language.
+**Infrastructure:** PostgreSQL, Redis, SQL Server, MongoDB, RabbitMQ, Kafka, Elasticsearch.
 
 ## Quick Start
 
@@ -44,16 +45,25 @@ Cloud:  Same AppHost → azd deploy → Azure Container Apps
 curl -sSL https://aspire.dev/install.sh | bash  # macOS/Linux
 irm https://aspire.dev/install.ps1 | iex         # Windows
 
-# Create project
+# Create AppHost (orchestrates services in ANY language)
 dotnet new aspire-apphost -n MyApp
 
-# Basic AppHost (MyApp.AppHost/Program.cs)
+# Basic AppHost - orchestrate Python, Node.js, .NET services
 var builder = DistributedApplication.CreateBuilder(args);
 var redis = builder.AddRedis("cache");
-var api = builder.AddProject<Projects.Api>("api").WithReference(redis);
+
+// Add Python service
+var pythonApi = builder.AddExecutable("python-api", "python", ".").WithArgs("app.py").WithReference(redis);
+
+// Add Node.js service
+var nodeApi = builder.AddExecutable("node-api", "node", ".").WithArgs("server.js").WithReference(redis);
+
+// Add .NET service
+var dotnetApi = builder.AddProject<Projects.Api>("api").WithReference(redis);
+
 builder.Build().Run();
 
-# Run
+# Run (orchestrates ALL languages)
 aspire run  # Opens Dashboard at http://localhost:15888
 ```
 
@@ -126,9 +136,9 @@ if (builder.Environment.IsProduction())
 
 **Read when you need:**
 - **reference.md** - Complete API reference, DCP internals, advanced config (health checks, volumes, ports)
-- **examples.md** - Working code for integrations, multi-service templates, Azure deployment
+- **examples.md** - Working code for Python/Node.js/Go integration, multi-service templates, Azure deployment
 - **patterns.md** - Production strategies (HA, multi-region), security (Key Vault, managed identities), performance
-- **troubleshooting.md** - Debug orchestration, dependency conflicts, deployment failures
+- **troubleshooting.md** - Debug orchestration, dependency conflicts, deployment failures, polyglot issues
 
 ## Quick Reference
 
@@ -164,12 +174,13 @@ azd down            # Tear down resources
 3. Use `builder.Environment` for env-specific config
 4. Use Dashboard for debugging (no separate logging)
 
-**More AppHost patterns:**
+**Polyglot Patterns:**
 ```csharp
-builder.AddProject<Projects.Api>("api");  // Simple service
-builder.AddProject<Projects.Api>("api").WithReference(redis).WithReference(postgres);  // With deps
-builder.AddContainer("nginx", "nginx:latest").WithHttpEndpoint(port: 80);  // Container
-builder.AddExecutable("python-app", "python", ".").WithArgs("app.py");  // Executable
+builder.AddProject<Projects.Api>("api");  // .NET service
+builder.AddExecutable("python-api", "python", ".").WithArgs("app.py");  // Python
+builder.AddExecutable("node-api", "node", ".").WithArgs("server.js");  // Node.js
+builder.AddContainer("nginx", "nginx:latest").WithHttpEndpoint(port: 80);  // Any container
+builder.AddExecutable("go-svc", "go", ".").WithArgs("run", "main.go");  // Go service
 ```
 
 **Service discovery** (automatic):
