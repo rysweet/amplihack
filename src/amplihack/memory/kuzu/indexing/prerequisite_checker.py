@@ -17,6 +17,7 @@ class LanguageStatus:
     available: bool
     error_message: str | None
     missing_tools: list[str]
+    install_instructions: str | None = None  # How to install missing tools
 
 
 @dataclass
@@ -53,6 +54,8 @@ class PrerequisiteResult:
                     status = None
                 if status and status.error_message:
                     lines.append(f"  ✗ {lang}: {status.error_message}")
+                    if status.install_instructions:
+                        lines.append(f"      Install: {status.install_instructions}")
                 else:
                     lines.append(f"  ✗ {lang}")
 
@@ -105,7 +108,7 @@ class PrerequisiteChecker:
     def _check_python(self, indexer_type: str | None = None) -> LanguageStatus:
         """Check Python prerequisites."""
         if indexer_type == "jedi":
-            # Check for jedi initialize_params.json
+            # Check for jedi initialize_params.json - config now included in package
             python_bin = shutil.which("python") or shutil.which("python3")
             if not python_bin:
                 return LanguageStatus(
@@ -113,23 +116,10 @@ class PrerequisiteChecker:
                     available=False,
                     error_message="Python binary not found in PATH",
                     missing_tools=["python"],
+                    install_instructions="Python is required (install from python.org or your package manager)",
                 )
 
-            # Check for initialize_params.json
-            # This would typically be in a config directory
-            config_paths = [
-                Path.home() / ".config" / "jedi" / "initialize_params.json",
-                Path("/etc/jedi/initialize_params.json"),
-            ]
-
-            if not any(p.exists() for p in config_paths):
-                return LanguageStatus(
-                    language="python",
-                    available=False,
-                    error_message="initialize_params.json not found for jedi",
-                    missing_tools=["initialize_params.json"],
-                )
-
+            # Config files are now included in the wheel package, so just check Python binary
             return LanguageStatus(
                 language="python",
                 available=True,
@@ -145,6 +135,7 @@ class PrerequisiteChecker:
                 available=False,
                 error_message="scip-python binary not found in PATH",
                 missing_tools=["scip-python"],
+                install_instructions="pip install scip-python OR use jedi mode (pip install jedi-language-server)",
             )
 
         return LanguageStatus(
@@ -163,6 +154,7 @@ class PrerequisiteChecker:
                 available=False,
                 error_message="Node.js binary not found in PATH",
                 missing_tools=["node"],
+                install_instructions="npm install -g typescript-language-server (requires Node.js)",
             )
 
         return LanguageStatus(
@@ -181,21 +173,12 @@ class PrerequisiteChecker:
                 available=False,
                 error_message="Node.js binary not found in PATH",
                 missing_tools=["node"],
+                install_instructions="npm install -g typescript-language-server (requires Node.js)",
             )
 
-        # Check for runtime_dependencies.json
-        config_paths = [
-            Path.home() / ".config" / "typescript" / "runtime_dependencies.json",
-            Path("/etc/typescript/runtime_dependencies.json"),
-        ]
-
-        if not any(p.exists() for p in config_paths):
-            return LanguageStatus(
-                language="typescript",
-                available=False,
-                error_message="runtime_dependencies.json not found for TypeScript",
-                missing_tools=["runtime_dependencies.json"],
-            )
+        # Check for runtime_dependencies.json - config now included in package
+        # This check is kept for legacy compatibility but should not fail
+        # since runtime_dependencies.json is now in the wheel package
 
         return LanguageStatus(
             language="typescript",
@@ -214,6 +197,7 @@ class PrerequisiteChecker:
                 available=False,
                 error_message="dotnet binary not found in PATH",
                 missing_tools=["dotnet"],
+                install_instructions="Install .NET SDK from https://dotnet.microsoft.com/download (versions 6-10 supported)",
             )
 
         # Check dotnet version
@@ -234,8 +218,9 @@ class PrerequisiteChecker:
                     return LanguageStatus(
                         language="csharp",
                         available=False,
-                        error_message=f"dotnet version {version} is not supported",
+                        error_message=f"dotnet version {version} is not supported (supported: 6-10)",
                         missing_tools=["dotnet"],
+                        install_instructions=f"Install .NET SDK 6, 7, 8, 9, or 10 from https://dotnet.microsoft.com/download (current: {version})",
                     )
 
                 return LanguageStatus(
@@ -249,6 +234,7 @@ class PrerequisiteChecker:
                 available=False,
                 error_message="Failed to check dotnet version",
                 missing_tools=["dotnet"],
+                install_instructions="Ensure .NET SDK is properly installed from https://dotnet.microsoft.com/download",
             )
 
         except (subprocess.TimeoutExpired, FileNotFoundError) as e:
@@ -257,6 +243,7 @@ class PrerequisiteChecker:
                 available=False,
                 error_message=f"Error checking dotnet: {e}",
                 missing_tools=["dotnet"],
+                install_instructions="Install .NET SDK from https://dotnet.microsoft.com/download",
             )
 
     def _check_go(self) -> LanguageStatus:
@@ -268,6 +255,7 @@ class PrerequisiteChecker:
                 available=False,
                 error_message="Go binary not found in PATH",
                 missing_tools=["go"],
+                install_instructions="Install Go from https://golang.org/dl/ or via package manager (apt install golang-go)",
             )
 
         return LanguageStatus(
@@ -286,6 +274,7 @@ class PrerequisiteChecker:
                 available=False,
                 error_message="Java binary not found in PATH",
                 missing_tools=["java"],
+                install_instructions="Install JDK from https://adoptium.net/ or via package manager (apt install default-jdk)",
             )
 
         return LanguageStatus(
@@ -304,6 +293,7 @@ class PrerequisiteChecker:
                 available=False,
                 error_message="PHP binary not found in PATH",
                 missing_tools=["php"],
+                install_instructions="Install PHP from https://www.php.net/ or via package manager (apt install php-cli)",
             )
 
         return LanguageStatus(
@@ -322,6 +312,7 @@ class PrerequisiteChecker:
                 available=False,
                 error_message="Ruby binary not found in PATH",
                 missing_tools=["ruby"],
+                install_instructions="Install Ruby from https://www.ruby-lang.org/ or via package manager (apt install ruby-full)",
             )
 
         return LanguageStatus(
