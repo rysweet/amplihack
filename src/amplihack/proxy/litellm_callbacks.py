@@ -22,6 +22,7 @@ from typing import Any
 
 try:
     import litellm
+
     LITELLM_AVAILABLE = True
 except ImportError:
     LITELLM_AVAILABLE = False
@@ -63,7 +64,7 @@ class TraceCallback:
             trace_logger: Existing TraceLogger instance (optional)
         """
         self._owns_logger = False  # Track if we need to manage lifecycle
-        
+
         if trace_logger:
             self.trace_logger = trace_logger
             self.trace_file = str(trace_logger.log_file) if trace_logger.log_file else None
@@ -74,7 +75,7 @@ class TraceCallback:
             self._owns_logger = True
             # Enter the context immediately since callbacks are long-lived
             self.trace_logger.__enter__()
-    
+
     def close(self) -> None:
         """Close the trace logger if we own it."""
         if self._owns_logger and self.trace_logger:
@@ -293,7 +294,7 @@ def unregister_trace_callbacks(callback: TraceCallback | None) -> None:
         # Callback not in list or callbacks list doesn't exist
         # This is fine - callback was never registered or already removed
         pass
-    
+
     # Close the trace logger to flush and close the file
     callback.close()
 

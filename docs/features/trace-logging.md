@@ -109,14 +109,14 @@ Each trace file uses JSONL format (newline-delimited JSON):
 
 ### Trace Entry Schema
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `timestamp` | ISO 8601 | Event timestamp |
-| `session_id` | string | Unique session identifier |
-| `event` | string | Event type: `request`, `response`, `error` |
-| `request` | object | Claude API request (sanitized) |
-| `response` | object | Claude API response (sanitized) |
-| `error` | object | Error details (if applicable) |
+| Field        | Type     | Description                                |
+| ------------ | -------- | ------------------------------------------ |
+| `timestamp`  | ISO 8601 | Event timestamp                            |
+| `session_id` | string   | Unique session identifier                  |
+| `event`      | string   | Event type: `request`, `response`, `error` |
+| `request`    | object   | Claude API request (sanitized)             |
+| `response`   | object   | Claude API response (sanitized)            |
+| `error`      | object   | Error details (if applicable)              |
 
 ## Common Scenarios
 
@@ -264,11 +264,11 @@ ls -l .claude/runtime/amplihack-traces/
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `AMPLIHACK_TRACE_LOGGING` | `false` | Enable/disable trace logging |
-| `AMPLIHACK_TRACE_DIR` | `.claude/runtime/amplihack-traces/` | Trace file directory |
-| `AMPLIHACK_TRACE_RETENTION_DAYS` | `30` | Auto-delete traces older than N days |
+| Variable                         | Default                             | Description                          |
+| -------------------------------- | ----------------------------------- | ------------------------------------ |
+| `AMPLIHACK_TRACE_LOGGING`        | `false`                             | Enable/disable trace logging         |
+| `AMPLIHACK_TRACE_DIR`            | `.claude/runtime/amplihack-traces/` | Trace file directory                 |
+| `AMPLIHACK_TRACE_RETENTION_DAYS` | `30`                                | Auto-delete traces older than N days |
 
 ## File Naming Convention
 

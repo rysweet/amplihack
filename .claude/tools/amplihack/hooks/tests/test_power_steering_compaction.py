@@ -21,19 +21,15 @@ import json
 import sys
 import tempfile
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from unittest.mock import Mock, patch
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Import checker (already exists)
 from power_steering_checker import (
-    CheckerResult,
-    ConsiderationAnalysis,
     PowerSteeringChecker,
-    PowerSteeringResult,
 )
 
 # Import validator (will fail initially - TDD)
@@ -43,14 +39,18 @@ try:
         CompactionValidator,
         ValidationResult,
     )
+
     VALIDATOR_AVAILABLE = True
 except ImportError:
     VALIDATOR_AVAILABLE = False
+
     # Create placeholder
     class CompactionValidator:
         pass
+
     class CompactionContext:
         pass
+
     class ValidationResult:
         pass
 
@@ -107,6 +107,7 @@ class TestPowerSteeringCompactionIntegration(unittest.TestCase):
     def tearDown(self):
         """Clean up test fixtures."""
         import shutil
+
         if Path(self.temp_dir).exists():
             shutil.rmtree(self.temp_dir)
 
@@ -115,7 +116,7 @@ class TestPowerSteeringCompactionIntegration(unittest.TestCase):
         # Arrange: Create simple transcript without compaction
         transcript = [
             {"role": "user", "content": "Hello"},
-            {"role": "assistant", "content": "Hi there"}
+            {"role": "assistant", "content": "Hi there"},
         ]
 
         # Act: Run checker
@@ -123,8 +124,7 @@ class TestPowerSteeringCompactionIntegration(unittest.TestCase):
 
         # Assert: Compaction check was executed
         compaction_check = next(
-            (c for c in result.considerations if c.id == "compaction_handling"),
-            None
+            (c for c in result.considerations if c.id == "compaction_handling"), None
         )
         self.assertIsNotNone(compaction_check)
         assert compaction_check is not None  # Type narrowing for mypy
@@ -134,11 +134,11 @@ class TestPowerSteeringCompactionIntegration(unittest.TestCase):
         """Test compaction check detects compaction event from runtime data."""
         # Arrange: Create compaction event
         event_data = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "turn_number": 45,
             "messages_removed": 30,
             "pre_compaction_transcript_path": str(self.runtime_dir / "pre_transcript.json"),
-            "session_id": "test_session_123"
+            "session_id": "test_session_123",
         }
         events_file = self.runtime_dir / "compaction_events.json"
         events_file.write_text(json.dumps([event_data]))
@@ -146,16 +146,14 @@ class TestPowerSteeringCompactionIntegration(unittest.TestCase):
         # Create pre-compaction transcript
         pre_transcript = [
             {"role": "user", "content": "Task: Implement feature"},
-            {"role": "assistant", "content": "TODO: Step 1\nTODO: Step 2"}
+            {"role": "assistant", "content": "TODO: Step 1\nTODO: Step 2"},
         ]
-        Path(event_data["pre_compaction_transcript_path"]).write_text(
-            json.dumps(pre_transcript)
-        )
+        Path(event_data["pre_compaction_transcript_path"]).write_text(json.dumps(pre_transcript))
 
         # Current transcript (after compaction, TODOs preserved)
         transcript = [
             {"role": "assistant", "content": "TODO: Step 1\nTODO: Step 2"},
-            {"role": "user", "content": "Great"}
+            {"role": "user", "content": "Great"},
         ]
 
         # Act: Run checker
@@ -163,8 +161,7 @@ class TestPowerSteeringCompactionIntegration(unittest.TestCase):
 
         # Assert: Compaction detected and handled
         compaction_check = next(
-            (c for c in result.considerations if c.id == "compaction_handling"),
-            None
+            (c for c in result.considerations if c.id == "compaction_handling"), None
         )
         self.assertIsNotNone(compaction_check)
         assert compaction_check is not None  # Type narrowing for mypy
@@ -176,11 +173,11 @@ class TestPowerSteeringCompactionIntegration(unittest.TestCase):
         """Test compaction check fails when critical data is lost."""
         # Arrange: Create compaction event
         event_data = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "turn_number": 45,
             "messages_removed": 30,
             "pre_compaction_transcript_path": str(self.runtime_dir / "pre_transcript.json"),
-            "session_id": "test_session_123"
+            "session_id": "test_session_123",
         }
         events_file = self.runtime_dir / "compaction_events.json"
         events_file.write_text(json.dumps([event_data]))
@@ -188,16 +185,14 @@ class TestPowerSteeringCompactionIntegration(unittest.TestCase):
         # Pre-compaction transcript with TODOs
         pre_transcript = [
             {"role": "user", "content": "Task: Implement feature"},
-            {"role": "assistant", "content": "TODO: Step 1\nTODO: Step 2\nTODO: Step 3"}
+            {"role": "assistant", "content": "TODO: Step 1\nTODO: Step 2\nTODO: Step 3"},
         ]
-        Path(event_data["pre_compaction_transcript_path"]).write_text(
-            json.dumps(pre_transcript)
-        )
+        Path(event_data["pre_compaction_transcript_path"]).write_text(json.dumps(pre_transcript))
 
         # Current transcript (TODOs LOST)
         transcript = [
             {"role": "user", "content": "What should I do?"},
-            {"role": "assistant", "content": "Let me check"}
+            {"role": "assistant", "content": "Let me check"},
         ]
 
         # Act: Run checker
@@ -205,8 +200,7 @@ class TestPowerSteeringCompactionIntegration(unittest.TestCase):
 
         # Assert: Compaction check fails
         compaction_check = next(
-            (c for c in result.considerations if c.id == "compaction_handling"),
-            None
+            (c for c in result.considerations if c.id == "compaction_handling"), None
         )
         self.assertIsNotNone(compaction_check)
         assert compaction_check is not None  # Type narrowing for mypy
@@ -218,11 +212,11 @@ class TestPowerSteeringCompactionIntegration(unittest.TestCase):
         """Test compaction check provides actionable recovery steps."""
         # Arrange: Create compaction event with data loss
         event_data = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "turn_number": 45,
             "messages_removed": 30,
             "pre_compaction_transcript_path": str(self.runtime_dir / "pre_transcript.json"),
-            "session_id": "test_session_123"
+            "session_id": "test_session_123",
         }
         events_file = self.runtime_dir / "compaction_events.json"
         events_file.write_text(json.dumps([event_data]))
@@ -230,24 +224,19 @@ class TestPowerSteeringCompactionIntegration(unittest.TestCase):
         # Pre-compaction with objective
         pre_transcript = [
             {"role": "user", "content": "I need to implement compaction handling"},
-            {"role": "assistant", "content": "I'll help with that"}
+            {"role": "assistant", "content": "I'll help with that"},
         ]
-        Path(event_data["pre_compaction_transcript_path"]).write_text(
-            json.dumps(pre_transcript)
-        )
+        Path(event_data["pre_compaction_transcript_path"]).write_text(json.dumps(pre_transcript))
 
         # Post-compaction (objective unclear)
-        transcript = [
-            {"role": "user", "content": "What's next?"}
-        ]
+        transcript = [{"role": "user", "content": "What's next?"}]
 
         # Act: Run checker
         result = self.checker.check(transcript, session_id="test_session_123")
 
         # Assert: Recovery guidance provided
         compaction_check = next(
-            (c for c in result.considerations if c.id == "compaction_handling"),
-            None
+            (c for c in result.considerations if c.id == "compaction_handling"), None
         )
         self.assertIsNotNone(compaction_check)
         assert compaction_check is not None  # Type narrowing for mypy
@@ -263,19 +252,17 @@ class TestPowerSteeringCompactionIntegration(unittest.TestCase):
         """Test compaction check includes diagnostic information."""
         # Arrange: Create compaction event
         event_data = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "turn_number": 45,
             "messages_removed": 30,
             "pre_compaction_transcript_path": str(self.runtime_dir / "pre_transcript.json"),
-            "session_id": "test_session_123"
+            "session_id": "test_session_123",
         }
         events_file = self.runtime_dir / "compaction_events.json"
         events_file.write_text(json.dumps([event_data]))
 
         pre_transcript = [{"role": "user", "content": "Hello"}]
-        Path(event_data["pre_compaction_transcript_path"]).write_text(
-            json.dumps(pre_transcript)
-        )
+        Path(event_data["pre_compaction_transcript_path"]).write_text(json.dumps(pre_transcript))
 
         transcript = [{"role": "user", "content": "Hello"}]
 
@@ -298,18 +285,14 @@ class TestPowerSteeringCompactionIntegration(unittest.TestCase):
         # Arrange: No compaction events file
         # (Just don't create one)
 
-        transcript = [
-            {"role": "user", "content": "Hello"},
-            {"role": "assistant", "content": "Hi"}
-        ]
+        transcript = [{"role": "user", "content": "Hello"}, {"role": "assistant", "content": "Hi"}]
 
         # Act: Run checker
         result = self.checker.check(transcript, session_id="test_session")
 
         # Assert: Check passes (no compaction detected)
         compaction_check = next(
-            (c for c in result.considerations if c.id == "compaction_handling"),
-            None
+            (c for c in result.considerations if c.id == "compaction_handling"), None
         )
         self.assertIsNotNone(compaction_check)
         assert compaction_check is not None  # Type narrowing for mypy
@@ -321,17 +304,14 @@ class TestPowerSteeringCompactionIntegration(unittest.TestCase):
         events_file = self.runtime_dir / "compaction_events.json"
         events_file.write_text("{ bad json [[")
 
-        transcript = [
-            {"role": "user", "content": "Hello"}
-        ]
+        transcript = [{"role": "user", "content": "Hello"}]
 
         # Act: Run checker (should not crash)
         result = self.checker.check(transcript, session_id="test_session")
 
         # Assert: Check passes (fail-open on corruption)
         compaction_check = next(
-            (c for c in result.considerations if c.id == "compaction_handling"),
-            None
+            (c for c in result.considerations if c.id == "compaction_handling"), None
         )
         self.assertIsNotNone(compaction_check)
         assert compaction_check is not None  # Type narrowing for mypy
@@ -366,8 +346,7 @@ class TestPowerSteeringCompactionIntegration(unittest.TestCase):
 
         # Assert: Compaction check not present or marked as disabled
         compaction_check = next(
-            (c for c in result.considerations if c.id == "compaction_handling"),
-            None
+            (c for c in result.considerations if c.id == "compaction_handling"), None
         )
         # Either not present, or present but not executed
         if compaction_check:
@@ -400,27 +379,26 @@ class TestCompactionCheckStaleEvents(unittest.TestCase):
     def tearDown(self):
         """Clean up test fixtures."""
         import shutil
+
         if Path(self.temp_dir).exists():
             shutil.rmtree(self.temp_dir)
 
     def test_stale_event_marked_in_diagnostics(self):
         """Test stale compaction events (>24h) are marked in diagnostics."""
         # Arrange: Create old event (25 hours ago)
-        stale_time = datetime.now(timezone.utc) - timedelta(hours=25)
+        stale_time = datetime.now(UTC) - timedelta(hours=25)
         event_data = {
             "timestamp": stale_time.isoformat(),
             "turn_number": 45,
             "messages_removed": 30,
             "pre_compaction_transcript_path": str(self.runtime_dir / "pre_transcript.json"),
-            "session_id": "test_session_123"
+            "session_id": "test_session_123",
         }
         events_file = self.runtime_dir / "compaction_events.json"
         events_file.write_text(json.dumps([event_data]))
 
         pre_transcript = [{"role": "user", "content": "Old message"}]
-        Path(event_data["pre_compaction_transcript_path"]).write_text(
-            json.dumps(pre_transcript)
-        )
+        Path(event_data["pre_compaction_transcript_path"]).write_text(json.dumps(pre_transcript))
 
         transcript = [{"role": "user", "content": "New message"}]
 
@@ -457,6 +435,7 @@ class TestCompactionCheckPerformance(unittest.TestCase):
     def tearDown(self):
         """Clean up test fixtures."""
         import shutil
+
         if Path(self.temp_dir).exists():
             shutil.rmtree(self.temp_dir)
 
@@ -471,11 +450,11 @@ class TestCompactionCheckPerformance(unittest.TestCase):
         transcript_path.write_text(json.dumps(large_pre_transcript))
 
         event_data = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "turn_number": 950,
             "messages_removed": 900,
             "pre_compaction_transcript_path": str(transcript_path),
-            "session_id": "test_session_123"
+            "session_id": "test_session_123",
         }
         events_file = self.runtime_dir / "compaction_events.json"
         events_file.write_text(json.dumps([event_data]))
@@ -488,6 +467,7 @@ class TestCompactionCheckPerformance(unittest.TestCase):
 
         # Act: Time the validation
         import time
+
         start = time.time()
         result = self.checker.check(large_transcript, session_id="test_session_123")
         duration = time.time() - start
@@ -522,6 +502,7 @@ class TestCompactionCheckSecurityValidation(unittest.TestCase):
     def tearDown(self):
         """Clean up test fixtures."""
         import shutil
+
         if Path(self.temp_dir).exists():
             shutil.rmtree(self.temp_dir)
 
@@ -529,11 +510,11 @@ class TestCompactionCheckSecurityValidation(unittest.TestCase):
         """Test path traversal attempts are blocked in compaction paths."""
         # Arrange: Create event with path traversal
         event_data = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "turn_number": 45,
             "messages_removed": 30,
             "pre_compaction_transcript_path": "../../../etc/passwd",  # Malicious
-            "session_id": "test_session_123"
+            "session_id": "test_session_123",
         }
         events_file = self.runtime_dir / "compaction_events.json"
         events_file.write_text(json.dumps([event_data]))
@@ -547,8 +528,7 @@ class TestCompactionCheckSecurityValidation(unittest.TestCase):
         self.assertTrue(result.compaction_context.has_security_violation)
         # Should still pass (fail-open) but mark security issue
         compaction_check = next(
-            (c for c in result.considerations if c.id == "compaction_handling"),
-            None
+            (c for c in result.considerations if c.id == "compaction_handling"), None
         )
         if compaction_check:
             self.assertTrue(compaction_check.satisfied)  # Fail-open
@@ -579,6 +559,7 @@ class TestCompactionCheckDiagnosticOutput(unittest.TestCase):
     def tearDown(self):
         """Clean up test fixtures."""
         import shutil
+
         if Path(self.temp_dir).exists():
             shutil.rmtree(self.temp_dir)
 
@@ -586,19 +567,17 @@ class TestCompactionCheckDiagnosticOutput(unittest.TestCase):
         """Test diagnostic summary contains turn number and messages removed."""
         # Arrange: Create compaction event
         event_data = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "timestamp": datetime.now(UTC).isoformat(),
             "turn_number": 45,
             "messages_removed": 30,
             "pre_compaction_transcript_path": str(self.runtime_dir / "pre_transcript.json"),
-            "session_id": "test_session_123"
+            "session_id": "test_session_123",
         }
         events_file = self.runtime_dir / "compaction_events.json"
         events_file.write_text(json.dumps([event_data]))
 
         pre_transcript = [{"role": "user", "content": "Hello"}]
-        Path(event_data["pre_compaction_transcript_path"]).write_text(
-            json.dumps(pre_transcript)
-        )
+        Path(event_data["pre_compaction_transcript_path"]).write_text(json.dumps(pre_transcript))
 
         transcript = [{"role": "user", "content": "Hello"}]
 
