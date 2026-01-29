@@ -308,6 +308,11 @@ def _load_anti_sycophancy_context() -> str:
     Returns:
         Anti-sycophancy enforcement context from USER_PREFERENCES.md,
         or empty string if file unavailable
+
+    Implementation:
+        Extracts content from "⛔ BLOCKING REQUIREMENT - Anti-Sycophancy Enforcement"
+        marker until the next top-level "###" section header or "Always prefer"
+        line which marks the end of the anti-sycophancy section.
     """
     prefs_path = Path.home() / ".amplihack" / ".claude" / "context" / "USER_PREFERENCES.md"
 
@@ -326,15 +331,15 @@ def _load_anti_sycophancy_context() -> str:
                 in_section = True
                 section_lines.append(line)
             elif in_section:
-                if line.strip() == "":
-                    continue  # Skip blank lines within section
-                if line.startswith("###"):  # Next section header
+                # Stop at next major section or end of anti-sycophancy content
+                if line.startswith("###") or line.startswith("Always prefer"):
                     break
                 section_lines.append(line)
 
         return "\n".join(section_lines).strip()
     except Exception:
-        return ""  # Fail-open on read error
+        # Fail-open on read error
+        return ""
 
 
 def _format_consideration_prompt(consideration: dict, conversation: list[dict]) -> str:
