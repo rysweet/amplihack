@@ -723,6 +723,51 @@ def _fallback_to_directory_copy(reason: str = "Plugin installation failed") -> s
     return install_dir
 
 
+def _fix_global_statusline_path() -> None:
+    """Fix the global ~/.claude/settings.json statusline path to use ~/.amplihack/.claude/tools/statusline.sh.
+
+    This ensures the statusline works in all directories, not just projects with amplihack installed locally.
+    """
+    import json
+
+    global_settings_path = Path.home() / ".claude" / "settings.json"
+
+    # Only proceed if settings.json exists
+    if not global_settings_path.exists():
+        return
+
+    try:
+        # Read current settings
+        with open(global_settings_path, encoding="utf-8") as f:
+            settings = json.load(f)
+
+        # Check if statusLine needs updating
+        statusline_config = settings.get("statusLine", {})
+        current_command = statusline_config.get("command", "")
+        correct_command = "~/.amplihack/.claude/tools/statusline.sh"
+
+        # Only update if the command is a project-relative path
+        if current_command != correct_command and (
+            current_command == ".claude/tools/statusline.sh"
+            or current_command == "./claude/tools/statusline.sh"
+            or current_command.endswith(".claude/tools/statusline.sh")
+        ):
+            statusline_config["command"] = correct_command
+            settings["statusLine"] = statusline_config
+
+            # Write updated settings
+            with open(global_settings_path, "w", encoding="utf-8") as f:
+                json.dump(settings, f, indent=2, ensure_ascii=False)
+
+            if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                print(f"✓ Updated statusline path in {global_settings_path}")
+
+    except (json.JSONDecodeError, OSError) as e:
+        # Fail silently - don't break amplihack commands over this
+        if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+            print(f"Warning: Could not update global statusline path: {e}")
+
+
 def _ensure_amplihack_staged() -> None:
     """Ensure .claude/ files are staged to ~/.amplihack/.claude/ for non-Claude commands.
 
@@ -790,6 +835,9 @@ def _ensure_amplihack_staged() -> None:
     # Debug logging
     if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
         print(f"✓ Staged {len(copied)} directories to {staging_dir}")
+
+    # Fix global ~/.claude/settings.json statusline path if needed
+    _fix_global_statusline_path()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -1247,10 +1295,12 @@ def main(argv: list[str] | None = None) -> int:
             # Select backend
             if args.backend == "kuzu":
                 try:
+                    import asyncio
+
                     from .memory.backends.kuzu_backend import KuzuBackend
 
                     backend = KuzuBackend()
-                    backend.initialize()
+                    asyncio.run(backend.initialize())
                 except ImportError:
                     print(
                         "Error: Kùzu backend not available. Kuzu should be installed automatically with amplihack."
@@ -1291,10 +1341,12 @@ def main(argv: list[str] | None = None) -> int:
             # Select backend
             if args.backend == "kuzu":
                 try:
+                    import asyncio
+
                     from .memory.backends.kuzu_backend import KuzuBackend
 
                     backend = KuzuBackend()
-                    backend.initialize()
+                    asyncio.run(backend.initialize())
                 except ImportError:
                     print("Error: Kùzu backend not available. Install with: pip install amplihack")
                     return 1

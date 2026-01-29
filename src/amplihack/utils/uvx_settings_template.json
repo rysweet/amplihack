@@ -26,7 +26,7 @@
   "enabledMcpjsonServers": [],
   "statusLine": {
     "type": "command",
-    "command": ".claude/tools/statusline.sh"
+    "command": "~/.amplihack/.claude/tools/statusline.sh"
   },
   "hooks": {
     "SessionStart": [
