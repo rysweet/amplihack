@@ -96,6 +96,8 @@ amplihack = [
     ".claude-plugin/**/*",  # Plugin manifest
     "amplifier-bundle/**/*",
     "amplifier-bundle/**/.gitkeep",
+    "vendor/blarify/**/*.json",  # Include blarify language server config files
+    "vendor/blarify/**/*.proto",  # Include blarify protobuf definitions
 ]
 
 [tool.ruff]
