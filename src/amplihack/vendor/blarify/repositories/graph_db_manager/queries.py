@@ -8,9 +8,9 @@ retrieving structured data from the graph database.
 import logging
 from typing import Any, LiteralString
 
-from blarify.repositories.graph_db_manager.db_manager import AbstractDbManager
-from blarify.repositories.graph_db_manager.dtos.leaf_node_dto import LeafNodeDto
-from blarify.repositories.graph_db_manager.dtos.node_with_content_dto import NodeWithContentDto
+from amplihack.vendor.blarify.repositories.graph_db_manager.db_manager import AbstractDbManager
+from amplihack.vendor.blarify.repositories.graph_db_manager.dtos.leaf_node_dto import LeafNodeDto
+from amplihack.vendor.blarify.repositories.graph_db_manager.dtos.node_with_content_dto import NodeWithContentDto
 
 logger = logging.getLogger(__name__)
 

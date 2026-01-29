@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import Any, LiteralString
 
 import kuzu
-from blarify.repositories.graph_db_manager.db_manager import ENVIRONMENT, AbstractDbManager
-from blarify.repositories.graph_db_manager.dtos.node_search_result_dto import (
+from amplihack.vendor.blarify.repositories.graph_db_manager.db_manager import ENVIRONMENT, AbstractDbManager
+from amplihack.vendor.blarify.repositories.graph_db_manager.dtos.node_search_result_dto import (
     ReferenceSearchResultDTO,
 )
 

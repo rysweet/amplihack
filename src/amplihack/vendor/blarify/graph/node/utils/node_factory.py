@@ -1,8 +1,8 @@
 from typing import TYPE_CHECKING, Optional
 from uuid import uuid4
 
-from blarify.graph.node.class_node import ClassNode
-from blarify.graph.node.deleted_node import DeletedNode
+from amplihack.vendor.blarify.graph.node.class_node import ClassNode
+from amplihack.vendor.blarify.graph.node.deleted_node import DeletedNode
 
 from ..file_node import FileNode
 from ..folder_node import FolderNode

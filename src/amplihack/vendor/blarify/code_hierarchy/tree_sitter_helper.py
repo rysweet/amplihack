@@ -1,10 +1,10 @@
 from typing import TYPE_CHECKING, Optional
 
-from blarify.code_hierarchy.languages.FoundRelationshipScope import FoundRelationshipScope
-from blarify.code_references.types import Point, Range, Reference
-from blarify.graph.node import NodeFactory, NodeLabels
-from blarify.graph.relationship import RelationshipType
-from blarify.project_file_explorer import File
+from amplihack.vendor.blarify.code_hierarchy.languages.FoundRelationshipScope import FoundRelationshipScope
+from amplihack.vendor.blarify.code_references.types import Point, Range, Reference
+from amplihack.vendor.blarify.graph.node import NodeFactory, NodeLabels
+from amplihack.vendor.blarify.graph.relationship import RelationshipType
+from amplihack.vendor.blarify.project_file_explorer import File
 from tree_sitter import Parser, Tree
 
 from .languages import BodyNodeNotFound, FallbackDefinitions, LanguageDefinitions

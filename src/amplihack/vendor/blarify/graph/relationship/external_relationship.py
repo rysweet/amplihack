@@ -1,4 +1,4 @@
-from blarify.graph.relationship.relationship_type import RelationshipType
+from amplihack.vendor.blarify.graph.relationship.relationship_type import RelationshipType
 
 
 class ExternalRelationship:

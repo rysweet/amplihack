@@ -1,1 +1,1 @@
-from blarify.utils.experimental.relationship_marker import RelationshipMarker
+from amplihack.vendor.blarify.utils.experimental.relationship_marker import RelationshipMarker

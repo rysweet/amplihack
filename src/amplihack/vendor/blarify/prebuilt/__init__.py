@@ -1,3 +1,3 @@
-from blarify.prebuilt.graph_builder import GraphBuilder
+from amplihack.vendor.blarify.prebuilt.graph_builder import GraphBuilder
 
 __all__ = ["GraphBuilder"]

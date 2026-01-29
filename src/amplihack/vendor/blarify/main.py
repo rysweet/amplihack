@@ -2,21 +2,21 @@ import logging
 import os
 
 import dotenv
-from blarify.agents.llm_provider import LLMProvider
-from blarify.code_references import LspQueryHelper
-from blarify.documentation.documentation_creator import DocumentationCreator
-from blarify.documentation.workflow_creator import WorkflowCreator
-from blarify.graph.graph_environment import GraphEnvironment
-from blarify.integrations.github_creator import GitHubCreator
-from blarify.project_file_explorer import ProjectFilesIterator, ProjectFileStats
-from blarify.project_graph_creator import ProjectGraphCreator
-from blarify.project_graph_diff_creator import (
+from amplihack.vendor.blarify.agents.llm_provider import LLMProvider
+from amplihack.vendor.blarify.code_references import LspQueryHelper
+from amplihack.vendor.blarify.documentation.documentation_creator import DocumentationCreator
+from amplihack.vendor.blarify.documentation.workflow_creator import WorkflowCreator
+from amplihack.vendor.blarify.graph.graph_environment import GraphEnvironment
+from amplihack.vendor.blarify.integrations.github_creator import GitHubCreator
+from amplihack.vendor.blarify.project_file_explorer import ProjectFilesIterator, ProjectFileStats
+from amplihack.vendor.blarify.project_graph_creator import ProjectGraphCreator
+from amplihack.vendor.blarify.project_graph_diff_creator import (
     PreviousNodeState,
     ProjectGraphDiffCreator,
 )
-from blarify.project_graph_updater import ProjectGraphUpdater
-from blarify.repositories.graph_db_manager.neo4j_manager import Neo4jManager
-from blarify.utils.file_remover import FileRemover
+from amplihack.vendor.blarify.project_graph_updater import ProjectGraphUpdater
+from amplihack.vendor.blarify.repositories.graph_db_manager.neo4j_manager import Neo4jManager
+from amplihack.vendor.blarify.utils.file_remover import FileRemover
 
 URI = os.getenv("NEO4J_URI")
 USER = os.getenv("NEO4J_USERNAME")

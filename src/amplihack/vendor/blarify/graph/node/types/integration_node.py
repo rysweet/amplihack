@@ -3,9 +3,9 @@
 import json
 from typing import Any
 
-from blarify.graph.graph_environment import GraphEnvironment
-from blarify.graph.node.types.node import Node
-from blarify.graph.node.types.node_labels import NodeLabels
+from amplihack.vendor.blarify.graph.graph_environment import GraphEnvironment
+from amplihack.vendor.blarify.graph.node.types.node import Node
+from amplihack.vendor.blarify.graph.node.types.node_labels import NodeLabels
 
 
 class IntegrationNode(Node):

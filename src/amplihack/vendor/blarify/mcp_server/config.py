@@ -2,7 +2,7 @@
 
 from typing import Literal
 
-from blarify.cli.project_config import ProjectConfig
+from amplihack.vendor.blarify.cli.project_config import ProjectConfig
 from pydantic import BaseModel, Field, field_validator
 
 

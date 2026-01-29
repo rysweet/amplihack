@@ -10,7 +10,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, TypeVar
 
-from blarify.agents.api_key_manager import APIKeyManager
+from amplihack.vendor.blarify.agents.api_key_manager import APIKeyManager
 from langchain_core.runnables import Runnable
 
 logger = logging.getLogger(__name__)

@@ -13,8 +13,8 @@ from enum import Enum
 from pathlib import Path, PurePath
 
 import requests
-from blarify.vendor.multilspy.multilspy_exceptions import MultilspyException
-from blarify.vendor.multilspy.multilspy_logger import MultilspyLogger
+from amplihack.vendor.blarify.vendor.multilspy.multilspy_exceptions import MultilspyException
+from amplihack.vendor.blarify.vendor.multilspy.multilspy_logger import MultilspyLogger
 
 
 class TextUtils:
