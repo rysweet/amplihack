@@ -1,7 +1,8 @@
 import logging
 import os
 import time
-from typing import Any, LiteralString
+from typing import Any
+from typing_extensions import LiteralString  # Python 3.10 compatibility
 
 from amplihack.vendor.blarify.repositories.graph_db_manager.adapters.node_search_result_adapter import (
     Neo4jNodeSearchResultAdapter,

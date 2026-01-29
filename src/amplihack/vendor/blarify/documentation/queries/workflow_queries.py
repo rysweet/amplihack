@@ -1,7 +1,5 @@
 """Cypher queries for workflow and documentation operations."""
 
-from typing import LiteralString
-
 
 def cleanup_orphaned_documentation_query() -> LiteralString:
     """
