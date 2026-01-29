@@ -1,4 +1,6 @@
-from typing import TYPE_CHECKING, Any, Optional, TypedDict, Unpack
+from typing import TYPE_CHECKING, Any, Optional, TypedDict
+
+from typing_extensions import Unpack  # Python 3.10 compatibility
 
 from .types.node_labels import NodeLabels
 
