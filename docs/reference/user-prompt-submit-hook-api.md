@@ -206,13 +206,13 @@ except Exception as e:
 
 **Specific error cases**:
 
-| Error               | Behavior                   | Log Level | Exit Code |
-| ------------------- | -------------------------- | --------- | --------- |
-| AMPLIHACK.md missing | Skip injection, log info   | INFO      | 0         |
-| CLAUDE.md missing   | Treat as empty, inject     | DEBUG     | 0         |
-| Read permission     | Skip injection, log warning | WARNING   | 0         |
-| Encoding error      | Skip injection, log warning | WARNING   | 0         |
-| Compare error       | Skip injection, log warning | WARNING   | 0         |
+| Error                | Behavior                    | Log Level | Exit Code |
+| -------------------- | --------------------------- | --------- | --------- |
+| AMPLIHACK.md missing | Skip injection, log info    | INFO      | 0         |
+| CLAUDE.md missing    | Treat as empty, inject      | DEBUG     | 0         |
+| Read permission      | Skip injection, log warning | WARNING   | 0         |
+| Encoding error       | Skip injection, log warning | WARNING   | 0         |
+| Compare error        | Skip injection, log warning | WARNING   | 0         |
 
 **Never fails** - hook always exits 0 to prevent blocking Claude Code.
 

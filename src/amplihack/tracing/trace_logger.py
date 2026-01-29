@@ -18,7 +18,7 @@ Created for Issue #2071: Native Binary Migration with Optional Trace Logging
 
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -94,13 +94,16 @@ class TraceLogger:
                 self.log_file.parent.mkdir(parents=True, exist_ok=True)
                 # Open in append mode
                 self._file_handle = open(self.log_file, "a", encoding="utf-8")
-            except (OSError, PermissionError, IOError) as e:
+            except (OSError, PermissionError) as e:
                 # Clean up and disable logging rather than failing
                 self._file_handle = None
                 self.enabled = False
                 # Log to stderr since we can't log to file
                 import sys
-                print(f"Warning: Could not open trace log file {self.log_file}: {e}", file=sys.stderr)
+
+                print(
+                    f"Warning: Could not open trace log file {self.log_file}: {e}", file=sys.stderr
+                )
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -109,7 +112,7 @@ class TraceLogger:
             try:
                 self._file_handle.flush()
                 self._file_handle.close()
-            except (OSError, IOError):
+            except OSError:
                 # Ignore errors on close - best effort cleanup
                 pass
             finally:
@@ -158,7 +161,7 @@ class TraceLogger:
 
         # Add timestamp if not present
         if "timestamp" not in entry:
-            entry["timestamp"] = datetime.now(timezone.utc).isoformat()
+            entry["timestamp"] = datetime.now(UTC).isoformat()
 
         # Sanitize sensitive data
         sanitized_entry = TokenSanitizer.sanitize_dict(entry)
@@ -172,7 +175,7 @@ class TraceLogger:
             # Handle non-serializable data gracefully
             try:
                 error_entry = {
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "timestamp": datetime.now(UTC).isoformat(),
                     "event": "trace_logger_error",
                     "error": str(e),
                     "original_event": str(entry.get("event", "unknown")),
@@ -180,10 +183,10 @@ class TraceLogger:
                 json_line = json.dumps(error_entry, ensure_ascii=False)
                 self._file_handle.write(json_line + "\n")
                 self._file_handle.flush()
-            except (OSError, IOError):
+            except OSError:
                 # If we can't even log the error, silently give up
                 pass
-        except (OSError, IOError):
+        except OSError:
             # Handle I/O errors (disk full, permissions, etc.)
             # Trace logging is optional, so silently fail rather than break the caller
             pass

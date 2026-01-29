@@ -220,11 +220,11 @@ const session = await client.createSession({
 
 ### Common Event Types
 
-| Event Type (TS/Go)        | Python Enum                              |
-| ------------------------- | ---------------------------------------- |
+| Event Type (TS/Go)        | Python Enum                                |
+| ------------------------- | ------------------------------------------ |
 | `assistant.message_delta` | `SessionEventType.ASSISTANT_MESSAGE_DELTA` |
-| `session.idle`            | `SessionEventType.SESSION_IDLE`          |
-| `tool.invocation`         | `SessionEventType.TOOL_EXECUTION_START`  |
+| `session.idle`            | `SessionEventType.SESSION_IDLE`            |
+| `tool.invocation`         | `SessionEventType.TOOL_EXECUTION_START`    |
 | `tool.result`             | `SessionEventType.TOOL_EXECUTION_COMPLETE` |
 
 > **Python**: Import `from copilot.generated.session_events import SessionEventType`

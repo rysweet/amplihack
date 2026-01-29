@@ -428,6 +428,7 @@ The compaction system handles 10 edge case scenarios comprehensively tested.
 **Setup:** Normal session with < 100k tokens
 
 **Expected:**
+
 ```python
 ctx = validator.get_compaction_context(transcript)
 assert not ctx.detected
@@ -440,6 +441,7 @@ assert ctx.validation_passed  # No validation needed
 **Setup:** Compaction occurred, all critical data preserved
 
 **Expected:**
+
 ```python
 result = validator.validate(transcript, "session_123")
 assert result.passed
@@ -452,6 +454,7 @@ assert len(result.warnings) == 0
 **Setup:** Compaction removed messages containing active TODOs
 
 **Expected:**
+
 ```python
 result = validator.validate_todos(transcript)
 assert not result.passed
@@ -464,6 +467,7 @@ assert "Recreate TODO list" in result.recovery_steps[0]
 **Setup:** Original user goal was in removed messages
 
 **Expected:**
+
 ```python
 result = validator.validate_objectives(transcript)
 assert not result.passed
@@ -476,6 +480,7 @@ assert "restate your goal" in result.recovery_steps[0].lower()
 **Setup:** Conversation compacted more than once
 
 **Expected:**
+
 ```python
 ctx = validator.get_compaction_context(transcript)
 assert ctx.detected
@@ -488,6 +493,7 @@ assert ctx.turn_at_compaction > 0
 **Setup:** Compaction occurred just before critical message
 
 **Expected:**
+
 ```python
 result = validator.validate(transcript, "session_123")
 # Should warn about potential data loss
@@ -500,6 +506,7 @@ if not result.passed:
 **Setup:** Empty or very short transcript
 
 **Expected:**
+
 ```python
 ctx = validator.get_compaction_context([])
 assert not ctx.detected
@@ -511,6 +518,7 @@ assert ctx.validation_passed  # Fail-open
 **Setup:** Transcript with missing fields or bad structure
 
 **Expected:**
+
 ```python
 # Should not crash, fail-open
 result = validator.validate(malformed_transcript, "session_123")
@@ -522,6 +530,7 @@ assert result.passed  # Fail-open on errors
 **Setup:** Transcript with 500+ turns (performance test)
 
 **Expected:**
+
 ```python
 import time
 start = time.time()
@@ -536,6 +545,7 @@ assert duration < 0.5  # Should complete in < 500ms
 **Setup:** Multiple validations running in parallel
 
 **Expected:**
+
 ```python
 # CompactionValidator is stateless and thread-safe
 import concurrent.futures
@@ -559,16 +569,19 @@ assert all(r.passed or not r.passed for r in results)  # No crashes
 Compaction events expose these metrics for monitoring:
 
 **Event metrics:**
+
 - `compaction.detected` (counter) - Number of compaction events detected
 - `compaction.turn_at_compaction` (histogram) - Distribution of compaction timing
 - `compaction.messages_removed` (histogram) - Distribution of data loss
 
 **Validation metrics:**
+
 - `compaction.validation.passed` (counter) - Successful validations
 - `compaction.validation.failed` (counter) - Failed validations
 - `compaction.validation.duration_ms` (histogram) - Validation performance
 
 **Warning metrics:**
+
 - `compaction.warning.todo_loss` (counter) - TODO items lost
 - `compaction.warning.objective_loss` (counter) - Objectives unclear
 - `compaction.warning.context_loss` (counter) - Recent context incomplete
@@ -600,6 +613,7 @@ logger.debug(f"Compaction context: {ctx.to_dict()}")
 ### For Developers
 
 **DO:**
+
 - ✅ Use `get_compaction_context()` for read-only diagnostics
 - ✅ Check `validation_passed` before trusting session state
 - ✅ Log compaction events for monitoring
@@ -607,6 +621,7 @@ logger.debug(f"Compaction context: {ctx.to_dict()}")
 - ✅ Test with large transcripts (500+ turns)
 
 **DON'T:**
+
 - ❌ Assume no compaction in long sessions
 - ❌ Block users on compaction detection (use warnings)
 - ❌ Ignore validation failures
@@ -660,17 +675,20 @@ def check_session_completeness(transcript: list[dict], session_id: str):
 ## Performance Characteristics
 
 **Validation performance:**
+
 - Small transcript (< 50 turns): < 10ms
 - Medium transcript (50-200 turns): < 50ms
 - Large transcript (200-500 turns): < 200ms
 - Very large transcript (500+ turns): < 500ms
 
 **Memory usage:**
+
 - Stateless validator: ~1KB overhead
 - ValidationResult object: ~500 bytes
 - CompactionContext object: ~300 bytes
 
 **Thread safety:**
+
 - `CompactionValidator` is stateless and thread-safe
 - Multiple validations can run concurrently
 - No shared mutable state

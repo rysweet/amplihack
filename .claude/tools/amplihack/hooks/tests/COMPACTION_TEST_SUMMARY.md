@@ -15,6 +15,7 @@ Comprehensive TDD test suite for power-steering compaction handling enhancements
 Tests the core `CompactionValidator` module in isolation.
 
 **Test Classes:**
+
 - `TestCompactionValidator` (10 tests) - Core validator functionality
 - `TestCompactionContext` (3 tests) - Context dataclass behavior
 - `TestValidationResult` (3 tests) - Result dataclass behavior
@@ -24,6 +25,7 @@ Tests the core `CompactionValidator` module in isolation.
 **Key Scenarios Covered:**
 
 #### Architect's 10 Core Scenarios
+
 1. ✅ Happy path: Valid compaction data, successful load
 2. ✅ Corrupt JSON: Malformed `compaction_events.json`
 3. ✅ Missing transcript: Events file exists but transcript doesn't
@@ -36,6 +38,7 @@ Tests the core `CompactionValidator` module in isolation.
 10. ✅ Complete failure: Both sources fail (fail-open verification)
 
 #### Additional Unit Test Coverage
+
 - Context dataclass initialization and defaults
 - Context age calculation (staleness detection)
 - Context diagnostic summary generation
@@ -50,6 +53,7 @@ Tests the core `CompactionValidator` module in isolation.
 Tests integration of `CompactionValidator` into `PowerSteeringChecker` and the consideration framework.
 
 **Test Classes:**
+
 - `TestPowerSteeringCompactionIntegration` (8 tests) - Checker integration
 - `TestCompactionCheckStaleEvents` (1 test) - Stale event handling
 - `TestCompactionCheckPerformance` (1 test) - Performance validation
@@ -57,6 +61,7 @@ Tests integration of `CompactionValidator` into `PowerSteeringChecker` and the c
 - `TestCompactionCheckDiagnosticOutput` (1 test) - Output formatting
 
 **Key Integration Scenarios:**
+
 1. Compaction consideration runs in checker suite
 2. Compaction events detected from runtime data
 3. Data loss failures reported correctly
@@ -92,6 +97,7 @@ OK (skipped=12)
 ### After Implementation
 
 Once `compaction_validator.py` is implemented with the following classes:
+
 - `CompactionValidator`
 - `CompactionContext`
 - `CompactionEvent`
@@ -102,16 +108,19 @@ Tests will automatically start running and should initially FAIL (red phase of T
 ## Test Philosophy
 
 ### Ruthlessly Simple
+
 - Clear test names describing exact scenario
 - Single assertion per test where possible
 - Minimal setup code
 
 ### Fail-Open
+
 - Every error scenario verifies graceful degradation
 - Security violations fail-open (block malicious but don't crash)
 - Missing data returns safe defaults
 
 ### Zero-BS
+
 - All tests executable and deterministic
 - No stubs or placeholders in tests
 - Tests use real file I/O with temp directories
@@ -119,11 +128,13 @@ Tests will automatically start running and should initially FAIL (red phase of T
 ## Coverage Metrics (Post-Implementation)
 
 ### Expected Coverage
+
 - **Lines:** > 90% (comprehensive edge case coverage)
 - **Branches:** > 85% (all error paths tested)
 - **Functions:** 100% (all public API covered)
 
 ### Critical Paths Tested
+
 - ✅ Happy path validation (data preserved)
 - ✅ Data loss detection (TODOs, objectives, recent context)
 - ✅ Error handling (corrupt files, missing data)
@@ -134,11 +145,13 @@ Tests will automatically start running and should initially FAIL (red phase of T
 ## Test Data Patterns
 
 ### Fixture Strategy
+
 - Temporary directories (`tempfile.mkdtemp()`) for each test
 - JSON files created programmatically (no test data files)
 - Cleanup in `tearDown()` to prevent test pollution
 
 ### Transcript Patterns
+
 ```python
 # Minimal valid transcript
 [
@@ -159,6 +172,7 @@ Tests will automatically start running and should initially FAIL (red phase of T
 ```
 
 ### Compaction Event Pattern
+
 ```python
 {
     "timestamp": "2026-01-22T10:00:00Z",
@@ -184,6 +198,7 @@ Tests verify these thresholds in `test_large_transcript_performance()` and `test
 ## Security Test Coverage
 
 ### Path Traversal Prevention
+
 ```python
 # Test malicious paths blocked
 malicious_paths = [
@@ -194,6 +209,7 @@ malicious_paths = [
 ```
 
 Tests verify:
+
 - Path traversal attempts detected
 - `has_security_violation` flag set
 - Fail-open behavior (don't crash, but refuse to load)
@@ -211,12 +227,14 @@ Tests verify:
 ## Test Maintenance
 
 ### Adding New Test Scenarios
+
 1. Add test method to appropriate test class
 2. Follow naming convention: `test_<scenario>_<expected_behavior>`
 3. Use clear docstring describing scenario
 4. Verify test fails before implementation
 
 ### Modifying Existing Tests
+
 - Update test when API contract changes
 - Keep test count visible in this document
 - Run full suite before committing

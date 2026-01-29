@@ -12,7 +12,7 @@ scenario:
 
   environment:
     variables:
-      AMPLIHACK_BLARIFY_AUTO_INDEX: "false"  # Ensure prompt appears
+      AMPLIHACK_BLARIFY_AUTO_INDEX: "false" # Ensure prompt appears
 
   steps:
     # Step 1: Launch amplihack on test codebase

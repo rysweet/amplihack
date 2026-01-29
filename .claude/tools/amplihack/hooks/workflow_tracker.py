@@ -30,7 +30,7 @@ Log Format (JSONL):
 
 import json
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 # Configuration
@@ -61,7 +61,7 @@ def _write_log_entry(entry: dict) -> None:
 
     # Add timestamp if not present
     if "timestamp" not in entry:
-        entry["timestamp"] = datetime.now(timezone.utc).isoformat()
+        entry["timestamp"] = datetime.now(UTC).isoformat()
 
     # Append to JSONL file
     with open(WORKFLOW_LOG_FILE, "a") as f:
@@ -91,7 +91,7 @@ def log_workflow_start(
         "event": "workflow_start",
         "workflow": workflow_name,
         "task": task_description,
-        "session_id": session_id or datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S"),
+        "session_id": session_id or datetime.now(UTC).strftime("%Y%m%d_%H%M%S"),
     }
     _write_log_entry(entry)
 

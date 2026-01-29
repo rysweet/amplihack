@@ -12,11 +12,11 @@ This guide helps you migrate from the deprecated `claude-trace` NPM package to a
 
 ```javascript
 // NPM dependency required
-import { TraceLogger } from 'claude-trace';
+import { TraceLogger } from "claude-trace";
 
 // Always enabled, always overhead
 const logger = new TraceLogger({
-  outputDir: './traces'
+  outputDir: "./traces",
 });
 
 // Manual initialization
@@ -41,16 +41,16 @@ amplihack
 
 ## Benefits of Migration
 
-| Feature | claude-trace NPM | Native Binary |
-|---------|-----------------|---------------|
-| NPM dependency | Required | None |
-| Default state | Enabled | Disabled |
-| Overhead when disabled | ~1-2ms | <0.1ms |
-| Overhead when enabled | ~15-20ms | <10ms |
-| Security | Manual sanitization | Automatic TokenSanitizer |
-| Integration | Manual instrumentation | Automatic LiteLLM callbacks |
-| Binary | Node.js only | Native Claude binary |
-| Session handling | Manual | Automatic |
+| Feature                | claude-trace NPM       | Native Binary               |
+| ---------------------- | ---------------------- | --------------------------- |
+| NPM dependency         | Required               | None                        |
+| Default state          | Enabled                | Disabled                    |
+| Overhead when disabled | ~1-2ms                 | <0.1ms                      |
+| Overhead when enabled  | ~15-20ms               | <10ms                       |
+| Security               | Manual sanitization    | Automatic TokenSanitizer    |
+| Integration            | Manual instrumentation | Automatic LiteLLM callbacks |
+| Binary                 | Node.js only           | Native Claude binary        |
+| Session handling       | Manual                 | Automatic                   |
 
 ## Migration Steps
 
@@ -103,12 +103,12 @@ Remove all `claude-trace` code:
 
 ```javascript
 // Remove these imports
-import { TraceLogger } from 'claude-trace';
+import { TraceLogger } from "claude-trace";
 
 // Remove initialization
 const logger = new TraceLogger({
-  outputDir: './traces',
-  sanitize: true
+  outputDir: "./traces",
+  sanitize: true,
 });
 await logger.init();
 
