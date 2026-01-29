@@ -211,6 +211,31 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
             if copied > 0:
                 print(f"✓ Prepared {copied} amplihack agents")
 
+        # Stage skills to ~/.copilot/skills/ for Copilot CLI discovery
+        # Copilot CLI looks in ~/.copilot/skills/ and ~/.claude/skills/
+        # We use ~/.copilot/skills/ to avoid conflicts with Claude Code plugin model
+        source_skills = package_dir / ".claude/skills"
+        copilot_skills_dest = Path.home() / ".copilot" / "skills"
+        if source_skills.exists():
+            copilot_skills_dest.mkdir(parents=True, exist_ok=True)
+
+            skills_copied = 0
+            for skill_dir in source_skills.iterdir():
+                if skill_dir.is_dir():
+                    dest_skill = copilot_skills_dest / skill_dir.name
+                    # Only copy if dest doesn't exist (first time setup)
+                    if not dest_skill.exists():
+                        shutil.copytree(skill_dir, dest_skill, dirs_exist_ok=True)
+                        skills_copied += 1
+                    else:
+                        # Update existing skill (overwrite)
+                        shutil.copytree(skill_dir, dest_skill, dirs_exist_ok=True)
+
+            if skills_copied > 0:
+                print(f"✓ Staged {skills_copied} new skills to ~/.copilot/skills/")
+            else:
+                print("✓ Skills up-to-date in ~/.copilot/skills/")
+
         # Load preferences - try LOCAL first, fallback to PACKAGE
         # This allows users to customize preferences per-project
         prefs_file = user_dir / ".claude/context/USER_PREFERENCES.md"
