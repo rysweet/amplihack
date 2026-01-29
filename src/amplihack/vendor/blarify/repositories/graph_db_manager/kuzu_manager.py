@@ -6,7 +6,8 @@ allowing blarify to store code graphs directly in Kuzu without requiring Neo4j.
 
 import logging
 from pathlib import Path
-from typing import Any, LiteralString
+from typing import Any
+from typing_extensions import LiteralString  # Python 3.10 compatibility
 
 import kuzu
 from amplihack.vendor.blarify.repositories.graph_db_manager.db_manager import ENVIRONMENT, AbstractDbManager
