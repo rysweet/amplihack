@@ -285,6 +285,7 @@ OK
 ## Common Pitfalls to Avoid
 
 ### 1. Not Failing Open
+
 ```python
 # ❌ Bad: Raises exception
 def load_compaction_context(self, session_id):
@@ -301,6 +302,7 @@ def load_compaction_context(self, session_id):
 ```
 
 ### 2. Not Handling Path Traversal
+
 ```python
 # ❌ Bad: No security check
 transcript_path = Path(event["pre_compaction_transcript_path"])
@@ -315,6 +317,7 @@ if not transcript_path.resolve().is_relative_to(self.project_root):
 ```
 
 ### 3. Not Selecting Latest Event
+
 ```python
 # ❌ Bad: Returns first event
 events = json.load(f)
@@ -326,6 +329,7 @@ return events[0]
 ```
 
 ### 4. Not Providing Recovery Steps
+
 ```python
 # ❌ Bad: Generic warning
 return ValidationResult(passed=False, warnings=["Data loss detected"])
@@ -366,6 +370,7 @@ Use efficient JSON parsing and avoid unnecessary file I/O.
 Create `compaction_validator.py` and start with the simplest class (CompactionContext).
 
 Run tests frequently to see progress:
+
 ```bash
 ./RUN_COMPACTION_TESTS.sh unit
 ```

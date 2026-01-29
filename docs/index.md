@@ -427,8 +427,8 @@ Robust handling of conversation compaction in long sessions:
 
 - [Smart Memory Management](features/smart-memory-management.md) - Automatic Node.js memory optimization for Claude Code
 - [Claude.md Preservation](features/claude-md-preservation.md) - Preserve custom instructions
-<!-- Neo4j removed - now using Kuzu embedded database (no session cleanup needed) -->
-<!-- - [Shutdown Detection](concepts/shutdown-detection.md) - Graceful exit handling (see stop-hook-exit-hang in Troubleshooting) -->
+  <!-- Neo4j removed - now using Kuzu embedded database (no session cleanup needed) -->
+  <!-- - [Shutdown Detection](concepts/shutdown-detection.md) - Graceful exit handling (see stop-hook-exit-hang in Troubleshooting) -->
 
 ### Third-Party Integrations
 
