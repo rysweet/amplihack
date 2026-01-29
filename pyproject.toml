@@ -74,6 +74,20 @@ dev = [
     "rich>=13.0.0",  # Include Rich in dev dependencies for TUI development
 ]
 
+# Blarify language-specific indexing dependencies
+# Note: Some tools (typescript-language-server, dotnet, go, java, php, ruby)
+# are not Python packages and must be installed separately
+blarify-all = [
+    # Python indexing support (already included by default via jedi-language-server)
+]
+# For individual language support, install the system dependencies:
+# - JavaScript/TypeScript: npm install -g typescript-language-server
+# - C#: Install .NET SDK 6, 7, 8, 9, or 10
+# - Go: Install Go toolchain
+# - Java: Install JDK
+# - PHP: Install PHP runtime
+# - Ruby: Install Ruby runtime
+
 [project.scripts]
 amplihack = "amplihack:main"
 
