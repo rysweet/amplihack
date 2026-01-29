@@ -1,8 +1,8 @@
 import tree_sitter_php as tsphp
-from blarify.code_hierarchy.languages.FoundRelationshipScope import FoundRelationshipScope
-from blarify.code_hierarchy.languages.language_definitions import LanguageDefinitions
-from blarify.graph.node.types.node_labels import NodeLabels
-from blarify.graph.relationship.relationship_type import RelationshipType
+from amplihack.vendor.blarify.code_hierarchy.languages.FoundRelationshipScope import FoundRelationshipScope
+from amplihack.vendor.blarify.code_hierarchy.languages.language_definitions import LanguageDefinitions
+from amplihack.vendor.blarify.graph.node.types.node_labels import NodeLabels
+from amplihack.vendor.blarify.graph.relationship.relationship_type import RelationshipType
 from tree_sitter import Language, Node, Parser
 
 

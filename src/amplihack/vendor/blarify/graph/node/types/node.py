@@ -2,8 +2,8 @@ import os
 from hashlib import md5
 from typing import TYPE_CHECKING, Any, Optional
 
-from blarify.utils.format_verifier import FormatVerifier
-from blarify.utils.relative_id_calculator import RelativeIdCalculator
+from amplihack.vendor.blarify.utils.format_verifier import FormatVerifier
+from amplihack.vendor.blarify.utils.relative_id_calculator import RelativeIdCalculator
 
 if TYPE_CHECKING:
     from blarify.graph.graph_environment import GraphEnvironment

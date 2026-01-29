@@ -1,12 +1,12 @@
 from typing import TYPE_CHECKING, Any
 
-from blarify.graph.node import NodeLabels
-from blarify.graph.node.commit_node import CommitNode
-from blarify.graph.node.documentation_node import DocumentationNode
+from amplihack.vendor.blarify.graph.node import NodeLabels
+from amplihack.vendor.blarify.graph.node.commit_node import CommitNode
+from amplihack.vendor.blarify.graph.node.documentation_node import DocumentationNode
 from .relationship import Relationship, WorkflowStepRelationship
 from .relationship_type import RelationshipType
-from blarify.repositories.graph_db_manager.dtos.code_node_dto import CodeNodeDto
-from blarify.repositories.version_control.dtos.blame_line_range_dto import BlameLineRangeDto
+from amplihack.vendor.blarify.repositories.graph_db_manager.dtos.code_node_dto import CodeNodeDto
+from amplihack.vendor.blarify.repositories.version_control.dtos.blame_line_range_dto import BlameLineRangeDto
 
 if TYPE_CHECKING:
     from blarify.code_hierarchy import TreeSitterHelper

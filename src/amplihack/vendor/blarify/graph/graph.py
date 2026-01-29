@@ -2,9 +2,9 @@ from collections import defaultdict
 from collections.abc import Sequence
 from typing import TYPE_CHECKING, Any, cast
 
-from blarify.graph.node import Node, NodeLabels
-from blarify.graph.node.file_node import FileNode
-from blarify.graph.node.folder_node import FolderNode
+from amplihack.vendor.blarify.graph.node import Node, NodeLabels
+from amplihack.vendor.blarify.graph.node.file_node import FileNode
+from amplihack.vendor.blarify.graph.node.folder_node import FolderNode
 
 if TYPE_CHECKING:
     from blarify.graph.relationship import Relationship

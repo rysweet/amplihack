@@ -9,11 +9,11 @@ import time
 from argparse import ArgumentParser, Namespace
 from pathlib import Path
 
-from blarify.cli.project_config import ProjectConfig
-from blarify.graph.graph_environment import GraphEnvironment
-from blarify.prebuilt.graph_builder import GraphBuilder
-from blarify.repositories.graph_db_manager.kuzu_manager import KuzuManager
-from blarify.repositories.graph_db_manager.neo4j_manager import Neo4jManager
+from amplihack.vendor.blarify.cli.project_config import ProjectConfig
+from amplihack.vendor.blarify.graph.graph_environment import GraphEnvironment
+from amplihack.vendor.blarify.prebuilt.graph_builder import GraphBuilder
+from amplihack.vendor.blarify.repositories.graph_db_manager.kuzu_manager import KuzuManager
+from amplihack.vendor.blarify.repositories.graph_db_manager.neo4j_manager import Neo4jManager
 from neo4j_container_manager import (
     ContainerStatus,
     Environment,

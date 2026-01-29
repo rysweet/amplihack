@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
-from blarify.graph.node import DefinitionNode
+from amplihack.vendor.blarify.graph.node import DefinitionNode
 
 from .lsp_helper import ProgressTracker
 from .types.Reference import Reference

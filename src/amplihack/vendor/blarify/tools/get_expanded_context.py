@@ -2,7 +2,7 @@ import re
 import textwrap
 from typing import Any
 
-from blarify.tools.utils import resolve_reference_id
+from amplihack.vendor.blarify.tools.utils import resolve_reference_id
 from langchain_core.callbacks import CallbackManagerForToolRun
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field, model_validator

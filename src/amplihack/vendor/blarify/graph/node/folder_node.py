@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Optional, Union
 
 from .types.node import Node
 from .types.node_labels import NodeLabels
-from blarify.graph.node.file_node import FileNode
+from amplihack.vendor.blarify.graph.node.file_node import FileNode
 
 if TYPE_CHECKING:
     from blarify.graph.graph_environment import GraphEnvironment
