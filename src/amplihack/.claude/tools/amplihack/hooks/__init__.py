@@ -1,1 +1,0 @@
-"""Amplihack hooks package."""
