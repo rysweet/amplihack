@@ -26,7 +26,7 @@
   "enabledMcpjsonServers": [],
   "statusLine": {
     "type": "command",
-    "command": ".claude/tools/statusline.sh"
+    "command": "~/.amplihack/.claude/tools/statusline.sh"
   },
   "hooks": {
     "SessionStart": [
@@ -69,6 +69,17 @@
             "type": "command",
             "command": ".claude/tools/amplihack/hooks/pre_compact.py",
             "timeout": 30000
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/tools/amplihack/hooks/session_end.py",
+            "timeout": 10000
           }
         ]
       }
