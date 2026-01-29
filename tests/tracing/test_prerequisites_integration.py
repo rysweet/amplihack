@@ -7,14 +7,12 @@ with trace support status.
 This is TDD - tests written before implementation.
 """
 
-from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
 
-from amplihack.launcher.claude_binary_manager import BinaryInfo, ClaudeBinaryManager
+from amplihack.launcher.claude_binary_manager import ClaudeBinaryManager
 from amplihack.utils.prerequisites import PrerequisiteChecker, ToolCheckResult
-
 
 # =============================================================================
 # Native Binary Detection in Prerequisites Tests
@@ -206,7 +204,10 @@ def test_check_all_includes_native_binary():
         result = checker.check_all()
 
         # Should include native binary in results
-        assert any("rustyclawd" in str(tool).lower() or "native" in str(tool).lower() for tool in result.tools)
+        assert any(
+            "rustyclawd" in str(tool).lower() or "native" in str(tool).lower()
+            for tool in result.tools
+        )
 
 
 def test_check_all_graceful_without_native_binary():
@@ -275,4 +276,8 @@ def test_prerequisites_explains_performance_difference():
     guidance = checker.get_native_binary_guidance()
 
     # Should explain performance benefits
-    assert "performance" in guidance.lower() or "faster" in guidance.lower() or "native" in guidance.lower()
+    assert (
+        "performance" in guidance.lower()
+        or "faster" in guidance.lower()
+        or "native" in guidance.lower()
+    )

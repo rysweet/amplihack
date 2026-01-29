@@ -10,13 +10,13 @@ includes:
   # since foundation already includes recipes:behaviors/recipes
   # This matches the pattern foundation uses (line 36 of foundation/bundle.md)
   - bundle: git+https://github.com/microsoft/amplifier-bundle-recipes@main#subdirectory=behaviors/recipes.yaml
-  
+
   # GitHub issues integration (NOT in foundation, safe to include directly)
   - bundle: git+https://github.com/microsoft/amplifier-bundle-issues@main
-  
+
   # Shadow environment for isolated testing (required for testing workflows)
   - bundle: git+https://github.com/microsoft/amplifier-bundle-shadow@main
-  
+
   # Stories bundle for autonomous storytelling - transforms project activity into content
   # Provides: 4 output formats (HTML, Excel, Word, PDF), 11 specialist agents, 4 automated recipes
   - bundle: git+https://github.com/microsoft/amplifier-bundle-stories@main
@@ -65,8 +65,7 @@ skills:
   eval-recipes-runner: { path: skills/eval-recipes-runner/SKILL.md }
   investigation-workflow: { path: skills/investigation-workflow/SKILL.md }
   n-version-workflow: { path: skills/n-version-workflow/SKILL.md }
-  philosophy-compliance-workflow:
-    { path: skills/philosophy-compliance-workflow/SKILL.md }
+  philosophy-compliance-workflow: { path: skills/philosophy-compliance-workflow/SKILL.md }
   quality-audit-workflow: { path: skills/quality-audit-workflow/SKILL.md }
   ultrathink-orchestrator: { path: skills/ultrathink-orchestrator/SKILL.md }
 
@@ -145,7 +144,7 @@ agents:
     description: "Primary implementation agent. Builds code from specifications following the modular brick philosophy. Creates self-contained, regeneratable modules."
   amplihack:optimizer:
     path: agents/core/optimizer.md
-    description: "Performance optimization specialist. Follows \"measure twice, optimize once\" - profiles first, then optimizes actual bottlenecks. Analyzes algorithms, queries, and memory usage with data-driven approach. Use when you have profiling data showing performance issues, not for premature optimization."
+    description: 'Performance optimization specialist. Follows "measure twice, optimize once" - profiles first, then optimizes actual bottlenecks. Analyzes algorithms, queries, and memory usage with data-driven approach. Use when you have profiling data showing performance issues, not for premature optimization.'
   amplihack:reviewer:
     path: agents/core/reviewer.md
     description: "Code review and debugging specialist. Systematically finds issues, suggests improvements, and ensures philosophy compliance. Use for bug hunting and quality assurance."
@@ -172,7 +171,7 @@ agents:
     description: "Post-task cleanup specialist. Reviews git status, removes temporary artifacts, eliminates unnecessary complexity, ensures philosophy compliance. Use proactively after completing tasks or todo lists."
   amplihack:concept-extractor:
     path: agents/specialized/concept-extractor.md
-    description: "Use this agent when processing articles, papers, or documents to extract knowledge components for synthesis. This agent should be used proactively after reading or importing articles to build a structured knowledge base. It excels at identifying atomic concepts, relationships between ideas, and preserving productive tensions or contradictions in the source material. Examples: <example>Context: The user has just imported or read an article about distributed systems. user: \"I've added a new article about CAP theorem to the knowledge base\" assistant: \"I'll use the concept-extractor agent to extract the key concepts and relationships from this article\" <commentary>Since new article content has been added, use the concept-extractor agent to process it and extract structured knowledge components.</commentary></example> <example>Context: The user is building a knowledge synthesis system and needs to process multiple articles. user: \"Process these three articles on microservices architecture\" assistant: \"Let me use the concept-extractor agent to extract and structure the knowledge from these articles\" <commentary>Multiple articles need processing for knowledge extraction, perfect use case for the concept-extractor agent.</commentary></example> <example>Context: The user wants to understand contradictions between different sources. user: \"These two papers seem to disagree about event sourcing benefits\" assistant: \"I'll use the concept-extractor agent to extract and preserve the tensions between these viewpoints\" <commentary>When dealing with conflicting information that needs to be preserved rather than resolved, the concept-extractor agent is ideal.</commentary></example>"
+    description: 'Use this agent when processing articles, papers, or documents to extract knowledge components for synthesis. This agent should be used proactively after reading or importing articles to build a structured knowledge base. It excels at identifying atomic concepts, relationships between ideas, and preserving productive tensions or contradictions in the source material. Examples: <example>Context: The user has just imported or read an article about distributed systems. user: "I''ve added a new article about CAP theorem to the knowledge base" assistant: "I''ll use the concept-extractor agent to extract the key concepts and relationships from this article" <commentary>Since new article content has been added, use the concept-extractor agent to process it and extract structured knowledge components.</commentary></example> <example>Context: The user is building a knowledge synthesis system and needs to process multiple articles. user: "Process these three articles on microservices architecture" assistant: "Let me use the concept-extractor agent to extract and structure the knowledge from these articles" <commentary>Multiple articles need processing for knowledge extraction, perfect use case for the concept-extractor agent.</commentary></example> <example>Context: The user wants to understand contradictions between different sources. user: "These two papers seem to disagree about event sourcing benefits" assistant: "I''ll use the concept-extractor agent to extract and preserve the tensions between these viewpoints" <commentary>When dealing with conflicting information that needs to be preserved rather than resolved, the concept-extractor agent is ideal.</commentary></example>'
   amplihack:database:
     path: agents/specialized/database.md
     description: "Database design and optimization specialist. Use for schema design, query optimization, migrations, indexing strategies, and data architecture decisions."
@@ -187,7 +186,7 @@ agents:
     description: "Workflow orchestrator for fix operations. Executes all 22 steps of DEFAULT_WORKFLOW with pattern-specific context for robust error resolution."
   amplihack:insight-synthesizer:
     path: agents/specialized/insight-synthesizer.md
-    description: "Use this agent when you need to discover revolutionary connections between disparate concepts, find breakthrough insights through collision-zone thinking, identify meta-patterns across domains, or discover simplification cascades that dramatically reduce complexity. Perfect for when you're stuck on complex problems, seeking innovative solutions, or need to find unexpected connections between seemingly unrelated knowledge components. <example>Context: The user wants to find innovative solutions by combining unrelated concepts. user: \"I'm trying to optimize our database architecture but feel stuck in conventional approaches\" assistant: \"Let me use the insight-synthesizer agent to explore revolutionary connections and find breakthrough approaches to your database architecture challenge\" <commentary>Since the user is seeking new perspectives on a complex problem, the insight-synthesizer agent will discover unexpected connections and simplification opportunities.</commentary></example> <example>Context: The user needs to identify patterns across different domains. user: \"We keep seeing similar failures in our ML models, API design, and user interfaces but can't figure out the connection\" assistant: \"I'll deploy the insight-synthesizer agent to identify meta-patterns across these different domains and find the underlying principle\" <commentary>The user is looking for cross-domain patterns, so use the insight-synthesizer agent to perform pattern-pattern recognition.</commentary></example> <example>Context: Proactive use when complexity needs radical simplification. user: \"Our authentication system has grown to 15 different modules and 200+ configuration options\" assistant: \"This level of complexity suggests we might benefit from a fundamental rethink. Let me use the insight-synthesizer agent to search for simplification cascades\" <commentary>Proactively recognizing excessive complexity, use the insight-synthesizer to find revolutionary simplifications.</commentary></example>"
+    description: 'Use this agent when you need to discover revolutionary connections between disparate concepts, find breakthrough insights through collision-zone thinking, identify meta-patterns across domains, or discover simplification cascades that dramatically reduce complexity. Perfect for when you''re stuck on complex problems, seeking innovative solutions, or need to find unexpected connections between seemingly unrelated knowledge components. <example>Context: The user wants to find innovative solutions by combining unrelated concepts. user: "I''m trying to optimize our database architecture but feel stuck in conventional approaches" assistant: "Let me use the insight-synthesizer agent to explore revolutionary connections and find breakthrough approaches to your database architecture challenge" <commentary>Since the user is seeking new perspectives on a complex problem, the insight-synthesizer agent will discover unexpected connections and simplification opportunities.</commentary></example> <example>Context: The user needs to identify patterns across different domains. user: "We keep seeing similar failures in our ML models, API design, and user interfaces but can''t figure out the connection" assistant: "I''ll deploy the insight-synthesizer agent to identify meta-patterns across these different domains and find the underlying principle" <commentary>The user is looking for cross-domain patterns, so use the insight-synthesizer agent to perform pattern-pattern recognition.</commentary></example> <example>Context: Proactive use when complexity needs radical simplification. user: "Our authentication system has grown to 15 different modules and 200+ configuration options" assistant: "This level of complexity suggests we might benefit from a fundamental rethink. Let me use the insight-synthesizer agent to search for simplification cascades" <commentary>Proactively recognizing excessive complexity, use the insight-synthesizer to find revolutionary simplifications.</commentary></example>'
   amplihack:integration:
     path: agents/specialized/integration.md
     description: "External integration specialist. Designs and implements connections to third-party APIs, services, and external systems. Handles authentication, rate limiting, error handling, and retries. Use when integrating external services, not for internal API design (use api-designer)."
@@ -329,16 +328,16 @@ recipes:
   qa-workflow: { path: recipes/qa-workflow.yaml }
   investigation-workflow: { path: recipes/investigation-workflow.yaml }
   default-workflow: { path: recipes/default-workflow.yaml }
-  
+
   # Verification workflow (1)
   verification-workflow: { path: recipes/verification-workflow.yaml }
-  
+
   # Advanced workflows (4)
   cascade-workflow: { path: recipes/cascade-workflow.yaml }
   consensus-workflow: { path: recipes/consensus-workflow.yaml }
   debate-workflow: { path: recipes/debate-workflow.yaml }
   n-version-workflow: { path: recipes/n-version-workflow.yaml }
-  
+
   # Autonomous workflows (2)
   auto-workflow: { path: recipes/auto-workflow.yaml }
   guide: { path: recipes/guide.yaml }
@@ -369,6 +368,7 @@ modules:
     - modules/hook-user-prompt # User preferences injection
     - modules/hook-lock-mode # Continuous work mode via context injection
 
+
 # Note: workflow_tracker functionality is covered by hooks-todo-reminder from foundation
 ---
 
@@ -383,6 +383,7 @@ You are running with the amplihack bundle, a development framework that uses spe
 ### When to Classify
 
 Classify when the user:
+
 - **Starts a new topic** (different domain/goal from current work)
 - **First message of the session** (no prior context)
 - **Explicitly changes direction** ("Now let's...", "Next I want...", "Different question...")
@@ -391,6 +392,7 @@ Classify when the user:
 ### When NOT to Re-Classify
 
 Do NOT re-classify when the user:
+
 - **Asks follow-ups** ("Also...", "What about...", "And...")
 - **Provides clarifications** ("I meant...", "To clarify...")
 - **Requests related additions** ("Add logout too", "Also update the tests")
@@ -400,11 +402,11 @@ Do NOT re-classify when the user:
 
 ### Quick Classification (3 seconds max)
 
-| If Request Matches... | Execute This Recipe | When to Use |
-|-----------------------|---------------------|-------------|
-| Simple question, no code changes | `amplihack:recipes/qa-workflow.yaml` | "what is", "explain", "how do I run" |
-| Need to understand/explore code | `amplihack:recipes/investigation-workflow.yaml` | "investigate", "analyze", "how does X work" |
-| Any code changes | `amplihack:recipes/default-workflow.yaml` | "implement", "add", "fix", "refactor", "build" |
+| If Request Matches...            | Execute This Recipe                             | When to Use                                    |
+| -------------------------------- | ----------------------------------------------- | ---------------------------------------------- |
+| Simple question, no code changes | `amplihack:recipes/qa-workflow.yaml`            | "what is", "explain", "how do I run"           |
+| Need to understand/explore code  | `amplihack:recipes/investigation-workflow.yaml` | "investigate", "analyze", "how does X work"    |
+| Any code changes                 | `amplihack:recipes/default-workflow.yaml`       | "implement", "add", "fix", "refactor", "build" |
 
 ### Required Announcement
 
@@ -417,6 +419,7 @@ Executing: amplihack:recipes/[workflow]-workflow.yaml
 ```
 
 Then use the recipes tool:
+
 ```python
 recipes(operation="execute", recipe_path="amplihack:recipes/[workflow]-workflow.yaml", context={...})
 ```
@@ -439,26 +442,26 @@ recipes(operation="execute", recipe_path="amplihack:recipes/[workflow]-workflow.
 
 When delegating to agents, prefer amplihack agents over foundation agents:
 
-| Instead of... | Use... | Why |
-|---------------|--------|-----|
-| `foundation:zen-architect` | `amplihack:architect` | Has amplihack philosophy context |
-| `foundation:modular-builder` | `amplihack:builder` | Follows zero-BS implementation |
-| `foundation:explorer` | `amplihack:analyzer` | Deeper analysis patterns |
-| `foundation:security-guardian` | `amplihack:security` | Amplihack security patterns |
-| `foundation:post-task-cleanup` | `amplihack:cleanup` | Philosophy compliance check |
+| Instead of...                  | Use...                | Why                              |
+| ------------------------------ | --------------------- | -------------------------------- |
+| `foundation:zen-architect`     | `amplihack:architect` | Has amplihack philosophy context |
+| `foundation:modular-builder`   | `amplihack:builder`   | Follows zero-BS implementation   |
+| `foundation:explorer`          | `amplihack:analyzer`  | Deeper analysis patterns         |
+| `foundation:security-guardian` | `amplihack:security`  | Amplihack security patterns      |
+| `foundation:post-task-cleanup` | `amplihack:cleanup`   | Philosophy compliance check      |
 
 ## Available Recipes
 
-| Recipe | Steps | Use When |
-|--------|-------|----------|
-| `qa-workflow` | 3 | Simple questions, no code changes |
-| `verification-workflow` | 5 | Config edits, doc updates, trivial fixes |
-| `investigation-workflow` | 6 | Understanding code/systems, research |
-| `default-workflow` | 22 | Features, bug fixes, refactoring (MOST COMMON) |
-| `cascade-workflow` | 3-level | Operations needing graceful degradation |
-| `consensus-workflow` | multi-agent | Critical code requiring high quality |
-| `debate-workflow` | multi-perspective | Complex architectural decisions |
-| `n-version-workflow` | N implementations | Critical code, multiple approaches |
+| Recipe                   | Steps             | Use When                                       |
+| ------------------------ | ----------------- | ---------------------------------------------- |
+| `qa-workflow`            | 3                 | Simple questions, no code changes              |
+| `verification-workflow`  | 5                 | Config edits, doc updates, trivial fixes       |
+| `investigation-workflow` | 6                 | Understanding code/systems, research           |
+| `default-workflow`       | 22                | Features, bug fixes, refactoring (MOST COMMON) |
+| `cascade-workflow`       | 3-level           | Operations needing graceful degradation        |
+| `consensus-workflow`     | multi-agent       | Critical code requiring high quality           |
+| `debate-workflow`        | multi-perspective | Complex architectural decisions                |
+| `n-version-workflow`     | N implementations | Critical code, multiple approaches             |
 
 ## Available Skills (74 total)
 
@@ -483,7 +486,7 @@ You operate under these non-negotiable principles:
 
 ```bash
 # Execute a workflow recipe
-recipes(operation="execute", recipe_path="amplihack:recipes/default-workflow.yaml", 
+recipes(operation="execute", recipe_path="amplihack:recipes/default-workflow.yaml",
         context={"task_description": "Add user profile page"})
 
 # Load a skill for domain expertise

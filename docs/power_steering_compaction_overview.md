@@ -14,6 +14,7 @@ Compaction is normal and expected in long sessions. However, it can cause proble
 - Open issues or blockers
 
 **Power-steering's compaction handling ensures:**
+
 - Compaction events are detected automatically
 - Critical data preservation is validated
 - Clear diagnostics are provided
@@ -28,6 +29,7 @@ Session with 100 turns, including TODO list from turn 10.
 Turns 1-40 removed. Power-steering checks if the TODO list is still visible.
 
 **If preserved:**
+
 ```
 ✅ Compaction handled successfully
 TODO list preserved in context
@@ -35,6 +37,7 @@ Continue working normally
 ```
 
 **If lost:**
+
 ```
 ❌ Compaction validation failed
 TODO items from turn 10 are no longer visible
@@ -62,11 +65,13 @@ Power-steering detects compaction by analyzing the transcript:
 Once compaction is detected, power-steering validates critical data:
 
 **High-priority checks:**
+
 - ✅ Active TODO items still visible
 - ✅ Session objectives still clear
 - ✅ User's original goal understandable
 
 **Medium-priority checks:**
+
 - ✅ Recent code changes (last 10 turns) preserved
 - ✅ Open issues or blockers still in context
 - ✅ Critical decisions not lost
@@ -110,6 +115,7 @@ If validation fails, specific warnings and recovery steps are provided.
 - **~1000+ turns**: Compaction almost certain
 
 **Factors affecting compaction:**
+
 - Message length (longer messages = faster compaction)
 - Code snippets (large code blocks use more tokens)
 - Tool outputs (verbose tool results accelerate compaction)
@@ -121,11 +127,13 @@ If validation fails, specific warnings and recovery steps are provided.
 Without compaction handling, critical information can be silently lost:
 
 ❌ **Without validation:**
+
 - User continues working, unaware TODOs were lost
 - Session ends with incomplete work
 - No way to recover lost context
 
 ✅ **With validation:**
+
 - System detects data loss immediately
 - User is prompted to recreate lost information
 - Recovery steps prevent incomplete sessions
@@ -163,7 +171,7 @@ To disable compaction validation (not recommended):
   description: Validates critical data preserved after compaction
   severity: warning
   checker: _check_compaction_handling
-  enabled: false  # Set to false to disable
+  enabled: false # Set to false to disable
 ```
 
 ### Adjust Severity
@@ -172,7 +180,7 @@ Change compaction validation from warning to blocker:
 
 ```yaml
 - id: compaction_handling
-  severity: blocker  # Changed from "warning" to "blocker"
+  severity: blocker # Changed from "warning" to "blocker"
   # ... rest of configuration
 ```
 
@@ -212,6 +220,7 @@ pytest --last-failed
 ```
 
 **Prevent next time:**
+
 - Mark TODOs complete as you finish them
 - Commit code frequently (creates checkpoints)
 - Consider ending session after major milestones
@@ -243,6 +252,7 @@ need to write tests."
 ```
 
 **Prevent next time:**
+
 - State objectives clearly at session start
 - Restate goals after major milestones
 - Use descriptive git branch names
@@ -259,17 +269,20 @@ Repeated context loss, potential work fragmentation.
 **Solutions:**
 
 **Short-term:**
+
 - End session and start fresh after major milestones
 - Break large tasks into smaller sessions
 - Commit work frequently to preserve state
 
 **Long-term:**
+
 - Plan sessions to be < 400 turns when possible
 - Use completion evidence (tests, commits) instead of memory
 - Split complex investigations across multiple sessions
 - End sessions after completing logical units of work
 
 **When acceptable:**
+
 - Complex debugging that requires deep context
 - Large-scale refactoring across many files
 - Exploratory investigations with many dead ends
@@ -288,18 +301,21 @@ Compaction validation reports data loss when nothing is actually lost.
 **Solutions:**
 
 **If TODOs were completed:**
+
 ```
 "The TODO items from earlier were completed - you can see the
 test output and commits showing this work was finished."
 ```
 
 **If objectives changed:**
+
 ```
 "We pivoted to a different approach after discovering issue X.
 The new objective is clear: implement solution Y."
 ```
 
 **If context is sufficient:**
+
 ```
 "The removed messages contained investigation that led to the
 current solution. That context isn't needed anymore - the
@@ -345,6 +361,7 @@ print(f"Turn count: {len(transcript)}")
 Validation takes > 1 second to complete.
 
 **Acceptable performance:**
+
 - Small transcript (< 50 turns): < 10ms
 - Medium transcript (50-200 turns): < 50ms
 - Large transcript (200-500 turns): < 200ms
@@ -371,30 +388,35 @@ Compaction events expose metrics for monitoring session health.
 ### Key Metrics
 
 **compaction.detected**
+
 - **Type:** Counter
 - **Meaning:** Number of compaction events across all sessions
 - **Good:** Low rate (< 10% of sessions)
 - **Concerning:** High rate (> 50% of sessions) - sessions too long
 
 **compaction.validation.passed**
+
 - **Type:** Counter
 - **Meaning:** Compactions where critical data was preserved
 - **Good:** High rate (> 95%)
 - **Concerning:** Low rate (< 80%) - data loss issues
 
 **compaction.validation.failed**
+
 - **Type:** Counter
 - **Meaning:** Compactions where critical data was lost
 - **Good:** Low rate (< 5%)
 - **Concerning:** High rate (> 20%) - validation issues
 
 **compaction.turn_at_compaction**
+
 - **Type:** Histogram
 - **Meaning:** Distribution of when compaction occurs
 - **Typical:** p50 = 400-600 turns, p95 = 800-1000 turns
 - **Concerning:** p50 < 200 turns - compaction too early
 
 **compaction.messages_removed**
+
 - **Type:** Histogram
 - **Meaning:** How many messages removed per compaction
 - **Typical:** p50 = 50-100 messages, p95 = 200-300 messages
@@ -403,11 +425,13 @@ Compaction events expose metrics for monitoring session health.
 ### Alerting Thresholds
 
 **Warning alerts:**
+
 - Compaction validation failure rate > 10%
 - Average turn at compaction < 300 turns
 - Messages removed p95 > 400
 
 **Critical alerts:**
+
 - Compaction validation failure rate > 25%
 - Any crashes during validation
 - Validation duration p95 > 1 second
@@ -463,6 +487,7 @@ if validation_total > 0:
 ### For Users
 
 **DO:**
+
 - ✅ Commit code frequently (creates recovery points)
 - ✅ Mark TODOs complete as you finish them
 - ✅ Restate objectives after major milestones
@@ -470,6 +495,7 @@ if validation_total > 0:
 - ✅ Use completion evidence (tests, commits) over memory
 
 **DON'T:**
+
 - ❌ Ignore compaction warnings
 - ❌ Continue working without addressing validation failures
 - ❌ Assume all context is preserved forever
@@ -478,12 +504,14 @@ if validation_total > 0:
 ### For Teams
 
 **DO:**
+
 - ✅ Version control `considerations.yaml` for consistency
 - ✅ Monitor compaction metrics across team
 - ✅ Share session length best practices
 - ✅ Use checkpoints (commits) as recovery points
 
 **DON'T:**
+
 - ❌ Disable compaction validation without good reason
 - ❌ Ignore high compaction rates (indicates process issues)
 - ❌ Block sessions on compaction (use warnings)
@@ -521,6 +549,7 @@ A: Yes - compaction occurs to stay within Claude's context window limits (approx
 ---
 
 **See also:**
+
 - [Compaction API Reference](./power_steering_compaction_api.md) - Developer documentation
 - [How to Customize Power-Steering](../.claude/tools/amplihack/HOW_TO_CUSTOMIZE_POWER_STEERING.md#compaction-handling) - Configuration guide
 
