@@ -218,6 +218,9 @@ amplihack fully supports GitHub Copilot CLI with adaptive hooks that enable
 preference injection and context loading. All 38 agents, 73 skills, and 24
 commands work seamlessly with Copilot.
 
+**Auto-Update**: The `amplihack copilot` command automatically checks for newer
+Copilot CLI versions and prompts for updates before launching.
+
 ```bash
 # Default mode (no agent)
 amplihack copilot -- -p "Your task here"
