@@ -98,6 +98,7 @@ app = FastAPI()
 
 # Register LiteLLM callbacks for optional trace logging
 from .litellm_callbacks import register_trace_callbacks
+
 _trace_callback = register_trace_callbacks()  # Reads from AMPLIHACK_TRACE_LOGGING env
 
 # Load environment variables from .azure.env if it exists (with security validation)

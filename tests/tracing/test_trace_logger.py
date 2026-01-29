@@ -15,12 +15,11 @@ Coverage Focus (60% of test suite):
 import json
 import time
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
 from amplihack.tracing.trace_logger import TraceLogger
-
 
 # =============================================================================
 # Initialization Tests
@@ -164,11 +163,13 @@ def test_log_sanitizes_api_keys(tmp_path):
     logger = TraceLogger(enabled=True, log_file=log_file)
 
     with logger:
-        logger.log({
-            "event": "api_call",
-            "api_key": "sk-1234567890abcdefghij",
-            "message": "Using key sk-1234567890abcdefghij",
-        })
+        logger.log(
+            {
+                "event": "api_call",
+                "api_key": "sk-1234567890abcdefghij",
+                "message": "Using key sk-1234567890abcdefghij",
+            }
+        )
 
     lines = log_file.read_text().strip().split("\n")
     entry = json.loads(lines[0])
@@ -185,10 +186,12 @@ def test_log_sanitizes_bearer_tokens(tmp_path):
     logger = TraceLogger(enabled=True, log_file=log_file)
 
     with logger:
-        logger.log({
-            "event": "request",
-            "headers": {"Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"},
-        })
+        logger.log(
+            {
+                "event": "request",
+                "headers": {"Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9"},
+            }
+        )
 
     lines = log_file.read_text().strip().split("\n")
     entry = json.loads(lines[0])
@@ -204,10 +207,12 @@ def test_log_sanitizes_github_tokens(tmp_path):
     logger = TraceLogger(enabled=True, log_file=log_file)
 
     with logger:
-        logger.log({
-            "event": "git_operation",
-            "token": "ghp_FAKE_TOKEN_FOR_TESTING_ONLY_DO_NOT_USE",
-        })
+        logger.log(
+            {
+                "event": "git_operation",
+                "token": "ghp_FAKE_TOKEN_FOR_TESTING_ONLY_DO_NOT_USE",
+            }
+        )
 
     lines = log_file.read_text().strip().split("\n")
     entry = json.loads(lines[0])
@@ -222,13 +227,21 @@ def test_log_sanitizes_nested_credentials(tmp_path):
     logger = TraceLogger(enabled=True, log_file=log_file)
 
     with logger:
-        logger.log({
-            "event": "config",
-            "settings": {
-                "api": {"key": "sk-1234567890abcdefghij", "endpoint": "https://api.example.com"},
-                "auth": {"password": "secret123", "token": "ghp_FAKE_TOKEN_FOR_TESTING_ONLY_DO_NOT_USE"},
-            },
-        })
+        logger.log(
+            {
+                "event": "config",
+                "settings": {
+                    "api": {
+                        "key": "sk-1234567890abcdefghij",
+                        "endpoint": "https://api.example.com",
+                    },
+                    "auth": {
+                        "password": "secret123",
+                        "token": "ghp_FAKE_TOKEN_FOR_TESTING_ONLY_DO_NOT_USE",
+                    },
+                },
+            }
+        )
 
     lines = log_file.read_text().strip().split("\n")
     entry = json.loads(lines[0])
@@ -257,7 +270,7 @@ def test_disabled_overhead_under_100_microseconds():
 
     # Average per call should be <0.1ms (0.0001 seconds)
     avg_time = (end - start) / 1000
-    assert avg_time < 0.0001, f"Disabled overhead {avg_time*1000:.3f}ms exceeds 0.1ms limit"
+    assert avg_time < 0.0001, f"Disabled overhead {avg_time * 1000:.3f}ms exceeds 0.1ms limit"
 
 
 def test_enabled_overhead_under_10_milliseconds(tmp_path):
@@ -275,7 +288,7 @@ def test_enabled_overhead_under_10_milliseconds(tmp_path):
             times.append(end - start)
 
     avg_time = sum(times) / len(times)
-    assert avg_time < 0.010, f"Enabled overhead {avg_time*1000:.3f}ms exceeds 10ms limit"
+    assert avg_time < 0.010, f"Enabled overhead {avg_time * 1000:.3f}ms exceeds 10ms limit"
 
 
 @pytest.mark.performance
@@ -440,11 +453,13 @@ def test_log_handles_unicode_and_special_chars(tmp_path):
     logger = TraceLogger(enabled=True, log_file=log_file)
 
     with logger:
-        logger.log({
-            "event": "unicode_test",
-            "message": "Hello 世界 🌍",
-            "special": "Line\nBreak\tTab",
-        })
+        logger.log(
+            {
+                "event": "unicode_test",
+                "message": "Hello 世界 🌍",
+                "special": "Line\nBreak\tTab",
+            }
+        )
 
     lines = log_file.read_text().strip().split("\n")
     entry = json.loads(lines[0])
@@ -528,7 +543,7 @@ def test_log_handles_disk_full_errors(tmp_path):
         # This test is aspirational - actual implementation should handle gracefully
         try:
             logger.log({"event": "test", "data": "x" * (10**9)})  # 1GB
-        except (OSError, IOError):
+        except OSError:
             pass  # Expected
 
 

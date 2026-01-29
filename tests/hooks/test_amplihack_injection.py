@@ -11,21 +11,20 @@ which ensures framework instructions are injected when project CLAUDE.md differs
 
 import functools
 import os
-import tempfile
-from pathlib import Path
-from unittest.mock import MagicMock, Mock, patch
-
-import pytest
 
 # Import the hook under test
 import sys
+import tempfile
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Add hook location to path
 hook_path = Path(__file__).parent.parent.parent / ".claude" / "tools" / "amplihack" / "hooks"
 sys.path.insert(0, str(hook_path))
 
 from user_prompt_submit import UserPromptSubmitHook
-
 
 # ============================================================================
 # TEST HELPERS
@@ -719,8 +718,7 @@ class TestAmplihackInjectionPerformance:
             # Cached should be faster or equal (file I/O is very fast, so improvement may be minimal)
             # This is more of a "does caching work" test than a strict performance test
             assert cached_time <= uncached_time * 1.5, (
-                f"Cache appears slower: uncached={uncached_time:.4f}s, "
-                f"cached={cached_time:.4f}s"
+                f"Cache appears slower: uncached={uncached_time:.4f}s, cached={cached_time:.4f}s"
             )
 
     @isolated_env

@@ -14,11 +14,9 @@ Coverage Focus (10% of test suite):
 import json
 import subprocess
 import time
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
-
 
 # =============================================================================
 # Full Workflow E2E Tests
@@ -99,12 +97,16 @@ def test_multi_request_session(tmp_path):
     # Simulate multiple requests
     with callback.trace_logger:
         for i in range(5):
-            callback.on_llm_start({
-                "model": "claude-3-sonnet-20240229",
-                "messages": [{"role": "user", "content": f"Request {i}"}],
-            })
+            callback.on_llm_start(
+                {
+                    "model": "claude-3-sonnet-20240229",
+                    "messages": [{"role": "user", "content": f"Request {i}"}],
+                }
+            )
 
-            callback.on_llm_end({"response": {"choices": [{"message": {"content": f"Response {i}"}}]}})
+            callback.on_llm_end(
+                {"response": {"choices": [{"message": {"content": f"Response {i}"}}]}}
+            )
 
     # Verify all requests logged
     content = trace_file.read_text()
@@ -131,11 +133,13 @@ def test_streaming_request_e2e(tmp_path):
 
     # Simulate streaming request
     with callback.trace_logger:
-        callback.on_llm_start({
-            "model": "claude-3-sonnet-20240229",
-            "messages": [{"role": "user", "content": "Tell me a story"}],
-            "stream": True,
-        })
+        callback.on_llm_start(
+            {
+                "model": "claude-3-sonnet-20240229",
+                "messages": [{"role": "user", "content": "Tell me a story"}],
+                "stream": True,
+            }
+        )
 
         # Simulate streaming chunks
         chunks = ["Once ", "upon ", "a ", "time ", "there ", "was ", "a ", "test."]
@@ -162,16 +166,20 @@ def test_error_handling_e2e(tmp_path):
 
     # Simulate request with error
     with callback.trace_logger:
-        callback.on_llm_start({
-            "model": "claude-3-sonnet-20240229",
-            "messages": [{"role": "user", "content": "Test"}],
-        })
+        callback.on_llm_start(
+            {
+                "model": "claude-3-sonnet-20240229",
+                "messages": [{"role": "user", "content": "Test"}],
+            }
+        )
 
-        callback.on_llm_error({
-            "exception": "RateLimitError",
-            "message": "Rate limit exceeded",
-            "status_code": 429,
-        })
+        callback.on_llm_error(
+            {
+                "exception": "RateLimitError",
+                "message": "Rate limit exceeded",
+                "status_code": 429,
+            }
+        )
 
     # Verify error logged
     content = trace_file.read_text()
@@ -209,11 +217,13 @@ def test_developer_debugging_scenario(tmp_path):
             time.sleep(0.01)  # Simulate API call
 
             end_time = time.time()
-            logger.log({
-                "event": "api_call_end",
-                "call_id": i,
-                "duration_ms": (end_time - start_time) * 1000,
-            })
+            logger.log(
+                {
+                    "event": "api_call_end",
+                    "call_id": i,
+                    "duration_ms": (end_time - start_time) * 1000,
+                }
+            )
 
         logger.log({"event": "debug_end"})
 
@@ -242,22 +252,26 @@ def test_production_monitoring_scenario(tmp_path):
     # Simulate production traffic
     with callback.trace_logger:
         for request_id in range(10):
-            callback.on_llm_start({
-                "model": "claude-3-sonnet-20240229",
-                "messages": [{"role": "user", "content": f"Request {request_id}"}],
-                "metadata": {"request_id": request_id, "user_id": f"user_{request_id % 3}"},
-            })
+            callback.on_llm_start(
+                {
+                    "model": "claude-3-sonnet-20240229",
+                    "messages": [{"role": "user", "content": f"Request {request_id}"}],
+                    "metadata": {"request_id": request_id, "user_id": f"user_{request_id % 3}"},
+                }
+            )
 
             # Simulate success/failure
             if request_id % 5 == 0:
                 callback.on_llm_error({"exception": "TimeoutError", "request_id": request_id})
             else:
-                callback.on_llm_end({
-                    "response": {
-                        "usage": {"total_tokens": 100 + request_id * 10},
-                    },
-                    "metadata": {"request_id": request_id},
-                })
+                callback.on_llm_end(
+                    {
+                        "response": {
+                            "usage": {"total_tokens": 100 + request_id * 10},
+                        },
+                        "metadata": {"request_id": request_id},
+                    }
+                )
 
     # Analyze production metrics
     content = trace_file.read_text()
@@ -283,18 +297,22 @@ def test_security_audit_scenario(tmp_path):
 
     # Simulate requests with credentials (should be sanitized)
     with logger:
-        logger.log({
-            "event": "api_request",
-            "api_key": "sk-1234567890abcdefghij",
-            "headers": {"Authorization": "Bearer secret_token"},
-            "endpoint": "https://api.anthropic.com/v1/messages",
-        })
+        logger.log(
+            {
+                "event": "api_request",
+                "api_key": "sk-1234567890abcdefghij",
+                "headers": {"Authorization": "Bearer secret_token"},
+                "endpoint": "https://api.anthropic.com/v1/messages",
+            }
+        )
 
-        logger.log({
-            "event": "github_operation",
-            "token": "ghp_FAKE_TOKEN_FOR_TESTING_ONLY_DO_NOT_USE",
-            "repo": "org/repo",
-        })
+        logger.log(
+            {
+                "event": "github_operation",
+                "token": "ghp_FAKE_TOKEN_FOR_TESTING_ONLY_DO_NOT_USE",
+                "repo": "org/repo",
+            }
+        )
 
     # Security audit: verify no credentials in trace
     content = trace_file.read_text()
@@ -329,12 +347,14 @@ def test_high_throughput_scenario(tmp_path):
 
     with logger:
         for i in range(100):
-            logger.log({
-                "event": "request",
-                "request_id": i,
-                "model": "claude-3-sonnet-20240229",
-                "tokens": 100,
-            })
+            logger.log(
+                {
+                    "event": "request",
+                    "request_id": i,
+                    "model": "claude-3-sonnet-20240229",
+                    "tokens": 100,
+                }
+            )
 
     end = time.perf_counter()
 

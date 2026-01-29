@@ -19,13 +19,13 @@ amplihack now uses Anthropic's native Claude binary with optional trace logging 
 
 ### Performance Comparison
 
-| Metric | claude-trace NPM | Native Binary |
-|--------|-----------------|---------------|
-| Overhead (disabled) | ~1-2ms | <0.1ms |
-| Overhead (enabled) | ~15-20ms | <10ms |
-| NPM dependency | Required (250KB) | None |
-| Default state | Enabled | Disabled |
-| Security | Manual | Automatic |
+| Metric              | claude-trace NPM | Native Binary |
+| ------------------- | ---------------- | ------------- |
+| Overhead (disabled) | ~1-2ms           | <0.1ms        |
+| Overhead (enabled)  | ~15-20ms         | <10ms         |
+| NPM dependency      | Required (250KB) | None          |
+| Default state       | Enabled          | Disabled      |
+| Security            | Manual           | Automatic     |
 
 ## Quick Start
 
@@ -209,11 +209,11 @@ Each trace file contains JSONL (newline-delimited JSON):
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `AMPLIHACK_TRACE_LOGGING` | `false` | Enable/disable trace logging |
-| `AMPLIHACK_TRACE_DIR` | `.claude/runtime/amplihack-traces/` | Trace file directory |
-| `AMPLIHACK_TRACE_RETENTION_DAYS` | `30` | Auto-delete traces older than N days |
+| Variable                         | Default                             | Description                          |
+| -------------------------------- | ----------------------------------- | ------------------------------------ |
+| `AMPLIHACK_TRACE_LOGGING`        | `false`                             | Enable/disable trace logging         |
+| `AMPLIHACK_TRACE_DIR`            | `.claude/runtime/amplihack-traces/` | Trace file directory                 |
+| `AMPLIHACK_TRACE_RETENTION_DAYS` | `30`                                | Auto-delete traces older than N days |
 
 ### Examples
 

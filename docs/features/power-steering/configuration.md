@@ -28,9 +28,9 @@ Power-Steering configuration has two levels:
   category: Category Name
   question: What should we check?
   description: Why this matters
-  severity: blocker  # or warning
-  checker: method_name  # or "generic"
-  enabled: true  # or false
+  severity: blocker # or warning
+  checker: method_name # or "generic"
+  enabled: true # or false
 ```
 
 **See**: [Customization Guide](customization-guide.md) for detailed YAML syntax.
@@ -51,6 +51,7 @@ Power-Steering configuration has two levels:
 Preference description and requirements.
 
 **Implementation Requirements** (optional):
+
 - Detailed requirements
 ```
 
@@ -115,14 +116,14 @@ Modify considerations.yaml:
 ```yaml
 # Change all blockers to warnings
 - id: tests_written
-  severity: warning  # Changed from blocker
+  severity: warning # Changed from blocker
 
 - id: ci_status
-  severity: warning  # Changed from blocker
+  severity: warning # Changed from blocker
 
 # Keep only critical blockers
 - id: zero_bs_compliance
-  severity: blocker  # Keep as blocker
+  severity: blocker # Keep as blocker
 ```
 
 **Effect**: Power-Steering provides guidance but doesn't block session end.
@@ -143,7 +144,7 @@ Add to considerations.yaml:
   question: Has the security team reviewed this change for sensitive code?
   description: Ensures security team sign-off for authentication, authorization, or data handling changes
   severity: blocker
-  checker: generic  # Uses keyword matching
+  checker: generic # Uses keyword matching
   enabled: true
 
 - id: compliance_checklist
@@ -163,7 +164,7 @@ Add to considerations.yaml:
 
 ### USER_PREFERENCES.md Format
 
- Power-Steering reads USER_PREFERENCES.md to detect workflow preferences.
+Power-Steering reads USER_PREFERENCES.md to detect workflow preferences.
 
 **Standard format**:
 
@@ -182,11 +183,11 @@ Preference statement with MANDATORY keywords.
 
 ### Supported Preferences
 
-| Preference | Keywords Required | Effect |
-|------------|-------------------|--------|
-| Never Merge Without Permission | NEVER, Merge, PR, Without, Permission | Stops at PR ready state |
-| Always Test Locally | Step 13, MANDATORY, Local Testing | Enforces Step 13 evidence |
-| No Direct Commits to Main | NEVER, commit, main, without permission | Validates PR workflow used |
+| Preference                     | Keywords Required                       | Effect                     |
+| ------------------------------ | --------------------------------------- | -------------------------- |
+| Never Merge Without Permission | NEVER, Merge, PR, Without, Permission   | Stops at PR ready state    |
+| Always Test Locally            | Step 13, MANDATORY, Local Testing       | Enforces Step 13 evidence  |
+| No Direct Commits to Main      | NEVER, commit, main, without permission | Validates PR workflow used |
 
 ### Adding New Preferences
 
@@ -211,7 +212,7 @@ EVERY PR MUST include a "Test Plan" section describing manual testing performed.
 - Expected results specified
 ```
 
- Future versions will support this preference automatically.
+Future versions will support this preference automatically.
 
 ---
 
@@ -223,7 +224,7 @@ EVERY PR MUST include a "Test Plan" section describing manual testing performed.
 
 ```yaml
 - id: workflow_followed
-  enabled: false  # Disabled
+  enabled: false # Disabled
 ```
 
 **Use cases**:
@@ -238,7 +239,7 @@ EVERY PR MUST include a "Test Plan" section describing manual testing performed.
 
 ```yaml
 - id: pr_description_complete
-  severity: warning  # Changed from blocker
+  severity: warning # Changed from blocker
 ```
 
 **Use cases**:
@@ -348,7 +349,7 @@ Categories are free-form - use any name that makes sense for your team.
 
 # Keep only critical blockers
 - id: ci_status
-  severity: blocker  # Still require CI passing
+  severity: blocker # Still require CI passing
 ```
 
 **USER_PREFERENCES.md**:
@@ -557,7 +558,7 @@ Evidence:
 
 ### Conditional Checks
 
- Some considerations only apply in specific contexts:
+Some considerations only apply in specific contexts:
 
 ```yaml
 - id: workflow_followed
