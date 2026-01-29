@@ -25,9 +25,8 @@ import sys
 import tempfile
 import time
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from unittest.mock import Mock, patch
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -39,14 +38,18 @@ try:
         CompactionValidator,
         ValidationResult,
     )
+
     VALIDATOR_AVAILABLE = True
 except ImportError:
     VALIDATOR_AVAILABLE = False
+
     # Create placeholder for better error messages
     class CompactionValidator:
         pass
+
     class CompactionContext:
         pass
+
     class ValidationResult:
         pass
 
@@ -69,6 +72,7 @@ class TestCompactionValidator(unittest.TestCase):
     def tearDown(self):
         """Clean up test fixtures."""
         import shutil
+
         if Path(self.temp_dir).exists():
             shutil.rmtree(self.temp_dir)
 
@@ -80,8 +84,10 @@ class TestCompactionValidator(unittest.TestCase):
             "timestamp": "2026-01-22T10:00:00Z",
             "turn_number": 45,
             "messages_removed": 30,
-            "pre_compaction_transcript_path": str(self.runtime_dir / "pre_compaction_transcript.json"),
-            "session_id": "test_session_123"
+            "pre_compaction_transcript_path": str(
+                self.runtime_dir / "pre_compaction_transcript.json"
+            ),
+            "session_id": "test_session_123",
         }
         events_file = self.runtime_dir / "compaction_events.json"
         events_file.write_text(json.dumps([event_data]))
@@ -89,11 +95,9 @@ class TestCompactionValidator(unittest.TestCase):
         # Create pre-compaction transcript
         pre_transcript = [
             {"role": "user", "content": "Hello"},
-            {"role": "assistant", "content": "Hi there"}
+            {"role": "assistant", "content": "Hi there"},
         ]
-        Path(event_data["pre_compaction_transcript_path"]).write_text(
-            json.dumps(pre_transcript)
-        )
+        Path(event_data["pre_compaction_transcript_path"]).write_text(json.dumps(pre_transcript))
 
         # Act: Load compaction context
         context = self.validator.load_compaction_context("test_session_123")
@@ -129,7 +133,7 @@ class TestCompactionValidator(unittest.TestCase):
             "turn_number": 45,
             "messages_removed": 30,
             "pre_compaction_transcript_path": "/nonexistent/path/transcript.json",
-            "session_id": "test_session_123"
+            "session_id": "test_session_123",
         }
         events_file = self.runtime_dir / "compaction_events.json"
         events_file.write_text(json.dumps([event_data]))
@@ -147,14 +151,13 @@ class TestCompactionValidator(unittest.TestCase):
     def test_stale_compaction_event_marked_as_stale(self):
         """Test compaction events older than 24 hours are marked stale."""
         # Arrange: Create old event (25 hours ago)
-        from datetime import datetime, timedelta
-        stale_time = datetime.now(timezone.utc) - timedelta(hours=25)
+        stale_time = datetime.now(UTC) - timedelta(hours=25)
         event_data = {
             "timestamp": stale_time.isoformat(),
             "turn_number": 45,
             "messages_removed": 30,
             "pre_compaction_transcript_path": str(self.runtime_dir / "pre_transcript.json"),
-            "session_id": "test_session_123"
+            "session_id": "test_session_123",
         }
         events_file = self.runtime_dir / "compaction_events.json"
         events_file.write_text(json.dumps([event_data]))
@@ -177,7 +180,7 @@ class TestCompactionValidator(unittest.TestCase):
             "turn_number": 45,
             "messages_removed": 30,
             "pre_compaction_transcript_path": malicious_path,
-            "session_id": "test_session_123"
+            "session_id": "test_session_123",
         }
         events_file = self.runtime_dir / "compaction_events.json"
         events_file.write_text(json.dumps([event_data]))
@@ -202,7 +205,7 @@ class TestCompactionValidator(unittest.TestCase):
             "turn_number": 45,
             "messages_removed": 30,
             "pre_compaction_transcript_path": str(transcript_path),
-            "session_id": "test_session_123"
+            "session_id": "test_session_123",
         }
         events_file = self.runtime_dir / "compaction_events.json"
         events_file.write_text(json.dumps([event_data]))
@@ -231,7 +234,7 @@ class TestCompactionValidator(unittest.TestCase):
             "turn_number": 1450,
             "messages_removed": 1400,
             "pre_compaction_transcript_path": str(transcript_path),
-            "session_id": "test_session_123"
+            "session_id": "test_session_123",
         }
         events_file = self.runtime_dir / "compaction_events.json"
         events_file.write_text(json.dumps([event_data]))
@@ -256,22 +259,22 @@ class TestCompactionValidator(unittest.TestCase):
                 "turn_number": 45,
                 "messages_removed": 30,
                 "pre_compaction_transcript_path": str(self.runtime_dir / "transcript1.json"),
-                "session_id": "test_session_123"
+                "session_id": "test_session_123",
             },
             {
                 "timestamp": "2026-01-22T10:00:00Z",  # More recent
                 "turn_number": 90,
                 "messages_removed": 50,
                 "pre_compaction_transcript_path": str(self.runtime_dir / "transcript2.json"),
-                "session_id": "test_session_123"
+                "session_id": "test_session_123",
             },
             {
                 "timestamp": "2026-01-22T08:00:00Z",  # Oldest
                 "turn_number": 20,
                 "messages_removed": 15,
                 "pre_compaction_transcript_path": str(self.runtime_dir / "transcript3.json"),
-                "session_id": "test_session_123"
-            }
+                "session_id": "test_session_123",
+            },
         ]
         events_file = self.runtime_dir / "compaction_events.json"
         events_file.write_text(json.dumps(events))
@@ -297,20 +300,17 @@ class TestCompactionValidator(unittest.TestCase):
             "turn_number": 45,
             "messages_removed": 30,
             "pre_compaction_transcript_path": "/broken/path.json",
-            "session_id": "test_session_123"
+            "session_id": "test_session_123",
         }
         events_file = self.runtime_dir / "compaction_events.json"
         events_file.write_text(json.dumps([event_data]))
 
         # Provide fallback transcript
-        fallback_transcript = [
-            {"role": "user", "content": "Fallback message"}
-        ]
+        fallback_transcript = [{"role": "user", "content": "Fallback message"}]
 
         # Act: Validate with fallback
         result = self.validator.validate(
-            transcript=fallback_transcript,
-            session_id="test_session_123"
+            transcript=fallback_transcript, session_id="test_session_123"
         )
 
         # Assert: Validation succeeds using fallback
@@ -329,7 +329,7 @@ class TestCompactionValidator(unittest.TestCase):
         # Act: Validate with no fallback transcript
         result = self.validator.validate(
             transcript=None,  # No fallback
-            session_id="test_session_123"
+            session_id="test_session_123",
         )
 
         # Assert: Fail-open (assumes no compaction, validation passes)
@@ -366,7 +366,7 @@ class TestCompactionContext(unittest.TestCase):
             turn_at_compaction=45,
             messages_removed=30,
             pre_compaction_transcript=[{"role": "user", "content": "test"}],
-            timestamp="2026-01-22T10:00:00Z"
+            timestamp="2026-01-22T10:00:00Z",
         )
 
         # Assert: Values set correctly
@@ -378,14 +378,13 @@ class TestCompactionContext(unittest.TestCase):
     def test_context_age_calculation(self):
         """Test context calculates age in hours correctly."""
         # Arrange: Create context with timestamp 2 hours ago
-        from datetime import datetime, timedelta
-        two_hours_ago = datetime.now(timezone.utc) - timedelta(hours=2)
+        two_hours_ago = datetime.now(UTC) - timedelta(hours=2)
 
         context = CompactionContext(
             has_compaction_event=True,
             turn_at_compaction=45,
             messages_removed=30,
-            timestamp=two_hours_ago.isoformat()
+            timestamp=two_hours_ago.isoformat(),
         )
 
         # Assert: Age calculated correctly (should be ~2 hours)
@@ -400,7 +399,7 @@ class TestCompactionContext(unittest.TestCase):
             has_compaction_event=True,
             turn_at_compaction=45,
             messages_removed=30,
-            timestamp="2026-01-22T10:00:00Z"
+            timestamp="2026-01-22T10:00:00Z",
         )
 
         # Act: Generate summary
@@ -429,7 +428,7 @@ class TestValidationResult(unittest.TestCase):
             warnings=[],
             recovery_steps=[],
             compaction_context=context,
-            used_fallback=False
+            used_fallback=False,
         )
 
         # Assert: Result indicates success
@@ -441,16 +440,14 @@ class TestValidationResult(unittest.TestCase):
         """Test validation result for failed validation with warnings."""
         # Arrange: Create failed result
         context = CompactionContext(
-            has_compaction_event=True,
-            turn_at_compaction=45,
-            messages_removed=30
+            has_compaction_event=True, turn_at_compaction=45, messages_removed=30
         )
         result = ValidationResult(
             passed=False,
             warnings=["TODO items lost after compaction"],
             recovery_steps=["Recreate TODO list using TodoWrite"],
             compaction_context=context,
-            used_fallback=False
+            used_fallback=False,
         )
 
         # Assert: Result contains failure information
@@ -468,7 +465,7 @@ class TestValidationResult(unittest.TestCase):
             warnings=["Data loss detected"],
             recovery_steps=["Review recent work", "Recreate TODO list"],
             compaction_context=context,
-            used_fallback=False
+            used_fallback=False,
         )
 
         # Act: Generate summary
@@ -498,6 +495,7 @@ class TestCompactionValidatorValidation(unittest.TestCase):
     def tearDown(self):
         """Clean up test fixtures."""
         import shutil
+
         if Path(self.temp_dir).exists():
             shutil.rmtree(self.temp_dir)
 
@@ -509,20 +507,19 @@ class TestCompactionValidatorValidation(unittest.TestCase):
             {"role": "assistant", "content": "I'll create a TODO list"},
             {
                 "role": "assistant",
-                "content": "TODO: Implement feature X\nTODO: Write tests\nTODO: Update docs"
-            }
+                "content": "TODO: Implement feature X\nTODO: Write tests\nTODO: Update docs",
+            },
         ]
 
         # Post-compaction transcript WITHOUT TODOs (they were removed)
         post_transcript = [
             {"role": "user", "content": "How's it going?"},
-            {"role": "assistant", "content": "Working on it"}
+            {"role": "assistant", "content": "Working on it"},
         ]
 
         # Act: Validate TODO preservation
         result = self.validator.validate_todos(
-            pre_compaction=pre_transcript,
-            post_compaction=post_transcript
+            pre_compaction=pre_transcript, post_compaction=post_transcript
         )
 
         # Assert: Detects TODO loss
@@ -534,20 +531,22 @@ class TestCompactionValidatorValidation(unittest.TestCase):
         """Test validation detects when session objectives are unclear."""
         # Arrange: Pre-compaction with clear objective
         pre_transcript = [
-            {"role": "user", "content": "I need to implement compaction handling for power-steering"},
-            {"role": "assistant", "content": "I'll help implement compaction handling"}
+            {
+                "role": "user",
+                "content": "I need to implement compaction handling for power-steering",
+            },
+            {"role": "assistant", "content": "I'll help implement compaction handling"},
         ]
 
         # Post-compaction without objective context
         post_transcript = [
             {"role": "user", "content": "What's next?"},
-            {"role": "assistant", "content": "Let me check"}
+            {"role": "assistant", "content": "Let me check"},
         ]
 
         # Act: Validate objectives
         result = self.validator.validate_objectives(
-            pre_compaction=pre_transcript,
-            post_compaction=post_transcript
+            pre_compaction=pre_transcript, post_compaction=post_transcript
         )
 
         # Assert: Detects objective loss
@@ -557,26 +556,19 @@ class TestCompactionValidatorValidation(unittest.TestCase):
     def test_validate_recent_context_preservation(self):
         """Test validation ensures recent context (last 10 turns) is preserved."""
         # Arrange: Compaction that removed recent messages
-        pre_transcript = [
-            {"role": "user", "content": f"Message {i}"}
-            for i in range(100)
-        ]
+        pre_transcript = [{"role": "user", "content": f"Message {i}"} for i in range(100)]
 
         # Post-compaction removed messages 80-90 (recent context lost)
         post_transcript = pre_transcript[:80] + pre_transcript[91:]
 
         # Create context indicating compaction at turn 85
         context = CompactionContext(
-            has_compaction_event=True,
-            turn_at_compaction=85,
-            messages_removed=10
+            has_compaction_event=True, turn_at_compaction=85, messages_removed=10
         )
 
         # Act: Validate recent context
         result = self.validator.validate_recent_context(
-            pre_compaction=pre_transcript,
-            post_compaction=post_transcript,
-            context=context
+            pre_compaction=pre_transcript, post_compaction=post_transcript, context=context
         )
 
         # Assert: Detects recent context loss
@@ -602,6 +594,7 @@ class TestCompactionValidatorIntegration(unittest.TestCase):
     def tearDown(self):
         """Clean up test fixtures."""
         import shutil
+
         if Path(self.temp_dir).exists():
             shutil.rmtree(self.temp_dir)
 
@@ -622,7 +615,7 @@ class TestCompactionValidatorIntegration(unittest.TestCase):
             "turn_number": 2,
             "messages_removed": 1,
             "pre_compaction_transcript_path": str(transcript_path),
-            "session_id": "test_session_123"
+            "session_id": "test_session_123",
         }
         events_file = self.runtime_dir / "compaction_events.json"
         events_file.write_text(json.dumps([event_data]))
@@ -634,10 +627,7 @@ class TestCompactionValidatorIntegration(unittest.TestCase):
         ]
 
         # Act: Run full validation
-        result = self.validator.validate(
-            transcript=post_transcript,
-            session_id="test_session_123"
-        )
+        result = self.validator.validate(transcript=post_transcript, session_id="test_session_123")
 
         # Assert: Validation passes
         self.assertTrue(result.passed)
@@ -660,7 +650,7 @@ class TestCompactionValidatorIntegration(unittest.TestCase):
             "turn_number": 2,
             "messages_removed": 1,
             "pre_compaction_transcript_path": str(transcript_path),
-            "session_id": "test_session_123"
+            "session_id": "test_session_123",
         }
         events_file = self.runtime_dir / "compaction_events.json"
         events_file.write_text(json.dumps([event_data]))
@@ -671,10 +661,7 @@ class TestCompactionValidatorIntegration(unittest.TestCase):
         ]
 
         # Act: Run full validation
-        result = self.validator.validate(
-            transcript=post_transcript,
-            session_id="test_session_123"
-        )
+        result = self.validator.validate(transcript=post_transcript, session_id="test_session_123")
 
         # Assert: Validation fails with actionable recovery
         self.assertFalse(result.passed)

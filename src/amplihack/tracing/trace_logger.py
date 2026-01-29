@@ -18,7 +18,7 @@ Created for Issue #2071: Native Binary Migration with Optional Trace Logging
 
 import json
 import os
-from datetime import UTC, datetime
+from datetime import datetime, timezone  # Python 3.10 compatibility
 from pathlib import Path
 from typing import Any
 
@@ -161,7 +161,7 @@ class TraceLogger:
 
         # Add timestamp if not present
         if "timestamp" not in entry:
-            entry["timestamp"] = datetime.now(UTC).isoformat()
+            entry["timestamp"] = datetime.now(timezone.utc).isoformat()
 
         # Sanitize sensitive data
         sanitized_entry = TokenSanitizer.sanitize_dict(entry)
@@ -175,7 +175,7 @@ class TraceLogger:
             # Handle non-serializable data gracefully
             try:
                 error_entry = {
-                    "timestamp": datetime.now(UTC).isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "event": "trace_logger_error",
                     "error": str(e),
                     "original_event": str(entry.get("event", "unknown")),

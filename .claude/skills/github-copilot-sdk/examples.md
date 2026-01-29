@@ -863,12 +863,12 @@ Console.WriteLine(response?.Data.Content);
 
 ## Complete Runnable Examples
 
-For complete, tested goal-seeking agent implementations, see the `examples/` 
+For complete, tested goal-seeking agent implementations, see the `examples/`
 subdirectory:
 
-- **[goal-seeking-agent-python.py](examples/goal-seeking-agent-python.py)** - 
+- **[goal-seeking-agent-python.py](examples/goal-seeking-agent-python.py)** -
   Full autonomous agent with custom tools (tested and working)
-- **[goal-seeking-agent-typescript.ts](examples/goal-seeking-agent-typescript.ts)** - 
+- **[goal-seeking-agent-typescript.ts](examples/goal-seeking-agent-typescript.ts)** -
   TypeScript equivalent
 
 These demonstrate combining the Copilot SDK with goal-seeking agent patterns

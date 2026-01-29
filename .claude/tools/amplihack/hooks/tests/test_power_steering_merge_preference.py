@@ -25,7 +25,6 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, mock_open, patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -42,9 +41,7 @@ class TestPowerSteeringMergePreference(unittest.TestCase):
         self.project_root = Path(self.temp_dir)
 
         # Create directory structure
-        (self.project_root / ".claude" / "tools" / "amplihack").mkdir(
-            parents=True, exist_ok=True
-        )
+        (self.project_root / ".claude" / "tools" / "amplihack").mkdir(parents=True, exist_ok=True)
         (self.project_root / ".claude" / "context").mkdir(parents=True, exist_ok=True)
         (self.project_root / ".claude" / "runtime" / "power-steering").mkdir(
             parents=True, exist_ok=True
@@ -727,9 +724,7 @@ class TestPreferenceRegexPattern(unittest.TestCase):
         self.temp_dir = tempfile.mkdtemp()
         self.project_root = Path(self.temp_dir)
 
-        (self.project_root / ".claude" / "tools" / "amplihack").mkdir(
-            parents=True, exist_ok=True
-        )
+        (self.project_root / ".claude" / "tools" / "amplihack").mkdir(parents=True, exist_ok=True)
         (self.project_root / ".claude" / "context").mkdir(parents=True, exist_ok=True)
         (self.project_root / ".claude" / "runtime" / "power-steering").mkdir(
             parents=True, exist_ok=True

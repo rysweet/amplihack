@@ -4,16 +4,16 @@ Step-by-step guide for enabling, analyzing, and managing Claude API trace logs.
 
 ## Quick Reference
 
-| Task | Command |
-|------|---------|
-| Enable trace logging | `export AMPLIHACK_TRACE_LOGGING=true` |
-| Disable trace logging | `unset AMPLIHACK_TRACE_LOGGING` |
-| View latest trace | `tail -f .claude/runtime/amplihack-traces/trace_*.jsonl \| jq .` |
-| List all traces | `ls -lh .claude/runtime/amplihack-traces/` |
-| Count API calls | `cat trace_*.jsonl \| wc -l` |
-| Calculate token usage | `cat trace_*.jsonl \| jq '.response.usage'` |
-| Find errors | `cat trace_*.jsonl \| jq 'select(.error != null)'` |
-| Clean old traces | `find .claude/runtime/amplihack-traces/ -name "trace_*.jsonl" -mtime +30 -delete` |
+| Task                  | Command                                                                           |
+| --------------------- | --------------------------------------------------------------------------------- |
+| Enable trace logging  | `export AMPLIHACK_TRACE_LOGGING=true`                                             |
+| Disable trace logging | `unset AMPLIHACK_TRACE_LOGGING`                                                   |
+| View latest trace     | `tail -f .claude/runtime/amplihack-traces/trace_*.jsonl \| jq .`                  |
+| List all traces       | `ls -lh .claude/runtime/amplihack-traces/`                                        |
+| Count API calls       | `cat trace_*.jsonl \| wc -l`                                                      |
+| Calculate token usage | `cat trace_*.jsonl \| jq '.response.usage'`                                       |
+| Find errors           | `cat trace_*.jsonl \| jq 'select(.error != null)'`                                |
+| Clean old traces      | `find .claude/runtime/amplihack-traces/ -name "trace_*.jsonl" -mtime +30 -delete` |
 
 ## Common Tasks
 

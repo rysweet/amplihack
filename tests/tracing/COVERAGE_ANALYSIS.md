@@ -8,16 +8,16 @@
 
 #### Functionality Coverage
 
-| Functionality | Test Count | Coverage % | Critical Path |
-|--------------|------------|------------|---------------|
-| JSONL formatting | 4 | 100% | Yes |
-| Timestamp management | 2 | 100% | Yes |
-| Token sanitization | 6 | 100% | **CRITICAL** |
-| Context manager | 5 | 100% | Yes |
-| Error handling | 11 | 100% | Yes |
-| Performance | 3 | 100% | **CRITICAL** |
-| Configuration | 3 | 100% | Yes |
-| File operations | 6 | 100% | Yes |
+| Functionality        | Test Count | Coverage % | Critical Path |
+| -------------------- | ---------- | ---------- | ------------- |
+| JSONL formatting     | 4          | 100%       | Yes           |
+| Timestamp management | 2          | 100%       | Yes           |
+| Token sanitization   | 6          | 100%       | **CRITICAL**  |
+| Context manager      | 5          | 100%       | Yes           |
+| Error handling       | 11         | 100%       | Yes           |
+| Performance          | 3          | 100%       | **CRITICAL**  |
+| Configuration        | 3          | 100%       | Yes           |
+| File operations      | 6          | 100%       | Yes           |
 
 #### Edge Cases Covered
 
@@ -52,9 +52,10 @@
 #### Security Test Coverage
 
 All credential types sanitized:
+
 - [x] OpenAI API keys (sk-...)
 - [x] Bearer tokens
-- [x] GitHub tokens (ghp_, gho_, ghs_)
+- [x] GitHub tokens (ghp*, gho*, ghs\_)
 - [x] Nested credentials in complex structures
 - [x] Authorization headers
 
@@ -64,17 +65,17 @@ All credential types sanitized:
 
 #### Functionality Coverage
 
-| Functionality | Test Count | Coverage % | Critical Path |
-|--------------|------------|------------|---------------|
-| Binary detection | 6 | 100% | **CRITICAL** |
-| Command building | 7 | 100% | **CRITICAL** |
-| Version detection | 4 | 100% | Yes |
-| Trace support detection | 3 | 100% | **CRITICAL** |
-| Error handling | 2 | 100% | Yes |
-| Environment config | 2 | 100% | Yes |
-| Fallback behavior | 2 | 100% | Yes |
-| Platform-specific | 2 | 100% | Yes |
-| Caching | 2 | 100% | No |
+| Functionality           | Test Count | Coverage % | Critical Path |
+| ----------------------- | ---------- | ---------- | ------------- |
+| Binary detection        | 6          | 100%       | **CRITICAL**  |
+| Command building        | 7          | 100%       | **CRITICAL**  |
+| Version detection       | 4          | 100%       | Yes           |
+| Trace support detection | 3          | 100%       | **CRITICAL**  |
+| Error handling          | 2          | 100%       | Yes           |
+| Environment config      | 2          | 100%       | Yes           |
+| Fallback behavior       | 2          | 100%       | Yes           |
+| Platform-specific       | 2          | 100%       | Yes           |
+| Caching                 | 2          | 100%       | No            |
 
 #### Binary Detection Coverage
 
@@ -105,17 +106,17 @@ All credential types sanitized:
 
 #### Functionality Coverage
 
-| Functionality | Test Count | Coverage % | Critical Path |
-|--------------|------------|------------|---------------|
-| Registration | 6 | 100% | Yes |
-| Lifecycle events | 4 | 100% | **CRITICAL** |
-| Data logging | 3 | 100% | Yes |
-| Token sanitization | 3 | 100% | **CRITICAL** |
-| Performance | 3 | 100% | **CRITICAL** |
-| Error handling | 4 | 100% | Yes |
-| Streaming | 2 | 100% | Yes |
-| Integration | 2 | 100% | Yes |
-| Configuration | 2 | 100% | Yes |
+| Functionality      | Test Count | Coverage % | Critical Path |
+| ------------------ | ---------- | ---------- | ------------- |
+| Registration       | 6          | 100%       | Yes           |
+| Lifecycle events   | 4          | 100%       | **CRITICAL**  |
+| Data logging       | 3          | 100%       | Yes           |
+| Token sanitization | 3          | 100%       | **CRITICAL**  |
+| Performance        | 3          | 100%       | **CRITICAL**  |
+| Error handling     | 4          | 100%       | Yes           |
+| Streaming          | 2          | 100%       | Yes           |
+| Integration        | 2          | 100%       | Yes           |
+| Configuration      | 2          | 100%       | Yes           |
 
 #### Callback Events Coverage
 
@@ -155,17 +156,17 @@ All credential types sanitized:
 
 #### Integration Points Covered
 
-| Integration | Test Count | Status |
-|-------------|------------|--------|
-| Launcher + Binary Manager | 5 | RED |
-| LiteLLM + Callbacks | 3 | RED |
-| Configuration propagation | 2 | RED |
-| Error handling integration | 2 | RED |
-| Performance integration | 1 | RED |
-| Concurrent access | 1 | RED |
-| Prerequisites integration | 2 | RED |
-| Cleanup integration | 1 | RED |
-| Cross-component flow | 2 | RED |
+| Integration                | Test Count | Status |
+| -------------------------- | ---------- | ------ |
+| Launcher + Binary Manager  | 5          | RED    |
+| LiteLLM + Callbacks        | 3          | RED    |
+| Configuration propagation  | 2          | RED    |
+| Error handling integration | 2          | RED    |
+| Performance integration    | 1          | RED    |
+| Concurrent access          | 1          | RED    |
+| Prerequisites integration  | 2          | RED    |
+| Cleanup integration        | 1          | RED    |
+| Cross-component flow       | 2          | RED    |
 
 #### Critical Integration Paths
 
@@ -239,34 +240,34 @@ All credential types sanitized:
 
 ### By Test Type
 
-| Type | Count | Percentage | Target | Status |
-|------|-------|------------|--------|--------|
-| Unit | 103 | 66% | 60% | ✅ MEETS |
-| Integration | 37 | 24% | 30% | ⚠️ CLOSE |
-| E2E | 16 | 10% | 10% | ✅ MEETS |
-| **Total** | **156** | **100%** | **100%** | ✅ |
+| Type        | Count   | Percentage | Target   | Status   |
+| ----------- | ------- | ---------- | -------- | -------- |
+| Unit        | 103     | 66%        | 60%      | ✅ MEETS |
+| Integration | 37      | 24%        | 30%      | ⚠️ CLOSE |
+| E2E         | 16      | 10%        | 10%      | ✅ MEETS |
+| **Total**   | **156** | **100%**   | **100%** | ✅       |
 
 ### By Module
 
-| Module | Tests | Percentage | Priority |
-|--------|-------|------------|----------|
-| TraceLogger | 40 | 25.6% | HIGH |
-| BinaryManager | 32 | 20.5% | HIGH |
-| LiteLLM Callbacks | 31 | 19.9% | HIGH |
-| Integration | 19 | 12.2% | MEDIUM |
-| Prerequisites | 18 | 11.5% | MEDIUM |
-| E2E | 16 | 10.3% | MEDIUM |
+| Module            | Tests | Percentage | Priority |
+| ----------------- | ----- | ---------- | -------- |
+| TraceLogger       | 40    | 25.6%      | HIGH     |
+| BinaryManager     | 32    | 20.5%      | HIGH     |
+| LiteLLM Callbacks | 31    | 19.9%      | HIGH     |
+| Integration       | 19    | 12.2%      | MEDIUM   |
+| Prerequisites     | 18    | 11.5%      | MEDIUM   |
+| E2E               | 16    | 10.3%      | MEDIUM   |
 
 ### By Requirement Category
 
-| Category | Tests | Critical | Non-Critical |
-|----------|-------|----------|--------------|
-| Functionality | 92 | 35 | 57 |
-| Performance | 12 | 12 | 0 |
-| Security | 15 | 15 | 0 |
-| Error Handling | 22 | 8 | 14 |
-| Configuration | 15 | 5 | 10 |
-| **Total** | **156** | **75** | **81** |
+| Category       | Tests   | Critical | Non-Critical |
+| -------------- | ------- | -------- | ------------ |
+| Functionality  | 92      | 35       | 57           |
+| Performance    | 12      | 12       | 0            |
+| Security       | 15      | 15       | 0            |
+| Error Handling | 22      | 8        | 14           |
+| Configuration  | 15      | 5        | 10           |
+| **Total**      | **156** | **75**   | **81**       |
 
 ## Critical Path Coverage
 
@@ -323,18 +324,21 @@ All identified requirements have test coverage:
 ## Test Execution Estimate
 
 ### Fast Feedback Loop
+
 ```bash
 # Unit tests only (~5 seconds)
 pytest tests/tracing/test_trace_logger.py tests/tracing/test_binary_manager.py tests/tracing/test_litellm_callbacks.py
 ```
 
 ### Full Suite
+
 ```bash
 # All tests (~30 seconds)
 pytest tests/tracing/
 ```
 
 ### Performance Tests Only
+
 ```bash
 # Performance tests (~10 seconds)
 pytest tests/tracing/ -m performance
@@ -345,6 +349,7 @@ pytest tests/tracing/ -m performance
 ### Update Triggers
 
 Update tests when:
+
 - Adding new trace event types
 - Adding new binary support
 - Changing sanitization patterns
@@ -354,6 +359,7 @@ Update tests when:
 ### Deprecation Path
 
 If removing features:
+
 1. Mark tests with `@pytest.mark.deprecated`
 2. Add deprecation warnings in implementation
 3. Remove tests in next major version
