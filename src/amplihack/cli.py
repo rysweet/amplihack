@@ -750,7 +750,7 @@ def _fix_global_statusline_path() -> None:
         if current_command != correct_command and (
             current_command == ".claude/tools/statusline.sh"
             or current_command == "./claude/tools/statusline.sh"
-            or ".claude/tools/statusline.sh" in current_command
+            or current_command.endswith(".claude/tools/statusline.sh")
         ):
             statusline_config["command"] = correct_command
             settings["statusLine"] = statusline_config
