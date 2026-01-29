@@ -27,11 +27,9 @@ token_budget: 1800
 
 ## Overview
 
-Code-first orchestration for polyglot distributed apps. [AppHost](https://learn.microsoft.com/dotnet/aspire/fundamentals/app-host-overview) defines topology, [DCP](https://learn.microsoft.com/dotnet/aspire/fundamentals/networking-overview#aspire-orchestration) orchestrates locally, [azd](https://learn.microsoft.com/azure/developer/azure-developer-cli) deploys to Azure.
+Code-first orchestration for polyglot distributed apps. AppHost defines topology, `aspire run` orchestrates locally, `azd deploy` deploys to Azure.
 
-**Stack:** PostgreSQL, Redis, MongoDB, RabbitMQ, Kafka + any language (C#, Python, Node.js, Go)
-**Local:** `aspire run` → Docker + [Dashboard](https://learn.microsoft.com/dotnet/aspire/fundamentals/dashboard)
-**Cloud:** `azd deploy` → Azure Container Apps
+**Auto-activates** on keywords: aspire, microservices, distributed app, service discovery, orchestration
 
 ## Quick Start
 
@@ -123,60 +121,40 @@ azd deploy -e production  # Deploy to specific environment
 
 ## Navigation Guide
 
-**Read when you need:**
-- **reference.md** - Complete API reference, [DCP internals](https://learn.microsoft.com/dotnet/aspire/fundamentals/networking-overview#aspire-orchestration), advanced config
-- **examples.md** - Polyglot integration (Python, Node.js, Go), multi-service templates, Azure deployment
-- **patterns.md** - Production strategies (HA, multi-region), [security](https://learn.microsoft.com/dotnet/aspire/security/overview), performance, polyglot communication
-- **commands.md** - Complete CLI reference (installation, development, deployment, debugging - all platforms)
-- **troubleshooting.md** - Debug orchestration, dependency conflicts, deployment failures
+**When setting up projects:**
+- examples.md lines 8-31 → Minimal project
+- examples.md lines 518-608 → Add Python service
+- examples.md lines 610-669 → Add Node.js service
+- examples.md lines 671-768 → Add Go service
+
+**When adding infrastructure:**
+- reference.md lines 47-148 → Database APIs (PostgreSQL, Redis, MongoDB)
+- examples.md lines 39-95 → Redis integration
+- examples.md lines 102-176 → PostgreSQL integration
+
+**When deploying:**
+- commands.md lines 215-288 → Full azd workflow
+- examples.md lines 387-515 → Azure deployment walkthrough
+- patterns.md lines 5-42 → HA configuration
+
+**When debugging:**
+- troubleshooting.md lines 5-112 → Orchestration failures
+- troubleshooting.md lines 291-397 → Connection issues
+- commands.md lines 131-179 → Debug commands
 
 ## Quick Reference
 
-**Common Patterns:**
+**Essential commands:** See commands.md for complete reference
+
+**Polyglot patterns:**
 ```csharp
-// Multiple databases
-var pg = builder.AddPostgres("pg").AddDatabase("authdb").AddDatabase("catalogdb");
-var authApi = builder.AddProject<Projects.AuthApi>("auth")
-    .WithReference(pg.GetDatabase("authdb"));
-
-// Ports
-var api = builder.AddProject<Projects.Api>("api").WithHttpEndpoint(port: 8080);
-
-// External services
-var external = builder.AddConnectionString("external-api");
-
-// Environment variables
-var api = builder.AddProject<Projects.Api>("api")
-    .WithEnvironment("LOG_LEVEL", "Debug");
-```
-
-**Essential Commands:**
-```bash
-aspire run          # Start local development
-azd up              # Full Azure deployment
-azd deploy          # Deploy updates
-azd down            # Tear down resources
-```
-
-**Best Practices:**
-1. Keep AppHost simple (topology only)
-2. Use `WithReference()` for service discovery
-3. Use Dashboard for debugging
-
-**Polyglot Patterns:**
-```csharp
-builder.AddProject<Projects.Api>("api");  // .NET service
+builder.AddProject<Projects.Api>("api");  // .NET
 builder.AddExecutable("python-api", "python", ".").WithArgs("app.py");  // Python
 builder.AddExecutable("node-api", "node", ".").WithArgs("server.js");  // Node.js
-builder.AddContainer("nginx", "nginx:latest").WithHttpEndpoint(port: 80);  // Any container
-builder.AddExecutable("go-svc", "go", ".").WithArgs("run", "main.go");  // Go service
+builder.AddExecutable("go-svc", "go", ".").WithArgs("run", "main.go");  // Go
 ```
 
-**Service discovery** (automatic):
-```csharp
-.WithReference(redis)  // AppHost
-var conn = builder.Configuration.GetConnectionString("cache");  // Service reads auto
-```
+**Service discovery:** `.WithReference(redis)` in AppHost → `GetConnectionString("cache")` in service
 
 ## Integration with Amplihack
 
