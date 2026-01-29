@@ -299,6 +299,44 @@ async def analyze_consideration(
         return (True, None)
 
 
+def _load_anti_sycophancy_context() -> str:
+    """Load anti-sycophancy enforcement rules from USER_PREFERENCES.md.
+
+    Returns single source of truth by reading preferences file directly rather
+    than duplicating content. Fails open if file missing or unreadable.
+
+    Returns:
+        Anti-sycophancy enforcement context from USER_PREFERENCES.md,
+        or empty string if file unavailable
+    """
+    prefs_path = Path.home() / ".amplihack" / ".claude" / "context" / "USER_PREFERENCES.md"
+
+    if not prefs_path.exists():
+        return ""  # Fail-open if preferences missing
+
+    try:
+        content = prefs_path.read_text()
+        # Extract anti-sycophancy section (starts with ⛔ BLOCKING REQUIREMENT)
+        lines = content.split("\n")
+        in_section = False
+        section_lines = []
+
+        for line in lines:
+            if "⛔ BLOCKING REQUIREMENT - Anti-Sycophancy Enforcement" in line:
+                in_section = True
+                section_lines.append(line)
+            elif in_section:
+                if line.strip() == "":
+                    continue  # Skip blank lines within section
+                if line.startswith("###"):  # Next section header
+                    break
+                section_lines.append(line)
+
+        return "\n".join(section_lines).strip()
+    except Exception:
+        return ""  # Fail-open on read error
+
+
 def _format_consideration_prompt(consideration: dict, conversation: list[dict]) -> str:
     """Format analysis prompt for a consideration.
 
@@ -312,6 +350,9 @@ def _format_consideration_prompt(consideration: dict, conversation: list[dict]) 
     # Format conversation summary
     conv_summary = _format_conversation_summary(conversation)
 
+    # Load anti-sycophancy enforcement context
+    anti_sycophancy = _load_anti_sycophancy_context()
+
     # Simple inline prompt (no template file needed for fail-open behavior)
     prompt = f"""You are analyzing a Claude Code session to determine if the following consideration is satisfied:
 
@@ -321,6 +362,8 @@ def _format_consideration_prompt(consideration: dict, conversation: list[dict]) 
 
 **Session Conversation** ({len(conversation)} messages):
 {conv_summary}
+
+{anti_sycophancy}
 
 ## Your Task
 
@@ -496,7 +539,7 @@ async def generate_final_guidance(
 
     Args:
         failed_checks: List of (check_id, reason) tuples for failed checks
-        conversation: Session conversation messages
+        conversation: Session conversation messages (currently unused, reserved for future)
         project_root: Project root directory
 
     Returns:
@@ -506,6 +549,8 @@ async def generate_final_guidance(
     Note:
         This provides context-aware, specific guidance rather than generic advice.
         Falls back to template if SDK unavailable or fails.
+        The conversation parameter is currently unused but reserved for future
+        context-aware guidance enhancement.
     """
     if not CLAUDE_SDK_AVAILABLE:
         return _generate_template_guidance(failed_checks)
