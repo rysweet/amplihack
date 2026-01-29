@@ -73,7 +73,7 @@ class PrerequisiteChecker:
         """Check prerequisites for a specific language.
 
         Args:
-            language: Language to check (python, javascript, typescript, csharp)
+            language: Language to check (python, javascript, typescript, csharp, go, java, php, ruby)
             indexer_type: Optional indexer type (e.g., "jedi" for Python)
 
         Returns:
@@ -87,6 +87,14 @@ class PrerequisiteChecker:
             return self._check_typescript()
         if language == "csharp":
             return self._check_csharp()
+        if language == "go":
+            return self._check_go()
+        if language == "java":
+            return self._check_java()
+        if language == "php":
+            return self._check_php()
+        if language == "ruby":
+            return self._check_ruby()
         return LanguageStatus(
             language=language,
             available=False,
@@ -250,6 +258,78 @@ class PrerequisiteChecker:
                 error_message=f"Error checking dotnet: {e}",
                 missing_tools=["dotnet"],
             )
+
+    def _check_go(self) -> LanguageStatus:
+        """Check Go prerequisites."""
+        go_bin = shutil.which("go")
+        if not go_bin:
+            return LanguageStatus(
+                language="go",
+                available=False,
+                error_message="Go binary not found in PATH",
+                missing_tools=["go"],
+            )
+
+        return LanguageStatus(
+            language="go",
+            available=True,
+            error_message=None,
+            missing_tools=[],
+        )
+
+    def _check_java(self) -> LanguageStatus:
+        """Check Java prerequisites."""
+        java_bin = shutil.which("java")
+        if not java_bin:
+            return LanguageStatus(
+                language="java",
+                available=False,
+                error_message="Java binary not found in PATH",
+                missing_tools=["java"],
+            )
+
+        return LanguageStatus(
+            language="java",
+            available=True,
+            error_message=None,
+            missing_tools=[],
+        )
+
+    def _check_php(self) -> LanguageStatus:
+        """Check PHP prerequisites."""
+        php_bin = shutil.which("php")
+        if not php_bin:
+            return LanguageStatus(
+                language="php",
+                available=False,
+                error_message="PHP binary not found in PATH",
+                missing_tools=["php"],
+            )
+
+        return LanguageStatus(
+            language="php",
+            available=True,
+            error_message=None,
+            missing_tools=[],
+        )
+
+    def _check_ruby(self) -> LanguageStatus:
+        """Check Ruby prerequisites."""
+        ruby_bin = shutil.which("ruby")
+        if not ruby_bin:
+            return LanguageStatus(
+                language="ruby",
+                available=False,
+                error_message="Ruby binary not found in PATH",
+                missing_tools=["ruby"],
+            )
+
+        return LanguageStatus(
+            language="ruby",
+            available=True,
+            error_message=None,
+            missing_tools=[],
+        )
 
     def check_all(self, languages: list[str]) -> PrerequisiteResult:
         """Check prerequisites for all specified languages.
