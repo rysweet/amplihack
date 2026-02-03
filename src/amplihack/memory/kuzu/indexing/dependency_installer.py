@@ -107,6 +107,37 @@ class DependencyInstaller:
             error_message=None if success else "npm install failed",
         )
 
+    def install_scip_typescript(self) -> InstallResult:
+        """Install scip-typescript via npm (Sourcegraph npm package)."""
+        if shutil.which("scip-typescript"):
+            return InstallResult(
+                tool="scip-typescript",
+                success=True,
+                already_installed=True,
+            )
+
+        # Check if npm is available
+        if not shutil.which("npm"):
+            return InstallResult(
+                tool="scip-typescript",
+                success=False,
+                already_installed=False,
+                error_message="npm not found - install Node.js first",
+            )
+
+        # Install via npm (scip-typescript is @sourcegraph/scip-typescript on npm)
+        success = self._run_command(
+            ["npm", "install", "-g", "@sourcegraph/scip-typescript"],
+            "scip-typescript",
+        )
+
+        return InstallResult(
+            tool="scip-typescript",
+            success=success,
+            already_installed=False,
+            error_message=None if success else "npm install failed",
+        )
+
     def install_typescript_language_server(self) -> InstallResult:
         """Install typescript-language-server via npm."""
         if shutil.which("typescript-language-server"):
@@ -157,6 +188,32 @@ class DependencyInstaller:
 
         return results
 
+    def install_typescript_dependencies(self) -> list[InstallResult]:
+        """Install scip-typescript and typescript-language-server for TypeScript/JavaScript indexing.
+
+        Returns:
+            List of install results
+        """
+        results = []
+
+        # Install scip-typescript (required for TypeScript/JavaScript indexing)
+        result = self.install_scip_typescript()
+        results.append(result)
+
+        if not result.success:
+            self._log("⚠️  scip-typescript installation failed")
+            if "npm not found" in (result.error_message or ""):
+                self._log("    Node.js is required - install from https://nodejs.org/")
+
+        # Install typescript-language-server (for LSP support)
+        result = self.install_typescript_language_server()
+        results.append(result)
+
+        if not result.success:
+            self._log("⚠️  typescript-language-server installation failed")
+
+        return results
+
     def install_all_auto_installable(self) -> dict[str, InstallResult]:
         """Install all dependencies that can be auto-installed.
 
@@ -173,8 +230,8 @@ class DependencyInstaller:
             results[result.tool] = result
 
         # TypeScript dependencies
-        result = self.install_typescript_language_server()
-        results[result.tool] = result
+        for result in self.install_typescript_dependencies():
+            results[result.tool] = result
 
         # Summary
         installed_count = sum(1 for r in results.values() if r.success and not r.already_installed)
