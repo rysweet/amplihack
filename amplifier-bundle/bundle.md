@@ -14,6 +14,13 @@ includes:
   # GitHub issues integration (NOT in foundation, safe to include directly)
   - bundle: git+https://github.com/microsoft/amplifier-bundle-issues@main
 
+  # Shadow environment for isolated testing (required for testing workflows)
+  - bundle: git+https://github.com/microsoft/amplifier-bundle-shadow@main
+
+  # Stories bundle for autonomous storytelling - transforms project activity into content
+  # Provides: 4 output formats (HTML, Excel, Word, PDF), 11 specialist agents, 4 automated recipes
+  - bundle: git+https://github.com/microsoft/amplifier-bundle-stories@main
+
 # Configure tool-skills to find skills
 # The amplihack launcher copies skills to .claude/skills in cwd during setup
 tools:

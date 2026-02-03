@@ -17,6 +17,7 @@ Public API:
     PerformanceMetrics: Results dataclass
 """
 
+import inspect
 import logging
 import time
 from dataclasses import dataclass
@@ -119,7 +120,12 @@ class PerformanceEvaluator:
         retrieval_throughput = 1000 / avg_retrieval_latency if avg_retrieval_latency > 0 else 0
 
         # Get resource usage
-        stats = self.backend.get_stats()
+        stats_result = self.backend.get_stats()
+        # Handle both sync and async backends
+        if inspect.iscoroutine(stats_result):
+            stats = await stats_result
+        else:
+            stats = stats_result
         num_memories = stats.get("total_memories", 0)
         disk_usage = self._get_disk_usage()
 
@@ -184,7 +190,7 @@ class PerformanceEvaluator:
         try:
             # Try to get database file path from backend
             if hasattr(self.backend, "db_path"):
-                db_path = Path(self.backend.db_path)
+                db_path = Path(self.backend.db_path)  # type: ignore[attr-defined]
                 if db_path.exists():
                     return db_path.stat().st_size
 
