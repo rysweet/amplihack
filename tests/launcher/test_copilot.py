@@ -2,11 +2,12 @@
 
 import platform
 import subprocess
-from unittest.mock import MagicMock, Mock, call, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
 from amplihack.launcher.copilot import (
+    check_copilot,
     check_for_update,
     detect_install_method,
     execute_update,
@@ -309,3 +310,44 @@ class TestExecuteUpdate:
         result = execute_update("npm")
         # Should still return True if update command succeeded
         assert result is True
+
+
+class TestCheckCopilot:
+    """Tests for check_copilot function."""
+
+    @patch("subprocess.run")
+    def test_check_copilot_installed(self, mock_run):
+        """Test check_copilot when copilot is installed."""
+        mock_result = Mock()
+        mock_result.returncode = 0
+        mock_run.return_value = mock_result
+
+        result = check_copilot()
+        assert result is True
+        mock_run.assert_called_once_with(
+            ["copilot", "--version"], capture_output=True, timeout=5, check=False
+        )
+
+    @patch("subprocess.run")
+    def test_check_copilot_not_found(self, mock_run):
+        """Test check_copilot when copilot is not installed."""
+        mock_run.side_effect = FileNotFoundError()
+
+        result = check_copilot()
+        assert result is False
+
+    @patch("subprocess.run")
+    def test_check_copilot_permission_error(self, mock_run):
+        """Test check_copilot handles PermissionError (WSL bug fix #2210)."""
+        mock_run.side_effect = PermissionError("Permission denied")
+
+        result = check_copilot()
+        assert result is False
+
+    @patch("subprocess.run")
+    def test_check_copilot_timeout(self, mock_run):
+        """Test check_copilot handles timeout gracefully."""
+        mock_run.side_effect = subprocess.TimeoutExpired("copilot", 5)
+
+        result = check_copilot()
+        assert result is False
