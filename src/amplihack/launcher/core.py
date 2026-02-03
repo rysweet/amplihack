@@ -1139,6 +1139,33 @@ class ClaudeLauncher:
             print(f"\n⚠️  Code indexing prompt failed: {e} (continuing...)\n")
             return True  # Non-blocking - always return True
 
+    def _count_files_by_language(self, project_path: Path, languages: list[str]) -> dict[str, int]:
+        """Count files for each language in the project.
+
+        Args:
+            project_path: Project root directory
+            languages: List of languages to count
+
+        Returns:
+            Dict mapping language to file count
+        """
+        extensions_map = {
+            "python": [".py"],
+            "javascript": [".js", ".jsx"],
+            "typescript": [".ts", ".tsx"],
+            "csharp": [".cs"],
+        }
+
+        counts = {}
+        for lang in languages:
+            extensions = extensions_map.get(lang, [])
+            count = 0
+            for ext in extensions:
+                count += len(list(project_path.rglob(f"*{ext}")))
+            counts[lang] = count
+
+        return counts
+
     def _run_blarify_and_import(self, project_path: Path, background: bool = False) -> bool:
         """Run blarify and import results to Kuzu.
 
@@ -1175,13 +1202,39 @@ class ClaudeLauncher:
                         if status and status.error_message:
                             print(f"   - {lang}: {status.error_message}")
 
-            # Step 2: Get Kuzu connector
+            # Step 2: Estimate file count and time
+            file_counts = self._count_files_by_language(project_path, result.available_languages)
+            total_files = sum(file_counts.values())
+
+            if total_files > 0:
+                # Estimate time (average ~0.5 seconds per file)
+                estimated_seconds = total_files * 0.5
+                estimated_minutes = estimated_seconds / 60
+
+                print("\n📊 Estimated workload:")
+                for lang, count in file_counts.items():
+                    print(f"   {lang}: {count} files")
+                print(f"   Total: {total_files} files")
+
+                if estimated_minutes < 1:
+                    print(f"   Estimated time: ~{int(estimated_seconds)} seconds")
+                else:
+                    print(f"   Estimated time: ~{estimated_minutes:.1f} minutes")
+
+            # Step 3: Get Kuzu connector
             kuzu_db_path = Path.home() / ".amplihack" / "memory_kuzu.db"
             connector = KuzuConnector(str(kuzu_db_path))
             connector.connect()
 
-            # Step 3: Create orchestrator and run indexing
+            # Step 4: Create orchestrator and run indexing
             orchestrator = Orchestrator(connector=connector)
+
+            # Show progress for foreground indexing
+            if not background and total_files > 0:
+                print("\n🚀 Starting indexing...")
+                import time
+
+                start_time = time.time()
 
             indexing_result = orchestrator.run(
                 codebase_path=project_path,
@@ -1190,7 +1243,13 @@ class ClaudeLauncher:
             )
 
             if indexing_result.success:
-                print(f"\n✅ Indexed {indexing_result.total_files} files")
+                if not background and total_files > 0:
+                    elapsed = time.time() - start_time
+                    print(
+                        f"\n✅ Indexed {indexing_result.total_files} files in {elapsed:.1f} seconds"
+                    )
+                else:
+                    print(f"\n✅ Indexed {indexing_result.total_files} files")
                 logger.info("Blarify import complete: %s files", indexing_result.total_files)
                 return True
             print("\n⚠️  Indexing completed with errors")

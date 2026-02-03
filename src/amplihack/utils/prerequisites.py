@@ -29,7 +29,7 @@ import shutil
 import subprocess
 import sys
 from dataclasses import asdict, dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 
@@ -114,17 +114,6 @@ class PrerequisiteResult:
     all_available: bool
     missing_tools: list[ToolCheckResult] = field(default_factory=list)
     available_tools: list[ToolCheckResult] = field(default_factory=list)
-
-
-@dataclass
-class InstallationResult:
-    """Result of attempting to install a tool."""
-
-    tool: str
-    success: bool
-    message: str
-    command_used: str | None = None
-    verification_result: ToolCheckResult | None = None
 
 
 def safe_subprocess_call(
@@ -345,7 +334,7 @@ class InteractiveInstaller:
             5. Log attempt to audit log
             6. Return result
         """
-        timestamp = datetime.now(UTC).isoformat().replace("+00:00", "Z")
+        timestamp = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
         # Check for interactive environment
         if not self.is_interactive_environment():
