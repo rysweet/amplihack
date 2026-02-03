@@ -1396,8 +1396,8 @@ def run_blarify(
                     shutil.rmtree(temp_kuzu_dir, ignore_errors=True)
                 elif temp_kuzu_dir.exists():
                     temp_kuzu_dir.unlink(missing_ok=True)
-            except OSError:
-                pass  # Ignore cleanup errors
+            except Exception:
+                pass
 
         return True
 
