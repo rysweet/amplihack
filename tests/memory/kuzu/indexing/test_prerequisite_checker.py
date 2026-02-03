@@ -251,6 +251,28 @@ class TestPrerequisiteChecker:
             assert result.error_message is None
             assert result.missing_tools == []
 
+    def test_prefers_scip_python_when_both_available(self, checker):
+        """Test that scip-python is preferred when both indexers available."""
+
+        # Arrange - both scip-python and python binary available
+        def mock_which(cmd):
+            if cmd == "scip-python":
+                return "/usr/local/bin/scip-python"
+            if cmd in ("python", "python3"):
+                return "/usr/bin/python3"
+            return None
+
+        with patch("shutil.which", side_effect=mock_which):
+            # Act
+            result = checker.check_language("python")
+
+            # Assert - Should use scip-python (no install_instructions = using preferred)
+            assert result.language == "python"
+            assert result.available is True
+            assert result.error_message is None
+            assert result.missing_tools == []
+            assert result.install_instructions is None  # No fallback message = preferred indexer
+
     def test_check_csharp_with_supported_dotnet_version(self, checker):
         """Test successful C# check with supported dotnet version."""
         # Arrange

@@ -136,7 +136,6 @@ class PrerequisiteChecker:
         # Auto-detect: Check for EITHER indexer (graceful degradation)
         scip_python = shutil.which("scip-python")
         python_bin = shutil.which("python") or shutil.which("python3")
-        jedi_available = python_bin is not None  # Jedi LSP uses Python directly
 
         if scip_python:
             # scip-python available - preferred indexer
@@ -146,7 +145,7 @@ class PrerequisiteChecker:
                 error_message=None,
                 missing_tools=[],
             )
-        if jedi_available:
+        if python_bin:
             # Fallback to Jedi LSP - always works if Python is installed
             return LanguageStatus(
                 language="python",
