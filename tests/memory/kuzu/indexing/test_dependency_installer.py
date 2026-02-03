@@ -1,7 +1,7 @@
 """Tests for automatic dependency installer."""
 
 import subprocess
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -30,9 +30,17 @@ class TestDependencyInstaller:
             assert result.error_message is None
 
     def test_scip_python_install_success(self, installer):
-        """Test successful scip-python installation."""
+        """Test successful scip-python installation via npm."""
+
+        def mock_which(cmd):
+            if cmd == "scip-python":
+                return None
+            if cmd == "npm":
+                return "/usr/bin/npm"
+            return None
+
         with (
-            patch("shutil.which", return_value=None),
+            patch("shutil.which", side_effect=mock_which),
             patch("subprocess.run") as mock_run,
         ):
             mock_run.return_value = Mock(returncode=0)
@@ -44,17 +52,35 @@ class TestDependencyInstaller:
             assert result.already_installed is False
             assert result.error_message is None
 
-            # Verify pip install was called
+            # Verify npm install was called with correct package
             mock_run.assert_called_once()
             args = mock_run.call_args[0][0]
-            assert "pip" in args
+            assert "npm" in args
             assert "install" in args
-            assert "scip-python" in args
+            assert "@sourcegraph/scip-python" in args
 
-    def test_scip_python_install_failure(self, installer):
-        """Test scip-python installation failure."""
+    def test_scip_python_install_failure_no_npm(self, installer):
+        """Test scip-python installation failure when npm is missing."""
+        with patch("shutil.which", return_value=None):
+            result = installer.install_scip_python()
+
+            assert result.tool == "scip-python"
+            assert result.success is False
+            assert result.already_installed is False
+            assert "npm not found" in result.error_message
+
+    def test_scip_python_install_failure_npm_error(self, installer):
+        """Test scip-python installation failure when npm install fails."""
+
+        def mock_which(cmd):
+            if cmd == "scip-python":
+                return None
+            if cmd == "npm":
+                return "/usr/bin/npm"
+            return None
+
         with (
-            patch("shutil.which", return_value=None),
+            patch("shutil.which", side_effect=mock_which),
             patch("subprocess.run") as mock_run,
         ):
             mock_run.return_value = Mock(returncode=1, stderr="Error")
@@ -64,16 +90,7 @@ class TestDependencyInstaller:
             assert result.tool == "scip-python"
             assert result.success is False
             assert result.already_installed is False
-            assert result.error_message == "pip install failed"
-
-    def test_jedi_already_installed(self, installer):
-        """Test jedi-language-server detection when already installed."""
-        with patch("builtins.__import__", return_value=MagicMock()):
-            result = installer.install_jedi_language_server()
-
-            assert result.tool == "jedi-language-server"
-            assert result.success is True
-            assert result.already_installed is True
+            assert result.error_message == "npm install failed"
 
     def test_typescript_language_server_already_installed(self, installer):
         """Test typescript-language-server detection when already installed."""
@@ -125,40 +142,35 @@ class TestDependencyInstaller:
 
     def test_install_python_dependencies_scip_success(self, installer):
         """Test Python dependency installation with scip-python success."""
+
+        def mock_which(cmd):
+            if cmd == "scip-python":
+                return None
+            if cmd == "npm":
+                return "/usr/bin/npm"
+            return None
+
         with (
-            patch("shutil.which", return_value=None),
+            patch("shutil.which", side_effect=mock_which),
             patch("subprocess.run") as mock_run,
         ):
             mock_run.return_value = Mock(returncode=0)
 
             results = installer.install_python_dependencies()
 
-            assert len(results) == 1  # Only scip-python (succeeded)
+            assert len(results) == 1  # Only scip-python
             assert results[0].tool == "scip-python"
             assert results[0].success is True
 
-    def test_install_python_dependencies_scip_fails_jedi_fallback(self, installer):
-        """Test Python dependency installation falls back to jedi when scip-python fails."""
-
-        def mock_run(cmd, *args, **kwargs):
-            if "scip-python" in cmd:
-                return Mock(returncode=1, stderr="Error")
-            if "jedi-language-server" in cmd:
-                return Mock(returncode=0)
-            return Mock(returncode=0)
-
-        with (
-            patch("shutil.which", return_value=None),
-            patch("subprocess.run", side_effect=mock_run),
-            patch("builtins.__import__", side_effect=ImportError),
-        ):
+    def test_install_python_dependencies_scip_fails(self, installer):
+        """Test Python dependency installation when scip-python fails (no fallback)."""
+        with patch("shutil.which", return_value=None):
             results = installer.install_python_dependencies()
 
-            assert len(results) == 2  # scip-python + jedi-language-server
+            assert len(results) == 1  # Only scip-python (failed)
             assert results[0].tool == "scip-python"
             assert results[0].success is False
-            assert results[1].tool == "jedi-language-server"
-            assert results[1].success is True
+            assert "npm not found" in results[0].error_message
 
     def test_install_all_auto_installable(self, installer):
         """Test installing all auto-installable dependencies."""
@@ -202,12 +214,20 @@ class TestDependencyInstaller:
             assert captured.err == ""  # No messages when all installed
 
     def test_install_timeout_handling(self, installer):
-        """Test handling of installation timeout."""
+        """Test handling of installation timeout during npm install."""
+
+        def mock_which(cmd):
+            if cmd == "scip-python":
+                return None
+            if cmd == "npm":
+                return "/usr/bin/npm"
+            return None
+
         with (
-            patch("shutil.which", return_value=None),
+            patch("shutil.which", side_effect=mock_which),
             patch("subprocess.run", side_effect=subprocess.TimeoutExpired("cmd", 300)),
         ):
             result = installer.install_scip_python()
 
             assert result.success is False
-            assert result.error_message == "pip install failed"
+            assert result.error_message == "npm install failed"
