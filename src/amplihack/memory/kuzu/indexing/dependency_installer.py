@@ -77,7 +77,7 @@ class DependencyInstaller:
             return False
 
     def install_scip_python(self) -> InstallResult:
-        """Install scip-python via pip."""
+        """Install scip-python via npm (it's a Sourcegraph npm package, not pip)."""
         if shutil.which("scip-python"):
             return InstallResult(
                 tool="scip-python",
@@ -85,9 +85,18 @@ class DependencyInstaller:
                 already_installed=True,
             )
 
-        # Try pip install
+        # Check if npm is available
+        if not shutil.which("npm"):
+            return InstallResult(
+                tool="scip-python",
+                success=False,
+                already_installed=False,
+                error_message="npm not found - install Node.js first",
+            )
+
+        # Install via npm (scip-python is @sourcegraph/scip-python on npm)
         success = self._run_command(
-            [sys.executable, "-m", "pip", "install", "scip-python"],
+            ["npm", "install", "-g", "@sourcegraph/scip-python"],
             "scip-python",
         )
 
@@ -95,34 +104,7 @@ class DependencyInstaller:
             tool="scip-python",
             success=success,
             already_installed=False,
-            error_message=None if success else "pip install failed",
-        )
-
-    def install_jedi_language_server(self) -> InstallResult:
-        """Install jedi-language-server via pip."""
-        # Check if already installed by trying to import
-        try:
-            import jedi_language_server  # noqa: F401
-
-            return InstallResult(
-                tool="jedi-language-server",
-                success=True,
-                already_installed=True,
-            )
-        except ImportError:
-            pass
-
-        # Try pip install
-        success = self._run_command(
-            [sys.executable, "-m", "pip", "install", "jedi-language-server"],
-            "jedi-language-server",
-        )
-
-        return InstallResult(
-            tool="jedi-language-server",
-            success=success,
-            already_installed=False,
-            error_message=None if success else "pip install failed",
+            error_message=None if success else "npm install failed",
         )
 
     def install_typescript_language_server(self) -> InstallResult:
@@ -157,22 +139,21 @@ class DependencyInstaller:
         )
 
     def install_python_dependencies(self) -> list[InstallResult]:
-        """Install all auto-installable Python dependencies.
+        """Install scip-python for Python code indexing.
 
         Returns:
             List of install results
         """
         results = []
 
-        # Try scip-python first (preferred)
+        # Install scip-python (required for Python indexing)
         result = self.install_scip_python()
         results.append(result)
 
-        # If scip-python failed, install jedi-language-server as fallback
         if not result.success:
-            self._log("⚠️  scip-python failed, installing jedi-language-server as fallback...")
-            result = self.install_jedi_language_server()
-            results.append(result)
+            self._log("⚠️  scip-python installation failed")
+            if "npm not found" in (result.error_message or ""):
+                self._log("    Node.js is required - install from https://nodejs.org/")
 
         return results
 
