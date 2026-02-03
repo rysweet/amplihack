@@ -861,6 +861,19 @@ def main(argv: list[str] | None = None) -> int:
     # This allows us to skip Claude Code plugin installation for amplifier command
     args, claude_args = parse_args_with_passthrough(argv)
 
+    # Auto-install missing blarify dependencies (scip-python, typescript-language-server, etc.)
+    # Skip for non-launch commands to avoid unnecessary delays
+    if not hasattr(args, "command") or args.command in (None, "launch"):
+        try:
+            from .memory.kuzu.indexing.dependency_installer import DependencyInstaller
+
+            installer = DependencyInstaller(quiet=False)
+            installer.install_all_auto_installable()
+            installer.show_system_dependency_help()
+        except Exception as e:
+            # Don't fail startup if dependency installation fails
+            logger.warning(f"Failed to auto-install dependencies: {e}")
+
     # Initialize UVX staging if needed
     temp_claude_dir = None
     if is_uvx_deployment():
