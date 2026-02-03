@@ -140,6 +140,79 @@ class TestDependencyInstaller:
             assert "install" in args
             assert "typescript-language-server" in args
 
+    def test_scip_typescript_already_installed(self, installer):
+        """Test scip-typescript detection when already installed."""
+        with patch("shutil.which", return_value="/usr/local/bin/scip-typescript"):
+            result = installer.install_scip_typescript()
+
+            assert result.tool == "scip-typescript"
+            assert result.success is True
+            assert result.already_installed is True
+
+    def test_scip_typescript_install_success(self, installer):
+        """Test successful scip-typescript installation via npm."""
+
+        def mock_which(cmd):
+            if cmd == "scip-typescript":
+                return None
+            if cmd == "npm":
+                return "/usr/bin/npm"
+            return None
+
+        with (
+            patch("shutil.which", side_effect=mock_which),
+            patch("subprocess.run") as mock_run,
+        ):
+            mock_run.return_value = Mock(returncode=0)
+
+            result = installer.install_scip_typescript()
+
+            assert result.tool == "scip-typescript"
+            assert result.success is True
+            assert result.already_installed is False
+            assert result.error_message is None
+
+            # Verify npm install was called with correct package
+            mock_run.assert_called_once()
+            args = mock_run.call_args[0][0]
+            assert "npm" in args
+            assert "install" in args
+            assert "@sourcegraph/scip-typescript" in args
+
+    def test_scip_typescript_install_failure_no_npm(self, installer):
+        """Test scip-typescript installation failure when npm is missing."""
+        with patch("shutil.which", return_value=None):
+            result = installer.install_scip_typescript()
+
+            assert result.tool == "scip-typescript"
+            assert result.success is False
+            assert result.already_installed is False
+            assert "npm not found" in result.error_message
+
+    def test_install_typescript_dependencies_success(self, installer):
+        """Test TypeScript dependency installation with both tools successful."""
+
+        def mock_which(cmd):
+            if cmd in ("scip-typescript", "typescript-language-server"):
+                return None
+            if cmd == "npm":
+                return "/usr/bin/npm"
+            return None
+
+        with (
+            patch("shutil.which", side_effect=mock_which),
+            patch("subprocess.run") as mock_run,
+        ):
+            mock_run.return_value = Mock(returncode=0)
+
+            results = installer.install_typescript_dependencies()
+
+            assert len(results) == 2
+            assert results[0].tool == "scip-typescript"
+            assert results[0].success is True
+            assert results[1].tool == "typescript-language-server"
+            assert results[1].success is True
+
     def test_install_python_dependencies_scip_success(self, installer):
         """Test Python dependency installation with scip-python success."""
 
@@ -176,17 +249,21 @@ class TestDependencyInstaller:
         """Test installing all auto-installable dependencies."""
         with (
             patch.object(installer, "install_python_dependencies") as mock_python,
-            patch.object(installer, "install_typescript_language_server") as mock_ts,
+            patch.object(installer, "install_typescript_dependencies") as mock_ts,
         ):
             mock_python.return_value = [
                 InstallResult("scip-python", True, False),
             ]
-            mock_ts.return_value = InstallResult("typescript-language-server", True, False)
+            mock_ts.return_value = [
+                InstallResult("scip-typescript", True, False),
+                InstallResult("typescript-language-server", True, False),
+            ]
 
             results = installer.install_all_auto_installable()
 
-            assert len(results) == 2
+            assert len(results) == 3
             assert "scip-python" in results
+            assert "scip-typescript" in results
             assert "typescript-language-server" in results
             assert all(r.success for r in results.values())
 
