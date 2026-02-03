@@ -23,66 +23,72 @@ class TestPrerequisiteChecker:
         return PrerequisiteChecker()
 
     def test_detect_missing_scip_python_binary(self, checker):
-        """Test detection of missing scip-python binary."""
-        # Arrange
-        with patch("shutil.which", return_value=None):
+        """Test graceful degradation when scip-python missing but Python available."""
+
+        # Arrange - mock scip-python missing but python binary present
+        def mock_which(cmd):
+            if cmd == "scip-python":
+                return None
+            if cmd in ("python", "python3"):
+                return "/usr/bin/python3"
+            return None
+
+        with patch("shutil.which", side_effect=mock_which):
             # Act
             result = checker.check_language("python")
 
-            # Assert
+            # Assert - Should fall back to Jedi LSP
             assert result.language == "python"
-            assert result.available is False
-            assert "scip-python" in result.error_message.lower()
-            assert result.missing_tools == ["scip-python"]
+            assert result.available is True
+            assert result.error_message is None
+            assert result.missing_tools == []
+            assert "jedi" in result.install_instructions.lower()
 
-    def test_detect_missing_jedi_initialize_params(self, checker):
-        """Test detection of missing initialize_params.json for jedi."""
+    def test_jedi_with_python_binary_available(self, checker):
+        """Test Jedi indexer works when Python binary is available (config bundled in wheel)."""
         # Arrange
-        with (
-            patch("shutil.which", return_value="/usr/bin/python"),
-            patch("pathlib.Path.exists", return_value=False),
-        ):
+        with patch("shutil.which", return_value="/usr/bin/python"):
             # Act
             result = checker.check_language("python", indexer_type="jedi")
 
-            # Assert
+            # Assert - Config files now bundled, only Python binary needed
             assert result.language == "python"
-            assert result.available is False
-            assert "initialize_params.json" in result.error_message
-            assert result.missing_tools == ["initialize_params.json"]
+            assert result.available is True
+            assert result.error_message is None
+            assert result.missing_tools == []
 
-    def test_detect_unknown_dotnet_version(self, checker):
-        """Test detection of unknown dotnet version 10.0.2."""
+    def test_dotnet_version_10_now_supported(self, checker):
+        """Test that dotnet version 10 is now supported."""
         # Arrange
         mock_subprocess = Mock()
         mock_subprocess.returncode = 0
         mock_subprocess.stdout = "10.0.2\n"
 
-        with patch("subprocess.run", return_value=mock_subprocess):
+        with (
+            patch("subprocess.run", return_value=mock_subprocess),
+            patch("shutil.which", return_value="/usr/bin/dotnet"),
+        ):
             # Act
             result = checker.check_language("csharp")
 
-            # Assert
+            # Assert - Dotnet 10 now supported (Issue #2186)
             assert result.language == "csharp"
-            assert result.available is False
-            assert "10.0.2" in result.error_message
-            assert "unsupported version" in result.error_message.lower()
+            assert result.available is True
+            assert result.error_message is None
+            assert result.missing_tools == []
 
-    def test_detect_missing_typescript_runtime_dependencies(self, checker):
-        """Test detection of missing runtime_dependencies.json for TypeScript."""
+    def test_typescript_with_node_available(self, checker):
+        """Test TypeScript works when Node.js is available (config bundled in wheel)."""
         # Arrange
-        with (
-            patch("shutil.which", return_value="/usr/bin/node"),
-            patch("pathlib.Path.exists", return_value=False),
-        ):
+        with patch("shutil.which", return_value="/usr/bin/node"):
             # Act
             result = checker.check_language("typescript")
 
-            # Assert
+            # Assert - Config files now bundled, only Node.js needed
             assert result.language == "typescript"
-            assert result.available is False
-            assert "runtime_dependencies.json" in result.error_message
-            assert result.missing_tools == ["runtime_dependencies.json"]
+            assert result.available is True
+            assert result.error_message is None
+            assert result.missing_tools == []
 
     def test_at_least_one_language_can_proceed_partial_success(self, checker):
         """Test that at least one language can proceed (partial success)."""
@@ -218,8 +224,22 @@ class TestPrerequisiteChecker:
             assert len(result.unavailable_languages) == 0
             assert result.partial_success is False
 
+    def test_python_unavailable_when_both_indexers_missing(self, checker):
+        """Test Python unavailable only when BOTH scip-python AND python binary missing."""
+        # Arrange - Both indexers missing
+        with patch("shutil.which", return_value=None):
+            # Act
+            result = checker.check_language("python")
+
+            # Assert - Should be unavailable (no indexer available)
+            assert result.language == "python"
+            assert result.available is False
+            assert "no python indexer available" in result.error_message.lower()
+            assert "scip-python" in result.missing_tools
+            assert "python" in result.missing_tools
+
     def test_check_python_with_scip_python(self, checker):
-        """Test successful Python check with scip-python."""
+        """Test successful Python check with scip-python (preferred indexer)."""
         # Arrange
         with patch("shutil.which", return_value="/usr/local/bin/scip-python"):
             # Act

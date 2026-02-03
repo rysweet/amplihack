@@ -6,7 +6,6 @@ Validates that required tools and configurations are available before indexing.
 import shutil
 import subprocess
 from dataclasses import dataclass
-from pathlib import Path
 
 
 @dataclass
@@ -106,9 +105,16 @@ class PrerequisiteChecker:
         )
 
     def _check_python(self, indexer_type: str | None = None) -> LanguageStatus:
-        """Check Python prerequisites."""
+        """Check Python prerequisites with graceful degradation.
+
+        Supports two indexers:
+        - scip-python (preferred, faster)
+        - jedi-language-server (fallback, always works if Python installed)
+
+        Returns available if EITHER indexer is present.
+        """
         if indexer_type == "jedi":
-            # Check for jedi initialize_params.json - config now included in package
+            # Explicitly requested Jedi - check Python binary only
             python_bin = shutil.which("python") or shutil.which("python3")
             if not python_bin:
                 return LanguageStatus(
@@ -127,22 +133,35 @@ class PrerequisiteChecker:
                 missing_tools=[],
             )
 
-        # Check for scip-python binary (default)
+        # Auto-detect: Check for EITHER indexer (graceful degradation)
         scip_python = shutil.which("scip-python")
-        if not scip_python:
+        python_bin = shutil.which("python") or shutil.which("python3")
+        jedi_available = python_bin is not None  # Jedi LSP uses Python directly
+
+        if scip_python:
+            # scip-python available - preferred indexer
             return LanguageStatus(
                 language="python",
-                available=False,
-                error_message="scip-python binary not found in PATH",
-                missing_tools=["scip-python"],
-                install_instructions="pip install scip-python OR use jedi mode (pip install jedi-language-server)",
+                available=True,
+                error_message=None,
+                missing_tools=[],
             )
-
+        if jedi_available:
+            # Fallback to Jedi LSP - always works if Python is installed
+            return LanguageStatus(
+                language="python",
+                available=True,
+                error_message=None,
+                missing_tools=[],
+                install_instructions="Using Jedi LSP fallback (pip install jedi-language-server for optimal experience)",
+            )
+        # Neither indexer available
         return LanguageStatus(
             language="python",
-            available=True,
-            error_message=None,
-            missing_tools=[],
+            available=False,
+            error_message="No Python indexer available (need scip-python or Python binary for Jedi)",
+            missing_tools=["scip-python", "python"],
+            install_instructions="pip install scip-python (preferred) OR pip install jedi-language-server (fallback)",
         )
 
     def _check_javascript(self) -> LanguageStatus:
