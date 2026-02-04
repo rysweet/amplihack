@@ -73,6 +73,28 @@ class _CustomBuildBackend:
             dest: Destination directory path
             name: Human-readable name for logging
         """
+        from pathlib import Path as PathLib
+
+        # Validate paths (defense-in-depth with _is_tracked_by_git)
+        try:
+            resolved_src = PathLib(src).resolve()
+            resolved_dest = PathLib(dest).resolve()
+            repo_root_resolved = self.repo_root.resolve()
+
+            # Ensure source is within repository
+            if not str(resolved_src).startswith(str(repo_root_resolved)):
+                print(f"Error: Source path {src} is outside repository, skipping copy")
+                return
+
+            # Ensure destination is within src/amplihack/
+            pkg_root_resolved = (repo_root_resolved / "src" / "amplihack").resolve()
+            if not str(resolved_dest).startswith(str(pkg_root_resolved)):
+                print(f"Error: Destination path {dest} is outside package, skipping copy")
+                return
+        except (ValueError, OSError) as e:
+            print(f"Error: Failed to validate paths for {name}: {e}")
+            return
+
         if not src.exists():
             print(f"Warning: {name} not found at {src}")
             return

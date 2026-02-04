@@ -82,19 +82,21 @@ This configuration tells Python build tools to use `build_hooks.py` as the custo
 ```
 Build starts
     ↓
-1. _copy_claude_directory()      # Copy .claude/ with symlinks=True
-2. _copy_plugin_manifest()       # Copy .claude-plugin/
-3. _copy_github_directory()      # Copy .github/ with symlinks=True
-4. _copy_bundle_directory()      # Copy amplifier-bundle/ with symlinks=True
-5. _copy_amplihack_md()          # Copy AMPLIHACK.md
+1. _copy_claude_directory()                    # Copy .claude/ with symlinks=True
+2. _copy_plugin_manifest()                     # Copy .claude-plugin/
+3. _copy_github_directory()                    # Copy .github/ with symlinks=True
+4. _copy_bundle_directory()                    # Copy amplifier-bundle/ with symlinks=True
+5. _copy_amplihack_md()                        # Copy AMPLIHACK.md
+6. _copy_plugin_discoverable_directories()     # Copy commands/, skills/, agents/
     ↓
 setuptools builds wheel (includes copied directories)
     ↓
-6. _cleanup_claude_directory()   # Remove src/amplihack/.claude/
-7. _cleanup_plugin_manifest()    # Remove src/amplihack/.claude-plugin/
-8. _cleanup_github_directory()   # Remove src/amplihack/.github/
-9. _cleanup_bundle_directory()   # Remove src/amplihack/amplifier-bundle/
-10. _cleanup_amplihack_md()      # Remove src/amplihack/AMPLIHACK.md
+7. _cleanup_claude_directory()                 # Remove src/amplihack/.claude/
+8. _cleanup_plugin_manifest()                  # Remove src/amplihack/.claude-plugin/
+9. _cleanup_github_directory()                 # Remove src/amplihack/.github/
+10. _cleanup_bundle_directory()                # Remove src/amplihack/amplifier-bundle/
+11. _cleanup_amplihack_md()                    # Remove src/amplihack/AMPLIHACK.md
+12. _cleanup_plugin_discoverable_directories() # Remove commands/, skills/, agents/
     ↓
 Build complete, repository clean
 ```
