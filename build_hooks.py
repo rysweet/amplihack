@@ -33,65 +33,65 @@ class _CustomBuildBackend:
 
     def __init__(self):
         self.repo_root = Path(__file__).parent
+        pkg_root = self.repo_root / "src" / "amplihack"
         self.claude_src = self.repo_root / ".claude"
-        self.claude_dest = self.repo_root / "src" / "amplihack" / ".claude"
+        self.claude_dest = pkg_root / ".claude"
         self.plugin_src = self.repo_root / ".claude-plugin"
-        self.plugin_dest = self.repo_root / "src" / "amplihack" / ".claude-plugin"
+        self.plugin_dest = pkg_root / ".claude-plugin"
         self.github_src = self.repo_root / ".github"
-        self.github_dest = self.repo_root / "src" / "amplihack" / ".github"
+        self.github_dest = pkg_root / ".github"
         self.bundle_src = self.repo_root / "amplifier-bundle"
-        self.bundle_dest = self.repo_root / "src" / "amplihack" / "amplifier-bundle"
+        self.bundle_dest = pkg_root / "amplifier-bundle"
         self.amplihack_md_src = self.repo_root / "AMPLIHACK.md"
-        self.amplihack_md_dest = self.repo_root / "src" / "amplihack" / "AMPLIHACK.md"
+        self.amplihack_md_dest = pkg_root / "AMPLIHACK.md"
+        # Plugin discoverable directories (commands, skills, agents)
+        self.commands_src = self.claude_src / "commands"
+        self.commands_dest = pkg_root / "commands"
+        self.skills_src = self.claude_src / "skills"
+        self.skills_dest = pkg_root / "skills"
+        self.agents_src = self.claude_src / "agents"
+        self.agents_dest = pkg_root / "agents"
+
+    def _get_ignore_patterns(self):
+        """Return common ignore patterns for directory copying."""
+        return shutil.ignore_patterns(
+            "runtime",
+            "__pycache__",
+            "*.pyc",
+            "*.pyo",
+            "*~",
+            ".DS_Store",
+            "*.swp",
+            "*.swo",
+        )
+
+    def _copy_plugin_directory(self, src, dest, name):
+        """Copy a plugin directory from repo root to package, removing existing copy first.
+
+        Args:
+            src: Source directory path
+            dest: Destination directory path
+            name: Human-readable name for logging
+        """
+        if not src.exists():
+            print(f"Warning: {name} not found at {src}")
+            return
+
+        if dest.exists():
+            print(f"Removing existing {dest}")
+            shutil.rmtree(dest)
+
+        print(f"Copying {src} -> {dest}")
+        shutil.copytree(src, dest, symlinks=True, ignore=self._get_ignore_patterns())
+        print(f"Successfully copied {name} to package")
 
     def _copy_claude_directory(self):
         """Copy .claude/ from repo root to src/amplihack/ if needed."""
-        if not self.claude_src.exists():
-            print(f"Warning: .claude/ not found at {self.claude_src}")
-            return
-
-        # Remove existing .claude/ in package to ensure clean copy
-        if self.claude_dest.exists():
-            print(f"Removing existing {self.claude_dest}")
-            shutil.rmtree(self.claude_dest)
-
-        # Copy .claude/ into package
-        print(f"Copying {self.claude_src} -> {self.claude_dest}")
-        shutil.copytree(
-            self.claude_src,
-            self.claude_dest,
-            symlinks=True,  # Preserve symlinks within .claude/ directory structure
-            ignore=shutil.ignore_patterns(
-                # Exclude runtime data (logs, metrics, analysis)
-                "runtime",
-                # Exclude Python cache
-                "__pycache__",
-                "*.pyc",
-                "*.pyo",
-                # Exclude temp files
-                "*~",
-                ".DS_Store",
-                "*.swp",
-                "*.swo",
-            ),
-        )
-        print("Successfully copied .claude/ to package")
+        self._copy_plugin_directory(self.claude_src, self.claude_dest, ".claude/")
 
     def _copy_plugin_manifest(self):
         """Copy .claude-plugin/ from repo root to src/amplihack/ for wheel inclusion."""
-        if not self.plugin_src.exists():
-            print(f"Warning: .claude-plugin/ not found at {self.plugin_src}")
-            return
-
-        # Remove existing .claude-plugin/ in package to ensure clean copy
-        if self.plugin_dest.exists():
-            print(f"Removing existing {self.plugin_dest}")
-            shutil.rmtree(self.plugin_dest)
-
-        # Copy .claude-plugin/ into package
-        print(f"Copying {self.plugin_src} -> {self.plugin_dest}")
-        shutil.copytree(self.plugin_src, self.plugin_dest)
-        print("Successfully copied .claude-plugin/ to package")
+        self._copy_plugin_directory(self.plugin_src, self.plugin_dest, ".claude-plugin/")
 
     def _copy_github_directory(self):
         """Copy .github/ from repo root to src/amplihack/ for Copilot CLI integration."""
@@ -99,81 +99,75 @@ class _CustomBuildBackend:
             print(f"Info: .github/ not found at {self.github_src} (optional for Copilot CLI)")
             return
 
-        # Remove existing .github/ in package to ensure clean copy
         if self.github_dest.exists():
             print(f"Removing existing {self.github_dest}")
             shutil.rmtree(self.github_dest)
 
-        # Copy .github/ into package
         print(f"Copying {self.github_src} -> {self.github_dest}")
-        shutil.copytree(
-            self.github_src,
-            self.github_dest,
-            symlinks=True,  # Preserve symlinks (agents, skills point to .claude/)
-            ignore=shutil.ignore_patterns(
-                # Exclude CI/CD workflows (not needed in package)
-                "workflows",
-                # Exclude Python cache
-                "__pycache__",
-                "*.pyc",
-                "*.pyo",
-                # Exclude temp files
-                "*~",
-                ".DS_Store",
-            ),
-        )
+        ignore = shutil.ignore_patterns("workflows", "__pycache__", "*.pyc", "*.pyo", "*~", ".DS_Store")
+        shutil.copytree(self.github_src, self.github_dest, symlinks=True, ignore=ignore)
         print("Successfully copied .github/ to package")
+
+    def _is_tracked_by_git(self, path):
+        """Check if a path is tracked by git."""
+        import subprocess
+        from pathlib import Path as PathLib
+
+        # Resolve path to prevent traversal attacks
+        try:
+            resolved_path = PathLib(path).resolve()
+            repo_root_resolved = self.repo_root.resolve()
+
+            # Ensure path is within repository
+            if not str(resolved_path).startswith(str(repo_root_resolved)):
+                print(f"Warning: Path {path} is outside repository, treating as untracked")
+                return False
+
+            # Use relative path for git command
+            relative_path = resolved_path.relative_to(repo_root_resolved)
+
+            result = subprocess.run(
+                ["git", "ls-files", "--error-unmatch", str(relative_path)],
+                cwd=self.repo_root,
+                capture_output=True,
+                check=False,
+            )
+            return result.returncode == 0
+        except (ValueError, OSError) as e:
+            print(f"Warning: Failed to validate path {path}: {e}")
+            return False
+
+    def _safe_cleanup(self, path, name):
+        """Remove path if it exists and is not tracked by git."""
+        if path.exists():
+            if self._is_tracked_by_git(path):
+                print(f"Skipping cleanup of {path} (tracked by git)")
+            else:
+                print(f"Cleaning up {path}")
+                if path.is_file():
+                    path.unlink()
+                else:
+                    shutil.rmtree(path)
 
     def _cleanup_claude_directory(self):
         """Remove .claude/ from package after build."""
-        if self.claude_dest.exists():
-            print(f"Cleaning up {self.claude_dest}")
-            shutil.rmtree(self.claude_dest)
+        self._safe_cleanup(self.claude_dest, ".claude/")
 
     def _cleanup_plugin_manifest(self):
         """Remove .claude-plugin/ from package after build."""
-        if self.plugin_dest.exists():
-            print(f"Cleaning up {self.plugin_dest}")
-            shutil.rmtree(self.plugin_dest)
+        self._safe_cleanup(self.plugin_dest, ".claude-plugin/")
 
     def _cleanup_github_directory(self):
         """Remove .github/ from package after build."""
-        if self.github_dest.exists():
-            print(f"Cleaning up {self.github_dest}")
-            shutil.rmtree(self.github_dest)
+        self._safe_cleanup(self.github_dest, ".github/")
 
     def _copy_bundle_directory(self):
         """Copy amplifier-bundle/ from repo root to src/amplihack/ if needed."""
-        if not self.bundle_src.exists():
-            print(f"Warning: amplifier-bundle/ not found at {self.bundle_src}")
-            return
-
-        # Remove existing amplifier-bundle/ in package to ensure clean copy
-        if self.bundle_dest.exists():
-            print(f"Removing existing {self.bundle_dest}")
-            shutil.rmtree(self.bundle_dest)
-
-        # Copy amplifier-bundle/ into package
-        print(f"Copying {self.bundle_src} -> {self.bundle_dest}")
-        shutil.copytree(
-            self.bundle_src,
-            self.bundle_dest,
-            symlinks=True,
-            ignore=shutil.ignore_patterns(
-                "__pycache__",
-                "*.pyc",
-                "*.pyo",
-                "*~",
-                ".DS_Store",
-            ),
-        )
-        print("Successfully copied amplifier-bundle/ to package")
+        self._copy_plugin_directory(self.bundle_src, self.bundle_dest, "amplifier-bundle/")
 
     def _cleanup_bundle_directory(self):
         """Remove amplifier-bundle/ from package after build."""
-        if self.bundle_dest.exists():
-            print(f"Cleaning up {self.bundle_dest}")
-            shutil.rmtree(self.bundle_dest)
+        self._safe_cleanup(self.bundle_dest, "amplifier-bundle/")
 
     def _copy_amplihack_md(self):
         """Copy AMPLIHACK.md from repo root to src/amplihack/ for wheel inclusion."""
@@ -188,9 +182,29 @@ class _CustomBuildBackend:
 
     def _cleanup_amplihack_md(self):
         """Remove AMPLIHACK.md from package after build."""
-        if self.amplihack_md_dest.exists():
-            print(f"Cleaning up {self.amplihack_md_dest}")
-            self.amplihack_md_dest.unlink()
+        self._safe_cleanup(self.amplihack_md_dest, "AMPLIHACK.md")
+
+    def _copy_plugin_discoverable_directories(self):
+        """Copy commands/, skills/, agents/ from .claude/ to package root for plugin discovery.
+
+        Plugin systems discover these directories at package root for compatibility.
+        This creates dual-location structure:
+        - amplihack/.claude/commands/ (source of truth)
+        - amplihack/commands/ (discovery location)
+        """
+        self._copy_plugin_directory(self.commands_src, self.commands_dest, "commands/")
+        self._copy_plugin_directory(self.skills_src, self.skills_dest, "skills/")
+        self._copy_plugin_directory(self.agents_src, self.agents_dest, "agents/")
+
+    def _cleanup_plugin_discoverable_directories(self):
+        """Remove commands/, skills/, agents/ from package root after build.
+
+        These directories are temporary copies created during build.
+        The source of truth remains in .claude/ subdirectory.
+        """
+        self._safe_cleanup(self.commands_dest, "commands/")
+        self._safe_cleanup(self.skills_dest, "skills/")
+        self._safe_cleanup(self.agents_dest, "agents/")
 
     def build_wheel(self, wheel_directory, config_settings=None, metadata_directory=None):
         """Build wheel with .claude/, .claude-plugin/, .github/, amplifier-bundle/, and CLAUDE.md included."""
@@ -200,6 +214,7 @@ class _CustomBuildBackend:
             self._copy_github_directory()
             self._copy_bundle_directory()
             self._copy_amplihack_md()
+            self._copy_plugin_discoverable_directories()
             result = _orig.build_wheel(
                 wheel_directory,
                 config_settings=config_settings,
@@ -213,6 +228,7 @@ class _CustomBuildBackend:
             self._cleanup_github_directory()
             self._cleanup_bundle_directory()
             self._cleanup_amplihack_md()
+            self._cleanup_plugin_discoverable_directories()
 
     def build_sdist(self, sdist_directory, config_settings=None):
         """Build sdist (MANIFEST.in handles .claude/ for sdist)."""
