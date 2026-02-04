@@ -39,10 +39,10 @@ def add_plugin_args_for_uvx(
 
     Args:
         claude_args: Existing Claude arguments
-        use_installed_plugin: If True, don't add --plugin-dir (plugin installed via Claude Code)
+        use_installed_plugin: Deprecated parameter, kept for backward compatibility (ignored)
 
     Returns:
-        Updated arguments with plugin directory added (if needed)
+        Updated arguments with plugin directory added
     """
     if not is_uvx_deployment():
         return claude_args or []
@@ -54,16 +54,11 @@ def add_plugin_args_for_uvx(
     if "--add-dir" not in result_args:
         result_args = ["--add-dir", original_cwd] + result_args
 
-    # Add --plugin-dir ONLY if using directory copy (not installed plugin)
-    # When plugin is installed via `claude plugin install`, Claude Code auto-discovers it
-    plugin_installed = (
-        use_installed_plugin or os.environ.get("AMPLIHACK_PLUGIN_INSTALLED") == "true"
-    )
-
-    if not plugin_installed:
-        plugin_root = str(Path.home() / ".amplihack" / ".claude")
-        if "--plugin-dir" not in result_args:
-            result_args = ["--plugin-dir", plugin_root] + result_args
+    # ALWAYS add --plugin-dir for plugin discovery (simplified from complex conditional)
+    # Claude Code discovers plugins from ~/.amplihack/.claude regardless of installation method
+    plugin_root = str(Path.home() / ".amplihack" / ".claude")
+    if "--plugin-dir" not in result_args:
+        result_args = ["--plugin-dir", plugin_root] + result_args
 
     return result_args
 
@@ -983,10 +978,8 @@ def main(argv: list[str] | None = None) -> int:
                     if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
                         print("✅ Amplihack plugin installed successfully")
                         print(result.stdout)
-                    # Plugin installed successfully - Claude Code will auto-discover it
-                    # Don't pass --plugin-dir (set flag for add_plugin_args_for_uvx)
+                    # Plugin installed successfully
                     temp_claude_dir = None
-                    os.environ["AMPLIHACK_PLUGIN_INSTALLED"] = "true"
 
                     # Set CLAUDE_PLUGIN_ROOT for hook resolution
                     # When plugin installed via Claude Code, hooks use ${CLAUDE_PLUGIN_ROOT}
