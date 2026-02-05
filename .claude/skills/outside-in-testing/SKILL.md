@@ -87,7 +87,7 @@ scenario:
 
 ### The Gadugi Agentic Test Framework [LEVEL 2]
 
-Gadugi-agentic-test is a Python framework that:
+Gadugi-agentic-test is a Node.js/TypeScript framework that:
 
 1. **Parses YAML test scenarios** with declarative steps
 2. **Dispatches to specialized agents** (CLI, TUI, Web, Electron agents)
@@ -124,10 +124,10 @@ Each example is marked with its level. Start at Level 1 and progress as needed.
 
 ```bash
 # Install gadugi-agentic-test framework
-pip install gadugi-agentic-test
+npm install -g @gadugi/agentic-test
 
 # Verify installation
-gadugi-agentic-test --version
+gadugi-test --version
 ```
 
 ### Your First Test (CLI Example)
@@ -157,7 +157,7 @@ scenario:
 Run the test:
 
 ```bash
-gadugi-agentic-test run test-hello.yaml
+gadugi-test run test-hello.yaml
 ```
 
 Output:
@@ -888,19 +888,19 @@ scenario:
 **Single test**:
 
 ```bash
-gadugi-agentic-test run test-scenario.yaml
+gadugi-test run test-scenario.yaml
 ```
 
 **Multiple tests**:
 
 ```bash
-gadugi-agentic-test run tests/*.yaml
+gadugi-test run tests/*.yaml
 ```
 
 **With options**:
 
 ```bash
-gadugi-agentic-test run test.yaml \
+gadugi-test run test.yaml \
   --verbose \
   --evidence-dir ./test-evidence \
   --retry 2 \
@@ -923,10 +923,10 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Install gadugi-agentic-test
-        run: pip install gadugi-agentic-test
+        run: npm install -g @gadugi/agentic-test
 
       - name: Run tests
-        run: gadugi-agentic-test run tests/agentic/*.yaml
+        run: gadugi-test run tests/agentic/*.yaml
 
       - name: Upload evidence
         if: always()
@@ -1079,7 +1079,7 @@ scenario:
 scenario:
   name: "Critical Payment Flow"
   tags: [smoke, critical, payment, e2e]
-  # Run with: gadugi-agentic-test run --tags critical
+  # Run with: gadugi-test run --tags critical
 ```
 
 ### 7. Add Timeouts Strategically
@@ -1121,7 +1121,7 @@ scenario:
       timeout: 5s
 ```
 
-Run before every commit: `gadugi-agentic-test run --tags smoke`
+Run before every commit: `gadugi-test run --tags smoke`
 
 ### Happy Path Tests
 
@@ -1386,7 +1386,7 @@ python scripts/check-freshness.py
 # - Video recording for all test types
 # - Parallel test execution
 #
-# Update with: pip install --upgrade gadugi-agentic-test
+# Update with: npm update -g @gadugi/agentic-test
 ```
 
 The script checks the GitHub repository for releases and compares against the embedded version. This ensures you're aware of new features and improvements.
@@ -1755,7 +1755,7 @@ scenario:
       description: "Save screenshot of logged-in state"
 # To run this test:
 # 1. Save as test-login-valid.yaml
-# 2. Run: gadugi-agentic-test run test-login-valid.yaml
+# 2. Run: gadugi-test run test-login-valid.yaml
 # 3. Check evidence in ./evidence/user-login-valid-credentials-TIMESTAMP/
 ```
 

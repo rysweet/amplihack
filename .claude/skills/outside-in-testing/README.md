@@ -97,7 +97,7 @@ node dist/cli.js run scenarios/your-test.yaml
 **Option B: From npm (when published)**
 
 ```bash
-npm install -g gadugi-agentic-test
+npm install -g @gadugi/agentic-test
 gadugi-test run test.yaml
 ```
 
