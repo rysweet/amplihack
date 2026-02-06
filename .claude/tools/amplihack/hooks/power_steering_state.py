@@ -1052,7 +1052,7 @@ class TurnStateManager:
         if blocks < threshold:
             # Generate escalation warning if we're past halfway
             escalation_msg = None
-            if blocks >= self.WARNING_THRESHOLD:
+            if blocks >= PowerSteeringTurnState.WARNING_THRESHOLD:
                 remaining = threshold - blocks
                 escalation_msg = (
                     f"Warning: {blocks}/{threshold} blocks used. "
