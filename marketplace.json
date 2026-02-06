@@ -4,8 +4,7 @@
       "name": "amplihack",
       "source": {
         "source": "github",
-        "repo": "rysweet/amplihack",
-        "path": ".claude"
+        "repo": "rysweet/amplihack"
       }
     }
   ],
