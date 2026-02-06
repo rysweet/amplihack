@@ -246,7 +246,7 @@ scenario:
 # └───────┴─────────────────────────────────────────────┘
 
 # Run Command:
-# gadugi-agentic-test run examples/electron/single-window-basic.yaml
+# gadugi-test run examples/electron/single-window-basic.yaml
 
 # Key Learning Points (Level 1):
 # 1. launch with wait_for_window ensures app is ready

@@ -255,7 +255,7 @@ scenario:
 # └────────────────┘          └────────────────┘          └────────────────┘
 
 # Run Command:
-# gadugi-agentic-test run examples/electron/multi-window-coordination.yaml --verbose
+# gadugi-test run examples/electron/multi-window-coordination.yaml --verbose
 
 # Key Learning Points (Level 2):
 # 1. window_action with window parameter targets specific windows

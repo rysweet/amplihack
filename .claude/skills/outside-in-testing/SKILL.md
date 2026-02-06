@@ -123,7 +123,7 @@ Each example is marked with its level. Start at Level 1 and progress as needed.
 ### Installation
 
 ```bash
-# Install gadugi-agentic-test framework
+# Install @gadugi/agentic-test framework
 npm install -g @gadugi/agentic-test
 
 # Verify installation
@@ -922,7 +922,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install gadugi-agentic-test
+      - name: Install @gadugi/agentic-test
         run: npm install -g @gadugi/agentic-test
 
       - name: Run tests
