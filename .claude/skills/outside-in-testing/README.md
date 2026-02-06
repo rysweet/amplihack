@@ -81,10 +81,10 @@ Use `test-gap-analyzer` skill for unit test guidance, and this skill for behavio
 
 ```bash
 # Install globally
-npm install -g github:rysweet/gadugi-agentic-test
+npm install -g @gadugi/agentic-test
 
 # Or use with npx
-npx github:rysweet/gadugi-agentic-test gadugi-test run test.yaml
+npx @gadugi/agentic-test gadugi-test run test.yaml
 
 # Or clone and build
 git clone https://github.com/rysweet/gadugi-agentic-test
@@ -494,7 +494,7 @@ cleanup:
 
 ```bash
 # Update to latest version
-npm install -g github:rysweet/gadugi-agentic-test
+npm install -g @gadugi/agentic-test
 
 # Or if you cloned, pull latest:
 git pull origin main

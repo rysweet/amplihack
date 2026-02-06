@@ -277,7 +277,7 @@ scenario:
 # │  Email: user@example.com                           │
 
 # Run Command:
-# gadugi-agentic-test run examples/tui/tui-form-validation.yaml --verbose
+# gadugi-test run examples/tui/tui-form-validation.yaml --verbose
 
 # Key Learning Points (Level 2):
 # 1. Tab/Shift+Tab navigate between fields

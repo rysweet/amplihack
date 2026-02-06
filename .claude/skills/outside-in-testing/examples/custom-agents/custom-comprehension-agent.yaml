@@ -209,7 +209,7 @@ scenario:
 #   # → PASS (even if exact value changes)
 
 # Run Command:
-# gadugi-agentic-test run examples/custom-agents/custom-comprehension-agent.yaml --verbose
+# gadugi-test run examples/custom-agents/custom-comprehension-agent.yaml --verbose
 
 # Key Learning Points (Level 3):
 # 1. Custom agents understand domain-specific rules

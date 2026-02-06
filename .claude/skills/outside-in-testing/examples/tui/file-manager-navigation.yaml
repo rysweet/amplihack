@@ -193,7 +193,7 @@ scenario:
 # │   spreadsheet.xlsx                         │
 
 # Run Command:
-# gadugi-agentic-test run examples/tui/file-manager-navigation.yaml
+# gadugi-test run examples/tui/file-manager-navigation.yaml
 
 # Key Learning Points (Level 1):
 # 1. TUI tests verify screen content, not internal state

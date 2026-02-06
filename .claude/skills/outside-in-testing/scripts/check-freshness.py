@@ -185,7 +185,7 @@ def main():
             print()
 
         print("To update:")
-        print("  1. Install latest framework: pip install --upgrade gadugi-agentic-test")
+        print("  1. Install latest framework: npm update -g @gadugi/agentic-test")
         print(f"  2. Review release notes: {release_url}")
         print("  3. Update SKILL.md with new version and features")
         print("  4. Update examples if API changed")
