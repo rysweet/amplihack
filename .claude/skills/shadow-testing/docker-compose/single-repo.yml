@@ -1,0 +1,72 @@
+version: '3.8'
+
+# Single repository shadow environment
+# Usage:
+#   1. Create bundle: git -C ~/repos/my-lib bundle create snapshots/my-lib.bundle --all
+#   2. Start: docker-compose -f docker-compose/single-repo.yml up -d
+#   3. Test: docker-compose exec shadow bash
+#   4. Stop: docker-compose down
+
+services:
+  shadow:
+    image: ghcr.io/microsoft/amplifier-shadow:latest
+    container_name: shadow-single
+    volumes:
+      # Mount your git bundle (create with: git bundle create snapshots/my-lib.bundle --all)
+      - ./snapshots/my-lib.bundle:/snapshots/myorg/my-lib.bundle:ro
+      # Workspace for testing
+      - ./workspace:/workspace
+    environment:
+      # Pass API keys from host environment
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # UV cache isolation
+      - UV_NO_GITHUB_FAST_PATH=1
+      - UV_CACHE_DIR=/tmp/uv-cache
+    # Keep container running
+    command: >
+      bash -c "
+        echo 'Starting Gitea...' &&
+        /usr/local/bin/docker-entrypoint.sh &
+        sleep 5 &&
+        
+        echo 'Waiting for Gitea to be ready...' &&
+        until curl -sf http://localhost:3000/api/v1/version > /dev/null; do
+          sleep 1
+        done &&
+        
+        echo 'Setting up repository myorg/my-lib...' &&
+        curl -s -u shadow:shadow -H 'Content-Type: application/json' \
+          -d '{\"username\":\"myorg\"}' \
+          http://localhost:3000/api/v1/orgs &&
+        curl -s -u shadow:shadow -H 'Content-Type: application/json' \
+          -d '{\"name\":\"my-lib\",\"private\":false}' \
+          http://localhost:3000/api/v1/orgs/myorg/repos &&
+        
+        cd /tmp &&
+        rm -rf _push && mkdir _push && cd _push &&
+        git init --bare --quiet &&
+        git bundle list-heads /snapshots/myorg/my-lib.bundle | while read sha ref; do
+          branch_name=\$(echo \"\$ref\" | sed 's|refs/heads/||; s|refs/remotes/origin/|_upstream_|')
+          if echo \"\$ref\" | grep -q \"HEAD\"; then continue; fi
+          git fetch /snapshots/myorg/my-lib.bundle \"\$ref:refs/heads/\$branch_name\" 2>/dev/null || true
+        done &&
+        git remote add origin http://shadow:shadow@localhost:3000/myorg/my-lib.git &&
+        git push origin --all --force 2>&1 | grep -v 'remote:' &&
+        
+        echo 'Configuring git URL rewriting...' &&
+        git config --global url.'http://shadow:shadow@localhost:3000/myorg/my-lib.git'.insteadOf 'https://github.com/myorg/my-lib.git' &&
+        
+        echo 'Pre-cloning to workspace...' &&
+        mkdir -p /workspace/myorg &&
+        git clone http://shadow:shadow@localhost:3000/myorg/my-lib.git /workspace/myorg/my-lib --quiet 2>&1 &&
+        
+        echo 'Shadow environment ready!' &&
+        echo 'Test with: docker-compose exec shadow git clone https://github.com/myorg/my-lib /tmp/test' &&
+        tail -f /dev/null
+      "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/v1/version"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
