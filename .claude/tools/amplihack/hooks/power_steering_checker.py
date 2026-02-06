@@ -688,7 +688,7 @@ class PowerSteeringChecker:
                 turn_state_manager = TurnStateManager(
                     project_root=self.project_root,
                     session_id=session_id,
-                    log=lambda msg: self._log(msg, "INFO"),
+                    log=lambda msg, level="INFO": self._log(msg, level),
                 )
                 turn_state = turn_state_manager.load_state()
                 turn_state = turn_state_manager.increment_turn(turn_state)
@@ -1993,15 +1993,20 @@ class PowerSteeringChecker:
                             write_edit_operations += 1
                             file_path = tool_input.get("file_path", "")
 
-                            # Check if code file using class constant
-                            if any(ext in file_path for ext in self.CODE_FILE_EXTENSIONS):
+                            # Check if code file using class constant (use endswith to avoid false positives)
+                            if any(file_path.endswith(ext) for ext in self.CODE_FILE_EXTENSIONS):
                                 code_files_modified = True
                                 doc_files_only = False
 
-                            # Check if doc file using class constants
-                            if not any(ext in file_path for ext in self.DOC_FILE_EXTENSIONS):
-                                if not any(ext in file_path for ext in self.CONFIG_FILE_EXTENSIONS):
-                                    doc_files_only = False
+                            # Check if doc file using class constants (use endswith or special names)
+                            is_doc_file = any(
+                                file_path.endswith(ext) if ext.startswith('.') else ext in file_path
+                                for ext in self.DOC_FILE_EXTENSIONS
+                            )
+                            is_config_file = any(file_path.endswith(ext) for ext in self.CONFIG_FILE_EXTENSIONS)
+
+                            if not is_doc_file and not is_config_file:
+                                doc_files_only = False
 
                         # Read/Grep operations (investigation indicators)
                         elif tool_name in ["Read", "Grep", "Glob"]:
@@ -2022,25 +2027,41 @@ class PowerSteeringChecker:
                             if "git commit" in command or "git push" in command:
                                 git_operations = True
 
-        # Decision logic (NEW priority order fixes #2196):
-        # 1. Tool usage patterns (concrete evidence of development work)
-        # 2. Investigation keywords (tiebreaker for ambiguous cases)
-        # 3. Default to INFORMATIONAL (fail-open)
+        # Decision logic (REFINED for Issue #2196):
+        # 1. Investigation keywords checked early BUT can be overridden by CODE modifications
+        # 2. CODE modifications (code files) take priority → DEVELOPMENT
+        # 3. NON-CODE modifications (docs, configs, git) DON'T override investigation keywords
+        # 4. Default to INFORMATIONAL (fail-open)
 
-        # DEVELOPMENT: Highest priority if code changes detected
-        # Strong signal: Write/Edit of code files, tests run, PR operations
-        if self._has_development_indicators(code_files_modified, test_executions, pr_operations):
-            self._log("Session classified as DEVELOPMENT via tool usage patterns", "INFO")
+        # Check for investigation keywords early
+        has_investigation_keywords = self._has_investigation_keywords(transcript)
+
+        # DEVELOPMENT: CODE modifications override investigation keywords (fixes #2196)
+        # Only override keywords if we have actual CODE file modifications
+        # Doc/config updates or git operations should NOT override investigation keywords
+        if code_files_modified or test_executions > 0 or pr_operations:
+            # Strong signal: Write/Edit of CODE files, tests run, PR operations
+            self._log("Session classified as DEVELOPMENT via CODE modification patterns", "INFO")
             return "DEVELOPMENT"
 
+        # INVESTIGATION: Keywords found and NO code modifications
+        # This handles "investigate X", "how does X work", "troubleshoot Y" with:
+        # - No tools (pure questions)
+        # - Doc/config updates only (documenting findings)
+        # - Git operations only (committing investigation notes)
+        if has_investigation_keywords:
+            self._log("Session classified as INVESTIGATION via keywords (no code modifications)", "INFO")
+            return "INVESTIGATION"
+
         # INFORMATIONAL: No tool usage or only Read tools with high question density
+        # Questions without investigation keywords
         if self._has_informational_indicators(
             write_edit_operations, read_grep_operations, question_count, user_messages
         ):
             return "INFORMATIONAL"
 
-        # INVESTIGATION: Check tool-based heuristics FIRST (Read/Grep without modifications)
-        # This catches investigation sessions that don't have keywords
+        # INVESTIGATION: Tool-based heuristics (Read/Grep without modifications)
+        # Catches investigation sessions that don't have explicit keywords
         if self._has_investigation_indicators(read_grep_operations, write_edit_operations):
             self._log("Session classified as INVESTIGATION via tool usage patterns", "INFO")
             return "INVESTIGATION"
@@ -2050,14 +2071,6 @@ class PowerSteeringChecker:
             write_edit_operations, doc_files_only, git_operations, code_files_modified
         ):
             return "MAINTENANCE"
-
-        # INVESTIGATION: NOW check keywords as tiebreaker (AFTER tool analysis)
-        # Investigation keywords are ONLY checked if tool patterns were ambiguous
-        # This prevents false positives like "analyze and fix bugs" → INVESTIGATION
-        # when the session actually has Write/Edit tools → DEVELOPMENT (fixes #2196)
-        if self._has_investigation_keywords(transcript):
-            self._log("Session classified as INVESTIGATION via keyword fallback", "INFO")
-            return "INVESTIGATION"
 
         # Default to INFORMATIONAL if unclear (fail-open, conservative)
         return "INFORMATIONAL"
