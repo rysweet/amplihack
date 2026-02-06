@@ -356,28 +356,69 @@ class Orchestrator:
     def _import_results(self, indexing_results: dict) -> dict:
         """Import indexing results into database.
 
+        Now actually imports the SCIP index into Kuzu!
+
         Args:
-            indexing_results: Results from indexing
+            indexing_results: Results from indexing (currently unused, kept for compatibility)
 
         Returns:
-            Aggregate statistics
+            Import statistics from SCIP index
         """
-        total_files = 0
-        total_functions = 0
-        total_classes = 0
+        # Try to import SCIP index if it exists
+        if not self.code_graph or not self.connector:
+            # No database connection - return empty stats
+            logger.warning("No Kuzu connection - cannot import SCIP index")
+            return {
+                "files": 0,
+                "functions": 0,
+                "classes": 0,
+                "relationships": 0,
+            }
 
-        for result in indexing_results.values():
-            if isinstance(result, dict):
-                total_files += result.get("files", 0)
-                total_functions += result.get("functions", 0)
-                total_classes += result.get("classes", 0)
+        try:
+            from .scip_importer import ScipImporter
 
-        return {
-            "files": total_files,
-            "functions": total_functions,
-            "classes": total_classes,
-            "relationships": total_functions + total_classes,  # Simplified
-        }
+            # Check if SCIP index exists in the codebase root
+            # The output_file was set in the run() method
+            index_path = Path.cwd() / "index.scip"
+            if not index_path.exists():
+                logger.warning(f"SCIP index not found at {index_path}")
+                return {
+                    "files": 0,
+                    "functions": 0,
+                    "classes": 0,
+                    "relationships": 0,
+                }
+
+            # Import the SCIP index into Kuzu
+            importer = ScipImporter(self.connector)
+            stats = importer.import_from_file(
+                scip_index_path=str(index_path),
+                project_root=str(Path.cwd()),
+                language="python",  # TODO: Make this dynamic based on available_languages
+            )
+
+            logger.info(
+                "Successfully imported SCIP index: %d files, %d functions, %d classes",
+                stats.get("files", 0),
+                stats.get("functions", 0),
+                stats.get("classes", 0),
+            )
+
+            return stats
+
+        except Exception as e:
+            logger.error(f"Failed to import SCIP index: {e}")
+            import traceback
+
+            traceback.print_exc()
+            # Return empty stats on error
+            return {
+                "files": 0,
+                "functions": 0,
+                "classes": 0,
+                "relationships": 0,
+            }
 
     def _apply_priority_order(
         self,
