@@ -572,20 +572,58 @@ python .claude/scenarios/az-devops-tools/create_pr.py \
 - Quality gates exist for a reason - bypassing them introduces risk
 - Pattern of skipping reviews leads to technical debt accumulation
 
-**Review checklist:**
+**Step 16a: Step 13 Compliance Verification**
 
-- [ ] **⚠️ Step 13 Compliance Verification (MANDATORY)** - Verify PR description contains test results
-  - [ ] Check PR description has "Step 13: Local Testing Results" section with actual test execution evidence
-  - [ ] If missing: BLOCK review, comment on PR, request test results (no approval path - just do the testing)
+- [ ] Check PR description has "Step 13: Local Testing Results" section with actual test execution evidence
+- [ ] If missing: BLOCK review, comment on PR, request test results (no approval path - just do the testing)
+
+**Step 16b: Invoke reviewer agent**
+
 - [ ] **Always use** reviewer agent for comprehensive code review
   - **Alternative**: Use `/socratic-review` for dialogue-based review when learning is as important as fixing (mentoring, design documentation, complex code explanation)
-- [ ] **Use** security agent for security review
 - [ ] Check code quality and standards
-- [ ] Verify philosophy compliance
 - [ ] Ensure adequate test coverage
 - [ ] Identify potential improvements
-- [ ] Ensure there are no TODOs, stubs, or swallowed exceptions, no unimplemented functions - follow the zero-BS principle.
-- [ ] Post the review as a comment on the PR:
+- [ ] Ensure there are no TODOs, stubs, or swallowed exceptions, no unimplemented functions - follow the zero-BS principle
+- [ ] **POST structured review findings to the PR** → Evidence: review comment link
+
+**Step 16c: Invoke security agent**
+
+- [ ] **Use** security agent for security review
+- [ ] Verify no security vulnerabilities introduced
+- [ ] Check authentication/authorization if applicable
+- [ ] Verify sensitive data handling
+- [ ] **POST security review to the PR** → Evidence: security comment link
+
+**Step 16d: Invoke philosophy-guardian agent**
+
+- [ ] **Use** philosophy-guardian agent to verify philosophy compliance
+- [ ] Verify ruthless simplicity achieved
+- [ ] Confirm bricks & studs pattern followed
+- [ ] Ensure zero-BS implementation
+- [ ] **POST philosophy check to the PR** → Evidence: philosophy comment link
+
+**Step 16e: Address blocking issues**
+
+- [ ] Review all findings from 16b, 16c, 16d
+- [ ] Address any blocking issues found before proceeding
+- [ ] If issues found, fix and re-run applicable reviews
+
+---
+
+**🚨 VERIFICATION GATE - Before marking Step 16 complete, verify:**
+
+- [ ] Did I invoke the **reviewer** agent (not just code-review)?
+- [ ] Did I invoke the **security** agent?
+- [ ] Did I invoke the **philosophy-guardian** agent?
+- [ ] Are all three reviews **posted to the PR** as comments?
+- [ ] All blocking issues have been addressed?
+
+**Cannot proceed to Step 17 without completing this gate.**
+
+---
+
+\*\*Post reviews as comments on the PR:
 
 **For GitHub**:
 
@@ -611,13 +649,46 @@ az repos pr create-thread \
 - Indicates disrespect for reviewer's time and expertise
 - May block PR merge indefinitely
 
+**Step 17a: Review all feedback**
+
+- [ ] Gather all feedback comments from Step 16 reviews (reviewer, security, philosophy-guardian)
+- [ ] Think very carefully about each comment
+- [ ] Categorize: blocking issues vs. suggestions vs. questions
+
+**Step 17b: Address feedback with builder agent**
+
+- [ ] **Always use** builder agent to implement changes
+- [ ] **Use** relevant specialized agents for specific feedback types
+- [ ] Address each review comment substantively
+- [ ] For disagreements, explain reasoning in a PR comment
+
+**Step 17c: Push and respond**
+
+- [ ] Push updates to PR
+- [ ] Respond to each review comment with what was done
+- [ ] Post replies as comments on the PR
+
+**Step 17d: Verify and re-review if needed**
+
+- [ ] Ensure all tests still pass
+- [ ] Ensure PR is still mergeable
+- [ ] Request re-review if significant changes were made
+
+---
+
+**🚨 VERIFICATION GATE - Before marking Step 17 complete, verify:**
+
+- [ ] Did I address EVERY feedback comment (not just some)?
+- [ ] Did I respond to each comment on the PR explaining what was done?
+- [ ] Did I use the builder agent for implementation changes?
+- [ ] Are all tests still passing?
+
+**Cannot proceed to Step 18 without completing this gate.**
+
+---
+
 **Feedback implementation checklist:**
 
-- [ ] Review all feedback comments, think very carefully about each one and decide how to address it (or if you should disagree, explain why in a comment)
-- [ ] **Always use** builder agent to implement changes
-- [ ] **Use** relevant specialized agents for specific feedback
-- [ ] Address each review comment
-- [ ] Push updates to PR
 - [ ] Respond to review comments by posting replies as comments on the PR:
 
 **For GitHub**:
@@ -640,13 +711,45 @@ az repos pr create-thread \
 
 ### Step 18: Philosophy Compliance Check
 
+**Step 18a: Invoke reviewer agent for philosophy check**
+
 - [ ] **Always use** reviewer agent for final philosophy check
+- [ ] Verify implementation aligns with project philosophy
+- [ ] Check for over-engineering or unnecessary complexity
+- [ ] **Document findings** → Evidence: philosophy review notes
+
+**Step 18b: Invoke patterns agent**
+
 - [ ] **Use** patterns agent to verify pattern compliance
+- [ ] Design patterns used correctly
+- [ ] Architectural patterns followed
+- [ ] Code organization patterns maintained
+- [ ] **Document findings** → Evidence: patterns review notes
+
+**Step 18c: Zero-BS verification**
+
 - [ ] Verify ruthless simplicity achieved
 - [ ] Confirm bricks & studs pattern followed
-- [ ] Ensure zero-BS implementation (no stubs, faked apis, swallowed exceptions, etc)
+- [ ] Ensure zero-BS implementation:
+  - No stubs
+  - No faked APIs or data
+  - No swallowed exceptions
+  - No TODO comments
+  - No unimplemented functions
 - [ ] Verify all tests passing
 - [ ] Check documentation completeness and accuracy
+
+---
+
+**🚨 VERIFICATION GATE - Before marking Step 18 complete, verify:**
+
+- [ ] Did I invoke the **reviewer** agent for philosophy check?
+- [ ] Did I invoke the **patterns** agent?
+- [ ] Did I complete the zero-BS verification checklist?
+- [ ] Are all findings documented?
+- [ ] Any issues found have been addressed?
+
+**Cannot proceed to Step 19 without completing this gate.**
 
 ### Step 19: Outside-In Testing in Real Environment
 
