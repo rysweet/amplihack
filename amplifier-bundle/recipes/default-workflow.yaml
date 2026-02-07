@@ -321,7 +321,7 @@ steps:
 
   - id: "step-05b-api-design"
     agent: "amplihack:api-designer"
-    condition: "'API' in architecture_design or 'endpoint' in architecture_design"
+    condition: "{{architecture_design}} != ''"
     prompt: |
       # Step 5b: API Design (if applicable)
 
@@ -339,7 +339,7 @@ steps:
 
   - id: "step-05c-database-design"
     agent: "amplihack:database"
-    condition: "'database' in architecture_design or 'model' in architecture_design or 'schema' in architecture_design"
+    condition: "{{architecture_design}} != ''"
     prompt: |
       # Step 5c: Database Design (if applicable)
 
@@ -515,7 +515,7 @@ steps:
 
   - id: "step-08b-integration"
     agent: "amplihack:integration"
-    condition: "'external' in design_spec or 'integration' in design_spec or 'service' in design_spec"
+    condition: "{{design_spec}} != ''"
     prompt: |
       # Step 8b: External Service Integration
 
@@ -979,7 +979,7 @@ steps:
 
   - id: "step-19b-push-cleanup"
     type: "bash"
-    condition: "'changes made' in final_cleanup or 'updated' in final_cleanup"
+    condition: "{{final_cleanup}} != ''"
     command: |
       cd "{{repo_path}}" && \
       echo "=== Pushing Cleanup Changes ===" && \
