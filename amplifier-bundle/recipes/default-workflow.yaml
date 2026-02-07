@@ -1258,7 +1258,6 @@ steps:
 
   - id: "step-20b-push-cleanup"
     type: "bash"
-    condition: "{{final_cleanup}} != ''"
     command: |
       cd "{{repo_path}}" && \
       echo "=== Pushing Cleanup Changes ===" && \
