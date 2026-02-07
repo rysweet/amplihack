@@ -1,7 +1,7 @@
 ---
 name: Simplified Workflow
-description: Lightweight 16-step workflow for features, bugs, and refactoring
-version: 1.0.0
+description: Lightweight 17-step workflow for features, bugs, and refactoring
+version: 1.1.0
 applies_to:
   - features
   - bugs
@@ -22,12 +22,31 @@ failure_modes:
 
 # Simplified Workflow
 
-A lightweight 16-step workflow optimized for:
+A lightweight 17-step workflow optimized for:
 - ✅ **Small to medium changes** (1-10 files)
 - ✅ **Clear requirements** (no research needed)
 - ✅ **Standard patterns** (no architecture decisions)
 
-For complex work requiring architecture design, use DEFAULT_WORKFLOW.md instead.
+For complex work requiring architecture design, use [DEFAULT_WORKFLOW.md](./DEFAULT_WORKFLOW.md) instead.
+
+## When NOT to Use This Workflow
+
+Use [DEFAULT_WORKFLOW.md](./DEFAULT_WORKFLOW.md) instead for:
+- ❌ Changes requiring architecture decisions
+- ❌ New system components or modules
+- ❌ Complex refactoring across >10 files
+- ❌ Features needing research or design phase
+
+---
+
+## Step 0: Workflow Preparation
+
+⚠️ **DO NOT SKIP STEPS** - Each step has a specific purpose in ensuring quality.
+
+**Actions**:
+- ✅ Read this workflow completely before starting
+- ✅ Verify you have all prerequisites (see below)
+- ✅ Confirm this is the right workflow for your task (see "When NOT to Use" above)
 
 ---
 
@@ -51,8 +70,11 @@ For complex work requiring architecture design, use DEFAULT_WORKFLOW.md instead.
 ## Step 3: Create Feature Branch
 
 **Actions**:
-- ✅ Create and switch to branch: `git checkout -b feature/issue-42-user-authentication`
-- ✅ Use pattern: `feature/issue-<number>-<description>`
+- ✅ Create and switch to branch using appropriate prefix:
+  - Features: `git checkout -b feature/issue-42-user-authentication`
+  - Bugs: `git checkout -b fix/issue-42-authentication-bug`
+  - Refactoring: `git checkout -b refactor/issue-42-auth-cleanup`
+- ✅ Pattern: `<type>/issue-<number>-<description>` where type is `feature`, `fix`, or `refactor`
 
 ---
 
@@ -108,9 +130,16 @@ def test_user_authentication():
 
 ## Step 9: Manual Testing (If Needed)
 
+**When manual testing is required**:
+- ✅ UI changes visible to users
+- ✅ CLI commands with interactive prompts
+- ✅ Integration with external services
+- ✅ Performance-sensitive operations
+
 **Actions**:
 - ✅ Test critical user paths manually
 - ✅ Verify edge cases: `python -m myapp authenticate --username test`
+- ✅ Document test scenarios if complex
 
 ---
 
@@ -187,8 +216,9 @@ def test_user_authentication():
 
 **Before committing**:
 - ✅ Quote all variables in scripts: `"$branch_name"` not `$branch_name`
-- ✅ Scan for secrets: `git diff --cached | grep -E '(password|token|secret|api[_-]?key)'`
+- ✅ Scan for secrets: `git diff --cached | grep -E '(password|token|secret|api[_-]?key|aws|gcp)'`
 - ✅ Never commit credentials, API keys, or tokens
+- ✅ Verify `.gitignore` includes: `*.env`, `*.key`, `secrets/`, `.env.*`
 
 **Before merging PR**:
 - ✅ Review full diff: `gh pr diff` or `az repos pr show --id 1234`
