@@ -300,13 +300,13 @@ scenario:
 # Run Commands:
 
 # First run (create baselines):
-# gadugi-test run examples/web/web-visual-regression.yaml --create-baselines
+# gadugi-agentic-test run examples/web/web-visual-regression.yaml --create-baselines
 
 # Subsequent runs (compare against baselines):
-# gadugi-test run examples/web/web-visual-regression.yaml
+# gadugi-agentic-test run examples/web/web-visual-regression.yaml
 
 # Update specific baseline:
-# gadugi-test run examples/web/web-visual-regression.yaml --update-baseline homepage
+# gadugi-agentic-test run examples/web/web-visual-regression.yaml --update-baseline homepage
 
 # Key Learning Points (Level 2):
 # 1. set_viewport changes browser size for responsive testing

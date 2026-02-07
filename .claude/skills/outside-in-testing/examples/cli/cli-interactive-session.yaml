@@ -211,7 +211,7 @@ scenario:
 # - Session state information
 
 # Run Command:
-# gadugi-test run examples/cli/cli-interactive-session.yaml
+# gadugi-agentic-test run examples/cli/cli-interactive-session.yaml
 
 # Key Learning Points (Level 2):
 # 1. Variables (${var}) enable reusable, maintainable tests

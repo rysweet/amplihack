@@ -364,6 +364,26 @@ Embedded graph-based memory using Kuzu (NO Neo4j required):
 - [Documentation Graph](doc_graph_quick_reference.md) - Navigate documentation connections
 - [Code Context Injection](memory/CODE_CONTEXT_INJECTION.md) - Link code to memories
 
+### Code Graph Commands ⭐ NEW
+
+Visual and queryable representations of your codebase structure:
+
+- [Code Graph Documentation](code-graph/README.md) - Complete feature overview
+- [Quick Start](code-graph/quick-start.md) - Get your first graph in 2 minutes
+- [Command Reference](code-graph/command-reference.md) - All 5 commands documented
+- [Examples](code-graph/examples.md) - Real-world workflows
+- [Troubleshooting](code-graph/troubleshooting.md) - Fix common issues
+
+**Commands:**
+
+```bash
+/code-graph              # View full graph
+/code-graph-index        # Create database
+/code-graph-update       # Incremental update
+/code-graph-images       # Batch generation
+/code-graph-core         # Core architecture
+```
+
 **Historical Research** (Neo4j was replaced with Kuzu in Week 7):
 
 - [Executive Summary](research/neo4j_memory_system/00-executive-summary/README.md)
