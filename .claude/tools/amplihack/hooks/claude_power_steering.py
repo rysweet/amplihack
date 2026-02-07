@@ -300,19 +300,19 @@ async def analyze_consideration(
 
 
 def _load_anti_sycophancy_context() -> str:
-    """Load anti-sycophancy enforcement rules from USER_PREFERENCES.md.
+    """Load anti-sycophancy preference from USER_PREFERENCES.md.
 
-    Returns single source of truth by reading preferences file directly rather
-    than duplicating content. Fails open if file missing or unreadable.
+    Extracts the anti-sycophancy paragraph from USER_PREFERENCES.md to inject
+    into power steering guidance. This ensures agents receive anti-sycophancy
+    context at critical decision points.
 
     Returns:
-        Anti-sycophancy enforcement context from USER_PREFERENCES.md,
-        or empty string if file unavailable
+        Anti-sycophancy text (approximately 450-500 characters), or empty string
+        if file missing or unreadable (fail-open)
 
-    Implementation:
-        Extracts content from "⛔ BLOCKING REQUIREMENT - Anti-Sycophancy Enforcement"
-        marker until the next top-level "###" section header or "Always prefer"
-        line which marks the end of the anti-sycophancy section.
+    Note:
+        The anti-sycophancy content is located under "### Other Preferences"
+        section and starts with "Sycophancy erodes trust."
     """
     prefs_path = Path.home() / ".amplihack" / ".claude" / "context" / "USER_PREFERENCES.md"
 
@@ -321,22 +321,26 @@ def _load_anti_sycophancy_context() -> str:
 
     try:
         content = prefs_path.read_text()
-        # Extract anti-sycophancy section (starts with ⛔ BLOCKING REQUIREMENT)
-        lines = content.split("\n")
-        in_section = False
-        section_lines = []
 
-        for line in lines:
-            if "⛔ BLOCKING REQUIREMENT - Anti-Sycophancy Enforcement" in line:
-                in_section = True
-                section_lines.append(line)
-            elif in_section:
-                # Stop at next major section or end of anti-sycophancy content
-                if line.startswith("###") or line.startswith("Always prefer"):
-                    break
-                section_lines.append(line)
+        # Find the anti-sycophancy paragraph starting with "Sycophancy erodes trust"
+        # and ending with "principles." - this is the complete paragraph
+        start_marker = "Sycophancy erodes trust."
+        start_idx = content.find(start_marker)
 
-        return "\n".join(section_lines).strip()
+        if start_idx == -1:
+            return ""
+
+        # Extract from start marker to end of paragraph (ends with "principles.")
+        end_marker = "principles."
+        end_idx = content.find(end_marker, start_idx)
+
+        if end_idx == -1:
+            return ""
+
+        # Include the end marker text and add length of "principles."
+        anti_sycophancy_text = content[start_idx : end_idx + len(end_marker)].strip()
+
+        return anti_sycophancy_text
     except Exception:
         # Fail-open on read error
         return ""
