@@ -57,7 +57,7 @@ references:
 
 ## What is amplihack?
 
-Agentic coding framework: 4 mechanisms, 23-step workflow, 30+ agents, 25 commands, 80+ skills.
+Multi-CLI agentic framework supporting Claude Code, GitHub Copilot CLI, Microsoft Amplifier, Rustyclawd. Features: 4 mechanisms, 23-step workflow, 30+ agents, 25 commands, 80+ skills.
 
 ## Quick Reference
 
