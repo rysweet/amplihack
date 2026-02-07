@@ -145,7 +145,7 @@ dependencies = [
 
 [[package]]
 name = "amplihack"
-version = "0.2.0"
+version = "0.3.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
@@ -157,6 +157,7 @@ dependencies = [
     { name = "github-copilot-sdk" },
     { name = "kuzu" },
     { name = "litellm" },
+    { name = "packaging" },
     { name = "python-dotenv" },
     { name = "requests" },
     { name = "rich" },
@@ -209,6 +210,7 @@ requires-dist = [
     { name = "github-copilot-sdk", specifier = ">=0.1.0" },
     { name = "kuzu", specifier = ">=0.11.0" },
     { name = "litellm", specifier = ">=1.0.0" },
+    { name = "packaging", specifier = ">=21.0" },
     { name = "pre-commit", marker = "extra == 'dev'" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=7.0.0" },
@@ -218,11 +220,12 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0.0" },
     { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=4.0.0" },
     { name = "python-dotenv", specifier = ">=0.19.0" },
-    { name = "requests", specifier = ">=2.32.3" },
+    { name = "requests", specifier = ">=2.32.4" },
     { name = "rich", specifier = ">=13.0.0" },
     { name = "rich", marker = "extra == 'dev'", specifier = ">=13.0.0" },
     { name = "rich", marker = "extra == 'ui'", specifier = ">=13.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
+    { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2.0.0" },
     { name = "uvicorn", specifier = ">=0.15.0" },
 ]
 provides-extras = ["amplifier", "ui", "tui-testing", "test", "dev"]
