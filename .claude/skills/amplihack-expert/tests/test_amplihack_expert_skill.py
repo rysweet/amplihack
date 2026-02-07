@@ -666,9 +666,19 @@ def test_modular_design_independence():
     for file_path in [SKILL_FILE, REFERENCE_FILE, EXAMPLES_FILE]:
         content = file_path.read_text()
 
+        # Skip YAML frontmatter if present (SKILL.md has required frontmatter)
+        content_to_check = content
+        if content.startswith("---\n"):
+            # Find end of YAML frontmatter
+            yaml_end = content.find("\n---\n", 4)
+            if yaml_end != -1:
+                content_to_check = content[yaml_end + 5 :]  # Skip past closing ---\n
+
         # Check for main heading
-        has_heading = content.lstrip().startswith("#")
-        assert has_heading, f"{file_path.name} should start with a clear heading"
+        has_heading = content_to_check.lstrip().startswith("#")
+        assert has_heading, (
+            f"{file_path.name} should start with a clear heading (after YAML frontmatter if present)"
+        )
 
 
 def test_progressive_disclosure_pattern():
