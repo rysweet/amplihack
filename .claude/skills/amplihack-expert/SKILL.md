@@ -57,7 +57,7 @@ references:
 
 ## What is amplihack?
 
-Multi-CLI agentic framework (Claude Code, Copilot CLI, Amplifier, Rustyclawd): 4 mechanisms, 23-step workflow, 30+ agents, 25 commands, 80+ skills.
+Engineering system for coding CLIs (Claude, Copilot, Amplifier, Rustyclawd, Codex): 5 mechanisms, 23-step workflow, 30 agents, 25 commands, 80 skills.
 
 ## Quick Reference
 
@@ -95,7 +95,7 @@ Multi-CLI agentic framework (Claude Code, Copilot CLI, Amplifier, Rustyclawd): 4
 
 ## Core Concepts
 
-**4 Mechanisms:** Workflow (process), Command (entry), Skill (auto), Agent (delegate)
+**5 Mechanisms:** Workflow (process), Command (entry), Skill (auto), Agent (delegate), Hook (runtime)
 
 **Composition:** Commands → Workflows → Agents → Skills
 
@@ -103,7 +103,7 @@ Multi-CLI agentic framework (Claude Code, Copilot CLI, Amplifier, Rustyclawd): 4
 
 ## Related Docs
 
-- reference.md: Architecture (4 mechanisms, 5 layers)
+- reference.md: Architecture (5 mechanisms, 5 layers)
 - examples.md: Scenarios (5+ real examples)
 - PHILOSOPHY.md: Core principles
 - DEFAULT_WORKFLOW.md: 23 steps
