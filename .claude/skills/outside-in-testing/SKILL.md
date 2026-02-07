@@ -87,7 +87,7 @@ scenario:
 
 ### The Gadugi Agentic Test Framework [LEVEL 2]
 
-Gadugi-agentic-test is a Node.js/TypeScript framework that:
+Gadugi-agentic-test is a Python framework that:
 
 1. **Parses YAML test scenarios** with declarative steps
 2. **Dispatches to specialized agents** (CLI, TUI, Web, Electron agents)
@@ -123,11 +123,11 @@ Each example is marked with its level. Start at Level 1 and progress as needed.
 ### Installation
 
 ```bash
-# Install @gadugi/agentic-test framework
-npm install -g @gadugi/agentic-test
+# Install gadugi-agentic-test framework
+pip install gadugi-agentic-test
 
 # Verify installation
-gadugi-test --version
+gadugi-agentic-test --version
 ```
 
 ### Your First Test (CLI Example)
@@ -157,7 +157,7 @@ scenario:
 Run the test:
 
 ```bash
-gadugi-test run test-hello.yaml
+gadugi-agentic-test run test-hello.yaml
 ```
 
 Output:
@@ -888,19 +888,19 @@ scenario:
 **Single test**:
 
 ```bash
-gadugi-test run test-scenario.yaml
+gadugi-agentic-test run test-scenario.yaml
 ```
 
 **Multiple tests**:
 
 ```bash
-gadugi-test run tests/*.yaml
+gadugi-agentic-test run tests/*.yaml
 ```
 
 **With options**:
 
 ```bash
-gadugi-test run test.yaml \
+gadugi-agentic-test run test.yaml \
   --verbose \
   --evidence-dir ./test-evidence \
   --retry 2 \
@@ -922,11 +922,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install @gadugi/agentic-test
-        run: npm install -g @gadugi/agentic-test
+      - name: Install gadugi-agentic-test
+        run: pip install gadugi-agentic-test
 
       - name: Run tests
-        run: gadugi-test run tests/agentic/*.yaml
+        run: gadugi-agentic-test run tests/agentic/*.yaml
 
       - name: Upload evidence
         if: always()
@@ -1079,7 +1079,7 @@ scenario:
 scenario:
   name: "Critical Payment Flow"
   tags: [smoke, critical, payment, e2e]
-  # Run with: gadugi-test run --tags critical
+  # Run with: gadugi-agentic-test run --tags critical
 ```
 
 ### 7. Add Timeouts Strategically
@@ -1121,7 +1121,7 @@ scenario:
       timeout: 5s
 ```
 
-Run before every commit: `gadugi-test run --tags smoke`
+Run before every commit: `gadugi-agentic-test run --tags smoke`
 
 ### Happy Path Tests
 
@@ -1386,7 +1386,7 @@ python scripts/check-freshness.py
 # - Video recording for all test types
 # - Parallel test execution
 #
-# Update with: npm update -g @gadugi/agentic-test
+# Update with: pip install --upgrade gadugi-agentic-test
 ```
 
 The script checks the GitHub repository for releases and compares against the embedded version. This ensures you're aware of new features and improvements.
@@ -1755,7 +1755,7 @@ scenario:
       description: "Save screenshot of logged-in state"
 # To run this test:
 # 1. Save as test-login-valid.yaml
-# 2. Run: gadugi-test run test-login-valid.yaml
+# 2. Run: gadugi-agentic-test run test-login-valid.yaml
 # 3. Check evidence in ./evidence/user-login-valid-credentials-TIMESTAMP/
 ```
 
@@ -1774,7 +1774,7 @@ Run your outside-in tests in **isolated shadow environments** to validate change
 ### Why Use Shadow Environments for Testing
 
 1. **Clean State**: Fresh container, no host pollution
-2. **Local Changes**: Test uncommitted code exactly as-is  
+2. **Local Changes**: Test uncommitted code exactly as-is
 3. **Multi-Repo**: Coordinate changes across multiple repos
 4. **CI Parity**: What shadow sees ≈ what CI will see
 
@@ -1821,17 +1821,17 @@ amplifier-shadow destroy test
 scenario:
   name: "Multi-Repo Integration Test"
   type: cli
-  
+
   prerequisites:
     - "Shadow environment with core-lib and cli-tool"
-  
+
   steps:
     - action: launch
       target: "cli-tool"
-    
+
     - action: send_input
       value: "process --lib core-lib\n"
-    
+
     - action: verify_output
       contains: "Success: Using core-lib"
 ```
@@ -1854,17 +1854,17 @@ amplifier-shadow exec multi-test "gadugi-agentic-test run test-multi-repo.yaml"
 scenario:
   name: "Web App with Local Library"
   type: web
-  
+
   steps:
     - action: navigate
       url: "http://localhost:3000"
-    
+
     - action: click
       selector: "button.process"
-    
+
     - action: verify_element
       selector: ".result"
-      contains: "Processed with v2.0"  # Your local version
+      contains: "Processed with v2.0" # Your local version
 ```
 
 ```bash
@@ -1905,18 +1905,18 @@ scenario:
   name: "Validate Library Breaking Change"
   type: cli
   description: "Test that dependent app still works with new library API"
-  
+
   steps:
     - action: launch
       target: "/workspace/org/dependent-app/cli.py"
-    
+
     - action: send_input
       value: "process data.json\n"
-    
+
     - action: verify_output
       contains: "Processed successfully"
       description: "New library API should still work"
-    
+
     - action: verify_exit_code
       expected: 0
 ```
@@ -1945,6 +1945,7 @@ amplifier-shadow exec breaking-test "gadugi-agentic-test run test-library-change
 ### When to Use Shadow Integration
 
 Use shadow + outside-in tests when:
+
 - ✅ Testing library changes with dependent projects
 - ✅ Validating multi-repo coordinated changes
 - ✅ Need clean-state validation before pushing
@@ -1952,6 +1953,7 @@ Use shadow + outside-in tests when:
 - ✅ Testing that setup/install procedures work
 
 Don't use shadow for:
+
 - ❌ Simple unit tests (too much overhead)
 - ❌ Tests of already-committed code (shadow adds no value)
 - ❌ Performance testing (container overhead skews results)
@@ -1959,17 +1961,20 @@ Don't use shadow for:
 ### Learn More
 
 For complete shadow environment documentation, including:
+
 - Shell scripts for DIY setup
 - Docker Compose examples
 - Multi-language support (Python, Node, Rust, Go)
 - Troubleshooting and verification techniques
 
 **Load the shadow-testing skill**:
+
 ```
 Claude, use the shadow-testing skill to set up a shadow environment
 ```
 
 Or for Amplifier users, the shadow tool is built-in:
+
 ```python
 shadow.create(local_sources=["~/repos/lib:org/lib"])
 ```
