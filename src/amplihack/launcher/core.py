@@ -718,6 +718,9 @@ class ClaudeLauncher:
                 display_memory_config(memory_config)
             else:
                 # Fallback to 32GB if detection fails
+                # Intentional: High-RAM development systems should use generous heap
+                # for large codebases (6000+ files). Matches smart memory system's
+                # cap and ensures blarify indexing completes on typical dev machines.
                 env["NODE_OPTIONS"] = "--max-old-space-size=32768"
 
             if self._target_directory:
@@ -833,6 +836,9 @@ class ClaudeLauncher:
                 display_memory_config(memory_config)
             else:
                 # Fallback to 32GB if detection fails
+                # Intentional: High-RAM development systems should use generous heap
+                # for large codebases (6000+ files). Matches smart memory system's
+                # cap and ensures blarify indexing completes on typical dev machines.
                 env["NODE_OPTIONS"] = "--max-old-space-size=32768"
 
             if self._target_directory:
