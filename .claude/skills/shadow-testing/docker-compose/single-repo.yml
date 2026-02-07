@@ -29,12 +29,12 @@ services:
         echo 'Starting Gitea...' &&
         /usr/local/bin/docker-entrypoint.sh &
         sleep 5 &&
-        
+
         echo 'Waiting for Gitea to be ready...' &&
         until curl -sf http://localhost:3000/api/v1/version > /dev/null; do
           sleep 1
         done &&
-        
+
         echo 'Setting up repository myorg/my-lib...' &&
         curl -s -u shadow:shadow -H 'Content-Type: application/json' \
           -d '{\"username\":\"myorg\"}' \
@@ -42,7 +42,7 @@ services:
         curl -s -u shadow:shadow -H 'Content-Type: application/json' \
           -d '{\"name\":\"my-lib\",\"private\":false}' \
           http://localhost:3000/api/v1/orgs/myorg/repos &&
-        
+
         cd /tmp &&
         rm -rf _push && mkdir _push && cd _push &&
         git init --bare --quiet &&
@@ -53,14 +53,14 @@ services:
         done &&
         git remote add origin http://shadow:shadow@localhost:3000/myorg/my-lib.git &&
         git push origin --all --force 2>&1 | grep -v 'remote:' &&
-        
+
         echo 'Configuring git URL rewriting...' &&
         git config --global url.'http://shadow:shadow@localhost:3000/myorg/my-lib.git'.insteadOf 'https://github.com/myorg/my-lib.git' &&
-        
+
         echo 'Pre-cloning to workspace...' &&
         mkdir -p /workspace/myorg &&
         git clone http://shadow:shadow@localhost:3000/myorg/my-lib.git /workspace/myorg/my-lib --quiet 2>&1 &&
-        
+
         echo 'Shadow environment ready!' &&
         echo 'Test with: docker-compose exec shadow git clone https://github.com/myorg/my-lib /tmp/test' &&
         tail -f /dev/null

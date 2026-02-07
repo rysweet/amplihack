@@ -82,19 +82,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Create git bundle
         run: |
           git bundle create snapshot.bundle --all
           mkdir -p test-results
-      
+
       - name: Run shadow tests
         run: |
           docker-compose -f docker-compose/ci-shadow.yml run --rm ci-shadow
         env:
           REPO_ORG: myorg
           REPO_NAME: my-repo
-      
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v3
@@ -238,7 +238,7 @@ services:
     volumes:
       - ./snapshots/python-lib.bundle:/snapshots/lib.bundle:ro
     # ... config for Python project
-  
+
   shadow-node:
     image: ghcr.io/microsoft/amplifier-shadow:latest
     container_name: shadow-node-test

@@ -64,10 +64,10 @@ amplifier-shadow exec multi-test "
     git clone https://github.com/myorg/cli-tool test-cli &&
     cd test-cli &&
     uv venv && . .venv/bin/activate &&
-    
+
     # This installs BOTH local snapshots via git dependencies
     uv pip install -e . &&
-    
+
     # Run full test suite
     pytest tests/ -v
 "

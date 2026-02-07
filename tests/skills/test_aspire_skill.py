@@ -99,8 +99,7 @@ class TestFileStructure:
                 missing_files.append(filename)
 
         assert not missing_files, (
-            f"Missing required skill files: {missing_files}\n"
-            f"Expected location: {SKILL_DIR}"
+            f"Missing required skill files: {missing_files}\nExpected location: {SKILL_DIR}"
         )
 
     def test_no_unexpected_files(self):
@@ -150,14 +149,10 @@ class TestYAMLFrontmatter:
 
     def test_has_yaml_frontmatter(self, skill_content):
         """Test that SKILL.md has YAML frontmatter."""
-        assert skill_content.startswith("---\n"), (
-            "SKILL.md must start with YAML frontmatter (---)"
-        )
+        assert skill_content.startswith("---\n"), "SKILL.md must start with YAML frontmatter (---)"
 
         # Check for closing ---
-        assert "---" in skill_content[4:], (
-            "YAML frontmatter must be closed with ---"
-        )
+        assert "---" in skill_content[4:], "YAML frontmatter must be closed with ---"
 
     def test_name_field_exists(self, frontmatter):
         """Test that name field exists."""
@@ -166,9 +161,7 @@ class TestYAMLFrontmatter:
     def test_name_is_aspire(self, frontmatter):
         """Test that name is 'aspire' (lowercase, kebab-case)."""
         name = frontmatter.get("name", "")
-        assert name == "aspire", (
-            f"Name must be 'aspire' (lowercase), got: '{name}'"
-        )
+        assert name == "aspire", f"Name must be 'aspire' (lowercase), got: '{name}'"
 
     def test_name_follows_conventions(self, frontmatter):
         """Test that name follows naming conventions."""
@@ -201,8 +194,7 @@ class TestYAMLFrontmatter:
 
         found_terms = [term for term in key_terms if term in description]
         assert len(found_terms) > 0, (
-            f"Description should contain at least one of: {key_terms}\n"
-            f"Got: {description}"
+            f"Description should contain at least one of: {key_terms}\nGot: {description}"
         )
 
     def test_version_field_exists(self, frontmatter):
@@ -245,15 +237,12 @@ class TestYAMLFrontmatter:
         has_ms_learn = any("learn.microsoft.com" in url and "aspire" in url for url in urls_lower)
 
         assert has_aspire_dev or has_ms_learn, (
-            f"source_urls should contain official Aspire URLs\n"
-            f"Got: {source_urls}"
+            f"source_urls should contain official Aspire URLs\nGot: {source_urls}"
         )
 
     def test_activation_keywords_field_exists(self, frontmatter):
         """Test that activation_keywords field exists."""
-        assert "activation_keywords" in frontmatter, (
-            "Missing 'activation_keywords' field"
-        )
+        assert "activation_keywords" in frontmatter, "Missing 'activation_keywords' field"
 
     def test_activation_keywords_is_list(self, frontmatter):
         """Test that activation_keywords is a list."""
@@ -276,8 +265,7 @@ class TestYAMLFrontmatter:
                 missing_terms.append(term)
 
         assert not missing_terms, (
-            f"activation_keywords missing required terms: {missing_terms}\n"
-            f"Got: {keywords}"
+            f"activation_keywords missing required terms: {missing_terms}\nGot: {keywords}"
         )
 
     def test_activation_keywords_has_sufficient_coverage(self, frontmatter):
@@ -321,9 +309,7 @@ class TestTokenBudget:
     def test_token_budget_declared_in_frontmatter(self, skill_content):
         """Test that token_budget is declared in frontmatter."""
         frontmatter = extract_yaml_frontmatter(skill_content)
-        assert "token_budget" in frontmatter, (
-            "Missing 'token_budget' field in frontmatter"
-        )
+        assert "token_budget" in frontmatter, "Missing 'token_budget' field in frontmatter"
 
         declared_budget = frontmatter.get("token_budget", "")
         assert declared_budget, "token_budget field is empty"
@@ -334,8 +320,7 @@ class TestTokenBudget:
         declared_budget = int(frontmatter.get("token_budget", "0"))
 
         assert declared_budget == TARGET_SKILL_TOKENS, (
-            f"Declared token_budget ({declared_budget}) should match "
-            f"target ({TARGET_SKILL_TOKENS})"
+            f"Declared token_budget ({declared_budget}) should match target ({TARGET_SKILL_TOKENS})"
         )
 
     def test_actual_tokens_within_declared_budget(self, skill_content):
@@ -367,15 +352,11 @@ class TestContentStructure:
 
     def test_has_core_workflows_section(self, skill_content):
         """Test that SKILL.md contains Core Workflows section."""
-        assert "## Core Workflows" in skill_content, (
-            "Missing '## Core Workflows' section"
-        )
+        assert "## Core Workflows" in skill_content, "Missing '## Core Workflows' section"
 
     def test_has_navigation_guide_section(self, skill_content):
         """Test that SKILL.md contains Navigation Guide section."""
-        assert "## Navigation Guide" in skill_content, (
-            "Missing '## Navigation Guide' section"
-        )
+        assert "## Navigation Guide" in skill_content, "Missing '## Navigation Guide' section"
 
     def test_navigation_guide_references_all_supporting_files(self, skill_content):
         """Test that Navigation Guide references all supporting files."""
@@ -399,8 +380,7 @@ class TestContentStructure:
                 missing_references.append(filename)
 
         assert not missing_references, (
-            f"Navigation Guide must reference all supporting files.\n"
-            f"Missing: {missing_references}"
+            f"Navigation Guide must reference all supporting files.\nMissing: {missing_references}"
         )
 
     def test_overview_describes_core_problem(self, skill_content):
@@ -454,8 +434,7 @@ class TestContentStructure:
         # Should have subsections (### headers)
         subsection_count = cw_section.count("### ")
         assert subsection_count >= 2, (
-            f"Core Workflows should have at least 2 subsections (###)\n"
-            f"Found: {subsection_count}"
+            f"Core Workflows should have at least 2 subsections (###)\nFound: {subsection_count}"
         )
 
 
@@ -486,12 +465,10 @@ class TestProgressiveDisclosure:
             "read when you need",
         ]
 
-        found_pattern = any(phrase.lower() in nav_section.lower()
-                           for phrase in pattern_phrases)
+        found_pattern = any(phrase.lower() in nav_section.lower() for phrase in pattern_phrases)
 
         assert found_pattern, (
-            "Navigation Guide should use 'Read when you need:' pattern "
-            "for progressive disclosure"
+            "Navigation Guide should use 'Read when you need:' pattern for progressive disclosure"
         )
 
     def test_supporting_files_referenced_not_inlined(self, skill_content):
@@ -561,8 +538,7 @@ class TestExamples:
         code_block_count = code_block_count // 2
 
         assert code_block_count >= 5, (
-            f"examples.md should have at least 5 code blocks\n"
-            f"Found: {code_block_count}"
+            f"examples.md should have at least 5 code blocks\nFound: {code_block_count}"
         )
 
     def test_examples_has_csharp_code(self, examples_content):
@@ -626,10 +602,17 @@ class TestPatterns:
     def test_patterns_covers_production_topics(self, patterns_content):
         """Test that patterns.md covers production deployment topics."""
         # Should cover production concerns
-        production_topics = ["production", "deployment", "security", "performance", "high availability"]
+        production_topics = [
+            "production",
+            "deployment",
+            "security",
+            "performance",
+            "high availability",
+        ]
 
-        found_topics = [topic for topic in production_topics
-                       if topic.lower() in patterns_content.lower()]
+        found_topics = [
+            topic for topic in production_topics if topic.lower() in patterns_content.lower()
+        ]
 
         assert len(found_topics) >= 3, (
             f"patterns.md should cover production topics\n"
@@ -648,17 +631,16 @@ class TestTroubleshooting:
 
     def test_troubleshooting_file_exists(self):
         """Test that troubleshooting.md exists."""
-        assert (SKILL_DIR / "troubleshooting.md").exists(), (
-            "troubleshooting.md does not exist"
-        )
+        assert (SKILL_DIR / "troubleshooting.md").exists(), "troubleshooting.md does not exist"
 
     def test_troubleshooting_covers_common_issues(self, troubleshooting_content):
         """Test that troubleshooting.md covers common issues."""
         # Should cover common problem areas
         common_issues = ["error", "debug", "fix", "problem", "issue"]
 
-        found_issues = [issue for issue in common_issues
-                       if issue.lower() in troubleshooting_content.lower()]
+        found_issues = [
+            issue for issue in common_issues if issue.lower() in troubleshooting_content.lower()
+        ]
 
         assert len(found_issues) >= 3, (
             f"troubleshooting.md should cover common issues\n"
@@ -699,10 +681,7 @@ class TestNoInternalBrokenReferences:
                 if not referenced_file.exists():
                     broken_links.append((link_text, link_target))
 
-            assert not broken_links, (
-                f"{filename} has broken internal links:\n"
-                f"{broken_links}"
-            )
+            assert not broken_links, f"{filename} has broken internal links:\n{broken_links}"
 
 
 # Test markers for organization
