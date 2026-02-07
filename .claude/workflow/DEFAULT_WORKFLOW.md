@@ -609,7 +609,7 @@ python .claude/scenarios/az-devops-tools/create_pr.py \
 - [ ] Address any blocking issues found before proceeding
 - [ ] If issues found, fix and re-run applicable reviews
 
----
+**Step 16f: Verification Gate**
 
 **🚨 VERIFICATION GATE - Before marking Step 16 complete, verify:**
 
@@ -674,7 +674,7 @@ az repos pr create-thread \
 - [ ] Ensure PR is still mergeable
 - [ ] Request re-review if significant changes were made
 
----
+**Step 17e: Verification Gate**
 
 **🚨 VERIFICATION GATE - Before marking Step 17 complete, verify:**
 
@@ -739,7 +739,7 @@ az repos pr create-thread \
 - [ ] Verify all tests passing
 - [ ] Check documentation completeness and accuracy
 
----
+**Step 18d: Verification Gate**
 
 **🚨 VERIFICATION GATE - Before marking Step 18 complete, verify:**
 
