@@ -184,10 +184,10 @@ class PowerSteeringTurnState:
     last_analyzed_transcript_index: int = 0
     failure_fingerprints: list[str] = field(default_factory=list)  # Issue #2196: Loop detection
 
-    # Maximum consecutive blocks before auto-approve triggers (increased from 3)
-    MAX_CONSECUTIVE_BLOCKS: ClassVar[int] = 10
+    # Maximum consecutive blocks before auto-approve triggers (reduced from 10 to 5)
+    MAX_CONSECUTIVE_BLOCKS: ClassVar[int] = 5
     # Warning threshold - halfway to max blocks
-    WARNING_THRESHOLD: ClassVar[int] = 5  # Half of MAX_CONSECUTIVE_BLOCKS
+    WARNING_THRESHOLD: ClassVar[int] = 2  # Half of MAX_CONSECUTIVE_BLOCKS (5 // 2)
     # Loop detection threshold - number of identical fingerprints to trigger loop detection
     LOOP_DETECTION_THRESHOLD: ClassVar[int] = 3
 
