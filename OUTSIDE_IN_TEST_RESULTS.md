@@ -33,7 +33,7 @@ uvx --from git+https://github.com/rysweet/amplihack@8f8ba443 amplihack claude --
 - Launch command included: `--plugin-dir /home/rysweet/.amplihack/.claude`
 - Exit code: 0
 
-**Evidence**: 
+**Evidence**:
 - Log output: `/tmp/outside_in_test.log`
 - Launch command verification: `--plugin-dir` argument present
 
@@ -43,7 +43,7 @@ uvx --from git+https://github.com/rysweet/amplihack@8f8ba443 amplihack claude --
 **Commands Executed**:
 ```bash
 test -d ~/.amplihack/.claude/commands && echo "commands_ok"
-test -d ~/.amplihack/.claude/skills && echo "skills_ok"  
+test -d ~/.amplihack/.claude/skills && echo "skills_ok"
 test -d ~/.amplihack/.claude/agents && echo "agents_ok"
 ls ~/.amplihack/.claude/skills/ | wc -l
 ```
@@ -67,7 +67,7 @@ ls ~/.amplihack/.claude/skills/ | wc -l
 
 **Case 1: Multiple Directory Installations** → ✅ PASS
 - Tested from /tmp/test_plugin_uvx
-- Tested from /tmp/test_plugin_discovery_manual  
+- Tested from /tmp/test_plugin_discovery_manual
 - Tested from /tmp/test_simple
 - All installations worked identically
 
@@ -115,7 +115,7 @@ ls ~/.amplihack/.claude/skills/ | wc -l
 
 ## Test Limitations
 
-**Framework Limitation**: 
+**Framework Limitation**:
 - gadugi-agentic-test framework has installation issues (Issue #11 created)
 - Manual testing performed following outside-in principles
 - All verifications done from user perspective (no implementation details checked)
