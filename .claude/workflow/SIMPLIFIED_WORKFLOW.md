@@ -2,10 +2,17 @@
 name: Simplified Workflow
 description: Lightweight 17-step workflow for features, bugs, and refactoring
 version: 1.1.0
+steps: 17
 applies_to:
   - features
   - bugs
   - refactoring
+phases:
+  - preparation
+  - implementation
+  - testing
+  - review
+  - merge
 prerequisites:
   - Git repository initialized
   - GitHub CLI (gh) or Azure DevOps CLI (az) installed
@@ -18,6 +25,15 @@ failure_modes:
   - Tests fail → fix tests or implementation
   - Review rejected → address feedback
   - Merge conflicts → resolve manually
+philosophy_alignment:
+  - principle: Ruthless Simplicity
+    application: Lightweight 17-step process for clear requirements (1-10 files)
+  - principle: Test-Driven Development
+    application: Write tests before implementation (Step 6)
+  - principle: Zero-BS Implementation
+    application: No debug code or TODOs allowed (Step 10)
+  - principle: Modular Design
+    application: 1-10 files maximum scope enforces modularity
 ---
 
 # Simplified Workflow
@@ -159,13 +175,13 @@ def test_user_authentication():
 - ✅ Commit with clear message:
   ```bash
   git commit -m "feat: add JWT authentication (#42)
-  
+
   - Implement JWT token generation
   - Add token validation
   - Update tests for auth module"
   ```
 
-**Format**: `<type>: <description> (#<issue-number>)`  
+**Format**: `<type>: <description> (#<issue-number>)`
 **Types**: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
 
 ---
