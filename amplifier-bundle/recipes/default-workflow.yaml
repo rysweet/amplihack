@@ -859,7 +859,7 @@ steps:
     type: "bash"
     command: |
       cd "{{repo_path}}" && \
-      echo "=== Step 14: Commit and Push ===" && \
+      echo "=== Step 15: Commit and Push ===" && \
       echo "" && \
       echo "--- Staging Changes ---" && \
       git add -A && \
