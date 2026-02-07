@@ -270,7 +270,7 @@ class ScipReferenceResolver:
 
             # Set NODE_OPTIONS to increase heap size for large codebases
             env = os.environ.copy()
-            env["NODE_OPTIONS"] = "--max-old-space-size=8192"  # 8GB heap for scip-python/scip-typescript
+            env["NODE_OPTIONS"] = "--max-old-space-size=32768"  # 32GB heap for scip-python/scip-typescript
 
             result = subprocess.run(
                 cmd, cwd=self.root_path, capture_output=True, text=True, timeout=600, env=env  # 10 min timeout for large codebases
