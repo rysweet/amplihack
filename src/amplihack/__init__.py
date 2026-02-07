@@ -17,6 +17,20 @@ Public API:
 import os
 from pathlib import Path
 
+# Read version from pyproject.toml at package initialization
+try:
+    import tomllib  # Python 3.11+
+except ImportError:
+    import tomli as tomllib  # Fallback for Python 3.10
+
+_pyproject_path = Path(__file__).parent.parent.parent / "pyproject.toml"
+if _pyproject_path.exists():
+    with open(_pyproject_path, "rb") as f:
+        _pyproject = tomllib.load(f)
+        __version__ = _pyproject["project"]["version"]
+else:
+    __version__ = "unknown"
+
 # Core constants
 HOME = str(Path.home())
 CLAUDE_DIR = os.path.join(HOME, ".claude")
@@ -115,6 +129,8 @@ def main():
 
 # Public API
 __all__ = [
+    # Version
+    "__version__",
     # Constants
     "HOME",
     "CLAUDE_DIR",
