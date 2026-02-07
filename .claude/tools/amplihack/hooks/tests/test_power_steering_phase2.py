@@ -482,7 +482,9 @@ class TestNewCheckers(unittest.TestCase):
             {
                 "type": "assistant",
                 "message": {
-                    "content": [{"type": "text", "text": "Next steps:\n- Implement feature Y\n- Add tests"}]
+                    "content": [
+                        {"type": "text", "text": "Next steps:\n- Implement feature Y\n- Add tests"}
+                    ]
                 },
             }
         ]
