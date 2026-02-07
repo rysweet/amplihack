@@ -101,6 +101,7 @@ include = ["amplihack*"]
 [tool.setuptools.package-data]
 # Include prompts and framework files
 # .claude/, .claude-plugin/, and amplifier-bundle/ are copied into package by build_hooks.py before wheel build
+# commands/, skills/, agents/ are also copied to package root for plugin discovery
 amplihack = [
     "prompts/*.md",
     "utils/uvx_settings_template.json",
@@ -112,6 +113,9 @@ amplihack = [
     "amplifier-bundle/**/.gitkeep",
     "vendor/blarify/**/*.json",  # Include blarify language server config files
     "vendor/blarify/**/*.proto",  # Include blarify protobuf definitions
+    "commands/**/*",  # Plugin-discoverable directories (copied by build_hooks.py)
+    "skills/**/*",
+    "agents/**/*",
 ]
 
 [tool.ruff]

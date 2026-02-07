@@ -688,7 +688,7 @@ class PowerSteeringChecker:
                 turn_state_manager = TurnStateManager(
                     project_root=self.project_root,
                     session_id=session_id,
-                    log=lambda msg: self._log(msg, "INFO"),
+                    log=lambda msg, level="INFO": self._log(msg, level),
                 )
                 turn_state = turn_state_manager.load_state()
                 turn_state = turn_state_manager.increment_turn(turn_state)
@@ -701,6 +701,17 @@ class PowerSteeringChecker:
                 should_approve, reason, escalation_msg = turn_state_manager.should_auto_approve(
                     turn_state
                 )
+
+                # Display escalation warning if approaching threshold (Issue #2196)
+                if escalation_msg:
+                    self._log(escalation_msg, "WARNING")
+                    self._emit_progress(
+                        progress_callback,
+                        "escalation_warning",
+                        escalation_msg,
+                        {"blocks": turn_state.consecutive_blocks, "threshold": PowerSteeringTurnState.MAX_CONSECUTIVE_BLOCKS},
+                    )
+
                 if should_approve:
                     self._log(f"Auto-approve triggered: {reason}", "INFO")
                     self._emit_progress(
@@ -948,6 +959,37 @@ class PowerSteeringChecker:
                         failed_evidence = self._convert_to_failure_evidence(
                             blockers_to_record, transcript, user_claims
                         )
+
+                        # Issue #2196: Generate failure fingerprint for loop detection
+                        failed_ids = [r.consideration_id for r in blockers_to_record]
+                        current_fingerprint = turn_state.generate_failure_fingerprint(failed_ids)
+
+                        # Add fingerprint to history
+                        turn_state.failure_fingerprints.append(current_fingerprint)
+
+                        # Check for loop (same failures repeating 3+ times)
+                        if turn_state.detect_loop(current_fingerprint, threshold=3):
+                            self._log(
+                                f"Loop detected: Same failures repeating (fingerprint={current_fingerprint})",
+                                "WARNING",
+                            )
+                            self._emit_progress(
+                                progress_callback,
+                                "loop_detected",
+                                f"Same issues repeating {turn_state.failure_fingerprints.count(current_fingerprint)} times",
+                                {"fingerprint": current_fingerprint, "failed_ids": failed_ids},
+                            )
+
+                            # Auto-approve to break loop (fail-open design)
+                            turn_state = turn_state_manager.record_approval(turn_state)
+                            turn_state_manager.save_state(turn_state)
+
+                            return PowerSteeringResult(
+                                decision="approve",
+                                reasons=["loop_detected"],
+                                continuation_prompt=None,
+                                summary=f"Loop detected: Same {len(failed_ids)} issues repeating. Auto-approved to prevent infinite loop.",
+                            )
 
                         turn_state = turn_state_manager.record_block_with_evidence(
                             turn_state, failed_evidence, len(transcript), user_claims
@@ -1877,15 +1919,17 @@ class PowerSteeringChecker:
         - MAINTENANCE: Documentation and configuration updates only
         - INVESTIGATION: Exploration, analysis, troubleshooting, and debugging
 
-        Detection Priority:
+        Detection Priority (UPDATED for Issue #2196):
         1. Environment override (AMPLIHACK_SESSION_TYPE)
         2. Simple task keywords (cleanup, fetch, workspace) - highest priority heuristic
-        3. Investigation keywords in user messages
-        4. Tool usage patterns (code changes, tests, etc.)
+        3. Tool usage patterns (code changes, tests, etc.) - CONCRETE EVIDENCE
+        4. Investigation keywords in user messages - TIEBREAKER ONLY
 
-        The keyword detection takes priority over tool-based heuristics because
-        troubleshooting sessions often involve Bash commands and doc updates,
-        which can be misclassified as DEVELOPMENT or MAINTENANCE.
+        Tool usage patterns now take priority over keywords because they provide
+        concrete evidence of the session's actual work. Keywords like "analyze and fix"
+        are ambiguous, but Write/Edit tools with code changes are definitive signals
+        of DEVELOPMENT work. Investigation keywords are only checked as a fallback
+        when tool patterns are ambiguous (fixes #2196).
 
         Args:
             transcript: List of message dictionaries
@@ -1915,13 +1959,8 @@ class PowerSteeringChecker:
             self._log("Session classified as SIMPLE via keyword detection", "INFO")
             return "SIMPLE"
 
-        # PRIORITY CHECK: Investigation keywords in user messages
-        # This takes precedence over tool-based heuristics (fixes #1604)
-        if self._has_investigation_keywords(transcript):
-            self._log("Session classified as INVESTIGATION via keyword detection", "INFO")
-            return "INVESTIGATION"
-
-        # Collect indicators from transcript
+        # Collect indicators from transcript BEFORE keyword checking
+        # Tool usage patterns are stronger signals than keywords (fixes #2196)
         code_files_modified = False
         doc_files_only = True
         write_edit_operations = 0
@@ -1954,15 +1993,20 @@ class PowerSteeringChecker:
                             write_edit_operations += 1
                             file_path = tool_input.get("file_path", "")
 
-                            # Check if code file using class constant
-                            if any(ext in file_path for ext in self.CODE_FILE_EXTENSIONS):
+                            # Check if code file using class constant (use endswith to avoid false positives)
+                            if any(file_path.endswith(ext) for ext in self.CODE_FILE_EXTENSIONS):
                                 code_files_modified = True
                                 doc_files_only = False
 
-                            # Check if doc file using class constants
-                            if not any(ext in file_path for ext in self.DOC_FILE_EXTENSIONS):
-                                if not any(ext in file_path for ext in self.CONFIG_FILE_EXTENSIONS):
-                                    doc_files_only = False
+                            # Check if doc file using class constants (use endswith or special names)
+                            is_doc_file = any(
+                                file_path.endswith(ext) if ext.startswith('.') else ext in file_path
+                                for ext in self.DOC_FILE_EXTENSIONS
+                            )
+                            is_config_file = any(file_path.endswith(ext) for ext in self.CONFIG_FILE_EXTENSIONS)
+
+                            if not is_doc_file and not is_config_file:
+                                doc_files_only = False
 
                         # Read/Grep operations (investigation indicators)
                         elif tool_name in ["Read", "Grep", "Glob"]:
@@ -1983,20 +2027,43 @@ class PowerSteeringChecker:
                             if "git commit" in command or "git push" in command:
                                 git_operations = True
 
-        # Decision logic (priority order) using helper methods
+        # Decision logic (REFINED for Issue #2196):
+        # 1. Investigation keywords checked early BUT can be overridden by CODE modifications
+        # 2. CODE modifications (code files) take priority → DEVELOPMENT
+        # 3. NON-CODE modifications (docs, configs, git) DON'T override investigation keywords
+        # 4. Default to INFORMATIONAL (fail-open)
 
-        # DEVELOPMENT: Highest priority if code changes detected
-        if self._has_development_indicators(code_files_modified, test_executions, pr_operations):
+        # Check for investigation keywords early
+        has_investigation_keywords = self._has_investigation_keywords(transcript)
+
+        # DEVELOPMENT: CODE modifications override investigation keywords (fixes #2196)
+        # Only override keywords if we have actual CODE file modifications
+        # Doc/config updates or git operations should NOT override investigation keywords
+        if code_files_modified or test_executions > 0 or pr_operations:
+            # Strong signal: Write/Edit of CODE files, tests run, PR operations
+            self._log("Session classified as DEVELOPMENT via CODE modification patterns", "INFO")
             return "DEVELOPMENT"
 
+        # INVESTIGATION: Keywords found and NO code modifications
+        # This handles "investigate X", "how does X work", "troubleshoot Y" with:
+        # - No tools (pure questions)
+        # - Doc/config updates only (documenting findings)
+        # - Git operations only (committing investigation notes)
+        if has_investigation_keywords:
+            self._log("Session classified as INVESTIGATION via keywords (no code modifications)", "INFO")
+            return "INVESTIGATION"
+
         # INFORMATIONAL: No tool usage or only Read tools with high question density
+        # Questions without investigation keywords
         if self._has_informational_indicators(
             write_edit_operations, read_grep_operations, question_count, user_messages
         ):
             return "INFORMATIONAL"
 
-        # Multiple Read/Grep without modifications = INVESTIGATION
+        # INVESTIGATION: Tool-based heuristics (Read/Grep without modifications)
+        # Catches investigation sessions that don't have explicit keywords
         if self._has_investigation_indicators(read_grep_operations, write_edit_operations):
+            self._log("Session classified as INVESTIGATION via tool usage patterns", "INFO")
             return "INVESTIGATION"
 
         # MAINTENANCE: Only doc/config files modified OR git operations without code changes
@@ -3624,12 +3691,17 @@ class PowerSteeringChecker:
             return False
 
     def _check_next_steps(self, transcript: list[dict], session_id: str) -> bool:
-        """Check that work is complete with NO remaining next steps.
+        """Check that work is complete with NO remaining next steps (Issue #2196 - Enhanced).
 
-        INVERTED LOGIC: If the agent mentions "next steps", "remaining work", or
-        similar phrases in their final messages, that means they're acknowledging
-        there's MORE work to do. This check FAILS when next steps are found,
-        prompting the agent to continue working until no next steps remain.
+        UPDATED LOGIC (Issue #2196):
+        - Uses regex patterns to detect STRUCTURED next steps (bulleted lists)
+        - Handles negation ("no next steps", "no remaining work")
+        - Ignores status observations ("CI pending", "waiting for")
+        - Prevents false positives on completion statements
+
+        INVERTED LOGIC: If the agent mentions concrete next steps in structured format,
+        work is incomplete. Simple keywords without structure are ignored to prevent
+        false positives.
 
         Args:
             transcript: List of message dictionaries
@@ -3639,35 +3711,22 @@ class PowerSteeringChecker:
             True if NO next steps found (work is complete)
             False if next steps ARE found (work is incomplete - should continue)
         """
-        # Keywords that indicate incomplete work
-        incomplete_work_keywords = [
-            "next steps",
-            "next step",
-            "follow-up",
-            "follow up",
-            "future work",
-            "remaining work",
-            "remaining tasks",
-            "still need to",
-            "still needs to",
-            "todo",
-            "to-do",
-            "to do",
-            "left to do",
-            "more to do",
-            "additional work",
-            "further work",
-            "outstanding",
-            "not yet complete",
-            "not yet done",
-            "incomplete",
-            "pending",
-            "planned for later",
-            "deferred",
+        # Structured next steps patterns: keywords followed by bulleted/numbered lists
+        # Pattern structure: (keyword) + colon + newline + bullet/number marker
+        # Examples: "Next steps:\n- Fix bugs", "TODO:\n1. Test", "Remaining:\n• Deploy"
+        concrete_next_steps_patterns = [
+            r"(next steps?|remaining|todo|outstanding|still need to):\s*[\r\n]+\s*[-•*\d.]",
         ]
 
-        # Check RECENT assistant messages (last 10) for incomplete work indicators
-        # These are where the agent would summarize before stopping
+        # Negation patterns indicate completion
+        negation_patterns = [
+            r"no\s+(next\s+steps?|remaining|outstanding|todo)",
+            r"(next\s+steps?|remaining|outstanding|todo)\s+(?:are\s+)?(?:none|empty|complete)",
+            r"all\s+(?:done|complete|finished)",
+            r"nothing\s+(?:left|remaining|outstanding)",
+        ]
+
+        # Check RECENT assistant messages (last 10) for structured next steps
         recent_messages = [m for m in transcript[-20:] if m.get("type") == "assistant"][-10:]
 
         for msg in reversed(recent_messages):
@@ -3675,16 +3734,31 @@ class PowerSteeringChecker:
             if isinstance(content, list):
                 for block in content:
                     if isinstance(block, dict) and block.get("type") == "text":
-                        text = str(block.get("text", "")).lower()
-                        for keyword in incomplete_work_keywords:
-                            if keyword in text:
+                        text = str(block.get("text", ""))
+
+                        # First check for negation patterns (completion statements)
+                        # These should PASS the check (return True)
+                        for pattern in negation_patterns:
+                            if re.search(pattern, text, re.IGNORECASE):
                                 self._log(
-                                    f"Incomplete work indicator found: '{keyword}' - agent should continue",
+                                    f"Completion statement found: negation pattern matched",
                                     "INFO",
                                 )
-                                return False  # Work is INCOMPLETE
+                                # Continue checking other messages (don't return immediately)
+                                # Only STRUCTURED next steps should fail the check
+                                break
 
-        # No incomplete work indicators found - work is complete
+                        # Check for STRUCTURED next steps (bulleted/numbered lists)
+                        # These indicate CONCRETE remaining work
+                        for pattern in concrete_next_steps_patterns:
+                            if re.search(pattern, text, re.IGNORECASE):
+                                self._log(
+                                    f"Structured next steps found: pattern '{pattern}' - agent should continue",
+                                    "INFO",
+                                )
+                                return False  # Work is INCOMPLETE (concrete next steps exist)
+
+        # No structured next steps found - work is complete
         return True
 
     def _check_docs_organization(self, transcript: list[dict], session_id: str) -> bool:

@@ -9,7 +9,6 @@ import subprocess
 import tempfile
 import threading
 from pathlib import Path
-from typing import Optional
 
 from ..context.adaptive.detector import LauncherDetector
 
@@ -97,12 +96,12 @@ def _compare_versions(current: str, latest: str) -> bool:
     """
     try:
         # Strip 'v' prefix if present
-        current_clean = current.lstrip('v')
-        latest_clean = latest.lstrip('v')
+        current_clean = current.lstrip("v")
+        latest_clean = latest.lstrip("v")
 
         # Parse version strings into tuples of integers
-        current_parts = tuple(int(x) for x in current_clean.split('.'))
-        latest_parts = tuple(int(x) for x in latest_clean.split('.'))
+        current_parts = tuple(int(x) for x in current_clean.split("."))
+        latest_parts = tuple(int(x) for x in latest_clean.split("."))
 
         # Python tuple comparison handles semantic versioning correctly
         return latest_parts > current_parts
@@ -111,7 +110,7 @@ def _compare_versions(current: str, latest: str) -> bool:
         return False
 
 
-def check_for_update() -> Optional[str]:
+def check_for_update() -> str | None:
     """Check if a newer version of Copilot CLI is available.
 
     Returns:
@@ -340,7 +339,7 @@ def execute_update(install_method: str) -> bool:
                         if pre_version and post_version != pre_version:
                             print(f"✓ Updated from {pre_version} to {post_version}")
                             return True
-                        elif post_version:
+                        if post_version:
                             print(f"✓ Update complete (version: {post_version})")
                             return True
         except (subprocess.TimeoutExpired, FileNotFoundError, IndexError):
@@ -362,21 +361,45 @@ def execute_update(install_method: str) -> bool:
 
 
 def check_copilot() -> bool:
-    """Check if Copilot CLI is installed."""
+    """Check if Copilot CLI is installed.
+
+    Returns:
+        bool: True if copilot is available, False otherwise
+
+    Note:
+        Handles FileNotFoundError (not installed), PermissionError (WSL),
+        and TimeoutExpired (hanging command) gracefully.
+    """
     try:
         subprocess.run(["copilot", "--version"], capture_output=True, timeout=5, check=False)
         return True
-    except (FileNotFoundError, subprocess.TimeoutExpired):
+    except (FileNotFoundError, PermissionError, subprocess.TimeoutExpired):
         return False
 
 
 def install_copilot() -> bool:
-    """Install GitHub Copilot CLI via npm."""
+    """Install GitHub Copilot CLI via npm to user-local directory."""
     print("Installing GitHub Copilot CLI...")
+
+    npm_prefix = Path.home() / ".npm-global"
+    npm_prefix.mkdir(parents=True, exist_ok=True)
+
     try:
-        result = subprocess.run(["npm", "install", "-g", "@github/copilot"], check=False)
+        result = subprocess.run(
+            ["npm", "install", "-g", "--prefix", str(npm_prefix), "@github/copilot"], check=False
+        )
         if result.returncode == 0:
             print("✓ Copilot CLI installed")
+
+            # Add to PATH for current process
+            bin_path = npm_prefix / "bin"
+            path_env = os.environ.get("PATH", "")
+            if str(bin_path) not in path_env:
+                os.environ["PATH"] = f"{bin_path}:{path_env}"
+                print(f"\n⚠️  Added to PATH for this session: {bin_path}")
+                print("   Add to ~/.bashrc or ~/.zshrc for persistence:")
+                print(f'   export PATH="{bin_path}:$PATH"')
+
             return True
         print("✗ Installation failed")
         return False
