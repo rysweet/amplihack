@@ -1,0 +1,133 @@
+# Auto-Tag on Version Bump
+# Automatically creates a git tag matching the version in pyproject.toml
+# when code is merged to main branch
+
+name: Auto Tag Version
+
+on:
+  push:
+    branches: [main]
+
+# Prevent concurrent tagging operations
+concurrency:
+  group: ${{ github.workflow }}-main
+  cancel-in-progress: false
+
+jobs:
+  create-version-tag:
+    name: Create Version Tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for tag operations
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Extract version from pyproject.toml
+        id: get-version
+        run: |
+          # Extract version using Python
+          VERSION=$(python -c "
+          import re
+          import sys
+          
+          with open('pyproject.toml') as f:
+              content = f.read()
+          
+          match = re.search(r'^\s*version\s*=\s*[\"'\"']([^\"'\"']+)[\"'\"']', content, re.MULTILINE)
+          if match:
+              print(match.group(1))
+          else:
+              print('ERROR: Version not found', file=sys.stderr)
+              sys.exit(1)
+          ")
+          
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Extracted version: $VERSION"
+
+      - name: Check if tag already exists
+        id: check-tag
+        run: |
+          TAG="${{ steps.get-version.outputs.tag }}"
+          
+          if git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "⏭️  Tag $TAG already exists, skipping creation"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "✨ Tag $TAG does not exist, will create"
+          fi
+
+      - name: Create and push tag
+        if: steps.check-tag.outputs.exists == 'false'
+        env:
+          TAG: ${{ steps.get-version.outputs.tag }}
+          VERSION: ${{ steps.get-version.outputs.version }}
+        run: |
+          # Configure git for GitHub Actions
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Create annotated tag
+          git tag -a "$TAG" -m "Release version $VERSION
+          
+          Auto-generated tag for version $VERSION
+          
+          Created by: ${{ github.actor }}
+          Commit: ${{ github.sha }}
+          Workflow: ${{ github.workflow }}"
+          
+          # Push tag to repository
+          git push origin "$TAG"
+          
+          echo "✅ Created and pushed tag: $TAG"
+
+      - name: Create GitHub Release
+        if: steps.check-tag.outputs.exists == 'false'
+        uses: actions/github-script@v7
+        env:
+          TAG: ${{ steps.get-version.outputs.tag }}
+          VERSION: ${{ steps.get-version.outputs.version }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const tag = process.env.TAG;
+            const version = process.env.VERSION;
+            
+            try {
+              await github.rest.repos.createRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag_name: tag,
+                name: `Release ${version}`,
+                body: `## Release ${version}\n\nAuto-generated release for version ${version}.\n\n**Changes**: See commit history for details.`,
+                draft: false,
+                prerelease: false
+              });
+              console.log(`✅ Created GitHub release for ${tag}`);
+            } catch (error) {
+              console.log(`⚠️  Warning: Could not create release: ${error.message}`);
+              console.log('Tag was created successfully, but release creation failed.');
+            }
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 🏷️ Version Tag Summary"
+          echo ""
+          echo "**Version**: ${{ steps.get-version.outputs.version }}"
+          echo "**Tag**: ${{ steps.get-version.outputs.tag }}"
+          
+          if [ "${{ steps.check-tag.outputs.exists }}" == "true" ]; then
+            echo "**Status**: Tag already exists (skipped)"
+          else
+            echo "**Status**: New tag created and pushed ✅"
+          fi

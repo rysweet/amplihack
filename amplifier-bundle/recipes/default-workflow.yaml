@@ -1,6 +1,6 @@
 name: "default-workflow"
-description: "Complete 22-step development workflow (Steps 0-21) with full agent orchestration"
-version: "2.0.0"
+description: "Complete 23-step development workflow (Steps 0-22) with full agent orchestration"
+version: "2.1.0"
 author: "Amplihack Team"
 tags: ["development", "feature", "bugfix", "refactoring", "standard", "full-workflow"]
 
@@ -17,10 +17,11 @@ tags: ["development", "feature", "bugfix", "refactoring", "standard", "full-work
 #   2. Design (Steps 4-6)
 #   3. Implementation (Steps 7-9)
 #   4. Testing & Review (Steps 10-13)
-#   5. PR & Review (Steps 14-17)
-#   6. Merge (Steps 18-21)
+#   5. Version & PR (Steps 14-16)
+#   6. PR Review (Steps 17-18)
+#   7. Merge (Steps 19-22)
 #
-# MANDATORY STEPS: 0, 16, 17 - DO NOT SKIP
+# MANDATORY STEPS: 0, 14, 17, 18 - DO NOT SKIP
 #
 # Philosophy Alignment:
 #   - Ruthless Simplicity: Each step has single clear purpose
@@ -80,16 +81,16 @@ context:
 steps:
   # ==========================================================================
   # STEP 0: WORKFLOW PREPARATION (MANDATORY - DO NOT SKIP)
-  # Creates tracking structure for all 22 workflow steps.
+  # Creates tracking structure for all 23 workflow steps.
   # CRITICAL: Must complete before ANY implementation work begins.
-  # Prevents "completion bias" - ensures mandatory review steps (10, 16-17) not skipped.
+  # Prevents "completion bias" - ensures mandatory review steps (0, 14, 17-18) not skipped.
   # ==========================================================================
   - id: "step-00-workflow-preparation"
     type: "bash"
     command: |
       echo "=== WORKFLOW PREPARATION COMPLETE ==="
       echo ""
-      echo "22-Step Workflow Initialized (with granular sub-steps for Steps 16-18):"
+      echo "23-Step Workflow Initialized (with granular sub-steps for Steps 17-19):"
       echo "  Step 0: Workflow Preparation - CURRENT"
       echo "  Step 1: Prepare Workspace"
       echo "  Step 2: Rewrite/Clarify Requirements"
@@ -104,29 +105,30 @@ steps:
       echo "  Step 11: Incorporate Feedback"
       echo "  Step 12: Run Pre-commit Hooks"
       echo "  Step 13: Mandatory Local Testing"
-      echo "  Step 14: Commit and Push"
-      echo "  Step 15: Open PR as Draft"
-      echo "  Step 16: Review the PR (MANDATORY - 6 sub-steps with verification gate)"
-      echo "    16a: Step 13 Compliance Verification"
-      echo "    16b: Comprehensive Code Review (reviewer agent)"
-      echo "    16c: Security Review (security agent)"
-      echo "    16d: Philosophy Guardian Review (philosophy-guardian agent)"
-      echo "    16e: Address Blocking Issues (builder agent)"
-      echo "    16f: Verification Gate"
-      echo "  Step 17: Implement Review Feedback (MANDATORY - 5 sub-steps with verification gate)"
-      echo "    17a: Analyze Feedback"
-      echo "    17b: Implement Feedback (builder agent)"
-      echo "    17c: Push Changes"
-      echo "    17d: Respond to Comments"
-      echo "    17e: Verification Gate"
-      echo "  Step 18: Philosophy Compliance Check (4 sub-steps with verification gate)"
-      echo "    18a: Philosophy Review (reviewer agent)"
-      echo "    18b: Pattern Check (patterns agent)"
-      echo "    18c: Zero-BS Verification"
-      echo "    18d: Verification Gate"
-      echo "  Step 19: Final Cleanup"
-      echo "  Step 20: Convert PR to Ready"
-      echo "  Step 21: Ensure PR Mergeable"
+      echo "  Step 14: Bump Version (MANDATORY)"
+      echo "  Step 15: Commit and Push"
+      echo "  Step 16: Open PR as Draft"
+      echo "  Step 17: Review the PR (MANDATORY - 6 sub-steps with verification gate)"
+      echo "    17a: Step 13 Compliance Verification"
+      echo "    17b: Comprehensive Code Review (reviewer agent)"
+      echo "    17c: Security Review (security agent)"
+      echo "    17d: Philosophy Guardian Review (philosophy-guardian agent)"
+      echo "    17e: Address Blocking Issues (builder agent)"
+      echo "    17f: Verification Gate"
+      echo "  Step 18: Implement Review Feedback (MANDATORY - 5 sub-steps with verification gate)"
+      echo "    18a: Analyze Feedback"
+      echo "    18b: Implement Feedback (builder agent)"
+      echo "    18c: Push Changes"
+      echo "    18d: Respond to Comments"
+      echo "    18e: Verification Gate"
+      echo "  Step 19: Philosophy Compliance Check (4 sub-steps with verification gate)"
+      echo "    19a: Philosophy Review (reviewer agent)"
+      echo "    19b: Pattern Check (patterns agent)"
+      echo "    19c: Zero-BS Verification"
+      echo "    19d: Verification Gate"
+      echo "  Step 20: Final Cleanup"
+      echo "  Step 21: Convert PR to Ready"
+      echo "  Step 22: Ensure PR Mergeable"
       echo ""
       echo "Task: {{task_description}}"
       echo "Repository: {{repo_path}}"
@@ -764,14 +766,100 @@ steps:
     output: "local_testing_gate"
 
   # ==========================================================================
-  # STEP 14: COMMIT AND PUSH
+  # STEP 14: BUMP VERSION IN PYPROJECT.TOML (MANDATORY - DO NOT SKIP)
+  # Before committing, bump version to reflect change type.
+  # CI will block PRs that don't bump version.
+  # Git tags are auto-created on merge matching the version.
+  # ==========================================================================
+  - id: "step-14-bump-version"
+    agent: "amplihack:architect"
+    prompt: |
+      # Step 14: Bump Version in pyproject.toml (MANDATORY - DO NOT SKIP)
+
+      **⚠️ MANDATORY - DO NOT SKIP ⚠️**
+
+      **REQUIRED FOR ALL PRs**
+
+      Before committing changes to git history, bump the version number in `pyproject.toml` to reflect the nature of your changes.
+
+      **Task:** {{task_description}}
+      **Repository:** {{repo_path}}
+
+      **Actions Required:**
+
+      1. **Review changes:** Run `git diff main...HEAD` to see all changes
+      2. **Classify change type:** Determine if this is PATCH, MINOR, or MAJOR
+      3. **Read current version:** Check `pyproject.toml` line 8
+      4. **Bump version appropriately:**
+         - **PATCH** (0.2.0 → 0.2.1): Bug fixes, documentation, minor improvements
+         - **MINOR** (0.2.0 → 0.3.0): New features, backward-compatible changes
+         - **MAJOR** (0.2.0 → 1.0.0): Breaking changes, major architecture changes
+      5. **Edit pyproject.toml:** Update the version line
+      6. **Verify:** Confirm the new version is correct
+
+      **Classification Examples:**
+
+      | Change Type | Example | Version Bump |
+      |-------------|---------|--------------|
+      | Bug fix | Fix authentication error handling | PATCH |
+      | Documentation | Update README with new examples | PATCH |
+      | New feature | Add auto-update check mechanism | MINOR |
+      | API change | Modify function signature (backward-compatible) | MINOR |
+      | Breaking change | Remove deprecated API | MAJOR |
+      | Refactor | Internal cleanup, no behavior change | PATCH |
+
+      **Commands to execute:**
+      ```bash
+      cd {{repo_path}}
+      
+      # Show changes
+      git diff main...HEAD --stat
+      
+      # Read current version
+      CURRENT_VERSION=$(grep -E '^version = ' pyproject.toml | head -1 | cut -d'"' -f2)
+      echo "Current version: $CURRENT_VERSION"
+      
+      # Based on your classification, determine new version
+      # For PATCH: increment last number (0.2.0 → 0.2.1)
+      # For MINOR: increment middle, reset last (0.2.0 → 0.3.0)
+      # For MAJOR: increment first, reset others (0.2.0 → 1.0.0)
+      
+      # Edit the file with new version
+      # sed -i 's/version = "X.Y.Z"/version = "NEW.VERSION"/' pyproject.toml
+      
+      # Verify
+      grep -E '^version = ' pyproject.toml | head -1
+      ```
+
+      **Output JSON:**
+      ```json
+      {
+        "current_version": "X.Y.Z",
+        "new_version": "A.B.C",
+        "change_classification": "PATCH|MINOR|MAJOR",
+        "rationale": "explanation of why this version bump",
+        "changes_summary": "brief summary of what changed"
+      }
+      ```
+
+      **CI Enforcement:**
+      - PR will be blocked if version not bumped
+      - CI creates git tag (e.g., `v0.3.0`) on merge to main
+      - Tags enable `uv tool upgrade amplihack` to work correctly
+
+      **Important:** Version bump happens BEFORE commit (Step 15), so it's included in the main implementation commit.
+    output: "version_bump"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 15: COMMIT AND PUSH
   # Stage all changes, write detailed commit message, and push.
   # ==========================================================================
-  - id: "step-14-commit-push"
+  - id: "step-15-commit-push"
     type: "bash"
     command: |
       cd "{{repo_path}}" && \
-      echo "=== Step 14: Commit and Push ===" && \
+      echo "=== Step 15: Commit and Push ===" && \
       echo "" && \
       echo "--- Staging Changes ---" && \
       git add -A && \
@@ -795,10 +883,10 @@ steps:
     output: "commit_result"
 
   # ==========================================================================
-  # STEP 15: OPEN PULL REQUEST AS DRAFT
+  # STEP 16: OPEN PULL REQUEST AS DRAFT
   # Create a draft PR with comprehensive description.
   # ==========================================================================
-  - id: "step-15-create-draft-pr"
+  - id: "step-16-create-draft-pr"
     type: "bash"
     command: |
       cd "{{repo_path}}" && \
@@ -835,14 +923,14 @@ steps:
     output: "pr_url"
 
   # ==========================================================================
-  # STEP 16: REVIEW THE PR (MANDATORY - DO NOT SKIP)
+  # STEP 17: REVIEW THE PR (MANDATORY - DO NOT SKIP)
   # Granular sub-steps with verification gates to prevent completion bias.
   # Each sub-step invokes a specific agent and requires evidence.
   # ==========================================================================
-  - id: "step-16a-compliance-verification"
+  - id: "step-17a-compliance-verification"
     type: "bash"
     command: |
-      echo "=== Step 16a: Step 13 Compliance Verification ===" && \
+      echo "=== Step 17a: Step 13 Compliance Verification ===" && \
       echo "" && \
       echo "Checking PR description for Step 13 Local Testing Results..." && \
       echo "" && \
@@ -856,10 +944,10 @@ steps:
       echo "=== Compliance Check Complete ==="
     output: "step_13_compliance_check"
 
-  - id: "step-16b-reviewer-agent"
+  - id: "step-17b-reviewer-agent"
     agent: "amplihack:reviewer"
     prompt: |
-      # Step 16b: Comprehensive Code Review (MANDATORY)
+      # Step 17b: Comprehensive Code Review (MANDATORY)
 
       **PR URL:** {{pr_url}}
       **Requirements:** {{final_requirements}}
@@ -883,10 +971,10 @@ steps:
       **Output:** Structured review findings AND confirmation that review was posted to PR.
     output: "pr_review"
 
-  - id: "step-16c-security-review"
+  - id: "step-17c-security-review"
     agent: "amplihack:security"
     prompt: |
-      # Step 16c: Security Review (MANDATORY)
+      # Step 17c: Security Review (MANDATORY)
 
       **PR URL:** {{pr_url}}
       **Implementation:** {{review_feedback}}
@@ -906,10 +994,10 @@ steps:
       **Output:** Security review findings AND confirmation that review was posted to PR.
     output: "pr_security_review"
 
-  - id: "step-16d-philosophy-guardian"
+  - id: "step-17d-philosophy-guardian"
     agent: "amplihack:philosophy-guardian"
     prompt: |
-      # Step 16d: Philosophy Guardian Review (MANDATORY)
+      # Step 17d: Philosophy Guardian Review (MANDATORY)
 
       **PR URL:** {{pr_url}}
       **Implementation:** {{review_feedback}}
@@ -929,10 +1017,10 @@ steps:
       **Output:** Philosophy compliance status AND confirmation that review was posted to PR.
     output: "pr_philosophy_review"
 
-  - id: "step-16e-address-blocking-issues"
+  - id: "step-17e-address-blocking-issues"
     agent: "amplihack:builder"
     prompt: |
-      # Step 16e: Address Blocking Issues (MANDATORY)
+      # Step 17e: Address Blocking Issues (MANDATORY)
 
       **PR Review:** {{pr_review}}
       **Security Review:** {{pr_security_review}}
@@ -948,10 +1036,10 @@ steps:
       If no blocking issues, state "No blocking issues found."
     output: "blocking_issues_addressed"
 
-  - id: "step-16f-verification-gate"
+  - id: "step-17f-verification-gate"
     type: "bash"
     command: |
-      echo "=== STEP 16 VERIFICATION GATE ===" && \
+      echo "=== STEP 17 VERIFICATION GATE ===" && \
       echo "" && \
       echo "Before proceeding, verify ALL of the following:" && \
       echo "" && \
@@ -963,17 +1051,17 @@ steps:
       echo "" && \
       echo "If any verification fails, STOP and complete the missing step." && \
       echo "" && \
-      echo "=== GATE PASSED - Proceed to Step 17 ==="
-    output: "step_16_gate_status"
+      echo "=== GATE PASSED - Proceed to Step 18 ==="
+    output: "step_17_gate_status"
 
   # ==========================================================================
-  # STEP 17: IMPLEMENT REVIEW FEEDBACK (MANDATORY - DO NOT SKIP)
+  # STEP 18: IMPLEMENT REVIEW FEEDBACK (MANDATORY - DO NOT SKIP)
   # Granular sub-steps to ensure thorough feedback implementation.
   # ==========================================================================
-  - id: "step-17a-analyze-feedback"
+  - id: "step-18a-analyze-feedback"
     agent: "amplihack:architect"
     prompt: |
-      # Step 17a: Analyze Review Feedback (MANDATORY)
+      # Step 18a: Analyze Review Feedback (MANDATORY)
 
       **PR Review:** {{pr_review}}
       **Security Review:** {{pr_security_review}}
@@ -987,10 +1075,10 @@ steps:
       **Output:** Structured analysis of all feedback with action plan.
     output: "feedback_analysis"
 
-  - id: "step-17b-implement-feedback"
+  - id: "step-18b-implement-feedback"
     agent: "amplihack:builder"
     prompt: |
-      # Step 17b: Implement Review Feedback (MANDATORY)
+      # Step 18b: Implement Review Feedback (MANDATORY)
 
       **Feedback Analysis:** {{feedback_analysis}}
       **PR Review:** {{pr_review}}
@@ -1009,7 +1097,7 @@ steps:
       **Output:** Updated implementation with summary of changes for each feedback item.
     output: "pr_feedback_changes"
 
-  - id: "step-17c-push-feedback-changes"
+  - id: "step-18c-push-feedback-changes"
     type: "bash"
     command: |
       cd "{{repo_path}}" && \
@@ -1025,7 +1113,7 @@ steps:
       echo "=== Changes Pushed ==="
     output: "feedback_push_result"
 
-  - id: "step-17d-respond-to-comments"
+  - id: "step-18d-respond-to-comments"
     type: "bash"
     command: |
       echo "=== Responding to Review Comments ===" && \
@@ -1039,10 +1127,10 @@ steps:
       echo "=== Comment Responses Complete ==="
     output: "comment_responses"
 
-  - id: "step-17e-verification-gate"
+  - id: "step-18e-verification-gate"
     type: "bash"
     command: |
-      echo "=== STEP 17 VERIFICATION GATE ===" && \
+      echo "=== STEP 18 VERIFICATION GATE ===" && \
       echo "" && \
       echo "Before proceeding, verify ALL of the following:" && \
       echo "" && \
@@ -1053,17 +1141,17 @@ steps:
       echo "" && \
       echo "If any verification fails, STOP and complete the missing step." && \
       echo "" && \
-      echo "=== GATE PASSED - Proceed to Step 18 ==="
-    output: "step_17_gate_status"
+      echo "=== GATE PASSED - Proceed to Step 19 ==="
+    output: "step_18_gate_status"
 
   # ==========================================================================
-  # STEP 18: PHILOSOPHY COMPLIANCE CHECK
+  # STEP 19: PHILOSOPHY COMPLIANCE CHECK
   # Granular sub-steps with verification gate to prevent completion bias.
   # ==========================================================================
-  - id: "step-18a-philosophy-check"
+  - id: "step-19a-philosophy-check"
     agent: "amplihack:reviewer"
     prompt: |
-      # Step 18a: Philosophy Compliance Review (MANDATORY)
+      # Step 19a: Philosophy Compliance Review (MANDATORY)
 
       **Implementation:** {{pr_feedback_changes}}
       **Requirements:** {{final_requirements}}
@@ -1078,10 +1166,10 @@ steps:
       **Output:** Detailed philosophy compliance findings.
     output: "philosophy_check"
 
-  - id: "step-18b-patterns-check"
+  - id: "step-19b-patterns-check"
     agent: "amplihack:patterns"
     prompt: |
-      # Step 18b: Pattern Compliance Review (MANDATORY)
+      # Step 19b: Pattern Compliance Review (MANDATORY)
 
       **Implementation:** {{pr_feedback_changes}}
 
@@ -1094,7 +1182,7 @@ steps:
       **Output:** Pattern compliance findings with any violations.
     output: "patterns_check"
 
-  - id: "step-18c-zero-bs-verification"
+  - id: "step-19c-zero-bs-verification"
     type: "bash"
     command: |
       echo "=== ZERO-BS VERIFICATION ===" && \
@@ -1114,10 +1202,10 @@ steps:
       echo "=== Zero-BS Verification Complete ==="
     output: "zero_bs_check"
 
-  - id: "step-18d-verification-gate"
+  - id: "step-19d-verification-gate"
     type: "bash"
     command: |
-      echo "=== STEP 18 VERIFICATION GATE ===" && \
+      echo "=== STEP 19 VERIFICATION GATE ===" && \
       echo "" && \
       echo "Before proceeding, verify ALL of the following:" && \
       echo "" && \
@@ -1132,13 +1220,13 @@ steps:
       echo "" && \
       echo "If any verification fails, STOP and complete the missing step." && \
       echo "" && \
-      echo "=== GATE PASSED - Proceed to Step 19 ==="
-    output: "step_18_gate_status"
+      echo "=== GATE PASSED - Proceed to Step 20 ==="
+    output: "step_19_gate_status"
 
   # ==========================================================================
-  # STEP 19: FINAL CLEANUP AND VERIFICATION
+  # STEP 20: FINAL CLEANUP AND VERIFICATION
   # ==========================================================================
-  - id: "step-19-final-cleanup"
+  - id: "step-20-final-cleanup"
     agent: "amplihack:cleanup"
     prompt: |
       # Step 19: Final Cleanup and Verification
@@ -1168,7 +1256,7 @@ steps:
       **FINAL CHECK:** All explicit user requirements preserved.
     output: "final_cleanup"
 
-  - id: "step-19b-push-cleanup"
+  - id: "step-20b-push-cleanup"
     type: "bash"
     condition: "{{final_cleanup}} != ''"
     command: |
@@ -1180,10 +1268,10 @@ steps:
     output: "cleanup_push_result"
 
   # ==========================================================================
-  # STEP 20: CONVERT PR TO READY FOR REVIEW
+  # STEP 21: CONVERT PR TO READY FOR REVIEW
   # Convert draft PR to ready-for-review.
   # ==========================================================================
-  - id: "step-20-pr-ready"
+  - id: "step-21-pr-ready"
     type: "bash"
     command: |
       cd "{{repo_path}}" && \
@@ -1215,9 +1303,9 @@ steps:
     output: "pr_ready_result"
 
   # ==========================================================================
-  # STEP 21: ENSURE PR IS MERGEABLE
+  # STEP 22: ENSURE PR IS MERGEABLE
   # ==========================================================================
-  - id: "step-21-ensure-mergeable"
+  - id: "step-22-ensure-mergeable"
     agent: "amplihack:ci-diagnostic-workflow"
     prompt: |
       # Step 21: Ensure PR is Mergeable (TASK COMPLETION POINT)
@@ -1245,7 +1333,7 @@ steps:
       Task is complete when this step passes.
     output: "ci_status"
 
-  - id: "step-21b-final-status"
+  - id: "step-22b-final-status"
     type: "bash"
     command: |
       cd "{{repo_path}}" && \
@@ -1258,7 +1346,7 @@ steps:
       echo "=== Issue: #{{issue_number}} ===" && \
       echo "=== PR: {{pr_url}} ===" && \
       echo "" && \
-      echo "All 22 workflow steps completed successfully."
+      echo "All 23 workflow steps completed successfully."
     output: "final_status"
 
   # ==========================================================================
@@ -1276,7 +1364,7 @@ steps:
         "issue_number": "{{issue_number}}",
         "pr_url": "{{pr_url}}",
         "status": "complete",
-        "steps_completed": 22,
+        "steps_completed": 23,
         "phases_completed": [
           "requirements-clarification",
           "design",
@@ -1287,8 +1375,9 @@ steps:
         ],
         "mandatory_steps_completed": {
           "step_0_preparation": true,
-          "step_16_pr_review": true,
-          "step_17_implement_feedback": true
+          "step_14_version_bump": true,
+          "step_17_pr_review": true,
+          "step_18_implement_feedback": true
         },
         "philosophy_compliant": true,
         "ready_to_merge": true
