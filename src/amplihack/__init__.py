@@ -17,17 +17,37 @@ Public API:
 import os
 from pathlib import Path
 
-# Read version from pyproject.toml at package initialization
+# Read version from installed package metadata
 try:
-    import tomllib  # Python 3.11+
+    from importlib.metadata import PackageNotFoundError, version
 except ImportError:
-    import tomli as tomllib  # Fallback for Python 3.10
+    # Python < 3.8 (shouldn't happen, but graceful fallback)
+    version = None  # type: ignore
+    PackageNotFoundError = Exception  # type: ignore
 
-_pyproject_path = Path(__file__).parent.parent.parent / "pyproject.toml"
-if _pyproject_path.exists():
-    with open(_pyproject_path, "rb") as f:
-        _pyproject = tomllib.load(f)
-        __version__ = _pyproject["project"]["version"]
+if version:
+    try:
+        __version__ = version("amplihack")
+    except PackageNotFoundError:
+        # Fallback for development (not installed)
+        try:
+            import tomllib  # Python 3.11+
+        except ImportError:
+            try:
+                import tomli as tomllib  # type: ignore
+            except ImportError:
+                tomllib = None  # type: ignore
+
+        if tomllib:
+            _pyproject_path = Path(__file__).parent.parent.parent / "pyproject.toml"
+            if _pyproject_path.exists():
+                with open(_pyproject_path, "rb") as f:
+                    _pyproject = tomllib.load(f)
+                    __version__ = _pyproject["project"]["version"]
+            else:
+                __version__ = "unknown"
+        else:
+            __version__ = "unknown"
 else:
     __version__ = "unknown"
 

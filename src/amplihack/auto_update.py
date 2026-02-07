@@ -139,7 +139,7 @@ def _fetch_latest_version(timeout: int = 5) -> Optional[tuple[str, str]]:
         logger.debug(f"Failed to parse GitHub API response: {e}")
         return None
     except Exception as e:
-        logger.debug(f"Unexpected error fetching version: {e}")
+        logger.debug(f"Unexpected error fetching version ({type(e).__name__}): {e}")
         return None
 
 
@@ -167,7 +167,7 @@ def _compare_versions(current: str, latest: str) -> bool:
         latest_ver = parse_version(latest)
         return latest_ver > current_ver
     except Exception as e:
-        logger.debug(f"Version comparison failed: {e}")
+        logger.debug(f"Version comparison failed ({type(e).__name__}): {e}")
         return False
 
 
@@ -329,33 +329,86 @@ def _run_upgrade(timeout: int = 60) -> bool:
         logger.debug("uv command not found")
         return False
     except Exception as e:
-        logger.debug(f"Upgrade failed: {e}")
+        logger.debug(f"Upgrade failed ({type(e).__name__}): {e}")
         return False
 
 
 def _restart_cli(args: list[str]) -> None:
     """Restart amplihack CLI with same arguments.
-
-    Uses subprocess.Popen for clean process separation and sys.exit()
-    to terminate current process.
-
+    
+    After uv tool upgrade, the new version is available via 'amplihack' command,
+    not via 'python -m amplihack'. Use the command directly.
+    
     Args:
-        args: Original CLI arguments to pass to new process
-
-    Note:
-        This function does not return - it exits the current process.
+        args: CLI arguments to preserve (sys.argv[1:])
+    
+    Raises:
+        Does not return (exits process via sys.exit)
     """
+    # Whitelist safe arguments to prevent malicious flag injection
+    SAFE_ARG_PATTERNS = [
+        "--auto",
+        "--max-turns",
+        "--ui",
+        "--no-reflection",
+        "--with-proxy-config",
+        "--checkout-repo",
+        "--docker",
+        "--",
+        "-p",
+        "-v",
+        "--verbose",
+        "--help",
+        "--version",
+    ]
+
+    safe_args = []
+    skip_next = False
+    for i, arg in enumerate(args):
+        if skip_next:
+            skip_next = False
+            safe_args.append(arg)  # This is a value for previous flag
+            continue
+
+        # Check if this arg or its prefix is in whitelist
+        if any(arg.startswith(pattern) for pattern in SAFE_ARG_PATTERNS):
+            safe_args.append(arg)
+            # If this flag expects a value, include next arg
+            if arg in ["--max-turns", "--with-proxy-config", "--checkout-repo", "-p"]:
+                skip_next = True
+        elif arg.startswith("-"):
+            logger.warning(f"Skipping non-whitelisted argument: {arg}")
+
+    args = safe_args  # Use filtered args
+
     try:
-        # Start new process in separate session
+        # Use 'amplihack' command directly for uv tool installs
         subprocess.Popen(
-            [sys.executable, "-m", "amplihack"] + args,
+            ["amplihack"] + args,
             start_new_session=True,
         )
-        logger.debug("Restarted amplihack CLI")
+        logger.debug("Restarted amplihack CLI via command")
         sys.exit(0)
+    except FileNotFoundError:
+        # Fallback for development installations
+        logger.debug("amplihack command not found, trying python -m")
+        try:
+            subprocess.Popen(
+                [sys.executable, "-m", "amplihack"] + args,
+                start_new_session=True,
+            )
+            logger.debug("Restarted amplihack CLI via python -m")
+            sys.exit(0)
+        except Exception as e:
+            logger.error(f"Failed to restart CLI: {e}")
+            print(
+                "\n⚠️  Restart failed. Please run 'amplihack' manually to use the new version."
+            )
+            sys.exit(0)
     except Exception as e:
-        logger.debug(f"Failed to restart CLI: {e}")
-        sys.exit(1)
+        logger.error(f"Failed to restart CLI: {e}")
+        print("\n⚠️  Restart failed. Please run 'amplihack' manually to use the new version.")
+        sys.exit(0)
 
 
 def prompt_and_upgrade(
@@ -429,5 +482,5 @@ def prompt_and_upgrade(
         print("\n\nUpgrade cancelled. Continuing with current version.")
         return False
     except Exception as e:
-        logger.debug(f"Prompt failed: {e}")
+        logger.debug(f"Prompt failed ({type(e).__name__}): {e}")
         return False
