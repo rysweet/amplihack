@@ -179,7 +179,7 @@ scenario:
 # └──────────────────┘           └──────────────────┘
 
 # Run Command:
-# gadugi-agentic-test run examples/electron/electron-ipc-testing.yaml --verbose
+# gadugi-test run examples/electron/electron-ipc-testing.yaml --verbose
 
 # Key Learning Points (Level 3):
 # 1. ipc_send triggers IPC from renderer
