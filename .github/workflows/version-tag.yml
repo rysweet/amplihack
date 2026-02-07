@@ -34,20 +34,20 @@ jobs:
         id: get-version
         run: |
           # Extract version using Python
-          VERSION=$(python -c "
+          VERSION=$(python -c '
           import re
           import sys
           
-          with open('pyproject.toml') as f:
+          with open("pyproject.toml") as f:
               content = f.read()
           
-          match = re.search(r'^\s*version\s*=\s*[\"'\"']([^\"'\"']+)[\"'\"']', content, re.MULTILINE)
+          match = re.search(r"^\s*version\s*=\s*\"([^\"]+)\"", content, re.MULTILINE)
           if match:
               print(match.group(1))
           else:
-              print('ERROR: Version not found', file=sys.stderr)
+              print("ERROR: Version not found", file=sys.stderr)
               sys.exit(1)
-          ")
+          ')
           
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag=v$VERSION" >> $GITHUB_OUTPUT
