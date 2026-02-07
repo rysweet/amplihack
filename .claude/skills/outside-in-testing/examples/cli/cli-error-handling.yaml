@@ -131,7 +131,7 @@ scenario:
 # - Application exits cleanly
 
 # Run Command:
-# gadugi-test run examples/cli/cli-error-handling.yaml --verbose
+# gadugi-agentic-test run examples/cli/cli-error-handling.yaml --verbose
 
 # Key Learning Points (Level 2):
 # 1. Use regex patterns (matches:) for flexible error message checking

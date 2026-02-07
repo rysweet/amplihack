@@ -340,7 +340,7 @@ scenario:
 # Tab: Switch Widget | Enter: Expand | h: History | e: Export | ?: Help | q: Quit
 
 # Run Command:
-# gadugi-test run examples/tui/tui-performance-monitoring.yaml --verbose
+# gadugi-agentic-test run examples/tui/tui-performance-monitoring.yaml --verbose
 
 # Key Learning Points (Level 3):
 # 1. Test real-time updates by comparing snapshots over time

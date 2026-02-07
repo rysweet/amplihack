@@ -276,13 +276,13 @@ scenario:
 # </html>
 
 # Run Command:
-# gadugi-test run examples/custom-agents/custom-reporter-integration.yaml
+# gadugi-agentic-test run examples/custom-agents/custom-reporter-integration.yaml
 
 # With environment variables:
 # SLACK_WEBHOOK_URL=https://hooks.slack.com/... \
 # BUILD_NUMBER=123 \
 # GIT_COMMIT=abc123 \
-# gadugi-test run examples/custom-agents/custom-reporter-integration.yaml
+# gadugi-agentic-test run examples/custom-agents/custom-reporter-integration.yaml
 
 # Key Learning Points (Level 3):
 # 1. Custom report templates for branded/detailed reports

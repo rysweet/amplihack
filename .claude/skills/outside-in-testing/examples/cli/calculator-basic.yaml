@@ -108,7 +108,7 @@ scenario:
 # Evidence saved to: ./evidence/cli-calculator-basic-20250116-093045/
 
 # How to Run:
-# gadugi-test run examples/cli/calculator-basic.yaml
+# gadugi-agentic-test run examples/cli/calculator-basic.yaml
 
 # Key Learning Points:
 # 1. Outside-in tests don't know about Calculator class internals
