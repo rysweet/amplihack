@@ -57,7 +57,7 @@ references:
 
 ## What is amplihack?
 
-Agentic coding framework for Claude Code with 4 extensibility mechanisms, 23-step workflow, 30+ agents, 25 commands, 80+ skills, 5 active hooks.
+Agentic coding framework: 4 mechanisms, 23-step workflow, 30+ agents, 25 commands, 80+ skills.
 
 ## Quick Reference
 
@@ -91,25 +91,15 @@ Agentic coding framework for Claude Code with 4 extensibility mechanisms, 23-ste
 
 ## Navigation Guide
 
-**Quick Questions**: Read SKILL.md only
-**Architecture**: Read reference.md
-**How-To**: Read examples.md
-**Deep Dive**: Read all three
+**Quick**: SKILL.md | **Architecture**: reference.md | **How-To**: examples.md | **Deep**: all
 
 ## Core Concepts
 
-**4 Mechanisms:**
+**4 Mechanisms:** Workflow (process), Command (entry), Skill (auto), Agent (delegate)
 
-- Workflow: Process blueprint
-- Command: Entry point
-- Skill: Auto-capability
-- Agent: Delegation
+**Composition:** Commands → Workflows → Agents → Skills
 
-**Composition:**
-Commands → Workflows → Agents → Skills
-
-**Execution:**
-Parallel by default, UltraThink orchestrates, agents work
+**Execution:** Parallel by default, UltraThink orchestrates
 
 ## Related Docs
 
