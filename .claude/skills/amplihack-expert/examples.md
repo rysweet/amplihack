@@ -38,33 +38,20 @@ Phases:
 
 ## Example 3: Rapid Fix
 
-**Task:** Import error
-
 ```
-User: "ModuleNotFoundError: No module named 'requests'"
+User: "ModuleNotFoundError: requests"
 → /fix import QUICK
-
-Actions:
 ✓ Detect: Missing dependency
-✓ Install: pip install requests
-✓ Update: requirements.txt
-Duration: 30s
+✓ pip install requests
+✓ Update requirements.txt
 ```
 
 ## Example 4: Parallel Review
 
-**Task:** Comprehensive review
-
 ```
 User: "Review auth module"
-→ Parallel agents: [analyzer, security, optimizer, patterns, reviewer]
-
-Results (90s):
-✓ analyzer: Well-structured
-✓ security: JWT best practices
-✓ optimizer: O(1) validation
-✓ patterns: Factory pattern
-✓ reviewer: 92% compliance
+→ Parallel: [analyzer, security, optimizer, patterns, reviewer]
+✓ Well-structured, JWT best practices, O(1), Factory pattern, 92% compliance
 ```
 
 ## Example 5: Document-Driven Development
