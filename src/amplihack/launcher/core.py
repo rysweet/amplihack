@@ -717,8 +717,8 @@ class ClaudeLauncher:
                 # Display configuration on launch
                 display_memory_config(memory_config)
             else:
-                # Fallback to 8GB if detection fails
-                env["NODE_OPTIONS"] = "--max-old-space-size=8192"
+                # Fallback to 32GB if detection fails
+                env["NODE_OPTIONS"] = "--max-old-space-size=32768"
 
             if self._target_directory:
                 env.update(self.uvx_manager.get_environment_variables())
@@ -832,8 +832,8 @@ class ClaudeLauncher:
                 # Display configuration on launch
                 display_memory_config(memory_config)
             else:
-                # Fallback to 8GB if detection fails
-                env["NODE_OPTIONS"] = "--max-old-space-size=8192"
+                # Fallback to 32GB if detection fails
+                env["NODE_OPTIONS"] = "--max-old-space-size=32768"
 
             if self._target_directory:
                 env.update(self.uvx_manager.get_environment_variables())
