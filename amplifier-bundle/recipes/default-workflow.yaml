@@ -339,7 +339,6 @@ steps:
 
   - id: "step-05b-api-design"
     agent: "amplihack:api-designer"
-    condition: "{{architecture_design}} != ''"
     prompt: |
       # Step 5b: API Design (if applicable)
 
@@ -357,7 +356,6 @@ steps:
 
   - id: "step-05c-database-design"
     agent: "amplihack:database"
-    condition: "{{architecture_design}} != ''"
     prompt: |
       # Step 5c: Database Design (if applicable)
 
@@ -533,7 +531,6 @@ steps:
 
   - id: "step-08b-integration"
     agent: "amplihack:integration"
-    condition: "{{design_spec}} != ''"
     prompt: |
       # Step 8b: External Service Integration
 
