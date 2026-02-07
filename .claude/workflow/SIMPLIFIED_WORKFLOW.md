@@ -1,241 +1,442 @@
 ---
-name: Simplified Workflow
-description: Lightweight 17-step workflow for features, bugs, and refactoring
-version: 1.1.0
-steps: 17
+name: SIMPLIFIED_WORKFLOW
+version: 1.0.0
+description: Documentation-optimized workflow with same quality gates as DEFAULT_WORKFLOW but docs-specific steps
+steps: 16
 applies_to:
-  - features
-  - bugs
-  - refactoring
+  - Documentation-only changes
+  - README updates
+  - Tutorial writing
+  - How-to guides
+  - Reference documentation
 phases:
-  - preparation
-  - implementation
-  - testing
+  - requirements-clarification
+  - design
+  - writing
+  - validation
   - review
   - merge
-prerequisites:
-  - Git repository initialized
-  - GitHub CLI (gh) or Azure DevOps CLI (az) installed
-  - Tests directory exists
 success_criteria:
-  - Changes merged to main branch
-  - All tests passing
-  - PR approved by reviewer
-failure_modes:
-  - Tests fail → fix tests or implementation
-  - Review rejected → address feedback
-  - Merge conflicts → resolve manually
+  - "All steps completed"
+  - "Examples verified runnable"
+  - "Links validated"
+  - "Markdown linting passed"
+  - "PR is mergeable"
+  - "Philosophy compliant"
 philosophy_alignment:
   - principle: Ruthless Simplicity
-    application: Lightweight 17-step process for clear requirements (1-10 files)
-  - principle: Test-Driven Development
-    application: Write tests before implementation (Step 6)
+    application: Every sentence must earn its place
   - principle: Zero-BS Implementation
-    application: No debug code or TODOs allowed (Step 10)
+    application: No placeholder examples or "coming soon" sections
   - principle: Modular Design
-    application: 1-10 files maximum scope enforces modularity
+    application: Each section stands alone when appropriate
+customizable: true
 ---
 
-# Simplified Workflow
+# SIMPLIFIED_WORKFLOW - Documentation Changes
 
-A lightweight 17-step workflow optimized for:
-- ✅ **Small to medium changes** (1-10 files)
-- ✅ **Clear requirements** (no research needed)
-- ✅ **Standard patterns** (no architecture decisions)
+**This is NOT a shortcut** - it's a docs-optimized workflow that maintains the same quality rigor as DEFAULT_WORKFLOW but removes code-specific steps.
 
-For complex work requiring architecture design, use [DEFAULT_WORKFLOW.md](./DEFAULT_WORKFLOW.md) instead.
+## When to Use This Workflow
 
-## When NOT to Use This Workflow
+Use SIMPLIFIED_WORKFLOW for documentation-only changes:
+- ✅ README updates
+- ✅ Tutorial writing
+- ✅ How-to guides
+- ✅ Reference documentation
+- ✅ API documentation
+- ✅ Inline code documentation improvements
 
-Use [DEFAULT_WORKFLOW.md](./DEFAULT_WORKFLOW.md) instead for:
-- ❌ Changes requiring architecture decisions
-- ❌ New system components or modules
-- ❌ Complex refactoring across >10 files
-- ❌ Features needing research or design phase
+## When NOT to Use (Use DEFAULT_WORKFLOW Instead)
+
+- ❌ Code changes (even with docs)
+- ❌ API design
+- ❌ Any file containing executable code
+- ❌ Configuration changes that affect runtime behavior
 
 ---
 
-## Step 0: Workflow Preparation
+## Step 0: Workflow Preparation (MANDATORY)
 
-⚠️ **DO NOT SKIP STEPS** - Each step has a specific purpose in ensuring quality.
+**Purpose**: Prevent step skipping and completion bias
 
 **Actions**:
-- ✅ Read this workflow completely before starting
-- ✅ Verify you have all prerequisites (see below)
-- ✅ Confirm this is the right workflow for your task (see "When NOT to Use" above)
+- [ ] Read entire workflow file (16 steps: 0-15)
+- [ ] Understand this is docs-optimized, NOT fewer quality gates
+- [ ] Proceed to Step 1
 
 ---
 
-## Step 1: Verify Prerequisites
+## Step 1: Prepare the Workspace
+
+**Purpose**: Start with clean, up-to-date environment
 
 **Actions**:
-- ✅ Check Git: `git --version`
-- ✅ Check GitHub CLI or Azure CLI: `gh --version` or `az --version`
-- ✅ Verify git repository: `git status`
+- [ ] Check git status: `git status` (no unstashed changes)
+- [ ] Fetch latest: `git fetch`
+- [ ] Verify on main branch: `git branch --show-current`
 
 ---
 
-## Step 2: Create Issue/Work Item
+## Step 2: Clarify Documentation Requirements
+
+**Purpose**: Define clear documentation goals
 
 **Actions**:
-- ✅ Create issue: `gh issue create --title "Add user authentication" --body "Implement JWT-based authentication"`
-- ✅ Note the issue number (e.g., #42) for branch name
+- [ ] Identify target audience (developers, users, operators)
+- [ ] Define documentation type (tutorial, how-to, reference, explanation - Diataxis framework)
+- [ ] Document success criteria: What should readers be able to do after reading?
+- [ ] Identify examples that need to be included
+- [ ] Note: Use prompt-writer agent if requirements unclear
 
 ---
 
-## Step 3: Create Feature Branch
+## Step 3: Create Issue/Work Item
+
+**Purpose**: Track documentation work formally
+
+**GitHub**:
+```bash
+gh issue create \
+  --title "docs: Add getting started tutorial" \
+  --body "Create tutorial for new users..." \
+  --label documentation,enhancement
+```
+
+**Azure DevOps**:
+```bash
+az boards work-item create \
+  --title "docs: Add getting started tutorial" \
+  --type "User Story" \
+  --description "Create tutorial..."
+```
 
 **Actions**:
-- ✅ Create and switch to branch using appropriate prefix:
-  - Features: `git checkout -b feature/issue-42-user-authentication`
-  - Bugs: `git checkout -b fix/issue-42-authentication-bug`
-  - Refactoring: `git checkout -b refactor/issue-42-auth-cleanup`
-- ✅ Pattern: `<type>/issue-<number>-<description>` where type is `feature`, `fix`, or `refactor`
+- [ ] Create issue with clear description
+- [ ] Add documentation label
+- [ ] Note issue number for branch name
 
 ---
 
-## Step 4: Review Requirements
+## Step 4: Setup Worktree and Branch
+
+**Purpose**: Isolated development environment
 
 **Actions**:
-- ✅ Read issue description completely
-- ✅ Identify success criteria and constraints
+- [ ] Create worktree:
+  ```bash
+  git worktree add ./worktrees/docs-issue-{N}-{description} -b docs/issue-{N}-{description}
+  ```
+- [ ] Push to remote:
+  ```bash
+  cd ./worktrees/docs-issue-{N}-{description}
+  git push -u origin docs/issue-{N}-{description}
+  ```
+- [ ] Switch to worktree: `cd ./worktrees/docs-issue-{N}-{description}`
 
 ---
 
-## Step 5: Identify Files to Change
+## Step 5: Research and Design - Documentation Structure
+
+**Purpose**: Plan documentation architecture before writing
 
 **Actions**:
-- ✅ List files to modify: `find . -name "*auth*" -type f`
-- ✅ Plan scope: 1-10 files maximum
+- [ ] Review existing documentation structure
+- [ ] Identify where new docs fit (docs/, README, inline comments)
+- [ ] Plan document outline (headings, sections, flow)
+- [ ] Identify code examples needed (must be tested later)
+- [ ] Plan diagram requirements (if any)
+- [ ] Review style guide and conventions
+- [ ] Identify cross-references and links needed
+
+**Quality Gate**: Document outline approved before writing
 
 ---
 
-## Step 6: Write Failing Tests (TDD)
+## Step 6: Write Documentation
+
+**Purpose**: Create comprehensive documentation following standards
+
+**Standards**:
+- [ ] Follow Diataxis framework (tutorial/how-to/reference/explanation)
+- [ ] Place docs in `docs/` directory (not root)
+- [ ] Link from appropriate entry points
+- [ ] Use consistent terminology
+- [ ] Include table of contents for long docs
+- [ ] Add frontmatter metadata where applicable
 
 **Actions**:
-- ✅ Write tests for new functionality
-- ✅ Run tests to verify they fail: `pytest tests/`
+- [ ] Write clear, concise explanations
+- [ ] Include runnable code examples (test in Step 7)
+- [ ] Add cross-references and internal links
+- [ ] Include prerequisites and setup instructions
+- [ ] Add diagrams if helpful (mermaid format)
 
-**Example**:
-```python
-def test_user_authentication():
-    auth = Authenticator()
-    token = auth.authenticate("user", "password")
-    assert auth.validate(token) is True
+---
+
+## Step 7: Verify Examples Are Runnable (MANDATORY)
+
+**Purpose**: Ensure all code examples actually work (replaces TDD for docs)
+
+**Actions**:
+- [ ] Extract all code examples from documentation
+- [ ] Test each example in clean environment
+- [ ] Verify commands produce expected output
+- [ ] Test copy-paste usability (no hidden characters)
+- [ ] Verify dependencies are documented
+- [ ] Test on target platform(s)
+
+**Testing Checklist**:
+```bash
+# Example testing script
+for example in docs/examples/*.sh; do
+  bash -n "$example" && echo "✓ $example syntax valid"
+  bash "$example" && echo "✓ $example runs successfully"
+done
+```
+
+**Quality Gate**: Every code example must be tested
+
+---
+
+## Step 8: Markdown Linting and Link Validation (MANDATORY)
+
+**Purpose**: Ensure technical correctness (replaces compilation/type checking)
+
+**Actions**:
+- [ ] Run markdown linter:
+  ```bash
+  markdownlint **/*.md || remark-lint **/*.md
+  ```
+- [ ] Validate all internal links (no broken references)
+- [ ] Validate all external links:
+  ```bash
+  markdown-link-check **/*.md
+  ```
+- [ ] Check frontmatter syntax
+- [ ] Verify code fence language tags
+- [ ] Check heading hierarchy (no skipped levels: H1 → H3)
+- [ ] Validate mermaid diagram syntax if present
+
+**Quality Gate**: Zero linting errors, zero broken links
+
+---
+
+## Step 9: Refactor and Simplify (MANDATORY)
+
+**Purpose**: Ruthless simplification of documentation
+
+**Actions**:
+- [ ] Remove unnecessary explanations
+- [ ] Eliminate redundant examples
+- [ ] Simplify complex sentences
+- [ ] Remove jargon where possible
+- [ ] Ensure single responsibility per section
+- [ ] Verify no TODOs or placeholders remain (Zero-BS Implementation)
+- [ ] Check reading level appropriate for audience
+
+**Philosophy Check**:
+- Every sentence must earn its place
+- No "coming soon" or placeholder content
+- Each section stands alone when possible
+
+---
+
+## Step 10: Review Pass Before Commit (MANDATORY)
+
+**Purpose**: Comprehensive quality check before committing
+
+**Actions**:
+- [ ] Check documentation clarity and accuracy
+- [ ] Verify examples are practical and realistic
+- [ ] Check tone and style consistency
+- [ ] Verify no placeholder content ("TODO", "TBD", "coming soon")
+- [ ] Review for accessibility (alt text, clear language)
+
+**PR Cleanliness Check**:
+- [ ] Review staged changes: all related to issue?
+- [ ] Remove temporary files (scratch_*.md, notes_*.txt)
+- [ ] Remove point-in-time analysis docs
+- [ ] Check for debugging comments or draft notes
+- [ ] Verify .gitignore updated if new file types added
+
+---
+
+## Step 11: Incorporate Review Feedback
+
+**Purpose**: Address pre-commit review findings
+
+**Actions**:
+- [ ] Address identified issues
+- [ ] Update examples if needed
+- [ ] Revise structure if issues identified
+- [ ] Re-verify examples after changes
+
+---
+
+## Step 12: Commit and Push
+
+**Purpose**: Save changes to git history
+
+**Actions**:
+- [ ] Stage all changes: `git add docs/`
+- [ ] Write detailed commit message:
+  ```bash
+  git commit -m "docs: Add getting started tutorial (#123)
+  
+  - Create step-by-step setup guide
+  - Add code examples for common tasks
+  - Include troubleshooting section
+  - Verify all examples tested"
+  ```
+- [ ] Reference issue number in commit
+- [ ] Push to remote: `git push`
+
+**Commit Format**: `docs: <description> (#<issue-number>)`
+
+---
+
+## Step 13: Open Pull Request as Draft
+
+**Purpose**: Enable early review and CI checks
+
+**GitHub**:
+```bash
+gh pr create --draft \
+  --title "docs: Add getting started tutorial (#123)" \
+  --body "## Documentation Changes
+
+**Type**: Tutorial
+**Target Audience**: New users
+
+### Changes Made
+- Added: docs/tutorials/getting-started.md
+- Examples verified: Setup, basic usage, troubleshooting
+- Links validated: All internal and external links checked
+
+### Testing Results
+All code examples tested in clean environment:
+1. Installation example: ✅ Tested on Ubuntu 22.04
+2. Basic usage example: ✅ Tested with sample data
+3. Troubleshooting commands: ✅ All commands verified
+
+### Checklist
+- [x] Examples are runnable
+- [x] Links validated (internal and external)
+- [x] Markdown linting passed
+- [x] Follows Diataxis framework
+- [x] Placed in docs/ directory
+- [x] Cross-referenced from README"
+```
+
+**Azure DevOps**:
+```bash
+az repos pr create \
+  --title "docs: Add getting started tutorial (#123)" \
+  --description "Documentation changes..." \
+  --draft true
 ```
 
 ---
 
-## Step 7: Implement Solution
+## Step 14: Review & Implement Feedback (MANDATORY - DO NOT SKIP)
 
-**Actions**:
-- ✅ Write code to make tests pass
-- ✅ Follow existing code style
-- ✅ Keep changes focused on the issue
+**Purpose**: PR review and feedback implementation
 
----
+⚠️ **MANDATORY - DO NOT SKIP** ⚠️
 
-## Step 8: Run Tests Until Green
+**Review Actions**:
+- [ ] Review documentation accuracy and clarity
+- [ ] Verify philosophy compliance
+- [ ] Ensure examples tested and documented in PR
+- [ ] Check for any technical errors
 
-**Actions**:
-- ✅ Run full test suite: `pytest tests/ -v`
-- ✅ Fix any failing tests
-- ✅ Repeat until 100% pass rate
+**Feedback Implementation**:
+- [ ] Address each review comment
+- [ ] Push updates to PR: `git push`
+- [ ] Respond to review comments
+- [ ] Ensure all validations still pass
+- [ ] Request re-review if needed
 
----
-
-## Step 9: Manual Testing (If Needed)
-
-**When manual testing is required**:
-- ✅ UI changes visible to users
-- ✅ CLI commands with interactive prompts
-- ✅ Integration with external services
-- ✅ Performance-sensitive operations
-
-**Actions**:
-- ✅ Test critical user paths manually
-- ✅ Verify edge cases: `python -m myapp authenticate --username test`
-- ✅ Document test scenarios if complex
+**Quality Gate**: All review feedback addressed or explicitly discussed
 
 ---
 
-## Step 10: Pre-Commit Review
+## Step 15: Ensure PR is Mergeable (TASK COMPLETION POINT)
 
-**Actions**:
-- ✅ Review changes: `git diff`
-- ✅ Verify no debug code or TODOs remain
-- ✅ Scan for secrets (see Security section below)
+**Purpose**: Final verification before merge
 
----
+**Philosophy Compliance Check**:
+- [ ] Verify ruthless simplicity achieved
+- [ ] Confirm zero-BS implementation (no placeholders)
+- [ ] Verify documentation completeness
 
-## Step 11: Commit Changes
+**Final Cleanup**:
+- [ ] Review all changes for cleanliness
+- [ ] Remove any temporary documentation artifacts
+- [ ] Eliminate unnecessary complexity
+- [ ] Ensure zero dead content or stubs
+- [ ] Commit and push any cleanup changes if needed
 
-**Actions**:
-- ✅ Stage changes: `git add src/auth.py tests/test_auth.py`
-- ✅ Commit with clear message:
-  ```bash
-  git commit -m "feat: add JWT authentication (#42)
+**Convert PR to Ready**:
+```bash
+# GitHub
+gh pr ready
 
-  - Implement JWT token generation
-  - Add token validation
-  - Update tests for auth module"
-  ```
+# Azure DevOps
+az repos pr update --id <pr_number> --draft false
+```
 
-**Format**: `<type>: <description> (#<issue-number>)`
-**Types**: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`
+**Verify Mergeable**:
+- [ ] Verify all CI checks passing
+- [ ] Resolve any merge conflicts
+- [ ] Verify all review comments addressed
+- [ ] Confirm PR is approved
+- [ ] Close issue: `gh issue close 123` or `az boards work-item update --id 123 --state Closed`
 
----
-
-## Step 12: Push to Remote
-
-**Actions**:
-- ✅ Push branch: `git push -u origin feature/issue-42-user-authentication`
-
----
-
-## Step 13: Create Pull Request
-
-**Actions**:
-- ✅ Create PR: `gh pr create --title "Add user authentication (#42)" --body "Implements JWT-based authentication as described in #42" --reviewer teammate`
-- ✅ Or use Azure DevOps: `az repos pr create --title "Add user authentication (#42)" --source-branch feature/issue-42-user-authentication`
+**Quality Gate**: PR is approved, checks pass, ready to merge
 
 ---
 
-## Step 14: Address Review Feedback
+## Success Criteria
 
-**Actions**:
-- ✅ Respond to review comments
-- ✅ Make requested changes
-- ✅ Push updates: `git push`
+Documentation changes are complete when:
 
----
-
-## Step 15: Merge Pull Request
-
-**Actions**:
-- ✅ Ensure CI checks pass and approvals received
-- ✅ Merge PR: `gh pr merge --squash --delete-branch`
-- ✅ Or Azure: `az repos pr update --id 1234 --status completed --delete-source-branch true`
+1. ✅ All 16 steps completed sequentially
+2. ✅ All code examples tested and working
+3. ✅ All links validated (internal and external)
+4. ✅ Markdown linting passes
+5. ✅ PR approved by reviewers
+6. ✅ CI checks pass
+7. ✅ Philosophy compliance verified
+8. ✅ PR is merged
+9. ✅ Issue is closed
 
 ---
 
-## Step 16: Clean Up Local Branch
+## Key Differences from DEFAULT_WORKFLOW
 
-**Actions**:
-- ✅ Switch to main: `git checkout main`
-- ✅ Pull latest: `git pull`
-- ✅ Delete feature branch: `git branch -d feature/issue-42-user-authentication`
+**Removed Steps** (code-specific):
+- Step 7: TDD - Write Tests First (replaced with Step 7: Verify Examples)
+- Step 5b: API Design (not applicable to docs)
+- Step 5c: Database Design (not applicable to docs)
+- Step 12: Code Compilation/Type Checking (replaced with Step 8: Markdown Linting)
+- Multiple sub-steps for code quality (proportionality, outside-in testing)
+
+**Adapted Steps** (docs-specific):
+- Step 2: Clarify docs requirements (audience, type, examples)
+- Step 5: Docs structure design (outline, examples, diagrams)
+- Step 7: Verify examples runnable (replaces TDD)
+- Step 8: Markdown linting + link validation (replaces compilation/type checking)
+
+**Same Rigor, Different Focus**:
+- ✅ Still has workspace prep (Step 1)
+- ✅ Still has worktree isolation (Step 4)
+- ✅ Still has multiple review passes (Steps 10, 14)
+- ✅ Still has cleanup pass (Step 9)
+- ✅ Still has philosophy check (Step 15)
+- ✅ Still has mandatory testing (Step 7: example verification)
 
 ---
 
-## 🔒 Security Best Practices
-
-**Before committing**:
-- ✅ Quote all variables in scripts: `"$branch_name"` not `$branch_name`
-- ✅ Scan for secrets: `git diff --cached | grep -E '(password|token|secret|api[_-]?key|aws|gcp)'`
-- ✅ Never commit credentials, API keys, or tokens
-- ✅ Verify `.gitignore` includes: `*.env`, `*.key`, `secrets/`, `.env.*`
-
-**Before merging PR**:
-- ✅ Review full diff: `gh pr diff` or `az repos pr show --id 1234`
-- ✅ Ensure no sensitive data in commit history
+**This workflow maintains the same quality standards as DEFAULT_WORKFLOW while being optimized for documentation work.**
