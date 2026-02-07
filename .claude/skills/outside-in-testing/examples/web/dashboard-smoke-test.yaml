@@ -177,7 +177,7 @@ scenario:
 # └─────────┴────────────────────────────────────────────────┘
 
 # Run Command:
-# gadugi-test run examples/web/dashboard-smoke-test.yaml
+# gadugi-agentic-test run examples/web/dashboard-smoke-test.yaml
 
 # What This Test Validates:
 # ✓ Dashboard page loads without errors

@@ -315,7 +315,7 @@ scenario:
 # 6. Logged Out → Protected Route → Redirect to Login
 
 # Run Command:
-# gadugi-test run examples/web/web-authentication-flow.yaml --verbose
+# gadugi-agentic-test run examples/web/web-authentication-flow.yaml --verbose
 
 # Key Learning Points (Level 2):
 # 1. Multi-phase testing (invalid → valid → persistence → logout)
