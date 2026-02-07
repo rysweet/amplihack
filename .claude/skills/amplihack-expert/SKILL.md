@@ -57,37 +57,35 @@ references:
 
 ## What is amplihack?
 
-Multi-CLI agentic framework (Claude Code, Copilot CLI, Amplifier, Rustyclawd): 4 mechanisms, 23-step workflow, 30+ agents, 25 commands, 80+ skills.
+Engineering system for coding CLIs (Claude, Copilot, Amplifier, Rustyclawd, Codex): 5 mechanisms, 23-step workflow, 30 agents, 25 commands, 80 skills.
 
 ## Quick Reference
 
 ### Top Commands
 
-| Command              | Purpose              | Use When         |
-| -------------------- | -------------------- | ---------------- |
-| /ultrathink          | Orchestrate workflow | Non-trivial dev  |
-| /analyze             | Code review          | Check compliance |
-| /fix                 | Quick fixes          | Common errors    |
-| /amplihack:ddd:\*    | Doc-driven dev       | 10+ files        |
-| /amplihack:n-version | N-version            | Critical code    |
+| Command           | Purpose   | Use When         |
+| ----------------- | --------- | ---------------- |
+| /ultrathink       | Workflow  | Non-trivial dev  |
+| /analyze          | Review    | Check compliance |
+| /fix              | Fixes     | Common errors    |
+| /amplihack:ddd:\* | Doc-drive | 10+ files        |
 
 ### Top Agents
 
-| Agent     | Role    | Trigger       |
-| --------- | ------- | ------------- |
-| architect | Design  | Decomposition |
-| builder   | Code    | Generation    |
-| reviewer  | Quality | Validation    |
-| tester    | Tests   | Generation    |
-| fix-agent | Fixes   | Errors        |
+| Agent     | Role    |
+| --------- | ------- |
+| architect | Design  |
+| builder   | Code    |
+| reviewer  | Quality |
+| tester    | Tests   |
 
 ### Workflows
 
-| Name                   | Steps   | Purpose   |
-| ---------------------- | ------- | --------- |
-| DEFAULT_WORKFLOW       | 23      | Main dev  |
-| INVESTIGATION_WORKFLOW | 6       | Deep dive |
-| FIX_WORKFLOW           | 3 modes | Rapid fix |
+| Name             | Steps |
+| ---------------- | ----- |
+| DEFAULT_WORKFLOW | 23    |
+| INVESTIGATION    | 6     |
+| FIX              | 3     |
 
 ## Navigation Guide
 
@@ -95,7 +93,7 @@ Multi-CLI agentic framework (Claude Code, Copilot CLI, Amplifier, Rustyclawd): 4
 
 ## Core Concepts
 
-**4 Mechanisms:** Workflow (process), Command (entry), Skill (auto), Agent (delegate)
+**5 Mechanisms:** Workflow (process), Command (entry), Skill (auto), Agent (delegate), Hook (runtime)
 
 **Composition:** Commands → Workflows → Agents → Skills
 
@@ -103,7 +101,10 @@ Multi-CLI agentic framework (Claude Code, Copilot CLI, Amplifier, Rustyclawd): 4
 
 ## Related Docs
 
-- reference.md: Architecture (4 mechanisms, 5 layers)
+- reference.md: Architecture (5 mechanisms, 5 layers, hooks)
 - examples.md: Scenarios (5+ real examples)
-- PHILOSOPHY.md: Core principles
-- DEFAULT_WORKFLOW.md: 23 steps
+- @~/.amplihack/.claude/context/PHILOSOPHY.md: Core principles
+- @~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md: 23 steps
+- @~/.amplihack/.claude/agents/amplihack/: All agents
+- @~/.amplihack/.claude/commands/amplihack/: All commands
+- @~/.amplihack/.claude/tools/amplihack/hooks/: Hook system
