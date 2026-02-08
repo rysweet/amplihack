@@ -852,6 +852,33 @@ def main(argv: list[str] | None = None) -> int:
         print(platform_result.message, file=sys.stderr)
         return 1
 
+    # Auto-update check (only for uv tool installs, not uvx)
+    if not is_uvx_deployment():
+        from .auto_update import check_for_updates, prompt_and_upgrade
+
+        try:
+            from . import __version__
+
+            cache_dir = Path.home() / ".amplihack" / "cache"
+            cache_dir.mkdir(parents=True, exist_ok=True)
+
+            update_info = check_for_updates(
+                current_version=__version__,
+                cache_dir=cache_dir,
+                check_interval_hours=24,
+                timeout_seconds=5,
+            )
+
+            if update_info and update_info.is_newer:
+                # Use sys.argv[1:] if argv is None, else argv
+                restart_args = sys.argv[1:] if argv is None else (argv if argv else [])
+                if prompt_and_upgrade(update_info, restart_args):
+                    # Upgraded and restarted, this process should exit
+                    return 0
+
+        except Exception as e:
+            logger.debug(f"Update check failed: {e}")
+
     # Parse arguments FIRST to determine which command is being run
     # This allows us to skip Claude Code plugin installation for amplifier command
     args, claude_args = parse_args_with_passthrough(argv)

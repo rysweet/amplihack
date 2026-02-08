@@ -35,17 +35,13 @@ jobs:
         run: |
           pip install -e .
 
-      # SECURITY M1.2: Mask API key to prevent exposure in logs
-      - name: Mask API key
-        run: echo "::add-mask::${{ secrets.ANTHROPIC_API_KEY }}"
-
       # SECURITY M3.2: Use environment variables, never string interpolation
       # SECURITY: Error handling filters output to prevent secret leakage
       - name: Generate status report
         id: status
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ISSUE_NUMBER: ${{ vars.PM_STATUS_ISSUE_NUMBER }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set +x  # Disable command echoing to prevent accidental exposure
 

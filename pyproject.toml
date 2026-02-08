@@ -5,12 +5,12 @@ backend-path = ["."]
 
 [project]
 name = "amplihack"
-version = "0.2.0"
+version = "0.4.0"
 description = "Amplifier bundle for agentic coding with comprehensive skills, recipes, and workflows"
 requires-python = ">=3.11"
 dependencies = [
     "flask>=2.0.0",
-    "requests>=2.32.3",
+    "requests>=2.32.4",  # CVE-2024-47081 fix
     "fastapi>=0.68.0",
     "uvicorn>=0.15.0",
     "aiohttp>=3.8.0",
@@ -45,6 +45,8 @@ dependencies = [
     "neo4j>=5.25.0", # Neo4j graph database (blarify vendored code imports)
     "jedi-language-server>=0.43.1", # Jedi LSP for Python code intelligence
     "docker>=7.1.0", # Docker client for blarify containers
+    "packaging>=21.0", # Semantic version comparison for auto-update
+    "tomli>=2.0.0; python_version < '3.11'", # TOML parser for Python <3.11
 ]
 
 [project.optional-dependencies]
