@@ -149,6 +149,7 @@ Understand the philosophy and architecture behind amplihack.
 - [Development Patterns](claude/context/PATTERNS.md) - Proven implementation patterns
 - [Unified Staging Architecture](concepts/unified-staging-architecture.md) - How .claude/ staging works across all commands
 - [Framework Injection Architecture](concepts/framework-injection-architecture.md) - How AMPLIHACK.md injection works
+- [Blarify Documentation](blarify/README.md) - Complete Blarify guide and features
 - [Blarify Architecture](blarify_architecture.md) - Understanding the Blarify integration
 - [Documentation Knowledge Graph](documentation_knowledge_graph.md) - How docs connect
 
@@ -402,8 +403,16 @@ Visual and queryable representations of your codebase structure:
 ### External Knowledge
 
 - [External Knowledge Integration](external_knowledge_integration.md) - Import external data sources
-- [Blarify Integration](blarify_integration.md) - Code indexing with Kuzu (NO Neo4j)
-- [Blarify Quickstart](blarify_quickstart.md) - Get started with Blarify
+
+### Blarify Code Indexing
+
+Complete code indexing and analysis with multi-language support:
+
+- **[Blarify Documentation Hub](blarify/README.md)** - Complete guide to Blarify features
+- [Background Indexing](blarify/background-indexing.md) - Automatic indexing prompt on startup
+- [Multi-Language Validation](blarify/multi-language-validation.md) - Testing across 7 languages
+- [Blarify Integration](blarify_integration.md) - Technical integration details
+- [Blarify Quickstart](blarify_quickstart.md) - Get started in 5 minutes
 
 ---
 

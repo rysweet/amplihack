@@ -1050,13 +1050,14 @@ class ClaudeLauncher:
             logger.warning("Failed to save blarify consent: %s", e)
 
     def _prompt_blarify_indexing(self) -> bool:
-        """Prompt user to run blarify code indexing.
+        """Prompt user to run blarify code indexing with staleness detection.
 
         Features:
-        - 30 second timeout with default yes
-        - Per-project caching (prompts once per project)
+        - Staleness detection (only prompts if index missing or stale)
+        - Time estimation with language breakdown
+        - Background indexing option
+        - Per-project "don't ask again" preference
         - Non-blocking (failure doesn't stop launch)
-        - Runs blarify and imports to Kuzu on consent
 
         Returns:
             True if indexing completed or skipped, False on error
@@ -1071,40 +1072,81 @@ class ClaudeLauncher:
         # Get project directory (current working directory)
         project_path = Path.cwd()
 
-        # Check if user has already consented for this project
+        # Check if user has "don't ask again" preference for this project
         if self._has_blarify_consent(project_path):
-            logger.debug("Blarify consent already given for %s", project_path)
+            logger.debug("Blarify 'don't ask again' preference set for %s", project_path)
             return True
 
         try:
+            # Check index status using staleness detector
+            from ..memory.kuzu.indexing.staleness_detector import check_index_status
+            from ..memory.kuzu.indexing.time_estimator import estimate_time
+
+            status = check_index_status(project_path)
+
+            # If index is up-to-date, skip prompting
+            if not status.needs_indexing:
+                logger.debug("Blarify index is up-to-date: %s", status.reason)
+                return True
+
+            # Index is needed - estimate time
+            # TODO: Make language detection dynamic based on project files
+            languages = ["python", "typescript", "javascript", "go", "rust", "csharp", "c", "cpp"]
+            estimate = estimate_time(project_path, languages)
+
+            # Format time estimate
+            if estimate.total_seconds < 60:
+                time_str = f"{estimate.total_seconds:.0f}s"
+            else:
+                minutes = int(estimate.total_seconds // 60)
+                seconds = int(estimate.total_seconds % 60)
+                time_str = f"{minutes}m {seconds}s"
+
             # Check if running in interactive terminal
             from .memory_config import is_interactive_terminal
 
             if not is_interactive_terminal():
-                # Non-interactive mode - use default yes
-                logger.info("Non-interactive environment, running blarify indexing by default")
-                print("\n📊 Code Indexing: Running blarify in non-interactive mode (default: yes)")
-                self._run_blarify_and_import(project_path, background=False)
-                self._save_blarify_consent(project_path)
+                # Non-interactive mode - skip indexing
+                logger.info("Non-interactive environment, skipping blarify prompt")
                 return True
 
-            # Interactive mode - prompt user with timeout
+            # Interactive mode - prompt user
             print("\n" + "=" * 60)
             print("Code Indexing with Blarify")
             print("=" * 60)
-            print("Blarify will analyze your codebase to enable code-aware features:")
+            print(f"Status: {status.reason}")
+            print(f"Files to index: {status.estimated_files}")
+            print(f"Estimated time: {time_str}")
+            print()
+            print("Language breakdown:")
+            for lang, seconds in sorted(estimate.by_language.items()):
+                if estimate.file_counts[lang] > 0:
+                    lang_time = (
+                        f"{seconds:.0f}s"
+                        if seconds < 60
+                        else f"{int(seconds // 60)}m {int(seconds % 60)}s"
+                    )
+                    print(
+                        f"  • {lang.capitalize()}: {estimate.file_counts[lang]} files ({lang_time})"
+                    )
+            print()
+            print("Blarify enables code-aware features:")
             print("  • Code context in memory retrieval")
             print("  • Function and class awareness")
             print("  • Automatic code-memory linking")
-            print()
-            print("This is a one-time setup per project (~30-60s for most codebases)")
             print("=" * 60)
 
             # Import timeout utilities from memory_config
             from .memory_config import get_user_input_with_timeout, parse_consent_response
 
-            prompt_msg = "\nRun blarify code indexing? [y/N/b] (b=background, timeout: 30s): "
+            prompt_msg = "\nRun indexing? [y/N/b/n] (b=background, n=don't ask again): "
             response = get_user_input_with_timeout(prompt_msg, timeout_seconds=30, logger=logger)
+
+            # Handle "don't ask again" option
+            if response and response.lower().strip() in ["n", "never", "skip"]:
+                print("\n⏭️  Indexing skipped (won't ask again for this project)")
+                self._save_blarify_consent(project_path)
+                return True
 
             # Check for background mode
             background_mode = False
@@ -1124,8 +1166,6 @@ class ClaudeLauncher:
                 success = self._run_blarify_and_import(project_path, background=background_mode)
 
                 if success:
-                    # Save consent so we don't prompt again
-                    self._save_blarify_consent(project_path)
                     if background_mode:
                         print("✅ Code indexing started in background\n")
                     else:
