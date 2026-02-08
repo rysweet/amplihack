@@ -169,3 +169,4 @@ wave*-dedup/
 
 # Amplihack runtime directories (auto-generated)
 .claude/logs/
+*_validation_*/

@@ -367,3 +367,129 @@ RUN amplihack blarify-index --force
 - [Multi-Language Validation](./multi-language-validation.md) - Verify language support
 - [Blarify Quickstart](../blarify_quickstart.md) - Complete setup guide
 - [Blarify Architecture](../blarify_architecture.md) - How indexing works
+
+## Automatic Staleness Detection (Post-Edit Hook)
+
+**NEW**: Blarify now automatically detects when your index becomes stale after editing code files.
+
+### How It Works
+
+After you use Edit/Write tools to modify code files, a post-tool-use hook:
+
+1. Detects the modification
+2. Checks if the blarify index is now stale
+3. Warns you if reindexing is recommended
+4. (Future) Triggers automatic incremental reindexing
+
+### Supported File Types
+
+The hook monitors changes to:
+
+- Python (.py)
+- JavaScript/TypeScript (.js, .jsx, .ts, .tsx)
+- C# (.cs)
+- Go (.go)
+- Rust (.rs)
+- C/C++ (.c, .h, .cpp, .hpp, .cc, .cxx)
+- Java (.java)
+- PHP (.php)
+- Ruby (.rb)
+
+### Example
+
+```
+You: Edit main.py to add a new function
+
+Claude: [Edits the file]
+
+⚠️ Code index is stale (modified 1 files). Consider running incremental reindexing.
+```
+
+### Incremental Indexing
+
+**Status**: Supported by orchestrator, needs CLI integration
+
+The blarify orchestrator supports incremental indexing mode:
+
+- Only reindexes changed files
+- 5-10x faster than full reindex
+- Preserves existing symbol data
+
+**Usage** (when CLI integration complete):
+
+```bash
+blarify index --incremental
+```
+
+The `Orchestrator.run()` method accepts `incremental=True` parameter to enable this mode.
+
+## Configuration
+
+### Disable Hook (If Needed)
+
+If automatic staleness detection is too noisy:
+
+```bash
+# In your project
+echo "BLARIFY_DISABLE_STALENESS_HOOK=1" >> .env
+```
+
+Or modify `.claude/tools/amplihack/hooks/post_tool_use.py` to skip blarify hook registration.
+
+### Trigger Manual Reindexing
+
+After editing many files:
+
+```bash
+# Full reindex
+amplihack index-code
+
+# Incremental (future)
+amplihack index-code --incremental
+```
+
+## Architecture
+
+### Components
+
+1. **Staleness Detector** (`staleness_detector.py`)
+   - Checks if index needs updating via mtime comparison
+   - Performance: <100ms
+
+2. **Post-Tool-Use Hook** (`blarify_staleness_hook.py`)
+   - Monitors Edit/Write operations on code files
+   - Triggers staleness check after modifications
+   - Warns user if index is stale
+
+3. **Orchestrator** (`orchestrator.py`)
+   - Supports `incremental=True` mode
+   - Only processes changed files
+   - 5-10x faster than full reindex
+
+### Hook Registration
+
+The hook is automatically registered in `post_tool_use.py`:
+
+```python
+from blarify_staleness_hook import register_blarify_staleness_hook
+
+register_blarify_staleness_hook()  # Registers with global registry
+```
+
+## Future Enhancements
+
+1. **Automatic Incremental Reindexing**
+   - Trigger reindexing automatically in background after detecting staleness
+   - User preference: "Auto-reindex on save"
+
+2. **Smart Batching**
+   - Accumulate multiple file changes
+   - Reindex in batch after N minutes of inactivity
+
+3. **File Watcher Integration**
+   - Monitor filesystem for changes outside Claude Code
+   - Keep index always up-to-date
+
+4. **Partial Index Updates**
+   - Update only affected symbols
+   - Sub-second reindexing for single file changes
