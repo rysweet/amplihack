@@ -134,7 +134,7 @@ class BottomUpBatchProcessor:
         # Initialize embedding service if needed
         self.embedding_service = None
         if self.generate_embeddings:
-            from blarify.services.embedding_service import EmbeddingService
+            from ...services.embedding_service import EmbeddingService
 
             self.embedding_service = EmbeddingService()
 

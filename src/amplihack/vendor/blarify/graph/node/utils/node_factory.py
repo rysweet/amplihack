@@ -10,9 +10,9 @@ from ..function_node import FunctionNode
 from ..types.node_labels import NodeLabels
 
 if TYPE_CHECKING:
-    from blarify.code_references.types import Reference
-    from blarify.graph.graph_environment import GraphEnvironment
-    from blarify.project_file_explorer import Folder
+    from ....code_references.types import Reference
+    from ....graph.graph_environment import GraphEnvironment
+    from ....project_file_explorer import Folder
     from tree_sitter import Node as TreeSitterNode
 
 

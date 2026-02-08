@@ -6,7 +6,7 @@ from amplihack.vendor.blarify.graph.node import NodeLabels
 from tree_sitter import Node, Parser
 
 if TYPE_CHECKING:
-    from blarify.graph.relationship import RelationshipType
+    from ...graph.relationship import RelationshipType
 
 
 class BodyNodeNotFound(Exception):

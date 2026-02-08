@@ -7,7 +7,7 @@ from .types.node_labels import NodeLabels
 from .types.node import Node
 
 if TYPE_CHECKING:
-    from blarify.graph.graph_environment import GraphEnvironment
+    from ...graph.graph_environment import GraphEnvironment
 
 
 class DocumentationNodeKwargs(TypedDict, total=False):

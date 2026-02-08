@@ -13,10 +13,10 @@ from amplihack.vendor.blarify.vendor.multilspy.multilspy_logger import Multilspy
 from .types.Reference import Reference
 
 if TYPE_CHECKING:
-    from blarify.code_hierarchy.languages import (
+    from ..code_hierarchy.languages import (
         LanguageDefinitions,
     )
-    from blarify.graph.node import DefinitionNode
+    from ..graph.node import DefinitionNode
 
 
 import asyncio
@@ -247,7 +247,7 @@ class LspQueryHelper:
 
     @staticmethod
     def get_language_definition_for_extension(extension: str) -> "LanguageDefinitions":
-        from blarify.code_hierarchy.languages import (
+        from ..code_hierarchy.languages import (
             CsharpDefinitions,
             GoDefinitions,
             JavaDefinitions,

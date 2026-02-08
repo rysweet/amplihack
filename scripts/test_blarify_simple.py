@@ -74,15 +74,24 @@ class Greeter:
     for r in results:
         print(f"  - {r['type']}: {r['count']} nodes")
 
-    # Sample nodes
+    # Sample nodes - return full node to access properties
     print("\n📝 Sample nodes:")
-    results = db_manager.query("""
-        MATCH (n:NODE)
-        RETURN n.node_id, n.name, n.node_type, n.path
-        LIMIT 20
-    """)
-    for r in results:
-        print(f"  {r['node_type']:15} | {r['name']:30} | {r['path'] or ''}")
+    try:
+        # Use direct conn.execute to get node properties
+        results = db_manager.conn.execute("""
+            MATCH (n:NODE)
+            RETURN n
+            LIMIT 20
+        """)
+        while results.has_next():
+            row = results.get_next()
+            node = row[0]  # First column is the node
+            node_type = node.get("node_type", "UNKNOWN")
+            name = node.get("name", "")
+            path = node.get("path", "")
+            print(f"  {node_type:15} | {name:30} | {path}")
+    except Exception as e:
+        print(f"  Error reading nodes: {e}")
 
     # Close database
     db_manager.close()

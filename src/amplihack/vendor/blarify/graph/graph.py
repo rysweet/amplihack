@@ -7,7 +7,7 @@ from amplihack.vendor.blarify.graph.node.file_node import FileNode
 from amplihack.vendor.blarify.graph.node.folder_node import FolderNode
 
 if TYPE_CHECKING:
-    from blarify.graph.relationship import Relationship
+    from ..graph.relationship import Relationship
 
 
 class Graph:

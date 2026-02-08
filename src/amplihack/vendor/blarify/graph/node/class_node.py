@@ -4,7 +4,7 @@ from .types.definition_node import DefinitionNode
 from .types.node_labels import NodeLabels
 
 if TYPE_CHECKING:
-    from blarify.code_references.types import Reference
+    from ...code_references.types import Reference
 
 
 class ClassNode(DefinitionNode):

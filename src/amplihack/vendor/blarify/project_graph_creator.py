@@ -29,9 +29,9 @@ logger = logging.getLogger(__name__)
 
 
 if TYPE_CHECKING:
-    from blarify.graph.node import FolderNode
-    from blarify.graph.relationship import Relationship
-    from blarify.project_file_explorer import File, Folder
+    from .graph.node import FolderNode
+    from .graph.relationship import Relationship
+    from .project_file_explorer import File, Folder
 
 
 class ProjectGraphCreator:

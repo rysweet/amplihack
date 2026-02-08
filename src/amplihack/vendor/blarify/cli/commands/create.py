@@ -346,7 +346,7 @@ def execute(args: Namespace) -> int:
 
         # If no CLI argument provided, check if any OpenAI keys exist in environment
         if not api_key:
-            from blarify.agents.utils import discover_keys_for_provider
+            from ...agents.utils import discover_keys_for_provider
 
             discovered_keys = discover_keys_for_provider("openai")
 

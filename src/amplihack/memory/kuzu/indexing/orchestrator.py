@@ -192,7 +192,7 @@ class Orchestrator:
             indexing_results = {}
 
         # Import results
-        import_results = self._import_results(indexing_results)
+        import_results = self._import_results(indexing_results, codebase_path)
 
         # Build final result
         completed = []
@@ -353,13 +353,14 @@ class Orchestrator:
         # In production, this would use multiprocessing
         return self._run_indexing(codebase_path, languages, config)
 
-    def _import_results(self, indexing_results: dict) -> dict:
+    def _import_results(self, indexing_results: dict, codebase_path: Path) -> dict:
         """Import indexing results into database.
 
         Now actually imports the SCIP index into Kuzu!
 
         Args:
             indexing_results: Results from indexing (currently unused, kept for compatibility)
+            codebase_path: Path to the codebase where index.scip was created
 
         Returns:
             Import statistics from SCIP index
@@ -380,7 +381,7 @@ class Orchestrator:
 
             # Check if SCIP index exists in the codebase root
             # The output_file was set in the run() method
-            index_path = Path.cwd() / "index.scip"
+            index_path = codebase_path / "index.scip"
             if not index_path.exists():
                 logger.warning(f"SCIP index not found at {index_path}")
                 return {
@@ -394,7 +395,7 @@ class Orchestrator:
             importer = ScipImporter(self.connector)
             stats = importer.import_from_file(
                 scip_index_path=str(index_path),
-                project_root=str(Path.cwd()),
+                project_root=str(codebase_path),
                 language="python",  # TODO: Make this dynamic based on available_languages
             )
 

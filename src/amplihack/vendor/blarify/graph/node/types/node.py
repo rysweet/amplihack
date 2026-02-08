@@ -6,9 +6,9 @@ from amplihack.vendor.blarify.utils.format_verifier import FormatVerifier
 from amplihack.vendor.blarify.utils.relative_id_calculator import RelativeIdCalculator
 
 if TYPE_CHECKING:
-    from blarify.graph.graph_environment import GraphEnvironment
-    from blarify.graph.node import NodeLabels
-    from blarify.graph.relationship import Relationship
+    from ....graph.graph_environment import GraphEnvironment
+    from ....graph.node import NodeLabels
+    from ....graph.relationship import Relationship
 
 
 class Node:

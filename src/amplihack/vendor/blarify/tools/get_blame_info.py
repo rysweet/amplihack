@@ -227,7 +227,7 @@ class GetBlameInfo(BaseTool):
         """
         if self._ref_commit_info is None:
             # Initialize a temporary GitHub client to fetch ref info
-            from blarify.repositories.version_control.github import GitHub
+            from ..repositories.version_control.github import GitHub
 
             github_client = GitHub(
                 token=self.github_token,

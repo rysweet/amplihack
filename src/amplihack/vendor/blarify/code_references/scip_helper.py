@@ -137,7 +137,7 @@ class ScipReferenceResolver:
             import sys
 
             sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(self.root_path))))
-            from blarify.utils.project_detector import ProjectDetector
+            from ..utils.project_detector import ProjectDetector
 
             if ProjectDetector.is_python_project(self.root_path):
                 return "python"
@@ -384,7 +384,7 @@ class ScipReferenceResolver:
     def _find_symbol_for_node(self, node: DefinitionNode) -> str | None:
         """Find the SCIP symbol identifier for a given node."""
         # Convert file URI to relative path
-        from blarify.utils.path_calculator import PathCalculator
+        from ..utils.path_calculator import PathCalculator
 
         relative_path = PathCalculator.get_relative_path_from_uri(
             root_uri=f"file://{self.root_path}", uri=node.path
@@ -415,7 +415,7 @@ class ScipReferenceResolver:
         self, nodes: list[DefinitionNode]
     ) -> dict[DefinitionNode, str | None]:
         """Efficiently find symbols for multiple nodes by grouping by document."""
-        from blarify.utils.path_calculator import PathCalculator
+        from ..utils.path_calculator import PathCalculator
 
         # Group nodes by their relative path
         nodes_by_path = {}

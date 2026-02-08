@@ -5,9 +5,9 @@ from amplihack.vendor.blarify.graph.node.types.node import Node
 from amplihack.vendor.blarify.stats.complexity import CodeComplexityCalculator, NestingStats
 
 if TYPE_CHECKING:
-    from blarify.code_references.types import Reference
-    from blarify.graph.graph_environment import GraphEnvironment
-    from blarify.graph.relationship import Relationship
+    from ....code_references.types import Reference
+    from ....graph.graph_environment import GraphEnvironment
+    from ....graph.relationship import Relationship
     from tree_sitter import Node as TreeSitterNode
 
     from ..class_node import ClassNode
@@ -63,7 +63,7 @@ class DefinitionNode(Node):
         self._defines.extend(nodes)
 
     def get_relationships(self) -> list["Relationship"]:
-        from blarify.graph.relationship import RelationshipCreator
+        from ....graph.relationship import RelationshipCreator
 
         relationships: list[Relationship] = []
         for node in self._defines:
