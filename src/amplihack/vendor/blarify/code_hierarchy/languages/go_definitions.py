@@ -1,8 +1,8 @@
 import tree_sitter_go as tsgo
-from blarify.code_hierarchy.languages.FoundRelationshipScope import FoundRelationshipScope
-from blarify.graph.node import Node as GraphNode
-from blarify.graph.node import NodeLabels
-from blarify.graph.relationship import RelationshipType
+from amplihack.vendor.blarify.code_hierarchy.languages.FoundRelationshipScope import FoundRelationshipScope
+from amplihack.vendor.blarify.graph.node import Node as GraphNode
+from amplihack.vendor.blarify.graph.node import NodeLabels
+from amplihack.vendor.blarify.graph.relationship import RelationshipType
 from tree_sitter import Language, Node, Parser
 
 from .language_definitions import LanguageDefinitions

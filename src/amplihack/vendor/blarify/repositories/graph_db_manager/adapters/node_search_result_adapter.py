@@ -1,6 +1,6 @@
 from typing import Any
 
-from blarify.repositories.graph_db_manager.dtos.node_search_result_dto import (
+from amplihack.vendor.blarify.repositories.graph_db_manager.dtos.node_search_result_dto import (
     EdgeDTO,
     ReferenceSearchResultDTO,
 )

@@ -1,8 +1,8 @@
 import re
 from typing import TYPE_CHECKING, Optional, Union
 
-from blarify.graph.node.types.node import Node
-from blarify.stats.complexity import CodeComplexityCalculator, NestingStats
+from amplihack.vendor.blarify.graph.node.types.node import Node
+from amplihack.vendor.blarify.stats.complexity import CodeComplexityCalculator, NestingStats
 
 if TYPE_CHECKING:
     from blarify.code_references.types import Reference

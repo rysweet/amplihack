@@ -13,8 +13,8 @@ from enum import Enum
 from pathlib import Path, PurePath
 
 import requests
-from blarify.vendor.multilspy.multilspy_exceptions import MultilspyException
-from blarify.vendor.multilspy.multilspy_logger import MultilspyLogger
+from amplihack.vendor.blarify.vendor.multilspy.multilspy_exceptions import MultilspyException
+from amplihack.vendor.blarify.vendor.multilspy.multilspy_logger import MultilspyLogger
 
 
 class TextUtils:
@@ -211,6 +211,8 @@ class DotnetVersion(str, Enum):
     V6 = "6"
     V7 = "7"
     V8 = "8"
+    V9 = "9"
+    V10 = "10"
     VMONO = "mono"
 
 
@@ -259,6 +261,10 @@ class PlatformUtils:
                     break
             if version == "":
                 raise MultilspyException("dotnet not found on the system")
+            if version.startswith("10"):
+                return DotnetVersion.V10
+            if version.startswith("9"):
+                return DotnetVersion.V9
             if version.startswith("8"):
                 return DotnetVersion.V8
             if version.startswith("7"):

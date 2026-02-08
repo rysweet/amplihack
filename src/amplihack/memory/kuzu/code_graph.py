@@ -1212,8 +1212,8 @@ def run_blarify(
         # Create temporary Kuzu database path (don't create directory - Kuzu will do it)
         import tempfile
 
-        from blarify.prebuilt.graph_builder import GraphBuilder
-        from blarify.repositories.graph_db_manager.kuzu_manager import KuzuManager
+        from amplihack.vendor.blarify.prebuilt.graph_builder import GraphBuilder
+        from amplihack.vendor.blarify.repositories.graph_db_manager.kuzu_manager import KuzuManager
 
         temp_kuzu_dir = (
             Path(tempfile.gettempdir())

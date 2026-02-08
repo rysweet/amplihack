@@ -11,13 +11,13 @@ import stat
 from collections.abc import AsyncIterator, Iterable
 from contextlib import asynccontextmanager
 
-from blarify.vendor.multilspy.language_server import LanguageServer
-from blarify.vendor.multilspy.lsp_protocol_handler.lsp_types import InitializeParams
-from blarify.vendor.multilspy.lsp_protocol_handler.server import ProcessLaunchInfo
-from blarify.vendor.multilspy.multilspy_config import MultilspyConfig
-from blarify.vendor.multilspy.multilspy_exceptions import MultilspyException
-from blarify.vendor.multilspy.multilspy_logger import MultilspyLogger
-from blarify.vendor.multilspy.multilspy_utils import (
+from amplihack.vendor.blarify.vendor.multilspy.language_server import LanguageServer
+from amplihack.vendor.blarify.vendor.multilspy.lsp_protocol_handler.lsp_types import InitializeParams
+from amplihack.vendor.blarify.vendor.multilspy.lsp_protocol_handler.server import ProcessLaunchInfo
+from amplihack.vendor.blarify.vendor.multilspy.multilspy_config import MultilspyConfig
+from amplihack.vendor.blarify.vendor.multilspy.multilspy_exceptions import MultilspyException
+from amplihack.vendor.blarify.vendor.multilspy.multilspy_logger import MultilspyLogger
+from amplihack.vendor.blarify.vendor.multilspy.multilspy_utils import (
     DotnetVersion,
     FileUtils,
     PlatformId,
@@ -158,13 +158,13 @@ class OmniSharp(LanguageServer):
             PlatformId.LINUX_x64,
             PlatformId.WIN_x64,
         ], "Only linux-x64 and win-x64 platform is supported for in multilspy at the moment"
-        assert dotnet_version in [DotnetVersion.V6, DotnetVersion.V7, DotnetVersion.V8], (
-            "Only dotnet version 6 and 7 are supported in multilspy at the moment"
+        assert dotnet_version in [DotnetVersion.V6, DotnetVersion.V7, DotnetVersion.V8, DotnetVersion.V9, DotnetVersion.V10], (
+            "Only dotnet version 6, 7, 8, 9, and 10 are supported in multilspy at the moment"
         )
 
         # TODO: Do away with this assumption
-        # Currently, runtime binaries are not available for .Net 7 and .Net 8. Hence, we assume .Net 6 runtime binaries to be compatible with .Net 7, .Net 8
-        if dotnet_version in [DotnetVersion.V7, DotnetVersion.V8]:
+        # Currently, runtime binaries are not available for .Net 7, 8, 9, 10. Hence, we assume .Net 6 runtime binaries to be compatible with newer versions
+        if dotnet_version in [DotnetVersion.V7, DotnetVersion.V8, DotnetVersion.V9, DotnetVersion.V10]:
             dotnet_version = DotnetVersion.V6
 
         runtime_dependencies = d["runtimeDependencies"]

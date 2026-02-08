@@ -6,7 +6,7 @@ The function has outgoing CALLS and USES relationships, and the descriptions of
 the called/used functions are provided as context.
 """
 
-from blarify.agents.prompt_templates.base import PromptTemplate
+from amplihack.vendor.blarify.agents.prompt_templates.base import PromptTemplate
 
 # Template for analyzing functions with call context
 FUNCTION_WITH_CALLS_ANALYSIS_TEMPLATE = PromptTemplate(

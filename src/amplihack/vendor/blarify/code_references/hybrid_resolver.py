@@ -9,7 +9,7 @@ import logging
 from enum import Enum
 from typing import Any
 
-from blarify.graph.node import DefinitionNode
+from amplihack.vendor.blarify.graph.node import DefinitionNode
 
 from .lsp_helper import LspQueryHelper
 from .scip_helper import ScipReferenceResolver

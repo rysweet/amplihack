@@ -3,7 +3,7 @@
 import argparse
 import sys
 
-from blarify.cli.commands import create
+from amplihack.vendor.blarify.cli.commands import create
 
 
 def main(args: list[str] | None = None) -> int:

@@ -1,6 +1,6 @@
 """Cypher queries for batch processing documentation nodes."""
 
-from typing import LiteralString
+from typing_extensions import LiteralString
 
 
 def get_leaf_nodes_batch_query() -> LiteralString:

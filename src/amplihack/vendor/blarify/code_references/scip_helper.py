@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
-from blarify.graph.node import DefinitionNode
+from amplihack.vendor.blarify.graph.node import DefinitionNode
 
 from .lsp_helper import ProgressTracker
 from .types.Reference import Reference
@@ -268,8 +268,12 @@ class ScipReferenceResolver:
                 logger.error(f"Unsupported language for SCIP indexing: {self.language}")
                 return False
 
+            # Set NODE_OPTIONS to increase heap size for large codebases
+            env = os.environ.copy()
+            env["NODE_OPTIONS"] = "--max-old-space-size=32768"  # 32GB heap for scip-python/scip-typescript
+
             result = subprocess.run(
-                cmd, cwd=self.root_path, capture_output=True, text=True, timeout=300
+                cmd, cwd=self.root_path, capture_output=True, text=True, timeout=600, env=env  # 10 min timeout for large codebases
             )
 
             if result.returncode == 0:

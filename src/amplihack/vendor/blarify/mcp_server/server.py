@@ -6,15 +6,15 @@ import os
 import sys
 from typing import Any
 
-from blarify.cli.project_config import ProjectConfig
-from blarify.mcp_server.config import MCPServerConfig
-from blarify.mcp_server.tools import MCPToolWrapper
-from blarify.repositories.graph_db_manager.db_manager import AbstractDbManager
-from blarify.repositories.graph_db_manager.falkordb_manager import FalkorDBManager
-from blarify.repositories.graph_db_manager.neo4j_manager import Neo4jManager
+from amplihack.vendor.blarify.cli.project_config import ProjectConfig
+from amplihack.vendor.blarify.mcp_server.config import MCPServerConfig
+from amplihack.vendor.blarify.mcp_server.tools import MCPToolWrapper
+from amplihack.vendor.blarify.repositories.graph_db_manager.db_manager import AbstractDbManager
+from amplihack.vendor.blarify.repositories.graph_db_manager.falkordb_manager import FalkorDBManager
+from amplihack.vendor.blarify.repositories.graph_db_manager.neo4j_manager import Neo4jManager
 
 # Import all Blarify tools
-from blarify.tools import (
+from amplihack.vendor.blarify.tools import (
     FindSymbols,
     GetBlameInfo,
     GetCodeAnalysis,

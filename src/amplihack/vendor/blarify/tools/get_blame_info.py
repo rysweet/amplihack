@@ -6,10 +6,10 @@ import os
 from datetime import datetime
 from typing import Any
 
-from blarify.graph.graph_environment import GraphEnvironment
-from blarify.integrations.github_creator import GitHubCreator
-from blarify.repositories.graph_db_manager import AbstractDbManager
-from blarify.tools.utils import resolve_reference_id
+from amplihack.vendor.blarify.graph.graph_environment import GraphEnvironment
+from amplihack.vendor.blarify.integrations.github_creator import GitHubCreator
+from amplihack.vendor.blarify.repositories.graph_db_manager import AbstractDbManager
+from amplihack.vendor.blarify.tools.utils import resolve_reference_id
 from langchain_core.callbacks import CallbackManagerForToolRun
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field, model_validator

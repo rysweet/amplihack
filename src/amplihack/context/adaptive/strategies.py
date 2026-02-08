@@ -12,7 +12,7 @@ Philosophy:
 """
 
 from abc import ABC, abstractmethod
-from datetime import UTC
+from datetime import timezone
 from pathlib import Path
 from typing import Any
 
@@ -144,7 +144,7 @@ class ClaudeStrategy(HookStrategy):
 
         # Add timestamp if not present
         if "timestamp" not in context:
-            context["timestamp"] = datetime.now(UTC).isoformat()
+            context["timestamp"] = datetime.now(timezone.utc).isoformat()
 
         # Write context with error handling
         try:
@@ -296,7 +296,7 @@ class CopilotStrategy(HookStrategy):
         else:
             # Add timestamp if not present
             if "timestamp" not in context:
-                context["timestamp"] = datetime.now(UTC).isoformat()
+                context["timestamp"] = datetime.now(timezone.utc).isoformat()
             # Format context as markdown
             context_md = self._format_context_markdown(context)
 

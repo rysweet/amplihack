@@ -2,9 +2,9 @@ import logging
 import os
 from pathlib import Path
 
-from blarify.vendor.multilspy import SyncLanguageServer
-from blarify.vendor.multilspy.multilspy_config import MultilspyConfig
-from blarify.vendor.multilspy.multilspy_logger import MultilspyLogger
+from amplihack.vendor.blarify.vendor.multilspy import SyncLanguageServer
+from amplihack.vendor.blarify.vendor.multilspy.multilspy_config import MultilspyConfig
+from amplihack.vendor.blarify.vendor.multilspy.multilspy_logger import MultilspyLogger
 
 
 def ensure_language_server_installed(language: str):

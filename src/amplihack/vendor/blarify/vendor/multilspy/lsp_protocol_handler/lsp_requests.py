@@ -31,7 +31,7 @@ SOFTWARE.
 
 from typing import Union
 
-from blarify.vendor.multilspy.lsp_protocol_handler import lsp_types
+from amplihack.vendor.blarify.vendor.multilspy.lsp_protocol_handler import lsp_types
 
 
 class LspRequest:
