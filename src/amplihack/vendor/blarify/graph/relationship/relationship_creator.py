@@ -9,10 +9,10 @@ from amplihack.vendor.blarify.repositories.graph_db_manager.dtos.code_node_dto i
 from amplihack.vendor.blarify.repositories.version_control.dtos.blame_line_range_dto import BlameLineRangeDto
 
 if TYPE_CHECKING:
-    from blarify.code_hierarchy import TreeSitterHelper
-    from blarify.code_references.types import Reference
-    from blarify.graph.graph import Graph
-    from blarify.graph.node import Node
+    from ...code_hierarchy import TreeSitterHelper
+    from ...code_references.types import Reference
+    from ...graph.graph import Graph
+    from ...graph.node import Node
 
 
 class RelationshipCreator:

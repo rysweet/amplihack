@@ -6,8 +6,8 @@ from .types.node_labels import NodeLabels
 from amplihack.vendor.blarify.graph.node.file_node import FileNode
 
 if TYPE_CHECKING:
-    from blarify.graph.graph_environment import GraphEnvironment
-    from blarify.graph.relationship import Relationship
+    from ...graph.graph_environment import GraphEnvironment
+    from ...graph.relationship import Relationship
 
 
 class FolderNode(Node):
@@ -46,7 +46,7 @@ class FolderNode(Node):
             self.relate_node_as_contain_relationship(node)
 
     def get_relationships(self) -> list["Relationship"]:
-        from blarify.graph.relationship import RelationshipCreator
+        from ...graph.relationship import RelationshipCreator
 
         relationships = []
         for node in self._contains:

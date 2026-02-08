@@ -20,7 +20,7 @@ def ensure_language_server_installed(language: str):
 
     if language == "csharp":
         print(f"Starting language server for {language}")
-        from blarify.vendor.multilspy.language_servers.omnisharp.omnisharp import OmniSharp
+        from ..vendor.multilspy.language_servers.omnisharp.omnisharp import OmniSharp
 
         OmniSharp.setupRuntimeDependencies(None, logger, config)
         print(f"Started language server for {language}")

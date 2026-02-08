@@ -1262,18 +1262,24 @@ def run_blarify(
         }
 
         # Query Kuzu database to extract data with all properties needed by import
+        # CRITICAL: Must filter by repo_id since db may contain multiple repos
         # Files
-        file_results = db_manager.query("""
+        file_results = db_manager.query(f"""
             MATCH (n:NODE)
             WHERE n.node_type = 'FILE'
+              AND n.repo_id = '{repo_id}'
+              AND n.entity_id = '{entity_id}'
             RETURN n.path as path, n.name as name
         """)
         output_data["files"] = [{"path": r["path"], "name": r["name"]} for r in file_results]
 
         # Classes - query all properties from NODE table
-        class_results = db_manager.conn.execute("""
+        # CRITICAL: Must filter by repo_id and entity_id
+        class_results = db_manager.conn.execute(f"""
             MATCH (n:NODE)
             WHERE n.node_type = 'CLASS'
+              AND n.repo_id = '{repo_id}'
+              AND n.entity_id = '{entity_id}'
             RETURN n
         """)
         classes = []
@@ -1293,9 +1299,12 @@ def run_blarify(
         output_data["classes"] = classes
 
         # Functions - query all properties
-        func_results = db_manager.conn.execute("""
+        # CRITICAL: Must filter by repo_id and entity_id
+        func_results = db_manager.conn.execute(f"""
             MATCH (n:NODE)
             WHERE n.node_type = 'FUNCTION'
+              AND n.repo_id = '{repo_id}'
+              AND n.entity_id = '{entity_id}'
             RETURN n
         """)
         functions = []
@@ -1319,9 +1328,12 @@ def run_blarify(
         all_relationships = []
 
         # Query CONTAINS relationships
+        # CRITICAL: Filter by repo_id and entity_id
         try:
-            contains_results = db_manager.query("""
+            contains_results = db_manager.query(f"""
                 MATCH (source:NODE)-[:CONTAINS]->(target:NODE)
+                WHERE source.repo_id = '{repo_id}'
+                  AND source.entity_id = '{entity_id}'
                 RETURN source.node_id as source_id, target.node_id as target_id
             """)
             for r in contains_results:
@@ -1332,9 +1344,12 @@ def run_blarify(
             pass
 
         # Query CALLS relationships
+        # CRITICAL: Filter by repo_id and entity_id
         try:
-            calls_results = db_manager.query("""
+            calls_results = db_manager.query(f"""
                 MATCH (source:NODE)-[:CALLS]->(target:NODE)
+                WHERE source.repo_id = '{repo_id}'
+                  AND source.entity_id = '{entity_id}'
                 RETURN source.node_id as source_id, target.node_id as target_id
             """)
             for r in calls_results:
@@ -1345,9 +1360,12 @@ def run_blarify(
             pass
 
         # Query REFERENCES relationships
+        # CRITICAL: Filter by repo_id and entity_id
         try:
-            ref_results = db_manager.query("""
+            ref_results = db_manager.query(f"""
                 MATCH (source:NODE)-[:REFERENCES]->(target:NODE)
+                WHERE source.repo_id = '{repo_id}'
+                  AND source.entity_id = '{entity_id}'
                 RETURN source.node_id as source_id, target.node_id as target_id
             """)
             for r in ref_results:
