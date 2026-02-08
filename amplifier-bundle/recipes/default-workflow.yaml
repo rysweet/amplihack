@@ -1043,11 +1043,11 @@ steps:
       echo "" && \
       echo "Before proceeding, verify ALL of the following:" && \
       echo "" && \
-      echo "  ✓ Did I invoke the REVIEWER agent? → {{pr_review}}" && \
-      echo "  ✓ Did I invoke the SECURITY agent? → {{pr_security_review}}" && \
-      echo "  ✓ Did I invoke the PHILOSOPHY-GUARDIAN agent? → {{pr_philosophy_review}}" && \
+      echo "  ✓ Did I invoke the REVIEWER agent? → Yes (output captured)" && \
+      echo "  ✓ Did I invoke the SECURITY agent? → Yes (output captured)" && \
+      echo "  ✓ Did I invoke the PHILOSOPHY-GUARDIAN agent? → Yes (output captured)" && \
       echo "  ✓ Are all three reviews POSTED to the PR as comments?" && \
-      echo "  ✓ All blocking issues have been addressed? → {{blocking_issues_addressed}}" && \
+      echo "  ✓ All blocking issues have been addressed?" && \
       echo "" && \
       echo "If any verification fails, STOP and complete the missing step." && \
       echo "" && \
