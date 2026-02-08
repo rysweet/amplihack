@@ -103,6 +103,14 @@ Before applying branch protection, ensure you have:
 
 ### Quick Start (30 seconds)
 
+⚠️ **IMPORTANT**: Verify you're in the correct repository before running these commands!
+
+```bash
+# 0. Verify repository (DO THIS FIRST!)
+gh repo view
+# Confirm: owner, name, and branch before proceeding
+```
+
 To protect your `main` branch with standard settings:
 
 ```bash
@@ -169,6 +177,31 @@ gh auth status
 gh api repos/rysweet/amplihack | jq '.permissions.admin'
 # Must return: true
 ```
+
+⚠️ **SAFETY CHECK: Verify Repository Before Proceeding**
+
+Before applying branch protection, confirm you're targeting the correct repository:
+
+```bash
+# 1. Verify current repository context
+gh repo view
+# Check: Owner, name, default branch
+
+# 2. Confirm this is the repo you intend to protect
+echo "About to protect: rysweet/amplihack"
+echo "Continue? (Press Ctrl+C to abort, Enter to continue)"
+read
+
+# 3. Double-check branch name
+gh api repos/rysweet/amplihack/branches | jq '.[].name'
+# Verify 'main' exists before protecting it
+```
+
+**Why this matters:**
+- Branch protection is **immediate and destructive** - no undo button
+- Wrong repository = potentially blocking an entire team's workflow
+- Wrong branch name = protection won't apply where intended
+- 5 seconds of verification > hours of emergency fixes
 
 ### Step 2: View Current Protection Status
 
@@ -312,6 +345,31 @@ git push --force origin main
 # Clean up test
 git reset --hard HEAD~1
 ```
+
+### Step 9: Clean Up Temporary Files
+
+After applying and verifying protection, remove temporary configuration files:
+
+```bash
+# Remove the config file (protection is now server-side)
+rm -f protection-config.json
+
+# Remove audit trail files (optional - keep if you want rollback reference)
+rm -f before.json
+
+# These files are temporary and should NOT be committed to version control
+# Protection configuration is stored on GitHub's servers, not in your repository
+```
+
+**Why clean up?**
+- Config files are **one-time use only** - protection is stored on GitHub
+- Leaving them creates confusion about the source of truth
+- Files may contain security settings that shouldn't be in version control
+- Clean repository = clear that protection is server-side, not file-based
+
+**When to keep files:**
+- `before.json`: Keep temporarily if you might need to rollback
+- After confirming protection works, delete all temporary files
 
 ---
 

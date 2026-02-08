@@ -14,7 +14,6 @@ Expected to PASS after:
 
 import json
 import subprocess
-from pathlib import Path
 from typing import Any
 
 import pytest
@@ -254,72 +253,6 @@ class TestBranchProtectionEnforcement:
         )
 
 
-class TestProtectionConfigurationFile:
-    """Test the protection configuration JSON file."""
-
-    @pytest.fixture
-    def config_path(self) -> Path:
-        """Path to protection configuration file."""
-        # Could be in multiple locations during development
-        possible_paths = [
-            Path("protection-config.json"),
-            Path("worktrees/feat/issue-3-create-github-branch-protectio/protection-config.json"),
-            Path(".github/branch-protection-config.json"),
-        ]
-
-        for path in possible_paths:
-            if path.exists():
-                return path
-
-        pytest.skip("Protection config file not found - may not be needed after application")
-
-    def test_config_file_is_valid_json(self, config_path: Path):
-        """Test that configuration file is valid JSON."""
-        content = config_path.read_text()
-
-        try:
-            config = json.loads(content)
-            assert isinstance(config, dict), "Config must be a JSON object"
-        except json.JSONDecodeError as e:
-            pytest.fail(f"Config file contains invalid JSON: {e}")
-
-    def test_config_has_required_review_settings(self, config_path: Path):
-        """Test config includes pull request review settings."""
-        config = json.loads(config_path.read_text())
-
-        assert "required_pull_request_reviews" in config, (
-            "Config missing required_pull_request_reviews"
-        )
-
-        reviews = config["required_pull_request_reviews"]
-        assert "required_approving_review_count" in reviews, "Config missing review count"
-        assert reviews["required_approving_review_count"] >= 1, "Review count should be at least 1"
-
-    def test_config_has_status_checks(self, config_path: Path):
-        """Test config includes status check settings."""
-        config = json.loads(config_path.read_text())
-
-        assert "required_status_checks" in config, "Config missing required_status_checks"
-
-        status_checks = config["required_status_checks"]
-        assert "contexts" in status_checks, "Config missing status check contexts"
-        assert isinstance(status_checks["contexts"], list), "Contexts must be a list"
-
-    def test_config_blocks_force_push_and_deletion(self, config_path: Path):
-        """Test config blocks force pushes and deletions."""
-        config = json.loads(config_path.read_text())
-
-        assert "allow_force_pushes" in config, "Config missing allow_force_pushes setting"
-        assert config["allow_force_pushes"] is False, (
-            "Config should block force pushes (allow_force_pushes: false)"
-        )
-
-        assert "allow_deletions" in config, "Config missing allow_deletions setting"
-        assert config["allow_deletions"] is False, (
-            "Config should block deletions (allow_deletions: false)"
-        )
-
-
 class TestVerificationCommands:
     """Test that verification commands from skill work correctly."""
 
@@ -350,9 +283,21 @@ class TestVerificationCommands:
             pytest.skip("jq not installed - optional but recommended for verification")
 
         # Test jq formatting of protection data
+        # First get the protection data
+        gh_result = subprocess.run(
+            ["gh", "api", "repos/rysweet/amplihack/branches/main/protection"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+
+        if gh_result.returncode != 0:
+            pytest.fail(f"gh api command failed: {gh_result.stderr}")
+
+        # Then pipe to jq
         result = subprocess.run(
-            "gh api repos/rysweet/amplihack/branches/main/protection | jq .",
-            shell=True,
+            ["jq", "."],
+            input=gh_result.stdout,
             capture_output=True,
             text=True,
             timeout=10,

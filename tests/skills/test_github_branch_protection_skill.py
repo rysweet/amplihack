@@ -251,11 +251,13 @@ class TestSkillCommandValidity:
             # Should have method (GET, PUT, DELETE) or default GET
             assert "repos/" in cmd, f"gh api command must target repos/ endpoint: {cmd}"
             
-            # Allow prerequisite checks (permissions) OR protection API commands
-            is_permission_check = ".permissions" in cmd
-            is_protection_api = "branches/" in cmd or "/protection" in cmd
+            # Allow prerequisite checks OR protection API commands
+            # Prerequisite checks: permissions, branch listing, repo verification
+            is_permission_check = cmd.endswith(".permissions") or "| jq '.permissions" in cmd
+            is_branch_listing = "/branches" in cmd and "/protection" not in cmd
+            is_protection_api = "/protection" in cmd
             
-            assert is_permission_check or is_protection_api, (
+            assert is_permission_check or is_branch_listing or is_protection_api, (
                 f"Command should target branch protection API or be a prerequisite check: {cmd}"
             )
 
