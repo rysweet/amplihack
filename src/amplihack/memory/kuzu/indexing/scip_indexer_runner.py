@@ -163,21 +163,62 @@ class ScipIndexerRunner:
             timeout=600,
         )
 
-    def run_typescript_indexer(self, codebase_path: Path) -> ScipIndexResult:
+    def run_typescript_indexer(
+        self, codebase_path: Path, is_javascript: bool = False
+    ) -> ScipIndexResult:
         """Run scip-typescript indexer.
 
         Args:
             codebase_path: Path to TypeScript/JavaScript codebase
+            is_javascript: If True, create minimal tsconfig.json for pure JS projects
 
         Returns:
             ScipIndexResult
         """
-        return self._run_indexer(
+        # For JavaScript projects, ensure tsconfig.json exists
+        tsconfig_path = codebase_path / "tsconfig.json"
+        jsconfig_path = codebase_path / "jsconfig.json"
+        created_config = False
+
+        if is_javascript and not tsconfig_path.exists():
+            # Check if jsconfig.json exists and rename it
+            if jsconfig_path.exists():
+                jsconfig_path.rename(tsconfig_path)
+                created_config = True
+                self._log("  📝 Renamed jsconfig.json → tsconfig.json")
+            else:
+                # Create minimal tsconfig.json for JavaScript indexing
+                minimal_config = """{
+  "compilerOptions": {
+    "target": "es2020",
+    "module": "commonjs",
+    "allowJs": true,
+    "checkJs": false,
+    "skipLibCheck": true
+  },
+  "include": ["**/*.js", "**/*.jsx"],
+  "exclude": ["node_modules", "dist", "build", "coverage"]
+}
+"""
+                tsconfig_path.write_text(minimal_config)
+                created_config = True
+                self._log("  📝 Created minimal tsconfig.json for JavaScript indexing")
+
+        result = self._run_indexer(
             ["scip-typescript", "index"],
             cwd=codebase_path,
-            language="typescript",
+            language="javascript" if is_javascript else "typescript",
             timeout=600,
         )
+
+        # Clean up auto-created config if indexing failed
+        if created_config and not result.success:
+            try:
+                tsconfig_path.unlink()
+            except Exception:
+                pass
+
+        return result
 
     def run_go_indexer(self, codebase_path: Path) -> ScipIndexResult:
         """Run scip-go indexer.
@@ -245,8 +286,10 @@ class ScipIndexerRunner:
 
         if language_lower == "python":
             return self.run_python_indexer(codebase_path)
-        if language_lower in ("typescript", "javascript"):
-            return self.run_typescript_indexer(codebase_path)
+        if language_lower == "typescript":
+            return self.run_typescript_indexer(codebase_path, is_javascript=False)
+        if language_lower == "javascript":
+            return self.run_typescript_indexer(codebase_path, is_javascript=True)
         if language_lower == "go":
             return self.run_go_indexer(codebase_path)
         if language_lower == "rust":
