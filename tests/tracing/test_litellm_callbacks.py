@@ -13,7 +13,7 @@ Coverage Focus (60% of test suite):
 """
 
 import time
-from unittest.mock import Mock, patch, call
+from unittest.mock import patch
 
 import pytest
 
@@ -22,7 +22,6 @@ from amplihack.proxy.litellm_callbacks import (
     register_trace_callbacks,
     unregister_trace_callbacks,
 )
-
 
 # =============================================================================
 # Callback Registration Tests
@@ -38,6 +37,7 @@ def test_register_trace_callbacks_success():
         assert isinstance(callback, TraceCallback)
         # Verify callback was added to list
         import litellm
+
         assert callback in litellm.callbacks
 
 
@@ -49,6 +49,7 @@ def test_register_trace_callbacks_disabled():
         assert callback is None
         # Verify no callbacks were added
         import litellm
+
         assert len(litellm.callbacks) == 0
 
 
@@ -67,6 +68,7 @@ def test_unregister_trace_callbacks_success():
 
         # Verify it was added
         import litellm
+
         assert callback in litellm.callbacks
 
         # Unregister
@@ -145,7 +147,10 @@ def test_callback_on_llm_end_event(tmp_path):
     trace_file = tmp_path / "trace.jsonl"
     callback = TraceCallback(trace_file=str(trace_file))
 
-    kwargs = {"response": {"choices": [{"message": {"content": "Hello!"}}]}, "model": "claude-3-sonnet-20240229"}
+    kwargs = {
+        "response": {"choices": [{"message": {"content": "Hello!"}}]},
+        "model": "claude-3-sonnet-20240229",
+    }
 
     with callback.trace_logger:
         callback.on_llm_end(kwargs)
@@ -159,7 +164,11 @@ def test_callback_on_llm_error_event(tmp_path):
     trace_file = tmp_path / "trace.jsonl"
     callback = TraceCallback(trace_file=str(trace_file))
 
-    kwargs = {"exception": "RateLimitError", "message": "Rate limit exceeded", "model": "claude-3-sonnet-20240229"}
+    kwargs = {
+        "exception": "RateLimitError",
+        "message": "Rate limit exceeded",
+        "model": "claude-3-sonnet-20240229",
+    }
 
     with callback.trace_logger:
         callback.on_llm_error(kwargs)
@@ -174,7 +183,10 @@ def test_callback_on_llm_stream_event(tmp_path):
     trace_file = tmp_path / "trace.jsonl"
     callback = TraceCallback(trace_file=str(trace_file))
 
-    kwargs = {"chunk": {"choices": [{"delta": {"content": "Hello"}}]}, "model": "claude-3-sonnet-20240229"}
+    kwargs = {
+        "chunk": {"choices": [{"delta": {"content": "Hello"}}]},
+        "model": "claude-3-sonnet-20240229",
+    }
 
     with callback.trace_logger:
         callback.on_llm_stream(kwargs)
@@ -244,7 +256,10 @@ def test_callback_logs_timing_information(tmp_path):
     trace_file = tmp_path / "trace.jsonl"
     callback = TraceCallback(trace_file=str(trace_file))
 
-    kwargs = {"model": "claude-3-sonnet-20240229", "messages": [{"role": "user", "content": "test"}]}
+    kwargs = {
+        "model": "claude-3-sonnet-20240229",
+        "messages": [{"role": "user", "content": "test"}],
+    }
 
     with callback.trace_logger:
         callback.on_llm_start(kwargs)
@@ -313,7 +328,12 @@ def test_callback_sanitizes_nested_credentials(tmp_path):
 
     kwargs = {
         "model": "claude-3-sonnet-20240229",
-        "extra_config": {"api_settings": {"api_key": "sk-1234567890abcdefghij", "endpoint": "https://api.anthropic.com"}},
+        "extra_config": {
+            "api_settings": {
+                "api_key": "sk-1234567890abcdefghij",
+                "endpoint": "https://api.anthropic.com",
+            }
+        },
     }
 
     with callback.trace_logger:
@@ -348,7 +368,7 @@ def test_callback_overhead_under_5_milliseconds(tmp_path):
             times.append(end - start)
 
     avg_time = sum(times) / len(times)
-    assert avg_time < 0.005, f"Callback overhead {avg_time*1000:.3f}ms exceeds 5ms limit"
+    assert avg_time < 0.005, f"Callback overhead {avg_time * 1000:.3f}ms exceeds 5ms limit"
 
 
 @pytest.mark.performance
@@ -360,6 +380,7 @@ def test_callback_no_overhead_when_disabled():
         assert callback is None
         # Verify no callbacks were added
         import litellm
+
         assert len(litellm.callbacks) == 0
 
 
@@ -368,7 +389,10 @@ def test_callback_async_logging_performance(tmp_path):
     trace_file = tmp_path / "trace.jsonl"
     callback = TraceCallback(trace_file=str(trace_file))
 
-    kwargs = {"model": "claude-3-sonnet-20240229", "messages": [{"role": "user", "content": "test" * 1000}]}
+    kwargs = {
+        "model": "claude-3-sonnet-20240229",
+        "messages": [{"role": "user", "content": "test" * 1000}],
+    }
 
     with callback.trace_logger:
         start = time.perf_counter()
@@ -421,7 +445,10 @@ def test_callback_handles_exceptions_in_logging(tmp_path):
 
     callback = TraceCallback(trace_file=str(trace_file))
 
-    kwargs = {"model": "claude-3-sonnet-20240229", "messages": [{"role": "user", "content": "test"}]}
+    kwargs = {
+        "model": "claude-3-sonnet-20240229",
+        "messages": [{"role": "user", "content": "test"}],
+    }
 
     # Should not raise exception that would break LiteLLM
     try:
@@ -435,13 +462,16 @@ def test_callback_handles_file_write_errors():
     """Test handling of file write errors."""
     callback = TraceCallback(trace_file="/dev/full")  # Device that's always full
 
-    kwargs = {"model": "claude-3-sonnet-20240229", "messages": [{"role": "user", "content": "test"}]}
+    kwargs = {
+        "model": "claude-3-sonnet-20240229",
+        "messages": [{"role": "user", "content": "test"}],
+    }
 
     # Should handle gracefully
     try:
         with callback.trace_logger:
             callback.on_llm_start(kwargs)
-    except (OSError, IOError):
+    except OSError:
         pass  # Expected
 
 
@@ -494,10 +524,12 @@ def test_callback_integrates_with_litellm_flow(tmp_path):
 
         # Simulate LiteLLM flow
         with callback.trace_logger:
-            callback.on_llm_start({
-                "model": "claude-3-sonnet-20240229",
-                "messages": [{"role": "user", "content": "Hello"}],
-            })
+            callback.on_llm_start(
+                {
+                    "model": "claude-3-sonnet-20240229",
+                    "messages": [{"role": "user", "content": "Hello"}],
+                }
+            )
 
             callback.on_llm_end({"response": {"choices": [{"message": {"content": "Hi!"}}]}})
 
@@ -528,7 +560,9 @@ def test_callback_cleanup_on_unregister(tmp_path):
         unregister_trace_callbacks(callback)
 
         # Logger should be closed
-        assert callback.trace_logger._file_handle is None or callback.trace_logger._file_handle.closed
+        assert (
+            callback.trace_logger._file_handle is None or callback.trace_logger._file_handle.closed
+        )
 
 
 # =============================================================================
@@ -559,4 +593,5 @@ def test_callback_disabled_by_default(monkeypatch):
         assert callback is None
         # Verify no callbacks were added
         import litellm
+
         assert len(litellm.callbacks) == 0

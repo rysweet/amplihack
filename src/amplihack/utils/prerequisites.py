@@ -66,6 +66,8 @@ class InstallationResult:
         exit_code: Process exit code
         timestamp: ISO 8601 timestamp of installation attempt
         user_approved: Whether user approved the installation
+        message: Human-readable message about the result
+        verification_result: Optional result of verifying the installation
     """
 
     tool: str
@@ -76,6 +78,8 @@ class InstallationResult:
     exit_code: int
     timestamp: str
     user_approved: bool
+    message: str = ""
+    verification_result: "ToolCheckResult | None" = None
 
 
 @dataclass
@@ -114,17 +118,6 @@ class PrerequisiteResult:
     all_available: bool
     missing_tools: list[ToolCheckResult] = field(default_factory=list)
     available_tools: list[ToolCheckResult] = field(default_factory=list)
-
-
-@dataclass
-class InstallationResult:
-    """Result of attempting to install a tool."""
-
-    tool: str
-    success: bool
-    message: str
-    command_used: str | None = None
-    verification_result: ToolCheckResult | None = None
 
 
 def safe_subprocess_call(
@@ -301,8 +294,7 @@ class InteractiveInstaller:
         return subprocess.run(
             command,
             stdin=sys.stdin,  # Allow interactive password prompts
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             text=True,
             check=False,  # Don't raise exception, handle errors explicitly
         )
@@ -358,6 +350,7 @@ class InteractiveInstaller:
                 exit_code=-1,
                 timestamp=timestamp,
                 user_approved=False,
+                message="Non-interactive environment detected. Cannot prompt for installation.",
             )
 
         # Get installation command for platform
@@ -375,6 +368,7 @@ class InteractiveInstaller:
                 exit_code=-1,
                 timestamp=timestamp,
                 user_approved=False,
+                message=error_msg,
             )
 
         # Prompt for approval
@@ -402,6 +396,7 @@ class InteractiveInstaller:
                 exit_code=-1,
                 timestamp=timestamp,
                 user_approved=False,
+                message="User declined installation",
             )
 
         # Execute installation command
@@ -433,6 +428,7 @@ class InteractiveInstaller:
                 exit_code=result.returncode,
                 timestamp=timestamp,
                 user_approved=True,
+                message=f"{'Successfully installed' if success else 'Failed to install'} {tool}",
             )
 
         except Exception as e:
@@ -459,6 +455,7 @@ class InteractiveInstaller:
                 exit_code=-1,
                 timestamp=timestamp,
                 user_approved=True,
+                message=error_msg,
             )
 
 

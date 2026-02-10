@@ -5,12 +5,12 @@ backend-path = ["."]
 
 [project]
 name = "amplihack"
-version = "0.2.0"
+version = "0.4.0"
 description = "Amplifier bundle for agentic coding with comprehensive skills, recipes, and workflows"
 requires-python = ">=3.11"
 dependencies = [
     "flask>=2.0.0",
-    "requests>=2.25.0",
+    "requests>=2.32.4",  # CVE-2024-47081 fix
     "fastapi>=0.68.0",
     "uvicorn>=0.15.0",
     "aiohttp>=3.8.0",
@@ -23,6 +23,8 @@ dependencies = [
     "blarify>=1.3.0", # Code understanding engine for indexing codebases
     "azure-identity>=1.12.0", # Azure Service Principal authentication for remote execution
     "kuzu>=0.11.0", # Embedded graph database for memory system
+    "packaging>=21.0", # Semantic version comparison for auto-update
+    "tomli>=2.0.0; python_version < '3.11'", # TOML parser for Python <3.11
 ]
 
 [project.optional-dependencies]
@@ -65,6 +67,7 @@ include = ["amplihack*"]
 [tool.setuptools.package-data]
 # Include prompts and framework files
 # .claude/, .claude-plugin/, and amplifier-bundle/ are copied into package by build_hooks.py before wheel build
+# commands/, skills/, agents/ are also copied to package root for plugin discovery
 amplihack = [
     "prompts/*.md",
     "utils/uvx_settings_template.json",
@@ -74,6 +77,9 @@ amplihack = [
     ".claude-plugin/**/*",  # Plugin manifest
     "amplifier-bundle/**/*",
     "amplifier-bundle/**/.gitkeep",
+    "commands/**/*",  # Plugin-discoverable directories (copied by build_hooks.py)
+    "skills/**/*",
+    "agents/**/*",
 ]
 
 [tool.ruff]

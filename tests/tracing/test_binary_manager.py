@@ -19,8 +19,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from amplihack.launcher.claude_binary_manager import ClaudeBinaryManager, BinaryInfo
-
+from amplihack.launcher.claude_binary_manager import BinaryInfo, ClaudeBinaryManager
 
 # =============================================================================
 # Binary Detection Tests
@@ -31,7 +30,10 @@ def test_detect_native_binary_finds_rustyclawd():
     """Test detection of rustyclawd binary."""
     manager = ClaudeBinaryManager()
 
-    with patch("amplihack.launcher.claude_binary_manager.shutil.which", return_value="/usr/local/bin/rustyclawd"):
+    with patch(
+        "amplihack.launcher.claude_binary_manager.shutil.which",
+        return_value="/usr/local/bin/rustyclawd",
+    ):
         with patch("amplihack.launcher.claude_binary_manager.Path.exists", return_value=True):
             with patch("amplihack.launcher.claude_binary_manager.os.access", return_value=True):
                 binary = manager.detect_native_binary()
@@ -46,7 +48,10 @@ def test_detect_native_binary_finds_claude_cli():
     """Test detection of claude-cli binary."""
     manager = ClaudeBinaryManager()
 
-    with patch("amplihack.launcher.claude_binary_manager.shutil.which", side_effect=lambda x: "/usr/local/bin/claude" if x == "claude" else None):
+    with patch(
+        "amplihack.launcher.claude_binary_manager.shutil.which",
+        side_effect=lambda x: "/usr/local/bin/claude" if x == "claude" else None,
+    ):
         with patch("amplihack.launcher.claude_binary_manager.Path.exists", return_value=True):
             with patch("amplihack.launcher.claude_binary_manager.os.access", return_value=True):
                 binary = manager.detect_native_binary()
@@ -64,7 +69,7 @@ def test_detect_native_binary_prefers_rustyclawd():
     def which_mock(name):
         if name == "rustyclawd":
             return "/usr/local/bin/rustyclawd"
-        elif name == "claude":
+        if name == "claude":
             return "/usr/local/bin/claude"
         return None
 
@@ -408,7 +413,10 @@ def test_detect_binary_on_unix():
     """Test binary detection on Unix-like systems."""
     manager = ClaudeBinaryManager()
 
-    with patch("amplihack.launcher.claude_binary_manager.shutil.which", return_value="/usr/local/bin/rustyclawd"):
+    with patch(
+        "amplihack.launcher.claude_binary_manager.shutil.which",
+        return_value="/usr/local/bin/rustyclawd",
+    ):
         with patch("amplihack.launcher.claude_binary_manager.Path.exists", return_value=True):
             with patch("amplihack.launcher.claude_binary_manager.os.access", return_value=True):
                 binary = manager.detect_native_binary()
@@ -422,7 +430,10 @@ def test_detect_binary_on_windows():
     """Test binary detection on Windows."""
     manager = ClaudeBinaryManager()
 
-    with patch("amplihack.launcher.claude_binary_manager.shutil.which", return_value=r"C:\Program Files\Anthropic\rustyclawd.exe"):
+    with patch(
+        "amplihack.launcher.claude_binary_manager.shutil.which",
+        return_value=r"C:\Program Files\Anthropic\rustyclawd.exe",
+    ):
         with patch("amplihack.launcher.claude_binary_manager.Path.exists", return_value=True):
             with patch("amplihack.launcher.claude_binary_manager.os.access", return_value=True):
                 binary = manager.detect_native_binary()
@@ -440,7 +451,10 @@ def test_binary_detection_caching():
     """Test that binary detection results are cached."""
     manager = ClaudeBinaryManager()
 
-    with patch("amplihack.launcher.claude_binary_manager.shutil.which", return_value="/usr/local/bin/rustyclawd") as mock_which:
+    with patch(
+        "amplihack.launcher.claude_binary_manager.shutil.which",
+        return_value="/usr/local/bin/rustyclawd",
+    ) as mock_which:
         with patch("amplihack.launcher.claude_binary_manager.Path.exists", return_value=True):
             with patch("amplihack.launcher.claude_binary_manager.os.access", return_value=True):
                 # First call
@@ -457,7 +471,10 @@ def test_cache_invalidation():
     """Test cache invalidation when binary changes."""
     manager = ClaudeBinaryManager()
 
-    with patch("amplihack.launcher.claude_binary_manager.shutil.which", return_value="/usr/local/bin/rustyclawd"):
+    with patch(
+        "amplihack.launcher.claude_binary_manager.shutil.which",
+        return_value="/usr/local/bin/rustyclawd",
+    ):
         with patch("amplihack.launcher.claude_binary_manager.Path.exists", return_value=True):
             with patch("amplihack.launcher.claude_binary_manager.os.access", return_value=True):
                 binary1 = manager.detect_native_binary()
@@ -465,7 +482,10 @@ def test_cache_invalidation():
     # Simulate binary change
     manager.invalidate_cache()
 
-    with patch("amplihack.launcher.claude_binary_manager.shutil.which", return_value="/usr/local/bin/claude"):
+    with patch(
+        "amplihack.launcher.claude_binary_manager.shutil.which",
+        return_value="/usr/local/bin/claude",
+    ):
         with patch("amplihack.launcher.claude_binary_manager.Path.exists", return_value=True):
             with patch("amplihack.launcher.claude_binary_manager.os.access", return_value=True):
                 binary2 = manager.detect_native_binary()

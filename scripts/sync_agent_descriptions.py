@@ -187,9 +187,8 @@ def update_bundle_config(
 
                 skip_until_next_agent = True
                 continue
-            else:
-                updated_lines.append(line)
-                skip_until_next_agent = False
+            updated_lines.append(line)
+            skip_until_next_agent = False
         elif skip_until_next_agent:
             # Skip lines that were part of the old single-line format
             continue

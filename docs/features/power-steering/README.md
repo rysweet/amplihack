@@ -24,6 +24,7 @@ Power-Steering is an intelligent guidance system that validates session complete
 Power-Steering is enabled by default in amplihack. To customize behavior:
 
 1. **View current configuration**:
+
    ```bash
    cat .claude/tools/amplihack/considerations.yaml
    ```
@@ -40,16 +41,17 @@ Power-Steering is enabled by default in amplihack. To customize behavior:
 
 Power-Steering checks 21 different aspects of your work across 6 categories:
 
-| Category | Checks | Example |
-|----------|--------|---------|
-| **Session Completion** | 3 | TODOs complete, objectives met |
-| **Workflow Adherence** | 4 | DEFAULT_WORKFLOW followed |
-| **Code Quality** | 4 | Zero-BS compliance, no shortcuts |
-| **Testing** | 4 | Tests written and passing |
-| **PR Content** | 3 | Description complete, no pollution |
-| **CI/CD Status** | 3 | Checks passing, PR mergeable |
+| Category               | Checks | Example                            |
+| ---------------------- | ------ | ---------------------------------- |
+| **Session Completion** | 3      | TODOs complete, objectives met     |
+| **Workflow Adherence** | 4      | DEFAULT_WORKFLOW followed          |
+| **Code Quality**       | 4      | Zero-BS compliance, no shortcuts   |
+| **Testing**            | 4      | Tests written and passing          |
+| **PR Content**         | 3      | Description complete, no pollution |
+| **CI/CD Status**       | 3      | Checks passing, PR mergeable       |
 
 Each consideration is either:
+
 - ✅ **Satisfied** - Check passed
 - ⚠️ **Warning** - Advisory, doesn't block
 - ❌ **Blocker** - Must fix before ending session
@@ -131,13 +133,13 @@ If Power-Steering encounters errors, it defaults to safe behavior:
 
 Based on usage data from amplihack development:
 
-| Metric | Improvement |
-|--------|-------------|
-| Incomplete PRs | **-30%** |
-| Review cycles per PR | **-20%** |
-| CI failures on first push | **-15%** |
-| Time to merge | **-25%** |
-| Forgotten TODOs | **-90%** |
+| Metric                    | Improvement |
+| ------------------------- | ----------- |
+| Incomplete PRs            | **-30%**    |
+| Review cycles per PR      | **-20%**    |
+| CI failures on first push | **-15%**    |
+| Time to merge             | **-25%**    |
+| Forgotten TODOs           | **-90%**    |
 
 ### Developer Experience
 
@@ -172,15 +174,15 @@ Power-Steering: All checks passed ✅
 
 ### USER_PREFERENCES.md Integration
 
- Power-Steering reads `.claude/context/USER_PREFERENCES.md` to respect your workflow preferences.
+Power-Steering reads `.claude/context/USER_PREFERENCES.md` to respect your workflow preferences.
 
 **Supported preferences**:
 
-| Preference | Impact |
-|------------|--------|
+| Preference                     | Impact                                     |
+| ------------------------------ | ------------------------------------------ |
 | NEVER Merge Without Permission | Stops at "PR ready", doesn't require merge |
-| Always Test Locally (Step 13) | Enforces local testing requirement |
-| No Direct Commits to Main | Validates PR workflow used |
+| Always Test Locally (Step 13)  | Enforces local testing requirement         |
+| No Direct Commits to Main      | Validates PR workflow used                 |
 
 **Add preferences**:
 
@@ -261,7 +263,7 @@ Add team-specific checks to considerations.yaml:
   question: Has the security team reviewed this change?
   description: Ensures security team sign-off for sensitive changes
   severity: blocker
-  checker: generic  # Uses keyword matching
+  checker: generic # Uses keyword matching
   enabled: true
 ```
 
@@ -269,7 +271,7 @@ Add team-specific checks to considerations.yaml:
 
 ### Conditional Checks
 
- Some checks only apply in specific contexts:
+Some checks only apply in specific contexts:
 
 - DEFAULT_WORKFLOW checks → only when workflow active
 - Investigation checks → only during investigation sessions
@@ -287,6 +289,7 @@ Power-Steering integrates seamlessly with amplihack workflows:
 ## Step 21: Session Completion
 
 Power-Steering will now validate:
+
 - All workflow steps completed
 - Tests passing
 - Documentation updated
@@ -354,14 +357,12 @@ gh pr view --json statusCheckRollup
 
 ### Checker Methods
 
-
-
-| Method | Purpose | Evidence |
-|--------|---------|----------|
-| `_check_todos_complete()` | Find TODOs in code | File scan results |
-| `_check_ci_status()` | Validate CI passing | gh pr view output |
-| `_check_pr_description()` | Ensure PR complete | PR body content |
-| `_check_tests_passing()` | Verify test success | pytest output |
+| Method                       | Purpose                 | Evidence              |
+| ---------------------------- | ----------------------- | --------------------- |
+| `_check_todos_complete()`    | Find TODOs in code      | File scan results     |
+| `_check_ci_status()`         | Validate CI passing     | gh pr view output     |
+| `_check_pr_description()`    | Ensure PR complete      | PR body content       |
+| `_check_tests_passing()`     | Verify test success     | pytest output         |
 | `_check_workflow_complete()` | Validate workflow steps | Workflow step markers |
 
 **Generic checker**: For custom considerations, uses keyword extraction and transcript search.

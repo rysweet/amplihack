@@ -36,7 +36,7 @@ Power-Steering's default behavior checks that PRs are merged as part of session 
 
 ### Step 1: Check Your USER_PREFERENCES.md
 
- Power-Steering reads `.claude/context/USER_PREFERENCES.md` during each CI status check (lazy detection).
+Power-Steering reads `.claude/context/USER_PREFERENCES.md` during each CI status check (lazy detection).
 
 Locate the merge permission section (typically around lines 214-227):
 
@@ -47,9 +47,10 @@ cat .claude/context/USER_PREFERENCES.md | grep -A 15 "NEVER Merge"
 
 ### Step 2: Verify Preference Format
 
- The preference must include specific keywords for detection:
+The preference must include specific keywords for detection:
 
 **Required keywords** (case-insensitive):
+
 - "NEVER" or "NEVER Merge"
 - "Without Permission" or "Without Explicit Permission"
 - "PR" or "Pull Request"
@@ -68,7 +69,7 @@ All of these activate the preference awareness feature.
 
 ### Step 3: Test the Configuration
 
- Create a test session to verify the behavior:
+Create a test session to verify the behavior:
 
 ```bash
 # Start a simple feature workflow
@@ -92,7 +93,7 @@ amplihack claude
 
 ### Detection Logic
 
- Power-Steering uses regex pattern matching to detect the preference:
+Power-Steering uses regex pattern matching to detect the preference:
 
 ```python
 # Simplified detection logic
@@ -120,7 +121,7 @@ if re.search(pattern, user_preferences_content, re.IGNORECASE | re.DOTALL):
 
 ### Fail-Open Design
 
- If errors occur during preference detection, Power-Steering falls back to standard behavior:
+If errors occur during preference detection, Power-Steering falls back to standard behavior:
 
 - File read errors → default behavior
 - Regex match errors → default behavior
@@ -171,15 +172,19 @@ This ensures robustness - errors never falsely mark sessions as complete.
 **Solutions**:
 
 1. **Check keyword format**:
+
    ```bash
    grep -i "never.*merge.*without.*permission" .claude/context/USER_PREFERENCES.md
    ```
+
    If no match, adjust wording to include required keywords.
 
 2. **Check file location**:
+
    ```bash
    ls -la .claude/context/USER_PREFERENCES.md
    ```
+
    File must exist at this path.
 
 3. **Changes take effect immediately**: Preference changes are detected on the next CI check—no restart needed.
