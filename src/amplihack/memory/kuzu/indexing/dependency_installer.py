@@ -461,6 +461,81 @@ exec dotnet {dest_dir / "ScipDotnet.dll"} "$@"
 
         return results
 
+    def install_cpp_dependencies(self) -> list[InstallResult]:
+        """Install scip-clang for C++ code indexing via GitHub release download.
+
+        Returns:
+            List of install results
+        """
+        from pathlib import Path
+
+        results = []
+
+        # Check if scip-clang is already installed
+        scip_clang_path = Path.home() / ".local" / "bin" / "scip-clang"
+        if scip_clang_path.exists() and shutil.which("scip-clang"):
+            results.append(InstallResult(tool="scip-clang", success=True, already_installed=True))
+            return results
+
+        # Download scip-clang binary from GitHub releases
+        self._log("🔧 Downloading scip-clang from GitHub releases...")
+
+        try:
+            # Use gh CLI to download the latest release
+            result = subprocess.run(
+                [
+                    "gh",
+                    "release",
+                    "download",
+                    "v0.3.2",
+                    "--repo",
+                    "sourcegraph/scip-clang",
+                    "--pattern",
+                    "scip-clang-x86_64-linux",
+                    "--output",
+                    str(scip_clang_path),
+                ],
+                capture_output=True,
+                timeout=300,
+            )
+
+            if result.returncode != 0:
+                results.append(
+                    InstallResult(
+                        tool="scip-clang",
+                        success=False,
+                        already_installed=False,
+                        error_message=f"Failed to download: {result.stderr.decode()[:200]}",
+                    )
+                )
+                return results
+
+            # Make executable
+            scip_clang_path.chmod(0o755)
+
+            self._log("✅ Downloaded and installed scip-clang v0.3.2")
+
+            results.append(
+                InstallResult(
+                    tool="scip-clang",
+                    success=True,
+                    already_installed=False,
+                )
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to download scip-clang: {e}")
+            results.append(
+                InstallResult(
+                    tool="scip-clang",
+                    success=False,
+                    already_installed=False,
+                    error_message=str(e),
+                )
+            )
+
+        return results
+
     def install_all_auto_installable(self) -> dict[str, InstallResult]:
         """Install all dependencies that can be auto-installed.
 
@@ -490,6 +565,10 @@ exec dotnet {dest_dir / "ScipDotnet.dll"} "$@"
 
         # C# dependencies
         for result in self.install_csharp_dependencies():
+            results[result.tool] = result
+
+        # C++ dependencies
+        for result in self.install_cpp_dependencies():
             results[result.tool] = result
 
         # Summary
