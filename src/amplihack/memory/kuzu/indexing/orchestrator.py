@@ -192,7 +192,9 @@ class Orchestrator:
             indexing_results = {}
 
         # Import results
-        import_results = self._import_results(indexing_results, codebase_path)
+        import_results = self._import_results(
+            indexing_results, codebase_path, prereq_result.available_languages
+        )
 
         # Build final result
         completed = []
@@ -353,14 +355,17 @@ class Orchestrator:
         # In production, this would use multiprocessing
         return self._run_indexing(codebase_path, languages, config)
 
-    def _import_results(self, indexing_results: dict, codebase_path: Path) -> dict:
+    def _import_results(
+        self, indexing_results: dict, codebase_path: Path, languages: list[str]
+    ) -> dict:
         """Import indexing results into database.
 
-        Now actually imports the SCIP index into Kuzu!
+        Now actually RUN SCIP indexers and then imports the SCIP index into Kuzu!
 
         Args:
             indexing_results: Results from indexing (currently unused, kept for compatibility)
             codebase_path: Path to the codebase where index.scip was created
+            languages: List of languages to index (used to run appropriate SCIP indexers)
 
         Returns:
             Import statistics from SCIP index
@@ -378,12 +383,24 @@ class Orchestrator:
 
         try:
             from .scip_importer import ScipImporter
+            from .scip_indexer_runner import ScipIndexerRunner
 
-            # Check if SCIP index exists in the codebase root
-            # The output_file was set in the run() method
-            index_path = codebase_path / "index.scip"
-            if not index_path.exists():
-                logger.warning(f"SCIP index not found at {index_path}")
+            # CRITICAL: Run SCIP indexers to create index.scip files
+            indexer_runner = ScipIndexerRunner(quiet=False)
+
+            # Run indexer for the primary language
+            primary_language = languages[0] if languages else "python"
+
+            logger.info(f"Running SCIP indexer for {primary_language}...")
+            indexer_result = indexer_runner.run_indexer_for_language(
+                language=primary_language,
+                codebase_path=codebase_path,
+            )
+
+            if not indexer_result.success:
+                logger.warning(
+                    f"SCIP indexer failed for {primary_language}: {indexer_result.error_message}"
+                )
                 return {
                     "files": 0,
                     "functions": 0,
@@ -391,12 +408,27 @@ class Orchestrator:
                     "relationships": 0,
                 }
 
+            # Verify index.scip was created
+            index_path = indexer_result.index_path
+            if not index_path or not index_path.exists():
+                logger.warning(f"SCIP index not created at {codebase_path / 'index.scip'}")
+                return {
+                    "files": 0,
+                    "functions": 0,
+                    "classes": 0,
+                    "relationships": 0,
+                }
+
+            logger.info(
+                f"SCIP index created: {index_path} ({indexer_result.index_size_bytes:,} bytes)"
+            )
+
             # Import the SCIP index into Kuzu
             importer = ScipImporter(self.connector)
             stats = importer.import_from_file(
                 scip_index_path=str(index_path),
                 project_root=str(codebase_path),
-                language="python",  # TODO: Make this dynamic based on available_languages
+                language=primary_language,
             )
 
             logger.info(
@@ -409,7 +441,7 @@ class Orchestrator:
             return stats
 
         except Exception as e:
-            logger.error(f"Failed to import SCIP index: {e}")
+            logger.error(f"Failed to run SCIP indexer/import: {e}")
             import traceback
 
             traceback.print_exc()
