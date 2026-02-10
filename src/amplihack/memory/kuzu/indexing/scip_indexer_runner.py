@@ -76,11 +76,12 @@ class ScipIndexerRunner:
         try:
             self._log(f"  🔧 Running {' '.join(command)}...")
 
-            # Ensure PATH includes Go bin and dotnet tools
+            # Ensure PATH includes Go bin, dotnet tools, and local bin (for built scip-dotnet)
             env = os.environ.copy()
             go_bin = Path.home() / "go" / "bin"
             dotnet_tools = Path.home() / ".dotnet" / "tools"
-            env["PATH"] = f"{go_bin}:{dotnet_tools}:{env.get('PATH', '')}"
+            local_bin = Path.home() / ".local" / "bin"
+            env["PATH"] = f"{local_bin}:{go_bin}:{dotnet_tools}:{env.get('PATH', '')}"
 
             result = subprocess.run(
                 command,
