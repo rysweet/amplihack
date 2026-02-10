@@ -88,7 +88,7 @@ REAL_WORLD_REPOS = [
     LanguageTest(
         language="rust",
         repo_url="https://github.com/rust-lang/rust.git",
-        branch="master",
+        branch="master",  # Will auto-detect if this fails
         expected_min_files=100,
         expected_min_functions=200,
         clone_depth=1,
@@ -130,7 +130,9 @@ def clone_repository(test: LanguageTest, temp_dir: Path) -> tuple[bool, str, Pat
 
     try:
         print(f"  📥 Cloning {test.repo_url} (depth={test.clone_depth})...")
-        subprocess.run(
+
+        # Try with specified branch first
+        result = subprocess.run(
             [
                 "git",
                 "clone",
@@ -142,10 +144,36 @@ def clone_repository(test: LanguageTest, temp_dir: Path) -> tuple[bool, str, Pat
                 test.repo_url,
                 str(clone_path),
             ],
-            check=True,
             capture_output=True,
             timeout=300,  # 5 minute timeout
         )
+
+        # If specified branch failed, try auto-detecting default branch
+        if result.returncode != 0:
+            error_msg = result.stderr.decode()
+            if "not found" in error_msg.lower() or "couldn't find remote ref" in error_msg.lower():
+                print(f"  ⚠️  Branch '{test.branch}' not found, trying default branch...")
+
+                # Try without specifying branch (will use default)
+                result = subprocess.run(
+                    [
+                        "git",
+                        "clone",
+                        "--depth",
+                        str(test.clone_depth),
+                        test.repo_url,
+                        str(clone_path),
+                    ],
+                    capture_output=True,
+                    timeout=300,
+                )
+
+                if result.returncode != 0:
+                    return False, f"Git clone failed: {result.stderr.decode()}", clone_path
+
+                print("  ✅ Successfully cloned using default branch")
+            else:
+                return False, f"Git clone failed: {error_msg}", clone_path
 
         # If subdir specified, use that as the target
         if test.subdir:
