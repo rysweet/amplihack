@@ -315,9 +315,15 @@ class DependencyInstaller:
     def install_csharp_dependencies(self) -> list[InstallResult]:
         """Install scip-dotnet for C# code indexing.
 
+        NOTE: Due to .NET 10 compatibility issues with the published scip-dotnet package,
+        this now builds scip-dotnet from source for .NET 10.
+
         Returns:
             List of install results
         """
+        import tempfile
+        from pathlib import Path
+
         results = []
 
         # Check if .NET is installed
@@ -332,20 +338,124 @@ class DependencyInstaller:
             )
             return results
 
-        # Install scip-dotnet as a global .NET tool
-        if shutil.which("scip-dotnet"):
+        # Check if scip-dotnet is already built and available
+        scip_dotnet_path = Path.home() / ".local" / "bin" / "scip-dotnet"
+        if scip_dotnet_path.exists():
             results.append(InstallResult(tool="scip-dotnet", success=True, already_installed=True))
-        else:
-            success = self._run_command(
-                ["dotnet", "tool", "install", "-g", "scip-dotnet"],
-                "scip-dotnet",
-            )
+            return results
+
+        # Build scip-dotnet from source for .NET 10 compatibility
+        self._log("🔧 Building scip-dotnet from source for .NET 10...")
+
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                build_dir = Path(tmpdir) / "scip-dotnet"
+
+                # Clone repository
+                clone_result = subprocess.run(
+                    [
+                        "git",
+                        "clone",
+                        "--depth",
+                        "1",
+                        "https://github.com/sourcegraph/scip-dotnet.git",
+                        str(build_dir),
+                    ],
+                    capture_output=True,
+                    timeout=120,
+                )
+
+                if clone_result.returncode != 0:
+                    results.append(
+                        InstallResult(
+                            tool="scip-dotnet",
+                            success=False,
+                            already_installed=False,
+                            error_message="Failed to clone scip-dotnet repository",
+                        )
+                    )
+                    return results
+
+                # Build for .NET 10
+                build_result = subprocess.run(
+                    ["dotnet", "build", "-c", "Release"],
+                    cwd=str(build_dir),
+                    capture_output=True,
+                    timeout=300,
+                )
+
+                if build_result.returncode != 0:
+                    results.append(
+                        InstallResult(
+                            tool="scip-dotnet",
+                            success=False,
+                            already_installed=False,
+                            error_message="Failed to build scip-dotnet",
+                        )
+                    )
+                    return results
+
+                # Find the net10.0 binary and copy to local bin
+                net10_binary = (
+                    build_dir / "ScipDotnet.Tests" / "bin" / "Release" / "net10.0" / "scip-dotnet"
+                )
+
+                if not net10_binary.exists():
+                    # Try the main ScipDotnet project output
+                    net10_binary = (
+                        build_dir / "ScipDotnet" / "bin" / "Release" / "net10.0" / "scip-dotnet"
+                    )
+
+                if net10_binary.exists():
+                    # Create ~/.local/bin if it doesn't exist
+                    local_bin = Path.home() / ".local" / "bin"
+                    local_bin.mkdir(parents=True, exist_ok=True)
+
+                    # Copy the entire output directory (includes DLLs)
+                    import shutil as shutil_module
+
+                    scip_dotnet_output = net10_binary.parent
+                    dest_dir = local_bin / "scip-dotnet-net10"
+                    if dest_dir.exists():
+                        shutil_module.rmtree(dest_dir)
+                    shutil_module.copytree(scip_dotnet_output, dest_dir)
+
+                    # Create wrapper script
+                    wrapper_script = local_bin / "scip-dotnet"
+                    wrapper_script.write_text(
+                        f"""#!/bin/bash
+exec dotnet {dest_dir / "ScipDotnet.dll"} "$@"
+"""
+                    )
+                    wrapper_script.chmod(0o755)
+
+                    self._log(f"✅ Built and installed scip-dotnet to {wrapper_script}")
+
+                    results.append(
+                        InstallResult(
+                            tool="scip-dotnet",
+                            success=True,
+                            already_installed=False,
+                        )
+                    )
+                else:
+                    results.append(
+                        InstallResult(
+                            tool="scip-dotnet",
+                            success=False,
+                            already_installed=False,
+                            error_message="Built binary not found in expected location",
+                        )
+                    )
+
+        except Exception as e:
+            logger.error(f"Failed to build scip-dotnet from source: {e}")
             results.append(
                 InstallResult(
                     tool="scip-dotnet",
-                    success=success,
+                    success=False,
                     already_installed=False,
-                    error_message=None if success else "dotnet tool install failed",
+                    error_message=str(e),
                 )
             )
 
