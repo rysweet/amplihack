@@ -1097,11 +1097,11 @@ class ClaudeLauncher:
             # Import timeout utilities from memory_config
             from .memory_config import get_user_input_with_timeout, parse_consent_response
 
-            prompt_msg = "\nRun blarify code indexing? [Y/n] (timeout: 30s): "
+            prompt_msg = "\nRun blarify code indexing? [y/N] (timeout: 30s): "
             response = get_user_input_with_timeout(prompt_msg, timeout_seconds=30, logger=logger)
 
-            # Parse response with default yes
-            user_consented = parse_consent_response(response, default=True)
+            # Parse response with default no (opt-in, not opt-out)
+            user_consented = parse_consent_response(response, default=False)
 
             if user_consented:
                 print("\n📊 Starting blarify code indexing...")

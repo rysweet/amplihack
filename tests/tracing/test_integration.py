@@ -12,18 +12,16 @@ Coverage Focus (30% of test suite):
 """
 
 import json
-import os
 import subprocess
 from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
 
-from amplihack.launcher.claude_binary_manager import ClaudeBinaryManager, BinaryInfo
+from amplihack.launcher.claude_binary_manager import BinaryInfo, ClaudeBinaryManager
 from amplihack.launcher.core import launch_claude
 from amplihack.proxy.litellm_callbacks import register_trace_callbacks
 from amplihack.tracing.trace_logger import TraceLogger
-
 
 # =============================================================================
 # Launcher Integration Tests
@@ -148,10 +146,12 @@ def test_litellm_callbacks_write_to_trace_file(tmp_path):
 
     # Simulate LiteLLM request
     with callback.trace_logger:
-        callback.on_llm_start({
-            "model": "claude-3-sonnet-20240229",
-            "messages": [{"role": "user", "content": "Hello"}],
-        })
+        callback.on_llm_start(
+            {
+                "model": "claude-3-sonnet-20240229",
+                "messages": [{"role": "user", "content": "Hello"}],
+            }
+        )
 
     # Verify trace file created and populated
     assert trace_file.exists()
@@ -169,11 +169,13 @@ def test_litellm_callbacks_sanitize_credentials(tmp_path):
 
     # Simulate request with credentials
     with callback.trace_logger:
-        callback.on_llm_start({
-            "model": "claude-3-sonnet-20240229",
-            "api_key": "sk-1234567890abcdefghij",
-            "messages": [{"role": "user", "content": "Using key sk-1234567890abcdefghij"}],
-        })
+        callback.on_llm_start(
+            {
+                "model": "claude-3-sonnet-20240229",
+                "api_key": "sk-1234567890abcdefghij",
+                "messages": [{"role": "user", "content": "Using key sk-1234567890abcdefghij"}],
+            }
+        )
 
     # Verify credentials sanitized in file
     content = trace_file.read_text()
@@ -191,19 +193,23 @@ def test_litellm_full_request_cycle(tmp_path):
 
     # Simulate complete request cycle
     with callback.trace_logger:
-        callback.on_llm_start({
-            "model": "claude-3-sonnet-20240229",
-            "messages": [{"role": "user", "content": "Hello"}],
-        })
-
-        callback.on_llm_end({
-            "response": {
-                "id": "msg_123",
+        callback.on_llm_start(
+            {
                 "model": "claude-3-sonnet-20240229",
-                "usage": {"prompt_tokens": 5, "completion_tokens": 10, "total_tokens": 15},
-                "choices": [{"message": {"content": "Hi!"}}],
+                "messages": [{"role": "user", "content": "Hello"}],
             }
-        })
+        )
+
+        callback.on_llm_end(
+            {
+                "response": {
+                    "id": "msg_123",
+                    "model": "claude-3-sonnet-20240229",
+                    "usage": {"prompt_tokens": 5, "completion_tokens": 10, "total_tokens": 15},
+                    "choices": [{"message": {"content": "Hi!"}}],
+                }
+            }
+        )
 
     # Verify complete cycle logged
     content = trace_file.read_text()
@@ -274,7 +280,7 @@ def test_trace_error_does_not_break_launcher(tmp_path):
             # Should launch successfully despite trace error
             try:
                 launch_claude(enable_trace=True, trace_file=trace_file)
-            except (OSError, IOError, PermissionError):
+            except (OSError, PermissionError):
                 pass  # Trace error, but launcher should handle gracefully
 
 
@@ -316,10 +322,12 @@ def test_end_to_end_trace_overhead(tmp_path):
     start = time.perf_counter()
 
     with callback.trace_logger:
-        callback.on_llm_start({
-            "model": "claude-3-sonnet-20240229",
-            "messages": [{"role": "user", "content": "test" * 100}],
-        })
+        callback.on_llm_start(
+            {
+                "model": "claude-3-sonnet-20240229",
+                "messages": [{"role": "user", "content": "test" * 100}],
+            }
+        )
 
         callback.on_llm_end({"response": {"choices": [{"message": {"content": "response" * 100}}]}})
 

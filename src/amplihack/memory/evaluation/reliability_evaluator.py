@@ -117,7 +117,7 @@ class ReliabilityEvaluator:
                     continue
 
                 # Retrieve memory
-                memory = self.backend.get_memory_by_id(memory_id)
+                memory = await self.backend.get_memory_by_id(memory_id)
 
                 # Verify content matches
                 if memory and memory.content == content:
@@ -180,7 +180,7 @@ class ReliabilityEvaluator:
 
         # Test 1: Invalid memory ID
         try:
-            result = self.backend.get_memory_by_id("nonexistent-id")
+            result = await self.backend.get_memory_by_id("nonexistent-id")
             if result is None:
                 graceful_failures += 1
         except Exception as e:

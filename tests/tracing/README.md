@@ -137,11 +137,13 @@ All tests validate security through TokenSanitizer:
 ## Running Tests
 
 ### Run all tests
+
 ```bash
 pytest tests/tracing/
 ```
 
 ### Run by category
+
 ```bash
 # Unit tests only
 pytest tests/tracing/test_trace_logger.py
@@ -157,6 +159,7 @@ pytest tests/tracing/test_e2e.py
 ```
 
 ### Run by marker
+
 ```bash
 # Performance tests
 pytest tests/tracing/ -m performance
@@ -169,6 +172,7 @@ pytest tests/tracing/ -m e2e
 ```
 
 ### Run with coverage
+
 ```bash
 pytest tests/tracing/ --cov=amplihack.tracing --cov=amplihack.launcher.claude_binary_manager --cov=amplihack.proxy.litellm_callbacks --cov-report=html
 ```

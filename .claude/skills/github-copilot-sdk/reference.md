@@ -309,14 +309,14 @@ var myTool = AIFunctionFactory.Create(
 
 ### Event Types
 
-| Event Type (TS/Go)        | Python Enum                          | Description           |
-| ------------------------- | ------------------------------------ | --------------------- |
+| Event Type (TS/Go)        | Python Enum                                | Description           |
+| ------------------------- | ------------------------------------------ | --------------------- |
 | `assistant.message_delta` | `SessionEventType.ASSISTANT_MESSAGE_DELTA` | Streaming text chunk  |
-| `session.idle`            | `SessionEventType.SESSION_IDLE`      | Response complete     |
-| `tool.invocation`         | `SessionEventType.TOOL_EXECUTION_START` | Tool being called     |
+| `session.idle`            | `SessionEventType.SESSION_IDLE`            | Response complete     |
+| `tool.invocation`         | `SessionEventType.TOOL_EXECUTION_START`    | Tool being called     |
 | `tool.result`             | `SessionEventType.TOOL_EXECUTION_COMPLETE` | Tool execution result |
 
-> **⚠️ Python Note**: Python uses `SessionEventType` enum from 
+> **⚠️ Python Note**: Python uses `SessionEventType` enum from
 > `copilot.generated.session_events`. The enum names differ from TypeScript/Go
 > string literals (e.g., `TOOL_EXECUTION_START` vs `tool.invocation`).
 

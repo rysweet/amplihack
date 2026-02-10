@@ -870,6 +870,75 @@ Congratulations! You executed all 22 steps systematically.
 
 ---
 
+## Recipe & Workflow Patterns
+
+### Pattern: Recipe Condition Syntax
+
+**Challenge**: Recipe conditions fail with syntax errors when using template markers or non-Python constructs.
+
+**Solution**: Conditions are pure Python expressions evaluated directly. Variables are already in scope.
+
+```yaml
+# CORRECT: Direct variable reference (no template markers)
+steps:
+  - id: "conditional-step"
+    agent: "amplihack:architect"
+    condition: "'API' in architecture_design"
+    # ✅ Variable already in scope, direct string comparison
+
+  - id: "optional-step"
+    condition: "iteration_2 and 'CONTINUE' in iteration_2"
+    # ✅ Short-circuit evaluation handles undefined variables
+
+  - id: "numeric-comparison"
+    condition: "num_versions >= 4"
+    # ✅ Direct numeric comparison
+
+  - id: "nested-field"
+    condition: "strategy.parallel_deployment.specialist_agent"
+    # ✅ Dot notation for nested object fields
+
+  - id: "boolean-check"
+    condition: "test_results.tests_run == True"
+    # ✅ Python boolean (capitalized), not lowercase true
+```
+
+**WRONG Patterns**:
+
+```yaml
+# ❌ Template markers (only for Jinja2 in prompts, not conditions)
+condition: "{{variable}}"
+condition: "{{num_versions}} >= 4"
+
+# ❌ Unnecessary str() wrapper (variables already strings)
+condition: "'API' in str(architecture_design)"
+
+# ❌ Non-existent 'is defined' operator
+condition: "variable is defined and 'CONTINUE' in variable"
+
+# ❌ Lowercase boolean literals (Python uses True/False)
+condition: "variable == true"  # Use True (capitalized)
+```
+
+**Key Points**:
+
+- Conditions are evaluated as Python `eval(condition, context)`
+- Template markers `{{var}}` are for Jinja2 templates in prompts/outputs
+- Variables from prior steps are already in scope (no template resolution)
+- Use short-circuit evaluation for optional variables
+- Python booleans are `True`/`False` (capitalized), not `true`/`false`
+
+**Gotchas**:
+
+- Mixing Jinja2 template syntax with Python conditions causes NameError
+- `str()` wrapper can fail on complex objects (dicts, lists from parse_json)
+- Lowercase `true`/`false` will cause "name 'true' is not defined"
+- Optional variables need short-circuit: `var and 'check' in var` (not `var is defined`)
+
+> **Origin**: Discovered during comprehensive recipe audit (PR #2180, 2026-01-27). Fixed 53 condition syntax errors across 7 recipes. 32 used `{{template}}` markers, 8 used `str()` wrappers, 3 used `is defined` syntax.
+
+---
+
 ## Remember
 
 These patterns represent proven solutions from real development challenges:

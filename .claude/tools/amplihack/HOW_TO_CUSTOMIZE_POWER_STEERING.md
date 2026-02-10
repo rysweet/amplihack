@@ -372,6 +372,7 @@ Everything is fine. Critical session data was preserved during compaction. Conti
 Some TODO items from before compaction are no longer in context. The system will prompt you to recreate the TODO list if needed.
 
 **Solution:**
+
 - Review recent work and recreate TODO list using `TodoWrite`
 - Check if TODOs are actually still relevant
 - Use completion evidence (test output, commits) to verify completion
@@ -381,6 +382,7 @@ Some TODO items from before compaction are no longer in context. The system will
 The original session objectives were removed during compaction and context is now unclear.
 
 **Solution:**
+
 - Explicitly restate your current goal in the conversation
 - Use completion evidence to validate what was accomplished
 - Consider starting a new session if context is too fragmented
@@ -390,6 +392,7 @@ The original session objectives were removed during compaction and context is no
 Code changes or discussions from just before compaction may be incomplete.
 
 **Solution:**
+
 - Review the last few turns before compaction
 - Verify no critical decisions were made that are now missing
 - Re-summarize important decisions if needed
@@ -406,14 +409,15 @@ Compaction handling is automatic and requires no configuration. However, you can
   category: Session Completion & Progress
   question: Was compaction handled appropriately?
   description: Validates critical data preserved after compaction
-  severity: warning  # Change to warning or disable
+  severity: warning # Change to warning or disable
   checker: _check_compaction_handling
-  enabled: false     # Set to false to disable
+  enabled: false # Set to false to disable
 ```
 
 **Adjust compaction sensitivity**:
 
 The system uses `CompactionValidator` which checks:
+
 - TODO preservation (high priority)
 - Objective clarity (high priority)
 - Recent context (medium priority)
@@ -473,6 +477,7 @@ if compaction_ctx.detected:
 Long sessions hitting context limits repeatedly.
 
 **Solutions:**
+
 1. End session and start fresh after major milestones
 2. Commit work more frequently to preserve state
 3. Break large tasks into smaller sessions
@@ -483,6 +488,7 @@ Long sessions hitting context limits repeatedly.
 TODO items created early in session were removed.
 
 **Solutions:**
+
 1. Recreate TODO list based on recent work
 2. Mark completed items as done earlier in session
 3. Use commit messages as evidence of completion
@@ -493,6 +499,7 @@ TODO items created early in session were removed.
 System reports compaction issues that aren't real.
 
 **Solutions:**
+
 1. Check if context is actually sufficient for your work
 2. Explicitly restate objectives to clarify context
 3. Report false positive if validation logic is incorrect

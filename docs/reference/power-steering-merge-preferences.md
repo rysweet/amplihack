@@ -52,8 +52,6 @@ Power-Steering respects the USER_PREFERENCES.md setting "NEVER Merge PRs Without
 
 ### Detection Method
 
-
-
 ```python
 def _user_prefers_no_auto_merge(self) -> bool:
     """
@@ -91,8 +89,6 @@ def _user_prefers_no_auto_merge(self) -> bool:
 - Logs errors at WARNING level (does not raise)
 
 ### Validation Method
-
-
 
 ```python
 def _check_ci_status_no_auto_merge(self) -> CheckResult:
@@ -136,8 +132,6 @@ def _check_ci_status_no_auto_merge(self) -> CheckResult:
 
 ### Integration Method
 
-
-
 ```python
 def _check_ci_status(self) -> CheckResult:
     """
@@ -163,8 +157,6 @@ def _check_ci_status(self) -> CheckResult:
 ## Data Structures
 
 ### CheckResult
-
-
 
 ```python
 @dataclass
@@ -231,6 +223,7 @@ CheckResult(
 **Preference Title**
 
 Preference description. Must include keywords:
+
 - NEVER
 - Merge (or merge)
 - PR (or Pull Request)
@@ -238,6 +231,7 @@ Preference description. Must include keywords:
 - Permission (or permission)
 
 **Implementation Requirements** (optional):
+
 - Additional details
 ```
 
@@ -265,6 +259,7 @@ merge applies - subsequent PRs require separate approval.
 **Class**: `PowerSteeringChecker`
 
 **Modified Methods**:
+
 - `_check_ci_status()` - Entry point, delegates based on preference
 - `_user_prefers_no_auto_merge()` - Detection logic (NEW)
 - `_check_ci_status_no_auto_merge()` - Validation logic (NEW)
@@ -275,7 +270,7 @@ merge applies - subsequent PRs require separate approval.
 
 ### Lazy Detection Design
 
- Preference detection occurs **during each `_check_ci_status()` call**, not at initialization:
+Preference detection occurs **during each `_check_ci_status()` call**, not at initialization:
 
 ```python
 # In _check_ci_status()
@@ -306,7 +301,7 @@ else:
 
 ### gh CLI Integration
 
- Uses GitHub CLI to fetch PR status:
+Uses GitHub CLI to fetch PR status:
 
 ```bash
 # Command executed
@@ -337,15 +332,15 @@ gh pr view --json state,statusCheckRollup,isDraft
 
 ### Error Scenarios
 
-| Error Type | Trigger | Behavior | User Impact |
-|------------|---------|----------|-------------|
-| File not found | USER_PREFERENCES.md missing | Return `False` from detection | Standard CI check runs |
-| Read error | Permission denied, I/O error | Return `False` from detection | Standard CI check runs |
-| Regex error | Invalid pattern (unlikely) | Return `False` from detection | Standard CI check runs |
-| gh CLI missing | `gh` not in PATH | Return unsatisfied | User notified to install gh |
-| gh CLI auth fail | Not authenticated | Return unsatisfied | User notified to run `gh auth` |
-| PR not found | No PR created yet | Return unsatisfied | Expected - user hasn't created PR |
-| CI checks fail | Tests failing | Return unsatisfied | Expected - user must fix tests |
+| Error Type       | Trigger                      | Behavior                      | User Impact                       |
+| ---------------- | ---------------------------- | ----------------------------- | --------------------------------- |
+| File not found   | USER_PREFERENCES.md missing  | Return `False` from detection | Standard CI check runs            |
+| Read error       | Permission denied, I/O error | Return `False` from detection | Standard CI check runs            |
+| Regex error      | Invalid pattern (unlikely)   | Return `False` from detection | Standard CI check runs            |
+| gh CLI missing   | `gh` not in PATH             | Return unsatisfied            | User notified to install gh       |
+| gh CLI auth fail | Not authenticated            | Return unsatisfied            | User notified to run `gh auth`    |
+| PR not found     | No PR created yet            | Return unsatisfied            | Expected - user hasn't created PR |
+| CI checks fail   | Tests failing                | Return unsatisfied            | Expected - user must fix tests    |
 
 ### Fail-Open Principle
 
@@ -378,7 +373,7 @@ return self._check_ci_status_standard()
 
 ### Unit Tests
 
- Test coverage for preference awareness:
+Test coverage for preference awareness:
 
 ```python
 # test_power_steering_checker.py
@@ -413,7 +408,7 @@ class TestMergePreferenceAwareness:
 
 ### Integration Tests
 
- End-to-end validation:
+End-to-end validation:
 
 ```python
 class TestMergePreferenceIntegration:
@@ -525,7 +520,7 @@ class TestMergePreferenceIntegration:
 # No changes to considerations.yaml required
 - id: ci_status
   question: Are CI checks passing and PR merged?
-  checker: _check_ci_status  # Now preference-aware
+  checker: _check_ci_status # Now preference-aware
 ```
 
 **Migration Steps**:
@@ -543,7 +538,7 @@ class TestMergePreferenceIntegration:
 
 ### Debug Logging
 
- Enable detailed logging:
+Enable detailed logging:
 
 ```python
 # In power_steering_checker.py
@@ -588,6 +583,7 @@ cat .claude/context/USER_PREFERENCES.md | grep -i "never.*merge.*without.*permis
 ```
 
 **Solution**:
+
 - Verify file location at `.claude/context/USER_PREFERENCES.md`
 - If file was just created, restart Claude session (first-time only)
 - If file already existed, changes take effect immediately on next check

@@ -38,7 +38,7 @@ SETTINGS_TEMPLATE = {
                     {
                         "type": "command",
                         "command": "$HOME/.claude/tools/amplihack/hooks/session_start.py",
-                        "timeout": 10000,
+                        "timeout": 10,
                     }
                 ]
             }
@@ -49,7 +49,7 @@ SETTINGS_TEMPLATE = {
                     {
                         "type": "command",
                         "command": "$HOME/.claude/tools/amplihack/hooks/stop.py",
-                        "timeout": 30000,
+                        "timeout": 120,
                     }
                 ]
             }
@@ -71,7 +71,7 @@ SETTINGS_TEMPLATE = {
                     {
                         "type": "command",
                         "command": "$HOME/.claude/tools/amplihack/hooks/pre_compact.py",
-                        "timeout": 30000,
+                        "timeout": 30,
                     }
                 ]
             }
@@ -227,21 +227,20 @@ def ensure_settings_json():
         print("  🔧 Creating new settings.json")
         settings = SETTINGS_TEMPLATE.copy()
 
-    # Update amplihack hook paths (relative paths for cross-platform compatibility)
+    # Update amplihack hook paths (absolute paths for plugin mode compatibility)
     hooks_updated = 0
-    amplihack_hooks_rel = ".claude/tools/amplihack/hooks"
+    amplihack_hooks_abs = os.path.join(HOME, ".amplihack", ".claude", "tools", "amplihack", "hooks")
 
     hooks_updated += update_hook_paths(
-        settings, "amplihack", HOOK_CONFIGS["amplihack"], amplihack_hooks_rel
+        settings, "amplihack", HOOK_CONFIGS["amplihack"], amplihack_hooks_abs
     )
 
-    # Update XPIA hook paths if XPIA hooks directory exists
-    xpia_hooks_abs = os.path.join(HOME, ".claude", "tools", "xpia", "hooks")
+    # Update XPIA hook paths if XPIA hooks directory exists (absolute paths for consistency)
+    xpia_hooks_abs = os.path.join(HOME, ".amplihack", ".claude", "tools", "xpia", "hooks")
     if os.path.exists(xpia_hooks_abs):
         print("  🔒 XPIA security hooks directory found")
 
-        xpia_hooks_rel = ".claude/tools/xpia/hooks"
-        xpia_updated = update_hook_paths(settings, "xpia", HOOK_CONFIGS["xpia"], xpia_hooks_rel)
+        xpia_updated = update_hook_paths(settings, "xpia", HOOK_CONFIGS["xpia"], xpia_hooks_abs)
         hooks_updated += xpia_updated
 
         if xpia_updated > 0:

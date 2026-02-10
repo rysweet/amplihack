@@ -3,7 +3,7 @@
 Tests the new code graph schema with:
 - 3 code node types (CodeFile, Class, Function)
 - 7 code relationship types (DEFINED_IN, METHOD_OF, CALLS, INHERITS, IMPORTS, REFERENCES, CONTAINS)
-- 10 memory-code link types (5 memory types × 2 code targets)
+- 10 memory-code link types (5 memory types x 2 code targets)
 
 Philosophy:
 - TDD approach: Write failing tests first, implement to make them pass
@@ -154,7 +154,7 @@ class TestKuzuCodeSchemaCreation:
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
 
-            # 5 memory types × 2 targets (file + function) = 10 relationships
+            # 5 memory types x 2 targets (file + function) = 10 relationships
             expected_links = [
                 "RELATES_TO_FILE_EPISODIC",
                 "RELATES_TO_FILE_SEMANTIC",

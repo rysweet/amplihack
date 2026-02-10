@@ -29,9 +29,8 @@ Public API:
 import json
 import re
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Optional
 
 __all__ = [
     "CompactionValidator",
@@ -51,7 +50,6 @@ def _parse_timestamp_age(timestamp: str) -> tuple[float, bool]:
         Returns (0.0, False) if timestamp cannot be parsed.
     """
     try:
-        from datetime import timezone
         # Parse timestamp
         timestamp_str = timestamp.replace("Z", "")
         if "+" in timestamp or timestamp.endswith("Z"):
@@ -60,11 +58,11 @@ def _parse_timestamp_age(timestamp: str) -> tuple[float, bool]:
             event_time = datetime.fromisoformat(timestamp_str)
 
         # Get current time in UTC
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # Make event_time timezone-aware if it isn't
         if event_time.tzinfo is None:
-            event_time = event_time.replace(tzinfo=timezone.utc)
+            event_time = event_time.replace(tzinfo=UTC)
 
         age_delta = now - event_time
         age_hours = age_delta.total_seconds() / 3600
@@ -83,8 +81,8 @@ class CompactionContext:
     has_compaction_event: bool = False
     turn_at_compaction: int = 0
     messages_removed: int = 0
-    pre_compaction_transcript: Optional[list[dict]] = None
-    timestamp: Optional[str] = None
+    pre_compaction_transcript: list[dict] | None = None
+    timestamp: str | None = None
     is_stale: bool = False
     age_hours: float = 0.0
     has_security_violation: bool = False
@@ -93,8 +91,8 @@ class CompactionContext:
         """Calculate age_hours and is_stale after initialization."""
         if self.timestamp and self.has_compaction_event:
             age_hours, is_stale = _parse_timestamp_age(self.timestamp)
-            object.__setattr__(self, 'age_hours', age_hours)
-            object.__setattr__(self, 'is_stale', is_stale)
+            object.__setattr__(self, "age_hours", age_hours)
+            object.__setattr__(self, "is_stale", is_stale)
 
     def get_diagnostic_summary(self) -> str:
         """Generate human-readable diagnostic summary.
@@ -257,11 +255,7 @@ class CompactionValidator:
 
         return context
 
-    def validate(
-        self,
-        transcript: Optional[list[dict]],
-        session_id: str
-    ) -> ValidationResult:
+    def validate(self, transcript: list[dict] | None, session_id: str) -> ValidationResult:
         """Validate entire transcript for compaction data loss.
 
         Must:
@@ -283,13 +277,12 @@ class CompactionValidator:
 
         # No compaction detected - pass
         if not context.has_compaction_event:
-            return ValidationResult(
-                passed=True,
-                compaction_context=context
-            )
+            return ValidationResult(passed=True, compaction_context=context)
 
         # Get pre-compaction transcript (None if security violation)
-        pre_compaction = context.pre_compaction_transcript if not context.has_security_violation else None
+        pre_compaction = (
+            context.pre_compaction_transcript if not context.has_security_violation else None
+        )
         used_fallback = False
 
         # Check if we need to use fallback
@@ -303,7 +296,7 @@ class CompactionValidator:
                 return ValidationResult(
                     passed=True,  # Fail-open
                     compaction_context=context,
-                    used_fallback=False
+                    used_fallback=False,
                 )
 
         # Ensure we have transcript for validation
@@ -311,7 +304,7 @@ class CompactionValidator:
             return ValidationResult(
                 passed=True,  # Fail-open
                 compaction_context=context,
-                used_fallback=used_fallback
+                used_fallback=used_fallback,
             )
 
         # Run validation checks
@@ -344,13 +337,11 @@ class CompactionValidator:
             warnings=all_warnings,
             recovery_steps=all_recovery_steps,
             compaction_context=context,
-            used_fallback=used_fallback
+            used_fallback=used_fallback,
         )
 
     def validate_todos(
-        self,
-        pre_compaction: list[dict],
-        post_compaction: list[dict]
+        self, pre_compaction: list[dict], post_compaction: list[dict]
     ) -> ValidationResult:
         """Validate TODO items preserved after compaction.
 
@@ -365,11 +356,12 @@ class CompactionValidator:
         Returns:
             ValidationResult indicating if TODOs preserved
         """
+
         # Extract TODOs from transcripts
         def extract_todos(transcript: list[dict]) -> set[str]:
             """Extract TODO items from transcript."""
             todos = set()
-            todo_pattern = re.compile(r'TODO:\s*(.+?)(?:\n|$)', re.IGNORECASE)
+            todo_pattern = re.compile(r"TODO:\s*(.+?)(?:\n|$)", re.IGNORECASE)
 
             for message in transcript:
                 content = message.get("content", "")
@@ -398,17 +390,15 @@ class CompactionValidator:
                     recovery_steps=[
                         "Review recent work in last 10-20 turns",
                         "Recreate TODO list using TodoWrite",
-                        "Check git commits for completed items"
-                    ]
+                        "Check git commits for completed items",
+                    ],
                 )
 
         # TODOs preserved or none existed
         return ValidationResult(passed=True)
 
     def validate_objectives(
-        self,
-        pre_compaction: list[dict],
-        post_compaction: list[dict]
+        self, pre_compaction: list[dict], post_compaction: list[dict]
     ) -> ValidationResult:
         """Validate session objectives still clear after compaction.
 
@@ -423,14 +413,25 @@ class CompactionValidator:
         Returns:
             ValidationResult indicating if objectives clear
         """
+
         # Check if transcript has clear objectives
         def has_clear_objective(transcript: list[dict]) -> bool:
             """Check if transcript has clear user objective."""
             # Look for user messages with goal-indicating words
             goal_keywords = [
-                "implement", "build", "create", "fix", "add",
-                "need to", "want to", "should", "goal",
-                "objective", "task", "working on", "todo"
+                "implement",
+                "build",
+                "create",
+                "fix",
+                "add",
+                "need to",
+                "want to",
+                "should",
+                "goal",
+                "objective",
+                "task",
+                "working on",
+                "todo",
             ]
 
             for message in transcript:
@@ -452,17 +453,14 @@ class CompactionValidator:
                 warnings=["Session objectives unclear after compaction"],
                 recovery_steps=[
                     "Explicitly restate your current goal in the conversation",
-                    "Review recent work to understand current objective"
-                ]
+                    "Review recent work to understand current objective",
+                ],
             )
 
         return ValidationResult(passed=True)
 
     def validate_recent_context(
-        self,
-        pre_compaction: list[dict],
-        post_compaction: list[dict],
-        context: CompactionContext
+        self, pre_compaction: list[dict], post_compaction: list[dict], context: CompactionContext
     ) -> ValidationResult:
         """Validate recent context (last 10 turns) preserved.
 
@@ -518,8 +516,8 @@ class CompactionValidator:
                 warnings=["Recent context incomplete after compaction"],
                 recovery_steps=[
                     "Review last 10-20 turns for missing context",
-                    "Check if recent code changes are still visible"
-                ]
+                    "Check if recent code changes are still visible",
+                ],
             )
 
         return ValidationResult(passed=True)

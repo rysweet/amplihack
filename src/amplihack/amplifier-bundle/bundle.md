@@ -10,6 +10,9 @@ includes:
   # 2. amplifier-bundle-recipes includes foundation transitively
   # Including it again causes a "circular dependency" warning
   - bundle: git+https://github.com/microsoft/amplifier-bundle-recipes@main
+  # Stories bundle for autonomous storytelling - transforms project activity into content
+  # Provides: 4 output formats (HTML, Excel, Word, PDF), 11 specialist agents, 4 automated recipes
+  - bundle: git+https://github.com/microsoft/amplifier-bundle-stories@main
 
 # Configure tool-skills to find skills
 # The amplihack launcher copies skills to .claude/skills in cwd during setup

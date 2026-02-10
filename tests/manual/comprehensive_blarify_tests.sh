@@ -16,12 +16,12 @@ FAILED_TESTS=0
 run_test() {
     local test_name="$1"
     local test_func="$2"
-    
+
     echo ""
     echo "=========================================="
     echo "TEST $((TOTAL_TESTS + 1)): $test_name"
     echo "=========================================="
-    
+
     if $test_func; then
         echo "✅ PASSED: $test_name"
         PASSED_TESTS=$((PASSED_TESTS + 1))
@@ -29,7 +29,7 @@ run_test() {
         echo "❌ FAILED: $test_name"
         FAILED_TESTS=$((FAILED_TESTS + 1))
     fi
-    
+
     TOTAL_TESTS=$((TOTAL_TESTS + 1))
 }
 
@@ -232,7 +232,7 @@ EOF
 # Run all tests
 run_test "Small Codebase (Smoke Test)" test_small_codebase
 run_test "Large Codebase (Full amplihack)" test_large_codebase
-run_test "Empty Directory (Edge Case)" test_empty_directory  
+run_test "Empty Directory (Edge Case)" test_empty_directory
 run_test "Invalid Python Syntax (Error Handling)" test_invalid_syntax
 run_test "Temp File Cleanup (Resource Management)" test_temp_cleanup
 run_test "Multiple Runs (Idempotence)" test_multiple_runs

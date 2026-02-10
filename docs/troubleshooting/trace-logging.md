@@ -28,6 +28,7 @@ df -h .claude/runtime/amplihack-traces/
 ### Issue 1: No Trace Files Created
 
 **Symptoms**:
+
 - `AMPLIHACK_TRACE_LOGGING=true` is set
 - No files appear in `.claude/runtime/amplihack-traces/`
 - No errors displayed
@@ -104,6 +105,7 @@ ls -lh .claude/runtime/amplihack-traces/
 ### Issue 2: Malformed JSONL Entries
 
 **Symptoms**:
+
 - Trace files exist but contain invalid JSON
 - `jq` fails with parse errors
 - Entries missing fields
@@ -165,6 +167,7 @@ cat trace_*.jsonl | jq . | wc -l
 ### Issue 3: Sensitive Data in Traces
 
 **Symptoms**:
+
 - API keys visible in trace files
 - Credentials not redacted
 - Headers contain secrets
@@ -239,6 +242,7 @@ grep -r "\[REDACTED\]" .claude/runtime/amplihack-traces/
 ### Issue 4: High Disk Usage
 
 **Symptoms**:
+
 - `.claude/runtime/amplihack-traces/` consuming excessive disk space
 - Many old trace files accumulating
 - Disk full warnings
@@ -318,6 +322,7 @@ ls -lt .claude/runtime/amplihack-traces/ | head
 ### Issue 5: Performance Degradation
 
 **Symptoms**:
+
 - amplihack slower when `AMPLIHACK_TRACE_LOGGING=true`
 - API calls taking >100ms longer
 - Noticeable lag in responses
@@ -407,6 +412,7 @@ AMPLIHACK_TRACE_LOGGING=false time amplihack --version
 ### Issue 6: Permission Denied Errors
 
 **Symptoms**:
+
 - Error: `Permission denied: '.claude/runtime/amplihack-traces/trace_*.jsonl'`
 - Cannot create trace files
 - Cannot write to trace directory
@@ -486,6 +492,7 @@ ls -l .claude/runtime/amplihack-traces/
 ### Issue 7: Trace Files in Wrong Location
 
 **Symptoms**:
+
 - Expected trace files in `.claude/runtime/amplihack-traces/`
 - Files appearing elsewhere or not at all
 - `AMPLIHACK_TRACE_DIR` not respected
@@ -557,6 +564,7 @@ ls -l .claude/runtime/amplihack-traces/
 ### Issue 8: Missing Events in Traces
 
 **Symptoms**:
+
 - Some API calls not appearing in traces
 - Incomplete conversation history
 - Gaps in request/response pairs
