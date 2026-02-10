@@ -214,6 +214,143 @@ class DependencyInstaller:
 
         return results
 
+    def install_go_dependencies(self) -> list[InstallResult]:
+        """Install scip-go and gopls for Go code indexing.
+
+        Returns:
+            List of install results
+        """
+        results = []
+
+        # Check if Go is installed
+        if not shutil.which("go"):
+            results.append(
+                InstallResult(
+                    tool="scip-go",
+                    success=False,
+                    already_installed=False,
+                    error_message="Go not installed - install from https://golang.org/dl/",
+                )
+            )
+            return results
+
+        # Install scip-go
+        if shutil.which("scip-go"):
+            results.append(InstallResult(tool="scip-go", success=True, already_installed=True))
+        else:
+            success = self._run_command(
+                ["go", "install", "github.com/sourcegraph/scip-go/cmd/scip-go@latest"],
+                "scip-go",
+            )
+            results.append(
+                InstallResult(
+                    tool="scip-go",
+                    success=success,
+                    already_installed=False,
+                    error_message=None if success else "go install failed",
+                )
+            )
+
+        # Install gopls (Go language server)
+        if shutil.which("gopls"):
+            results.append(InstallResult(tool="gopls", success=True, already_installed=True))
+        else:
+            success = self._run_command(
+                ["go", "install", "golang.org/x/tools/gopls@latest"],
+                "gopls",
+            )
+            results.append(
+                InstallResult(
+                    tool="gopls",
+                    success=success,
+                    already_installed=False,
+                    error_message=None if success else "go install failed",
+                )
+            )
+
+        return results
+
+    def install_rust_dependencies(self) -> list[InstallResult]:
+        """Verify rust-analyzer is installed for Rust SCIP indexing.
+
+        rust-analyzer has built-in SCIP support via 'rust-analyzer scip' command.
+
+        Returns:
+            List of install results
+        """
+        results = []
+
+        # Check if rust-analyzer is installed (usually via rustup)
+        if shutil.which("rust-analyzer"):
+            results.append(
+                InstallResult(tool="rust-analyzer", success=True, already_installed=True)
+            )
+        else:
+            # Try to install via rustup
+            if shutil.which("rustup"):
+                success = self._run_command(
+                    ["rustup", "component", "add", "rust-analyzer"],
+                    "rust-analyzer",
+                )
+                results.append(
+                    InstallResult(
+                        tool="rust-analyzer",
+                        success=success,
+                        already_installed=False,
+                        error_message=None if success else "rustup component add failed",
+                    )
+                )
+            else:
+                results.append(
+                    InstallResult(
+                        tool="rust-analyzer",
+                        success=False,
+                        already_installed=False,
+                        error_message="rustup not installed - install from https://rustup.rs/",
+                    )
+                )
+
+        return results
+
+    def install_csharp_dependencies(self) -> list[InstallResult]:
+        """Install scip-dotnet for C# code indexing.
+
+        Returns:
+            List of install results
+        """
+        results = []
+
+        # Check if .NET is installed
+        if not shutil.which("dotnet"):
+            results.append(
+                InstallResult(
+                    tool="scip-dotnet",
+                    success=False,
+                    already_installed=False,
+                    error_message=".NET SDK not installed - install from https://dotnet.microsoft.com/download",
+                )
+            )
+            return results
+
+        # Install scip-dotnet as a global .NET tool
+        if shutil.which("scip-dotnet"):
+            results.append(InstallResult(tool="scip-dotnet", success=True, already_installed=True))
+        else:
+            success = self._run_command(
+                ["dotnet", "tool", "install", "-g", "scip-dotnet"],
+                "scip-dotnet",
+            )
+            results.append(
+                InstallResult(
+                    tool="scip-dotnet",
+                    success=success,
+                    already_installed=False,
+                    error_message=None if success else "dotnet tool install failed",
+                )
+            )
+
+        return results
+
     def install_all_auto_installable(self) -> dict[str, InstallResult]:
         """Install all dependencies that can be auto-installed.
 
@@ -231,6 +368,18 @@ class DependencyInstaller:
 
         # TypeScript dependencies
         for result in self.install_typescript_dependencies():
+            results[result.tool] = result
+
+        # Go dependencies
+        for result in self.install_go_dependencies():
+            results[result.tool] = result
+
+        # Rust dependencies
+        for result in self.install_rust_dependencies():
+            results[result.tool] = result
+
+        # C# dependencies
+        for result in self.install_csharp_dependencies():
             results[result.tool] = result
 
         # Summary
