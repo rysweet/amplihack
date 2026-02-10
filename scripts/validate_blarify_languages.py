@@ -78,12 +78,12 @@ REAL_WORLD_REPOS = [
     ),
     LanguageTest(
         language="go",
-        repo_url="https://github.com/golang/go.git",
+        repo_url="https://github.com/gin-gonic/gin.git",
         branch="master",
-        expected_min_files=100,
-        expected_min_functions=300,
+        expected_min_files=20,
+        expected_min_functions=100,
         clone_depth=1,
-        subdir="src/fmt",  # Focus on fmt package (manageable size)
+        subdir=None,  # Use root (has go.mod)
     ),
     LanguageTest(
         language="rust",
