@@ -14,12 +14,12 @@ Public API (the "studs"):
     cleanup_temp_dirs: Clean up temporary test directories
 """
 
-import time
-import tempfile
-import shutil
-from pathlib import Path
-from typing import List, Dict, Optional, Callable
 import re
+import shutil
+import tempfile
+import time
+from collections.abc import Callable
+from pathlib import Path
 
 __all__ = [
     "collect_log_files",
@@ -34,7 +34,7 @@ __all__ = [
 ]
 
 
-def collect_log_files(directory: Path, max_depth: int = 3) -> List[Path]:
+def collect_log_files(directory: Path, max_depth: int = 3) -> list[Path]:
     """Collect all log files from directory tree.
 
     Args:
@@ -74,7 +74,7 @@ def collect_log_files(directory: Path, max_depth: int = 3) -> List[Path]:
 
 
 def create_test_project(
-    files: Dict[str, str],
+    files: dict[str, str],
     project_name: str = "test_project",
 ) -> Path:
     """Create temporary test project with specified files.
@@ -104,7 +104,7 @@ def create_test_project(
 
 
 def wait_for_log_entry(
-    log_files: List[Path],
+    log_files: list[Path],
     expected_text: str,
     timeout: float = 10.0,
     poll_interval: float = 0.5,
@@ -151,7 +151,7 @@ def wait_for_log_entry(
 def extract_duration_from_output(
     output: str,
     pattern: str = r"Duration: (\d+\.\d+)s",
-) -> Optional[float]:
+) -> float | None:
     """Extract execution duration from output.
 
     Args:
@@ -203,6 +203,7 @@ def cleanup_temp_dirs(pattern: str = "uvx_test_*") -> int:
 
 
 # Convenience functions for creating common project types
+
 
 def create_python_project(
     project_name: str = "python_project",
@@ -374,7 +375,7 @@ mod tests {
 
 
 def create_multi_language_project(
-    languages: List[str],
+    languages: list[str],
     project_name: str = "multi_lang_project",
 ) -> Path:
     """Create a multi-language project for testing.
@@ -413,9 +414,10 @@ def create_multi_language_project(
 
 # Assertion helpers that combine multiple checks
 
+
 def assert_all_files_exist(
     directory: Path,
-    expected_files: List[str],
+    expected_files: list[str],
     message: str = "",
 ) -> None:
     """Assert that all expected files exist in directory.

@@ -23,11 +23,11 @@ Usage:
     >>> pr = bridge.create_pr(title="Fix bug", body="...", source_branch="fix/bug")
 """
 
-from .detector import Platform, detect_platform
-from .operations import PlatformOperations, PRInfo, PRStatus
-from .github_bridge import GitHubBridge
 from .azdo_bridge import AzDoBridge
 from .cli import create_bridge
+from .detector import Platform, detect_platform
+from .github_bridge import GitHubBridge
+from .operations import PlatformOperations, PRInfo, PRStatus
 
 __all__ = [
     "Platform",

@@ -19,7 +19,7 @@ Philosophy:
 
 import re
 from dataclasses import dataclass
-from typing import Any, Dict, List, Union
+from typing import Any
 
 from .evidence_collector import EvidenceItem
 
@@ -38,8 +38,8 @@ class EvaluationResult:
 
     score: int
     notes: str
-    requirements_met: List[str] = None
-    requirements_missing: List[str] = None
+    requirements_met: list[str] = None
+    requirements_missing: list[str] = None
     bonus_points: int = 0
 
     def __post_init__(self):
@@ -52,7 +52,7 @@ class EvaluationResult:
         # Clamp score to valid range
         self.score = max(0, min(100, self.score))
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary.
 
         Returns:
@@ -67,7 +67,7 @@ class EvaluationResult:
         }
 
 
-def parse_success_criteria(criteria: str) -> List[Union[str, Dict]]:
+def parse_success_criteria(criteria: str) -> list[str | dict]:
     """Parse success criteria into individual requirements.
 
     Args:
@@ -90,8 +90,8 @@ def parse_success_criteria(criteria: str) -> List[Union[str, Dict]]:
             continue
 
         # Match bullet points (-, *, •) or numbered lists (1., 2.)
-        bullet_match = re.match(r'^[-*•]\s+(.+)$', line)
-        numbered_match = re.match(r'^\d+\.\s+(.+)$', line)
+        bullet_match = re.match(r"^[-*•]\s+(.+)$", line)
+        numbered_match = re.match(r"^\d+\.\s+(.+)$", line)
 
         if bullet_match:
             requirement = bullet_match.group(1).strip()
@@ -99,7 +99,7 @@ def parse_success_criteria(criteria: str) -> List[Union[str, Dict]]:
         elif numbered_match:
             requirement = numbered_match.group(1).strip()
             requirements.append(requirement)
-        elif line and not line.endswith(':') and len(line.split()) > 3:
+        elif line and not line.endswith(":") and len(line.split()) > 3:
             # Looks like a requirement (not a header)
             requirements.append(line)
 
@@ -112,7 +112,7 @@ class SuccessCriteriaEvaluator:
     def evaluate(
         self,
         criteria: str,
-        evidence: List[EvidenceItem],
+        evidence: list[EvidenceItem],
         execution_log: str,
     ) -> EvaluationResult:
         """Evaluate success based on criteria and evidence.
@@ -181,7 +181,7 @@ class SuccessCriteriaEvaluator:
 
     def _evaluate_basic(
         self,
-        evidence: List[EvidenceItem],
+        evidence: list[EvidenceItem],
         execution_log: str,
     ) -> EvaluationResult:
         """Perform basic evaluation when no specific criteria provided.
@@ -224,7 +224,7 @@ class SuccessCriteriaEvaluator:
     def _is_requirement_met(
         self,
         requirement: str,
-        evidence: List[EvidenceItem],
+        evidence: list[EvidenceItem],
         execution_log: str,
     ) -> bool:
         """Check if a requirement is met by evidence.
@@ -243,9 +243,7 @@ class SuccessCriteriaEvaluator:
         key_terms = self._extract_key_terms(requirement_lower)
 
         # Search evidence for key terms
-        evidence_text = " ".join([
-            f"{e.path} {e.excerpt}" for e in evidence
-        ]).lower()
+        evidence_text = " ".join([f"{e.path} {e.excerpt}" for e in evidence]).lower()
 
         log_text = execution_log.lower()
 
@@ -261,7 +259,7 @@ class SuccessCriteriaEvaluator:
 
         return matches / len(key_terms) >= 0.5
 
-    def _extract_key_terms(self, text: str) -> List[str]:
+    def _extract_key_terms(self, text: str) -> list[str]:
         """Extract key terms from requirement text.
 
         Args:
@@ -272,22 +270,40 @@ class SuccessCriteriaEvaluator:
         """
         # Remove common words
         common_words = {
-            "has", "have", "with", "the", "a", "an", "and", "or", "for",
-            "to", "of", "in", "on", "at", "by", "is", "are", "should",
-            "must", "will", "can", "be", "been", "being",
+            "has",
+            "have",
+            "with",
+            "the",
+            "a",
+            "an",
+            "and",
+            "or",
+            "for",
+            "to",
+            "of",
+            "in",
+            "on",
+            "at",
+            "by",
+            "is",
+            "are",
+            "should",
+            "must",
+            "will",
+            "can",
+            "be",
+            "been",
+            "being",
         }
 
-        words = re.findall(r'\b\w+\b', text)
-        key_terms = [
-            word for word in words
-            if word not in common_words and len(word) > 2
-        ]
+        words = re.findall(r"\b\w+\b", text)
+        key_terms = [word for word in words if word not in common_words and len(word) > 2]
 
         return key_terms
 
     def _has_passing_tests(
         self,
-        evidence: List[EvidenceItem],
+        evidence: list[EvidenceItem],
         execution_log: str,
     ) -> bool:
         """Check if tests are passing.
@@ -315,7 +331,7 @@ class SuccessCriteriaEvaluator:
         for pattern in pass_patterns:
             if pattern in log_lower:
                 # Make sure it's not a failure message
-                if "fail" not in log_lower[:log_lower.find(pattern) + 50]:
+                if "fail" not in log_lower[: log_lower.find(pattern) + 50]:
                     return True
 
         # Check test result files
@@ -326,7 +342,7 @@ class SuccessCriteriaEvaluator:
 
         return False
 
-    def _has_documentation(self, evidence: List[EvidenceItem]) -> bool:
+    def _has_documentation(self, evidence: list[EvidenceItem]) -> bool:
         """Check if documentation exists.
 
         Args:
@@ -335,19 +351,16 @@ class SuccessCriteriaEvaluator:
         Returns:
             True if documentation found
         """
-        docs = [
-            e for e in evidence
-            if e.type in ["documentation", "architecture_doc", "api_spec"]
-        ]
+        docs = [e for e in evidence if e.type in ["documentation", "architecture_doc", "api_spec"]]
 
         # Should have at least one substantial doc (> 100 chars)
         return any(e.size_bytes > 100 for e in docs)
 
     def _generate_notes(
         self,
-        requirements_met: List[str],
-        requirements_missing: List[str],
-        evidence: List[EvidenceItem],
+        requirements_met: list[str],
+        requirements_missing: list[str],
+        evidence: list[EvidenceItem],
         execution_log: str,
         bonus_points: int,
     ) -> str:

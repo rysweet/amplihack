@@ -1,8 +1,8 @@
 ---
 name: DEFAULT_WORKFLOW
-version: 1.1.0
-description: Standard 22-step workflow (Steps 0-21) for feature development, bug fixes, and refactoring
-steps: 22
+version: 1.2.0
+description: Standard 23-step workflow (Steps 0-22) for feature development, bug fixes, and refactoring
+steps: 23
 phases:
   - requirements-clarification
   - design
@@ -36,7 +36,7 @@ customizable: true
 - 🎯 Every step completed brings you closer to a mergeable PR
 - 🔄 Continuous progress maintains context and focus
 
-**Flow Pattern**: Step 0 → Step 1 → Step 2 → ... → Step 21 (PR Mergeable)
+**Flow Pattern**: Step 0 → Step 1 → Step 2 → ... → Step 22 (PR Mergeable)
 
 # Default Coding Workflow
 
@@ -49,17 +49,20 @@ You can customize this workflow by editing this file.
 This workflow supports both GitHub and Azure DevOps repositories. Platform-specific steps provide instructions for both platforms.
 
 **Platform Detection**: Determine your platform from git remote URL:
+
 ```bash
 git remote get-url origin
 ```
+
 - Contains `github.com` → Use **GitHub** commands
 - Contains `dev.azure.com` or `visualstudio.com` → Use **Azure DevOps** commands
 
 **Prerequisites**:
+
 - **GitHub**: Install and authenticate with `gh` CLI (`gh auth login`)
 - **Azure DevOps**: Install and configure `az` CLI (`az login` and `az devops configure`)
 
-Steps with platform-specific instructions: 3, 15, 16-17, 20, 21
+Steps with platform-specific instructions: 3, 16, 17-18, 21, 22
 
 ## How This Workflow Works
 
@@ -141,28 +144,31 @@ When creating todos during workflow execution, reference the workflow steps dire
 **Example Todo Structure (Single Workflow):**
 
 ```
-Step 0: Workflow Preparation - Read workflow, create todos for ALL steps (0-21)
+Step 0: Workflow Preparation - Read workflow, create todos for ALL steps (0-22)
 Step 1: Prepare the Workspace - Check git status and fetch
 Step 2: Rewrite and Clarify Requirements - Use prompt-writer agent to clarify task
 Step 3: Create GitHub Issue - Define requirements and constraints using gh issue create
 Step 4: Setup Worktree and Branch - Create feat/issue-XXX branch in worktrees/
 Step 5: Research and Design - Use architect agent for solution design
 ...
-Step 16: Review the PR - MANDATORY code review
-Step 17: Implement Review Feedback - MANDATORY
+Step 14: Bump Version in pyproject.toml - MANDATORY
+Step 15: Commit and Push
+Step 16: Open PR as Draft
+Step 17: Review the PR - MANDATORY code review
+Step 18: Implement Review Feedback - MANDATORY
 ...
-Step 21: Ensure PR is Mergeable - TASK COMPLETION POINT
+Step 22: Ensure PR is Mergeable - TASK COMPLETION POINT
 ```
 
 **Example Todo Structure (Multiple Parallel Workflows):**
 
 ```
-[PR1090 TASK] Step 0: Workflow Preparation - Create todos for ALL steps (0-21)
+[PR1090 TASK] Step 0: Workflow Preparation - Create todos for ALL steps (0-22)
 [PR1090 TASK] Step 1: Prepare the Workspace - Check git status
 [PR1090 TASK] Step 2: Rewrite and Clarify Requirements - Use prompt-writer agent
-[FEATURE-X] Step 0: Workflow Preparation - Create todos for ALL steps (0-21)
+[FEATURE-X] Step 0: Workflow Preparation - Create todos for ALL steps (0-22)
 [FEATURE-X] Step 3: Setup Worktree and Branch - Create feat/issue-XXX branch
-[BUGFIX-Y] Step 16: Review the PR - MANDATORY code review
+[BUGFIX-Y] Step 17: Review the PR - MANDATORY code review
 ...
 ```
 
@@ -180,7 +186,7 @@ This step-based structure helps users understand:
 
 **Why This Step Exists:**
 
-Agents that skip workflow steps (especially mandatory review steps 10, 16-17) create quality issues and erode user trust. This step ensures agents track ALL steps from the start, preventing "completion bias" where agents feel done after implementation but before review.
+Agents that skip workflow steps (especially mandatory review steps 0, 14, 17-18) create quality issues and erode user trust. This step ensures agents track ALL steps from the start, preventing "completion bias" where agents feel done after implementation but before review.
 
 **Root Cause Prevention:**
 
@@ -190,18 +196,18 @@ Agents that skip workflow steps (especially mandatory review steps 10, 16-17) cr
 
 **Checklist:**
 
-- [ ] **Read this entire workflow file** - Understand all 22 steps (0-21) before starting
-- [ ] **Create TodoWrite entries for ALL steps (0-21)** using format: `Step N: [Step Name] - [Specific Action]`
+- [ ] **Read this entire workflow file** - Understand all 23 steps (0-22) before starting
+- [ ] **Create TodoWrite entries for ALL steps (0-22)** using format: `Step N: [Step Name] - [Specific Action]`
 - [ ] **Mark each step complete ONLY when truly done** - No premature completion
-- [ ] **Task is NOT complete until Step 21 is marked complete**
+- [ ] **Task is NOT complete until Step 22 is marked complete**
 
-**Self-Verification:** Before proceeding to Step 1, confirm you have 22 todo items visible (Steps 0-21).
+**Self-Verification:** Before proceeding to Step 1, confirm you have 23 todo items visible (Steps 0-22).
 
 **Anti-Pattern Prevention:**
 
 - ❌ DO NOT skip to implementation after reading requirements
-- ❌ DO NOT consider "PR created" as completion (Step 21 is the completion point)
-- ❌ DO NOT omit Steps 10, 16-17 (mandatory review steps)
+- ❌ DO NOT consider "PR created" as completion (Step 22 is the completion point)
+- ❌ DO NOT omit Steps 0, 14, 17-18 (mandatory review steps)
 - ❌ DO NOT declare task complete with pending steps
 - ✅ DO create all step todos BEFORE starting any implementation
 - ✅ DO mark steps complete sequentially as you finish them
@@ -211,7 +217,7 @@ Agents that skip workflow steps (especially mandatory review steps 10, 16-17) cr
 
 ### Step 1: Prepare the Workspace
 
-**Prerequisite Check:** Verify Step 0 is complete - you should have 22 todos visible (Steps 0-21) before proceeding.
+**Prerequisite Check:** Verify Step 0 is complete - you should have 23 todos visible (Steps 0-22) before proceeding.
 
 - [ ] start with a clean local environment and make sure it is up to date (no unstashed changes, git fetch)
 
@@ -229,13 +235,16 @@ Agents that skip workflow steps (especially mandatory review steps 10, 16-17) cr
 ### Step 3: Create Issue/Work Item
 
 **Platform Detection**: Automatically detect your platform from git remote URL:
+
 ```bash
 git remote get-url origin
 ```
+
 - github.com → Use GitHub commands
 - dev.azure.com or visualstudio.com → Use Azure DevOps commands
 
 **For GitHub**:
+
 ```bash
 gh issue create \
   --title "Title" \
@@ -244,6 +253,7 @@ gh issue create \
 ```
 
 **For Azure DevOps**:
+
 ```bash
 python .claude/scenarios/az-devops-tools/create_work_item.py \
   --type "User Story" \
@@ -460,6 +470,7 @@ Test like a user would use the feature - outside-in - not just unit tests.
 **"But I can't test this because..."**
 
 There's always a way to test:
+
 - **"Need fresh session"** → Open new terminal, start fresh Claude Code session, test there
 - **"Documentation changes"** → Test in fresh session, verify guidance actually works
 - **"Need clean state"** → Create clean state (new directory, fresh checkout, new session)
@@ -493,10 +504,11 @@ There's always a way to test:
 
 **Test Environment**: <branch, method, date>
 **Tests Executed**:
+
 1. Simple: <scenario> → <result> ✅/❌
 2. Complex: <scenario> → <result> ✅/❌
-**Regressions**: <verification> → ✅ None detected
-**Issues Found**: <list any issues discovered and fixed>
+   **Regressions**: <verification> → ✅ None detected
+   **Issues Found**: <list any issues discovered and fixed>
 ```
 
 **Why this matters:**
@@ -507,7 +519,76 @@ There's always a way to test:
 - Prevents embarrassing failures after merge
 - **Verification gate prevents rationalization bypass**
 
-### Step 14: Commit and Push
+### Step 14: Bump Version in pyproject.toml (MANDATORY)
+
+**⚠️ MANDATORY - DO NOT SKIP ⚠️**
+
+**REQUIRED FOR ALL PRs**
+
+Before committing changes to git history, bump the version number in `pyproject.toml` to reflect the nature of your changes.
+
+**Why This Step Exists:**
+
+- Enforces version tracking with every PR merge
+- Prevents forgotten version bumps
+- CI will block PRs that don't bump version
+- Git tags are auto-created on merge matching the version
+- Makes release history trackable
+
+**Semantic Versioning Guide:**
+
+Given a version number MAJOR.MINOR.PATCH (e.g., 0.2.0):
+
+- **PATCH** (0.2.0 → 0.2.1): Bug fixes, documentation updates, minor improvements
+- **MINOR** (0.2.0 → 0.3.0): New features, backward-compatible changes
+- **MAJOR** (0.2.0 → 1.0.0): Breaking changes, major architecture changes
+
+**Classification Examples:**
+
+| Change Type | Example | Version Bump |
+|-------------|---------|--------------|
+| Bug fix | Fix authentication error handling | PATCH |
+| Documentation | Update README with new examples | PATCH |
+| New feature | Add auto-update check mechanism | MINOR |
+| API change | Modify function signature (backward-compatible) | MINOR |
+| Breaking change | Remove deprecated API, change core behavior | MAJOR |
+| Refactor | Internal cleanup, no behavior change | PATCH |
+
+**Actions Required:**
+
+- [ ] Review your changes: `git diff main...HEAD`
+- [ ] Classify change type: PATCH, MINOR, or MAJOR
+- [ ] Edit `pyproject.toml` line 8 (version = "X.Y.Z")
+- [ ] Bump version appropriately:
+  - Bug fix/docs → increment PATCH
+  - New feature → increment MINOR (reset PATCH to 0)
+  - Breaking change → increment MAJOR (reset MINOR and PATCH to 0)
+- [ ] Save `pyproject.toml`
+- [ ] Verify: `grep version pyproject.toml | head -1`
+
+**Example Version Bump:**
+
+```bash
+# Before: version = "0.2.0"
+# After (new feature): version = "0.3.0"
+
+# Edit pyproject.toml
+sed -i 's/version = "0.2.0"/version = "0.3.0"/' pyproject.toml
+
+# Verify
+grep version pyproject.toml | head -1
+# Output: version = "0.3.0"
+```
+
+**CI Enforcement:**
+
+- PR will be blocked if version not bumped
+- CI creates git tag (e.g., `v0.3.0`) on merge to main
+- Tags enable `uv tool upgrade amplihack` to work correctly
+
+**Important:** Version bump happens BEFORE commit (Step 15), so it's included in the main implementation commit.
+
+### Step 15: Commit and Push
 
 - [ ] Stage all changes
 - [ ] Write detailed commit message
@@ -516,9 +597,10 @@ There's always a way to test:
 - [ ] Push to remote branch
 - [ ] Verify push succeeded
 
-### Step 15: Open Pull Request as Draft
+### Step 16: Open Pull Request as Draft
 
 **For GitHub**:
+
 ```bash
 gh pr create --draft \
   --title "Title" \
@@ -527,6 +609,7 @@ gh pr create --draft \
 ```
 
 **For Azure DevOps**:
+
 ```bash
 python .claude/scenarios/az-devops-tools/create_pr.py \
   --source feature/branch \
@@ -551,7 +634,7 @@ python .claude/scenarios/az-devops-tools/create_pr.py \
 - Creates space for philosophy and quality checks before marking ready
 - Prevents premature merge while work continues
 
-### Step 16: Review the PR
+### Step 17: Review the PR
 
 **⚠️ MANDATORY - DO NOT SKIP ⚠️**
 
@@ -575,18 +658,20 @@ python .claude/scenarios/az-devops-tools/create_pr.py \
 - [ ] Post the review as a comment on the PR:
 
 **For GitHub**:
+
 ```bash
 gh pr comment <pr_number> --body "Review comment text"
 ```
 
 **For Azure DevOps**:
+
 ```bash
 az repos pr create-thread \
   --id <pr_number> \
   --comment "Review comment text"
 ```
 
-### Step 17: Implement Review Feedback
+### Step 18: Implement Review Feedback
 
 **⚠️ MANDATORY - DO NOT SKIP ⚠️**
 
@@ -606,11 +691,13 @@ az repos pr create-thread \
 - [ ] Respond to review comments by posting replies as comments on the PR:
 
 **For GitHub**:
+
 ```bash
 gh pr comment <pr_number> --body "Response to feedback"
 ```
 
 **For Azure DevOps**:
+
 ```bash
 az repos pr create-thread \
   --id <pr_number> \
@@ -621,7 +708,7 @@ az repos pr create-thread \
 - [ ] Ensure PR is still mergeable
 - [ ] Request re-review if needed
 
-### Step 18: Philosophy Compliance Check
+### Step 19: Philosophy Compliance Check
 
 - [ ] **Always use** reviewer agent for final philosophy check
 - [ ] **Use** patterns agent to verify pattern compliance
@@ -631,7 +718,7 @@ az repos pr create-thread \
 - [ ] Verify all tests passing
 - [ ] Check documentation completeness and accuracy
 
-### Step 19: Final Cleanup and Verification
+### Step 20: Final Cleanup and Verification
 
 - [ ] **CRITICAL: Provide cleanup agent with original user requirements AGAIN**
 - [ ] **Always use** cleanup agent for final quality pass
@@ -683,14 +770,16 @@ az repos pr create-thread \
 - [ ] Ensure any cleanup agent changes get committed, validated by pre-commit, pushed to remote
 - [ ] Add a comment to the PR about any work the Cleanup agent did
 
-### Step 20: Convert PR to Ready for Review
+### Step 21: Convert PR to Ready for Review
 
 **For GitHub**:
+
 ```bash
 gh pr ready 2>&1 | cat
 ```
 
 **For Azure DevOps**:
+
 ```bash
 # Azure DevOps: Mark PR as ready by setting auto-complete or removing draft status
 az repos pr update \
@@ -718,11 +807,12 @@ az repos pr update \
 - Requests final approval from reviewers
 - Makes PR eligible for merge queue
 
-### Step 21: Ensure PR is Mergeable
+### Step 22: Ensure PR is Mergeable
 
 **Check CI status**:
 
 **For GitHub**:
+
 ```bash
 gh pr checks
 # Or for specific PR:
@@ -730,6 +820,7 @@ gh pr checks <pr_number>
 ```
 
 **For Azure DevOps**:
+
 ```bash
 # Check pipeline runs for current branch
 az pipelines runs list --branch $(git branch --show-current) --top 1

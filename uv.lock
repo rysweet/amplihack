@@ -145,7 +145,7 @@ dependencies = [
 
 [[package]]
 name = "amplihack"
-version = "0.2.0"
+version = "0.3.0"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
@@ -154,9 +154,10 @@ dependencies = [
     { name = "claude-agent-sdk" },
     { name = "fastapi" },
     { name = "flask" },
+    { name = "github-copilot-sdk" },
     { name = "kuzu" },
     { name = "litellm" },
-    { name = "neo4j" },
+    { name = "packaging" },
     { name = "python-dotenv" },
     { name = "requests" },
     { name = "rich" },
@@ -206,9 +207,10 @@ requires-dist = [
     { name = "claude-agent-sdk", specifier = ">=0.1.0" },
     { name = "fastapi", specifier = ">=0.68.0" },
     { name = "flask", specifier = ">=2.0.0" },
+    { name = "github-copilot-sdk", specifier = ">=0.1.0" },
     { name = "kuzu", specifier = ">=0.11.0" },
     { name = "litellm", specifier = ">=1.0.0" },
-    { name = "neo4j", specifier = ">=5.15.0,<6.0.0" },
+    { name = "packaging", specifier = ">=21.0" },
     { name = "pre-commit", marker = "extra == 'dev'" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.0.0" },
     { name = "pytest", marker = "extra == 'test'", specifier = ">=7.0.0" },
@@ -218,11 +220,12 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.0.0" },
     { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=4.0.0" },
     { name = "python-dotenv", specifier = ">=0.19.0" },
-    { name = "requests", specifier = ">=2.25.0" },
+    { name = "requests", specifier = ">=2.32.4" },
     { name = "rich", specifier = ">=13.0.0" },
     { name = "rich", marker = "extra == 'dev'", specifier = ">=13.0.0" },
     { name = "rich", marker = "extra == 'ui'", specifier = ">=13.0.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
+    { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2.0.0" },
     { name = "uvicorn", specifier = ">=0.15.0" },
 ]
 provides-extras = ["amplifier", "ui", "tui-testing", "test", "dev"]
@@ -1136,6 +1139,20 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/de/e0/bab50af11c2d75c9c4a2a26a5254573c0bd97cea152254401510950486fa/fsspec-2025.9.0.tar.gz", hash = "sha256:19fd429483d25d28b65ec68f9f4adc16c17ea2c7c7bf54ec61360d478fb19c19", size = 304847, upload-time = "2025-09-02T19:10:49.215Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/47/71/70db47e4f6ce3e5c37a607355f80da8860a33226be640226ac52cb05ef2e/fsspec-2025.9.0-py3-none-any.whl", hash = "sha256:530dc2a2af60a414a832059574df4a6e10cce927f6f4a78209390fe38955cfb7", size = 199289, upload-time = "2025-09-02T19:10:47.708Z" },
+]
+
+[[package]]
+name = "github-copilot-sdk"
+version = "0.1.19"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "python-dateutil" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a3/e7/87955115ae99668a7dc1d1314c2ac07a7d5e8d621c52ce322090616d342e/github_copilot_sdk-0.1.19.tar.gz", hash = "sha256:2bba9db1ee0b3b6ff751568489777224e381c15427e253f98731c01a936833c2", size = 81767, upload-time = "2026-01-27T17:51:02.679Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6e/8d/f5b0ddab9b3c4e9d0a8b5233fd12543f07f2fb65ab593652826c1ff96359/github_copilot_sdk-0.1.19-py3-none-any.whl", hash = "sha256:98d2e6ce65b88b470756d0d2ced12714fd76d3394c245e29a42185e3a4e83d0b", size = 34243, upload-time = "2026-01-27T17:50:59.566Z" },
 ]
 
 [[package]]

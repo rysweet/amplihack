@@ -8,11 +8,8 @@ Testing pyramid:
 
 import os
 import shutil
-import tempfile
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from amplihack.launcher.auto_stager import (
     AutoStager,
@@ -49,7 +46,7 @@ class TestAutoStagerInit:
 class TestTempDirectoryCreation:
     """Test temporary directory creation"""
 
-    @patch('tempfile.mkdtemp')
+    @patch("tempfile.mkdtemp")
     def test_creates_temp_directory(self, mock_mkdtemp, tmp_path):
         """Test that stage_for_nested_execution creates temp directory"""
         temp_dir = tmp_path / "temp-stage-123"
@@ -67,7 +64,7 @@ class TestTempDirectoryCreation:
         result = stager.stage_for_nested_execution(original_cwd, "session-123")
 
         assert mock_mkdtemp.called
-        assert "amplihack-stage-session-123" in mock_mkdtemp.call_args[1]['prefix']
+        assert "amplihack-stage-session-123" in mock_mkdtemp.call_args[1]["prefix"]
 
     def test_temp_directory_has_claude_subdir(self, tmp_path):
         """Test that staged directory has .claude subdirectory"""
@@ -475,7 +472,9 @@ class TestSessionIdSanitization:
         # Verify that session_id was sanitized (no path separators)
         temp_name = str(result.temp_root)
         assert "../" not in temp_name
-        assert ".." not in temp_name.split("amplihack-stage-")[1].split("-")[0]  # Check sanitized part only
+        assert (
+            ".." not in temp_name.split("amplihack-stage-")[1].split("-")[0]
+        )  # Check sanitized part only
 
         # Verify the slashes were replaced with underscores
         assert "_________etc_passwd" in temp_name or "___etc_passwd" in temp_name
@@ -507,9 +506,10 @@ class TestSessionIdSanitization:
 
         # Verify only safe characters remain (alphanumeric, underscore, hyphen)
         import re
+
         # Extract the session part from the temp directory name
         # Format: amplihack-stage-{session_id}-{random}
-        assert re.match(r'^amplihack-stage-[a-zA-Z0-9_-]+', temp_name)
+        assert re.match(r"^amplihack-stage-[a-zA-Z0-9_-]+", temp_name)
 
         # Verify temp directory was created successfully
         assert result.temp_root.exists()

@@ -20,7 +20,6 @@ import subprocess
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional
 
 
 @dataclass
@@ -35,14 +34,15 @@ class SubprocessResult:
         command: Command that was executed
         duration: Execution time in seconds
     """
+
     returncode: int
     stdout: str
     stderr: str
     success: bool
-    command: List[str]
+    command: list[str]
     duration: float
 
-    def assert_success(self, message: Optional[str] = None) -> None:
+    def assert_success(self, message: str | None = None) -> None:
         """Assert that the command succeeded.
 
         Args:
@@ -54,7 +54,7 @@ class SubprocessResult:
         msg = message or f"Command failed: {' '.join(self.command)}"
         assert self.success, f"{msg}\nstdout: {self.stdout}\nstderr: {self.stderr}"
 
-    def assert_failure(self, message: Optional[str] = None) -> None:
+    def assert_failure(self, message: str | None = None) -> None:
         """Assert that the command failed.
 
         Args:
@@ -66,7 +66,7 @@ class SubprocessResult:
         msg = message or f"Command unexpectedly succeeded: {' '.join(self.command)}"
         assert not self.success, f"{msg}\nstdout: {self.stdout}"
 
-    def assert_in_stdout(self, text: str, message: Optional[str] = None) -> None:
+    def assert_in_stdout(self, text: str, message: str | None = None) -> None:
         """Assert text appears in stdout.
 
         Args:
@@ -79,7 +79,7 @@ class SubprocessResult:
         msg = message or f"Expected '{text}' in stdout"
         assert text in self.stdout, f"{msg}\nstdout: {self.stdout}"
 
-    def assert_in_stderr(self, text: str, message: Optional[str] = None) -> None:
+    def assert_in_stderr(self, text: str, message: str | None = None) -> None:
         """Assert text appears in stderr.
 
         Args:
@@ -106,7 +106,7 @@ class PluginTestHarness:
         >>> harness.verify_plugin_installed("my-plugin")
     """
 
-    def __init__(self, plugin_dir: Optional[Path] = None, timeout: int = 60):
+    def __init__(self, plugin_dir: Path | None = None, timeout: int = 60):
         """Initialize plugin test harness.
 
         Args:
@@ -115,13 +115,10 @@ class PluginTestHarness:
         """
         self.plugin_dir = plugin_dir or Path(tempfile.mkdtemp(prefix="plugin_test_"))
         self.timeout = timeout
-        self.installed_plugins: List[str] = []
+        self.installed_plugins: list[str] = []
 
     def install_plugin(
-        self,
-        source: str,
-        force: bool = False,
-        extra_args: Optional[List[str]] = None
+        self, source: str, force: bool = False, extra_args: list[str] | None = None
     ) -> SubprocessResult:
         """Install plugin from source.
 
@@ -298,7 +295,7 @@ class PluginTestHarness:
         settings_path = self.plugin_dir / ".claude-plugin" / "settings.json"
         return settings_path.exists()
 
-    def read_settings_json(self) -> Dict:
+    def read_settings_json(self) -> dict:
         """Read settings.json content.
 
         Returns:
@@ -328,7 +325,7 @@ class PluginTestHarness:
         if self.plugin_dir.exists() and "plugin_test_" in str(self.plugin_dir):
             shutil.rmtree(self.plugin_dir)
 
-    def _extract_plugin_name(self, stdout: str) -> Optional[str]:
+    def _extract_plugin_name(self, stdout: str) -> str | None:
         """Extract plugin name from install output.
 
         Args:
@@ -358,7 +355,7 @@ class HookTestHarness:
         >>> result.assert_success()
     """
 
-    def __init__(self, project_dir: Optional[Path] = None, timeout: int = 30):
+    def __init__(self, project_dir: Path | None = None, timeout: int = 30):
         """Initialize hook test harness.
 
         Args:
@@ -370,12 +367,7 @@ class HookTestHarness:
         self.hooks_dir = self.project_dir / ".claude-plugin" / "hooks"
         self.hooks_dir.mkdir(parents=True, exist_ok=True)
 
-    def create_hook(
-        self,
-        hook_name: str,
-        script_content: str,
-        language: str = "python"
-    ) -> Path:
+    def create_hook(self, hook_name: str, script_content: str, language: str = "python") -> Path:
         """Create a test hook script.
 
         Args:
@@ -401,11 +393,7 @@ class HookTestHarness:
 
         return hook_path
 
-    def trigger_hook(
-        self,
-        hook_name: str,
-        extra_args: Optional[List[str]] = None
-    ) -> SubprocessResult:
+    def trigger_hook(self, hook_name: str, extra_args: list[str] | None = None) -> SubprocessResult:
         """Trigger a hook.
 
         Args:
@@ -527,7 +515,7 @@ class LSPTestHarness:
         >>> result.assert_in_stdout("python")
     """
 
-    def __init__(self, project_dir: Optional[Path] = None, timeout: int = 30):
+    def __init__(self, project_dir: Path | None = None, timeout: int = 30):
         """Initialize LSP test harness.
 
         Args:
@@ -601,10 +589,7 @@ class LSPTestHarness:
                 duration=duration,
             )
 
-    def configure_lsp(
-        self,
-        languages: Optional[List[str]] = None
-    ) -> SubprocessResult:
+    def configure_lsp(self, languages: list[str] | None = None) -> SubprocessResult:
         """Configure LSP fer detected languages.
 
         Args:
@@ -660,12 +645,7 @@ class LSPTestHarness:
         Returns:
             True if config exists
         """
-        config_path = (
-            self.project_dir /
-            ".claude-plugin" /
-            "lsp" /
-            f"{language}.json"
-        )
+        config_path = self.project_dir / ".claude-plugin" / "lsp" / f"{language}.json"
         return config_path.exists()
 
     def cleanup(self) -> None:

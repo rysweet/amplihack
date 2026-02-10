@@ -32,7 +32,13 @@ scenario:
   steps:
     - action: launch
       target: "amplihack"
-      args: ["claude", "--", "-p", "Task(subagent_type=\"guide\", prompt=\"I want to improve my Python function. How do I ask amplihack to improve this code?\")"]
+      args:
+        [
+          "claude",
+          "--",
+          "-p",
+          'Task(subagent_type="guide", prompt="I want to improve my Python function. How do I ask amplihack to improve this code?")',
+        ]
       description: "Riley writes vague prompt request"
       timeout: 60s
 
@@ -114,7 +120,7 @@ scenario:
 
     # Metric: Concrete improved example
     - action: verify_output
-      matches: "amplihack claude -- -p \".*function.*file.*\""
+      matches: 'amplihack claude -- -p ".*function.*file.*"'
       description: "Should provide specific prompt example with context"
       metric_type: example_quality
 

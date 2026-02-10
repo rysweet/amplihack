@@ -10,7 +10,6 @@ This script analyzes the test files to verify:
 
 import re
 from pathlib import Path
-from collections import defaultdict
 
 
 def count_tests_in_file(file_path: Path) -> dict:
@@ -18,10 +17,10 @@ def count_tests_in_file(file_path: Path) -> dict:
     content = file_path.read_text()
 
     # Count test classes
-    test_classes = re.findall(r'class (Test\w+)', content)
+    test_classes = re.findall(r"class (Test\w+)", content)
 
     # Count test methods
-    test_methods = re.findall(r'def (test_\w+)', content)
+    test_methods = re.findall(r"def (test_\w+)", content)
 
     # Count docstrings
     docstrings = re.findall(r'"""(.+?)"""', content, re.DOTALL)
@@ -32,7 +31,7 @@ def count_tests_in_file(file_path: Path) -> dict:
         "tests": len(test_methods),
         "class_names": test_classes,
         "test_names": test_methods,
-        "lines": len(content.split('\n'))
+        "lines": len(content.split("\n")),
     }
 
 
@@ -40,11 +39,7 @@ def analyze_test_structure():
     """Analyze complete test structure."""
     test_dir = Path(__file__).parent
 
-    results = {
-        "unit": [],
-        "integration": [],
-        "e2e": []
-    }
+    results = {"unit": [], "integration": [], "e2e": []}
 
     # Analyze unit tests
     unit_dir = test_dir / "unit"
@@ -96,9 +91,15 @@ def print_summary(results: dict):
 
         for file_info in files:
             print(f"  📄 {file_info['file']}")
-            print(f"     Classes: {file_info['classes']}, Tests: {file_info['tests']}, Lines: {file_info['lines']}")
-            for class_name in file_info['class_names']:
-                class_tests = [t for t in file_info['test_names'] if class_name.lower().replace('test', '') in t]
+            print(
+                f"     Classes: {file_info['classes']}, Tests: {file_info['tests']}, Lines: {file_info['lines']}"
+            )
+            for class_name in file_info["class_names"]:
+                class_tests = [
+                    t
+                    for t in file_info["test_names"]
+                    if class_name.lower().replace("test", "") in t
+                ]
                 print(f"       └─ {class_name}: ~{len(class_tests)} tests")
         print()
 
@@ -111,9 +112,17 @@ def print_summary(results: dict):
     print()
 
     # Calculate pyramid distribution
-    unit_pct = (sum(f["tests"] for f in results["unit"]) / total_tests * 100) if total_tests > 0 else 0
-    int_pct = (sum(f["tests"] for f in results["integration"]) / total_tests * 100) if total_tests > 0 else 0
-    e2e_pct = (sum(f["tests"] for f in results["e2e"]) / total_tests * 100) if total_tests > 0 else 0
+    unit_pct = (
+        (sum(f["tests"] for f in results["unit"]) / total_tests * 100) if total_tests > 0 else 0
+    )
+    int_pct = (
+        (sum(f["tests"] for f in results["integration"]) / total_tests * 100)
+        if total_tests > 0
+        else 0
+    )
+    e2e_pct = (
+        (sum(f["tests"] for f in results["e2e"]) / total_tests * 100) if total_tests > 0 else 0
+    )
 
     print("TESTING PYRAMID DISTRIBUTION:")
     print(f"  Unit Tests:        {unit_pct:5.1f}% (Target: 60%)")

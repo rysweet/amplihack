@@ -30,15 +30,15 @@ print(safe_msg)
 
 TokenSanitizer detects and redacts these token types:
 
-| Token Type | Pattern | Redaction Marker |
-|-----------|---------|------------------|
-| GitHub tokens | `gho_*`, `ghp_*`, `ghs_*`, `ghu_*`, `ghr_*` | `[REDACTED-GITHUB-TOKEN]` |
-| OpenAI keys | `sk-*`, `sk-proj-*` | `[REDACTED-OPENAI-KEY]` |
-| Anthropic keys | `sk-ant-*` | `[REDACTED-ANTHROPIC-KEY]` |
-| Bearer tokens | `Bearer <token>` | `[REDACTED-BEARER-TOKEN]` |
-| JWT tokens | `eyJ*.eyJ*.*` | `[REDACTED-JWT-TOKEN]` |
-| Azure keys | `azure-key-*` | `[REDACTED-AZURE-KEY]` |
-| Azure connections | `DefaultEndpointsProtocol=...` | `[REDACTED-AZURE-CONNECTION]` |
+| Token Type        | Pattern                                     | Redaction Marker              |
+| ----------------- | ------------------------------------------- | ----------------------------- |
+| GitHub tokens     | `gho_*`, `ghp_*`, `ghs_*`, `ghu_*`, `ghr_*` | `[REDACTED-GITHUB-TOKEN]`     |
+| OpenAI keys       | `sk-*`, `sk-proj-*`                         | `[REDACTED-OPENAI-KEY]`       |
+| Anthropic keys    | `sk-ant-*`                                  | `[REDACTED-ANTHROPIC-KEY]`    |
+| Bearer tokens     | `Bearer <token>`                            | `[REDACTED-BEARER-TOKEN]`     |
+| JWT tokens        | `eyJ*.eyJ*.*`                               | `[REDACTED-JWT-TOKEN]`        |
+| Azure keys        | `azure-key-*`                               | `[REDACTED-AZURE-KEY]`        |
+| Azure connections | `DefaultEndpointsProtocol=...`              | `[REDACTED-AZURE-CONNECTION]` |
 
 ## Common Use Cases
 
@@ -61,6 +61,7 @@ except Exception as e:
 ```
 
 **Output**:
+
 ```
 API call failed: Authentication failed with [REDACTED-GITHUB-TOKEN]
 ```
@@ -201,6 +202,7 @@ TokenSanitizer is optimized for production use:
 ### Performance Tips
 
 1. **Reuse instances**: Create one TokenSanitizer and reuse it
+
    ```python
    # Good - reuse instance
    sanitizer = TokenSanitizer()
@@ -213,6 +215,7 @@ TokenSanitizer is optimized for production use:
    ```
 
 2. **Check before sanitizing**: Use `contains_token()` to skip clean data
+
    ```python
    if sanitizer.contains_token(data):
        data = sanitizer.sanitize(data)
@@ -266,6 +269,7 @@ valid_anthropic = ["sk-ant-"]
 If sanitization is slow:
 
 1. **Profile token density**: Are most strings clean?
+
    ```python
    # Check before sanitizing
    if sanitizer.contains_token(text):
@@ -273,6 +277,7 @@ If sanitization is slow:
    ```
 
 2. **Reduce nested depth**: Very deep nesting (10+ levels) impacts performance
+
    ```python
    # Consider flattening deeply nested structures
    flat_data = flatten_dict(nested_data)

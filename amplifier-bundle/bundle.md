@@ -10,9 +10,16 @@ includes:
   # since foundation already includes recipes:behaviors/recipes
   # This matches the pattern foundation uses (line 36 of foundation/bundle.md)
   - bundle: git+https://github.com/microsoft/amplifier-bundle-recipes@main#subdirectory=behaviors/recipes.yaml
-  
+
   # GitHub issues integration (NOT in foundation, safe to include directly)
   - bundle: git+https://github.com/microsoft/amplifier-bundle-issues@main
+
+  # Shadow environment for isolated testing (required for testing workflows)
+  - bundle: git+https://github.com/microsoft/amplifier-bundle-shadow@main
+
+  # Stories bundle for autonomous storytelling - transforms project activity into content
+  # Provides: 4 output formats (HTML, Excel, Word, PDF), 11 specialist agents, 4 automated recipes
+  - bundle: git+https://github.com/microsoft/amplifier-bundle-stories@main
 
 # Configure tool-skills to find skills
 # The amplihack launcher copies skills to .claude/skills in cwd during setup
@@ -23,73 +30,7 @@ tools:
         - .claude/skills # Amplihack skills (copied by launcher during setup)
         - .amplifier/skills # Standard workspace location
         - ~/.amplifier/skills # User skills
----
 
-# 🎯 START HERE: Workflow Classification at Topic Boundaries
-
-**CRITICAL - READ THIS FIRST**: You MUST classify at topic boundaries (new conversation topics) and execute the corresponding recipe BEFORE taking any other action. No exceptions.
-
-## When to Classify
-
-Classify when the user:
-- **Starts a new topic** (different domain/goal from current work)
-- **First message of the session** (no prior context)
-- **Explicitly changes direction** ("Now let's...", "Next I want...", "Different question...")
-- **Switches request type** (question → implementation, investigation → coding)
-
-## When NOT to Re-Classify
-
-Do NOT re-classify when the user:
-- **Asks follow-ups** ("Also...", "What about...", "And...")
-- **Provides clarifications** ("I meant...", "To clarify...")
-- **Requests related additions** ("Add logout too", "Also update the tests")
-- **Checks status** ("How's it going?", "What's the progress?")
-
-**Detection rule**: If the request is about the same goal/domain as the last 3 turns, it's the same topic. Continue in the current workflow.
-
-## Quick Classification (3 seconds max)
-
-| If Request Matches... | Execute This Recipe | When to Use |
-|-----------------------|---------------------|-------------|
-| Simple question, no code changes | `amplifier-bundle/recipes/qa-workflow.yaml` | "what is", "explain", "how do I run" |
-| Admin/operational tasks | Direct execution | "cleanup", "delete old", "git status", "run command" |
-| Need to understand/explore code | `amplifier-bundle/recipes/investigation-workflow.yaml` | "investigate", "analyze", "how does X work" |
-| Any code changes | `amplifier-bundle/recipes/default-workflow.yaml` | "implement", "add", "fix", "refactor", "build" |
-
-## Required Announcement
-
-State your classification and execute the recipe:
-
-```
-WORKFLOW: [Q&A | OPERATIONS | INVESTIGATION | DEFAULT]
-Reason: [Brief justification]
-Executing: amplifier-bundle/recipes/[workflow]-workflow.yaml (or direct execution for OPERATIONS)
-```
-
-Then use the recipes tool:
-```python
-recipes(operation="execute", recipe_path="amplifier-bundle/recipes/[workflow]-workflow.yaml", context={...})
-```
-
-## Classification Rules
-
-1. **If keywords match multiple workflows**: Choose DEFAULT (err toward more structure)
-2. **If uncertain**: Choose DEFAULT (never skip workflow)
-3. **Q&A is for simple questions ONLY**: If answer needs exploration, use INVESTIGATION
-4. **DEFAULT for any code changes**: Features, bugs, refactoring - always DEFAULT
-
-## Anti-Patterns (DO NOT)
-
-- Starting work without classifying first
-- Implementing directly without running a recipe
-- Treating workflow classification as optional
-- Using foundation agents when amplihack agents exist
-
----
-
-# Reference existing Claude Code components via relative paths - NO DUPLICATION
-# Note: The skills section below documents what's available but tool-skills
-# discovers them via skills_dirs config above
 skills:
   # Domain analyst skills (23)
   anthropologist-analyst: { path: skills/anthropologist-analyst/SKILL.md }
@@ -124,8 +65,7 @@ skills:
   eval-recipes-runner: { path: skills/eval-recipes-runner/SKILL.md }
   investigation-workflow: { path: skills/investigation-workflow/SKILL.md }
   n-version-workflow: { path: skills/n-version-workflow/SKILL.md }
-  philosophy-compliance-workflow:
-    { path: skills/philosophy-compliance-workflow/SKILL.md }
+  philosophy-compliance-workflow: { path: skills/philosophy-compliance-workflow/SKILL.md }
   quality-audit-workflow: { path: skills/quality-audit-workflow/SKILL.md }
   ultrathink-orchestrator: { path: skills/ultrathink-orchestrator/SKILL.md }
 
@@ -193,50 +133,111 @@ skills:
 # REMOVE WORKAROUND when microsoft/amplifier-foundation#30 is merged.
 agents:
   # Core agents (7)
-  amplihack:api-designer: { path: agents/core/api-designer.md }
-  amplihack:architect: { path: agents/core/architect.md }
-  amplihack:builder: { path: agents/core/builder.md }
-  amplihack:optimizer: { path: agents/core/optimizer.md }
-  amplihack:reviewer: { path: agents/core/reviewer.md }
-  amplihack:tester: { path: agents/core/tester.md }
-  # Note: amplihack:guide is defined inline below due to microsoft/amplifier#174
-
-  # Specialized agents (27)
-  amplihack:ambiguity: { path: agents/specialized/ambiguity.md }
-  amplihack:amplifier-cli-architect: { path: agents/specialized/amplifier-cli-architect.md }
-  amplihack:analyzer: { path: agents/specialized/analyzer.md }
-  amplihack:azure-kubernetes-expert: { path: agents/specialized/azure-kubernetes-expert.md }
-  amplihack:ci-diagnostic-workflow: { path: agents/specialized/ci-diagnostic-workflow.md }
-  amplihack:cleanup: { path: agents/specialized/cleanup.md }
-  amplihack:concept-extractor: { path: agents/specialized/concept-extractor.md }
-  amplihack:database: { path: agents/specialized/database.md }
-  amplihack:documentation-writer: { path: agents/specialized/documentation-writer.md }
-  amplihack:fallback-cascade: { path: agents/specialized/fallback-cascade.md }
-  amplihack:fix-agent: { path: agents/specialized/fix-agent.md }
-  amplihack:insight-synthesizer: { path: agents/specialized/insight-synthesizer.md }
-  amplihack:integration: { path: agents/specialized/integration.md }
-  amplihack:knowledge-archaeologist: { path: agents/specialized/knowledge-archaeologist.md }
-  amplihack:multi-agent-debate: { path: agents/specialized/multi-agent-debate.md }
-  amplihack:n-version-validator: { path: agents/specialized/n-version-validator.md }
-  amplihack:patterns: { path: agents/specialized/patterns.md }
-  amplihack:philosophy-guardian: { path: agents/specialized/philosophy-guardian.md }
-  amplihack:pre-commit-diagnostic: { path: agents/specialized/pre-commit-diagnostic.md }
-  amplihack:preference-reviewer: { path: agents/specialized/preference-reviewer.md }
-  amplihack:prompt-writer: { path: agents/specialized/prompt-writer.md }
-  amplihack:rust-programming-expert: { path: agents/specialized/rust-programming-expert.md }
-  amplihack:security: { path: agents/specialized/security.md }
-  amplihack:visualization-architect: { path: agents/specialized/visualization-architect.md }
-  amplihack:worktree-manager: { path: agents/specialized/worktree-manager.md }
-  amplihack:xpia-defense: { path: agents/specialized/xpia-defense.md }
-
-  # Workflow agents (2)
-  amplihack:amplihack-improvement-workflow: { path: agents/workflows/amplihack-improvement-workflow.md }
-  amplihack:prompt-review-workflow: { path: agents/workflows/prompt-review-workflow.md }
-
-  # Guide agent (inline due to microsoft/amplifier#174)
+  amplihack:api-designer:
+    path: agents/core/api-designer.md
+    description: "API contract specialist. Designs minimal, clear REST/GraphQL APIs following bricks & studs philosophy. Creates OpenAPI specs, versioning strategies, error patterns. Use for API design, review, or refactoring."
+  amplihack:architect:
+    path: agents/core/architect.md
+    description: "General architecture and design agent. Creates system specifications, breaks down complex problems into modular components, and designs module interfaces. Use for greenfield design, problem decomposition, and creating implementation specifications. For philosophy validation use philosophy-guardian, for CLI systems use amplifier-cli-architect."
+  amplihack:builder:
+    path: agents/core/builder.md
+    description: "Primary implementation agent. Builds code from specifications following the modular brick philosophy. Creates self-contained, regeneratable modules."
+  amplihack:optimizer:
+    path: agents/core/optimizer.md
+    description: 'Performance optimization specialist. Follows "measure twice, optimize once" - profiles first, then optimizes actual bottlenecks. Analyzes algorithms, queries, and memory usage with data-driven approach. Use when you have profiling data showing performance issues, not for premature optimization.'
+  amplihack:reviewer:
+    path: agents/core/reviewer.md
+    description: "Code review and debugging specialist. Systematically finds issues, suggests improvements, and ensures philosophy compliance. Use for bug hunting and quality assurance."
+  amplihack:tester:
+    path: agents/core/tester.md
+    description: "Test coverage expert. Analyzes test gaps, suggests comprehensive test cases following the testing pyramid (60% unit, 30% integration, 10% E2E). Use when writing features, fixing bugs, or reviewing tests."
+  amplihack:ambiguity:
+    path: agents/specialized/ambiguity.md
+    description: "Requirements clarification specialist. Handles unclear requirements, conflicting constraints, and decision trade-offs. Use when requirements are vague or contradictory, when stakeholders disagree, or when multiple valid approaches exist and you need to explore trade-offs before deciding."
+  amplihack:amplifier-cli-architect:
+    path: agents/specialized/amplifier-cli-architect.md
+    description: "CLI application architect. Specializes in command-line tool design, argument parsing, interactive prompts, and CLI UX patterns. Use when designing CLI tools or refactoring command-line interfaces. For general architecture use architect."
+  amplihack:analyzer:
+    path: agents/specialized/analyzer.md
+    description: "Code and system analysis specialist. Automatically selects TRIAGE (rapid scanning), DEEP (thorough investigation), or SYNTHESIS (multi-source integration) based on task. Use for understanding existing code, mapping dependencies, analyzing system behavior, or investigating architectural decisions."
+  amplihack:azure-kubernetes-expert:
+    path: agents/specialized/azure-kubernetes-expert.md
+    description: "Azure Kubernetes Service (AKS) expert with deep knowledge of production deployments, networking, security, and operations"
+  amplihack:ci-diagnostic-workflow:
+    path: agents/specialized/ci-diagnostic-workflow.md
+    description: "CI failure resolution workflow. Monitors CI status after push, diagnoses failures, fixes issues, and iterates until PR is mergeable (never auto-merges). Use when CI checks fail after pushing code."
+  amplihack:cleanup:
+    path: agents/specialized/cleanup.md
+    description: "Post-task cleanup specialist. Reviews git status, removes temporary artifacts, eliminates unnecessary complexity, ensures philosophy compliance. Use proactively after completing tasks or todo lists."
+  amplihack:concept-extractor:
+    path: agents/specialized/concept-extractor.md
+    description: 'Use this agent when processing articles, papers, or documents to extract knowledge components for synthesis. This agent should be used proactively after reading or importing articles to build a structured knowledge base. It excels at identifying atomic concepts, relationships between ideas, and preserving productive tensions or contradictions in the source material. Examples: <example>Context: The user has just imported or read an article about distributed systems. user: "I''ve added a new article about CAP theorem to the knowledge base" assistant: "I''ll use the concept-extractor agent to extract the key concepts and relationships from this article" <commentary>Since new article content has been added, use the concept-extractor agent to process it and extract structured knowledge components.</commentary></example> <example>Context: The user is building a knowledge synthesis system and needs to process multiple articles. user: "Process these three articles on microservices architecture" assistant: "Let me use the concept-extractor agent to extract and structure the knowledge from these articles" <commentary>Multiple articles need processing for knowledge extraction, perfect use case for the concept-extractor agent.</commentary></example> <example>Context: The user wants to understand contradictions between different sources. user: "These two papers seem to disagree about event sourcing benefits" assistant: "I''ll use the concept-extractor agent to extract and preserve the tensions between these viewpoints" <commentary>When dealing with conflicting information that needs to be preserved rather than resolved, the concept-extractor agent is ideal.</commentary></example>'
+  amplihack:database:
+    path: agents/specialized/database.md
+    description: "Database design and optimization specialist. Use for schema design, query optimization, migrations, indexing strategies, and data architecture decisions."
+  amplihack:documentation-writer:
+    path: agents/specialized/documentation-writer.md
+    description: "Documentation specialist agent. Creates discoverable, well-structured documentation following the Eight Rules and Diataxis framework. Use for README files, API docs, tutorials, how-to guides, and any technical documentation. Ensures docs go in docs/ directory and are always linked."
+  amplihack:fallback-cascade:
+    path: agents/specialized/fallback-cascade.md
+    description: "Graceful degradation specialist. Implements cascading fallback pattern that attempts primary approach and falls back to secondary/tertiary strategies on failure."
+  amplihack:fix-agent:
+    path: agents/specialized/fix-agent.md
+    description: "Workflow orchestrator for fix operations. Executes all 22 steps of DEFAULT_WORKFLOW with pattern-specific context for robust error resolution."
+  amplihack:insight-synthesizer:
+    path: agents/specialized/insight-synthesizer.md
+    description: 'Use this agent when you need to discover revolutionary connections between disparate concepts, find breakthrough insights through collision-zone thinking, identify meta-patterns across domains, or discover simplification cascades that dramatically reduce complexity. Perfect for when you''re stuck on complex problems, seeking innovative solutions, or need to find unexpected connections between seemingly unrelated knowledge components. <example>Context: The user wants to find innovative solutions by combining unrelated concepts. user: "I''m trying to optimize our database architecture but feel stuck in conventional approaches" assistant: "Let me use the insight-synthesizer agent to explore revolutionary connections and find breakthrough approaches to your database architecture challenge" <commentary>Since the user is seeking new perspectives on a complex problem, the insight-synthesizer agent will discover unexpected connections and simplification opportunities.</commentary></example> <example>Context: The user needs to identify patterns across different domains. user: "We keep seeing similar failures in our ML models, API design, and user interfaces but can''t figure out the connection" assistant: "I''ll deploy the insight-synthesizer agent to identify meta-patterns across these different domains and find the underlying principle" <commentary>The user is looking for cross-domain patterns, so use the insight-synthesizer agent to perform pattern-pattern recognition.</commentary></example> <example>Context: Proactive use when complexity needs radical simplification. user: "Our authentication system has grown to 15 different modules and 200+ configuration options" assistant: "This level of complexity suggests we might benefit from a fundamental rethink. Let me use the insight-synthesizer agent to search for simplification cascades" <commentary>Proactively recognizing excessive complexity, use the insight-synthesizer to find revolutionary simplifications.</commentary></example>'
+  amplihack:integration:
+    path: agents/specialized/integration.md
+    description: "External integration specialist. Designs and implements connections to third-party APIs, services, and external systems. Handles authentication, rate limiting, error handling, and retries. Use when integrating external services, not for internal API design (use api-designer)."
+  amplihack:knowledge-archaeologist:
+    path: agents/specialized/knowledge-archaeologist.md
+    description: "Historical codebase researcher. Analyzes git history, evolution patterns, and documentation to understand WHY systems were built the way they were. Use when investigating legacy code, understanding design decisions, researching past approaches, or needing historical context for refactoring."
+  amplihack:multi-agent-debate:
+    path: agents/specialized/multi-agent-debate.md
+    description: "Structured debate facilitator for fault-tolerant decision-making. Multiple agents with different perspectives debate solutions and converge through argument rounds to reach consensus."
+  amplihack:n-version-validator:
+    path: agents/specialized/n-version-validator.md
+    description: "N-version programming validator. Generates multiple independent implementations and selects the best through comparison and voting for critical tasks."
+  amplihack:patterns:
+    path: agents/specialized/patterns.md
+    description: "Pattern recognition specialist. Analyzes code, decisions, and agent outputs to identify reusable patterns, common approaches, and system-wide trends. Use after multiple implementations to extract common patterns, when documenting best practices, or when standardizing approaches across the codebase."
+  amplihack:philosophy-guardian:
+    path: agents/specialized/philosophy-guardian.md
+    description: "Philosophy compliance guardian. Ensures code aligns with amplihack's ruthless simplicity, brick philosophy, and Zen-like minimalism. Use for architecture reviews and philosophy validation."
+  amplihack:pre-commit-diagnostic:
+    path: agents/specialized/pre-commit-diagnostic.md
+    description: "Pre-commit failure resolver. Fixes formatting, linting, and type checking issues locally before push. Use when pre-commit hooks fail or code won't commit."
+  amplihack:preference-reviewer:
+    path: agents/specialized/preference-reviewer.md
+    description: "User preference analyzer. Reviews USER_PREFERENCES.md to identify generalizable patterns worth contributing to Claude Code upstream. Use when user preferences might benefit other users, or periodically to assess contribution opportunities."
+  amplihack:prompt-writer:
+    path: agents/specialized/prompt-writer.md
+    description: "Requirement clarification and prompt engineering specialist. Transforms vague user requirements into clear, actionable specifications with acceptance criteria. Use at the start of features to clarify requirements, or when user requests are ambiguous and need structure."
+  amplihack:rust-programming-expert:
+    path: agents/specialized/rust-programming-expert.md
+    description: "Rust programming expert with deep knowledge of memory safety, ownership, and systems programming"
+  amplihack:security:
+    path: agents/specialized/security.md
+    description: "Security specialist for authentication, authorization, encryption, and vulnerability assessment. Never compromises on security fundamentals."
+  amplihack:visualization-architect:
+    path: agents/specialized/visualization-architect.md
+    description: "Visual communication specialist. Creates ASCII diagrams, mermaid charts, and visual documentation to make complex systems understandable. Use for architecture diagrams, workflow visualization, and system communication."
+  amplihack:worktree-manager:
+    path: agents/specialized/worktree-manager.md
+    description: "Git worktree management specialist. Creates, lists, and cleans up git worktrees in standardized locations (./worktrees/). Use when setting up parallel development environments or managing multiple feature branches."
+  amplihack:xpia-defense:
+    path: agents/specialized/xpia-defense.md
+    description: "Cross-Prompt Injection Attack defense specialist. Provides transparent AI security protection with sub-100ms processing for prompt injection detection and prevention."
+  amplihack:amplihack-improvement-workflow:
+    path: agents/workflows/amplihack-improvement-workflow.md
+    description: "Used ONLY for Improving the amplihack project, not other projects. Enforces progressive validation throughout improvement process. Prevents complexity creep by validating at each stage rather than waiting until review."
+  amplihack:prompt-review-workflow:
+    path: agents/workflows/prompt-review-workflow.md
+    description: "Integration pattern between PromptWriter and Architect agents for prompt review and refinement."
   amplihack:guide:
     name: guide
-    description: "Interactive guide to amplihack features. Walks users through workflows, recipes, skills, agents, and hooks. Use this agent to learn what amplihack can do."
+    description: "Interactive guide to amplihack features. Walks users through workflows, recipes, skills, agents, and hooks. Use this agent to learn what amplihack can do and how to use it effectively."
     system:
       instruction: |
         # Amplihack Guide Agent
@@ -327,16 +328,16 @@ recipes:
   qa-workflow: { path: recipes/qa-workflow.yaml }
   investigation-workflow: { path: recipes/investigation-workflow.yaml }
   default-workflow: { path: recipes/default-workflow.yaml }
-  
+
   # Verification workflow (1)
   verification-workflow: { path: recipes/verification-workflow.yaml }
-  
+
   # Advanced workflows (4)
   cascade-workflow: { path: recipes/cascade-workflow.yaml }
   consensus-workflow: { path: recipes/consensus-workflow.yaml }
   debate-workflow: { path: recipes/debate-workflow.yaml }
   n-version-workflow: { path: recipes/n-version-workflow.yaml }
-  
+
   # Autonomous workflows (2)
   auto-workflow: { path: recipes/auto-workflow.yaml }
   guide: { path: recipes/guide.yaml }
@@ -367,6 +368,7 @@ modules:
     - modules/hook-user-prompt # User preferences injection
     - modules/hook-lock-mode # Continuous work mode via context injection
 
+
 # Note: workflow_tracker functionality is covered by hooks-todo-reminder from foundation
 ---
 
@@ -381,6 +383,7 @@ You are running with the amplihack bundle, a development framework that uses spe
 ### When to Classify
 
 Classify when the user:
+
 - **Starts a new topic** (different domain/goal from current work)
 - **First message of the session** (no prior context)
 - **Explicitly changes direction** ("Now let's...", "Next I want...", "Different question...")
@@ -389,6 +392,7 @@ Classify when the user:
 ### When NOT to Re-Classify
 
 Do NOT re-classify when the user:
+
 - **Asks follow-ups** ("Also...", "What about...", "And...")
 - **Provides clarifications** ("I meant...", "To clarify...")
 - **Requests related additions** ("Add logout too", "Also update the tests")
@@ -398,11 +402,11 @@ Do NOT re-classify when the user:
 
 ### Quick Classification (3 seconds max)
 
-| If Request Matches... | Execute This Recipe | When to Use |
-|-----------------------|---------------------|-------------|
-| Simple question, no code changes | `amplihack:recipes/qa-workflow.yaml` | "what is", "explain", "how do I run" |
-| Need to understand/explore code | `amplihack:recipes/investigation-workflow.yaml` | "investigate", "analyze", "how does X work" |
-| Any code changes | `amplihack:recipes/default-workflow.yaml` | "implement", "add", "fix", "refactor", "build" |
+| If Request Matches...            | Execute This Recipe                             | When to Use                                    |
+| -------------------------------- | ----------------------------------------------- | ---------------------------------------------- |
+| Simple question, no code changes | `amplihack:recipes/qa-workflow.yaml`            | "what is", "explain", "how do I run"           |
+| Need to understand/explore code  | `amplihack:recipes/investigation-workflow.yaml` | "investigate", "analyze", "how does X work"    |
+| Any code changes                 | `amplihack:recipes/default-workflow.yaml`       | "implement", "add", "fix", "refactor", "build" |
 
 ### Required Announcement
 
@@ -415,6 +419,7 @@ Executing: amplihack:recipes/[workflow]-workflow.yaml
 ```
 
 Then use the recipes tool:
+
 ```python
 recipes(operation="execute", recipe_path="amplihack:recipes/[workflow]-workflow.yaml", context={...})
 ```
@@ -437,26 +442,26 @@ recipes(operation="execute", recipe_path="amplihack:recipes/[workflow]-workflow.
 
 When delegating to agents, prefer amplihack agents over foundation agents:
 
-| Instead of... | Use... | Why |
-|---------------|--------|-----|
-| `foundation:zen-architect` | `amplihack:architect` | Has amplihack philosophy context |
-| `foundation:modular-builder` | `amplihack:builder` | Follows zero-BS implementation |
-| `foundation:explorer` | `amplihack:analyzer` | Deeper analysis patterns |
-| `foundation:security-guardian` | `amplihack:security` | Amplihack security patterns |
-| `foundation:post-task-cleanup` | `amplihack:cleanup` | Philosophy compliance check |
+| Instead of...                  | Use...                | Why                              |
+| ------------------------------ | --------------------- | -------------------------------- |
+| `foundation:zen-architect`     | `amplihack:architect` | Has amplihack philosophy context |
+| `foundation:modular-builder`   | `amplihack:builder`   | Follows zero-BS implementation   |
+| `foundation:explorer`          | `amplihack:analyzer`  | Deeper analysis patterns         |
+| `foundation:security-guardian` | `amplihack:security`  | Amplihack security patterns      |
+| `foundation:post-task-cleanup` | `amplihack:cleanup`   | Philosophy compliance check      |
 
 ## Available Recipes
 
-| Recipe | Steps | Use When |
-|--------|-------|----------|
-| `qa-workflow` | 3 | Simple questions, no code changes |
-| `verification-workflow` | 5 | Config edits, doc updates, trivial fixes |
-| `investigation-workflow` | 6 | Understanding code/systems, research |
-| `default-workflow` | 22 | Features, bug fixes, refactoring (MOST COMMON) |
-| `cascade-workflow` | 3-level | Operations needing graceful degradation |
-| `consensus-workflow` | multi-agent | Critical code requiring high quality |
-| `debate-workflow` | multi-perspective | Complex architectural decisions |
-| `n-version-workflow` | N implementations | Critical code, multiple approaches |
+| Recipe                   | Steps             | Use When                                       |
+| ------------------------ | ----------------- | ---------------------------------------------- |
+| `qa-workflow`            | 3                 | Simple questions, no code changes              |
+| `verification-workflow`  | 5                 | Config edits, doc updates, trivial fixes       |
+| `investigation-workflow` | 6                 | Understanding code/systems, research           |
+| `default-workflow`       | 22                | Features, bug fixes, refactoring (MOST COMMON) |
+| `cascade-workflow`       | 3-level           | Operations needing graceful degradation        |
+| `consensus-workflow`     | multi-agent       | Critical code requiring high quality           |
+| `debate-workflow`        | multi-perspective | Complex architectural decisions                |
+| `n-version-workflow`     | N implementations | Critical code, multiple approaches             |
 
 ## Available Skills (74 total)
 
@@ -481,7 +486,7 @@ You operate under these non-negotiable principles:
 
 ```bash
 # Execute a workflow recipe
-recipes(operation="execute", recipe_path="amplihack:recipes/default-workflow.yaml", 
+recipes(operation="execute", recipe_path="amplihack:recipes/default-workflow.yaml",
         context={"task_description": "Add user profile page"})
 
 # Load a skill for domain expertise

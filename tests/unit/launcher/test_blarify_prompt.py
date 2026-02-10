@@ -2,7 +2,7 @@
 
 Tests the Week 4 implementation:
 - Per-project consent caching
-- 30s timeout with default yes
+- 30s timeout with default no (opt-in, not opt-out)
 - Non-blocking behavior
 - Integration with Kuzu code graph
 """
@@ -10,7 +10,7 @@ Tests the Week 4 implementation:
 import hashlib
 import logging
 from pathlib import Path
-from unittest.mock import MagicMock, patch, Mock
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -191,20 +191,22 @@ class TestBlarifyPromptLogic:
     @patch("amplihack.launcher.core.Path.cwd")
     @patch("amplihack.launcher.memory_config.is_interactive_terminal")
     @patch("amplihack.launcher.memory_config.get_user_input_with_timeout")
-    def test_prompt_handles_timeout_with_default_yes(
+    def test_prompt_handles_timeout_with_default_no(
         self, mock_get_input, mock_is_interactive, mock_cwd, launcher, mock_project_path
     ):
-        """Test prompt timeout defaults to yes."""
+        """Test prompt timeout defaults to no (opt-in behavior)."""
         mock_cwd.return_value = mock_project_path
         mock_is_interactive.return_value = True
         mock_get_input.return_value = None  # Timeout
 
-        # Mock parse_consent_response to return default
-        with patch("amplihack.launcher.memory_config.parse_consent_response", return_value=True):
-            with patch.object(launcher, "_run_blarify_and_import", return_value=True):
-                result = launcher._prompt_blarify_indexing()
+        # Mock parse_consent_response to return default (False)
+        with patch("amplihack.launcher.memory_config.parse_consent_response", return_value=False):
+            result = launcher._prompt_blarify_indexing()
 
+        # Should return True (non-blocking) but not run blarify
         assert result is True
+        # Verify blarify was not run (no consent saved)
+        assert not launcher._has_blarify_consent(mock_project_path)
 
     @patch("amplihack.launcher.core.Path.cwd")
     @patch("amplihack.launcher.memory_config.is_interactive_terminal")
@@ -315,21 +317,16 @@ class TestIntegrationWithPrepareLaunch:
     """Test integration with prepare_launch method."""
 
     @patch.object(ClaudeLauncher, "_prompt_blarify_indexing")
-    @patch.object(ClaudeLauncher, "_interactive_neo4j_startup")
-    @patch.object(ClaudeLauncher, "_check_neo4j_credentials")
     @patch("amplihack.launcher.core.check_prerequisites")
     def test_prepare_launch_calls_blarify_prompt(
         self,
         mock_prereqs,
-        mock_neo4j_creds,
-        mock_neo4j_startup,
         mock_blarify_prompt,
         launcher,
     ):
         """Test prepare_launch calls blarify prompt at correct point."""
         # Setup mocks to pass early checks
         mock_prereqs.return_value = True
-        mock_neo4j_startup.return_value = True
         mock_blarify_prompt.return_value = True
 
         # Mock other methods to prevent side effects
@@ -342,24 +339,16 @@ class TestIntegrationWithPrepareLaunch:
             _start_proxy_if_needed=lambda: True,
             _configure_lsp_auto=lambda x: None,
         ):
-            result = launcher.prepare_launch()
+            launcher.prepare_launch()
 
         # Verify blarify prompt was called
         mock_blarify_prompt.assert_called_once()
 
-        # Verify it's called after Neo4j but before other setup
-        assert mock_neo4j_startup.called
-        assert mock_blarify_prompt.called
-
     @patch.object(ClaudeLauncher, "_prompt_blarify_indexing")
-    @patch.object(ClaudeLauncher, "_interactive_neo4j_startup")
-    @patch.object(ClaudeLauncher, "_check_neo4j_credentials")
     @patch("amplihack.launcher.core.check_prerequisites")
     def test_prepare_launch_continues_if_blarify_fails(
         self,
         mock_prereqs,
-        mock_neo4j_creds,
-        mock_neo4j_startup,
         mock_blarify_prompt,
         launcher,
         caplog,
@@ -367,7 +356,6 @@ class TestIntegrationWithPrepareLaunch:
         """Test prepare_launch continues even if blarify prompt returns False."""
         # Setup mocks
         mock_prereqs.return_value = True
-        mock_neo4j_startup.return_value = True
         mock_blarify_prompt.return_value = False  # Simulate failure
 
         # Mock other methods

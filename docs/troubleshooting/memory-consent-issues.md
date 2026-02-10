@@ -278,13 +278,13 @@ Formula: `N = max(8192, total_ram_mb ÷ 4)` capped at 32768 MB
 
 Examples:
 
-| System RAM | Quarter RAM | Max(8192, Quarter) | Final (Capped) |
-|-----------|-------------|-------------------|----------------|
-| 16 GB | 4096 MB | 8192 MB | 8192 MB |
-| 32 GB | 8192 MB | 8192 MB | 8192 MB |
-| 64 GB | 16384 MB | 16384 MB | 16384 MB |
-| 128 GB | 32768 MB | 32768 MB | 32768 MB |
-| 256 GB | 65536 MB | 65536 MB | **32768 MB** (capped) |
+| System RAM | Quarter RAM | Max(8192, Quarter) | Final (Capped)        |
+| ---------- | ----------- | ------------------ | --------------------- |
+| 16 GB      | 4096 MB     | 8192 MB            | 8192 MB               |
+| 32 GB      | 8192 MB     | 8192 MB            | 8192 MB               |
+| 64 GB      | 16384 MB    | 16384 MB           | 16384 MB              |
+| 128 GB     | 32768 MB    | 32768 MB           | 32768 MB              |
+| 256 GB     | 65536 MB    | 65536 MB           | **32768 MB** (capped) |
 
 #### Solution 3: Manual Override
 
@@ -524,17 +524,20 @@ chmod +x amplihack-diag.sh
 If these solutions don't work:
 
 1. **Check version**:
+
    ```bash
    amplihack --version
    # Ensure >= 0.9.0
    ```
 
 2. **Enable debug mode**:
+
    ```bash
    AMPLIHACK_DEBUG=true amplihack
    ```
 
 3. **Collect diagnostic info**:
+
    ```bash
    # Save output
    ./amplihack-diag.sh > diagnostic-output.txt 2>&1

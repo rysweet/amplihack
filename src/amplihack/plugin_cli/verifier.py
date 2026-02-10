@@ -18,6 +18,7 @@ from pathlib import Path
 @dataclass
 class VerificationResult:
     """Result of plugin verification."""
+
     success: bool
     installed: bool
     discoverable: bool
@@ -68,7 +69,7 @@ class PluginVerifier:
             installed=installed,
             discoverable=discoverable,
             hooks_loaded=hooks_loaded,
-            issues=issues
+            issues=issues,
         )
 
     def check_installed(self) -> bool:

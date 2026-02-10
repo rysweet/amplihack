@@ -12,10 +12,10 @@ Public API:
     LSPConfigurator: Main class for LSP configuration management
 """
 
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
 import re
 import shutil
+from pathlib import Path
+from typing import Any
 
 
 class LSPConfigurator:
@@ -107,7 +107,7 @@ class LSPConfigurator:
         """
         return self.env_file_path
 
-    def backup_env_file(self) -> Optional[Path]:
+    def backup_env_file(self) -> Path | None:
         """Create a backup of the current .env file.
 
         Returns:
@@ -124,7 +124,7 @@ class LSPConfigurator:
         shutil.copy2(self.env_file_path, backup_path)
         return backup_path
 
-    def validate_env_file_syntax(self) -> Tuple[bool, List[str]]:
+    def validate_env_file_syntax(self) -> tuple[bool, list[str]]:
         """Validate .env file syntax.
 
         Returns:
@@ -141,25 +141,25 @@ class LSPConfigurator:
         errors = []
         content = self.env_file_path.read_text()
 
-        for line_num, line in enumerate(content.split('\n'), 1):
+        for line_num, line in enumerate(content.split("\n"), 1):
             line = line.strip()
 
             # Skip empty lines and comments
-            if not line or line.startswith('#'):
+            if not line or line.startswith("#"):
                 continue
 
             # Check for valid key=value format
-            if '=' not in line:
+            if "=" not in line:
                 errors.append(f"Line {line_num}: Missing '=' in assignment")
                 continue
 
-            key, _ = line.split('=', 1)
+            key, _ = line.split("=", 1)
             if not key or not key.strip():
                 errors.append(f"Line {line_num}: Empty variable name")
 
         return len(errors) == 0, errors
 
-    def get_all_env_variables(self) -> Dict[str, str]:
+    def get_all_env_variables(self) -> dict[str, str]:
         """Get all environment variables from .env file.
 
         Returns:
@@ -175,16 +175,16 @@ class LSPConfigurator:
         env_vars = {}
         content = self.env_file_path.read_text()
 
-        for line in content.split('\n'):
+        for line in content.split("\n"):
             line = line.strip()
 
             # Skip empty lines and comments
-            if not line or line.startswith('#'):
+            if not line or line.startswith("#"):
                 continue
 
             # Parse key=value
-            if '=' in line:
-                key, value = line.split('=', 1)
+            if "=" in line:
+                key, value = line.split("=", 1)
                 env_vars[key.strip()] = value.strip()
 
         return env_vars
@@ -208,12 +208,12 @@ class LSPConfigurator:
         try:
             # Read existing content or start fresh
             if self.env_file_path.exists():
-                lines = self.env_file_path.read_text().split('\n')
+                lines = self.env_file_path.read_text().split("\n")
             else:
                 lines = []
 
             # Look for existing key
-            key_pattern = re.compile(f'^{re.escape(key)}\\s*=')
+            key_pattern = re.compile(f"^{re.escape(key)}\\s*=")
             key_found = False
 
             for i, line in enumerate(lines):
@@ -233,15 +233,15 @@ class LSPConfigurator:
                 lines.append(f"{key}={value}")
 
             # Ensure single newline at end
-            content = '\n'.join(lines)
-            if content and not content.endswith('\n'):
-                content += '\n'
+            content = "\n".join(lines)
+            if content and not content.endswith("\n"):
+                content += "\n"
 
             # Write atomically
             self.env_file_path.write_text(content)
             return True
 
-        except (IOError, OSError) as e:
+        except OSError:
             # Handle permission errors, disk full, etc.
             return False
 
@@ -262,27 +262,24 @@ class LSPConfigurator:
             return True  # Already doesn't exist
 
         try:
-            lines = self.env_file_path.read_text().split('\n')
-            key_pattern = re.compile(f'^{re.escape(key)}\\s*=')
+            lines = self.env_file_path.read_text().split("\n")
+            key_pattern = re.compile(f"^{re.escape(key)}\\s*=")
 
             # Filter out lines matching the key
-            filtered_lines = [
-                line for line in lines
-                if not key_pattern.match(line.strip())
-            ]
+            filtered_lines = [line for line in lines if not key_pattern.match(line.strip())]
 
             # Write back
-            content = '\n'.join(filtered_lines)
-            if content and not content.endswith('\n'):
-                content += '\n'
+            content = "\n".join(filtered_lines)
+            if content and not content.endswith("\n"):
+                content += "\n"
 
             self.env_file_path.write_text(content)
             return True
 
-        except (IOError, OSError):
+        except OSError:
             return False
 
-    def get_lsp_status_summary(self) -> Dict[str, Any]:
+    def get_lsp_status_summary(self) -> dict[str, Any]:
         """Get summary of LSP configuration status.
 
         Returns:
@@ -299,7 +296,7 @@ class LSPConfigurator:
             "env_variable_count": len(self.get_all_env_variables()),
         }
 
-    def get_status_summary(self) -> Dict[str, Any]:
+    def get_status_summary(self) -> dict[str, Any]:
         """Alias for get_lsp_status_summary.
 
         Returns:

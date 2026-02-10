@@ -4,8 +4,6 @@ Tests how persona strategies integrate with platform CLI, evidence collector,
 and success evaluator.
 """
 
-from unittest.mock import Mock, patch
-
 import pytest
 
 # These imports will fail until implementation exists
@@ -41,8 +39,7 @@ class TestPersonaPlatformIntegration:
         # Prompt should reflect guide's teaching style
         prompt_lower = prompt.lower()
         assert any(
-            keyword in prompt_lower
-            for keyword in ["teach", "learn", "understand", "explain"]
+            keyword in prompt_lower for keyword in ["teach", "learn", "understand", "explain"]
         )
 
     def test_qa_engineer_persona_with_claude_code(self):
@@ -70,8 +67,7 @@ class TestPersonaPlatformIntegration:
 
         prompt_lower = prompt.lower()
         assert any(
-            keyword in prompt_lower
-            for keyword in ["design", "architecture", "system", "structure"]
+            keyword in prompt_lower for keyword in ["design", "architecture", "system", "structure"]
         )
 
     def test_junior_dev_persona_with_claude_code(self):
@@ -279,9 +275,7 @@ class TestPersonaWorkflowIntegration:
         persona = GUIDE
 
         # Format prompt
-        prompt = mock_platform_cli.format_prompt(
-            sample_goal_and_criteria["goal"], persona.name, ""
-        )
+        prompt = mock_platform_cli.format_prompt(sample_goal_and_criteria["goal"], persona.name, "")
 
         assert prompt is not None
 
@@ -301,9 +295,7 @@ class TestPersonaWorkflowIntegration:
         persona = QA_ENGINEER
 
         # Format prompt
-        prompt = mock_platform_cli.format_prompt(
-            sample_goal_and_criteria["goal"], persona.name, ""
-        )
+        prompt = mock_platform_cli.format_prompt(sample_goal_and_criteria["goal"], persona.name, "")
 
         assert prompt is not None
 
@@ -323,9 +315,7 @@ class TestPersonaWorkflowIntegration:
         persona = ARCHITECT
 
         # Format prompt
-        prompt = mock_platform_cli.format_prompt(
-            sample_goal_and_criteria["goal"], persona.name, ""
-        )
+        prompt = mock_platform_cli.format_prompt(sample_goal_and_criteria["goal"], persona.name, "")
 
         assert prompt is not None
 

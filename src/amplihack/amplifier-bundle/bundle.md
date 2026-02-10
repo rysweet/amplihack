@@ -10,6 +10,9 @@ includes:
   # 2. amplifier-bundle-recipes includes foundation transitively
   # Including it again causes a "circular dependency" warning
   - bundle: git+https://github.com/microsoft/amplifier-bundle-recipes@main
+  # Stories bundle for autonomous storytelling - transforms project activity into content
+  # Provides: 4 output formats (HTML, Excel, Word, PDF), 11 specialist agents, 4 automated recipes
+  - bundle: git+https://github.com/microsoft/amplifier-bundle-stories@main
 
 # Configure tool-skills to find skills
 # The amplihack launcher copies skills to .claude/skills in cwd during setup
@@ -58,8 +61,7 @@ skills:
   eval-recipes-runner: { path: skills/eval-recipes-runner/SKILL.md }
   investigation-workflow: { path: skills/investigation-workflow/SKILL.md }
   n-version-workflow: { path: skills/n-version-workflow/SKILL.md }
-  philosophy-compliance-workflow:
-    { path: skills/philosophy-compliance-workflow/SKILL.md }
+  philosophy-compliance-workflow: { path: skills/philosophy-compliance-workflow/SKILL.md }
   quality-audit-workflow: { path: skills/quality-audit-workflow/SKILL.md }
   ultrathink-orchestrator: { path: skills/ultrathink-orchestrator/SKILL.md }
 
@@ -250,6 +252,7 @@ modules:
     - modules/hook-user-prompt # User preferences injection
     - modules/hook-lock-mode # Continuous work mode via context injection
 
+
 # Note: workflow_tracker functionality is covered by hooks-todo-reminder from foundation
 ---
 
@@ -263,11 +266,11 @@ You are running with the amplihack bundle, a development framework that uses spe
 
 ### Quick Classification (3 seconds max)
 
-| If Request Matches... | Execute This Recipe | When to Use |
-|-----------------------|---------------------|-------------|
-| Simple question, no code changes | `amplihack:recipes/qa-workflow.yaml` | "what is", "explain", "how do I run" |
-| Need to understand/explore code | `amplihack:recipes/investigation-workflow.yaml` | "investigate", "analyze", "how does X work" |
-| Any code changes | `amplihack:recipes/default-workflow.yaml` | "implement", "add", "fix", "refactor", "build" |
+| If Request Matches...            | Execute This Recipe                             | When to Use                                    |
+| -------------------------------- | ----------------------------------------------- | ---------------------------------------------- |
+| Simple question, no code changes | `amplihack:recipes/qa-workflow.yaml`            | "what is", "explain", "how do I run"           |
+| Need to understand/explore code  | `amplihack:recipes/investigation-workflow.yaml` | "investigate", "analyze", "how does X work"    |
+| Any code changes                 | `amplihack:recipes/default-workflow.yaml`       | "implement", "add", "fix", "refactor", "build" |
 
 ### Required Announcement
 
@@ -280,6 +283,7 @@ Executing: amplihack:recipes/[workflow]-workflow.yaml
 ```
 
 Then use the recipes tool:
+
 ```python
 recipes(operation="execute", recipe_path="amplihack:recipes/[workflow]-workflow.yaml", context={...})
 ```
@@ -302,26 +306,26 @@ recipes(operation="execute", recipe_path="amplihack:recipes/[workflow]-workflow.
 
 When delegating to agents, prefer amplihack agents over foundation agents:
 
-| Instead of... | Use... | Why |
-|---------------|--------|-----|
-| `foundation:zen-architect` | `amplihack:architect` | Has amplihack philosophy context |
-| `foundation:modular-builder` | `amplihack:builder` | Follows zero-BS implementation |
-| `foundation:explorer` | `amplihack:analyzer` | Deeper analysis patterns |
-| `foundation:security-guardian` | `amplihack:security` | Amplihack security patterns |
-| `foundation:post-task-cleanup` | `amplihack:cleanup` | Philosophy compliance check |
+| Instead of...                  | Use...                | Why                              |
+| ------------------------------ | --------------------- | -------------------------------- |
+| `foundation:zen-architect`     | `amplihack:architect` | Has amplihack philosophy context |
+| `foundation:modular-builder`   | `amplihack:builder`   | Follows zero-BS implementation   |
+| `foundation:explorer`          | `amplihack:analyzer`  | Deeper analysis patterns         |
+| `foundation:security-guardian` | `amplihack:security`  | Amplihack security patterns      |
+| `foundation:post-task-cleanup` | `amplihack:cleanup`   | Philosophy compliance check      |
 
 ## Available Recipes
 
-| Recipe | Steps | Use When |
-|--------|-------|----------|
-| `qa-workflow` | 3 | Simple questions, no code changes |
-| `verification-workflow` | 5 | Config edits, doc updates, trivial fixes |
-| `investigation-workflow` | 6 | Understanding code/systems, research |
-| `default-workflow` | 22 | Features, bug fixes, refactoring (MOST COMMON) |
-| `cascade-workflow` | 3-level | Operations needing graceful degradation |
-| `consensus-workflow` | multi-agent | Critical code requiring high quality |
-| `debate-workflow` | multi-perspective | Complex architectural decisions |
-| `n-version-workflow` | N implementations | Critical code, multiple approaches |
+| Recipe                   | Steps             | Use When                                       |
+| ------------------------ | ----------------- | ---------------------------------------------- |
+| `qa-workflow`            | 3                 | Simple questions, no code changes              |
+| `verification-workflow`  | 5                 | Config edits, doc updates, trivial fixes       |
+| `investigation-workflow` | 6                 | Understanding code/systems, research           |
+| `default-workflow`       | 22                | Features, bug fixes, refactoring (MOST COMMON) |
+| `cascade-workflow`       | 3-level           | Operations needing graceful degradation        |
+| `consensus-workflow`     | multi-agent       | Critical code requiring high quality           |
+| `debate-workflow`        | multi-perspective | Complex architectural decisions                |
+| `n-version-workflow`     | N implementations | Critical code, multiple approaches             |
 
 ## Available Skills (74 total)
 
@@ -346,7 +350,7 @@ You operate under these non-negotiable principles:
 
 ```bash
 # Execute a workflow recipe
-recipes(operation="execute", recipe_path="amplihack:recipes/default-workflow.yaml", 
+recipes(operation="execute", recipe_path="amplihack:recipes/default-workflow.yaml",
         context={"task_description": "Add user profile page"})
 
 # Load a skill for domain expertise

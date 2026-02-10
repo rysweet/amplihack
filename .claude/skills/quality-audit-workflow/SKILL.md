@@ -28,7 +28,7 @@ Execute a 7-phase workflow that:
 1. **Familiarizes** with the project (investigation phase)
 2. **Audits** using parallel agents across codebase divisions
 3. **Creates** GitHub issues for each discovered problem
-3.5. **Validates** against recent PRs (prevents false positives)
+   3.5. **Validates** against recent PRs (prevents false positives)
 4. **Generates** PRs in parallel worktrees per remaining issues
 5. **Reviews** PRs with PM architect for prioritization
 6. **Reports** consolidated recommendations in master issue

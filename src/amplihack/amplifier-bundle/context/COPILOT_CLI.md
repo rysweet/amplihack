@@ -9,18 +9,20 @@ amplihack uses an adaptive hook system that detects which platform is calling (C
 ### Platform Detection
 
 Automatically detects the calling platform by checking:
+
 1. Environment variables (`CLAUDE_CODE`, `GITHUB_COPILOT`)
 2. Process name patterns
 3. Fallback to Claude Code behavior (safe default)
 
 ### Context Injection Strategies
 
-| Platform | Strategy | Method |
-|----------|----------|--------|
-| **Claude Code** | Direct injection | `hookSpecificOutput.additionalContext` or stdout |
+| Platform        | Strategy             | Method                                                         |
+| --------------- | -------------------- | -------------------------------------------------------------- |
+| **Claude Code** | Direct injection     | `hookSpecificOutput.additionalContext` or stdout               |
 | **Copilot CLI** | File-based injection | Write to `.github/agents/AGENTS.md` with `@include` directives |
 
 **Claude Code** (Direct Injection):
+
 ```python
 # Hook returns JSON with context
 return {
@@ -32,6 +34,7 @@ return {
 ```
 
 **Copilot CLI** (File-Based Injection):
+
 ```python
 # Hook writes to AGENTS.md
 with open(".github/agents/AGENTS.md", "w") as f:
@@ -49,6 +52,7 @@ with open(".github/agents/AGENTS.md", "w") as f:
 **Copilot CLI Limitation**: Hook output is ignored for context injection (except `preToolUse` permission decisions).
 
 **Our Solution Benefits**:
+
 - ✅ Preference injection works on both platforms
 - ✅ Context loading works everywhere
 - ✅ Zero duplication (single Python implementation)
@@ -67,6 +71,7 @@ For complete hook capability comparison, see [@docs/HOOKS_COMPARISON.md](../../d
 ## Integration Components
 
 See [@docs/COPILOT_CLI.md](../../docs/COPILOT_CLI.md) for:
+
 - Complete architecture overview
 - Available agents and skills
 - MCP server configuration
@@ -81,6 +86,7 @@ See [@docs/COPILOT_CLI.md](../../docs/COPILOT_CLI.md) for:
 **Hook Pattern**: Bash wrappers → Python implementations (zero duplication)
 
 **Key Files**:
+
 - `.github/copilot-instructions.md` - Base Copilot instructions
 - `.github/agents/amplihack/` - Symlink to `~/.amplihack/.claude/agents/amplihack/`
 - `.github/agents/skills/` - Symlinks to `~/.amplihack/.claude/skills/`

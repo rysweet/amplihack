@@ -9,17 +9,17 @@
 - **name**: /fix
 - **version**: 1.0.0
 - **description**: Multi-agent debate for complex decisions and trade-offs
-- **triggers**: 
-- **invokes**: 
+- **triggers**:
+- **invokes**:
 - **- type**: command
 - **path**: .claude/workflow/DEBATE_WORKFLOW.md
-- **philosophy**: 
+- **philosophy**:
 - **- principle**: Analysis First
 - **application**: Explores all perspectives before deciding
-- **dependencies**: 
-- **required**: 
-- **optional**: 
-- **examples**: 
+- **dependencies**:
+- **required**:
+- **optional**:
+- **examples**:
 - **- "/amplihack**: debate Microservices vs monolith for this service"
 
 ---
@@ -30,6 +30,7 @@ This command is designed for Claude Code but the patterns and approaches
 can be referenced when using GitHub Copilot CLI.
 
 **Example**:
+
 ```bash
 # Reference this command's approach
 gh copilot explain .github/commands/debate.md
@@ -41,7 +42,6 @@ gh copilot suggest --context .github/commands/debate.md "your task"
 ---
 
 ## Original Command Documentation
-
 
 # Multi-Agent Debate Command
 

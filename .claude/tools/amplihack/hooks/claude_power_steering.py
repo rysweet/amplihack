@@ -67,8 +67,9 @@ SUSPICIOUS_PATTERNS = [
     r"\\u[0-9a-f]{4}",  # Unicode escapes
 ]
 
-# Timeout for SDK calls
-CHECKER_TIMEOUT = 30  # 30 seconds per SDK call
+# Timeout hierarchy: HOOK_TIMEOUT (120s) > PARALLEL_TIMEOUT (60s) > CHECKER_TIMEOUT (25s)
+# Each checker must complete within 25s to fit within parallel execution budget
+CHECKER_TIMEOUT = 25  # 25 seconds per SDK call (within 60s parallel budget)
 
 # Public API (the "studs" for this brick)
 __all__ = [
@@ -336,6 +337,7 @@ If the consideration is not applicable to this session (e.g., no relevant work w
 """
 
     return prompt
+
 
 def _extract_reason_from_response(response: str) -> str | None:
     """Extract failure reason from SDK response.

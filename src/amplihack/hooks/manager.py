@@ -68,7 +68,9 @@ def _find_stop_hook() -> Path | None:
 
     # PRIORITY 1: Try installed plugin (when using Claude Code plugin system)
     if os.environ.get("AMPLIHACK_PLUGIN_INSTALLED") == "true":
-        installed_plugin_path = Path.home() / ".claude" / "plugins" / "cache" / "amplihack" / "amplihack" / "0.9.0"
+        installed_plugin_path = (
+            Path.home() / ".claude" / "plugins" / "cache" / "amplihack" / "amplihack" / "0.9.0"
+        )
         plugin_stop_hook = installed_plugin_path / "tools" / "amplihack" / "hooks" / "stop.py"
         if plugin_stop_hook.exists():
             logger.debug(f"Using installed plugin stop hook: {plugin_stop_hook}")

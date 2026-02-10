@@ -15,6 +15,7 @@ In some sessions, Claude would trigger `ultrathink-orchestrator` but skip the ma
 ## Solution
 
 A validation module that:
+
 1. Detects when ultrathink-orchestrator is triggered
 2. Checks for proper workflow invocation via `Skill` tool
 3. Accepts `Read` tool fallback as valid alternative
@@ -25,6 +26,7 @@ A validation module that:
 ### Module: `workflow_invocation_validator.py`
 
 **Public API:**
+
 ```python
 from workflow_invocation_validator import ValidationResult, validate_workflow_invocation
 
@@ -32,6 +34,7 @@ result = validate_workflow_invocation(transcript: str, session_type: str) -> Val
 ```
 
 **ValidationResult:**
+
 ```python
 @dataclass
 class ValidationResult:
@@ -45,22 +48,26 @@ class ValidationResult:
 ### Detection Logic
 
 **Step 1: Detect Ultrathink Trigger**
+
 - Explicit `/ultrathink` command
 - Skill invocation: `Skill(skill="ultrathink-orchestrator")`
 - Auto-activation messages
 - Command tag format: `<command-name>/ultrathink</command-name>`
 
 **Step 2: Check Skill Tool Invocation**
+
 - `Skill(skill="default-workflow")` for development
 - `Skill(skill="investigation-workflow")` for investigation
 - XML format: `<invoke name="Skill">...default-workflow`
 
 **Step 3: Check Read Tool Fallback**
+
 - `Read(~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md)`
 - `Read(~/.amplihack/.claude/workflow/INVESTIGATION_WORKFLOW.md)`
 - XML format: `<invoke name="Read">...DEFAULT_WORKFLOW`
 
 **Step 4: Report Result**
+
 - Valid if: No trigger, Skill invoked, or Read fallback used
 - Violation if: Trigger detected but no workflow loaded
 
@@ -69,6 +76,7 @@ class ValidationResult:
 ### New Consideration: `workflow_invocation`
 
 **Configuration** (`~/.amplihack/.claude/tools/amplihack/considerations.yaml`):
+
 ```yaml
 - id: workflow_invocation
   category: Workflow Process Adherence
@@ -81,6 +89,7 @@ class ValidationResult:
 ```
 
 **Checker Method** (`power_steering_checker.py`):
+
 ```python
 def _check_workflow_invocation(self, transcript: list[dict], session_id: str) -> bool:
     """Check if workflow was properly invoked via Skill or Read tool."""
@@ -95,15 +104,18 @@ def _check_workflow_invocation(self, transcript: list[dict], session_id: str) ->
 ### 1. Command Documentation (`~/.amplihack/.claude/commands/amplihack/ultrathink.md`)
 
 **Added Section:**
+
 ```markdown
 ## ⛔ BLOCKING REQUIREMENT: Workflow Invocation
 
 When ultrathink-orchestrator skill is triggered, you MUST:
+
 1. IMMEDIATELY invoke the appropriate workflow skill using Skill tool
 2. IF skill invocation fails, use Read tool as fallback
 3. NEVER proceed without loading the workflow
 
 **Self-Check Protocol:**
+
 - [ ] Invoked Skill tool with workflow skill name, OR
 - [ ] Used Read tool to load workflow markdown file
 - [ ] Confirmed workflow content is loaded in context
@@ -112,16 +124,19 @@ When ultrathink-orchestrator skill is triggered, you MUST:
 ### 2. Skill Documentation (`~/.amplihack/.claude/skills/ultrathink-orchestrator/SKILL.md`)
 
 **Added Section:**
+
 ```markdown
 ## ⛔ MANDATORY EXECUTION PROCESS (5 Steps)
 
 ### Step 3: Invoke Workflow Skill (MANDATORY - BLOCKING)
+
 ⛔ THIS IS A BLOCKING REQUIREMENT - Session will be terminated if skipped.
 
 For Development tasks: Skill(skill="default-workflow")
 For Investigation tasks: Skill(skill="investigation-workflow")
 
 ### Step 4: Fallback to Read Tool (IF Step 3 Fails)
+
 Only if skill invocation fails, use Read tool as fallback.
 
 **Validation Checkpoint**: Confirm workflow content is loaded in context.
@@ -130,6 +145,7 @@ Only if skill invocation fails, use Read tool as fallback.
 ### 3. Session-End Validation (Power-Steering)
 
 When session ends, power-steering:
+
 1. Loads `workflow_invocation` consideration
 2. Calls `_check_workflow_invocation()`
 3. Blocks session termination if violation detected
@@ -140,6 +156,7 @@ When session ends, power-steering:
 ### Test Coverage
 
 **Validator Tests** (`test_workflow_invocation_validator_simple.py`):
+
 - ✓ ValidationResult creation
 - ✓ Ultrathink trigger detection (explicit, auto-activation)
 - ✓ Skill tool invocation detection (Python and XML formats)
@@ -152,6 +169,7 @@ When session ends, power-steering:
 **10/10 tests passing**
 
 **Checker Unit Tests** (`test_workflow_invocation_checker_unit.py`):
+
 - ✓ Method existence
 - ✓ Transcript conversion helpers
 - ✓ Validator import

@@ -139,19 +139,19 @@ def example_import_code():
             code_graph = KuzuCodeGraph(conn)
             counts = code_graph.import_blarify_output(json_path)
 
-            print(f"\n✓ Import successful:")
+            print("\n✓ Import successful:")
             print(f"  Files:     {counts['files']}")
             print(f"  Classes:   {counts['classes']}")
             print(f"  Functions: {counts['functions']}")
 
             # Query imported data
             files = conn.execute_query("MATCH (cf:CodeFile) RETURN cf.file_path")
-            print(f"\n✓ Files in database:")
+            print("\n✓ Files in database:")
             for row in files:
                 print(f"  - {row['cf.file_path']}")
 
             classes = conn.execute_query("MATCH (c:Class) RETURN c.class_name, c.docstring")
-            print(f"\n✓ Classes in database:")
+            print("\n✓ Classes in database:")
             for row in classes:
                 print(f"  - {row['c.class_name']}: {row['c.docstring']}")
 
@@ -309,7 +309,7 @@ def example_link_memories():
                     "accessed_at": now,
                     "expires_at": None,
                     "agent_id": "reviewer",
-                }
+                },
             )
 
             print("\n✓ Created memory mentioning 'helper' function")
@@ -320,7 +320,7 @@ def example_link_memories():
 
             # Query code context for memory
             context = code_graph.query_code_context("mem-1")
-            print(f"\n✓ Code context for memory:")
+            print("\n✓ Code context for memory:")
             print(f"  Files:     {len(context['files'])}")
             print(f"  Functions: {len(context['functions'])}")
 
@@ -341,16 +341,62 @@ def example_code_stats():
 
     sample_data = {
         "files": [
-            {"path": "a.py", "language": "python", "lines_of_code": 100, "last_modified": "2025-01-01T00:00:00Z"},
-            {"path": "b.py", "language": "python", "lines_of_code": 200, "last_modified": "2025-01-01T00:00:00Z"},
+            {
+                "path": "a.py",
+                "language": "python",
+                "lines_of_code": 100,
+                "last_modified": "2025-01-01T00:00:00Z",
+            },
+            {
+                "path": "b.py",
+                "language": "python",
+                "lines_of_code": 200,
+                "last_modified": "2025-01-01T00:00:00Z",
+            },
         ],
         "classes": [
-            {"id": "c1", "name": "A", "file_path": "a.py", "line_number": 1, "docstring": "", "is_abstract": False},
-            {"id": "c2", "name": "B", "file_path": "b.py", "line_number": 1, "docstring": "", "is_abstract": False},
+            {
+                "id": "c1",
+                "name": "A",
+                "file_path": "a.py",
+                "line_number": 1,
+                "docstring": "",
+                "is_abstract": False,
+            },
+            {
+                "id": "c2",
+                "name": "B",
+                "file_path": "b.py",
+                "line_number": 1,
+                "docstring": "",
+                "is_abstract": False,
+            },
         ],
         "functions": [
-            {"id": "f1", "name": "f1", "file_path": "a.py", "line_number": 10, "docstring": "", "parameters": [], "return_type": "", "is_async": False, "complexity": 1, "class_id": None},
-            {"id": "f2", "name": "f2", "file_path": "b.py", "line_number": 20, "docstring": "", "parameters": [], "return_type": "", "is_async": False, "complexity": 2, "class_id": None},
+            {
+                "id": "f1",
+                "name": "f1",
+                "file_path": "a.py",
+                "line_number": 10,
+                "docstring": "",
+                "parameters": [],
+                "return_type": "",
+                "is_async": False,
+                "complexity": 1,
+                "class_id": None,
+            },
+            {
+                "id": "f2",
+                "name": "f2",
+                "file_path": "b.py",
+                "line_number": 20,
+                "docstring": "",
+                "parameters": [],
+                "return_type": "",
+                "is_async": False,
+                "complexity": 2,
+                "class_id": None,
+            },
         ],
         "imports": [],
         "relationships": [],
@@ -363,11 +409,21 @@ def example_code_stats():
     try:
         with KuzuConnector(db_path=":memory:") as conn:
             # Initialize minimal schema
-            conn.execute_query("CREATE NODE TABLE IF NOT EXISTS CodeFile(file_id STRING PRIMARY KEY, file_path STRING, language STRING, size_bytes INT64, last_modified TIMESTAMP, created_at TIMESTAMP, metadata STRING)")
-            conn.execute_query("CREATE NODE TABLE IF NOT EXISTS Class(class_id STRING PRIMARY KEY, class_name STRING, fully_qualified_name STRING, docstring STRING, is_abstract BOOL, created_at TIMESTAMP, metadata STRING)")
-            conn.execute_query("CREATE NODE TABLE IF NOT EXISTS Function(function_id STRING PRIMARY KEY, function_name STRING, fully_qualified_name STRING, signature STRING, docstring STRING, is_async BOOL, cyclomatic_complexity INT64, created_at TIMESTAMP, metadata STRING)")
-            conn.execute_query("CREATE REL TABLE IF NOT EXISTS DEFINED_IN(FROM Class TO CodeFile, line_number INT64, end_line INT64)")
-            conn.execute_query("CREATE REL TABLE IF NOT EXISTS DEFINED_IN_FUNCTION(FROM Function TO CodeFile, line_number INT64, end_line INT64)")
+            conn.execute_query(
+                "CREATE NODE TABLE IF NOT EXISTS CodeFile(file_id STRING PRIMARY KEY, file_path STRING, language STRING, size_bytes INT64, last_modified TIMESTAMP, created_at TIMESTAMP, metadata STRING)"
+            )
+            conn.execute_query(
+                "CREATE NODE TABLE IF NOT EXISTS Class(class_id STRING PRIMARY KEY, class_name STRING, fully_qualified_name STRING, docstring STRING, is_abstract BOOL, created_at TIMESTAMP, metadata STRING)"
+            )
+            conn.execute_query(
+                "CREATE NODE TABLE IF NOT EXISTS Function(function_id STRING PRIMARY KEY, function_name STRING, fully_qualified_name STRING, signature STRING, docstring STRING, is_async BOOL, cyclomatic_complexity INT64, created_at TIMESTAMP, metadata STRING)"
+            )
+            conn.execute_query(
+                "CREATE REL TABLE IF NOT EXISTS DEFINED_IN(FROM Class TO CodeFile, line_number INT64, end_line INT64)"
+            )
+            conn.execute_query(
+                "CREATE REL TABLE IF NOT EXISTS DEFINED_IN_FUNCTION(FROM Function TO CodeFile, line_number INT64, end_line INT64)"
+            )
 
             # Import and get stats
             code_graph = KuzuCodeGraph(conn)
@@ -375,7 +431,7 @@ def example_code_stats():
 
             stats = code_graph.get_code_stats()
 
-            print(f"\n✓ Code Graph Statistics:")
+            print("\n✓ Code Graph Statistics:")
             print(f"  Files:     {stats['file_count']}")
             print(f"  Classes:   {stats['class_count']}")
             print(f"  Functions: {stats['function_count']}")

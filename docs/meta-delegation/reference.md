@@ -65,17 +65,17 @@ def run_meta_delegation(
 
 **Parameters:**
 
-| Parameter          | Type                  | Default        | Description                                            |
-| ------------------ | --------------------- | -------------- | ------------------------------------------------------ |
-| `goal`             | `str`                 | (required)     | Task objective for the agent                           |
-| `success_criteria` | `str`                 | (required)     | Measurable success indicators                          |
-| `persona_type`     | `str`                 | `"guide"`      | Agent persona (see [Personas](#personas))              |
-| `platform`         | `str`                 | `"claude-code"`| Platform CLI (see [Platforms](#platforms))             |
-| `context`          | `Optional[str]`       | `None`         | Additional context for agent                           |
-| `timeout_minutes`  | `int`                 | `30`           | Maximum execution time                                 |
-| `enable_scenarios` | `bool`                | `False`        | Enable Gadugi scenario generation                      |
-| `working_directory`| `Optional[str]`       | `None`         | Custom working directory (default: temp)               |
-| `environment`      | `Optional[Dict[str, str]]` | `None`    | Environment variables for subprocess                   |
+| Parameter           | Type                       | Default         | Description                                |
+| ------------------- | -------------------------- | --------------- | ------------------------------------------ |
+| `goal`              | `str`                      | (required)      | Task objective for the agent               |
+| `success_criteria`  | `str`                      | (required)      | Measurable success indicators              |
+| `persona_type`      | `str`                      | `"guide"`       | Agent persona (see [Personas](#personas))  |
+| `platform`          | `str`                      | `"claude-code"` | Platform CLI (see [Platforms](#platforms)) |
+| `context`           | `Optional[str]`            | `None`          | Additional context for agent               |
+| `timeout_minutes`   | `int`                      | `30`            | Maximum execution time                     |
+| `enable_scenarios`  | `bool`                     | `False`         | Enable Gadugi scenario generation          |
+| `working_directory` | `Optional[str]`            | `None`          | Custom working directory (default: temp)   |
+| `environment`       | `Optional[Dict[str, str]]` | `None`          | Environment variables for subprocess       |
 
 **Returns:**
 
@@ -195,11 +195,11 @@ def from_json(cls, json_str: str) -> 'MetaDelegationResult':
 
 **Status Values:**
 
-| Status    | Success Score | Meaning                                     |
-| --------- | ------------- | ------------------------------------------- |
-| `SUCCESS` | 80-100        | Task completed, success criteria met        |
-| `PARTIAL` | 50-79         | Task completed with issues or gaps          |
-| `FAILURE` | 0-49          | Task failed or success criteria not met     |
+| Status    | Success Score | Meaning                                 |
+| --------- | ------------- | --------------------------------------- |
+| `SUCCESS` | 80-100        | Task completed, success criteria met    |
+| `PARTIAL` | 50-79         | Task completed with issues or gaps      |
+| `FAILURE` | 0-49          | Task failed or success criteria not met |
 
 ---
 
@@ -248,18 +248,18 @@ class EvidenceItem:
 
 **Evidence Types:**
 
-| Type                 | Description                            | Typical Files           |
-| -------------------- | -------------------------------------- | ----------------------- |
-| `code_file`          | Source code files                      | `*.py`, `*.js`, etc.    |
-| `test_file`          | Test files                             | `test_*.py`, `*.test.js`|
-| `documentation`      | Documentation files                    | `README.md`, `*.md`     |
-| `architecture_doc`   | Architecture/design documents          | `architecture.md`       |
-| `api_spec`           | API specifications                     | `openapi.yaml`, etc.    |
-| `test_results`       | Test execution results                 | `test_output.txt`       |
-| `execution_log`      | Subprocess output logs                 | `subprocess.log`        |
-| `validation_report`  | Success criteria evaluation report     | `validation_report.md`  |
-| `diagram`            | Visual diagrams                        | `*.mmd`, `*.svg`        |
-| `configuration`      | Configuration files                    | `*.yaml`, `*.json`      |
+| Type                | Description                        | Typical Files            |
+| ------------------- | ---------------------------------- | ------------------------ |
+| `code_file`         | Source code files                  | `*.py`, `*.js`, etc.     |
+| `test_file`         | Test files                         | `test_*.py`, `*.test.js` |
+| `documentation`     | Documentation files                | `README.md`, `*.md`      |
+| `architecture_doc`  | Architecture/design documents      | `architecture.md`        |
+| `api_spec`          | API specifications                 | `openapi.yaml`, etc.     |
+| `test_results`      | Test execution results             | `test_output.txt`        |
+| `execution_log`     | Subprocess output logs             | `subprocess.log`         |
+| `validation_report` | Success criteria evaluation report | `validation_report.md`   |
+| `diagram`           | Visual diagrams                    | `*.mmd`, `*.svg`         |
+| `configuration`     | Configuration files                | `*.yaml`, `*.json`       |
 
 ---
 
@@ -282,14 +282,14 @@ class TestScenario:
 
 **Scenario Categories:**
 
-| Category               | Description                                    |
-| ---------------------- | ---------------------------------------------- |
-| `happy_path`           | Normal successful operations                   |
-| `error_handling`       | Invalid inputs and error conditions            |
-| `boundary_conditions`  | Edge cases and limits                          |
-| `security`             | Security vulnerabilities and exploits          |
-| `performance`          | Load, stress, and performance scenarios        |
-| `integration`          | Cross-system and integration scenarios         |
+| Category              | Description                             |
+| --------------------- | --------------------------------------- |
+| `happy_path`          | Normal successful operations            |
+| `error_handling`      | Invalid inputs and error conditions     |
+| `boundary_conditions` | Edge cases and limits                   |
+| `security`            | Security vulnerabilities and exploits   |
+| `performance`         | Load, stress, and performance scenarios |
+| `integration`         | Cross-system and integration scenarios  |
 
 ---
 
@@ -398,12 +398,12 @@ class Persona(Enum):
 
 **Persona Characteristics:**
 
-| Persona      | Communication Style | Thoroughness | Speed   | Evidence Volume |
-| ------------ | ------------------- | ------------ | ------- | --------------- |
-| `guide`      | Explanatory         | Balanced     | Moderate| Medium          |
-| `qa_engineer`| Precise             | Exhaustive   | Slower  | High            |
-| `architect`  | Strategic           | Holistic     | Moderate| Medium          |
-| `junior_dev` | Task-focused        | Adequate     | Faster  | Low             |
+| Persona       | Communication Style | Thoroughness | Speed    | Evidence Volume |
+| ------------- | ------------------- | ------------ | -------- | --------------- |
+| `guide`       | Explanatory         | Balanced     | Moderate | Medium          |
+| `qa_engineer` | Precise             | Exhaustive   | Slower   | High            |
+| `architect`   | Strategic           | Holistic     | Moderate | Medium          |
+| `junior_dev`  | Task-focused        | Adequate     | Faster   | Low             |
 
 See [Concepts: Personas](./concepts.md#personas) for detailed behavior.
 
@@ -422,11 +422,11 @@ class Platform(Enum):
 
 **Platform Capabilities:**
 
-| Platform       | Subprocess Isolation | Evidence Collection | Scenario Generation | Notes              |
-| -------------- | -------------------- | ------------------- | ------------------- | ------------------ |
-| `claude-code`  | ✅ Full              | ✅ Full             | ✅ Full             | Default, recommended |
-| `copilot`      | ✅ Full              | ✅ Full             | ✅ Full             | Requires Copilot CLI |
-| `amplifier`    | ✅ Full              | ✅ Full             | ✅ Full             | Requires Amplifier   |
+| Platform      | Subprocess Isolation | Evidence Collection | Scenario Generation | Notes                |
+| ------------- | -------------------- | ------------------- | ------------------- | -------------------- |
+| `claude-code` | ✅ Full              | ✅ Full             | ✅ Full             | Default, recommended |
+| `copilot`     | ✅ Full              | ✅ Full             | ✅ Full             | Requires Copilot CLI |
+| `amplifier`   | ✅ Full              | ✅ Full             | ✅ Full             | Requires Amplifier   |
 
 ---
 
@@ -436,12 +436,12 @@ class Platform(Enum):
 
 Meta-delegation respects the following environment variables:
 
-| Variable                        | Default       | Description                           |
-| ------------------------------- | ------------- | ------------------------------------- |
-| `META_DELEGATION_TIMEOUT`       | `1800`        | Default timeout in seconds            |
-| `META_DELEGATION_WORK_DIR`      | `~/.amplihack/meta_delegation` | Working directory |
-| `META_DELEGATION_LOG_LEVEL`     | `INFO`        | Logging level                         |
-| `META_DELEGATION_KEEP_ARTIFACTS`| `false`       | Keep subprocess artifacts after completion |
+| Variable                         | Default                        | Description                                |
+| -------------------------------- | ------------------------------ | ------------------------------------------ |
+| `META_DELEGATION_TIMEOUT`        | `1800`                         | Default timeout in seconds                 |
+| `META_DELEGATION_WORK_DIR`       | `~/.amplihack/meta_delegation` | Working directory                          |
+| `META_DELEGATION_LOG_LEVEL`      | `INFO`                         | Logging level                              |
+| `META_DELEGATION_KEEP_ARTIFACTS` | `false`                        | Keep subprocess artifacts after completion |
 
 **Example:**
 
@@ -576,16 +576,16 @@ result = asyncio.run(run_with_monitoring())
 
 **Event Types:**
 
-| Event Type           | Description                    | Data Fields                        |
-| -------------------- | ------------------------------ | ---------------------------------- |
-| `started`            | Subprocess started             | `pid`, `timestamp`                 |
-| `progress`           | Progress update                | `percentage`, `message`            |
-| `log`                | Log message from subprocess    | `message`, `level`, `timestamp`    |
-| `evidence_collected` | New evidence collected         | `item` (EvidenceItem)              |
-| `evaluation_start`   | Success evaluation starting    | `criteria`                         |
-| `evaluation_complete`| Success evaluation done        | `score`, `notes`                   |
-| `completed`          | Delegation completed           | `result` (MetaDelegationResult)    |
-| `error`              | Error occurred                 | `error`, `traceback`               |
+| Event Type            | Description                 | Data Fields                     |
+| --------------------- | --------------------------- | ------------------------------- |
+| `started`             | Subprocess started          | `pid`, `timestamp`              |
+| `progress`            | Progress update             | `percentage`, `message`         |
+| `log`                 | Log message from subprocess | `message`, `level`, `timestamp` |
+| `evidence_collected`  | New evidence collected      | `item` (EvidenceItem)           |
+| `evaluation_start`    | Success evaluation starting | `criteria`                      |
+| `evaluation_complete` | Success evaluation done     | `score`, `notes`                |
+| `completed`           | Delegation completed        | `result` (MetaDelegationResult) |
+| `error`               | Error occurred              | `error`, `traceback`            |
 
 ---
 
@@ -668,13 +668,13 @@ result = run_meta_delegation(
 
 **Python Version Matrix:**
 
-| Python | Status       | Notes                |
-| ------ | ------------ | -------------------- |
-| 3.8    | ✅ Supported | Minimum version      |
-| 3.9    | ✅ Supported | Recommended          |
-| 3.10   | ✅ Supported | Recommended          |
-| 3.11   | ✅ Supported | Best performance     |
-| 3.12   | ✅ Supported | Latest features      |
+| Python | Status       | Notes            |
+| ------ | ------------ | ---------------- |
+| 3.8    | ✅ Supported | Minimum version  |
+| 3.9    | ✅ Supported | Recommended      |
+| 3.10   | ✅ Supported | Recommended      |
+| 3.11   | ✅ Supported | Best performance |
+| 3.12   | ✅ Supported | Latest features  |
 
 ---
 

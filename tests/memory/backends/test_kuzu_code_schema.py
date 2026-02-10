@@ -3,7 +3,7 @@
 Tests the new code graph schema with:
 - 3 code node types (CodeFile, Class, Function)
 - 7 code relationship types (DEFINED_IN, METHOD_OF, CALLS, INHERITS, IMPORTS, REFERENCES, CONTAINS)
-- 10 memory-code link types (5 memory types × 2 code targets)
+- 10 memory-code link types (5 memory types x 2 code targets)
 
 Philosophy:
 - TDD approach: Write failing tests first, implement to make them pass
@@ -36,9 +36,7 @@ class TestKuzuCodeSchemaCreation:
 
             # Check that CodeFile table creation was attempted
             calls = [str(call) for call in mock_conn.execute.call_args_list]
-            assert any("CodeFile" in str(call) for call in calls), (
-                "CodeFile node table not created"
-            )
+            assert any("CodeFile" in str(call) for call in calls), "CodeFile node table not created"
 
             # Verify key properties exist in schema
             codefile_calls = [c for c in calls if "CodeFile" in str(c)]
@@ -156,7 +154,7 @@ class TestKuzuCodeSchemaCreation:
 
             calls = [str(call) for call in mock_conn.execute.call_args_list]
 
-            # 5 memory types × 2 targets (file + function) = 10 relationships
+            # 5 memory types x 2 targets (file + function) = 10 relationships
             expected_links = [
                 "RELATES_TO_FILE_EPISODIC",
                 "RELATES_TO_FILE_SEMANTIC",
@@ -192,15 +190,31 @@ class TestKuzuCodeSchemaCreation:
 
             # Count code schema tables
             code_tables = [
-                "CodeFile", "Class", "Function",  # 3 node types
-                "DEFINED_IN", "METHOD_OF", "CALLS", "INHERITS", "IMPORTS", "REFERENCES", "CONTAINS",  # 7 rels
-                "RELATES_TO_FILE_EPISODIC", "RELATES_TO_FILE_SEMANTIC", "RELATES_TO_FILE_PROCEDURAL",
-                "RELATES_TO_FILE_PROSPECTIVE", "RELATES_TO_FILE_WORKING",
-                "RELATES_TO_FUNCTION_EPISODIC", "RELATES_TO_FUNCTION_SEMANTIC", "RELATES_TO_FUNCTION_PROCEDURAL",
-                "RELATES_TO_FUNCTION_PROSPECTIVE", "RELATES_TO_FUNCTION_WORKING",  # 10 links
+                "CodeFile",
+                "Class",
+                "Function",  # 3 node types
+                "DEFINED_IN",
+                "METHOD_OF",
+                "CALLS",
+                "INHERITS",
+                "IMPORTS",
+                "REFERENCES",
+                "CONTAINS",  # 7 rels
+                "RELATES_TO_FILE_EPISODIC",
+                "RELATES_TO_FILE_SEMANTIC",
+                "RELATES_TO_FILE_PROCEDURAL",
+                "RELATES_TO_FILE_PROSPECTIVE",
+                "RELATES_TO_FILE_WORKING",
+                "RELATES_TO_FUNCTION_EPISODIC",
+                "RELATES_TO_FUNCTION_SEMANTIC",
+                "RELATES_TO_FUNCTION_PROCEDURAL",
+                "RELATES_TO_FUNCTION_PROSPECTIVE",
+                "RELATES_TO_FUNCTION_WORKING",  # 10 links
             ]
 
-            found_tables = [table for table in code_tables if any(table in str(call) for call in calls)]
+            found_tables = [
+                table for table in code_tables if any(table in str(call) for call in calls)
+            ]
             assert len(found_tables) == 20, (
                 f"Expected 20 code schema tables, found {len(found_tables)}: {found_tables}"
             )
@@ -250,12 +264,24 @@ class TestKuzuCodeSchemaIdempotency:
 
             # All code schema CREATE statements should have IF NOT EXISTS
             code_create_calls = [
-                c for c in calls
-                if "CREATE" in str(c) and any(
-                    table in str(c) for table in [
-                        "CodeFile", "Class", "Function",
-                        "DEFINED_IN", "METHOD_OF", "CALLS", "INHERITS", "IMPORTS", "REFERENCES", "CONTAINS",
-                        "RELATES_TO_FILE", "RELATES_TO_FUNCTION"
+                c
+                for c in calls
+                if "CREATE" in str(c)
+                and any(
+                    table in str(c)
+                    for table in [
+                        "CodeFile",
+                        "Class",
+                        "Function",
+                        "DEFINED_IN",
+                        "METHOD_OF",
+                        "CALLS",
+                        "INHERITS",
+                        "IMPORTS",
+                        "REFERENCES",
+                        "CONTAINS",
+                        "RELATES_TO_FILE",
+                        "RELATES_TO_FUNCTION",
                     ]
                 )
             ]
@@ -286,8 +312,16 @@ class TestKuzuCodeSchemaTableStructure:
             codefile_calls = [c for c in calls if "CodeFile" in str(c)]
 
             required_properties = [
-                "file_id", "file_path", "language", "size_bytes", "line_count",
-                "last_modified", "git_hash", "module_name", "is_test", "metadata"
+                "file_id",
+                "file_path",
+                "language",
+                "size_bytes",
+                "line_count",
+                "last_modified",
+                "git_hash",
+                "module_name",
+                "is_test",
+                "metadata",
             ]
 
             for prop in required_properties:
@@ -312,8 +346,17 @@ class TestKuzuCodeSchemaTableStructure:
             class_calls = [c for c in calls if "Class" in str(c) and "NODE TABLE" in str(c)]
 
             required_properties = [
-                "class_id", "class_name", "fully_qualified_name", "line_start", "line_end",
-                "docstring", "is_abstract", "is_interface", "access_modifier", "decorators", "metadata"
+                "class_id",
+                "class_name",
+                "fully_qualified_name",
+                "line_start",
+                "line_end",
+                "docstring",
+                "is_abstract",
+                "is_interface",
+                "access_modifier",
+                "decorators",
+                "metadata",
             ]
 
             for prop in required_properties:
@@ -338,9 +381,21 @@ class TestKuzuCodeSchemaTableStructure:
             func_calls = [c for c in calls if "Function" in str(c) and "NODE TABLE" in str(c)]
 
             required_properties = [
-                "function_id", "function_name", "fully_qualified_name", "line_start", "line_end",
-                "docstring", "signature", "return_type", "is_async", "is_method", "is_static",
-                "access_modifier", "decorators", "complexity_score", "metadata"
+                "function_id",
+                "function_name",
+                "fully_qualified_name",
+                "line_start",
+                "line_end",
+                "docstring",
+                "signature",
+                "return_type",
+                "is_async",
+                "is_method",
+                "is_static",
+                "access_modifier",
+                "decorators",
+                "complexity_score",
+                "metadata",
             ]
 
             for prop in required_properties:
@@ -369,9 +424,7 @@ class TestKuzuCodeSchemaTableStructure:
                 assert "relevance_score" in str(call), (
                     f"Memory-code link missing relevance_score: {call}"
                 )
-                assert "context" in str(call), (
-                    f"Memory-code link missing context: {call}"
-                )
+                assert "context" in str(call), f"Memory-code link missing context: {call}"
 
 
 class TestKuzuCodeSchemaRegression:
@@ -394,8 +447,11 @@ class TestKuzuCodeSchemaRegression:
 
             # Verify existing memory node types still exist
             memory_nodes = [
-                "EpisodicMemory", "SemanticMemory", "ProceduralMemory",
-                "ProspectiveMemory", "WorkingMemory"
+                "EpisodicMemory",
+                "SemanticMemory",
+                "ProceduralMemory",
+                "ProspectiveMemory",
+                "WorkingMemory",
             ]
 
             for node_type in memory_nodes:
@@ -420,9 +476,17 @@ class TestKuzuCodeSchemaRegression:
 
             # Verify existing memory relationships still exist
             memory_rels = [
-                "CONTAINS_EPISODIC", "CONTAINS_WORKING",
-                "CONTRIBUTES_TO_SEMANTIC", "USES_PROCEDURE", "CREATES_INTENTION",
-                "DERIVES_FROM", "REFERENCES", "TRIGGERS", "ACTIVATES", "RECALLS", "BUILDS_ON"
+                "CONTAINS_EPISODIC",
+                "CONTAINS_WORKING",
+                "CONTRIBUTES_TO_SEMANTIC",
+                "USES_PROCEDURE",
+                "CREATES_INTENTION",
+                "DERIVES_FROM",
+                "REFERENCES",
+                "TRIGGERS",
+                "ACTIVATES",
+                "RECALLS",
+                "BUILDS_ON",
             ]
 
             for rel_type in memory_rels:
@@ -535,7 +599,9 @@ class TestKuzuCodeSchemaQueryCatalog:
 
             for from_node, rel_type, to_node in relationships:
                 # Each relationship should be queryable
-                query = f"MATCH (a:{from_node})-[r:{rel_type}]->(b:{to_node}) RETURN COUNT(r) AS count"
+                query = (
+                    f"MATCH (a:{from_node})-[r:{rel_type}]->(b:{to_node}) RETURN COUNT(r) AS count"
+                )
                 result = backend.connection.execute(query)
                 assert result is not None, f"Cannot query {rel_type} relationship"
 
@@ -546,8 +612,9 @@ class TestKuzuCodeSchemaPerformance:
     @patch("src.amplihack.memory.backends.kuzu_backend.kuzu")
     def test_initialize_completes_in_reasonable_time(self, mock_kuzu):
         """Test that initialize() with code schema completes quickly."""
-        from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
         import time
+
+        from src.amplihack.memory.backends.kuzu_backend import KuzuBackend
 
         mock_conn = Mock()
         mock_kuzu.Database.return_value = Mock()

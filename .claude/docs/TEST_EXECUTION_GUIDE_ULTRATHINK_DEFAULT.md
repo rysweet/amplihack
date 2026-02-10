@@ -15,6 +15,7 @@ This guide provides step-by-step instructions for executing real-world behaviora
 ### Setup Phase
 
 1. **Start Fresh Session**
+
    ```bash
    # Exit any existing Claude Code sessions
    exit
@@ -24,6 +25,7 @@ This guide provides step-by-step instructions for executing real-world behaviora
    ```
 
 2. **Verify Correct Branch**
+
    ```bash
    # Ensure you're on main with the merged PR
    git checkout main
@@ -43,17 +45,20 @@ This guide provides step-by-step instructions for executing real-world behaviora
 #### Test 1: Q&A Task (Expected: Direct Response)
 
 **Input to Claude**:
+
 ```
 What is the amplihack philosophy?
 ```
 
 **What to Observe**:
+
 - [ ] Claude provides direct answer
 - [ ] No ultrathink invocation seen
 - [ ] No workflow file reads
 - [ ] Quick response (< 30 seconds)
 
 **How to Verify**:
+
 - Watch for absence of "Reading .claude/workflow/" messages
 - Watch for absence of Skill(ultrathink-orchestrator) invocation
 - Verify answer is direct and immediate
@@ -65,17 +70,20 @@ What is the amplihack philosophy?
 #### Test 2: Operations Task (Expected: Direct Execution)
 
 **Input to Claude**:
+
 ```
 List all Python files in the .claude directory
 ```
 
 **What to Observe**:
+
 - [ ] Claude executes bash command directly
 - [ ] No ultrathink invocation
 - [ ] No workflow overhead
 - [ ] Immediate execution
 
 **How to Verify**:
+
 - Watch for direct Bash tool usage
 - Verify no workflow reading
 - Confirm efficient execution
@@ -87,11 +95,13 @@ List all Python files in the .claude directory
 #### Test 3: Investigation Task (Expected: Ultrathink Invoked)
 
 **Input to Claude**:
+
 ```
 Investigate how the agent delegation system works in amplihack
 ```
 
 **What to Observe**:
+
 - [ ] Claude automatically invokes ultrathink
 - [ ] Message: "Reading .claude/workflow/INVESTIGATION_WORKFLOW.md"
 - [ ] Systematic investigation phases begin
@@ -99,6 +109,7 @@ Investigate how the agent delegation system works in amplihack
 - [ ] Multiple agents deployed
 
 **How to Verify**:
+
 - Watch for Skill(ultrathink-orchestrator) or explicit /ultrathink invocation
 - Verify INVESTIGATION_WORKFLOW.md is read
 - Confirm systematic exploration
@@ -111,11 +122,13 @@ Investigate how the agent delegation system works in amplihack
 #### Test 4: Development Task (Expected: Ultrathink Invoked)
 
 **Input to Claude**:
+
 ```
 Add a new command to list all available workflows
 ```
 
 **What to Observe**:
+
 - [ ] Claude automatically invokes ultrathink
 - [ ] Message: "Reading .claude/workflow/DEFAULT_WORKFLOW.md"
 - [ ] TodoWrite shows all 22 workflow steps
@@ -123,6 +136,7 @@ Add a new command to list all available workflows
 - [ ] Agents deployed (prompt-writer, architect, builder)
 
 **How to Verify**:
+
 - Watch for Skill(ultrathink-orchestrator) invocation
 - Verify DEFAULT_WORKFLOW.md is read
 - Confirm TodoWrite has 22 steps (Step 0 through Step 21)
@@ -135,17 +149,20 @@ Add a new command to list all available workflows
 #### Test 5: Bypass with Explicit Command
 
 **Input to Claude**:
+
 ```
 /fix import errors in src/memory/
 ```
 
 **What to Observe**:
+
 - [ ] Claude recognizes /fix command
 - [ ] No ultrathink invocation
 - [ ] Fix-agent executes directly
 - [ ] Fast, focused fix pattern
 
 **How to Verify**:
+
 - Watch for absence of workflow reads
 - Verify direct fix-agent usage
 - Confirm efficient execution
@@ -157,17 +174,20 @@ Add a new command to list all available workflows
 #### Test 6: Bypass with "Without Ultrathink"
 
 **Input to Claude**:
+
 ```
 Implement a helper function for file validation without ultrathink
 ```
 
 **What to Observe**:
+
 - [ ] Claude recognizes override request
 - [ ] No ultrathink invocation
 - [ ] Direct implementation
 - [ ] No workflow reading
 
 **How to Verify**:
+
 - Watch for absence of Skill(ultrathink-orchestrator)
 - Verify direct implementation approach
 - Confirm user control respected
@@ -179,17 +199,20 @@ Implement a helper function for file validation without ultrathink
 #### Test 7: Hybrid Task
 
 **Input to Claude**:
+
 ```
 Investigate the workflow system and add support for workflow templates
 ```
 
 **What to Observe**:
+
 - [ ] Claude invokes ultrathink
 - [ ] Investigation phase first
 - [ ] Development phase follows
 - [ ] Both phases tracked systematically
 
 **How to Verify**:
+
 - Watch for ultrathink invocation
 - Verify both investigation and development keywords detected
 - Confirm sequential execution
@@ -212,24 +235,26 @@ Investigate the workflow system and add support for workflow templates
 
 ## Test Results Summary
 
-| Test # | Scenario | Expected | Actual | Status | Notes |
-|--------|----------|----------|--------|--------|-------|
-| 1 | Q&A Task | Direct | [Actual behavior] | [PASS/FAIL] | [Notes] |
-| 2 | Operations | Direct | [Actual behavior] | [PASS/FAIL] | [Notes] |
-| 3 | Investigation | Ultrathink | [Actual behavior] | [PASS/FAIL] | [Notes] |
-| 4 | Development | Ultrathink | [Actual behavior] | [PASS/FAIL] | [Notes] |
-| 5 | Bypass Command | Direct | [Actual behavior] | [PASS/FAIL] | [Notes] |
-| 6 | Bypass Request | Direct | [Actual behavior] | [PASS/FAIL] | [Notes] |
-| 7 | Hybrid Task | Ultrathink | [Actual behavior] | [PASS/FAIL] | [Notes] |
+| Test # | Scenario       | Expected   | Actual            | Status      | Notes   |
+| ------ | -------------- | ---------- | ----------------- | ----------- | ------- |
+| 1      | Q&A Task       | Direct     | [Actual behavior] | [PASS/FAIL] | [Notes] |
+| 2      | Operations     | Direct     | [Actual behavior] | [PASS/FAIL] | [Notes] |
+| 3      | Investigation  | Ultrathink | [Actual behavior] | [PASS/FAIL] | [Notes] |
+| 4      | Development    | Ultrathink | [Actual behavior] | [PASS/FAIL] | [Notes] |
+| 5      | Bypass Command | Direct     | [Actual behavior] | [PASS/FAIL] | [Notes] |
+| 6      | Bypass Request | Direct     | [Actual behavior] | [PASS/FAIL] | [Notes] |
+| 7      | Hybrid Task    | Ultrathink | [Actual behavior] | [PASS/FAIL] | [Notes] |
 
 **Overall Result**: [X/7 tests passed]
 
 ## Detailed Findings
 
 ### Test 1: Q&A Task
+
 [Detailed observations]
 
 ### Test 2: Operations Task
+
 [Detailed observations]
 
 [Continue for all tests...]
@@ -246,6 +271,7 @@ Investigate the workflow system and add support for workflow templates
 ## Success Criteria
 
 **Feature is VERIFIED when**:
+
 - All 7 tests pass
 - No false positives (Q&A/Operations don't trigger ultrathink)
 - No false negatives (Investigation/Development do trigger ultrathink)
@@ -257,11 +283,13 @@ Investigate the workflow system and add support for workflow templates
 ### Issue: Claude doesn't invoke ultrathink for development tasks
 
 **Possible Causes**:
+
 - Changes not merged to main
 - Stale Claude Code cache
 - Task description doesn't contain development keywords
 
 **Resolution**:
+
 1. Verify CLAUDE.md has "Workflow Execution" section
 2. Verify ultrathink.md has "Default Behavior" section
 3. Restart Claude Code session
@@ -270,10 +298,12 @@ Investigate the workflow system and add support for workflow templates
 ### Issue: Claude invokes ultrathink for simple questions
 
 **Possible Causes**:
+
 - Question contains investigation/development keywords
 - Classification logic too aggressive
 
 **Resolution**:
+
 1. Use clearer Q&A phrasing: "what is", "explain briefly"
 2. Verify task classification keywords in CLAUDE.md
 3. Document false positive for further refinement
@@ -288,6 +318,7 @@ Investigate the workflow system and add support for workflow templates
 ## Continuous Verification
 
 **Recommendation**: Run these tests periodically to ensure behavior remains consistent:
+
 - After major Claude Code updates
 - After changes to CLAUDE.md or workflow files
 - When onboarding new team members (as training verification)

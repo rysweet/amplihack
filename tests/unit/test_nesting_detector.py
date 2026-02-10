@@ -8,16 +8,12 @@ Testing pyramid:
 
 import json
 import os
-from pathlib import Path
-from unittest.mock import MagicMock, mock_open, patch
-
-import pytest
+from unittest.mock import patch
 
 from amplihack.launcher.nesting_detector import (
     NestingDetector,
     NestingResult,
 )
-from amplihack.launcher.session_tracker import SessionEntry
 
 
 # UNIT TESTS (60%)
@@ -68,7 +64,7 @@ class TestAmplihackSourceRepoDetection:
     def test_not_amplihack_when_invalid_toml(self, tmp_path):
         """Test graceful handling of invalid TOML"""
         pyproject = tmp_path / "pyproject.toml"
-        pyproject.write_text('invalid toml content [[[')
+        pyproject.write_text("invalid toml content [[[")
 
         detector = NestingDetector()
         assert detector._is_amplihack_source_repo(tmp_path) is False
@@ -92,7 +88,7 @@ class TestProcessAliveness:
         detector = NestingDetector()
         assert detector._is_process_alive(-1) is False
 
-    @patch('os.kill')
+    @patch("os.kill")
     def test_process_not_exists_error(self, mock_kill):
         """Test handling of ProcessLookupError"""
         mock_kill.side_effect = ProcessLookupError()
@@ -100,7 +96,7 @@ class TestProcessAliveness:
         detector = NestingDetector()
         assert detector._is_process_alive(12345) is False
 
-    @patch('os.kill')
+    @patch("os.kill")
     def test_process_permission_error(self, mock_kill):
         """Test handling of PermissionError (process exists but can't signal)"""
         mock_kill.side_effect = PermissionError()
@@ -116,7 +112,7 @@ class TestFindActiveSession:
         """Test returns None when sessions.jsonl doesn't exist"""
         detector = NestingDetector()
 
-        with patch.object(detector, 'RUNTIME_LOG', tmp_path / "sessions.jsonl"):
+        with patch.object(detector, "RUNTIME_LOG", tmp_path / "sessions.jsonl"):
             result = detector._find_active_session(tmp_path)
             assert result is None
 
@@ -127,7 +123,7 @@ class TestFindActiveSession:
 
         detector = NestingDetector()
 
-        with patch.object(detector, 'RUNTIME_LOG', sessions_log):
+        with patch.object(detector, "RUNTIME_LOG", sessions_log):
             result = detector._find_active_session(tmp_path)
             assert result is None
 
@@ -152,7 +148,7 @@ class TestFindActiveSession:
 
         detector = NestingDetector()
 
-        with patch.object(detector, 'RUNTIME_LOG', sessions_log):
+        with patch.object(detector, "RUNTIME_LOG", sessions_log):
             result = detector._find_active_session(tmp_path)
 
             assert result is not None
@@ -180,7 +176,7 @@ class TestFindActiveSession:
 
         detector = NestingDetector()
 
-        with patch.object(detector, 'RUNTIME_LOG', sessions_log):
+        with patch.object(detector, "RUNTIME_LOG", sessions_log):
             result = detector._find_active_session(tmp_path)
             assert result is None
 
@@ -205,7 +201,7 @@ class TestFindActiveSession:
 
         detector = NestingDetector()
 
-        with patch.object(detector, 'RUNTIME_LOG', sessions_log):
+        with patch.object(detector, "RUNTIME_LOG", sessions_log):
             result = detector._find_active_session(tmp_path)
             assert result is None
 
@@ -216,17 +212,20 @@ class TestFindActiveSession:
         # Write mix of valid and corrupted JSON lines
         sessions_log.write_text(
             '{"pid": 12345, "session_id": "valid-1", "status": "completed"}\n'
-            'this is not valid json at all\n'
+            "this is not valid json at all\n"
             '{"incomplete json without closing brace"\n'
-            '{"pid": ' + str(os.getpid()) + ', "session_id": "valid-2", "launch_dir": "'
-            + str(tmp_path) + '", "argv": ["test"], "start_time": 1.0, '
+            '{"pid": '
+            + str(os.getpid())
+            + ', "session_id": "valid-2", "launch_dir": "'
+            + str(tmp_path)
+            + '", "argv": ["test"], "start_time": 1.0, '
             '"is_auto_mode": false, "is_nested": false, "parent_session_id": null, '
             '"status": "active", "end_time": null}\n'
         )
 
         detector = NestingDetector()
 
-        with patch.object(detector, 'RUNTIME_LOG', sessions_log):
+        with patch.object(detector, "RUNTIME_LOG", sessions_log):
             # Should skip corrupted lines and find the valid active session
             result = detector._find_active_session(tmp_path)
             assert result is not None
@@ -241,7 +240,7 @@ class TestNestingDetection:
         """Test no nesting detected in normal user project"""
         detector = NestingDetector()
 
-        with patch.object(detector, 'RUNTIME_LOG', tmp_path / "sessions.jsonl"):
+        with patch.object(detector, "RUNTIME_LOG", tmp_path / "sessions.jsonl"):
             result = detector.detect_nesting(tmp_path, ["amplihack", "launch"])
 
             assert result.is_nested is False
@@ -270,7 +269,7 @@ class TestNestingDetection:
 
         detector = NestingDetector()
 
-        with patch.object(detector, 'RUNTIME_LOG', sessions_log):
+        with patch.object(detector, "RUNTIME_LOG", sessions_log):
             result = detector.detect_nesting(tmp_path, ["amplihack", "launch", "--auto"])
 
             assert result.is_nested is True
@@ -285,7 +284,7 @@ class TestNestingDetection:
 
         detector = NestingDetector()
 
-        with patch.object(detector, 'RUNTIME_LOG', tmp_path / "sessions.jsonl"):
+        with patch.object(detector, "RUNTIME_LOG", tmp_path / "sessions.jsonl"):
             result = detector.detect_nesting(tmp_path, ["amplihack", "launch"])
 
             assert result.in_source_repo is True
@@ -295,7 +294,7 @@ class TestNestingDetection:
         # No active session needed - just test auto-mode flag
         detector = NestingDetector()
 
-        with patch.object(detector, 'RUNTIME_LOG', tmp_path / "sessions.jsonl"):
+        with patch.object(detector, "RUNTIME_LOG", tmp_path / "sessions.jsonl"):
             result = detector.detect_nesting(tmp_path, ["amplihack", "launch", "--auto"])
 
             # Auto-mode ALWAYS requires staging
@@ -321,7 +320,7 @@ class TestNestingDetection:
 
         detector = NestingDetector()
 
-        with patch.object(detector, 'RUNTIME_LOG', sessions_log):
+        with patch.object(detector, "RUNTIME_LOG", sessions_log):
             # No --auto flag means interactive mode (no staging)
             result = detector.detect_nesting(tmp_path, ["amplihack", "launch"])
 
@@ -338,7 +337,7 @@ class TestNestingDetection:
 
         detector = NestingDetector()
 
-        with patch.object(detector, 'RUNTIME_LOG', tmp_path / "sessions.jsonl"):
+        with patch.object(detector, "RUNTIME_LOG", tmp_path / "sessions.jsonl"):
             # Auto-mode in normal user repo
             result = detector.detect_nesting(tmp_path, ["amplihack", "launch", "--auto"])
 
@@ -377,7 +376,7 @@ class TestNestingDetectorE2E:
         # User runs auto-mode (self-modification risk!)
         detector = NestingDetector()
 
-        with patch.object(detector, 'RUNTIME_LOG', sessions_log):
+        with patch.object(detector, "RUNTIME_LOG", sessions_log):
             result = detector.detect_nesting(
                 tmp_path, ["amplihack", "launch", "--auto", "--", "-p", "test prompt"]
             )
@@ -397,7 +396,7 @@ class TestNestingDetectorE2E:
         # No active sessions
         detector = NestingDetector()
 
-        with patch.object(detector, 'RUNTIME_LOG', tmp_path / "sessions.jsonl"):
+        with patch.object(detector, "RUNTIME_LOG", tmp_path / "sessions.jsonl"):
             result = detector.detect_nesting(tmp_path, ["amplihack", "launch"])
 
             # Should be completely clean

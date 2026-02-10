@@ -95,7 +95,7 @@ async def demo_code_context_injection():
 
         if memories_without:
             memory = memories_without[0]
-            print(f"\n   Sample memory (without code context):")
+            print("\n   Sample memory (without code context):")
             print(f"   - ID: {memory.id}")
             print(f"   - Type: {memory.memory_type.value}")
             print(f"   - Content: {memory.content[:80]}...")
@@ -118,7 +118,7 @@ async def demo_code_context_injection():
 
         if memories_with:
             memory = memories_with[0]
-            print(f"\n   Sample memory (with code context):")
+            print("\n   Sample memory (with code context):")
             print(f"   - ID: {memory.id}")
             print(f"   - Type: {memory.memory_type.value}")
             print(f"   - Content: {memory.content[:80]}...")
@@ -161,29 +161,29 @@ async def demo_code_context_injection():
         if hasattr(coordinator.backend, "get_code_graph"):
             code_graph = coordinator.backend.get_code_graph()
             if code_graph:
-                print(f"   - Code graph: Available")
+                print("   - Code graph: Available")
                 # Get code graph stats
                 stats = code_graph.get_code_stats()
                 print(f"   - Code files: {stats.get('file_count', 0)}")
                 print(f"   - Code functions: {stats.get('function_count', 0)}")
                 print(f"   - Code classes: {stats.get('class_count', 0)}")
             else:
-                print(f"   - Code graph: Not initialized")
+                print("   - Code graph: Not initialized")
         else:
-            print(f"   - Code graph: Not supported by backend")
+            print("   - Code graph: Not supported by backend")
     except Exception as e:
         print(f"   - Code graph: Error checking ({e})")
 
     print("\n6. Summary:")
-    print(f"   - include_code_context parameter: ✓ Working")
+    print("   - include_code_context parameter: ✓ Working")
     # Only check has_code_context if we successfully retrieved memories
     try:
         context_status = "✓ Available" if has_code_context else "⚠ No code graph data"
     except NameError:
         context_status = "⚠ No memories retrieved"
     print(f"   - Code context enrichment: {context_status}")
-    print(f"   - Fallback for non-Kuzu backends: ✓ Graceful")
-    print(f"   - Performance: ✓ Within requirements")
+    print("   - Fallback for non-Kuzu backends: ✓ Graceful")
+    print("   - Performance: ✓ Within requirements")
 
     print("\n" + "=" * 80)
     print("Demo complete!")

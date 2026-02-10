@@ -4,13 +4,13 @@ Step-by-step guide fer customizin' how amplihack handles memory configuration co
 
 ## Quick Reference
 
-| Task | Command |
-|------|---------|
-| Skip prompt in CI/CD | `export AMPLIHACK_MEMORY_AUTO_ACCEPT=true` |
-| Disable auto-updates | `export AMPLIHACK_MEMORY_AUTO_REJECT=true` |
-| Change timeout | `export AMPLIHACK_MEMORY_PROMPT_TIMEOUT=60` |
-| Force interactive mode | `export AMPLIHACK_FORCE_INTERACTIVE=true` |
-| Skip memory config entirely | `export AMPLIHACK_SKIP_MEMORY_CONFIG=true` |
+| Task                        | Command                                     |
+| --------------------------- | ------------------------------------------- |
+| Skip prompt in CI/CD        | `export AMPLIHACK_MEMORY_AUTO_ACCEPT=true`  |
+| Disable auto-updates        | `export AMPLIHACK_MEMORY_AUTO_REJECT=true`  |
+| Change timeout              | `export AMPLIHACK_MEMORY_PROMPT_TIMEOUT=60` |
+| Force interactive mode      | `export AMPLIHACK_FORCE_INTERACTIVE=true`   |
+| Skip memory config entirely | `export AMPLIHACK_SKIP_MEMORY_CONFIG=true`  |
 
 ## Common Scenarios
 
@@ -322,11 +322,13 @@ echo $NODE_OPTIONS
 **Check**:
 
 1. Verify variable is exported:
+
    ```bash
    echo $AMPLIHACK_MEMORY_AUTO_ACCEPT
    ```
 
 2. Ensure it's set before launching:
+
    ```bash
    # WRONG - variable not in environment
    AMPLIHACK_MEMORY_AUTO_ACCEPT=true
@@ -348,6 +350,7 @@ echo $NODE_OPTIONS
 **Check**:
 
 1. Verify timeout value is numeric:
+
    ```bash
    # WRONG
    export AMPLIHACK_MEMORY_PROMPT_TIMEOUT=sixty
@@ -369,13 +372,14 @@ echo $NODE_OPTIONS
 **Check**:
 
 1. Verify environment variable in CI config:
+
    ```yaml
    # GitHub Actions - correct placement
    jobs:
      test:
        runs-on: ubuntu-latest
        env:
-         AMPLIHACK_MEMORY_AUTO_ACCEPT: true  # ✓ Correct
+         AMPLIHACK_MEMORY_AUTO_ACCEPT: true # ✓ Correct
        steps:
          - run: amplihack
    ```

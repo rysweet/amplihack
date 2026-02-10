@@ -2,9 +2,12 @@
 
 import json
 import os
+import platform
 import shlex
+import signal
 import subprocess
 import tempfile
+import threading
 from pathlib import Path
 
 from ..context.adaptive.detector import LauncherDetector
@@ -81,28 +84,356 @@ def disable_github_mcp_server() -> bool:
         return False
 
 
+def _compare_versions(current: str, latest: str) -> bool:
+    """Compare version strings to determine if update is available.
+
+    Args:
+        current: Current version string (e.g., "1.0.0" or "v1.0.0")
+        latest: Latest version string (e.g., "1.0.1")
+
+    Returns:
+        True if latest > current, False otherwise
+    """
+    try:
+        # Strip 'v' prefix if present
+        current_clean = current.lstrip("v")
+        latest_clean = latest.lstrip("v")
+
+        # Parse version strings into tuples of integers
+        current_parts = tuple(int(x) for x in current_clean.split("."))
+        latest_parts = tuple(int(x) for x in latest_clean.split("."))
+
+        # Python tuple comparison handles semantic versioning correctly
+        return latest_parts > current_parts
+    except (ValueError, AttributeError):
+        # Invalid version format - return False (no update)
+        return False
+
+
+def check_for_update() -> str | None:
+    """Check if a newer version of Copilot CLI is available.
+
+    Returns:
+        New version string if update available, None otherwise
+    """
+    try:
+        # Get current version
+        current_result = subprocess.run(
+            ["copilot", "--version"],
+            capture_output=True,
+            text=True,
+            timeout=1,
+            check=False,
+        )
+        if current_result.returncode != 0:
+            return None
+
+        # Parse version from output: "@github/copilot/1.4.0 linux-x64 node-v20.10.0"
+        current_output = current_result.stdout.strip()
+        if "/" not in current_output:
+            return None
+
+        parts = current_output.split("/")
+        if len(parts) < 3:
+            return None
+
+        # Extract version from: "1.4.0 linux-x64..." -> "1.4.0"
+        current_version = parts[2].split()[0]
+
+        # Get latest version from npm
+        latest_result = subprocess.run(
+            ["npm", "view", "@github/copilot", "version"],
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=False,
+        )
+        if latest_result.returncode != 0:
+            return None
+
+        latest_version = latest_result.stdout.strip()
+
+        if _compare_versions(current_version, latest_version):
+            return latest_version
+
+        return None
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError, IndexError):
+        return None
+
+
+def detect_install_method() -> str:
+    """Detect how Copilot CLI was installed.
+
+    Returns:
+        'npm' or 'uvx' based on installation method, defaults to 'npm'
+    """
+    try:
+        # Check npm global installation
+        npm_result = subprocess.run(
+            ["npm", "list", "-g", "@github/copilot"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+        if npm_result.returncode == 0:
+            # If the path contains uv/tools, it's actually uvx
+            if "uv/tools" in npm_result.stdout or "uv\\tools" in npm_result.stdout:
+                return "uvx"
+            return "npm"
+
+        # Check uvx installation if npm check failed
+        uvx_result = subprocess.run(
+            ["uvx", "list"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+        if uvx_result.returncode == 0 and "copilot" in uvx_result.stdout:
+            return "uvx"
+
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+
+    return "npm"
+
+
+def prompt_user_to_update(new_version: str, install_method: str) -> bool:
+    """Prompt user to update Copilot CLI with timeout.
+
+    Args:
+        new_version: The new version available
+        install_method: Installation method ('npm' or 'uvx')
+
+    Returns:
+        True if user wants to update, False otherwise
+    """
+    print(f"🔄 Copilot CLI update available: v{new_version}")
+
+    if install_method == "uvx":
+        print("  Update: uvx --from @github/copilot@latest copilot")
+    else:
+        # Default to npm (install_method == "npm" or unknown)
+        print("  Update: npm install -g @github/copilot")
+
+    # Cross-platform timeout implementation
+    timeout_seconds = 5
+    user_input = None
+
+    if platform.system() == "Windows":
+        # Windows: Use threading-based timeout
+        def get_input():
+            nonlocal user_input
+            try:
+                user_input = input("Update now? (y/N): ").strip().lower()
+            except EOFError:
+                user_input = ""
+
+        input_thread = threading.Thread(target=get_input)
+        input_thread.daemon = True
+        input_thread.start()
+        input_thread.join(timeout=timeout_seconds)
+
+        if input_thread.is_alive():
+            # Timeout occurred - default to No
+            print("\nTimeout - skipping update")
+            return False
+    else:
+        # Unix: Use signal-based timeout
+        def timeout_handler(signum, frame):
+            raise TimeoutError("Input timeout")
+
+        old_handler = signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(timeout_seconds)
+
+        try:
+            user_input = input("Update now? (y/N): ").strip().lower()
+            signal.alarm(0)  # Cancel alarm
+        except TimeoutError:
+            print("\nTimeout - skipping update")
+            signal.signal(signal.SIGALRM, old_handler)
+            return False
+        except EOFError:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, old_handler)
+            return False
+        finally:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, old_handler)
+
+    # Handle empty input or 'n' as No, only 'y' as Yes
+    return user_input == "y"
+
+
+def execute_update(install_method: str) -> bool:
+    """Execute Copilot CLI update based on installation method.
+
+    Args:
+        install_method: Installation method ('npm' or 'uvx')
+
+    Returns:
+        True if update succeeded, False otherwise
+    """
+    print(f"\n📦 Updating Copilot CLI via {install_method}...")
+
+    try:
+        # Get current version before update
+        try:
+            pre_result = subprocess.run(
+                ["copilot", "--version"],
+                capture_output=True,
+                text=True,
+                timeout=2,
+                check=False,
+            )
+            pre_version = None
+            if pre_result.returncode == 0:
+                output = pre_result.stdout.strip()
+                if "/" in output:
+                    parts = output.split("/")
+                    if len(parts) >= 3:
+                        pre_version = parts[2].split()[0]
+        except (subprocess.TimeoutExpired, FileNotFoundError, IndexError):
+            pre_version = None
+
+        # Execute update command
+        if install_method == "uvx":
+            # uvx update: run copilot with latest version
+            result = subprocess.run(
+                ["uvx", "--from", "@github/copilot@latest", "copilot", "--version"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+                check=False,
+            )
+        else:
+            # npm update
+            result = subprocess.run(
+                ["npm", "install", "-g", "@github/copilot"],
+                capture_output=True,
+                text=True,
+                timeout=60,
+                check=False,
+            )
+
+        if result.returncode != 0:
+            print(f"✗ Update failed: {result.stderr.strip()}")
+            return False
+
+        # Verify update by checking version
+        try:
+            post_result = subprocess.run(
+                ["copilot", "--version"],
+                capture_output=True,
+                text=True,
+                timeout=2,
+                check=False,
+            )
+            if post_result.returncode == 0:
+                output = post_result.stdout.strip()
+                if "/" in output:
+                    parts = output.split("/")
+                    if len(parts) >= 3:
+                        post_version = parts[2].split()[0]
+                        if pre_version and post_version != pre_version:
+                            print(f"✓ Updated from {pre_version} to {post_version}")
+                            return True
+                        if post_version:
+                            print(f"✓ Update complete (version: {post_version})")
+                            return True
+        except (subprocess.TimeoutExpired, FileNotFoundError, IndexError):
+            pass
+
+        # If version check fails but update command succeeded
+        print("✓ Update completed")
+        return True
+
+    except subprocess.TimeoutExpired:
+        print("✗ Update timed out")
+        return False
+    except FileNotFoundError:
+        print(f"✗ Update failed: {install_method} not found")
+        return False
+    except Exception as e:
+        print(f"✗ Update failed: {e}")
+        return False
+
+
 def check_copilot() -> bool:
-    """Check if Copilot CLI is installed."""
+    """Check if Copilot CLI is installed.
+
+    Returns:
+        bool: True if copilot is available, False otherwise
+
+    Note:
+        Handles FileNotFoundError (not installed), PermissionError (WSL),
+        and TimeoutExpired (hanging command) gracefully.
+    """
     try:
         subprocess.run(["copilot", "--version"], capture_output=True, timeout=5, check=False)
         return True
-    except (FileNotFoundError, subprocess.TimeoutExpired):
+    except (FileNotFoundError, PermissionError, subprocess.TimeoutExpired):
         return False
 
 
 def install_copilot() -> bool:
-    """Install GitHub Copilot CLI via npm."""
+    """Install GitHub Copilot CLI via npm to user-local directory."""
     print("Installing GitHub Copilot CLI...")
+
+    npm_prefix = Path.home() / ".npm-global"
+    npm_prefix.mkdir(parents=True, exist_ok=True)
+
     try:
-        result = subprocess.run(["npm", "install", "-g", "@github/copilot"], check=False)
+        result = subprocess.run(
+            ["npm", "install", "-g", "--prefix", str(npm_prefix), "@github/copilot"], check=False
+        )
         if result.returncode == 0:
             print("✓ Copilot CLI installed")
+
+            # Add to PATH for current process
+            bin_path = npm_prefix / "bin"
+            path_env = os.environ.get("PATH", "")
+            if str(bin_path) not in path_env:
+                os.environ["PATH"] = f"{bin_path}:{path_env}"
+                print(f"\n⚠️  Added to PATH for this session: {bin_path}")
+                print("   Add to ~/.bashrc or ~/.zshrc for persistence:")
+                print(f'   export PATH="{bin_path}:$PATH"')
+
             return True
         print("✗ Installation failed")
         return False
     except FileNotFoundError:
         print("Error: npm not found. Install Node.js first.")
         return False
+
+
+def get_copilot_directories() -> list[str]:
+    """Get list of directories to provide copilot filesystem access.
+
+    Returns:
+        List of existing directory paths as strings.
+        Non-existent directories are silently skipped.
+    """
+    directories = []
+
+    # Collect candidate directories
+    candidates = [
+        Path.home(),
+        Path(tempfile.gettempdir()),
+        Path(os.getcwd()),
+    ]
+
+    # Filter to only existing directories
+    for path in candidates:
+        try:
+            if path.exists() and path.is_dir():
+                directories.append(str(path))
+        except (OSError, RuntimeError):
+            # Skip directories that raise errors (permissions, broken symlinks, etc.)
+            continue
+
+    return directories
 
 
 def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> int:
@@ -115,6 +446,21 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
     Returns:
         Exit code
     """
+    # Check for updates (non-blocking)
+    try:
+        new_version = check_for_update()
+        if new_version:
+            install_method = detect_install_method()
+            if prompt_user_to_update(new_version, install_method):
+                # User wants to update
+                if execute_update(install_method):
+                    print("✓ Copilot CLI updated successfully")
+                else:
+                    print("⚠ Update failed - continuing with current version")
+    except Exception:
+        # Silently ignore update check failures
+        pass
+
     # Ensure copilot is installed
     if not check_copilot():
         if not install_copilot() or not check_copilot():
@@ -183,6 +529,31 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
             if copied > 0:
                 print(f"✓ Prepared {copied} amplihack agents")
 
+        # Stage skills to ~/.copilot/skills/ for Copilot CLI discovery
+        # Copilot CLI looks in ~/.copilot/skills/ and ~/.claude/skills/
+        # We use ~/.copilot/skills/ to avoid conflicts with Claude Code plugin model
+        source_skills = package_dir / ".claude/skills"
+        copilot_skills_dest = Path.home() / ".copilot" / "skills"
+        if source_skills.exists():
+            copilot_skills_dest.mkdir(parents=True, exist_ok=True)
+
+            skills_copied = 0
+            for skill_dir in source_skills.iterdir():
+                if skill_dir.is_dir():
+                    dest_skill = copilot_skills_dest / skill_dir.name
+                    # Only copy if dest doesn't exist (first time setup)
+                    if not dest_skill.exists():
+                        shutil.copytree(skill_dir, dest_skill, dirs_exist_ok=True)
+                        skills_copied += 1
+                    else:
+                        # Update existing skill (overwrite)
+                        shutil.copytree(skill_dir, dest_skill, dirs_exist_ok=True)
+
+            if skills_copied > 0:
+                print(f"✓ Staged {skills_copied} new skills to ~/.copilot/skills/")
+            else:
+                print("✓ Skills up-to-date in ~/.copilot/skills/")
+
         # Load preferences - try LOCAL first, fallback to PACKAGE
         # This allows users to customize preferences per-project
         prefs_file = user_dir / ".claude/context/USER_PREFERENCES.md"
@@ -196,23 +567,23 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
         # Fail gracefully - Copilot will work without preferences
         print(f"Warning: Could not prepare Copilot environment: {e}")
 
-    # Build command with full filesystem access (safe in VM environment)
+    # Build command with filesystem access to user directories
     # Model can be overridden via COPILOT_MODEL env var (default: Opus 4.5)
     model = os.getenv("COPILOT_MODEL", "claude-opus-4.5")
-    # Resolve temp directory path (handles symlinks and validates it exists)
-    temp_dir = os.path.realpath(tempfile.gettempdir())
     cmd = [
         "copilot",
         "--allow-all-tools",
         "--model",
         model,
-        "--add-dir",
-        os.getcwd(),  # Add current directory for .github/agents/ access
-        "--add-dir",
-        temp_dir,  # Grant access to system temp directory
-        "--disable-mcp-server",
-        "github-mcp-server",  # Disable to save context tokens, use gh CLI instead
     ]
+
+    # Add all available directories (home, temp, cwd)
+    for directory in get_copilot_directories():
+        cmd.extend(["--add-dir", directory])
+
+    # Disable GitHub MCP server to save context tokens
+    cmd.extend(["--disable-mcp-server", "github-mcp-server"])
+
     if args:
         cmd.extend(args)
 

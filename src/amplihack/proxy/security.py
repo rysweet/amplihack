@@ -35,25 +35,30 @@ class TokenSanitizer:
         # Upper limits (100 chars) prevent matching entire files but allow real tokens.
         self._patterns = [
             # GitHub tokens (gho_, ghp_, ghs_, ghu_, ghr_) - 6-100 chars after prefix
-            (re.compile(r'gh[opsuhr]_[A-Za-z0-9]{6,100}'), '[REDACTED-GITHUB-TOKEN]'),
-
+            (re.compile(r"gh[opsuhr]_[A-Za-z0-9]{6,100}"), "[REDACTED-GITHUB-TOKEN]"),
             # OpenAI API keys (sk-, sk-proj-) - 6-100 chars after prefix
-            (re.compile(r'sk-(?:proj-)?[A-Za-z0-9]{6,100}'), '[REDACTED-OPENAI-KEY]'),
-
+            (re.compile(r"sk-(?:proj-)?[A-Za-z0-9]{6,100}"), "[REDACTED-OPENAI-KEY]"),
             # Anthropic API keys (sk-ant-) - 6-100 chars after prefix
-            (re.compile(r'sk-ant-[A-Za-z0-9]{6,100}'), '[REDACTED-ANTHROPIC-KEY]'),
-
+            (re.compile(r"sk-ant-[A-Za-z0-9]{6,100}"), "[REDACTED-ANTHROPIC-KEY]"),
             # Generic Bearer tokens (Bearer + base64-like string, 6-500 chars)
-            (re.compile(r'Bearer\s+[A-Za-z0-9_\-]{6,500}(?:\.[A-Za-z0-9_\-]+)*'), '[REDACTED-BEARER-TOKEN]'),
-
+            (
+                re.compile(r"Bearer\s+[A-Za-z0-9_\-]{6,500}(?:\.[A-Za-z0-9_\-]+)*"),
+                "[REDACTED-BEARER-TOKEN]",
+            ),
             # JWT tokens (header.payload.signature format)
-            (re.compile(r'eyJ[A-Za-z0-9_\-]+\.eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+'), '[REDACTED-JWT-TOKEN]'),
-
+            (
+                re.compile(r"eyJ[A-Za-z0-9_\-]+\.eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+"),
+                "[REDACTED-JWT-TOKEN]",
+            ),
             # Azure subscription keys
-            (re.compile(r'azure-key-[A-Za-z0-9]{6,100}'), '[REDACTED-AZURE-KEY]'),
-
+            (re.compile(r"azure-key-[A-Za-z0-9]{6,100}"), "[REDACTED-AZURE-KEY]"),
             # Azure connection strings (matches to end of string or whitespace)
-            (re.compile(r'DefaultEndpointsProtocol=https;AccountName=[^;]+;AccountKey=[^;]+;[^\s]+'), '[REDACTED-AZURE-CONNECTION]'),
+            (
+                re.compile(
+                    r"DefaultEndpointsProtocol=https;AccountName=[^;]+;AccountKey=[^;]+;[^\s]+"
+                ),
+                "[REDACTED-AZURE-CONNECTION]",
+            ),
         ]
 
     def contains_token(self, text: str) -> bool:
@@ -119,4 +124,4 @@ class TokenSanitizer:
         return result
 
 
-__all__ = ['TokenSanitizer']
+__all__ = ["TokenSanitizer"]

@@ -122,6 +122,7 @@ amplihack copilot
 - [Hook Configuration](HOOK_CONFIGURATION_GUIDE.md) - Customize framework behavior
 - [Memory Configuration Consent](features/memory-consent-prompt.md) - Intelligent memory settings with timeout protection
 - [Verify .claude/ Staging](howto/verify-claude-staging.md) - Check that framework files are properly staged
+- [Verify Framework Injection](howto/verify-framework-injection.md) - Check that AMPLIHACK.md injection is working
 
 ### Deployment
 
@@ -147,6 +148,7 @@ Understand the philosophy and architecture behind amplihack.
 - [Project Overview](claude/context/PROJECT.md) - System architecture
 - [Development Patterns](claude/context/PATTERNS.md) - Proven implementation patterns
 - [Unified Staging Architecture](concepts/unified-staging-architecture.md) - How .claude/ staging works across all commands
+- [Framework Injection Architecture](concepts/framework-injection-architecture.md) - How AMPLIHACK.md injection works
 - [Blarify Architecture](blarify_architecture.md) - Understanding the Blarify integration
 - [Documentation Knowledge Graph](documentation_knowledge_graph.md) - How docs connect
 
@@ -389,6 +391,19 @@ Embedded graph-based memory using Kuzu (NO Neo4j required):
 
 Specific features and third-party integrations.
 
+### Native Binary Trace Logging ⭐ NEW
+
+Optional request/response logging using Anthropic's native Claude binary:
+
+- **[Native Binary Trace Logging Overview](NATIVE_BINARY_TRACE_LOGGING.md)** - Complete feature documentation hub
+- [Trace Logging Feature Guide](features/trace-logging.md) - What it is and when to use it
+- [How-To: Trace Logging](howto/trace-logging.md) - Practical recipes
+- [Migration: claude-trace to Native](migration/claude-trace-to-native.md) - Upgrade from NPM package
+- [API Reference: Trace Logging](reference/trace-logging-api.md) - Technical details
+- [Troubleshooting: Trace Logging](troubleshooting/trace-logging.md) - Fix common issues
+
+**Key Features**: Zero overhead when disabled (<0.1ms), automatic security sanitization, session-scoped JSONL logs, no NPM dependencies.
+
 ### Power Steering
 
 Intelligent guidance system that prevents common mistakes:
@@ -412,8 +427,8 @@ Robust handling of conversation compaction in long sessions:
 
 - [Smart Memory Management](features/smart-memory-management.md) - Automatic Node.js memory optimization for Claude Code
 - [Claude.md Preservation](features/claude-md-preservation.md) - Preserve custom instructions
-<!-- Neo4j removed - now using Kuzu embedded database (no session cleanup needed) -->
-<!-- - [Shutdown Detection](concepts/shutdown-detection.md) - Graceful exit handling (see stop-hook-exit-hang in Troubleshooting) -->
+  <!-- Neo4j removed - now using Kuzu embedded database (no session cleanup needed) -->
+  <!-- - [Shutdown Detection](concepts/shutdown-detection.md) - Graceful exit handling (see stop-hook-exit-hang in Troubleshooting) -->
 
 ### Third-Party Integrations
 
@@ -440,6 +455,10 @@ Advanced configuration, deployment patterns, and environment management.
 - [UVX Data Models](UVX_DATA_MODELS.md) - Understanding uvx data structures
 - [Azure Integration](AZURE_INTEGRATION.md) - Deploy to Azure cloud
 - [Test Azure Proxy](TEST_AZURE_PROXY.md) - Validate Azure proxy setup
+
+### Build System
+
+- [Plugin Directory Structure Fix](build_system/plugin-directory-structure-fix.md) - Automatic plugin discovery for UVX installations
 
 ### Remote Sessions
 
@@ -543,6 +562,8 @@ Quick references, guides, and additional resources.
 
 - [Command Selection Guide](commands/COMMAND_SELECTION_GUIDE.md) - Choose the right command
 - [Platform Bridge API Reference](reference/platform-bridge-api.md) - Complete API documentation
+- [Power Steering File Locking](reference/power-steering-file-locking.md) - Prevents counter race conditions
+- [UserPromptSubmit Hook API Reference](reference/user-prompt-submit-hook-api.md) - Framework injection API
 - [Doc Graph Quick Reference](doc_graph_quick_reference.md) - Navigate documentation
 <!-- Neo4j Quick Reference removed - now using Kuzu embedded database -->
 - [A/B Test Quick Reference](memory/AB_TEST_QUICK_REFERENCE.md) - Test results

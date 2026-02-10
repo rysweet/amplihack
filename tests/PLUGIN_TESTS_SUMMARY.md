@@ -42,13 +42,13 @@ Created comprehensive failing test suite for the 4-brick plugin architecture fol
 
 ### Plugin Architecture Tests Only
 
-| Brick | Unit Tests | Integration Tests | E2E Tests | Total |
-|-------|-----------|------------------|-----------|-------|
-| PluginManager | 25 | 5 | 4 | 34 |
-| LSPDetector | 25 | 3 | 2 | 30 |
-| SettingsGenerator | 25 | 2 | 2 | 29 |
-| PathResolver | 27 | 0 | 0 | 27 |
-| **Total** | **102** | **10** | **8** | **120** |
+| Brick             | Unit Tests | Integration Tests | E2E Tests | Total   |
+| ----------------- | ---------- | ----------------- | --------- | ------- |
+| PluginManager     | 25         | 5                 | 4         | 34      |
+| LSPDetector       | 25         | 3                 | 2         | 30      |
+| SettingsGenerator | 25         | 2                 | 2         | 29      |
+| PathResolver      | 27         | 0                 | 0         | 27      |
+| **Total**         | **102**    | **10**            | **8**     | **120** |
 
 ### Actual Pyramid Distribution
 
@@ -64,17 +64,20 @@ Plugin Architecture Tests:
 ## Test Characteristics
 
 ### ✅ TDD Compliant
+
 - **All tests written BEFORE implementation**
 - Tests define the contract (public API) for each brick
 - Tests will fail until implementation is complete
 
 ### ✅ Philosophy Aligned
+
 - **Ruthless simplicity**: Tests are clear and focused
 - **Zero-BS implementation**: No stub tests, all verify real behavior
 - **Modular design**: Each brick tested independently
 - **Testing pyramid**: 60% unit, 30% integration, 10% E2E
 
 ### ✅ Comprehensive Coverage
+
 - **Happy paths**: Basic successful execution
 - **Edge cases**: Boundary conditions (empty, null, max limits)
 - **Error cases**: Invalid inputs, failures, permission errors
@@ -84,11 +87,13 @@ Plugin Architecture Tests:
 ## Key Test Features
 
 ### Mocking Strategy
+
 - **Unit tests**: Heavy mocking (file system, git, subprocess)
 - **Integration tests**: Minimal mocking (real temp directories)
 - **E2E tests**: No mocking (complete workflows)
 
 ### Error Handling Coverage
+
 - ✅ File not found
 - ✅ Invalid JSON
 - ✅ Missing required fields
@@ -99,6 +104,7 @@ Plugin Architecture Tests:
 - ✅ Concurrent operations
 
 ### Edge Cases Covered
+
 - ✅ Empty inputs
 - ✅ Very long paths
 - ✅ Paths with spaces
@@ -135,6 +141,7 @@ pytest tests/unit/ tests/integration/ tests/e2e/ --cov=src/amplihack
 ## Expected Test Results
 
 ### Current State (No Implementation)
+
 ```
 FAILED tests/unit/test_plugin_manager.py::test_validate_manifest_missing_file - ModuleNotFoundError: No module named 'amplihack.plugin_manager'
 FAILED tests/unit/test_lsp_detector.py::test_detect_python_project - ModuleNotFoundError: No module named 'amplihack.lsp_detector'
@@ -145,6 +152,7 @@ FAILED tests/unit/test_path_resolver.py::test_resolve_absolute_path_unchanged - 
 ```
 
 ### After Implementation
+
 ```
 PASSED tests/unit/test_plugin_manager.py::test_validate_manifest_missing_file
 PASSED tests/unit/test_lsp_detector.py::test_detect_python_project
@@ -157,17 +165,20 @@ PASSED tests/unit/test_path_resolver.py::test_resolve_absolute_path_unchanged
 ## Test Quality Metrics
 
 ### Test Names
+
 - ✅ Descriptive: Each test name describes the behavior being tested
 - ✅ Consistent: Follow `test_<action>_<condition>` pattern
 - ✅ Clear intent: Readable without looking at implementation
 
 ### Test Structure
+
 - ✅ Arrange-Act-Assert: Clear three-phase structure
 - ✅ Single responsibility: One assertion per test (mostly)
 - ✅ Independent: Tests don't depend on each other
 - ✅ Fast: Unit tests run in < 100ms each
 
 ### Documentation
+
 - ✅ Docstrings: Every test has a clear docstring
 - ✅ Comments: Complex logic explained
 - ✅ Examples: Real-world scenarios demonstrated
@@ -177,6 +188,7 @@ PASSED tests/unit/test_path_resolver.py::test_resolve_absolute_path_unchanged
 ### Implementation Phase
 
 1. **Create brick directories**:
+
    ```bash
    mkdir -p src/amplihack/plugin_manager
    mkdir -p src/amplihack/lsp_detector
@@ -205,6 +217,7 @@ PASSED tests/unit/test_path_resolver.py::test_resolve_absolute_path_unchanged
 ### Coverage Goals
 
 After implementation:
+
 - **Line coverage**: > 90%
 - **Branch coverage**: > 85%
 - **Function coverage**: > 95%
@@ -213,16 +226,19 @@ After implementation:
 ## Test Maintenance
 
 ### When to Add Tests
+
 - New feature: Add tests FIRST (TDD)
 - Bug found: Add regression test FIRST
 - Edge case discovered: Add test immediately
 
 ### When to Update Tests
+
 - API contract changes
 - New error conditions
 - Performance requirements change
 
 ### When to Remove Tests
+
 - Feature removed
 - API deprecated
 - Test becomes redundant
@@ -232,22 +248,26 @@ After implementation:
 These tests validate the architect's design:
 
 ✅ **4 Self-contained bricks**:
+
 - PluginManager (25 unit tests)
 - LSPDetector (25 unit tests)
 - SettingsGenerator (25 unit tests)
 - PathResolver (27 unit tests)
 
 ✅ **Clear public APIs ("studs")**:
+
 - All public methods have dedicated tests
 - Edge cases and error handling covered
 - Integration points tested
 
 ✅ **Regeneratable modules**:
+
 - Tests define complete contract
 - Implementation can be regenerated from tests
 - No implementation-specific dependencies
 
 ✅ **Philosophy compliance**:
+
 - Ruthless simplicity
 - Zero-BS implementation
 - Modular design

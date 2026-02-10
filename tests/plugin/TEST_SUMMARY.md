@@ -14,6 +14,7 @@
 ## Test Distribution by Module
 
 ### test_installer.py (434 lines, 18 tests)
+
 - **Unit Tests**: 8 tests (44%)
   - Install validation
   - Target directory creation
@@ -31,6 +32,7 @@
   - Timestamps
 
 ### test_settings_merger.py (523 lines, 18 tests)
+
 - **Unit Tests**: 11 tests (61%)
   - Merge logic
   - Deep merge
@@ -46,6 +48,7 @@
   - Type preservation
 
 ### test_variable_substitutor.py (519 lines, 21 tests)
+
 - **Unit Tests**: 8 tests (38%)
   - Simple substitution
   - Multiple variables
@@ -61,6 +64,7 @@
 - **Edge Cases**: 1 test (5%)
 
 ### test_lsp_detector.py (567 lines, 19 tests)
+
 - **Unit Tests**: 10 tests (53%)
   - Language detection
   - Config generation
@@ -74,6 +78,7 @@
   - Performance
 
 ### test_migration_helper.py (627 lines, 16 tests)
+
 - **Unit Tests**: 5 tests (31%)
   - Detection
   - Planning
@@ -87,6 +92,7 @@
   - Conflicts
 
 ### test_integration.py (590 lines, 9 tests)
+
 - **Integration Tests**: 3 tests (33%)
   - Plugin + project setup
   - LSP integration
@@ -101,6 +107,7 @@
 ## Testing Pyramid Compliance
 
 **Actual Distribution**:
+
 - Unit Tests: ~58 tests (57%) → Target: 60% ✅
 - Integration Tests: ~31 tests (31%) → Target: 30% ✅
 - E2E Tests: ~12 tests (12%) → Target: 10% ✅
@@ -110,6 +117,7 @@
 ## Test Coverage Goals
 
 ### Critical Path Coverage (100% required)
+
 - ✅ Plugin installation workflow
 - ✅ Settings merging with variables
 - ✅ Variable substitution security
@@ -118,6 +126,7 @@
 - ✅ Hook path resolution
 
 ### Edge Case Coverage (80% required)
+
 - ✅ Permission errors
 - ✅ Symlink handling
 - ✅ Invalid input handling
@@ -126,6 +135,7 @@
 - ✅ Large file handling
 
 ### Security Coverage (100% required)
+
 - ✅ Path traversal prevention
 - ✅ Variable injection prevention
 - ✅ Symlink escape prevention
@@ -135,17 +145,20 @@
 ## Test Quality Metrics
 
 ### Clarity
+
 - ✅ All tests have descriptive names
 - ✅ All tests have docstrings explaining validation
 - ✅ AAA pattern consistently used
 
 ### Isolation
+
 - ✅ No test dependencies
 - ✅ tmp_path used for file operations
 - ✅ Fixtures for shared setup
 - ✅ Clean state per test
 
 ### Speed
+
 - ✅ Unit tests are fast (no I/O in most)
 - ✅ Integration tests use tmp_path (fast)
 - ✅ E2E tests marked as slow
@@ -154,6 +167,7 @@
 ## Fixture Coverage
 
 **Shared Fixtures** (conftest.py):
+
 - `plugin_source` - Minimal plugin structure
 - `plugin_home` - Plugin home directory
 - `old_installation` - Old-style installation
@@ -164,6 +178,7 @@
 - `sample_variables` - Sample variable dict
 
 **Helper Functions**:
+
 - `create_minimal_plugin()` - Quick plugin creation
 - `assert_settings_equal()` - Settings comparison
 - `assert_file_exists()` - File existence check
@@ -195,6 +210,7 @@ Expected output: All tests fail with `ImportError` or `ModuleNotFoundError`
 ## Next Steps
 
 ### Step 1: Create Module Structure
+
 ```bash
 mkdir -p amplihack/plugin
 touch amplihack/plugin/__init__.py
@@ -207,6 +223,7 @@ touch amplihack/plugin/cli.py
 ```
 
 ### Step 2: Implement Modules
+
 Implement each module following the test specifications:
 
 1. **PluginInstaller** (~450 lines)
@@ -244,6 +261,7 @@ Implement each module following the test specifications:
    - Error handling
 
 ### Step 3: Enter GREEN Phase
+
 ```bash
 pytest tests/plugin/ -v
 ```
@@ -251,6 +269,7 @@ pytest tests/plugin/ -v
 All tests should pass when implementation is complete.
 
 ### Step 4: Refactor
+
 - Simplify implementations
 - Remove duplication
 - Improve clarity
@@ -259,21 +278,25 @@ All tests should pass when implementation is complete.
 ## Test Philosophy Alignment
 
 ✅ **Ruthless Simplicity**
+
 - Tests are clear and focused
 - No unnecessary complexity
 - Direct assertions
 
 ✅ **Zero-BS Implementation**
+
 - No stub tests
 - All tests validate real behavior
 - No placeholder assertions
 
 ✅ **Proportionality Principle**
+
 - Test effort matches criticality
 - Critical paths have most tests
 - Edge cases appropriately covered
 
 ✅ **TDD Approach**
+
 - Tests written first
 - Define requirements clearly
 - Implementation guided by tests
@@ -283,6 +306,7 @@ All tests should pass when implementation is complete.
 Tests validate the architecture design:
 
 ✅ **6 Modules**
+
 - PluginInstaller
 - SettingsMerger
 - VariableSubstitutor
@@ -291,6 +315,7 @@ Tests validate the architecture design:
 - PluginCLI
 
 ✅ **Key Features**
+
 - Centralized plugin installation
 - Variable substitution (${CLAUDE_PLUGIN_ROOT})
 - Deep settings merging
@@ -299,6 +324,7 @@ Tests validate the architecture design:
 - Security constraints
 
 ✅ **Integration Points**
+
 - Installer → SettingsMerger → VariableSubstitutor
 - LSPDetector → SettingsMerger
 - MigrationHelper → Installer → SettingsMerger

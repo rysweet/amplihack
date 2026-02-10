@@ -95,12 +95,12 @@ Use meta-delegation when you need:
 
 Meta-delegation supports four persona types, each with different behavior:
 
-| Persona      | Best For                          | Approach            | Output Style       |
-| ------------ | --------------------------------- | ------------------- | ------------------ |
-| `guide`      | Teaching and explaining           | Socratic, iterative | Tutorials, guides  |
-| `qa_engineer`| Testing and validation            | Rigorous, thorough  | Test reports, bugs |
-| `architect`  | Design and system architecture    | Strategic, holistic | Specs, diagrams    |
-| `junior_dev` | Implementation following specs    | Task-focused, clean | Working code       |
+| Persona       | Best For                       | Approach            | Output Style       |
+| ------------- | ------------------------------ | ------------------- | ------------------ |
+| `guide`       | Teaching and explaining        | Socratic, iterative | Tutorials, guides  |
+| `qa_engineer` | Testing and validation         | Rigorous, thorough  | Test reports, bugs |
+| `architect`   | Design and system architecture | Strategic, holistic | Specs, diagrams    |
+| `junior_dev`  | Implementation following specs | Task-focused, clean | Working code       |
 
 See [Concepts](./concepts.md#personas) for detailed persona behavior.
 
@@ -110,13 +110,14 @@ See [Concepts](./concepts.md#personas) for detailed persona behavior.
 
 Meta-delegation works across three platforms:
 
-| Platform       | Status      | Notes                                   |
-| -------------- | ----------- | --------------------------------------- |
-| `claude-code`  | ✅ Full     | Default, best integration               |
-| `copilot`      | ✅ Full     | Requires GitHub Copilot CLI             |
-| `amplifier`    | ✅ Full     | Requires Microsoft Amplifier            |
+| Platform      | Status  | Notes                        |
+| ------------- | ------- | ---------------------------- |
+| `claude-code` | ✅ Full | Default, best integration    |
+| `copilot`     | ✅ Full | Requires GitHub Copilot CLI  |
+| `amplifier`   | ✅ Full | Requires Microsoft Amplifier |
 
 All platforms support:
+
 - Subprocess isolation
 - Evidence collection
 - Success validation

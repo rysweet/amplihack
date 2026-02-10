@@ -23,11 +23,13 @@ amplihack mode migrate-to-local       # Create local .claude/
 Install amplihack plugin from git repository or local directory.
 
 **Synopsis:**
+
 ```bash
 amplihack plugin install <source> [--force]
 ```
 
 **Arguments:**
+
 - `<source>`: Git URL or local directory path
   - Git URL: `https://github.com/rysweet/amplihack`
   - Local path: `/path/to/amplihack`
@@ -52,6 +54,7 @@ amplihack plugin install https://github.com/rysweet/amplihack@feat/new-feature
 **Output:**
 
 Success:
+
 ```
 ✅ Plugin installed: amplihack
    Location: /home/user/.amplihack/.claude/
@@ -59,6 +62,7 @@ Success:
 ```
 
 Failure:
+
 ```
 ❌ Installation failed: Invalid plugin manifest
    Plugin must have .claude-plugin/plugin.json
@@ -76,11 +80,13 @@ Failure:
 5. Cleans up temporary files
 
 **Files Modified:**
+
 - `~/.amplihack/.claude/` (plugin content)
 - `~/.amplihack/.claude-plugin/plugin.json` (manifest)
 - `~/.claude/settings.json` (plugin registration)
 
 **Exit Codes:**
+
 - `0`: Installation successful
 - `1`: Installation failed (invalid source, validation error, copy error)
 
@@ -91,11 +97,13 @@ Failure:
 Remove installed plugin cleanly.
 
 **Synopsis:**
+
 ```bash
 amplihack plugin uninstall <plugin_name>
 ```
 
 **Arguments:**
+
 - `<plugin_name>`: Name o' plugin t' remove (e.g., "amplihack")
 
 **Examples:**
@@ -108,11 +116,13 @@ amplihack plugin uninstall amplihack
 **Output:**
 
 Success:
+
 ```
 ✅ Plugin removed: amplihack
 ```
 
 Failure:
+
 ```
 ❌ Failed to remove plugin: amplihack
    Plugin may not be installed or removal failed
@@ -128,10 +138,12 @@ Failure:
    - Removes hook registrations
 
 **Files Modified:**
+
 - `~/.amplihack/` (removed)
 - `~/.claude/settings.json` (plugin deregistration)
 
 **Exit Codes:**
+
 - `0`: Uninstall successful
 - `1`: Uninstall failed (plugin not found, removal error)
 
@@ -142,11 +154,13 @@ Failure:
 Verify plugin installation and discoverability.
 
 **Synopsis:**
+
 ```bash
 amplihack plugin verify <plugin_name>
 ```
 
 **Arguments:**
+
 - `<plugin_name>`: Name o' plugin t' verify (e.g., "amplihack")
 
 **Examples:**
@@ -159,6 +173,7 @@ amplihack plugin verify amplihack
 **Output:**
 
 Success (all checks pass):
+
 ```
 Plugin: amplihack
   Installed: ✅
@@ -169,6 +184,7 @@ Plugin be fully functional!
 ```
 
 Partial failure (some checks fail):
+
 ```
 Plugin: amplihack
   Installed: ✅
@@ -181,6 +197,7 @@ Diagnostics:
 ```
 
 Complete failure:
+
 ```
 Plugin: amplihack
   Installed: ❌
@@ -210,6 +227,7 @@ Diagnostics:
    - Confirms at least one hook be defined
 
 **Exit Codes:**
+
 - `0`: All checks passed
 - `1`: One or more checks failed
 
@@ -222,6 +240,7 @@ Diagnostics:
 Show current Claude installation mode fer the project.
 
 **Synopsis:**
+
 ```bash
 amplihack mode status
 ```
@@ -237,18 +256,21 @@ amplihack mode status
 **Output:**
 
 Plugin mode:
+
 ```
 Current mode: plugin
   Using: /home/user/.amplihack/.claude
 ```
 
 Local mode:
+
 ```
 Current mode: local
   Using: /home/user/project/.claude
 ```
 
 No installation:
+
 ```
 Current mode: none
   No .claude installation found
@@ -258,6 +280,7 @@ Current mode: none
 **Mode Detection:**
 
 Precedence order:
+
 1. **LOCAL**: Project has `~/.amplihack/.claude/` directory → Use local
 2. **PLUGIN**: Plugin installed at `~/.amplihack/.claude/` → Use plugin
 3. **NONE**: No installation found → Prompt t' install
@@ -273,6 +296,7 @@ AMPLIHACK_MODE=local amplihack mode status
 ```
 
 **Exit Codes:**
+
 - `0`: Always successful (informational command)
 
 ---
@@ -282,11 +306,13 @@ AMPLIHACK_MODE=local amplihack mode status
 Migrate project from local `~/.amplihack/.claude/` t' plugin mode.
 
 **Synopsis:**
+
 ```bash
 amplihack mode migrate-to-plugin
 ```
 
 **Prerequisites:**
+
 - Plugin must be installed (`amplihack plugin install`)
 - Project must have local `~/.amplihack/.claude/` directory
 - Local `~/.amplihack/.claude/` must not have custom modifications (or be backed up)
@@ -302,23 +328,27 @@ amplihack mode migrate-to-plugin
 **Output:**
 
 Success:
+
 ```
 Removing local .claude/ from /home/user/project
 Migration complete. Project now uses plugin.
 ```
 
 Failure (no local .claude/):
+
 ```
 No local .claude/ directory found
 ```
 
 Failure (plugin not installed):
+
 ```
 Plugin not installed. Install plugin first:
   amplihack plugin install
 ```
 
 Warning (custom files):
+
 ```
 Warning: Local .claude/ has custom files:
   - agents/my-custom-agent.md
@@ -336,9 +366,11 @@ These will be lost. Backup first or use --preserve-custom
 5. Project now uses plugin automatically (no local override)
 
 **Files Modified:**
+
 - `project/.claude/` (removed)
 
 **Exit Codes:**
+
 - `0`: Migration successful
 - `1`: Migration failed (no plugin, no local, or custom files detected)
 
@@ -349,11 +381,13 @@ These will be lost. Backup first or use --preserve-custom
 Create local `~/.amplihack/.claude/` from plugin fer project-specific customization.
 
 **Synopsis:**
+
 ```bash
 amplihack mode migrate-to-local
 ```
 
 **Prerequisites:**
+
 - Plugin must be installed (`amplihack plugin install`)
 - Project must NOT have local `~/.amplihack/.claude/` directory
 
@@ -368,6 +402,7 @@ amplihack mode migrate-to-local
 **Output:**
 
 Success:
+
 ```
 Creating local .claude/ from plugin
 Migration complete. Project now uses local .claude/
@@ -375,11 +410,13 @@ You can now customize .claude/ for this project.
 ```
 
 Failure (local already exists):
+
 ```
 Local .claude/ already exists at /home/user/project
 ```
 
 Failure (no plugin):
+
 ```
 Plugin not installed. Cannot create local copy.
 ```
@@ -392,9 +429,11 @@ Plugin not installed. Cannot create local copy.
 4. Project now uses local `~/.amplihack/.claude/` (takes precedence over plugin)
 
 **Files Modified:**
+
 - `project/.claude/` (created, copied from plugin)
 
 **Exit Codes:**
+
 - `0`: Migration successful
 - `1`: Migration failed (no plugin or local already exists)
 
@@ -407,6 +446,7 @@ Plugin not installed. Cannot create local copy.
 Override automatic mode detection.
 
 **Values:**
+
 - `plugin`: Force plugin mode
 - `local`: Force local mode (if `~/.amplihack/.claude/` exists)
 

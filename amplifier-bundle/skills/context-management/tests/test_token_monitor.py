@@ -1,7 +1,6 @@
 """Unit tests for TokenMonitor brick."""
 
 import pytest
-
 from context_management.token_monitor import DEFAULT_MAX_TOKENS, TokenMonitor
 
 

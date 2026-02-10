@@ -10,11 +10,10 @@ Testing Strategy:
 - 10% E2E tests (complete installation workflows)
 """
 
-import pytest
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock
 import json
-import shutil
+from pathlib import Path
+
+import pytest
 
 
 class TestPluginInstallerUnit:
@@ -125,6 +124,7 @@ class TestPluginInstallerUnit:
 
         # Check permissions (755 = rwxr-xr-x = 0o755)
         import stat
+
         bash_stat = (target / ".claude" / "tools" / "hook.sh").stat()
         python_stat = (target / ".claude" / "tools" / "hook.py").stat()
 
@@ -210,7 +210,7 @@ class TestPluginInstallerUnit:
         (claude_dir / "tools").mkdir(parents=True)
         (claude_dir / "runtime").mkdir(parents=True)
         (claude_dir / "logs").mkdir(parents=True)
-        (claude_dir / "settings.json").write_text('{}')
+        (claude_dir / "settings.json").write_text("{}")
         (claude_dir / "runtime" / "data.json").write_text('{"important": true}')
         (claude_dir / "logs" / "log.txt").write_text("important logs")
 
@@ -255,10 +255,7 @@ class TestPluginInstallerIntegration:
         (claude_dir / "runtime").mkdir(parents=True)
         (claude_dir / "runtime" / "temp.json").write_text("{}")
 
-        settings = {
-            "version": "1.0.0",
-            "hooks": {"PreRun": "${CLAUDE_PLUGIN_ROOT}/tools/hook.sh"}
-        }
+        settings = {"version": "1.0.0", "hooks": {"PreRun": "${CLAUDE_PLUGIN_ROOT}/tools/hook.sh"}}
         (claude_dir / "settings.json").write_text(json.dumps(settings, indent=2))
 
         target = tmp_path / "home" / ".amplihack"
@@ -277,9 +274,7 @@ class TestPluginInstallerIntegration:
         assert not (target / ".claude" / "runtime").exists()
 
         # Check settings
-        installed_settings = json.loads(
-            (target / ".claude" / "settings.json").read_text()
-        )
+        installed_settings = json.loads((target / ".claude" / "settings.json").read_text())
         assert installed_settings["version"] == "1.0.0"
 
     def test_upgrade_installation_creates_backup(self, tmp_path):
@@ -409,8 +404,9 @@ class TestPluginInstallerEdgeCases:
         - File modification times are preserved
         - Important for detecting changes
         """
-        from amplihack.plugin.installer import PluginInstaller
         import time
+
+        from amplihack.plugin.installer import PluginInstaller
 
         source = tmp_path / "source"
         claude_dir = source / ".claude"
@@ -422,6 +418,7 @@ class TestPluginInstallerEdgeCases:
         # Set specific timestamp
         old_time = time.time() - 86400  # 1 day ago
         import os
+
         os.utime(test_file, (old_time, old_time))
 
         target = tmp_path / "target"

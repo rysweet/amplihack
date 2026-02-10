@@ -10,7 +10,7 @@ Replace the sections below with information about your project.
 
 ---
 
-## Project: feat-issue-2128-staging-cleanup-copilot-windows
+## Project: amplihack
 
 ## Overview
 
