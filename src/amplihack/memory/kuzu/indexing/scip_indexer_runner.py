@@ -269,6 +269,23 @@ class ScipIndexerRunner:
             timeout=600,
         )
 
+    def run_cpp_indexer(self, codebase_path: Path) -> ScipIndexResult:
+        """Run scip-clang indexer.
+
+        Args:
+            codebase_path: Path to C++ codebase
+
+        Returns:
+            ScipIndexResult
+        """
+        # scip-clang reads compile_commands.json automatically
+        return self._run_indexer(
+            ["scip-clang"],
+            cwd=codebase_path,
+            language="cpp",
+            timeout=600,
+        )
+
     def run_indexer_for_language(
         self,
         language: str,
@@ -298,14 +315,7 @@ class ScipIndexerRunner:
         if language_lower == "csharp":
             return self.run_csharp_indexer(codebase_path)
         if language_lower in ("cpp", "c++", "c"):
-            return ScipIndexResult(
-                language=language,
-                success=False,
-                index_path=None,
-                index_size_bytes=0,
-                duration_seconds=0.0,
-                error_message="scip-clang not yet supported (requires manual installation)",
-            )
+            return self.run_cpp_indexer(codebase_path)
         return ScipIndexResult(
             language=language,
             success=False,
