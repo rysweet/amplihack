@@ -1,7 +1,7 @@
 """Recipe execution context with template rendering and safe expression evaluation.
 
 Provides variable storage, dot-notation access, Mustache-style template rendering,
-and AST-based safe condition evaluation that never uses eval().
+and AST-based safe condition evaluation (whitelist-validated before eval).
 """
 
 from __future__ import annotations
@@ -56,7 +56,7 @@ class RecipeContext:
     Supports:
     - Dot-notation key access for nested dicts (e.g. ``a.b.c``)
     - ``{{var}}`` template rendering with JSON serialization for dicts
-    - AST-based safe condition evaluation (no eval)
+    - AST-based safe condition evaluation (whitelist-validated before eval)
     """
 
     def __init__(self, initial_context: dict[str, Any] | None = None) -> None:
