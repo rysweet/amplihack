@@ -816,7 +816,6 @@ class LinkValidator:
                 url,
                 timeout=self.timeout,
                 allow_redirects=True,
-                max_redirects=MAX_REDIRECTS,
                 headers={"User-Agent": DEFAULT_USER_AGENT},
                 verify=True,  # SSL certificate validation
             )
