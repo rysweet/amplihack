@@ -1,0 +1,184 @@
+name: Documentation Validation
+
+# Purpose: Comprehensive documentation validation before merge
+# Runs validation scripts to catch issues early in PR lifecycle
+# Complements weekly link checker with pre-merge validation
+
+on:
+  pull_request:
+    paths:
+      - "docs/**"
+      - "**/*.md"
+      - "mkdocs.yml"
+      - "scripts/validate_*.py"
+      - ".github/workflows/docs-validation.yml"
+  workflow_dispatch:
+
+# Minimal permissions - read-only access
+permissions:
+  contents: read
+  pull-requests: write # For commenting on PRs with validation results
+
+jobs:
+  validate-policy:
+    name: Documentation Policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run policy validation
+        id: policy
+        run: |
+          echo "::group::Policy Validation"
+          python scripts/validate_docs_policy.py docs/ || {
+            echo "validation_failed=true" >> $GITHUB_OUTPUT
+            exit 0
+          }
+          echo "::endgroup::"
+        continue-on-error: true
+
+      - name: Check validation results
+        if: steps.policy.outputs.validation_failed == 'true'
+        run: |
+          echo "::error::Documentation policy violations found"
+          echo "Please review the output above and fix violations before merging"
+          exit 1
+
+  validate-examples:
+    name: Code Examples
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check if Docker is available
+        id: docker-check
+        run: |
+          if command -v docker &> /dev/null && docker ps &> /dev/null; then
+            echo "docker_available=true" >> $GITHUB_OUTPUT
+          else
+            echo "docker_available=false" >> $GITHUB_OUTPUT
+            echo "::warning::Docker not available, skipping execution validation"
+          fi
+
+      - name: Run syntax validation (always)
+        run: |
+          echo "::group::Syntax Validation"
+          python scripts/validate_docs_examples.py docs/ --skip-execution
+          echo "::endgroup::"
+
+      - name: Run execution validation (if Docker available)
+        if: steps.docker-check.outputs.docker_available == 'true'
+        run: |
+          echo "::group::Execution Validation"
+          python scripts/validate_docs_examples.py docs/ --verbose
+          echo "::endgroup::"
+
+  validate-navigation:
+    name: MkDocs Navigation
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Run navigation validation
+        run: |
+          echo "::group::Navigation Validation"
+          python scripts/validate_docs_navigation.py
+          echo "::endgroup::"
+
+  validate-links-local:
+    name: Link Validation (Local)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install beautifulsoup4 lxml requests
+
+      - name: Run local link validation
+        run: |
+          echo "::group::Local Link Validation"
+          python scripts/validate_gh_pages_links.py --local docs/ --pragmatic
+          echo "::endgroup::"
+
+  # Summary job that requires all validation jobs to pass
+  validation-summary:
+    name: Validation Summary
+    runs-on: ubuntu-latest
+    needs: [validate-policy, validate-examples, validate-navigation, validate-links-local]
+    if: always()
+    
+    steps:
+      - name: Check all validations passed
+        run: |
+          echo "### Documentation Validation Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.validate-policy.result }}" = "success" ]; then
+            echo "✅ Policy validation passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Policy validation failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.validate-examples.result }}" = "success" ]; then
+            echo "✅ Code examples validation passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Code examples validation failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.validate-navigation.result }}" = "success" ]; then
+            echo "✅ Navigation validation passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Navigation validation failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.validate-links-local.result }}" = "success" ]; then
+            echo "✅ Link validation passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Link validation failed" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          # Fail if any validation failed
+          if [ "${{ needs.validate-policy.result }}" != "success" ] || \
+             [ "${{ needs.validate-examples.result }}" != "success" ] || \
+             [ "${{ needs.validate-navigation.result }}" != "success" ] || \
+             [ "${{ needs.validate-links-local.result }}" != "success" ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Please fix validation errors before merging" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
