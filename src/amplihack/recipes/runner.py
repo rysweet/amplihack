@@ -107,8 +107,10 @@ class RecipeRunner:
                         step_id=step.id,
                         status=StepStatus.SKIPPED,
                     )
-            except (ValueError, NameError):
-                logger.warning("Condition evaluation failed for step '%s', skipping", step.id)
+            except (ValueError, NameError) as exc:
+                logger.warning(
+                    "Condition evaluation failed for step '%s', skipping: %s", step.id, exc
+                )
                 return StepResult(
                     step_id=step.id,
                     status=StepStatus.SKIPPED,
