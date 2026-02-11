@@ -476,11 +476,16 @@ def stage_directory(source_dir: Path, copilot_home: Path, dest_name: str) -> int
     return copied
 
 
-def generate_copilot_instructions(copilot_home: Path) -> None:
-    """Generate ~/.copilot/copilot-instructions.md for amplihack integration.
+INSTRUCTIONS_MARKER_START = "<!-- AMPLIHACK_INSTRUCTIONS_START -->"
+INSTRUCTIONS_MARKER_END = "<!-- AMPLIHACK_INSTRUCTIONS_END -->"
 
-    Copilot CLI auto-reads this file at session start. It tells copilot where
-    to find amplihack's extensibility mechanisms (workflows, context, commands).
+
+def generate_copilot_instructions(copilot_home: Path) -> None:
+    """Inject amplihack section into ~/.copilot/copilot-instructions.md.
+
+    Preserves any existing user content. Uses HTML comment markers to
+    isolate amplihack's section so it can be updated without overwriting
+    the user's own instructions.
 
     Args:
         copilot_home: Path to copilot home directory (e.g. ~/.copilot/)
@@ -488,7 +493,8 @@ def generate_copilot_instructions(copilot_home: Path) -> None:
     instructions = copilot_home / "copilot-instructions.md"
     copilot_home.mkdir(parents=True, exist_ok=True)
 
-    content = f"""\
+    amplihack_section = f"""\
+{INSTRUCTIONS_MARKER_START}
 # Amplihack Framework Integration
 
 You have access to the amplihack agentic coding framework. Use these resources:
@@ -519,8 +525,24 @@ Custom agents are available at `{copilot_home}/agents/`. Use them via the task t
 
 ## Skills
 Skills are available at `{copilot_home}/skills/`. They auto-activate based on context.
-"""
-    instructions.write_text(content)
+{INSTRUCTIONS_MARKER_END}"""
+
+    if instructions.exists():
+        existing = instructions.read_text()
+        # Replace existing amplihack section if present
+        if INSTRUCTIONS_MARKER_START in existing:
+            import re
+
+            pattern = (
+                re.escape(INSTRUCTIONS_MARKER_START) + r".*?" + re.escape(INSTRUCTIONS_MARKER_END)
+            )
+            updated = re.sub(pattern, amplihack_section, existing, flags=re.DOTALL)
+            instructions.write_text(updated)
+        else:
+            # Append amplihack section to existing user content
+            instructions.write_text(existing.rstrip() + "\n\n" + amplihack_section + "\n")
+    else:
+        instructions.write_text(amplihack_section + "\n")
 
 
 def get_copilot_directories() -> list[str]:

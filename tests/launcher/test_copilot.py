@@ -559,3 +559,40 @@ class TestGenerateCopilotInstructions:
         content = (copilot_home / "copilot-instructions.md").read_text()
         assert "command" in content.lower()
         assert "ultrathink" in content.lower()
+
+    def test_preserves_existing_user_content(self, tmp_path):
+        """Must NOT overwrite user's existing instructions."""
+        copilot_home = tmp_path / "copilot"
+        copilot_home.mkdir()
+        instructions = copilot_home / "copilot-instructions.md"
+        instructions.write_text("# My Custom Instructions\nAlways use TypeScript.\n")
+
+        generate_copilot_instructions(copilot_home)
+
+        content = instructions.read_text()
+        # User content preserved
+        assert "My Custom Instructions" in content
+        assert "Always use TypeScript" in content
+        # Amplihack section added
+        assert "Amplihack Framework" in content
+        assert "DEFAULT_WORKFLOW" in content
+
+    def test_updates_existing_amplihack_section(self, tmp_path):
+        """Must replace old amplihack section, not duplicate it."""
+        copilot_home = tmp_path / "copilot"
+        copilot_home.mkdir()
+        instructions = copilot_home / "copilot-instructions.md"
+        # Simulate file with user content + old amplihack section
+        instructions.write_text(
+            "# User stuff\n\n"
+            "<!-- AMPLIHACK_INSTRUCTIONS_START -->\nOLD CONTENT\n<!-- AMPLIHACK_INSTRUCTIONS_END -->\n"
+        )
+
+        generate_copilot_instructions(copilot_home)
+
+        content = instructions.read_text()
+        assert "User stuff" in content
+        assert "OLD CONTENT" not in content
+        assert "DEFAULT_WORKFLOW" in content
+        # Only one amplihack section
+        assert content.count("AMPLIHACK_INSTRUCTIONS_START") == 1
