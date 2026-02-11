@@ -1,4 +1,4 @@
-"""Copilot CLI launcher - simple wrapper around copilot command."""
+"""Copilot CLI launcher with full extensibility parity staging."""
 
 import json
 import os
