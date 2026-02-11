@@ -151,6 +151,10 @@ python scripts/validate_gh_pages_links.py --local docs/ --pragmatic
 
 ### Workflow: docs-validation.yml
 
+**Current Status**: Informational (non-blocking)
+
+The validation workflow runs on every PR but does not block merges. This allows the infrastructure to be deployed and provide visibility into documentation quality without blocking PRs due to pre-existing issues.
+
 ```yaml
 # Triggers
 on:
@@ -163,11 +167,11 @@ on:
 
 # Jobs (parallel)
 jobs:
-  validate-policy:      # Documentation standards
-  validate-examples:    # Code block validation
+  validate-policy:      # Documentation standards (non-blocking)
+  validate-examples:    # Code block validation (non-blocking)
   validate-navigation:  # mkdocs structure
-  validate-links-local: # Link validation
-  validation-summary:   # Aggregate results
+  validate-links-local: # Link validation (non-blocking)
+  validation-summary:   # Aggregate results (informational)
 ```
 
 ### Job Timeouts
@@ -176,6 +180,21 @@ jobs:
 - Examples: 15 minutes (Docker setup time)
 - Navigation: 5 minutes
 - Links: 15 minutes (external requests)
+
+### Validation Behavior
+
+**Non-Blocking Mode** (current):
+- Validation jobs set with `continue-on-error: true`
+- Issues reported as warnings, not errors
+- Summary shows ⚠️ for issues instead of ❌
+- PR can be merged regardless of validation results
+- Useful for visibility without blocking development
+
+**Future: Blocking Mode**:
+- Once baseline documentation quality is improved
+- Remove `continue-on-error: true` from jobs
+- Change warnings to errors
+- Block PR merges on validation failures
 
 ### Required Dependencies
 
