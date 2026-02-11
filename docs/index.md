@@ -496,6 +496,7 @@ Security guidelines, context preservation, and best practices.
 - [Security Recommendations](SECURITY_RECOMMENDATIONS.md) - Essential security practices
 - [Security Context Preservation](SECURITY_CONTEXT_PRESERVATION.md) - Maintain security through sessions
 - [Security Guides](security/README.md) - Comprehensive security documentation
+- [Shell Injection Prevention Guide](security/shell-injection-prevention.md) - Prevent command injection vulnerabilities
 
 ### Safe Operations
 
@@ -528,6 +529,7 @@ Fix common issues and learn from past solutions.
 
 - [Configure Memory Consent](howto/configure-memory-consent.md) - Customize prompt behavior, timeouts, and CI/CD integration
 - [Configure Power-Steering Merge Preferences](howto/power-steering-merge-preferences.md) - Set up merge approval workflow
+- [Run Integration Tests](howto/run-integration-tests.md) - Execute security and integration test suites
 - [Platform Bridge Quick Start](tutorials/platform-bridge-quickstart.md) - Learn the basics in 10 minutes
 - [Platform Bridge Workflows](howto/platform-bridge-workflows.md) - Common workflows for GitHub and Azure DevOps
 
@@ -564,6 +566,7 @@ Quick references, guides, and additional resources.
 - [Platform Bridge API Reference](reference/platform-bridge-api.md) - Complete API documentation
 - [Power Steering File Locking](reference/power-steering-file-locking.md) - Prevents counter race conditions
 - [UserPromptSubmit Hook API Reference](reference/user-prompt-submit-hook-api.md) - Framework injection API
+- [Windows CI Matrix Guide](reference/windows-ci-matrix.md) - Cross-platform CI testing configuration
 - [Doc Graph Quick Reference](doc_graph_quick_reference.md) - Navigate documentation
 <!-- Neo4j Quick Reference removed - now using Kuzu embedded database -->
 - [A/B Test Quick Reference](memory/AB_TEST_QUICK_REFERENCE.md) - Test results

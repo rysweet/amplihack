@@ -18,9 +18,20 @@ concurrency:
 
 jobs:
   validate:
-    name: Validate Code
-    runs-on: ubuntu-latest
+    name: Validate Code (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 25
+    strategy:
+      fail-fast: false  # Continue testing other platforms on failure
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-2019
+          - windows-2022
+        python-version:
+          - '3.10'
+          - '3.11'
+          - '3.12'
 
     steps:
       - name: Checkout code
@@ -31,7 +42,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
           cache: "pip"
           cache-dependency-path: |
             pyproject.toml
@@ -86,6 +97,7 @@ jobs:
           CI: "true"
           DEBIAN_FRONTEND: noninteractive
           NPX_NO_INSTALL: "1"
+        shell: bash
         run: |
           if command -v pytest &> /dev/null; then
             echo "Running Python tests with pytest..."
@@ -94,6 +106,26 @@ jobs:
           else
             echo "pytest not found, skipping Python tests"
           fi
+        continue-on-error: true
+
+      - name: Run Windows integration tests
+        id: windows-integration-tests
+        if: runner.os == 'Windows'
+        timeout-minutes: 5
+        shell: pwsh
+        run: |
+          Write-Output "=== Windows Integration Tests ==="
+          Write-Output "Testing npm/npx/node command resolution without shell=True"
+
+          # Verify Node.js tools are available
+          Write-Output "`nChecking Node.js installation:"
+          npm --version
+          npx --version
+          node --version
+
+          Write-Output "`nRunning Windows-specific integration tests:"
+          pytest tests/integration/test_process_integration.py::TestWindowsNpmIntegration -v --tb=short
+          pytest tests/integration/test_process_integration.py::TestWindowsSpecificBehavior -v --tb=short
         continue-on-error: true
 
       - name: Run JavaScript/TypeScript tests
