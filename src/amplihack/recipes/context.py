@@ -102,7 +102,7 @@ class RecipeContext:
             value = self.get(var_name)
             if value is None:
                 return ""
-            if isinstance(value, dict):
+            if isinstance(value, (dict, list)):
                 return json.dumps(value)
             return str(value)
 
@@ -127,7 +127,7 @@ class RecipeContext:
             value = self.get(var_name)
             if value is None:
                 return shlex.quote("")
-            if isinstance(value, dict):
+            if isinstance(value, (dict, list)):
                 return shlex.quote(json.dumps(value))
             return shlex.quote(str(value))
 

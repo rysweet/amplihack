@@ -66,11 +66,43 @@ class RecipeParser:
             context=data.get("context", {}),
         )
 
-    def validate(self, recipe: Recipe) -> list[str]:
+    # Top-level and step-level fields recognized by the parser.
+    # Fields outside these sets produce validation warnings (catch typos).
+    _KNOWN_TOP_FIELDS = frozenset(
+        {
+            "name",
+            "description",
+            "version",
+            "author",
+            "tags",
+            "context",
+            "steps",
+            "recursion",
+            "output",
+        }  # recursion/output: recognized but not modeled yet
+    )
+    _KNOWN_STEP_FIELDS = frozenset(
+        {
+            "id",
+            "type",
+            "agent",
+            "prompt",
+            "command",
+            "output",
+            "condition",
+            "parse_json",
+            "mode",
+            "working_dir",
+            "timeout",
+        }
+    )
+
+    def validate(self, recipe: Recipe, raw_yaml: str | None = None) -> list[str]:
         """Validate a parsed recipe and return a list of warning strings.
 
         Args:
             recipe: A parsed Recipe object.
+            raw_yaml: Optional raw YAML string for checking unrecognized fields.
 
         Returns:
             List of warning messages. Empty list means no issues.
@@ -82,6 +114,22 @@ class RecipeParser:
                 warnings.append(f"Step '{step.id}': agent step is missing a 'prompt' field")
             if step.step_type == StepType.BASH and not step.command:
                 warnings.append(f"Step '{step.id}': bash step is missing a 'command' field")
+
+        # Check for unrecognized fields if raw YAML is provided
+        if raw_yaml is not None:
+            data = yaml.safe_load(raw_yaml)
+            if isinstance(data, dict):
+                for key in data:
+                    if key not in self._KNOWN_TOP_FIELDS:
+                        warnings.append(f"Unrecognized top-level field '{key}' (possible typo)")
+                for i, step_raw in enumerate(data.get("steps") or []):
+                    if isinstance(step_raw, dict):
+                        for key in step_raw:
+                            if key not in self._KNOWN_STEP_FIELDS:
+                                sid = step_raw.get("id", f"index {i}")
+                                warnings.append(
+                                    f"Step '{sid}': unrecognized field '{key}' (possible typo)"
+                                )
 
         return warnings
 
