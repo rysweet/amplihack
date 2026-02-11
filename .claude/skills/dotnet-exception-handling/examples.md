@@ -655,7 +655,6 @@ public static class DbContextExtensions
             {
                 2601 or 2627 => "A record with this unique key already exists",
                 547 => "Cannot complete operation: this record is referenced by other data",
-                2601 => "Duplicate key violation",
                 515 => "Cannot insert NULL into required field",
                 _ => $"A database error occurred (Code: {sqlEx.Number})"
             };
