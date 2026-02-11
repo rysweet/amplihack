@@ -22,6 +22,10 @@ Ahoy, matey! Hit a snag? This be yer map to fix common issues and get back on co
 
 - [Stop Hook Exit Hang](stop-hook-exit-hang.md) - Fix 10-13 second hang on exit (resolved in v0.9.1)
 
+### Startup Issues
+
+- [Startup Conflict Prompt](startup-conflict-prompt.md) - Fix "Uncommitted changes detected in .claude/" prompt on every startup
+
 ### Configuration Problems
 
 - [Config Analysis Report](../config-analysis-report.md) - Configuration problem diagnosis

@@ -1,9 +1,10 @@
-"""Copilot CLI launcher - simple wrapper around copilot command."""
+"""Copilot CLI launcher with full extensibility parity staging."""
 
 import json
 import os
 import platform
 import shlex
+import shutil
 import signal
 import subprocess
 import tempfile
@@ -408,6 +409,142 @@ def install_copilot() -> bool:
         return False
 
 
+def stage_agents(source_agents: Path, copilot_home: Path) -> int:
+    """Stage amplihack agents to ~/.copilot/agents/ for Copilot CLI discovery.
+
+    Copilot CLI searches ~/.copilot/agents/ (user-level) before .github/agents/
+    (repo-level). Staging to user-level ensures agents are discoverable in ANY
+    repo, not just repos with .github/agents/. (Fix for issue #2241)
+
+    Args:
+        source_agents: Path to amplihack agent source directory
+            (e.g. package_dir/.claude/agents/amplihack/)
+        copilot_home: Path to copilot home directory (e.g. ~/.copilot/)
+
+    Returns:
+        Number of agents staged
+    """
+    if not source_agents.exists():
+        return 0
+
+    agents_dest = copilot_home / "agents"
+    agents_dest.mkdir(parents=True, exist_ok=True)
+
+    # Clean stale agents first (removed/renamed agents)
+    for old_file in agents_dest.glob("*.md"):
+        old_file.unlink()
+
+    # Flatten structure: core/architect.md → architect.md
+    # NOTE: Assumes no basename collisions across subdirectories (core/, specialized/, workflows/)
+    copied = 0
+    for source_file in source_agents.rglob("*.md"):
+        dest_file = agents_dest / source_file.name
+        shutil.copy2(source_file, dest_file)
+        copied += 1
+
+    return copied
+
+
+def stage_directory(source_dir: Path, copilot_home: Path, dest_name: str) -> int:
+    """Stage a directory of .md files to ~/.copilot/<dest_name>/.
+
+    Flattens any subdirectory structure. Cleans stale files before staging.
+
+    Args:
+        source_dir: Source directory containing .md files (may have subdirs)
+        copilot_home: Path to copilot home directory (e.g. ~/.copilot/)
+        dest_name: Subdirectory name under copilot_home (e.g. "workflow")
+
+    Returns:
+        Number of files staged
+    """
+    if not source_dir.exists():
+        return 0
+
+    dest = copilot_home / dest_name
+    dest.mkdir(parents=True, exist_ok=True)
+
+    # Clean stale files
+    for old_file in dest.glob("*.md"):
+        old_file.unlink()
+
+    copied = 0
+    for source_file in source_dir.rglob("*.md"):
+        shutil.copy2(source_file, dest / source_file.name)
+        copied += 1
+
+    return copied
+
+
+INSTRUCTIONS_MARKER_START = "<!-- AMPLIHACK_INSTRUCTIONS_START -->"
+INSTRUCTIONS_MARKER_END = "<!-- AMPLIHACK_INSTRUCTIONS_END -->"
+
+
+def generate_copilot_instructions(copilot_home: Path) -> None:
+    """Inject amplihack section into ~/.copilot/copilot-instructions.md.
+
+    Preserves any existing user content. Uses HTML comment markers to
+    isolate amplihack's section so it can be updated without overwriting
+    the user's own instructions.
+
+    Args:
+        copilot_home: Path to copilot home directory (e.g. ~/.copilot/)
+    """
+    instructions = copilot_home / "copilot-instructions.md"
+    copilot_home.mkdir(parents=True, exist_ok=True)
+
+    amplihack_section = f"""\
+{INSTRUCTIONS_MARKER_START}
+# Amplihack Framework Integration
+
+You have access to the amplihack agentic coding framework. Use these resources:
+
+## Workflows
+Read workflow files from `{copilot_home}/workflow/` to follow structured processes:
+- `DEFAULT_WORKFLOW.md` — Standard development workflow (23 steps)
+- `INVESTIGATION_WORKFLOW.md` — Research and exploration (6 phases)
+- `CASCADE_WORKFLOW.md`, `DEBATE_WORKFLOW.md`, `N_VERSION_WORKFLOW.md` — Fault tolerance patterns
+
+For any non-trivial development task, read DEFAULT_WORKFLOW.md and follow its steps.
+
+## Context
+Read context files from `{copilot_home}/context/` for project philosophy and patterns:
+- `PHILOSOPHY.md` — Core principles (ruthless simplicity, zero-BS, modular design)
+- `PATTERNS.md` — Reusable solution patterns
+- `TRUST.md` — Anti-sycophancy and direct communication guidelines
+- `USER_PREFERENCES.md` — User-specific preferences (MANDATORY)
+
+## Commands
+Read command definitions from `{copilot_home}/commands/` for available capabilities:
+- `ultrathink.md` — Deep analysis orchestration for complex tasks
+- `analyze.md` — Comprehensive code review
+- `improve.md` — Self-improvement and learning capture
+
+## Agents
+Custom agents are available at `{copilot_home}/agents/`. Use them via the task tool.
+
+## Skills
+Skills are available at `{copilot_home}/skills/`. They auto-activate based on context.
+{INSTRUCTIONS_MARKER_END}"""
+
+    if instructions.exists():
+        existing = instructions.read_text()
+        # Replace existing amplihack section if present
+        if INSTRUCTIONS_MARKER_START in existing:
+            import re
+
+            pattern = (
+                re.escape(INSTRUCTIONS_MARKER_START) + r".*?" + re.escape(INSTRUCTIONS_MARKER_END)
+            )
+            updated = re.sub(pattern, amplihack_section, existing, flags=re.DOTALL)
+            instructions.write_text(updated)
+        else:
+            # Append amplihack section to existing user content
+            instructions.write_text(existing.rstrip() + "\n\n" + amplihack_section + "\n")
+    else:
+        instructions.write_text(amplihack_section + "\n")
+
+
 def get_copilot_directories() -> list[str]:
     """Get list of directories to provide copilot filesystem access.
 
@@ -492,8 +629,6 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
     # CRITICAL: Create agent files and AGENTS.md BEFORE launching Copilot
     # Copilot autodiscovers these at startup
     try:
-        import shutil
-
         import amplihack
 
         from ..context.adaptive.strategies import CopilotStrategy
@@ -501,68 +636,64 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
         # Get package directory (where .claude/ is actually staged)
         package_dir = Path(amplihack.__file__).parent
 
-        # User's working directory (where we'll create .github/agents/)
+        # User's working directory
         user_dir = Path(os.getcwd())
 
         strategy = CopilotStrategy(user_dir)
 
-        # Create individual agent files in user's .github/agents/
-        # (Copies instead of symlinks for Windows compatibility)
-        agents_dest = user_dir / ".github/agents"
-        agents_dest.mkdir(parents=True, exist_ok=True)
+        # Copilot home directory — all user-level staging goes here
+        copilot_home = Path.home() / ".copilot"
 
-        # Copy agents from PACKAGE directory .claude/agents/amplihack/
-        # Performance: Only copy if source is newer (skip if up-to-date)
-        source_agents = package_dir / ".claude/agents/amplihack"
-        if source_agents.exists():
-            # Clean stale agents first (removed/renamed agents)
-            for old_file in agents_dest.glob("*.md"):
-                old_file.unlink()
+        # Stage ALL extensibility mechanisms to ~/.copilot/ for parity
+        # with Claude Code. Copilot CLI discovers agents/skills natively;
+        # workflows/context/commands are referenced via copilot-instructions.md.
+        claude_dir = package_dir / ".claude"
 
-            copied = 0
-            for source_file in source_agents.rglob("*.md"):
-                # Flatten structure: core/architect.md → architect.md
-                dest_file = agents_dest / source_file.name
-                shutil.copy2(source_file, dest_file)
-                copied += 1
+        # Agents (flattened from core/specialized/workflows subdirs)
+        n = stage_agents(claude_dir / "agents/amplihack", copilot_home)
+        if n > 0:
+            print(f"✓ Staged {n} agents to ~/.copilot/agents/")
 
-            if copied > 0:
-                print(f"✓ Prepared {copied} amplihack agents")
-
-        # Stage skills to ~/.copilot/skills/ for Copilot CLI discovery
-        # Copilot CLI looks in ~/.copilot/skills/ and ~/.claude/skills/
-        # We use ~/.copilot/skills/ to avoid conflicts with Claude Code plugin model
-        source_skills = package_dir / ".claude/skills"
-        copilot_skills_dest = Path.home() / ".copilot" / "skills"
+        # Skills (directory trees, not flattened)
+        source_skills = claude_dir / "skills"
         if source_skills.exists():
-            copilot_skills_dest.mkdir(parents=True, exist_ok=True)
-
+            skills_dest = copilot_home / "skills"
+            skills_dest.mkdir(parents=True, exist_ok=True)
             skills_copied = 0
             for skill_dir in source_skills.iterdir():
                 if skill_dir.is_dir():
-                    dest_skill = copilot_skills_dest / skill_dir.name
-                    # Only copy if dest doesn't exist (first time setup)
-                    if not dest_skill.exists():
-                        shutil.copytree(skill_dir, dest_skill, dirs_exist_ok=True)
+                    dest_skill = skills_dest / skill_dir.name
+                    is_new = not dest_skill.exists()
+                    shutil.copytree(skill_dir, dest_skill, dirs_exist_ok=True)
+                    if is_new:
                         skills_copied += 1
-                    else:
-                        # Update existing skill (overwrite)
-                        shutil.copytree(skill_dir, dest_skill, dirs_exist_ok=True)
-
             if skills_copied > 0:
                 print(f"✓ Staged {skills_copied} new skills to ~/.copilot/skills/")
-            else:
-                print("✓ Skills up-to-date in ~/.copilot/skills/")
 
-        # Load preferences - try LOCAL first, fallback to PACKAGE
-        # This allows users to customize preferences per-project
+        # Workflows
+        n = stage_directory(claude_dir / "workflow", copilot_home, "workflow")
+        if n > 0:
+            print(f"✓ Staged {n} workflows to ~/.copilot/workflow/")
+
+        # Context (philosophy, patterns, preferences, etc.)
+        n = stage_directory(claude_dir / "context", copilot_home, "context")
+        if n > 0:
+            print(f"✓ Staged {n} context files to ~/.copilot/context/")
+
+        # Commands (flattened from amplihack/ subdir)
+        n = stage_directory(claude_dir / "commands", copilot_home, "commands")
+        if n > 0:
+            print(f"✓ Staged {n} commands to ~/.copilot/commands/")
+
+        # Generate copilot-instructions.md so copilot knows where everything is
+        generate_copilot_instructions(copilot_home)
+
+        # Inject preferences into AGENTS.md for copilot context
         prefs_file = user_dir / ".claude/context/USER_PREFERENCES.md"
         if not prefs_file.exists():
-            prefs_file = package_dir / ".claude/context/USER_PREFERENCES.md"
-
+            prefs_file = claude_dir / "context/USER_PREFERENCES.md"
         if prefs_file.exists():
-            prefs_content = prefs_file.read_text()
-            strategy.inject_context(prefs_content)
+            strategy.inject_context(prefs_file.read_text())
     except Exception as e:
         # Fail gracefully - Copilot will work without preferences
         print(f"Warning: Could not prepare Copilot environment: {e}")
