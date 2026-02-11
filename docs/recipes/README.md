@@ -222,6 +222,81 @@ amplihack ships with 10 recipes covering the most common development workflows.
 
 Recipes live in `~/.amplihack/.claude/recipes/`. Run `amplihack recipe list` to see all available recipes including any custom ones you have added.
 
+### Recipe Discovery
+
+The Recipe Runner automatically discovers recipes from these directories (in priority order):
+
+1. `amplifier-bundle/recipes/` — bundled recipes from Microsoft Amplifier
+2. `src/amplihack/amplifier-bundle/recipes/` — package-embedded recipes
+3. `~/.amplihack/.claude/recipes/` — user-installed recipes
+4. `.claude/recipes/` — project-specific recipes
+
+Later directories override earlier ones when recipe names collide.
+
+```python
+from amplihack.recipes import list_recipes, find_recipe
+
+# List all discovered recipes
+for recipe_info in list_recipes():
+    print(f"{recipe_info.name}: {recipe_info.step_count} steps")
+
+# Find a specific recipe by name
+path = find_recipe("default-workflow")
+if path:
+    print(f"Found at: {path}")
+```
+
+### Tracking Upstream Changes
+
+The `amplifier-bundle/recipes/` directory contains recipes from Microsoft's upstream repository. To stay in sync with upstream and detect local modifications:
+
+**Create baseline manifest:**
+
+```python
+from amplihack.recipes import update_manifest
+
+# Records SHA-256 hash of each recipe file
+manifest_path = update_manifest()
+print(f"Manifest: {manifest_path}")
+```
+
+**Check for local modifications:**
+
+```python
+from amplihack.recipes import check_upstream_changes
+
+changes = check_upstream_changes()
+for change in changes:
+    print(f"{change['name']}: {change['status']}")  # modified/new/deleted
+```
+
+**Sync from upstream:**
+
+```python
+from amplihack.recipes import sync_upstream
+
+# Fetches latest from microsoft/amplifier-bundle-recipes
+result = sync_upstream()
+print(f"Added: {result['added']}, Updated: {result['updated']}")
+```
+
+This downloads the latest recipes from `https://github.com/microsoft/amplifier-bundle-recipes`, compares against local files, and copies any changes. The manifest is automatically updated after sync.
+
+**Recommended workflow:**
+
+```bash
+# 1. Create initial manifest (do once)
+python -c "from amplihack.recipes import update_manifest; update_manifest()"
+
+# 2. Check periodically for upstream updates
+python -c "from amplihack.recipes import sync_upstream; print(sync_upstream())"
+
+# 3. Check for local modifications before committing
+python -c "from amplihack.recipes import check_upstream_changes; print(check_upstream_changes())"
+```
+
+You can also add this to a git pre-commit hook or CI job to automatically stay in sync.
+
 ## Creating Custom Recipes
 
 1. Create a YAML file in `~/.amplihack/.claude/recipes/`:

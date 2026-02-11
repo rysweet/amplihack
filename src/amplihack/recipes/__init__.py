@@ -22,6 +22,7 @@ from amplihack.recipes.discovery import (
     discover_recipes,
     find_recipe,
     list_recipes,
+    sync_upstream,
     update_manifest,
 )
 from amplihack.recipes.models import (
@@ -56,6 +57,8 @@ __all__ = [
     "list_recipes",
     "parse_recipe",
     "run_recipe",
+    "run_recipe_by_name",
+    "sync_upstream",
     "update_manifest",
 ]
 
