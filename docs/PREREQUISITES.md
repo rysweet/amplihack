@@ -10,7 +10,7 @@ The AmplihHack framework requires the following tools to be installed:
 2. **npm** (comes with Node.js) - Package manager for Node.js
 3. **uv** - Fast Python package installer and resolver
 4. **git** - Version control system
-5. **claude** - Claude Code CLI (auto-installed if missing)
+5. **claude** - Claude Code CLI (auto-installed if missing). When installed via npm, amplihack automatically updates your shell profile (`~/.bashrc` or `~/.zshrc`) so the `claude` binary is in your PATH for future sessions.
 
 ## Quick Check
 

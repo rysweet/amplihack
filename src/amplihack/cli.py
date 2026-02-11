@@ -31,6 +31,10 @@ EMOJI = {
     "check": "[OK]" if IS_WINDOWS else "✓",
 }
 
+# Commands that require Claude Code plugin installation.
+# All other commands (copilot, amplifier, codex, etc.) skip it.
+_CLAUDE_COMMANDS = {None, "launch", "claude", "RustyClawd"}
+
 
 def add_plugin_args_for_uvx(
     claude_args: list[str] | None = None, use_installed_plugin: bool = False
@@ -835,6 +839,32 @@ def _ensure_amplihack_staged() -> None:
     _fix_global_statusline_path()
 
 
+def _read_auto_update_preference(plugin_dir: str) -> bool:
+    """Check if user's auto_update preference is 'always'.
+
+    Reads from USER_PREFERENCES.md in the plugin directory. If set to 'always',
+    returns True to skip the conflict prompt and auto-approve overwrites.
+
+    Args:
+        plugin_dir: Path to the .claude plugin directory (e.g. ~/.amplihack/.claude)
+
+    Returns:
+        True if auto_update preference is 'always', False otherwise
+    """
+    try:
+        prefs_file = Path(plugin_dir) / "context" / "USER_PREFERENCES.md"
+        if not prefs_file.exists():
+            return False
+        content = prefs_file.read_text(encoding="utf-8")
+        lines = content.split("\n")
+        for i, line in enumerate(lines):
+            if line.strip() == "### Auto Update" and i + 2 < len(lines):
+                return lines[i + 2].strip().lower() == "always"
+    except Exception:
+        pass
+    return False
+
+
 def main(argv: list[str] | None = None) -> int:
     """Main entry point for amplihack CLI.
 
@@ -914,11 +944,15 @@ def main(argv: list[str] | None = None) -> int:
         # Plugin architecture: Deploy to centralized location ~/.amplihack/.claude/
         plugin_install_dir = os.path.join(os.path.expanduser("~"), ".amplihack", ".claude")
 
+        # Check user's auto_update preference to skip conflict prompt
+        auto_approve = _read_auto_update_preference(plugin_install_dir)
+
         strategy_manager = SafeCopyStrategy()
         copy_strategy = strategy_manager.determine_target(
             original_target=plugin_install_dir,
             has_conflicts=conflict_result.has_conflicts,
             conflicting_files=conflict_result.conflicting_files,
+            auto_approve=auto_approve,
         )
 
         # Bug #1 Fix: Respect user cancellation (Issue #1940)
@@ -941,99 +975,102 @@ def main(argv: list[str] | None = None) -> int:
             print("UVX mode: Using plugin architecture")
             print(f"Working directory remains: {original_cwd}")
 
-        # Setup plugin architecture
-        # .claude-plugin is copied to src/amplihack/.claude-plugin/ by build_hooks.py
+        # Only install Claude Code plugin for Claude-specific commands.
+        # Non-Claude commands (copilot, amplifier, codex, etc.) skip this.
+        if args.command in _CLAUDE_COMMANDS:
+            # Setup plugin architecture
+            # .claude-plugin is copied to src/amplihack/.claude-plugin/ by build_hooks.py
 
-        # Setup amplihack plugin via Claude Code plugin system
-        # This uses extraKnownMarketplaces to enable: claude plugin install amplihack
-        if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-            print("📦 Setting up amplihack plugin")
+            # Setup amplihack plugin via Claude Code plugin system
+            # This uses extraKnownMarketplaces to enable: claude plugin install amplihack
+            if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                print("📦 Setting up amplihack plugin")
 
-        # Step 1: Configure marketplace in Claude Code settings
-        if not _configure_amplihack_marketplace():
-            print("⚠️  Failed to configure amplihack marketplace")
-            print("   Falling back to directory copy mode")
-            temp_claude_dir = _fallback_to_directory_copy("Marketplace configuration failed")
-        else:
-            # Step 2: Install plugin using Claude CLI
-            claude_path = get_claude_cli_path(auto_install=True)
-            if not claude_path:
-                print("⚠️  Claude CLI not available")
+            # Step 1: Configure marketplace in Claude Code settings
+            if not _configure_amplihack_marketplace():
+                print("⚠️  Failed to configure amplihack marketplace")
                 print("   Falling back to directory copy mode")
-                temp_claude_dir = _fallback_to_directory_copy("Claude CLI not available")
+                temp_claude_dir = _fallback_to_directory_copy("Marketplace configuration failed")
             else:
-                # Fix EXDEV error: Use temp directory on same filesystem as ~/.claude/
-                # Claude Code uses fs.rename() which fails across different filesystems
-                claude_temp_dir = Path.home() / ".claude" / "temp"
-                claude_temp_dir.mkdir(parents=True, exist_ok=True)
-
-                # Set TMPDIR for subprocess to avoid cross-device rename errors
-                env = os.environ.copy()
-                env["TMPDIR"] = str(claude_temp_dir)
-
-                # Step 2a: Sync marketplace to known_marketplaces.json
-                # extraKnownMarketplaces in settings.json is for IDE, not CLI
-                # We need to explicitly add the marketplace for CLI to find it
-                marketplace_add_result = subprocess.run(
-                    [
-                        claude_path,
-                        "plugin",
-                        "marketplace",
-                        "add",
-                        "https://github.com/rysweet/amplihack",
-                    ],
-                    capture_output=True,
-                    text=True,
-                    timeout=60,
-                    check=False,
-                    env=env,
-                )
-
-                if marketplace_add_result.returncode != 0:
-                    if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                        print(
-                            f"⚠️  Marketplace add failed (may already exist): {marketplace_add_result.stderr}"
-                        )
-                else:
-                    if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                        print("✅ Amplihack marketplace added to known marketplaces")
-
-                # Step 2b: Install plugin from marketplace
-                result = subprocess.run(
-                    [claude_path, "plugin", "install", "amplihack"],
-                    capture_output=True,
-                    text=True,
-                    timeout=60,
-                    check=False,
-                    env=env,
-                )
-
-                if result.returncode != 0:
-                    print(f"⚠️  Plugin installation failed: {result.stderr}")
+                # Step 2: Install plugin using Claude CLI
+                claude_path = get_claude_cli_path(auto_install=True)
+                if not claude_path:
+                    print("⚠️  Claude CLI not available")
                     print("   Falling back to directory copy mode")
-                    temp_claude_dir = _fallback_to_directory_copy(
-                        f"Plugin install error: {result.stderr}"
-                    )
+                    temp_claude_dir = _fallback_to_directory_copy("Claude CLI not available")
                 else:
-                    if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                        print("✅ Amplihack plugin installed successfully")
-                        print(result.stdout)
-                    # Plugin installed successfully
-                    temp_claude_dir = None
+                    # Fix EXDEV error: Use temp directory on same filesystem as ~/.claude/
+                    # Claude Code uses fs.rename() which fails across different filesystems
+                    claude_temp_dir = Path.home() / ".claude" / "temp"
+                    claude_temp_dir.mkdir(parents=True, exist_ok=True)
 
-                    # Set CLAUDE_PLUGIN_ROOT for hook resolution
-                    # When plugin installed via Claude Code, hooks use ${CLAUDE_PLUGIN_ROOT}
-                    # Point to where Claude Code installed the plugin
-                    installed_plugin_path = (
-                        Path.home()
-                        / ".claude"
-                        / "plugins"
-                        / "cache"
-                        / "amplihack"
-                        / "amplihack"
-                        / "0.9.0"
+                    # Set TMPDIR for subprocess to avoid cross-device rename errors
+                    env = os.environ.copy()
+                    env["TMPDIR"] = str(claude_temp_dir)
+
+                    # Step 2a: Sync marketplace to known_marketplaces.json
+                    # extraKnownMarketplaces in settings.json is for IDE, not CLI
+                    # We need to explicitly add the marketplace for CLI to find it
+                    marketplace_add_result = subprocess.run(
+                        [
+                            claude_path,
+                            "plugin",
+                            "marketplace",
+                            "add",
+                            "https://github.com/rysweet/amplihack",
+                        ],
+                        capture_output=True,
+                        text=True,
+                        timeout=60,
+                        check=False,
+                        env=env,
                     )
-                    os.environ["CLAUDE_PLUGIN_ROOT"] = str(installed_plugin_path)
+
+                    if marketplace_add_result.returncode != 0:
+                        if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                            print(
+                                f"⚠️  Marketplace add failed (may already exist): {marketplace_add_result.stderr}"
+                            )
+                    else:
+                        if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                            print("✅ Amplihack marketplace added to known marketplaces")
+
+                    # Step 2b: Install plugin from marketplace
+                    result = subprocess.run(
+                        [claude_path, "plugin", "install", "amplihack"],
+                        capture_output=True,
+                        text=True,
+                        timeout=60,
+                        check=False,
+                        env=env,
+                    )
+
+                    if result.returncode != 0:
+                        print(f"⚠️  Plugin installation failed: {result.stderr}")
+                        print("   Falling back to directory copy mode")
+                        temp_claude_dir = _fallback_to_directory_copy(
+                            f"Plugin install error: {result.stderr}"
+                        )
+                    else:
+                        if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+                            print("✅ Amplihack plugin installed successfully")
+                            print(result.stdout)
+                        # Plugin installed successfully
+                        temp_claude_dir = None
+
+                        # Set CLAUDE_PLUGIN_ROOT for hook resolution
+                        # When plugin installed via Claude Code, hooks use ${CLAUDE_PLUGIN_ROOT}
+                        # Point to where Claude Code installed the plugin
+                        installed_plugin_path = (
+                            Path.home()
+                            / ".claude"
+                            / "plugins"
+                            / "cache"
+                            / "amplihack"
+                            / "amplihack"
+                            / "0.9.0"
+                        )
+                        os.environ["CLAUDE_PLUGIN_ROOT"] = str(installed_plugin_path)
 
         # Smart PROJECT.md initialization for UVX mode
         try:
