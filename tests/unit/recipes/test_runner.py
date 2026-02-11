@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+import pytest
+
 from amplihack.recipes.models import StepStatus
 from amplihack.recipes.parser import RecipeParser
 from amplihack.recipes.runner import RecipeRunner
@@ -272,6 +274,28 @@ steps:
         result = runner.execute(recipe)
 
         assert result.success is False
+
+
+class TestAdapterValidation:
+    """Test that None adapter is rejected early."""
+
+    def test_none_adapter_raises_on_execute(self, simple_recipe_yaml: str) -> None:
+        """Executing with adapter=None gives a clear ValueError, not AttributeError."""
+        parser = RecipeParser()
+        recipe = parser.parse(simple_recipe_yaml)
+
+        runner = RecipeRunner(adapter=None)
+        with pytest.raises(ValueError, match="adapter is required"):
+            runner.execute(recipe)
+
+    def test_none_adapter_allowed_for_dry_run(self, simple_recipe_yaml: str) -> None:
+        """Dry run works fine without an adapter."""
+        parser = RecipeParser()
+        recipe = parser.parse(simple_recipe_yaml)
+
+        runner = RecipeRunner(adapter=None)
+        result = runner.execute(recipe, dry_run=True)
+        assert result.success is True
 
 
 def _extract_prompt_from_call(call_args) -> str:

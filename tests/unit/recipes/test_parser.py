@@ -121,6 +121,34 @@ steps:
             parser.parse(yaml_str)
 
 
+class TestParseStepIdValidation:
+    """Test that steps must have non-empty ids."""
+
+    def test_parse_missing_step_id_raises(self) -> None:
+        """ValueError when a step has no 'id' field."""
+        yaml_str = """\
+name: "no-id"
+steps:
+  - type: "bash"
+    command: "echo hi"
+"""
+        parser = RecipeParser()
+        with pytest.raises(ValueError, match="(?i)id"):
+            parser.parse(yaml_str)
+
+    def test_parse_prompt_only_step_infers_agent(self) -> None:
+        """A step with only 'prompt' (no agent, no command) should infer AGENT type."""
+        yaml_str = """\
+name: "prompt-only"
+steps:
+  - id: "step1"
+    prompt: "do something"
+"""
+        parser = RecipeParser()
+        recipe = parser.parse(yaml_str)
+        assert recipe.steps[0].step_type == StepType.AGENT
+
+
 class TestParseRealRecipe:
     """Test parsing of actual recipe files from the amplifier-bundle."""
 
