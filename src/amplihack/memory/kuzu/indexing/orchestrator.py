@@ -11,9 +11,8 @@ from pathlib import Path
 from ..code_graph import KuzuCodeGraph
 from ..connector import KuzuConnector
 from .background_indexer import BackgroundIndexer, IndexingJob
-from .error_handler import ErrorAction, ErrorHandler, ErrorSeverity, IndexingError
+from .error_handler import ErrorHandler, ErrorSeverity, IndexingError
 from .prerequisite_checker import PrerequisiteChecker, PrerequisiteResult
-from .progress_tracker import ProgressTracker
 
 logger = logging.getLogger(__name__)
 
@@ -212,11 +211,14 @@ class Orchestrator:
         # Set output file path (SCIP index file)
         output_file = codebase_path / "index.scip"
 
+        # Get actual counts from database (more accurate than import stats alone)
+        actual_counts = self._get_db_counts()
+
         return IndexingResult(
             success=success,
-            total_files=import_results.get("files", 0),
-            total_functions=import_results.get("functions", 0),
-            total_classes=import_results.get("classes", 0),
+            total_files=actual_counts.get("files", import_results.get("files", 0)),
+            total_functions=actual_counts.get("functions", import_results.get("functions", 0)),
+            total_classes=actual_counts.get("classes", import_results.get("classes", 0)),
             total_relationships=import_results.get("relationships", 0),
             completed_languages=completed,
             failed_languages=failed,
@@ -250,7 +252,12 @@ class Orchestrator:
         languages: list[str],
         config: IndexingConfig,
     ) -> dict:
-        """Run indexing for all languages using real blarify integration.
+        """Validate codebase and prepare for SCIP indexing.
+
+        The actual indexing is done by SCIP in _import_results(). This method
+        validates the codebase path and marks languages as ready. The vendored
+        blarify path (language servers, temp DB) was removed in favor of the
+        faster, more reliable SCIP-only pipeline.
 
         Args:
             codebase_path: Path to codebase
@@ -258,20 +265,11 @@ class Orchestrator:
             config: Indexing configuration
 
         Returns:
-            Dictionary of results per language (or IndexingError objects)
+            Dictionary of results per language
         """
         results = {}
-        progress_tracker = ProgressTracker(languages)
 
         for language in languages:
-            # Notify progress callbacks
-            for callback in self._progress_callbacks:
-                callback(f"Starting {language}")
-
-            # Start progress tracking
-            progress_tracker.start_language(language, estimated_files=100)
-
-            # Check if codebase path exists
             if not codebase_path.exists():
                 error = IndexingError(
                     language=language,
@@ -279,59 +277,13 @@ class Orchestrator:
                     message=f"Codebase path does not exist: {codebase_path}",
                     severity=ErrorSeverity.RECOVERABLE,
                 )
-                action = self.error_handler.handle_error(error, max_retries=config.max_retries)
-                results[language] = error
-
-                if action.action_type == ErrorAction.ABORT:
-                    break
-                continue
-
-            # Real blarify integration via KuzuCodeGraph
-            if not self.code_graph:
-                error = IndexingError(
-                    language=language,
-                    error_type="config_error",
-                    message="No KuzuConnector provided - cannot run blarify",
-                    severity=ErrorSeverity.FATAL,
-                )
                 self.error_handler.handle_error(error, max_retries=config.max_retries)
                 results[language] = error
-                break
+                continue
 
-            try:
-                # Call real blarify through KuzuCodeGraph
-                logger.info("Running blarify for %s on %s", language, codebase_path)
-                counts = self.code_graph.run_blarify(
-                    codebase_path=str(codebase_path),
-                    languages=[language],
-                )
-
-                result = {
-                    "files": counts.get("files", 0),
-                    "functions": counts.get("functions", 0),
-                    "classes": counts.get("classes", 0),
-                }
-
-                progress_tracker.complete_language(language, final_count=counts.get("files", 0))
-                results[language] = result
-
-                # Notify progress
-                for callback in self._progress_callbacks:
-                    callback(f"Completed {language}")
-
-            except Exception as e:
-                # Handle blarify execution errors
-                error = IndexingError(
-                    language=language,
-                    error_type="execution_error",
-                    message=f"Blarify execution failed: {e!s}",
-                    severity=ErrorSeverity.RECOVERABLE,
-                )
-                action = self.error_handler.handle_error(error, max_retries=config.max_retries)
-                results[language] = error
-
-                if action.action_type == ErrorAction.ABORT:
-                    break
+            # Mark as ready for SCIP indexing (done in _import_results)
+            results[language] = {"status": "ready", "language": language}
+            logger.info("Language %s ready for SCIP indexing at %s", language, codebase_path)
 
         return results
 
@@ -452,6 +404,23 @@ class Orchestrator:
                 "classes": 0,
                 "relationships": 0,
             }
+
+    def _get_db_counts(self) -> dict:
+        """Get actual entity counts from the Kuzu database."""
+        if not self.connector:
+            return {}
+        counts = {}
+        for label, query in [
+            ("files", "MATCH (n:CodeFile) RETURN count(n) as cnt"),
+            ("classes", "MATCH (n:CodeClass) RETURN count(n) as cnt"),
+            ("functions", "MATCH (n:CodeFunction) RETURN count(n) as cnt"),
+        ]:
+            try:
+                result = self.connector.execute_query(query)
+                counts[label] = result[0]["cnt"] if result else 0
+            except Exception:
+                pass
+        return counts
 
     def _apply_priority_order(
         self,

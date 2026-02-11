@@ -78,7 +78,13 @@ def check_index_status(project_path: Path) -> IndexStatus:
     # Check if index exists
     index_file = project_path / ".amplihack" / "index.scip"
 
-    if not index_file.exists():
+    try:
+        index_exists = index_file.exists()
+    except (PermissionError, OSError):
+        # Can't read index directory - assume missing
+        index_exists = False
+
+    if not index_exists:
         # Empty project doesn't need indexing
         if estimated_files == 0:
             return IndexStatus(
