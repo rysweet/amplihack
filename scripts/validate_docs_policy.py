@@ -119,7 +119,9 @@ def check_docs_directory_placement(
     violations = []
 
     for md_file in markdown_files:
-        relative_path = md_file.relative_to(repo_root)
+        # Resolve to absolute path first to handle relative paths from rglob
+        absolute_file = md_file.resolve()
+        relative_path = absolute_file.relative_to(repo_root)
 
         # Check if file is in docs/ or is an allowed root-level file
         if not str(relative_path).startswith("docs/"):
@@ -178,15 +180,18 @@ def check_discoverability(repo_root: Path, markdown_files: list[Path]) -> list[P
     docs_dir = repo_root / "docs"
     if docs_dir.exists():
         for md_file in markdown_files:
-            if not str(md_file.relative_to(repo_root)).startswith("docs/"):
+            # Resolve to absolute path first to handle relative paths from rglob
+            absolute_file = md_file.resolve()
+            relative_path = absolute_file.relative_to(repo_root)
+            
+            if not str(relative_path).startswith("docs/"):
                 continue
 
             # Skip entry point files themselves
-            if md_file in entry_points:
+            if absolute_file in entry_points:
                 continue
 
             # Check if file is linked
-            relative_path = md_file.relative_to(repo_root)
             if relative_path not in linked_files:
                 violations.append(
                     PolicyViolation(
