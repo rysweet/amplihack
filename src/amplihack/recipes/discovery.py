@@ -9,12 +9,19 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import shutil
+import subprocess
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import yaml
 
 logger = logging.getLogger(__name__)
+
+_UPSTREAM_REPO = "https://github.com/microsoft/amplifier-bundle-recipes"
+_UPSTREAM_BRANCH = "main"
 
 # Directories searched for recipe files, in priority order.
 # Later entries override earlier ones when recipes share the same name.
@@ -155,6 +162,84 @@ def check_upstream_changes(
             )
 
     return changes
+
+
+def sync_upstream(
+    target_dir: Path | None = None,
+    repo_url: str = _UPSTREAM_REPO,
+    branch: str = _UPSTREAM_BRANCH,
+) -> dict[str, Any]:
+    """Fetch recipes from upstream repository and sync to local directory.
+
+    Clones the upstream repo to a temp directory, copies recipe YAML files,
+    and updates the manifest. Returns a summary of changes.
+
+    Args:
+        target_dir: Local directory to sync recipes into.
+        repo_url: Upstream git repository URL.
+        branch: Branch to fetch from.
+
+    Returns:
+        Dict with keys: ``added``, ``updated``, ``unchanged`` (counts).
+    """
+    local_dir = target_dir or _find_first_recipe_dir()
+    if local_dir is None:
+        raise FileNotFoundError("No local recipe directory found")
+
+    # Clone to temp directory
+    with tempfile.TemporaryDirectory(prefix="recipe-sync-") as tmpdir:
+        tmp_path = Path(tmpdir)
+        logger.info("Cloning %s to %s", repo_url, tmp_path)
+
+        try:
+            subprocess.run(
+                [
+                    "git",
+                    "clone",
+                    "--depth=1",
+                    f"--branch={branch}",
+                    repo_url,
+                    str(tmp_path / "repo"),
+                ],
+                check=True,
+                capture_output=True,
+                timeout=300,
+            )
+        except subprocess.CalledProcessError as e:
+            raise RuntimeError(f"Failed to clone upstream: {e.stderr.decode()}") from e
+        except subprocess.TimeoutExpired as e:
+            raise RuntimeError("Upstream clone timed out after 5 minutes") from e
+
+        upstream_dir = tmp_path / "repo" / "recipes"
+        if not upstream_dir.is_dir():
+            raise FileNotFoundError(f"No 'recipes' directory in upstream repo: {repo_url}")
+
+        # Track changes
+        added = 0
+        updated = 0
+        unchanged = 0
+
+        for yaml_path in sorted(upstream_dir.glob("*.yaml")):
+            local_path = local_dir / yaml_path.name
+            upstream_content = yaml_path.read_bytes()
+
+            if local_path.exists():
+                local_content = local_path.read_bytes()
+                if local_content != upstream_content:
+                    shutil.copy2(yaml_path, local_path)
+                    updated += 1
+                    logger.info("Updated: %s", yaml_path.name)
+                else:
+                    unchanged += 1
+            else:
+                shutil.copy2(yaml_path, local_path)
+                added += 1
+                logger.info("Added: %s", yaml_path.name)
+
+        # Update manifest after sync
+        update_manifest(local_dir)
+
+        return {"added": added, "updated": updated, "unchanged": unchanged}
 
 
 def update_manifest(local_dir: Path | None = None) -> Path:
