@@ -12,7 +12,6 @@ Security: https://docs.python.org/3/library/subprocess.html#security-considerati
 """
 
 import subprocess
-import sys
 from unittest.mock import MagicMock, patch
 
 import pytest
