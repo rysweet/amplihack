@@ -73,10 +73,15 @@ def fix_imports_in_file(file_path: Path, vendor_root: Path, dry_run: bool = Fals
 
     def replace_direct_import(match):
         nonlocal fixes
-        # For direct imports, we'd need to know what's being imported
-        # For now, flag it for manual conversion
+        # Direct imports can't be safely auto-converted without understanding usage.
+        # Report for manual follow-up instead of breaking the source.
         fixes += 1
-        return f"# FIXME: convert to relative import: import blarify.{match.group(1)}"
+        print(
+            f"WARNING: {file_path} contains direct blarify import that needs "
+            f"manual conversion: 'import blarify.{match.group(1)}'",
+            file=sys.stderr,
+        )
+        return match.group(0)  # Leave source unchanged
 
     content = pattern2.sub(replace_direct_import, content)
 

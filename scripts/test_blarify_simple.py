@@ -37,9 +37,7 @@ class Greeter:
     print(f"📄 Test file: {test_file}")
 
     # Create temp Kuzu database path (don't create directory - Kuzu will do it)
-    temp_kuzu_dir = (
-        Path(tempfile.gettempdir()) / f"blarify_kuzu_{next(tempfile._get_candidate_names())}"
-    )
+    temp_kuzu_dir = Path(tempfile.mkdtemp(prefix="blarify_kuzu_"))
     print(f"💾 Kuzu database: {temp_kuzu_dir}")
 
     # Initialize Kuzu manager
