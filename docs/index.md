@@ -408,6 +408,7 @@ Visual and queryable representations of your codebase structure:
 
 Complete code indexing and analysis with multi-language support:
 
+- **[How to Use Blarify Code Graph](howto/blarify-code-graph.md)** - Enable, query, and configure code graph indexing
 - **[Blarify Documentation Hub](blarify/README.md)** - Complete guide to Blarify features
 - [Background Indexing](blarify/background-indexing.md) - Automatic indexing prompt on startup
 - [Multi-Language Validation](blarify/multi-language-validation.md) - Testing across 7 languages
