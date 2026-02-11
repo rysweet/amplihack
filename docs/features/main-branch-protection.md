@@ -335,7 +335,7 @@ This feature is implemented in **TWO identical files**:
 - **Workspace copy**: `.claude/tools/amplihack/hooks/pre_tool_use.py`
   - Active in your local Claude Code workspace
   - Used when Claude Code runs in this project
-  
+
 - **Bundle copy**: `amplifier-bundle/tools/amplihack/hooks/pre_tool_use.py`
   - Distributed with the amplihack bundle for other users
   - Ensures all amplihack installations have this protection
@@ -504,6 +504,6 @@ This protection cannot be bypassed with --no-verify."""
 
 ---
 
-**Last Updated:** 2026-02-08  
-**Hook Version:** 1.0  
+**Last Updated:** 2026-02-08
+**Hook Version:** 1.0
 **Minimum Requirements:** Python 3.7+, Git 2.0+

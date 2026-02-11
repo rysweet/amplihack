@@ -17,10 +17,9 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Optional, Tuple
 
 
-def parse_version_from_pyproject(content: str) -> Optional[str]:
+def parse_version_from_pyproject(content: str) -> str | None:
     """
     Extract version string from pyproject.toml content.
 
@@ -41,7 +40,7 @@ def parse_version_from_pyproject(content: str) -> Optional[str]:
     return None
 
 
-def parse_semantic_version(version_str: str) -> Optional[Tuple[int, int, int]]:
+def parse_semantic_version(version_str: str) -> tuple[int, int, int] | None:
     """
     Parse semantic version string into tuple of integers.
 
@@ -61,7 +60,7 @@ def parse_semantic_version(version_str: str) -> Optional[Tuple[int, int, int]]:
     return (int(match.group(1)), int(match.group(2)), int(match.group(3)))
 
 
-def compare_versions(current: Tuple[int, int, int], previous: Tuple[int, int, int]) -> str:
+def compare_versions(current: tuple[int, int, int], previous: tuple[int, int, int]) -> str:
     """
     Compare two semantic versions.
 
@@ -76,13 +75,12 @@ def compare_versions(current: Tuple[int, int, int], previous: Tuple[int, int, in
     """
     if current > previous:
         return "increased"
-    elif current == previous:
+    if current == previous:
         return "same"
-    else:
-        return "decreased"
+    return "decreased"
 
 
-def get_main_branch_version() -> Optional[str]:
+def get_main_branch_version() -> str | None:
     """
     Get version from pyproject.toml on main branch using git.
 
@@ -114,7 +112,7 @@ def get_main_branch_version() -> Optional[str]:
         return None
 
 
-def get_current_branch_version() -> Optional[str]:
+def get_current_branch_version() -> str | None:
     """
     Get version from current working directory's pyproject.toml.
 
@@ -228,10 +226,9 @@ def main() -> int:
         print(f"✅ Version bumped correctly: {main_version} → {current_version}")
         return 0
 
-    else:
-        # Failure - print helpful error message
-        print_error_message(main_version, current_version, comparison)
-        return 1
+    # Failure - print helpful error message
+    print_error_message(main_version, current_version, comparison)
+    return 1
 
 
 if __name__ == "__main__":

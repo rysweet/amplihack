@@ -1,0 +1,33 @@
+# Community extensions: persistent memory + deep research
+#
+# ⚠️ SECURITY: Community trust level (not Microsoft-maintained)
+# Review source code before use in sensitive environments
+#
+# 🔒 PRIVACY WARNINGS:
+#
+# Memory Bundle (@michaeljabbour)
+#   - Stores conversation history in LOCAL Kuzu database
+#   - May contain PII in ~/.amplifier/memory/
+#   - chmod 600 database files, exclude from PII-containing backups
+#
+# Perplexity Bundle (@colombod)
+#   - Sends queries to EXTERNAL Perplexity API
+#   - Requires PERPLEXITY_API_KEY environment variable
+#   - Subject to Perplexity privacy policy: https://www.perplexity.ai/privacy
+#   - NEVER use with confidential/proprietary information
+#
+# 🔑 API Key Management:
+#   - Store in .env file (already in .gitignore)
+#   - Use environment variables only
+#   - NEVER commit keys to version control
+#   - See docs/PREREQUISITES.md for setup
+#
+# Trust: MEDIUM | Privacy: MIXED (local storage + external API)
+
+name: amplihack-community
+version: 1.0.0
+description: Persistent memory and deep research via community extensions
+
+includes:
+  - bundle: git+https://github.com/michaeljabbour/amplifier-bundle-memory@main
+  - bundle: git+https://github.com/colombod/amplifier-bundle-perplexity@main

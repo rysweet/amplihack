@@ -722,7 +722,6 @@ class TestSubprocessSecurity:
         # Implementation should log metadata (tool name, branch) but not full commands
         # We can't easily test logging without inspecting log output
         # Mark as informational
-        pass
 
 
 # ============================================================================

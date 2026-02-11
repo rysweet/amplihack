@@ -229,17 +229,47 @@ cat ~/.amplihack/.claude/.claude-plugin/plugin.json | grep lsp
 # For Python projects
 ls *.py pyproject.toml setup.py
 
+# For TypeScript projects
+ls *.ts *.tsx tsconfig.json package.json
+
 # For JavaScript projects
 ls *.js package.json
+
+# For Rust projects
+ls *.rs Cargo.toml
 ```
 
-3. Manually configure LSP in project `~/.amplihack/.claude/settings.json`:
+3. Install language servers (if not detected):
+
+```bash
+# Python
+pip install python-lsp-server[all]
+# or
+npm install -g pyright
+
+# TypeScript/JavaScript
+npm install -g typescript-language-server typescript
+
+# Rust
+rustup component add rust-analyzer
+```
+
+4. Manually configure LSP in project `~/.amplihack/.claude/settings.json`:
 
 ```json
 {
   "lsp": {
     "python": {
       "command": "pylsp",
+      "enabled": true
+    },
+    "typescript": {
+      "command": "typescript-language-server",
+      "args": ["--stdio"],
+      "enabled": true
+    },
+    "rust": {
+      "command": "rust-analyzer",
       "enabled": true
     }
   }

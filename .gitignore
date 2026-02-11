@@ -49,6 +49,12 @@ AGENTS.md
 !.env.template  # Allow template files
 .azure.env
 
+# Secret and credential files (comprehensive patterns)
+*.key           # Private keys, API keys
+*secret*        # Any file with "secret" in name
+*token*         # Any file with "token" in name
+*credential*    # Any file with "credential" in name
+
 # Build
 build/
 dist/

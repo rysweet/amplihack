@@ -811,22 +811,22 @@ steps:
       **Commands to execute:**
       ```bash
       cd {{repo_path}}
-      
+
       # Show changes
       git diff main...HEAD --stat
-      
+
       # Read current version
       CURRENT_VERSION=$(grep -E '^version = ' pyproject.toml | head -1 | cut -d'"' -f2)
       echo "Current version: $CURRENT_VERSION"
-      
+
       # Based on your classification, determine new version
       # For PATCH: increment last number (0.2.0 → 0.2.1)
       # For MINOR: increment middle, reset last (0.2.0 → 0.3.0)
       # For MAJOR: increment first, reset others (0.2.0 → 1.0.0)
-      
+
       # Edit the file with new version
       # sed -i 's/version = "X.Y.Z"/version = "NEW.VERSION"/' pyproject.toml
-      
+
       # Verify
       grep -E '^version = ' pyproject.toml | head -1
       ```

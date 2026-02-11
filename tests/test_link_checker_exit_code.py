@@ -350,7 +350,7 @@ class TestLinkCheckerBehaviorContract:
                 mock_result.broken_links = [
                     link_checker.BrokenLink(
                         file=f"test{i}.md",
-                        line=i+1,
+                        line=i + 1,
                         link_text=f"link {i}",
                         link_url=f"https://test{i}.example.com",
                         error="404 Not Found",
@@ -361,7 +361,7 @@ class TestLinkCheckerBehaviorContract:
                 mock_result.warnings = [
                     link_checker.BrokenLink(
                         file=f"test{i}.md",
-                        line=i+1,
+                        line=i + 1,
                         link_text=f"warning link {i}",
                         link_url=f"https://warning{i}.example.com",
                         error=f"warning{i}",

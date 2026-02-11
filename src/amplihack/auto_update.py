@@ -16,9 +16,8 @@ import logging
 import subprocess
 import sys
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Optional
 
 try:
     import requests
@@ -69,7 +68,7 @@ class UpdateCache:
         try:
             last_check_dt = datetime.fromisoformat(self.last_check)
             expiry = last_check_dt + timedelta(hours=self.check_interval_hours)
-            return datetime.now(timezone.utc) >= expiry
+            return datetime.now(UTC) >= expiry
         except (ValueError, TypeError):
             return True  # Invalid timestamp = expired
 
@@ -91,7 +90,7 @@ class UpdateCache:
         )
 
 
-def _fetch_latest_version(timeout: int = 5) -> Optional[tuple[str, str]]:
+def _fetch_latest_version(timeout: int = 5) -> tuple[str, str] | None:
     """Fetch latest version from GitHub Releases API.
 
     Args:
@@ -171,7 +170,7 @@ def _compare_versions(current: str, latest: str) -> bool:
         return False
 
 
-def _load_cache(cache_file: Path) -> Optional[UpdateCache]:
+def _load_cache(cache_file: Path) -> UpdateCache | None:
     """Load update check cache from file.
 
     Args:
@@ -184,7 +183,7 @@ def _load_cache(cache_file: Path) -> Optional[UpdateCache]:
         return None
 
     try:
-        with open(cache_file, "r") as f:
+        with open(cache_file) as f:
             data = json.load(f)
         return UpdateCache.from_dict(data)
     except (json.JSONDecodeError, OSError, ValueError) as e:
@@ -217,7 +216,7 @@ def check_for_updates(
     cache_dir: Path,
     check_interval_hours: int = 24,
     timeout_seconds: int = 5,
-) -> Optional[UpdateCheckResult]:
+) -> UpdateCheckResult | None:
     """Check if a newer version of amplihack is available.
 
     This function:
@@ -277,7 +276,7 @@ def check_for_updates(
 
     # Update cache with fresh data
     new_cache = UpdateCache(
-        last_check=datetime.now(timezone.utc).isoformat(),
+        last_check=datetime.now(UTC).isoformat(),
         latest_version=latest_version,
         check_interval_hours=check_interval_hours,
     )
@@ -318,9 +317,8 @@ def _run_upgrade(timeout: int = 60) -> bool:
         if result.returncode == 0:
             logger.debug("Successfully upgraded amplihack")
             return True
-        else:
-            logger.debug(f"Upgrade failed with code {result.returncode}: {result.stderr}")
-            return False
+        logger.debug(f"Upgrade failed with code {result.returncode}: {result.stderr}")
+        return False
 
     except subprocess.TimeoutExpired:
         logger.debug(f"Upgrade timeout after {timeout}s")
@@ -335,13 +333,13 @@ def _run_upgrade(timeout: int = 60) -> bool:
 
 def _restart_cli(args: list[str]) -> None:
     """Restart amplihack CLI with same arguments.
-    
+
     After uv tool upgrade, the new version is available via 'amplihack' command,
     not via 'python -m amplihack'. Use the command directly.
-    
+
     Args:
         args: CLI arguments to preserve (sys.argv[1:])
-    
+
     Raises:
         Does not return (exits process via sys.exit)
     """
@@ -401,9 +399,7 @@ def _restart_cli(args: list[str]) -> None:
             sys.exit(0)
         except Exception as e:
             logger.error(f"Failed to restart CLI: {e}")
-            print(
-                "\n⚠️  Restart failed. Please run 'amplihack' manually to use the new version."
-            )
+            print("\n⚠️  Restart failed. Please run 'amplihack' manually to use the new version.")
             sys.exit(0)
     except Exception as e:
         logger.error(f"Failed to restart CLI: {e}")
@@ -467,16 +463,14 @@ def prompt_and_upgrade(
                 _restart_cli(cli_args)
                 # Process exits, this line won't execute
                 return True
-            else:
-                print("❌ Upgrade failed. Continuing with current version.")
-                print("\nTo upgrade manually, run:")
-                print("  uv tool upgrade amplihack")
-                return False
-        else:
-            # User declined
-            print("\nTo upgrade later, run:")
+            print("❌ Upgrade failed. Continuing with current version.")
+            print("\nTo upgrade manually, run:")
             print("  uv tool upgrade amplihack")
             return False
+        # User declined
+        print("\nTo upgrade later, run:")
+        print("  uv tool upgrade amplihack")
+        return False
 
     except KeyboardInterrupt:
         print("\n\nUpgrade cancelled. Continuing with current version.")

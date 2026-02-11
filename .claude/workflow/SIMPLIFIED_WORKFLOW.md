@@ -283,7 +283,7 @@ done
 - [ ] Write detailed commit message:
   ```bash
   git commit -m "docs: Add getting started tutorial (#123)
-  
+
   - Create step-by-step setup guide
   - Add code examples for common tasks
   - Include troubleshooting section

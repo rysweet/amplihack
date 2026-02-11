@@ -16,14 +16,14 @@ import yaml
 def load_pm_workflow() -> dict[str, Any]:
     """Load PM Daily Status workflow."""
     workflow_path = Path(__file__).parent.parent / ".github" / "workflows" / "pm-daily-status.yml"
-    with open(workflow_path, "r") as f:
+    with open(workflow_path) as f:
         return yaml.safe_load(f)
 
 
 def load_link_checker_workflow() -> dict[str, Any]:
     """Load Docs Weekly Link Checker workflow."""
     workflow_path = Path(__file__).parent.parent / ".github" / "workflows" / "docs-link-checker.yml"
-    with open(workflow_path, "r") as f:
+    with open(workflow_path) as f:
         return yaml.safe_load(f)
 
 
