@@ -86,8 +86,8 @@ description: Minimal recipe demonstrating the format
 version: "1.0"
 
 steps:
-  - name: greet
-    agent: builder
+  - id: greet
+    agent: amplihack:builder
     prompt: "Print 'Hello from Recipe Runner' to stdout"
 ```
 
@@ -107,54 +107,51 @@ context:
 
 # Steps execute sequentially, top to bottom
 steps:
-  - name: clarify-requirements # Step identifier (unique within recipe)
-    agent: prompt-writer # Which agent handles this step
+  - id: clarify-requirements # Step identifier (required, unique within recipe)
+    agent: amplihack:prompt-writer # Which agent handles this step (namespace:name)
     prompt: |
       Analyze and clarify the following task:
       {{task_description}}
 
       Rewrite as unambiguous, testable requirements.
-    description: "Rewrite task as clear requirements" # Optional, for dry-run output
+    output: clarified_requirements # Store result in context under this key
 
-  - name: run-tests
+  - id: run-tests
     type: bash # Shell command instead of agent call
     command: "cd {{repo_path}} && python -m pytest tests/ -x"
-    description: "Run test suite"
+    output: test_output
 
-  - name: design
-    agent: architect
+  - id: design
+    agent: amplihack:architect
     prompt: |
       Design a solution for:
       {{task_description}}
 
-      Requirements from previous step:
-      {{steps.clarify-requirements.output}}
-    condition: "steps.clarify-requirements.exit_code == 0" # Skip if prior step failed
+      Requirements:
+      {{clarified_requirements}}
+    condition: "clarified_requirements" # Skip if previous step output is falsy
+    output: design_spec
 
-  - name: check-each-module
-    agent: reviewer
-    prompt: "Review {{item}} for philosophy compliance"
-    foreach: "{{modules}}" # Iterate over a context list
-
-  - name: parse-test-results
+  - id: parse-test-results
     type: bash
     command: "cd {{repo_path}} && python -m pytest --json-report tests/"
-    parse_json: true # Parse stdout as JSON into step output
+    parse_json: true # Parse stdout as JSON and store as dict in context
+    output: test_results
 ```
 
-### Step Types
+### Step Fields
 
-| Field         | Type   | Description                                         |
-| ------------- | ------ | --------------------------------------------------- |
-| `name`        | string | Unique step identifier within the recipe            |
-| `agent`       | string | Agent name (from `~/.amplihack/.claude/agents/`)    |
-| `type`        | string | `agent` (default) or `bash`                         |
-| `prompt`      | string | Prompt template sent to the agent                   |
-| `command`     | string | Shell command (when `type: bash`)                   |
-| `condition`   | string | Python expression; step skips when false            |
-| `foreach`     | string | Template variable resolving to a list; repeats step |
-| `parse_json`  | bool   | Parse stdout as JSON and store in step output       |
-| `description` | string | Human-readable label for dry-run and logging        |
+| Field        | Type   | Required | Description                                                  |
+| ------------ | ------ | -------- | ------------------------------------------------------------ |
+| `id`         | string | Yes      | Unique step identifier within the recipe                     |
+| `agent`      | string | No       | Agent reference in `namespace:name` format                   |
+| `type`       | string | No       | `agent` (default when `agent` or `prompt` present) or `bash` |
+| `prompt`     | string | No       | Prompt template sent to the agent                            |
+| `command`    | string | No       | Shell command (when `type: bash`)                            |
+| `output`     | string | No       | Context key to store step result under                       |
+| `condition`  | string | No       | Python expression; step skips when false                     |
+| `parse_json` | bool   | No       | Parse stdout as JSON and store as dict in context            |
+| `mode`       | string | No       | Agent mode hint (e.g. `ANALYZE`, `DESIGN`)                   |
 
 ### Template Variables
 
@@ -162,13 +159,12 @@ Use `{{variable}}` to inject context values or previous step outputs into prompt
 
 - `{{task_description}}` -- from the `context` block or `--context` CLI flag
 - `{{repo_path}}` -- from context
-- `{{steps.<step-name>.output}}` -- stdout/response from a completed step
-- `{{steps.<step-name>.exit_code}}` -- exit code from a bash step
-- `{{item}}` -- current element when using `foreach`
+- `{{clarified_requirements}}` -- output from a prior step stored via `output` field
+- `{{nested.key}}` -- dot notation for nested dict values (from `parse_json` steps)
 
 ## SDK Adapters
 
-The Recipe Runner uses an adapter pattern to execute agent steps across different AI backends. The adapter interface is a single method: `run(agent_name, prompt) -> StepResult`.
+The Recipe Runner uses an adapter pattern to execute agent steps across different AI backends. The adapter interface has two methods: `execute_agent_step(prompt, ...)` and `execute_bash_step(command, ...)`.
 
 ### Claude Agent SDK (Default)
 
@@ -241,31 +237,33 @@ context:
   repo_path: "."
 
 steps:
-  - name: scaffold
+  - id: scaffold
     type: bash
     command: "mkdir -p {{repo_path}}/src/components/{{component_name}}"
 
-  - name: design-api
-    agent: api-designer
+  - id: design-api
+    agent: amplihack:api-designer
     prompt: |
       Design the public API for a React component named {{component_name}}.
       Follow the project's existing component patterns.
+    output: api_design
 
-  - name: implement
-    agent: builder
+  - id: implement
+    agent: amplihack:builder
     prompt: |
       Implement the {{component_name}} component based on this API design:
-      {{steps.design-api.output}}
+      {{api_design}}
+    output: implementation
 
-  - name: write-tests
-    agent: tester
+  - id: write-tests
+    agent: amplihack:tester
     prompt: |
       Write tests for {{component_name}} covering:
       - Rendering
       - User interactions
       - Edge cases
 
-  - name: run-tests
+  - id: run-tests
     type: bash
     command: "cd {{repo_path}} && npm test -- --testPathPattern={{component_name}}"
 ```

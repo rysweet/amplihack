@@ -71,6 +71,9 @@ class RecipeRunner:
         """
         is_dry_run = dry_run if dry_run is not None else self._default_dry_run
 
+        if not is_dry_run and self._adapter is None:
+            raise ValueError("adapter is required for non-dry-run execution")
+
         # Build initial context from recipe defaults + user overrides
         initial = dict(recipe.context or {})
         if user_context:
@@ -153,7 +156,9 @@ class RecipeRunner:
         return StepResult(
             step_id=step.id,
             status=StepStatus.COMPLETED,
-            output=str(output) if output else "",
+            output=json.dumps(output)
+            if isinstance(output, (dict, list))
+            else (str(output) if output else ""),
         )
 
     def _dispatch_step(self, step: Step, ctx: RecipeContext) -> str:

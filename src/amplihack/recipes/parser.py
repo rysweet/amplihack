@@ -87,10 +87,13 @@ class RecipeParser:
 
     def _parse_step(self, raw: dict[str, Any]) -> Step:
         """Parse a single step dict into a Step object."""
+        step_id = raw.get("id", "")
+        if not step_id:
+            raise ValueError("Every step must have a non-empty 'id' field")
         step_type = self._infer_step_type(raw)
 
         return Step(
-            id=raw.get("id", ""),
+            id=step_id,
             step_type=step_type,
             command=raw.get("command"),
             agent=raw.get("agent"),
@@ -109,14 +112,18 @@ class RecipeParser:
         Priority:
         1. Explicit ``type`` field
         2. Presence of ``agent`` field -> AGENT
-        3. Presence of ``command`` field -> BASH
-        4. Default to BASH
+        3. Presence of ``prompt`` field (without ``command``) -> AGENT
+        4. Presence of ``command`` field -> BASH
+        5. Default to BASH
         """
         explicit = raw.get("type")
         if explicit:
             return StepType(explicit.lower())
 
         if "agent" in raw:
+            return StepType.AGENT
+
+        if "prompt" in raw and "command" not in raw:
             return StepType.AGENT
 
         if "command" in raw:

@@ -126,7 +126,7 @@ class RecipeContext:
             var_name = match.group(1)
             value = self.get(var_name)
             if value is None:
-                return ""
+                return shlex.quote("")
             if isinstance(value, dict):
                 return shlex.quote(json.dumps(value))
             return shlex.quote(str(value))
