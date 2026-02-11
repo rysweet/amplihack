@@ -74,14 +74,64 @@ def _configure_user_local_npm() -> dict[str, str]:
     return env
 
 
+def _update_shell_profile_path() -> bool:
+    """Append npm-global bin to shell profile so PATH persists across sessions.
+
+    Detects the user's shell from $SHELL and updates the appropriate profile
+    file (~/.zshrc for zsh, ~/.bashrc otherwise). Idempotent -- does nothing
+    if the export line is already present.
+
+    Returns:
+        True if the profile already contains the line or was updated successfully.
+        False if the profile could not be written.
+    """
+    shell = os.environ.get("SHELL", "")
+    if shell.endswith("/zsh") or shell.endswith("/zsh5"):
+        profile_path = Path.home() / ".zshrc"
+    else:
+        profile_path = Path.home() / ".bashrc"
+
+    export_line = 'export PATH="$HOME/.npm-global/bin:$PATH"'
+
+    # Check if already present
+    try:
+        if profile_path.exists():
+            content = profile_path.read_text()
+            if export_line in content:
+                return True
+        # Append the export line
+        with open(profile_path, "a") as f:
+            f.write(f"\n# Added by amplihack\n{export_line}\n")
+        return True
+    except (OSError, PermissionError):
+        return False
+
+
 def _find_claude_in_common_locations() -> str | None:
-    """Search for claude in PATH.
+    """Search for claude in PATH, falling back to known install location.
+
+    First checks PATH via shutil.which(). If not found, checks the known
+    npm-global install location directly. When the fallback location exists,
+    adds its directory to os.environ["PATH"] so subsequent calls succeed.
 
     Returns:
         Path to claude binary if found, None otherwise.
     """
     # Use shutil.which() to search PATH - this respects the user's environment
-    return shutil.which("claude")
+    found = shutil.which("claude")
+    if found:
+        return found
+
+    # Fallback: check the known user-local npm install location directly
+    npm_claude = Path.home() / ".npm-global" / "bin" / "claude"
+    if npm_claude.exists():
+        npm_bin = str(npm_claude.parent)
+        current_path = os.environ.get("PATH", "")
+        if npm_bin not in current_path:
+            os.environ["PATH"] = f"{npm_bin}:{current_path}"
+        return str(npm_claude)
+
+    return None
 
 
 def _print_manual_install_instructions():
@@ -264,9 +314,14 @@ def _install_claude_cli() -> bool:
             print("✅ Claude CLI installed and validated successfully")
             print(f"Binary location: {expected_binary}")
 
-            # Remind user to add to shell profile for future sessions
-            print("\n💡 Add to your shell profile for future sessions:")
-            print('  export PATH="$HOME/.npm-global/bin:$PATH"')
+            # Auto-update shell profile so PATH persists across sessions
+            if _update_shell_profile_path():
+                print("\n✅ Shell profile updated. Restart your shell or run:")
+                print('  source ~/.bashrc  # or source ~/.zshrc')
+            else:
+                # Fallback to manual instructions if auto-update fails
+                print("\n💡 Add to your shell profile for future sessions:")
+                print('  export PATH="$HOME/.npm-global/bin:$PATH"')
 
             return True
 
