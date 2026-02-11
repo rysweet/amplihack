@@ -11,8 +11,10 @@ from amplihack.launcher.copilot import (
     check_for_update,
     detect_install_method,
     execute_update,
+    generate_copilot_instructions,
     prompt_user_to_update,
     stage_agents,
+    stage_directory,
 )
 
 
@@ -441,3 +443,119 @@ class TestStageAgents:
         stage_agents(source_dir.parent, copilot_home)
 
         assert (copilot_home / "agents").exists()
+
+
+class TestStageDirectory:
+    """Tests for generic directory staging (workflows, context, commands)."""
+
+    def test_stages_workflow_files(self, tmp_path):
+        """Workflow .md files must be staged to ~/.copilot/workflow/."""
+        source = tmp_path / "workflow"
+        source.mkdir()
+        (source / "DEFAULT_WORKFLOW.md").write_text("# 23 steps")
+        (source / "INVESTIGATION_WORKFLOW.md").write_text("# 6 phases")
+
+        copilot_home = tmp_path / "copilot"
+        result = stage_directory(source, copilot_home, "workflow")
+
+        assert (copilot_home / "workflow" / "DEFAULT_WORKFLOW.md").exists()
+        assert (copilot_home / "workflow" / "INVESTIGATION_WORKFLOW.md").exists()
+        assert result == 2
+
+    def test_stages_context_files(self, tmp_path):
+        """Context .md files must be staged to ~/.copilot/context/."""
+        source = tmp_path / "context"
+        source.mkdir()
+        (source / "PHILOSOPHY.md").write_text("# Ruthless Simplicity")
+        (source / "PATTERNS.md").write_text("# Brick & Studs")
+
+        copilot_home = tmp_path / "copilot"
+        result = stage_directory(source, copilot_home, "context")
+
+        assert (copilot_home / "context" / "PHILOSOPHY.md").exists()
+        content = (copilot_home / "context" / "PHILOSOPHY.md").read_text()
+        assert "Ruthless Simplicity" in content
+        assert result == 2
+
+    def test_stages_commands_flattened(self, tmp_path):
+        """Commands from subdirectories must be flattened."""
+        source = tmp_path / "commands" / "amplihack"
+        source.mkdir(parents=True)
+        (source / "ultrathink.md").write_text("# Ultra-Think")
+        (source / "analyze.md").write_text("# Analyze")
+
+        copilot_home = tmp_path / "copilot"
+        result = stage_directory(source.parent, copilot_home, "commands")
+
+        assert (copilot_home / "commands" / "ultrathink.md").exists()
+        assert (copilot_home / "commands" / "analyze.md").exists()
+        assert result == 2
+
+    def test_handles_missing_source(self, tmp_path):
+        """Returns 0 if source directory doesn't exist."""
+        copilot_home = tmp_path / "copilot"
+        result = stage_directory(tmp_path / "nonexistent", copilot_home, "workflow")
+        assert result == 0
+
+    def test_cleans_stale_files(self, tmp_path):
+        """Old files in destination should be cleaned before staging."""
+        source = tmp_path / "workflow"
+        source.mkdir()
+        (source / "NEW.md").write_text("# New")
+
+        copilot_home = tmp_path / "copilot"
+        dest = copilot_home / "workflow"
+        dest.mkdir(parents=True)
+        (dest / "OLD_REMOVED.md").write_text("# Gone")
+
+        stage_directory(source, copilot_home, "workflow")
+
+        assert (dest / "NEW.md").exists()
+        assert not (dest / "OLD_REMOVED.md").exists()
+
+
+class TestGenerateCopilotInstructions:
+    """Tests for copilot-instructions.md generation."""
+
+    def test_generates_instructions_file(self, tmp_path):
+        """Must create ~/.copilot/copilot-instructions.md."""
+        copilot_home = tmp_path / "copilot"
+        copilot_home.mkdir()
+
+        generate_copilot_instructions(copilot_home)
+
+        instructions = copilot_home / "copilot-instructions.md"
+        assert instructions.exists()
+
+    def test_instructions_reference_workflow_path(self, tmp_path):
+        """Instructions must tell copilot where workflows are."""
+        copilot_home = tmp_path / "copilot"
+        copilot_home.mkdir()
+
+        generate_copilot_instructions(copilot_home)
+
+        content = (copilot_home / "copilot-instructions.md").read_text()
+        assert "workflow" in content.lower()
+        assert "DEFAULT_WORKFLOW" in content
+
+    def test_instructions_reference_context_path(self, tmp_path):
+        """Instructions must tell copilot where context files are."""
+        copilot_home = tmp_path / "copilot"
+        copilot_home.mkdir()
+
+        generate_copilot_instructions(copilot_home)
+
+        content = (copilot_home / "copilot-instructions.md").read_text()
+        assert "context" in content.lower()
+        assert "PHILOSOPHY" in content
+
+    def test_instructions_reference_commands(self, tmp_path):
+        """Instructions must tell copilot about available commands."""
+        copilot_home = tmp_path / "copilot"
+        copilot_home.mkdir()
+
+        generate_copilot_instructions(copilot_home)
+
+        content = (copilot_home / "copilot-instructions.md").read_text()
+        assert "command" in content.lower()
+        assert "ultrathink" in content.lower()
