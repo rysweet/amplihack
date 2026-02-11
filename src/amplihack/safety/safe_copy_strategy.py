@@ -24,7 +24,11 @@ class SafeCopyStrategy:
     """
 
     def determine_target(
-        self, original_target: str | Path, has_conflicts: bool, conflicting_files: list[str]
+        self,
+        original_target: str | Path,
+        has_conflicts: bool,
+        conflicting_files: list[str],
+        auto_approve: bool = False,
     ) -> CopyStrategy:
         """Determine where to copy files based on conflict status.
 
@@ -37,6 +41,7 @@ class SafeCopyStrategy:
             original_target: Working directory .claude path
             has_conflicts: Whether uncommitted changes detected
             conflicting_files: List of files with uncommitted changes
+            auto_approve: Skip prompt and auto-approve overwrite (e.g. user preference)
 
         Returns:
             CopyStrategy with target_dir, should_proceed, and temp mode flags
@@ -44,6 +49,9 @@ class SafeCopyStrategy:
         original_path = Path(original_target).resolve()
 
         if not has_conflicts:
+            return CopyStrategy(original_path, True, use_temp=False)
+
+        if auto_approve:
             return CopyStrategy(original_path, True, use_temp=False)
 
         # Prompt user with 3 options (auto-approve working dir in non-interactive)

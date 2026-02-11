@@ -264,5 +264,51 @@ class TestSafeCopyStrategy(unittest.TestCase):
                     shutil.rmtree(result.temp_dir.parent, ignore_errors=True)
 
 
+    def test_auto_approve_skips_prompt(self):
+        """Test that auto_approve=True skips the prompt and overwrites directly.
+
+        When the user has auto_update=always, the conflict prompt should not appear.
+        """
+        result = self.strategy_manager.determine_target(
+            original_target=self.original_target,
+            has_conflicts=True,
+            conflicting_files=self.conflicting_files,
+            auto_approve=True,
+        )
+
+        # Should proceed with overwrite, no temp dir
+        self.assertTrue(result.should_proceed)
+        self.assertFalse(result.use_temp)
+        self.assertIsNone(result.temp_dir)
+        self.assertEqual(result.target_dir, self.original_target.resolve())
+
+    def test_auto_approve_false_still_prompts(self):
+        """Test that auto_approve=False (default) still triggers the prompt."""
+        with patch("builtins.input", return_value="y"):
+            result = self.strategy_manager.determine_target(
+                original_target=self.original_target,
+                has_conflicts=True,
+                conflicting_files=self.conflicting_files,
+                auto_approve=False,
+            )
+
+        # Should proceed with overwrite after user confirms
+        self.assertTrue(result.should_proceed)
+        self.assertFalse(result.use_temp)
+
+    def test_auto_approve_no_conflicts_unchanged(self):
+        """Test that auto_approve has no effect when there are no conflicts."""
+        result = self.strategy_manager.determine_target(
+            original_target=self.original_target,
+            has_conflicts=False,
+            conflicting_files=[],
+            auto_approve=True,
+        )
+
+        self.assertTrue(result.should_proceed)
+        self.assertFalse(result.use_temp)
+        self.assertEqual(result.target_dir, self.original_target.resolve())
+
+
 if __name__ == "__main__":
     unittest.main()
