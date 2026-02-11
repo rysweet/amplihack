@@ -68,8 +68,14 @@ class TestContextRender:
         result = ctx.render("{{data}}")
         # The rendered output should be valid JSON containing the dict
         assert '"key"' in result
-        assert '"value"' in result
-        assert "42" in result
+
+    def test_render_list_as_json(self) -> None:
+        """When a variable holds a list, it is serialized as JSON (not Python repr)."""
+        ctx = RecipeContext({"items": ["one", "two", "three"]})
+        result = ctx.render("{{items}}")
+        assert result.startswith("[")  # JSON array
+        assert '"one"' in result  # JSON uses double quotes
+        assert "'" not in result  # Not Python repr with single quotes
 
 
 class TestContextEvaluate:

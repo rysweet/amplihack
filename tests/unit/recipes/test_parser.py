@@ -193,3 +193,21 @@ steps:
 
         assert len(warnings) > 0
         assert any("prompt" in w.lower() for w in warnings)
+
+    def test_validate_warns_on_unrecognized_fields(self) -> None:
+        """Unrecognized YAML fields should produce a warning to catch typos."""
+        yaml_str = """\
+name: "typo-test"
+steps:
+  - id: "step-01"
+    type: "bash"
+    comand: "echo hi"
+    command: "echo hi"
+"""
+        parser = RecipeParser()
+        recipe = parser.parse(yaml_str)
+        warnings = parser.validate(recipe, raw_yaml=yaml_str)
+
+        assert any("comand" in w for w in warnings), (
+            f"Expected warning about 'comand' typo, got: {warnings}"
+        )
