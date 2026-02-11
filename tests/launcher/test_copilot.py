@@ -12,6 +12,7 @@ from amplihack.launcher.copilot import (
     detect_install_method,
     execute_update,
     prompt_user_to_update,
+    stage_agents,
 )
 
 
@@ -351,3 +352,92 @@ class TestCheckCopilot:
 
         result = check_copilot()
         assert result is False
+
+
+class TestStageAgents:
+    """Tests for agent staging to ~/.copilot/agents/ (issue #2241)."""
+
+    def test_stages_agents_to_user_copilot_dir(self, tmp_path):
+        """Agents must be staged to ~/.copilot/agents/, not project-local."""
+        # Create fake source agents
+        source_dir = tmp_path / "source" / ".claude" / "agents" / "amplihack"
+        core_dir = source_dir / "core"
+        core_dir.mkdir(parents=True)
+        (core_dir / "architect.md").write_text("# Architect agent")
+        (core_dir / "builder.md").write_text("# Builder agent")
+        specialized_dir = source_dir / "specialized"
+        specialized_dir.mkdir(parents=True)
+        (specialized_dir / "security.md").write_text("# Security agent")
+
+        # Create fake copilot home
+        copilot_home = tmp_path / "copilot_home"
+
+        result = stage_agents(source_dir, copilot_home)
+
+        # Agents should be in copilot_home/agents/ (flattened)
+        agents_dir = copilot_home / "agents"
+        assert agents_dir.exists()
+        assert (agents_dir / "architect.md").exists()
+        assert (agents_dir / "builder.md").exists()
+        assert (agents_dir / "security.md").exists()
+        assert result == 3
+
+    def test_stages_agents_flattened(self, tmp_path):
+        """Agent subdirectory structure should be flattened."""
+        source_dir = tmp_path / "source"
+        core_dir = source_dir / "core"
+        core_dir.mkdir(parents=True)
+        (core_dir / "architect.md").write_text("# Architect")
+        workflows_dir = source_dir / "workflows"
+        workflows_dir.mkdir(parents=True)
+        (workflows_dir / "improvement.md").write_text("# Improvement")
+
+        copilot_home = tmp_path / "copilot_home"
+
+        stage_agents(source_dir, copilot_home)
+
+        agents_dir = copilot_home / "agents"
+        # All files flattened to single directory
+        assert (agents_dir / "architect.md").exists()
+        assert (agents_dir / "improvement.md").exists()
+        # No subdirectories
+        subdirs = [p for p in agents_dir.iterdir() if p.is_dir()]
+        assert len(subdirs) == 0
+
+    def test_cleans_stale_agents(self, tmp_path):
+        """Stale agents should be cleaned before staging new ones."""
+        source_dir = tmp_path / "source" / "core"
+        source_dir.mkdir(parents=True)
+        (source_dir / "architect.md").write_text("# Architect")
+
+        copilot_home = tmp_path / "copilot_home"
+        agents_dir = copilot_home / "agents"
+        agents_dir.mkdir(parents=True)
+        # Pre-existing stale agent
+        (agents_dir / "old-removed-agent.md").write_text("# Old agent")
+
+        stage_agents(source_dir.parent, copilot_home)
+
+        assert (agents_dir / "architect.md").exists()
+        assert not (agents_dir / "old-removed-agent.md").exists()
+
+    def test_handles_missing_source_dir(self, tmp_path):
+        """Returns 0 if source directory doesn't exist."""
+        source_dir = tmp_path / "nonexistent"
+        copilot_home = tmp_path / "copilot_home"
+
+        result = stage_agents(source_dir, copilot_home)
+        assert result == 0
+
+    def test_creates_agents_dir_if_missing(self, tmp_path):
+        """Creates ~/.copilot/agents/ if it doesn't exist."""
+        source_dir = tmp_path / "source" / "core"
+        source_dir.mkdir(parents=True)
+        (source_dir / "test.md").write_text("# Test")
+
+        copilot_home = tmp_path / "copilot_home"
+        assert not copilot_home.exists()
+
+        stage_agents(source_dir.parent, copilot_home)
+
+        assert (copilot_home / "agents").exists()
