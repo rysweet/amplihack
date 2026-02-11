@@ -46,14 +46,6 @@ class Step:
 
 
 @dataclass
-class RecursionLimits:
-    """Limits for recursive recipe execution."""
-
-    max_depth: int = 5
-    max_steps: int = 100
-
-
-@dataclass
 class Recipe:
     """A parsed recipe definition."""
 
@@ -64,7 +56,6 @@ class Recipe:
     author: str = ""
     tags: list[str] = field(default_factory=list)
     context: dict[str, Any] = field(default_factory=dict)
-    recursion_limits: RecursionLimits = field(default_factory=RecursionLimits)
 
 
 @dataclass

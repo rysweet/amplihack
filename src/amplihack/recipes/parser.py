@@ -66,11 +66,6 @@ class RecipeParser:
             context=data.get("context", {}),
         )
 
-    # Alias so callers can also use parse_string
-    def parse_string(self, yaml_content: str) -> Recipe:
-        """Parse a YAML string into a Recipe. Alias for ``parse()``."""
-        return self.parse(yaml_content)
-
     def validate(self, recipe: Recipe) -> list[str]:
         """Validate a parsed recipe and return a list of warning strings.
 

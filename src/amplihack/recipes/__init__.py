@@ -17,7 +17,6 @@ from amplihack.recipes.context import RecipeContext
 from amplihack.recipes.models import (
     Recipe,
     RecipeResult,
-    RecursionLimits,
     Step,
     StepExecutionError,
     StepResult,
@@ -35,7 +34,6 @@ __all__ = [
     "RecipeRunner",
     "Recipe",
     "RecipeResult",
-    "RecursionLimits",
     "Step",
     "StepExecutionError",
     "StepResult",

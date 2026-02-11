@@ -95,8 +95,10 @@ class AgentResolver:
                     # inside the search directory to catch any traversal that
                     # might bypass the regex (e.g. via symlinks).
                     resolved_full = full.resolve()
-                    if not str(resolved_full).startswith(str(resolved_base)):
-                        continue
+                    try:
+                        resolved_full.relative_to(resolved_base)
+                    except ValueError:
+                        continue  # Not inside search directory
                     return full.read_text(encoding="utf-8")
 
         raise AgentNotFoundError(agent_ref, searched)

@@ -133,9 +133,6 @@ class RecipeContext:
 
         return _TEMPLATE_RE.sub(_shell_replacer, template)
 
-    # Alias for spec compatibility
-    render_template = render
-
     def evaluate(self, condition: str) -> bool:
         """Safely evaluate a boolean condition against the current context.
 
@@ -175,9 +172,6 @@ class RecipeContext:
         code = compile(tree, "<condition>", "eval")
         return bool(eval(code, {"__builtins__": {}}, namespace))
 
-    # Alias for spec compatibility
-    evaluate_condition = evaluate
-
     def to_dict(self) -> dict[str, Any]:
         """Return a deep copy of the context data."""
         return copy.deepcopy(self._data)
@@ -206,6 +200,8 @@ class _DotDict:
 
     def __init__(self, data: dict[str, Any]) -> None:
         for k, v in data.items():
+            if k.startswith("_"):
+                continue
             if isinstance(v, dict):
                 setattr(self, k, _DotDict(v))
             else:

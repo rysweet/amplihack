@@ -95,9 +95,6 @@ class RecipeRunner:
             context=ctx.to_dict(),
         )
 
-    # Alias for spec compatibility
-    run = execute
-
     def _execute_step(self, step: Step, ctx: RecipeContext, dry_run: bool) -> StepResult:
         """Execute a single step, handling conditions, templates, and errors."""
 
@@ -110,7 +107,7 @@ class RecipeRunner:
                         step_id=step.id,
                         status=StepStatus.SKIPPED,
                     )
-            except ValueError:
+            except (ValueError, NameError):
                 logger.warning("Condition evaluation failed for step '%s', skipping", step.id)
                 return StepResult(
                     step_id=step.id,
