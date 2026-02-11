@@ -11,6 +11,7 @@ Usage:
 """
 
 import argparse
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -45,12 +46,24 @@ class PreCommitWorkflow:
             current = current.parent
         return Path.cwd()
 
-    def _run_command(self, command: str, check: bool = False) -> tuple[int, str, str]:
-        """Run a shell command and return exit code, stdout, and stderr."""
+    def _run_command(self, command: list[str], check: bool = False) -> tuple[int, str, str]:
+        """Run a command safely without shell interpretation.
+
+        Args:
+            command: Command and arguments as list (NOT string)
+            check: Whether to raise CalledProcessError on non-zero exit
+
+        Returns:
+            Tuple of (exit_code, stdout, stderr)
+
+        Security:
+            - NEVER uses shell=True (prevents shell injection CWE-78)
+            - Command must be list[str], not string
+            - No shell metacharacter interpretation
+        """
         try:
             result = subprocess.run(
                 command,
-                shell=True,
                 capture_output=True,
                 text=True,
                 cwd=self.project_root,
@@ -73,7 +86,7 @@ class PreCommitWorkflow:
         print("Analyzing pre-commit failures...")
 
         # Try to run pre-commit to get current state
-        returncode, stdout, stderr = self._run_command("pre-commit run --all-files")
+        returncode, stdout, stderr = self._run_command(["pre-commit", "run", "--all-files"])
 
         result = {
             "success": returncode == 0,
@@ -150,15 +163,18 @@ class PreCommitWorkflow:
                 print(f"⚠️  Unknown tool: {tool}")
                 continue
 
-            command = self.AUTO_FIX_COMMANDS[tool]
+            command_str = self.AUTO_FIX_COMMANDS[tool]
 
             # Add file patterns based on tool
             if tool in ["prettier"] or tool in ["black", "ruff"]:
-                command += " ."
+                command_str += " ."
             elif tool == "ruff-fix":
-                command = "ruff --fix ."
+                command_str = "ruff --fix ."
 
-            print(f"  Running: {command}")
+            # Convert string command to list for security
+            command = shlex.split(command_str)
+
+            print(f"  Running: {' '.join(command)}")
             returncode, stdout, stderr = self._run_command(command)
 
             if returncode == 0:
@@ -181,7 +197,7 @@ class PreCommitWorkflow:
         checks = {}
 
         # Check pre-commit installed
-        returncode, stdout, _ = self._run_command("pre-commit --version")
+        returncode, stdout, _ = self._run_command(["pre-commit", "--version"])
         checks["pre-commit_installed"] = returncode == 0
         if checks["pre-commit_installed"]:
             print(f"✓ pre-commit installed: {stdout.strip()}")
@@ -198,7 +214,7 @@ class PreCommitWorkflow:
 
         # Check hooks installed
         if checks["pre-commit_installed"] and checks["config_exists"]:
-            returncode, _, _ = self._run_command("pre-commit install --install-hooks")
+            returncode, _, _ = self._run_command(["pre-commit", "install", "--install-hooks"])
             checks["hooks_installed"] = returncode == 0
             if checks["hooks_installed"]:
                 print("✓ Pre-commit hooks installed")
@@ -209,9 +225,9 @@ class PreCommitWorkflow:
 
         # Check for required tools
         tools_to_check = {
-            "ruff": "ruff --version",
-            "prettier": "npx prettier --version",
-            "pyright": "pyright --version",
+            "ruff": ["ruff", "--version"],
+            "prettier": ["npx", "prettier", "--version"],
+            "pyright": ["pyright", "--version"],
         }
 
         for tool, command in tools_to_check.items():
@@ -242,7 +258,7 @@ class PreCommitWorkflow:
         """
         print("Running pre-commit checks on all files...")
 
-        returncode, stdout, stderr = self._run_command("pre-commit run --all-files")
+        returncode, stdout, stderr = self._run_command(["pre-commit", "run", "--all-files"])
 
         if returncode == 0:
             print("✅ All pre-commit checks passed!")
