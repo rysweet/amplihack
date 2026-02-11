@@ -1,5 +1,6 @@
-# Version Bump Check
+# Version Bump Check with Auto-Fix
 # Ensures that all PRs to main branch bump the version in pyproject.toml
+# Automatically bumps patch version if not bumped by the author
 # This prevents merging code without updating the version number
 
 name: Version Check
@@ -14,11 +15,17 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
+permissions:
+  contents: write # Allow auto-fix to commit version bump
+  pull-requests: write # Allow commenting on PR
+
 jobs:
   check-version-bump:
     name: Check Version Bump
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    outputs:
+      version-bumped: ${{ steps.check.outcome == 'success' }}
 
     steps:
       - name: Checkout PR branch
@@ -26,6 +33,8 @@ jobs:
         with:
           # Fetch full history so we can compare with main branch
           fetch-depth: 0
+          # Use token for auto-fix to work
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -37,28 +46,64 @@ jobs:
           git fetch origin main:main
 
       - name: Check version bump
+        id: check
         run: |
           echo "Checking if version was bumped in pyproject.toml..."
           python scripts/check_version_bump.py
+        continue-on-error: true
 
       - name: Success message
-        if: success()
+        if: steps.check.outcome == 'success'
         run: |
           echo "✅ Version check passed!"
           echo ""
           echo "The version in pyproject.toml has been properly bumped."
           echo "This PR is ready for review and merge."
 
-      - name: Failure instructions
-        if: failure()
+  auto-fix-version:
+    name: Auto-Fix Version Bump
+    needs: check-version-bump
+    if: needs.check-version-bump.outputs.version-bumped == 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Configure Git
         run: |
-          echo ""
-          echo "ℹ️  How to fix this:"
-          echo "   1. Edit pyproject.toml and bump the version on line 8"
-          echo "   2. Choose the appropriate version bump type:"
-          echo "      - Patch (bug fixes): 0.2.0 → 0.2.1"
-          echo "      - Minor (new features): 0.2.0 → 0.3.0"
-          echo "      - Major (breaking changes): 0.2.0 → 1.0.0"
-          echo "   3. Commit and push the change"
-          echo ""
-          exit 1
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Auto-bump version
+        id: bump
+        run: |
+          echo "🔧 Automatically bumping patch version..."
+          python scripts/auto_bump_version.py
+
+      - name: Commit and push version bump
+        run: |
+          git add pyproject.toml
+          git commit -m "chore: Auto-bump patch version"
+          git push
+
+      - name: Comment on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '🤖 **Auto-fixed version bump**\n\nThe version in `pyproject.toml` has been automatically bumped to the next patch version.\n\nIf you need a minor or major version bump instead, please update `pyproject.toml` manually and push the change.'
+            })
