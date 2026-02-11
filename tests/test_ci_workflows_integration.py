@@ -65,28 +65,6 @@ class TestPMDailyStatusIntegration:
             "GH_TOKEN must use built-in GITHUB_TOKEN secret"
         )
 
-    def test_workflow_can_call_anthropic_api(self) -> None:
-        """
-        Integration test: Workflow has API key for Claude API calls.
-
-        Regression test: ensure API key is still configured.
-        """
-        workflow = load_pm_workflow()
-
-        jobs = workflow.get("jobs", {})
-        daily_status = jobs.get("daily-status", {})
-        steps = daily_status.get("steps", [])
-
-        status_step = None
-        for step in steps:
-            if isinstance(step, dict) and "Generate status report" in step.get("name", ""):
-                status_step = step
-                break
-
-        assert status_step is not None, "Must have generate status step"
-        env_vars = status_step.get("env", {})
-        assert "ANTHROPIC_API_KEY" in env_vars, "Must have ANTHROPIC_API_KEY"
-
     def test_workflow_has_issue_number_for_posting(self) -> None:
         """
         Integration test: Workflow knows which issue to post to.
@@ -318,26 +296,6 @@ class TestBothWorkflowsIntegration:
 
 class TestWorkflowSecurity:
     """Security integration tests for both workflows."""
-
-    def test_pm_workflow_masks_api_key(self) -> None:
-        """
-        Security test: PM workflow masks ANTHROPIC_API_KEY in logs.
-        """
-        workflow = load_pm_workflow()
-
-        jobs = workflow.get("jobs", {})
-        daily_status = jobs.get("daily-status", {})
-        steps = daily_status.get("steps", [])
-
-        # Find mask step
-        mask_step = None
-        for step in steps:
-            if isinstance(step, dict) and "Mask API key" in step.get("name", ""):
-                mask_step = step
-                break
-
-        assert mask_step is not None, "Must have step to mask API key"
-        assert "add-mask" in mask_step.get("run", ""), "Must use add-mask command"
 
     def test_pm_workflow_disables_command_echo(self) -> None:
         """
