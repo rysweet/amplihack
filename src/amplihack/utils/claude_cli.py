@@ -91,6 +91,13 @@ def _update_shell_profile_path() -> bool:
     else:
         profile_path = Path.home() / ".bashrc"
 
+    # Validate profile_path is under user's home directory
+    home = Path.home()
+    try:
+        profile_path.resolve().relative_to(home.resolve())
+    except ValueError:
+        return False
+
     export_line = 'export PATH="$HOME/.npm-global/bin:$PATH"'
 
     # Check if already present
@@ -317,7 +324,7 @@ def _install_claude_cli() -> bool:
             # Auto-update shell profile so PATH persists across sessions
             if _update_shell_profile_path():
                 print("\n✅ Shell profile updated. Restart your shell or run:")
-                print('  source ~/.bashrc  # or source ~/.zshrc')
+                print("  source ~/.bashrc  # or source ~/.zshrc")
             else:
                 # Fallback to manual instructions if auto-update fails
                 print("\n💡 Add to your shell profile for future sessions:")
