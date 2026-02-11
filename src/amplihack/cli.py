@@ -839,6 +839,32 @@ def _ensure_amplihack_staged() -> None:
     _fix_global_statusline_path()
 
 
+def _read_auto_update_preference(plugin_dir: str) -> bool:
+    """Check if user's auto_update preference is 'always'.
+
+    Reads from USER_PREFERENCES.md in the plugin directory. If set to 'always',
+    returns True to skip the conflict prompt and auto-approve overwrites.
+
+    Args:
+        plugin_dir: Path to the .claude plugin directory (e.g. ~/.amplihack/.claude)
+
+    Returns:
+        True if auto_update preference is 'always', False otherwise
+    """
+    try:
+        prefs_file = Path(plugin_dir) / "context" / "USER_PREFERENCES.md"
+        if not prefs_file.exists():
+            return False
+        content = prefs_file.read_text(encoding="utf-8")
+        lines = content.split("\n")
+        for i, line in enumerate(lines):
+            if line.strip() == "### Auto Update" and i + 2 < len(lines):
+                return lines[i + 2].strip().lower() == "always"
+    except Exception:
+        pass
+    return False
+
+
 def main(argv: list[str] | None = None) -> int:
     """Main entry point for amplihack CLI.
 
@@ -905,11 +931,15 @@ def main(argv: list[str] | None = None) -> int:
         # Plugin architecture: Deploy to centralized location ~/.amplihack/.claude/
         plugin_install_dir = os.path.join(os.path.expanduser("~"), ".amplihack", ".claude")
 
+        # Check user's auto_update preference to skip conflict prompt
+        auto_approve = _read_auto_update_preference(plugin_install_dir)
+
         strategy_manager = SafeCopyStrategy()
         copy_strategy = strategy_manager.determine_target(
             original_target=plugin_install_dir,
             has_conflicts=conflict_result.has_conflicts,
             conflicting_files=conflict_result.conflicting_files,
+            auto_approve=auto_approve,
         )
 
         # Bug #1 Fix: Respect user cancellation (Issue #1940)
