@@ -183,7 +183,9 @@ class SessionStartHook(HookProcessor):
 
         if not blarify_disabled:
             try:
-                self._run_blarify_indexing()
+                from amplihack.memory.kuzu.session_integration import setup_blarify_indexing
+
+                setup_blarify_indexing(self.project_root, self.log, self.save_metric)
             except Exception as e:
                 # Fail gracefully - NEVER block session start
                 self.log(f"Blarify setup failed (non-critical): {e}", "WARNING")
@@ -235,7 +237,9 @@ class SessionStartHook(HookProcessor):
 
         # Inject code graph context if blarify index exists
         try:
-            self._inject_code_graph_context(context_parts)
+            from amplihack.memory.kuzu.session_integration import inject_code_graph_context
+
+            inject_code_graph_context(self.project_root, context_parts, self.log, self.save_metric)
         except Exception as e:
             self.log(f"Code graph context injection failed: {e}", "WARNING")
 
@@ -563,219 +567,6 @@ class SessionStartHook(HookProcessor):
             # Fail-safe: Log but don't break session
             self.log(f"Hook migration failed (non-critical): {e}", "WARNING")
             self.save_metric("hook_migration_error", True)
-
-    def _inject_code_graph_context(self, context_parts: list[str]) -> None:
-        """Inject code graph summary into session context so agents know about it.
-
-        This tells agents that a code graph is available and how to query it.
-        Only runs if a Kuzu database already exists on disk.
-        """
-        # Check if database exists before trying to connect
-        db_path = self.project_root / ".amplihack" / "kuzu_db"
-        if not db_path.exists():
-            return  # No database - nothing to inject
-
-        src_path = self.project_root / "src"
-        if src_path.exists():
-            sys.path.insert(0, str(src_path))
-
-        from amplihack.memory.kuzu.connector import KuzuConnector
-
-        # Try to connect to existing database
-        conn = KuzuConnector(str(db_path))
-        conn.connect()
-
-        # Get stats
-        stats = {}
-        for label, query in [
-            ("files", "MATCH (cf:CodeFile) RETURN count(cf) as cnt"),
-            ("classes", "MATCH (c:CodeClass) RETURN count(c) as cnt"),
-            ("functions", "MATCH (f:CodeFunction) RETURN count(f) as cnt"),
-        ]:
-            try:
-                result = conn.execute_query(query)
-                stats[label] = result[0]["cnt"] if result else 0
-            except Exception:
-                stats[label] = 0
-
-        total = stats.get("files", 0) + stats.get("classes", 0) + stats.get("functions", 0)
-        if total == 0:
-            return  # No data in graph, skip injection
-
-        context_parts.append("\n## Code Graph (Blarify)")
-        context_parts.append(
-            f"A code graph is available with {stats['files']} files, "
-            f"{stats['classes']} classes, and {stats['functions']} functions indexed."
-        )
-        context_parts.append(
-            "To query the code graph, use:\n"
-            "```bash\n"
-            "python -m amplihack.memory.kuzu.query_code_graph stats\n"
-            "python -m amplihack.memory.kuzu.query_code_graph search <name>\n"
-            "python -m amplihack.memory.kuzu.query_code_graph functions --file <path>\n"
-            "python -m amplihack.memory.kuzu.query_code_graph classes --file <path>\n"
-            "python -m amplihack.memory.kuzu.query_code_graph files --pattern <pattern>\n"
-            "python -m amplihack.memory.kuzu.query_code_graph callers <function_name>\n"
-            "python -m amplihack.memory.kuzu.query_code_graph callees <function_name>\n"
-            "```"
-        )
-        context_parts.append(
-            "Use `--json` flag for machine-readable output. "
-            "Use `--limit N` to control result count."
-        )
-
-        self.log(f"Injected code graph context: {stats}")
-        self.save_metric("code_graph_available", True)
-        self.save_metric("code_graph_files", stats["files"])
-
-    def _run_blarify_indexing(self) -> None:
-        """Check if blarify indexing is needed and run it.
-
-        Handles: staleness detection, graceful degradation.
-        Never blocks session start - all errors are caught and logged.
-        """
-        import os
-
-        # Lazy imports to avoid startup cost
-        src_path = self.project_root / "src"
-        if src_path.exists():
-            sys.path.insert(0, str(src_path))
-
-        from amplihack.memory.kuzu.indexing.staleness_detector import check_index_status
-
-        # Check if indexing needed
-        status = check_index_status(self.project_root)
-
-        if not status.needs_indexing:
-            self.log("Blarify index is fresh - no indexing needed")
-            self.save_metric("blarify_index_fresh", True)
-            return
-
-        self.log(f"Blarify indexing needed: {status.reason}")
-
-        # Check if scip-python is available
-        import shutil as _shutil
-
-        if not _shutil.which("scip-python"):
-            self.log("scip-python not found - skipping blarify indexing", "WARNING")
-            print(
-                "\n  Blarify: scip-python not installed. "
-                "Install with: npm install -g @sourcegraph/scip-python",
-                file=sys.stderr,
-            )
-            self.save_metric("blarify_missing_scip", True)
-            return
-
-        # In hook context, stdin is a JSON pipe - can't prompt interactively.
-        # Auto-index in background by default. Use env vars to control behavior:
-        #   AMPLIHACK_BLARIFY_MODE=sync  - run synchronously (blocks session start)
-        #   AMPLIHACK_BLARIFY_MODE=skip  - skip indexing
-        #   (default) - background indexing
-        mode = os.environ.get("AMPLIHACK_BLARIFY_MODE", "background").lower()
-
-        print(f"\n  Blarify: indexing needed ({status.reason})", file=sys.stderr)
-        if status.estimated_files > 0:
-            print(f"  Files: ~{status.estimated_files}", file=sys.stderr)
-
-        if mode == "skip":
-            self.log("User skipped blarify indexing (AMPLIHACK_BLARIFY_MODE=skip)")
-            self.save_metric("blarify_indexing_skipped", True)
-        elif mode == "sync":
-            print("  Mode: synchronous (AMPLIHACK_BLARIFY_MODE=sync)", file=sys.stderr)
-            self._run_sync_indexing()
-        else:
-            print("  Mode: background indexing", file=sys.stderr)
-            self._run_background_indexing()
-
-    def _run_sync_indexing(self) -> None:
-        """Run synchronous blarify indexing.
-
-        Runs to completion without artificial timeout. If the user wants
-        non-blocking behavior, they should choose 'b' for background.
-        """
-        from amplihack.memory.kuzu.connector import KuzuConnector
-        from amplihack.memory.kuzu.indexing.orchestrator import (
-            IndexingConfig,
-            Orchestrator,
-        )
-
-        try:
-            print("\n  Indexing codebase...", file=sys.stderr, flush=True)
-
-            db_path = self.project_root / ".amplihack" / "kuzu_db"
-            db_path.parent.mkdir(parents=True, exist_ok=True)
-
-            connector = KuzuConnector(str(db_path))
-            connector.connect()
-
-            orchestrator = Orchestrator(connector=connector)
-            config = IndexingConfig(max_retries=2)
-
-            result = orchestrator.run(
-                codebase_path=self.project_root,
-                languages=["python", "javascript", "typescript"],
-                background=False,
-                config=config,
-            )
-
-            if result.success:
-                print(
-                    f"\n  Done! Indexed {result.total_files} files, "
-                    f"{result.total_functions} functions\n",
-                    file=sys.stderr,
-                )
-                self.save_metric("blarify_indexing_success", True)
-                self.save_metric("blarify_files_indexed", result.total_files)
-
-                # Link code to memories
-                try:
-                    from amplihack.memory.kuzu.code_graph import KuzuCodeGraph
-
-                    code_graph = KuzuCodeGraph(connector)
-                    link_count = code_graph.link_code_to_memories()
-                    if link_count > 0:
-                        self.log(f"Linked {link_count} memories to code")
-                except Exception as e:
-                    self.log(f"Memory-code linking failed: {e}", "WARNING")
-            else:
-                failed = (
-                    ", ".join(result.failed_languages) if result.failed_languages else "unknown"
-                )
-                print(
-                    f"\n  Indexing completed with errors (failed: {failed})\n",
-                    file=sys.stderr,
-                )
-                self.save_metric("blarify_indexing_partial", True)
-
-        except Exception as e:
-            print(
-                f"\n  Indexing failed: {e}\n  Continuing without code graph.\n",
-                file=sys.stderr,
-            )
-            self.log(f"Blarify indexing failed: {e}", "WARNING")
-            self.save_metric("blarify_indexing_error", True)
-
-    def _run_background_indexing(self) -> None:
-        """Start background blarify indexing."""
-        try:
-            from amplihack.memory.kuzu.indexing.background_indexer import BackgroundIndexer
-
-            indexer = BackgroundIndexer()
-            job = indexer.start_background_job(
-                codebase_path=self.project_root,
-                languages=["python", "javascript", "typescript"],
-                timeout=300,
-            )
-
-            print(
-                f"\n  Background indexing started (job {job.job_id})\n",
-                file=sys.stderr,
-            )
-            self.save_metric("blarify_indexing_background", True)
-
-        except Exception as e:
-            print(f"\n  Background indexing failed: {e}\n", file=sys.stderr)
-            self.log(f"Background indexing failed: {e}", "WARNING")
 
 
 def main():
