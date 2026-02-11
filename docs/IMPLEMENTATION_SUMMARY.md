@@ -28,10 +28,13 @@ with autonomous agentic mode.
 
 ### 1. New CLI Commands
 
-- `amplihack copilot` - Launch GitHub Copilot CLI
+- `amplihack copilot` - Launch GitHub Copilot CLI (skips Claude Code plugin installation)
+- `amplihack codex` - Launch OpenAI Codex (skips Claude Code plugin installation)
+- `amplihack amplifier` - Launch Microsoft Amplifier (skips Claude Code plugin installation)
 - `amplihack claude` - Launch Claude Code (alias for launch)
-- Both support `--auto` flag for autonomous mode
-- Both support `--max-turns N` to control iterations
+- All commands support `--auto` flag for autonomous mode
+- All commands support `--max-turns N` to control iterations
+- Claude Code plugin installation only runs for `launch`, `claude`, and `RustyClawd` commands
 
 ### 2. Auto Mode Orchestrator
 
