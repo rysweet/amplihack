@@ -157,7 +157,15 @@ class BackgroundIndexer:
             log_file: Path to log file
             timeout: Optional timeout in seconds
         """
-        start_time = time.time()
+        # Close inherited stdio so parent process can exit cleanly
+        import os as _os
+
+        try:
+            _os.close(0)  # stdin
+            _os.close(1)  # stdout
+            _os.close(2)  # stderr
+        except OSError:
+            pass
 
         try:
             with open(log_file, "w") as f:
@@ -166,26 +174,38 @@ class BackgroundIndexer:
                 f.write(f"Languages: {', '.join(languages)}\n")
                 f.write(f"Timeout: {timeout}s\n\n")
 
-                # Simulate indexing work
-                # In real implementation, this would call the orchestrator
-                files_indexed = 0
-                completed_languages = []
+                # Run the actual orchestrator
+                from amplihack.memory.kuzu.connector import KuzuConnector
 
-                for language in languages:
-                    # Check timeout
-                    if timeout and (time.time() - start_time) > timeout:
-                        f.write(f"\nTimeout reached after {timeout}s\n")
-                        raise TimeoutError(f"Job timed out after {timeout}s")
+                from .orchestrator import IndexingConfig, Orchestrator
 
-                    f.write(f"Indexing {language}...\n")
-                    # Simulate work
-                    time.sleep(0.1)
-                    files_indexed += 10
-                    completed_languages.append(language)
-                    f.write(f"Completed {language}: {files_indexed} files\n")
+                db_path = codebase_path / ".amplihack" / "kuzu_db"
+                db_path.parent.mkdir(parents=True, exist_ok=True)
 
-                f.write("\nJob completed successfully\n")
-                f.write(f"Total files: {files_indexed}\n")
+                connector = KuzuConnector(str(db_path))
+                connector.connect()
+                orchestrator = Orchestrator(connector=connector)
+
+                config = IndexingConfig(max_retries=2)
+                if timeout:
+                    config.timeout = timeout
+
+                f.write("Running orchestrator...\n")
+                ix_result = orchestrator.run(
+                    codebase_path=codebase_path,
+                    languages=languages,
+                    background=False,
+                    config=config,
+                )
+
+                files_indexed = ix_result.total_files
+                completed_languages = ix_result.completed_languages
+
+                f.write(f"\nJob completed: success={ix_result.success}\n")
+                f.write(f"Files: {ix_result.total_files}, Functions: {ix_result.total_functions}\n")
+                f.write(f"Completed: {completed_languages}\n")
+                if ix_result.failed_languages:
+                    f.write(f"Failed: {ix_result.failed_languages}\n")
 
                 # Store result
                 result = JobResult(

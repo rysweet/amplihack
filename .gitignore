@@ -147,6 +147,13 @@ AGENTS.md
 *.env.litellm
 amplihack_litellm_proxy.env
 
+# Blarify/SCIP indexing artifacts
+index.scip
+.amplihack/kuzu_db
+.amplihack/kuzu_db.wal
+.amplihack/.blarify_jobs/
+empty-env.json
+
 # Common credential files
 credentials.json
 **/credentials.json
