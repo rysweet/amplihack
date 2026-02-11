@@ -644,6 +644,10 @@ Real-time session information displayed at the bottom of Claude Code showing:
   Best practices
 - [Security Context Preservation](https://rysweet.github.io/amplihack/SECURITY_CONTEXT_PRESERVATION/) -
   Context handling
+- [Shell Injection Prevention](docs/security/shell-injection-prevention.md) -
+  Preventing CWE-78 command injection vulnerabilities
+- [Running Integration Tests](docs/howto/run-integration-tests.md) -
+  Execute security validation tests
 
 ### Core Principles
 
