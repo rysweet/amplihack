@@ -51,7 +51,7 @@ class TestShellInjectionPrevention:
         """Verify shell=True is never passed to subprocess.run on Windows."""
         with (
             patch.object(ProcessManager, "is_windows", return_value=True),
-            patch("shutil.which", return_value="C:\\Program Files\\nodejs\\npm.cmd"),
+            patch("amplihack.utils.process.shutil.which", return_value="C:\\Program Files\\nodejs\\npm.cmd"),
             patch("subprocess.run") as mock_run,
         ):
             mock_run.return_value = MagicMock(returncode=0)
