@@ -1,0 +1,10 @@
+# Desktop notifications for long-running operations (OPTIONAL)
+# Platform support: Linux (notify-send), macOS (osascript), Windows (Toast)
+# Trust: HIGH (Microsoft) | Privacy: Local-only, no transmission
+
+name: amplihack-notifications
+version: 1.0.0
+description: Desktop notifications for agent completions and task events
+
+includes:
+  - bundle: git+https://github.com/microsoft/amplifier-bundle-notify@main

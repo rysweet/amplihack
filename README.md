@@ -1,10 +1,12 @@
 # amplihack
 
-Development framework for popular coding agent systems (Claude Code, Github
-Copilot CLI, Microsoft Amplifier, codex) that provides structured dev workflows,
-memory, a package of useful skills and agents, goal-seeking agent generator,
-auto mode, self-improvement with reflection, and commands for getting the most
-out of agentic coding. Unlikely to work on Windows without WSL.
+Multi-language development framework for popular coding agent systems (Claude
+Code, Github Copilot CLI, Microsoft Amplifier, codex) with integrated LSP
+intelligence for Python, TypeScript, JavaScript, and Rust. Provides structured
+dev workflows, code quality tools, persistent memory, 74+ skills and specialized
+agents, goal-seeking agent generator, auto mode, self-improvement with
+reflection, and commands for getting the most out of agentic coding. Unlikely to
+work on Windows without WSL.
 
 **📚 [View Full Documentation](https://rysweet.github.io/amplihack/)**
 
@@ -27,6 +29,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 ### Step 2: Run amplihack
 
 **Option A: Zero-Install** (recommended for first try)
+
 ```bash
 # Launch with Claude Code
 uvx --from git+https://github.com/rysweet/amplihack amplihack claude
@@ -39,6 +42,7 @@ uvx --from git+https://github.com/rysweet/amplihack amplihack copilot
 ```
 
 **Option B: Install Globally** (for frequent use)
+
 ```bash
 # Install once
 uv tool install git+https://github.com/rysweet/amplihack
@@ -49,9 +53,11 @@ amplihack amplifier
 amplihack copilot
 ```
 
-**That's it!** Try asking the **amplihack-guide** agent for help after launching.
+**That's it!** Try asking the **amplihack-guide** agent for help after
+launching.
 
-For more installation options and upgrade instructions, see [Installation](#installation) below.
+For more installation options and upgrade instructions, see
+[Installation](#installation) below.
 
 ---
 
@@ -59,9 +65,11 @@ For more installation options and upgrade instructions, see [Installation](#inst
 
 ### UV Tool (Recommended)
 
-amplihack is designed to work as a UV tool for zero-installation or global installation:
+amplihack is designed to work as a UV tool for zero-installation or global
+installation:
 
 **Option 1: Zero-Install (No installation needed)**
+
 ```sh
 # Use directly without installing
 uvx --from git+https://github.com/rysweet/amplihack amplihack claude
@@ -70,6 +78,7 @@ uvx --from git+https://github.com/rysweet/amplihack amplihack copilot
 ```
 
 **Option 2: Global Install**
+
 ```sh
 # Install once, use anywhere
 uv tool install git+https://github.com/rysweet/amplihack
@@ -81,6 +90,7 @@ amplihack copilot
 ```
 
 **Updating**
+
 ```sh
 # Zero-install: Always uses latest (no update needed)
 uvx --from git+https://github.com/rysweet/amplihack amplihack claude
@@ -138,10 +148,15 @@ uv tool upgrade amplihack
 ### Prerequisites
 
 - MacOS, WSL, or Linux
-- Python 3.2+, Node.js 18+, npm, git
+- Python 3.12+, Node.js 18+, npm, git
 - GitHub CLI (`gh`) for PR/issue management
 - az cli for AzDO and Azure skills
 - uv ([astral.sh/uv](https://docs.astral.sh/uv/))
+- **Language Server Protocol (LSP) servers** for multi-language intelligence:
+  - Python: `pylsp` (included with python-dev bundle)
+  - TypeScript/JavaScript: `typescript-language-server` (included with ts-dev
+    bundle)
+  - Rust: `rust-analyzer` (included with lsp-rust bundle)
 
 For detailed installation instructions, see
 [docs/PREREQUISITES.md](https://rysweet.github.io/amplihack/PREREQUISITES/).
@@ -640,6 +655,9 @@ Real-time session information displayed at the bottom of Claude Code showing:
 
 ### Security
 
+- **[Security Guide](docs/SECURITY.md)** - Bundle security, API keys, data
+  privacy
+- **[Privacy Policy](docs/PRIVACY.md)** - Data handling disclosure
 - [Security Recommendations](https://rysweet.github.io/amplihack/SECURITY_RECOMMENDATIONS/) -
   Best practices
 - [Security Context Preservation](https://rysweet.github.io/amplihack/SECURITY_CONTEXT_PRESERVATION/) -

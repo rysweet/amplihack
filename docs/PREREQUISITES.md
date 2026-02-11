@@ -574,3 +574,314 @@ If you encounter issues not covered in this guide:
 ---
 
 **Last Updated:** 2025-10-01
+
+---
+
+## Language Server Protocol (LSP) Setup
+
+amplihack includes LSP support for Python, TypeScript, JavaScript, and Rust through integrated dev-tools bundles, providing semantic code intelligence alongside code quality checks.
+
+### What is LSP?
+
+Language Server Protocol provides:
+
+- **Go-to-definition**: Jump to symbol definitions
+- **Find references**: See all usages of a symbol
+- **Hover documentation**: View inline documentation
+- **Autocomplete**: Context-aware code completion
+- **Type information**: See inferred types even without annotations
+
+### How LSP is Delivered
+
+LSP capabilities are **bundled with dev-tools** for architectural simplicity:
+
+- **python-dev** → Includes ruff (linting), pyright (type checking), AND pylsp (LSP intelligence)
+- **ts-dev** → Includes eslint (linting), prettier (formatting), AND typescript-language-server (LSP intelligence)
+- **lsp-rust** → Standalone Rust LSP intelligence (until rust-dev bundle exists)
+
+This integrated approach means installing `python-dev` gives you both code quality tools AND code intelligence features.
+
+### Auto-Detection
+
+Language servers are **automatically detected** based on your project files:
+
+```bash
+# Python project (detects .py, pyproject.toml, setup.py)
+# Provided by: python-dev bundle (includes pylsp/pyright)
+
+# TypeScript/JavaScript project (detects .ts, .tsx, .js, package.json)
+# Provided by: ts-dev bundle (includes typescript-language-server)
+
+# Rust project (detects .rs, Cargo.toml)
+# Provided by: lsp-rust bundle (includes rust-analyzer)
+```
+
+### Manual Installation (If Needed)
+
+The dev-tools bundles handle language server installation automatically. However, if you need to install manually:
+
+**Python** (included in python-dev):
+
+```bash
+# Option 1: Python Language Server (pylsp)
+pip install python-lsp-server[all]
+
+# Option 2: Pyright (Microsoft)
+npm install -g pyright
+```
+
+**TypeScript/JavaScript** (included in ts-dev):
+
+```bash
+# TypeScript Language Server
+npm install -g typescript-language-server typescript
+```
+
+**Rust** (standalone bundle):
+
+```bash
+# Rust Analyzer (via rustup)
+rustup component add rust-analyzer
+
+# Or via package manager
+# macOS
+brew install rust-analyzer
+
+# Ubuntu/Debian
+sudo apt install rust-analyzer
+```
+
+### Verify Installation
+
+Check that language servers are available:
+
+```bash
+# Python (from python-dev)
+pylsp --help
+# or
+pyright --version
+
+# TypeScript/JavaScript (from ts-dev)
+typescript-language-server --version
+
+# Rust (from lsp-rust)
+rust-analyzer --version
+```
+
+### Configuration
+
+LSP is configured automatically via dev-tools bundles. No manual configuration needed.
+
+**Custom Configuration** (advanced):
+
+Create `.amplifier/lsp-config.yaml` in your project:
+
+```yaml
+lsp:
+  python:
+    command: pylsp
+    enabled: true
+  typescript:
+    command: typescript-language-server
+    args: [--stdio]
+    enabled: true
+  rust:
+    command: rust-analyzer
+    enabled: true
+```
+
+**Note**: See [docs/DESIGN_DECISION_LSP_INTEGRATION.md](DESIGN_DECISION_LSP_INTEGRATION.md) for the architectural decision to bundle LSP with dev-tools rather than maintaining separate LSP bundles.
+
+---
+
+## API Key Management
+
+amplihack ecosystem bundles may require API keys for external services.
+
+### Best Practices
+
+**1. Use Environment Variables**
+
+Never hardcode API keys in configuration files:
+
+```bash
+# .env file (chmod 600)
+PERPLEXITY_API_KEY=your-key-here
+CUSTOM_PROVIDER_KEY=another-key
+
+# Load in shell
+source .env
+
+# Or use direnv for automatic loading
+echo "export PERPLEXITY_API_KEY=your-key" >> .envrc
+direnv allow
+```
+
+**2. Protect .env Files**
+
+```bash
+# Create with restrictive permissions
+touch .env
+chmod 600 .env
+
+# Add to .gitignore
+echo ".env" >> .gitignore
+echo ".envrc" >> .gitignore
+
+# Verify gitignore
+git check-ignore .env  # Should output: .env
+```
+
+**3. Use Secret Management (Production)**
+
+For production environments, use proper secret management:
+
+```bash
+# Azure Key Vault
+export PERPLEXITY_API_KEY=$(az keyvault secret show \
+  --name perplexity-key \
+  --vault-name my-vault \
+  --query value -o tsv)
+
+# AWS Secrets Manager
+export PERPLEXITY_API_KEY=$(aws secretsmanager get-secret-value \
+  --secret-id perplexity-key \
+  --query SecretString \
+  --output text)
+
+# HashiCorp Vault
+export PERPLEXITY_API_KEY=$(vault kv get \
+  -field=api_key secret/perplexity)
+```
+
+### Required API Keys
+
+**Perplexity Bundle** (optional, for research features):
+
+```bash
+# Get API key from https://www.perplexity.ai/settings/api
+export PERPLEXITY_API_KEY=pplx-xxxxxxxxxx
+```
+
+**GitHub Copilot** (if using GitHub Copilot CLI):
+
+```bash
+# Authenticate via GitHub CLI
+gh auth login
+
+# Copilot uses GitHub authentication automatically
+```
+
+### Verify API Keys
+
+Check that API keys are set:
+
+```bash
+# Check if key is set (doesn't show value)
+env | grep -i "API_KEY"
+
+# Test Perplexity API (if using perplexity bundle)
+curl -X POST https://api.perplexity.ai/chat/completions \
+  -H "Authorization: Bearer $PERPLEXITY_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "sonar", "messages": [{"role": "user", "content": "test"}]}'
+```
+
+### Security Warnings
+
+⚠️ **Never commit secrets to git**:
+
+```bash
+# Install git-secrets to prevent accidental commits
+brew install git-secrets  # macOS
+# or from https://github.com/awslabs/git-secrets
+
+# Set up hooks
+git secrets --install
+git secrets --register-aws
+```
+
+⚠️ **Rotate keys regularly**:
+
+```bash
+# Set reminders for quarterly key rotation
+echo "Rotate API keys: $(date -d '+90 days' '+%Y-%m-%d' 2>/dev/null || date -v+90d '+%Y-%m-%d')" >> ~/.amplifier/security-reminders.txt
+```
+
+---
+
+## Multi-Language Development
+
+amplihack supports polyglot development with integrated tooling:
+
+### Language Support Matrix
+
+| Language   | LSP Bundle       | Dev Tools        | Auto-Detection    |
+| ---------- | ---------------- | ---------------- | ----------------- |
+| Python     | `lsp-python`     | `python-dev`     | ✅ .py files      |
+| TypeScript | `lsp-typescript` | `ts-dev`         | ✅ .ts/.tsx files |
+| JavaScript | `lsp-typescript` | `ts-dev`         | ✅ .js files      |
+| Rust       | `lsp-rust`       | (built-in cargo) | ✅ .rs files      |
+
+### Setting Up Multi-Language Projects
+
+**Example: Python + TypeScript Project**
+
+```bash
+# Project structure
+my-project/
+├── backend/          # Python
+│   ├── *.py
+│   └── pyproject.toml
+└── frontend/         # TypeScript
+    ├── *.ts
+    └── package.json
+
+# Both language servers auto-detect and run simultaneously
+# No additional configuration needed
+```
+
+### Language-Specific Tools
+
+**Python**:
+
+```bash
+# Install dev tools
+pip install ruff pyright
+
+# Run quality checks
+ruff check .
+pyright .
+```
+
+**TypeScript/JavaScript**:
+
+```bash
+# Install dev tools
+npm install -D eslint prettier typescript
+
+# Run quality checks
+npx eslint .
+npx tsc --noEmit
+```
+
+**Rust**:
+
+```bash
+# Install dev tools (via rustup)
+rustup component add clippy rustfmt
+
+# Run quality checks
+cargo clippy
+cargo fmt --check
+```
+
+---
+
+**Related Documentation**:
+
+- [SECURITY.md](./SECURITY.md) - Security best practices and API key management
+- [PRIVACY.md](./PRIVACY.md) - Data handling and privacy disclosure
+- [Plugin Installation](./plugin/INSTALLATION.md) - LSP auto-detection in plugin mode
+
+**Documentation Updated**: 2026-02-11

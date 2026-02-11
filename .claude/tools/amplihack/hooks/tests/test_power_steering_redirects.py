@@ -414,6 +414,7 @@ class TestRedirectIntegration:
             # Mock SDK_AVAILABLE to use heuristic checkers (Issue #2196)
             # Without this, SDK may return unexpected results for test data
             from unittest.mock import patch
+
             with patch("power_steering_checker.SDK_AVAILABLE", False):
                 checker = PowerSteeringChecker(project_root)
                 session_id = "test_integration_001"

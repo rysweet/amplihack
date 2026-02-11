@@ -1,0 +1,10 @@
+# Rust LSP intelligence via rust-analyzer
+# Standalone until rust-dev bundle available
+# Trust: HIGH (Microsoft) | Privacy: Local-only, transient
+
+name: amplihack-lsp-rust
+version: 1.0.0
+description: Rust semantic code intelligence via rust-analyzer
+
+includes:
+  - bundle: git+https://github.com/microsoft/amplifier-bundle-lsp-rust@main

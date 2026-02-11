@@ -1,8 +1,8 @@
 ---
 bundle:
   name: amplihack
-  version: 1.0.0
-  description: "A set of recipes, agents, tools, hooks, and skills from the amplihack toolset which are designed to provide a more complete engineering system on top of Amplifier."
+  version: 0.8.0
+  description: "Comprehensive multi-language development framework for Amplifier with LSP intelligence (Python, TypeScript, JavaScript, Rust), integrated code quality tools, persistent memory, and research capabilities. Provides recipes, specialized agents, hooks, and 74+ skills for structured workflows, autonomous execution, and philosophy-driven development."
 
 includes:
   # Note: We include the recipes BEHAVIOR bundle, not the main bundle
@@ -20,6 +20,24 @@ includes:
   # Stories bundle for autonomous storytelling - transforms project activity into content
   # Provides: 4 output formats (HTML, Excel, Word, PDF), 11 specialist agents, 4 automated recipes
   - bundle: git+https://github.com/microsoft/amplifier-bundle-stories@main
+
+  # Multi-language development tools with integrated LSP intelligence
+  # Provides: Python (ruff, pyright, pylsp) + TypeScript (eslint, prettier, tsserver)
+  # Architecture: LSP is bundled WITH dev-tools (see docs/DESIGN_DECISION_LSP_INTEGRATION.md)
+  - bundle: behaviors/dev-tools.yaml
+
+  # Rust LSP intelligence (standalone until rust-dev bundle exists)
+  # Provides: rust-analyzer for semantic code navigation and type intelligence
+  - bundle: behaviors/lsp-rust.yaml
+
+  # Community extensions: persistent memory + deep research capabilities
+  # ⚠️ Security: Medium trust level (community-maintained, external API calls)
+  # See docs/SECURITY.md and docs/PRIVACY.md for data handling details
+  - bundle: behaviors/community.yaml
+
+  # Optional: Desktop notification system for long-running operations
+  # Enable if you want alerts when agents complete or background tasks finish
+  # - bundle: behaviors/notifications.yaml
 
 # Configure tool-skills to find skills
 # The amplihack launcher copies skills to .claude/skills in cwd during setup

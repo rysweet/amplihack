@@ -54,6 +54,35 @@ uvx --from git+https://github.com/rysweet/amplihack amplihack copilot
 | Workflows           | ✅ All      | ✅ All    | ✅ All      | ⚠️ Limited |
 | Auto Mode           | ✅ Yes      | ✅ Yes    | ✅ Yes      | ⚠️ Limited |
 
+**Language Support Matrix:**
+
+amplihack provides comprehensive multi-language support through integrated dev-tools bundles that combine code quality AND code intelligence:
+
+| Language       | Delivered Via | LSP Intelligence      | Code Quality | Type Checking    | Formatting  | Auto-Fix |
+| -------------- | ------------- | --------------------- | ------------ | ---------------- | ----------- | -------- |
+| **Python**     | python-dev    | ✅ pylsp/pyright      | ✅ ruff      | ✅ pyright       | ✅ ruff     | ✅ Yes   |
+| **TypeScript** | ts-dev        | ✅ ts-language-server | ✅ eslint    | ✅ tsserver      | ✅ prettier | ✅ Yes   |
+| **JavaScript** | ts-dev        | ✅ ts-language-server | ✅ eslint    | ✅ tsserver      | ✅ prettier | ✅ Yes   |
+| **Rust**       | lsp-rust\*    | ✅ rust-analyzer      | ✅ clippy    | ✅ rust-analyzer | ✅ rustfmt  | ✅ Yes   |
+
+_\* Rust uses standalone lsp-rust bundle until rust-dev becomes available_
+
+**Integrated Architecture:**
+
+- **python-dev** → All Python tooling together (ruff + pyright + pylsp)
+- **ts-dev** → All TypeScript/JavaScript tooling together (eslint + prettier + tsserver + typescript-language-server)
+- **lsp-rust** → Rust code intelligence (rust-analyzer)
+
+**Features Included:**
+
+- **LSP Intelligence**: Go-to-definition, find references, hover documentation, autocomplete
+- **Code Quality**: Linting, code smell detection, best practice enforcement
+- **Type Checking**: Static type analysis and inference
+- **Formatting**: Automatic code formatting per language conventions
+- **Auto-Fix**: One-command fixes for common linting/formatting issues
+
+_See [DESIGN_DECISION_LSP_INTEGRATION.md](DESIGN_DECISION_LSP_INTEGRATION.md) for architectural rationale_
+
 **New to amplihack?** After launching, try the interactive tutorial:
 
 ```
@@ -567,6 +596,8 @@ Quick references, guides, and additional resources.
 - [Doc Graph Quick Reference](doc_graph_quick_reference.md) - Navigate documentation
 <!-- Neo4j Quick Reference removed - now using Kuzu embedded database -->
 - [A/B Test Quick Reference](memory/AB_TEST_QUICK_REFERENCE.md) - Test results
+- [Security Guide](SECURITY.md) - Comprehensive security guide for ecosystem bundles
+- [Privacy Policy](PRIVACY.md) - Data handling and privacy disclosure
 
 ### Developing amplihack
 

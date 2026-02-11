@@ -1,0 +1,11 @@
+# Multi-language development tools with integrated LSP intelligence
+# Provides: Python (ruff, pyright, pylsp) + TypeScript (eslint, prettier, tsserver) code quality tools
+# Trust: HIGH (Microsoft) | Privacy: Local-only, transient
+
+name: amplihack-dev-tools
+version: 1.0.0
+description: Python and TypeScript code quality tools with LSP intelligence
+
+includes:
+  - bundle: git+https://github.com/microsoft/amplifier-bundle-python-dev@main
+  - bundle: git+https://github.com/microsoft/amplifier-bundle-ts-dev@main
