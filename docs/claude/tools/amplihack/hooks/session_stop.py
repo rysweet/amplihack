@@ -29,9 +29,8 @@ def main():
     """Capture session learnings and store in Neo4j."""
     try:
         # Import memory system
-        from amplihack.memory.neo4j.agent_integration import extract_and_store_learnings
-
         from amplihack.memory.neo4j import lifecycle
+        from amplihack.memory.neo4j.agent_integration import extract_and_store_learnings
 
         # Check if Neo4j is available
         if not lifecycle.is_neo4j_running():
