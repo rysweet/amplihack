@@ -9,24 +9,92 @@ out of agentic coding. Unlikely to work on Windows without WSL.
 **📚 [View Full Documentation](https://rysweet.github.io/amplihack/)**
 
 ```sh
-# Launch amplihack with Claude Code
+# Quick start - see below for full Quick Start guide
 uvx --from git+https://github.com/rysweet/amplihack amplihack claude
 ```
 
-```sh
-# Launch amplihack with Microsoft Amplifier (https://github.com/microsoft/amplifier)
-uvx --from git+https://github.com/rysweet/amplihack amplihack amplifier
+**→ Jump to [Quick Start](#quick-start---rapid-setup) for rapid setup**
+
+## Quick Start - Rapid Setup
+
+### Step 1: Install UV
+
+```bash
+# macOS/Linux/WSL
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-```sh
-Launch AMplihack with Github Copilot CLI
+### Step 2: Run amplihack
+
+**Option A: Zero-Install** (recommended for first try)
+```bash
+# Launch with Claude Code
+uvx --from git+https://github.com/rysweet/amplihack amplihack claude
+
+# Launch with Microsoft Amplifier
+uvx --from git+https://github.com/rysweet/amplihack amplihack amplifier
+
+# Launch with GitHub Copilot
 uvx --from git+https://github.com/rysweet/amplihack amplihack copilot
 ```
 
-Try asking the **amplihack-guide** agent for help.
+**Option B: Install Globally** (for frequent use)
+```bash
+# Install once
+uv tool install git+https://github.com/rysweet/amplihack
+
+# Then use directly
+amplihack claude
+amplihack amplifier
+amplihack copilot
+```
+
+**That's it!** Try asking the **amplihack-guide** agent for help after launching.
+
+For more installation options and upgrade instructions, see [Installation](#installation) below.
+
+---
+
+## Installation
+
+### UV Tool (Recommended)
+
+amplihack is designed to work as a UV tool for zero-installation or global installation:
+
+**Option 1: Zero-Install (No installation needed)**
+```sh
+# Use directly without installing
+uvx --from git+https://github.com/rysweet/amplihack amplihack claude
+uvx --from git+https://github.com/rysweet/amplihack amplihack amplifier
+uvx --from git+https://github.com/rysweet/amplihack amplihack copilot
+```
+
+**Option 2: Global Install**
+```sh
+# Install once, use anywhere
+uv tool install git+https://github.com/rysweet/amplihack
+
+# Then use directly
+amplihack claude
+amplihack amplifier
+amplihack copilot
+```
+
+**Updating**
+```sh
+# Zero-install: Always uses latest (no update needed)
+uvx --from git+https://github.com/rysweet/amplihack amplihack claude
+
+# Global install: Upgrade to latest
+uv tool upgrade amplihack
+```
 
 ## Table of Contents
 
+- [Quick Start - Rapid Setup](#quick-start---rapid-setup)
+- [Installation](#installation)
+  - [UV Tool (Recommended)](#uv-tool-recommended)
+  - [Updating](#updating)
 - [Quick Start](#quick-start)
   - [Prerequisites](#prerequisites)
   - [Basic Usage](#basic-usage)
