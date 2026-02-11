@@ -6,6 +6,7 @@ and step-type inference.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import yaml
@@ -21,6 +22,24 @@ class RecipeParser:
     - Inference from ``agent`` or ``command`` field presence
     - Validation of required fields and uniqueness constraints
     """
+
+    def parse_file(self, path: str | Path) -> Recipe:
+        """Parse a recipe YAML file from disk.
+
+        Args:
+            path: Path to a ``.yaml`` file.
+
+        Returns:
+            A fully populated Recipe object.
+
+        Raises:
+            FileNotFoundError: If the file does not exist.
+            ValueError: If the file content is invalid.
+        """
+        file_path = Path(path)
+        if not file_path.is_file():
+            raise FileNotFoundError(f"Recipe file not found: {file_path}")
+        return self.parse(file_path.read_text(encoding="utf-8"))
 
     def parse(self, yaml_content: str) -> Recipe:
         """Parse a YAML string into a Recipe.
