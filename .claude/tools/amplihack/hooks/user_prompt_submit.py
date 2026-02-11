@@ -4,8 +4,12 @@ UserPromptSubmit hook - Inject user preferences on every message.
 Ensures preferences persist across all conversation turns in REPL mode.
 """
 
+__all__ = ["UserPromptSubmitHook", "main"]
+
+import json
 import os
 import re
+import stat
 import sys
 from pathlib import Path
 from typing import Any
@@ -13,6 +17,71 @@ from typing import Any
 # Clean import structure
 sys.path.insert(0, str(Path(__file__).parent))
 from hook_processor import HookProcessor
+
+# ============================================================================
+# PERFORMANCE: Pre-compiled regex patterns (module-level constants)
+# ============================================================================
+# Compile once at import time instead of per-message to improve performance
+
+# Session ID validation (alphanumeric, underscore, hyphen only)
+_SESSION_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]+$")
+
+# Workflow reminder preference detection
+_WORKFLOW_REMINDER_PATTERN = re.compile(r"Workflow Reminders:\s*(\w+)", re.IGNORECASE)
+
+# Preference extraction patterns (compiled once, reused per preference)
+_PREFERENCE_PATTERNS = {
+    "Communication Style": re.compile(r"### Communication Style\s*\n\s*([^\n]+)"),
+    "Verbosity": re.compile(r"### Verbosity\s*\n\s*([^\n]+)"),
+    "Collaboration Style": re.compile(r"### Collaboration Style\s*\n\s*([^\n]+)"),
+    "Update Frequency": re.compile(r"### Update Frequency\s*\n\s*([^\n]+)"),
+    "Priority Type": re.compile(r"### Priority Type\s*\n\s*([^\n]+)"),
+    "Preferred Languages": re.compile(r"### Preferred Languages\s*\n\s*([^\n]+)"),
+    "Coding Standards": re.compile(r"### Coding Standards\s*\n\s*([^\n]+)"),
+    "Workflow Preferences": re.compile(r"### Workflow Preferences\s*\n\s*([^\n]+)"),
+}
+
+# ============================================================================
+# PERFORMANCE: Static constants (avoid runtime construction)
+# ============================================================================
+
+# Workflow reminder template (static, never changes)
+_WORKFLOW_REMINDER_TEMPLATE = """⚙️ **Workflow Classification Reminder**
+
+Consider using structured workflows for complex tasks:
+• Use `recipes` tool to execute `default-workflow.yaml` for features/bugs/refactoring
+• Workflows provide: analysis → design → implementation → review → test phases
+• Avoid jumping directly to implementation without design phase
+
+**How to use**:
+  `recipes(operation="execute", recipe_path="@recipes:default-workflow.yaml")`
+
+Or ask me: "Run the default workflow for this feature"
+
+Available via: recipes tool with default-workflow.yaml"""
+
+# Direction change keywords (immutable tuple for faster iteration)
+_DIRECTION_KEYWORDS = (
+    "now let's",
+    "next",
+    "different topic",
+    "moving on",
+    "switching to",
+)
+
+# Implementation keywords (immutable tuple for faster iteration)
+_IMPLEMENTATION_KEYWORDS = (
+    "implement",
+    "build",
+    "create feature",
+    "add",
+    "develop",
+    "write code",
+)
+
+# Workflow reminder enabled values (frozenset for O(1) lookup)
+_ENABLED_VALUES = frozenset({"enabled", "yes", "on", "true"})
+_DISABLED_VALUES = frozenset({"disabled", "no", "off", "false"})
 
 # Import path utilities
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -32,6 +101,8 @@ class UserPromptSubmitHook(HookProcessor):
         self._cache_timestamp: float | None = None
         self._amplihack_cache: str | None = None
         self._amplihack_cache_timestamp: tuple[float, float] | None = None
+        # Workflow reminder state
+        self._workflow_state_dir: Path | None = None
 
     def find_user_preferences(self) -> Path | None:
         """Find USER_PREFERENCES.md file using FrameworkPathResolver or fallback."""
@@ -66,27 +137,13 @@ class UserPromptSubmitHook(HookProcessor):
         """
         preferences = {}
 
-        # Key preferences to extract (aligned with session_start.py)
-        key_prefs = [
-            "Communication Style",
-            "Verbosity",
-            "Collaboration Style",
-            "Update Frequency",
-            "Priority Type",
-            "Preferred Languages",
-            "Coding Standards",
-            "Workflow Preferences",
-        ]
-
-        # Extract each preference using regex pattern
-        for pref_name in key_prefs:
-            # Pattern: ### Preference Name\n\nvalue
-            pattern = rf"### {re.escape(pref_name)}\s*\n\s*([^\n]+)"
-            match = re.search(pattern, content)
+        # Use pre-compiled patterns for better performance
+        for pref_name, pattern in _PREFERENCE_PATTERNS.items():
+            match = pattern.search(content)
             if match:
                 value = match.group(1).strip()
-                # Skip empty or placeholder values
-                if value and value not in ["", "(not set)", "not set"]:
+                # Skip empty or placeholder values (tuple for faster membership test)
+                if value and value not in ("", "(not set)", "not set"):
                     preferences[pref_name] = value
 
         # Extract learned patterns (brief mention only)
@@ -180,8 +237,291 @@ class UserPromptSubmitHook(HookProcessor):
             return preferences
 
         except Exception as e:
-            self.log(f"Error reading preferences: {e}", "WARNING")
-            return {}
+            self.log(f"Error reading preferences: {e}", "ERROR")
+            self.save_metric("preferences_error", 1)
+            return {}  # Return empty dict - caller will skip injection
+
+    def _validate_session_id(self, session_id: str) -> bool:
+        """Validate session ID to prevent path traversal attacks.
+
+        Args:
+            session_id: Session ID to validate
+
+        Returns:
+            True if session ID is valid, False otherwise
+        """
+        # Use pre-compiled pattern for better performance
+        return bool(_SESSION_ID_PATTERN.match(session_id))
+
+    def _init_workflow_state_dir(self) -> None:
+        """Initialize workflow state directory with secure permissions."""
+        if self._workflow_state_dir is not None:
+            return  # Already initialized
+
+        try:
+            # Get runtime directory (set by parent HookProcessor)
+            runtime_dir = getattr(self, "runtime_dir", None)
+            if runtime_dir is None:
+                # Fallback for test environments
+                runtime_dir = Path.home() / ".amplifier" / "runtime" / "logs"
+                runtime_dir.mkdir(parents=True, exist_ok=True)
+
+            # Create classification_state subdirectory
+            state_dir = runtime_dir / "classification_state"
+            state_dir.mkdir(parents=True, exist_ok=True)
+
+            # Set secure permissions (0o700 - owner only)
+            os.chmod(state_dir, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
+
+            self._workflow_state_dir = state_dir
+            self.log(f"Initialized workflow state directory: {state_dir}")
+        except Exception as e:
+            self.log(f"Failed to initialize workflow state directory: {e}", "ERROR")
+            self.save_metric("workflow_state_init_error", 1)
+            # Set to None to indicate failure
+            self._workflow_state_dir = None
+
+    def _get_workflow_state_file(self, session_id: str) -> Path | None:
+        """Get workflow state file path with validation.
+
+        Args:
+            session_id: Session ID
+
+        Returns:
+            Path to state file or None if validation fails
+        """
+        # Validate session ID first (security)
+        if not self._validate_session_id(session_id):
+            self.log(f"Invalid session ID rejected: {session_id}", "WARNING")
+            self.save_metric("workflow_security_session_id_rejected", 1)
+            return None
+
+        # Ensure state directory is initialized
+        if self._workflow_state_dir is None:
+            self._init_workflow_state_dir()
+
+        if self._workflow_state_dir is None:
+            return None  # Initialization failed
+
+        # Build state file path
+        state_file = self._workflow_state_dir / f"{session_id}.json"
+
+        # Additional security: verify path is inside state directory (prevent traversal)
+        try:
+            state_file.resolve().relative_to(self._workflow_state_dir.resolve())
+        except ValueError:
+            self.log(f"Path traversal attempt blocked: {session_id}", "WARNING")
+            self.save_metric("workflow_security_path_traversal_blocked", 1)
+            return None
+
+        return state_file
+
+    def _safe_json_load(self, file_path: Path) -> dict[str, Any] | None:
+        """Safely load and validate JSON from file.
+
+        Args:
+            file_path: Path to JSON file
+
+        Returns:
+            Parsed dictionary or None if invalid
+        """
+        try:
+            content = file_path.read_text(encoding="utf-8")
+            data = json.loads(content)
+
+            # Validate it's a dictionary
+            if not isinstance(data, dict):
+                self.log(f"Invalid JSON structure in {file_path}: not a dict", "WARNING")
+                return None
+
+            return data
+        except json.JSONDecodeError as e:
+            self.log(f"Invalid JSON in {file_path}: {e}", "WARNING")
+            self.save_metric("workflow_json_parse_error", 1)
+            return None
+        except Exception as e:
+            self.log(f"Error reading state file {file_path}: {e}", "WARNING")
+            return None
+
+    def _is_workflow_reminder_enabled(self) -> bool:
+        """Check if workflow reminders are enabled in user preferences.
+
+        Returns:
+            True if enabled (default), False if disabled
+        """
+        try:
+            pref_file = self.find_user_preferences()
+            if not pref_file or not pref_file.exists():
+                return True  # Default: enabled
+
+            content = pref_file.read_text(encoding="utf-8")
+
+            # Use pre-compiled pattern for better performance
+            match = _WORKFLOW_REMINDER_PATTERN.search(content)
+
+            if not match:
+                return True  # Not specified, default to enabled
+
+            value = match.group(1).lower()
+
+            # Use frozensets for O(1) membership lookup
+            if value in _ENABLED_VALUES:
+                return True
+            elif value in _DISABLED_VALUES:
+                return False
+            else:
+                # Unknown value, default to enabled
+                self.log(
+                    f"Unknown workflow reminder preference: {value}, defaulting to enabled",
+                    "WARNING",
+                )
+                return True
+        except Exception as e:
+            self.log(f"Error checking workflow reminder preference: {e}", "ERROR")
+            self.save_metric("workflow_preference_check_error", 1)
+            return True  # Default to enabled on error
+
+    def _is_recipe_active(self) -> bool:
+        """Check if a recipe is currently active.
+
+        Returns:
+            True if recipe is active, False otherwise
+        """
+        try:
+            # Check environment variables
+            if os.environ.get("AMPLIFIER_RECIPE_ACTIVE") == "true":
+                return True
+            if os.environ.get("RECIPE_SESSION"):
+                return True
+
+            # Check for recipe lock file (runtime_dir or fallback to home)
+            session_id = self.get_session_id()
+            runtime_dir = getattr(self, "runtime_dir", None)
+            lock_dir = (
+                runtime_dir / "recipe_locks"
+                if runtime_dir
+                else Path.home() / ".amplifier" / "runtime" / "recipe_locks"
+            )
+            lock_file = lock_dir / f"{session_id}.lock"
+            if lock_file.exists():
+                return True
+
+            return False
+        except Exception as e:
+            self.log(f"Error checking recipe active status: {e}", "ERROR")
+            self.save_metric("recipe_check_error", 1)
+            return False  # Fail-safe: assume not active
+
+    def _is_new_workflow_topic(self, prompt: str, turn_number: int) -> bool:
+        """Detect if this is a new workflow topic requiring reminder.
+
+        Args:
+            prompt: User's message
+            turn_number: Turn number (0-indexed)
+
+        Returns:
+            True if new topic detected
+        """
+        try:
+            # First message detection (turn 0)
+            if turn_number == 0:
+                return True
+
+            # Use pre-lowercased prompt for faster keyword matching
+            prompt_lower = prompt.lower()
+
+            # Check for direction change (using static tuples)
+            for keyword in _DIRECTION_KEYWORDS:
+                if keyword in prompt_lower:
+                    return True
+
+            # Check for implementation keywords (using static tuples)
+            for keyword in _IMPLEMENTATION_KEYWORDS:
+                if keyword in prompt_lower:
+                    # Check if we recently classified (caching)
+                    session_id = self.get_session_id()
+                    last_turn = self._get_last_classified_turn(session_id)
+
+                    # If classified within last 3 turns, skip
+                    if last_turn is not None and turn_number - last_turn < 3:
+                        return False
+
+                    # Implementation keyword found and no recent classification
+                    return True
+            # Not a new topic
+            return False
+        except Exception as e:
+            self.log(f"Error detecting new workflow topic: {e}", "ERROR")
+            self.save_metric("workflow_topic_detection_error", 1)
+            return False  # Fail-safe: don't inject on error
+
+    def _get_last_classified_turn(self, session_id: str) -> int | None:
+        """Get last classified turn number from state file.
+
+        Args:
+            session_id: Session ID
+
+        Returns:
+            Last classified turn number or None if no state exists
+        """
+        try:
+            state_file = self._get_workflow_state_file(session_id)
+            if not state_file or not state_file.exists():
+                return None
+
+            state = self._safe_json_load(state_file)
+            if not state:
+                return None
+
+            last_turn = state.get("last_classified_turn", -1)
+            return last_turn if isinstance(last_turn, int) else None
+        except Exception as e:
+            self.log(f"Error reading workflow state: {e}", "ERROR")
+            self.save_metric("workflow_state_read_error", 1)
+            return None
+
+    def _save_workflow_classification_state(self, session_id: str, turn: int) -> None:
+        """Save workflow classification state atomically.
+
+        Args:
+            session_id: Session ID
+            turn: Turn number
+        """
+        try:
+            state_file = self._get_workflow_state_file(session_id)
+            if not state_file:
+                return  # Validation failed
+
+            # Build state data
+            state = {
+                "last_classified_turn": turn,
+                "session_id": session_id,
+            }
+
+            # Atomic write pattern: write to .tmp, chmod, rename
+            tmp_file = state_file.with_suffix(".tmp")
+            tmp_file.write_text(json.dumps(state), encoding="utf-8")
+
+            # Set secure permissions (0o600 - owner read/write only)
+            os.chmod(tmp_file, stat.S_IRUSR | stat.S_IWUSR)
+
+            # Atomic rename
+            tmp_file.rename(state_file)
+
+            self.log(f"Saved workflow classification state: turn {turn}")
+        except Exception as e:
+            self.log(f"Error saving workflow classification state: {e}", "ERROR")
+            self.save_metric("workflow_state_save_error", 1)
+            # Non-fatal - continue
+
+    def _build_workflow_reminder(self) -> str:
+        """Build workflow reminder text (static template).
+
+        Returns:
+            Formatted reminder text (~110 tokens)
+        """
+        # Use pre-built static template (no runtime construction)
+        return _WORKFLOW_REMINDER_TEMPLATE
 
     def _inject_amplihack_if_different(self) -> str:
         """Inject AMPLIHACK.md contents if it differs from CLAUDE.md.
@@ -251,7 +591,8 @@ class UserPromptSubmitHook(HookProcessor):
 
         except Exception as e:
             # Don't fail the hook if this doesn't work
-            self.log(f"Could not check AMPLIHACK.md vs CLAUDE.md: {e}", "WARNING")
+            self.log(f"Could not check AMPLIHACK.md vs CLAUDE.md: {e}", "ERROR")
+            self.save_metric("amplihack_injection_error", 1)
             return ""
 
     def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
@@ -350,13 +691,50 @@ class UserPromptSubmitHook(HookProcessor):
                 self.save_metric("agents_detected", len(agent_types))
 
         except Exception as e:
-            self.log(f"Memory injection failed (non-fatal): {e}", "WARNING")
+            self.log(f"Memory injection failed (non-fatal): {e}", "ERROR")
+            self.save_metric("agent_memory_error", 1)
 
         # 3. Inject AMPLIHACK.md framework instructions (if CLAUDE.md differs)
         amplihack_context = self._inject_amplihack_if_different()
         if amplihack_context:
             context_parts.append(amplihack_context)
             self.log("Injected AMPLIHACK.md framework instructions")
+
+        # 4. Inject workflow reminder (if appropriate)
+        try:
+            # Check if workflow reminders are enabled
+            if not self._is_workflow_reminder_enabled():
+                self.log("Workflow reminders disabled via user preferences")
+                self.save_metric("workflow_reminder_disabled", 1)
+            # Check if recipe is active (skip during recipe execution)
+            elif self._is_recipe_active():
+                self.log("Recipe active - skipping workflow reminder")
+                self.save_metric("workflow_reminder_skipped_recipe", 1)
+            else:
+                # Check if this is a new workflow topic
+                turn_count = input_data.get("turnCount", 0)
+                if self._is_new_workflow_topic(user_prompt, turn_count):
+                    # Initialize state directory if needed
+                    self._init_workflow_state_dir()
+
+                    # Inject reminder
+                    reminder = self._build_workflow_reminder()
+                    context_parts.append(reminder)
+
+                    # Save state
+                    session_id = self.get_session_id()
+                    self._save_workflow_classification_state(session_id, turn_count)
+
+                    # Log and metrics
+                    self.log(f"Injected workflow reminder at turn {turn_count}")
+                    self.save_metric("workflow_reminder_injected", 1)
+                else:
+                    self.log("Follow-up message - skipping workflow reminder")
+                    self.save_metric("workflow_reminder_skipped_followup", 1)
+        except Exception as e:
+            self.log(f"Workflow reminder injection failed (non-fatal): {e}", "WARNING")
+            self.save_metric("workflow_reminder_error", 1)
+            # Continue without failing hook
 
         # Combine all context parts
         full_context = "\n\n".join(context_parts)

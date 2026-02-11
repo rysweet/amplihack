@@ -2,6 +2,26 @@
 """
 Workflow Classification Reminder Hook - System reminder for topic boundary classification.
 
+⚠️ DEPRECATION NOTICE (2026-02-11):
+This standalone hook has been DEPRECATED in favor of integrated workflow reminder
+functionality in user_prompt_submit.py. The workflow reminder logic has been migrated
+to consolidate all context injection into a single hook, following the established
+pattern for user preferences and AMPLIHACK.md framework injection.
+
+This file is kept for backward compatibility but will be removed in a future version.
+New installations should rely on user_prompt_submit.py for workflow reminders.
+
+Migration notes:
+- Workflow reminder now appears as Section 4 in user_prompt_submit.py context injection
+- All detection logic (_is_new_workflow_topic) migrated with enhanced security
+- State management moved to same directory structure (~/.amplifier/runtime/logs/classification_state/)
+- User preference control available via USER_PREFERENCES.md "Workflow Reminders: enabled/disabled"
+- Recipe detection enhanced with multi-tier fallback (env vars, lock files, fail-safe)
+
+---
+
+ORIGINAL DOCUMENTATION (for reference):
+
 Injects a system reminder when a new topic is detected, prompting the agent to classify
 the request into the appropriate workflow (Q&A, Investigation, or Default).
 

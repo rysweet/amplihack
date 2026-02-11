@@ -54,7 +54,7 @@ always
 
 ### Workflow Preferences
 
-(not set)
+Workflow Reminders: enabled
 
 ### Workflow Configuration
 
