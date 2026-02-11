@@ -530,6 +530,7 @@ Fix common issues and learn from past solutions.
 - [Configure Memory Consent](howto/configure-memory-consent.md) - Customize prompt behavior, timeouts, and CI/CD integration
 - [Configure Power-Steering Merge Preferences](howto/power-steering-merge-preferences.md) - Set up merge approval workflow
 - [Run Integration Tests](howto/run-integration-tests.md) - Execute security and integration test suites
+- [Using Secure Subprocess Execution](howto/using-secure-subprocess.md) - Prevent shell injection vulnerabilities (CWE-78)
 - [Platform Bridge Quick Start](tutorials/platform-bridge-quickstart.md) - Learn the basics in 10 minutes
 - [Platform Bridge Workflows](howto/platform-bridge-workflows.md) - Common workflows for GitHub and Azure DevOps
 
