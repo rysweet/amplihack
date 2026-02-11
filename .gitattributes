@@ -2,6 +2,7 @@
 # Ensure Python files always use LF (Unix) line endings
 *.py text eol=lf
 *.sh text eol=lf
+Makefile text eol=lf
 
 # Let git handle line endings for other text files
 * text=auto
