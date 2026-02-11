@@ -9,7 +9,7 @@ Code graph provides visual and queryable representations of your codebase struct
 ## Prerequisites
 
 - Amplihack installed and configured
-- Python 3.11+ with KuzuDB support
+- Python 3.11+ with Kuzu support
 - Git repository (commands analyze the current repo)
 
 ## Quick Commands
@@ -42,7 +42,7 @@ Code graph provides visual and queryable representations of your codebase struct
 **What happens:**
 
 - Scans all Python files in your repository
-- Builds a KuzuDB graph database at `~/.amplihack/memory_kuzu.db`
+- Builds a Kuzu graph database at `~/.amplihack/memory_kuzu.db`
 - Extracts modules, functions, classes, imports
 - Progress: "Indexing codebase... Found 127 modules, 543 functions"
 
@@ -136,7 +136,7 @@ Opening in default image viewer...
 
 **"Graph too large"** → Use `/code-graph-core` or filter specific modules
 
-**"Missing dependencies"** → Install with `pip install kuzudb networkx matplotlib`
+**"Missing dependencies"** → Install with `pip install kuzu networkx matplotlib`
 
 **Empty graph** → Check you're in a Python project directory
 
