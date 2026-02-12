@@ -351,11 +351,8 @@ This feature is implemented in **TWO identical files**:
 - Sanitizes git output with `.strip()`
 
 **Defense in Depth:**
-- **Layer 1**: Client-side git hook (`.git/hooks/pre-commit`)
-- **Layer 2**: Agent-side protection (this hook - `pre_tool_use.py`)
-- **Layer 3**: Server-side protection (GitHub branch protection rules)
-  - See the **github-branch-protection** skill for setup guide: `load_skill(skill_name="github-branch-protection")`
-  - Walkthrough covers both GitHub CLI and web UI methods
+- Client-side protection (this hook)
+- Server-side protection (GitHub branch protection rules - recommended)
 - Code review process
 - CI validation
 

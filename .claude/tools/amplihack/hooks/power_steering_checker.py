@@ -709,7 +709,10 @@ class PowerSteeringChecker:
                         progress_callback,
                         "escalation_warning",
                         escalation_msg,
-                        {"blocks": turn_state.consecutive_blocks, "threshold": PowerSteeringTurnState.MAX_CONSECUTIVE_BLOCKS},
+                        {
+                            "blocks": turn_state.consecutive_blocks,
+                            "threshold": PowerSteeringTurnState.MAX_CONSECUTIVE_BLOCKS,
+                        },
                     )
 
                 if should_approve:
@@ -2000,10 +2003,12 @@ class PowerSteeringChecker:
 
                             # Check if doc file using class constants (use endswith or special names)
                             is_doc_file = any(
-                                file_path.endswith(ext) if ext.startswith('.') else ext in file_path
+                                file_path.endswith(ext) if ext.startswith(".") else ext in file_path
                                 for ext in self.DOC_FILE_EXTENSIONS
                             )
-                            is_config_file = any(file_path.endswith(ext) for ext in self.CONFIG_FILE_EXTENSIONS)
+                            is_config_file = any(
+                                file_path.endswith(ext) for ext in self.CONFIG_FILE_EXTENSIONS
+                            )
 
                             if not is_doc_file and not is_config_file:
                                 doc_files_only = False
@@ -2050,7 +2055,9 @@ class PowerSteeringChecker:
         # - Doc/config updates only (documenting findings)
         # - Git operations only (committing investigation notes)
         if has_investigation_keywords:
-            self._log("Session classified as INVESTIGATION via keywords (no code modifications)", "INFO")
+            self._log(
+                "Session classified as INVESTIGATION via keywords (no code modifications)", "INFO"
+            )
             return "INVESTIGATION"
 
         # INFORMATIONAL: No tool usage or only Read tools with high question density
@@ -3741,7 +3748,7 @@ class PowerSteeringChecker:
                         for pattern in negation_patterns:
                             if re.search(pattern, text, re.IGNORECASE):
                                 self._log(
-                                    f"Completion statement found: negation pattern matched",
+                                    "Completion statement found: negation pattern matched",
                                     "INFO",
                                 )
                                 # Continue checking other messages (don't return immediately)
