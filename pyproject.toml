@@ -5,7 +5,7 @@ backend-path = ["."]
 
 [project]
 name = "amplihack"
-version = "0.5.1"
+version = "0.5.7"
 description = "Amplifier bundle for agentic coding with comprehensive skills, recipes, and workflows"
 requires-python = ">=3.11"
 dependencies = [
@@ -52,6 +52,9 @@ dev = [
     "build>=1.0.0",  # Required for test_uvx_packaging.py
     "pre-commit",
     "rich>=13.0.0",  # Include Rich in dev dependencies for TUI development
+    "beautifulsoup4>=4.9.0",  # For documentation validation scripts
+    "lxml>=4.6.0",  # For documentation validation scripts
+    "pyyaml>=6.0.0",  # For mkdocs navigation validation
 ]
 
 [project.scripts]
