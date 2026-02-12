@@ -90,7 +90,7 @@ def _verify_claude_cli_ready(
                 )
                 time.sleep(retry_delay)
             else:
-                logger.debug(f"Claude CLI verification failed after {max_retries} attempts: {e}")
+                _debug_print(f"❌ Claude CLI verification failed after {max_retries} attempts: {e}")
 
     return False
 
