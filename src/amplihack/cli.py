@@ -1083,13 +1083,11 @@ def main(argv: list[str] | None = None) -> int:
                         )
 
                         if marketplace_add_result.returncode != 0:
-                            if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                                print(
-                                    f"⚠️  Marketplace add failed (may already exist): {marketplace_add_result.stderr}"
-                                )
+                            _debug_print(
+                                f"⚠️  Marketplace add failed (may already exist): {marketplace_add_result.stderr}"
+                            )
                         else:
-                            if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                                print("✅ Amplihack marketplace added to known marketplaces")
+                            _debug_print("✅ Amplihack marketplace added to known marketplaces")
 
                         # Step 2c: Install plugin from marketplace
                         result = subprocess.run(
@@ -1108,9 +1106,8 @@ def main(argv: list[str] | None = None) -> int:
                                 f"Plugin install error: {result.stderr}"
                             )
                         else:
-                            if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                                print("✅ Amplihack plugin installed successfully")
-                                print(result.stdout)
+                            _debug_print("✅ Amplihack plugin installed successfully")
+                            _debug_print(result.stdout)
                             # Plugin installed successfully
                             temp_claude_dir = None
 
