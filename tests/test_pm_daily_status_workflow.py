@@ -93,20 +93,6 @@ class TestPMDailyStatusWorkflow:
             f"GH_TOKEN must be set to ${{{{ secrets.GITHUB_TOKEN }}}}. Current value: {gh_token}"
         )
 
-    def test_anthropic_api_key_still_present(self) -> None:
-        """
-        Test that ANTHROPIC_API_KEY is still present after adding GH_TOKEN.
-
-        Regression test: ensure we didn't accidentally remove existing env vars.
-        """
-        workflow_data = load_workflow_file()
-        status_step = find_generate_status_step(workflow_data)
-
-        env_vars = status_step.get("env", {})
-        assert "ANTHROPIC_API_KEY" in env_vars, (
-            "ANTHROPIC_API_KEY must still be present (regression test)"
-        )
-
     def test_issue_number_still_present(self) -> None:
         """
         Test that ISSUE_NUMBER is still present after adding GH_TOKEN.
@@ -140,7 +126,7 @@ class TestPMDailyStatusWorkflowIntegration:
 
     def test_all_required_env_vars_present(self) -> None:
         """
-        Integration test: All three required environment variables are present.
+        Integration test: All required environment variables are present.
 
         Tests the complete environment configuration for the generate status step.
         """
@@ -149,7 +135,7 @@ class TestPMDailyStatusWorkflowIntegration:
 
         env_vars = status_step.get("env", {})
 
-        required_vars = ["ANTHROPIC_API_KEY", "ISSUE_NUMBER", "GH_TOKEN"]
+        required_vars = ["ISSUE_NUMBER", "GH_TOKEN"]
         for var in required_vars:
             assert var in env_vars, f"Required environment variable '{var}' must be present"
 
@@ -157,7 +143,6 @@ class TestPMDailyStatusWorkflowIntegration:
         """
         Integration test: Environment variables use appropriate secret/var sources.
 
-        - ANTHROPIC_API_KEY should use secrets
         - ISSUE_NUMBER should use vars
         - GH_TOKEN should use secrets
         """
@@ -167,10 +152,6 @@ class TestPMDailyStatusWorkflowIntegration:
         env_vars = status_step.get("env", {})
 
         # Check sources
-        assert "secrets.ANTHROPIC_API_KEY" in str(env_vars.get("ANTHROPIC_API_KEY", "")), (
-            "ANTHROPIC_API_KEY should come from secrets"
-        )
-
         assert "vars.PM_STATUS_ISSUE_NUMBER" in str(env_vars.get("ISSUE_NUMBER", "")), (
             "ISSUE_NUMBER should come from vars"
         )
