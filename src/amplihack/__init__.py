@@ -17,6 +17,40 @@ Public API:
 import os
 from pathlib import Path
 
+# Read version from installed package metadata
+try:
+    from importlib.metadata import PackageNotFoundError, version
+except ImportError:
+    # Python < 3.8 (shouldn't happen, but graceful fallback)
+    version = None  # type: ignore
+    PackageNotFoundError = Exception  # type: ignore
+
+if version:
+    try:
+        __version__ = version("amplihack")
+    except PackageNotFoundError:
+        # Fallback for development (not installed)
+        try:
+            import tomllib  # Python 3.11+
+        except ImportError:
+            try:
+                import tomli as tomllib  # type: ignore
+            except ImportError:
+                tomllib = None  # type: ignore
+
+        if tomllib:
+            _pyproject_path = Path(__file__).parent.parent.parent / "pyproject.toml"
+            if _pyproject_path.exists():
+                with open(_pyproject_path, "rb") as f:
+                    _pyproject = tomllib.load(f)
+                    __version__ = _pyproject["project"]["version"]
+            else:
+                __version__ = "unknown"
+        else:
+            __version__ = "unknown"
+else:
+    __version__ = "unknown"
+
 # Core constants
 HOME = str(Path.home())
 CLAUDE_DIR = os.path.join(HOME, ".claude")
@@ -115,6 +149,8 @@ def main():
 
 # Public API
 __all__ = [
+    # Version
+    "__version__",
     # Constants
     "HOME",
     "CLAUDE_DIR",

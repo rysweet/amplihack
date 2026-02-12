@@ -456,6 +456,10 @@ Advanced configuration, deployment patterns, and environment management.
 - [Azure Integration](AZURE_INTEGRATION.md) - Deploy to Azure cloud
 - [Test Azure Proxy](TEST_AZURE_PROXY.md) - Validate Azure proxy setup
 
+### Build System
+
+- [Plugin Directory Structure Fix](build_system/plugin-directory-structure-fix.md) - Automatic plugin discovery for UVX installations
+
 ### Remote Sessions
 
 - [Remote Sessions Overview](remote-sessions/README.md) - Execute on remote machines
