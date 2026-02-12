@@ -42,38 +42,12 @@ jobs:
       - name: Check if version was bumped in this merge
         id: check-bump
         run: |
-          # Get current version
-          CURRENT_VERSION=$(python -c '
-          import re
-          with open("pyproject.toml") as f:
-              content = f.read()
-          match = re.search(r"^\s*version\s*=\s*\"([^\"]+)\"", content, re.MULTILINE)
-          if match:
-              print(match.group(1))
-          else:
-              exit(1)
-          ')
+          # Get current version using reusable script
+          CURRENT_VERSION=$(python scripts/get_version.py)
           
           # Get version from previous commit (before this merge)
           # Use HEAD~1 to handle both merge and fast-forward commits
-          PREVIOUS_VERSION=$(git show HEAD~1:pyproject.toml 2>/dev/null | python -c '
-          import re
-          import sys
-          try:
-              content = sys.stdin.read()
-              if not content:
-                  print("ERROR_NO_CONTENT", file=sys.stderr)
-                  exit(1)
-              match = re.search(r"^\s*version\s*=\s*\"([^\"]+)\"", content, re.MULTILINE)
-              if match:
-                  print(match.group(1))
-              else:
-                  print("ERROR_NO_MATCH", file=sys.stderr)
-                  exit(1)
-          except Exception as e:
-              print(f"ERROR_{e}", file=sys.stderr)
-              exit(1)
-          ' 2>/dev/null || echo "")
+          PREVIOUS_VERSION=$(git show HEAD~1:pyproject.toml 2>/dev/null | python scripts/get_version.py /dev/stdin 2>/dev/null || echo "")
           
           echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           echo "previous_version=$PREVIOUS_VERSION" >> $GITHUB_OUTPUT
@@ -96,15 +70,8 @@ jobs:
           echo "🔧 Automatically bumping patch version..."
           python scripts/auto_bump_version.py
           
-          # Extract new version for commit message
-          NEW_VERSION=$(python -c '
-          import re
-          with open("pyproject.toml") as f:
-              content = f.read()
-          match = re.search(r"^\s*version\s*=\s*\"([^\"]+)\"", content, re.MULTILINE)
-          if match:
-              print(match.group(1))
-          ')
+          # Extract new version using reusable script
+          NEW_VERSION=$(python scripts/get_version.py)
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
       - name: Commit version bump
@@ -124,13 +91,16 @@ jobs:
       - name: Summary
         if: always()
         run: |
-          echo "## 🔢 Auto Version Bump Summary"
-          echo ""
-          echo "**Previous Version**: ${{ steps.check-bump.outputs.previous_version }}"
-          echo "**Current Version**: ${{ steps.check-bump.outputs.current_version }}"
-          
-          if [ "${{ steps.check-bump.outputs.needs_bump }}" == "true" ]; then
-            echo "**Action**: Version auto-bumped ✅"
-          else
-            echo "**Action**: No bump needed (version already incremented)"
-          fi
+          {
+            echo "## 🔢 Auto Version Bump Summary"
+            echo ""
+            echo "**Previous Version**: ${{ steps.check-bump.outputs.previous_version }}"
+            echo "**Current Version**: ${{ steps.check-bump.outputs.current_version }}"
+            echo ""
+            
+            if [ "${{ steps.check-bump.outputs.needs_bump }}" == "true" ]; then
+              echo "**Action**: Version auto-bumped ✅"
+            else
+              echo "**Action**: No bump needed (version already incremented)"
+            fi
+          } >> $GITHUB_STEP_SUMMARY
