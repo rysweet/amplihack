@@ -1,0 +1,114 @@
+# Auto-Increment Version on Merge
+# Ensures version is always incremented when code is merged to main
+# If the merge didn't include a version bump, automatically increments patch version
+
+name: Auto Version on Merge
+
+on:
+  push:
+    branches: [main]
+
+# Prevent concurrent version bump operations
+concurrency:
+  group: ${{ github.workflow }}-main
+  cancel-in-progress: false
+
+permissions:
+  contents: write # Allow committing version bump to main
+
+jobs:
+  check-and-bump-version:
+    name: Check and Auto-Bump Version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history to compare versions
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Check if version was bumped in this merge
+        id: check-bump
+        run: |
+          # Get current version
+          CURRENT_VERSION=$(python -c '
+          import re
+          with open("pyproject.toml") as f:
+              content = f.read()
+          match = re.search(r"^\s*version\s*=\s*\"([^\"]+)\"", content, re.MULTILINE)
+          if match:
+              print(match.group(1))
+          else:
+              exit(1)
+          ')
+          
+          # Get version from previous commit (before this merge)
+          PREVIOUS_VERSION=$(git show HEAD^1:pyproject.toml | python -c '
+          import re
+          import sys
+          content = sys.stdin.read()
+          match = re.search(r"^\s*version\s*=\s*\"([^\"]+)\"", content, re.MULTILINE)
+          if match:
+              print(match.group(1))
+          else:
+              exit(1)
+          ' || echo "")
+          
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "previous_version=$PREVIOUS_VERSION" >> $GITHUB_OUTPUT
+          
+          if [ -z "$PREVIOUS_VERSION" ]; then
+            echo "⚠️  Could not determine previous version (might be first commit)"
+            echo "needs_bump=false" >> $GITHUB_OUTPUT
+          elif [ "$CURRENT_VERSION" == "$PREVIOUS_VERSION" ]; then
+            echo "❌ Version not bumped: $CURRENT_VERSION"
+            echo "needs_bump=true" >> $GITHUB_OUTPUT
+          else
+            echo "✅ Version already bumped: $PREVIOUS_VERSION → $CURRENT_VERSION"
+            echo "needs_bump=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Auto-bump patch version
+        if: steps.check-bump.outputs.needs_bump == 'true'
+        run: |
+          echo "🔧 Automatically bumping patch version..."
+          python scripts/auto_bump_version.py
+
+      - name: Commit version bump
+        if: steps.check-bump.outputs.needs_bump == 'true'
+        run: |
+          # Check if there are changes to commit
+          if git diff --quiet pyproject.toml; then
+            echo "⚠️  No changes to commit (version already bumped)"
+          else
+            git add pyproject.toml
+            git commit -m "chore: Auto-bump version on merge [skip ci]"
+            git push origin main
+            echo "✅ Version bumped and committed to main"
+          fi
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 🔢 Auto Version Bump Summary"
+          echo ""
+          echo "**Previous Version**: ${{ steps.check-bump.outputs.previous_version }}"
+          echo "**Current Version**: ${{ steps.check-bump.outputs.current_version }}"
+          
+          if [ "${{ steps.check-bump.outputs.needs_bump }}" == "true" ]; then
+            echo "**Action**: Version auto-bumped ✅"
+          else
+            echo "**Action**: No bump needed (version already incremented)"
+          fi
