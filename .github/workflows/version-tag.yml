@@ -1,12 +1,17 @@
 # Auto-Tag on Version Bump
 # Automatically creates a git tag matching the version in pyproject.toml
 # when code is merged to main branch
+# Runs after auto-version-on-merge.yml ensures version is bumped
 
 name: Auto Tag Version
 
 on:
   push:
     branches: [main]
+  workflow_run:
+    workflows: ["Auto Version on Merge"]
+    types:
+      - completed
 
 # Prevent concurrent tagging operations
 concurrency:
