@@ -410,11 +410,12 @@ def install_copilot() -> bool:
 
 
 def stage_agents(source_agents: Path, copilot_home: Path) -> int:
-    """Stage amplihack agents to ~/.copilot/agents/ for Copilot CLI discovery.
+    """Stage amplihack agents to ~/.copilot/agents/amplihack/ for Copilot CLI discovery.
 
     Copilot CLI searches ~/.copilot/agents/ (user-level) before .github/agents/
-    (repo-level). Staging to user-level ensures agents are discoverable in ANY
-    repo, not just repos with .github/agents/. (Fix for issue #2241)
+    (repo-level). Staging to a namespaced subdirectory ensures agents are discoverable
+    in ANY repo while preserving user-managed agents in ~/.copilot/agents/.
+    (Fix for issue #2241)
 
     Args:
         source_agents: Path to amplihack agent source directory
@@ -427,14 +428,15 @@ def stage_agents(source_agents: Path, copilot_home: Path) -> int:
     if not source_agents.exists():
         return 0
 
-    agents_dest = copilot_home / "agents"
+    # Namespace under agents/amplihack/ to avoid deleting user agents
+    agents_dest = copilot_home / "agents" / "amplihack"
     agents_dest.mkdir(parents=True, exist_ok=True)
 
-    # Clean stale agents first (removed/renamed agents)
+    # Clean only amplihack's staging directory (not all of ~/.copilot/agents/)
     for old_file in agents_dest.glob("*.md"):
         old_file.unlink()
 
-    # Flatten structure: core/architect.md → architect.md
+    # Flatten structure: core/architect.md → amplihack/architect.md
     # NOTE: Assumes no basename collisions across subdirectories (core/, specialized/, workflows/)
     copied = 0
     for source_file in source_agents.rglob("*.md"):
@@ -446,9 +448,10 @@ def stage_agents(source_agents: Path, copilot_home: Path) -> int:
 
 
 def stage_directory(source_dir: Path, copilot_home: Path, dest_name: str) -> int:
-    """Stage a directory of .md files to ~/.copilot/<dest_name>/.
+    """Stage a directory of .md files to ~/.copilot/<dest_name>/amplihack/.
 
-    Flattens any subdirectory structure. Cleans stale files before staging.
+    Flattens any subdirectory structure. Stages to a namespaced subdirectory
+    to preserve user-added content in ~/.copilot/<dest_name>/.
 
     Args:
         source_dir: Source directory containing .md files (may have subdirs)
@@ -461,10 +464,11 @@ def stage_directory(source_dir: Path, copilot_home: Path, dest_name: str) -> int
     if not source_dir.exists():
         return 0
 
-    dest = copilot_home / dest_name
+    # Namespace under <dest_name>/amplihack/ to avoid deleting user content
+    dest = copilot_home / dest_name / "amplihack"
     dest.mkdir(parents=True, exist_ok=True)
 
-    # Clean stale files
+    # Clean only amplihack's staging directory (not all of ~/.copilot/<dest_name>/)
     for old_file in dest.glob("*.md"):
         old_file.unlink()
 
@@ -493,6 +497,18 @@ def generate_copilot_instructions(copilot_home: Path) -> None:
     instructions = copilot_home / "copilot-instructions.md"
     copilot_home.mkdir(parents=True, exist_ok=True)
 
+    # Auto-derive workflow step count from DEFAULT_WORKFLOW.md
+    workflow_desc = "Standard development workflow"
+    default_workflow = copilot_home / "workflow" / "amplihack" / "DEFAULT_WORKFLOW.md"
+    if default_workflow.exists():
+        import re
+
+        content = default_workflow.read_text()
+        # Count "### Step N" patterns (including decimal steps like 5.5, 7.5)
+        steps = re.findall(r"^### Step \d+(?:\.\d+)?:", content, re.MULTILINE)
+        if steps:
+            workflow_desc = f"Standard development workflow ({len(steps)} steps)"
+
     amplihack_section = f"""\
 {INSTRUCTIONS_MARKER_START}
 # Amplihack Framework Integration
@@ -500,28 +516,28 @@ def generate_copilot_instructions(copilot_home: Path) -> None:
 You have access to the amplihack agentic coding framework. Use these resources:
 
 ## Workflows
-Read workflow files from `{copilot_home}/workflow/` to follow structured processes:
-- `DEFAULT_WORKFLOW.md` — Standard development workflow (23 steps)
+Read workflow files from `{copilot_home}/workflow/amplihack/` to follow structured processes:
+- `DEFAULT_WORKFLOW.md` — {workflow_desc}
 - `INVESTIGATION_WORKFLOW.md` — Research and exploration (6 phases)
 - `CASCADE_WORKFLOW.md`, `DEBATE_WORKFLOW.md`, `N_VERSION_WORKFLOW.md` — Fault tolerance patterns
 
 For any non-trivial development task, read DEFAULT_WORKFLOW.md and follow its steps.
 
 ## Context
-Read context files from `{copilot_home}/context/` for project philosophy and patterns:
+Read context files from `{copilot_home}/context/amplihack/` for project philosophy and patterns:
 - `PHILOSOPHY.md` — Core principles (ruthless simplicity, zero-BS, modular design)
 - `PATTERNS.md` — Reusable solution patterns
 - `TRUST.md` — Anti-sycophancy and direct communication guidelines
 - `USER_PREFERENCES.md` — User-specific preferences (MANDATORY)
 
 ## Commands
-Read command definitions from `{copilot_home}/commands/` for available capabilities:
+Read command definitions from `{copilot_home}/commands/amplihack/` for available capabilities:
 - `ultrathink.md` — Deep analysis orchestration for complex tasks
 - `analyze.md` — Comprehensive code review
 - `improve.md` — Self-improvement and learning capture
 
 ## Agents
-Custom agents are available at `{copilot_home}/agents/`. Use them via the task tool.
+Custom agents are available at `{copilot_home}/agents/amplihack/`. Use them via the task tool.
 
 ## Skills
 Skills are available at `{copilot_home}/skills/`. They auto-activate based on context.
