@@ -55,16 +55,25 @@ jobs:
           ')
           
           # Get version from previous commit (before this merge)
-          PREVIOUS_VERSION=$(git show HEAD^1:pyproject.toml | python -c '
+          # Use HEAD~1 to handle both merge and fast-forward commits
+          PREVIOUS_VERSION=$(git show HEAD~1:pyproject.toml 2>/dev/null | python -c '
           import re
           import sys
-          content = sys.stdin.read()
-          match = re.search(r"^\s*version\s*=\s*\"([^\"]+)\"", content, re.MULTILINE)
-          if match:
-              print(match.group(1))
-          else:
+          try:
+              content = sys.stdin.read()
+              if not content:
+                  print("ERROR_NO_CONTENT", file=sys.stderr)
+                  exit(1)
+              match = re.search(r"^\s*version\s*=\s*\"([^\"]+)\"", content, re.MULTILINE)
+              if match:
+                  print(match.group(1))
+              else:
+                  print("ERROR_NO_MATCH", file=sys.stderr)
+                  exit(1)
+          except Exception as e:
+              print(f"ERROR_{e}", file=sys.stderr)
               exit(1)
-          ' || echo "")
+          ' 2>/dev/null || echo "")
           
           echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           echo "previous_version=$PREVIOUS_VERSION" >> $GITHUB_OUTPUT
@@ -82,9 +91,21 @@ jobs:
 
       - name: Auto-bump patch version
         if: steps.check-bump.outputs.needs_bump == 'true'
+        id: bump-version
         run: |
           echo "🔧 Automatically bumping patch version..."
           python scripts/auto_bump_version.py
+          
+          # Extract new version for commit message
+          NEW_VERSION=$(python -c '
+          import re
+          with open("pyproject.toml") as f:
+              content = f.read()
+          match = re.search(r"^\s*version\s*=\s*\"([^\"]+)\"", content, re.MULTILINE)
+          if match:
+              print(match.group(1))
+          ')
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
       - name: Commit version bump
         if: steps.check-bump.outputs.needs_bump == 'true'
@@ -93,10 +114,11 @@ jobs:
           if git diff --quiet pyproject.toml; then
             echo "⚠️  No changes to commit (version already bumped)"
           else
+            NEW_VERSION="${{ steps.bump-version.outputs.new_version }}"
             git add pyproject.toml
-            git commit -m "chore: Auto-bump version on merge [skip ci]"
+            git commit -m "chore: Auto-bump version to ${NEW_VERSION} on merge [skip ci]"
             git push origin main
-            echo "✅ Version bumped and committed to main"
+            echo "✅ Version bumped to ${NEW_VERSION} and committed to main"
           fi
 
       - name: Summary
