@@ -354,17 +354,19 @@ class TestSkillCommandValidity:
 
         assert len(gh_api_commands) > 0, "Skill must contain gh api commands in code blocks"
 
-        # Validate command structure
+        # Validate command structure for repo-related endpoints only
         for cmd in gh_api_commands:
-            # Should have method (GET, PUT, DELETE) or default GET
-            assert "repos/" in cmd, f"gh api command must target repos/ endpoint: {cmd}"
-            
+            # Some gh api commands may target non-repo endpoints (e.g., `gh api user`);
+            # this test only enforces structure for repo/branch-protection related calls.
+            if "repos/" not in cmd:
+                continue
+
             # Allow prerequisite checks OR protection API commands
             # Prerequisite checks: permissions, branch listing, repo verification
             is_permission_check = cmd.endswith(".permissions") or "| jq '.permissions" in cmd
             is_branch_listing = "/branches" in cmd and "/protection" not in cmd
             is_protection_api = "/protection" in cmd
-            
+
             assert is_permission_check or is_branch_listing or is_protection_api, (
                 f"Command should target branch protection API or be a prerequisite check: {cmd}"
             )
