@@ -123,7 +123,7 @@ All tests pass successfully.
 If you need a specific version (not just patch):
 
 ```bash
-# Edit pyproject.toml line 8
+# Edit the version field in pyproject.toml
 version = "0.6.0"  # or "1.0.0" for major
 
 # Commit and push

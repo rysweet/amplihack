@@ -168,11 +168,36 @@ Automatically increments patch version in `pyproject.toml`.
 # Output: version = "0.5.8"
 ```
 
+### get_version.py
+
+Extracts version string from `pyproject.toml`.
+
+**Usage**:
+```bash
+# Read from default location (pyproject.toml)
+python scripts/get_version.py
+
+# Read from specific file
+python scripts/get_version.py path/to/file.toml
+
+# Read from stdin
+cat file.toml | python scripts/get_version.py -
+```
+
+**Exit Codes**:
+- `0`: Success, version printed to stdout
+- `1`: Error (file not found or version not found)
+
+**Used by**: All version-related workflows to eliminate code duplication.
+
 ## Testing
 
 To test the workflows locally:
 
 ```bash
+# Test version extraction
+python scripts/get_version.py
+
 # Test version check script
 python scripts/check_version_bump.py
 
