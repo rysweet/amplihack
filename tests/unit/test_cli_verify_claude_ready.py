@@ -10,9 +10,7 @@ Bug: Plugin not installed on first WSL launch after Claude installation
 """
 
 import time
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 
 def test_verify_claude_cli_ready_success_immediate():
@@ -47,9 +45,7 @@ def test_verify_claude_cli_ready_success_after_retry():
         ]
 
         start_time = time.time()
-        result = _verify_claude_cli_ready(
-            "/usr/bin/claude", max_retries=3, retry_delay=0.1
-        )
+        result = _verify_claude_cli_ready("/usr/bin/claude", max_retries=3, retry_delay=0.1)
         elapsed = time.time() - start_time
 
         assert result is True
@@ -66,9 +62,7 @@ def test_verify_claude_cli_ready_failure_all_retries():
         # All attempts fail
         mock.return_value = (1, "", "Error: binary not found")
 
-        result = _verify_claude_cli_ready(
-            "/usr/bin/claude", max_retries=3, retry_delay=0.1
-        )
+        result = _verify_claude_cli_ready("/usr/bin/claude", max_retries=3, retry_delay=0.1)
 
         assert result is False
         assert mock.call_count == 3
@@ -86,9 +80,7 @@ def test_verify_claude_cli_ready_handles_exceptions():
             (0, "claude version 1.0.0\n", ""),
         ]
 
-        result = _verify_claude_cli_ready(
-            "/usr/bin/claude", max_retries=3, retry_delay=0.1
-        )
+        result = _verify_claude_cli_ready("/usr/bin/claude", max_retries=3, retry_delay=0.1)
 
         assert result is True
         assert mock.call_count == 3
@@ -102,9 +94,7 @@ def test_verify_claude_cli_ready_exception_all_retries():
         # All attempts raise exceptions
         mock.side_effect = Exception("Binary not executable")
 
-        result = _verify_claude_cli_ready(
-            "/usr/bin/claude", max_retries=3, retry_delay=0.1
-        )
+        result = _verify_claude_cli_ready("/usr/bin/claude", max_retries=3, retry_delay=0.1)
 
         assert result is False
         assert mock.call_count == 3
