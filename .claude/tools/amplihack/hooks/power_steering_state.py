@@ -283,9 +283,7 @@ class PowerSteeringTurnState:
         # Collision probability is negligible for small session sizes
         return full_hash[:16]
 
-    def detect_loop(
-        self, current_fingerprint: str, threshold: int | None = None
-    ) -> bool:
+    def detect_loop(self, current_fingerprint: str, threshold: int | None = None) -> bool:
         """Detect if same failures are repeating (Issue #2196).
 
         A loop is detected when the same failure fingerprint appears

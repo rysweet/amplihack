@@ -169,4 +169,3 @@ builder.AddExecutable("go-svc", "go", ".").WithArgs("run", "main.go");  // Go
 - reviewer → patterns.md (best practices)
 - tester → troubleshooting.md (validation)
 - all agents → commands.md (CLI operations)
-
