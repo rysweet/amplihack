@@ -141,7 +141,7 @@ class TestProgressiveDisclosureStructure:
         """Test that main SKILL.md links to reference files."""
         skill_path = Path("amplifier-bundle/skills/github-branch-protection/SKILL.md")
         content = skill_path.read_text()
-        
+
         # Check for links to reference files
         assert "reference/" in content, "SKILL.md must link to reference/ files"
         assert "examples/" in content, "SKILL.md must link to examples/"
@@ -153,7 +153,7 @@ class TestProgressiveDisclosureStructure:
         """Test that SKILL.md includes external GitHub documentation links."""
         skill_path = Path("amplifier-bundle/skills/github-branch-protection/SKILL.md")
         content = skill_path.read_text()
-        
+
         # Check for external documentation
         assert "docs.github.com" in content, "SKILL.md must link to official GitHub documentation"
 
@@ -390,13 +390,13 @@ class TestSkillCommandValidity:
         """Test that required_status_checks examples have correct structure."""
         import json
         import re
-        
+
         # With progressive disclosure, detailed JSON configs might be in reference files
         # Check main skill AND reference files for status checks configuration
-        
+
         # Check main skill file
         json_blocks = re.findall(r"```json\n(.*?)```", skill_content, re.DOTALL)
-        
+
         found_status_checks = False
         for block in json_blocks:
             data = json.loads(block)
@@ -411,25 +411,25 @@ class TestSkillCommandValidity:
                 assert isinstance(status_checks["contexts"], list), "contexts must be a list"
                 assert "strict" in status_checks, "required_status_checks must have 'strict' field"
                 assert isinstance(status_checks["strict"], bool), "strict must be a boolean"
-        
+
         # If not found in main skill, check if it's mentioned (could be in inline JSON or reference)
         if not found_status_checks:
             # Check if required_status_checks is at least mentioned in main skill
             assert "required_status_checks" in skill_content, (
                 "Skill must show or reference required_status_checks configuration"
             )
-            
+
             # Check reference files for detailed config
             ref_files = [
                 Path("amplifier-bundle/skills/github-branch-protection/reference/cli-walkthrough.md"),
                 Path("amplifier-bundle/skills/github-branch-protection/examples/amplihack-config.md")
             ]
-            
+
             for ref_file in ref_files:
                 if ref_file.exists():
                     ref_content = ref_file.read_text()
                     ref_json_blocks = re.findall(r"```json\n(.*?)```", ref_content, re.DOTALL)
-                    
+
                     for block in ref_json_blocks:
                         try:
                             data = json.loads(block)
@@ -438,10 +438,10 @@ class TestSkillCommandValidity:
                                 break
                         except json.JSONDecodeError:
                             continue
-                    
+
                     if found_status_checks:
                         break
-        
+
         assert found_status_checks, (
             "Skill or reference files must show required_status_checks configuration example"
         )
@@ -474,7 +474,7 @@ class TestSkillPhilosophyAlignment:
 
         content_lower = skill_content.lower()
         found_count = sum(1 for indicator in trade_off_indicators if indicator in content_lower)
-        
+
         # With progressive disclosure, detailed trade-offs can be in reference/settings-reference.md
         # Main skill should mention at least some considerations
         if found_count < 3:
@@ -484,7 +484,7 @@ class TestSkillPhilosophyAlignment:
                 ref_content = settings_ref.read_text().lower()
                 ref_found = sum(1 for indicator in trade_off_indicators if indicator in ref_content)
                 found_count += min(ref_found, 3)  # Credit up to 3 from reference
-        
+
         assert found_count >= 3, (
             f"Skill or reference files should explain trade-offs and considerations "
             f"(found {found_count} indicators, expected >= 3)"
@@ -534,7 +534,7 @@ class TestSkillPhilosophyAlignment:
         ]
 
         found = [indicator for indicator in risk_indicators if indicator in content_lower]
-        
+
         # With progressive disclosure, detailed warnings can be in reference/troubleshooting.md
         if len(found) < 2:
             # Check troubleshooting reference for warnings
@@ -543,7 +543,7 @@ class TestSkillPhilosophyAlignment:
                 ref_content = troubleshoot_ref.read_text().lower()
                 ref_found = [indicator for indicator in risk_indicators if indicator in ref_content]
                 found.extend(ref_found[:2])  # Add up to 2 from reference
-        
+
         assert len(found) >= 2, (
             f"Skill or reference files should warn about risks and edge cases "
             f"(found {found[:3]}, expected >= 2 different indicators)"
@@ -576,7 +576,6 @@ class TestSkillCrossReferences:
     def test_references_related_skills(self, skill_content: str):
         """Test that skill has adequate cross-references."""
         # Should reference other GitHub skills
-        skill_lower = skill_content.lower()
 
         # These skills should be mentioned if they exist
         # With progressive disclosure, related skills might not be explicitly mentioned
