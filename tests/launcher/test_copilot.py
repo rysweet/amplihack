@@ -376,8 +376,8 @@ class TestStageAgents:
 
         result = stage_agents(source_dir, copilot_home)
 
-        # Agents should be in copilot_home/agents/ (flattened)
-        agents_dir = copilot_home / "agents"
+        # Agents should be in copilot_home/agents/amplihack/ (flattened, namespaced)
+        agents_dir = copilot_home / "agents" / "amplihack"
         assert agents_dir.exists()
         assert (agents_dir / "architect.md").exists()
         assert (agents_dir / "builder.md").exists()
@@ -398,30 +398,37 @@ class TestStageAgents:
 
         stage_agents(source_dir, copilot_home)
 
-        agents_dir = copilot_home / "agents"
+        agents_dir = copilot_home / "agents" / "amplihack"
         # All files flattened to single directory
         assert (agents_dir / "architect.md").exists()
         assert (agents_dir / "improvement.md").exists()
-        # No subdirectories
+        # No subdirectories under amplihack/
         subdirs = [p for p in agents_dir.iterdir() if p.is_dir()]
         assert len(subdirs) == 0
 
     def test_cleans_stale_agents(self, tmp_path):
-        """Stale agents should be cleaned before staging new ones."""
+        """Stale agents should be cleaned from amplihack namespace only."""
         source_dir = tmp_path / "source" / "core"
         source_dir.mkdir(parents=True)
         (source_dir / "architect.md").write_text("# Architect")
 
         copilot_home = tmp_path / "copilot_home"
-        agents_dir = copilot_home / "agents"
+        agents_dir = copilot_home / "agents" / "amplihack"
         agents_dir.mkdir(parents=True)
-        # Pre-existing stale agent
+        # Pre-existing stale agent in amplihack namespace
         (agents_dir / "old-removed-agent.md").write_text("# Old agent")
+        
+        # User agent outside amplihack namespace
+        user_agents_dir = copilot_home / "agents"
+        (user_agents_dir / "user-custom-agent.md").write_text("# User agent")
 
         stage_agents(source_dir.parent, copilot_home)
 
         assert (agents_dir / "architect.md").exists()
+        # Stale amplihack agent should be removed
         assert not (agents_dir / "old-removed-agent.md").exists()
+        # User agent should be preserved
+        assert (user_agents_dir / "user-custom-agent.md").exists()
 
     def test_handles_missing_source_dir(self, tmp_path):
         """Returns 0 if source directory doesn't exist."""
@@ -432,7 +439,7 @@ class TestStageAgents:
         assert result == 0
 
     def test_creates_agents_dir_if_missing(self, tmp_path):
-        """Creates ~/.copilot/agents/ if it doesn't exist."""
+        """Creates ~/.copilot/agents/amplihack/ if it doesn't exist."""
         source_dir = tmp_path / "source" / "core"
         source_dir.mkdir(parents=True)
         (source_dir / "test.md").write_text("# Test")
@@ -442,14 +449,14 @@ class TestStageAgents:
 
         stage_agents(source_dir.parent, copilot_home)
 
-        assert (copilot_home / "agents").exists()
+        assert (copilot_home / "agents" / "amplihack").exists()
 
 
 class TestStageDirectory:
     """Tests for generic directory staging (workflows, context, commands)."""
 
     def test_stages_workflow_files(self, tmp_path):
-        """Workflow .md files must be staged to ~/.copilot/workflow/."""
+        """Workflow .md files must be staged to ~/.copilot/workflow/amplihack/."""
         source = tmp_path / "workflow"
         source.mkdir()
         (source / "DEFAULT_WORKFLOW.md").write_text("# 23 steps")
@@ -458,12 +465,12 @@ class TestStageDirectory:
         copilot_home = tmp_path / "copilot"
         result = stage_directory(source, copilot_home, "workflow")
 
-        assert (copilot_home / "workflow" / "DEFAULT_WORKFLOW.md").exists()
-        assert (copilot_home / "workflow" / "INVESTIGATION_WORKFLOW.md").exists()
+        assert (copilot_home / "workflow" / "amplihack" / "DEFAULT_WORKFLOW.md").exists()
+        assert (copilot_home / "workflow" / "amplihack" / "INVESTIGATION_WORKFLOW.md").exists()
         assert result == 2
 
     def test_stages_context_files(self, tmp_path):
-        """Context .md files must be staged to ~/.copilot/context/."""
+        """Context .md files must be staged to ~/.copilot/context/amplihack/."""
         source = tmp_path / "context"
         source.mkdir()
         (source / "PHILOSOPHY.md").write_text("# Ruthless Simplicity")
@@ -472,13 +479,13 @@ class TestStageDirectory:
         copilot_home = tmp_path / "copilot"
         result = stage_directory(source, copilot_home, "context")
 
-        assert (copilot_home / "context" / "PHILOSOPHY.md").exists()
-        content = (copilot_home / "context" / "PHILOSOPHY.md").read_text()
+        assert (copilot_home / "context" / "amplihack" / "PHILOSOPHY.md").exists()
+        content = (copilot_home / "context" / "amplihack" / "PHILOSOPHY.md").read_text()
         assert "Ruthless Simplicity" in content
         assert result == 2
 
     def test_stages_commands_flattened(self, tmp_path):
-        """Commands from subdirectories must be flattened."""
+        """Commands from subdirectories must be flattened to ~/.copilot/commands/amplihack/."""
         source = tmp_path / "commands" / "amplihack"
         source.mkdir(parents=True)
         (source / "ultrathink.md").write_text("# Ultra-Think")
@@ -487,8 +494,8 @@ class TestStageDirectory:
         copilot_home = tmp_path / "copilot"
         result = stage_directory(source.parent, copilot_home, "commands")
 
-        assert (copilot_home / "commands" / "ultrathink.md").exists()
-        assert (copilot_home / "commands" / "analyze.md").exists()
+        assert (copilot_home / "commands" / "amplihack" / "ultrathink.md").exists()
+        assert (copilot_home / "commands" / "amplihack" / "analyze.md").exists()
         assert result == 2
 
     def test_handles_missing_source(self, tmp_path):
@@ -498,20 +505,27 @@ class TestStageDirectory:
         assert result == 0
 
     def test_cleans_stale_files(self, tmp_path):
-        """Old files in destination should be cleaned before staging."""
+        """Old files in amplihack namespace should be cleaned, user files preserved."""
         source = tmp_path / "workflow"
         source.mkdir()
         (source / "NEW.md").write_text("# New")
 
         copilot_home = tmp_path / "copilot"
-        dest = copilot_home / "workflow"
+        dest = copilot_home / "workflow" / "amplihack"
         dest.mkdir(parents=True)
         (dest / "OLD_REMOVED.md").write_text("# Gone")
+        
+        # User file outside amplihack namespace
+        user_dest = copilot_home / "workflow"
+        (user_dest / "USER_WORKFLOW.md").write_text("# User workflow")
 
         stage_directory(source, copilot_home, "workflow")
 
         assert (dest / "NEW.md").exists()
+        # Stale amplihack file should be removed
         assert not (dest / "OLD_REMOVED.md").exists()
+        # User file should be preserved
+        assert (user_dest / "USER_WORKFLOW.md").exists()
 
 
 class TestGenerateCopilotInstructions:
@@ -596,3 +610,44 @@ class TestGenerateCopilotInstructions:
         assert "DEFAULT_WORKFLOW" in content
         # Only one amplihack section
         assert content.count("AMPLIHACK_INSTRUCTIONS_START") == 1
+<<<<<<< HEAD
+=======
+
+    def test_auto_derives_workflow_step_count(self, tmp_path):
+        """Must auto-derive workflow step count from DEFAULT_WORKFLOW.md."""
+        copilot_home = tmp_path / "copilot"
+        workflow_dir = copilot_home / "workflow" / "amplihack"
+        workflow_dir.mkdir(parents=True)
+        
+        # Create workflow with known number of steps (including decimal steps)
+        workflow_content = """
+name: DEFAULT_WORKFLOW
+
+### Step 0: First step
+### Step 1: Second step
+### Step 2: Third step
+### Step 2.5: Decimal step
+### Step 3: Fourth step
+"""
+        (workflow_dir / "DEFAULT_WORKFLOW.md").write_text(workflow_content)
+        
+        generate_copilot_instructions(copilot_home)
+        
+        content = (copilot_home / "copilot-instructions.md").read_text()
+        # Should contain auto-derived count (5 steps: 0, 1, 2, 2.5, 3)
+        assert "(5 steps)" in content
+        assert "(23 steps)" not in content  # Should not hard-code
+
+    def test_handles_missing_workflow_for_step_count(self, tmp_path):
+        """Must handle missing DEFAULT_WORKFLOW.md gracefully."""
+        copilot_home = tmp_path / "copilot"
+        copilot_home.mkdir()
+        
+        generate_copilot_instructions(copilot_home)
+        
+        content = (copilot_home / "copilot-instructions.md").read_text()
+        # Should fall back to generic description
+        assert "Standard development workflow" in content
+        # Should not crash or include step count if file missing
+        assert "DEFAULT_WORKFLOW" in content
+>>>>>>> origin/main

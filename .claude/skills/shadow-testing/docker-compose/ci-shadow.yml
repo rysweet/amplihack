@@ -27,27 +27,27 @@ services:
     command: >
       bash -c "
         set -e
-        
+
         echo '==> Starting Gitea' &&
         /usr/local/bin/docker-entrypoint.sh &
         sleep 5 &&
-        
+
         echo '==> Waiting for Gitea' &&
         until curl -sf http://localhost:3000/api/v1/version > /dev/null; do
           sleep 1
         done &&
-        
+
         echo '==> Setting up repository' &&
         ORG=\${REPO_ORG:-myorg}
         REPO=\${REPO_NAME:-my-repo}
-        
+
         curl -s -u shadow:shadow -H 'Content-Type: application/json' \
           -d \"{\\\"username\\\":\\\"\$ORG\\\"}\" \
           http://localhost:3000/api/v1/orgs &&
         curl -s -u shadow:shadow -H 'Content-Type: application/json' \
           -d \"{\\\"name\\\":\\\"\$REPO\\\",\\\"private\\\":false}\" \
           http://localhost:3000/api/v1/orgs/\$ORG/repos &&
-        
+
         cd /tmp && rm -rf _push && mkdir _push && cd _push &&
         git init --bare --quiet &&
         git bundle list-heads /snapshots/repo.bundle | while read sha ref; do
@@ -57,14 +57,14 @@ services:
         done &&
         git remote add origin http://shadow:shadow@localhost:3000/\$ORG/\$REPO.git &&
         git push origin --all --force 2>&1 | grep -v 'remote:' &&
-        
+
         echo '==> Configuring git' &&
         git config --global url.\"http://shadow:shadow@localhost:3000/\$ORG/\$REPO.git\".insteadOf \"https://github.com/\$ORG/\$REPO.git\" &&
-        
+
         echo '==> Cloning to workspace' &&
         git clone http://shadow:shadow@localhost:3000/\$ORG/\$REPO.git /workspace/repo --quiet 2>&1 &&
         cd /workspace/repo &&
-        
+
         echo '==> Running tests' &&
         if [ -f './scripts/ci-test.sh' ]; then
           ./scripts/ci-test.sh
@@ -78,7 +78,7 @@ services:
           echo 'No test configuration found'
           exit 1
         fi &&
-        
+
         echo '==> Tests passed!' &&
         exit 0
       "
