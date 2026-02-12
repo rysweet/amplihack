@@ -126,7 +126,9 @@ class _CustomBuildBackend:
             shutil.rmtree(self.github_dest)
 
         print(f"Copying {self.github_src} -> {self.github_dest}")
-        ignore = shutil.ignore_patterns("workflows", "__pycache__", "*.pyc", "*.pyo", "*~", ".DS_Store")
+        ignore = shutil.ignore_patterns(
+            "workflows", "__pycache__", "*.pyc", "*.pyo", "*~", ".DS_Store"
+        )
         shutil.copytree(self.github_src, self.github_dest, symlinks=True, ignore=ignore)
         print("Successfully copied .github/ to package")
 
