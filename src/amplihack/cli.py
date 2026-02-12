@@ -37,6 +37,16 @@ EMOJI = {
 _CLAUDE_COMMANDS = {None, "launch", "claude", "RustyClawd"}
 
 
+def _debug_print(message: str) -> None:
+    """Print debug message if AMPLIHACK_DEBUG is enabled.
+
+    Args:
+        message: Debug message to print
+    """
+    if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+        print(message)
+
+
 def _verify_claude_cli_ready(
     claude_path: str, max_retries: int = 3, retry_delay: float = 0.5
 ) -> bool:
@@ -64,23 +74,20 @@ def _verify_claude_cli_ready(
             )
 
             if returncode == 0:
-                if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                    print(f"✅ Claude CLI verified ready: {stdout.strip()}")
+                _debug_print(f"✅ Claude CLI verified ready: {stdout.strip()}")
                 return True
 
             if attempt < max_retries - 1:
-                if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                    print(
-                        f"⏳ Claude CLI not ready yet (attempt {attempt + 1}/{max_retries}), retrying..."
-                    )
+                _debug_print(
+                    f"⏳ Claude CLI not ready yet (attempt {attempt + 1}/{max_retries}), retrying..."
+                )
                 time.sleep(retry_delay)
 
         except Exception as e:
             if attempt < max_retries - 1:
-                if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                    print(
-                        f"⏳ Claude CLI verification error (attempt {attempt + 1}/{max_retries}): {e}"
-                    )
+                _debug_print(
+                    f"⏳ Claude CLI verification error (attempt {attempt + 1}/{max_retries}): {e}"
+                )
                 time.sleep(retry_delay)
             else:
                 logger.debug(f"Claude CLI verification failed after {max_retries} attempts: {e}")
