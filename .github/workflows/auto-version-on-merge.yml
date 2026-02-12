@@ -101,7 +101,7 @@ jobs:
           else
             NEW_VERSION="${{ steps.bump-version.outputs.new_version }}"
             git add pyproject.toml
-            git commit -m "chore: Auto-bump version to ${NEW_VERSION} on merge [skip ci]"
+            git commit -m "[skip ci] chore: Auto-bump version to ${NEW_VERSION} on merge"
             git push origin main
             echo "✅ Version bumped to ${NEW_VERSION} and committed to main"
           fi
