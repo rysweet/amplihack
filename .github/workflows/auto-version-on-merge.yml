@@ -52,12 +52,20 @@ jobs:
           
           # Get version from previous commit (before this merge)
           # Use HEAD~1 to handle both merge and fast-forward commits
-          # The '|| echo ""' handles edge cases:
-          #   - First commit (HEAD~1 doesn't exist)
-          #   - File doesn't exist in previous commit
-          #   - Any git/python errors
-          # Result: PREVIOUS_VERSION will be empty string, triggering no-bump logic below
-          PREVIOUS_VERSION=$(git show HEAD~1:pyproject.toml 2>/dev/null | python scripts/get_version.py - 2>/dev/null || echo "")
+          # Handle errors separately for better diagnostics
+          PREV_PYPROJECT=$(git show HEAD~1:pyproject.toml 2>&1)
+          if [ $? -ne 0 ]; then
+            # First commit or file doesn't exist in previous commit
+            echo "ℹ️  Previous commit info: $PREV_PYPROJECT"
+            PREVIOUS_VERSION=""
+          else
+            # Extract version from previous commit's file
+            PREVIOUS_VERSION=$(echo "$PREV_PYPROJECT" | python scripts/get_version.py - 2>&1)
+            if [ $? -ne 0 ]; then
+              echo "⚠️  Could not parse version from previous commit: $PREVIOUS_VERSION"
+              PREVIOUS_VERSION=""
+            fi
+          fi
           
           echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           echo "previous_version=$PREVIOUS_VERSION" >> $GITHUB_OUTPUT
@@ -104,7 +112,14 @@ jobs:
           {
             echo "## 🔢 Auto Version Bump Summary"
             echo ""
-            echo "**Previous Version**: ${{ steps.check-bump.outputs.previous_version }}"
+            
+            PREV_VERSION="${{ steps.check-bump.outputs.previous_version }}"
+            if [ -z "$PREV_VERSION" ]; then
+              echo "**Previous Version**: N/A (first commit or not found)"
+            else
+              echo "**Previous Version**: $PREV_VERSION"
+            fi
+            
             echo "**Current Version**: ${{ steps.check-bump.outputs.current_version }}"
             echo ""
             

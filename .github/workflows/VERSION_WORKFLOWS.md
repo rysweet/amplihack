@@ -75,7 +75,7 @@ By default, all automated bumps use **patch** version increments.
 
 To manually bump to a specific version:
 
-1. Edit `pyproject.toml` line 8 to your desired version
+1. Edit the `version` field in `pyproject.toml` to your desired version
 2. Commit and push to your PR branch
 3. The workflows will detect the manual bump and skip auto-bumping
 
