@@ -42,11 +42,13 @@ test = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
     "pytest-asyncio>=0.21.0",
+    "pyyaml>=6.0.0",  # Required for skill YAML frontmatter parsing in tests
 ]
 dev = [
     "pytest>=7.0.0",
     "pytest-cov>=4.0.0",
     "pytest-asyncio>=0.21.0",
+    "pyyaml>=6.0.0",  # Required for skill YAML frontmatter parsing in tests
     "black>=22.0.0",
     "ruff>=0.1.0",
     "build>=1.0.0",  # Required for test_uvx_packaging.py

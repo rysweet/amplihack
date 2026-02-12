@@ -10,13 +10,30 @@ Expected to PASS after:
 - Phase 3: Protection applied to amplihack main branch
 - All 5 settings configured
 - Verification confirmed
+
+NOTE: These tests require:
+- gh CLI installed and authenticated
+- Network access to GitHub API
+- Admin permissions on rysweet/amplihack repository
+- Set RUN_GH_INTEGRATION_TESTS=1 to enable
 """
 
 import json
+import os
+import shutil
 import subprocess
 from typing import Any
 
 import pytest
+
+# Skip all tests in this module unless explicitly enabled
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.skipif(
+        os.environ.get("RUN_GH_INTEGRATION_TESTS") != "1",
+        reason="GitHub integration tests require RUN_GH_INTEGRATION_TESTS=1 environment variable"
+    )
+]
 
 
 class TestGitHubCLIAuthentication:
@@ -277,9 +294,7 @@ class TestVerificationCommands:
     def test_jq_formatting_works(self):
         """Test that jq can format protection output."""
         # First check if jq is installed
-        jq_check = subprocess.run(["which", "jq"], capture_output=True, timeout=5)
-
-        if jq_check.returncode != 0:
+        if shutil.which("jq") is None:
             pytest.skip("jq not installed - optional but recommended for verification")
 
         # Test jq formatting of protection data
