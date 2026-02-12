@@ -38,7 +38,7 @@ amplihack implements a three-layer approach to prevent direct commits to `main`:
    - Can be bypassed with `--no-verify`
    - Documented in `docs/features/main-branch-protection.md`
 
-2. **Layer 2: Agent-side hook** (`amplifier-bundle/hooks/pre_tool_use.py`)
+2. **Layer 2: Agent-side hook** (`amplifier-bundle/tools/amplihack/hooks/pre_tool_use.py`)
    - Prevents AI agents from bypassing with `--no-verify`
    - Catches both direct commits and bypass attempts
    - Transparent to human workflow
