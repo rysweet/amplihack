@@ -6,6 +6,7 @@ import os
 import platform
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from . import copytree_manifest
@@ -34,6 +35,64 @@ EMOJI = {
 # Commands that require Claude Code plugin installation.
 # All other commands (copilot, amplifier, codex, etc.) skip it.
 _CLAUDE_COMMANDS = {None, "launch", "claude", "RustyClawd"}
+
+
+def _debug_print(message: str) -> None:
+    """Print debug message if AMPLIHACK_DEBUG is enabled.
+
+    Args:
+        message: Debug message to print
+    """
+    if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+        print(message)
+
+
+def _verify_claude_cli_ready(
+    claude_path: str, max_retries: int = 3, retry_delay: float = 0.5
+) -> bool:
+    """Verify Claude CLI is ready to use after installation.
+
+    On first install, the binary might need a moment to be fully available.
+    This function validates the binary is executable and working.
+
+    Args:
+        claude_path: Path to Claude CLI binary
+        max_retries: Maximum number of verification attempts
+        retry_delay: Delay in seconds between retries
+
+    Returns:
+        True if Claude CLI is ready, False otherwise
+    """
+    from .utils.prerequisites import safe_subprocess_call
+
+    for attempt in range(max_retries):
+        try:
+            returncode, stdout, stderr = safe_subprocess_call(
+                [claude_path, "--version"],
+                context="verifying Claude CLI is ready",
+                timeout=5,
+            )
+
+            if returncode == 0:
+                _debug_print(f"✅ Claude CLI verified ready: {stdout.strip()}")
+                return True
+
+            if attempt < max_retries - 1:
+                _debug_print(
+                    f"⏳ Claude CLI not ready yet (attempt {attempt + 1}/{max_retries}), retrying..."
+                )
+                time.sleep(retry_delay)
+
+        except Exception as e:
+            if attempt < max_retries - 1:
+                _debug_print(
+                    f"⏳ Claude CLI verification error (attempt {attempt + 1}/{max_retries}): {e}"
+                )
+                time.sleep(retry_delay)
+            else:
+                _debug_print(f"❌ Claude CLI verification failed after {max_retries} attempts: {e}")
+
+    return False
 
 
 def add_plugin_args_for_uvx(
@@ -986,78 +1045,85 @@ def main(argv: list[str] | None = None) -> int:
                     print("   Falling back to directory copy mode")
                     temp_claude_dir = _fallback_to_directory_copy("Claude CLI not available")
                 else:
-                    # Fix EXDEV error: Use temp directory on same filesystem as ~/.claude/
-                    # Claude Code uses fs.rename() which fails across different filesystems
-                    claude_temp_dir = Path.home() / ".claude" / "temp"
-                    claude_temp_dir.mkdir(parents=True, exist_ok=True)
+                    # Step 2a: Verify Claude CLI is ready before using it
+                    # On first install, binary might need a moment to be fully available
+                    if not _verify_claude_cli_ready(claude_path):
+                        print("⚠️  Claude CLI installed but not responding")
+                        print(
+                            "   This can happen on first install - the binary needs to initialize"
+                        )
+                        print("   Falling back to directory copy mode")
+                        temp_claude_dir = _fallback_to_directory_copy("Claude CLI not ready")
+                    else:
+                        # Fix EXDEV error: Use temp directory on same filesystem as ~/.claude/
+                        # Claude Code uses fs.rename() which fails across different filesystems
+                        claude_temp_dir = Path.home() / ".claude" / "temp"
+                        claude_temp_dir.mkdir(parents=True, exist_ok=True)
 
-                    # Set TMPDIR for subprocess to avoid cross-device rename errors
-                    env = os.environ.copy()
-                    env["TMPDIR"] = str(claude_temp_dir)
+                        # Set TMPDIR for subprocess to avoid cross-device rename errors
+                        env = os.environ.copy()
+                        env["TMPDIR"] = str(claude_temp_dir)
 
-                    # Step 2a: Sync marketplace to known_marketplaces.json
-                    # extraKnownMarketplaces in settings.json is for IDE, not CLI
-                    # We need to explicitly add the marketplace for CLI to find it
-                    marketplace_add_result = subprocess.run(
-                        [
-                            claude_path,
-                            "plugin",
-                            "marketplace",
-                            "add",
-                            "https://github.com/rysweet/amplihack",
-                        ],
-                        capture_output=True,
-                        text=True,
-                        timeout=60,
-                        check=False,
-                        env=env,
-                    )
+                        # Step 2b: Sync marketplace to known_marketplaces.json
+                        # extraKnownMarketplaces in settings.json is for IDE, not CLI
+                        # We need to explicitly add the marketplace for CLI to find it
+                        marketplace_add_result = subprocess.run(
+                            [
+                                claude_path,
+                                "plugin",
+                                "marketplace",
+                                "add",
+                                "https://github.com/rysweet/amplihack",
+                            ],
+                            capture_output=True,
+                            text=True,
+                            timeout=60,
+                            check=False,
+                            env=env,
+                        )
 
-                    if marketplace_add_result.returncode != 0:
-                        if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                            print(
+                        if marketplace_add_result.returncode != 0:
+                            _debug_print(
                                 f"⚠️  Marketplace add failed (may already exist): {marketplace_add_result.stderr}"
                             )
-                    else:
-                        if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                            print("✅ Amplihack marketplace added to known marketplaces")
+                        else:
+                            _debug_print("✅ Amplihack marketplace added to known marketplaces")
 
-                    # Step 2b: Install plugin from marketplace
-                    result = subprocess.run(
-                        [claude_path, "plugin", "install", "amplihack"],
-                        capture_output=True,
-                        text=True,
-                        timeout=60,
-                        check=False,
-                        env=env,
-                    )
-
-                    if result.returncode != 0:
-                        print(f"⚠️  Plugin installation failed: {result.stderr}")
-                        print("   Falling back to directory copy mode")
-                        temp_claude_dir = _fallback_to_directory_copy(
-                            f"Plugin install error: {result.stderr}"
+                        # Step 2c: Install plugin from marketplace
+                        result = subprocess.run(
+                            [claude_path, "plugin", "install", "amplihack"],
+                            capture_output=True,
+                            text=True,
+                            timeout=60,
+                            check=False,
+                            env=env,
                         )
-                    else:
-                        if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                            print("✅ Amplihack plugin installed successfully")
-                            print(result.stdout)
-                        # Plugin installed successfully
-                        temp_claude_dir = None
 
-                        # Set CLAUDE_PLUGIN_ROOT for hook resolution
-                        # When plugin installed via Claude Code, hooks use ${CLAUDE_PLUGIN_ROOT}
-                        # Point to where Claude Code installed the plugin
-                        installed_plugin_path = (
-                            Path.home()
-                            / ".claude"
-                            / "plugins"
-                            / "cache"
-                            / "amplihack"
-                            / "amplihack"
-                            / "0.9.0"
-                        )
-                        os.environ["CLAUDE_PLUGIN_ROOT"] = str(installed_plugin_path)
+                        if result.returncode != 0:
+                            print(f"⚠️  Plugin installation failed: {result.stderr}")
+                            print("   Falling back to directory copy mode")
+                            temp_claude_dir = _fallback_to_directory_copy(
+                                f"Plugin install error: {result.stderr}"
+                            )
+                        else:
+                            _debug_print("✅ Amplihack plugin installed successfully")
+                            _debug_print(result.stdout)
+                            # Plugin installed successfully
+                            temp_claude_dir = None
+
+                            # Set CLAUDE_PLUGIN_ROOT for hook resolution
+                            # When plugin installed via Claude Code, hooks use ${CLAUDE_PLUGIN_ROOT}
+                            # Point to where Claude Code installed the plugin
+                            installed_plugin_path = (
+                                Path.home()
+                                / ".claude"
+                                / "plugins"
+                                / "cache"
+                                / "amplihack"
+                                / "amplihack"
+                                / "0.9.0"
+                            )
+                            os.environ["CLAUDE_PLUGIN_ROOT"] = str(installed_plugin_path)
 
         # Smart PROJECT.md initialization for UVX mode
         try:
