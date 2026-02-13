@@ -124,7 +124,11 @@ src/amplihack/
 
 ### Claude Not Found
 
-- Install Claude Code CLI: `npm install -g @anthropic-ai/claude-code`
+- Install Claude Code CLI using the recommended method for your platform:
+  - macOS: `brew install --cask claude-code` or `curl -fsSL https://claude.ai/install.sh | bash`
+  - Linux/WSL: `curl -fsSL https://claude.ai/install.sh | bash`
+  - Windows: `winget install Anthropic.ClaudeCode` or `irm https://claude.ai/install.ps1 | iex`
+- For more options, see: https://code.claude.com/docs/en/setup
 - Ensure `claude` command is in your PATH
 
 ### Permission Issues
