@@ -616,7 +616,7 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
 
     # Ensure copilot is installed
     if not check_copilot():
-        if not install_copilot() or not check_copilot():
+        if not install_copilot():
             print("Failed to install Copilot CLI")
             return 1
 
