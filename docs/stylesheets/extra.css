@@ -93,11 +93,11 @@ code {
         max-width: 11.7rem;
         width: 11.7rem;
     }
-    
+
     [dir=ltr] .md-header__source {
         margin-left: 1rem;
     }
-    
+
     [dir=rtl] .md-header__source {
         margin-right: 1rem;
     }
