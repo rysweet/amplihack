@@ -149,7 +149,7 @@ Understand the philosophy and architecture behind amplihack.
 - [Development Patterns](claude/context/PATTERNS.md) - Proven implementation patterns
 - [Unified Staging Architecture](concepts/unified-staging-architecture.md) - How .claude/ staging works across all commands
 - [Framework Injection Architecture](concepts/framework-injection-architecture.md) - How AMPLIHACK.md injection works
-- [Blarify Documentation](blarify/README.md) - Complete Blarify guide and features
+- [How to Use Blarify Code Graph](howto/blarify-code-graph.md) - Enable, query, and configure
 - [Blarify Architecture](blarify_architecture.md) - Understanding the Blarify integration
 - [Documentation Knowledge Graph](documentation_knowledge_graph.md) - How docs connect
 
@@ -401,9 +401,6 @@ python -m amplihack.memory.kuzu.query_code_graph functions --file <path>
 Complete code indexing and analysis with multi-language support:
 
 - **[How to Use Blarify Code Graph](howto/blarify-code-graph.md)** - Enable, query, and configure code graph indexing
-- **[Blarify Documentation Hub](blarify/README.md)** - Complete guide to Blarify features
-- [Background Indexing](blarify/background-indexing.md) - Automatic indexing prompt on startup
-- [Multi-Language Validation](blarify/multi-language-validation.md) - Testing across 7 languages
 - [Blarify Integration](blarify_integration.md) - Technical integration details
 - [Blarify Quickstart](blarify_quickstart.md) - Get started in 5 minutes
 
