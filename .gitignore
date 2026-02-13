@@ -169,3 +169,7 @@ wave*-dedup/
 
 # Amplihack runtime directories (auto-generated)
 .claude/logs/
+
+# Point-in-time review documents (should not be committed)
+REVIEW_*.md
+AUTO_VERSION_CODE_REVIEW.md
