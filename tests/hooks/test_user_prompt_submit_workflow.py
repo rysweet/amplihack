@@ -82,7 +82,7 @@ class TestStateFilePathGeneration:
             "abc123",
             "test-session-123",
             "SESSION_456",
-            "a1b2c3d4e5f6",
+            "a1b2c3d4e5f6",  # pragma: allowlist secret
             "0000000000000000-ab8c1f0343fb4726_amplihack-tester",
         ],
     )
@@ -388,7 +388,7 @@ class TestStateSaveLoad:
 
         assert state_file.exists()
 
-        with open(state_file, "r") as f:
+        with open(state_file) as f:
             data = json.load(f)
 
         assert data["session_id"] == session_id
@@ -446,7 +446,7 @@ class TestErrorHandling:
         hook.log = MagicMock()
 
         # Simulate state file read error
-        with patch.object(hook, "_get_last_classified_turn", side_effect=IOError("Disk error")):
+        with patch.object(hook, "_get_last_classified_turn", side_effect=OSError("Disk error")):
             # Should not raise, should log warning
             try:
                 result = hook._is_new_workflow_topic("implement feature", turn_number=5)

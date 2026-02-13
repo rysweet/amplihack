@@ -142,21 +142,138 @@ steps:
   - id: "step-01-prepare-workspace"
     type: "bash"
     command: |
-      cd "{{repo_path}}" && \
-      echo "=== Step 1: Preparing Workspace ===" && \
-      echo "" && \
-      echo "Current directory: $(pwd)" && \
-      echo "" && \
-      echo "--- Git Status ---" && \
-      git status && \
-      echo "" && \
-      echo "--- Fetching Latest ---" && \
-      git fetch --all && \
-      echo "" && \
-      echo "--- Current Branch ---" && \
-      git branch --show-current && \
-      echo "" && \
-      echo "=== Workspace Prepared ==="
+      # Security headers: fail-fast and prevent credential prompts
+      set -euo pipefail
+      export GIT_TERMINAL_PROMPT=0
+
+      # Navigate to repository
+      cd "{{repo_path}}" || exit 1
+
+      echo "=== Step 1: Preparing Workspace ==="
+      echo ""
+      echo "Current directory: $(pwd)"
+      echo ""
+
+      # Display git status
+      echo "--- Git Status ---"
+      git status
+      echo ""
+
+      # Fetch latest remote refs
+      echo "--- Fetching Latest from Remote ---"
+      git fetch --all
+      echo ""
+
+      # Get current branch
+      current_branch=$(git branch --show-current)
+      echo "--- Current Branch: ${current_branch} ---"
+      echo ""
+
+      # Check if branch has upstream tracking
+      echo "--- Sync Verification ---"
+      if ! upstream_branch=$(git rev-parse --abbrev-ref --symbolic-full-name @{upstream} 2>/dev/null); then
+        echo "❌ ERROR: No upstream tracking branch configured for '${current_branch}'"
+        echo ""
+        echo "This workflow requires an upstream tracking branch to verify your local"
+        echo "branch is synchronized with the remote before starting work."
+        echo ""
+        echo "To fix this, set up upstream tracking:"
+        echo "  git branch --set-upstream-to=origin/${current_branch} ${current_branch}"
+        echo ""
+        echo "Or push your branch to create the remote:"
+        echo "  git push -u origin ${current_branch}"
+        echo ""
+        echo "=== ERROR: Cannot proceed - no upstream tracking branch ==="
+        exit 1
+      fi
+
+      echo "Upstream branch: ${upstream_branch}"
+
+      # Check sync state (behind/ahead/diverged)
+      behind_count=$(git rev-list HEAD..@{upstream} --count 2>/dev/null || echo "0")
+      ahead_count=$(git rev-list @{upstream}..HEAD --count 2>/dev/null || echo "0")
+
+      # Validate counts are numeric
+      if ! [[ "${behind_count}" =~ ^[0-9]+$ ]] || ! [[ "${ahead_count}" =~ ^[0-9]+$ ]]; then
+        echo "❌ ERROR: Failed to determine sync state with upstream"
+        echo "This may indicate a git configuration issue."
+        exit 1
+      fi
+
+      echo "Commits behind upstream: ${behind_count}"
+      echo "Commits ahead of upstream: ${ahead_count}"
+      echo ""
+
+      # Handle sync states
+      if [[ "${behind_count}" -eq 0 && "${ahead_count}" -eq 0 ]]; then
+        # Up-to-date
+        echo "✅ Local branch is up-to-date with ${upstream_branch}"
+        echo ""
+      elif [[ "${behind_count}" -gt 0 && "${ahead_count}" -eq 0 ]]; then
+        # Behind only - auto-pull with fast-forward
+        echo "🔄 Local branch is behind ${upstream_branch} by ${behind_count} commit(s)"
+        echo "Attempting fast-forward pull..."
+        echo ""
+
+        if git pull --ff-only; then
+          echo ""
+          echo "✅ Successfully pulled ${behind_count} commit(s) from ${upstream_branch}"
+          echo ""
+        else
+          echo ""
+          echo "❌ ERROR: Fast-forward pull failed"
+          echo ""
+          echo "This usually means:"
+          echo "  - Your local branch has uncommitted changes conflicting with remote"
+          echo "  - The remote branch was force-pushed (history rewritten)"
+          echo ""
+          echo "To resolve:"
+          echo "  1. Review your local changes: git status"
+          echo "  2. Stash changes if needed: git stash"
+          echo "  3. Try pulling again: git pull --ff-only"
+          echo "  4. Or reset to remote: git reset --hard ${upstream_branch}"
+          echo ""
+          echo "=== ERROR: Cannot proceed - fast-forward pull failed ==="
+          exit 1
+        fi
+      elif [[ "${behind_count}" -eq 0 && "${ahead_count}" -gt 0 ]]; then
+        # Ahead only - allow to continue
+        echo "⚠️  Local branch is ahead of ${upstream_branch} by ${ahead_count} commit(s)"
+        echo "You have unpushed commits. The workflow will push them in Step 15."
+        echo ""
+      elif [[ "${behind_count}" -gt 0 && "${ahead_count}" -gt 0 ]]; then
+        # Diverged - require manual intervention
+        echo "❌ ERROR: Branches have diverged"
+        echo ""
+        echo "Your local branch and ${upstream_branch} have diverged:"
+        echo "  - Local is ahead by ${ahead_count} commit(s)"
+        echo "  - Remote is ahead by ${behind_count} commit(s)"
+        echo ""
+        echo "This requires manual merge or rebase. The workflow cannot proceed safely."
+        echo ""
+        echo "To resolve, choose ONE of these options:"
+        echo ""
+        echo "Option 1 - Merge remote changes (preserves both histories):"
+        echo "  git pull --no-ff"
+        echo "  # Resolve any conflicts, then:"
+        echo "  git add ."
+        echo "  git commit"
+        echo ""
+        echo "Option 2 - Rebase your commits onto remote (linear history):"
+        echo "  git pull --rebase"
+        echo "  # Resolve any conflicts, then:"
+        echo "  git rebase --continue"
+        echo ""
+        echo "Option 3 - Discard local commits (DESTRUCTIVE - use with caution):"
+        echo "  git reset --hard ${upstream_branch}"
+        echo ""
+        echo "After resolving the divergence, run the workflow again."
+        echo ""
+        echo "=== ERROR: Cannot proceed - branches have diverged ==="
+        exit 1
+      fi
+
+      echo "=== Workspace Prepared and Synchronized ==="
     output: "workspace_status"
 
   # ==========================================================================
