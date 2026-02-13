@@ -408,17 +408,17 @@ if [[ -n $(git status --porcelain) ]]; then
     # Create temp clone and commit changes
     TEMP_DIR=$(mktemp -d)
     git clone --quiet "$REPO_PATH" "$TEMP_DIR"
-    
+
     # Sync working tree (including deletions)
     rsync -a --delete --exclude='.git' "$REPO_PATH/" "$TEMP_DIR/"
-    
+
     cd "$TEMP_DIR"
     git add -A
     git commit --allow-empty -m "Shadow snapshot" --author="Shadow <shadow@localhost>"
-    
+
     # Create bundle
     git bundle create "$OUTPUT_PATH" --all
-    
+
     cd /
     rm -rf "$TEMP_DIR"
 else
@@ -606,10 +606,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
+
       - name: Create git bundle
         run: git bundle create snapshot.bundle --all
-      
+
       - name: Run shadow tests
         run: |
           docker run --rm \
@@ -718,11 +718,11 @@ Combine shadow isolation with declarative test scenarios:
 scenario:
   name: "Library Integration Test"
   type: cli
-  
+
   steps:
     - action: launch
       target: "/workspace/org/lib/cli.py"
-    
+
     - action: verify_output
       contains: "Success"
 ```
