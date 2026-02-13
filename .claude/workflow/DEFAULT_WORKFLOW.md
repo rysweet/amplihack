@@ -217,7 +217,23 @@ Agents that skip workflow steps (especially mandatory review steps 10, 16-17) cr
 
 **Prerequisite Check:** Verify Step 0 is complete - you should have 23 todos visible (Steps 0-22) before proceeding.
 
-- [ ] start with a clean local environment and make sure it is up to date (no unstashed changes, git fetch)
+- [ ] start with a clean local environment and make sure it is synchronized with remote (the workflow automatically verifies sync and pulls if safe)
+
+**What Step 1 Does:**
+
+- Fetches latest changes from all remote branches
+- Verifies current branch is synchronized with its upstream tracking branch
+- Automatically pulls changes if your branch is behind (fast-forward only)
+- Fails fast if branches have diverged, providing clear resolution instructions
+- Ensures no Step 15 (Push to Remote) failures due to out-of-date local checkout
+
+**Sync States Handled:**
+
+- ✅ **Up-to-date**: Continues immediately
+- 🔄 **Behind only**: Auto-pulls with fast-forward, then continues
+- ⚠️ **Ahead only**: Warns about unpushed commits, continues (will push in Step 15)
+- ❌ **Diverged**: Fails with merge/rebase instructions
+- ❌ **No upstream**: Fails with tracking setup instructions
 
 ### Step 2: Rewrite and Clarify Requirements
 

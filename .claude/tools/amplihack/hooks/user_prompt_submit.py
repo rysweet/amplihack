@@ -367,15 +367,14 @@ class UserPromptSubmitHook(HookProcessor):
             # Use frozensets for O(1) membership lookup
             if value in _ENABLED_VALUES:
                 return True
-            elif value in _DISABLED_VALUES:
+            if value in _DISABLED_VALUES:
                 return False
-            else:
-                # Unknown value, default to enabled
-                self.log(
-                    f"Unknown workflow reminder preference: {value}, defaulting to enabled",
-                    "WARNING",
-                )
-                return True
+            # Unknown value, default to enabled
+            self.log(
+                f"Unknown workflow reminder preference: {value}, defaulting to enabled",
+                "WARNING",
+            )
+            return True
         except Exception as e:
             self.log(f"Error checking workflow reminder preference: {e}", "ERROR")
             self.save_metric("workflow_preference_check_error", 1)
