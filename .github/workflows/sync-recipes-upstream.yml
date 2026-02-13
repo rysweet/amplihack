@@ -1,0 +1,129 @@
+name: Sync Recipes from Upstream
+
+on:
+  schedule:
+    - cron: "0 8 * * *" # Daily at 8am UTC
+  workflow_dispatch: # Manual trigger
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync-recipes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install pyyaml
+
+      - name: Check for upstream changes
+        id: check
+        run: |
+          python3 << 'CHECKEOF'
+          import subprocess
+          import sys
+
+          # Add upstream remote
+          subprocess.run(
+              ["git", "remote", "add", "upstream-recipes", "https://github.com/microsoft/amplifier-bundle-recipes"],
+              capture_output=True
+          )
+
+          # Fetch upstream
+          result = subprocess.run(
+              ["git", "fetch", "upstream-recipes", "main"],
+              check=True,
+              capture_output=True,
+              timeout=60
+          )
+
+          # Check diff
+          diff = subprocess.run(
+              ["git", "diff", "upstream-recipes/main", "--", "amplifier-bundle/recipes/"],
+              capture_output=True,
+              text=True
+          )
+
+          has_changes = bool(diff.stdout.strip())
+          print(f"has_changes={str(has_changes).lower()}")
+
+          # Output for GitHub Actions
+          with open("$GITHUB_OUTPUT", "a") as f:
+              f.write(f"has_changes={str(has_changes).lower()}\n")
+
+          if has_changes:
+              print("Changes detected in upstream recipes")
+              sys.exit(0)
+          else:
+              print("No changes detected")
+              sys.exit(0)
+          CHECKEOF
+
+      - name: Create sync branch and merge upstream changes
+        if: steps.check.outputs.has_changes == 'true'
+        run: |
+          DATE=$(date +%Y%m%d)
+          BRANCH="chore/sync-recipes-$DATE"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git checkout -b "$BRANCH"
+
+          # Merge only the recipes directory from upstream
+          git checkout upstream-recipes/main -- amplifier-bundle/recipes/
+
+          git add amplifier-bundle/recipes/
+          git commit -m "chore: Sync recipes from upstream amplifier-bundle-recipes
+
+          Automated daily sync from microsoft/amplifier-bundle-recipes.
+
+          Changes pulled from upstream-recipes/main."
+
+          git push -u origin "$BRANCH"
+
+          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+
+      - name: Create Pull Request
+        if: steps.check.outputs.has_changes == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BRANCH="${{ steps.create-branch.outputs.branch }}"
+
+          gh pr create \
+            --title "chore: Sync recipes from upstream ($(date +%Y-%m-%d))" \
+            --body "$(cat <<'PREOF'
+          ## Automated Recipe Sync
+
+          This PR syncs recipe YAML files from the upstream Microsoft Amplifier bundle repository.
+
+          **Upstream**: https://github.com/microsoft/amplifier-bundle-recipes
+          **Sync Date**: $(date +%Y-%m-%d)
+
+          ### Changes
+
+          Recipe files updated to match upstream. Review the diff to see what changed in each recipe.
+
+          ### Review Checklist
+
+          - [ ] All recipe YAML files still parse correctly
+          - [ ] No breaking changes to recipe schema
+          - [ ] Step count changes are intentional improvements
+
+          ---
+          *Automated by `.github/workflows/sync-recipes-upstream.yml`*
+          PREOF
+          )" \
+            --label "dependencies,chore" \
+            --base main \
+            --head "$BRANCH"

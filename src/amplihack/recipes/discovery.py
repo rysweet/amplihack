@@ -9,9 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import shutil
 import subprocess
-import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -165,81 +163,87 @@ def check_upstream_changes(
 
 
 def sync_upstream(
-    target_dir: Path | None = None,
     repo_url: str = _UPSTREAM_REPO,
     branch: str = _UPSTREAM_BRANCH,
+    remote_name: str = "amplifier-recipes",
 ) -> dict[str, Any]:
-    """Fetch recipes from upstream repository and sync to local directory.
+    """Check upstream for recipe changes using git fetch and diff.
 
-    Clones the upstream repo to a temp directory, copies recipe YAML files,
-    and updates the manifest. Returns a summary of changes.
+    Adds upstream as a git remote, fetches latest, and compares the recipes
+    directory. Returns what changed without modifying local files.
 
     Args:
-        target_dir: Local directory to sync recipes into.
         repo_url: Upstream git repository URL.
         branch: Branch to fetch from.
+        remote_name: Name for the git remote.
 
     Returns:
-        Dict with keys: ``added``, ``updated``, ``unchanged`` (counts).
+        Dict with keys: ``has_changes``, ``files_changed``, ``diff_summary``.
     """
-    local_dir = target_dir or _find_first_recipe_dir()
-    if local_dir is None:
-        raise FileNotFoundError("No local recipe directory found")
+    # Add upstream remote if not already present
+    remote_name_internal = f"upstream-{remote_name}"
+    result = subprocess.run(
+        ["git", "remote", "get-url", remote_name_internal],
+        capture_output=True,
+        timeout=5,
+    )
+    if result.returncode != 0:
+        subprocess.run(
+            ["git", "remote", "add", remote_name_internal, repo_url],
+            check=True,
+            capture_output=True,
+            timeout=10,
+        )
+        logger.info("Added remote '%s' -> %s", remote_name_internal, repo_url)
 
-    # Clone to temp directory
-    with tempfile.TemporaryDirectory(prefix="recipe-sync-") as tmpdir:
-        tmp_path = Path(tmpdir)
-        logger.info("Cloning %s to %s", repo_url, tmp_path)
+    # Fetch latest from upstream
+    subprocess.run(
+        ["git", "fetch", remote_name_internal, branch],
+        check=True,
+        capture_output=True,
+        timeout=60,
+    )
 
-        try:
-            subprocess.run(
-                [
-                    "git",
-                    "clone",
-                    "--depth=1",
-                    f"--branch={branch}",
-                    repo_url,
-                    str(tmp_path / "repo"),
-                ],
-                check=True,
-                capture_output=True,
-                timeout=300,
-            )
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"Failed to clone upstream: {e.stderr.decode()}") from e
-        except subprocess.TimeoutExpired as e:
-            raise RuntimeError("Upstream clone timed out after 5 minutes") from e
+    # Check what changed in recipes directories
+    diff_result = subprocess.run(
+        [
+            "git",
+            "diff",
+            f"{remote_name_internal}/{branch}",
+            "--",
+            "amplifier-bundle/recipes/",
+            "src/amplihack/amplifier-bundle/recipes/",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
 
-        upstream_dir = tmp_path / "repo" / "recipes"
-        if not upstream_dir.is_dir():
-            raise FileNotFoundError(f"No 'recipes' directory in upstream repo: {repo_url}")
+    has_changes = bool(diff_result.stdout.strip())
 
-        # Track changes
-        added = 0
-        updated = 0
-        unchanged = 0
+    # Get list of changed files
+    files_result = subprocess.run(
+        [
+            "git",
+            "diff",
+            "--name-only",
+            f"{remote_name_internal}/{branch}",
+            "--",
+            "amplifier-bundle/recipes/",
+            "src/amplihack/amplifier-bundle/recipes/",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    files_changed = [f for f in files_result.stdout.strip().split("\n") if f]
 
-        for yaml_path in sorted(upstream_dir.glob("*.yaml")):
-            local_path = local_dir / yaml_path.name
-            upstream_content = yaml_path.read_bytes()
-
-            if local_path.exists():
-                local_content = local_path.read_bytes()
-                if local_content != upstream_content:
-                    shutil.copy2(yaml_path, local_path)
-                    updated += 1
-                    logger.info("Updated: %s", yaml_path.name)
-                else:
-                    unchanged += 1
-            else:
-                shutil.copy2(yaml_path, local_path)
-                added += 1
-                logger.info("Added: %s", yaml_path.name)
-
-        # Update manifest after sync
-        update_manifest(local_dir)
-
-        return {"added": added, "updated": updated, "unchanged": unchanged}
+    return {
+        "has_changes": has_changes,
+        "files_changed": files_changed,
+        "diff_summary": diff_result.stdout[:500] if has_changes else "No changes",
+        "upstream_ref": f"{remote_name_internal}/{branch}",
+    }
 
 
 def update_manifest(local_dir: Path | None = None) -> Path:
