@@ -225,9 +225,9 @@ class BackgroundIndexer:
                 )
                 self._store_result(job_id, result)
 
-                # Notify completion callbacks
-                for callback in self._completion_callbacks:
-                    callback(job_id, result)
+                # Note: completion callbacks registered on the parent BackgroundIndexer
+                # instance are NOT available here (child process has separate memory).
+                # Parent should poll get_job_status() or check result files.
 
         except Exception as e:
             with open(log_file, "a") as f:

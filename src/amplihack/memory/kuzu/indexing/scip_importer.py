@@ -134,7 +134,11 @@ class ScipImporter:
             try:
                 self.conn.execute_write(query)
             except Exception as e:
-                logger.debug("Schema creation: %s", e)
+                # "already exists" is expected on re-runs, everything else is a real problem
+                if "already exists" in str(e):
+                    logger.debug("Schema table exists: %s", e)
+                else:
+                    logger.warning("Schema creation failed: %s", e)
 
     def import_from_file(
         self,
@@ -482,10 +486,9 @@ class ScipImporter:
         if not files:
             return
 
-        # Use a single query with parameters for all files
+        failures = 0
         for file_path, language in files:
             try:
-                # Try to insert, skip if already exists (PRIMARY KEY conflict)
                 insert_query = """
                 CREATE (f:CodeFile {
                     file_id: $file_id,
@@ -504,14 +507,17 @@ class ScipImporter:
                     },
                 )
             except Exception:
-                # Skip if node already exists (duplicate key error)
-                pass
+                failures += 1
+
+        if failures > 0:
+            logger.debug("Skipped %d/%d file inserts (duplicates)", failures, len(files))
 
     def _batch_insert_functions(self, functions: list[tuple[Any, str, int]]):
         """Batch insert CodeFunction nodes."""
         if not functions:
             return
 
+        failures = 0
         for symbol_info, file_path, line_number in functions:
             try:
                 symbol_name = symbol_info.symbol
@@ -561,14 +567,17 @@ class ScipImporter:
                     },
                 )
             except Exception:
-                # Skip duplicates
-                pass
+                failures += 1
+
+        if failures > 0:
+            logger.debug("Skipped %d/%d function inserts (duplicates)", failures, len(functions))
 
     def _batch_insert_classes(self, classes: list[tuple[Any, str, int]]):
         """Batch insert CodeClass nodes."""
         if not classes:
             return
 
+        failures = 0
         for symbol_info, file_path, line_number in classes:
             try:
                 symbol_name = symbol_info.symbol
@@ -611,5 +620,7 @@ class ScipImporter:
                     {"class_id": class_id, "file_id": file_path},
                 )
             except Exception:
-                # Skip duplicates
-                pass
+                failures += 1
+
+        if failures > 0:
+            logger.debug("Skipped %d/%d class inserts (duplicates)", failures, len(classes))

@@ -127,9 +127,9 @@ def handle_blarify_staleness(input_data: dict[str, Any]) -> ToolHookResult:
             # For now, just warn the user - they can manually trigger it
             # result.actions_taken.append("Triggered incremental reindexing in background")
 
-    except ImportError:
-        # Staleness detector not available - silently skip
-        pass
+    except ImportError as e:
+        # Staleness detector not available - log once so user knows
+        result.metadata["blarify_import_error"] = str(e)
     except Exception as e:
         # Log error but don't fail the hook
         result.metadata["blarify_check_error"] = str(e)
