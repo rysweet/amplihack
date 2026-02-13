@@ -157,18 +157,29 @@ class BackgroundIndexer:
             log_file: Path to log file
             timeout: Optional timeout in seconds
         """
-        # Close inherited stdio so parent process can exit cleanly
         import os as _os
 
+        # Open log file BEFORE closing stdio, so errors have somewhere to go
         try:
-            _os.close(0)  # stdin
-            _os.close(1)  # stdout
-            _os.close(2)  # stderr
-        except OSError:
-            pass
+            f = open(log_file, "w")  # noqa: SIM115
+        except Exception:
+            # Can't even open log - close stdio and exit silently
+            for fd in (0, 1, 2):
+                try:
+                    _os.close(fd)
+                except OSError:
+                    pass
+            return
+
+        # Now close inherited stdio so parent process can exit cleanly
+        for fd in (0, 1, 2):
+            try:
+                _os.close(fd)
+            except OSError:
+                pass
 
         try:
-            with open(log_file, "w") as f:
+            with f:
                 f.write(f"Starting indexing job {job_id}\n")
                 f.write(f"Codebase: {codebase_path}\n")
                 f.write(f"Languages: {', '.join(languages)}\n")

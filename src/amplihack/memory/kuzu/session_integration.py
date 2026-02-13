@@ -103,7 +103,8 @@ def inject_code_graph_context(
         try:
             result = conn.execute_query(query)
             stats[label] = result[0]["cnt"] if result else 0
-        except Exception:
+        except Exception as e:
+            log(f"Code graph query failed for {label}: {e}", "WARNING")
             stats[label] = 0
 
     total = stats.get("files", 0) + stats.get("classes", 0) + stats.get("functions", 0)
