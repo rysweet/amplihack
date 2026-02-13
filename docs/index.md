@@ -365,24 +365,16 @@ Embedded graph-based memory using Kuzu (NO Neo4j required):
 - [Documentation Graph](doc_graph_quick_reference.md) - Navigate documentation connections
 - [Code Context Injection](memory/CODE_CONTEXT_INJECTION.md) - Link code to memories
 
-### Code Graph Commands ⭐ NEW
+### Code Graph
 
-Visual and queryable representations of your codebase structure:
+Query your codebase structure via the Kuzu graph database:
 
-- [Code Graph Documentation](code-graph/README.md) - Complete feature overview
-- [Quick Start](code-graph/quick-start.md) - Get your first graph in 2 minutes
-- [Command Reference](code-graph/command-reference.md) - All 5 commands documented
-- [Examples](code-graph/examples.md) - Real-world workflows
-- [Troubleshooting](code-graph/troubleshooting.md) - Fix common issues
-
-**Commands:**
+- **[How to Use Blarify Code Graph](howto/blarify-code-graph.md)** - Enable, query, and configure
 
 ```bash
-/code-graph              # View full graph
-/code-graph-index        # Create database
-/code-graph-update       # Incremental update
-/code-graph-images       # Batch generation
-/code-graph-core         # Core architecture
+python -m amplihack.memory.kuzu.query_code_graph stats
+python -m amplihack.memory.kuzu.query_code_graph search <name>
+python -m amplihack.memory.kuzu.query_code_graph functions --file <path>
 ```
 
 **Historical Research** (Neo4j was replaced with Kuzu in Week 7):
