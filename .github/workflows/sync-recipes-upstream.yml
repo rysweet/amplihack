@@ -29,18 +29,19 @@ jobs:
         id: check
         run: |
           python3 << 'CHECKEOF'
+          import os
           import subprocess
           import sys
 
           # Add upstream remote
           subprocess.run(
-              ["git", "remote", "add", "upstream-recipes", "https://github.com/microsoft/amplifier-bundle-recipes"],
+              ["git", "remote", "add", "upstream-amplifier-recipes", "https://github.com/microsoft/amplifier-bundle-recipes"],
               capture_output=True
           )
 
           # Fetch upstream
           result = subprocess.run(
-              ["git", "fetch", "upstream-recipes", "main"],
+              ["git", "fetch", "upstream-amplifier-recipes", "main"],
               check=True,
               capture_output=True,
               timeout=60
@@ -48,7 +49,7 @@ jobs:
 
           # Check diff
           diff = subprocess.run(
-              ["git", "diff", "upstream-recipes/main", "--", "amplifier-bundle/recipes/"],
+              ["git", "diff", "upstream-amplifier-recipes/main", "--", "amplifier-bundle/recipes/"],
               capture_output=True,
               text=True
           )
@@ -57,8 +58,10 @@ jobs:
           print(f"has_changes={str(has_changes).lower()}")
 
           # Output for GitHub Actions
-          with open("$GITHUB_OUTPUT", "a") as f:
-              f.write(f"has_changes={str(has_changes).lower()}\n")
+          github_output = os.environ.get("GITHUB_OUTPUT")
+          if github_output:
+              with open(github_output, "a") as f:
+                  f.write(f"has_changes={str(has_changes).lower()}\n")
 
           if has_changes:
               print("Changes detected in upstream recipes")
@@ -69,6 +72,7 @@ jobs:
           CHECKEOF
 
       - name: Create sync branch and merge upstream changes
+        id: create-branch
         if: steps.check.outputs.has_changes == 'true'
         run: |
           DATE=$(date +%Y%m%d)
@@ -80,18 +84,18 @@ jobs:
           git checkout -b "$BRANCH"
 
           # Merge only the recipes directory from upstream
-          git checkout upstream-recipes/main -- amplifier-bundle/recipes/
+          git checkout upstream-amplifier-recipes/main -- amplifier-bundle/recipes/
 
           git add amplifier-bundle/recipes/
           git commit -m "chore: Sync recipes from upstream amplifier-bundle-recipes
 
           Automated daily sync from microsoft/amplifier-bundle-recipes.
 
-          Changes pulled from upstream-recipes/main."
+          Changes pulled from upstream-amplifier-recipes/main."
 
           git push -u origin "$BRANCH"
 
-          echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
 
       - name: Create Pull Request
         if: steps.check.outputs.has_changes == 'true'
