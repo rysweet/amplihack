@@ -43,7 +43,9 @@ I orchestrate the skill creation process using amplihack's specialized agents:
 
 4. **Validate Quality** (reviewer agent)
    - Check YAML frontmatter syntax
-   - Verify token budget (<5,000 tokens core)
+   - **Enforce Progressive Disclosure**: SKILL.md must be < 500 lines (target 1,000-2,000 tokens)
+   - **Validate Navigation**: Multi-file skills MUST include "When to Read Supporting Files" section
+   - **Check Source URLs**: Skills based on external docs MUST have `source_urls` in frontmatter
    - Ensure philosophy compliance (>85% score)
    - Test description quality for discovery
 
@@ -71,12 +73,42 @@ For explicit invocation:
 
 Examples in [examples.md](./examples.md).
 
+## Official Best Practices Enforcement
+
+This skill enforces **Claude API Skill Authoring Best Practices**:
+
+1. **Progressive Disclosure Pattern** (MANDATORY)
+   - SKILL.md < 500 lines (target 1,000-2,000 tokens)
+   - Split content into reference.md, examples.md, patterns.md
+   - Content-based splitting: beginner (SKILL.md) vs expert (supporting files)
+
+2. **Navigation Guides** (MANDATORY for multi-file skills)
+   - Explicit "When to Read Supporting Files" section
+   - Clear guidance on when to read each file
+   - Example: "Read reference.md when you need complete API details"
+
+3. **Source Attribution** (MANDATORY for documentation-based skills)
+   - `source_urls` field in YAML frontmatter
+   - Enables drift detection and proper attribution
+   - Format: `source_urls: [list of documentation URLs]`
+
+4. **Token Budget**
+   - SKILL.md: 1,000-2,000 tokens (warning at 2,000+)
+   - Supporting files: Unbounded (referenced on-demand)
+   - Aggressive splitting encouraged for better UX
+
+5. **Quality Thresholds**
+   - YAML syntax validation
+   - Required fields (name, description, auto_activates, source_urls if applicable)
+   - Philosophy compliance > 85%
+   - Description clarity for autonomous discovery
+
 ## Documentation
 
 **Supporting Files** (progressive disclosure):
 
-- [reference.md](./reference.md): Architecture, patterns, YAML spec, best practices
-- [examples.md](./examples.md): Real-world usage, testing, troubleshooting
+- [reference.md](./reference.md): Complete best practices, YAML spec, architecture, validation rules
+- [examples.md](./examples.md): Real-world skill creation workflows, testing, troubleshooting
 
 **Original Documentation Sources** (embedded in reference.md):
 
