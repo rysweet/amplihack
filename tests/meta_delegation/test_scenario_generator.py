@@ -172,7 +172,7 @@ class TestGadugiScenarioGenerator:
         assert len(scenarios) > 0
 
         # Should include S3-specific scenarios if context-aware
-        scenario_text = " ".join([s.description for s in scenarios]).lower()
+        _ = " ".join([s.description for s in scenarios]).lower()
 
     def test_scenarios_have_clear_steps(self, generator):
         """Test generated scenarios have clear, actionable steps."""

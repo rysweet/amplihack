@@ -462,14 +462,12 @@ class TestEndToEnd:
 
     def test_complete_workflow_with_warning_display(self, tmp_path, capsys):
         """Test complete workflow including warning message display."""
-        gitignore_path = tmp_path / ".gitignore"
-
         checker = GitignoreChecker()
 
         with patch.object(checker, "get_repo_root", return_value=tmp_path):
             with patch.object(checker, "is_git_repo", return_value=True):
                 # Execute with display warnings enabled
-                result = checker.run(display_warnings=True)
+                _ = checker.run(display_warnings=True)
 
                 # Verify warning was printed to stdout
                 captured = capsys.readouterr()

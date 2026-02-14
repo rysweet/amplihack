@@ -105,7 +105,7 @@ class TestCompletePluginLifecycle:
             (plugin_dir / "manifest.json").write_text(json.dumps(manifest_v1))
 
             manager = PluginManager()
-            result_v1 = manager.install(str(plugin_dir))
+            _ = manager.install(str(plugin_dir))
 
             # Upgrade to v2.0.0
             manifest_v2 = {
@@ -142,7 +142,7 @@ class TestCompletePluginLifecycle:
             install_result = manager.install(str(plugin_dir))
 
             # Get settings path
-            settings_path = Path(install_result.installed_path) / ".claude" / "settings.json"
+            _ = Path(install_result.installed_path) / ".claude" / "settings.json"
 
             # Uninstall
             uninstall_result = manager.uninstall("test-plugin")
@@ -206,8 +206,8 @@ class TestMultiPluginScenarios:
             (plugin2_dir / "manifest.json").write_text(json.dumps(manifest2))
 
             manager = PluginManager()
-            result1 = manager.install(str(plugin1_dir))
-            result2 = manager.install(str(plugin2_dir))
+            _ = manager.install(str(plugin1_dir))
+            _ = manager.install(str(plugin2_dir))
 
             # Should handle conflict (rename, error, or user choice)
             assert True  # Will fail with proper implementation

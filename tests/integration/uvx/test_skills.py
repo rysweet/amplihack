@@ -193,7 +193,7 @@ class TestSkillIntegration:
         try:
             assert_output_contains(result.stdout, "pdf", case_sensitive=False)
             assert_output_contains(result.stdout, "mcp", case_sensitive=False)
-            found_both = True
+            _ = True
         except AssertionError:
             pass
 

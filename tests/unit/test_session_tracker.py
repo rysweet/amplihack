@@ -81,7 +81,7 @@ class TestSessionTrackerInit:
         with patch.object(
             SessionTracker, "RUNTIME_LOG", test_dir / ".claude" / "runtime" / "sessions.jsonl"
         ):
-            tracker = SessionTracker()
+            _ = SessionTracker()
             runtime_dir = test_dir / ".claude" / "runtime"
 
             # Manually create directory since we're testing
@@ -96,7 +96,7 @@ class TestSessionTrackerInit:
         runtime_dir.mkdir(parents=True, exist_ok=True)
 
         with patch.object(SessionTracker, "RUNTIME_LOG", runtime_dir / "sessions.jsonl"):
-            tracker = SessionTracker()
+            _ = SessionTracker()
             assert runtime_dir.exists()
 
 
@@ -158,7 +158,7 @@ class TestSessionTrackerStart:
         with patch.object(SessionTracker, "RUNTIME_LOG", runtime_log):
             tracker = SessionTracker()
 
-            session_id = tracker.start_session(
+            _ = tracker.start_session(
                 pid=12345,
                 launch_dir="/test/dir",
                 argv=["amplihack", "launch", "--auto"],

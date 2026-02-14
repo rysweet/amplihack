@@ -312,7 +312,7 @@ class TestEvidenceCollector:
         evidence = collector.collect_evidence()
 
         # Should either skip or handle binary files
-        png_files = [e for e in evidence if "image.png" in e.path]
+        _ = [e for e in evidence if "image.png" in e.path]
         # Implementation may skip binary files
 
     def test_collector_handles_empty_directory(self, tmp_path):
@@ -361,7 +361,7 @@ class TestEvidenceCollector:
 
     def test_export_evidence_to_directory(self, collector, tmp_path):
         """Test exporting all evidence to directory."""
-        evidence = collector.collect_evidence()
+        _ = collector.collect_evidence()
 
         export_dir = tmp_path / "exported"
         collector.export_evidence(str(export_dir))
@@ -395,7 +395,7 @@ class TestEvidenceCollectionStrategies:
             evidence_priorities=GUIDE.evidence_collection_priority,
         )
 
-        evidence = collector.collect_evidence()
+        _ = collector.collect_evidence()
 
         # Guide prioritizes documentation
         # Check if documentation comes early in results or has priority flag

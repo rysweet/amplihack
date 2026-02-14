@@ -238,7 +238,7 @@ class TestPluginVerifyCommand:
         """Test verify checks plugin directory exists."""
         # Arrange
         args = argparse.Namespace(plugin_name="my-plugin")
-        plugin_path = Path.home() / ".amplihack" / ".claude" / "plugins" / "my-plugin"
+        _ = Path.home() / ".amplihack" / ".claude" / "plugins" / "my-plugin"
 
         with patch("pathlib.Path.exists") as mock_exists:
             mock_exists.return_value = False

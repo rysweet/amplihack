@@ -530,7 +530,7 @@ class TestEdgeIntegration:
         # Setup project with v1.0
         project = tmp_path / "project"
         project.mkdir()
-        merger = SettingsMerger()
+        _ = SettingsMerger()
         base_v1 = json.loads((plugin_home / ".claude" / "settings.json").read_text())
         project_claude = project / ".claude"
         project_claude.mkdir()

@@ -146,7 +146,7 @@ class TestPluginUninstallationWorkflow:
             (plugin_dir / "manifest.json").write_text(json.dumps(manifest))
 
             manager = PluginManager()
-            install_result = manager.install(str(plugin_dir))
+            _ = manager.install(str(plugin_dir))
 
             # Now uninstall
             uninstall_result = manager.uninstall("test-plugin")

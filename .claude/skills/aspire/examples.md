@@ -9,6 +9,7 @@ Copy-paste examples for common Aspire scenarios. All examples tested with .NET 8
 ### Minimal Aspire Application
 
 **Create Project:**
+
 ```bash
 dotnet new aspire-apphost -n MinimalApp
 cd MinimalApp
@@ -17,6 +18,7 @@ dotnet add MinimalApp.AppHost reference MinimalApp.Api
 ```
 
 **AppHost (MinimalApp.AppHost/Program.cs):**
+
 ```csharp
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -26,6 +28,7 @@ builder.Build().Run();
 ```
 
 **Run:**
+
 ```bash
 aspire run
 # Dashboard opens at http://localhost:15888
@@ -33,6 +36,7 @@ aspire run
 ```
 
 **Expected Output:**
+
 - Dashboard shows "api" resource with "Healthy" status
 - Console logs from API visible in Dashboard
 - OpenTelemetry traces for HTTP requests
@@ -42,6 +46,7 @@ aspire run
 ### API with Redis Cache
 
 **AppHost:**
+
 ```csharp
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -56,6 +61,7 @@ builder.Build().Run();
 ```
 
 **API Configuration (Program.cs):**
+
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 
@@ -82,6 +88,7 @@ app.Run();
 ```
 
 **Test:**
+
 ```bash
 aspire run
 
@@ -96,6 +103,7 @@ curl http://localhost:5000/cache/test
 ```
 
 **Connection String Generated:**
+
 ```
 Local: localhost:6379
 Azure: my-app-cache.redis.cache.windows.net:6380,ssl=True,password=...
@@ -106,6 +114,7 @@ Azure: my-app-cache.redis.cache.windows.net:6380,ssl=True,password=...
 ### API with PostgreSQL Database
 
 **AppHost:**
+
 ```csharp
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -121,6 +130,7 @@ builder.Build().Run();
 ```
 
 **API - Entity Framework Configuration:**
+
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 
@@ -149,6 +159,7 @@ app.Run();
 ```
 
 **DbContext:**
+
 ```csharp
 public class AppDbContext : DbContext
 {
@@ -166,6 +177,7 @@ public class User
 ```
 
 **Test:**
+
 ```bash
 aspire run
 
@@ -182,6 +194,7 @@ curl http://localhost:5000/users
 ### Complete E-Commerce Example
 
 **Project Structure:**
+
 ```bash
 dotnet new aspire-apphost -n ECommerce
 cd ECommerce
@@ -197,6 +210,7 @@ dotnet add ECommerce.AppHost reference ECommerce.OrderProcessor
 ```
 
 **AppHost:**
+
 ```csharp
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -242,6 +256,7 @@ builder.Build().Run();
 ```
 
 **Catalog API (Products):**
+
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 
@@ -273,6 +288,7 @@ app.Run();
 ```
 
 **Order API (Orders):**
+
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 
@@ -309,6 +325,7 @@ app.Run();
 ```
 
 **Order Processor (Background Worker):**
+
 ```csharp
 public class Worker : BackgroundService
 {
@@ -362,6 +379,7 @@ public class Worker : BackgroundService
 ```
 
 **Test Complete System:**
+
 ```bash
 aspire run
 # Dashboard shows all 8 services healthy
@@ -375,6 +393,7 @@ curl -X POST http://localhost:5001/orders \
 ```
 
 **Service Communication Flow:**
+
 ```
 Web Browser
     ↓ HTTP
@@ -391,6 +410,7 @@ Order Processor → PostgreSQL (orderdb)
 ### Deploy Multi-Service Application to Azure
 
 **Prerequisites:**
+
 ```bash
 # Install Azure Developer CLI
 curl -fsSL https://aka.ms/install-azd.sh | bash
@@ -401,6 +421,7 @@ azd auth login
 ```
 
 **Initialize Deployment:**
+
 ```bash
 cd ECommerce
 azd init
@@ -412,6 +433,7 @@ azd init
 ```
 
 **Deploy:**
+
 ```bash
 azd up
 # Creates:
@@ -426,6 +448,7 @@ azd up
 ```
 
 **Generated Bicep (excerpts):**
+
 ```bicep
 // Azure Cache for Redis (replaces AddRedis)
 resource redis 'Microsoft.Cache/Redis@2023-08-01' = {
@@ -476,6 +499,7 @@ resource catalogApi 'Microsoft.App/containerApps@2023-05-01' = {
 ```
 
 **Post-Deployment:**
+
 ```bash
 # Get deployed URLs
 azd env get-values
@@ -490,6 +514,7 @@ curl https://catalog-api.xxx.eastus.azurecontainerapps.io/products
 ```
 
 **Deploy Updates:**
+
 ```bash
 # Make code changes
 # Deploy updates only (faster)
@@ -497,6 +522,7 @@ azd deploy
 ```
 
 **Multiple Environments:**
+
 ```bash
 # Create staging environment
 azd env new staging
@@ -511,6 +537,7 @@ azd deploy
 ```
 
 **Tear Down:**
+
 ```bash
 azd down  # Deletes all Azure resources
 ```
@@ -522,6 +549,7 @@ azd down  # Deletes all Azure resources
 See [Python integration guide](https://learn.microsoft.com/dotnet/aspire/get-started/build-aspire-apps-with-python).
 
 **AppHost:**
+
 ```csharp
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -542,6 +570,7 @@ builder.Build().Run();
 ```
 
 **Python Dependencies (python_api/requirements.txt):**
+
 ```txt
 fastapi==0.115.0
 uvicorn[standard]==0.32.0
@@ -549,6 +578,7 @@ redis==5.0.8
 ```
 
 **Python Service (python_api/app.py):**
+
 ```python
 import os
 from fastapi import FastAPI
@@ -574,6 +604,7 @@ if __name__ == "__main__":
 ```
 
 **.NET API Calls Python:**
+
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 
@@ -596,6 +627,7 @@ app.Run();
 ```
 
 **Test:**
+
 ```bash
 aspire run
 
@@ -614,6 +646,7 @@ curl http://localhost:5000/combined
 See [Node.js integration guide](https://learn.microsoft.com/dotnet/aspire/get-started/build-aspire-apps-with-nodejs).
 
 **AppHost:**
+
 ```csharp
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -633,6 +666,7 @@ builder.Build().Run();
 ```
 
 **Node.js Dependencies (node_api/package.json):**
+
 ```json
 {
   "dependencies": {
@@ -643,25 +677,27 @@ builder.Build().Run();
 ```
 
 **Node.js Service (node_api/server.js):**
+
 ```javascript
-const express = require('express');
-const { Pool } = require('pg');
+const express = require("express");
+const { Pool } = require("pg");
 
 const app = express();
-const connectionString = process.env.ConnectionStrings__appdb || 'postgresql://localhost/appdb';
+const connectionString = process.env.ConnectionStrings__appdb || "postgresql://localhost/appdb";
 const pool = new Pool({ connectionString });
 
-app.get('/node/users', async (req, res) => {
-  const result = await pool.query('SELECT * FROM users');
+app.get("/node/users", async (req, res) => {
+  const result = await pool.query("SELECT * FROM users");
   res.json(result.rows);
 });
 
 app.listen(3000, () => {
-  console.log('Node.js API listening on port 3000');
+  console.log("Node.js API listening on port 3000");
 });
 ```
 
 **Test:**
+
 ```bash
 aspire run
 curl http://localhost:3000/node/users
@@ -675,6 +711,7 @@ curl http://localhost:5000/users  # Proxies to Node.js
 See [Go integration patterns](https://learn.microsoft.com/dotnet/aspire/get-started/build-aspire-apps-with-python) (concepts apply to all languages).
 
 **AppHost:**
+
 ```csharp
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -694,6 +731,7 @@ builder.Build().Run();
 ```
 
 **Go Dependencies (go_api/go.mod):**
+
 ```go
 module go-api
 
@@ -706,6 +744,7 @@ require (
 ```
 
 **Go Service (go_api/main.go):**
+
 ```go
 package main
 
@@ -756,6 +795,7 @@ func main() {
 ```
 
 **Test:**
+
 ```bash
 aspire run
 
@@ -772,6 +812,7 @@ curl http://localhost:8080/go/data
 ### Add Elasticsearch
 
 **AppHost:**
+
 ```csharp
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -789,6 +830,7 @@ builder.Build().Run();
 ```
 
 **API Integration:**
+
 ```csharp
 builder.Services.AddSingleton<ElasticClient>(sp =>
 {
@@ -808,11 +850,13 @@ app.MapGet("/search", async (string query, ElasticClient elastic) =>
 ## Resources
 
 **More Examples:**
+
 - [Official Aspire Samples](https://github.com/dotnet/aspire-samples) - eShop, Orleans, Dapr integrations
 - [Community Samples](https://github.com/topics/dotnet-aspire) - GitHub projects using Aspire
 - [Component Documentation](https://learn.microsoft.com/dotnet/aspire/fundamentals/components-overview) - All available integrations
 
 **Language Guides:**
+
 - [Python with Aspire](https://learn.microsoft.com/dotnet/aspire/get-started/build-aspire-apps-with-python)
 - [Node.js with Aspire](https://learn.microsoft.com/dotnet/aspire/get-started/build-aspire-apps-with-nodejs)
 - [Go Service Examples](https://github.com/dotnet/aspire-samples/tree/main/samples/AspireWithGo)

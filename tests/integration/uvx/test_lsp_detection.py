@@ -49,7 +49,7 @@ class TestPythonDetection:
 
     def test_python_lsp_configuration(self):
         """Test Python LSP configuration generation."""
-        project_dir = create_python_project()
+        _ = create_python_project()
 
         result = uvx_launch_with_test_project(
             project_files={
@@ -171,7 +171,7 @@ class TestMultiLanguageDetection:
 
     def test_multi_language_lsp_config(self):
         """Test LSP configuration for multi-language project."""
-        project_dir = create_multi_language_project(["python", "typescript"])
+        _ = create_multi_language_project(["python", "typescript"])
 
         result = uvx_launch_with_test_project(
             project_files={
@@ -251,7 +251,7 @@ class TestLSPIntegration:
 
     def test_lsp_reconfiguration_idempotent(self):
         """Test that LSP reconfiguration is idempotent."""
-        project_dir = create_python_project()
+        _ = create_python_project()
 
         # Run detection twice
         result1 = uvx_launch_with_test_project(

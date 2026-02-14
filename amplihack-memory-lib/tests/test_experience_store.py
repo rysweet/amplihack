@@ -189,8 +189,8 @@ class TestExperienceStoreAddOperation:
         )
 
         # Add same experience twice
-        id1 = store.add(exp)
-        id2 = store.add(exp)
+        _ = store.add(exp)
+        _ = store.add(exp)
 
         # Should either:
         # 1. Return same ID (de-duplication)

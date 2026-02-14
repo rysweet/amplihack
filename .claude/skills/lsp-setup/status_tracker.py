@@ -306,9 +306,9 @@ class StatusTracker:
         overall_progress = layer_1_progress * 0.4 + layer_2_progress * 0.4 + layer_3_progress * 0.2
 
         return {
-            "layer_1_progress": round(layer_1_progress, 1),
-            "layer_2_progress": round(layer_2_progress, 1),
-            "layer_3_progress": round(layer_3_progress, 1),
+            "layer_1_progress": layer_1_progress,
+            "layer_2_progress": layer_2_progress,
+            "layer_3_progress": layer_3_progress,
             "overall_progress": round(overall_progress, 1),
         }
 
@@ -357,7 +357,6 @@ class StatusTracker:
 
     def validate_layer_dependencies(self) -> dict[str, bool]:
         """Validate dependencies between layers."""
-        status = self.get_full_status()
         return {
             "layer_2_requires_layer_1": True,  # Plugins need binaries
             "layer_3_independent": True,  # .env is independent
@@ -385,9 +384,6 @@ class StatusTracker:
 
     def get_platform_requirements(self) -> dict[str, list[str]]:
         """Get platform-specific requirements."""
-        system = platform.system().lower()
-        platform_name = "darwin" if system == "darwin" else "linux"
-
         requirements = {}
         for lang in self.languages:
             cmd = self._get_install_command(lang)
@@ -404,7 +400,6 @@ class StatusTracker:
 
     def estimate_setup_time(self) -> int:
         """Estimate setup time in minutes."""
-        status = self.get_full_status()
         missing_count = len(self.get_missing_components())
 
         # Rough estimate: 2 minutes per missing component

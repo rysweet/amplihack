@@ -34,7 +34,7 @@ class TestMemoryConnectorInitialization:
     def test_creates_storage_directory_on_init(self):
         """Connector creates storage directory if it doesn't exist."""
         custom_path = Path("/tmp/test-memory-new")
-        connector = MemoryConnector(agent_name="test-agent", storage_path=custom_path)
+        _ = MemoryConnector(agent_name="test-agent", storage_path=custom_path)
         assert custom_path.exists()
         assert custom_path.is_dir()
 
@@ -65,7 +65,7 @@ class TestMemoryConnectorDatabaseLifecycle:
     def test_creates_sqlite_database_file(self):
         """Connector creates SQLite database file on first use."""
         custom_path = Path("/tmp/test-memory-db")
-        connector = MemoryConnector(agent_name="test-agent", storage_path=custom_path)
+        _ = MemoryConnector(agent_name="test-agent", storage_path=custom_path)
         db_file = custom_path / "experiences.db"
         assert db_file.exists()
         assert db_file.is_file()
@@ -137,7 +137,7 @@ class TestMemoryConnectorDatabaseLifecycle:
         connector.close()
 
         # Attempting to use closed connection should fail
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017
             connector.retrieve_experiences()
 
     def test_context_manager_support(self):
@@ -275,7 +275,7 @@ class TestMemoryConnectorPerformance:
         import time
 
         start = time.time()
-        connector = MemoryConnector(agent_name="perf-test")
+        _ = MemoryConnector(agent_name="perf-test")
         elapsed = (time.time() - start) * 1000  # Convert to ms
 
         assert elapsed < 100

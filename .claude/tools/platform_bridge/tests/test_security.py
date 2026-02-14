@@ -31,7 +31,7 @@ class TestCommandInjectionPrevention:
         mock_run.return_value = MagicMock(returncode=0, stdout='{"number": 123}', stderr="")
 
         bridge = GitHubBridge()
-        result = bridge.create_draft_pr(
+        _ = bridge.create_draft_pr(
             title=malicious_pr_title, body="Normal body", branch="feature/test"
         )
 
@@ -52,9 +52,7 @@ class TestCommandInjectionPrevention:
         mock_run.return_value = MagicMock(returncode=0, stdout='{"number": 123}', stderr="")
 
         bridge = GitHubBridge()
-        result = bridge.create_draft_pr(
-            title="Test PR", body="Test body", branch=malicious_branch_name
-        )
+        _ = bridge.create_draft_pr(title="Test PR", body="Test body", branch=malicious_branch_name)
 
         # Verify subprocess called safely
         args = mock_run.call_args[0][0]
@@ -71,7 +69,7 @@ class TestCommandInjectionPrevention:
         mock_run.return_value = MagicMock(returncode=0, stdout='{"id": "IC_123"}', stderr="")
 
         bridge = GitHubBridge()
-        result = bridge.add_pr_comment(pr_number=456, comment=malicious_comment)
+        _ = bridge.add_pr_comment(pr_number=456, comment=malicious_comment)
 
         # Verify subprocess called safely
         args = mock_run.call_args[0][0]
@@ -88,7 +86,7 @@ class TestCommandInjectionPrevention:
         mock_run.return_value = MagicMock(returncode=0, stdout='{"number": 123}', stderr="")
 
         bridge = GitHubBridge()
-        result = bridge.create_issue(title="Test Issue", body=malicious_body)
+        _ = bridge.create_issue(title="Test Issue", body=malicious_body)
 
         # Verify subprocess called safely
         kwargs = mock_run.call_args[1]
@@ -170,10 +168,6 @@ class TestLengthLimits:
     def test_body_length_limit(self, oversized_input):
         """Issue/PR bodies should have reasonable length limit."""
         bridge = GitHubBridge()
-
-        # Should accept reasonably long bodies
-        long_but_reasonable = "A" * 5000
-        # (Would succeed if mocked properly - this tests the limit exists)
 
         # Should reject extremely long bodies
         with pytest.raises(ValueError, match="body.*too long|exceeds.*limit"):
@@ -471,7 +465,7 @@ class TestCLISecurityIntegration:
 
         for platform in dangerous_platforms:
             with pytest.raises(ValueError, match="invalid.*platform"):
-                cli = CLI(platform=platform)
+                _ = CLI(platform=platform)
 
     @patch("..cli.GitHubBridge")
     def test_cli_sanitizes_stdin_input(self, mock_bridge_class, monkeypatch):
@@ -516,4 +510,4 @@ class TestTimeoutConfiguration:
         """Timeout should have reasonable upper limit to prevent abuse."""
         # Should reject unreasonably long timeouts
         with pytest.raises(ValueError, match="timeout.*too large|unreasonable"):
-            bridge = GitHubBridge(timeout=999999)
+            _ = GitHubBridge(timeout=999999)

@@ -350,7 +350,7 @@ class TestModelValidation:
         """Test that ModelValidator uses constants, not hardcoded strings."""
         from amplihack.proxy.server import CLAUDE_MODELS, ModelValidator
 
-        validator = ModelValidator()
+        _ = ModelValidator()
 
         # Verify CLAUDE_MODELS constant is defined
         assert isinstance(CLAUDE_MODELS, (list, tuple, set))

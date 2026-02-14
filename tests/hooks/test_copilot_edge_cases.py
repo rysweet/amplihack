@@ -73,7 +73,7 @@ class TestEmptyMissingFiles:
         strategy = CopilotStrategy(tmp_path)
 
         # Act - inject context
-        result = strategy.inject_context({"test": "data"})
+        _ = strategy.inject_context({"test": "data"})
 
         # Assert - AGENTS.md created in repo root
         agents_path = tmp_path / "AGENTS.md"
@@ -395,7 +395,7 @@ class TestConcurrentAccess:
         read_thread.join()
 
         # Assert - no errors during concurrent access
-        errors = [r for r in read_results if isinstance(r, str) and r.startswith("error")]
+        _ = [r for r in read_results if isinstance(r, str) and r.startswith("error")]
         # Some OS-level file locking may cause occasional errors, but shouldn't crash
         # We verify the system is resilient
         assert agents_path.exists()
@@ -413,7 +413,7 @@ class TestConcurrentAccess:
             try:
                 strategy = CopilotStrategy(tmp_path)
                 # Both try to inject context (creates file if missing)
-                result = strategy.inject_context({"thread": thread_id})
+                _ = strategy.inject_context({"thread": thread_id})
                 create_results.append((thread_id, "success"))
             except Exception as e:
                 errors.append((thread_id, e))

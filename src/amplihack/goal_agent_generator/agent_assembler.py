@@ -19,6 +19,7 @@ class AgentAssembler:
         execution_plan: ExecutionPlan,
         skills: list[SkillDefinition],
         bundle_name: str | None = None,
+        enable_memory: bool = False,
     ) -> GoalAgentBundle:
         """
         Assemble a complete goal agent bundle.
@@ -28,6 +29,7 @@ class AgentAssembler:
             execution_plan: Execution plan for achieving goal
             skills: Skills needed for execution
             bundle_name: Optional custom bundle name
+            enable_memory: Enable memory/learning capabilities
 
         Returns:
             Complete GoalAgentBundle ready for packaging
@@ -41,6 +43,11 @@ class AgentAssembler:
 
         # Create metadata
         metadata = self._create_metadata(goal_definition, execution_plan, skills)
+
+        # Add memory configuration to metadata
+        if enable_memory:
+            metadata["memory_enabled"] = True
+            metadata["memory_storage_path"] = "./memory"
 
         # Create bundle
         bundle = GoalAgentBundle(

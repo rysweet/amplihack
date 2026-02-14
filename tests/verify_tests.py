@@ -23,7 +23,7 @@ def count_tests_in_file(file_path: Path) -> dict:
     test_methods = re.findall(r"def (test_\w+)", content)
 
     # Count docstrings
-    docstrings = re.findall(r'"""(.+?)"""', content, re.DOTALL)
+    _ = re.findall(r'"""(.+?)"""', content, re.DOTALL)
 
     return {
         "file": file_path.name,

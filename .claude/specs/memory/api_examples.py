@@ -67,7 +67,7 @@ def example_episodic_memory(coordinator: MemoryCoordinator):
         },
     )
 
-    memory_id = coordinator.store(request)
+    _ = coordinator.store(request)
 
     # Retrieve recent conversations about auth
     query = RetrievalQuery(

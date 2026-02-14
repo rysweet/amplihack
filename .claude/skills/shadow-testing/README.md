@@ -7,6 +7,7 @@ Test local uncommitted changes in isolated container environments before pushing
 This skill teaches **shadow testing** - a methodology for testing local changes (including uncommitted work) in clean, isolated container environments that mirror CI/CD conditions.
 
 **Key Benefits**:
+
 - Test exactly what's on your machine (uncommitted changes and all)
 - Clean-state validation ("does it work on a fresh machine?")
 - Multi-repo coordination (test changes across multiple repositories)
@@ -86,6 +87,7 @@ Includes GitHub Actions and GitLab CI integration examples.
 ### 1. Exact Working Tree Snapshots
 
 Captures your local state **exactly as-is**:
+
 - New/untracked files included
 - Modified files with current changes
 - Deleted files properly removed
@@ -105,6 +107,7 @@ Uses git `insteadOf` rules with boundary markers to prevent prefix collisions.
 ### 3. Package Manager Cache Isolation
 
 Automatic cache isolation prevents stale packages:
+
 - Python UV: `/tmp/uv-cache`
 - Python pip: `/tmp/pip-cache`
 - Node npm: `/tmp/npm-cache`
@@ -118,6 +121,7 @@ Local sources automatically cloned to `/workspace/{org}/{repo}` for convenience.
 ### 5. Multi-Language Support
 
 Works with any language/ecosystem:
+
 - Python (uv, pip, poetry)
 - Node.js (npm, yarn, pnpm)
 - Rust (cargo)
@@ -190,12 +194,12 @@ This skill follows amplihack's core principles:
 
 ## Agent Compatibility
 
-| Agent | Support | Method |
-|-------|---------|--------|
-| Amplifier | ✅ Native | Built-in `shadow` tool |
-| Claude Code | ✅ Standalone | `amplifier-shadow` CLI via bash |
+| Agent          | Support       | Method                          |
+| -------------- | ------------- | ------------------------------- |
+| Amplifier      | ✅ Native     | Built-in `shadow` tool          |
+| Claude Code    | ✅ Standalone | `amplifier-shadow` CLI via bash |
 | GitHub Copilot | ✅ Standalone | `amplifier-shadow` CLI via bash |
-| Manual/DIY | ✅ Scripts | Shell scripts + Docker Compose |
+| Manual/DIY     | ✅ Scripts    | Shell scripts + Docker Compose  |
 
 ## Architecture
 

@@ -156,7 +156,7 @@ class TestWorkflowStateMachine:
         machine = WorkflowStateMachine(temp_project)
 
         # Create state
-        state = machine.create_state("session-abc")
+        _ = machine.create_state("session-abc")
 
         # Load it back
         loaded = machine.load_state("session-abc")

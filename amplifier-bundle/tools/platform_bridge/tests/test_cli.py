@@ -529,7 +529,7 @@ class TestHelpText:
         cli = CLI()
         args = ["--help"]
 
-        exit_code = cli.run(args)
+        _ = cli.run(args)
 
         captured = capsys.readouterr()
         assert "usage" in captured.out.lower() or "help" in captured.out.lower()
