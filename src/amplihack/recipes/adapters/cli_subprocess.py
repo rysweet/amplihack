@@ -50,10 +50,13 @@ class CLISubprocessAdapter:
         working_dir: str = ".",
         timeout: int = 120,
     ) -> str:
-        """Execute a bash command via subprocess with ``shell=True``."""
+        """Execute a bash command via subprocess.
+
+        Uses explicit bash invocation instead of shell=True to prevent
+        injection vulnerabilities (per PR #2010 security fix).
+        """
         result = subprocess.run(
-            command,
-            shell=True,
+            ["/bin/bash", "-c", command],
             capture_output=True,
             text=True,
             cwd=working_dir or self._working_dir,
