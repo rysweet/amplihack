@@ -64,6 +64,8 @@ secret:
     - "scripts/test*.py"
     - "scripts/test*.sh"
     - "amplihack-memory-lib/tests/**/*.py" # Memory library test files
+    - "amplihack-memory-lib/tests/*.py" # Memory library root test files
+    - "**/test_security.py" # All security test files
 
     # Documentation (includes agent definitions, specs, and docs)
     - "**/*.md"
@@ -84,3 +86,4 @@ secret:
 
     # Memory library security code (contains credential regex patterns for detection)
     - "amplihack-memory-lib/src/amplihack_memory/security.py"
+    - "amplihack-memory-lib/**/*" # All memory library code (includes security patterns and tests)
