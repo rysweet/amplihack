@@ -43,7 +43,11 @@ I orchestrate the skill creation process using amplihack's specialized agents:
 
 4. **Validate Quality** (reviewer agent)
    - Check YAML frontmatter syntax
-   - **Enforce Progressive Disclosure**: SKILL.md must be < 500 lines (target 1,000-2,000 tokens)
+   - **Enforce Progressive Disclosure**:
+     - Count lines in SKILL.md (must be < 500 lines)
+     - Target: 1,000-2,000 tokens (~300-400 lines)
+     - Command: `wc -l SKILL.md` to verify
+     - If oversized: Split content to supporting files (reference.md, examples.md, patterns.md)
    - **Validate Navigation**: Multi-file skills MUST include "When to Read Supporting Files" section
    - **Check Source URLs**: Skills based on external docs MUST have `source_urls` in frontmatter
    - Ensure philosophy compliance (>85% score)

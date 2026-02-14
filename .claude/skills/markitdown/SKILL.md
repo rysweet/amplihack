@@ -52,6 +52,32 @@ markitdown document.pdf -o output.md
 cat document.pdf | markitdown
 ```
 
+## 🔒 Security Considerations
+
+**Before using in production:**
+
+- ✅ Validate file types (MIME, not extension)
+- ✅ Limit file sizes (prevent DoS)
+- ✅ Sanitize file paths (prevent traversal)
+- ✅ Protect API keys (never hardcode)
+- ✅ Consider data privacy (external services)
+
+See [patterns.md](patterns.md#security-patterns) for implementation details.
+
+### API Key Security
+
+❌ NEVER:
+
+- Hardcode keys in code
+- Commit .env files to git
+- Log environment variables
+
+✅ ALWAYS:
+
+- Use environment variables: `export OPENAI_API_KEY="sk-..."` # pragma: allowlist secret
+- Use secret management (AWS Secrets Manager, Azure Key Vault)
+- Rotate keys regularly
+
 ## Common Patterns
 
 ### PDF Documents
@@ -82,10 +108,15 @@ result = md.convert("presentation.pptx")
 ### Images with Descriptions
 
 ```python
-# Using LLM for image descriptions
+# ✅ SECURE: Using environment variables for API keys
+import os
 from openai import OpenAI
 
-client = OpenAI()
+api_key = os.getenv("OPENAI_API_KEY")
+if not api_key:
+    raise RuntimeError("OPENAI_API_KEY not set")
+
+client = OpenAI(api_key=api_key)
 md = MarkItDown(llm_client=client, llm_model="gpt-4o")
 result = md.convert("diagram.jpg")  # Gets AI-generated description
 ```
