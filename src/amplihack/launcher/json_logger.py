@@ -15,7 +15,7 @@ Public API:
 """
 
 import json
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -56,7 +56,7 @@ class JsonLogger:
         """
         # Build event object
         event = {
-            "timestamp": datetime.now(UTC).isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": level,
             "event": event_type,
         }

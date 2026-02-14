@@ -1,1 +1,0 @@
-amplihack claude -- "{{task_instructions}}"

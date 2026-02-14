@@ -181,7 +181,12 @@ class KuzuConnector:
             return records
 
         except Exception as e:
-            logger.error("Query execution failed: %s", e)
+            # SCIP generates duplicate symbols for Python decorators and Go init
+            # functions. These are expected and silently skipped by callers.
+            if "duplicated primary key" in str(e):
+                logger.debug("Duplicate key (expected): %s", e)
+            else:
+                logger.error("Query execution failed: %s", e)
             raise
 
     def execute_write(

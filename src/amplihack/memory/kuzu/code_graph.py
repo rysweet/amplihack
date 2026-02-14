@@ -147,7 +147,23 @@ class KuzuCodeGraph:
             """,
             """
             CREATE REL TABLE IF NOT EXISTS CALLS (
-                FROM CodeFunction TO CodeFunction
+                FROM CodeFunction TO CodeFunction,
+                call_count INT64 DEFAULT 1,
+                context STRING DEFAULT ''
+            )
+            """,
+            """
+            CREATE REL TABLE IF NOT EXISTS INHERITS (
+                FROM CodeClass TO CodeClass,
+                inheritance_order INT64 DEFAULT 0,
+                inheritance_type STRING DEFAULT 'extends'
+            )
+            """,
+            """
+            CREATE REL TABLE IF NOT EXISTS REFERENCES_CLASS (
+                FROM CodeFunction TO CodeClass,
+                reference_type STRING DEFAULT 'uses',
+                context STRING DEFAULT ''
             )
             """,
             """
@@ -565,7 +581,7 @@ class KuzuCodeGraph:
                 if class_id:
                     rel_exists = self.conn.execute_query(
                         """
-                        MATCH (f:CodeFunction {function_id: $function_id})-[r:METHOD_OF]->(c:Class {class_id: $class_id})
+                        MATCH (f:CodeFunction {function_id: $function_id})-[r:METHOD_OF]->(c:CodeClass {class_id: $class_id})
                         RETURN count(r) as cnt
                         """,
                         {"function_id": function_id, "class_id": class_id},
@@ -691,7 +707,7 @@ class KuzuCodeGraph:
             # Check if relationship exists
             rel_exists = self.conn.execute_query(
                 """
-                MATCH (source:Function {function_id: $source_id})-[r:CALLS]->(target:Function {function_id: $target_id})
+                MATCH (source:CodeFunction {function_id: $source_id})-[r:CALLS]->(target:CodeFunction {function_id: $target_id})
                 RETURN count(r) as cnt
                 """,
                 {"source_id": source_id, "target_id": target_id},
@@ -702,8 +718,8 @@ class KuzuCodeGraph:
 
             self.conn.execute_write(
                 """
-                MATCH (source:Function {function_id: $source_id})
-                MATCH (target:Function {function_id: $target_id})
+                MATCH (source:CodeFunction {function_id: $source_id})
+                MATCH (target:CodeFunction {function_id: $target_id})
                 CREATE (source)-[:CALLS {
                     call_count: $call_count,
                     context: $context
@@ -728,7 +744,7 @@ class KuzuCodeGraph:
             # Check if relationship exists
             rel_exists = self.conn.execute_query(
                 """
-                MATCH (source:Class {class_id: $source_id})-[r:INHERITS]->(target:Class {class_id: $target_id})
+                MATCH (source:CodeClass {class_id: $source_id})-[r:INHERITS]->(target:CodeClass {class_id: $target_id})
                 RETURN count(r) as cnt
                 """,
                 {"source_id": source_id, "target_id": target_id},
@@ -739,8 +755,8 @@ class KuzuCodeGraph:
 
             self.conn.execute_write(
                 """
-                MATCH (source:Class {class_id: $source_id})
-                MATCH (target:Class {class_id: $target_id})
+                MATCH (source:CodeClass {class_id: $source_id})
+                MATCH (target:CodeClass {class_id: $target_id})
                 CREATE (source)-[:INHERITS {
                     inheritance_order: $inheritance_order,
                     inheritance_type: $inheritance_type
@@ -765,7 +781,7 @@ class KuzuCodeGraph:
             # Check if relationship exists
             rel_exists = self.conn.execute_query(
                 """
-                MATCH (source:Function {function_id: $source_id})-[r:REFERENCES_CLASS]->(target:Class {class_id: $target_id})
+                MATCH (source:CodeFunction {function_id: $source_id})-[r:REFERENCES_CLASS]->(target:CodeClass {class_id: $target_id})
                 RETURN count(r) as cnt
                 """,
                 {"source_id": source_id, "target_id": target_id},
@@ -776,8 +792,8 @@ class KuzuCodeGraph:
 
             self.conn.execute_write(
                 """
-                MATCH (source:Function {function_id: $source_id})
-                MATCH (target:Class {class_id: $target_id})
+                MATCH (source:CodeFunction {function_id: $source_id})
+                MATCH (target:CodeClass {class_id: $target_id})
                 CREATE (source)-[:REFERENCES_CLASS {
                     reference_type: $reference_type,
                     context: $context
@@ -949,7 +965,7 @@ class KuzuCodeGraph:
                         # Find functions mentioned in content
                         functions = self.conn.execute_query(
                             """
-                            MATCH (f:Function)
+                            MATCH (f:CodeFunction)
                             WHERE $content CONTAINS f.function_name
                             RETURN f.function_id, f.function_name
                             """,
@@ -962,7 +978,7 @@ class KuzuCodeGraph:
                             # Check if relationship exists
                             rel_exists = self.conn.execute_query(
                                 f"""
-                                MATCH (m:{memory_type} {{memory_id: $memory_id}})-[r:{rel_table}]->(f:Function {{function_id: $function_id}})
+                                MATCH (m:{memory_type} {{memory_id: $memory_id}})-[r:{rel_table}]->(f:CodeFunction {{function_id: $function_id}})
                                 RETURN count(r) as cnt
                                 """,
                                 {"memory_id": memory_id, "function_id": function_id},
@@ -972,7 +988,7 @@ class KuzuCodeGraph:
                                 self.conn.execute_write(
                                     f"""
                                     MATCH (m:{memory_type} {{memory_id: $memory_id}})
-                                    MATCH (f:Function {{function_id: $function_id}})
+                                    MATCH (f:CodeFunction {{function_id: $function_id}})
                                     CREATE (m)-[:{rel_table} {{
                                         relevance_score: $relevance_score,
                                         context: $context,
@@ -1071,7 +1087,7 @@ class KuzuCodeGraph:
         try:
             func_results = self.conn.execute_query(
                 f"""
-                MATCH (m:{memory_type} {{memory_id: $memory_id}})-[:{rel_table}]->(f:Function)
+                MATCH (m:{memory_type} {{memory_id: $memory_id}})-[:{rel_table}]->(f:CodeFunction)
                 RETURN f.function_name, f.signature, f.docstring, f.cyclomatic_complexity
                 """,
                 {"memory_id": memory_id},
@@ -1094,7 +1110,7 @@ class KuzuCodeGraph:
         try:
             class_results = self.conn.execute_query(
                 f"""
-                MATCH (m:{memory_type} {{memory_id: $memory_id}})-[:{rel_table}]->(f:Function)-[:METHOD_OF]->(c:Class)
+                MATCH (m:{memory_type} {{memory_id: $memory_id}})-[:{rel_table}]->(f:CodeFunction)-[:METHOD_OF]->(c:CodeClass)
                 RETURN DISTINCT c.class_name, c.fully_qualified_name, c.docstring
                 """,
                 {"memory_id": memory_id},
@@ -1136,11 +1152,11 @@ class KuzuCodeGraph:
             stats["file_count"] = result[0]["cnt"] if result else 0
 
             # Count classes
-            result = self.conn.execute_query("MATCH (c:Class) RETURN count(c) as cnt")
+            result = self.conn.execute_query("MATCH (c:CodeClass) RETURN count(c) as cnt")
             stats["class_count"] = result[0]["cnt"] if result else 0
 
             # Count functions
-            result = self.conn.execute_query("MATCH (f:Function) RETURN count(f) as cnt")
+            result = self.conn.execute_query("MATCH (f:CodeFunction) RETURN count(f) as cnt")
             stats["function_count"] = result[0]["cnt"] if result else 0
 
             # Total lines of code (size_bytes as proxy)
@@ -1212,8 +1228,8 @@ def run_blarify(
         # Create temporary Kuzu database path (don't create directory - Kuzu will do it)
         import tempfile
 
-        from blarify.prebuilt.graph_builder import GraphBuilder
-        from blarify.repositories.graph_db_manager.kuzu_manager import KuzuManager
+        from amplihack.vendor.blarify.prebuilt.graph_builder import GraphBuilder
+        from amplihack.vendor.blarify.repositories.graph_db_manager.kuzu_manager import KuzuManager
 
         temp_kuzu_dir = (
             Path(tempfile.gettempdir())
@@ -1221,7 +1237,8 @@ def run_blarify(
         )
 
         # Initialize Kuzu manager
-        repo_id = codebase_path.name or "amplihack"
+        # Sanitize to prevent query injection (values come from filesystem path)
+        repo_id = (codebase_path.name or "amplihack").replace("'", "")
         entity_id = "amplihack"
 
         db_manager = KuzuManager(
@@ -1262,18 +1279,24 @@ def run_blarify(
         }
 
         # Query Kuzu database to extract data with all properties needed by import
+        # CRITICAL: Must filter by repo_id since db may contain multiple repos
         # Files
-        file_results = db_manager.query("""
+        file_results = db_manager.query(f"""
             MATCH (n:NODE)
             WHERE n.node_type = 'FILE'
+              AND n.repo_id = '{repo_id}'
+              AND n.entity_id = '{entity_id}'
             RETURN n.path as path, n.name as name
         """)
         output_data["files"] = [{"path": r["path"], "name": r["name"]} for r in file_results]
 
         # Classes - query all properties from NODE table
-        class_results = db_manager.conn.execute("""
+        # CRITICAL: Must filter by repo_id and entity_id
+        class_results = db_manager.conn.execute(f"""
             MATCH (n:NODE)
             WHERE n.node_type = 'CLASS'
+              AND n.repo_id = '{repo_id}'
+              AND n.entity_id = '{entity_id}'
             RETURN n
         """)
         classes = []
@@ -1293,9 +1316,12 @@ def run_blarify(
         output_data["classes"] = classes
 
         # Functions - query all properties
-        func_results = db_manager.conn.execute("""
+        # CRITICAL: Must filter by repo_id and entity_id
+        func_results = db_manager.conn.execute(f"""
             MATCH (n:NODE)
             WHERE n.node_type = 'FUNCTION'
+              AND n.repo_id = '{repo_id}'
+              AND n.entity_id = '{entity_id}'
             RETURN n
         """)
         functions = []
@@ -1319,9 +1345,12 @@ def run_blarify(
         all_relationships = []
 
         # Query CONTAINS relationships
+        # CRITICAL: Filter by repo_id and entity_id
         try:
-            contains_results = db_manager.query("""
+            contains_results = db_manager.query(f"""
                 MATCH (source:NODE)-[:CONTAINS]->(target:NODE)
+                WHERE source.repo_id = '{repo_id}'
+                  AND source.entity_id = '{entity_id}'
                 RETURN source.node_id as source_id, target.node_id as target_id
             """)
             for r in contains_results:
@@ -1332,9 +1361,12 @@ def run_blarify(
             pass
 
         # Query CALLS relationships
+        # CRITICAL: Filter by repo_id and entity_id
         try:
-            calls_results = db_manager.query("""
+            calls_results = db_manager.query(f"""
                 MATCH (source:NODE)-[:CALLS]->(target:NODE)
+                WHERE source.repo_id = '{repo_id}'
+                  AND source.entity_id = '{entity_id}'
                 RETURN source.node_id as source_id, target.node_id as target_id
             """)
             for r in calls_results:
@@ -1345,9 +1377,12 @@ def run_blarify(
             pass
 
         # Query REFERENCES relationships
+        # CRITICAL: Filter by repo_id and entity_id
         try:
-            ref_results = db_manager.query("""
+            ref_results = db_manager.query(f"""
                 MATCH (source:NODE)-[:REFERENCES]->(target:NODE)
+                WHERE source.repo_id = '{repo_id}'
+                  AND source.entity_id = '{entity_id}'
                 RETURN source.node_id as source_id, target.node_id as target_id
             """)
             for r in ref_results:

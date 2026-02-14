@@ -2,13 +2,13 @@ import logging
 import re
 from typing import Any
 
-from blarify.graph.relationship.relationship_type import RelationshipType
-from blarify.repositories.graph_db_manager.db_manager import AbstractDbManager
-from blarify.repositories.graph_db_manager.dtos.edge_dto import EdgeDTO
-from blarify.repositories.graph_db_manager.dtos.node_search_result_dto import (
+from amplihack.vendor.blarify.graph.relationship.relationship_type import RelationshipType
+from amplihack.vendor.blarify.repositories.graph_db_manager.db_manager import AbstractDbManager
+from amplihack.vendor.blarify.repositories.graph_db_manager.dtos.edge_dto import EdgeDTO
+from amplihack.vendor.blarify.repositories.graph_db_manager.dtos.node_search_result_dto import (
     ReferenceSearchResultDTO,
 )
-from blarify.tools.utils import resolve_reference_id
+from amplihack.vendor.blarify.tools.utils import resolve_reference_id
 from langchain_core.callbacks import CallbackManagerForToolRun
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field, model_validator

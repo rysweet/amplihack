@@ -9,7 +9,7 @@ import logging
 from enum import Enum
 from typing import Any
 
-from blarify.graph.node import DefinitionNode
+from amplihack.vendor.blarify.graph.node import DefinitionNode
 
 from .lsp_helper import LspQueryHelper
 from .scip_helper import ScipReferenceResolver
@@ -55,7 +55,7 @@ class HybridReferenceResolver:
         self.mode = mode
 
         # Initialize SCIP resolver
-        from blarify.utils.path_calculator import PathCalculator
+        from ..utils.path_calculator import PathCalculator
 
         root_path = PathCalculator.uri_to_path(root_uri)
         self.scip_resolver = ScipReferenceResolver(root_path, scip_index_path)
@@ -72,8 +72,8 @@ class HybridReferenceResolver:
     def _setup_resolvers(self):
         """Determine which resolvers to use based on mode and availability."""
         # Check project language to determine if SCIP is applicable
-        from blarify.utils.path_calculator import PathCalculator
-        from blarify.utils.project_detector import ProjectDetector
+        from ..utils.path_calculator import PathCalculator
+        from ..utils.project_detector import ProjectDetector
 
         root_path = PathCalculator.uri_to_path(self.root_uri)
         detected_language = ProjectDetector.get_primary_language(root_path)
@@ -192,8 +192,8 @@ class HybridReferenceResolver:
 
     def get_resolver_info(self) -> dict[str, Any]:
         """Get information about the current resolver configuration."""
-        from blarify.utils.path_calculator import PathCalculator
-        from blarify.utils.project_detector import ProjectDetector
+        from ..utils.path_calculator import PathCalculator
+        from ..utils.project_detector import ProjectDetector
 
         root_path = PathCalculator.uri_to_path(self.root_uri)
         detected_language = ProjectDetector.get_primary_language(root_path)

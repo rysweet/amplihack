@@ -14,7 +14,7 @@ import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
-from blarify.graph.node import DefinitionNode
+from amplihack.vendor.blarify.graph.node import DefinitionNode
 
 from .lsp_helper import ProgressTracker
 from .types.Reference import Reference
@@ -137,7 +137,7 @@ class ScipReferenceResolver:
             import sys
 
             sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(self.root_path))))
-            from blarify.utils.project_detector import ProjectDetector
+            from ..utils.project_detector import ProjectDetector
 
             if ProjectDetector.is_python_project(self.root_path):
                 return "python"
@@ -268,8 +268,12 @@ class ScipReferenceResolver:
                 logger.error(f"Unsupported language for SCIP indexing: {self.language}")
                 return False
 
+            # Set NODE_OPTIONS to increase heap size for large codebases
+            env = os.environ.copy()
+            env["NODE_OPTIONS"] = "--max-old-space-size=32768"  # 32GB heap for scip-python/scip-typescript
+
             result = subprocess.run(
-                cmd, cwd=self.root_path, capture_output=True, text=True, timeout=300
+                cmd, cwd=self.root_path, capture_output=True, text=True, timeout=600, env=env  # 10 min timeout for large codebases
             )
 
             if result.returncode == 0:
@@ -380,7 +384,7 @@ class ScipReferenceResolver:
     def _find_symbol_for_node(self, node: DefinitionNode) -> str | None:
         """Find the SCIP symbol identifier for a given node."""
         # Convert file URI to relative path
-        from blarify.utils.path_calculator import PathCalculator
+        from ..utils.path_calculator import PathCalculator
 
         relative_path = PathCalculator.get_relative_path_from_uri(
             root_uri=f"file://{self.root_path}", uri=node.path
@@ -411,7 +415,7 @@ class ScipReferenceResolver:
         self, nodes: list[DefinitionNode]
     ) -> dict[DefinitionNode, str | None]:
         """Efficiently find symbols for multiple nodes by grouping by document."""
-        from blarify.utils.path_calculator import PathCalculator
+        from ..utils.path_calculator import PathCalculator
 
         # Group nodes by their relative path
         nodes_by_path = {}

@@ -47,6 +47,16 @@ class PostToolUseHook(HookProcessor):
         except ImportError as e:
             self.log(f"Context management hook not available: {e}", "DEBUG")
 
+        # Register blarify staleness detection hook
+        try:
+            sys.path.insert(0, str(Path(__file__).parent.parent))
+            from blarify_staleness_hook import register_blarify_staleness_hook
+
+            register_blarify_staleness_hook()  # Registers with global registry
+            self.log("Blarify staleness hook registered", "DEBUG")
+        except ImportError as e:
+            self.log(f"Blarify staleness hook not available: {e}", "DEBUG")
+
         # Future: Add more tool hooks here
         # from other_tool_hook import register_other_hook
         # register_other_hook()

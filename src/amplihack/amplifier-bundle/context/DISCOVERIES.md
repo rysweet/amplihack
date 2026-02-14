@@ -470,13 +470,13 @@ def _filter_conflicts(
 
 4. **Disconnected Preference Systems**: The `auto_update` preference in USER_PREFERENCES.md only controlled version-mismatch prompts, not file-conflict prompts. Fix: bridge via `_read_auto_update_preference()` in cli.py. When designing preference systems, ensure all related prompts respect the same preference.
 
-3. **Auto-Generated Files vs User Content**: Framework metadata files like `.version`, `*.lock`, `.state` should never trigger conflict warnings - they're infrastructure, not content.
+5. **Auto-Generated Files vs User Content**: Framework metadata files like `.version`, `*.lock`, `.state` should never trigger conflict warnings - they're infrastructure, not content.
 
-4. **ESSENTIAL_DIRS Pattern Limitation**: Works great for subdirectories (`context/`, `tools/`), but silently excludes root-level files. Need explicit system file list.
+6. **ESSENTIAL_DIRS Pattern Limitation**: Works great for subdirectories (`context/`, `tools/`), but silently excludes root-level files. Need explicit system file list.
 
-5. **False Negatives Are Worse Than False Positives**: Safety system failing to warn about user content is bad, but warning about system files breaks user trust and workflow.
+7. **False Negatives Are Worse Than False Positives**: Safety system failing to warn about user content is bad, but warning about system files breaks user trust and workflow.
 
-6. **Version Files Are Special**: Any framework with version tracking faces this - `.version`, `.state`, `.lock` files should be treated as disposable metadata, not user content to protect.
+8. **Version Files Are Special**: Any framework with version tracking faces this - `.version`, `.state`, `.lock` files should be treated as disposable metadata, not user content to protect.
 
 ### Related Patterns
 

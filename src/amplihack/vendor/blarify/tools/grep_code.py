@@ -9,7 +9,7 @@ import logging
 import re
 from typing import Any
 
-from blarify.repositories.graph_db_manager.db_manager import AbstractDbManager
+from amplihack.vendor.blarify.repositories.graph_db_manager.db_manager import AbstractDbManager
 from langchain_core.callbacks import CallbackManagerForToolRun
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
@@ -161,7 +161,7 @@ class GrepCode(BaseTool):
             file_regex = self._convert_glob_to_regex(file_pattern) if file_pattern else None
 
             # Build Cypher query
-            from blarify.repositories.graph_db_manager.queries import grep_code_query
+            from ..repositories.graph_db_manager.queries import grep_code_query
 
             parameters = {
                 "pattern": pattern,
