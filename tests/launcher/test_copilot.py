@@ -417,7 +417,7 @@ class TestStageAgents:
         agents_dir.mkdir(parents=True)
         # Pre-existing stale agent in amplihack namespace
         (agents_dir / "old-removed-agent.md").write_text("# Old agent")
-        
+
         # User agent outside amplihack namespace
         user_agents_dir = copilot_home / "agents"
         (user_agents_dir / "user-custom-agent.md").write_text("# User agent")
@@ -514,7 +514,7 @@ class TestStageDirectory:
         dest = copilot_home / "workflow" / "amplihack"
         dest.mkdir(parents=True)
         (dest / "OLD_REMOVED.md").write_text("# Gone")
-        
+
         # User file outside amplihack namespace
         user_dest = copilot_home / "workflow"
         (user_dest / "USER_WORKFLOW.md").write_text("# User workflow")
@@ -616,7 +616,7 @@ class TestGenerateCopilotInstructions:
         copilot_home = tmp_path / "copilot"
         workflow_dir = copilot_home / "workflow" / "amplihack"
         workflow_dir.mkdir(parents=True)
-        
+
         # Create workflow with known number of steps (including decimal steps)
         workflow_content = """
 name: DEFAULT_WORKFLOW
@@ -628,9 +628,9 @@ name: DEFAULT_WORKFLOW
 ### Step 3: Fourth step
 """
         (workflow_dir / "DEFAULT_WORKFLOW.md").write_text(workflow_content)
-        
+
         generate_copilot_instructions(copilot_home)
-        
+
         content = (copilot_home / "copilot-instructions.md").read_text()
         # Should contain auto-derived count (5 steps: 0, 1, 2, 2.5, 3)
         assert "(5 steps)" in content
@@ -640,9 +640,9 @@ name: DEFAULT_WORKFLOW
         """Must handle missing DEFAULT_WORKFLOW.md gracefully."""
         copilot_home = tmp_path / "copilot"
         copilot_home.mkdir()
-        
+
         generate_copilot_instructions(copilot_home)
-        
+
         content = (copilot_home / "copilot-instructions.md").read_text()
         # Should fall back to generic description
         assert "Standard development workflow" in content
