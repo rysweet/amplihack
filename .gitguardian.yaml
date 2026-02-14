@@ -9,7 +9,7 @@ secret:
   ignored_matches:
     # Generic "amplihack" password
     - name: neo4j-dev-password-amplihack
-      match: baf5b3cf4c5956ddf980f2abd41d0c829263607a012ed9156b32a19b1a0b03e3
+      match: baf5b3cf4c5956ddf980f2abd41d0c829263607a012ed9156b32a19b1a0b03e3 # pragma: allowlist secret
     - name: neo4j-dev-auth-tuple
       match: amplihack
     # Specific incidents from PR #1211
@@ -19,7 +19,7 @@ secret:
       match: "224874751" # Occurrence ID from connection_tracker.py
     # Test fixtures from PR #1301
     - name: test-fixture-fake-password
-      match: 548fa7beca64b45b06c7b975a7b34c866bc6a84650e9237e2075648bac2719be # SHA256 of FAKE_PASSWORD_FOR_TESTS
+      match: 548fa7beca64b45b06c7b975a7b34c866bc6a84650e9237e2075648bac2719be # pragma: allowlist secret SHA256 of FAKE_PASSWORD_FOR_TESTS
     - name: test-fixture-fake-password-literal
       match: FAKE_PASSWORD_FOR_TESTS
 
@@ -46,6 +46,7 @@ secret:
     - "scripts/testing/**/*.py"
     - "scripts/test*.py"
     - "scripts/test*.sh"
+    - "amplihack-memory-lib/tests/**/*.py" # Memory library test files
 
     # Documentation (includes agent definitions, specs, and docs)
     - "**/*.md"
@@ -63,3 +64,6 @@ secret:
     - "scripts/*memory*"
     - "examples/*neo4j*"
     - "examples/*memory*"
+
+    # Memory library security code (contains credential regex patterns for detection)
+    - "amplihack-memory-lib/src/amplihack_memory/security.py"
