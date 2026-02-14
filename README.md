@@ -27,6 +27,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 ### Step 2: Run amplihack
 
 **Option A: Zero-Install** (recommended for first try)
+
 ```bash
 # Launch with Claude Code
 uvx --from git+https://github.com/rysweet/amplihack amplihack claude
@@ -39,6 +40,7 @@ uvx --from git+https://github.com/rysweet/amplihack amplihack copilot
 ```
 
 **Option B: Install Globally** (for frequent use)
+
 ```bash
 # Install once
 uv tool install git+https://github.com/rysweet/amplihack
@@ -49,9 +51,11 @@ amplihack amplifier
 amplihack copilot
 ```
 
-**That's it!** Try asking the **amplihack-guide** agent for help after launching.
+**That's it!** Try asking the **amplihack-guide** agent for help after
+launching.
 
-For more installation options and upgrade instructions, see [Installation](#installation) below.
+For more installation options and upgrade instructions, see
+[Installation](#installation) below.
 
 ---
 
@@ -59,9 +63,11 @@ For more installation options and upgrade instructions, see [Installation](#inst
 
 ### UV Tool (Recommended)
 
-amplihack is designed to work as a UV tool for zero-installation or global installation:
+amplihack is designed to work as a UV tool for zero-installation or global
+installation:
 
 **Option 1: Zero-Install (No installation needed)**
+
 ```sh
 # Use directly without installing
 uvx --from git+https://github.com/rysweet/amplihack amplihack claude
@@ -70,6 +76,7 @@ uvx --from git+https://github.com/rysweet/amplihack amplihack copilot
 ```
 
 **Option 2: Global Install**
+
 ```sh
 # Install once, use anywhere
 uv tool install git+https://github.com/rysweet/amplihack
@@ -81,6 +88,7 @@ amplihack copilot
 ```
 
 **Updating**
+
 ```sh
 # Zero-install: Always uses latest (no update needed)
 uvx --from git+https://github.com/rysweet/amplihack amplihack claude
@@ -404,7 +412,35 @@ amplihack remote auto "implement feature" --region westus3 --vm-size s
 Documentation:
 [.claude/tools/amplihack/remote/README.md](~/.amplihack/.claude/tools/amplihack/remote/README.md)
 
-### Workflow Orchestration by Default (NEW!)
+### Recipe Runner - Code-Enforced Workflows (NEW!)
+
+Execute workflows with code-enforced step ordering that models cannot skip:
+
+```sh
+# Run a deterministic workflow
+amplihack recipe run default-workflow --context '{"task": "Add auth"}'
+
+# List available recipes
+amplihack recipe list
+
+# Validate before running
+amplihack recipe validate my-recipe.yaml
+```
+
+**Why it exists**: Models skip workflow steps when enforcement is prompt-based.
+The Recipe Runner uses Python code to control step execution — making it
+physically impossible to skip steps.
+
+**Features:**
+
+- 10 bundled workflows (default, investigation, verification, consensus, etc.)
+- Template variables for context passing between steps
+- Safe AST-based condition evaluation
+- Daily upstream sync from microsoft/amplifier-bundle-recipes
+
+📖 [Recipe Runner Documentation](docs/recipes/README.md)
+
+### Workflow Orchestration by Default
 
 All prompts are automatically wrapped with `/amplihack:ultrathink` for maximum
 effectiveness. This enables:
