@@ -67,6 +67,14 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Ensure broken-links label exists
+          if ! gh label list --json name --jq '.[].name' | grep -q "^broken-links$"; then
+            gh label create "broken-links" \
+              --description "Issues related to broken links in documentation" \
+              --color "d73a4a"
+            echo "Created broken-links label"
+          fi
+
           # Check if there's already an open issue for broken links
           EXISTING_ISSUE=$(gh issue list --label "broken-links" --state open --json number --jq '.[0].number // empty')
 
