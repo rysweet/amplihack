@@ -22,6 +22,23 @@ secret:
       match: 548fa7beca64b45b06c7b975a7b34c866bc6a84650e9237e2075648bac2719be # pragma: allowlist secret SHA256 of FAKE_PASSWORD_FOR_TESTS
     - name: test-fixture-fake-password-literal
       match: FAKE_PASSWORD_FOR_TESTS
+    # Test fixtures from PR #2298 (memory library security tests)
+    - name: test-fixture-aws-example-key
+      match: AKIAIOSFODNN7EXAMPLE # pragma: allowlist secret - AWS documented example key
+    - name: test-fixture-openai-key
+      match: sk-1234567890abcdefghijklmnopqrstuvwxyzABCDEFGH # pragma: allowlist secret - test pattern
+    - name: test-fixture-openai-key-short
+      match: sk-1234567890abcdefghijklmnop # pragma: allowlist secret - test pattern
+    - name: test-fixture-github-token
+      match: ghp_1234567890abcdefghijklmnopqrstuvwxyz # pragma: allowlist secret - test pattern
+    - name: test-fixture-test-passwords
+      match: mysecretpass123 # pragma: allowlist secret - test pattern
+    - name: test-fixture-test-password-2
+      match: secret123 # pragma: allowlist secret - test pattern
+    - name: test-fixture-api-key
+      match: abc123xyz789 # pragma: allowlist secret - test pattern
+    - name: test-fixture-db-password
+      match: secretpass # pragma: allowlist secret - test pattern
 
   # Exclude files and paths by globbing patterns
   ignored_paths:
