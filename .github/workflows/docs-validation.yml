@@ -24,8 +24,8 @@ jobs:
     name: Documentation Policy
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    continue-on-error: true  # Don't block PR on pre-existing policy violations
-    
+    continue-on-error: true # Don't block PR on pre-existing policy violations
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -56,8 +56,8 @@ jobs:
     name: Code Examples
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    continue-on-error: true  # Don't block PR on pre-existing code example issues
-    
+    continue-on-error: true # Don't block PR on pre-existing code example issues
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -102,7 +102,7 @@ jobs:
     name: MkDocs Navigation
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -125,8 +125,8 @@ jobs:
     name: Link Validation (Local)
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    continue-on-error: true  # Don't block PR on pre-existing link issues
-    
+    continue-on-error: true # Don't block PR on pre-existing link issues
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -156,7 +156,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [validate-policy, validate-examples, validate-navigation, validate-links-local]
     if: always()
-    
+
     steps:
       - name: Report validation results
         run: |
@@ -165,30 +165,30 @@ jobs:
           echo "**Note**: Validation is currently informational and does not block PR merges." >> $GITHUB_STEP_SUMMARY
           echo "Issues found are likely pre-existing and should be addressed in follow-up PRs." >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ "${{ needs.validate-policy.result }}" = "success" ]; then
             echo "✅ Policy validation passed" >> $GITHUB_STEP_SUMMARY
           else
             echo "⚠️ Policy validation found issues (non-blocking)" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           if [ "${{ needs.validate-examples.result }}" = "success" ]; then
             echo "✅ Code examples validation passed" >> $GITHUB_STEP_SUMMARY
           else
             echo "⚠️ Code examples validation found issues (non-blocking)" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           if [ "${{ needs.validate-navigation.result }}" = "success" ]; then
             echo "✅ Navigation validation passed" >> $GITHUB_STEP_SUMMARY
           else
             echo "⚠️ Navigation validation found issues (non-blocking)" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           if [ "${{ needs.validate-links-local.result }}" = "success" ]; then
             echo "✅ Link validation passed" >> $GITHUB_STEP_SUMMARY
           else
             echo "⚠️ Link validation found issues (non-blocking)" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Review the individual job logs for details on any issues found." >> $GITHUB_STEP_SUMMARY
