@@ -1198,7 +1198,7 @@ EOF
     type: "bash"
     command: |
       echo "=== ZERO-BS VERIFICATION ===" && \
-      cd "{{repo_path}}" && \
+      cd "{{worktree_setup.worktree_path}}" && \
       echo "" && \
       echo "Scanning for Zero-BS violations..." && \
       echo "" && \
