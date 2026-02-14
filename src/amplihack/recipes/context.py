@@ -149,15 +149,17 @@ class RecipeContext:
             ValueError: If the expression contains unsafe nodes (function calls,
                 imports, dunder access, etc.).
         """
-        # Reject dunder access early -- check both the raw source and common
-        # escape-sequence evasions (e.g. "\x5f\x5f" or "\u005f\u005f" which
-        # resolve to "__" after parsing but bypass a naive substring check).
+        # Reject dunder access early -- check both the raw source and ALL
+        # escape-sequence evasions that could resolve to underscores.
         if "__" in condition:
             raise ValueError("Unsafe expression: dunder attribute access is not allowed")
-        # Block hex/unicode escape attempts that resolve to underscores
-        _lower = condition.lower()
-        if "\\x5f" in _lower or "\\u005f" in _lower or "\\137" in _lower:
-            raise ValueError("Unsafe expression: escaped underscore sequences are not allowed")
+
+        # Block ALL backslash escape sequences except safe whitespace chars.
+        # This catches \x5f, \u005f, \U0000005f, \137 (octal), and any other
+        # encoding of underscore or dangerous characters.
+        # Safe escapes: \n \r \t \f \b \v (whitespace only)
+        if re.search(r"\\[^nrtfbv\s]", condition):
+            raise ValueError("Unsafe expression: escape sequences not allowed (except whitespace)")
 
         try:
             tree = ast.parse(condition, mode="eval")
