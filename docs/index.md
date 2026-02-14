@@ -199,12 +199,15 @@ Document-Driven Development is a systematic methodology where documentation come
   - [Common Pitfalls](document_driven_development/reference/common_pitfalls.md) - What to avoid
   - [FAQ](document_driven_development/reference/faq.md) - Common questions
 
+### Recipe Runner
+
+- [Recipe Runner](recipes/README.md) - Code-enforced workflow execution engine with declarative YAML recipes
+
 ### Advanced Workflows
 
 - [N-Version Programming](claude/workflow/N_VERSION_WORKFLOW.md) - Multiple solutions for critical code
 - [Multi-Agent Debate](claude/workflow/DEBATE_WORKFLOW.md) - Structured decision-making
 - [Cascade Workflow](claude/workflow/CASCADE_WORKFLOW.md) - Graceful degradation patterns
-<!-- - [Workflow Enforcement](workflow-enforcement.md) - Ensure process compliance (Coming soon) -->
 
 ---
 
