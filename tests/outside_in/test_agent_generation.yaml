@@ -1,0 +1,102 @@
+scenario:
+  name: "Agent Generation - Memory-Enabled Flag"
+  description: "Verify amplihack new --enable-memory generates agents with memory capabilities"
+  type: cli
+  tags: [generation, cli, smoke]
+  timeout: 60s
+
+  prerequisites:
+    - "amplihack CLI installed"
+    - "amplihack-memory-lib available"
+
+  environment:
+    variables:
+      PYTHONPATH: "/home/azureuser/src/amplihack3/src"
+
+  steps:
+    # Create test prompt
+    - action: create_file
+      path: "/tmp/test_prompt.md"
+      content: |
+        Goal: Analyze code quality
+
+        Requirements:
+        - Scan Python files for quality issues
+        - Generate quality report
+
+        Success Criteria:
+        - All files scanned
+        - Report generated
+
+    # Generate agent WITHOUT memory (baseline)
+    - action: launch
+      target: "amplihack"
+      args: ["new", "--file", "/tmp/test_prompt.md", "--name", "test-agent-no-memory", "--output", "/tmp/agents"]
+      description: "Generate agent without memory"
+
+    - action: verify_output
+      contains: "Created agent: test-agent-no-memory"
+      timeout: 30s
+
+    - action: verify_exit_code
+      expected: 0
+
+    # Verify no memory files generated
+    - action: verify_file_not_exists
+      path: "/tmp/agents/test-agent-no-memory/memory_config.yaml"
+      description: "Should NOT have memory config"
+
+    # Generate agent WITH memory (our feature)
+    - action: launch
+      target: "amplihack"
+      args: ["new", "--file", "/tmp/test_prompt.md", "--name", "test-agent-with-memory", "--output", "/tmp/agents", "--enable-memory"]
+      description: "Generate agent WITH memory enabled"
+
+    - action: verify_output
+      contains: "Created agent: test-agent-with-memory"
+      timeout: 30s
+
+    - action: verify_output
+      contains: "Memory enabled"
+      description: "Should indicate memory was enabled"
+
+    - action: verify_exit_code
+      expected: 0
+
+    # Verify memory files were generated
+    - action: verify_file_exists
+      path: "/tmp/agents/test-agent-with-memory/memory_config.yaml"
+      description: "Should have memory config"
+
+    - action: verify_file_exists
+      path: "/tmp/agents/test-agent-with-memory/agent.py"
+      description: "Should have agent implementation"
+
+    # Verify memory code is in generated agent
+    - action: verify_file_contains
+      path: "/tmp/agents/test-agent-with-memory/agent.py"
+      contains: "from amplihack_memory import"
+      description: "Should import memory library"
+
+    - action: verify_file_contains
+      path: "/tmp/agents/test-agent-with-memory/agent.py"
+      contains: "MemoryConnector"
+      description: "Should use MemoryConnector"
+
+    - action: verify_file_contains
+      path: "/tmp/agents/test-agent-with-memory/requirements.txt"
+      contains: "amplihack-memory-lib"
+      description: "Should depend on memory library"
+
+  cleanup:
+    - action: delete_directory
+      path: "/tmp/agents"
+    - action: delete_file
+      path: "/tmp/test_prompt.md"
+
+  success_criteria:
+    - "Non-memory agent generates successfully"
+    - "Memory-enabled agent generates successfully"
+    - "Memory-enabled agent has all memory files"
+    - "Memory-enabled agent imports amplihack_memory library"
+    - "Generated code is self-contained"
