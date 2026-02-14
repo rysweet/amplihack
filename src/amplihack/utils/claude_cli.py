@@ -143,9 +143,11 @@ def _find_claude_in_common_locations() -> str | None:
 
 def _print_manual_install_instructions():
     """Print manual installation instructions for Claude CLI."""
-    print('  export NPM_CONFIG_PREFIX="$HOME/.npm-global"')
-    print("  npm install -g @anthropic-ai/claude-code --ignore-scripts")
-    print('  export PATH="$HOME/.npm-global/bin:$PATH"')
+    print("  See https://code.claude.com/docs/en/setup for installation instructions")
+    print("  Recommended methods:")
+    print("    - macOS/Linux: curl -fsSL https://claude.ai/install.sh | bash")
+    print("    - macOS (Homebrew): brew install --cask claude-code")
+    print("    - Windows: winget install Anthropic.ClaudeCode")
 
 
 def _validate_claude_binary(claude_path: str) -> bool:
@@ -256,6 +258,10 @@ def _install_claude_cli() -> bool:
     user_npm_bin = Path.home() / ".npm-global" / "bin"
 
     print("Installing Claude CLI via npm (user-local)...")
+    print("NOTE: npm installation is deprecated. For production use, please use:")
+    print("  - macOS: brew install --cask claude-code")
+    print("  - Linux: curl -fsSL https://claude.ai/install.sh | bash")
+    print("  - Windows: winget install Anthropic.ClaudeCode")
     print(f"Target directory: {user_npm_bin}")
     print("Running: npm install -g @anthropic-ai/claude-code --ignore-scripts")
 
@@ -417,7 +423,7 @@ def ensure_claude_cli() -> str:
     if not claude_path:
         raise RuntimeError(
             "Claude CLI not available and auto-installation failed. "
-            "Please install manually: npm install -g @anthropic-ai/claude-code"
+            "Please see https://code.claude.com/docs/en/setup for installation instructions"
         )
 
     return claude_path

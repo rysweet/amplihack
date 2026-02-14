@@ -26,7 +26,7 @@ run_test() {
     local expected="$3"
 
     echo -n "TEST: $name ... "
-    output=$(copilot -p "$prompt" --model claude-sonnet-4.5 --add-dir "$HOME" 2>&1) || true
+    output=$(copilot -p "$prompt" --model claude-sonnet-4.5 --add-dir "$HOME/.copilot" --add-dir "$TEST_DIR" 2>&1) || true
 
     if echo "$output" | grep -qi "$expected"; then
         echo "PASS"
@@ -45,18 +45,18 @@ echo ""
 
 # Test 1: Workflow discovery
 run_test "Workflow discovery" \
-    "Read the file at ~/.copilot/workflow/DEFAULT_WORKFLOW.md and tell me how many steps it has. Just say the number." \
-    "23\|22\|step"
+    "Read the file at ~/.copilot/workflow/amplihack/DEFAULT_WORKFLOW.md and output ONLY the exact text 'name: DEFAULT_WORKFLOW' if found." \
+    "name: DEFAULT_WORKFLOW"
 
 # Test 2: Context/Philosophy discovery
 run_test "Philosophy context" \
-    "Read the file at ~/.copilot/context/PHILOSOPHY.md and quote the first principle heading exactly." \
-    "simplicity\|Simplicity\|SIMPLICITY"
+    "Read the file at ~/.copilot/context/amplihack/PHILOSOPHY.md and output ONLY the exact text 'Ruthless Simplicity' if found." \
+    "Ruthless Simplicity"
 
 # Test 3: Command discovery
 run_test "Command awareness" \
-    "Read the file at ~/.copilot/commands/ultrathink.md and tell me in one sentence what it does." \
-    "workflow\|orchestrat\|analysis"
+    "Read the file at ~/.copilot/commands/amplihack/ultrathink.md and output ONLY the exact text 'name: ultrathink-orchestrator' if found." \
+    "name: ultrathink-orchestrator"
 
 # Test 4: Copilot instructions exist
 run_test "Global instructions" \

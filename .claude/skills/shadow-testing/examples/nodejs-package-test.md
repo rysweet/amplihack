@@ -38,10 +38,10 @@ amplifier-shadow exec ui-test "
     cd /workspace &&
     git clone https://github.com/myorg/next-app test-app &&
     cd test-app &&
-    
+
     # Install ui-components from git (uses your local snapshot)
     npm install git+https://github.com/myorg/ui-components &&
-    
+
     # Build and test
     npm run build &&
     npm test
@@ -57,14 +57,14 @@ amplifier-shadow exec ui-test "
     npm install &&
     npm run build &&
     npm link &&
-    
+
     # Clone app and link to local package
     cd /workspace &&
     git clone https://github.com/myorg/next-app test-app &&
     cd test-app &&
     npm install &&
     npm link @myorg/ui-components &&
-    
+
     # Test
     npm run build &&
     npm test
@@ -133,14 +133,14 @@ amplifier-shadow create --local ~/repos/ui-components:myorg/ui-components --name
 # Test iteration loop
 while true; do
     # Edit files on host
-    
+
     # Recreate shadow with new snapshot
     amplifier-shadow destroy dev
     amplifier-shadow create --local ~/repos/ui-components:myorg/ui-components --name dev
-    
+
     # Run tests
     amplifier-shadow exec dev "cd /workspace/myorg/ui-components && npm test"
-    
+
     read -p "Continue? (y/n) " yn
     [[ $yn != "y" ]] && break
 done
