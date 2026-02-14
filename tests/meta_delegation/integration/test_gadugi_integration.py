@@ -134,7 +134,7 @@ All tests passed (3/3)
         goal = "Create login endpoint"
         success_criteria = "Endpoint handles valid and invalid credentials"
 
-        scenarios = generator.generate_scenarios(goal, success_criteria)
+        _ = generator.generate_scenarios(goal, success_criteria)
 
         # Collect evidence
         collector = EvidenceCollector(working_directory=str(test_workspace))

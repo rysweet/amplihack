@@ -561,7 +561,7 @@ def prompt_user_consent(
             print("=" * 60)
 
             # Show default in prompt
-            default_indicator = "[Y/n]" if default_response else "[y/N]"
+            _ = "[Y/n]" if default_response else "[y/N]"
             print(
                 f"\nDefault response: {'Yes' if default_response else 'No'} (timeout: {timeout_seconds}s)"
             )

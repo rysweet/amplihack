@@ -155,9 +155,9 @@ class FreshnessChecker:
         # Run checks
         age_ok = self.check_documentation_age(metadata)
         urls_ok = self.check_source_urls(metadata)
-        version_ok = self.check_github_version(metadata)
-        changes_ok = self.check_breaking_changes(metadata)
-        schedule_ok = self.check_next_verification(metadata)
+        _ = self.check_github_version(metadata)
+        _ = self.check_breaking_changes(metadata)
+        _ = self.check_next_verification(metadata)
 
         # Report results
         print()

@@ -273,7 +273,7 @@ class TestSaveUpdatePreference:
         """Test that temp file is cleaned up on error."""
         pref_file = tmp_path / ".claude" / ".update_preference"
         pref_file.parent.mkdir(parents=True)
-        temp_file = pref_file.with_suffix(".tmp")
+        _ = pref_file.with_suffix(".tmp")
 
         with patch(
             ".claude.tools.amplihack.update_prefs._get_preference_file_path",

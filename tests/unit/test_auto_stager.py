@@ -61,7 +61,7 @@ class TestTempDirectoryCreation:
         (claude_dir / "context").mkdir()
 
         stager = AutoStager()
-        result = stager.stage_for_nested_execution(original_cwd, "session-123")
+        _ = stager.stage_for_nested_execution(original_cwd, "session-123")
 
         assert mock_mkdtemp.called
         assert "amplihack-stage-session-123" in mock_mkdtemp.call_args[1]["prefix"]
@@ -289,7 +289,7 @@ class TestStagingIntegration:
         if "AMPLIHACK_IS_STAGED" in os.environ:
             del os.environ["AMPLIHACK_IS_STAGED"]
 
-        result = stager.stage_for_nested_execution(original_cwd, "test-session")
+        _ = stager.stage_for_nested_execution(original_cwd, "test-session")
 
         assert "AMPLIHACK_IS_STAGED" in os.environ
         assert os.environ["AMPLIHACK_IS_STAGED"] == "1"

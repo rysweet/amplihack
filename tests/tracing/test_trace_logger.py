@@ -578,7 +578,7 @@ def test_trace_logger_env_handles_invalid_path(monkeypatch):
     monkeypatch.setenv("AMPLIHACK_TRACE_LOGGING", "true")
     monkeypatch.setenv("AMPLIHACK_TRACE_FILE", "/invalid/path/trace.jsonl")
 
-    logger = TraceLogger.from_env()
+    _ = TraceLogger.from_env()
 
     # Should handle gracefully - either disable or raise clear error
     # Exact behavior TBD in implementation

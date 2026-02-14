@@ -62,9 +62,6 @@ def test_session_start_calls_gitignore_checker():
 
         print("✅ Created amplihack directory structure")
 
-        # Create minimal input for session_start hook
-        input_data = {"prompt": "test prompt"}
-
         # Change to test repo
         import os
         import sys

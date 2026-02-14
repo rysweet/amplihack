@@ -9,9 +9,9 @@ Usage:
 """
 
 import time
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from functools import wraps
-from typing import Callable
 
 import requests
 
@@ -25,8 +25,6 @@ CIRCUIT_BREAKER_TIMEOUT = 30
 
 class CircuitBreakerOpenError(Exception):
     """Raised when circuit breaker is in open state."""
-
-    pass
 
 
 def retry_with_backoff(

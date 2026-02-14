@@ -522,7 +522,7 @@ class TestSecureMemoryBackendStorage:
             confidence=0.8,
         )
 
-        exp_id = restricted_backend.add_experience(exp)
+        _ = restricted_backend.add_experience(exp)
 
         # Retrieve and verify scrubbing
         stored_list = store.connector.retrieve_experiences(limit=1)

@@ -13,11 +13,13 @@
 When you install amplihack via UVX from GitHub, Claude Code now automatically discovers the plugin because the build system includes all necessary directories in the wheel package.
 
 **Before this fix**:
+
 - `uvx --from git+https://github.com/user/amplihack amplihack` installed the package
 - Claude Code couldn't find commands, skills, or agents
 - Plugin manifest existed but pointed to missing directories
 
 **After this fix**:
+
 - Same UVX command installs package WITH plugin directories
 - Claude Code discovers all 24 commands, 73 skills, and 38 agents
 - Everything works immediately, no manual setup required
@@ -29,6 +31,7 @@ When you install amplihack via UVX from GitHub, Claude Code now automatically di
 The build system (`build_hooks.py`) automatically copies plugin directories from the repository root into the package **during wheel build**, before setuptools packages everything.
 
 **Copied directories**:
+
 1. `.claude/commands/` → `src/amplihack/.claude/commands/`
 2. `.claude/skills/` → `src/amplihack/.claude/skills/`
 3. `.claude/agents/` → `src/amplihack/.claude/agents/`
@@ -38,6 +41,7 @@ The build system (`build_hooks.py`) automatically copies plugin directories from
 7. `AMPLIHACK.md` → `src/amplihack/AMPLIHACK.md` (framework instructions)
 
 **Why this works**:
+
 - Python wheel packages only include files **inside** Python packages
 - Repository root directories (`.claude/`, `.github/`) are **outside** `src/amplihack/`
 - Copying them **into** the package makes them part of the wheel
@@ -49,6 +53,7 @@ The build system (`build_hooks.py`) automatically copies plugin directories from
 The build system preserves symlinks within copied directories using `shutil.copytree(symlinks=True)`.
 
 **Why symlinks matter**:
+
 - `.github/agents/amplihack` → `.claude/agents/amplihack` (symlink)
 - Maintains zero-duplication architecture
 - Single source of truth for agent definitions
@@ -59,6 +64,7 @@ The build system preserves symlinks within copied directories using `shutil.copy
 After building the wheel, `build_hooks.py` removes copied directories from `src/amplihack/` to keep the repository clean.
 
 **Cleanup guarantees**:
+
 - Runs even if build fails (using `try/finally`)
 - Removes all 7 copied items
 - Repository state unchanged after build
@@ -117,6 +123,7 @@ amplihack = [
 ```
 
 **Note on .github/ omission**: The `.github/` directory is copied by build hooks for symlink preservation, but NOT declared in package-data because:
+
 - **Editable installs**: When installed with `pip install -e .`, the repository root is already in the Python path, making `.github/` accessible via symlinks
 - **Wheel installs**: `.github/` IS included in wheels (build hooks copy it), but setuptools auto-includes it because it contains Python-accessible content
 - **Result**: `.github/` works in both installation modes without explicit package-data declaration
@@ -139,16 +146,19 @@ ignore = ignore_patterns(
 ```
 
 **Security reasons**:
+
 - `.env` files contain secrets (API keys, tokens)
 - `.git` directory may expose sensitive history
 - `.venv` includes local-specific Python environments
 
 **Size reasons**:
+
 - `node_modules/` can be hundreds of MB
 - `__pycache__/` bytecode is regenerated on first run
 - `.git` directory adds significant unnecessary weight
 
 **Distribution cleanliness**:
+
 - Runtime logs (`.log`, `.tmp`) are machine-specific
 - System files (`.DS_Store`) are platform-specific
 - Bytecode files (`.pyc`, `.pyo`) are Python version-specific
@@ -183,6 +193,7 @@ unzip -l dist/amplihack-*.whl | grep -E "(\.claude|\.github|amplifier-bundle|AMP
 ```
 
 **Expected output**:
+
 ```
 amplihack/.claude/commands/
 amplihack/.claude/skills/
@@ -207,6 +218,7 @@ amplihack claude  # Launch Claude Code with amplihack plugin
 ```
 
 **In Claude Code session**:
+
 ```
 Type: /help
 ```
@@ -248,6 +260,7 @@ amplihack claude
 **None**. This is a transparent build system fix.
 
 Users continue to:
+
 1. Run `uvx --from git+https://github.com/user/amplihack amplihack`
 2. Launch their preferred tool (`amplihack claude`, `amplihack amplifier`, etc.)
 3. Access all commands, skills, and agents immediately
@@ -261,11 +274,13 @@ The **only** difference: it now **works** when installed via UVX from GitHub.
 **Problem**: Source directories don't exist in repository.
 
 **Solution**: Verify repository structure:
+
 ```bash
 ls -la .claude/ .claude-plugin/ .github/ amplifier-bundle/
 ```
 
 All directories should exist. If missing, clone repository correctly:
+
 ```bash
 git clone --recurse-submodules https://github.com/rysweet/amplihack
 ```
@@ -275,6 +290,7 @@ git clone --recurse-submodules https://github.com/rysweet/amplihack
 **Problem**: Symlinks broken in repository.
 
 **Solution**: Check symlink targets:
+
 ```bash
 ls -la .github/agents/
 # Should show: amplihack -> ../../.claude/agents/amplihack
@@ -284,6 +300,7 @@ ls -la .github/skills/
 ```
 
 Fix broken symlinks:
+
 ```bash
 cd .github/agents/
 ln -sf ../../.claude/agents/amplihack amplihack
@@ -294,6 +311,7 @@ ln -sf ../../.claude/agents/amplihack amplihack
 **Problem**: Claude Code can't find plugin.
 
 **Diagnosis**:
+
 ```bash
 # Check wheel contents
 unzip -l dist/amplihack-*.whl | grep ".claude-plugin/plugin.json"
@@ -302,6 +320,7 @@ unzip -l dist/amplihack-*.whl | grep ".claude-plugin/plugin.json"
 ```
 
 **Solution**: Rebuild wheel:
+
 ```bash
 rm -rf dist/ build/ src/amplihack.egg-info/
 python -m build --wheel
@@ -314,6 +333,7 @@ python -m build --wheel
 **Cause**: Build hook crashed before cleanup.
 
 **Solution**: Manual cleanup:
+
 ```bash
 rm -rf src/amplihack/.claude/
 rm -rf src/amplihack/.claude-plugin/
@@ -329,11 +349,13 @@ rm -f src/amplihack/AMPLIHACK.md
 This fix **only** affects UVX installations. Per-project staging (`~/.amplihack/.claude/`) remains unchanged.
 
 **Per-project mode** (Microsoft Amplifier, GitHub Copilot CLI, Codex):
+
 ```bash
 amplihack amplifier  # Stages files to project-local ~/.amplihack/.claude/
 ```
 
 **Plugin mode** (Claude Code only):
+
 ```bash
 amplihack claude  # Uses plugin discovery from UVX-installed package
 ```
@@ -341,6 +363,7 @@ amplihack claude  # Uses plugin discovery from UVX-installed package
 ### Compatibility with Development Mode
 
 When developing amplihack, install in editable mode:
+
 ```bash
 pip install -e .
 ```
@@ -381,23 +404,27 @@ Build hooks **do not run** in editable mode. Directories remain at repository ro
 ### When to Update This Fix
 
 **Update build_hooks.py if**:
+
 - Adding new plugin directories (e.g., `.claude/templates/`)
 - Changing symlink structure in `.github/`
 - Modifying ignore patterns for runtime files
 
 **Update pyproject.toml if**:
+
 - Changing package data patterns
 - Adding new directories to include
 
 ### Testing Strategy
 
 **Before each release**:
+
 1. Build wheel: `python -m build --wheel`
 2. Check contents: `unzip -l dist/amplihack-*.whl`
 3. Test UVX install: `uvx --from dist/amplihack-*.whl amplihack claude`
 4. Verify plugin discovery: Launch Claude Code, run `/help`
 
 **Automated tests**:
+
 - `tests/test_uvx_packaging.py` - Verifies wheel contents
 - CI builds wheels on every commit
 - Release workflow publishes to PyPI with verified wheels

@@ -340,7 +340,7 @@ class TestMigrationHelper:
             mock_home.return_value = home
 
             # Act
-            result = helper.migrate_to_plugin(project_dir, preserve_local=True)
+            _ = helper.migrate_to_plugin(project_dir, preserve_local=True)
 
             # Assert
             # Local customizations should remain

@@ -128,7 +128,7 @@ class TestProgressTracker:
         tracker.start_language("python", estimated_files=1000)
 
         # Simulate processing with consistent rate
-        start_time = time.time()
+        _ = time.time()
         for i in range(1, 11):
             time.sleep(0.01)  # 10ms per 10 files = 1ms per file
             tracker.update_progress("python", processed_files=i * 10)

@@ -275,7 +275,7 @@ class TestSettingsGeneratorWriting:
 
         with patch("pathlib.Path.mkdir") as mock_mkdir:
             with patch("pathlib.Path.write_text"):
-                result = generator.write_settings(settings, target_path)
+                _ = generator.write_settings(settings, target_path)
 
         mock_mkdir.assert_called_once()
 
@@ -295,7 +295,7 @@ class TestSettingsGeneratorWriting:
 
         with patch("pathlib.Path.write_text", side_effect=capture_write):
             with patch("pathlib.Path.mkdir"):
-                result = generator.write_settings(settings, target_path)
+                _ = generator.write_settings(settings, target_path)
 
         # Should be formatted JSON
         assert written_content is not None
@@ -343,7 +343,7 @@ class TestSettingsGeneratorEdgeCases:
 
         # Should handle gracefully without infinite loop
         with pytest.raises((ValueError, RecursionError)):
-            settings = generator.generate(plugin_manifest)
+            _ = generator.generate(plugin_manifest)
 
     def test_merge_settings_handles_none_values(self):
         """Test merging handles None values correctly."""
@@ -366,7 +366,7 @@ class TestSettingsGeneratorEdgeCases:
         plugin_manifest = {"name": "Invalid Name!", "version": "1.0.0"}
 
         with pytest.raises(ValueError):
-            settings = generator.generate(plugin_manifest)
+            _ = generator.generate(plugin_manifest)
 
     def test_write_settings_handles_empty_dict(self):
         """Test writing empty settings dict."""

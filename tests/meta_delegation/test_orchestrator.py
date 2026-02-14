@@ -312,7 +312,7 @@ class TestMetaDelegationOrchestrator:
 
         orchestrator.evidence_collector = mock_collector
 
-        evidence = orchestrator.collect_evidence(execution_log="Log")
+        _ = orchestrator.collect_evidence(execution_log="Log")
 
         mock_collector.collect_evidence.assert_called()
 
@@ -323,7 +323,7 @@ class TestMetaDelegationOrchestrator:
 
         orchestrator.success_evaluator = mock_evaluator
 
-        result = orchestrator.evaluate_success(
+        _ = orchestrator.evaluate_success(
             criteria="Done",
             evidence=[],
             execution_log="Log",

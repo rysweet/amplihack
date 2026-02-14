@@ -280,7 +280,7 @@ class TestPersonaWorkflowIntegration:
         assert prompt is not None
 
         # Simulate evidence collection with guide priorities
-        collector = EvidenceCollector(
+        _ = EvidenceCollector(
             working_directory=str(temp_working_dir),
             evidence_priorities=persona.evidence_collection_priority,
         )
@@ -300,7 +300,7 @@ class TestPersonaWorkflowIntegration:
         assert prompt is not None
 
         # Simulate evidence collection with QA priorities
-        collector = EvidenceCollector(
+        _ = EvidenceCollector(
             working_directory=str(temp_working_dir),
             evidence_priorities=persona.evidence_collection_priority,
         )
@@ -320,7 +320,7 @@ class TestPersonaWorkflowIntegration:
         assert prompt is not None
 
         # Simulate evidence collection with architect priorities
-        collector = EvidenceCollector(
+        _ = EvidenceCollector(
             working_directory=str(temp_working_dir),
             evidence_priorities=persona.evidence_collection_priority,
         )

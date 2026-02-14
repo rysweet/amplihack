@@ -187,7 +187,7 @@ def test_no_stub_implementations():
 
     Note: Abstract base classes (ABCs) are allowed to use NotImplementedError.
     """
-    project_root = Path(__file__).parent.parent
+    _ = Path(__file__).parent.parent
     python_files = get_project_files("*.py", exclude_tests=True)
 
     stubs_found = []
@@ -251,7 +251,7 @@ def test_no_unreachable_code():
 
     This catches common mistakes and ensures code clarity.
     """
-    project_root = Path(__file__).parent.parent
+    _ = Path(__file__).parent.parent
     python_files = get_project_files("*.py", exclude_tests=True)
 
     unreachable_found = []
@@ -319,7 +319,7 @@ def test_no_swallowed_exceptions():
     - Logged or re-raised
     - Never silently ignored (unless explicitly documented why)
     """
-    project_root = Path(__file__).parent.parent
+    _ = Path(__file__).parent.parent
     python_files = get_project_files("*.py", exclude_tests=True)
 
     swallowed_exceptions = []

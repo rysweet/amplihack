@@ -308,6 +308,7 @@ git config --list
 **Installation (Required):**
 
 **macOS:**
+
 ```bash
 # Recommended: Homebrew
 brew install --cask claude-code
@@ -317,11 +318,13 @@ curl -fsSL https://claude.ai/install.sh | bash
 ```
 
 **Linux/WSL:**
+
 ```bash
 curl -fsSL https://claude.ai/install.sh | bash
 ```
 
 **Windows:**
+
 ```powershell
 # Recommended: WinGet
 winget install Anthropic.ClaudeCode

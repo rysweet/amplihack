@@ -183,7 +183,7 @@ def check_discoverability(repo_root: Path, markdown_files: list[Path]) -> list[P
             # Resolve to absolute path first to handle relative paths from rglob
             absolute_file = md_file.resolve()
             relative_path = absolute_file.relative_to(repo_root)
-            
+
             if not str(relative_path).startswith("docs/"):
                 continue
 

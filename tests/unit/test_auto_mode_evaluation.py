@@ -475,7 +475,7 @@ class TestAutoModeLoopIntegration:
         mock_client.__aexit__.return_value = None
         mock_client_class.return_value = mock_client
 
-        auto_mode = AutoMode(task="Test task", max_iterations=10)
+        _ = AutoMode(task="Test task", max_iterations=10)
 
         # Run auto-mode (would be async in real implementation)
         # This is a simplified test - real implementation would need async
@@ -611,7 +611,7 @@ class TestEvaluationDecisionLogging:
 
         evaluation_result = "Auto-Mode Evaluation: COMPLETE\n\nAll tasks done."
 
-        should_continue = auto_mode._should_continue_loop(evaluation_result, Mock())
+        _ = auto_mode._should_continue_loop(evaluation_result, Mock())
 
         # Verify logging includes key details
         log_output = "\n".join(logged_messages)

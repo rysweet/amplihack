@@ -182,7 +182,7 @@ class TestParseNodeOptions:
         from amplihack.launcher.memory_config import parse_node_options
 
         # Should handle gracefully or raise clear error
-        result = parse_node_options("invalid-format --max-old-space-size")
+        _ = parse_node_options("invalid-format --max-old-space-size")
         # Implementation should define behavior
 
 

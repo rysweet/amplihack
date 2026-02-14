@@ -1,0 +1,15 @@
+# Documentation Analyzer Agent Requirements
+
+# Core dependency - memory integration
+amplihack-memory-lib>=0.1.0
+
+# HTTP client for fetching MS Learn docs
+requests>=2.31.0
+
+# HTML/Markdown parsing
+beautifulsoup4>=4.12.0
+markdown>=3.5.0
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0

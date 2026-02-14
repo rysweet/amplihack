@@ -40,6 +40,7 @@ customizable: true
 ## When to Use This Workflow
 
 Use SIMPLIFIED_WORKFLOW for documentation-only changes:
+
 - ✅ README updates
 - ✅ Tutorial writing
 - ✅ How-to guides
@@ -61,6 +62,7 @@ Use SIMPLIFIED_WORKFLOW for documentation-only changes:
 **Purpose**: Prevent step skipping and completion bias
 
 **Actions**:
+
 - [ ] Read entire workflow file (16 steps: 0-15)
 - [ ] Understand this is docs-optimized, NOT fewer quality gates
 - [ ] Proceed to Step 1
@@ -72,6 +74,7 @@ Use SIMPLIFIED_WORKFLOW for documentation-only changes:
 **Purpose**: Start with clean, up-to-date environment
 
 **Actions**:
+
 - [ ] Check git status: `git status` (no unstashed changes)
 - [ ] Fetch latest: `git fetch`
 - [ ] Verify on main branch: `git branch --show-current`
@@ -83,6 +86,7 @@ Use SIMPLIFIED_WORKFLOW for documentation-only changes:
 **Purpose**: Define clear documentation goals
 
 **Actions**:
+
 - [ ] Identify target audience (developers, users, operators)
 - [ ] Define documentation type (tutorial, how-to, reference, explanation - Diataxis framework)
 - [ ] Document success criteria: What should readers be able to do after reading?
@@ -96,6 +100,7 @@ Use SIMPLIFIED_WORKFLOW for documentation-only changes:
 **Purpose**: Track documentation work formally
 
 **GitHub**:
+
 ```bash
 gh issue create \
   --title "docs: Add getting started tutorial" \
@@ -104,6 +109,7 @@ gh issue create \
 ```
 
 **Azure DevOps**:
+
 ```bash
 az boards work-item create \
   --title "docs: Add getting started tutorial" \
@@ -112,6 +118,7 @@ az boards work-item create \
 ```
 
 **Actions**:
+
 - [ ] Create issue with clear description
 - [ ] Add documentation label
 - [ ] Note issue number for branch name
@@ -123,6 +130,7 @@ az boards work-item create \
 **Purpose**: Isolated development environment
 
 **Actions**:
+
 - [ ] Create worktree:
   ```bash
   git worktree add ./worktrees/docs-issue-{N}-{description} -b docs/issue-{N}-{description}
@@ -141,6 +149,7 @@ az boards work-item create \
 **Purpose**: Plan documentation architecture before writing
 
 **Actions**:
+
 - [ ] Review existing documentation structure
 - [ ] Identify where new docs fit (docs/, README, inline comments)
 - [ ] Plan document outline (headings, sections, flow)
@@ -158,6 +167,7 @@ az boards work-item create \
 **Purpose**: Create comprehensive documentation following standards
 
 **Standards**:
+
 - [ ] Follow Diataxis framework (tutorial/how-to/reference/explanation)
 - [ ] Place docs in `docs/` directory (not root)
 - [ ] Link from appropriate entry points
@@ -166,6 +176,7 @@ az boards work-item create \
 - [ ] Add frontmatter metadata where applicable
 
 **Actions**:
+
 - [ ] Write clear, concise explanations
 - [ ] Include runnable code examples (test in Step 7)
 - [ ] Add cross-references and internal links
@@ -179,6 +190,7 @@ az boards work-item create \
 **Purpose**: Ensure all code examples actually work (replaces TDD for docs)
 
 **Actions**:
+
 - [ ] Extract all code examples from documentation
 - [ ] Test each example in clean environment
 - [ ] Verify commands produce expected output
@@ -187,6 +199,7 @@ az boards work-item create \
 - [ ] Test on target platform(s)
 
 **Testing Checklist**:
+
 ```bash
 # Example testing script
 for example in docs/examples/*.sh; do
@@ -204,6 +217,7 @@ done
 **Purpose**: Ensure technical correctness (replaces compilation/type checking)
 
 **Actions**:
+
 - [ ] Run markdown linter:
   ```bash
   markdownlint **/*.md || remark-lint **/*.md
@@ -227,6 +241,7 @@ done
 **Purpose**: Ruthless simplification of documentation
 
 **Actions**:
+
 - [ ] Remove unnecessary explanations
 - [ ] Eliminate redundant examples
 - [ ] Simplify complex sentences
@@ -236,6 +251,7 @@ done
 - [ ] Check reading level appropriate for audience
 
 **Philosophy Check**:
+
 - Every sentence must earn its place
 - No "coming soon" or placeholder content
 - Each section stands alone when possible
@@ -247,6 +263,7 @@ done
 **Purpose**: Comprehensive quality check before committing
 
 **Actions**:
+
 - [ ] Check documentation clarity and accuracy
 - [ ] Verify examples are practical and realistic
 - [ ] Check tone and style consistency
@@ -254,8 +271,9 @@ done
 - [ ] Review for accessibility (alt text, clear language)
 
 **PR Cleanliness Check**:
+
 - [ ] Review staged changes: all related to issue?
-- [ ] Remove temporary files (scratch_*.md, notes_*.txt)
+- [ ] Remove temporary files (scratch*\*.md, notes*\*.txt)
 - [ ] Remove point-in-time analysis docs
 - [ ] Check for debugging comments or draft notes
 - [ ] Verify .gitignore updated if new file types added
@@ -267,6 +285,7 @@ done
 **Purpose**: Address pre-commit review findings
 
 **Actions**:
+
 - [ ] Address identified issues
 - [ ] Update examples if needed
 - [ ] Revise structure if issues identified
@@ -279,16 +298,19 @@ done
 **Purpose**: Save changes to git history
 
 **Actions**:
+
 - [ ] Stage all changes: `git add docs/`
 - [ ] Write detailed commit message:
+
   ```bash
   git commit -m "docs: Add getting started tutorial (#123)
-  
+
   - Create step-by-step setup guide
   - Add code examples for common tasks
   - Include troubleshooting section
   - Verify all examples tested"
   ```
+
 - [ ] Reference issue number in commit
 - [ ] Push to remote: `git push`
 
@@ -301,6 +323,7 @@ done
 **Purpose**: Enable early review and CI checks
 
 **GitHub**:
+
 ```bash
 gh pr create --draft \
   --title "docs: Add getting started tutorial (#123)" \
@@ -330,6 +353,7 @@ All code examples tested in clean environment:
 ```
 
 **Azure DevOps**:
+
 ```bash
 az repos pr create \
   --title "docs: Add getting started tutorial (#123)" \
@@ -346,12 +370,14 @@ az repos pr create \
 ⚠️ **MANDATORY - DO NOT SKIP** ⚠️
 
 **Review Actions**:
+
 - [ ] Review documentation accuracy and clarity
 - [ ] Verify philosophy compliance
 - [ ] Ensure examples tested and documented in PR
 - [ ] Check for any technical errors
 
 **Feedback Implementation**:
+
 - [ ] Address each review comment
 - [ ] Push updates to PR: `git push`
 - [ ] Respond to review comments
@@ -367,11 +393,13 @@ az repos pr create \
 **Purpose**: Final verification before merge
 
 **Philosophy Compliance Check**:
+
 - [ ] Verify ruthless simplicity achieved
 - [ ] Confirm zero-BS implementation (no placeholders)
 - [ ] Verify documentation completeness
 
 **Final Cleanup**:
+
 - [ ] Review all changes for cleanliness
 - [ ] Remove any temporary documentation artifacts
 - [ ] Eliminate unnecessary complexity
@@ -379,6 +407,7 @@ az repos pr create \
 - [ ] Commit and push any cleanup changes if needed
 
 **Convert PR to Ready**:
+
 ```bash
 # GitHub
 gh pr ready
@@ -388,6 +417,7 @@ az repos pr update --id <pr_number> --draft false
 ```
 
 **Verify Mergeable**:
+
 - [ ] Verify all CI checks passing
 - [ ] Resolve any merge conflicts
 - [ ] Verify all review comments addressed
@@ -417,6 +447,7 @@ Documentation changes are complete when:
 ## Key Differences from DEFAULT_WORKFLOW
 
 **Removed Steps** (code-specific):
+
 - Step 7: TDD - Write Tests First (replaced with Step 7: Verify Examples)
 - Step 5b: API Design (not applicable to docs)
 - Step 5c: Database Design (not applicable to docs)
@@ -424,12 +455,14 @@ Documentation changes are complete when:
 - Multiple sub-steps for code quality (proportionality, outside-in testing)
 
 **Adapted Steps** (docs-specific):
+
 - Step 2: Clarify docs requirements (audience, type, examples)
 - Step 5: Docs structure design (outline, examples, diagrams)
 - Step 7: Verify examples runnable (replaces TDD)
 - Step 8: Markdown linting + link validation (replaces compilation/type checking)
 
 **Same Rigor, Different Focus**:
+
 - ✅ Still has workspace prep (Step 1)
 - ✅ Still has worktree isolation (Step 4)
 - ✅ Still has multiple review passes (Steps 10, 14)

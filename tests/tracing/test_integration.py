@@ -383,7 +383,7 @@ def test_integration_with_prerequisites_checker():
     """Test integration with prerequisites checker."""
     from amplihack.utils.prerequisites import PrerequisiteChecker
 
-    checker = PrerequisiteChecker()
+    _ = PrerequisiteChecker()
     manager = ClaudeBinaryManager()
 
     # Binary detection should align with prerequisites
@@ -402,7 +402,7 @@ def test_prerequisites_checker_reports_trace_support():
     checker = PrerequisiteChecker()
 
     with patch("shutil.which", return_value="/usr/local/bin/rustyclawd"):
-        result = checker.check_native_binary()
+        _ = checker.check_native_binary()
 
         # Should report trace support capability
         # Exact API TBD in implementation

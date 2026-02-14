@@ -343,7 +343,7 @@ class TestPathResolverEdgeCases:
 
         # Should detect and handle circular references
         with pytest.raises((ValueError, RecursionError)):
-            resolved = resolver.resolve_dict(data, plugin_root)
+            _ = resolver.resolve_dict(data, plugin_root)
 
     def test_resolve_none_plugin_root(self):
         """Test resolving with None plugin root."""
@@ -353,7 +353,7 @@ class TestPathResolverEdgeCases:
         path = "relative/path.py"
 
         with pytest.raises(TypeError):
-            resolved = resolver.resolve(path, None)
+            _ = resolver.resolve(path, None)
 
     def test_resolve_dict_none_values(self):
         """Test resolving dict with None values."""
