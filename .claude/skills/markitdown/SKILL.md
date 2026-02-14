@@ -187,6 +187,46 @@ pip install 'markitdown[pdf, docx, pptx]'
 | HTML       | Web pages         | `md.convert("page.html")`                                   |
 | ZIP        | Archives          | `md.convert("archive.zip")` - processes contents            |
 
+## ⚠️ Common Mistakes to Avoid
+
+**Anti-Pattern 1: Hardcoded API Keys**
+
+```python
+# ❌ NEVER DO THIS
+md = MarkItDown(llm_client=OpenAI(api_key="sk-hardcoded-key"))
+
+# ✅ ALWAYS DO THIS
+api_key = os.getenv("OPENAI_API_KEY")
+md = MarkItDown(llm_client=OpenAI(api_key=api_key))
+```
+
+**Anti-Pattern 2: Unvalidated File Paths**
+
+```python
+# ❌ Vulnerable to path traversal
+user_input = "../../../etc/passwd"
+md.convert(user_input)
+
+# ✅ Validate and sanitize
+from pathlib import Path
+safe_path = Path(user_input).resolve()
+if not safe_path.is_relative_to(allowed_dir):
+    raise ValueError("Invalid path")
+md.convert(str(safe_path))
+```
+
+**Anti-Pattern 3: Ignoring File Size Limits**
+
+```python
+# ❌ Can cause DoS
+md.convert("huge_file.pdf")  # No size check
+
+# ✅ Check size first
+max_size = 50 * 1024 * 1024  # 50MB
+if Path("file.pdf").stat().st_size > max_size:
+    raise ValueError("File too large")
+```
+
 ## Common Issues
 
 **Import Error**: Ensure Python >= 3.10 and markitdown installed

@@ -22,41 +22,15 @@ I automatically load when you mention:
 
 ## What I Do
 
-I orchestrate the skill creation process using amplihack's specialized agents:
+I create skills in 5 steps using amplihack's specialized agents:
 
-1. **Clarify Requirements** (prompt-writer agent)
-   - Understand skill purpose and scope
-   - Define target users and use cases
-   - Identify skill type (agent, command, scenario)
+1. **Clarify** → Define purpose, scope, users (prompt-writer)
+2. **Design** → Plan structure, token budget, templates (architect)
+3. **Generate** → Create SKILL.md with proper format (builder)
+4. **Validate** → Enforce progressive disclosure, check compliance (reviewer)
+5. **Test** → Define activation tests and edge cases (tester)
 
-2. **Design Structure** (architect agent)
-   - Plan YAML frontmatter fields
-   - Design skill organization (single vs multi-file)
-   - Calculate token budget allocation
-   - Choose appropriate templates
-
-3. **Generate Skill** (builder agent)
-   - Create SKILL.md with proper YAML frontmatter
-   - Write clear instructions and examples
-   - Include supporting files if needed
-   - Follow progressive disclosure pattern
-
-4. **Validate Quality** (reviewer agent)
-   - Check YAML frontmatter syntax
-   - **Enforce Progressive Disclosure**:
-     - Count lines in SKILL.md (must be < 500 lines)
-     - Target: 1,000-2,000 tokens (~300-400 lines)
-     - Command: `wc -l SKILL.md` to verify
-     - If oversized: Split content to supporting files (reference.md, examples.md, patterns.md)
-   - **Validate Navigation**: Multi-file skills MUST include "When to Read Supporting Files" section
-   - **Check Source URLs**: Skills based on external docs MUST have `source_urls` in frontmatter
-   - Ensure philosophy compliance (>85% score)
-   - Test description quality for discovery
-
-5. **Create Tests** (tester agent)
-   - Define activation test cases
-   - Create edge case validations
-   - Document expected behaviors
+For detailed requirements, see [Validation Checklist](#validation-checklist) below.
 
 ## Skill Types Supported
 
@@ -106,6 +80,45 @@ This skill enforces **Claude API Skill Authoring Best Practices**:
    - Required fields (name, description, auto_activates, source_urls if applicable)
    - Philosophy compliance > 85%
    - Description clarity for autonomous discovery
+
+## Validation Checklist
+
+Before creating any skill, verify:
+
+✅ **Name Validation**:
+
+- Kebab-case format (lowercase with hyphens)
+- 3-64 characters
+- No spaces or underscores
+
+✅ **Description Quality**:
+
+- 10-1024 characters
+- Includes trigger keywords for auto-discovery
+- Specific, not generic
+
+✅ **File Size Limits**:
+
+- SKILL.md < 500 lines (target 300-400 lines)
+- SKILL.md < 2,000 tokens (target 1,000-2,000)
+- Use `wc -l SKILL.md` to verify
+
+✅ **Progressive Disclosure** (multi-file skills):
+
+- "When to Read Supporting Files" section exists
+- Clear navigation guidance
+- Content split: beginner → SKILL.md, expert → reference.md
+
+✅ **Source Attribution** (docs-based skills):
+
+- `source_urls` in YAML frontmatter
+- Links to official documentation
+
+✅ **Philosophy Compliance**:
+
+- Score > 85%
+- No stubs or placeholders
+- Zero-BS implementation
 
 ## Documentation
 
