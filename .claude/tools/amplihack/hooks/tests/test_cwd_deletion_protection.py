@@ -11,7 +11,6 @@ Testing pyramid:
 - 10% Edge cases (symlinks, relative paths)
 """
 
-import os
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -23,7 +22,6 @@ hooks_dir = Path(__file__).parent.parent
 sys.path.insert(0, str(hooks_dir))
 
 from pre_tool_use import PreToolUseHook
-
 
 # ============================================================================
 # UNIT TESTS - CWD Deletion Detection
@@ -114,9 +112,7 @@ class TestCwdDeletionDetection:
         hook.project_root = tmp_path
 
         with patch("os.getcwd", return_value=str(tmp_path / "work")):
-            result = hook.process(
-                self._make_input(f"cd / && rm -rf {tmp_path / 'work'}")
-            )
+            result = hook.process(self._make_input(f"cd / && rm -rf {tmp_path / 'work'}"))
             assert result.get("block") is True
 
     def test_blocks_piped_rm_rf_cwd(self, tmp_path):
@@ -125,9 +121,7 @@ class TestCwdDeletionDetection:
         hook.project_root = tmp_path
 
         with patch("os.getcwd", return_value=str(tmp_path / "work")):
-            result = hook.process(
-                self._make_input(f"echo yes | rm -rf {tmp_path / 'work'}")
-            )
+            result = hook.process(self._make_input(f"echo yes | rm -rf {tmp_path / 'work'}"))
             assert result.get("block") is True
 
 
@@ -160,9 +154,7 @@ class TestCwdDeletionFullHook:
         hook = PreToolUseHook()
         hook.project_root = tmp_path
 
-        result = hook.process(
-            {"toolUse": {"name": "Read", "input": {"file_path": "/some/file"}}}
-        )
+        result = hook.process({"toolUse": {"name": "Read", "input": {"file_path": "/some/file"}}})
         assert result.get("block") is not True
 
     def test_error_message_is_clear(self, tmp_path):
