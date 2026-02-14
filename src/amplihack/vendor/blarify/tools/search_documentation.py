@@ -9,9 +9,9 @@ using vector similarity with embeddings stored in Neo4j.
 import logging
 from typing import Any
 
-from blarify.repositories.graph_db_manager.db_manager import AbstractDbManager
-from blarify.repositories.graph_db_manager.queries import vector_similarity_search_query
-from blarify.services.embedding_service import EmbeddingService
+from amplihack.vendor.blarify.repositories.graph_db_manager.db_manager import AbstractDbManager
+from amplihack.vendor.blarify.repositories.graph_db_manager.queries import vector_similarity_search_query
+from amplihack.vendor.blarify.services.embedding_service import EmbeddingService
 from langchain_core.callbacks import CallbackManagerForToolRun
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field

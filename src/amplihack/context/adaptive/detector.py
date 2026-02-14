@@ -11,7 +11,7 @@ Philosophy:
 """
 
 import json
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
@@ -111,7 +111,7 @@ class LauncherDetector:
         context = {
             "launcher": launcher_type,
             "command": command,
-            "timestamp": datetime.now(UTC).isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "environment": environment or {},
         }
 
@@ -156,10 +156,10 @@ class LauncherDetector:
 
             # Make timezone-aware if needed
             if timestamp.tzinfo is None:
-                timestamp = timestamp.replace(tzinfo=UTC)
+                timestamp = timestamp.replace(tzinfo=timezone.utc)
 
             # Check age
-            now = datetime.now(UTC)
+            now = datetime.now(timezone.utc)
             age_hours = (now - timestamp).total_seconds() / 3600
 
             return age_hours > max_age

@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 from typing import Any, cast
 
-from blarify.graph.graph import Graph
-from blarify.graph.graph_environment import GraphEnvironment
-from blarify.graph.graph_update import GraphUpdate
-from blarify.project_graph_diff_creator import ChangeType, FileDiff, ProjectGraphDiffCreator
+from amplihack.vendor.blarify.graph.graph import Graph
+from amplihack.vendor.blarify.graph.graph_environment import GraphEnvironment
+from amplihack.vendor.blarify.graph.graph_update import GraphUpdate
+from amplihack.vendor.blarify.project_graph_diff_creator import ChangeType, FileDiff, ProjectGraphDiffCreator
 
 
 @dataclass

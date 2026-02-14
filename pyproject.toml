@@ -20,9 +20,31 @@ dependencies = [
     "claude-agent-sdk>=0.1.0", # Claude Python Agent SDK for auto mode streaming
     "github-copilot-sdk>=0.1.0", # GitHub Copilot SDK for embedding Copilot in applications
     "rich>=13.0.0", # Required for --ui interactive TUI mode
-    "blarify>=1.3.0", # Code understanding engine for indexing codebases
     "azure-identity>=1.12.0", # Azure Service Principal authentication for remote execution
     "kuzu>=0.11.0", # Embedded graph database for memory system
+
+    # Blarify vendored code dependencies (using vendored copy in src/amplihack/vendor/blarify, not PyPI package)
+    "json-repair>=0.47.7", # JSON repair for blarify LLM provider
+    "langchain>=1.2.3", # Langchain core for blarify agents
+    "langchain-openai>=1.1.7", # Langchain OpenAI integration
+    "langchain-anthropic>=1.3.1", # Langchain Anthropic integration
+    "langchain-google-genai>=4.1.3", # Langchain Google integration
+    "tree-sitter>=0.23.2", # Tree-sitter for code parsing
+    "tree-sitter-python>=0.23.2", # Python grammar
+    "tree-sitter-javascript>=0.23.0", # JavaScript grammar
+    "tree-sitter-typescript>=0.23.2", # TypeScript grammar
+    "tree-sitter-c-sharp>=0.23.1", # C# grammar
+    "tree-sitter-go>=0.23.1", # Go grammar
+    "tree-sitter-java>=0.23.2", # Java grammar
+    "tree-sitter-php>=0.23.4", # PHP grammar
+    "tree-sitter-ruby>=0.23.0", # Ruby grammar
+    "psutil>=7.0.0", # Process utilities for blarify
+    "protobuf==6.31.1", # Protobuf for SCIP index format
+    "typing-extensions>=4.12.2", # Backport for Python 3.10 (NotRequired, etc.)
+    "falkordb>=1.0.10", # FalkorDB graph database (blarify vendored code imports)
+    "neo4j>=5.25.0", # Neo4j graph database (blarify vendored code imports)
+    "jedi-language-server>=0.43.1", # Jedi LSP for Python code intelligence
+    "docker>=7.1.0", # Docker client for blarify containers
     "packaging>=21.0", # Semantic version comparison for auto-update
     "tomli>=2.0.0; python_version < '3.11'", # TOML parser for Python <3.11
 ]
@@ -57,6 +79,20 @@ dev = [
     "pyyaml>=6.0.0",  # For mkdocs navigation validation
 ]
 
+# Blarify language-specific indexing dependencies
+# Note: Some tools (typescript-language-server, dotnet, go, java, php, ruby)
+# are not Python packages and must be installed separately
+blarify-all = [
+    # Python indexing support (already included by default via jedi-language-server)
+]
+# For individual language support, install the system dependencies:
+# - JavaScript/TypeScript: npm install -g typescript-language-server
+# - C#: Install .NET SDK 6, 7, 8, 9, or 10
+# - Go: Install Go toolchain
+# - Java: Install JDK
+# - PHP: Install PHP runtime
+# - Ruby: Install Ruby runtime
+
 [project.scripts]
 amplihack = "amplihack:main"
 
@@ -80,6 +116,8 @@ amplihack = [
     ".claude-plugin/**/*",  # Plugin manifest
     "amplifier-bundle/**/*",
     "amplifier-bundle/**/.gitkeep",
+    "vendor/blarify/**/*.json",  # Include blarify language server config files
+    "vendor/blarify/**/*.proto",  # Include blarify protobuf definitions
     "commands/**/*",  # Plugin-discoverable directories (copied by build_hooks.py)
     "skills/**/*",
     "agents/**/*",

@@ -149,6 +149,7 @@ Understand the philosophy and architecture behind amplihack.
 - [Development Patterns](claude/context/PATTERNS.md) - Proven implementation patterns
 - [Unified Staging Architecture](concepts/unified-staging-architecture.md) - How .claude/ staging works across all commands
 - [Framework Injection Architecture](concepts/framework-injection-architecture.md) - How AMPLIHACK.md injection works
+- [How to Use Blarify Code Graph](howto/blarify-code-graph.md) - Enable, query, and configure
 - [Blarify Architecture](blarify_architecture.md) - Understanding the Blarify integration
 - [Documentation Knowledge Graph](documentation_knowledge_graph.md) - How docs connect
 
@@ -364,6 +365,18 @@ Embedded graph-based memory using Kuzu (NO Neo4j required):
 - [Documentation Graph](doc_graph_quick_reference.md) - Navigate documentation connections
 - [Code Context Injection](memory/CODE_CONTEXT_INJECTION.md) - Link code to memories
 
+### Code Graph
+
+Query your codebase structure via the Kuzu graph database:
+
+- **[How to Use Blarify Code Graph](howto/blarify-code-graph.md)** - Enable, query, and configure
+
+```bash
+python -m amplihack.memory.kuzu.query_code_graph stats
+python -m amplihack.memory.kuzu.query_code_graph search <name>
+python -m amplihack.memory.kuzu.query_code_graph functions --file <path>
+```
+
 **Historical Research** (Neo4j was replaced with Kuzu in Week 7):
 
 - [Executive Summary](research/neo4j_memory_system/00-executive-summary/README.md)
@@ -382,8 +395,14 @@ Embedded graph-based memory using Kuzu (NO Neo4j required):
 ### External Knowledge
 
 - [External Knowledge Integration](external_knowledge_integration.md) - Import external data sources
-- [Blarify Integration](blarify_integration.md) - Code indexing with Kuzu (NO Neo4j)
-- [Blarify Quickstart](blarify_quickstart.md) - Get started with Blarify
+
+### Blarify Code Indexing
+
+Complete code indexing and analysis with multi-language support:
+
+- **[How to Use Blarify Code Graph](howto/blarify-code-graph.md)** - Enable, query, and configure code graph indexing
+- [Blarify Integration](blarify_integration.md) - Technical integration details
+- [Blarify Quickstart](blarify_quickstart.md) - Get started in 5 minutes
 
 ---
 
