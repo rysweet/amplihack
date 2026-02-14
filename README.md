@@ -440,6 +440,32 @@ physically impossible to skip steps.
 
 📖 [Recipe Runner Documentation](docs/recipes/README.md)
 
+### Pre-Commit Manager - Automatic Hook Setup
+
+Eliminates pre-commit setup friction on fresh repository clones:
+
+```sh
+# Automatic: Hook detects .pre-commit-config.yaml and offers installation
+# Manual: Configure for your language
+Skill(pre-commit-manager, "configure python")
+
+# Check status
+Skill(pre-commit-manager, "status")
+```
+
+**Key Features:**
+
+- **Smart preference memory**: Remembers your choice (always/never/ask) across
+  sessions
+- **Template library**: Pre-configured for Python, JavaScript, TypeScript, Go,
+  Rust
+- **Security-first**: Command injection prevention, path validation, secure
+  storage
+- **Zero friction**: Single prompt, then automatic forever
+
+📖
+[Pre-Commit Manager Documentation](.claude/skills/pre-commit-manager/README.md)
+
 ### Workflow Orchestration by Default
 
 All prompts are automatically wrapped with `/amplihack:ultrathink` for maximum
