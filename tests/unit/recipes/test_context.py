@@ -150,3 +150,49 @@ class TestContextEvaluateSecurity:
         ctx = RecipeContext({"x": "hello"})
         with pytest.raises(ValueError, match="(?i)(unsafe|forbidden|not allowed|invalid)"):
             ctx.evaluate("x.__class__.__bases__")
+
+    def test_evaluate_rejects_hex_escape_underscore(self) -> None:
+        """Expressions with hex escape sequences for underscore (\\x5f, \\x5F) are rejected."""
+        ctx = RecipeContext({"x": "hello"})
+        # Test lowercase hex escape
+        with pytest.raises(ValueError, match="(?i)(escape|forbidden|not allowed|invalid)"):
+            ctx.evaluate(r"x.\x5f\x5fclass\x5f\x5f")
+        # Test uppercase hex escape
+        with pytest.raises(ValueError, match="(?i)(escape|forbidden|not allowed|invalid)"):
+            ctx.evaluate(r"x.\x5F\x5Fclass\x5F\x5F")
+
+    def test_evaluate_rejects_unicode_escape_underscore(self) -> None:
+        """Expressions with Unicode escape sequences for underscore (\\u005f, \\u005F) are rejected."""
+        ctx = RecipeContext({"x": "hello"})
+        # Test lowercase Unicode escape
+        with pytest.raises(ValueError, match="(?i)(escape|forbidden|not allowed|invalid)"):
+            ctx.evaluate(r"x.\u005f\u005fclass\u005f\u005f")
+        # Test uppercase Unicode escape
+        with pytest.raises(ValueError, match="(?i)(escape|forbidden|not allowed|invalid)"):
+            ctx.evaluate(r"x.\u005F\u005Fclass\u005F\u005F")
+
+    def test_evaluate_rejects_long_unicode_escape(self) -> None:
+        """Expressions with long Unicode escape sequences (\\U0000005f, \\U0000005F) are rejected."""
+        ctx = RecipeContext({"x": "hello"})
+        # Test lowercase long Unicode escape
+        with pytest.raises(ValueError, match="(?i)(escape|forbidden|not allowed|invalid)"):
+            ctx.evaluate(r"x.\U0000005f\U0000005fclass\U0000005f\U0000005f")
+        # Test uppercase long Unicode escape
+        with pytest.raises(ValueError, match="(?i)(escape|forbidden|not allowed|invalid)"):
+            ctx.evaluate(r"x.\U0000005F\U0000005Fclass\U0000005F\U0000005F")
+
+    def test_evaluate_rejects_octal_escape_underscore(self) -> None:
+        """Expressions with octal escape sequences for underscore (\\137) are rejected."""
+        ctx = RecipeContext({"x": "hello"})
+        with pytest.raises(ValueError, match="(?i)(escape|forbidden|not allowed|invalid)"):
+            ctx.evaluate(r"x.\137\137class\137\137")
+
+    def test_evaluate_rejects_combined_escapes(self) -> None:
+        """Expressions with combined escape sequences (\\x5f\\x5fclass\\x5f\\x5f) are rejected."""
+        ctx = RecipeContext({"x": "hello"})
+        # Test hex escapes forming __class__
+        with pytest.raises(ValueError, match="(?i)(escape|forbidden|not allowed|invalid)"):
+            ctx.evaluate(r"\x5f\x5fclass\x5f\x5f")
+        # Test mixed case hex escapes
+        with pytest.raises(ValueError, match="(?i)(escape|forbidden|not allowed|invalid)"):
+            ctx.evaluate(r"\x5f\x5Fclass\x5F\x5f")

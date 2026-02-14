@@ -6,7 +6,6 @@ Tests the automatic version bumping functionality for pyproject.toml
 """
 
 import sys
-import tempfile
 from pathlib import Path
 
 import pytest
