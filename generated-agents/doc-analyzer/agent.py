@@ -6,13 +6,14 @@ stores learned patterns in memory, and improves analysis quality over time.
 """
 
 import hashlib
+import json
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
 try:
-    from amplihack_memory_lib import ExperienceStore, ExperienceType, MemoryConnector
+    from amplihack_memory_lib import Experience, ExperienceStore, ExperienceType, MemoryConnector
 except ImportError:
     raise ImportError(
         "amplihack-memory-lib is required. Install with: pip install amplihack-memory-lib"
@@ -181,10 +182,11 @@ class DocumentationAnalyzer:
     def _retrieve_relevant_experiences(self) -> list[dict[str, Any]]:
         """Retrieve past documentation analysis experiences."""
         try:
-            experiences = self.store.retrieve_relevant(
-                context={"type": "documentation_analysis"}, limit=10
+            experiences = self.store.search(
+                query="documentation_analysis",
+                limit=10
             )
-            return experiences
+            return [{"context": exp.context, "outcome": exp.outcome} for exp in experiences]
         except Exception:
             # Graceful degradation if memory unavailable
             return []
@@ -445,29 +447,23 @@ class DocumentationAnalyzer:
     def _store_analysis_experience(self, analysis: DocAnalysis):
         """Store analysis as experience for future learning."""
         try:
-            # Create unique experience ID based on URL
-            exp_id = hashlib.md5(analysis.url.encode()).hexdigest()[:16]
-
-            self.store.store_experience(
-                exp_type=ExperienceType.SUCCESS
+            # Create experience object
+            exp = Experience(
+                experience_type=ExperienceType.SUCCESS
                 if analysis.overall_score >= 70
                 else ExperienceType.FAILURE,
-                context={
-                    "type": "documentation_analysis",
-                    "url": analysis.url,
-                    "timestamp": analysis.analysis_timestamp,
-                },
-                action="analyzed_documentation",
-                outcome=analysis.to_dict(),
-                metadata={
-                    "experience_id": exp_id,
-                    "score_category": "high"
-                    if analysis.overall_score >= 80
-                    else "medium"
-                    if analysis.overall_score >= 60
-                    else "low",
-                },
+                context=f"doc_analysis: {analysis.url[:100]}",
+                outcome=json.dumps({
+                    "score": analysis.overall_score,
+                    "sections": len(analysis.sections_found),
+                    "patterns": len(analysis.patterns_matched),
+                }),
+                confidence=min(analysis.overall_score / 100.0, 1.0),
+                tags=["documentation", "ms_learn"] if "learn.microsoft" in analysis.url else ["documentation"],
             )
+
+            # Store experience
+            self.store.add(exp)
         except Exception as e:
             # Graceful degradation - analysis still works without memory storage
             print(f"Warning: Could not store experience: {e}")
