@@ -103,13 +103,13 @@ class ParallelOrchestrator:
         ws.work_dir = self.tmp_base / f"ws-{issue}"
         ws.log_file = self.tmp_base / f"log-{issue}.txt"
 
-        print(f"[{issue}] Cloning {branch}...")
+        print(f"[{issue}] Cloning from main (workflow will create {branch})...")
         subprocess.run(
             [
                 "git",
                 "clone",
                 "--depth=1",
-                f"--branch={branch}",
+                "--branch=main",
                 self.repo_url,
                 str(ws.work_dir),
             ],
@@ -117,6 +117,7 @@ class ParallelOrchestrator:
             capture_output=True,
             timeout=120,
         )
+        # Note: The workflow Step 4 will create the feature branch
 
         # Write execution files based on mode
         if self.mode == "recipe":
