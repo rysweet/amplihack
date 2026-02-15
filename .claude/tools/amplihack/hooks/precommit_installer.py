@@ -19,6 +19,14 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).parent))
 from hook_processor import HookProcessor
 
+# Import preference management
+try:
+    from precommit_prefs import load_precommit_preference, save_precommit_preference
+
+    PREFERENCES_AVAILABLE = True
+except ImportError:
+    PREFERENCES_AVAILABLE = False
+
 
 class PrecommitInstallerHook(HookProcessor):
     """Hook processor for installing pre-commit hooks at session start.
@@ -37,22 +45,16 @@ class PrecommitInstallerHook(HookProcessor):
     def __init__(self):
         super().__init__("precommit_installer")
 
-    def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
+    def process(self, _input_data: dict[str, Any]) -> dict[str, Any]:
         """Process session start event and install pre-commit if needed.
 
         Args:
-            input_data: Input from Claude Code
+            _input_data: Input from Claude Code (unused, required by interface)
 
         Returns:
             Empty dict (no context to add)
         """
         try:
-            # Check if disabled via environment variable
-            if self._is_env_disabled():
-                self.log("Pre-commit auto-install disabled via environment variable")
-                self.save_metric("precommit_env_disabled", True)
-                return {}
-
             # Check if we're in a git repo
             if not self._is_git_repo():
                 self.log("Not a git repository - skipping pre-commit check")
@@ -96,6 +98,39 @@ class PrecommitInstallerHook(HookProcessor):
             if hooks_status.get("corrupted"):
                 self.log("⚠️ Existing hook file appears corrupted, will reinstall", "WARNING")
                 self.save_metric("precommit_corrupted", True)
+
+            # Check preference before installing
+            if PREFERENCES_AVAILABLE:
+                preference = load_precommit_preference()
+                self.log(f"Pre-commit preference: {preference}")
+
+                if preference == "never":
+                    self.log("Pre-commit auto-install disabled by preference")
+                    self.save_metric("precommit_preference_never", True)
+                    return {}
+
+                if preference == "ask":
+                    # Prompt user for decision
+                    user_choice = self._prompt_user()
+
+                    if user_choice in ("always", "never"):
+                        # Save persistent preference
+                        save_precommit_preference(user_choice)
+                        self.log(f"Saved preference: {user_choice}")
+
+                    if user_choice in ("no", "never"):
+                        self.log("User declined pre-commit installation")
+                        return {}
+
+                    # user_choice is "yes" or "always" - proceed with installation
+
+                # preference == "always" or user chose "yes"/"always"
+            else:
+                # Fall back to env var check for backward compatibility
+                if self._is_env_disabled():
+                    self.log("Pre-commit auto-install disabled via environment variable")
+                    self.save_metric("precommit_env_disabled", True)
+                    return {}
 
             # Install the hooks
             self.log("Installing pre-commit hooks...")
@@ -337,6 +372,36 @@ class PrecommitInstallerHook(HookProcessor):
                 "success": False,
                 "error": f"Unexpected error: {e}",
             }
+
+    def _prompt_user(self) -> str:
+        """Prompt user for pre-commit installation decision.
+
+        Returns:
+            User choice: "yes", "no", "always", or "never"
+        """
+        print("\n⚙️  Pre-commit hooks not installed yet.", file=sys.stderr)
+        print("  Install pre-commit hooks automatically?", file=sys.stderr)
+        print("    yes    - Install now (this session only)", file=sys.stderr)
+        print("    no     - Skip (this session only)", file=sys.stderr)
+        print("    always - Install now and remember choice", file=sys.stderr)
+        print("    never  - Skip and remember choice", file=sys.stderr)
+
+        try:
+            while True:
+                response = input("  Choice [yes/no/always/never]: ").strip().lower()
+                if response in ("yes", "y", "no", "n", "always", "never"):
+                    # Normalize y/n to yes/no
+                    if response == "y":
+                        return "yes"
+                    if response == "n":
+                        return "no"
+                    return response
+
+                print("  Invalid choice. Please enter yes, no, always, or never.", file=sys.stderr)
+
+        except (EOFError, KeyboardInterrupt):
+            print("\n  Defaulting to 'no'", file=sys.stderr)
+            return "no"
 
 
 def main():

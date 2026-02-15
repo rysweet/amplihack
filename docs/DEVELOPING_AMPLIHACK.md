@@ -3112,6 +3112,43 @@ async def check_health():
 
 **Solution**:
 
+**macOS:**
+```bash
+# Recommended: Homebrew
+brew install --cask claude-code
+
+# Alternative: Install script
+curl -fsSL https://claude.ai/install.sh | bash
+
+# Verify installation
+which claude
+claude --version
+```
+
+**Linux/WSL:**
+```bash
+# Install using script
+curl -fsSL https://claude.ai/install.sh | bash
+
+# Verify installation
+which claude
+claude --version
+```
+
+**Windows:**
+```powershell
+# Recommended: WinGet
+winget install Anthropic.ClaudeCode
+
+# Alternative: PowerShell script
+irm https://claude.ai/install.ps1 | iex
+
+# Verify installation
+where claude
+claude --version
+```
+
+**Legacy npm method (deprecated):**
 ```bash
 # Check Node.js
 node --version  # Should be 18+
@@ -3119,7 +3156,7 @@ node --version  # Should be 18+
 # Check npm
 npm --version
 
-# Install Claude CLI
+# Install Claude CLI (deprecated)
 npm install -g @anthropic-ai/claude-code
 
 # Verify installation

@@ -5,7 +5,9 @@ Defines wrapper objects around the types returned by LSP to ensure decoupling be
 from __future__ import annotations
 
 from enum import Enum, IntEnum
-from typing import NotRequired, Union
+from typing import Union
+
+from typing_extensions import NotRequired  # Python 3.10 compatibility
 
 from typing_extensions import TypedDict
 

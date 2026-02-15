@@ -2,9 +2,9 @@ import logging
 import os
 from pathlib import Path
 
-from blarify.vendor.multilspy import SyncLanguageServer
-from blarify.vendor.multilspy.multilspy_config import MultilspyConfig
-from blarify.vendor.multilspy.multilspy_logger import MultilspyLogger
+from amplihack.vendor.blarify.vendor.multilspy import SyncLanguageServer
+from amplihack.vendor.blarify.vendor.multilspy.multilspy_config import MultilspyConfig
+from amplihack.vendor.blarify.vendor.multilspy.multilspy_logger import MultilspyLogger
 
 
 def ensure_language_server_installed(language: str):
@@ -20,7 +20,7 @@ def ensure_language_server_installed(language: str):
 
     if language == "csharp":
         print(f"Starting language server for {language}")
-        from blarify.vendor.multilspy.language_servers.omnisharp.omnisharp import OmniSharp
+        from ..vendor.multilspy.language_servers.omnisharp.omnisharp import OmniSharp
 
         OmniSharp.setupRuntimeDependencies(None, logger, config)
         print(f"Started language server for {language}")

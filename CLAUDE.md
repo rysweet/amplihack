@@ -674,6 +674,30 @@ pragmatic → minimal ensures reliable completion.
 `/ultrathink` by customizing the workflow file to include consensus or fallback
 stages at specific steps.
 
+### /multitask
+
+Execute multiple independent development tasks in parallel using subprocess
+isolation. Each workstream runs in a clean `/tmp` clone with Recipe Runner
+code-enforced workflow execution.
+
+- **Use for**: Sprint work, multiple independent features, parallel bug fixes
+- **Default mode**: Recipe Runner (`run_recipe_by_name()` with
+  `CLISubprocessAdapter`)
+- **Fallback mode**: Classic single-session (`--mode classic`)
+- **Per-task recipes**: Each workstream can use a different recipe
+
+```bash
+# Inline tasks
+/multitask
+- #123 (feat/add-auth): Implement user authentication
+- #124 (feat/add-logging): Add structured logging
+
+# JSON config
+/multitask workstreams.json
+```
+
+**Details**: See `.claude/skills/multitask/SKILL.md` for complete documentation.
+
 ### Document-Driven Development (DDD)
 
 **Systematic methodology for large features where documentation comes first and

@@ -2,8 +2,8 @@ import logging
 import time
 from typing import TYPE_CHECKING, Optional, cast
 
-from blarify.code_hierarchy import TreeSitterHelper
-from blarify.code_hierarchy.languages import (
+from amplihack.vendor.blarify.code_hierarchy import TreeSitterHelper
+from amplihack.vendor.blarify.code_hierarchy.languages import (
     CsharpDefinitions,
     FallbackDefinitions,
     JavaDefinitions,
@@ -12,26 +12,26 @@ from blarify.code_hierarchy.languages import (
     RubyDefinitions,
     TypescriptDefinitions,
 )
-from blarify.code_hierarchy.languages.go_definitions import GoDefinitions
-from blarify.code_hierarchy.languages.language_definitions import LanguageDefinitions
-from blarify.code_hierarchy.languages.php_definitions import PhpDefinitions
-from blarify.code_references import FileExtensionNotSupported
-from blarify.code_references.hybrid_resolver import HybridReferenceResolver
-from blarify.code_references.types.Reference import Reference
-from blarify.graph.graph import Graph
-from blarify.graph.graph_environment import GraphEnvironment
-from blarify.graph.node import FileNode, Node, NodeFactory, NodeLabels
-from blarify.graph.relationship import RelationshipCreator
-from blarify.logger import Logger
-from blarify.project_file_explorer import ProjectFilesIterator
+from amplihack.vendor.blarify.code_hierarchy.languages.go_definitions import GoDefinitions
+from amplihack.vendor.blarify.code_hierarchy.languages.language_definitions import LanguageDefinitions
+from amplihack.vendor.blarify.code_hierarchy.languages.php_definitions import PhpDefinitions
+from amplihack.vendor.blarify.code_references import FileExtensionNotSupported
+from amplihack.vendor.blarify.code_references.hybrid_resolver import HybridReferenceResolver
+from amplihack.vendor.blarify.code_references.types.Reference import Reference
+from amplihack.vendor.blarify.graph.graph import Graph
+from amplihack.vendor.blarify.graph.graph_environment import GraphEnvironment
+from amplihack.vendor.blarify.graph.node import FileNode, Node, NodeFactory, NodeLabels
+from amplihack.vendor.blarify.graph.relationship import RelationshipCreator
+from amplihack.vendor.blarify.logger import Logger
+from amplihack.vendor.blarify.project_file_explorer import ProjectFilesIterator
 
 logger = logging.getLogger(__name__)
 
 
 if TYPE_CHECKING:
-    from blarify.graph.node import FolderNode
-    from blarify.graph.relationship import Relationship
-    from blarify.project_file_explorer import File, Folder
+    from .graph.node import FolderNode
+    from .graph.relationship import Relationship
+    from .project_file_explorer import File, Folder
 
 
 class ProjectGraphCreator:

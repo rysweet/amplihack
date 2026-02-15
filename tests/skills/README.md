@@ -22,6 +22,8 @@ Skills are markdown-based capabilities that Claude loads on-demand. These tests 
 tests/skills/
 ├── README.md                    # This file
 ├── test_aspire_skill.py        # Aspire skill validation tests
+├── test_markitdown_skill.py    # Markitdown skill validation tests (28 tests)
+├── test_skill_builder.py       # Skill-builder enhancement tests (31 tests)
 └── TEST_RESULTS.md             # Latest test run results
 ```
 
@@ -39,8 +41,15 @@ uv run pytest tests/skills/ -v
 # Aspire skill only
 uv run pytest tests/skills/test_aspire_skill.py -v
 
+# Markitdown skill only (28 tests)
+uv run pytest tests/skills/test_markitdown_skill.py -v
+
+# Skill-builder only (31 tests)
+uv run pytest tests/skills/test_skill_builder.py -v
+
 # Specific test class
 uv run pytest tests/skills/test_aspire_skill.py::TestTokenBudget -v
+uv run pytest tests/skills/test_markitdown_skill.py::TestYAMLFrontmatter -v
 
 # Specific test method
 uv run pytest tests/skills/test_aspire_skill.py::TestTokenBudget::test_skill_under_max_token_budget -v
@@ -77,6 +86,7 @@ uv run pytest tests/skills/test_aspire_skill.py --ff
 ### 1. File Structure Tests
 
 Validate that all required files exist:
+
 - `SKILL.md` (main skill file)
 - `reference.md` (API reference and technical details)
 - `examples.md` (working code examples)
@@ -86,6 +96,7 @@ Validate that all required files exist:
 ### 2. YAML Frontmatter Tests
 
 Validate metadata in SKILL.md frontmatter:
+
 - `name`: lowercase, kebab-case
 - `description`: clear, contains trigger keywords
 - `version`: semver format (X.Y.Z)
@@ -96,6 +107,7 @@ Validate metadata in SKILL.md frontmatter:
 ### 3. Token Budget Tests
 
 Enforce token limits using tiktoken:
+
 - **Hard limit**: 2000 tokens maximum
 - **Target**: 1800 tokens (leaves buffer for edits)
 - **Declared**: Must match target in frontmatter
@@ -103,6 +115,7 @@ Enforce token limits using tiktoken:
 ### 4. Content Structure Tests
 
 Validate required sections:
+
 - Overview (problem statement and solution)
 - Quick Start (installation and first steps)
 - Core Workflows (common patterns)
@@ -111,6 +124,7 @@ Validate required sections:
 ### 5. Progressive Disclosure Tests
 
 Validate that SKILL.md:
+
 - References supporting files (not inlines content)
 - Uses "Read when you need" pattern
 - Keeps supporting files one level deep (no nesting)
@@ -118,6 +132,7 @@ Validate that SKILL.md:
 ### 6. Quality Tests
 
 Validate supporting file quality:
+
 - Examples contain complete code blocks
 - References cover core APIs
 - Patterns address production concerns
@@ -168,17 +183,20 @@ def count_tokens(text: str) -> int:
 To add validation tests for a new skill:
 
 1. **Copy template**:
+
    ```bash
    cp tests/skills/test_aspire_skill.py tests/skills/test_<skill-name>_skill.py
    ```
 
 2. **Update constants**:
+
    ```python
    SKILL_DIR = WORKTREE_ROOT / ".claude" / "skills" / "<skill-name>"
    SKILL_FILE = SKILL_DIR / "SKILL.md"
    ```
 
 3. **Customize required files** (if different from standard set):
+
    ```python
    REQUIRED_FILES = [
        "SKILL.md",
@@ -200,6 +218,7 @@ To add validation tests for a new skill:
 **Symptom**: Tests fail with token count > 1800
 
 **Fix**:
+
 1. Move detailed examples to `examples.md`
 2. Condense verbose sections
 3. Use bullets instead of paragraphs
@@ -247,18 +266,31 @@ These tests can run in CI:
 
 A skill passes validation when:
 
-- ✅ All 47+ tests pass
-- ✅ Token count ≤ 1800 (target) or 2000 (maximum)
+- ✅ All tests pass (28+ tests per skill typically)
+- ✅ Token count ≤ 1800 (target) or 2000-5000 (maximum, depending on complexity)
 - ✅ All required files exist
 - ✅ YAML frontmatter is valid
 - ✅ Content structure is complete
 - ✅ Progressive disclosure is followed
 - ✅ Examples and references are comprehensive
 - ✅ No broken links
+- ✅ Security warnings present (where applicable)
+- ✅ No stub/placeholder code
+
+## Test Coverage Summary
+
+**Total tests**: 59 across 2 skills (100% passing)
+
+| Skill         | Tests | Status  | Key Validations                                                                   |
+| ------------- | ----- | ------- | --------------------------------------------------------------------------------- |
+| markitdown    | 28    | ✅ PASS | YAML, token budget, security, progressive disclosure, Zero-BS                     |
+| skill-builder | 31    | ✅ PASS | Validation checklist, simplified workflow, complete examples, agent orchestration |
+| aspire        | 47+   | 🔄 TBD  | (Existing test file needs review)                                                 |
 
 ## Questions?
 
 See:
+
 - `TEST_RESULTS.md` for latest test run details
 - `test_aspire_skill.py` for complete test implementation
 - `~/.amplihack/.claude/skills/` for skill examples

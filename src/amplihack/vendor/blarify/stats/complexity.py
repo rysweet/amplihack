@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from tree_sitter import Node
 
 if TYPE_CHECKING:
-    from blarify.code_hierarchy.languages.language_definitions import LanguageDefinitions
+    from ..code_hierarchy.languages.language_definitions import LanguageDefinitions
 
 
 @dataclass
@@ -22,7 +22,7 @@ class CodeComplexityCalculator:
     @staticmethod
     def calculate_nesting_stats(node: Node, extension: str) -> NestingStats:
         # Import here to avoid circular import
-        from blarify.code_references.lsp_helper import LspQueryHelper
+        from ..code_references.lsp_helper import LspQueryHelper
 
         language_definitions = LspQueryHelper.get_language_definition_for_extension(extension)
 

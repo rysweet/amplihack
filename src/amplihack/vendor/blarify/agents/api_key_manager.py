@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from typing import Any
 
-from blarify.agents.utils import discover_keys_for_provider, validate_key
+from amplihack.vendor.blarify.agents.utils import discover_keys_for_provider, validate_key
 
 logger = logging.getLogger(__name__)
 
