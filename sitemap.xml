@@ -1989,6 +1989,10 @@
          <lastmod>2026-02-15</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/concepts/memory-enabled-agents-architecture/</loc>
+         <lastmod>2026-02-15</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/concepts/unified-staging-architecture/</loc>
          <lastmod>2026-02-15</lastmod>
     </url>
@@ -2153,6 +2157,10 @@
          <lastmod>2026-02-15</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/features/memory-enabled-agents/</loc>
+         <lastmod>2026-02-15</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/features/smart-memory-management/</loc>
          <lastmod>2026-02-15</lastmod>
     </url>
@@ -2197,7 +2205,15 @@
          <lastmod>2026-02-15</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/howto/design-custom-learning-metrics/</loc>
+         <lastmod>2026-02-15</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/howto/github-pages-generation/</loc>
+         <lastmod>2026-02-15</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/howto/integrate-memory-into-agents/</loc>
          <lastmod>2026-02-15</lastmod>
     </url>
     <url>
@@ -2214,6 +2230,10 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/howto/trace-logging/</loc>
+         <lastmod>2026-02-15</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/howto/validate-agent-learning/</loc>
          <lastmod>2026-02-15</lastmod>
     </url>
     <url>
@@ -2286,6 +2306,14 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/memory/MEMORY_TREE_VISUALIZATION/</loc>
+         <lastmod>2026-02-15</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/memory/TESTING_STRATEGY/</loc>
+         <lastmod>2026-02-15</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/memory/TESTING_STRATEGY_SUMMARY/</loc>
          <lastmod>2026-02-15</lastmod>
     </url>
     <url>
@@ -2402,6 +2430,10 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/reference/github-pages-api/</loc>
+         <lastmod>2026-02-15</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/reference/memory-enabled-agents-api/</loc>
          <lastmod>2026-02-15</lastmod>
     </url>
     <url>
@@ -2537,6 +2569,10 @@
          <lastmod>2026-02-15</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/troubleshooting/memory-enabled-agents/</loc>
+         <lastmod>2026-02-15</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/troubleshooting/platform-bridge/</loc>
          <lastmod>2026-02-15</lastmod>
     </url>
@@ -2562,6 +2598,10 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/tutorials/first-docs-site/</loc>
+         <lastmod>2026-02-15</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/tutorials/memory-enabled-agents-getting-started/</loc>
          <lastmod>2026-02-15</lastmod>
     </url>
     <url>
