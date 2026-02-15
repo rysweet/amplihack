@@ -11,6 +11,7 @@ A code-enforced workflow execution engine that reads declarative YAML recipe fil
 - [Available Recipes](#available-recipes)
 - [Creating Custom Recipes](#creating-custom-recipes)
 - [Integration with Amplihack](#integration-with-amplihack)
+- [UltraThink Recipe Runner Integration](./RECIPE_RUNNER_ULTRATHINK_INTEGRATION.md) - How ultrathink uses Recipe Runner for code-enforced workflow execution
 
 ## Documentation
 
