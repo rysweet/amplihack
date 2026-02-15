@@ -201,7 +201,28 @@ Document-Driven Development is a systematic methodology where documentation come
 
 ### Recipe Runner
 
-- [Recipe Runner](recipes/README.md) - Code-enforced workflow execution engine with declarative YAML recipes
+Code-enforced workflow execution engine with declarative YAML recipes.
+
+- [Recipe Runner Overview](recipes/README.md) - Architecture, YAML format, and creating custom recipes
+- [Recipe CLI Commands How-To](howto/recipe-cli-commands.md) - Task-oriented guide for using recipe commands
+- [Recipe CLI Reference](reference/recipe-cli-reference.md) - Complete command-line documentation
+
+**Quick Start**:
+
+```bash
+# List available recipes
+amplihack recipe list
+
+# Execute a workflow recipe
+amplihack recipe run default-workflow \
+  --context '{"task_description": "Add user authentication", "repo_path": "."}'
+
+# Validate recipe YAML
+amplihack recipe validate my-workflow.yaml
+
+# Show recipe details
+amplihack recipe show default-workflow
+```
 
 ### Advanced Workflows
 

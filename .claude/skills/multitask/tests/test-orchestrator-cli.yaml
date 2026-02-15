@@ -1,0 +1,39 @@
+scenario:
+  name: "Multitask Orchestrator CLI - Help and Error Handling"
+  description: "Verify orchestrator CLI shows help, handles bad input, and validates config format"
+  type: cli
+  tags: [smoke, multitask, cli]
+
+  prerequisites:
+    - "Python 3.12+ is available"
+    - "orchestrator.py exists at .claude/skills/multitask/orchestrator.py"
+
+  steps:
+    - action: launch
+      target: "python3"
+      args: [".claude/skills/multitask/orchestrator.py", "--help"]
+      description: "Show help text for orchestrator CLI"
+
+    - action: verify_output
+      contains: "Parallel Workstream Orchestrator"
+      description: "Help should show the orchestrator description"
+
+    - action: verify_output
+      contains: "--mode"
+      description: "Help should document the --mode flag"
+
+    - action: verify_output
+      contains: "--recipe"
+      description: "Help should document the --recipe flag"
+
+    - action: verify_exit_code
+      expected: 0
+
+    - action: launch
+      target: "python3"
+      args: [".claude/skills/multitask/orchestrator.py", "/nonexistent/bad-config.json"]
+      description: "Run with nonexistent config file - should fail gracefully"
+
+    - action: verify_exit_code
+      expected: 1
+      description: "Should exit with error code for missing config"
