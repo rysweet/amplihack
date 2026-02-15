@@ -1,0 +1,27 @@
+name: "Copilot Setup Steps"
+
+# This workflow configures the environment for GitHub Copilot Agent with gh-aw
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/workflows/copilot-setup-steps.yml
+
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install gh-aw extension
+        uses: github/gh-aw/actions/setup-cli@v0.44.0
+        with:
+          version: v0.44.0
