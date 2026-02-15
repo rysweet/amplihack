@@ -673,6 +673,53 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         help="Skip confirmation prompt (use with --no-dry-run)",
     )
 
+    # Recipe commands
+    recipe_parser = subparsers.add_parser("recipe", help="Recipe management and execution commands")
+    recipe_subparsers = recipe_parser.add_subparsers(
+        dest="recipe_command", help="Recipe subcommands"
+    )
+
+    # Recipe run command
+    run_parser = recipe_subparsers.add_parser("run", help="Execute a recipe from YAML file")
+    run_parser.add_argument("recipe_path", help="Path to recipe YAML file")
+    run_parser.add_argument(
+        "-c", "--context", action="append", help="Set context variable (key=value)"
+    )
+    run_parser.add_argument("--dry-run", action="store_true", help="Show what would be executed")
+    run_parser.add_argument("-v", "--verbose", action="store_true", help="Show detailed output")
+    run_parser.add_argument(
+        "-f", "--format", choices=["table", "json", "yaml"], default="table", help="Output format"
+    )
+    run_parser.add_argument("-w", "--working-dir", help="Working directory for execution")
+
+    # Recipe list command
+    list_parser = recipe_subparsers.add_parser("list", help="List available recipes")
+    list_parser.add_argument(
+        "recipe_dir", nargs="?", default="./recipes", help="Directory to search for recipes"
+    )
+    list_parser.add_argument(
+        "-f", "--format", choices=["table", "json", "yaml"], default="table", help="Output format"
+    )
+    list_parser.add_argument("-t", "--tags", action="append", help="Filter by tags")
+    list_parser.add_argument("-v", "--verbose", action="store_true", help="Show full details")
+
+    # Recipe validate command
+    validate_parser = recipe_subparsers.add_parser("validate", help="Validate a recipe YAML file")
+    validate_parser.add_argument("recipe_path", help="Path to recipe YAML file")
+    validate_parser.add_argument("-v", "--verbose", action="store_true", help="Show details")
+    validate_parser.add_argument(
+        "-f", "--format", choices=["table", "json", "yaml"], default="table", help="Output format"
+    )
+
+    # Recipe show command
+    show_parser = recipe_subparsers.add_parser("show", help="Show detailed recipe information")
+    show_parser.add_argument("recipe_path", help="Path to recipe YAML file")
+    show_parser.add_argument(
+        "-f", "--format", choices=["table", "json", "yaml"], default="table", help="Output format"
+    )
+    show_parser.add_argument("--no-steps", action="store_true", help="Hide step details")
+    show_parser.add_argument("--no-context", action="store_true", help="Hide context variables")
+
     # Mode detection commands
     mode_parser = subparsers.add_parser("mode", help="Claude installation mode commands")
     mode_subparsers = mode_parser.add_subparsers(dest="mode_command", help="Mode subcommands")
@@ -1506,6 +1553,55 @@ def main(argv: list[str] | None = None) -> int:
 
             # Return non-zero if there were errors
             return 1 if result["errors"] > 0 else 0
+
+        create_parser().print_help()
+        return 1
+
+    elif args.command == "recipe":
+        from .recipe_cli.recipe_command import handle_list, handle_run, handle_show, handle_validate
+
+        if args.recipe_command == "run":
+            # Parse context arguments (key=value pairs)
+            context = {}
+            if args.context:
+                for ctx_arg in args.context:
+                    if "=" in ctx_arg:
+                        key, value = ctx_arg.split("=", 1)
+                        context[key] = value
+                    else:
+                        print(f"Warning: Ignoring invalid context argument: {ctx_arg}")
+
+            return handle_run(
+                recipe_path=args.recipe_path,
+                context=context,
+                dry_run=args.dry_run,
+                verbose=args.verbose,
+                format=args.format,
+                working_dir=args.working_dir,
+            )
+
+        if args.recipe_command == "list":
+            return handle_list(
+                recipe_dir=args.recipe_dir,
+                format=args.format,
+                tags=args.tags,
+                verbose=args.verbose,
+            )
+
+        if args.recipe_command == "validate":
+            return handle_validate(
+                recipe_path=args.recipe_path,
+                verbose=args.verbose,
+                format=args.format,
+            )
+
+        if args.recipe_command == "show":
+            return handle_show(
+                recipe_path=args.recipe_path,
+                format=args.format,
+                show_steps=not args.no_steps,
+                show_context=not args.no_context,
+            )
 
         create_parser().print_help()
         return 1
