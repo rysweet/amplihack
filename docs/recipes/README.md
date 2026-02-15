@@ -12,6 +12,15 @@ A code-enforced workflow execution engine that reads declarative YAML recipe fil
 - [Creating Custom Recipes](#creating-custom-recipes)
 - [Integration with Amplihack](#integration-with-amplihack)
 
+## Documentation
+
+Complete documentation for using the Recipe Runner:
+
+- **[Recipe CLI Quick Reference](quick-reference.md)** - One-page cheat sheet (start here for quick lookup)
+- **[Recipe CLI Commands How-To](../howto/recipe-cli-commands.md)** - Task-oriented guide for using recipe commands
+- **[Recipe CLI Reference](../reference/recipe-cli-reference.md)** - Complete command-line reference with all options and exit codes
+- **[Recipe CLI Examples](cli-examples.md)** - Real-world usage scenarios (development, testing, CI/CD, team workflows)
+
 ## Why It Exists
 
 Models frequently skip workflow steps when enforcement is purely prompt-based. A markdown file that says "you MUST follow all 22 steps" still relies on the model choosing to comply. The Recipe Runner moves enforcement from prompts to code: a Python `for` loop iterates over each step and calls the agent SDK, so the model never decides which step to run next.
