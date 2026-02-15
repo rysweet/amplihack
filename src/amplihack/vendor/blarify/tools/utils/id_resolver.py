@@ -1,4 +1,4 @@
-from blarify.repositories.graph_db_manager.db_manager import AbstractDbManager
+from amplihack.vendor.blarify.repositories.graph_db_manager.db_manager import AbstractDbManager
 
 
 def resolve_reference_id(

@@ -4,7 +4,7 @@ import json
 import logging
 from typing import Any
 
-from blarify.repositories.graph_db_manager import AbstractDbManager
+from amplihack.vendor.blarify.repositories.graph_db_manager import AbstractDbManager
 from langchain_core.callbacks import CallbackManagerForToolRun
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field

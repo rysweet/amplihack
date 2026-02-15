@@ -11,8 +11,8 @@ import time
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    from blarify.graph.node.documentation_node import DocumentationNode
-    from blarify.repositories.graph_db_manager.dtos.node_with_content_dto import NodeWithContentDto
+    from ..graph.node.documentation_node import DocumentationNode
+    from ..repositories.graph_db_manager.dtos.node_with_content_dto import NodeWithContentDto
 
 from ..agents.llm_provider import LLMProvider
 from ..graph.graph_environment import GraphEnvironment
@@ -457,7 +457,7 @@ class DocumentationCreator:
                     break  # No more nodes to process
 
                 # Convert query results to DocumentationNode objects
-                from blarify.graph.node.documentation_node import DocumentationNode
+                from ..graph.node.documentation_node import DocumentationNode
 
                 documentation_nodes: list[DocumentationNode] = []
                 node_id_mapping = {}  # Map from node object to actual database node_id

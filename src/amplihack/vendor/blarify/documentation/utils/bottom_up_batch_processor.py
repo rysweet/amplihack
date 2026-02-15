@@ -11,18 +11,18 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 
-from blarify.agents.llm_provider import LLMProvider
-from blarify.agents.prompt_templates import (
+from amplihack.vendor.blarify.agents.llm_provider import LLMProvider
+from amplihack.vendor.blarify.agents.prompt_templates import (
     FUNCTION_WITH_CALLS_ANALYSIS_TEMPLATE,
     LEAF_NODE_ANALYSIS_TEMPLATE,
     PARENT_NODE_ANALYSIS_TEMPLATE,
 )
-from blarify.documentation.queries import (
+from amplihack.vendor.blarify.documentation.queries import (
     check_pending_nodes_query,
     get_processable_nodes_with_descriptions_query,
     mark_nodes_completed_query,
 )
-from blarify.documentation.queries.batch_processing_queries import (
+from amplihack.vendor.blarify.documentation.queries.batch_processing_queries import (
     get_child_descriptions_query,
     get_hierarchical_parents_query,
     get_leaf_nodes_under_node_query,
@@ -30,12 +30,12 @@ from blarify.documentation.queries.batch_processing_queries import (
 )
 
 # Note: We don't import concrete Node classes as we work with DTOs in documentation layer
-from blarify.graph.graph_environment import GraphEnvironment
-from blarify.graph.node.documentation_node import DocumentationNode
-from blarify.graph.relationship.relationship_creator import RelationshipCreator
-from blarify.repositories.graph_db_manager.db_manager import AbstractDbManager
-from blarify.repositories.graph_db_manager.dtos.node_with_content_dto import NodeWithContentDto
-from blarify.repositories.graph_db_manager.queries import (
+from amplihack.vendor.blarify.graph.graph_environment import GraphEnvironment
+from amplihack.vendor.blarify.graph.node.documentation_node import DocumentationNode
+from amplihack.vendor.blarify.graph.relationship.relationship_creator import RelationshipCreator
+from amplihack.vendor.blarify.repositories.graph_db_manager.db_manager import AbstractDbManager
+from amplihack.vendor.blarify.repositories.graph_db_manager.dtos.node_with_content_dto import NodeWithContentDto
+from amplihack.vendor.blarify.repositories.graph_db_manager.queries import (
     get_node_by_path,
 )
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -134,7 +134,7 @@ class BottomUpBatchProcessor:
         # Initialize embedding service if needed
         self.embedding_service = None
         if self.generate_embeddings:
-            from blarify.services.embedding_service import EmbeddingService
+            from ...services.embedding_service import EmbeddingService
 
             self.embedding_service = EmbeddingService()
 
