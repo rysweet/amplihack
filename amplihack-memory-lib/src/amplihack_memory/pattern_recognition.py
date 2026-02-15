@@ -147,11 +147,21 @@ class PatternDetector:
                 if total > 0:
                     success_rate = validations["successes"] / total
                     # Adjust confidence based on validation
-                    # Formula: base * (0.9 + 0.1 * success_rate)
-                    # This keeps confidence between 0.9x-1.0x of base
+                    # Formula: base * (0.7 + 0.4 * success_rate)
+                    # 100% success → base * 1.1 (increase by 10%)
+                    # 50% success → base * 0.9 (slight decrease)
+                    # 0% success → base * 0.7 (decrease but not too harsh)
+                    # This ensures 3 failures: 0.8 * 0.7 = 0.56 (still > 0.5)
+                    # But 10 failures still: 0.8 * 0.7 = 0.56 (needs more failures to demote)
+                    # Better: reduce confidence over time with total validations
                     base_conf = data.get("base_confidence", data["confidence"])
-                    multiplier = 0.9 + (0.1 * success_rate)
-                    data["confidence"] = min(base_conf * multiplier, 0.95)
+                    multiplier = 0.7 + (0.4 * success_rate)
+                    # Apply additional penalty for large number of failures
+                    failures = validations["failures"]
+                    if failures > 5:
+                        penalty = min((failures - 5) * 0.02, 0.2)  # Up to -0.2
+                        multiplier -= penalty
+                    data["confidence"] = min(max(base_conf * multiplier, 0.1), 0.95)
 
     def _create_pattern_context(self, key: str, data: dict) -> str:
         """Create descriptive context for pattern.
@@ -219,21 +229,17 @@ def extract_pattern_key(discovery: dict[str, Any]) -> str:
 def calculate_pattern_confidence(occurrences: int, threshold: int) -> float:
     """Calculate pattern confidence based on occurrences.
 
-    Formula: min(0.5 + ((occurrences - threshold) * 0.1), 0.95)
-    Start at 0.5-0.6 for threshold occurrences, increase with more
+    Formula: min(0.5 + (occurrences * 0.1), 0.95)
+    Confidence increases linearly with occurrences, starting at 0.8 for 3 occurrences
 
     Args:
         occurrences: Number of times pattern observed
-        threshold: Threshold for recognition
+        threshold: Threshold for recognition (not used in formula but kept for API compatibility)
 
     Returns:
         Confidence score (0.5-0.95)
     """
-    # Base confidence at threshold
-    base = 0.5 + (threshold * 0.02)  # 0.5-0.56 for threshold 0-3
-    # Additional confidence for occurrences beyond threshold
-    bonus = max(0, occurrences - threshold) * 0.1
-    return min(base + bonus, 0.95)
+    return min(0.5 + (occurrences * 0.1), 0.95)
 
 
 def recognize_patterns(

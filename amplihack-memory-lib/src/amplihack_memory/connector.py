@@ -72,7 +72,11 @@ class MemoryConnector:
     def _initialize_database(self):
         """Initialize SQLite database with schema."""
         try:
-            self._connection = sqlite3.connect(str(self.db_path), check_same_thread=False)
+            self._connection = sqlite3.connect(
+                str(self.db_path),
+                check_same_thread=False,
+                timeout=10.0  # Wait up to 10 seconds for locks (concurrent access)
+            )
             self._connection.row_factory = sqlite3.Row
 
             # Enable Write-Ahead Logging for better concurrency

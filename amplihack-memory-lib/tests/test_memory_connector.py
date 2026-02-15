@@ -108,12 +108,10 @@ class TestMemoryConnectorDatabaseLifecycle:
         )
         assert cursor.fetchone() is not None
 
-    def test_reuses_existing_database(self):
+    def test_reuses_existing_database(self, isolated_storage):
         """Connector reuses existing database without recreating."""
-        custom_path = Path("/tmp/test-memory-reuse")
-
         # Create first connector and store experience
-        connector1 = MemoryConnector(agent_name="test-agent", storage_path=custom_path)
+        connector1 = MemoryConnector(agent_name="test-agent", storage_path=isolated_storage)
         exp = Experience(
             experience_type=ExperienceType.SUCCESS,
             context="Test context",
@@ -124,7 +122,7 @@ class TestMemoryConnectorDatabaseLifecycle:
         exp_id = connector1.store_experience(exp)
 
         # Create second connector to same location
-        connector2 = MemoryConnector(agent_name="test-agent", storage_path=custom_path)
+        connector2 = MemoryConnector(agent_name="test-agent", storage_path=isolated_storage)
 
         # Should retrieve the previously stored experience
         experiences = connector2.retrieve_experiences()
@@ -140,11 +138,9 @@ class TestMemoryConnectorDatabaseLifecycle:
         with pytest.raises(Exception):  # noqa: B017
             connector.retrieve_experiences()
 
-    def test_context_manager_support(self):
+    def test_context_manager_support(self, isolated_storage):
         """Connector supports context manager protocol."""
-        custom_path = Path("/tmp/test-memory-context")
-
-        with MemoryConnector(agent_name="test-agent", storage_path=custom_path) as connector:
+        with MemoryConnector(agent_name="test-agent", storage_path=isolated_storage) as connector:
             exp = Experience(
                 experience_type=ExperienceType.SUCCESS,
                 context="Test",
@@ -156,7 +152,7 @@ class TestMemoryConnectorDatabaseLifecycle:
 
         # Connection should be closed after exiting context
         # But data should persist
-        connector2 = MemoryConnector(agent_name="test-agent", storage_path=custom_path)
+        connector2 = MemoryConnector(agent_name="test-agent", storage_path=isolated_storage)
         experiences = connector2.retrieve_experiences()
         assert len(experiences) == 1
 
@@ -164,10 +160,10 @@ class TestMemoryConnectorDatabaseLifecycle:
 class TestMemoryConnectorIsolation:
     """Test agent memory isolation."""
 
-    def test_agent_memories_are_isolated(self):
+    def test_agent_memories_are_isolated(self, isolated_storage):
         """Different agents have isolated memory storage."""
-        connector1 = MemoryConnector(agent_name="agent-1")
-        connector2 = MemoryConnector(agent_name="agent-2")
+        connector1 = MemoryConnector(agent_name="agent-1", storage_path=isolated_storage)
+        connector2 = MemoryConnector(agent_name="agent-2", storage_path=isolated_storage)
 
         # Store experience for agent-1
         exp1 = Experience(
@@ -280,11 +276,11 @@ class TestMemoryConnectorPerformance:
 
         assert elapsed < 100
 
-    def test_handles_concurrent_access(self):
+    def test_handles_concurrent_access(self, isolated_storage):
         """Connector handles concurrent access from multiple threads."""
         import threading
 
-        connector = MemoryConnector(agent_name="concurrent-test")
+        connector = MemoryConnector(agent_name="concurrent-test", storage_path=isolated_storage)
         errors = []
 
         def store_experiences(thread_id):
