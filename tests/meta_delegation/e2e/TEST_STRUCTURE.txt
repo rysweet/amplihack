@@ -1,0 +1,136 @@
+E2E Integration Test Suite Structure
+=====================================
+
+tests/meta_delegation/e2e/
+├── conftest.py (233 lines)
+│   ├── SubprocessLifecycleManager class
+│   │   ├── spawn() - Track and spawn subprocess
+│   │   ├── is_alive() - Check process status
+│   │   ├── kill() - Terminate specific process
+│   │   └── cleanup_all() - Kill all tracked processes
+│   ├── TestWorkspaceFixture class
+│   │   ├── setup() - Create workspace
+│   │   ├── teardown() - Remove workspace
+│   │   ├── write_file() - Create test files
+│   │   ├── read_file() - Read test outputs
+│   │   └── list_files() - List workspace files
+│   └── Fixtures
+│       ├── test_workspace - Isolated temp directory
+│       ├── subprocess_lifecycle_manager - Process cleanup
+│       ├── timeout_config - CI-aware timeouts
+│       └── cli_adapter - CLISubprocessAdapter instance
+│
+├── test_real_subprocess_execution.py (464 lines, 19 tests)
+│   ├── TestSubprocessSpawning (6 tests)
+│   │   ├── test_subprocess_spawns_successfully
+│   │   ├── test_subprocess_respects_timeout
+│   │   ├── test_multiple_subprocesses_parallel
+│   │   ├── test_subprocess_survives_parent_interrupt
+│   │   ├── test_subprocess_output_streaming
+│   │   └── test_subprocess_cleanup_on_failure
+│   ├── TestProcessMonitoring (3 tests)
+│   │   ├── test_monitor_running_process
+│   │   ├── test_detect_process_completion
+│   │   └── test_track_execution_duration
+│   ├── TestLifecycleManagement (4 tests)
+│   │   ├── test_subprocess_cleanup_on_exit
+│   │   ├── test_cleanup_multiple_processes
+│   │   ├── test_cleanup_on_test_failure
+│   │   └── test_kill_orphaned_processes
+│   ├── TestWorkingDirectory (2 tests)
+│   │   ├── test_subprocess_uses_working_directory
+│   │   └── test_isolated_workspace_per_test
+│   ├── TestEnvironmentVariables (2 tests)
+│   │   ├── test_spawn_with_environment_variables
+│   │   └── test_environment_inheritance
+│   └── TestOutputCapture (2 tests)
+│       ├── test_capture_stdout_stderr
+│       └── test_capture_mixed_output
+│
+├── test_error_propagation.py (549 lines, 19 tests)
+│   ├── TestTimeoutHandling (6 tests)
+│   │   ├── test_subprocess_exception_propagates_to_parent
+│   │   ├── test_subprocess_stderr_captured_on_failure
+│   │   ├── test_subprocess_timeout_error_structure
+│   │   ├── test_subprocess_non_zero_exit_handled
+│   │   ├── test_subprocess_json_parsing_error_recovery
+│   │   └── test_error_context_preserves_task_info
+│   ├── TestErrorCapture (3 tests)
+│   │   ├── test_capture_error_output
+│   │   ├── test_capture_mixed_stdout_stderr
+│   │   └── test_preserve_error_messages
+│   ├── TestFailureRecovery (4 tests)
+│   │   ├── test_cleanup_after_process_crash
+│   │   ├── test_recover_from_spawn_failure
+│   │   ├── test_continue_after_subprocess_error
+│   │   └── test_partial_output_on_timeout
+│   ├── TestCICDCompatibility (3 tests)
+│   │   ├── test_aggressive_timeout_in_ci
+│   │   ├── test_no_hanging_processes_in_ci
+│   │   └── test_error_reporting_format_for_ci
+│   └── TestErrorPropagationEdgeCases (3 tests)
+│       ├── test_unicode_in_error_messages
+│       ├── test_binary_output_handling
+│       └── test_recursive_error_handling
+│
+├── test_multi_step_orchestration.py (684 lines, 21 tests)
+│   ├── TestFullOrchestrationLifecycle (3 tests)
+│   │   ├── test_full_orchestration_lifecycle
+│   │   ├── test_orchestration_with_partial_success
+│   │   └── test_orchestration_state_persistence
+│   ├── TestStateMachineTransitions (3 tests)
+│   │   ├── test_state_machine_transitions_with_real_execution
+│   │   ├── test_state_rollback_on_failure
+│   │   └── test_concurrent_state_updates
+│   ├── TestErrorRecoveryAcrossSteps (3 tests)
+│   │   ├── test_error_recovery_across_orchestration_steps
+│   │   ├── test_cascading_error_handling
+│   │   └── test_retry_with_different_strategy
+│   ├── TestPersonaSwitching (2 tests)
+│   │   ├── test_persona_switching_during_orchestration
+│   │   └── test_persona_selection_based_on_step_requirements
+│   ├── TestEvidenceCollection (3 tests)
+│   │   ├── test_evidence_collection_across_subprocesses
+│   │   ├── test_evidence_deduplication
+│   │   └── test_evidence_timestamping
+│   ├── TestSuccessEvaluation (3 tests)
+│   │   ├── test_success_evaluation_with_real_output
+│   │   ├── test_partial_success_scoring
+│   │   └── test_success_evaluation_with_quality_checks
+│   ├── TestScenarioGeneratorIntegration (2 tests)
+│   │   ├── test_scenario_generator_integration
+│   │   └── test_scenario_execution_results
+│   └── TestComplexWorkflows (2 tests)
+│       ├── test_nested_delegation
+│       └── test_conditional_step_execution
+│
+├── test_guide_teaches_beginner.py (408 lines, 2 tests - EXISTING)
+└── test_qa_validates_feature.py (567 lines, 2 tests - EXISTING)
+
+SUMMARY
+=======
+Total Files: 6 (4 new + 2 existing)
+Total Lines: 2,905 (1,930 new + 975 existing)
+Total Tests: 63 (59 new + 4 existing)
+
+Layer Breakdown:
+- Layer 1 (Subprocess Execution): 19 tests
+- Layer 2 (Error Propagation): 19 tests
+- Layer 3 (Orchestration): 25 tests (21 new + 4 existing)
+
+Test Coverage:
+✓ Subprocess spawning and lifecycle
+✓ Timeout enforcement
+✓ Error capture and propagation
+✓ Process monitoring
+✓ Automatic cleanup
+✓ Working directory isolation
+✓ Environment variables
+✓ Output streaming
+✓ Parallel execution
+✓ Multi-step workflows
+✓ State machine transitions
+✓ Evidence collection
+✓ Success evaluation
+✓ Persona switching
+✓ CI/CD compatibility
