@@ -120,7 +120,7 @@ class ExperienceStore:
         sql = """
             SELECT e.* FROM experiences e
             JOIN experiences_fts fts ON e.experience_id = fts.experience_id
-            WHERE fts.experiences_fts MATCH ?
+            WHERE experiences_fts MATCH ?
             AND e.agent_name = ?
             AND e.confidence >= ?
         """
@@ -215,11 +215,12 @@ class ExperienceStore:
     def _cleanup(self):
         """Run cleanup: compression, age limit, count limit."""
         conn = self.connector._connection
+        changes_made = False
 
         # 1. Compress old experiences (>30 days)
         if self.auto_compress:
             cutoff = int((datetime.now() - timedelta(days=30)).timestamp())
-            conn.execute(
+            cursor = conn.execute(
                 """
                 UPDATE experiences
                 SET compressed = 1
@@ -229,11 +230,13 @@ class ExperienceStore:
             """,
                 (self.agent_name, cutoff),
             )
+            if cursor.rowcount > 0:
+                changes_made = True
 
         # 2. Delete experiences older than max_age_days
         if self.max_age_days:
             cutoff = int((datetime.now() - timedelta(days=self.max_age_days)).timestamp())
-            conn.execute(
+            cursor = conn.execute(
                 """
                 DELETE FROM experiences
                 WHERE agent_name = ?
@@ -241,6 +244,8 @@ class ExperienceStore:
             """,
                 (self.agent_name, cutoff),
             )
+            if cursor.rowcount > 0:
+                changes_made = True
 
         # 3. Limit to max_experiences (keep most recent + high-confidence patterns)
         if self.max_experiences:
@@ -251,38 +256,56 @@ class ExperienceStore:
             count = cursor.fetchone()[0]
 
             if count > self.max_experiences:
-                # Keep high-confidence patterns regardless of age
-                conn.execute(
+                # Strategy: Keep high-confidence patterns (≥0.8) + most recent experiences
+                # Get IDs to keep
+                cursor = conn.execute(
                     """
-                    DELETE FROM experiences
-                    WHERE agent_name = ?
-                    AND experience_id NOT IN (
-                        SELECT experience_id FROM (
-                            SELECT experience_id, timestamp FROM experiences
-                            WHERE agent_name = ?
-                            AND (
-                                (experience_type = 'pattern' AND confidence >= 0.9)
-                                OR experience_id IN (
-                                    SELECT experience_id FROM experiences
-                                    WHERE agent_name = ?
-                                    ORDER BY timestamp DESC
-                                    LIMIT ?
-                                )
-                            )
-                            ORDER BY timestamp DESC
-                        )
+                    WITH high_conf_patterns AS (
+                        SELECT experience_id FROM experiences
+                        WHERE agent_name = ?
+                        AND experience_type = 'pattern' AND confidence >= 0.8
+                    ),
+                    recent_experiences AS (
+                        SELECT experience_id FROM experiences
+                        WHERE agent_name = ?
+                        ORDER BY timestamp DESC
+                        LIMIT ?
                     )
-                """,
-                    (self.agent_name, self.agent_name, self.agent_name, self.max_experiences),
+                    SELECT experience_id FROM high_conf_patterns
+                    UNION
+                    SELECT experience_id FROM recent_experiences
+                    """,
+                    (self.agent_name, self.agent_name, self.max_experiences),
                 )
+                keep_ids = [row[0] for row in cursor.fetchall()]
+
+                if keep_ids:
+                    # Delete everything except the IDs to keep
+                    placeholders = ','.join('?' * len(keep_ids))
+                    cursor = conn.execute(
+                        f"""
+                        DELETE FROM experiences
+                        WHERE agent_name = ?
+                        AND experience_id NOT IN ({placeholders})
+                        """,
+                        (self.agent_name, *keep_ids),
+                    )
+                    if cursor.rowcount > 0:
+                        changes_made = True
 
         # 4. Commit changes
         conn.commit()
 
-        # 5. Vacuum database to reclaim space (must be outside transaction)
-        conn.isolation_level = None
-        conn.execute("VACUUM")
-        conn.isolation_level = ""
+        # 5. Vacuum database to reclaim space (only if we actually deleted something)
+        if changes_made:
+            # Rebuild FTS index to ensure sync before VACUUM
+            conn.execute("INSERT INTO experiences_fts(experiences_fts) VALUES('rebuild')")
+            conn.commit()
+
+            # Now vacuum
+            conn.isolation_level = None
+            conn.execute("VACUUM")
+            conn.isolation_level = ""
 
     def _validate_experience(self, experience: Experience):
         """Validate experience before storage.

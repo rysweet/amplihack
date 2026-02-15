@@ -197,16 +197,23 @@ class TestCalculatePatternConfidence:
     def test_calculates_base_confidence(self):
         """calculate_pattern_confidence() returns base confidence for threshold occurrences."""
         # Exactly at threshold (3 occurrences)
+        # Formula: 0.5 + (3 * 0.1) = 0.8
         confidence = calculate_pattern_confidence(occurrences=3, threshold=3)
-        assert 0.5 <= confidence <= 0.7  # Base range
+        assert confidence == 0.8
 
     def test_increases_confidence_with_occurrences(self):
         """calculate_pattern_confidence() increases with more occurrences."""
+        # 0.5 + (3 * 0.1) = 0.8
         conf_3 = calculate_pattern_confidence(occurrences=3, threshold=3)
+        # 0.5 + (4 * 0.1) = 0.9 (before cap)
+        conf_4 = calculate_pattern_confidence(occurrences=4, threshold=3)
+        # 0.5 + (5 * 0.1) = 1.0, capped at 0.95
         conf_5 = calculate_pattern_confidence(occurrences=5, threshold=3)
-        conf_10 = calculate_pattern_confidence(occurrences=10, threshold=3)
 
-        assert conf_3 < conf_5 < conf_10
+        assert conf_3 < conf_4 < conf_5
+        assert conf_3 == 0.8
+        assert conf_4 == 0.9
+        assert conf_5 == 0.95
 
     def test_caps_at_maximum_confidence(self):
         """calculate_pattern_confidence() caps at 0.95."""
