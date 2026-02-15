@@ -28,15 +28,22 @@ class CLISubprocessAdapter:
         agent_system_prompt: str | None = None,
         mode: str | None = None,
         working_dir: str = ".",
+        timeout: int = 900,
     ) -> str:
-        """Execute an agent step by shelling out to the CLI tool with ``-p``."""
+        """Execute an agent step by shelling out to the CLI tool with ``-p``.
+
+        Args:
+            timeout: Seconds before killing the subprocess. Defaults to 900
+                     (15 min) because agent steps doing design/implementation
+                     routinely exceed the old 300 s limit.
+        """
         cmd = [self._cli, "-p", prompt]
         result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,
             cwd=working_dir or self._working_dir,
-            timeout=300,
+            timeout=timeout,
         )
         if result.returncode != 0:
             raise RuntimeError(
