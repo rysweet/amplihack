@@ -94,7 +94,7 @@ jobs:
       - name: Commit and push version bump
         run: |
           git add pyproject.toml
-          git commit -m "chore: Auto-bump patch version"
+          git commit -m "[skip ci] chore: Auto-bump patch version"
           git push
 
       - name: Comment on PR
