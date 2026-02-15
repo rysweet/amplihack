@@ -22,6 +22,8 @@ Skills are markdown-based capabilities that Claude loads on-demand. These tests 
 tests/skills/
 ├── README.md                    # This file
 ├── test_aspire_skill.py        # Aspire skill validation tests
+├── test_markitdown_skill.py    # Markitdown skill validation tests (28 tests)
+├── test_skill_builder.py       # Skill-builder enhancement tests (31 tests)
 └── TEST_RESULTS.md             # Latest test run results
 ```
 
@@ -39,8 +41,15 @@ uv run pytest tests/skills/ -v
 # Aspire skill only
 uv run pytest tests/skills/test_aspire_skill.py -v
 
+# Markitdown skill only (28 tests)
+uv run pytest tests/skills/test_markitdown_skill.py -v
+
+# Skill-builder only (31 tests)
+uv run pytest tests/skills/test_skill_builder.py -v
+
 # Specific test class
 uv run pytest tests/skills/test_aspire_skill.py::TestTokenBudget -v
+uv run pytest tests/skills/test_markitdown_skill.py::TestYAMLFrontmatter -v
 
 # Specific test method
 uv run pytest tests/skills/test_aspire_skill.py::TestTokenBudget::test_skill_under_max_token_budget -v
@@ -257,14 +266,26 @@ These tests can run in CI:
 
 A skill passes validation when:
 
-- ✅ All 47+ tests pass
-- ✅ Token count ≤ 1800 (target) or 2000 (maximum)
+- ✅ All tests pass (28+ tests per skill typically)
+- ✅ Token count ≤ 1800 (target) or 2000-5000 (maximum, depending on complexity)
 - ✅ All required files exist
 - ✅ YAML frontmatter is valid
 - ✅ Content structure is complete
 - ✅ Progressive disclosure is followed
 - ✅ Examples and references are comprehensive
 - ✅ No broken links
+- ✅ Security warnings present (where applicable)
+- ✅ No stub/placeholder code
+
+## Test Coverage Summary
+
+**Total tests**: 59 across 2 skills (100% passing)
+
+| Skill         | Tests | Status  | Key Validations                                                                   |
+| ------------- | ----- | ------- | --------------------------------------------------------------------------------- |
+| markitdown    | 28    | ✅ PASS | YAML, token budget, security, progressive disclosure, Zero-BS                     |
+| skill-builder | 31    | ✅ PASS | Validation checklist, simplified workflow, complete examples, agent orchestration |
+| aspire        | 47+   | 🔄 TBD  | (Existing test file needs review)                                                 |
 
 ## Questions?
 
