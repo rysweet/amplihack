@@ -66,4 +66,4 @@ jobs:
         if: failure()
         run: |
           echo "::error::Daily status workflow failed. Check logs for details."
-          echo "Note: Check that ANTHROPIC_API_KEY secret and PM_STATUS_ISSUE_NUMBER variable are configured."
+          echo "Note: Check that PM_STATUS_ISSUE_NUMBER variable is configured."

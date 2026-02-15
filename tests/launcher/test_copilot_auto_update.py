@@ -10,11 +10,7 @@ Tests cover:
 5. Integration with launch_copilot() - auto-check on launch
 """
 
-import json
-from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from amplihack.launcher.copilot import (
     _compare_versions,

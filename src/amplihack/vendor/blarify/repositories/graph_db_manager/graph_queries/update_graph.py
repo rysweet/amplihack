@@ -6,7 +6,7 @@ and managing nodes and relationships in the Neo4j graph database.
 Note: Index and constraint creation queries are handled by neo4j_manager.py methods.
 """
 
-from typing import LiteralString
+from typing_extensions import LiteralString
 
 
 def detach_delete_nodes_by_paths_query() -> LiteralString:

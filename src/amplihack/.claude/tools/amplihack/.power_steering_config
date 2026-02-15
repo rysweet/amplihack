@@ -1,6 +1,0 @@
-{
-  "enabled": true,
-  "version": "2.0.0",
-  "phase": 2,
-  "note": "All 21 considerations now loaded from considerations.yaml. Individual checkers can be enabled/disabled by editing that file."
-}

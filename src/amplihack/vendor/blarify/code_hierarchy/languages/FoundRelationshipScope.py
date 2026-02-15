@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
-    from blarify.graph.relationship.relationship_type import RelationshipType
+    from ...graph.relationship.relationship_type import RelationshipType
     from tree_sitter import Node
 
 

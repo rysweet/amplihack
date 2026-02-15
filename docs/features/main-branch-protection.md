@@ -170,6 +170,7 @@ git checkout -b feature/descriptive-name
 ```
 
 **Branch naming conventions:**
+
 - `feature/` - New features
 - `fix/` - Bug fixes
 - `docs/` - Documentation updates
@@ -217,6 +218,7 @@ This protection is **always enabled** for the `pre_tool_use` hook. There are no 
 ### Protected Branches
 
 The list of protected branches is hardcoded:
+
 - `main`
 - `master`
 
@@ -282,6 +284,7 @@ cat .claude/runtime/logs/pre_tool_use.log
 4. Merge via PR (or use emergency merge if your team has that process)
 
 **Why?** Even urgent fixes benefit from:
+
 - Code review (catch mistakes in urgent changes)
 - CI validation (prevent broken production deployments)
 - Audit trail (know who changed what and why)
@@ -289,22 +292,26 @@ cat .claude/runtime/logs/pre_tool_use.log
 ### "The protection isn't triggering on my custom default branch"
 
 This is expected. The protection only covers:
+
 - `main`
 - `master`
 
 If your repository uses `develop`, `trunk`, or another name, you'll need to either:
+
 1. Rename your default branch to `main` (recommended)
 2. Request a feature enhancement to make protected branches configurable
 
 ### "I'm not in a git repo, why is my bash command blocked?"
 
 The protection only blocks `git commit` commands. If you're seeing blocks for other commands, that's a different hook feature. Check:
+
 - Existing `--no-verify` protection (blocks the flag on any git command)
 - Other hook rules
 
 ### "Can I disable this protection?"
 
 No. The protection is intentionally not configurable. If you have a legitimate use case for direct commits to main, please:
+
 1. Use the feature branch workflow (it's there for a reason)
 2. File an issue explaining your use case if you believe the protection is incorrect
 
@@ -315,14 +322,17 @@ No. The protection is intentionally not configurable. If you have a legitimate u
 ### Implementation
 
 **Files Modified:**
+
 - `.claude/tools/amplihack/hooks/pre_tool_use.py` (workspace copy)
 - `amplifier-bundle/tools/amplihack/hooks/pre_tool_use.py` (bundle copy)
 
 **Dependencies:**
+
 - Python `subprocess` module (stdlib)
 - Git binary in PATH
 
 **Performance:**
+
 - Target: <30ms overhead per commit check
 - Typical: 10-20ms in normal operation
 - Maximum: 50ms in worst-case scenarios (slow git response)
@@ -335,7 +345,7 @@ This feature is implemented in **TWO identical files**:
 - **Workspace copy**: `.claude/tools/amplihack/hooks/pre_tool_use.py`
   - Active in your local Claude Code workspace
   - Used when Claude Code runs in this project
-  
+
 - **Bundle copy**: `amplifier-bundle/tools/amplihack/hooks/pre_tool_use.py`
   - Distributed with the amplihack bundle for other users
   - Ensures all amplihack installations have this protection
@@ -345,12 +355,14 @@ This feature is implemented in **TWO identical files**:
 ### Security Considerations
 
 **Safe Subprocess Execution:**
+
 - Uses hardcoded argument lists (never `shell=True`)
 - 5-second timeout prevents hangs
 - No user input passed to subprocess
 - Sanitizes git output with `.strip()`
 
 **Defense in Depth:**
+
 - Client-side protection (this hook)
 - Server-side protection (GitHub branch protection rules - recommended)
 - Code review process
@@ -361,16 +373,17 @@ This feature is implemented in **TWO identical files**:
 **Preserves --no-verify Protection:**
 The main branch check happens **before** the existing `--no-verify` protection check. Both protections work independently:
 
-| Command | Branch | Main Check | --no-verify Check | Result |
-|---------|--------|------------|-------------------|--------|
-| `git commit -m "msg"` | `main` | ❌ BLOCKED | - | Main branch error |
-| `git commit -m "msg"` | `feature/x` | ✅ PASS | ✅ PASS | Allowed |
-| `git commit --no-verify` | `main` | ❌ BLOCKED | - | Main branch error |
-| `git commit --no-verify` | `feature/x` | ✅ PASS | ❌ BLOCKED | --no-verify error |
+| Command                  | Branch      | Main Check | --no-verify Check | Result            |
+| ------------------------ | ----------- | ---------- | ----------------- | ----------------- |
+| `git commit -m "msg"`    | `main`      | ❌ BLOCKED | -                 | Main branch error |
+| `git commit -m "msg"`    | `feature/x` | ✅ PASS    | ✅ PASS           | Allowed           |
+| `git commit --no-verify` | `main`      | ❌ BLOCKED | -                 | Main branch error |
+| `git commit --no-verify` | `feature/x` | ✅ PASS    | ❌ BLOCKED        | --no-verify error |
 
 ### Special Cases
 
 **Detached HEAD State:** When in detached HEAD state, `git branch --show-current` returns an empty string. Since empty string ≠ "main" or "master", commits are **intentionally allowed** in detached HEAD state. This supports workflows like:
+
 - Cherry-picking commits
 - Bisecting for bug hunting
 - Reviewing historical commits
@@ -433,29 +446,30 @@ This protection cannot be bypassed with --no-verify."""
 ### Manual Test Plan
 
 **Prerequisites:**
+
 - Git repository with `main` or `master` branch
 - Claude Code with updated hook files
 
 **Test Cases:**
 
-| ID | Action | Branch | Expected Result |
-|----|--------|--------|-----------------|
-| TC1 | `git commit -m "test"` | `main` | ❌ BLOCKED (main error) |
-| TC2 | `git commit -m "test"` | `master` | ❌ BLOCKED (master error) |
-| TC3 | `git commit -m "test"` | `feature/xyz` | ✅ ALLOWED |
-| TC4 | `git commit --amend` | `main` | ❌ BLOCKED (main error) |
-| TC5 | `git commit --no-verify` | `main` | ❌ BLOCKED (main error) |
+| ID  | Action                   | Branch        | Expected Result                |
+| --- | ------------------------ | ------------- | ------------------------------ |
+| TC1 | `git commit -m "test"`   | `main`        | ❌ BLOCKED (main error)        |
+| TC2 | `git commit -m "test"`   | `master`      | ❌ BLOCKED (master error)      |
+| TC3 | `git commit -m "test"`   | `feature/xyz` | ✅ ALLOWED                     |
+| TC4 | `git commit --amend`     | `main`        | ❌ BLOCKED (main error)        |
+| TC5 | `git commit --no-verify` | `main`        | ❌ BLOCKED (main error)        |
 | TC6 | `git commit --no-verify` | `feature/xyz` | ❌ BLOCKED (--no-verify error) |
-| TC7 | `git push` | `main` | ✅ ALLOWED |
-| TC8 | `git status` | `main` | ✅ ALLOWED |
+| TC7 | `git push`               | `main`        | ✅ ALLOWED                     |
+| TC8 | `git status`             | `main`        | ✅ ALLOWED                     |
 
 ### Error Handling Tests
 
-| ID | Scenario | Expected Behavior |
-|----|----------|-------------------|
-| EC1 | Not in git repo | ✅ ALLOWED (fail-open + warning log) |
-| EC2 | Git not in PATH | ✅ ALLOWED (fail-open + warning log) |
-| EC3 | Detached HEAD | ✅ ALLOWED (empty branch ≠ main/master) |
+| ID  | Scenario        | Expected Behavior                       |
+| --- | --------------- | --------------------------------------- |
+| EC1 | Not in git repo | ✅ ALLOWED (fail-open + warning log)    |
+| EC2 | Git not in PATH | ✅ ALLOWED (fail-open + warning log)    |
+| EC3 | Detached HEAD   | ✅ ALLOWED (empty branch ≠ main/master) |
 
 ---
 
@@ -464,18 +478,21 @@ This protection cannot be bypassed with --no-verify."""
 ### Version 1.0 (Initial Release)
 
 **Added:**
+
 - Main/master branch commit protection
 - Graceful fail-open error handling
 - Clear error messages with workflow guidance
 - Integration with existing --no-verify protection
 
 **Security:**
+
 - Hardcoded subprocess arguments
 - 5-second timeout on git commands
 - Fail-open on all error conditions
 - Input sanitization on git output
 
 **Files Modified:**
+
 - `.claude/tools/amplihack/hooks/pre_tool_use.py`
 - `amplifier-bundle/tools/amplihack/hooks/pre_tool_use.py`
 
@@ -493,17 +510,19 @@ This protection cannot be bypassed with --no-verify."""
 ## Support & Feedback
 
 **Questions?**
+
 - Check troubleshooting section above
 - Review hook logs at `.claude/runtime/logs/pre_tool_use.log`
 - File an issue if you believe protection is incorrect
 
 **Feature Requests:**
+
 - Configurable protected branch list
 - Per-repository protection settings
 - Integration with other hooks
 
 ---
 
-**Last Updated:** 2026-02-08  
-**Hook Version:** 1.0  
+**Last Updated:** 2026-02-08
+**Hook Version:** 1.0
 **Minimum Requirements:** Python 3.7+, Git 2.0+

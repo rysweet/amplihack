@@ -263,6 +263,70 @@ class TestSafeCopyStrategy(unittest.TestCase):
                 if result.temp_dir and result.temp_dir.exists():
                     shutil.rmtree(result.temp_dir.parent, ignore_errors=True)
 
+    def test_auto_approve_skips_prompt(self):
+        """Test Case: auto_approve=True skips prompt and proceeds to working directory.
+
+        Issue #2256: When auto_approve=True with conflicts, should return CopyStrategy
+        with should_proceed=True, use_temp=False, no temp_dir, target_dir equals
+        original_target resolved. Should NOT call input() at all.
+        """
+        with patch("builtins.print"), patch("builtins.input") as mock_input:
+            result = self.strategy_manager.determine_target(
+                original_target=self.original_target,
+                has_conflicts=True,
+                conflicting_files=self.conflicting_files,
+                auto_approve=True,
+            )
+
+            # Should proceed to working directory without prompting
+            self.assertTrue(result.should_proceed)
+            self.assertFalse(result.use_temp)
+            self.assertIsNone(result.temp_dir)
+            self.assertEqual(result.target_dir, self.original_target.resolve())
+
+            # Verify input() was NEVER called
+            mock_input.assert_not_called()
+
+    def test_auto_approve_false_still_prompts(self):
+        """Test Case: auto_approve=False still prompts user for choice.
+
+        Verify that when auto_approve=False, normal prompting behavior occurs.
+        """
+        with patch("builtins.print"), patch("builtins.input", return_value="y") as mock_input:
+            result = self.strategy_manager.determine_target(
+                original_target=self.original_target,
+                has_conflicts=True,
+                conflicting_files=self.conflicting_files,
+                auto_approve=False,
+            )
+
+            # Should proceed to working directory after prompt
+            self.assertTrue(result.should_proceed)
+            self.assertFalse(result.use_temp)
+            self.assertEqual(result.target_dir, self.original_target.resolve())
+
+            # Verify input() was called
+            mock_input.assert_called_once()
+
+    def test_auto_approve_no_conflicts_unchanged(self):
+        """Test Case: auto_approve with no conflicts behaves identically.
+
+        When has_conflicts=False, auto_approve should have no effect - behavior
+        should be identical to no-conflict case.
+        """
+        result = self.strategy_manager.determine_target(
+            original_target=self.original_target,
+            has_conflicts=False,
+            conflicting_files=[],
+            auto_approve=True,
+        )
+
+        # Should proceed to working directory (same as without auto_approve)
+        self.assertEqual(result.target_dir, self.original_target.resolve())
+        self.assertTrue(result.should_proceed)
+        self.assertFalse(result.use_temp)
+        self.assertIsNone(result.temp_dir)
+
 
 if __name__ == "__main__":
     unittest.main()

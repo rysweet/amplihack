@@ -4,19 +4,19 @@ import time
 from typing import TYPE_CHECKING
 
 import psutil
-from blarify.utils.path_calculator import PathCalculator
-from blarify.vendor.multilspy import SyncLanguageServer
-from blarify.vendor.multilspy.lsp_protocol_handler.server import Error
-from blarify.vendor.multilspy.multilspy_config import MultilspyConfig
-from blarify.vendor.multilspy.multilspy_logger import MultilspyLogger
+from amplihack.vendor.blarify.utils.path_calculator import PathCalculator
+from amplihack.vendor.blarify.vendor.multilspy import SyncLanguageServer
+from amplihack.vendor.blarify.vendor.multilspy.lsp_protocol_handler.server import Error
+from amplihack.vendor.blarify.vendor.multilspy.multilspy_config import MultilspyConfig
+from amplihack.vendor.blarify.vendor.multilspy.multilspy_logger import MultilspyLogger
 
 from .types.Reference import Reference
 
 if TYPE_CHECKING:
-    from blarify.code_hierarchy.languages import (
+    from ..code_hierarchy.languages import (
         LanguageDefinitions,
     )
-    from blarify.graph.node import DefinitionNode
+    from ..graph.node import DefinitionNode
 
 
 import asyncio
@@ -247,7 +247,7 @@ class LspQueryHelper:
 
     @staticmethod
     def get_language_definition_for_extension(extension: str) -> "LanguageDefinitions":
-        from blarify.code_hierarchy.languages import (
+        from ..code_hierarchy.languages import (
             CsharpDefinitions,
             GoDefinitions,
             JavaDefinitions,

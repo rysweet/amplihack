@@ -87,7 +87,10 @@ Always prefer complete work with high quality over speed of implementation.
 
 ### .claude Directory Auto-Update
 
-Controls automatic updating of .claude/ directory when version mismatch detected at session start.
+Controls automatic updating of .claude/ directory at session start. This preference affects two behaviors:
+
+1. **Version mismatch updates**: When a new version of amplihack is installed, controls whether the .claude/ directory is updated automatically or prompts first.
+2. **Uncommitted changes conflict prompt**: When uncommitted changes are detected in .claude/ essential directories, controls whether to auto-approve the overwrite or prompt for confirmation.
 
 **Note**: The actual preference value is set in the "### Auto Update" section above (line 43). This section provides documentation and usage examples only.
 
@@ -95,7 +98,7 @@ Controls automatic updating of .claude/ directory when version mismatch detected
 
 **Options:**
 
-- `always` - Always auto-update without prompting
+- `always` - Always auto-update and auto-approve overwrites without prompting
 - `never` - Never auto-update (just show warning)
 - `ask` - Prompt user each time (default)
 
@@ -107,7 +110,7 @@ Controls automatic updating of .claude/ directory when version mismatch detected
 /amplihack:customize set auto_update ask
 ```
 
-**Note:** This prevents bugs from running stale hooks/tools when package is upgraded.
+**Note:** Setting `always` prevents both stale hooks/tools when package is upgraded AND eliminates the "Uncommitted changes detected in .claude/" startup prompt for auto-generated files like PROJECT.md.
 
 ### Neo4j Auto-Shutdown
 

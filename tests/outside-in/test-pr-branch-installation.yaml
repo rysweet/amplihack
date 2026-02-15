@@ -1,0 +1,66 @@
+scenario:
+  name: "PR Branch - Out of Box Installation Test"
+  description: "Verify amplihack PR feat/issue-2186-fix-blarify-indexing installs and works in clean environment"
+  type: cli
+  tags: [smoke, critical, pr-validation, blarify]
+
+  prerequisites:
+    - "Docker is running"
+    - "GitHub repository rysweet/amplihack is accessible"
+
+  environment:
+    variables:
+      PR_BRANCH: "feat/issue-2186-fix-blarify-indexing"
+      GITHUB_REPO: "git+https://github.com/rysweet/amplihack"
+
+  steps:
+    # Step 1: Launch amplihack from PR branch via uvx
+    - action: launch
+      target: "uvx"
+      args:
+        - "--from"
+        - "${GITHUB_REPO}@${PR_BRANCH}"
+        - "amplihack"
+        - "--version"
+      timeout: 120s
+      description: "Install and run amplihack from PR branch (first run will install SCIP indexers)"
+
+    # Step 2: Verify amplihack version output
+    - action: verify_output
+      contains: "amplihack"
+      timeout: 5s
+      description: "Should print version information"
+
+    # Step 3: Verify no installation errors
+    - action: verify_output
+      not_contains: "Error"
+      description: "Should not have installation errors"
+
+    # Step 4: Verify exit code is clean
+    - action: verify_exit_code
+      expected: 0
+      description: "Should exit cleanly after printing version"
+
+    # Step 5: Test auto-installer by checking for SCIP tools
+    - action: launch
+      target: "uvx"
+      args:
+        - "--from"
+        - "${GITHUB_REPO}@${PR_BRANCH}"
+        - "amplihack"
+        - "--help"
+      timeout: 60s
+      description: "Second run should be faster (deps cached)"
+
+    - action: verify_output
+      contains: "amplihack"
+      timeout: 5s
+
+    - action: verify_exit_code
+      expected: 0
+
+  cleanup:
+    - action: run_command
+      command: "uvx cache clear"
+      description: "Clean up uvx cache"
+      continue_on_failure: true

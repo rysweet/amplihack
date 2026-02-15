@@ -16,10 +16,9 @@ Usage:
 import re
 import sys
 from pathlib import Path
-from typing import Optional, Tuple
 
 
-def parse_version_from_pyproject(content: str) -> Optional[str]:
+def parse_version_from_pyproject(content: str) -> str | None:
     """
     Extract version string from pyproject.toml content.
 
@@ -40,7 +39,7 @@ def parse_version_from_pyproject(content: str) -> Optional[str]:
     return None
 
 
-def parse_semantic_version(version_str: str) -> Optional[Tuple[int, int, int]]:
+def parse_semantic_version(version_str: str) -> tuple[int, int, int] | None:
     """
     Parse semantic version string into tuple of integers.
 
@@ -60,7 +59,7 @@ def parse_semantic_version(version_str: str) -> Optional[Tuple[int, int, int]]:
     return (int(match.group(1)), int(match.group(2)), int(match.group(3)))
 
 
-def bump_patch_version(version_str: str) -> Optional[str]:
+def bump_patch_version(version_str: str) -> str | None:
     """
     Bump the patch version of a semantic version string.
 
@@ -96,20 +95,20 @@ def update_version_in_pyproject(new_version: str) -> bool:
 
     try:
         content = pyproject_path.read_text()
-        
+
         # Replace version line
         pattern = r'^(\s*version\s*=\s*["\'])([^"\']+)(["\'])'
-        
+
         def replace_version(match):
             return f"{match.group(1)}{new_version}{match.group(3)}"
-        
+
         updated_content = re.sub(pattern, replace_version, content, count=1, flags=re.MULTILINE)
-        
+
         # Verify the replacement happened
         if updated_content == content:
             print("❌ Error: Failed to find and replace version in pyproject.toml", file=sys.stderr)
             return False
-        
+
         # Write back
         pyproject_path.write_text(updated_content)
         return True
@@ -138,7 +137,9 @@ def main() -> int:
         current_version = parse_version_from_pyproject(content)
 
         if current_version is None:
-            print("❌ Error: Could not extract current version from pyproject.toml", file=sys.stderr)
+            print(
+                "❌ Error: Could not extract current version from pyproject.toml", file=sys.stderr
+            )
             return 1
 
         # Bump patch version
@@ -154,7 +155,7 @@ def main() -> int:
             return 1
 
         print(f"✅ Version bumped automatically: {current_version} → {new_version}")
-        print(f"   Updated pyproject.toml")
+        print("   Updated pyproject.toml")
         return 0
 
     except Exception as e:

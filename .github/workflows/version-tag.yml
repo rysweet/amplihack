@@ -1,12 +1,17 @@
 # Auto-Tag on Version Bump
 # Automatically creates a git tag matching the version in pyproject.toml
 # when code is merged to main branch
+# Runs after auto-version-on-merge.yml ensures version is bumped
 
 name: Auto Tag Version
 
 on:
   push:
     branches: [main]
+  workflow_run:
+    workflows: ["Auto Version on Merge"]
+    types:
+      - completed
 
 # Prevent concurrent tagging operations
 concurrency:
@@ -23,7 +28,7 @@ jobs:
       - name: Checkout main branch
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Full history for tag operations
+          fetch-depth: 0 # Full history for tag operations
 
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -37,10 +42,10 @@ jobs:
           VERSION=$(python -c '
           import re
           import sys
-          
+
           with open("pyproject.toml") as f:
               content = f.read()
-          
+
           match = re.search(r"^\s*version\s*=\s*\"([^\"]+)\"", content, re.MULTILINE)
           if match:
               print(match.group(1))
@@ -48,7 +53,7 @@ jobs:
               print("ERROR: Version not found", file=sys.stderr)
               sys.exit(1)
           ')
-          
+
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "tag=v$VERSION" >> $GITHUB_OUTPUT
           echo "📦 Extracted version: $VERSION"
@@ -57,7 +62,7 @@ jobs:
         id: check-tag
         run: |
           TAG="${{ steps.get-version.outputs.tag }}"
-          
+
           if git rev-parse "$TAG" >/dev/null 2>&1; then
             echo "exists=true" >> $GITHUB_OUTPUT
             echo "⏭️  Tag $TAG already exists, skipping creation"
@@ -75,19 +80,19 @@ jobs:
           # Configure git for GitHub Actions
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          
+
           # Create annotated tag
           git tag -a "$TAG" -m "Release version $VERSION
-          
+
           Auto-generated tag for version $VERSION
-          
+
           Created by: ${{ github.actor }}
           Commit: ${{ github.sha }}
           Workflow: ${{ github.workflow }}"
-          
+
           # Push tag to repository
           git push origin "$TAG"
-          
+
           echo "✅ Created and pushed tag: $TAG"
 
       - name: Create GitHub Release
@@ -101,7 +106,7 @@ jobs:
           script: |
             const tag = process.env.TAG;
             const version = process.env.VERSION;
-            
+
             try {
               await github.rest.repos.createRelease({
                 owner: context.repo.owner,
@@ -125,7 +130,7 @@ jobs:
           echo ""
           echo "**Version**: ${{ steps.get-version.outputs.version }}"
           echo "**Tag**: ${{ steps.get-version.outputs.tag }}"
-          
+
           if [ "${{ steps.check-tag.outputs.exists }}" == "true" ]; then
             echo "**Status**: Tag already exists (skipped)"
           else

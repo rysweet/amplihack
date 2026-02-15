@@ -75,14 +75,14 @@ docker exec "$CONTAINER_NAME" bash -c "
     rm -rf _push_repo
     mkdir _push_repo && cd _push_repo
     git init --bare --quiet
-    
+
     # Parse bundle refs and fetch each one
     git bundle list-heads /snapshots/bundle.git | while read sha ref; do
         branch_name=\$(echo \"\$ref\" | sed 's|refs/heads/||; s|refs/remotes/origin/|_upstream_|; s|refs/tags/|tags/|')
         if echo \"\$ref\" | grep -q \"HEAD\"; then continue; fi
         git fetch /snapshots/bundle.git \"\$ref:refs/heads/\$branch_name\" 2>/dev/null || true
     done
-    
+
     git remote add origin http://shadow:shadow@localhost:3000/$ORG/$REPO.git
     git push origin --all --force 2>&1 | grep -v 'remote:'
     git push origin --tags --force 2>&1 | grep -v 'remote:' || true
@@ -94,7 +94,7 @@ docker exec "$CONTAINER_NAME" bash -c "
     git config --global user.name 'Shadow'
     git config --global init.defaultBranch main
     git config --global advice.detachedHead false
-    
+
     # Add URL rewriting patterns with boundary markers
     git config --global --add url.'http://shadow:shadow@localhost:3000/$ORG/$REPO.git'.insteadOf 'https://github.com/$ORG/$REPO.git'
     git config --global --add url.'http://shadow:shadow@localhost:3000/$ORG/$REPO.git'.insteadOf 'https://github.com/$ORG/$REPO.git/'
@@ -103,7 +103,7 @@ docker exec "$CONTAINER_NAME" bash -c "
     git config --global --add url.'http://shadow:shadow@localhost:3000/$ORG/$REPO.git'.insteadOf 'git@github.com:$ORG/$REPO.git'
     git config --global --add url.'http://shadow:shadow@localhost:3000/$ORG/$REPO.git'.insteadOf 'git+https://github.com/$ORG/$REPO.git'
     git config --global --add url.'http://shadow:shadow@localhost:3000/$ORG/$REPO.git'.insteadOf 'git+https://github.com/$ORG/$REPO@'
-    
+
     # Clear uv cache to ensure fresh resolution
     rm -rf /home/amplifier/.cache/uv/git-v0 2>/dev/null || true
 "

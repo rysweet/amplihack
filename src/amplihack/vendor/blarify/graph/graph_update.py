@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-from blarify.graph.external_relationship_store import ExternalRelationshipStore
-from blarify.graph.graph import Graph
+from amplihack.vendor.blarify.graph.external_relationship_store import ExternalRelationshipStore
+from amplihack.vendor.blarify.graph.graph import Graph
 
 
 @dataclass
