@@ -12,11 +12,12 @@ from pathlib import Path
 
 def test_hooks_json_is_valid_json():
     """Verify hooks.json is syntactically valid JSON."""
-    hooks_json_path = Path.home() / ".amplihack/.claude/tools/amplihack/hooks/hooks.json"
+    # Test the project file (what's in the PR), not the installed file
+    hooks_json_path = Path(__file__).parent.parent.parent / ".claude/tools/amplihack/hooks/hooks.json"
 
     if not hooks_json_path.exists():
-        # Fallback to project location if not installed
-        hooks_json_path = Path(__file__).parent.parent.parent / ".claude/tools/amplihack/hooks/hooks.json"
+        # Fallback to installed location if project file doesn't exist
+        hooks_json_path = Path.home() / ".amplihack/.claude/tools/amplihack/hooks/hooks.json"
 
     assert hooks_json_path.exists(), f"hooks.json not found at {hooks_json_path}"
 
@@ -32,10 +33,11 @@ def test_hooks_json_has_no_plugin_root_references():
 
     EXPECTED TO FAIL: Before fix, this will find 7 occurrences of ${CLAUDE_PLUGIN_ROOT}
     """
-    hooks_json_path = Path.home() / ".amplihack/.claude/tools/amplihack/hooks/hooks.json"
+    # Test the project file (what's in the PR), not the installed file
+    hooks_json_path = Path(__file__).parent.parent.parent / ".claude/tools/amplihack/hooks/hooks.json"
 
     if not hooks_json_path.exists():
-        hooks_json_path = Path(__file__).parent.parent.parent / ".claude/tools/amplihack/hooks/hooks.json"
+        hooks_json_path = Path.home() / ".amplihack/.claude/tools/amplihack/hooks/hooks.json"
 
     with open(hooks_json_path) as f:
         content = f.read()
@@ -56,10 +58,11 @@ def test_hooks_json_uses_correct_directory_paths():
 
     EXPECTED TO FAIL: Before fix, paths use ${CLAUDE_PLUGIN_ROOT} instead
     """
-    hooks_json_path = Path.home() / ".amplihack/.claude/tools/amplihack/hooks/hooks.json"
+    # Test the project file (what's in the PR), not the installed file
+    hooks_json_path = Path(__file__).parent.parent.parent / ".claude/tools/amplihack/hooks/hooks.json"
 
     if not hooks_json_path.exists():
-        hooks_json_path = Path(__file__).parent.parent.parent / ".claude/tools/amplihack/hooks/hooks.json"
+        hooks_json_path = Path.home() / ".amplihack/.claude/tools/amplihack/hooks/hooks.json"
 
     with open(hooks_json_path) as f:
         data = json.load(f)
@@ -95,10 +98,11 @@ def test_hooks_json_uses_correct_directory_paths():
 
 def test_hooks_json_hook_count():
     """Verify hooks.json contains exactly 7 hook definitions."""
-    hooks_json_path = Path.home() / ".amplihack/.claude/tools/amplihack/hooks/hooks.json"
+    # Test the project file (what's in the PR), not the installed file
+    hooks_json_path = Path(__file__).parent.parent.parent / ".claude/tools/amplihack/hooks/hooks.json"
 
     if not hooks_json_path.exists():
-        hooks_json_path = Path(__file__).parent.parent.parent / ".claude/tools/amplihack/hooks/hooks.json"
+        hooks_json_path = Path.home() / ".amplihack/.claude/tools/amplihack/hooks/hooks.json"
 
     with open(hooks_json_path) as f:
         data = json.load(f)
@@ -119,10 +123,11 @@ def test_hooks_json_hook_count():
 
 def test_hooks_json_critical_hooks_present():
     """Verify critical hooks are present in hooks.json."""
-    hooks_json_path = Path.home() / ".amplihack/.claude/tools/amplihack/hooks/hooks.json"
+    # Test the project file (what's in the PR), not the installed file
+    hooks_json_path = Path(__file__).parent.parent.parent / ".claude/tools/amplihack/hooks/hooks.json"
 
     if not hooks_json_path.exists():
-        hooks_json_path = Path(__file__).parent.parent.parent / ".claude/tools/amplihack/hooks/hooks.json"
+        hooks_json_path = Path.home() / ".amplihack/.claude/tools/amplihack/hooks/hooks.json"
 
     with open(hooks_json_path) as f:
         data = json.load(f)
