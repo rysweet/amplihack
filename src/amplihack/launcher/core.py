@@ -717,8 +717,11 @@ class ClaudeLauncher:
                 # Display configuration on launch
                 display_memory_config(memory_config)
             else:
-                # Fallback to 8GB if detection fails
-                env["NODE_OPTIONS"] = "--max-old-space-size=8192"
+                # Fallback to 32GB if detection fails
+                # Intentional: High-RAM development systems should use generous heap
+                # for large codebases (6000+ files). Matches smart memory system's
+                # cap and ensures blarify indexing completes on typical dev machines.
+                env["NODE_OPTIONS"] = "--max-old-space-size=32768"
 
             if self._target_directory:
                 env.update(self.uvx_manager.get_environment_variables())
@@ -832,8 +835,11 @@ class ClaudeLauncher:
                 # Display configuration on launch
                 display_memory_config(memory_config)
             else:
-                # Fallback to 8GB if detection fails
-                env["NODE_OPTIONS"] = "--max-old-space-size=8192"
+                # Fallback to 32GB if detection fails
+                # Intentional: High-RAM development systems should use generous heap
+                # for large codebases (6000+ files). Matches smart memory system's
+                # cap and ensures blarify indexing completes on typical dev machines.
+                env["NODE_OPTIONS"] = "--max-old-space-size=32768"
 
             if self._target_directory:
                 env.update(self.uvx_manager.get_environment_variables())
@@ -1044,13 +1050,14 @@ class ClaudeLauncher:
             logger.warning("Failed to save blarify consent: %s", e)
 
     def _prompt_blarify_indexing(self) -> bool:
-        """Prompt user to run blarify code indexing.
+        """Prompt user to run blarify code indexing with staleness detection.
 
         Features:
-        - 30 second timeout with default yes
-        - Per-project caching (prompts once per project)
+        - Staleness detection (only prompts if index missing or stale)
+        - Time estimation with language breakdown
+        - Background indexing option
+        - Per-project "don't ask again" preference
         - Non-blocking (failure doesn't stop launch)
-        - Runs blarify and imports to Kuzu on consent
 
         Returns:
             True if indexing completed or skipped, False on error
@@ -1065,52 +1072,104 @@ class ClaudeLauncher:
         # Get project directory (current working directory)
         project_path = Path.cwd()
 
-        # Check if user has already consented for this project
+        # Check if user has "don't ask again" preference for this project
         if self._has_blarify_consent(project_path):
-            logger.debug("Blarify consent already given for %s", project_path)
+            logger.debug("Blarify 'don't ask again' preference set for %s", project_path)
             return True
 
         try:
+            # Check index status using staleness detector
+            from ..memory.kuzu.indexing.staleness_detector import check_index_status
+            from ..memory.kuzu.indexing.time_estimator import estimate_time
+
+            status = check_index_status(project_path)
+
+            # If index is up-to-date, skip prompting
+            if not status.needs_indexing:
+                logger.debug("Blarify index is up-to-date: %s", status.reason)
+                return True
+
+            # Index is needed - estimate time
+            # TODO: Make language detection dynamic based on project files
+            languages = ["python", "typescript", "javascript", "go", "rust", "csharp", "c", "cpp"]
+            estimate = estimate_time(project_path, languages)
+
+            # Format time estimate
+            if estimate.total_seconds < 60:
+                time_str = f"{estimate.total_seconds:.0f}s"
+            else:
+                minutes = int(estimate.total_seconds // 60)
+                seconds = int(estimate.total_seconds % 60)
+                time_str = f"{minutes}m {seconds}s"
+
             # Check if running in interactive terminal
             from .memory_config import is_interactive_terminal
 
             if not is_interactive_terminal():
-                # Non-interactive mode - use default yes
-                logger.info("Non-interactive environment, running blarify indexing by default")
-                print("\n📊 Code Indexing: Running blarify in non-interactive mode (default: yes)")
-                self._run_blarify_and_import(project_path)
-                self._save_blarify_consent(project_path)
+                # Non-interactive mode - skip indexing
+                logger.info("Non-interactive environment, skipping blarify prompt")
                 return True
 
-            # Interactive mode - prompt user with timeout
+            # Interactive mode - prompt user
             print("\n" + "=" * 60)
             print("Code Indexing with Blarify")
             print("=" * 60)
-            print("Blarify will analyze your codebase to enable code-aware features:")
+            print(f"Status: {status.reason}")
+            print(f"Files to index: {status.estimated_files}")
+            print(f"Estimated time: {time_str}")
+            print()
+            print("Language breakdown:")
+            for lang, seconds in sorted(estimate.by_language.items()):
+                if estimate.file_counts[lang] > 0:
+                    lang_time = (
+                        f"{seconds:.0f}s"
+                        if seconds < 60
+                        else f"{int(seconds // 60)}m {int(seconds % 60)}s"
+                    )
+                    print(
+                        f"  • {lang.capitalize()}: {estimate.file_counts[lang]} files ({lang_time})"
+                    )
+            print()
+            print("Blarify enables code-aware features:")
             print("  • Code context in memory retrieval")
             print("  • Function and class awareness")
             print("  • Automatic code-memory linking")
-            print()
-            print("This is a one-time setup per project (~30-60s for most codebases)")
             print("=" * 60)
 
             # Import timeout utilities from memory_config
             from .memory_config import get_user_input_with_timeout, parse_consent_response
 
-            prompt_msg = "\nRun blarify code indexing? [y/N] (timeout: 30s): "
+            prompt_msg = "\nRun indexing? [y/N/b/n] (b=background, n=don't ask again): "
             response = get_user_input_with_timeout(prompt_msg, timeout_seconds=30, logger=logger)
 
-            # Parse response with default no (opt-in, not opt-out)
-            user_consented = parse_consent_response(response, default=False)
+            # Handle "don't ask again" option
+            if response and response.lower().strip() in ["n", "never", "skip"]:
+                print("\n⏭️  Indexing skipped (won't ask again for this project)")
+                self._save_blarify_consent(project_path)
+                return True
+
+            # Check for background mode
+            background_mode = False
+            if response and response.lower().strip() in ["b", "background"]:
+                background_mode = True
+                user_consented = True
+            else:
+                # Parse response with default no (opt-in, not opt-out)
+                user_consented = parse_consent_response(response, default=False)
 
             if user_consented:
-                print("\n📊 Starting blarify code indexing...")
-                success = self._run_blarify_and_import(project_path)
+                if background_mode:
+                    print("\n📊 Starting blarify code indexing in background...")
+                else:
+                    print("\n📊 Starting blarify code indexing...")
+
+                success = self._run_blarify_and_import(project_path, background=background_mode)
 
                 if success:
-                    # Save consent so we don't prompt again
-                    self._save_blarify_consent(project_path)
-                    print("✅ Code indexing complete\n")
+                    if background_mode:
+                        print("✅ Code indexing started in background\n")
+                    else:
+                        print("✅ Code indexing complete\n")
                     return True
                 print("⚠️  Code indexing failed (non-critical, continuing...)\n")
                 return True  # Return True - failure is non-blocking
@@ -1126,42 +1185,126 @@ class ClaudeLauncher:
             print(f"\n⚠️  Code indexing prompt failed: {e} (continuing...)\n")
             return True  # Non-blocking - always return True
 
-    def _run_blarify_and_import(self, project_path: Path) -> bool:
+    def _count_files_by_language(self, project_path: Path, languages: list[str]) -> dict[str, int]:
+        """Count files for each language in the project.
+
+        Args:
+            project_path: Project root directory
+            languages: List of languages to count
+
+        Returns:
+            Dict mapping language to file count
+        """
+        extensions_map = {
+            "python": [".py"],
+            "javascript": [".js", ".jsx"],
+            "typescript": [".ts", ".tsx"],
+            "csharp": [".cs"],
+        }
+
+        counts = {}
+        for lang in languages:
+            extensions = extensions_map.get(lang, [])
+            count = 0
+            for ext in extensions:
+                count += len(list(project_path.rglob(f"*{ext}")))
+            counts[lang] = count
+
+        return counts
+
+    def _run_blarify_and_import(self, project_path: Path, background: bool = False) -> bool:
         """Run blarify and import results to Kuzu.
 
         Args:
             project_path: Project root directory to index
+            background: If True, run indexing in background
 
         Returns:
             True if successful, False otherwise
         """
         try:
-            # Import Kuzu backend and code graph
-            from ..memory.kuzu.code_graph import KuzuCodeGraph
+            # Import prerequisite checker and orchestrator
             from ..memory.kuzu.connector import KuzuConnector
+            from ..memory.kuzu.indexing.orchestrator import Orchestrator
+            from ..memory.kuzu.indexing.prerequisite_checker import PrerequisiteChecker
 
-            # Get Kuzu database path (default location)
+            # Step 1: Check prerequisites
+            print("\n🔍 Checking prerequisites...")
+            checker = PrerequisiteChecker()
+            result = checker.check_all(["python", "javascript", "typescript", "csharp"])
+
+            if not result.can_proceed:
+                print("❌ No indexing tools available. Install scip-python, node, or dotnet.")
+                return False
+
+            # Show what's available
+            if result.available_languages:
+                print(f"✓ Available languages: {', '.join(result.available_languages)}")
+            if result.unavailable_languages:
+                print(f"⚠️  Skipping languages: {', '.join(result.unavailable_languages)}")
+                if result.language_statuses:
+                    for lang in result.unavailable_languages:
+                        status = result.language_statuses.get(lang)
+                        if status and status.error_message:
+                            print(f"   - {lang}: {status.error_message}")
+
+            # Step 2: Estimate file count and time
+            file_counts = self._count_files_by_language(project_path, result.available_languages)
+            total_files = sum(file_counts.values())
+
+            if total_files > 0:
+                # Estimate time (average ~0.5 seconds per file)
+                estimated_seconds = total_files * 0.5
+                estimated_minutes = estimated_seconds / 60
+
+                print("\n📊 Estimated workload:")
+                for lang, count in file_counts.items():
+                    print(f"   {lang}: {count} files")
+                print(f"   Total: {total_files} files")
+
+                if estimated_minutes < 1:
+                    print(f"   Estimated time: ~{int(estimated_seconds)} seconds")
+                else:
+                    print(f"   Estimated time: ~{estimated_minutes:.1f} minutes")
+
+            # Step 3: Get Kuzu connector
             kuzu_db_path = Path.home() / ".amplihack" / "memory_kuzu.db"
-
-            # Create connector
             connector = KuzuConnector(str(kuzu_db_path))
             connector.connect()
 
-            # Create code graph instance
-            code_graph = KuzuCodeGraph(connector)
+            # Step 4: Create orchestrator and run indexing
+            orchestrator = Orchestrator(connector=connector)
 
-            # Run blarify and import (this handles temp files internally)
-            counts = code_graph.run_blarify(
-                codebase_path=str(project_path),
-                languages=None,  # Auto-detect all languages
+            # Show progress for foreground indexing
+            if not background and total_files > 0:
+                print("\n🚀 Starting indexing...")
+                import time
+
+                start_time = time.time()
+
+            indexing_result = orchestrator.run(
+                codebase_path=project_path,
+                languages=result.available_languages,
+                background=background,
             )
 
-            logger.info("Blarify import complete: %s", counts)
-
-            # No explicit disconnect needed (KuzuConnector uses context manager)
-
-            return True
+            if indexing_result.success:
+                if not background and total_files > 0:
+                    elapsed = time.time() - start_time
+                    print(
+                        f"\n✅ Indexed {indexing_result.total_files} files in {elapsed:.1f} seconds"
+                    )
+                else:
+                    print(f"\n✅ Indexed {indexing_result.total_files} files")
+                logger.info("Blarify import complete: %s files", indexing_result.total_files)
+                return True
+            print("\n⚠️  Indexing completed with errors")
+            if indexing_result.errors:
+                for error in indexing_result.errors[:3]:  # Show first 3 errors
+                    print(f"   - {error.language}: {error.message}")
+            return False
 
         except Exception as e:
             logger.error("Blarify indexing failed: %s", e)
+            print(f"\n❌ Indexing failed: {e}")
             return False

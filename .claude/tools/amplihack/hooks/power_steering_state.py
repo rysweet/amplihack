@@ -172,6 +172,7 @@ class PowerSteeringTurnState:
         last_block_timestamp: ISO timestamp of most recent block
         block_history: Full snapshots of each block with evidence
         last_analyzed_transcript_index: Track where we left off for delta analysis
+        failure_fingerprints: List of SHA-256 hashes of failed consideration sets (loop detection)
     """
 
     session_id: str
@@ -181,9 +182,14 @@ class PowerSteeringTurnState:
     last_block_timestamp: str | None = None
     block_history: list[BlockSnapshot] = field(default_factory=list)
     last_analyzed_transcript_index: int = 0
+    failure_fingerprints: list[str] = field(default_factory=list)  # Issue #2196: Loop detection
 
-    # Maximum consecutive blocks before auto-approve triggers (increased from 3)
-    MAX_CONSECUTIVE_BLOCKS: ClassVar[int] = 10
+    # Maximum consecutive blocks before auto-approve triggers (reduced from 10 to 5)
+    MAX_CONSECUTIVE_BLOCKS: ClassVar[int] = 5
+    # Warning threshold - halfway to max blocks
+    WARNING_THRESHOLD: ClassVar[int] = 2  # Half of MAX_CONSECUTIVE_BLOCKS (5 // 2)
+    # Loop detection threshold - number of identical fingerprints to trigger loop detection
+    LOOP_DETECTION_THRESHOLD: ClassVar[int] = 3
 
     def to_dict(self) -> dict:
         """Convert state to dictionary for JSON serialization."""
@@ -195,6 +201,7 @@ class PowerSteeringTurnState:
             "last_block_timestamp": self.last_block_timestamp,
             "block_history": [snap.to_dict() for snap in self.block_history],
             "last_analyzed_transcript_index": self.last_analyzed_transcript_index,
+            "failure_fingerprints": self.failure_fingerprints,
         }
 
     @classmethod
@@ -216,6 +223,7 @@ class PowerSteeringTurnState:
             last_block_timestamp=data.get("last_block_timestamp"),
             block_history=[BlockSnapshot.from_dict(snap) for snap in data.get("block_history", [])],
             last_analyzed_transcript_index=data.get("last_analyzed_transcript_index", 0),
+            failure_fingerprints=data.get("failure_fingerprints", []),
         )
 
     def get_previous_block(self) -> BlockSnapshot | None:
@@ -249,6 +257,54 @@ class PowerSteeringTurnState:
                     seen.add(evidence.consideration_id)
                     result.append(evidence.consideration_id)
         return result
+
+    def generate_failure_fingerprint(self, failed_consideration_ids: list[str]) -> str:
+        """Generate SHA-256 fingerprint for a set of failed considerations (Issue #2196).
+
+        Fingerprint is a 16-character truncated hash of sorted consideration IDs.
+        This allows loop detection by tracking identical failure patterns.
+
+        Args:
+            failed_consideration_ids: List of consideration IDs that failed
+
+        Returns:
+            16-character hex fingerprint (truncated SHA-256)
+        """
+        import hashlib
+
+        # Sort IDs for consistent hashing regardless of order
+        sorted_ids = sorted(failed_consideration_ids)
+
+        # Generate SHA-256 hash
+        hash_input = "|".join(sorted_ids).encode("utf-8")
+        full_hash = hashlib.sha256(hash_input).hexdigest()
+
+        # Truncate to 16 characters (64 bits) - sufficient for loop detection
+        # Collision probability is negligible for small session sizes
+        return full_hash[:16]
+
+    def detect_loop(self, current_fingerprint: str, threshold: int | None = None) -> bool:
+        """Detect if same failures are repeating (Issue #2196).
+
+        A loop is detected when the same failure fingerprint appears
+        at least `threshold` times in the fingerprint history.
+
+        Args:
+            current_fingerprint: Fingerprint of current failures
+            threshold: Number of repetitions to consider a loop (default: LOOP_DETECTION_THRESHOLD)
+
+        Returns:
+            True if loop detected (same failures repeating >= threshold times)
+        """
+        # Use class constant if threshold not provided
+        if threshold is None:
+            threshold = self.LOOP_DETECTION_THRESHOLD
+
+        # Count occurrences of current fingerprint
+        count = self.failure_fingerprints.count(current_fingerprint)
+
+        # Loop detected if fingerprint appears >= threshold times
+        return count >= threshold
 
 
 @dataclass
@@ -944,6 +1000,7 @@ class TurnStateManager:
         state.last_block_timestamp = None
         state.block_history = []
         state.last_analyzed_transcript_index = 0
+        state.failure_fingerprints = []  # Issue #2196: Reset fingerprints on approval
 
         self.log("Recorded approval - reset block state")
         return state
@@ -993,7 +1050,7 @@ class TurnStateManager:
         if blocks < threshold:
             # Generate escalation warning if we're past halfway
             escalation_msg = None
-            if blocks >= threshold // 2:
+            if blocks >= PowerSteeringTurnState.WARNING_THRESHOLD:
                 remaining = threshold - blocks
                 escalation_msg = (
                     f"Warning: {blocks}/{threshold} blocks used. "
@@ -1056,7 +1113,7 @@ class TurnStateManager:
                 )
 
         except Exception as e:
-            self.log(f"Failed to get diagnostics: {e}")
+            self.log(f"Failed to get diagnostics ({type(e).__name__}): {e}")
 
         return diagnostics
 

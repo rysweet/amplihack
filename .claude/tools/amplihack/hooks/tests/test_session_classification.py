@@ -895,8 +895,8 @@ class TestConsiderationMapping(unittest.TestCase):
         self.assertNotIn("local_testing", consideration_ids)
         self.assertNotIn("pr_description", consideration_ids)
 
-        # Should include completion checks
-        self.assertIn("objective_completion", consideration_ids)
+        # Should NOT include objective_completion for simple Q&A (Issue #2023)
+        self.assertNotIn("objective_completion", consideration_ids)
 
     def test_get_applicable_considerations_for_maintenance(self):
         """MAINTENANCE sessions should get doc and organization checks."""

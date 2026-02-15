@@ -84,3 +84,21 @@ code {
     background-color: #4caf50;
     color: white;
 }
+
+/* Ensure GitHub header link is visible at tablet breakpoint and above (Issue #2215)
+   Material for MkDocs default shows at 60em (960px), lowering to 45em (720px) */
+@media screen and (min-width: 45em) {
+    .md-header__source {
+        display: block;
+        max-width: 11.7rem;
+        width: 11.7rem;
+    }
+
+    [dir=ltr] .md-header__source {
+        margin-left: 1rem;
+    }
+
+    [dir=rtl] .md-header__source {
+        margin-right: 1rem;
+    }
+}

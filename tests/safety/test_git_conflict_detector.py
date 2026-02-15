@@ -334,6 +334,67 @@ class TestGitConflictDetector(unittest.TestCase):
             self.assertNotIn(".claude/.version", result.conflicting_files)
             self.assertNotIn(".claude/settings.json", result.conflicting_files)
 
+    def test_project_md_excluded_from_conflicts(self):
+        """Test Case: PROJECT.md should be excluded from conflict detection.
+
+        Issue #2256: PROJECT.md is auto-generated context file and should not trigger
+        conflict warnings even when uncommitted. It should be filtered out when it
+        appears as .claude/context/PROJECT.md in git status output.
+        """
+        detector = GitConflictDetector(self.target_dir)
+
+        # Use essential_dirs that include "context" to match real usage
+        essential_dirs = ["agents/amplihack", "tools/amplihack", "commands/amplihack", "context"]
+
+        # Simulate PROJECT.md modified along with a real user file
+        git_status_output = (
+            " M .claude/context/PROJECT.md\n"  # System file - should be excluded
+            " M .claude/context/PROJECT.md.bak\n"  # Backup file - should be excluded
+            " M .claude/tools/amplihack/hooks/stop.py\n"  # User file - should be detected
+        )
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.side_effect = [
+                MagicMock(returncode=0),  # git rev-parse
+                MagicMock(returncode=0, stdout=git_status_output),  # git status
+            ]
+
+            result = detector.detect_conflicts(essential_dirs)
+
+            # Should detect the user file but NOT PROJECT.md or its backup
+            self.assertTrue(result.has_conflicts)
+            self.assertEqual(len(result.conflicting_files), 1)
+            self.assertIn(".claude/tools/amplihack/hooks/stop.py", result.conflicting_files)
+            self.assertNotIn(".claude/context/PROJECT.md", result.conflicting_files)
+            self.assertNotIn(".claude/context/PROJECT.md.bak", result.conflicting_files)
+
+    def test_only_project_md_modified_no_conflicts(self):
+        """Test Case: Only PROJECT.md and backup modified should report no conflicts.
+
+        Reproduces the exact user scenario from issue #2256 - when only PROJECT.md
+        and PROJECT.md.bak are modified, should report has_conflicts=False.
+        """
+        detector = GitConflictDetector(self.target_dir)
+
+        # Use essential_dirs that include "context" to match real usage
+        essential_dirs = ["agents/amplihack", "tools/amplihack", "commands/amplihack", "context"]
+
+        # Only PROJECT.md files modified (exact user scenario)
+        git_status_output = " M .claude/context/PROJECT.md\n M .claude/context/PROJECT.md.bak\n"
+
+        with patch("subprocess.run") as mock_run:
+            mock_run.side_effect = [
+                MagicMock(returncode=0),  # git rev-parse
+                MagicMock(returncode=0, stdout=git_status_output),  # git status
+            ]
+
+            result = detector.detect_conflicts(essential_dirs)
+
+            # Should report NO conflicts when only system metadata modified
+            self.assertFalse(result.has_conflicts)
+            self.assertTrue(result.is_git_repo)
+            self.assertEqual(result.conflicting_files, [])
+
 
 if __name__ == "__main__":
     unittest.main()

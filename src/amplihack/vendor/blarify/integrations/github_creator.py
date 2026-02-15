@@ -9,16 +9,16 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any, cast
 
-from blarify.graph.graph_environment import GraphEnvironment
-from blarify.graph.node.commit_node import CommitNode
-from blarify.graph.node.pr_node import PullRequestNode
-from blarify.graph.node.types.integration_node import IntegrationNode
-from blarify.graph.relationship.relationship_creator import RelationshipCreator
-from blarify.repositories.graph_db_manager import AbstractDbManager
-from blarify.repositories.graph_db_manager.dtos.code_node_dto import CodeNodeDto
-from blarify.repositories.graph_db_manager.queries import get_code_nodes_by_ids_query
-from blarify.repositories.version_control.dtos.blame_commit_dto import BlameCommitDto
-from blarify.repositories.version_control.github import GitHub
+from amplihack.vendor.blarify.graph.graph_environment import GraphEnvironment
+from amplihack.vendor.blarify.graph.node.commit_node import CommitNode
+from amplihack.vendor.blarify.graph.node.pr_node import PullRequestNode
+from amplihack.vendor.blarify.graph.node.types.integration_node import IntegrationNode
+from amplihack.vendor.blarify.graph.relationship.relationship_creator import RelationshipCreator
+from amplihack.vendor.blarify.repositories.graph_db_manager import AbstractDbManager
+from amplihack.vendor.blarify.repositories.graph_db_manager.dtos.code_node_dto import CodeNodeDto
+from amplihack.vendor.blarify.repositories.graph_db_manager.queries import get_code_nodes_by_ids_query
+from amplihack.vendor.blarify.repositories.version_control.dtos.blame_commit_dto import BlameCommitDto
+from amplihack.vendor.blarify.repositories.version_control.github import GitHub
 
 logger = logging.getLogger(__name__)
 

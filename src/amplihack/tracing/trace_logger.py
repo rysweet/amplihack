@@ -18,7 +18,7 @@ Created for Issue #2071: Native Binary Migration with Optional Trace Logging
 
 import json
 import os
-from datetime import UTC, datetime
+from datetime import UTC, datetime  # Python 3.10 compatibility
 from pathlib import Path
 from typing import Any
 

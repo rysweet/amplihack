@@ -472,13 +472,19 @@ class TestNewCheckers(unittest.TestCase):
         INVERTED LOGIC (per issue #1679):
         - Returns FALSE when next steps ARE found (work incomplete - should continue)
         - Returns TRUE when NO next steps found (work is complete)
+
+        UPDATED LOGIC (Issue #2196):
+        - Only STRUCTURED next steps (with bullets/numbers) trigger failure
+        - Bare keywords like "next steps:" without structure should PASS
         """
-        # Transcript with next steps mentioned - should return FALSE (incomplete)
+        # Transcript with STRUCTURED next steps - should return FALSE (incomplete)
         transcript = [
             {
                 "type": "assistant",
                 "message": {
-                    "content": [{"type": "text", "text": "Next steps: implement feature Y"}]
+                    "content": [
+                        {"type": "text", "text": "Next steps:\n- Implement feature Y\n- Add tests"}
+                    ]
                 },
             }
         ]
@@ -1184,7 +1190,8 @@ class TestSDKFirstRefactoring(unittest.TestCase):
                 "power_steering_checker.analyze_consideration", new_callable=AsyncMock
             ) as mock_sdk,
         ):
-            mock_sdk.return_value = False
+            # SDK returns tuple (satisfied, reason)
+            mock_sdk.return_value = (False, "Not satisfied")
 
             # Also mock the heuristic fallback to track if it's called
             with patch.object(checker, "_generic_analyzer", return_value=True) as mock_heuristic:
@@ -1361,7 +1368,8 @@ class TestSDKFirstRefactoring(unittest.TestCase):
                 "power_steering_checker.analyze_consideration", new_callable=AsyncMock
             ) as mock_sdk,
         ):
-            mock_sdk.return_value = True
+            # SDK returns tuple (satisfied, reason)
+            mock_sdk.return_value = (True, None)
 
             with patch.object(
                 checker, "_check_todos_complete", return_value=False

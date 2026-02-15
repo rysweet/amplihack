@@ -411,15 +411,20 @@ class TestRedirectIntegration:
                     + "\n"
                 )
 
-            checker = PowerSteeringChecker(project_root)
-            session_id = "test_integration_001"
+            # Mock SDK_AVAILABLE to use heuristic checkers (Issue #2196)
+            # Without this, SDK may return unexpected results for test data
+            from unittest.mock import patch
 
-            # Run check (should block due to incomplete TODOs)
-            result = checker.check(transcript_file, session_id)
+            with patch("power_steering_checker.SDK_AVAILABLE", False):
+                checker = PowerSteeringChecker(project_root)
+                session_id = "test_integration_001"
 
-            # Verify blocked
-            assert result.decision == "block"
-            assert "todos_complete" in result.reasons
+                # Run check (should block due to incomplete TODOs)
+                result = checker.check(transcript_file, session_id)
+
+                # Verify blocked
+                assert result.decision == "block"
+                assert "todos_complete" in result.reasons
 
             # Verify redirect was saved
             redirects = checker._load_redirects(session_id)

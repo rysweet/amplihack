@@ -6,7 +6,7 @@ The skeleton comments in the parent's content have already been replaced with
 detailed descriptions of the child elements.
 """
 
-from blarify.agents.prompt_templates.base import PromptTemplate
+from amplihack.vendor.blarify.agents.prompt_templates.base import PromptTemplate
 
 # Template for analyzing parent nodes with child context embedded
 PARENT_NODE_ANALYSIS_TEMPLATE = PromptTemplate(
