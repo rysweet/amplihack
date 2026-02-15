@@ -5,7 +5,7 @@ backend-path = ["."]
 
 [project]
 name = "amplihack"
-version = "0.5.16"
+version = "0.5.21"
 description = "Amplifier bundle for agentic coding with comprehensive skills, recipes, and workflows"
 requires-python = ">=3.11"
 dependencies = [
@@ -22,6 +22,7 @@ dependencies = [
     "rich>=13.0.0", # Required for --ui interactive TUI mode
     "azure-identity>=1.12.0", # Azure Service Principal authentication for remote execution
     "kuzu>=0.11.0", # Embedded graph database for memory system
+    "amplihack-memory-lib @ git+https://github.com/rysweet/amplihack-memory-lib.git@v0.1.0", # Standalone memory system for goal-seeking agents
 
     # Blarify vendored code dependencies (using vendored copy in src/amplihack/vendor/blarify, not PyPI package)
     "json-repair>=0.47.7", # JSON repair for blarify LLM provider

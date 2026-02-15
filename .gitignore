@@ -181,3 +181,7 @@ wave*-dedup/
 REVIEW_*.md
 AUTO_VERSION_CODE_REVIEW.md
 *_validation_*/
+
+# Ephemeral test scripts and build artifacts
+test-worktree-isolation.sh
+target/
