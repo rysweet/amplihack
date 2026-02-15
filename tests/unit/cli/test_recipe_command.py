@@ -28,7 +28,7 @@ from amplihack.recipes.models import Recipe, RecipeResult
 
 # Import the command handlers we're testing (will fail until implemented)
 try:
-    from amplihack.cli.recipe_command import (
+    from amplihack.recipe_cli.recipe_command import (
         handle_list,
         handle_run,
         handle_show,
@@ -61,8 +61,10 @@ class TestHandleRun:
         mock_recipe_runner.execute.return_value = successful_result
 
         with (
-            patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser,
-            patch("amplihack.cli.recipe_command.RecipeRunner", return_value=mock_recipe_runner),
+            patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser,
+            patch(
+                "amplihack.recipe_cli.recipe_command.RecipeRunner", return_value=mock_recipe_runner
+            ),
         ):
             mock_parser.return_value.parse_file.return_value = simple_recipe
 
@@ -88,8 +90,10 @@ class TestHandleRun:
         mock_recipe_runner.execute.return_value = successful_result
 
         with (
-            patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser,
-            patch("amplihack.cli.recipe_command.RecipeRunner", return_value=mock_recipe_runner),
+            patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser,
+            patch(
+                "amplihack.recipe_cli.recipe_command.RecipeRunner", return_value=mock_recipe_runner
+            ),
         ):
             mock_parser.return_value.parse_file.return_value = simple_recipe
 
@@ -116,8 +120,10 @@ class TestHandleRun:
         mock_recipe_runner.execute.return_value = successful_result
 
         with (
-            patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser,
-            patch("amplihack.cli.recipe_command.RecipeRunner", return_value=mock_recipe_runner),
+            patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser,
+            patch(
+                "amplihack.recipe_cli.recipe_command.RecipeRunner", return_value=mock_recipe_runner
+            ),
         ):
             mock_parser.return_value.parse_file.return_value = simple_recipe
 
@@ -144,8 +150,10 @@ class TestHandleRun:
         mock_recipe_runner.execute.return_value = failed_result
 
         with (
-            patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser,
-            patch("amplihack.cli.recipe_command.RecipeRunner", return_value=mock_recipe_runner),
+            patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser,
+            patch(
+                "amplihack.recipe_cli.recipe_command.RecipeRunner", return_value=mock_recipe_runner
+            ),
         ):
             mock_parser.return_value.parse_file.return_value = simple_recipe
 
@@ -161,7 +169,7 @@ class TestHandleRun:
 
     def test_run_file_not_found(self) -> None:
         """Test handling of non-existent recipe file."""
-        with patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser:
+        with patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser:
             mock_parser.return_value.parse_file.side_effect = FileNotFoundError("Recipe not found")
 
             exit_code = handle_run(
@@ -176,7 +184,7 @@ class TestHandleRun:
 
     def test_run_invalid_yaml(self) -> None:
         """Test handling of invalid YAML in recipe file."""
-        with patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser:
+        with patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser:
             mock_parser.return_value.parse_file.side_effect = ValueError("Invalid YAML")
 
             exit_code = handle_run(
@@ -200,8 +208,10 @@ class TestHandleRun:
         mock_recipe_runner.execute.return_value = successful_result
 
         with (
-            patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser,
-            patch("amplihack.cli.recipe_command.RecipeRunner", return_value=mock_recipe_runner),
+            patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser,
+            patch(
+                "amplihack.recipe_cli.recipe_command.RecipeRunner", return_value=mock_recipe_runner
+            ),
         ):
             mock_parser.return_value.parse_file.return_value = simple_recipe
 
@@ -229,8 +239,10 @@ class TestHandleRun:
         mock_recipe_runner.execute.return_value = successful_result
 
         with (
-            patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser,
-            patch("amplihack.cli.recipe_command.RecipeRunner", return_value=mock_recipe_runner),
+            patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser,
+            patch(
+                "amplihack.recipe_cli.recipe_command.RecipeRunner", return_value=mock_recipe_runner
+            ),
         ):
             mock_parser.return_value.parse_file.return_value = simple_recipe
 
@@ -258,8 +270,10 @@ class TestHandleRun:
         mock_recipe_runner.execute.return_value = successful_result
 
         with (
-            patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser,
-            patch("amplihack.cli.recipe_command.RecipeRunner", return_value=mock_recipe_runner),
+            patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser,
+            patch(
+                "amplihack.recipe_cli.recipe_command.RecipeRunner", return_value=mock_recipe_runner
+            ),
         ):
             mock_parser.return_value.parse_file.return_value = simple_recipe
 
@@ -294,8 +308,10 @@ class TestHandleRun:
         )
 
         with (
-            patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser,
-            patch("amplihack.cli.recipe_command.RecipeRunner", return_value=mock_recipe_runner),
+            patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser,
+            patch(
+                "amplihack.recipe_cli.recipe_command.RecipeRunner", return_value=mock_recipe_runner
+            ),
         ):
             mock_parser.return_value.parse_file.return_value = recipe_with_context
 
@@ -323,8 +339,10 @@ class TestHandleRun:
         mock_recipe_runner.execute.return_value = successful_result
 
         with (
-            patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser,
-            patch("amplihack.cli.recipe_command.RecipeRunner", return_value=mock_recipe_runner),
+            patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser,
+            patch(
+                "amplihack.recipe_cli.recipe_command.RecipeRunner", return_value=mock_recipe_runner
+            ),
         ):
             mock_parser.return_value.parse_file.return_value = simple_recipe
 
@@ -349,8 +367,10 @@ class TestHandleRun:
         mock_recipe_runner.execute.side_effect = RuntimeError("Unexpected error")
 
         with (
-            patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser,
-            patch("amplihack.cli.recipe_command.RecipeRunner", return_value=mock_recipe_runner),
+            patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser,
+            patch(
+                "amplihack.recipe_cli.recipe_command.RecipeRunner", return_value=mock_recipe_runner
+            ),
         ):
             mock_parser.return_value.parse_file.return_value = simple_recipe
 
@@ -374,7 +394,7 @@ class TestHandleList:
         capsys: pytest.CaptureFixture,
     ) -> None:
         """Test listing all available recipes."""
-        with patch("amplihack.cli.recipe_command.discover_recipes") as mock_discovery:
+        with patch("amplihack.recipe_cli.recipe_command.discover_recipes") as mock_discovery:
             mock_discovery.return_value = sample_recipes
 
             exit_code = handle_list(
@@ -396,7 +416,7 @@ class TestHandleList:
         capsys: pytest.CaptureFixture,
     ) -> None:
         """Test filtering recipes by tag."""
-        with patch("amplihack.cli.recipe_command.discover_recipes") as mock_discovery:
+        with patch("amplihack.recipe_cli.recipe_command.discover_recipes") as mock_discovery:
             mock_discovery.return_value = sample_recipes
 
             exit_code = handle_list(
@@ -419,7 +439,7 @@ class TestHandleList:
         capsys: pytest.CaptureFixture,
     ) -> None:
         """Test filtering recipes by multiple tags (AND logic)."""
-        with patch("amplihack.cli.recipe_command.discover_recipes") as mock_discovery:
+        with patch("amplihack.recipe_cli.recipe_command.discover_recipes") as mock_discovery:
             mock_discovery.return_value = sample_recipes
 
             exit_code = handle_list(
@@ -440,7 +460,7 @@ class TestHandleList:
         capsys: pytest.CaptureFixture,
     ) -> None:
         """Test JSON output format for list."""
-        with patch("amplihack.cli.recipe_command.discover_recipes") as mock_discovery:
+        with patch("amplihack.recipe_cli.recipe_command.discover_recipes") as mock_discovery:
             mock_discovery.return_value = sample_recipes
 
             exit_code = handle_list(
@@ -461,7 +481,7 @@ class TestHandleList:
         capsys: pytest.CaptureFixture,
     ) -> None:
         """Test YAML output format for list."""
-        with patch("amplihack.cli.recipe_command.discover_recipes") as mock_discovery:
+        with patch("amplihack.recipe_cli.recipe_command.discover_recipes") as mock_discovery:
             mock_discovery.return_value = sample_recipes
 
             exit_code = handle_list(
@@ -481,7 +501,7 @@ class TestHandleList:
         capsys: pytest.CaptureFixture,
     ) -> None:
         """Test verbose listing includes full recipe details."""
-        with patch("amplihack.cli.recipe_command.discover_recipes") as mock_discovery:
+        with patch("amplihack.recipe_cli.recipe_command.discover_recipes") as mock_discovery:
             mock_discovery.return_value = sample_recipes
 
             exit_code = handle_list(
@@ -501,7 +521,7 @@ class TestHandleList:
         capsys: pytest.CaptureFixture,
     ) -> None:
         """Test listing when no recipes are found."""
-        with patch("amplihack.cli.recipe_command.discover_recipes") as mock_discovery:
+        with patch("amplihack.recipe_cli.recipe_command.discover_recipes") as mock_discovery:
             mock_discovery.return_value = []
 
             exit_code = handle_list(
@@ -520,7 +540,7 @@ class TestHandleList:
         capsys: pytest.CaptureFixture,
     ) -> None:
         """Test error handling for invalid recipe directory."""
-        with patch("amplihack.cli.recipe_command.discover_recipes") as mock_discovery:
+        with patch("amplihack.recipe_cli.recipe_command.discover_recipes") as mock_discovery:
             mock_discovery.side_effect = FileNotFoundError("Directory not found")
 
             exit_code = handle_list(
@@ -538,7 +558,7 @@ class TestHandleList:
         capsys: pytest.CaptureFixture,
     ) -> None:
         """Test filtering with tags that match no recipes."""
-        with patch("amplihack.cli.recipe_command.discover_recipes") as mock_discovery:
+        with patch("amplihack.recipe_cli.recipe_command.discover_recipes") as mock_discovery:
             mock_discovery.return_value = sample_recipes
 
             exit_code = handle_list(
@@ -562,7 +582,7 @@ class TestHandleValidate:
         capsys: pytest.CaptureFixture,
     ) -> None:
         """Test validation of a valid recipe file."""
-        with patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser:
+        with patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser:
             mock_parser.return_value.parse_file.return_value = simple_recipe
 
             exit_code = handle_validate(
@@ -580,7 +600,7 @@ class TestHandleValidate:
         capsys: pytest.CaptureFixture,
     ) -> None:
         """Test validation of file with invalid YAML syntax."""
-        with patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser:
+        with patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser:
             mock_parser.return_value.parse_file.side_effect = ValueError("Invalid YAML syntax")
 
             exit_code = handle_validate(
@@ -598,7 +618,7 @@ class TestHandleValidate:
         capsys: pytest.CaptureFixture,
     ) -> None:
         """Test validation of recipe missing required fields."""
-        with patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser:
+        with patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser:
             mock_parser.return_value.parse_file.side_effect = ValueError(
                 "Missing required field: steps"
             )
@@ -618,7 +638,7 @@ class TestHandleValidate:
         capsys: pytest.CaptureFixture,
     ) -> None:
         """Test validation of non-existent file."""
-        with patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser:
+        with patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser:
             mock_parser.return_value.parse_file.side_effect = FileNotFoundError("File not found")
 
             exit_code = handle_validate(
@@ -637,7 +657,7 @@ class TestHandleValidate:
         capsys: pytest.CaptureFixture,
     ) -> None:
         """Test verbose validation includes detailed checks."""
-        with patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser:
+        with patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser:
             mock_parser.return_value.parse_file.return_value = simple_recipe
 
             exit_code = handle_validate(
@@ -657,7 +677,7 @@ class TestHandleValidate:
         capsys: pytest.CaptureFixture,
     ) -> None:
         """Test JSON output format for validation."""
-        with patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser:
+        with patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser:
             mock_parser.return_value.parse_file.return_value = simple_recipe
 
             exit_code = handle_validate(
@@ -675,7 +695,7 @@ class TestHandleValidate:
         capsys: pytest.CaptureFixture,
     ) -> None:
         """Test validation with multiple error messages."""
-        with patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser:
+        with patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser:
             mock_parser.return_value.parse_file.side_effect = ValueError(
                 "Multiple errors: missing name, invalid step type"
             )
@@ -701,7 +721,7 @@ class TestHandleShow:
         capsys: pytest.CaptureFixture,
     ) -> None:
         """Test showing detailed recipe information."""
-        with patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser:
+        with patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser:
             mock_parser.return_value.parse_file.return_value = simple_recipe
 
             exit_code = handle_show(
@@ -722,7 +742,7 @@ class TestHandleShow:
         capsys: pytest.CaptureFixture,
     ) -> None:
         """Test showing recipe with step details."""
-        with patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser:
+        with patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser:
             mock_parser.return_value.parse_file.return_value = complex_recipe
 
             exit_code = handle_show(
@@ -743,7 +763,7 @@ class TestHandleShow:
         capsys: pytest.CaptureFixture,
     ) -> None:
         """Test showing recipe with context variables."""
-        with patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser:
+        with patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser:
             mock_parser.return_value.parse_file.return_value = complex_recipe
 
             exit_code = handle_show(
@@ -763,7 +783,7 @@ class TestHandleShow:
         capsys: pytest.CaptureFixture,
     ) -> None:
         """Test JSON output format for show."""
-        with patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser:
+        with patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser:
             mock_parser.return_value.parse_file.return_value = simple_recipe
 
             exit_code = handle_show(
@@ -784,7 +804,7 @@ class TestHandleShow:
         capsys: pytest.CaptureFixture,
     ) -> None:
         """Test YAML output format for show."""
-        with patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser:
+        with patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser:
             mock_parser.return_value.parse_file.return_value = simple_recipe
 
             exit_code = handle_show(
@@ -803,7 +823,7 @@ class TestHandleShow:
         capsys: pytest.CaptureFixture,
     ) -> None:
         """Test error handling for non-existent recipe."""
-        with patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser:
+        with patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser:
             mock_parser.return_value.parse_file.side_effect = FileNotFoundError("File not found")
 
             exit_code = handle_show(
@@ -824,7 +844,7 @@ class TestHandleShow:
         capsys: pytest.CaptureFixture,
     ) -> None:
         """Test showing recipe with minimal details (no steps/context)."""
-        with patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser:
+        with patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser:
             mock_parser.return_value.parse_file.return_value = simple_recipe
 
             exit_code = handle_show(
@@ -845,7 +865,7 @@ class TestErrorHandling:
 
     def test_graceful_keyboard_interrupt(self) -> None:
         """Test graceful handling of Ctrl+C during execution."""
-        with patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser:
+        with patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser:
             mock_parser.return_value.parse_file.side_effect = KeyboardInterrupt()
 
             exit_code = handle_run(
@@ -860,7 +880,7 @@ class TestErrorHandling:
 
     def test_permission_denied_error(self) -> None:
         """Test handling of permission denied errors."""
-        with patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser:
+        with patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser:
             mock_parser.return_value.parse_file.side_effect = PermissionError("Permission denied")
 
             exit_code = handle_run(
@@ -899,8 +919,10 @@ class TestContextMerging:
         )
 
         with (
-            patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser,
-            patch("amplihack.cli.recipe_command.RecipeRunner", return_value=mock_recipe_runner),
+            patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser,
+            patch(
+                "amplihack.recipe_cli.recipe_command.RecipeRunner", return_value=mock_recipe_runner
+            ),
         ):
             mock_parser.return_value.parse_file.return_value = recipe
 
@@ -930,8 +952,10 @@ class TestContextMerging:
         )
 
         with (
-            patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser,
-            patch("amplihack.cli.recipe_command.RecipeRunner", return_value=mock_recipe_runner),
+            patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser,
+            patch(
+                "amplihack.recipe_cli.recipe_command.RecipeRunner", return_value=mock_recipe_runner
+            ),
         ):
             mock_parser.return_value.parse_file.return_value = recipe
 
@@ -961,8 +985,10 @@ class TestContextMerging:
         )
 
         with (
-            patch("amplihack.cli.recipe_command.RecipeParser") as mock_parser,
-            patch("amplihack.cli.recipe_command.RecipeRunner", return_value=mock_recipe_runner),
+            patch("amplihack.recipe_cli.recipe_command.RecipeParser") as mock_parser,
+            patch(
+                "amplihack.recipe_cli.recipe_command.RecipeRunner", return_value=mock_recipe_runner
+            ),
         ):
             mock_parser.return_value.parse_file.return_value = recipe
 
