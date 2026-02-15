@@ -316,12 +316,12 @@ steps:
       
       # Output structured JSON for subsequent steps
       cat << EOF
-{
-  "worktree_path": "${WORKTREE_PATH}",
-  "branch_name": "${BRANCH_NAME}",
-  "created": true
-}
-EOF
+      {
+        "worktree_path": "${WORKTREE_PATH}",
+        "branch_name": "${BRANCH_NAME}",
+        "created": true
+      }
+      EOF
     output: "worktree_setup"
     parse_json: true
 
