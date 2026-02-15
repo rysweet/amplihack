@@ -955,6 +955,11 @@ def _ensure_amplihack_staged() -> None:
     if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
         print(f"✓ Staged {len(copied)} directories to {staging_dir}")
 
+    # Configure Claude Code hooks in ~/.claude/settings.json
+    from .settings import ensure_settings_json
+
+    ensure_settings_json()
+
     # Fix global ~/.claude/settings.json statusline path if needed
     _fix_global_statusline_path()
 
