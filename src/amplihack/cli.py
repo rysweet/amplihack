@@ -673,6 +673,21 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         help="Skip confirmation prompt (use with --no-dry-run)",
     )
 
+    # Goal agent generator command
+    new_parser = subparsers.add_parser("new", help="Generate a new goal-seeking agent")
+    new_parser.add_argument("--file", "-f", required=True, type=Path, help="Path to prompt.md file")
+    new_parser.add_argument(
+        "--output", "-o", type=Path, help="Output directory (default: ./goal_agents)"
+    )
+    new_parser.add_argument("--name", "-n", help="Custom agent name (auto-generated if omitted)")
+    new_parser.add_argument(
+        "--skills-dir",
+        type=Path,
+        help="Custom skills directory (default: .claude/agents/amplihack)",
+    )
+    new_parser.add_argument("--enable-memory", action="store_true", help="Enable memory/learning")
+    new_parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
+
     # Recipe commands
     recipe_parser = subparsers.add_parser("recipe", help="Recipe management and execution commands")
     recipe_subparsers = recipe_parser.add_subparsers(
@@ -719,7 +734,6 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     )
     show_parser.add_argument("--no-steps", action="store_true", help="Hide step details")
     show_parser.add_argument("--no-context", action="store_true", help="Hide context variables")
-
     # Mode detection commands
     mode_parser = subparsers.add_parser("mode", help="Claude installation mode commands")
     mode_subparsers = mode_parser.add_subparsers(dest="mode_command", help="Mode subcommands")
@@ -1562,6 +1576,19 @@ def main(argv: list[str] | None = None) -> int:
         create_parser().print_help()
         return 1
 
+    elif args.command == "new":
+        from .goal_agent_generator.cli import new_goal_agent
+
+        # Convert argparse args to match click signature
+        return new_goal_agent.callback(
+            file=args.file,
+            output=args.output,
+            name=args.name,
+            skills_dir=args.skills_dir,
+            verbose=args.verbose,
+            enable_memory=args.enable_memory,
+        )
+
     elif args.command == "recipe":
         from .recipe_cli.recipe_command import handle_list, handle_run, handle_show, handle_validate
 
@@ -1610,7 +1637,6 @@ def main(argv: list[str] | None = None) -> int:
 
         create_parser().print_help()
         return 1
-
     elif args.command == "mode":
         from .mode_detector import MigrationHelper, ModeDetector
 
