@@ -1,7 +1,7 @@
-# Version Bump Check with Auto-Fix
+# Version Bump Check with Auto-Fix (PR-level)
 # Ensures that all PRs to main branch bump the version in pyproject.toml
 # Automatically bumps patch version if not bumped by the author
-# This prevents merging code without updating the version number
+# Note: Version will also be auto-bumped on merge if not done in PR (see auto-version-on-merge.yml)
 
 name: Version Check
 

@@ -1,0 +1,82 @@
+scenario:
+  name: "Documentation Analyzer - Learning Validation"
+  description: "Verify doc-analyzer agent learns from Microsoft Learn documentation and improves quality scores over multiple runs"
+  type: cli
+  tags: [learning, agent1, ms-learn, critical]
+  timeout: 120s
+
+  prerequisites:
+    - "amplihack-memory-lib installed"
+    - "doc-analyzer agent generated"
+    - "Internet connection available for MS Learn"
+
+  environment:
+    variables:
+      PYTHONPATH: "/home/azureuser/src/amplihack3/generated-agents/doc-analyzer"
+
+  steps:
+    # Run 1: Baseline (no prior memory)
+    - action: launch
+      target: "python"
+      args: ["cli.py", "analyze", "https://learn.microsoft.com/en-us/azure/functions/"]
+      cwd: "/home/azureuser/src/amplihack3/generated-agents/doc-analyzer"
+      description: "First analysis - no learned patterns"
+
+    - action: wait_for_output
+      contains: "Quality Score:"
+      timeout: 30s
+
+    - action: capture_output
+      save_as: "run1_output.txt"
+      stream: "stdout"
+
+    - action: verify_output
+      matches: "Quality Score: \\d+\\.\\d+"
+      description: "Should output quality score"
+
+    - action: verify_exit_code
+      expected: 0
+
+    # Run 2: With learned patterns
+    - action: launch
+      target: "python"
+      args: ["cli.py", "analyze", "https://learn.microsoft.com/en-us/azure/azure-functions/"]
+      cwd: "/home/azureuser/src/amplihack3/generated-agents/doc-analyzer"
+      description: "Second analysis - should apply learned patterns"
+
+    - action: wait_for_output
+      contains: "Quality Score:"
+      timeout: 30s
+
+    - action: capture_output
+      save_as: "run2_output.txt"
+      stream: "stdout"
+
+    # Verify learning improvement
+    - action: verify_output
+      contains: "Patterns Applied:"
+      description: "Should show patterns were loaded from memory"
+
+    - action: verify_exit_code
+      expected: 0
+
+    # Run 3: Validate metrics show improvement
+    - action: launch
+      target: "python"
+      args: ["cli.py", "metrics"]
+      cwd: "/home/azureuser/src/amplihack3/generated-agents/doc-analyzer"
+      description: "Check learning metrics"
+
+    - action: verify_output
+      contains: "Learning Trend: IMPROVING"
+      description: "Metrics should show improvement trend"
+
+  cleanup:
+    - action: delete_file
+      path: "/home/azureuser/src/amplihack3/generated-agents/doc-analyzer/.memory/test.db"
+      continue_on_failure: true
+
+  success_criteria:
+    - "Run 2 quality score > Run 1 quality score by >15%"
+    - "Memory shows stored patterns from Run 1"
+    - "Learning metrics indicate improvement trend"

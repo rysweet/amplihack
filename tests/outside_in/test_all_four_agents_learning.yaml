@@ -1,0 +1,131 @@
+scenario:
+  name: "All Four Agents - Learning Validation (E2E)"
+  description: "Comprehensive end-to-end test validating all four goal-seeking agents demonstrate measurable learning"
+  type: cli
+  tags: [e2e, learning, all-agents, critical]
+  timeout: 300s
+
+  prerequisites:
+    - "amplihack-memory-lib installed"
+    - "All four agents generated (doc-analyzer, pattern-recognizer, bug-predictor, performance-optimizer)"
+    - "Python 3.10+ available"
+
+  steps:
+    # Agent 1: Documentation Analyzer
+    - action: launch
+      target: "python"
+      args: ["-m", "pytest", "tests/test_learning.py", "-v"]
+      cwd: "/home/azureuser/src/amplihack3/generated-agents/doc-analyzer"
+      description: "Run doc-analyzer learning tests"
+
+    - action: wait_for_output
+      contains: "PASSED"
+      timeout: 60s
+
+    - action: verify_output
+      contains: "test_demonstrates_quality_improvement"
+      description: "Should pass quality improvement test"
+
+    - action: capture_output
+      save_as: "agent1_test_output.txt"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "All doc-analyzer tests must pass"
+
+    # Agent 2: Pattern Recognizer
+    - action: launch
+      target: "python"
+      args: ["-m", "pytest", "tests/test_pattern_recognizer_learning.py", "-v"]
+      cwd: "/home/azureuser/src/amplihack3/generated-agents/pattern-recognizer"
+      description: "Run pattern-recognizer learning tests"
+
+    - action: wait_for_output
+      contains: "PASSED"
+      timeout: 60s
+
+    - action: verify_output
+      contains: "test_confidence_improves_with_memory"
+      description: "Should pass confidence improvement test"
+
+    - action: capture_output
+      save_as: "agent2_test_output.txt"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "All pattern-recognizer tests must pass"
+
+    # Agent 3: Bug Predictor
+    - action: launch
+      target: "python"
+      args: ["-m", "pytest", "tests/test_learning.py", "-v"]
+      cwd: "/home/azureuser/src/amplihack3/generated-agents/bug-predictor"
+      description: "Run bug-predictor learning tests"
+
+    - action: wait_for_output
+      contains: "PASSED"
+      timeout: 60s
+
+    - action: verify_output
+      contains: "test_prediction_accuracy_improves"
+      description: "Should pass accuracy improvement test"
+
+    - action: capture_output
+      save_as: "agent3_test_output.txt"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "All bug-predictor tests must pass"
+
+    # Agent 4: Performance Optimizer
+    - action: launch
+      target: "python"
+      args: ["-m", "pytest", "tests/test_learning.py", "-v"]
+      cwd: "/home/azureuser/src/amplihack3/generated-agents/performance-optimizer"
+      description: "Run performance-optimizer learning tests"
+
+    - action: wait_for_output
+      contains: "PASSED"
+      timeout: 60s
+
+    - action: verify_output
+      contains: "test_optimization_confidence_improves"
+      description: "Should pass confidence improvement test"
+
+    - action: capture_output
+      save_as: "agent4_test_output.txt"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "All performance-optimizer tests must pass"
+
+    # Verify learning metrics across all agents
+    - action: launch
+      target: "python"
+      args:
+        [
+          "/home/azureuser/src/amplihack3/.claude/runtime/logs/step13_local_testing/test_all_four_agents_learning.py",
+        ]
+      description: "Run comprehensive cross-agent learning validation"
+
+    - action: wait_for_output
+      contains: "VERIFICATION GATE PASSED"
+      timeout: 30s
+
+    - action: verify_output
+      contains: "Agents Passing: 4/4"
+      description: "All four agents must demonstrate learning"
+
+    - action: verify_exit_code
+      expected: 0
+
+  cleanup:
+    - action: delete_file
+      path: "/home/azureuser/src/amplihack3/generated-agents/*/memory/*.db"
+      continue_on_failure: true
+
+  success_criteria:
+    - "All four agents pass their individual learning tests"
+    - "Cross-agent validation shows 4/4 agents learning"
+    - "Each agent exceeds its improvement target (15%-70%)"
+    - "Memory persistence verified across test runs"
