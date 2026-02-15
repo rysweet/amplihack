@@ -5,6 +5,8 @@ Detects when code files are modified via Edit/Write tools and triggers
 incremental reindexing if the index becomes stale.
 """
 
+from __future__ import annotations
+
 import sys
 from pathlib import Path
 from typing import Any
