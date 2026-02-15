@@ -19,6 +19,24 @@ strict: true
 
 This workflow automatically merges safe Dependabot dependency updates after tests pass.
 
+**Activation**: Only runs on pull requests created by `dependabot[bot]`. All other PRs are skipped.
+
+## Activation Check
+
+**First, check if this is a Dependabot PR:**
+
+```javascript
+const isDependabotPR = context.payload.pull_request?.user?.login === "dependabot[bot]";
+
+if (!isDependabotPR) {
+  console.log("⏭️  Skipping: Not a Dependabot PR");
+  console.log(`PR author: ${context.payload.pull_request?.user?.login}`);
+  return { skip: true, reason: "Not a Dependabot PR" };
+}
+
+console.log("✅ Dependabot PR detected - proceeding with auto-merge workflow");
+```
+
 ## Workflow
 
 1. **Detect Dependabot PRs**: Only run on pull requests created by Dependabot

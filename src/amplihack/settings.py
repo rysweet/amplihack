@@ -37,7 +37,7 @@ SETTINGS_TEMPLATE = {
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "$HOME/.claude/tools/amplihack/hooks/session_start.py",
+                        "command": "$HOME/.amplihack/.claude/tools/amplihack/hooks/session_start.py",
                         "timeout": 10,
                     }
                 ]
@@ -48,7 +48,7 @@ SETTINGS_TEMPLATE = {
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "$HOME/.claude/tools/amplihack/hooks/stop.py",
+                        "command": "$HOME/.amplihack/.claude/tools/amplihack/hooks/stop.py",
                         "timeout": 120,
                     }
                 ]
@@ -60,7 +60,7 @@ SETTINGS_TEMPLATE = {
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "$HOME/.claude/tools/amplihack/hooks/post_tool_use.py",
+                        "command": "$HOME/.amplihack/.claude/tools/amplihack/hooks/post_tool_use.py",
                     }
                 ],
             }
@@ -70,7 +70,7 @@ SETTINGS_TEMPLATE = {
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "$HOME/.claude/tools/amplihack/hooks/pre_compact.py",
+                        "command": "$HOME/.amplihack/.claude/tools/amplihack/hooks/pre_compact.py",
                         "timeout": 30,
                     }
                 ]
