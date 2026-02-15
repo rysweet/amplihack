@@ -792,15 +792,10 @@ class ClaudeLauncher:
         Returns:
             Exit code from Claude process.
         """
-        import time
-
-        from .settings_manager import SettingsManager
-
-        settings_manager = SettingsManager(
-            settings_path=Path.home() / ".claude" / "settings.json",
-            session_id=f"launch_{int(time.time())}",
-            non_interactive=False,
-        )
+        # NOTE: We don't use SettingsManager here because amplihack launch makes
+        # PERMANENT changes (adding hooks via ensure_settings_json()) that should
+        # persist across sessions. SettingsManager is for TEMPORARY changes that
+        # need to be restored.
 
         if not self.prepare_launch():
             return 1
@@ -901,15 +896,6 @@ class ClaudeLauncher:
             print(f"Error launching Claude: {e}")
             return 1
         finally:
-            # Restore settings.json backup if exists
-            if settings_manager.backup_path:
-                if settings_manager.restore_backup():
-                    print("  ✅ Restored settings.json from backup")
-                else:
-                    print(
-                        "  ⚠️  Could not restore settings.json - backup remains for manual recovery"
-                    )
-
             # Clean up proxy
             if self.proxy_manager:
                 self.proxy_manager.stop_proxy()
