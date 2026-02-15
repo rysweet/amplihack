@@ -170,9 +170,11 @@ async function testClaudeCodePlugin() {
   // Wait for Plugins screen to load
   await sleep(3000);
 
-  // Navigate to "Installed" tab (press Tab or Right arrow)
-  log("Navigating to Installed tab...");
-  ptyProcess.write("\t"); // Tab key to switch tabs
+  // Tab order is: Discover -> Installed -> Marketplaces
+  // Default tab is "Discover", so press right arrow once to reach "Installed"
+  // Key bindings: right arrow = tabs:next, left arrow = tabs:previous
+  log("Navigating to Installed tab (right arrow from Discover)...");
+  ptyProcess.write("\x1b[C"); // Right arrow = tabs:next
 
   // Wait for Installed tab to load
   await sleep(3000);
