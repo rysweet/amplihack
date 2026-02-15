@@ -42,8 +42,6 @@ class ClaudeSDKAdapter:
         prompt: str,
         agent_name: str | None = None,
         agent_system_prompt: str | None = None,
-        mode: str | None = None,
-        working_dir: str = ".",
     ) -> str:
         """Execute an agent step via the Claude Agent SDK."""
         sdk = self._get_sdk()
@@ -56,10 +54,14 @@ class ClaudeSDKAdapter:
                 f"[Task]\n{prompt}"
             )
 
+        # Import ClaudeAgentOptions lazily to avoid hard dependency
+        from claude_agent_sdk import ClaudeAgentOptions  # type: ignore[import-untyped]
+
+        options = ClaudeAgentOptions(model=self._model)
         result = asyncio.run(
             sdk.query(
                 prompt=enriched_prompt,
-                model=self._model,
+                options=options,
             )
         )
         return str(result)
