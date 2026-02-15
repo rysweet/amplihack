@@ -26,10 +26,7 @@ safe-outputs:
 tools:
   github:
     toolsets: [default]
-  edit:
-    enabled: true
-  bash:
-    enabled: true
+  bash: true
 
 timeout-minutes: 30
 strict: true

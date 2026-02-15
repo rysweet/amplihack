@@ -6,8 +6,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-  issues: write
-  pull-requests: write
+  pull-requests: read
 engine: copilot
 tools:
   github:
@@ -34,11 +33,6 @@ safe-outputs:
 timeout-minutes: 30
 imports:
   - shared/mood.md
-retry:
-  max-attempts: 3
-  backoff: exponential
-  base-delay: 60
-  max-delay: 300
 ---
 
 # PR Triage Agent

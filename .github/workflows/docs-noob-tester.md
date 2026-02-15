@@ -1,3 +1,25 @@
+---
+name: Documentation Noob Tester
+description: Automatically review documentation from a beginner's perspective to identify confusing or unclear sections and suggest improvements
+on:
+  schedule:
+    - cron: "0 9 * * 1" # Weekly on Monday at 9 AM UTC
+  workflow_dispatch:
+permissions:
+  contents: read
+safe-outputs:
+  create-issue:
+    max: 10
+  add-comment:
+    max: 5
+tools:
+  github:
+    toolsets: [default]
+  bash: true
+timeout-minutes: 30
+strict: true
+---
+
 # Documentation Noob Tester Workflow
 
 **Purpose**: Automatically review documentation from a beginner's perspective to identify confusing or unclear sections and suggest improvements.

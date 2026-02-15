@@ -1,15 +1,18 @@
 ---
-on: pull_request
+name: Dependabot Auto-Merge
+description: Automatically merges safe Dependabot dependency updates after tests pass
+on:
+  pull_request:
+    types: [opened, synchronize]
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
+  pull-requests: read
   checks: read
 tools:
   github:
-safe-outputs:
-  merge-pr:
-    require-checks: true
-    require-approval: false
+    toolsets: [default]
+timeout-minutes: 10
+strict: true
 ---
 
 # Dependabot Auto-Merge

@@ -1,4 +1,5 @@
 ---
+name: Static Analysis Report
 description: Scans Python and Rust code for security vulnerabilities and code quality issues using comprehensive static analysis tools
 on:
   schedule:
@@ -6,7 +7,6 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-  issues: write
   pull-requests: read
 engine: claude
 tools:
@@ -15,7 +15,7 @@ tools:
       - default
       - actions
   cache-memory: true
-  timeout: 600
+  bash: true
 safe-outputs:
   create-issue:
     labels: ["security", "static-analysis"]

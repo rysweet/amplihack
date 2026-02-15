@@ -1,14 +1,12 @@
 ---
+name: Weekly Issue Summary
 description: Creates weekly summary of issue activity including trends, charts, and insights every Monday morning
-timeout-minutes: 20
-strict: true
 on:
   schedule:
     - cron: "0 14 * * 1" # Weekly on Mondays at 2 PM UTC (9 AM EST / 6 AM PST)
   workflow_dispatch:
 permissions:
   issues: read
-  discussions: write
 tracker-id: weekly-issue-summary
 engine: copilot
 network:
@@ -19,9 +17,7 @@ network:
 sandbox:
   agent: awf # Firewall enabled
 tools:
-  edit:
-  bash:
-    - "*"
+  bash: true
   github:
     lockdown: true
     toolsets:
@@ -33,10 +29,8 @@ safe-outputs:
     title-prefix: "[Weekly Summary] "
     category: "Announcements"
     close-older-discussions: true
-imports:
-  - shared/mood.md
-  - shared/reporting.md
-  - shared/trends.md
+timeout-minutes: 20
+strict: true
 ---
 
 # Weekly Issue Summary for amplihack4

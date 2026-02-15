@@ -7,11 +7,12 @@ on:
     - cron: "0 0 * * 0" # Weekly on Sunday at midnight UTC
 permissions:
   contents: read
-  issues: write
   pull-requests: read
 engine: codex
 tools:
   bash: true
+  github:
+    toolsets: [default]
 safe-outputs:
   create-issue:
     expires: 2d
@@ -39,8 +40,8 @@ Detect and report code duplication by:
 ## Context
 
 - **Repository**: ${{ github.repository }}
-- **Ref**: ${{ github.ref }}
-- **Triggered by**: @${{ github.actor }}
+- **Ref**: ${{ github.repository }}
+- **Triggered by**: Workflow automation
 
 ## Analysis Workflow
 
@@ -183,7 +184,7 @@ For each distinct duplication pattern found, create a separate issue using this 
 ````markdown
 # 🔍 Duplicate Code Detected: [Pattern Name]
 
-_Analysis of ${{ github.ref }}_
+_Analysis of ${{ github.repository }}_
 
 ## Summary
 
@@ -234,7 +235,7 @@ _Analysis of ${{ github.ref }}_
 
 - **Analyzed Files**: [count]
 - **Detection Method**: Bash pattern matching and semantic analysis
-- **Ref**: ${{ github.ref }}
+- **Ref**: ${{ github.repository }}
 - **Analysis Date**: [timestamp]
 
 ````

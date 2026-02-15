@@ -1,44 +1,52 @@
 ---
-
 name: Documentation Unbloat
-description: |
-Systematically reviews and simplifies documentation by removing verbosity while
-preserving technical accuracy and completeness. Follows amplihack's ruthless
-simplicity principle.
-version: 1.0.0
-author: amplihack4
-category: documentation
-tags: [documentation, maintenance, simplification, automation]
-
+description: Systematically reviews and simplifies documentation by removing verbosity while preserving technical accuracy and completeness
 on:
-schedule: # Monthly execution on the 1st day at 02:00 UTC - cron: "0 2 1 \* \*"
-workflow_dispatch:
-inputs:
-target_path:
-description: 'Specific documentation path to unbloat (e.g., docs/memory/)'
-required: false
-default: 'docs/'
-dry_run:
-description: 'Preview changes without creating PR'
-required: false
-default: 'false'
-
+  schedule:
+    - cron: "0 2 1 * *" # Monthly execution on the 1st day at 02:00 UTC
+  workflow_dispatch:
 permissions:
-contents: read
-pull-requests: write
-issues: read
-
-jobs:
-unbloat-documentation:
-name: Unbloat Documentation
-runs-on: ubuntu-latest
+  contents: read
+safe-outputs:
+  create-pull-request:
+    title-prefix: "[docs] "
+    labels: [documentation, automation, cleanup]
+tools:
+  github:
+    toolsets: [default]
+  bash: true
 timeout-minutes: 45
+strict: true
+---
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
+# Documentation Unbloat Workflow
+
+Systematically reviews and simplifies documentation by removing verbosity while preserving technical accuracy and completeness. Follows amplihack's ruthless simplicity principle.
+
+## Analysis and Simplification
+
+The workflow:
+
+1. **Scans documentation** in target path for bloat patterns
+2. **Identifies issues** like excessive bullets, long paragraphs, redundant phrases
+3. **Generates recommendations** for simplification
+4. **Creates pull request** with proposed changes (unless dry run mode)
+
+## Execution
+
+Execute the workflow with bash commands to:
+
+1. **Find documentation files** in the docs/ directory
+2. **Analyze content** for bloat patterns:
+   - Excessive bullet points (more than 15 consecutive)
+   - Very long paragraphs (more than 300 words)
+   - Redundant phrases and filler words
+   - Duplicate section headings
+   - Near-empty sections
+3. **Generate recommendations** for simplification
+4. **Create pull request** with proposed changes
+
+Start the documentation unbloat analysis now by finding and analyzing markdown files in the documentation directory
 
       - name: Setup Python
         uses: actions/setup-python@v6

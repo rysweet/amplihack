@@ -10,8 +10,7 @@ on:
     types: [opened, edited, synchronize]
 permissions:
   contents: read
-  pull-requests: write
-  issues: write
+  pull-requests: read
   actions: read
 tools:
   github:
@@ -867,11 +866,9 @@ safe-outputs:
   close-issue:
     max: 10
     target: "*"
-    reason: spam
   close-pull-request:
     max: 10
     target: "*"
-    reason: spam
   mentions:
     allowed: ["@pelikhan"]
   threat-detection: false

@@ -1,27 +1,25 @@
+---
+name: Issue Classifier
+description: Automatically classifies and labels issues based on content analysis and predefined categories
+on:
+  issues:
+    types: [opened]
+permissions:
+  contents: read
+safe-outputs:
+  add-labels:
+    max: 1
+    allowed: [bug, feature, enhancement, documentation]
+tools:
+  github:
+    toolsets: [default]
+timeout-minutes: 5
+strict: true
+---
+
 # Issue Classifier
 
-**Name:** Issue Classifier
-
 **Description:** Automatically classifies and labels issues based on content analysis and predefined categories
-
-**Trigger:** Issues (opened)
-
-**Reaction:** 👀
-
-**Permissions:**
-
-- contents: read
-- issues: write
-
-**Safe Outputs:** add-labels (allowed values: bug, feature, enhancement, documentation, max: 1)
-
-**Timeout:** 5 minutes
-
-**Imports:** shared/mood.md
-
-**Strict Mode:** true
-
----
 
 ## Objective
 

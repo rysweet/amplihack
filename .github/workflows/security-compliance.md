@@ -1,13 +1,6 @@
-# Security Compliance Campaign Workflow
-
-## YAML Configuration
-
-```yaml
+---
 name: Security Compliance Campaign
 description: Fix critical vulnerabilities before audit deadline with full tracking and reporting
-timeout-minutes: 30
-strict: true
-
 on:
   workflow_dispatch:
     inputs:
@@ -22,30 +15,26 @@ on:
         description: "Maximum vulnerabilities to process"
         required: false
         default: "500"
-
 permissions:
   contents: read
-  security-events: read
-
 engine: copilot
-
 safe-outputs:
   create-issue:
     expires: 2d
     max: 100
     labels: [security, campaign-tracker, cookie]
     group: true
-
 tools:
   github:
     toolsets: [repos, search, code_security]
   repo-memory:
     branch-name: memory/campaigns
     file-glob: "memory/campaigns/security-compliance-*/**"
+timeout-minutes: 30
+strict: true
+---
 
-imports:
-  - shared/mood.md
-```
+# Security Compliance Campaign Workflow
 
 ## Workflow Overview
 
