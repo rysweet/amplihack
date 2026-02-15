@@ -204,6 +204,7 @@ Document-Driven Development is a systematic methodology where documentation come
 Code-enforced workflow execution engine with declarative YAML recipes.
 
 - [Recipe Runner Overview](recipes/README.md) - Architecture, YAML format, and creating custom recipes
+- [UltraThink Recipe Runner Integration](recipes/RECIPE_RUNNER_ULTRATHINK_INTEGRATION.md) - How ultrathink uses Recipe Runner for code-enforced workflow execution
 - [Recipe CLI Commands How-To](howto/recipe-cli-commands.md) - Task-oriented guide for using recipe commands
 - [Recipe CLI Reference](reference/recipe-cli-reference.md) - Complete command-line documentation
 
