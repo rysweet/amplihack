@@ -182,3 +182,8 @@ __all__ = [
     # Main
     "main",
 ]
+
+# Auto-install memory library if needed (for learning agents)
+from .memory_auto_install import ensure_memory_lib_installed
+
+ensure_memory_lib_installed()
