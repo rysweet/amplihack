@@ -58,12 +58,18 @@ logger = logging.getLogger(__name__)
     is_flag=True,
     help="Enable verbose output",
 )
+@click.option(
+    "--enable-memory",
+    is_flag=True,
+    help="Enable memory/learning capabilities",
+)
 def new_goal_agent(
     file: Path,
     output: Path | None,
     name: str | None,
     skills_dir: Path | None,
     verbose: bool,
+    enable_memory: bool,
 ) -> int:
     """
     Generate a new goal-seeking agent from a prompt file.
@@ -71,6 +77,7 @@ def new_goal_agent(
     Example:
         amplihack new --file my_goal.md
         amplihack new --file my_goal.md --name my-agent --output ./agents
+        amplihack new --file my_goal.md --enable-memory
     """
     # Configure logging
     log_level = logging.DEBUG if verbose else logging.INFO
@@ -121,10 +128,14 @@ def new_goal_agent(
         # Stage 3: Assemble bundle
         click.echo("\n[4/4] Assembling agent bundle...")
         assembler = AgentAssembler()
-        bundle = assembler.assemble(goal_definition, execution_plan, skills, bundle_name=name)
+        bundle = assembler.assemble(
+            goal_definition, execution_plan, skills, bundle_name=name, enable_memory=enable_memory
+        )
 
         click.echo(f"  Bundle name: {bundle.name}")
         click.echo(f"  Bundle ID: {bundle.id}")
+        if enable_memory:
+            click.echo("  Memory: Enabled")
 
         # Stage 4: Package agent
         click.echo("\nPackaging agent...")

@@ -1,0 +1,40 @@
+# Memory Configuration for Documentation Analyzer Agent
+
+agent_name: doc-analyzer
+description: Learning agent that analyzes Microsoft Learn documentation patterns
+
+# Memory storage configuration
+memory:
+  # Store experiences in local memory
+  backend: local
+  storage_path: .doc-analyzer-memory
+
+  # Experience retention
+  max_experiences: 1000
+  retention_days: 90
+
+  # Learning parameters
+  learning:
+    relevance_threshold: 0.6
+    max_retrieval: 10
+    similarity_method: cosine
+
+# Experience types
+experience_types:
+  - SUCCESS # High-quality documentation (score >= 70)
+  - FAILURE # Low-quality documentation (score < 70)
+  - PATTERN # Identified documentation pattern
+
+# Context dimensions for experience retrieval
+context_keys:
+  - type # documentation_analysis
+  - url
+  - score_category # high, medium, low
+  - timestamp
+
+# Metrics tracking
+metrics:
+  enabled: true
+  track_learning_rate: true
+  track_quality_improvement: true
+  export_format: json
