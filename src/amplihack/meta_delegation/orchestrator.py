@@ -147,14 +147,68 @@ class MetaDelegationResult:
 class MetaDelegationOrchestrator:
     """Orchestrates complete meta-delegation lifecycle."""
 
-    def __init__(self):
-        """Initialize orchestrator."""
+    def __init__(
+        self,
+        persona: str = "guide",
+        platform: str = "claude_code",
+        working_dir: str | None = None,
+        timeout: float = 30.0,
+        **_kwargs: Any,  # Accept any additional parameters for forward compatibility
+    ):
+        """Initialize orchestrator.
+
+        Args:
+            persona: Persona type (guide, qa_engineer, architect, junior_dev)
+            platform: Platform name (claude_code, copilot, amplifier)
+            working_dir: Working directory for subprocess execution
+            timeout: Default timeout in seconds
+        """
+        self.persona = persona
+        self.platform = platform
+        self.working_dir = working_dir or os.getcwd()
+        self.timeout = timeout
         self.platform_cli: Any | None = None
         self.persona_strategy: Any | None = None
         self.state_machine: SubprocessStateMachine | None = None
         self.evidence_collector: EvidenceCollector | None = None
         self.success_evaluator: SuccessCriteriaEvaluator | None = None
         self.scenario_generator: GadugiScenarioGenerator | None = None
+
+    def run(
+        self,
+        goal: str,
+        success_criteria: str,
+        context: str = "",
+        timeout: float | None = None,
+        enable_scenarios: bool = False,
+        environment: dict[str, str] | None = None,
+        **_kwargs: Any,  # Accept any additional parameters
+    ) -> MetaDelegationResult:
+        """Run orchestration with instance configuration.
+
+        Args:
+            goal: Task goal
+            success_criteria: Success criteria
+            context: Additional context
+            timeout: Timeout in seconds (overrides instance timeout)
+            enable_scenarios: Generate test scenarios
+            environment: Environment variables
+
+        Returns:
+            MetaDelegationResult
+        """
+        timeout_minutes = (timeout if timeout is not None else self.timeout) / 60
+        return self.orchestrate_delegation(
+            goal=goal,
+            success_criteria=success_criteria,
+            persona_type=self.persona,
+            platform=self.platform,
+            context=context,
+            timeout_minutes=int(timeout_minutes),
+            enable_scenarios=enable_scenarios,
+            working_directory=self.working_dir,
+            environment=environment,
+        )
 
     def orchestrate_delegation(
         self,
@@ -595,3 +649,8 @@ def run_meta_delegation(
         working_directory=working_directory,
         environment=environment,
     )
+
+
+# Aliases for e2e tests
+OrchestrationResult = MetaDelegationResult
+OrchestrationState = ProcessState
