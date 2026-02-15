@@ -23,6 +23,7 @@ Philosophy:
 """
 
 import fnmatch
+import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
@@ -178,15 +179,25 @@ class EvidenceCollector:
 
     def __init__(
         self,
-        working_directory: str,
+        working_directory: str | None = None,
+        working_dir: str | None = None,  # Alias
         evidence_priorities: list[str] | None = None,
+        **kwargs,  # Accept additional parameters
     ):
         """Initialize evidence collector.
 
         Args:
             working_directory: Directory to scan for evidence
+            working_dir: Alias for working_directory
             evidence_priorities: Optional priority order for evidence types
+            **kwargs: Additional parameters (for forward compatibility)
         """
+        # Handle working_dir alias
+        if working_dir is not None:
+            working_directory = working_dir
+        if working_directory is None:
+            working_directory = os.getcwd()
+
         self.working_directory = Path(working_directory)
         self.evidence_priorities = evidence_priorities or []
         self._collected_evidence: list[EvidenceItem] = []
