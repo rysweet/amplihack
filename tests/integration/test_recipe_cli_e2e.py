@@ -33,7 +33,7 @@ from amplihack.recipes.models import RecipeResult, StepResult, StepStatus
 
 # Check if CLI integration exists
 try:
-    from amplihack.cli import recipe_command  # noqa: F401
+    from amplihack.recipe_cli import recipe_command  # noqa: F401
 
     CLI_INTEGRATED = True
 except (ImportError, AttributeError):
