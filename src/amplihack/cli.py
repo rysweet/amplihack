@@ -695,7 +695,7 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     # Recipe list command
     list_parser = recipe_subparsers.add_parser("list", help="List available recipes")
     list_parser.add_argument(
-        "-d", "--recipe-dir", default="./recipes", help="Directory to search for recipes"
+        "recipe_dir", nargs="?", default="./recipes", help="Directory to search for recipes"
     )
     list_parser.add_argument(
         "-f", "--format", choices=["table", "json", "yaml"], default="table", help="Output format"
@@ -1558,7 +1558,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     elif args.command == "recipe":
-        from .cli.recipe_command import handle_list, handle_run, handle_show, handle_validate
+        from .recipe_cli.recipe_command import handle_list, handle_run, handle_show, handle_validate
 
         if args.recipe_command == "run":
             # Parse context arguments (key=value pairs)
