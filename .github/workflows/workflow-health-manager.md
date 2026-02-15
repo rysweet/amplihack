@@ -7,7 +7,6 @@ on:
 permissions:
   contents: read
   actions: read
-  issues: write
 tools:
   github:
     mode: local
@@ -20,7 +19,6 @@ jobs:
     permissions:
       contents: read
       actions: read
-      issues: write
     outputs:
       action: ${{ steps.precompute.outputs.action }}
       issue_number: ${{ steps.precompute.outputs.issue_number }}
