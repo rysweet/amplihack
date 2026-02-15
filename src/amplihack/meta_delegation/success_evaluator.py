@@ -38,8 +38,8 @@ class EvaluationResult:
 
     score: int
     notes: str
-    requirements_met: list[str] = None
-    requirements_missing: list[str] = None
+    requirements_met: list[str] | None = None
+    requirements_missing: list[str] | None = None
     bonus_points: int = 0
 
     def __post_init__(self):
@@ -67,7 +67,7 @@ class EvaluationResult:
         }
 
 
-def parse_success_criteria(criteria: str) -> list[str | dict]:
+def parse_success_criteria(criteria: str) -> list[str]:
     """Parse success criteria into individual requirements.
 
     Args:
@@ -109,22 +109,37 @@ def parse_success_criteria(criteria: str) -> list[str | dict]:
 class SuccessCriteriaEvaluator:
     """Evaluates task success against criteria using evidence."""
 
+    def __init__(self, **_kwargs: Any):
+        """Initialize evaluator.
+
+        Args:
+            **_kwargs: Configuration options (for forward compatibility)
+        """
+
     def evaluate(
         self,
         criteria: str,
-        evidence: list[EvidenceItem],
-        execution_log: str,
+        evidence: list[EvidenceItem] | None = None,
+        execution_log: str = "",
+        evidence_dir: str | None = None,  # For forward compatibility
+        **_kwargs: Any,
     ) -> EvaluationResult:
         """Evaluate success based on criteria and evidence.
 
         Args:
             criteria: Success criteria string
-            evidence: List of collected evidence items
+            evidence: List of collected evidence items (optional)
             execution_log: Execution log content
+            evidence_dir: Directory containing evidence (for forward compatibility)
+            **kwargs: Additional parameters
 
         Returns:
             EvaluationResult with score and notes
         """
+        # Handle optional evidence
+        if evidence is None:
+            evidence = []
+
         # Parse criteria into requirements
         requirements = parse_success_criteria(criteria)
 
@@ -137,10 +152,11 @@ class SuccessCriteriaEvaluator:
         requirements_missing = []
 
         for requirement in requirements:
-            if self._is_requirement_met(requirement, evidence, execution_log):
-                requirements_met.append(requirement)
-            else:
-                requirements_missing.append(requirement)
+            if isinstance(requirement, str):
+                if self._is_requirement_met(requirement, evidence, execution_log):
+                    requirements_met.append(requirement)
+                else:
+                    requirements_missing.append(requirement)
 
         # Calculate base score
         if len(requirements) > 0:
@@ -164,8 +180,8 @@ class SuccessCriteriaEvaluator:
 
         # Generate notes
         notes = self._generate_notes(
-            requirements_met,
-            requirements_missing,
+            requirements_met or [],
+            requirements_missing or [],
             evidence,
             execution_log,
             bonus_points,
@@ -420,3 +436,7 @@ class SuccessCriteriaEvaluator:
                 notes_parts.append(f"  - {etype}: {count}")
 
         return "\n".join(notes_parts)
+
+
+# Alias for e2e tests
+SuccessEvaluator = SuccessCriteriaEvaluator
