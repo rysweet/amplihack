@@ -28,7 +28,7 @@ from amplihack.recipes.models import Recipe, RecipeResult, StepResult, StepStatu
 
 # Import the output formatters we're testing (will fail until implemented)
 try:
-    from amplihack.cli.recipe_output import (
+    from amplihack.recipe_cli.recipe_output import (
         format_recipe_details,
         format_recipe_list,
         format_recipe_result,
