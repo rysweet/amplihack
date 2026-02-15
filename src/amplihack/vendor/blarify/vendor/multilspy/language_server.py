@@ -75,49 +75,49 @@ class LanguageServer:
         :return LanguageServer: A language specific LanguageServer instance.
         """
         if config.code_language == Language.PYTHON:
-            from blarify.vendor.multilspy.language_servers.jedi_language_server.jedi_server import (
+            from ...vendor.multilspy.language_servers.jedi_language_server.jedi_server import (
                 JediServer,
             )
 
             return JediServer(config, logger, repository_root_path)
         if config.code_language == Language.JAVA:
-            from blarify.vendor.multilspy.language_servers.eclipse_jdtls.eclipse_jdtls import (
+            from ...vendor.multilspy.language_servers.eclipse_jdtls.eclipse_jdtls import (
                 EclipseJDTLS,
             )
 
             return EclipseJDTLS(config, logger, repository_root_path)
         if config.code_language == Language.RUST:
-            from blarify.vendor.multilspy.language_servers.rust_analyzer.rust_analyzer import (
+            from ...vendor.multilspy.language_servers.rust_analyzer.rust_analyzer import (
                 RustAnalyzer,
             )
 
             return RustAnalyzer(config, logger, repository_root_path)
         if config.code_language == Language.CSHARP:
-            from blarify.vendor.multilspy.language_servers.omnisharp.omnisharp import OmniSharp
+            from ...vendor.multilspy.language_servers.omnisharp.omnisharp import OmniSharp
 
             return OmniSharp(config, logger, repository_root_path)
         if config.code_language in [Language.TYPESCRIPT, Language.JAVASCRIPT]:
-            from blarify.vendor.multilspy.language_servers.typescript_language_server.typescript_language_server import (
+            from ...vendor.multilspy.language_servers.typescript_language_server.typescript_language_server import (
                 TypeScriptLanguageServer,
             )
 
             return TypeScriptLanguageServer(config, logger, repository_root_path)
         if config.code_language == Language.GO:
-            from blarify.vendor.multilspy.language_servers.gopls.gopls import Gopls
+            from ...vendor.multilspy.language_servers.gopls.gopls import Gopls
 
             return Gopls(config, logger, repository_root_path)
         if config.code_language == Language.RUBY:
-            from blarify.vendor.multilspy.language_servers.solargraph.solargraph import Solargraph
+            from ...vendor.multilspy.language_servers.solargraph.solargraph import Solargraph
 
             return Solargraph(config, logger, repository_root_path)
         if config.code_language == Language.DART:
-            from blarify.vendor.multilspy.language_servers.dart_language_server.dart_language_server import (
+            from ...vendor.multilspy.language_servers.dart_language_server.dart_language_server import (
                 DartLanguageServer,
             )
 
             return DartLanguageServer(config, logger, repository_root_path)
         if config.code_language == Language.PHP:
-            from blarify.vendor.multilspy.language_servers.intelephense.intelephense import (
+            from ...vendor.multilspy.language_servers.intelephense.intelephense import (
                 Intelephense,
             )
 

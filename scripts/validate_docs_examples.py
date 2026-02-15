@@ -463,12 +463,11 @@ class DocsExampleValidator:
         """
         if language == "python":
             return validate_python_syntax(code)
-        elif language == "javascript":
+        if language == "javascript":
             return validate_javascript_syntax(code)
-        elif language == "bash":
+        if language == "bash":
             return validate_bash_syntax(code)
-        else:
-            return True, None  # Unsupported language, skip
+        return True, None  # Unsupported language, skip
 
     def _execute_block(self, code: str) -> tuple[bool, str | None]:
         """Execute a code block in Docker sandbox.

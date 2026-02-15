@@ -1,8 +1,8 @@
 from typing import TYPE_CHECKING, Optional
 from uuid import uuid4
 
-from blarify.graph.node.class_node import ClassNode
-from blarify.graph.node.deleted_node import DeletedNode
+from amplihack.vendor.blarify.graph.node.class_node import ClassNode
+from amplihack.vendor.blarify.graph.node.deleted_node import DeletedNode
 
 from ..file_node import FileNode
 from ..folder_node import FolderNode
@@ -10,9 +10,9 @@ from ..function_node import FunctionNode
 from ..types.node_labels import NodeLabels
 
 if TYPE_CHECKING:
-    from blarify.code_references.types import Reference
-    from blarify.graph.graph_environment import GraphEnvironment
-    from blarify.project_file_explorer import Folder
+    from ....code_references.types import Reference
+    from ....graph.graph_environment import GraphEnvironment
+    from ....project_file_explorer import Folder
     from tree_sitter import Node as TreeSitterNode
 
 

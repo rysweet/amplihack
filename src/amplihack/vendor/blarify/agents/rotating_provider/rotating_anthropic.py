@@ -4,7 +4,7 @@ import logging
 from datetime import datetime
 from typing import Any
 
-from blarify.agents.api_key_manager import APIKeyManager
+from amplihack.vendor.blarify.agents.api_key_manager import APIKeyManager
 from langchain_anthropic import ChatAnthropic
 from pydantic import SecretStr
 

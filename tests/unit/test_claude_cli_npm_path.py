@@ -10,10 +10,7 @@ Covers three changes:
 import os
 import sys
 import types
-from pathlib import Path
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 # Ensure amplihack.utils.prerequisites is importable even on Python <3.11
 # (it uses datetime.UTC which is 3.11+). We inject a mock module so that
@@ -23,7 +20,8 @@ if "amplihack.utils.prerequisites" not in sys.modules:
     _mock_prereqs.safe_subprocess_call = MagicMock(return_value=(0, "", ""))
     sys.modules["amplihack.utils.prerequisites"] = _mock_prereqs
 
-import amplihack.utils  # noqa: E402
+import amplihack.utils
+
 if not hasattr(amplihack.utils, "prerequisites"):
     amplihack.utils.prerequisites = sys.modules["amplihack.utils.prerequisites"]
 
@@ -31,7 +29,6 @@ from amplihack.utils.claude_cli import (
     _find_claude_in_common_locations,
     _update_shell_profile_path,
 )
-
 
 # ============================================================================
 # TESTS: _update_shell_profile_path()
@@ -53,7 +50,7 @@ class TestUpdateShellProfilePath:
 
         assert result is True
         content = bashrc.read_text()
-        assert '# Added by amplihack' in content
+        assert "# Added by amplihack" in content
         assert 'export PATH="$HOME/.npm-global/bin:$PATH"' in content
 
     def test_creates_zshrc_entry_for_zsh(self, tmp_path, monkeypatch):
@@ -88,9 +85,7 @@ class TestUpdateShellProfilePath:
     def test_idempotent_when_line_already_present(self, tmp_path, monkeypatch):
         """Test no modification when the PATH line already exists in profile."""
         bashrc = tmp_path / ".bashrc"
-        bashrc.write_text(
-            '# old config\nexport PATH="$HOME/.npm-global/bin:$PATH"\n'
-        )
+        bashrc.write_text('# old config\nexport PATH="$HOME/.npm-global/bin:$PATH"\n')
 
         monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
         monkeypatch.setenv("SHELL", "/bin/bash")
@@ -127,7 +122,7 @@ class TestUpdateShellProfilePath:
         assert result is True
         bashrc = tmp_path / ".bashrc"
         assert bashrc.exists()
-        assert '.npm-global/bin' in bashrc.read_text()
+        assert ".npm-global/bin" in bashrc.read_text()
 
     def test_returns_false_on_write_error(self, tmp_path, monkeypatch):
         """Test graceful failure when profile cannot be written."""
@@ -180,9 +175,7 @@ class TestFindClaudeFallback:
         assert result == "/usr/local/bin/claude"
 
     @patch("amplihack.utils.claude_cli.shutil.which")
-    def test_falls_back_to_npm_global_when_not_in_path(
-        self, mock_which, tmp_path, monkeypatch
-    ):
+    def test_falls_back_to_npm_global_when_not_in_path(self, mock_which, tmp_path, monkeypatch):
         """Test fallback to ~/.npm-global/bin/claude when not in PATH."""
         mock_which.return_value = None
         monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
@@ -198,9 +191,7 @@ class TestFindClaudeFallback:
         assert result == str(npm_claude)
 
     @patch("amplihack.utils.claude_cli.shutil.which")
-    def test_fallback_adds_to_path_env(
-        self, mock_which, tmp_path, monkeypatch
-    ):
+    def test_fallback_adds_to_path_env(self, mock_which, tmp_path, monkeypatch):
         """Test that fallback adds ~/.npm-global/bin to os.environ PATH."""
         mock_which.return_value = None
         monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
@@ -221,9 +212,7 @@ class TestFindClaudeFallback:
         os.environ["PATH"] = original_path
 
     @patch("amplihack.utils.claude_cli.shutil.which")
-    def test_returns_none_when_fallback_missing(
-        self, mock_which, tmp_path, monkeypatch
-    ):
+    def test_returns_none_when_fallback_missing(self, mock_which, tmp_path, monkeypatch):
         """Test returns None when neither PATH nor fallback has claude."""
         mock_which.return_value = None
         monkeypatch.setattr("pathlib.Path.home", lambda: tmp_path)
@@ -277,9 +266,9 @@ class TestInstallAutoUpdatesProfile:
 
         captured = capsys.readouterr()
         # Should NOT contain the old manual reminder
-        assert 'Add to your shell profile' not in captured.out
+        assert "Add to your shell profile" not in captured.out
         # Should contain the success message
-        assert 'Shell profile updated' in captured.out
+        assert "Shell profile updated" in captured.out
 
     @patch("amplihack.utils.claude_cli._update_shell_profile_path")
     @patch("amplihack.utils.claude_cli._validate_claude_binary")

@@ -4,9 +4,9 @@
 import logging
 from typing import Any
 
-from blarify.documentation.workflow_creator import WorkflowCreator
-from blarify.graph.graph_environment import GraphEnvironment
-from blarify.repositories.graph_db_manager.neo4j_manager import Neo4jManager
+from amplihack.vendor.blarify.documentation.workflow_creator import WorkflowCreator
+from amplihack.vendor.blarify.graph.graph_environment import GraphEnvironment
+from amplihack.vendor.blarify.repositories.graph_db_manager.neo4j_manager import Neo4jManager
 from langchain_core.callbacks import CallbackManagerForToolRun
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field, field_validator

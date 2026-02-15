@@ -1,7 +1,7 @@
 from typing import Any
 
-from blarify.graph.graph_environment import GraphEnvironment
-from blarify.graph.node.types.integration_node import IntegrationNode
+from amplihack.vendor.blarify.graph.graph_environment import GraphEnvironment
+from amplihack.vendor.blarify.graph.node.types.integration_node import IntegrationNode
 
 
 class CommitNode(IntegrationNode):

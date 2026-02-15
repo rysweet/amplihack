@@ -2,7 +2,7 @@ import logging
 import os
 from typing import Any
 
-from blarify.repositories.graph_db_manager.db_manager import AbstractDbManager
+from amplihack.vendor.blarify.repositories.graph_db_manager.db_manager import AbstractDbManager
 from dotenv import load_dotenv
 from falkordb import FalkorDB
 

@@ -4,7 +4,7 @@ import logging
 from collections.abc import Callable
 from typing import Any, TypeVar
 
-from blarify.agents.api_key_manager import APIKeyManager
+from amplihack.vendor.blarify.agents.api_key_manager import APIKeyManager
 from langchain_google_genai import ChatGoogleGenerativeAI
 
 from .rotating_providers import ErrorType, RotatingProviderBase

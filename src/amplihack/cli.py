@@ -6,6 +6,7 @@ import os
 import platform
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 from . import copytree_manifest
@@ -34,6 +35,64 @@ EMOJI = {
 # Commands that require Claude Code plugin installation.
 # All other commands (copilot, amplifier, codex, etc.) skip it.
 _CLAUDE_COMMANDS = {None, "launch", "claude", "RustyClawd"}
+
+
+def _debug_print(message: str) -> None:
+    """Print debug message if AMPLIHACK_DEBUG is enabled.
+
+    Args:
+        message: Debug message to print
+    """
+    if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
+        print(message)
+
+
+def _verify_claude_cli_ready(
+    claude_path: str, max_retries: int = 3, retry_delay: float = 0.5
+) -> bool:
+    """Verify Claude CLI is ready to use after installation.
+
+    On first install, the binary might need a moment to be fully available.
+    This function validates the binary is executable and working.
+
+    Args:
+        claude_path: Path to Claude CLI binary
+        max_retries: Maximum number of verification attempts
+        retry_delay: Delay in seconds between retries
+
+    Returns:
+        True if Claude CLI is ready, False otherwise
+    """
+    from .utils.prerequisites import safe_subprocess_call
+
+    for attempt in range(max_retries):
+        try:
+            returncode, stdout, stderr = safe_subprocess_call(
+                [claude_path, "--version"],
+                context="verifying Claude CLI is ready",
+                timeout=5,
+            )
+
+            if returncode == 0:
+                _debug_print(f"✅ Claude CLI verified ready: {stdout.strip()}")
+                return True
+
+            if attempt < max_retries - 1:
+                _debug_print(
+                    f"⏳ Claude CLI not ready yet (attempt {attempt + 1}/{max_retries}), retrying..."
+                )
+                time.sleep(retry_delay)
+
+        except Exception as e:
+            if attempt < max_retries - 1:
+                _debug_print(
+                    f"⏳ Claude CLI verification error (attempt {attempt + 1}/{max_retries}): {e}"
+                )
+                time.sleep(retry_delay)
+            else:
+                _debug_print(f"❌ Claude CLI verification failed after {max_retries} attempts: {e}")
+
+    return False
 
 
 def add_plugin_args_for_uvx(
@@ -614,6 +673,53 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         help="Skip confirmation prompt (use with --no-dry-run)",
     )
 
+    # Recipe commands
+    recipe_parser = subparsers.add_parser("recipe", help="Recipe management and execution commands")
+    recipe_subparsers = recipe_parser.add_subparsers(
+        dest="recipe_command", help="Recipe subcommands"
+    )
+
+    # Recipe run command
+    run_parser = recipe_subparsers.add_parser("run", help="Execute a recipe from YAML file")
+    run_parser.add_argument("recipe_path", help="Path to recipe YAML file")
+    run_parser.add_argument(
+        "-c", "--context", action="append", help="Set context variable (key=value)"
+    )
+    run_parser.add_argument("--dry-run", action="store_true", help="Show what would be executed")
+    run_parser.add_argument("-v", "--verbose", action="store_true", help="Show detailed output")
+    run_parser.add_argument(
+        "-f", "--format", choices=["table", "json", "yaml"], default="table", help="Output format"
+    )
+    run_parser.add_argument("-w", "--working-dir", help="Working directory for execution")
+
+    # Recipe list command
+    list_parser = recipe_subparsers.add_parser("list", help="List available recipes")
+    list_parser.add_argument(
+        "recipe_dir", nargs="?", default="./recipes", help="Directory to search for recipes"
+    )
+    list_parser.add_argument(
+        "-f", "--format", choices=["table", "json", "yaml"], default="table", help="Output format"
+    )
+    list_parser.add_argument("-t", "--tags", action="append", help="Filter by tags")
+    list_parser.add_argument("-v", "--verbose", action="store_true", help="Show full details")
+
+    # Recipe validate command
+    validate_parser = recipe_subparsers.add_parser("validate", help="Validate a recipe YAML file")
+    validate_parser.add_argument("recipe_path", help="Path to recipe YAML file")
+    validate_parser.add_argument("-v", "--verbose", action="store_true", help="Show details")
+    validate_parser.add_argument(
+        "-f", "--format", choices=["table", "json", "yaml"], default="table", help="Output format"
+    )
+
+    # Recipe show command
+    show_parser = recipe_subparsers.add_parser("show", help="Show detailed recipe information")
+    show_parser.add_argument("recipe_path", help="Path to recipe YAML file")
+    show_parser.add_argument(
+        "-f", "--format", choices=["table", "json", "yaml"], default="table", help="Output format"
+    )
+    show_parser.add_argument("--no-steps", action="store_true", help="Hide step details")
+    show_parser.add_argument("--no-context", action="store_true", help="Hide context variables")
+
     # Mode detection commands
     mode_parser = subparsers.add_parser("mode", help="Claude installation mode commands")
     mode_subparsers = mode_parser.add_subparsers(dest="mode_command", help="Mode subcommands")
@@ -913,6 +1019,19 @@ def main(argv: list[str] | None = None) -> int:
     # This allows us to skip Claude Code plugin installation for amplifier command
     args, claude_args = parse_args_with_passthrough(argv)
 
+    # Auto-install missing blarify dependencies (scip-python, typescript-language-server, etc.)
+    # Skip for non-launch commands to avoid unnecessary delays
+    if not hasattr(args, "command") or args.command in (None, "launch"):
+        try:
+            from .memory.kuzu.indexing.dependency_installer import DependencyInstaller
+
+            installer = DependencyInstaller(quiet=False)
+            installer.install_all_auto_installable()
+            installer.show_system_dependency_help()
+        except Exception as e:
+            # Don't fail startup if dependency installation fails
+            logger.warning(f"Failed to auto-install dependencies: {e}")
+
     # Initialize UVX staging if needed
     temp_claude_dir = None
     if is_uvx_deployment():
@@ -986,78 +1105,85 @@ def main(argv: list[str] | None = None) -> int:
                     print("   Falling back to directory copy mode")
                     temp_claude_dir = _fallback_to_directory_copy("Claude CLI not available")
                 else:
-                    # Fix EXDEV error: Use temp directory on same filesystem as ~/.claude/
-                    # Claude Code uses fs.rename() which fails across different filesystems
-                    claude_temp_dir = Path.home() / ".claude" / "temp"
-                    claude_temp_dir.mkdir(parents=True, exist_ok=True)
+                    # Step 2a: Verify Claude CLI is ready before using it
+                    # On first install, binary might need a moment to be fully available
+                    if not _verify_claude_cli_ready(claude_path):
+                        print("⚠️  Claude CLI installed but not responding")
+                        print(
+                            "   This can happen on first install - the binary needs to initialize"
+                        )
+                        print("   Falling back to directory copy mode")
+                        temp_claude_dir = _fallback_to_directory_copy("Claude CLI not ready")
+                    else:
+                        # Fix EXDEV error: Use temp directory on same filesystem as ~/.claude/
+                        # Claude Code uses fs.rename() which fails across different filesystems
+                        claude_temp_dir = Path.home() / ".claude" / "temp"
+                        claude_temp_dir.mkdir(parents=True, exist_ok=True)
 
-                    # Set TMPDIR for subprocess to avoid cross-device rename errors
-                    env = os.environ.copy()
-                    env["TMPDIR"] = str(claude_temp_dir)
+                        # Set TMPDIR for subprocess to avoid cross-device rename errors
+                        env = os.environ.copy()
+                        env["TMPDIR"] = str(claude_temp_dir)
 
-                    # Step 2a: Sync marketplace to known_marketplaces.json
-                    # extraKnownMarketplaces in settings.json is for IDE, not CLI
-                    # We need to explicitly add the marketplace for CLI to find it
-                    marketplace_add_result = subprocess.run(
-                        [
-                            claude_path,
-                            "plugin",
-                            "marketplace",
-                            "add",
-                            "https://github.com/rysweet/amplihack",
-                        ],
-                        capture_output=True,
-                        text=True,
-                        timeout=60,
-                        check=False,
-                        env=env,
-                    )
+                        # Step 2b: Sync marketplace to known_marketplaces.json
+                        # extraKnownMarketplaces in settings.json is for IDE, not CLI
+                        # We need to explicitly add the marketplace for CLI to find it
+                        marketplace_add_result = subprocess.run(
+                            [
+                                claude_path,
+                                "plugin",
+                                "marketplace",
+                                "add",
+                                "https://github.com/rysweet/amplihack",
+                            ],
+                            capture_output=True,
+                            text=True,
+                            timeout=60,
+                            check=False,
+                            env=env,
+                        )
 
-                    if marketplace_add_result.returncode != 0:
-                        if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                            print(
+                        if marketplace_add_result.returncode != 0:
+                            _debug_print(
                                 f"⚠️  Marketplace add failed (may already exist): {marketplace_add_result.stderr}"
                             )
-                    else:
-                        if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                            print("✅ Amplihack marketplace added to known marketplaces")
+                        else:
+                            _debug_print("✅ Amplihack marketplace added to known marketplaces")
 
-                    # Step 2b: Install plugin from marketplace
-                    result = subprocess.run(
-                        [claude_path, "plugin", "install", "amplihack"],
-                        capture_output=True,
-                        text=True,
-                        timeout=60,
-                        check=False,
-                        env=env,
-                    )
-
-                    if result.returncode != 0:
-                        print(f"⚠️  Plugin installation failed: {result.stderr}")
-                        print("   Falling back to directory copy mode")
-                        temp_claude_dir = _fallback_to_directory_copy(
-                            f"Plugin install error: {result.stderr}"
+                        # Step 2c: Install plugin from marketplace
+                        result = subprocess.run(
+                            [claude_path, "plugin", "install", "amplihack"],
+                            capture_output=True,
+                            text=True,
+                            timeout=60,
+                            check=False,
+                            env=env,
                         )
-                    else:
-                        if os.environ.get("AMPLIHACK_DEBUG", "").lower() == "true":
-                            print("✅ Amplihack plugin installed successfully")
-                            print(result.stdout)
-                        # Plugin installed successfully
-                        temp_claude_dir = None
 
-                        # Set CLAUDE_PLUGIN_ROOT for hook resolution
-                        # When plugin installed via Claude Code, hooks use ${CLAUDE_PLUGIN_ROOT}
-                        # Point to where Claude Code installed the plugin
-                        installed_plugin_path = (
-                            Path.home()
-                            / ".claude"
-                            / "plugins"
-                            / "cache"
-                            / "amplihack"
-                            / "amplihack"
-                            / "0.9.0"
-                        )
-                        os.environ["CLAUDE_PLUGIN_ROOT"] = str(installed_plugin_path)
+                        if result.returncode != 0:
+                            print(f"⚠️  Plugin installation failed: {result.stderr}")
+                            print("   Falling back to directory copy mode")
+                            temp_claude_dir = _fallback_to_directory_copy(
+                                f"Plugin install error: {result.stderr}"
+                            )
+                        else:
+                            _debug_print("✅ Amplihack plugin installed successfully")
+                            _debug_print(result.stdout)
+                            # Plugin installed successfully
+                            temp_claude_dir = None
+
+                            # Set CLAUDE_PLUGIN_ROOT for hook resolution
+                            # When plugin installed via Claude Code, hooks use ${CLAUDE_PLUGIN_ROOT}
+                            # Point to where Claude Code installed the plugin
+                            installed_plugin_path = (
+                                Path.home()
+                                / ".claude"
+                                / "plugins"
+                                / "cache"
+                                / "amplihack"
+                                / "amplihack"
+                                / "0.9.0"
+                            )
+                            os.environ["CLAUDE_PLUGIN_ROOT"] = str(installed_plugin_path)
 
         # Smart PROJECT.md initialization for UVX mode
         try:
@@ -1427,6 +1553,55 @@ def main(argv: list[str] | None = None) -> int:
 
             # Return non-zero if there were errors
             return 1 if result["errors"] > 0 else 0
+
+        create_parser().print_help()
+        return 1
+
+    elif args.command == "recipe":
+        from .recipe_cli.recipe_command import handle_list, handle_run, handle_show, handle_validate
+
+        if args.recipe_command == "run":
+            # Parse context arguments (key=value pairs)
+            context = {}
+            if args.context:
+                for ctx_arg in args.context:
+                    if "=" in ctx_arg:
+                        key, value = ctx_arg.split("=", 1)
+                        context[key] = value
+                    else:
+                        print(f"Warning: Ignoring invalid context argument: {ctx_arg}")
+
+            return handle_run(
+                recipe_path=args.recipe_path,
+                context=context,
+                dry_run=args.dry_run,
+                verbose=args.verbose,
+                format=args.format,
+                working_dir=args.working_dir,
+            )
+
+        if args.recipe_command == "list":
+            return handle_list(
+                recipe_dir=args.recipe_dir,
+                format=args.format,
+                tags=args.tags,
+                verbose=args.verbose,
+            )
+
+        if args.recipe_command == "validate":
+            return handle_validate(
+                recipe_path=args.recipe_path,
+                verbose=args.verbose,
+                format=args.format,
+            )
+
+        if args.recipe_command == "show":
+            return handle_show(
+                recipe_path=args.recipe_path,
+                format=args.format,
+                show_steps=not args.no_steps,
+                show_context=not args.no_context,
+            )
 
         create_parser().print_help()
         return 1
