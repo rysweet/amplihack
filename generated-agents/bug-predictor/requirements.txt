@@ -1,0 +1,1 @@
+amplihack-memory-lib>=0.1.0
