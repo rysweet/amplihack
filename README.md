@@ -9,24 +9,100 @@ out of agentic coding. Unlikely to work on Windows without WSL.
 **📚 [View Full Documentation](https://rysweet.github.io/amplihack/)**
 
 ```sh
-# Launch amplihack with Claude Code
+# Quick start - see below for full Quick Start guide
 uvx --from git+https://github.com/rysweet/amplihack amplihack claude
 ```
 
-```sh
-# Launch amplihack with Microsoft Amplifier (https://github.com/microsoft/amplifier)
-uvx --from git+https://github.com/rysweet/amplihack amplihack amplifier
+**→ Jump to [Quick Start](#quick-start---rapid-setup) for rapid setup**
+
+## Quick Start - Rapid Setup
+
+### Step 1: Install UV
+
+```bash
+# macOS/Linux/WSL
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-```sh
-Launch AMplihack with Github Copilot CLI
+### Step 2: Run amplihack
+
+**Option A: Zero-Install** (recommended for first try)
+
+```bash
+# Launch with Claude Code
+uvx --from git+https://github.com/rysweet/amplihack amplihack claude
+
+# Launch with Microsoft Amplifier
+uvx --from git+https://github.com/rysweet/amplihack amplihack amplifier
+
+# Launch with GitHub Copilot
 uvx --from git+https://github.com/rysweet/amplihack amplihack copilot
 ```
 
-Try asking the **amplihack-guide** agent for help.
+**Option B: Install Globally** (for frequent use)
+
+```bash
+# Install once
+uv tool install git+https://github.com/rysweet/amplihack
+
+# Then use directly
+amplihack claude
+amplihack amplifier
+amplihack copilot
+```
+
+**That's it!** Try asking the **amplihack-guide** agent for help after
+launching.
+
+For more installation options and upgrade instructions, see
+[Installation](#installation) below.
+
+---
+
+## Installation
+
+### UV Tool (Recommended)
+
+amplihack is designed to work as a UV tool for zero-installation or global
+installation:
+
+**Option 1: Zero-Install (No installation needed)**
+
+```sh
+# Use directly without installing
+uvx --from git+https://github.com/rysweet/amplihack amplihack claude
+uvx --from git+https://github.com/rysweet/amplihack amplihack amplifier
+uvx --from git+https://github.com/rysweet/amplihack amplihack copilot
+```
+
+**Option 2: Global Install**
+
+```sh
+# Install once, use anywhere
+uv tool install git+https://github.com/rysweet/amplihack
+
+# Then use directly
+amplihack claude
+amplihack amplifier
+amplihack copilot
+```
+
+**Updating**
+
+```sh
+# Zero-install: Always uses latest (no update needed)
+uvx --from git+https://github.com/rysweet/amplihack amplihack claude
+
+# Global install: Upgrade to latest
+uv tool upgrade amplihack
+```
 
 ## Table of Contents
 
+- [Quick Start - Rapid Setup](#quick-start---rapid-setup)
+- [Installation](#installation)
+  - [UV Tool (Recommended)](#uv-tool-recommended)
+  - [Updating](#updating)
 - [Quick Start](#quick-start)
   - [Prerequisites](#prerequisites)
   - [Basic Usage](#basic-usage)
@@ -336,7 +412,61 @@ amplihack remote auto "implement feature" --region westus3 --vm-size s
 Documentation:
 [.claude/tools/amplihack/remote/README.md](~/.amplihack/.claude/tools/amplihack/remote/README.md)
 
-### Workflow Orchestration by Default (NEW!)
+### Recipe Runner - Code-Enforced Workflows (NEW!)
+
+Execute workflows with code-enforced step ordering that models cannot skip:
+
+```sh
+# Run a deterministic workflow
+amplihack recipe run default-workflow --context '{"task": "Add auth"}'
+
+# List available recipes
+amplihack recipe list
+
+# Validate before running
+amplihack recipe validate my-recipe.yaml
+```
+
+**Why it exists**: Models skip workflow steps when enforcement is prompt-based.
+The Recipe Runner uses Python code to control step execution — making it
+physically impossible to skip steps.
+
+**Features:**
+
+- 10 bundled workflows (default, investigation, verification, consensus, etc.)
+- Template variables for context passing between steps
+- Safe AST-based condition evaluation
+- Daily upstream sync from microsoft/amplifier-bundle-recipes
+
+📖 [Recipe Runner Documentation](docs/recipes/README.md)
+
+### Pre-Commit Manager - Automatic Hook Setup
+
+Eliminates pre-commit setup friction on fresh repository clones:
+
+```sh
+# Automatic: Hook detects .pre-commit-config.yaml and offers installation
+# Manual: Configure for your language
+Skill(pre-commit-manager, "configure python")
+
+# Check status
+Skill(pre-commit-manager, "status")
+```
+
+**Key Features:**
+
+- **Smart preference memory**: Remembers your choice (always/never/ask) across
+  sessions
+- **Template library**: Pre-configured for Python, JavaScript, TypeScript, Go,
+  Rust
+- **Security-first**: Command injection prevention, path validation, secure
+  storage
+- **Zero friction**: Single prompt, then automatic forever
+
+📖
+[Pre-Commit Manager Documentation](.claude/skills/pre-commit-manager/README.md)
+
+### Workflow Orchestration by Default
 
 All prompts are automatically wrapped with `/amplihack:ultrathink` for maximum
 effectiveness. This enables:
@@ -481,6 +611,9 @@ amplihack launch
   formatting, linting, type checking before push
 - **[CI Diagnostics](CLAUDE.md#development-workflow-agents)** - Monitor CI,
   diagnose failures, iterate until mergeable
+- **[Parallel Workstreams](.claude/skills/multitask/SKILL.md)** - Execute
+  multiple tasks in parallel with Recipe Runner code-enforced workflows
+  (`/multitask`)
 - **[Worktree Management](~/.amplihack/.claude/agents/amplihack/specialized/worktree-manager.md)** -
   Git worktree automation for parallel development
 - **[Session Logs](CLAUDE.md#working-philosophy)** - Comprehensive logging and

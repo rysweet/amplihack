@@ -1,11 +1,13 @@
-from typing import TYPE_CHECKING, Any, Optional, TypedDict, Unpack
+from typing import TYPE_CHECKING, Any, Optional, TypedDict
+
+from typing_extensions import Unpack  # Python 3.10 compatibility
 
 from .types.node_labels import NodeLabels
 
 from .types.node import Node
 
 if TYPE_CHECKING:
-    from blarify.graph.graph_environment import GraphEnvironment
+    from ...graph.graph_environment import GraphEnvironment
 
 
 class DocumentationNodeKwargs(TypedDict, total=False):

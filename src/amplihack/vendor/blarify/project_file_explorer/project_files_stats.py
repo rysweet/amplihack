@@ -1,7 +1,7 @@
 import os
 
-from blarify.logger import Logger
-from blarify.project_file_explorer.project_files_iterator import ProjectFilesIterator
+from amplihack.vendor.blarify.logger import Logger
+from amplihack.vendor.blarify.project_file_explorer.project_files_iterator import ProjectFilesIterator
 
 
 class ProjectFileStats:

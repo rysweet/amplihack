@@ -1,0 +1,66 @@
+# Plugin Discovery TUI Test
+# Verifies amplihack plugin is discoverable in Claude Code /plugin interface
+
+scenario:
+  name: "Plugin Discovery via TUI /plugin Command"
+  description: "Verify amplihack appears in /plugin Installed list when run from different directory"
+  type: tui
+  level: 1
+
+  tags: [plugin, tui, smoke, critical]
+
+  prerequisites:
+    - "uvx installed"
+    - "git installed"
+    - "ANTHROPIC_API_KEY set"
+
+  steps:
+    - action: launch
+      target: "bash"
+      args:
+        - "-c"
+        - "mkdir -p /tmp/test_plugin_$$ && cd /tmp/test_plugin_$$ && uvx --from git+https://github.com/rysweet/amplihack@8f8ba443 amplihack claude"
+      description: "Launch amplihack claude from clean directory via uvx"
+      timeout: 120s
+
+    - action: wait_for_output
+      contains: "Launching Claude"
+      timeout: 45s
+      description: "Wait for Claude to start launching"
+
+    - action: verify_output
+      contains: "--plugin-dir"
+      description: "Verify --plugin-dir argument is passed"
+
+    - action: verify_output
+      contains: "✅ Copied skills"
+      description: "Verify skills staged to ~/.amplihack/.claude"
+
+    - action: wait_for_output
+      contains: ">"
+      timeout: 30s
+      description: "Wait for Claude prompt"
+
+    - action: send_input
+      value: "/plugin\n"
+      description: "Send /plugin command"
+
+    - action: wait_for_output
+      contains: "Installed"
+      timeout: 15s
+      description: "Wait for plugin manager interface"
+
+    - action: verify_output
+      contains: "amplihack"
+      description: "Verify amplihack appears in installed plugins"
+
+    - action: send_input
+      value: "/exit\n"
+      description: "Exit Claude cleanly"
+
+    - action: verify_exit_code
+      expected: 0
+      timeout: 10s
+
+  cleanup:
+    - action: stop_application

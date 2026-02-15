@@ -1,7 +1,8 @@
 from enum import Enum
-from typing import Any, LiteralString
+from typing import Any
+from typing_extensions import LiteralString  # Python 3.10 compatibility
 
-from blarify.repositories.graph_db_manager.dtos.node_search_result_dto import (
+from amplihack.vendor.blarify.repositories.graph_db_manager.dtos.node_search_result_dto import (
     ReferenceSearchResultDTO,
 )
 

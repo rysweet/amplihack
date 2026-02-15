@@ -1,0 +1,95 @@
+version: '3.8'
+
+# Multi-repository shadow environment for coordinated changes
+# Usage:
+#   1. Create bundles:
+#      git -C ~/repos/core-lib bundle create snapshots/core-lib.bundle --all
+#      git -C ~/repos/cli-tool bundle create snapshots/cli-tool.bundle --all
+#   2. Start: docker-compose -f docker-compose/multi-repo.yml up -d
+#   3. Test: docker-compose exec shadow bash
+#   4. Stop: docker-compose down
+
+services:
+  shadow:
+    image: ghcr.io/microsoft/amplifier-shadow:latest
+    container_name: shadow-multi
+    volumes:
+      # Mount multiple git bundles
+      - ./snapshots/core-lib.bundle:/snapshots/myorg/core-lib.bundle:ro
+      - ./snapshots/cli-tool.bundle:/snapshots/myorg/cli-tool.bundle:ro
+      # Workspace for testing
+      - ./workspace:/workspace
+    environment:
+      # Pass API keys from host
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # Cache isolation
+      - UV_NO_GITHUB_FAST_PATH=1
+      - UV_CACHE_DIR=/tmp/uv-cache
+      - PIP_CACHE_DIR=/tmp/pip-cache
+      - NPM_CONFIG_CACHE=/tmp/npm-cache
+    command: >
+      bash -c "
+        echo 'Starting Gitea...' &&
+        /usr/local/bin/docker-entrypoint.sh &
+        sleep 5 &&
+
+        echo 'Waiting for Gitea to be ready...' &&
+        until curl -sf http://localhost:3000/api/v1/version > /dev/null; do
+          sleep 1
+        done &&
+
+        echo 'Creating organization myorg...' &&
+        curl -s -u shadow:shadow -H 'Content-Type: application/json' \
+          -d '{\"username\":\"myorg\"}' \
+          http://localhost:3000/api/v1/orgs &&
+
+        echo 'Setting up repository: core-lib...' &&
+        curl -s -u shadow:shadow -H 'Content-Type: application/json' \
+          -d '{\"name\":\"core-lib\",\"private\":false}' \
+          http://localhost:3000/api/v1/orgs/myorg/repos &&
+
+        cd /tmp && rm -rf _push_core && mkdir _push_core && cd _push_core &&
+        git init --bare --quiet &&
+        git bundle list-heads /snapshots/myorg/core-lib.bundle | while read sha ref; do
+          branch_name=\$(echo \"\$ref\" | sed 's|refs/heads/||; s|refs/remotes/origin/|_upstream_|')
+          if echo \"\$ref\" | grep -q \"HEAD\"; then continue; fi
+          git fetch /snapshots/myorg/core-lib.bundle \"\$ref:refs/heads/\$branch_name\" 2>/dev/null || true
+        done &&
+        git remote add origin http://shadow:shadow@localhost:3000/myorg/core-lib.git &&
+        git push origin --all --force 2>&1 | grep -v 'remote:' &&
+
+        echo 'Setting up repository: cli-tool...' &&
+        curl -s -u shadow:shadow -H 'Content-Type: application/json' \
+          -d '{\"name\":\"cli-tool\",\"private\":false}' \
+          http://localhost:3000/api/v1/orgs/myorg/repos &&
+
+        cd /tmp && rm -rf _push_cli && mkdir _push_cli && cd _push_cli &&
+        git init --bare --quiet &&
+        git bundle list-heads /snapshots/myorg/cli-tool.bundle | while read sha ref; do
+          branch_name=\$(echo \"\$ref\" | sed 's|refs/heads/||; s|refs/remotes/origin/|_upstream_|')
+          if echo \"\$ref\" | grep -q \"HEAD\"; then continue; fi
+          git fetch /snapshots/myorg/cli-tool.bundle \"\$ref:refs/heads/\$branch_name\" 2>/dev/null || true
+        done &&
+        git remote add origin http://shadow:shadow@localhost:3000/myorg/cli-tool.git &&
+        git push origin --all --force 2>&1 | grep -v 'remote:' &&
+
+        echo 'Configuring git URL rewriting...' &&
+        git config --global url.'http://shadow:shadow@localhost:3000/myorg/core-lib.git'.insteadOf 'https://github.com/myorg/core-lib.git' &&
+        git config --global url.'http://shadow:shadow@localhost:3000/myorg/cli-tool.git'.insteadOf 'https://github.com/myorg/cli-tool.git' &&
+
+        echo 'Pre-cloning to workspace...' &&
+        mkdir -p /workspace/myorg &&
+        git clone http://shadow:shadow@localhost:3000/myorg/core-lib.git /workspace/myorg/core-lib --quiet 2>&1 &&
+        git clone http://shadow:shadow@localhost:3000/myorg/cli-tool.git /workspace/myorg/cli-tool --quiet 2>&1 &&
+
+        echo 'Shadow environment ready!' &&
+        echo 'Local sources: myorg/core-lib, myorg/cli-tool' &&
+        echo 'Test with: docker-compose exec shadow bash' &&
+        tail -f /dev/null
+      "
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/v1/version"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
