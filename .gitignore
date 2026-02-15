@@ -177,3 +177,7 @@ wave*-dedup/
 # Amplihack runtime directories (auto-generated)
 .claude/logs/
 *_validation_*/
+
+# Ephemeral test scripts and build artifacts
+test-worktree-isolation.sh
+target/
