@@ -611,6 +611,9 @@ amplihack launch
   formatting, linting, type checking before push
 - **[CI Diagnostics](CLAUDE.md#development-workflow-agents)** - Monitor CI,
   diagnose failures, iterate until mergeable
+- **[Parallel Workstreams](.claude/skills/multitask/SKILL.md)** - Execute
+  multiple tasks in parallel with Recipe Runner code-enforced workflows
+  (`/multitask`)
 - **[Worktree Management](~/.amplihack/.claude/agents/amplihack/specialized/worktree-manager.md)** -
   Git worktree automation for parallel development
 - **[Session Logs](CLAUDE.md#working-philosophy)** - Comprehensive logging and
