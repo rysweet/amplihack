@@ -28,7 +28,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 # Add hooks directory to path for imports
-hooks_dir = Path(__file__).parent.parent
+hooks_dir = Path(__file__).parent.parent.parent / "amplifier-bundle" / "tools" / "amplihack" / "hooks"
 sys.path.insert(0, str(hooks_dir))
 
 from pre_tool_use import PreToolUseHook
@@ -722,7 +722,6 @@ class TestSubprocessSecurity:
         # Implementation should log metadata (tool name, branch) but not full commands
         # We can't easily test logging without inspecting log output
         # Mark as informational
-        pass
 
 
 # ============================================================================
