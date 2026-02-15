@@ -265,6 +265,34 @@ Specialized AI agents and tools for every development task.
 
 **Key Feature**: Goal-seeking agents work autonomously toward a defined objective, iterating and adapting without requiring user intervention at each step. Perfect for complex, open-ended tasks.
 
+### Memory-Enabled Agents ⭐ NEW
+
+**Learning agents that improve through experience and persist knowledge across sessions.**
+
+- [Feature Overview](features/memory-enabled-agents.md) - What are memory-enabled agents and when to use them
+- [Getting Started Tutorial](tutorials/memory-enabled-agents-getting-started.md) - Create and run your first learning agent (30 minutes)
+- [API Reference](reference/memory-enabled-agents-api.md) - Complete technical documentation for amplihack-memory-lib
+- [Architecture Deep-Dive](concepts/memory-enabled-agents-architecture.md) - System design and technical details
+- [How-To: Integrate Memory](howto/integrate-memory-into-agents.md) - Add memory to existing agents
+- [How-To: Design Learning Metrics](howto/design-custom-learning-metrics.md) - Track domain-specific improvements
+- [How-To: Validate Learning](howto/validate-agent-learning.md) - Test learning behavior with gadugi-agentic-test
+
+**Key Features**:
+
+- **Standalone Library**: `pip install amplihack-memory-lib` - Use in any Python project
+- **Persistent Memory**: SQLite-based storage (no external database required)
+- **Pattern Recognition**: Automatically recognize recurring situations after 3 occurrences
+- **Learning Metrics**: Track runtime improvement, pattern recognition rate, confidence growth
+- **Four Experience Types**: SUCCESS, FAILURE, PATTERN, INSIGHT
+- **Validated Learning**: Test-driven validation ensures agents actually learn
+
+**Demonstration Agents**:
+
+1. **Documentation Analyzer** - Learns documentation quality patterns (MS Learn integration)
+2. **Code Pattern Recognizer** - Identifies reusable code patterns and abstractions
+3. **Bug Predictor** - Predicts likely bug locations based on learned characteristics
+4. **Performance Optimizer** - Learns performance anti-patterns and optimization techniques
+
 ### Meta-Agentic Task Delegation ⭐ NEW
 
 **Run AI agents in isolated subprocess environments with automatic validation and evidence collection.**
@@ -556,6 +584,7 @@ Fix common issues and learn from past solutions.
 - [Discoveries](DISCOVERIES.md) - Known issues and solutions (CHECK HERE FIRST!)
 - [Troubleshooting Guides](troubleshooting/README.md) - Common problems and fixes
 - [Memory Consent Issues](troubleshooting/memory-consent-issues.md) - Fix prompt, timeout, and detection problems
+- [Memory-Enabled Agents Issues](troubleshooting/memory-enabled-agents.md) - Fix memory persistence, pattern recognition, and learning problems
 - [Platform Bridge Troubleshooting](troubleshooting/platform-bridge.md) - Fix platform detection and CLI issues
 - [Stop Hook Exit Hang](troubleshooting/stop-hook-exit-hang.md) - Fix 10-13s hang on exit (resolved v0.9.1)
 - [Tool Null Name Analysis](TOOL_NULL_NAME_ANALYSIS.md) - Debugging tool name issues
