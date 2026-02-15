@@ -14,7 +14,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, Mock, call, patch
+from unittest.mock import MagicMock, Mock, patch
 
 # Add hooks directory to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -300,11 +300,34 @@ class TestProcessWorkflow(unittest.TestCase):
 
     def test_process_env_disabled(self):
         """Test process early exit when disabled via env."""
-        with patch.dict(os.environ, {"AMPLIHACK_AUTO_PRECOMMIT": "0"}):
-            result = self.hook.process({})
+        # Mock PREFERENCES_AVAILABLE as False to test legacy env var path
+        with patch("precommit_installer.PREFERENCES_AVAILABLE", False):
+            with patch.dict(os.environ, {"AMPLIHACK_AUTO_PRECOMMIT": "0"}):
+                # Need git repo and config to reach env check
+                git_dir = self.hook.project_root / ".git"
+                git_dir.mkdir()
+                config_file = self.hook.project_root / ".pre-commit-config.yaml"
+                config_file.write_text("repos: []")
 
-            self.assertEqual(result, {})
-            self.hook.save_metric.assert_called_with("precommit_env_disabled", True)
+                with patch.object(
+                    self.hook,
+                    "_is_precommit_available",
+                    return_value={"available": True, "version": "3.5.0"},
+                ):
+                    with patch.object(
+                        self.hook,
+                        "_are_hooks_installed",
+                        return_value={"installed": False},
+                    ):
+                        result = self.hook.process({})
+
+                self.assertEqual(result, {})
+                # Check metric was saved somewhere in the calls
+                calls = self.hook.save_metric.call_args_list
+                self.assertTrue(
+                    any(call == (("precommit_env_disabled", True),) for call in calls),
+                    f"Expected precommit_env_disabled metric not found in {calls}",
+                )
 
     def test_process_not_git_repo(self):
         """Test process early exit when not a git repo."""
@@ -369,25 +392,33 @@ class TestProcessWorkflow(unittest.TestCase):
         config_file = self.hook.project_root / ".pre-commit-config.yaml"
         config_file.write_text("repos: []")
 
-        with patch.object(
-            self.hook,
-            "_is_precommit_available",
-            return_value={"available": True, "version": "3.5.0"},
-        ):
-            with patch.object(
-                self.hook,
-                "_are_hooks_installed",
-                return_value={"installed": False},
-            ):
+        # Mock preferences to return "always" so installation proceeds
+        with patch("precommit_installer.PREFERENCES_AVAILABLE", True):
+            with patch("precommit_installer.load_precommit_preference", return_value="always"):
                 with patch.object(
                     self.hook,
-                    "_install_hooks",
-                    return_value={"success": True},
+                    "_is_precommit_available",
+                    return_value={"available": True, "version": "3.5.0"},
                 ):
-                    result = self.hook.process({})
+                    with patch.object(
+                        self.hook,
+                        "_are_hooks_installed",
+                        return_value={"installed": False},
+                    ):
+                        with patch.object(
+                            self.hook,
+                            "_install_hooks",
+                            return_value={"success": True},
+                        ):
+                            result = self.hook.process({})
 
-                    self.assertEqual(result, {})
-                    self.hook.save_metric.assert_called_with("precommit_installed", True)
+                            self.assertEqual(result, {})
+                            # Check metric in call list
+                            calls = self.hook.save_metric.call_args_list
+                            self.assertTrue(
+                                any(call == (("precommit_installed", True),) for call in calls),
+                                f"Expected precommit_installed metric not found in {calls}",
+                            )
 
     def test_process_failed_install(self):
         """Test workflow when installation fails."""
@@ -396,28 +427,40 @@ class TestProcessWorkflow(unittest.TestCase):
         config_file = self.hook.project_root / ".pre-commit-config.yaml"
         config_file.write_text("repos: []")
 
-        with patch.object(
-            self.hook,
-            "_is_precommit_available",
-            return_value={"available": True, "version": "3.5.0"},
-        ):
-            with patch.object(
-                self.hook,
-                "_are_hooks_installed",
-                return_value={"installed": False},
-            ):
+        # Mock preferences to return "always" so installation proceeds
+        with patch("precommit_installer.PREFERENCES_AVAILABLE", True):
+            with patch("precommit_installer.load_precommit_preference", return_value="always"):
                 with patch.object(
                     self.hook,
-                    "_install_hooks",
-                    return_value={"success": False, "error": "Permission denied"},
+                    "_is_precommit_available",
+                    return_value={"available": True, "version": "3.5.0"},
                 ):
-                    result = self.hook.process({})
+                    with patch.object(
+                        self.hook,
+                        "_are_hooks_installed",
+                        return_value={"installed": False},
+                    ):
+                        with patch.object(
+                            self.hook,
+                            "_install_hooks",
+                            return_value={"success": False, "error": "Permission denied"},
+                        ):
+                            result = self.hook.process({})
 
-                    self.assertEqual(result, {})
-                    # Check both metrics were saved
-                    calls = self.hook.save_metric.call_args_list
-                    self.assertIn(call("precommit_installed", False), calls)
-                    self.assertIn(call("precommit_install_error", "Permission denied"), calls)
+                            self.assertEqual(result, {})
+                            # Check both metrics were saved
+                            calls = self.hook.save_metric.call_args_list
+                            self.assertTrue(
+                                any(call == (("precommit_installed", False),) for call in calls),
+                                f"Expected precommit_installed=False not found in {calls}",
+                            )
+                            self.assertTrue(
+                                any(
+                                    call == (("precommit_install_error", "Permission denied"),)
+                                    for call in calls
+                                ),
+                                f"Expected error metric not found in {calls}",
+                            )
 
     def test_process_graceful_exception_handling(self):
         """Test that exceptions are handled gracefully."""

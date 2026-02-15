@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """
 Claude Code hook for pre tool use events.
-Prevents dangerous operations like git commit --no-verify.
+Prevents dangerous operations like git commit --no-verify
+and deletion of the current working directory.
 """
 
+import os
+import re
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -11,6 +15,31 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).parent))
 from hook_processor import HookProcessor
+
+CWD_DELETION_ERROR_MESSAGE = """
+🚫 OPERATION BLOCKED - Working Directory Deletion Prevented
+
+You attempted to delete a directory that contains your current working directory:
+  Target: {target}
+  CWD:    {cwd}
+
+Deleting the CWD would break the current session. If you need to clean up
+this directory, first change to a different working directory.
+
+🔒 This protection cannot be disabled programmatically.
+""".strip()
+
+# Pattern to detect recursive rm or rmdir commands.
+# Catches: rm -rf, rm -r, rm -fr, rm -Rf, rm -r -f, rm --recursive, /bin/rm -rf
+_RM_RECURSIVE_RE = re.compile(
+    r"\brm\s+"
+    r"(?:"
+    r"-[a-zA-Z]*[rR][a-zA-Z]*"  # combined flags: -rf, -fr, -Rf, etc.
+    r"|(?:-[a-zA-Z]+\s+)*-[rR]"  # separated flags: -f -r, -v -r, etc.
+    r"|--recursive"  # long form
+    r")",
+)
+_RMDIR_RE = re.compile(r"\brmdir(?:\s|$)")
 
 MAIN_BRANCH_ERROR_MESSAGE = """
 ⛔ Direct commits to '{branch}' branch are not allowed.
@@ -57,6 +86,12 @@ class PreToolUseHook(HookProcessor):
                 return strategy_result
 
         command = tool_input.get("command", "")
+
+        # Check for CWD deletion before any other checks
+        cwd_block = self._check_cwd_deletion(command)
+        if cwd_block:
+            return cwd_block
+
         is_git_commit = "git commit" in command
         is_git_push = "git push" in command
         has_no_verify = "--no-verify" in command
@@ -139,6 +174,96 @@ For true emergencies, ask a human to override this protection.
 
         # Allow all other operations
         return {}
+
+    def _check_cwd_deletion(self, command: str) -> dict[str, Any]:
+        """Check if a command would delete the current working directory.
+
+        Detects rm -r/-rf/-fr and rmdir commands targeting the CWD or a parent.
+        Returns a block dict if dangerous, empty dict if safe.
+        """
+        # Quick check: does the command contain a recursive rm or rmdir?
+        has_rm_recursive = _RM_RECURSIVE_RE.search(command)
+        has_rmdir = _RMDIR_RE.search(command)
+
+        if not has_rm_recursive and not has_rmdir:
+            return {}
+
+        try:
+            cwd = Path(os.getcwd()).resolve()
+        except OSError:
+            self.log("CWD inaccessible, cannot check deletion safety", "WARNING")
+            return {}
+
+        # Extract path arguments from rm/rmdir commands in the full command.
+        # Split on command separators (;, &&, ||) but NOT single pipe |
+        segments = re.split(r";|&&|\|\|", command)
+
+        for segment in segments:
+            segment = segment.strip()
+            if not segment:
+                continue
+
+            # Check if this segment contains a dangerous rm or rmdir
+            if _RM_RECURSIVE_RE.search(segment) or _RMDIR_RE.search(segment):
+                # Extract the path arguments (everything after flags)
+                paths = self._extract_rm_paths(segment)
+                for p in paths:
+                    try:
+                        target = Path(p).resolve()
+                    except (OSError, ValueError):
+                        continue
+
+                    # Block if CWD is equal to or a child of the target
+                    try:
+                        cwd.relative_to(target)
+                        self.log(
+                            f"BLOCKED: Directory deletion would destroy CWD. "
+                            f"Target={target}, CWD={cwd}",
+                            "ERROR",
+                        )
+                        return {
+                            "block": True,
+                            "message": CWD_DELETION_ERROR_MESSAGE.format(
+                                target=target, cwd=cwd
+                            ),
+                        }
+                    except ValueError:
+                        # CWD is not under target - safe
+                        continue
+
+        return {}
+
+    @staticmethod
+    def _extract_rm_paths(segment: str) -> list[str]:
+        """Extract path arguments from an rm or rmdir command segment.
+
+        Uses shlex.split() to handle quoted paths properly.
+        Skips flags (tokens starting with -) and the command name itself.
+        """
+        try:
+            tokens = shlex.split(segment)
+        except ValueError:
+            # Malformed shell syntax - fall back to simple split
+            tokens = segment.split()
+
+        paths: list[str] = []
+        skip_command = True
+
+        for token in tokens:
+            # Skip tokens before the rm/rmdir command name
+            if skip_command:
+                if token in ("rm", "rmdir") or token.endswith("/rm") or token.endswith("/rmdir"):
+                    skip_command = False
+                continue
+
+            # Skip flags
+            if token.startswith("-"):
+                continue
+
+            # Everything else is a path argument
+            paths.append(token)
+
+        return paths
 
     def _select_strategy(self):
         """Detect launcher and select appropriate strategy."""

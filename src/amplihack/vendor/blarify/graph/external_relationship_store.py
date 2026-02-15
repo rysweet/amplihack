@@ -1,7 +1,7 @@
 from typing import Any
 
-from blarify.graph.relationship.external_relationship import ExternalRelationship
-from blarify.graph.relationship.relationship_type import RelationshipType
+from amplihack.vendor.blarify.graph.relationship.external_relationship import ExternalRelationship
+from amplihack.vendor.blarify.graph.relationship.relationship_type import RelationshipType
 
 
 class ExternalRelationshipStore:

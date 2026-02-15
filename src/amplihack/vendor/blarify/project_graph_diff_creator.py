@@ -2,20 +2,20 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, cast
 
-from blarify.code_references.hybrid_resolver import HybridReferenceResolver
-from blarify.code_references.types import Reference
-from blarify.graph.external_relationship_store import ExternalRelationshipStore
-from blarify.graph.graph import Graph
-from blarify.graph.graph_environment import GraphEnvironment
-from blarify.graph.graph_update import GraphUpdate
-from blarify.graph.node import DefinitionNode, FileNode, Node
-from blarify.graph.node.utils.id_calculator import IdCalculator
-from blarify.graph.node.utils.node_factory import NodeFactory
-from blarify.graph.relationship import RelationshipType
-from blarify.project_file_explorer import ProjectFilesIterator
-from blarify.project_graph_creator import ProjectGraphCreator
-from blarify.utils.path_calculator import PathCalculator
-from blarify.utils.relative_id_calculator import RelativeIdCalculator
+from amplihack.vendor.blarify.code_references.hybrid_resolver import HybridReferenceResolver
+from amplihack.vendor.blarify.code_references.types import Reference
+from amplihack.vendor.blarify.graph.external_relationship_store import ExternalRelationshipStore
+from amplihack.vendor.blarify.graph.graph import Graph
+from amplihack.vendor.blarify.graph.graph_environment import GraphEnvironment
+from amplihack.vendor.blarify.graph.graph_update import GraphUpdate
+from amplihack.vendor.blarify.graph.node import DefinitionNode, FileNode, Node
+from amplihack.vendor.blarify.graph.node.utils.id_calculator import IdCalculator
+from amplihack.vendor.blarify.graph.node.utils.node_factory import NodeFactory
+from amplihack.vendor.blarify.graph.relationship import RelationshipType
+from amplihack.vendor.blarify.project_file_explorer import ProjectFilesIterator
+from amplihack.vendor.blarify.project_graph_creator import ProjectGraphCreator
+from amplihack.vendor.blarify.utils.path_calculator import PathCalculator
+from amplihack.vendor.blarify.utils.relative_id_calculator import RelativeIdCalculator
 
 
 class ChangeType(Enum):

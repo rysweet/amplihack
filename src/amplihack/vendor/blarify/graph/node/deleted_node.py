@@ -1,5 +1,5 @@
 from .types.node import Node
-from blarify.utils.path_calculator import PathCalculator
+from amplihack.vendor.blarify.utils.path_calculator import PathCalculator
 
 
 class DeletedNode(Node):

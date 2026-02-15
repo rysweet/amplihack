@@ -336,7 +336,6 @@ class TestReferenceLinks:
     def test_references_workflow_template(self, workflow_content):
         """Should reference WORKFLOW_TEMPLATE.md or workflow standards"""
         # This is optional - may or may not reference the template
-        pass
 
 
 class TestBestPracticesCompleteness:

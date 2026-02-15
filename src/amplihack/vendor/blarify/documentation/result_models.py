@@ -8,8 +8,8 @@ and workflow creation processes, replacing the complex LangGraph state managemen
 from typing import Any
 
 # Import concrete Node types for type annotations
-from blarify.graph.node.documentation_node import DocumentationNode
-from blarify.repositories.graph_db_manager.dtos.node_with_content_dto import NodeWithContentDto
+from amplihack.vendor.blarify.graph.node.documentation_node import DocumentationNode
+from amplihack.vendor.blarify.repositories.graph_db_manager.dtos.node_with_content_dto import NodeWithContentDto
 from pydantic import BaseModel, ConfigDict, Field
 
 
