@@ -1,15 +1,15 @@
-from blarify.agents.llm_provider import LLMProvider
-from blarify.code_references.hybrid_resolver import HybridReferenceResolver, ResolverMode
-from blarify.documentation.documentation_creator import DocumentationCreator
-from blarify.documentation.workflow_creator import WorkflowCreator
-from blarify.graph.graph import Graph
-from blarify.graph.graph_environment import GraphEnvironment
-from blarify.graph.node.utils.id_calculator import IdCalculator
-from blarify.project_file_explorer.project_files_iterator import ProjectFilesIterator
-from blarify.project_graph_creator import ProjectGraphCreator
-from blarify.project_graph_updater import ProjectGraphUpdater, UpdatedFile
-from blarify.repositories.graph_db_manager.db_manager import AbstractDbManager
-from blarify.utils.path_calculator import PathCalculator
+from amplihack.vendor.blarify.agents.llm_provider import LLMProvider
+from amplihack.vendor.blarify.code_references.hybrid_resolver import HybridReferenceResolver, ResolverMode
+from amplihack.vendor.blarify.documentation.documentation_creator import DocumentationCreator
+from amplihack.vendor.blarify.documentation.workflow_creator import WorkflowCreator
+from amplihack.vendor.blarify.graph.graph import Graph
+from amplihack.vendor.blarify.graph.graph_environment import GraphEnvironment
+from amplihack.vendor.blarify.graph.node.utils.id_calculator import IdCalculator
+from amplihack.vendor.blarify.project_file_explorer.project_files_iterator import ProjectFilesIterator
+from amplihack.vendor.blarify.project_graph_creator import ProjectGraphCreator
+from amplihack.vendor.blarify.project_graph_updater import ProjectGraphUpdater, UpdatedFile
+from amplihack.vendor.blarify.repositories.graph_db_manager.db_manager import AbstractDbManager
+from amplihack.vendor.blarify.utils.path_calculator import PathCalculator
 
 from ..repositories.graph_db_manager.graph_queries import (
     detach_delete_nodes_by_node_ids_query,

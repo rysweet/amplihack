@@ -11,7 +11,7 @@ Tests cover:
 """
 
 import subprocess
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import Mock, patch
 
 from amplihack.auto_update import (
@@ -33,7 +33,7 @@ class TestUpdateCache:
     def test_is_expired_true(self):
         """Cache should be expired when past TTL."""
         # Create cache from 48 hours ago
-        past_time = datetime.now(timezone.utc) - timedelta(hours=48)
+        past_time = datetime.now(UTC) - timedelta(hours=48)
         cache = UpdateCache(
             last_check=past_time.isoformat(),
             latest_version="0.2.0",
@@ -45,7 +45,7 @@ class TestUpdateCache:
     def test_is_expired_false(self):
         """Cache should not be expired within TTL."""
         # Create cache from 1 hour ago
-        recent_time = datetime.now(timezone.utc) - timedelta(hours=1)
+        recent_time = datetime.now(UTC) - timedelta(hours=1)
         cache = UpdateCache(
             last_check=recent_time.isoformat(),
             latest_version="0.2.0",
@@ -317,7 +317,7 @@ class TestCheckForUpdates:
         # Create valid cache
         cache_file = tmp_path / "update_check.json"
         cache = UpdateCache(
-            last_check=datetime.now(timezone.utc).isoformat(),
+            last_check=datetime.now(UTC).isoformat(),
             latest_version="0.3.0",
             check_interval_hours=24,
         )
@@ -341,7 +341,7 @@ class TestCheckForUpdates:
         """Should fetch fresh data when cache expired."""
         # Create expired cache
         cache_file = tmp_path / "update_check.json"
-        old_time = datetime.now(timezone.utc) - timedelta(hours=48)
+        old_time = datetime.now(UTC) - timedelta(hours=48)
         cache = UpdateCache(
             last_check=old_time.isoformat(),
             latest_version="0.2.5",

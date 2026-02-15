@@ -42,6 +42,7 @@ These skills add NEW capabilities like decision recording, email drafting, meeti
 | **pr-review-assistant**       | 40.0  | Philosophy-aware PR reviews                                                         | [#1230](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1230) | [#1258](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1258) |
 | **context-management**        | 48.5  | Proactive context window management via token monitoring and intelligent snapshots  | [#1347](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1347) | -                                                                                  |
 | **dynamic-debugger** 🆕       | 92.0  | Interactive debugging for Python/C++/Rust via DAP-MCP (opt-in, disabled by default) | [#1552](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/issues/1552) | [#1553](https://github.com/rysweet/MicrosoftHackathon2025-AgenticCoding/pull/1553) |
+| **multitask** 🆕              | -     | Parallel workstream execution with Recipe Runner code-enforced workflows            | [#2306](https://github.com/rysweet/amplihack/issues/2306)                            | [#2308](https://github.com/rysweet/amplihack/pull/2308)                            |
 
 ### Type 2: Domain Expert Analyst Skills (23 skills)
 

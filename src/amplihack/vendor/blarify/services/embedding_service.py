@@ -4,7 +4,7 @@ import hashlib
 import os
 import time
 
-from blarify.graph.node.documentation_node import DocumentationNode
+from amplihack.vendor.blarify.graph.node.documentation_node import DocumentationNode
 from langchain_openai import OpenAIEmbeddings
 
 

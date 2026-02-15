@@ -1,18 +1,18 @@
 from typing import TYPE_CHECKING, Optional
 
-from blarify.code_hierarchy.languages.FoundRelationshipScope import FoundRelationshipScope
-from blarify.code_references.types import Point, Range, Reference
-from blarify.graph.node import NodeFactory, NodeLabels
-from blarify.graph.relationship import RelationshipType
-from blarify.project_file_explorer import File
+from amplihack.vendor.blarify.code_hierarchy.languages.FoundRelationshipScope import FoundRelationshipScope
+from amplihack.vendor.blarify.code_references.types import Point, Range, Reference
+from amplihack.vendor.blarify.graph.node import NodeFactory, NodeLabels
+from amplihack.vendor.blarify.graph.relationship import RelationshipType
+from amplihack.vendor.blarify.project_file_explorer import File
 from tree_sitter import Parser, Tree
 
 from .languages import BodyNodeNotFound, FallbackDefinitions, LanguageDefinitions
 
 if TYPE_CHECKING:
-    from blarify.code_references.types import Reference
-    from blarify.graph.graph_environment import GraphEnvironment
-    from blarify.graph.node import DefinitionNode, FileNode, FolderNode, Node
+    from ..code_references.types import Reference
+    from ..graph.graph_environment import GraphEnvironment
+    from ..graph.node import DefinitionNode, FileNode, FolderNode, Node
     from tree_sitter import Node as TreeSitterNode
 
 
