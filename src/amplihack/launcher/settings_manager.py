@@ -1,6 +1,7 @@
 """Settings manager for Claude settings.json backup and restoration."""
 
 import json
+import select
 import shutil
 import sys
 import time
@@ -40,14 +41,17 @@ class SettingsManager:
         self.session_state_dir = Path.home() / ".claude" / "runtime" / "sessions"
         self.session_state_file = self.session_state_dir / f"{session_id}_backup.json"
 
-    def prompt_user_for_modification(self) -> bool:
-        """Prompt user for permission to modify settings.json.
+    def prompt_user_for_modification(self, timeout: int = 30) -> bool:
+        """Prompt user for permission to modify settings.json with auto-timeout.
 
-        Shows the backup path and asks for confirmation.
-        Default answer is "Y" (pressing Enter accepts).
+        Shows the backup path and asks for confirmation with a 30-second timeout.
+        Default answer is "Y" (pressing Enter or timeout accepts).
+
+        Args:
+            timeout: Seconds to wait before auto-approving (default: 30)
 
         Returns:
-            True if user approves, False otherwise
+            True if user approves or timeout, False if declined
         """
         # Skip prompt if non-interactive mode
         if self.non_interactive:
@@ -61,17 +65,34 @@ class SettingsManager:
         timestamp = int(time.time())
         backup_path = self.settings_path.parent / f"{self.settings_path.name}.backup.{timestamp}"
 
-        # Show prompt with backup path
+        # Show prompt with timeout info
         prompt = (
             f"We need to edit your ~/.claude/settings.json - "
             f"we will make a backup at {backup_path} and we will restore it "
-            f"when claude exits, OK [Y]|n: "
+            f"when claude exits, OK [Y]|n (auto-accept in {timeout}s): "
         )
 
+        print(prompt, end="", flush=True)
+
         try:
-            response = input(prompt).strip().lower()
-            # Default is "Y" - empty response or "y" means yes
-            return response in ("", "y", "yes")
+            # Wait for input with timeout using select
+            # select.select only works on Unix-like systems with real file descriptors
+            if sys.platform == "win32":
+                # Windows doesn't support select on stdin, fall back to blocking input
+                response = input().strip().lower()
+                return response in ("", "y", "yes")
+
+            # Unix: Use select for timeout
+            ready, _, _ = select.select([sys.stdin], [], [], timeout)
+
+            if ready:
+                # User provided input within timeout
+                response = sys.stdin.readline().strip().lower()
+                return response in ("", "y", "yes")
+            # Timeout - auto-approve
+            print(f"\n✨ Auto-approved after {timeout}s timeout")
+            return True
+
         except (EOFError, KeyboardInterrupt):
             # Handle Ctrl+C or EOF gracefully
             print("\nOperation cancelled by user")
