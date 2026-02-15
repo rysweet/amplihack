@@ -1,0 +1,404 @@
+---
+name: Documentation Unbloat
+description: Systematically reviews and simplifies documentation by removing verbosity while preserving technical accuracy and completeness
+on:
+  schedule:
+    - cron: "0 2 1 * *" # Monthly execution on the 1st day at 02:00 UTC
+  workflow_dispatch:
+permissions:
+  contents: read
+safe-outputs:
+  create-pull-request:
+    title-prefix: "[docs] "
+    labels: [documentation, automation, cleanup]
+tools:
+  github:
+    toolsets: [default]
+  bash: true
+timeout-minutes: 45
+strict: true
+---
+
+# Documentation Unbloat Workflow
+
+Systematically reviews and simplifies documentation by removing verbosity while preserving technical accuracy and completeness. Follows amplihack's ruthless simplicity principle.
+
+## Analysis and Simplification
+
+The workflow:
+
+1. **Scans documentation** in target path for bloat patterns
+2. **Identifies issues** like excessive bullets, long paragraphs, redundant phrases
+3. **Generates recommendations** for simplification
+4. **Creates pull request** with proposed changes (unless dry run mode)
+
+## Execution
+
+Execute the workflow with bash commands to:
+
+1. **Find documentation files** in the docs/ directory
+2. **Analyze content** for bloat patterns:
+   - Excessive bullet points (more than 15 consecutive)
+   - Very long paragraphs (more than 300 words)
+   - Redundant phrases and filler words
+   - Duplicate section headings
+   - Near-empty sections
+3. **Generate recommendations** for simplification
+4. **Create pull request** with proposed changes
+
+Start the documentation unbloat analysis now by finding and analyzing markdown files in the documentation directory
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install amplihack dependencies
+        run: |
+          pip install -e .
+          pip install pytest pytest-cov
+
+      - name: Execute Documentation Unbloat
+        id: unbloat
+        uses: actions/github-script@v7
+        env:
+          TARGET_PATH: ${{ github.event.inputs.target_path || 'docs/' }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+            const { execSync } = require('child_process');
+
+            const targetPath = process.env.TARGET_PATH;
+            const isDryRun = process.env.DRY_RUN === 'true';
+
+            core.info(`📦 Starting documentation unbloat for: ${targetPath}`);
+            core.info(`🔍 Dry run mode: ${isDryRun}`);
+
+            // Find all markdown files in target path
+            const findCmd = `find ${targetPath} -type f -name "*.md" -not -path "*/node_modules/*" -not -path "*/.git/*"`;
+            const files = execSync(findCmd, { encoding: 'utf-8' }).trim().split('\n').filter(f => f);
+
+            core.info(`📄 Found ${files.length} documentation files`);
+
+            // Prepare analysis results
+            const results = {
+              totalFiles: files.length,
+              processedFiles: 0,
+              bloatedFiles: [],
+              changes: []
+            };
+
+            // Output results for next step
+            fs.writeFileSync('unbloat-results.json', JSON.stringify(results, null, 2));
+            core.setOutput('results', JSON.stringify(results));
+            core.setOutput('files-found', files.length);
+
+            return results;
+
+      - name: Analyze Documentation Bloat
+        id: analyze
+        run: |
+          echo "🔍 Analyzing documentation for bloat patterns..."
+
+          # Create analysis script
+          cat > analyze_bloat.py << 'EOF'
+          import os
+          import json
+          import re
+          from pathlib import Path
+
+          def analyze_file(filepath):
+              """Analyze a markdown file for bloat patterns."""
+              with open(filepath, 'r', encoding='utf-8') as f:
+                  content = f.read()
+                  lines = content.split('\n')
+
+              issues = []
+
+              # Pattern 1: Excessive bullet points (>15 in a row)
+              bullet_count = 0
+              for line in lines:
+                  if line.strip().startswith(('-', '*', '+')):
+                      bullet_count += 1
+                  else:
+                      if bullet_count > 15:
+                          issues.append(f"Excessive bullet points: {bullet_count} consecutive items")
+                      bullet_count = 0
+
+              # Pattern 2: Very long paragraphs (>300 words without break)
+              paragraphs = content.split('\n\n')
+              for i, para in enumerate(paragraphs):
+                  word_count = len(para.split())
+                  if word_count > 300 and not para.strip().startswith('#'):
+                      issues.append(f"Paragraph {i+1}: {word_count} words (recommend <300)")
+
+              # Pattern 3: Redundant phrases
+              redundant_phrases = [
+                  r'it is important to note that',
+                  r'as you can see',
+                  r'in order to',
+                  r'due to the fact that',
+                  r'at this point in time',
+                  r'basically',
+                  r'actually',
+                  r'obviously',
+              ]
+              for phrase in redundant_phrases:
+                  matches = re.findall(phrase, content, re.IGNORECASE)
+                  if matches:
+                      issues.append(f"Redundant phrase: '{phrase}' appears {len(matches)} times")
+
+              # Pattern 4: Duplicate sections (same heading appears multiple times)
+              headings = [line for line in lines if line.startswith('#')]
+              heading_counts = {}
+              for heading in headings:
+                  heading_counts[heading] = heading_counts.get(heading, 0) + 1
+              duplicates = {h: c for h, c in heading_counts.items() if c > 1}
+              if duplicates:
+                  issues.append(f"Duplicate headings: {duplicates}")
+
+              # Pattern 5: Empty or near-empty sections
+              section_pattern = r'^#{1,6}\s+(.+?)$'
+              sections = re.split(section_pattern, content, flags=re.MULTILINE)
+              for i in range(1, len(sections), 2):
+                  if i+1 < len(sections):
+                      section_name = sections[i]
+                      section_content = sections[i+1].strip()
+                      if len(section_content) < 50:
+                          issues.append(f"Near-empty section: '{section_name}' ({len(section_content)} chars)")
+
+              return {
+                  'filepath': filepath,
+                  'line_count': len(lines),
+                  'word_count': len(content.split()),
+                  'char_count': len(content),
+                  'issues': issues,
+                  'bloat_score': len(issues)
+              }
+
+          def main():
+              target_path = os.environ.get('TARGET_PATH', 'docs/')
+
+              results = {
+                  'totalFiles': 0,
+                  'processedFiles': 0,
+                  'bloatedFiles': [],
+                  'changes': []
+              }
+
+              # Find all markdown files
+              md_files = list(Path(target_path).rglob('*.md'))
+              results['totalFiles'] = len(md_files)
+
+              for filepath in md_files:
+                  try:
+                      analysis = analyze_file(str(filepath))
+                      results['processedFiles'] += 1
+
+                      if analysis['bloat_score'] > 0:
+                          results['bloatedFiles'].append(analysis)
+                          print(f"⚠️  {filepath.relative_to('.')}: {analysis['bloat_score']} issues")
+                      else:
+                          print(f"✅ {filepath.relative_to('.')}: Clean")
+
+                  except Exception as e:
+                      print(f"❌ Error analyzing {filepath}: {e}")
+
+              # Sort by bloat score
+              results['bloatedFiles'].sort(key=lambda x: x['bloat_score'], reverse=True)
+
+              # Write results
+              with open('unbloat-results.json', 'w') as f:
+                  json.dump(results, f, indent=2)
+
+              print(f"\n📊 Summary:")
+              print(f"   Total files: {results['totalFiles']}")
+              print(f"   Processed: {results['processedFiles']}")
+              print(f"   Bloated files: {len(results['bloatedFiles'])}")
+
+              if results['bloatedFiles']:
+                  print(f"\n🔝 Top 5 bloated files:")
+                  for item in results['bloatedFiles'][:5]:
+                      print(f"   - {item['filepath']}: {item['bloat_score']} issues")
+
+          if __name__ == '__main__':
+              main()
+          EOF
+
+          python analyze_bloat.py
+
+          echo "bloated-count=$(jq '.bloatedFiles | length' unbloat-results.json)" >> $GITHUB_OUTPUT
+
+      - name: Generate Unbloat Recommendations
+        if: steps.analyze.outputs.bloated-count > 0
+        run: |
+          echo "✍️  Generating unbloat recommendations..."
+
+          cat > generate_recommendations.py << 'EOF'
+          import json
+
+          with open('unbloat-results.json', 'r') as f:
+              results = json.load(f)
+
+          recommendations = []
+
+          for item in results['bloatedFiles'][:10]:  # Top 10 most bloated
+              filepath = item['filepath']
+              issues = item['issues']
+
+              rec = {
+                  'file': filepath,
+                  'actions': []
+              }
+
+              for issue in issues:
+                  if 'Excessive bullet points' in issue:
+                      rec['actions'].append('Break long bullet lists into subsections with headings')
+                  elif 'Paragraph' in issue and 'words' in issue:
+                      rec['actions'].append('Split long paragraphs into smaller chunks with subheadings')
+                  elif 'Redundant phrase' in issue:
+                      rec['actions'].append('Remove verbose filler phrases')
+                  elif 'Duplicate headings' in issue:
+                      rec['actions'].append('Consolidate duplicate sections')
+                  elif 'Near-empty section' in issue:
+                      rec['actions'].append('Remove or expand near-empty sections')
+
+              recommendations.append(rec)
+
+          # Write recommendations
+          with open('unbloat-recommendations.md', 'w') as f:
+              f.write('# Documentation Unbloat Recommendations\n\n')
+              f.write('## Summary\n\n')
+              f.write(f'Found {len(results["bloatedFiles"])} files with bloat issues.\n\n')
+              f.write('## Recommended Actions\n\n')
+
+              for rec in recommendations:
+                  f.write(f'### `{rec["file"]}`\n\n')
+                  for action in rec['actions']:
+                      f.write(f'- {action}\n')
+                  f.write('\n')
+
+              f.write('## Principles\n\n')
+              f.write('Following amplihack ruthless simplicity:\n\n')
+              f.write('- **Start with the simplest explanation** that conveys the concept\n')
+              f.write('- **Remove filler words** and verbose transitions\n')
+              f.write('- **Question every paragraph** - does it add value?\n')
+              f.write('- **Preserve technical accuracy** - never sacrifice correctness for brevity\n')
+              f.write('- **Keep critical warnings** - safety information stays\n')
+              f.write('- **Maintain external links** - references are valuable\n')
+
+          print("✅ Recommendations generated")
+          EOF
+
+          python generate_recommendations.py
+          cat unbloat-recommendations.md
+
+      - name: Create Pull Request
+        if: |
+          steps.analyze.outputs.bloated-count > 0 &&
+          github.event.inputs.dry_run != 'true'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: |
+            docs: Unbloat documentation for clarity
+
+            Automated documentation simplification following ruthless simplicity principle.
+
+            - Remove verbose filler phrases
+            - Break up overly long paragraphs
+            - Consolidate duplicate sections
+            - Preserve technical accuracy and critical warnings
+          branch: automated/unbloat-docs-${{ github.run_number }}
+          title: "[docs] Unbloat documentation - ${{ steps.analyze.outputs.bloated-count }} files"
+          body-path: unbloat-recommendations.md
+          labels: |
+            documentation
+            automation
+            cleanup
+          draft: true
+          delete-branch: true
+
+      - name: Upload Analysis Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unbloat-analysis-${{ github.run_number }}
+          path: |
+            unbloat-results.json
+            unbloat-recommendations.md
+          retention-days: 7
+
+      - name: Report Status
+        if: always()
+        run: |
+          if [ "${{ steps.analyze.outputs.bloated-count }}" -gt 0 ]; then
+            echo "🗜️  Documentation unbloat analysis complete!"
+            echo "   Bloated files: ${{ steps.analyze.outputs.bloated-count }}"
+            if [ "${{ github.event.inputs.dry_run }}" != "true" ]; then
+              echo "   Pull request created for review"
+            else
+              echo "   Dry run - no PR created"
+            fi
+          else
+            echo "✅ Documentation is already optimized!"
+          fi
+
+# Configuration Notes
+
+# -------------------
+
+# - Schedule: Monthly execution (1st day at 02:00 UTC)
+
+# - Trigger: Manual dispatch with optional target path and dry run
+
+# - Permissions: Read contents/issues, write pull-requests
+
+# - Timeout: 45 minutes
+
+# - Draft PRs: Enabled for manual review before merge
+
+# - Auto-merge: Disabled (requires manual review)
+
+#
+
+# Bloat Detection Patterns:
+
+# - Excessive bullet points (>15 consecutive)
+
+# - Very long paragraphs (>300 words)
+
+# - Redundant filler phrases
+
+# - Duplicate section headings
+
+# - Near-empty sections (<50 chars)
+
+#
+
+# Preservation Rules:
+
+# - Technical accuracy (code examples, commands)
+
+# - External links and references
+
+# - Critical warnings and safety information
+
+# - Frontmatter metadata
+
+# - Table of contents
+
+#
+
+# Alignment with amplihack philosophy:
+
+# - Ruthless simplicity in documentation
+
+# - Zero-BS implementation (working code, no placeholders)
+
+# - Clear, direct communication
+
+# - Question every abstraction (every paragraph)
