@@ -2209,6 +2209,10 @@
          <lastmod>2026-02-15</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/howto/recipe-cli-commands/</loc>
+         <lastmod>2026-02-15</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/howto/trace-logging/</loc>
          <lastmod>2026-02-15</lastmod>
     </url>
@@ -2373,6 +2377,14 @@
          <lastmod>2026-02-15</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/recipes/cli-examples/</loc>
+         <lastmod>2026-02-15</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/recipes/quick-reference/</loc>
+         <lastmod>2026-02-15</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/reference/LAUNCHER_MODEL_CONFIGURATION/</loc>
          <lastmod>2026-02-15</lastmod>
     </url>
@@ -2406,6 +2418,10 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/reference/prerequisite-checking/</loc>
+         <lastmod>2026-02-15</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/reference/recipe-cli-reference/</loc>
          <lastmod>2026-02-15</lastmod>
     </url>
     <url>
