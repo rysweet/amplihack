@@ -3,7 +3,8 @@
 Enables Recipe Runner to work when already inside a Claude Code session by:
 1. Unsetting CLAUDECODE environment variable
 2. Using isolated temporary directories for each agent invocation
-3. Cleaning up resources after execution
+3. Streaming output with progress monitoring (no hard timeout)
+4. Cleaning up resources after execution
 """
 
 from __future__ import annotations
@@ -12,6 +13,8 @@ import os
 import shutil
 import subprocess
 import tempfile
+import threading
+import time
 from pathlib import Path
 
 
@@ -21,6 +24,7 @@ class NestedSessionAdapter:
     Solves the "cannot launch Claude Code inside Claude Code" error by:
     - Unsetting CLAUDECODE before spawning subprocess
     - Using isolated temp directories for each agent call
+    - Streaming output with a monitoring thread (no hard timeout)
     - Proper cleanup of resources
 
     Based on the pattern from multitask skill (.claude/skills/multitask/orchestrator.py)
@@ -32,13 +36,6 @@ class NestedSessionAdapter:
         working_dir: str = ".",
         use_temp_dirs: bool = True,
     ) -> None:
-        """Initialize the adapter.
-
-        Args:
-            cli: CLI command to use (claude, copilot, rustyclawd)
-            working_dir: Base working directory for bash steps
-            use_temp_dirs: If True, use isolated temp dirs for agent steps
-        """
         self._cli = cli
         self._working_dir = working_dir
         self._use_temp_dirs = use_temp_dirs
@@ -53,46 +50,70 @@ class NestedSessionAdapter:
     ) -> str:
         """Execute an agent step in a nested Claude Code session.
 
-        Creates isolated environment with CLAUDECODE unset to allow nesting.
-        Uses temporary directory if use_temp_dirs=True for full isolation.
+        Runs without a hard timeout. Output is streamed to a log file
+        and tailed by a background thread for progress monitoring.
         """
         # Prepare environment without CLAUDECODE
         env = os.environ.copy()
-        if "CLAUDECODE" in env:
-            del env["CLAUDECODE"]
+        env.pop("CLAUDECODE", None)
 
         # Prepare working directory
+        temp_dir = None
         if self._use_temp_dirs:
-            # Create isolated temp directory for this agent call
             temp_dir = tempfile.mkdtemp(prefix="recipe-agent-")
             actual_working_dir = temp_dir
         else:
             actual_working_dir = working_dir or self._working_dir
 
+        # Output log for monitoring
+        output_dir = Path(actual_working_dir)
+        output_file = output_dir / f".agent-step-{int(time.time())}.log"
+
         try:
-            # Build command
             cmd = [self._cli, "-p", prompt]
 
-            # Execute with modified environment
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                cwd=actual_working_dir,
-                env=env,  # CLAUDECODE unset here
-                timeout=900,  # 15 min - agent steps need time
-            )
-
-            if result.returncode != 0:
-                raise RuntimeError(
-                    f"{self._cli} failed (exit {result.returncode}): {result.stderr.strip()}"
+            # Launch process – no timeout
+            with open(output_file, "w") as log_fh:
+                proc = subprocess.Popen(
+                    cmd,
+                    stdout=log_fh,
+                    stderr=subprocess.STDOUT,
+                    cwd=actual_working_dir,
+                    env=env,
                 )
 
-            return result.stdout.strip()
+            # Tail output in background
+            stop_event = threading.Event()
+            tail_thread = threading.Thread(
+                target=self._tail_output,
+                args=(output_file, stop_event),
+                daemon=True,
+            )
+            tail_thread.start()
+
+            try:
+                proc.wait()  # No timeout – let it run
+            finally:
+                stop_event.set()
+                tail_thread.join(timeout=2)
+
+            stdout = output_file.read_text(errors="replace")
+
+            if proc.returncode != 0:
+                raise RuntimeError(
+                    f"{self._cli} failed (exit {proc.returncode}): "
+                    f"{stdout[-500:].strip()}"
+                )
+
+            return stdout.strip()
 
         finally:
-            # Cleanup temp directory if created
-            if self._use_temp_dirs and Path(temp_dir).exists():
+            # Cleanup
+            try:
+                output_file.unlink(missing_ok=True)
+            except OSError:
+                pass
+            if self._use_temp_dirs and temp_dir and Path(temp_dir).exists():
                 shutil.rmtree(temp_dir, ignore_errors=True)
 
     def execute_bash_step(
@@ -126,3 +147,32 @@ class NestedSessionAdapter:
     @property
     def name(self) -> str:
         return f"nested-session ({self._cli})"
+
+    @staticmethod
+    def _tail_output(path: Path, stop: threading.Event) -> None:
+        """Tail a file and print new lines until *stop* is set."""
+        last_size = 0
+        last_activity = time.time()
+
+        while not stop.is_set():
+            try:
+                current_size = path.stat().st_size
+            except FileNotFoundError:
+                stop.wait(1)
+                continue
+
+            if current_size > last_size:
+                with open(path) as fh:
+                    fh.seek(last_size)
+                    new_text = fh.read()
+                    lines = [ln for ln in new_text.strip().splitlines() if ln.strip()]
+                    if lines:
+                        print(f"  [agent] {lines[-1][:120]}")
+                last_size = current_size
+                last_activity = time.time()
+            elif time.time() - last_activity > 60:
+                elapsed = int(time.time() - last_activity)
+                print(f"  [agent] ... still running ({elapsed}s since last output)")
+                last_activity = time.time()
+
+            stop.wait(2)
