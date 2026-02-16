@@ -145,10 +145,11 @@ dependencies = [
 
 [[package]]
 name = "amplihack"
-version = "0.5.11"
+version = "0.5.26"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
+    { name = "amplihack-memory-lib" },
     { name = "azure-identity" },
     { name = "claude-agent-sdk" },
     { name = "docker" },
@@ -223,6 +224,7 @@ dev = [
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.8.0" },
     { name = "amplifier-core", marker = "extra == 'amplifier'", git = "https://github.com/microsoft/amplifier-core?rev=main" },
+    { name = "amplihack-memory-lib", git = "https://github.com/rysweet/amplihack-memory-lib.git?rev=v0.1.0" },
     { name = "azure-identity", specifier = ">=1.12.0" },
     { name = "beautifulsoup4", marker = "extra == 'dev'", specifier = ">=4.9.0" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=22.0.0" },
@@ -280,6 +282,14 @@ provides-extras = ["amplifier", "ui", "tui-testing", "test", "dev", "blarify-all
 dev = [
     { name = "pytest", specifier = ">=8.4.2" },
     { name = "pytest-asyncio", specifier = ">=1.2.0" },
+]
+
+[[package]]
+name = "amplihack-memory-lib"
+version = "0.1.0"
+source = { git = "https://github.com/rysweet/amplihack-memory-lib.git?rev=v0.1.0#df133cf42a8587816c9addf05083bf9997858f24" }
+dependencies = [
+    { name = "kuzu" },
 ]
 
 [[package]]
