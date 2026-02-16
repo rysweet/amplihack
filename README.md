@@ -682,6 +682,8 @@ Real-time session information displayed at the bottom of Claude Code showing:
 
 - [Hook Configuration](https://rysweet.github.io/amplihack/HOOK_CONFIGURATION_GUIDE/) -
   Session hooks
+- [Settings Hook Configuration](docs/howto/settings-hook-configuration.md) -
+  Automatic hook setup, validation, and troubleshooting
 - [Workflow Customization](https://rysweet.github.io/amplihack/WORKFLOW_COMPLETION/) -
   Process customization
 
