@@ -41,9 +41,14 @@ class MemoryRetriever:
             raise ValueError("agent_name cannot be empty")
 
         self.agent_name = agent_name.strip()
-        self.connector = MemoryConnector(
-            agent_name=self.agent_name, storage_path=storage_path, backend=backend
-        )
+        connector_kwargs: dict[str, Any] = {"agent_name": self.agent_name}
+        if storage_path:
+            connector_kwargs["storage_path"] = Path(storage_path) if isinstance(storage_path, str) else storage_path
+        try:
+            self.connector = MemoryConnector(**connector_kwargs, backend=backend)
+        except TypeError:
+            # Older amplihack-memory-lib without backend parameter
+            self.connector = MemoryConnector(**connector_kwargs)
 
     def search(
         self,
