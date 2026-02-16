@@ -56,7 +56,8 @@ amplihack recipe list | grep workflow
 
 ```bash
 amplihack recipe run default-workflow \
-  --context '{"task_description": "Add user authentication", "repo_path": "."}'
+  --context task_description="Add user authentication" \
+  --context repo_path="."
 ```
 
 **What happens**:
@@ -122,17 +123,15 @@ Use dry run to:
 
 ```bash
 amplihack recipe run bug-triage \
-  --context '{
-    "issue_number": "456",
-    "repo_path": "/home/user/myproject",
-    "branch_name": "fix/issue-456"
-  }'
+  --context issue_number="456" \
+  --context repo_path="/home/user/myproject" \
+  --context branch_name="fix/issue-456"
 ```
 
 Context variables:
 
 - Defined in recipe YAML `context:` block
-- Passed via `--context` JSON string
+- Passed via `--context key=value` format (fail-fast validation)
 - Injected into prompts with `{{variable}}` syntax
 - Available to all steps in the recipe
 
@@ -159,15 +158,15 @@ Error: Missing required context variable: task_description
 ```bash
 # Use Claude Agent SDK (default)
 amplihack recipe run default-workflow --adapter claude \
-  --context '{"task_description": "Add rate limiting"}'
+  --context task_description="Add rate limiting"
 
 # Use GitHub Copilot SDK
 amplihack recipe run default-workflow --adapter copilot \
-  --context '{"task_description": "Add rate limiting"}'
+  --context task_description="Add rate limiting"
 
 # Use CLI subprocess adapter (generic fallback)
 amplihack recipe run default-workflow --adapter cli \
-  --context '{"task_description": "Add rate limiting"}'
+  --context task_description="Add rate limiting"
 ```
 
 **Adapter auto-detection**:
@@ -312,11 +311,9 @@ amplihack recipe show default-workflow | grep -c "^  [0-9]"
 ```bash
 # 1. Start with the full 22-step workflow
 amplihack recipe run default-workflow \
-  --context '{
-    "task_description": "Add JWT authentication to API",
-    "repo_path": ".",
-    "branch_name": "feat/jwt-auth"
-  }'
+  --context task_description="Add JWT authentication to API" \
+  --context repo_path="." \
+  --context branch_name="feat/jwt-auth"
 ```
 
 This executes:
@@ -336,10 +333,8 @@ This executes:
 ```bash
 # Use the lightweight quick-fix recipe (4 steps)
 amplihack recipe run quick-fix \
-  --context '{
-    "task_description": "Fix null pointer in user profile handler",
-    "repo_path": "."
-  }'
+  --context task_description="Fix null pointer in user profile handler" \
+  --context repo_path="."
 ```
 
 Steps:
@@ -355,11 +350,9 @@ Steps:
 
 ```bash
 amplihack recipe run investigation \
-  --context '{
-    "task_description": "How does the authentication system work?",
-    "repo_path": ".",
-    "focus_area": "src/auth/"
-  }'
+  --context task_description="How does the authentication system work?" \
+  --context repo_path="." \
+  --context focus_area="src/auth/"
 ```
 
 The investigation recipe:
@@ -375,10 +368,8 @@ The investigation recipe:
 
 ```bash
 amplihack recipe run security-audit \
-  --context '{
-    "repo_path": ".",
-    "focus_modules": "auth,api,database"
-  }'
+  --context repo_path="." \
+  --context focus_modules="auth,api,database"
 ```
 
 Security audit steps:
@@ -395,11 +386,9 @@ Security audit steps:
 
 ```bash
 amplihack recipe run ci-diagnostic \
-  --context '{
-    "pr_number": "123",
-    "repo_path": ".",
-    "ci_log_url": "https://github.com/org/repo/actions/runs/456"
-  }'
+  --context pr_number="123" \
+  --context repo_path="." \
+  --context ci_log_url="https://github.com/org/repo/actions/runs/456"
 ```
 
 CI diagnostic workflow:
@@ -432,7 +421,7 @@ If your recipe is in a different location:
 ```bash
 # Specify absolute path
 amplihack recipe run /path/to/my-recipe.yaml \
-  --context '{"task_description": "..."}'
+  --context task_description="Test custom recipe"
 ```
 
 ### Missing Context Variables
@@ -447,10 +436,8 @@ amplihack recipe show my-recipe
 
 # Provide all required variables
 amplihack recipe run my-recipe \
-  --context '{
-    "required_var1": "value1",
-    "required_var2": "value2"
-  }'
+  --context required_var1="value1" \
+  --context required_var2="value2"
 ```
 
 ### Agent Not Found
@@ -502,7 +489,7 @@ steps:
 ```bash
 # Run with verbose output to see why steps skip
 amplihack recipe run my-recipe --verbose \
-  --context '{"task_description": "..."}'
+  --context task_description="Debug conditional step issue"
 ```
 
 ### Recipe Runs Too Slowly
@@ -539,11 +526,13 @@ steps:
 **3. Use dry-run to verify before full execution**:
 
 ```bash
-# Quick preview (< 1 second)
+# Quick preview (< 1 second, supports conditional steps and JSON parsing)
 amplihack recipe run large-workflow --dry-run
 
 # Only run if dry-run looks correct
-amplihack recipe run large-workflow --context '...'
+amplihack recipe run large-workflow \
+  --context task_description="Large feature implementation" \
+  --context repo_path="."
 ```
 
 ### Adapter Selection Issues
@@ -558,7 +547,7 @@ which claude copilot
 
 # Force specific adapter
 amplihack recipe run my-recipe --adapter claude \
-  --context '{"task_description": "..."}'
+  --context task_description="Test with Claude adapter"
 ```
 
 **Adapter requirements**:

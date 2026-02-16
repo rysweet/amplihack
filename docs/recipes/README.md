@@ -49,12 +49,13 @@ The model executes within a single step. The Python loop controls progression.
 ## Quick Start
 
 ```bash
-# List available recipes
+# List available recipes (discovers from all standard locations)
 amplihack recipe list
 
-# Execute a workflow recipe
+# Execute a workflow recipe with context
 amplihack recipe run default-workflow \
-  --context '{"task_description": "Add user authentication", "repo_path": "."}'
+  --context task_description="Add user authentication" \
+  --context repo_path="."
 
 # Dry run -- see what would execute without running anything
 amplihack recipe run verification-workflow --dry-run
@@ -65,7 +66,8 @@ amplihack recipe validate my-recipe.yaml
 # Run with a specific SDK adapter
 amplihack recipe run default-workflow \
   --adapter copilot \
-  --context '{"task_description": "Fix login bug", "repo_path": "."}'
+  --context task_description="Fix login bug" \
+  --context repo_path="."
 ```
 
 **Expected output from `amplihack recipe list`**:
@@ -234,14 +236,14 @@ Recipes live in `~/.amplihack/.claude/recipes/`. Run `amplihack recipe list` to 
 
 ### Recipe Discovery
 
-The Recipe Runner automatically discovers recipes from these directories (in priority order):
+The Recipe Runner automatically discovers recipes from these standard directories (in priority order):
 
 1. `amplifier-bundle/recipes/` — bundled recipes from Microsoft Amplifier
 2. `src/amplihack/amplifier-bundle/recipes/` — package-embedded recipes
 3. `~/.amplihack/.claude/recipes/` — user-installed recipes
 4. `.claude/recipes/` — project-specific recipes
 
-Later directories override earlier ones when recipe names collide.
+Later directories override earlier ones when recipe names collide. All bundled recipes are automatically available without additional installation.
 
 ```python
 from amplihack.recipes import list_recipes, find_recipe
@@ -377,8 +379,120 @@ Recipe "my-workflow" is valid (5 steps).
 
 ```bash
 amplihack recipe run my-workflow \
-  --context '{"component_name": "UserAvatar", "repo_path": "."}'
+  --context component_name="UserAvatar" \
+  --context repo_path="."
 ```
+
+## Troubleshooting
+
+### Recipe Discovery Issues
+
+**Problem**: `amplihack recipe list` shows no recipes or missing expected recipes.
+
+**Solution**: Recipe discovery automatically searches standard locations. Verify bundled recipes exist:
+
+```bash
+# Check bundled recipe locations
+ls amplifier-bundle/recipes/*.yaml
+ls src/amplihack/amplifier-bundle/recipes/*.yaml
+
+# Check user-installed recipes
+ls ~/.amplihack/.claude/recipes/*.yaml
+
+# Check project-specific recipes
+ls .claude/recipes/*.yaml
+```
+
+All bundled recipes (default-workflow, investigation, etc.) are automatically discovered. No manual installation required.
+
+### Context Validation Errors
+
+**Problem**: Recipe fails with "Invalid context format" or "Missing required context variable".
+
+**Solution**: Use clear `key=value` format with fail-fast validation:
+
+```bash
+# Correct format (key=value pairs)
+amplihack recipe run default-workflow \
+  --context task_description="Add authentication" \
+  --context repo_path="."
+
+# Wrong format (will fail with clear error)
+amplihack recipe run default-workflow \
+  --context '{"task_description": "Add auth"}'  # ❌ JSON format not supported
+```
+
+Context validation now provides immediate, actionable error messages indicating which variables are missing or malformed.
+
+### Agent Reference Errors
+
+**Problem**: Recipe validation fails with "Agent not found" for `amplihack:agent-name`.
+
+**Solution**: All recipes use correct `amplihack:` namespace for agents:
+
+```yaml
+# Correct agent reference
+steps:
+  - id: design
+    agent: amplihack:architect  # ✅ Includes namespace
+    prompt: "Design solution..."
+
+# Wrong agent reference
+steps:
+  - id: design
+    agent: architect  # ❌ Missing namespace (older format)
+    prompt: "Design solution..."
+```
+
+All bundled recipes have been updated to use proper `amplihack:` namespace references.
+
+### Dry-Run JSON Issues
+
+**Problem**: Dry-run mode with conditional steps or `parse_json=true` produces invalid output.
+
+**Solution**: Dry-run now outputs valid mock JSON for conditional steps:
+
+```bash
+# Dry-run with JSON parsing steps
+amplihack recipe run default-workflow --dry-run
+
+# Expected output for parse_json steps
+[Step 5/22] parse-test-results (type: bash, parse_json: true)
+  Would execute: pytest --json-report
+  Would parse as JSON: {"mock": "data", "status": "dry-run"}
+  → Output: test_results
+
+# Conditional steps show evaluation
+[Step 10/22] deploy (condition: tests_pass)
+  Would evaluate condition: tests_pass = {"mock": "data"}
+  Condition would evaluate to: true
+  Would run agent: amplihack:deployment
+```
+
+Dry-run mode now handles all step types including bash commands with JSON parsing and conditional execution.
+
+### YAML Syntax Errors
+
+**Problem**: Recipe validation fails with YAML parse errors.
+
+**Solution**: All recipe YAML files have been validated and parse successfully:
+
+```bash
+# Validate before running
+amplihack recipe validate my-recipe.yaml
+
+# Expected successful validation output
+Validating my-recipe.yaml...
+  [OK] Valid YAML syntax
+  [OK] Required fields present (name, steps)
+  [OK] All step IDs unique
+  [OK] Agent references valid
+  [OK] Template variables resolve
+
+Recipe "my-recipe" is valid (5 steps)
+```
+
+All bundled recipes pass YAML validation without errors.
 
 ## Integration with Amplihack
 
@@ -392,7 +506,7 @@ When `/ultrathink` is invoked, it reads `DEFAULT_WORKFLOW.md` and orchestrates a
 
 # After: code-enforced execution (same 22 steps)
 amplihack recipe run default-workflow \
-  --context '{"task_description": "Add user authentication"}'
+  --context task_description="Add user authentication"
 ```
 
 Both approaches produce the same result. The difference is that the recipe version cannot skip steps.
