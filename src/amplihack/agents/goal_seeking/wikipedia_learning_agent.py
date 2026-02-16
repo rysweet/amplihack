@@ -9,6 +9,7 @@ Philosophy:
 - Handles question complexity levels (L1-L4)
 """
 
+from pathlib import Path
 from typing import Any
 
 import litellm
@@ -175,10 +176,10 @@ class WikipediaLearningAgent:
             question=question, context=relevant_facts, question_level=question_level
         )
 
-        # Store the question-answer pair as a learning
+        # Store the question-answer pair as a learning (truncate to fit)
         self.memory.store_fact(
-            context=f"Question: {question}",
-            fact=f"Answer: {answer}",
+            context=f"Question: {question[:200]}",
+            fact=f"Answer: {answer[:900]}",
             confidence=0.7,
             tags=["q_and_a", question_level.lower()],
         )
