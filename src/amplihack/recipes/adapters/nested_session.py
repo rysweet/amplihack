@@ -101,8 +101,7 @@ class NestedSessionAdapter:
 
             if proc.returncode != 0:
                 raise RuntimeError(
-                    f"{self._cli} failed (exit {proc.returncode}): "
-                    f"{stdout[-500:].strip()}"
+                    f"{self._cli} failed (exit {proc.returncode}): {stdout[-500:].strip()}"
                 )
 
             return stdout.strip()

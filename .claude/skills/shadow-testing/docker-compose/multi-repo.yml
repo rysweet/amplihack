@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 # Multi-repository shadow environment for coordinated changes
 # Usage:

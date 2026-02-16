@@ -12,7 +12,7 @@ Philosophy:
 from pathlib import Path
 from typing import Any
 
-from amplihack_memory import Experience, ExperienceStore, ExperienceType, MemoryConnector
+from amplihack_memory import Experience, ExperienceStore, ExperienceType
 
 
 class MemoryRetriever:
@@ -43,7 +43,9 @@ class MemoryRetriever:
         self.agent_name = agent_name.strip()
         store_kwargs: dict[str, Any] = {"agent_name": self.agent_name}
         if storage_path:
-            store_kwargs["storage_path"] = Path(storage_path) if isinstance(storage_path, str) else storage_path
+            store_kwargs["storage_path"] = (
+                Path(storage_path) if isinstance(storage_path, str) else storage_path
+            )
         self.store = ExperienceStore(**store_kwargs)
         self.connector = self.store.connector
 

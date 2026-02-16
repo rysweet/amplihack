@@ -9,10 +9,8 @@ monitored so callers can observe progress in real time.
 
 from __future__ import annotations
 
-import os
 import shutil
 import subprocess
-import tempfile
 import threading
 import time
 from pathlib import Path
@@ -100,8 +98,7 @@ class CLISubprocessAdapter:
 
         if proc.returncode != 0:
             raise RuntimeError(
-                f"{self._cli} failed (exit {proc.returncode}): "
-                f"{stdout[-500:].strip()}"
+                f"{self._cli} failed (exit {proc.returncode}): {stdout[-500:].strip()}"
             )
         return stdout.strip()
 
@@ -173,7 +170,9 @@ class CLISubprocessAdapter:
                 last_size = current_size
                 last_activity = time.time()
             elif time.time() - last_activity > 60:
-                print(f"  [agent] ... still running ({int(time.time() - last_activity)}s since last output)")
+                print(
+                    f"  [agent] ... still running ({int(time.time() - last_activity)}s since last output)"
+                )
                 last_activity = time.time()
 
             stop.wait(2)  # Check every 2 seconds

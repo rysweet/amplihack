@@ -11,6 +11,7 @@ Common issues, debugging strategies, and solutions for .NET Aspire development.
 **Symptom:** Dashboard shows service in "Starting" state indefinitely.
 
 **Diagnosis:**
+
 ```bash
 aspire run --verbose
 # View service logs: Dashboard → Resources → [service-name] → Logs
@@ -19,19 +20,25 @@ aspire run --verbose
 **Common Causes:**
 
 1. **Port Conflict**
+
    ```
    Error: Failed to bind to address http://localhost:5000: address already in use
    ```
+
    **Solution:** Use dynamic port allocation
+
    ```csharp
    builder.AddProject<Projects.Api>("api").WithHttpEndpoint();
    ```
 
 2. **Missing Dependencies**
+
    ```
    Error: Unable to connect to database
    ```
+
    **Solution:** Use WithReference to ensure dependencies start first
+
    ```csharp
    var redis = builder.AddRedis("cache");
    var postgres = builder.AddPostgres("db").AddDatabase("appdb");
@@ -55,6 +62,7 @@ aspire run --verbose
 **Symptom:** Service starts but marked unhealthy in Dashboard.
 
 **Diagnosis:**
+
 ```bash
 curl http://localhost:5000/health
 # Dashboard → Resources → [service] → Health tab
@@ -63,6 +71,7 @@ curl http://localhost:5000/health
 **Solutions:**
 
 1. **Add Health Endpoint**
+
    ```csharp
    builder.Services.AddHealthChecks()
        .AddDbContextCheck<AppDbContext>()
@@ -71,6 +80,7 @@ curl http://localhost:5000/health
    ```
 
 2. **Fix Database Connection**
+
    ```csharp
    builder.Services.AddHealthChecks()
        .AddNpgSql(builder.Configuration.GetConnectionString("db")!,
@@ -89,17 +99,20 @@ curl http://localhost:5000/health
 **Symptom:** Service starts before dependencies are ready.
 
 **Example Error:**
+
 ```
 System.TimeoutException: Unable to connect to Redis
 ```
 
 **Solution:** Use `WithReference` to establish dependencies
+
 ```csharp
 var redis = builder.AddRedis("cache");
 var api = builder.AddProject<Projects.Api>("api").WithReference(redis);
 ```
 
 **If still failing:** Add retry logic
+
 ```csharp
 builder.Services.AddStackExchangeRedisCache(options =>
 {
@@ -118,11 +131,13 @@ builder.Services.AddStackExchangeRedisCache(options =>
 ### NuGet Package Version Mismatches
 
 **Symptom:**
+
 ```
 Error: Package 'Aspire.Hosting.Redis' 8.0.0 is not compatible with 'Aspire.Hosting' 8.1.0
 ```
 
 **Solution:** Ensure all Aspire packages use same version
+
 ```bash
 # Check versions
 dotnet list package
@@ -134,6 +149,7 @@ dotnet add package Aspire.Hosting.PostgreSQL --version 8.1.0
 ```
 
 **Or use Directory.Packages.props:**
+
 ```xml
 <Project>
   <PropertyGroup>
@@ -152,11 +168,13 @@ dotnet add package Aspire.Hosting.PostgreSQL --version 8.1.0
 ### Docker Image Pull Failures
 
 **Symptom:**
+
 ```
 Error: Unable to pull image 'redis:latest': no such host
 ```
 
 **Diagnosis:**
+
 ```bash
 # Test Docker connectivity
 docker pull redis:latest
@@ -179,11 +197,13 @@ docker info
 ### Missing Database Drivers
 
 **Symptom:**
+
 ```
 Error: No database provider has been configured for this DbContext
 ```
 
 **Solution:** Add appropriate NuGet package
+
 ```bash
 # PostgreSQL
 dotnet add package Npgsql.EntityFrameworkCore.PostgreSQL
@@ -196,6 +216,7 @@ dotnet add package MongoDB.Driver
 ```
 
 **And configure:**
+
 ```csharp
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("db")));
@@ -206,11 +227,13 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 ### Azure Deployment - Authentication Errors
 
 **Symptom:**
+
 ```
 Error: Failed to authenticate with Azure. Run 'azd auth login'
 ```
 
 **Solution:**
+
 ```bash
 # Login to Azure
 az login
@@ -224,11 +247,13 @@ azd env list
 ### Azure Deployment - Insufficient Permissions
 
 **Symptom:**
+
 ```
 Error: The client does not have authorization to perform action 'Microsoft.Resources/deployments/write'
 ```
 
 **Solution:** Grant required permissions
+
 ```bash
 # Check current role
 az role assignment list --assignee $(az account show --query user.name -o tsv)
@@ -245,11 +270,13 @@ az role assignment create \
 ### Azure Deployment - Resource Quota Exceeded
 
 **Symptom:**
+
 ```
 Error: Operation could not be completed as it results in exceeding quota limit
 ```
 
 **Diagnosis:**
+
 ```bash
 # Check current quota usage
 az vm list-usage --location eastus -o table
@@ -267,11 +294,13 @@ az network vnet list --query "length([*])"
 ### Azure Deployment - Container Build Failures
 
 **Symptom:**
+
 ```
 Error: Failed to build container image for 'api'
 ```
 
 **Diagnosis:**
+
 ```bash
 # Test local build
 docker build -t api:test .
@@ -295,11 +324,13 @@ cat Dockerfile
 **Symptom:** Service can't resolve other services by name.
 
 **Example Error:**
+
 ```
 HttpRequestException: No such host is known: api
 ```
 
 **Diagnosis:**
+
 ```csharp
 // Log connection string to verify
 _logger.LogInformation("Connecting to: {Connection}",
@@ -324,11 +355,13 @@ _logger.LogInformation("Connecting to: {Connection}",
 ### Redis Connection Failures
 
 **Symptom:**
+
 ```
 RedisConnectionException: It was not possible to connect to the redis server
 ```
 
 **Diagnosis:**
+
 ```bash
 aspire run  # Dashboard → Resources → cache → Status should be "Healthy"
 redis-cli ping  # Should return: PONG
@@ -337,6 +370,7 @@ redis-cli ping  # Should return: PONG
 **Solutions:**
 
 1. **Wait for Redis Startup**
+
    ```csharp
    builder.Services.AddStackExchangeRedisCache(options =>
    {
@@ -359,6 +393,7 @@ redis-cli ping  # Should return: PONG
 ### Database Connection Timeouts
 
 **Symptom:**
+
 ```
 Npgsql.NpgsqlException: Connection timed out
 ```
@@ -366,6 +401,7 @@ Npgsql.NpgsqlException: Connection timed out
 **Solutions:**
 
 1. **Increase Timeout**
+
    ```csharp
    builder.Services.AddDbContext<AppDbContext>(options =>
        options.UseNpgsql(
@@ -374,6 +410,7 @@ Npgsql.NpgsqlException: Connection timed out
    ```
 
 2. **Add Retry Policy**
+
    ```csharp
    builder.Services.AddDbContext<AppDbContext>(options =>
        options.UseNpgsql(
@@ -405,6 +442,7 @@ Npgsql.NpgsqlException: Connection timed out
 **Solutions:**
 
 1. **Add ServiceDefaults:**
+
    ```csharp
    builder.AddServiceDefaults();  // Adds OpenTelemetry
    var app = builder.Build();
@@ -423,6 +461,7 @@ Npgsql.NpgsqlException: Connection timed out
 **Symptom:** Services take minutes to start.
 
 **Diagnosis:**
+
 ```bash
 # Profile startup time
 dotnet run --project MyApp.AppHost
@@ -446,6 +485,7 @@ dotnet run --project MyApp.AppHost
 **Solutions:**
 
 1. **Set Resource Limits**
+
    ```csharp
    builder.AddContainer("api", "my-api")
        .WithAnnotation(new ResourceLimits
@@ -465,6 +505,7 @@ dotnet run --project MyApp.AppHost
 **Common Causes:**
 
 1. **Environment Detection**
+
    ```csharp
    if (builder.Environment.IsDevelopment())
    {
@@ -479,6 +520,7 @@ dotnet run --project MyApp.AppHost
    ```
 
 2. **Managed Identity Not Configured**
+
    ```csharp
    // Local: uses connection string with password
    // Azure: uses managed identity (no password)
@@ -533,14 +575,14 @@ az containerapp logs show --name my-api --resource-group mygroup
 
 ### Common Log Patterns to Search For
 
-| Pattern | Meaning |
-|---------|---------|
-| `Failed to bind to address` | Port conflict |
-| `Unable to connect to` | Dependency not ready |
-| `Health check timeout` | Service not responding |
-| `Authentication failed` | Credentials issue |
-| `No such host` | Service discovery problem |
-| `Connection refused` | Service not listening |
+| Pattern                     | Meaning                   |
+| --------------------------- | ------------------------- |
+| `Failed to bind to address` | Port conflict             |
+| `Unable to connect to`      | Dependency not ready      |
+| `Health check timeout`      | Service not responding    |
+| `Authentication failed`     | Credentials issue         |
+| `No such host`              | Service discovery problem |
+| `Connection refused`        | Service not listening     |
 
 ### Report Issues
 
@@ -555,11 +597,13 @@ az containerapp logs show --name my-api --resource-group mygroup
 ## Resources
 
 **Troubleshooting Guides:**
+
 - [Common Issues FAQ](https://learn.microsoft.com/dotnet/aspire/troubleshooting/overview) - Official troubleshooting guide
 - [Health Checks](https://learn.microsoft.com/dotnet/aspire/fundamentals/health-checks) - Debugging health check failures
 - [Networking Issues](https://learn.microsoft.com/dotnet/aspire/fundamentals/networking-overview#troubleshooting) - Service discovery problems
 
 **Community Support:**
+
 - [GitHub Discussions](https://github.com/dotnet/aspire/discussions) - Q&A and community help
 - [Stack Overflow](https://stackoverflow.com/questions/tagged/dotnet-aspire) - Tagged questions
 - [Discord Server](https://aka.ms/dotnet-discord) - Real-time community support

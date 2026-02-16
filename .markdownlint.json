@@ -6,7 +6,22 @@
   "MD013": false,
   "MD024": { "siblings_only": true },
   "MD025": true,
-  "MD033": { "allowed_elements": ["details", "summary", "br", "strong", "em", "code", "table", "tr", "td", "th", "thead", "tbody"] },
+  "MD033": {
+    "allowed_elements": [
+      "details",
+      "summary",
+      "br",
+      "strong",
+      "em",
+      "code",
+      "table",
+      "tr",
+      "td",
+      "th",
+      "thead",
+      "tbody"
+    ]
+  },
   "MD034": true,
   "MD041": true
 }

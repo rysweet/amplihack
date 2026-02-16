@@ -6,14 +6,13 @@ instead of as a direct parameter to sdk.query().
 EXPECTED BEHAVIOR: These tests SHOULD FAIL before the fix is applied.
 """
 
-import asyncio
 import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 # Mock the claude_agent_sdk module before it gets imported
 mock_claude_agent_sdk = MagicMock()
 mock_claude_agent_sdk.ClaudeAgentOptions = MagicMock
-sys.modules['claude_agent_sdk'] = mock_claude_agent_sdk
+sys.modules["claude_agent_sdk"] = mock_claude_agent_sdk
 
 
 def test_claude_sdk_adapter_uses_options_parameter():
@@ -76,7 +75,9 @@ def test_claude_sdk_adapter_creates_options_object():
 
     # Patch both the SDK and ClaudeAgentOptions
     with patch.object(adapter, "_get_sdk", return_value=mock_sdk):
-        with patch.dict('sys.modules', {'claude_agent_sdk': MagicMock(ClaudeAgentOptions=mock_options_class)}):
+        with patch.dict(
+            "sys.modules", {"claude_agent_sdk": MagicMock(ClaudeAgentOptions=mock_options_class)}
+        ):
             # Execute agent step
             adapter.execute_agent_step(prompt="Test prompt")
 
@@ -115,7 +116,7 @@ def test_claude_sdk_adapter_passes_prompt_correctly():
         assert "prompt" in call_args.kwargs, "sdk.query() should receive prompt parameter"
         assert call_args.kwargs["prompt"] == test_prompt, "Prompt should match input"
 
-        print(f"✅ Prompt passed correctly to sdk.query()")
+        print("✅ Prompt passed correctly to sdk.query()")
 
 
 def test_claude_sdk_adapter_enriches_prompt_with_system_context():
@@ -134,9 +135,7 @@ def test_claude_sdk_adapter_enriches_prompt_with_system_context():
 
     with patch.object(adapter, "_get_sdk", return_value=mock_sdk):
         adapter.execute_agent_step(
-            prompt=test_prompt,
-            agent_name=agent_name,
-            agent_system_prompt=system_prompt
+            prompt=test_prompt, agent_name=agent_name, agent_system_prompt=system_prompt
         )
 
         # Verify enriched prompt structure
@@ -149,12 +148,8 @@ def test_claude_sdk_adapter_enriches_prompt_with_system_context():
         assert system_prompt in enriched_prompt, (
             "Enriched prompt should include agent system prompt"
         )
-        assert "[Task]" in enriched_prompt, (
-            "Enriched prompt should include task header"
-        )
-        assert test_prompt in enriched_prompt, (
-            "Enriched prompt should include original prompt"
-        )
+        assert "[Task]" in enriched_prompt, "Enriched prompt should include task header"
+        assert test_prompt in enriched_prompt, "Enriched prompt should include original prompt"
 
         print("✅ Prompt enrichment works correctly")
 
@@ -209,12 +204,12 @@ if __name__ == "__main__":
     failed = 0
 
     for test_name, test_func in tests:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Test: {test_name}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         try:
             test_func()
-            print(f"✅ PASSED")
+            print("✅ PASSED")
             passed += 1
         except AssertionError as e:
             print(f"❌ FAILED (EXPECTED): {e}")
@@ -223,10 +218,11 @@ if __name__ == "__main__":
             print(f"❌ ERROR: {e}")
             failed += 1
             import traceback
+
             traceback.print_exc()
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"SUMMARY: {passed} passed, {failed} failed")
     if failed > 0:
-        print(f"⚠️  Failures are EXPECTED before fix implementation")
-    print(f"{'='*60}")
+        print("⚠️  Failures are EXPECTED before fix implementation")
+    print(f"{'=' * 60}")

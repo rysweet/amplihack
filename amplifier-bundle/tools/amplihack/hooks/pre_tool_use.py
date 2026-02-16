@@ -223,9 +223,7 @@ For true emergencies, ask a human to override this protection.
                         )
                         return {
                             "block": True,
-                            "message": CWD_DELETION_ERROR_MESSAGE.format(
-                                target=target, cwd=cwd
-                            ),
+                            "message": CWD_DELETION_ERROR_MESSAGE.format(target=target, cwd=cwd),
                         }
                     except ValueError:
                         # CWD is not under target - safe

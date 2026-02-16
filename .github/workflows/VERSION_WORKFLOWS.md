@@ -19,6 +19,7 @@ The repository uses a multi-layer approach to ensure that every merge to `main` 
 **Purpose**: Encourage version bumping during PR development
 
 **Behavior**:
+
 - Checks if the PR has bumped the version compared to `main`
 - If not bumped, automatically commits a patch version bump to the PR branch
 - Comments on the PR to notify the author
@@ -33,25 +34,29 @@ The repository uses a multi-layer approach to ensure that every merge to `main` 
 **Purpose**: **Safety net** - Ensures version is ALWAYS incremented on merge
 
 **Behavior**:
+
 - Runs immediately after code is merged to `main`
 - Checks if the merge included a version bump
 - If version was NOT bumped, automatically increments patch version
 - Commits the version bump directly to `main` with `[skip ci]` to avoid recursion
 
 **Key Features**:
+
 - Idempotent: Won't double-bump if version was already incremented
 - Handles edge cases: First commit, manual bumps, etc.
 - Uses `[skip ci]` flag to prevent triggering itself recursively
 
 ### 3. Auto Tag Version (version-tag.yml)
 
-**Trigger**: 
-- On push to `main` 
+**Trigger**:
+
+- On push to `main`
 - After `auto-version-on-merge.yml` completes
 
 **Purpose**: Create git tags and GitHub releases for each version
 
 **Behavior**:
+
 - Extracts version from `pyproject.toml`
 - Creates an annotated git tag (e.g., `v0.5.8`)
 - Creates a GitHub release with auto-generated notes
@@ -126,7 +131,7 @@ To manually bump to a specific version:
 
 ### Why Both PR-level and Merge-level Workflows?
 
-1. **PR-level** (`version-check.yml`): 
+1. **PR-level** (`version-check.yml`):
    - Developer convenience
    - Immediate feedback
    - Allows manual override before merge
@@ -139,12 +144,14 @@ To manually bump to a specific version:
 ### Why `[skip ci]` in Auto-Bump Commit?
 
 The `[skip ci]` flag prevents infinite recursion:
+
 - Without it: version bump → triggers push → triggers workflow → version bump → ...
 - With it: version bump → triggers push (skips workflows) → end
 
 ### Why `workflow_run` Trigger for Tagging?
 
 The `version-tag.yml` uses both `push` and `workflow_run` triggers to ensure it runs after version bumping:
+
 - If version was already bumped in PR → runs immediately on merge via `push` trigger
 - If version was auto-bumped on merge → runs after auto-version-on-merge completes via `workflow_run` trigger
 
@@ -155,6 +162,7 @@ The `version-tag.yml` uses both `push` and `workflow_run` triggers to ensure it 
 Compares version in PR branch vs. main branch.
 
 **Exit Codes**:
+
 - `0`: Version properly bumped
 - `1`: Version not bumped or invalid
 
@@ -163,6 +171,7 @@ Compares version in PR branch vs. main branch.
 Automatically increments patch version in `pyproject.toml`.
 
 **Logic**:
+
 ```python
 # Input:  version = "0.5.7"
 # Output: version = "0.5.8"
@@ -173,6 +182,7 @@ Automatically increments patch version in `pyproject.toml`.
 Extracts version string from `pyproject.toml`.
 
 **Usage**:
+
 ```bash
 # Read from default location (pyproject.toml)
 python scripts/get_version.py
@@ -185,6 +195,7 @@ cat file.toml | python scripts/get_version.py -
 ```
 
 **Exit Codes**:
+
 - `0`: Success, version printed to stdout
 - `1`: Error (file not found or version not found)
 
@@ -213,6 +224,7 @@ grep "^version = " pyproject.toml
 ### Version wasn't bumped after merge
 
 Check the workflow run logs:
+
 1. Go to Actions → Auto Version on Merge
 2. Look for the "Check and Auto-Bump Version" job
 3. Review the summary to see what happened
@@ -220,6 +232,7 @@ Check the workflow run logs:
 ### Tag wasn't created
 
 Check the workflow run logs:
+
 1. Go to Actions → Auto Tag Version
 2. Check if tag already exists or if there was an error
 
@@ -232,6 +245,7 @@ Check the workflow run logs:
 ## Future Enhancements
 
 Potential improvements:
+
 - Support for pre-release versions (alpha, beta, rc)
 - Configurable bump strategy (via labels like `bump:minor`, `bump:major`)
 - Automatic changelog generation based on commits

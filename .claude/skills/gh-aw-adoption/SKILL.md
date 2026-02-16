@@ -42,11 +42,13 @@ Activate this skill when you want to:
 ## Quick Start
 
 **Basic usage:**
+
 ```
 Adopt GitHub Agentic Workflows in this repository
 ```
 
 **With specific goals:**
+
 ```
 Adopt gh-aw to automate:
 - Issue triage and labeling
@@ -56,6 +58,7 @@ Adopt gh-aw to automate:
 ```
 
 **Investigation only:**
+
 ```
 Investigate what agentic workflows the gh-aw team uses
 ```
@@ -67,6 +70,7 @@ Investigate what agentic workflows the gh-aw team uses
 **Goal**: Understand what agentic workflows exist and what gaps your repository has.
 
 **Steps**:
+
 1. **Query gh-aw repository**: Use `gh api` to list all workflows in `github/gh-aw`
 2. **Analyze workflows**: Read 5-10 diverse workflow files to understand patterns
 3. **Categorize workflows**: Group by purpose (security, maintenance, automation, etc.)
@@ -74,6 +78,7 @@ Investigate what agentic workflows the gh-aw team uses
 5. **Create priority list**: Rank workflows by impact and feasibility
 
 **Output**: Markdown report with:
+
 - List of all available workflow patterns
 - Gap analysis for your repository
 - Prioritized implementation plan (15-20 recommended workflows)
@@ -83,12 +88,14 @@ Investigate what agentic workflows the gh-aw team uses
 **Goal**: Create multiple production-ready agentic workflows simultaneously.
 
 **Architecture**:
+
 - Launch separate agent threads for each workflow
 - Each agent creates workflow independently
 - Central coordinator tracks progress and handles conflicts
 - All workflows created in feature branches
 
 **Workflow Creation Process** (per workflow):
+
 1. Read reference workflow from gh-aw repository
 2. Adapt to your repository's context and requirements
 3. Create workflow file in `.github/workflows/[name].md`
@@ -98,6 +105,7 @@ Investigate what agentic workflows the gh-aw team uses
 7. Report completion to coordinator
 
 **Example parallel execution:**
+
 ```
 Agent 1 → issue-classifier.md
 Agent 2 → pr-labeler.md
@@ -114,18 +122,22 @@ Agent 5 → weekly-summary.md
 **Common issues and resolutions**:
 
 **Issue: Workflow compilation failures**
+
 - Solution: Run `gh aw compile` and fix YAML syntax errors
 - Common errors: Missing required fields, invalid tool names, permission issues
 
 **Issue: Merge conflicts**
+
 - Solution: Rebase feature branches on latest main/integration
 - Strategy: Merge integration → feature branches in sequence
 
 **Issue: CI/CodeQL failures**
+
 - Solution: Ensure external checks pass before merging
 - Use `gh pr checks` to monitor status
 
 **Issue: Safe-output validation errors**
+
 - Solution: Configure appropriate limits for each safe-output type
 - Reference: Check gh-aw documentation for safe-output syntax
 
@@ -134,6 +146,7 @@ Agent 5 → weekly-summary.md
 **Goal**: Verify workflows are production-ready and merge to main.
 
 **Validation checklist**:
+
 - [ ] All workflows compile to `.lock.yml` files
 - [ ] No YAML syntax errors
 - [ ] Permissions follow least-privilege principle
@@ -144,6 +157,7 @@ Agent 5 → weekly-summary.md
 - [ ] Documentation includes purpose and usage
 
 **Deployment strategy**:
+
 1. Merge feature branches to integration branch first (if exists)
 2. Run CI checks on integration branch
 3. Merge integration → main when all checks pass
@@ -154,6 +168,7 @@ Agent 5 → weekly-summary.md
 ### When to Read Supporting Files
 
 **reference.md** - Read when you need:
+
 - Complete gh-aw CLI command reference
 - Detailed workflow schema and configuration options
 - Security best practices and sandboxing details
@@ -161,6 +176,7 @@ Agent 5 → weekly-summary.md
 - Repo-memory configuration and usage
 
 **examples.md** - Read when you need:
+
 - Real workflow creation examples from actual adoption sessions
 - Step-by-step implementation guides for specific workflow types
 - Troubleshooting common errors with solutions
@@ -168,6 +184,7 @@ Agent 5 → weekly-summary.md
 - CI/CD integration examples
 
 **patterns.md** - Read when you need:
+
 - Production workflow architecture patterns
 - Error resilience strategies (retries, fallbacks, circuit breakers)
 - Safe-output configuration best practices
@@ -181,6 +198,7 @@ Agent 5 → weekly-summary.md
 **What it is**: CLI extension for GitHub that enables creating AI-powered workflows in natural language using markdown files with YAML frontmatter.
 
 **Key features**:
+
 - Write workflows in markdown, compile to GitHub Actions YAML
 - AI engines: Copilot, Claude, Codex, or custom
 - MCP server integration for additional tools
@@ -208,6 +226,7 @@ network: [firewall configuration]
 ### Critical Configuration Elements
 
 **Permissions**: Always use least-privilege
+
 ```yaml
 permissions:
   contents: read
@@ -216,6 +235,7 @@ permissions:
 ```
 
 **Safe-outputs**: Limit GitHub API mutations
+
 ```yaml
 safe-outputs:
   add-comment:
@@ -226,6 +246,7 @@ safe-outputs:
 ```
 
 **Network**: Explicit firewall rules
+
 ```yaml
 network:
   firewall: true
@@ -237,6 +258,7 @@ network:
 ### Error Resilience Patterns
 
 **Always implement**:
+
 - API rate limit handling (exponential backoff)
 - Network failure retries (3 attempts with delays)
 - Partial failure recovery (continue on error)
@@ -258,28 +280,33 @@ Before using this skill, ensure:
 Based on analysis of 100+ workflows in the gh-aw repository, these are high-impact workflows to consider:
 
 **Security & Compliance** (High Priority):
+
 - `secret-validation.md` - Monitor secrets for expiration and leaks
 - `container-security-scanning.md` - Scan container images for vulnerabilities
 - `license-compliance.md` - Verify dependency licenses
 - `sbom-generation.md` - Generate Software Bill of Materials
 
 **Development Automation** (High Priority):
+
 - `pr-labeler.md` - Automatically label PRs based on content
 - `issue-classifier.md` - Triage and label issues
 - `stale-pr-manager.md` - Close stale PRs with grace period
 - `changelog-generator.md` - Auto-generate changelogs from commits
 
 **Quality Assurance** (Medium Priority):
+
 - `test-coverage-enforcer.md` - Block PRs below coverage threshold
 - `mutation-testing.md` - Run mutation tests and report survivors
 - `performance-testing.md` - Automated performance regression tests
 
 **Maintenance & Operations** (Medium Priority):
+
 - `agentics-maintenance.md` - Hub for workflow health monitoring
 - `workflow-health-dashboard.md` - Weekly metrics and status reports
 - `dependency-updates.md` - Automated dependency update PRs
 
 **Team Communication** (Lower Priority):
+
 - `weekly-issue-summary.md` - Weekly issue digest with visualizations
 - `team-status-reports.md` - Daily team status updates
 - `pr-review-reminders.md` - Nudge reviewers for stale reviews
@@ -287,29 +314,34 @@ Based on analysis of 100+ workflows in the gh-aw repository, these are high-impa
 ## Troubleshooting
 
 **Problem: gh-aw extension not found**
+
 ```bash
 gh extension install github/gh-aw
 gh aw --help
 ```
 
 **Problem: Compilation errors**
+
 ```bash
 gh aw compile --validate
 gh aw fix --write  # Auto-fix some issues
 ```
 
 **Problem: Workflow not executing**
+
 - Check workflow file is in `.github/workflows/`
 - Verify workflow has valid trigger (`on:` field)
 - Check GitHub Actions logs for execution errors
 - Ensure required secrets are configured
 
 **Problem: Safe-output limits exceeded**
+
 - Review safe-output configuration in workflow frontmatter
 - Increase limits if appropriate
 - Add prioritization logic to stay within limits
 
 **Problem: Permission denied errors**
+
 - Verify `permissions:` block in workflow frontmatter
 - Check GitHub token has required scopes
 - Ensure workflow has necessary repository permissions
