@@ -7,6 +7,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  issues: write
   pull-requests: read
 engine: claude
 tools:

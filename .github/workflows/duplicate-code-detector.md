@@ -7,6 +7,7 @@ on:
     - cron: "0 0 * * 0" # Weekly on Sunday at midnight UTC
 permissions:
   contents: read
+  issues: write
   pull-requests: read
 engine: codex
 tools:

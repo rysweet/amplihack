@@ -10,7 +10,8 @@ on:
     types: [opened, edited, synchronize]
 permissions:
   contents: read
-  pull-requests: read
+  pull-requests: write
+  issues: write
   actions: read
 tools:
   github:

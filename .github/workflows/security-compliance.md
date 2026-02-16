@@ -17,6 +17,7 @@ on:
         default: "500"
 permissions:
   contents: read
+  issues: write
 engine: copilot
 safe-outputs:
   create-issue:

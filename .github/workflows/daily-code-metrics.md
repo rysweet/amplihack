@@ -6,6 +6,7 @@ on:
 permissions:
   contents: read
   issues: read
+  discussions: write
   pull-requests: read
 tracker-id: daily-code-metrics
 engine: claude

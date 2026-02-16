@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-  issues: read
+  issues: write
   pull-requests: read
 tracker-id: daily-syntax-error-quality
 engine: copilot

@@ -9,7 +9,7 @@ on:
 
 permissions:
   contents: read
-  issues: read
+  issues: write
   pull-requests: read
 
 tracker-id: daily-file-diet

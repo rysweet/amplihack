@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-  issues: read
+  issues: write
 tracker-id: security-red-team
 engine: claude
 strict: true

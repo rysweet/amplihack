@@ -6,7 +6,9 @@ on:
     - cron: "0 14 * * 1" # Weekly on Mondays at 2 PM UTC (9 AM EST / 6 AM PST)
   workflow_dispatch:
 permissions:
+  contents: read
   issues: read
+  discussions: write
 tracker-id: weekly-issue-summary
 engine: copilot
 network:
