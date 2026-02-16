@@ -13,7 +13,7 @@ from typing import Any
 
 # Import memory library if available, otherwise use mock implementation
 try:
-    from amplihack_memory_lib import ExperienceStore, ExperienceType, MemoryConnector
+    from amplihack_memory import ExperienceStore, ExperienceType, MemoryConnector
 except ImportError:
     # Fallback: Simple in-memory implementation for standalone operation
     class ExperienceType:

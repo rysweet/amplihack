@@ -80,7 +80,7 @@ class NestedSessionAdapter:
                 text=True,
                 cwd=actual_working_dir,
                 env=env,  # CLAUDECODE unset here
-                timeout=300,
+                timeout=900,  # 15 min - agent steps need time
             )
 
             if result.returncode != 0:

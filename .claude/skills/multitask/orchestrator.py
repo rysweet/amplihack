@@ -86,13 +86,35 @@ class ParallelOrchestrator:
 
     def add(
         self,
-        issue: int,
+        issue: int | str,
         branch: str,
         description: str,
         task: str,
         recipe: str = "default-workflow",
     ) -> Workstream:
-        """Add a workstream. Clones the branch and prepares execution files."""
+        """Add a workstream. Clones from main and prepares execution files.
+
+        If issue is "TBD", auto-creates a GitHub issue using gh CLI.
+        """
+        # Auto-create issue if TBD
+        if str(issue).upper() == "TBD":
+            print(f"[TBD] Creating GitHub issue for: {description}...")
+            result = subprocess.run(
+                ["gh", "issue", "create", "--title", description, "--body", task],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if result.returncode == 0:
+                # Extract issue number from URL like https://github.com/.../issues/123
+                url = result.stdout.strip()
+                issue = int(url.rstrip("/").split("/")[-1])
+                print(f"[{issue}] Created issue: {url}")
+            else:
+                # Fallback: use timestamp-based ID
+                issue = int(time.time()) % 100000
+                print(f"[{issue}] Could not create issue, using fallback ID")
+
         ws = Workstream(
             issue=issue,
             branch=branch,
@@ -103,13 +125,19 @@ class ParallelOrchestrator:
         ws.work_dir = self.tmp_base / f"ws-{issue}"
         ws.log_file = self.tmp_base / f"log-{issue}.txt"
 
-        print(f"[{issue}] Cloning {branch}...")
+        # Clean up stale work dir from previous runs
+        if ws.work_dir.exists():
+            import shutil
+
+            shutil.rmtree(ws.work_dir)
+
+        print(f"[{issue}] Cloning from main (workflow will create {branch})...")
         subprocess.run(
             [
                 "git",
                 "clone",
                 "--depth=1",
-                f"--branch={branch}",
+                "--branch=main",
                 self.repo_url,
                 str(ws.work_dir),
             ],
@@ -117,6 +145,7 @@ class ParallelOrchestrator:
             capture_output=True,
             timeout=120,
         )
+        # Note: The workflow Step 4 will create the feature branch
 
         # Write execution files based on mode
         if self.mode == "recipe":
