@@ -8,6 +8,7 @@ Philosophy:
 Public API (the "studs"):
     ensure_settings_json: Ensure settings.json exists with proper hook configuration
     update_hook_paths: Update hook paths for a given hook system
+    migrate_legacy_hook_paths: Migrate legacy hook paths from ~/.claude/* to ~/.amplihack/.claude/*
     SETTINGS_TEMPLATE: Default settings template
 """
 
@@ -78,6 +79,71 @@ SETTINGS_TEMPLATE = {
         ],
     },
 }
+
+
+def migrate_legacy_hook_paths(settings):
+    """Migrate legacy hook paths from ~/.claude/* to ~/.amplihack/.claude/*.
+
+    This function handles the transition from the old hook path pattern:
+        $HOME/.claude/tools/amplihack/hooks/*
+    to the new pattern:
+        $HOME/.amplihack/.claude/tools/amplihack/hooks/*
+
+    The function is idempotent - it can be run multiple times safely and will
+    only migrate paths that still use the legacy pattern.
+
+    Args:
+        settings: Settings dictionary to migrate
+
+    Returns:
+        int: Number of hooks migrated
+
+    Examples:
+        >>> settings = {"hooks": {"SessionStart": [{"hooks": [{"command": "$HOME/.claude/tools/amplihack/hooks/start.py"}]}]}}
+        >>> count = migrate_legacy_hook_paths(settings)
+        >>> count
+        1
+        >>> settings["hooks"]["SessionStart"][0]["hooks"][0]["command"]
+        '$HOME/.amplihack/.claude/tools/amplihack/hooks/start.py'
+    """
+    migrated = 0
+
+    # Handle missing hooks section gracefully
+    if "hooks" not in settings:
+        return 0
+
+    hooks_section = settings["hooks"]
+
+    # Iterate through all hook types (SessionStart, Stop, PostToolUse, PreCompact, etc.)
+    for hook_type, hook_configs in hooks_section.items():
+        # Handle malformed hook structures gracefully
+        if not isinstance(hook_configs, list):
+            continue
+
+        # Iterate through hook configurations
+        for config in hook_configs:
+            # Handle malformed config structures gracefully
+            if not isinstance(config, dict) or "hooks" not in config:
+                continue
+
+            # Iterate through individual hooks
+            for hook in config["hooks"]:
+                # Handle missing command field gracefully
+                if not isinstance(hook, dict) or "command" not in hook:
+                    continue
+
+                command = hook["command"]
+
+                # Check if this is a legacy path that needs migration
+                # Pattern: contains "/.claude/tools/" but NOT "/.amplihack/"
+                if "/.claude/tools/" in command and "/.amplihack/" not in command:
+                    # Replace the legacy pattern with the modern pattern
+                    hook["command"] = command.replace(
+                        "/.claude/tools/", "/.amplihack/.claude/tools/"
+                    )
+                    migrated += 1
+
+    return migrated
 
 
 def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path):
@@ -227,6 +293,11 @@ def ensure_settings_json():
         print("  🔧 Creating new settings.json")
         settings = SETTINGS_TEMPLATE.copy()
 
+    # Migrate legacy hook paths BEFORE updating hook paths
+    migrated = migrate_legacy_hook_paths(settings)
+    if migrated > 0:
+        print(f"  🔄 Migrated {migrated} legacy hook paths")
+
     # Update amplihack hook paths (absolute paths for plugin mode compatibility)
     hooks_updated = 0
     amplihack_hooks_abs = os.path.join(HOME, ".amplihack", ".claude", "tools", "amplihack", "hooks")
@@ -268,4 +339,9 @@ def ensure_settings_json():
         return False
 
 
-__all__ = ["ensure_settings_json", "update_hook_paths", "SETTINGS_TEMPLATE"]
+__all__ = [
+    "ensure_settings_json",
+    "update_hook_paths",
+    "migrate_legacy_hook_paths",
+    "SETTINGS_TEMPLATE",
+]
