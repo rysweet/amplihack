@@ -8,13 +8,11 @@ Philosophy:
 Public API (the "studs"):
     ensure_settings_json: Ensure settings.json exists with proper hook configuration
     update_hook_paths: Update hook paths for a given hook system
-    migrate_legacy_hook_paths: Migrate legacy hook paths from ~/.claude/* to ~/.amplihack/.claude/*
     SETTINGS_TEMPLATE: Default settings template
 """
 
 import json
 import os
-import shutil
 import sys
 import time
 from pathlib import Path
@@ -81,69 +79,29 @@ SETTINGS_TEMPLATE = {
 }
 
 
-def migrate_legacy_hook_paths(settings):
-    """Migrate legacy hook paths from ~/.claude/* to ~/.amplihack/.claude/*.
-
-    This function handles the transition from the old hook path pattern:
-        $HOME/.claude/tools/amplihack/hooks/*
-    to the new pattern:
-        $HOME/.amplihack/.claude/tools/amplihack/hooks/*
-
-    The function is idempotent - it can be run multiple times safely and will
-    only migrate paths that still use the legacy pattern.
+def validate_hook_paths(hook_system, hooks_to_validate, hooks_dir_path):
+    """Validate that all hook files exist before configuration.
 
     Args:
-        settings: Settings dictionary to migrate
+        hook_system: Name of the hook system (e.g., "amplihack", "xpia")
+        hooks_to_validate: List of dicts with keys: type, file, timeout (optional), matcher (optional)
+        hooks_dir_path: Absolute path to hooks directory
 
     Returns:
-        int: Number of hooks migrated
-
-    Examples:
-        >>> settings = {"hooks": {"SessionStart": [{"hooks": [{"command": "$HOME/.claude/tools/amplihack/hooks/start.py"}]}]}}
-        >>> count = migrate_legacy_hook_paths(settings)
-        >>> count
-        1
-        >>> settings["hooks"]["SessionStart"][0]["hooks"][0]["command"]
-        '$HOME/.amplihack/.claude/tools/amplihack/hooks/start.py'
+        Tuple of (all_valid: bool, missing_hooks: list[str])
     """
-    migrated = 0
+    missing_hooks = []
 
-    # Handle missing hooks section gracefully
-    if "hooks" not in settings:
-        return 0
+    for hook_info in hooks_to_validate:
+        hook_file = hook_info["file"]
+        hook_path = os.path.join(hooks_dir_path, hook_file)
 
-    hooks_section = settings["hooks"]
+        expanded_path = os.path.expanduser(os.path.expandvars(hook_path))
 
-    # Iterate through all hook types (SessionStart, Stop, PostToolUse, PreCompact, etc.)
-    for hook_type, hook_configs in hooks_section.items():
-        # Handle malformed hook structures gracefully
-        if not isinstance(hook_configs, list):
-            continue
+        if not os.path.exists(expanded_path):
+            missing_hooks.append(f"{hook_system}/{hook_file} (expected at {expanded_path})")
 
-        # Iterate through hook configurations
-        for config in hook_configs:
-            # Handle malformed config structures gracefully
-            if not isinstance(config, dict) or "hooks" not in config:
-                continue
-
-            # Iterate through individual hooks
-            for hook in config["hooks"]:
-                # Handle missing command field gracefully
-                if not isinstance(hook, dict) or "command" not in hook:
-                    continue
-
-                command = hook["command"]
-
-                # Check if this is a legacy path that needs migration
-                # Pattern: contains "/.claude/tools/" but NOT "/.amplihack/"
-                if "/.claude/tools/" in command and "/.amplihack/" not in command:
-                    # Replace the legacy pattern with the modern pattern
-                    hook["command"] = command.replace(
-                        "/.claude/tools/", "/.amplihack/.claude/tools/"
-                    )
-                    migrated += 1
-
-    return migrated
+    return (len(missing_hooks) == 0, missing_hooks)
 
 
 def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path):
@@ -197,7 +155,7 @@ def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path):
                 if "hooks" in config:
                     for hook in config["hooks"]:
                         if "command" in hook and hook_system in hook["command"]:
-                            # Update hook path
+                            # Update hook path only if changed
                             old_cmd = hook["command"]
                             if old_cmd != hook_path:
                                 hook["command"] = hook_path
@@ -223,53 +181,24 @@ def ensure_settings_json():
         or not sys.stdin.isatty()
     )
 
-    # Try to use SettingsManager if available (for backup/restore functionality)
-    settings_manager = None
-    backup_path = None
+    # Try to use SettingsManager for backup functionality
     try:
-        # Try different import methods
-        try:
-            from amplihack.launcher.settings_manager import SettingsManager
-        except ImportError:
-            try:
-                from .launcher.settings_manager import SettingsManager
-            except ImportError:
-                # Try adding parent to path temporarily
-                sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-                try:
-                    from amplihack.launcher.settings_manager import SettingsManager
-                except ImportError:
-                    SettingsManager = None
-                finally:
-                    sys.path.pop(0)
+        from amplihack.launcher.settings_manager import SettingsManager
 
-        if SettingsManager:
-            # Create settings manager
-            settings_manager = SettingsManager(
-                settings_path=Path(settings_path),
-                session_id=f"install_{int(time.time())}",
-                non_interactive=os.getenv("AMPLIHACK_YES", "0") == "1" or is_uvx,
-            )
+        settings_manager = SettingsManager(
+            settings_path=Path(settings_path),
+            session_id=f"install_{int(time.time())}",
+            non_interactive=True,
+        )
 
-            # Prompt user for modification (or auto-approve if UVX/non-interactive)
-            if not settings_manager.prompt_user_for_modification():
-                print("  ⚠️  Settings modification declined by user")
-                return False
-            if is_uvx:
-                print("  🚀 UVX environment detected - auto-configuring hooks")
+        success, backup_path = settings_manager.create_backup()
+        if success and backup_path:
+            print(f"  💾 Backup created at {backup_path}")
+        else:
+            print("  ⚠️  Could not create backup - continuing anyway")
 
-            # Create backup
-            success, backup_path = settings_manager.create_backup()
-            if not success:
-                # Continue without backup rather than failing
-                print("  ⚠️  Could not create backup - continuing anyway")
-                backup_path = None
-            elif backup_path:
-                print(f"  💾 Backup created at {backup_path}")
-
-    except Exception as e:
-        # If SettingsManager fails for any reason, continue without it
-        print(f"  ⚠️  Settings manager unavailable - continuing without backup: {e}")
+    except ImportError:
+        print("  ⚠️  Settings manager unavailable - continuing without backup")
         if is_uvx:
             print("  🚀 UVX environment detected - auto-configuring hooks")
 
@@ -279,12 +208,6 @@ def ensure_settings_json():
             with open(settings_path, encoding="utf-8") as f:
                 settings = json.load(f)
             print("  📋 Found existing settings.json")
-
-            # Back up existing settings
-            backup_name = f"settings.json.backup.{int(time.time())}"
-            backup_path = os.path.join(CLAUDE_DIR, backup_name)
-            shutil.copy2(settings_path, backup_path)
-            print(f"  💾 Backed up to {backup_name}")
         except Exception as e:
             print(f"  ⚠️  Could not read existing settings.json: {e}")
             print("  🔧 Creating new settings.json from template")
@@ -293,15 +216,23 @@ def ensure_settings_json():
         print("  🔧 Creating new settings.json")
         settings = SETTINGS_TEMPLATE.copy()
 
-    # Migrate legacy hook paths BEFORE updating hook paths
-    migrated = migrate_legacy_hook_paths(settings)
-    if migrated > 0:
-        print(f"  🔄 Migrated {migrated} legacy hook paths")
-
-    # Update amplihack hook paths (absolute paths for plugin mode compatibility)
+    # Validate amplihack hook paths before configuration
     hooks_updated = 0
     amplihack_hooks_abs = os.path.join(HOME, ".amplihack", ".claude", "tools", "amplihack", "hooks")
 
+    # Validate amplihack hooks exist
+    all_valid, missing_hooks = validate_hook_paths(
+        "amplihack", HOOK_CONFIGS["amplihack"], amplihack_hooks_abs
+    )
+
+    if not all_valid:
+        print("  ❌ Hook validation failed - missing required hooks:")
+        for missing in missing_hooks:
+            print(f"     • {missing}")
+        print("  💡 Please reinstall amplihack to restore missing hooks")
+        return False
+
+    # Update amplihack hook paths (absolute paths for plugin mode compatibility)
     hooks_updated += update_hook_paths(
         settings, "amplihack", HOOK_CONFIGS["amplihack"], amplihack_hooks_abs
     )
@@ -311,11 +242,20 @@ def ensure_settings_json():
     if os.path.exists(xpia_hooks_abs):
         print("  🔒 XPIA security hooks directory found")
 
-        xpia_updated = update_hook_paths(settings, "xpia", HOOK_CONFIGS["xpia"], xpia_hooks_abs)
-        hooks_updated += xpia_updated
+        # Validate XPIA hooks before configuration
+        xpia_valid, xpia_missing = validate_hook_paths("xpia", HOOK_CONFIGS["xpia"], xpia_hooks_abs)
 
-        if xpia_updated > 0:
-            print(f"  🔒 XPIA security hooks configured ({xpia_updated} hooks)")
+        if not xpia_valid:
+            print("  ⚠️  XPIA hook validation failed - missing hooks:")
+            for missing in xpia_missing:
+                print(f"     • {missing}")
+            print("  ⚠️  Skipping XPIA configuration - install XPIA properly to enable")
+        else:
+            xpia_updated = update_hook_paths(settings, "xpia", HOOK_CONFIGS["xpia"], xpia_hooks_abs)
+            hooks_updated += xpia_updated
+
+            if xpia_updated > 0:
+                print(f"  🔒 XPIA security hooks configured ({xpia_updated} hooks)")
 
     # Ensure permissions are set correctly
     if "permissions" not in settings:
@@ -339,9 +279,4 @@ def ensure_settings_json():
         return False
 
 
-__all__ = [
-    "ensure_settings_json",
-    "update_hook_paths",
-    "migrate_legacy_hook_paths",
-    "SETTINGS_TEMPLATE",
-]
+__all__ = ["ensure_settings_json", "update_hook_paths", "validate_hook_paths", "SETTINGS_TEMPLATE"]
