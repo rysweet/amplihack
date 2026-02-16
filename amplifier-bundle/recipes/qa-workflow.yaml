@@ -40,7 +40,7 @@ steps:
   # Confirm this is truly Q&A (not disguised investigation/development)
   # ==========================================================================
   - id: "classification-confirmation"
-    agent: "foundation:zen-architect"
+    agent: "amplihack:architect"
     mode: "ANALYZE"
     prompt: |
       Classify this question and determine if it's truly a simple Q&A:
@@ -76,7 +76,7 @@ steps:
   # ==========================================================================
   - id: "provide-response"
     condition: "classification.is_qa == 'true'"
-    agent: "foundation:zen-architect"
+    agent: "amplihack:architect"
     prompt: |
       Answer this question directly and clearly:
 
@@ -99,7 +99,7 @@ steps:
   # ==========================================================================
   - id: "escalation-check"
     condition: "classification.is_qa == 'true'"
-    agent: "foundation:zen-architect"
+    agent: "amplihack:architect"
     mode: "REVIEW"
     prompt: |
       Review the Q&A interaction and determine if escalation is needed:
