@@ -27,6 +27,31 @@ from .recipe_output import (
 )
 
 
+def parse_context_args(context_args: list[str]) -> tuple[dict[str, str], list[str]]:
+    """Parse context key=value arguments.
+
+    Args:
+        context_args: List of strings in "key=value" format
+
+    Returns:
+        Tuple of (parsed_context_dict, error_messages)
+    """
+    context: dict[str, str] = {}
+    errors: list[str] = []
+
+    for ctx_arg in context_args:
+        if "=" in ctx_arg:
+            key, value = ctx_arg.split("=", 1)
+            context[key] = value
+        else:
+            errors.append(
+                f"Invalid context format '{ctx_arg}'. "
+                "Use key=value format (e.g., --context question='What is X?' --context var=value)"
+            )
+
+    return context, errors
+
+
 def _validate_path(path_str: str, must_exist: bool = True) -> Path:
     """Validate and resolve a user-provided path.
 
@@ -144,7 +169,7 @@ def handle_run(
 
 
 def handle_list(
-    recipe_dir: str = "./recipes",
+    recipe_dir: str | None = None,
     format: str = "table",
     tags: list[str] | None = None,
     verbose: bool = False,
@@ -152,7 +177,7 @@ def handle_list(
     """List available recipes in a directory.
 
     Args:
-        recipe_dir: Directory to search for recipes
+        recipe_dir: Directory to search for recipes (None = use default search paths)
         format: Output format (table/json/yaml)
         tags: Filter recipes by tags (AND logic - must have all tags)
         verbose: Show full recipe details
@@ -161,11 +186,13 @@ def handle_list(
         Exit code (0=success, 1=error)
     """
     try:
-        # Validate and resolve recipe directory path
-        validated_dir = _validate_path(recipe_dir, must_exist=False)
-
-        # Discover recipes - returns dict[str, RecipeInfo]
-        recipe_result = discover_recipes([validated_dir])
+        # Discover recipes - use default search paths if no directory specified
+        if recipe_dir is None:
+            recipe_result = discover_recipes()
+        else:
+            # Validate and resolve recipe directory path
+            validated_dir = _validate_path(recipe_dir, must_exist=False)
+            recipe_result = discover_recipes([validated_dir])
 
         # Handle both dict (real implementation) and list (test mocks)
         recipes: list[Recipe]
