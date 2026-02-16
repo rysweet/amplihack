@@ -13,6 +13,9 @@ import yaml
 
 from amplihack.recipes.models import Recipe, Step, StepType
 
+# Security: Maximum YAML file size to prevent YAML bomb attacks
+MAX_YAML_SIZE_BYTES = 1_000_000  # 1 MB
+
 
 class RecipeParser:
     """Parses YAML recipe strings into Recipe objects.
@@ -34,11 +37,20 @@ class RecipeParser:
 
         Raises:
             FileNotFoundError: If the file does not exist.
-            ValueError: If the file content is invalid.
+            ValueError: If the file content is invalid or exceeds size limit.
         """
         file_path = Path(path)
         if not file_path.is_file():
             raise FileNotFoundError(f"Recipe file not found: {file_path}")
+
+        # Security: Check file size before reading to prevent YAML bomb attacks
+        file_size = file_path.stat().st_size
+        if file_size > MAX_YAML_SIZE_BYTES:
+            raise ValueError(
+                f"Recipe file too large ({file_size} bytes). "
+                f"Maximum allowed: {MAX_YAML_SIZE_BYTES} bytes"
+            )
+
         return self.parse(file_path.read_text(encoding="utf-8"))
 
     def parse(self, yaml_content: str) -> Recipe:
@@ -51,8 +63,15 @@ class RecipeParser:
             A fully populated Recipe object.
 
         Raises:
-            ValueError: If required fields are missing or constraints violated.
+            ValueError: If required fields are missing, constraints violated, or content exceeds size limit.
         """
+        # Security: Check content size to prevent YAML bomb attacks
+        if len(yaml_content) > MAX_YAML_SIZE_BYTES:
+            raise ValueError(
+                f"YAML content too large ({len(yaml_content)} bytes). "
+                f"Maximum allowed: {MAX_YAML_SIZE_BYTES} bytes"
+            )
+
         data = yaml.safe_load(yaml_content)
         if not isinstance(data, dict):
             raise ValueError("Recipe YAML must be a mapping at the top level")

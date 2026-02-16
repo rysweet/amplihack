@@ -38,10 +38,10 @@ amplihack recipe show <recipe> --steps-only
 
 ## Context Variables
 
-Pass runtime values via JSON:
+Pass runtime values using key=value format:
 
 ```bash
---context '{"task_description": "Add auth", "repo_path": "."}'
+--context task_description="Add auth" --context repo_path="."
 --context-file config.json
 ```
 
@@ -93,15 +93,17 @@ export AMPLIHACK_DRY_RUN=1
 ```bash
 # Full feature implementation
 amplihack recipe run default-workflow \
-  --context '{"task_description": "Add JWT auth", "repo_path": "."}'
+  --context task_description="Add JWT auth" \
+  --context repo_path="."
 
 # Fast bug fix
 amplihack recipe run quick-fix \
-  --context '{"task_description": "Fix null pointer in UserService"}'
+  --context task_description="Fix null pointer in UserService"
 
 # Code investigation
 amplihack recipe run investigation \
-  --context '{"task_description": "How does auth work?", "focus_area": "src/auth/"}'
+  --context task_description="How does auth work?" \
+  --context focus_area="src/auth/"
 ```
 
 ### Testing & Validation
@@ -110,26 +112,30 @@ amplihack recipe run investigation \
 # Validate before running
 amplihack recipe validate my-recipe.yaml
 
-# Preview execution
+# Preview execution (supports conditional steps and JSON parsing)
 amplihack recipe run my-recipe --dry-run \
-  --context '{"target": "src/api"}'
+  --context target="src/api"
 
 # Run verification suite
-amplihack recipe run verification-workflow --context '{"repo_path": "."}'
+amplihack recipe run verification-workflow \
+  --context repo_path="."
 ```
 
 ### CI/CD Integration
 
 ```bash
 # Check exit code
-amplihack recipe run verification-workflow --context '...'
+amplihack recipe run verification-workflow \
+  --context repo_path="." \
+  --context branch_name="main"
 if [ $? -eq 0 ]; then
   echo "Tests passed"
 fi
 
 # Save execution log
 amplihack recipe run default-workflow \
-  --context '...' \
+  --context task_description="Deploy to staging" \
+  --context repo_path="." \
   --output execution-log.json
 ```
 
@@ -161,17 +167,25 @@ Override with `--adapter <name>`.
 
 ```bash
 # Initial run fails at step 15
-amplihack recipe run default-workflow --context '...'
+amplihack recipe run default-workflow \
+  --context task_description="Add feature" \
+  --context repo_path="."
 
 # Fix issue, resume from step 15
-amplihack recipe run default-workflow --context '...' --resume-from step-15
+amplihack recipe run default-workflow \
+  --context task_description="Add feature" \
+  --context repo_path="." \
+  --resume-from step-15
 ```
 
 ### Partial execution
 
 ```bash
 # Run only first 5 steps
-amplihack recipe run default-workflow --context '...' --stop-at step-5
+amplihack recipe run default-workflow \
+  --context task_description="Test first phase" \
+  --context repo_path="." \
+  --stop-at step-5
 ```
 
 ### Interactive approval
@@ -186,7 +200,11 @@ amplihack recipe run security-audit --interactive
 ```bash
 # Create context file
 cat > context.json <<EOF
-{"task_description": "Add webhooks", "repo_path": "."}
+{
+  "task_description": "Add webhooks",
+  "repo_path": ".",
+  "branch_name": "feat/webhooks"
+}
 EOF
 
 # Use it
@@ -199,7 +217,7 @@ amplihack recipe run default-workflow --context-file context.json
 # Base context + overrides
 amplihack recipe run default-workflow \
   --context-file base-context.json \
-  --context '{"branch_name": "feat/custom-branch"}'
+  --context branch_name="feat/custom-branch"
 ```
 
 ## Troubleshooting
@@ -221,8 +239,10 @@ ls .claude/recipes/*.yaml
 # Show required context
 amplihack recipe show <recipe>
 
-# Provide all required variables
-amplihack recipe run <recipe> --context '{"required_var": "value"}'
+# Provide all required variables using key=value format
+amplihack recipe run <recipe> \
+  --context required_var="value" \
+  --context another_var="value2"
 ```
 
 ### Agent not found
@@ -239,10 +259,13 @@ ls ~/.amplihack/.claude/agents/amplihack/*.md
 
 ```bash
 # Run with verbose output
-amplihack recipe --verbose run <recipe> --context '...'
+amplihack recipe --verbose run <recipe> \
+  --context task_description="Debug this issue"
 
 # Save execution log for debugging
-amplihack recipe run <recipe> --context '...' --output debug.json
+amplihack recipe run <recipe> \
+  --context task_description="Debug this issue" \
+  --output debug.json
 ```
 
 ---
