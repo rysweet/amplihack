@@ -69,15 +69,95 @@ try:
 except ImportError:
     TURN_STATE_AVAILABLE = False
 
+# Try to import completion evidence module
+try:
+    from completion_evidence import (  # type: ignore[import-not-found]
+        CompletionEvidenceChecker,
+        EvidenceType,
+    )
+
+    EVIDENCE_AVAILABLE = True
+except ImportError:
+    EVIDENCE_AVAILABLE = False
+
+# Try to import compaction validator
+try:
+    from compaction_validator import (  # type: ignore[import-not-found]
+        CompactionContext,
+        CompactionValidator,
+    )
+
+    COMPACTION_AVAILABLE = True
+except ImportError:
+    COMPACTION_AVAILABLE = False
+
+    # Create placeholder type for when module is unavailable
+    class CompactionContext:  # type: ignore[no-redef]
+        def __init__(self) -> None:
+            self.has_compaction_event = False
+
+
 # Security: Maximum transcript size to prevent memory exhaustion
 MAX_TRANSCRIPT_LINES = 50000  # Limit transcript to 50K lines (~10-20MB typical)
 
-# Timeout for individual checker execution (seconds)
-CHECKER_TIMEOUT = 10
+# Timeout hierarchy: HOOK_TIMEOUT (120s) > PARALLEL_TIMEOUT (60s) > CHECKER_TIMEOUT (25s)
+# Individual checker execution budget (within parallel execution budget)
+CHECKER_TIMEOUT = 25
 
-# Timeout for parallel execution of all checkers (seconds)
-# With parallel execution, all 22 checks should complete in ~15-20s instead of 220s
+# Parallel execution budget: All 21 checks complete in ~15-20s typically, 60s provides buffer
+# Must be less than HOOK_TIMEOUT (120s) to avoid being killed by framework
 PARALLEL_TIMEOUT = 60
+
+# Public API (the "studs" for this brick)
+__all__ = [
+    "PowerSteeringChecker",
+    "PowerSteeringResult",
+    "CheckerResult",
+    "ConsiderationAnalysis",
+]
+
+
+def _write_with_retry(filepath: Path, data: str, mode: str = "w", max_retries: int = 3) -> None:
+    """Write file with exponential backoff for cloud sync resilience.
+
+    Handles transient file I/O errors that can occur with cloud-synced directories
+    (iCloud, OneDrive, Dropbox, etc.) by retrying with exponential backoff.
+
+    Args:
+        filepath: Path to file to write
+        data: Content to write
+        mode: File mode ('w' for write, 'a' for append)
+        max_retries: Maximum retry attempts (default: 3)
+
+    Raises:
+        OSError: If all retries exhausted (fail-open: caller should handle)
+    """
+    import time
+
+    retry_delay = 0.1
+
+    for attempt in range(max_retries):
+        try:
+            filepath.parent.mkdir(parents=True, exist_ok=True)
+            if mode == "w":
+                filepath.write_text(data)
+            else:  # append mode
+                with open(filepath, mode) as f:
+                    f.write(data)
+            return  # Success!
+        except OSError as e:
+            if e.errno == 5 and attempt < max_retries - 1:  # Input/output error
+                if attempt == 0:
+                    # Only warn on first retry
+                    import sys
+
+                    sys.stderr.write(
+                        "[Power Steering] File I/O error, retrying (may be cloud sync issue)\n"
+                    )
+                time.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+            else:
+                raise  # Give up after max retries or non-transient error
 
 
 @contextmanager
@@ -113,6 +193,13 @@ class CheckerResult:
     satisfied: bool
     reason: str
     severity: Literal["blocker", "warning"]
+    recovery_steps: list[str] = field(default_factory=list)  # Optional recovery guidance
+    executed: bool = True  # Whether this check was actually executed
+
+    @property
+    def id(self) -> str:
+        """Alias for consideration_id for backward compatibility."""
+        return self.consideration_id
 
 
 @dataclass
@@ -177,6 +264,11 @@ class PowerSteeringResult:
     summary: str | None = None
     analysis: Optional["ConsiderationAnalysis"] = None  # Full analysis results for visibility
     is_first_stop: bool = False  # True if this is the first stop attempt in session
+    evidence_results: list = field(default_factory=list)  # Concrete evidence from Phase 1
+    compaction_context: Any = None  # Compaction diagnostics (CompactionContext if available)
+    considerations: list = field(
+        default_factory=list
+    )  # List of CheckerResult objects for visibility
 
 
 class PowerSteeringChecker:
@@ -518,20 +610,28 @@ class PowerSteeringChecker:
 
     def check(
         self,
-        transcript_path: Path,
+        transcript_path: Path | list[dict],
         session_id: str,
         progress_callback: Callable | None = None,
     ) -> PowerSteeringResult:
-        """Main entry point - analyze transcript and make decision.
+        """Main entry point - analyze transcript and make decision using two-phase verification.
+
+        Phase 1: Check concrete evidence (GitHub, filesystem, user confirmation)
+        Phase 2: SDK analysis (only if no concrete evidence of completion)
+        Phase 3: Combine results (evidence can override SDK concerns)
 
         Args:
-            transcript_path: Path to session transcript JSONL file
+            transcript_path: Path to session transcript JSONL file OR transcript list (for testing)
             session_id: Unique session identifier
             progress_callback: Optional callback for progress events (event_type, message, details)
 
         Returns:
             PowerSteeringResult with decision and prompt/summary
         """
+        # Handle transcript list (testing interface)
+        if isinstance(transcript_path, list):
+            return self._check_with_transcript_list(transcript_path, session_id)
+
         # Initialize turn state tracking (outside try block for fail-open)
         turn_state: PowerSteeringTurnState | None = None
         turn_state_manager: TurnStateManager | None = None
@@ -555,15 +655,40 @@ class PowerSteeringChecker:
                     summary=None,
                 )
 
-            # 3. Load transcript
-            transcript = self._load_transcript(transcript_path)
+            # 3. Load transcript (with pre-compaction fallback - Issue #1962)
+            # Check if session was compacted - if so, use the FULL pre-compaction transcript
+            # instead of the truncated compacted version Claude Code provides
+            pre_compaction_path = self._get_pre_compaction_transcript(session_id)
+            compaction_detected = pre_compaction_path is not None
+
+            if pre_compaction_path:
+                # Session was compacted - load the full transcript from pre-compaction save
+                self._emit_progress(
+                    progress_callback,
+                    "compaction_detected",
+                    "Session compaction detected - using pre-compaction transcript",
+                    {"pre_compaction_path": str(pre_compaction_path)},
+                )
+                transcript = self._load_pre_compaction_transcript(pre_compaction_path)
+
+                # If pre-compaction loading failed, fall back to provided transcript
+                if not transcript:
+                    self._log(
+                        "Pre-compaction transcript load failed, falling back to provided transcript",
+                        "WARNING",
+                    )
+                    transcript = self._load_transcript(transcript_path)
+                    compaction_detected = False  # Reset since we couldn't use pre-compaction
+            else:
+                # No compaction or compaction data unavailable - use provided transcript
+                transcript = self._load_transcript(transcript_path)
 
             # 3b. Initialize turn state management (fail-open on import error)
             if TURN_STATE_AVAILABLE:
                 turn_state_manager = TurnStateManager(
                     project_root=self.project_root,
                     session_id=session_id,
-                    log=lambda msg: self._log(msg, "INFO"),
+                    log=lambda msg, level="INFO": self._log(msg, level),
                 )
                 turn_state = turn_state_manager.load_state()
                 turn_state = turn_state_manager.increment_turn(turn_state)
@@ -576,6 +701,20 @@ class PowerSteeringChecker:
                 should_approve, reason, escalation_msg = turn_state_manager.should_auto_approve(
                     turn_state
                 )
+
+                # Display escalation warning if approaching threshold (Issue #2196)
+                if escalation_msg:
+                    self._log(escalation_msg, "WARNING")
+                    self._emit_progress(
+                        progress_callback,
+                        "escalation_warning",
+                        escalation_msg,
+                        {
+                            "blocks": turn_state.consecutive_blocks,
+                            "threshold": PowerSteeringTurnState.MAX_CONSECUTIVE_BLOCKS,
+                        },
+                    )
+
                 if should_approve:
                     self._log(f"Auto-approve triggered: {reason}", "INFO")
                     self._emit_progress(
@@ -619,6 +758,77 @@ class PowerSteeringChecker:
                     summary=None,
                 )
 
+            # 4c. State-based verification (Issue #1962 - robust fallback for post-compaction)
+            # When compaction is detected, supplement transcript analysis with actual state checks
+            # This provides ground truth even when transcript history is incomplete
+            if compaction_detected:
+                state_verification = self._verify_actual_state(session_id)
+                if state_verification.get("all_passing"):
+                    self._log(
+                        "State-based verification passed (PR mergeable, CI passing, branch current)",
+                        "INFO",
+                    )
+                    self._emit_progress(
+                        progress_callback,
+                        "state_verified",
+                        "Work completion verified via state checks",
+                        state_verification,
+                    )
+                    # If all state checks pass, this is strong evidence of completion
+                    # Store for decision-making but don't auto-approve yet (let evidence checker run too)
+                    self._state_verification_passed = True
+                else:
+                    self._state_verification_passed = False
+            else:
+                self._state_verification_passed = False
+
+            # 4d. PHASE 1: Evidence-based verification (fail-fast on concrete completion signals)
+            if EVIDENCE_AVAILABLE:
+                try:
+                    evidence_checker = CompletionEvidenceChecker(self.project_root)
+                    evidence_results = []
+
+                    # Check PR status (strongest evidence)
+                    pr_evidence = evidence_checker.check_pr_status()
+                    if pr_evidence:
+                        evidence_results.append(pr_evidence)
+
+                        # If PR merged, work is definitely complete
+                        if (
+                            pr_evidence.evidence_type == EvidenceType.PR_MERGED
+                            and pr_evidence.verified
+                        ):
+                            self._log("PR merged - work complete (concrete evidence)", "INFO")
+                            return PowerSteeringResult(
+                                decision="approve",
+                                reasons=["PR merged successfully"],
+                            )
+
+                    # Check user confirmation (escape hatch)
+                    session_dir = (
+                        self.project_root / ".claude" / "runtime" / "power-steering" / session_id
+                    )
+                    user_confirm = evidence_checker.check_user_confirmation(session_dir)
+                    if user_confirm and user_confirm.verified:
+                        evidence_results.append(user_confirm)
+                        self._log("User confirmed completion - allowing stop", "INFO")
+                        return PowerSteeringResult(
+                            decision="approve",
+                            reasons=["User explicitly confirmed work is complete"],
+                        )
+
+                    # Check TODO completion
+                    todo_evidence = evidence_checker.check_todo_completion(transcript_path)
+                    evidence_results.append(todo_evidence)
+
+                    # Store evidence for later use in Phase 3
+                    self._evidence_results = evidence_results
+
+                except Exception as e:
+                    # Fail-open: If evidence checking fails, continue to SDK analysis
+                    self._log(f"Evidence checking failed (non-critical): {e}", "WARNING")
+                    self._evidence_results = []
+
             # 5. Analyze against considerations (filtered by session type)
             analysis = self._analyze_considerations(
                 transcript, session_id, session_type, progress_callback
@@ -629,7 +839,12 @@ class PowerSteeringChecker:
             user_claims: list[str] = []
             delta_result: DeltaAnalysisResult | None = None
 
-            if TURN_STATE_AVAILABLE and turn_state and turn_state.block_history:
+            if (
+                TURN_STATE_AVAILABLE
+                and turn_state
+                and turn_state.block_history
+                and turn_state_manager
+            ):
                 # Get previous block's failures for delta analysis
                 previous_block = turn_state.get_previous_block()
                 if previous_block and previous_block.failed_evidence:
@@ -706,6 +921,33 @@ class PowerSteeringChecker:
                         "INFO",
                     )
                     analysis = self._create_passing_analysis(analysis, addressed_concerns)
+
+                # Issue #1962: State-based override for post-compaction scenarios
+                # When session was compacted and state verification passed (PR mergeable, CI passing),
+                # trust actual state over potentially incomplete transcript analysis
+                elif (
+                    compaction_detected
+                    and getattr(self, "_state_verification_passed", False)
+                    and remaining_blockers
+                ):
+                    self._log(
+                        f"Post-compaction state override: {len(remaining_blockers)} transcript-based "
+                        "blockers overridden by passing state verification (PR mergeable, CI passing)",
+                        "INFO",
+                    )
+                    self._emit_progress(
+                        progress_callback,
+                        "state_override",
+                        f"Overriding {len(remaining_blockers)} blockers via state verification",
+                        {"blockers_overridden": [r.consideration_id for r in remaining_blockers]},
+                    )
+                    # Create a passing analysis with note about state override
+                    override_note = {
+                        r.consideration_id: "Overridden by state verification (PR mergeable, CI passing)"
+                        for r in remaining_blockers
+                    }
+                    analysis = self._create_passing_analysis(analysis, override_note)
+
                 else:
                     # Actual failures - block
                     # Mark results shown on first stop to prevent race condition
@@ -720,6 +962,37 @@ class PowerSteeringChecker:
                         failed_evidence = self._convert_to_failure_evidence(
                             blockers_to_record, transcript, user_claims
                         )
+
+                        # Issue #2196: Generate failure fingerprint for loop detection
+                        failed_ids = [r.consideration_id for r in blockers_to_record]
+                        current_fingerprint = turn_state.generate_failure_fingerprint(failed_ids)  # type: ignore[attr-defined]
+
+                        # Add fingerprint to history
+                        turn_state.failure_fingerprints.append(current_fingerprint)  # type: ignore[attr-defined]
+
+                        # Check for loop (same failures repeating 3+ times)
+                        if turn_state.detect_loop(current_fingerprint, threshold=3):  # type: ignore[attr-defined]
+                            self._log(
+                                f"Loop detected: Same failures repeating (fingerprint={current_fingerprint})",
+                                "WARNING",
+                            )
+                            self._emit_progress(
+                                progress_callback,
+                                "loop_detected",
+                                f"Same issues repeating {turn_state.failure_fingerprints.count(current_fingerprint)} times",  # type: ignore[attr-defined]
+                                {"fingerprint": current_fingerprint, "failed_ids": failed_ids},
+                            )
+
+                            # Auto-approve to break loop (fail-open design)
+                            turn_state = turn_state_manager.record_approval(turn_state)
+                            turn_state_manager.save_state(turn_state)
+
+                            return PowerSteeringResult(
+                                decision="approve",
+                                reasons=["loop_detected"],
+                                continuation_prompt=None,
+                                summary=f"Loop detected: Same {len(failed_ids)} issues repeating. Auto-approved to prevent infinite loop.",
+                            )
 
                         turn_state = turn_state_manager.record_block_with_evidence(
                             turn_state, failed_evidence, len(transcript), user_claims
@@ -824,7 +1097,7 @@ class PowerSteeringChecker:
                 "Power-steering analysis complete - all checks passed",
             )
 
-            return PowerSteeringResult(
+            result = PowerSteeringResult(
                 decision="approve",
                 reasons=["all_considerations_satisfied"],
                 continuation_prompt=None,
@@ -832,6 +1105,12 @@ class PowerSteeringChecker:
                 analysis=analysis,
                 is_first_stop=False,
             )
+
+            # Add evidence to result if available
+            if hasattr(self, "_evidence_results"):
+                result.evidence_results = self._evidence_results
+
+            return result
 
         except Exception as e:
             # Fail-open: On any error, approve and log
@@ -842,6 +1121,36 @@ class PowerSteeringChecker:
                 continuation_prompt=None,
                 summary=None,
             )
+
+    def _evidence_suggests_complete(self, evidence_results: list) -> bool:
+        """Check if concrete evidence suggests work is complete.
+
+        Args:
+            evidence_results: List of Evidence objects from Phase 1
+
+        Returns:
+            True if concrete evidence indicates completion
+        """
+        if not evidence_results:
+            return False
+
+        # Strong evidence types that indicate completion
+        strong_evidence = [
+            EvidenceType.PR_MERGED,
+            EvidenceType.USER_CONFIRMATION,
+            EvidenceType.CI_PASSING,
+        ]
+
+        # Check if any strong evidence is verified
+        for evidence in evidence_results:
+            if evidence.evidence_type in strong_evidence and evidence.verified:
+                return True
+
+        # Check if multiple medium evidence types are verified
+        verified_count = sum(1 for e in evidence_results if e.verified)
+
+        # If 3+ evidence types verified, trust concrete evidence
+        return verified_count >= 3
 
     def _is_disabled(self) -> bool:
         """Check if power-steering is disabled.
@@ -951,6 +1260,302 @@ class PowerSteeringChecker:
         """
         semaphore = self.runtime_dir / f".{session_id}_completed"
         return semaphore.exists()
+
+    def _get_pre_compaction_transcript(self, session_id: str) -> Path | None:
+        """Check if session was compacted and return pre-compaction transcript path.
+
+        When Claude Code compacts a session, the transcript_path provided to hooks
+        only contains the compacted summary (~50 messages). The pre_compact.py hook
+        saves the FULL transcript before compaction. This method finds that saved
+        transcript to ensure power-steering analyzes complete session history.
+
+        Args:
+            session_id: Session identifier
+
+        Returns:
+            Path to pre-compaction transcript if available, None otherwise
+
+        Note:
+            See Issue #1962: After compaction, power-steering only saw ~50 messages
+            instead of 767+ causing false "work incomplete" blocks.
+        """
+        try:
+            # Check for compaction events in session logs
+            logs_dir = self.project_root / ".claude" / "runtime" / "logs"
+            session_dir = logs_dir / session_id
+
+            if not session_dir.exists():
+                return None
+
+            # Check if compaction events exist
+            compaction_file = session_dir / "compaction_events.json"
+            if not compaction_file.exists():
+                return None
+
+            # Parse compaction events to get transcript path
+            try:
+                with open(compaction_file) as f:
+                    compaction_events = json.load(f)
+            except (json.JSONDecodeError, OSError) as e:
+                self._log(f"Failed to read compaction events: {e}", "WARNING")
+                return None
+
+            if not compaction_events:
+                return None
+
+            # Get the most recent compaction event's transcript
+            # Events are appended chronologically, so last is most recent
+            latest_event = compaction_events[-1]
+            saved_transcript_path = latest_event.get("transcript_path")
+
+            if not saved_transcript_path:
+                # Fallback: Look for standard transcript file locations
+                possible_paths = [
+                    session_dir / "CONVERSATION_TRANSCRIPT.md",
+                    session_dir / "conversation_transcript.jsonl",
+                ]
+
+                # Check transcripts subdirectory for timestamped copies
+                transcripts_dir = session_dir / "transcripts"
+                if transcripts_dir.exists():
+                    transcript_files = sorted(
+                        transcripts_dir.glob("conversation_*.md"), reverse=True
+                    )
+                    if transcript_files:
+                        possible_paths.insert(0, transcript_files[0])
+
+                for path in possible_paths:
+                    if path.exists():
+                        saved_transcript_path = str(path)
+                        break
+
+            if not saved_transcript_path:
+                self._log("Compaction detected but no transcript path found", "WARNING")
+                return None
+
+            transcript_path = Path(saved_transcript_path)
+
+            # Security: Validate path is within project
+            if not self._validate_path(transcript_path, self.project_root):
+                self._log(
+                    f"Pre-compaction transcript path outside project: {transcript_path}",
+                    "WARNING",
+                )
+                return None
+
+            if transcript_path.exists():
+                messages_count = latest_event.get("messages_exported", "unknown")
+                self._log(
+                    f"Using pre-compaction transcript ({messages_count} messages): {transcript_path}",
+                    "INFO",
+                )
+                return transcript_path
+
+            self._log(f"Pre-compaction transcript not found: {transcript_path}", "WARNING")
+            return None
+
+        except Exception as e:
+            # Fail-open: If we can't check for pre-compaction, continue with provided transcript
+            self._log(f"Pre-compaction transcript check failed: {e}", "WARNING")
+            return None
+
+    def _load_pre_compaction_transcript(self, transcript_path: Path) -> list[dict]:
+        """Load pre-compaction transcript from markdown or JSONL format.
+
+        The pre_compact.py hook saves transcripts in markdown format (CONVERSATION_TRANSCRIPT.md).
+        This method parses that format to extract message data for analysis.
+
+        Args:
+            transcript_path: Path to pre-compaction transcript file
+
+        Returns:
+            List of message dictionaries
+
+        Note:
+            Handles both markdown format from pre_compact.py and JSONL format.
+        """
+        messages = []
+
+        try:
+            content = transcript_path.read_text()
+
+            # Detect format by extension and content
+            if transcript_path.suffix == ".jsonl" or content.strip().startswith("{"):
+                # JSONL format - parse line by line
+                for line in content.strip().split("\n"):
+                    if line.strip():
+                        try:
+                            messages.append(json.loads(line))
+                        except json.JSONDecodeError:
+                            continue
+            else:
+                # Markdown format from context_preservation.py
+                # Parse conversation entries marked with roles
+                current_role = None
+                current_content = []
+
+                for line in content.split("\n"):
+                    # Detect role headers like "## User" or "## Assistant" or "**User:**"
+                    role_match = None
+                    if (
+                        line.startswith("## User")
+                        or "**User:**" in line
+                        or line.startswith("### User")
+                    ):
+                        role_match = "user"
+                    elif (
+                        line.startswith("## Assistant")
+                        or "**Assistant:**" in line
+                        or line.startswith("### Assistant")
+                    ):
+                        role_match = "assistant"
+
+                    if role_match:
+                        # Save previous message if exists
+                        if current_role and current_content:
+                            messages.append(
+                                {
+                                    "role": current_role,
+                                    "content": "\n".join(current_content).strip(),
+                                }
+                            )
+                        current_role = role_match
+                        current_content = []
+                    elif current_role:
+                        current_content.append(line)
+
+                # Don't forget the last message
+                if current_role and current_content:
+                    messages.append(
+                        {"role": current_role, "content": "\n".join(current_content).strip()}
+                    )
+
+            self._log(f"Loaded {len(messages)} messages from pre-compaction transcript", "INFO")
+            return messages
+
+        except Exception as e:
+            self._log(f"Failed to load pre-compaction transcript: {e}", "WARNING")
+            return []
+
+    def _verify_actual_state(self, session_id: str) -> dict[str, Any]:
+        """Verify work completion by checking actual git/GitHub state.
+
+        This provides ground truth verification independent of transcript analysis.
+        Used as robust fallback when session has been compacted (Issue #1962).
+
+        Args:
+            session_id: Session identifier
+
+        Returns:
+            Dict with verification results:
+            - ci_passing: bool - All CI checks passed
+            - pr_mergeable: bool - PR is in mergeable state
+            - branch_current: bool - Branch is up to date with main
+            - tests_local: bool - Local tests pass (if available)
+            - all_passing: bool - All checks passed
+
+        Note:
+            Fail-open design: Returns False for individual checks on errors,
+            but doesn't block overall verification.
+        """
+        import subprocess
+
+        results = {
+            "ci_passing": False,
+            "pr_mergeable": False,
+            "branch_current": False,
+            "tests_local": None,  # None = not checked
+            "all_passing": False,
+            "details": {},
+        }
+
+        try:
+            # 1. Check if there's an open PR for current branch
+            pr_result = subprocess.run(
+                ["gh", "pr", "view", "--json", "state,mergeable,statusCheckRollup"],
+                capture_output=True,
+                text=True,
+                timeout=10,
+                cwd=str(self.project_root),
+            )
+
+            if pr_result.returncode == 0:
+                try:
+                    pr_data = json.loads(pr_result.stdout)
+                    results["details"]["pr_state"] = pr_data.get("state")
+                    results["details"]["mergeable"] = pr_data.get("mergeable")
+
+                    # Check PR is open and mergeable
+                    if pr_data.get("state") == "OPEN":
+                        results["pr_mergeable"] = pr_data.get("mergeable") == "MERGEABLE"
+
+                        # Check CI status
+                        status_checks = pr_data.get("statusCheckRollup", [])
+                        if status_checks:
+                            # All checks must pass
+                            all_success = all(
+                                check.get("conclusion") in ("SUCCESS", "NEUTRAL", "SKIPPED")
+                                for check in status_checks
+                                if check.get("conclusion")  # Ignore pending
+                            )
+                            # At least some checks must have run
+                            has_completed = any(check.get("conclusion") for check in status_checks)
+                            results["ci_passing"] = all_success and has_completed
+                            results["details"]["ci_checks"] = len(status_checks)
+                            results["details"]["ci_conclusions"] = [
+                                check.get("conclusion") for check in status_checks
+                            ]
+                        else:
+                            # No status checks configured - consider CI passing
+                            results["ci_passing"] = True
+                            results["details"]["ci_checks"] = 0
+
+                except json.JSONDecodeError:
+                    self._log("Failed to parse PR data", "WARNING")
+            else:
+                # No PR found - check if we're on main branch (might be direct work)
+                results["details"]["no_pr"] = True
+
+            # 2. Check if branch is up to date with main/master
+            # Get commits behind main
+            for main_branch in ["origin/main", "origin/master"]:
+                behind_result = subprocess.run(
+                    ["git", "rev-list", "--count", f"HEAD..{main_branch}"],
+                    capture_output=True,
+                    text=True,
+                    timeout=5,
+                    cwd=str(self.project_root),
+                )
+                if behind_result.returncode == 0:
+                    commits_behind = int(behind_result.stdout.strip())
+                    results["branch_current"] = commits_behind == 0
+                    results["details"]["commits_behind"] = commits_behind
+                    results["details"]["main_branch"] = main_branch
+                    break
+
+            # 3. Determine overall result
+            # For state verification to pass, we need PR mergeable AND CI passing
+            # (branch_current is informational but not blocking)
+            if results.get("pr_mergeable") and results.get("ci_passing"):
+                results["all_passing"] = True
+            elif results.get("details", {}).get("no_pr"):
+                # No PR - check if on main branch directly
+                results["all_passing"] = results.get("branch_current", False)
+
+            self._log(
+                f"State verification: ci={results['ci_passing']}, "
+                f"mergeable={results['pr_mergeable']}, current={results['branch_current']}",
+                "INFO",
+            )
+
+        except subprocess.TimeoutExpired:
+            self._log("State verification timed out", "WARNING")
+        except FileNotFoundError:
+            self._log("gh or git command not found for state verification", "WARNING")
+        except Exception as e:
+            self._log(f"State verification failed: {e}", "WARNING")
+
+        return results
 
     def _results_already_shown(self, session_id: str) -> bool:
         """Check if power-steering results were already shown for this session.
@@ -1317,15 +1922,17 @@ class PowerSteeringChecker:
         - MAINTENANCE: Documentation and configuration updates only
         - INVESTIGATION: Exploration, analysis, troubleshooting, and debugging
 
-        Detection Priority:
+        Detection Priority (UPDATED for Issue #2196):
         1. Environment override (AMPLIHACK_SESSION_TYPE)
         2. Simple task keywords (cleanup, fetch, workspace) - highest priority heuristic
-        3. Investigation keywords in user messages
-        4. Tool usage patterns (code changes, tests, etc.)
+        3. Tool usage patterns (code changes, tests, etc.) - CONCRETE EVIDENCE
+        4. Investigation keywords in user messages - TIEBREAKER ONLY
 
-        The keyword detection takes priority over tool-based heuristics because
-        troubleshooting sessions often involve Bash commands and doc updates,
-        which can be misclassified as DEVELOPMENT or MAINTENANCE.
+        Tool usage patterns now take priority over keywords because they provide
+        concrete evidence of the session's actual work. Keywords like "analyze and fix"
+        are ambiguous, but Write/Edit tools with code changes are definitive signals
+        of DEVELOPMENT work. Investigation keywords are only checked as a fallback
+        when tool patterns are ambiguous (fixes #2196).
 
         Args:
             transcript: List of message dictionaries
@@ -1355,13 +1962,8 @@ class PowerSteeringChecker:
             self._log("Session classified as SIMPLE via keyword detection", "INFO")
             return "SIMPLE"
 
-        # PRIORITY CHECK: Investigation keywords in user messages
-        # This takes precedence over tool-based heuristics (fixes #1604)
-        if self._has_investigation_keywords(transcript):
-            self._log("Session classified as INVESTIGATION via keyword detection", "INFO")
-            return "INVESTIGATION"
-
-        # Collect indicators from transcript
+        # Collect indicators from transcript BEFORE keyword checking
+        # Tool usage patterns are stronger signals than keywords (fixes #2196)
         code_files_modified = False
         doc_files_only = True
         write_edit_operations = 0
@@ -1394,15 +1996,22 @@ class PowerSteeringChecker:
                             write_edit_operations += 1
                             file_path = tool_input.get("file_path", "")
 
-                            # Check if code file using class constant
-                            if any(ext in file_path for ext in self.CODE_FILE_EXTENSIONS):
+                            # Check if code file using class constant (use endswith to avoid false positives)
+                            if any(file_path.endswith(ext) for ext in self.CODE_FILE_EXTENSIONS):
                                 code_files_modified = True
                                 doc_files_only = False
 
-                            # Check if doc file using class constants
-                            if not any(ext in file_path for ext in self.DOC_FILE_EXTENSIONS):
-                                if not any(ext in file_path for ext in self.CONFIG_FILE_EXTENSIONS):
-                                    doc_files_only = False
+                            # Check if doc file using class constants (use endswith or special names)
+                            is_doc_file = any(
+                                file_path.endswith(ext) if ext.startswith(".") else ext in file_path
+                                for ext in self.DOC_FILE_EXTENSIONS
+                            )
+                            is_config_file = any(
+                                file_path.endswith(ext) for ext in self.CONFIG_FILE_EXTENSIONS
+                            )
+
+                            if not is_doc_file and not is_config_file:
+                                doc_files_only = False
 
                         # Read/Grep operations (investigation indicators)
                         elif tool_name in ["Read", "Grep", "Glob"]:
@@ -1423,20 +2032,45 @@ class PowerSteeringChecker:
                             if "git commit" in command or "git push" in command:
                                 git_operations = True
 
-        # Decision logic (priority order) using helper methods
+        # Decision logic (REFINED for Issue #2196):
+        # 1. Investigation keywords checked early BUT can be overridden by CODE modifications
+        # 2. CODE modifications (code files) take priority → DEVELOPMENT
+        # 3. NON-CODE modifications (docs, configs, git) DON'T override investigation keywords
+        # 4. Default to INFORMATIONAL (fail-open)
 
-        # DEVELOPMENT: Highest priority if code changes detected
-        if self._has_development_indicators(code_files_modified, test_executions, pr_operations):
+        # Check for investigation keywords early
+        has_investigation_keywords = self._has_investigation_keywords(transcript)
+
+        # DEVELOPMENT: CODE modifications override investigation keywords (fixes #2196)
+        # Only override keywords if we have actual CODE file modifications
+        # Doc/config updates or git operations should NOT override investigation keywords
+        if code_files_modified or test_executions > 0 or pr_operations:
+            # Strong signal: Write/Edit of CODE files, tests run, PR operations
+            self._log("Session classified as DEVELOPMENT via CODE modification patterns", "INFO")
             return "DEVELOPMENT"
 
+        # INVESTIGATION: Keywords found and NO code modifications
+        # This handles "investigate X", "how does X work", "troubleshoot Y" with:
+        # - No tools (pure questions)
+        # - Doc/config updates only (documenting findings)
+        # - Git operations only (committing investigation notes)
+        if has_investigation_keywords:
+            self._log(
+                "Session classified as INVESTIGATION via keywords (no code modifications)", "INFO"
+            )
+            return "INVESTIGATION"
+
         # INFORMATIONAL: No tool usage or only Read tools with high question density
+        # Questions without investigation keywords
         if self._has_informational_indicators(
             write_edit_operations, read_grep_operations, question_count, user_messages
         ):
             return "INFORMATIONAL"
 
-        # Multiple Read/Grep without modifications = INVESTIGATION
+        # INVESTIGATION: Tool-based heuristics (Read/Grep without modifications)
+        # Catches investigation sessions that don't have explicit keywords
         if self._has_investigation_indicators(read_grep_operations, write_edit_operations):
+            self._log("Session classified as INVESTIGATION via tool usage patterns", "INFO")
             return "INVESTIGATION"
 
         # MAINTENANCE: Only doc/config files modified OR git operations without code changes
@@ -1683,53 +2317,11 @@ class PowerSteeringChecker:
 
         return None
 
-    def _extract_message_text(self, msg: dict) -> str:
-        """Extract text content from a message dict.
-
-        Args:
-            msg: Message dictionary
-
-        Returns:
-            Text content as string
-        """
-        content = msg.get("content", msg.get("message", ""))
-
-        if isinstance(content, str):
-            return content
-
-        if isinstance(content, dict):
-            inner = content.get("content", "")
-            if isinstance(inner, str):
-                return inner
-            if isinstance(inner, list):
-                return self._extract_text_from_blocks(inner)
-
-        if isinstance(content, list):
-            return self._extract_text_from_blocks(content)
-
-        return ""
-
-    def _extract_text_from_blocks(self, blocks: list) -> str:
-        """Extract text from content blocks.
-
-        Args:
-            blocks: List of content blocks
-
-        Returns:
-            Concatenated text content
-        """
-        texts = []
-        for block in blocks:
-            if isinstance(block, dict):
-                if block.get("type") == "text":
-                    texts.append(str(block.get("text", "")))
-        return " ".join(texts)
-
     def _analyze_considerations(
         self,
         transcript: list[dict],
         session_id: str,
-        session_type: str = None,
+        session_type: str | None = None,
         progress_callback: Callable | None = None,
     ) -> ConsiderationAnalysis:
         """Analyze transcript against all enabled considerations IN PARALLEL.
@@ -1939,25 +2531,32 @@ class PowerSteeringChecker:
             if SDK_AVAILABLE:
                 try:
                     # Use async SDK function directly (already awaitable)
-                    satisfied = await analyze_consideration(
+                    # Returns tuple: (satisfied, reason)
+                    satisfied, sdk_reason = await analyze_consideration(
                         conversation=transcript,
                         consideration=consideration,
                         project_root=self.project_root,
                     )
 
-                    # SDK succeeded - return result
+                    # SDK succeeded - return result with SDK-provided reason
                     return CheckerResult(
                         consideration_id=consideration["id"],
                         satisfied=satisfied,
                         reason=(
                             "SDK analysis: satisfied"
                             if satisfied
-                            else f"SDK analysis: {consideration['question']} not met"
+                            else f"SDK analysis: {sdk_reason or consideration['question'] + ' not met'}"
                         ),
                         severity=consideration["severity"],
                     )
                 except Exception as e:
-                    # SDK failed - log and fall through to fallback
+                    # SDK failed - log to stderr and fall through to fallback
+                    import sys
+
+                    error_msg = f"[Power Steering SDK Error] {consideration['id']}: {e!s}\n"
+                    sys.stderr.write(error_msg)
+                    sys.stderr.flush()
+
                     self._log(
                         f"SDK analysis failed for '{consideration['id']}': {e}",
                         "DEBUG",
@@ -2089,7 +2688,9 @@ class PowerSteeringChecker:
                 f"Message branch: CHECKS_FAILED (passed={total_passed}, failed={total_failed}, skipped={total_skipped})",
                 "DEBUG",
             )
-            lines.append(f"❌ CHECKS FAILED ({total_passed} passed, {total_failed} failed)")
+            lines.append(
+                f"❌ CHECKS FAILED ({total_passed} passed, {total_failed} failed, {total_skipped} skipped)"
+            )
             lines.append("\n📌 Address the failed checks above before stopping.")
         lines.append("=" * 60 + "\n")
 
@@ -2232,6 +2833,147 @@ class PowerSteeringChecker:
                                             next_steps.append(clean_sentence)
 
         return next_steps[:5]  # Limit to 5 items
+
+    def _check_workflow_invocation(self, transcript: list[dict], session_id: str) -> bool:
+        """Check if workflow was properly invoked using Claude SDK analysis.
+
+        Uses context-aware AI analysis to detect workflow invocation patterns:
+        - Explicit Skill tool invocation
+        - Explicit Read tool invocation
+        - Implicit step-by-step workflow following
+        - Async completion (PR created for review, CI running)
+
+        Issue #2040: Enforce workflow invocation compliance
+
+        Args:
+            transcript: List of message dictionaries
+            session_id: Session identifier
+
+        Returns:
+            True if workflow properly invoked or not required, False otherwise
+        """
+        try:
+            # Import SDK analysis function
+            from claude_power_steering import analyze_workflow_invocation_sync
+
+            # Determine session type from state if available
+            session_type = "DEVELOPMENT"  # Default
+            try:
+                state_file = self.runtime_dir / session_id / "turn_state.json"
+                if state_file.exists():
+                    state = json.loads(state_file.read_text())
+                    session_type = state.get("session_type", "DEVELOPMENT")
+            except Exception:
+                pass  # Use default
+
+            # Use SDK analysis for workflow invocation validation
+            valid, reason = analyze_workflow_invocation_sync(
+                transcript, session_type, self.project_root
+            )
+
+            if not valid:
+                # Log violation details
+                self._log_violation(
+                    "workflow_invocation",
+                    {
+                        "reason": reason or "Workflow not properly invoked",
+                        "session_type": session_type,
+                    },
+                    session_id,
+                )
+
+            return valid
+
+        except ImportError:
+            # SDK not available - fail open
+            import sys
+
+            sys.stderr.write(
+                "[Power Steering] claude_power_steering not available, skipping workflow check\n"
+            )
+            return True
+        except Exception as e:
+            # Fail-open on errors
+            import sys
+
+            sys.stderr.write(f"[Power Steering] Error in _check_workflow_invocation: {e}\n")
+            return True
+
+    def _transcript_to_text(self, transcript: list[dict]) -> str:
+        """Convert transcript list to plain text for pattern matching.
+
+        Args:
+            transcript: List of message dictionaries
+
+        Returns:
+            Plain text representation of transcript
+        """
+        lines = []
+        for msg in transcript:
+            role = msg.get("type", "unknown")
+            if role == "user":
+                lines.append(f"User: {self._extract_message_text(msg)}")
+            elif role == "assistant":
+                lines.append(f"Claude: {self._extract_message_text(msg)}")
+        return "\n".join(lines)
+
+    def _extract_message_text(self, msg: dict) -> str:
+        """Extract text content from message.
+
+        Args:
+            msg: Message dictionary
+
+        Returns:
+            Text content
+        """
+        message = msg.get("message", {})
+        content = message.get("content", [])
+
+        if isinstance(content, str):
+            return content
+
+        if isinstance(content, list):
+            texts = []
+            for block in content:
+                if isinstance(block, dict):
+                    if block.get("type") == "text":
+                        texts.append(block.get("text", ""))
+                    elif block.get("type") == "tool_use":
+                        # Include tool invocations in text
+                        tool_name = block.get("name", "")
+                        tool_input = block.get("input", {})
+                        texts.append(f'<invoke name="{tool_name}">{tool_input}')
+            return " ".join(texts)
+
+        return ""
+
+    def _log_violation(self, consideration_id: str, details: dict, session_id: str) -> None:
+        """Log violation details to session logs.
+
+        Args:
+            consideration_id: ID of failed consideration
+            details: Violation details
+            session_id: Session identifier
+        """
+        try:
+            log_file = self.runtime_dir / session_id / "violations.json"
+            log_file.parent.mkdir(parents=True, exist_ok=True)
+
+            violations = []
+            if log_file.exists():
+                violations = json.loads(log_file.read_text())
+
+            violations.append(
+                {
+                    "consideration_id": consideration_id,
+                    "timestamp": datetime.now().isoformat(),
+                    "details": details,
+                }
+            )
+
+            log_file.write_text(json.dumps(violations, indent=2))
+        except Exception:
+            pass  # Fail silently
 
     def _check_dev_workflow_complete(self, transcript: list[dict], session_id: str) -> bool:
         """Check if full DEFAULT_WORKFLOW followed.
@@ -2391,12 +3133,132 @@ class PowerSteeringChecker:
         # No tests found or tests failed
         return False
 
-    def _check_ci_status(self, transcript: list[dict], session_id: str) -> bool:
-        """Check if CI passing/mergeable.
+    def _user_prefers_no_auto_merge(self) -> bool:
+        """Detect if user has set preference to never auto-merge PRs.
 
-        Heuristics:
+        Searches .claude/context/USER_PREFERENCES.md for pattern:
+        "(never|must not|do not|don't) ... merge ... without ... (permission|approval|explicit)"
+
+        Returns:
+            True if preference detected, False otherwise (fail-open on any error)
+        """
+        try:
+            preferences_path = self.project_root / ".claude" / "context" / "USER_PREFERENCES.md"
+
+            if not preferences_path.exists():
+                return False
+
+            content = preferences_path.read_text(encoding="utf-8")
+
+            # Pattern: (never|must not|do not|don't).*merge.*without.*(permission|approval|explicit)
+            pattern = r"(?i)(never|must not|do not|don\'t).*merge.*without.*(permission|approval|explicit)"
+
+            return re.search(pattern, content, re.DOTALL) is not None
+
+        except Exception as e:
+            # Fail-open: any error returns False
+            self._log(f"Error detecting merge preference: {e}", "WARNING")
+            return False
+
+    def _check_ci_status_no_auto_merge(self, transcript: list[dict]) -> bool:
+        """Check CI status WITHOUT requiring PR merge.
+
+        Used when user preference "never merge without permission" is active.
+        Treats "PR ready + CI passing" as valid completion state.
+
+        Args:
+            transcript: List of message dictionaries
+
+        Returns:
+            True if PR ready and CI passing, False if CI failing or draft PR
+        """
+        # Look for PR and CI indicators
+        pr_mentioned = False
+        ci_mentioned = False
+        ci_passing = False
+        is_draft = False
+
+        for msg in transcript:
+            if msg.get("type") == "assistant" and "message" in msg:
+                content = msg["message"].get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict):
+                            if block.get("type") == "text":
+                                text = str(block.get("text", "")).lower()
+
+                                # Check for PR mentions
+                                if any(
+                                    keyword in text
+                                    for keyword in ["pr #", "pull request", "created pr"]
+                                ):
+                                    pr_mentioned = True
+
+                                # Check for draft PR
+                                if "draft" in text and "pr" in text:
+                                    is_draft = True
+
+                                # Check for CI mentions
+                                if any(
+                                    keyword in text
+                                    for keyword in [
+                                        "ci",
+                                        "github actions",
+                                        "continuous integration",
+                                        "checks",
+                                    ]
+                                ):
+                                    ci_mentioned = True
+
+                                    # Check for passing indicators
+                                    if any(
+                                        keyword in text
+                                        for keyword in [
+                                            "passing",
+                                            "passed",
+                                            "success",
+                                            "ready for review",
+                                            "ready for your review",
+                                        ]
+                                    ):
+                                        ci_passing = True
+
+                                    # Check for failing indicators
+                                    if any(
+                                        keyword in text
+                                        for keyword in ["failing", "failed", "error"]
+                                    ):
+                                        return False
+
+        # If draft PR, not ready
+        if is_draft:
+            return False
+
+        # If CI mentioned and failing, return False
+        if ci_mentioned and not ci_passing:
+            return False
+
+        # If PR mentioned with CI passing, or PR ready indicators
+        if pr_mentioned and (ci_passing or not ci_mentioned):
+            return True
+
+        # If neither PR nor CI mentioned, assume satisfied (fail-open)
+        if not pr_mentioned and not ci_mentioned:
+            return True
+
+        # Default: if we have indicators but unclear state, be conservative
+        return ci_passing or not ci_mentioned
+
+    def _check_ci_status(self, transcript: list[dict], session_id: str) -> bool:
+        """Check if CI passing/mergeable (preference-aware).
+
+        This method delegates to the appropriate CI checker based on user preference:
+        - If user prefers no auto-merge: use _check_ci_status_no_auto_merge()
+        - Otherwise: use standard CI check logic (requires merge indicators)
+
+        Heuristics (standard mode):
         - Look for CI status checks (gh pr view, CI commands)
-        - Check for "passing", "success", "mergeable"
+        - Check for "passing", "success", "mergeable" (strict - requires "mergeable")
         - Look for failure indicators
 
         Args:
@@ -2406,9 +3268,13 @@ class PowerSteeringChecker:
         Returns:
             True if CI passing or not applicable, False if CI failing
         """
-        # Look for CI-related commands
+        # Check user preference first (lazy detection)
+        if self._user_prefers_no_auto_merge():
+            return self._check_ci_status_no_auto_merge(transcript)
+
+        # Standard logic for users without preference (strict - requires "mergeable")
         ci_mentioned = False
-        ci_passing = False
+        mergeable_mentioned = False
 
         for msg in transcript:
             if msg.get("type") == "assistant" and "message" in msg:
@@ -2419,8 +3285,10 @@ class PowerSteeringChecker:
                             # Check text content for CI mentions
                             if block.get("type") == "text":
                                 text = str(block.get("text", ""))
+                                text_lower = text.lower()
+
                                 if any(
-                                    keyword in text.lower()
+                                    keyword in text_lower
                                     for keyword in [
                                         "ci",
                                         "github actions",
@@ -2428,24 +3296,25 @@ class PowerSteeringChecker:
                                     ]
                                 ):
                                     ci_mentioned = True
-                                    # Check for passing/failing
-                                    if any(
-                                        keyword in text.lower()
-                                        for keyword in ["passing", "success", "mergeable"]
-                                    ):
-                                        ci_passing = True
-                                    if any(
-                                        keyword in text.lower()
-                                        for keyword in ["failing", "failed", "error"]
-                                    ):
-                                        return False
+
+                                # Standard mode: only accept explicit "mergeable" or "passing" + "mergeable"
+                                # Don't accept just "ready" or "passing" alone
+                                if "mergeable" in text_lower:
+                                    mergeable_mentioned = True
+
+                                # Check for failure indicators
+                                if any(
+                                    keyword in text_lower
+                                    for keyword in ["failing", "failed", "error"]
+                                ):
+                                    return False
 
         # If CI not mentioned, consider satisfied (not applicable)
         if not ci_mentioned:
             return True
 
-        # If CI mentioned but no clear passing indicator, be conservative
-        return ci_passing
+        # Standard mode requires explicit "mergeable" indicator
+        return mergeable_mentioned
 
     # ========================================================================
     # Phase 2: Additional Checkers (16 new methods)
@@ -2829,12 +3698,17 @@ class PowerSteeringChecker:
             return False
 
     def _check_next_steps(self, transcript: list[dict], session_id: str) -> bool:
-        """Check that work is complete with NO remaining next steps.
+        """Check that work is complete with NO remaining next steps (Issue #2196 - Enhanced).
 
-        INVERTED LOGIC: If the agent mentions "next steps", "remaining work", or
-        similar phrases in their final messages, that means they're acknowledging
-        there's MORE work to do. This check FAILS when next steps are found,
-        prompting the agent to continue working until no next steps remain.
+        UPDATED LOGIC (Issue #2196):
+        - Uses regex patterns to detect STRUCTURED next steps (bulleted lists)
+        - Handles negation ("no next steps", "no remaining work")
+        - Ignores status observations ("CI pending", "waiting for")
+        - Prevents false positives on completion statements
+
+        INVERTED LOGIC: If the agent mentions concrete next steps in structured format,
+        work is incomplete. Simple keywords without structure are ignored to prevent
+        false positives.
 
         Args:
             transcript: List of message dictionaries
@@ -2844,35 +3718,22 @@ class PowerSteeringChecker:
             True if NO next steps found (work is complete)
             False if next steps ARE found (work is incomplete - should continue)
         """
-        # Keywords that indicate incomplete work
-        incomplete_work_keywords = [
-            "next steps",
-            "next step",
-            "follow-up",
-            "follow up",
-            "future work",
-            "remaining work",
-            "remaining tasks",
-            "still need to",
-            "still needs to",
-            "todo",
-            "to-do",
-            "to do",
-            "left to do",
-            "more to do",
-            "additional work",
-            "further work",
-            "outstanding",
-            "not yet complete",
-            "not yet done",
-            "incomplete",
-            "pending",
-            "planned for later",
-            "deferred",
+        # Structured next steps patterns: keywords followed by bulleted/numbered lists
+        # Pattern structure: (keyword) + colon + newline + bullet/number marker
+        # Examples: "Next steps:\n- Fix bugs", "TODO:\n1. Test", "Remaining:\n• Deploy"
+        concrete_next_steps_patterns = [
+            r"(next steps?|remaining|todo|outstanding|still need to):\s*[\r\n]+\s*[-•*\d.]",
         ]
 
-        # Check RECENT assistant messages (last 10) for incomplete work indicators
-        # These are where the agent would summarize before stopping
+        # Negation patterns indicate completion
+        negation_patterns = [
+            r"no\s+(next\s+steps?|remaining|outstanding|todo)",
+            r"(next\s+steps?|remaining|outstanding|todo)\s+(?:are\s+)?(?:none|empty|complete)",
+            r"all\s+(?:done|complete|finished)",
+            r"nothing\s+(?:left|remaining|outstanding)",
+        ]
+
+        # Check RECENT assistant messages (last 10) for structured next steps
         recent_messages = [m for m in transcript[-20:] if m.get("type") == "assistant"][-10:]
 
         for msg in reversed(recent_messages):
@@ -2880,16 +3741,31 @@ class PowerSteeringChecker:
             if isinstance(content, list):
                 for block in content:
                     if isinstance(block, dict) and block.get("type") == "text":
-                        text = str(block.get("text", "")).lower()
-                        for keyword in incomplete_work_keywords:
-                            if keyword in text:
+                        text = str(block.get("text", ""))
+
+                        # First check for negation patterns (completion statements)
+                        # These should PASS the check (return True)
+                        for pattern in negation_patterns:
+                            if re.search(pattern, text, re.IGNORECASE):
                                 self._log(
-                                    f"Incomplete work indicator found: '{keyword}' - agent should continue",
+                                    "Completion statement found: negation pattern matched",
                                     "INFO",
                                 )
-                                return False  # Work is INCOMPLETE
+                                # Continue checking other messages (don't return immediately)
+                                # Only STRUCTURED next steps should fail the check
+                                break
 
-        # No incomplete work indicators found - work is complete
+                        # Check for STRUCTURED next steps (bulleted/numbered lists)
+                        # These indicate CONCRETE remaining work
+                        for pattern in concrete_next_steps_patterns:
+                            if re.search(pattern, text, re.IGNORECASE):
+                                self._log(
+                                    f"Structured next steps found: pattern '{pattern}' - agent should continue",
+                                    "INFO",
+                                )
+                                return False  # Work is INCOMPLETE (concrete next steps exist)
+
+        # No structured next steps found - work is complete
         return True
 
     def _check_docs_organization(self, transcript: list[dict], session_id: str) -> bool:
@@ -3539,12 +4415,136 @@ class PowerSteeringChecker:
         """
         try:
             summary_dir = self.runtime_dir / session_id
-            summary_dir.mkdir(parents=True, exist_ok=True)
             summary_path = summary_dir / "summary.md"
-            summary_path.write_text(summary)
+            _write_with_retry(summary_path, summary, mode="w")
             summary_path.chmod(0o644)  # Owner read/write, others read
         except OSError:
             pass  # Fail-open: Continue even if summary writing fails
+
+    def _check_with_transcript_list(
+        self, transcript: list[dict], session_id: str
+    ) -> PowerSteeringResult:
+        """Testing interface: Check with transcript list instead of file path.
+
+        Args:
+            transcript: Transcript as list of message dicts
+            session_id: Session identifier
+
+        Returns:
+            PowerSteeringResult with compaction context and considerations
+        """
+        # Initialize compaction context
+        compaction_context = CompactionContext()
+
+        # Check if compaction handling is enabled
+        compaction_enabled = self._is_consideration_enabled("compaction_handling")
+
+        # Run compaction validation
+        considerations = []
+        if COMPACTION_AVAILABLE and compaction_enabled:
+            try:
+                validator = CompactionValidator(self.project_root)
+                validation_result = validator.validate(transcript, session_id)
+                compaction_context = validation_result.compaction_context
+
+                # Create consideration result
+                compaction_check = CheckerResult(
+                    consideration_id="compaction_handling",
+                    satisfied=validation_result.passed,
+                    reason="; ".join(validation_result.warnings)
+                    if validation_result.warnings
+                    else "No compaction issues detected",
+                    severity="warning",
+                    recovery_steps=validation_result.recovery_steps,
+                    executed=True,
+                )
+
+                considerations.append(compaction_check)
+            except Exception as e:
+                # Fail-open: Log error but don't block
+                self._log(f"Compaction validation error: {e}", "WARNING")
+                compaction_check = CheckerResult(
+                    consideration_id="compaction_handling",
+                    satisfied=True,  # Fail-open
+                    reason="Compaction validation skipped due to error",
+                    severity="warning",
+                    executed=True,
+                )
+                considerations.append(compaction_check)
+        elif not compaction_enabled:
+            # Add disabled marker
+            compaction_check = CheckerResult(
+                consideration_id="compaction_handling",
+                satisfied=True,
+                reason="Compaction handling disabled",
+                severity="warning",
+                executed=False,
+            )
+            considerations.append(compaction_check)
+
+        # Return result
+        return PowerSteeringResult(
+            decision="approve",
+            reasons=["test_mode"],
+            compaction_context=compaction_context,
+            considerations=considerations,
+        )
+
+    def _is_consideration_enabled(self, consideration_id: str) -> bool:
+        """Check if a consideration is enabled in considerations.yaml.
+
+        Args:
+            consideration_id: ID of consideration to check
+
+        Returns:
+            True if enabled or not found (default enabled), False if explicitly disabled
+        """
+        try:
+            considerations_path = (
+                self.project_root / ".claude" / "tools" / "amplihack" / "considerations.yaml"
+            )
+            if not considerations_path.exists():
+                return True  # Default enabled
+
+            import yaml
+
+            with open(considerations_path) as f:
+                considerations = yaml.safe_load(f)
+
+            if not considerations:
+                return True
+
+            for consideration in considerations:
+                if consideration.get("id") == consideration_id:
+                    return consideration.get("enabled", True)
+
+            return True  # Not found = default enabled
+        except Exception:
+            return True  # Fail-open
+
+    def _check_compaction_handling(self, transcript: list[dict], session_id: str) -> bool:
+        """Consideration checker for compaction validation.
+
+        Called by consideration framework. Returns True if compaction
+        was handled appropriately or didn't occur.
+
+        Args:
+            transcript: Full conversation transcript
+            session_id: Session identifier
+
+        Returns:
+            True if no compaction or validation passed, False if failed
+        """
+        if not COMPACTION_AVAILABLE:
+            return True  # Fail-open if validator not available
+
+        try:
+            validator = CompactionValidator(self.project_root)
+            result = validator.validate(transcript, session_id)
+            return result.passed
+        except Exception as e:
+            self._log(f"Compaction validation error: {e}", "WARNING")
+            return True  # Fail-open on errors
 
     def _log(self, message: str, level: str = "INFO") -> None:
         """Log message to power-steering log file.
@@ -3560,8 +4560,9 @@ class PowerSteeringChecker:
             # Create with restrictive permissions if it doesn't exist
             is_new = not log_file.exists()
 
-            with open(log_file, "a") as f:
-                f.write(f"[{timestamp}] {level}: {message}\n")
+            # Use retry-enabled write for cloud sync resilience
+            log_entry = f"[{timestamp}] {level}: {message}\n"
+            _write_with_retry(log_file, log_entry, mode="a")
 
             # Set permissions on new files
             if is_new:
