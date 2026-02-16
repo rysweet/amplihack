@@ -1,5 +1,6 @@
 """Tests for Copilot CLI launcher update functionality."""
 
+import json
 import platform
 import subprocess
 from unittest.mock import Mock, patch
@@ -10,9 +11,11 @@ from amplihack.launcher.copilot import (
     check_copilot,
     check_for_update,
     detect_install_method,
+    enable_awesome_copilot_mcp_server,
     execute_update,
     generate_copilot_instructions,
     prompt_user_to_update,
+    register_awesome_copilot_marketplace,
     stage_agents,
     stage_directory,
 )
@@ -648,3 +651,107 @@ name: DEFAULT_WORKFLOW
         assert "Standard development workflow" in content
         # Should not crash or include step count if file missing
         assert "DEFAULT_WORKFLOW" in content
+
+
+class TestEnableAwesomeCopilotMCPServer:
+    """Tests for awesome-copilot MCP server integration."""
+
+    @patch("shutil.which", return_value="/usr/bin/docker")
+    def test_adds_mcp_server_when_docker_available(self, _mock_which, tmp_path):
+        """MCP server config should be added when Docker is available."""
+        with patch("amplihack.launcher.copilot.Path.home", return_value=tmp_path):
+            mcp_dir = tmp_path / ".copilot" / "github-copilot"
+            mcp_dir.mkdir(parents=True)
+            mcp_file = mcp_dir / "mcp.json"
+            mcp_file.write_text('{"mcpServers": {}}')
+
+            result = enable_awesome_copilot_mcp_server()
+
+            assert result is True
+            config = json.loads(mcp_file.read_text())
+            assert "awesome-copilot" in config["mcpServers"]
+            assert config["mcpServers"]["awesome-copilot"]["command"] == "docker"
+
+    @patch("shutil.which", return_value=None)
+    def test_returns_false_when_no_docker(self, _mock_which):
+        """Should return False silently when Docker is not available."""
+        result = enable_awesome_copilot_mcp_server()
+        assert result is False
+
+    @patch("shutil.which", return_value="/usr/bin/docker")
+    def test_preserves_existing_mcp_config(self, _mock_which, tmp_path):
+        """Must not overwrite existing MCP server configurations."""
+        with patch("amplihack.launcher.copilot.Path.home", return_value=tmp_path):
+            mcp_dir = tmp_path / ".copilot" / "github-copilot"
+            mcp_dir.mkdir(parents=True)
+            mcp_file = mcp_dir / "mcp.json"
+            mcp_file.write_text('{"mcpServers": {"existing-server": {"type": "stdio"}}}')
+
+            enable_awesome_copilot_mcp_server()
+
+            config = json.loads(mcp_file.read_text())
+            assert "existing-server" in config["mcpServers"]
+            assert "awesome-copilot" in config["mcpServers"]
+
+    @patch("shutil.which", return_value="/usr/bin/docker")
+    def test_creates_config_from_scratch(self, _mock_which, tmp_path):
+        """Should create MCP config file if it doesn't exist."""
+        with patch("amplihack.launcher.copilot.Path.home", return_value=tmp_path):
+            result = enable_awesome_copilot_mcp_server()
+
+            assert result is True
+            mcp_file = tmp_path / ".copilot" / "github-copilot" / "mcp.json"
+            assert mcp_file.exists()
+
+
+class TestRegisterAwesomeCopilotMarketplace:
+    """Tests for awesome-copilot marketplace registration."""
+
+    @patch("subprocess.run")
+    def test_registers_marketplace_on_first_run(self, mock_run, tmp_path):
+        """Should run copilot plugin marketplace add on first launch."""
+        mock_run.return_value = Mock(returncode=0)
+        with patch("amplihack.launcher.copilot.Path.home", return_value=tmp_path):
+            (tmp_path / ".copilot").mkdir(parents=True)
+
+            result = register_awesome_copilot_marketplace()
+
+            assert result is True
+            mock_run.assert_called_once()
+            assert "marketplace" in str(mock_run.call_args)
+
+    @patch("subprocess.run")
+    def test_skips_if_already_registered(self, mock_run, tmp_path):
+        """Should not re-register if marker file exists."""
+        with patch("amplihack.launcher.copilot.Path.home", return_value=tmp_path):
+            marker = tmp_path / ".copilot" / "awesome-copilot-marketplace-registered"
+            marker.parent.mkdir(parents=True)
+            marker.write_text("registered\n")
+
+            result = register_awesome_copilot_marketplace()
+
+            assert result is True
+            mock_run.assert_not_called()
+
+    @patch("subprocess.run")
+    def test_handles_copilot_not_found(self, mock_run, tmp_path):
+        """Should return False if copilot CLI not available."""
+        mock_run.side_effect = FileNotFoundError()
+        with patch("amplihack.launcher.copilot.Path.home", return_value=tmp_path):
+            (tmp_path / ".copilot").mkdir(parents=True)
+
+            result = register_awesome_copilot_marketplace()
+
+            assert result is False
+
+    @patch("subprocess.run")
+    def test_creates_marker_on_success(self, mock_run, tmp_path):
+        """Marker file must be created after successful registration."""
+        mock_run.return_value = Mock(returncode=0)
+        with patch("amplihack.launcher.copilot.Path.home", return_value=tmp_path):
+            (tmp_path / ".copilot").mkdir(parents=True)
+
+            register_awesome_copilot_marketplace()
+
+            marker = tmp_path / ".copilot" / "awesome-copilot-marketplace-registered"
+            assert marker.exists()
