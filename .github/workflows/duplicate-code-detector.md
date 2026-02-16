@@ -8,7 +8,7 @@ on:
 permissions:
   contents: read
   pull-requests: read
-engine: codex
+engine: claude
 tools:
   bash: true
   github:

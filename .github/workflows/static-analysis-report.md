@@ -31,7 +31,7 @@ steps:
 
       # Install Python analysis tools
       pip install --upgrade pip
-      pip install bandit==1.7.6 pylint==3.0.3 mypy==1.8.0 safety==3.0.1
+      pip install bandit==1.7.6 pylint==3.0.3 mypy==1.8.0 safety==2.3.5
 
       echo "Python static analysis tools installed successfully"
 
