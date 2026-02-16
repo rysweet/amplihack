@@ -12,7 +12,7 @@ Philosophy:
 from pathlib import Path
 from typing import Any
 
-from amplihack_memory import Experience, ExperienceType, MemoryConnector
+from amplihack_memory import Experience, ExperienceStore, ExperienceType, MemoryConnector
 
 
 class MemoryRetriever:
@@ -41,14 +41,11 @@ class MemoryRetriever:
             raise ValueError("agent_name cannot be empty")
 
         self.agent_name = agent_name.strip()
-        connector_kwargs: dict[str, Any] = {"agent_name": self.agent_name}
+        store_kwargs: dict[str, Any] = {"agent_name": self.agent_name}
         if storage_path:
-            connector_kwargs["storage_path"] = Path(storage_path) if isinstance(storage_path, str) else storage_path
-        try:
-            self.connector = MemoryConnector(**connector_kwargs, backend=backend)
-        except TypeError:
-            # Older amplihack-memory-lib without backend parameter
-            self.connector = MemoryConnector(**connector_kwargs)
+            store_kwargs["storage_path"] = Path(storage_path) if isinstance(storage_path, str) else storage_path
+        self.store = ExperienceStore(**store_kwargs)
+        self.connector = self.store.connector
 
     def search(
         self,
@@ -83,7 +80,7 @@ class MemoryRetriever:
         if not query or not query.strip():
             return []
 
-        experiences = self.connector.search(
+        experiences = self.store.search(
             query=query.strip(),
             limit=limit,
             min_confidence=min_confidence,
@@ -159,7 +156,7 @@ class MemoryRetriever:
                 - by_type: Count by experience type
                 - storage_size_kb: Storage size in KB
         """
-        return self.connector.get_statistics()
+        return self.store.get_statistics()
 
     def close(self) -> None:
         """Close database connection."""
