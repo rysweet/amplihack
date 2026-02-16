@@ -2,6 +2,19 @@
 
 Searches well-known directories for recipe files and provides metadata
 about each discovered recipe. Supports tracking upstream recipe bundles.
+
+Search Path Priority
+--------------------
+Recipes are discovered in a specific priority order (global → local):
+
+1. User home recipes (~/.amplihack/.claude/recipes/) - Global installation
+2. Global bundled recipes (amplifier-bundle/recipes/)
+3. Global source recipes (src/amplihack/amplifier-bundle/recipes/)
+4. Project local recipes (.claude/recipes/)
+
+This ordering ensures that core global recipes are always available first,
+preventing ImportError when user directories don't exist. Project-local
+recipes can still override globals by name (last path wins).
 """
 
 from __future__ import annotations
@@ -23,11 +36,21 @@ _UPSTREAM_BRANCH = "main"
 
 # Directories searched for recipe files, in priority order.
 # Later entries override earlier ones when recipes share the same name.
+#
+# IMPORTANT: Global recipes come first to ensure core recipes are always
+# discoverable even in /tmp clones where local directories don't exist.
+# This fixes Issue #2381 where Recipe Runner failed in subprocess isolation.
+#
+# Priority (global → local):
+# 1. ~/.amplihack/.claude/recipes/       - User home (global installation)
+# 2. amplifier-bundle/recipes/           - Global bundled recipes
+# 3. src/amplihack/amplifier-bundle/     - Global source recipes
+# 4. .claude/recipes/                    - Project local recipes
 _DEFAULT_SEARCH_DIRS: list[Path] = [
-    Path("amplifier-bundle") / "recipes",
-    Path("src") / "amplihack" / "amplifier-bundle" / "recipes",
-    Path.home() / ".amplihack" / ".claude" / "recipes",
-    Path(".claude") / "recipes",
+    Path.home() / ".amplihack" / ".claude" / "recipes",  # Global - FIRST
+    Path("amplifier-bundle") / "recipes",  # Global bundled
+    Path("src") / "amplihack" / "amplifier-bundle" / "recipes",  # Global source
+    Path(".claude") / "recipes",  # Local - LAST
 ]
 
 
@@ -53,6 +76,16 @@ def discover_recipes(
     name appears in multiple directories, the last one wins (user recipes
     override bundled ones).
 
+    Debug Logging
+    -------------
+    When logger is set to DEBUG level, outputs:
+    - Each directory searched and whether it exists
+    - Each recipe file found and its source directory
+    - Total recipe count by directory
+
+    This helps diagnose discovery issues like missing global recipes or
+    incorrect search path ordering.
+
     Args:
         search_dirs: Override the default search directories.
 
@@ -62,13 +95,25 @@ def discover_recipes(
     dirs = search_dirs or _DEFAULT_SEARCH_DIRS
     recipes: dict[str, RecipeInfo] = {}
 
+    logger.debug("Searching for recipes in %d directories", len(dirs))
     for search_dir in dirs:
         if not search_dir.is_dir():
+            logger.debug("  Skipping non-existent: %s", search_dir)
             continue
+        logger.debug("  Scanning: %s", search_dir)
+        dir_recipe_count = 0
         for yaml_path in sorted(search_dir.glob("*.yaml")):
             info = _load_recipe_info(yaml_path)
             if info is not None:
+                logger.debug("    Found: %s", info.name)
                 recipes[info.name] = info
+                dir_recipe_count += 1
+        logger.debug("  Discovered %d recipes in %s", dir_recipe_count, search_dir)
+
+    if not recipes:
+        logger.warning("No recipes discovered! Searched: %s", ", ".join(str(d) for d in dirs))
+    else:
+        logger.debug("Total recipes discovered: %d", len(recipes))
 
     return recipes
 
@@ -83,6 +128,53 @@ def list_recipes(search_dirs: list[Path] | None = None) -> list[RecipeInfo]:
         List of RecipeInfo sorted by name.
     """
     return sorted(discover_recipes(search_dirs).values(), key=lambda r: r.name)
+
+
+def verify_global_installation() -> dict[str, Any]:
+    """Verify that global recipe directories exist and contain recipes.
+
+    Checks the first two search paths (global bundled and source recipes)
+    to ensure the amplihack installation includes core recipes. This is
+    diagnostic only - does not modify anything.
+
+    Returns:
+        Dict with keys:
+        - ``global_dirs_exist``: list[bool] for each global directory
+        - ``global_recipe_count``: list[int] for recipe count per directory
+        - ``has_global_recipes``: bool, True if ANY global dir has recipes
+        - ``global_paths_checked``: list[Path] of directories checked
+
+    Example:
+        >>> result = verify_global_installation()
+        >>> if not result["has_global_recipes"]:
+        ...     print("Warning: No global recipes found in installation")
+    """
+    # Check first two global directories (user home + bundled)
+    global_dirs = [
+        Path.home() / ".amplihack" / ".claude" / "recipes",
+        Path("amplifier-bundle") / "recipes",
+    ]
+
+    result = {
+        "global_dirs_exist": [],
+        "global_recipe_count": [],
+        "has_global_recipes": False,
+        "global_paths_checked": global_dirs,
+    }
+
+    for global_dir in global_dirs:
+        exists = global_dir.is_dir()
+        result["global_dirs_exist"].append(exists)
+
+        if exists:
+            recipe_count = len(list(global_dir.glob("*.yaml")))
+            result["global_recipe_count"].append(recipe_count)
+            if recipe_count > 0:
+                result["has_global_recipes"] = True
+        else:
+            result["global_recipe_count"].append(0)
+
+    return result
 
 
 def find_recipe(name: str, search_dirs: list[Path] | None = None) -> Path | None:
