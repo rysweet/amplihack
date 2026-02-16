@@ -122,10 +122,17 @@ class RecipeRunner:
         # Dry run -- record but do not execute
         if dry_run:
             logger.info("DRY RUN: would execute step '%s'", step.id)
+
+            # For parse_json steps, return valid mock JSON
+            if step.parse_json:
+                mock_output = json.dumps({"dry_run": True, "step": step.id, "mock_data": {}})
+            else:
+                mock_output = "[dry run]"
+
             return StepResult(
                 step_id=step.id,
                 status=StepStatus.COMPLETED,
-                output="[dry run]",
+                output=mock_output,
             )
 
         # Execute the step via the adapter

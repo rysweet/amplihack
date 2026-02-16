@@ -710,7 +710,10 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     # Recipe list command
     list_parser = recipe_subparsers.add_parser("list", help="List available recipes")
     list_parser.add_argument(
-        "recipe_dir", nargs="?", default="./recipes", help="Directory to search for recipes"
+        "recipe_dir",
+        nargs="?",
+        default=None,
+        help="Directory to search for recipes (default: search all known recipe directories)",
     )
     list_parser.add_argument(
         "-f", "--format", choices=["table", "json", "yaml"], default="table", help="Output format"
@@ -1579,8 +1582,8 @@ def main(argv: list[str] | None = None) -> int:
     elif args.command == "new":
         from .goal_agent_generator.cli import new_goal_agent
 
-        # Convert argparse args to match click signature
-        return new_goal_agent.callback(
+        # Call the function directly (new_goal_agent is a Click command decorated function)
+        return new_goal_agent(
             file=args.file,
             output=args.output,
             name=args.name,
@@ -1590,18 +1593,21 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     elif args.command == "recipe":
-        from .recipe_cli.recipe_command import handle_list, handle_run, handle_show, handle_validate
+        from .recipe_cli.recipe_command import (
+            handle_list,
+            handle_run,
+            handle_show,
+            handle_validate,
+            parse_context_args,
+        )
 
         if args.recipe_command == "run":
             # Parse context arguments (key=value pairs)
-            context = {}
-            if args.context:
-                for ctx_arg in args.context:
-                    if "=" in ctx_arg:
-                        key, value = ctx_arg.split("=", 1)
-                        context[key] = value
-                    else:
-                        print(f"Warning: Ignoring invalid context argument: {ctx_arg}")
+            context, errors = parse_context_args(args.context or [])
+            if errors:
+                for error in errors:
+                    print(f"Error: {error}", file=sys.stderr)
+                return 1
 
             return handle_run(
                 recipe_path=args.recipe_path,
