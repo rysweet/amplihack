@@ -35,7 +35,7 @@ public class UsersController : ControllerBase
             var user = await _userService.GetByIdAsync(id);
             if (user == null)
                 return NotFound($"User {id} not found");
-            
+
             return Ok(user);
         }
         catch (ArgumentException ex)
@@ -57,7 +57,7 @@ public class UsersController : ControllerBase
         {
             if (string.IsNullOrEmpty(dto.Email))
                 return BadRequest("Email is required");
-            
+
             var user = await _userService.CreateAsync(dto);
             return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
         }
@@ -134,13 +134,13 @@ public class OrderService
     {
         if (order.Items.Count == 0)
             throw new InvalidOperationException("Order must have at least one item");
-        
+
         if (order.TotalAmount <= 0)
             throw new InvalidOperationException("Order total must be positive");
-        
+
         if (!CanShipTo(order.ShippingAddress))
             throw new InvalidOperationException($"Cannot ship to {order.ShippingAddress.Country}");
-        
+
         await _orderRepository.SaveAsync(order);
     }
 }
@@ -171,13 +171,13 @@ public class OrderService
     {
         if (order.Items.Count == 0)
             return Result<Order>.Failure("Order must have at least one item");
-        
+
         if (order.TotalAmount <= 0)
             return Result<Order>.Failure("Order total must be positive");
-        
+
         if (!CanShipTo(order.ShippingAddress))
             return Result<Order>.Failure($"Cannot ship to {order.ShippingAddress.Country}");
-        
+
         await _orderRepository.SaveAsync(order);
         return Result<Order>.Success(order);
     }
@@ -189,7 +189,7 @@ public async Task<IActionResult> CreateOrder([FromBody] CreateOrderDto dto)
 {
     var order = MapToOrder(dto);
     var result = await _orderService.ProcessOrderAsync(order);
-    
+
     return result.Match(
         onSuccess: order => Ok(order),
         onFailure: error => BadRequest(error)
@@ -217,7 +217,7 @@ public class EventPublisherWorker : BackgroundService
             {
                 Task.Run(async () => await PublishAsync(evt)); // Fire-and-forget
             }
-            
+
             await Task.Delay(1000, stoppingToken);
         }
     }
@@ -242,12 +242,12 @@ public class EventPublisherWorker : BackgroundService
             try
             {
                 var events = await _queue.GetPendingAsync(stoppingToken);
-                
+
                 foreach (var evt in events)
                 {
                     await PublishWithRetryAsync(evt, stoppingToken);
                 }
-                
+
                 await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -269,7 +269,7 @@ public class EventPublisherWorker : BackgroundService
     private async Task PublishWithRetryAsync(Event evt, CancellationToken ct)
     {
         const int maxRetries = 3;
-        
+
         for (int attempt = 1; attempt <= maxRetries; attempt++)
         {
             try
@@ -280,19 +280,19 @@ public class EventPublisherWorker : BackgroundService
             }
             catch (Exception ex) when (attempt < maxRetries)
             {
-                _logger.LogWarning(ex, 
-                    "Event {EventId} publish failed (attempt {Attempt}/{Max})", 
+                _logger.LogWarning(ex,
+                    "Event {EventId} publish failed (attempt {Attempt}/{Max})",
                     evt.Id, attempt, maxRetries);
-                
+
                 await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), ct);
             }
             catch (Exception ex)
             {
                 // Final attempt failed
-                _logger.LogError(ex, 
-                    "Event {EventId} publish failed after {Max} attempts", 
+                _logger.LogError(ex,
+                    "Event {EventId} publish failed after {Max} attempts",
                     evt.Id, maxRetries);
-                
+
                 throw; // Critical failure
             }
         }
@@ -313,15 +313,15 @@ public async Task<User> CreateUserAsync(CreateUserDto dto)
 {
     try
     {
-        var user = new User 
-        { 
-            Email = dto.Email, 
-            Username = dto.Username 
+        var user = new User
+        {
+            Email = dto.Email,
+            Username = dto.Username
         };
-        
+
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
-        
+
         return user;
     }
     catch (DbUpdateException ex)
@@ -336,14 +336,14 @@ public async Task<User> CreateUserAsync(CreateUserDto dto)
 ```csharp
 public async Task<Result<User>> CreateUserAsync(CreateUserDto dto)
 {
-    var user = new User 
-    { 
-        Email = dto.Email, 
-        Username = dto.Username 
+    var user = new User
+    {
+        Email = dto.Email,
+        Username = dto.Username
     };
-    
+
     _context.Users.Add(user);
-    
+
     try
     {
         await _context.SaveChangesAsync();
@@ -357,7 +357,7 @@ public async Task<Result<User>> CreateUserAsync(CreateUserDto dto)
             547 => "Cannot create user: referenced entity does not exist",
             _ => "A database error occurred"
         };
-        
+
         _logger.LogWarning(ex, "User creation failed: {SqlError}", sqlEx.Number);
         return Result<User>.Failure(message);
     }
@@ -403,7 +403,7 @@ public class GlobalExceptionHandler : IExceptionHandler
         CancellationToken cancellationToken)
     {
         var traceId = Activity.Current?.Id ?? httpContext.TraceIdentifier;
-        
+
         _logger.LogError(exception,
             "Unhandled exception for {Method} {Path}. TraceId: {TraceId}",
             httpContext.Request.Method,
@@ -433,7 +433,7 @@ public class GlobalExceptionHandler : IExceptionHandler
 
         httpContext.Response.StatusCode = statusCode;
         httpContext.Response.ContentType = "application/problem+json";
-        
+
         await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
 
         return true; // Exception handled
@@ -444,22 +444,22 @@ public class GlobalExceptionHandler : IExceptionHandler
         {
             ArgumentException or ArgumentNullException =>
                 (400, "Bad Request", exception.Message),
-            
+
             UnauthorizedAccessException =>
                 (401, "Unauthorized", "You are not authorized to access this resource"),
-            
+
             NotFoundException =>
                 (404, "Not Found", exception.Message),
-            
+
             ConflictException =>
                 (409, "Conflict", exception.Message),
-            
+
             ValidationException validationEx =>
                 (422, "Validation Failed", FormatValidationErrors(validationEx)),
-            
+
             OperationCanceledException =>
                 (499, "Client Closed Request", "The request was cancelled"),
-            
+
             _ =>
                 (500, "Internal Server Error", "An unexpected error occurred")
         };
@@ -642,7 +642,7 @@ public static class DbContextExtensions
         {
             var logger = context.GetService<ILogger<DbContext>>();
             logger?.LogWarning(ex, "Concurrency conflict during save");
-            
+
             return Result<int>.Failure(
                 "The record was modified by another user. Please refresh and try again.");
         }
@@ -650,7 +650,7 @@ public static class DbContextExtensions
         {
             var logger = context.GetService<ILogger<DbContext>>();
             logger?.LogWarning(ex, "Database constraint violation: {SqlError}", sqlEx.Number);
-            
+
             var message = sqlEx.Number switch
             {
                 2601 or 2627 => "A record with this unique key already exists",
@@ -658,7 +658,7 @@ public static class DbContextExtensions
                 515 => "Cannot insert NULL into required field",
                 _ => $"A database error occurred (Code: {sqlEx.Number})"
             };
-            
+
             return Result<int>.Failure(message);
         }
     }
@@ -741,8 +741,8 @@ public class OrderService
         }
 
         _logger.LogInformation(
-            "Order {OrderId} created for customer {CustomerId}", 
-            order.Id, 
+            "Order {OrderId} created for customer {CustomerId}",
+            order.Id,
             order.CustomerId);
 
         return Result<Order>.Success(order);
@@ -801,8 +801,8 @@ public class OrdersController : ControllerBase
 
         return result.Match(
             onSuccess: order => CreatedAtAction(
-                nameof(GetOrder), 
-                new { id = order.Id }, 
+                nameof(GetOrder),
+                new { id = order.Id },
                 order),
             onFailure: error => BadRequest(new { error })
         );
@@ -842,7 +842,7 @@ public class GlobalExceptionHandlerTests
     {
         var environment = new Mock<IHostEnvironment>();
         environment.Setup(e => e.EnvironmentName).Returns("Production");
-        
+
         _handler = new GlobalExceptionHandler(
             NullLogger<GlobalExceptionHandler>.Instance,
             environment.Object);
@@ -862,7 +862,7 @@ public class GlobalExceptionHandlerTests
 
         // Assert
         Assert.Equal(400, _httpContext.Response.StatusCode);
-        
+
         _httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
         var problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(
             _httpContext.Response.Body);
@@ -897,7 +897,7 @@ public class GlobalExceptionHandlerTests
 
         // Assert
         Assert.Equal(500, _httpContext.Response.StatusCode);
-        
+
         _httpContext.Response.Body.Seek(0, SeekOrigin.Begin);
         var problemDetails = await JsonSerializer.DeserializeAsync<ProblemDetails>(
             _httpContext.Response.Body);
@@ -986,8 +986,8 @@ public class ResultTests
     {
         var result = Result<int>.Success(10);
 
-        var chained = result.Bind(x => 
-            x > 0 
+        var chained = result.Bind(x =>
+            x > 0
                 ? Result<string>.Success($"Positive: {x}")
                 : Result<string>.Failure("Not positive")
         );
@@ -1032,7 +1032,7 @@ public class ExceptionHandlingIntegrationTests : IClassFixture<WebApplicationFac
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        
+
         var problemDetails = await response.Content.ReadFromJsonAsync<ProblemDetails>();
         Assert.NotNull(problemDetails);
         Assert.Equal(404, problemDetails.Status);
@@ -1051,7 +1051,7 @@ public class ExceptionHandlingIntegrationTests : IClassFixture<WebApplicationFac
 
         // Assert
         Assert.Equal(HttpStatusCode.UnprocessableEntity, response.StatusCode);
-        
+
         var problemDetails = await response.Content.ReadFromJsonAsync<ProblemDetails>();
         Assert.Equal(422, problemDetails!.Status);
     }
@@ -1064,9 +1064,9 @@ public class ExceptionHandlingIntegrationTests : IClassFixture<WebApplicationFac
 
         // Assert
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
-        
+
         var content = await response.Content.ReadAsStringAsync();
-        
+
         // Should NOT contain stack trace in production
         Assert.DoesNotContain("at ", content); // Stack trace indicator
         Assert.DoesNotContain(".cs:line", content); // File/line indicator
@@ -1077,6 +1077,7 @@ public class ExceptionHandlingIntegrationTests : IClassFixture<WebApplicationFac
 ---
 
 **References**:
+
 - [xUnit Testing Patterns](https://xunit.net/)
 - [Microsoft: Integration Tests](https://learn.microsoft.com/en-us/aspnet/core/test/integration-tests)
 - [Moq Framework](https://github.com/moq/moq4)

@@ -13,11 +13,13 @@ var builder = DistributedApplication.CreateBuilder(args);
 ```
 
 **Properties:**
+
 - `builder.Configuration` - IConfiguration for appsettings.json
 - `builder.Environment` - IHostEnvironment (Development, Staging, Production)
 - `builder.Services` - IServiceCollection for dependency injection
 
 **Methods:**
+
 - `builder.AddProject<TProject>(string name)` - Add .NET project
 - `builder.AddContainer(string name, string image)` - Add container
 - `builder.AddExecutable(string name, string command, string workingDirectory)` - Add process
@@ -41,6 +43,7 @@ builder.AddProject<Projects.Api>("api")
 ```
 
 **Configuration:**
+
 - `WithReference(IResourceBuilder)` - Add dependency reference
 - `WithHttpEndpoint(int? port, string? name)` - HTTP endpoint
 - `WithHttpsEndpoint(int? port, string? name)` - HTTPS endpoint
@@ -63,6 +66,7 @@ builder.AddRedis("cache")
 ```
 
 **Configuration:**
+
 - `WithDataVolume(string? name)` - Mount volume for data persistence
 - `WithRedisCommander(int? port)` - Add Redis Commander web UI
 - `WithRedisInsight(int? port)` - Add RedisInsight web UI
@@ -82,12 +86,14 @@ builder.AddPostgres("pg")
 ```
 
 **Configuration:**
+
 - `WithDataVolume(string? name)` - Mount volume for data persistence
 - `WithPgAdmin(int? port)` - Add pgAdmin web UI
 - `WithImageTag(string tag)` - Specify Docker image tag
 - `AddDatabase(string name)` - Create database (returns database resource)
 
 **Database Resource:**
+
 ```csharp
 var db = postgres.AddDatabase("mydb");
 builder.AddProject<Projects.Api>("api")
@@ -118,6 +124,7 @@ builder.AddMongoDB("mongo")
 ```
 
 **Configuration:**
+
 - `WithDataVolume(string? name)` - Mount volume for data persistence
 - `WithMongoExpress(int? port)` - Add Mongo Express web UI
 - `AddDatabase(string name)` - Create database
@@ -133,6 +140,7 @@ builder.AddRabbitMQ("messaging")
 ```
 
 **Configuration:**
+
 - `WithDataVolume(string? name)` - Mount volume for data persistence
 - `WithManagementPlugin(int? port)` - Enable RabbitMQ management UI
 
@@ -147,6 +155,7 @@ builder.AddKafka("kafka")
 ```
 
 **Configuration:**
+
 - `WithDataVolume(string? name)` - Mount volume for data persistence
 - `WithKafkaUI(int? port)` - Add Kafka UI web interface
 
@@ -163,6 +172,7 @@ builder.AddContainer("nginx", "nginx:latest")
 ```
 
 **Configuration:**
+
 - `WithHttpEndpoint(int?, int?, string?)` - Expose HTTP port
 - `WithHttpsEndpoint(int?, int?, string?)` - Expose HTTPS port
 - `WithBindMount(string, string, bool)` - Mount host directory
@@ -181,6 +191,7 @@ builder.AddExecutable("python-app", "python", ".")
 ```
 
 **Configuration:**
+
 - `WithArgs(params string[])` - Command arguments
 - `WithHttpEndpoint(int?, string?)` - Register HTTP endpoint
 - `WithEnvironment(string, string)` - Environment variable
@@ -204,6 +215,7 @@ See [service discovery overview](https://learn.microsoft.com/dotnet/aspire/servi
 ### Automatic Connection String Generation
 
 When you add a reference:
+
 ```csharp
 var redis = builder.AddRedis("cache");
 var api = builder.AddProject<Projects.Api>("api")
@@ -211,6 +223,7 @@ var api = builder.AddProject<Projects.Api>("api")
 ```
 
 **AppHost generates:**
+
 ```csharp
 // Environment variable automatically injected into API:
 ConnectionStrings__cache = "localhost:6379"  // Local
@@ -219,6 +232,7 @@ ConnectionStrings__cache = "my-redis.redis.cache.windows.net:6380,ssl=True"  // 
 ```
 
 **Service reads:**
+
 ```csharp
 var connection = builder.Configuration.GetConnectionString("cache");
 // Returns: "localhost:6379" or Azure Redis URL
@@ -227,10 +241,12 @@ var connection = builder.Configuration.GetConnectionString("cache");
 ### Environment Variable Naming
 
 Reference name `"cache"` becomes:
+
 - Connection string: `ConnectionStrings__cache`
 - Configuration key: `ConnectionStrings:cache`
 
 Reference name `"user-db"` becomes:
+
 - Connection string: `ConnectionStrings__user_db`
 - Configuration key: `ConnectionStrings:user-db`
 
@@ -259,6 +275,7 @@ var api = builder.AddProject<Projects.Api>("api")
 [DCP](https://learn.microsoft.com/dotnet/aspire/fundamentals/networking-overview#aspire-orchestration) is the orchestration engine managing resource lifecycles.
 
 **Architecture:**
+
 ```
 AppHost (Program.cs)
     ↓ defines
@@ -288,6 +305,7 @@ Defined → Starting → Running → Healthy
 ```
 
 **States:**
+
 - **Defined**: Resource declared in AppHost
 - **Starting**: Container/process launching
 - **Running**: Process started, not yet healthy
@@ -306,6 +324,7 @@ var api = builder.AddProject<Projects.Api>("api")
 ```
 
 **Startup Order:**
+
 1. Redis container starts
 2. PostgreSQL container starts
 3. Wait for Redis and PostgreSQL health checks
@@ -316,12 +335,14 @@ var api = builder.AddProject<Projects.Api>("api")
 ### Health Checks
 
 **Container Health:**
+
 ```csharp
 builder.AddContainer("nginx", "nginx:latest")
     .WithHealthCheck("http://localhost/health");  // HTTP endpoint
 ```
 
 **Project Health:**
+
 ```csharp
 // ServiceDefaults automatically adds health checks
 builder.Services.AddHealthChecks()
@@ -329,6 +350,7 @@ builder.Services.AddHealthChecks()
 ```
 
 **DCP Behavior:**
+
 - Polls health endpoint every 10 seconds
 - 3 consecutive failures → marks unhealthy
 - Unhealthy → automatic restart
@@ -350,18 +372,21 @@ builder.AddContainer("nginx", "nginx:latest")
 ### Volumes and Persistence
 
 **Named Volumes:**
+
 ```csharp
 builder.AddPostgres("db")
     .WithDataVolume("postgres-data");  // Named volume
 ```
 
 **Bind Mounts:**
+
 ```csharp
 builder.AddContainer("nginx", "nginx:latest")
     .WithBindMount("./config/nginx.conf", "/etc/nginx/nginx.conf", isReadOnly: true);
 ```
 
 **Volume Lifecycle:**
+
 - Named volumes persist across `aspire run` sessions
 - Bind mounts reference host filesystem
 - Volumes deleted with `aspire down --volumes`
@@ -369,23 +394,27 @@ builder.AddContainer("nginx", "nginx:latest")
 ### Network Configuration
 
 **Port Mapping:**
+
 ```csharp
 builder.AddContainer("nginx", "nginx:latest")
     .WithHttpEndpoint(port: 8080, targetPort: 80);  // Host:8080 → Container:80
 ```
 
 **Service-to-Service Communication:**
+
 - Services communicate using service names (automatic DNS)
 - Example: `http://api/users` (no need for localhost:port)
 
 ### Secrets Management
 
 **Local Development:**
+
 ```csharp
 builder.Configuration.AddUserSecrets<Program>();  // User secrets
 ```
 
 **Cloud Deployment:**
+
 ```csharp
 // Azure Key Vault automatically configured
 builder.AddAzureKeyVault("vault");
@@ -410,12 +439,14 @@ GET http://localhost:15888/api/metrics          # Prometheus-compatible metrics
 ### OpenTelemetry Integration
 
 **Automatic Instrumentation:**
+
 - HTTP requests (client + server)
 - Database queries (Entity Framework, Dapper)
 - Message queues (RabbitMQ, Kafka)
 - Redis operations
 
 **Custom Telemetry:**
+
 ```csharp
 // ServiceDefaults automatically configures OpenTelemetry
 using var activity = source.StartActivity("custom-operation");
@@ -425,12 +456,14 @@ activity?.SetTag("user.id", userId);
 ### Log Aggregation
 
 **Structured Logging:**
+
 ```csharp
 logger.LogInformation("User {UserId} performed {Action}", userId, action);
 // Appears in Dashboard with structured fields
 ```
 
 **Log Levels:**
+
 - Trace, Debug, Information, Warning, Error, Critical
 - Dashboard filters by level
 
@@ -476,15 +509,15 @@ resource apiApp 'Microsoft.App/containerApps@2023-05-01' = {
 
 ### Azure Resources Mapping
 
-| Aspire Resource | Azure Resource | Notes |
-|----------------|----------------|-------|
-| AddProject | Azure Container Apps | Serverless container hosting |
-| AddRedis | Azure Cache for Redis | Managed Redis |
-| AddPostgres | Azure Database for PostgreSQL | Managed PostgreSQL |
-| AddSqlServer | Azure SQL Database | Managed SQL Server |
-| AddMongoDB | Azure CosmosDB (MongoDB API) | Managed MongoDB |
-| AddRabbitMQ | Azure Service Bus | Managed messaging |
-| AddKafka | Azure Event Hubs | Kafka-compatible |
+| Aspire Resource | Azure Resource                | Notes                        |
+| --------------- | ----------------------------- | ---------------------------- |
+| AddProject      | Azure Container Apps          | Serverless container hosting |
+| AddRedis        | Azure Cache for Redis         | Managed Redis                |
+| AddPostgres     | Azure Database for PostgreSQL | Managed PostgreSQL           |
+| AddSqlServer    | Azure SQL Database            | Managed SQL Server           |
+| AddMongoDB      | Azure CosmosDB (MongoDB API)  | Managed MongoDB              |
+| AddRabbitMQ     | Azure Service Bus             | Managed messaging            |
+| AddKafka        | Azure Event Hubs              | Kafka-compatible             |
 
 ### Managed Identity Configuration
 
@@ -498,6 +531,7 @@ var api = builder.AddProject<Projects.Api>("api")
 ```
 
 **Azure Behavior:**
+
 - Container App gets system-assigned managed identity
 - Identity granted access to Key Vault, databases, storage
 - No connection strings or passwords in configuration
@@ -557,11 +591,13 @@ var api = builder.AddProject<Projects.Api>("api")
 ## Resources
 
 **API Reference:**
+
 - [Aspire.Hosting Namespace](https://learn.microsoft.com/dotnet/api/aspire.hosting) - Complete API documentation
 - [Component Overview](https://learn.microsoft.com/dotnet/aspire/fundamentals/components-overview) - All available integrations
 - [AppHost Reference](https://learn.microsoft.com/dotnet/aspire/fundamentals/app-host-overview) - Detailed AppHost guide
 
 **Advanced Topics:**
+
 - [Networking & Service Discovery](https://learn.microsoft.com/dotnet/aspire/fundamentals/networking-overview)
 - [Health Checks](https://learn.microsoft.com/dotnet/aspire/fundamentals/health-checks)
 - [Testing Aspire Apps](https://learn.microsoft.com/dotnet/aspire/fundamentals/testing)

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from collections.abc import Callable
 
 """Main PERCEIVE→REASON→ACT→LEARN loop for goal-seeking agents.

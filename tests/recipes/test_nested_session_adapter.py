@@ -1,7 +1,6 @@
 """Outside-in test for NestedSessionAdapter - verify it works inside Claude Code session."""
 
 import os
-import subprocess
 import tempfile
 from pathlib import Path
 
@@ -26,7 +25,7 @@ def test_nested_session_adapter_basic():
 
     try:
         result = adapter.execute_agent_step(prompt=prompt)
-        print(f"✅ Agent execution succeeded!")
+        print("✅ Agent execution succeeded!")
         print(f"Result: {result}")
 
         # Verify we got a response
@@ -72,7 +71,7 @@ def test_nested_session_adapter_temp_dirs():
     # Execute agent step (creates temp dir)
     try:
         result = adapter.execute_agent_step(prompt="Say hello")
-        print(f"✅ Agent executed in temp dir")
+        print("✅ Agent executed in temp dir")
     except Exception as e:
         print(f"Agent execution error (may be expected): {e}")
 
@@ -128,9 +127,9 @@ def test_nested_session_isolated_from_parent():
 
     except RuntimeError as e:
         # If error, verify it's not the nested session error
-        assert "cannot be launched inside another Claude Code session" not in str(
-            e
-        ), "Nested session check should be bypassed"
+        assert "cannot be launched inside another Claude Code session" not in str(e), (
+            "Nested session check should be bypassed"
+        )
 
     # Parent session should still have CLAUDECODE unchanged
     assert os.environ.get("CLAUDECODE") == parent_claudecode, "Parent env should be unchanged"
@@ -153,12 +152,12 @@ if __name__ == "__main__":
     failed = 0
 
     for test_name, test_func in tests:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Test: {test_name}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         try:
             test_func()
-            print(f"✅ PASSED")
+            print("✅ PASSED")
             passed += 1
         except Exception as e:
             print(f"❌ FAILED: {e}")
@@ -167,6 +166,6 @@ if __name__ == "__main__":
 
             traceback.print_exc()
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"SUMMARY: {passed} passed, {failed} failed")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")

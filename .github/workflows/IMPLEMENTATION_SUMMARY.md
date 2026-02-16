@@ -1,6 +1,7 @@
 # Answer: Auto-Increment Version on Merge
 
 ## Question
+
 > @copilot - is there a way to make the version bump ci check auto update the version to a number that is always incremental on merge?
 
 ## Answer: YES! ✅
@@ -25,8 +26,9 @@ This has been implemented with a new workflow system that guarantees version is 
 ### Result
 
 **Every merge to `main` ALWAYS increments the version**, regardless of whether:
+
 - The developer remembered to bump it
-- The PR auto-fix ran successfully  
+- The PR auto-fix ran successfully
 - Someone manually bumped to a specific version
 
 ## Example Flows
@@ -87,18 +89,19 @@ This has been implemented with a new workflow system that guarantees version is 
 
 ## Key Features
 
-✅ **Guaranteed Increment**: Version ALWAYS bumps on merge  
-✅ **Idempotent**: Won't double-bump if already incremented  
-✅ **No Recursion**: Uses `[skip ci]` flag to prevent loops  
-✅ **Manual Override**: Supports manual minor/major bumps  
-✅ **Git Tags**: Auto-creates tags and GitHub releases  
+✅ **Guaranteed Increment**: Version ALWAYS bumps on merge
+✅ **Idempotent**: Won't double-bump if already incremented
+✅ **No Recursion**: Uses `[skip ci]` flag to prevent loops
+✅ **Manual Override**: Supports manual minor/major bumps
+✅ **Git Tags**: Auto-creates tags and GitHub releases
 ✅ **Safe**: Two-layer approach ensures no version is skipped
 
 ## Testing
 
 The implementation includes comprehensive tests:
+
 - ✅ Version parsing logic
-- ✅ Version comparison logic  
+- ✅ Version comparison logic
 - ✅ Auto-bump logic
 - ✅ Skip CI pattern validation
 - ✅ Workflow simulation with git operations
@@ -137,6 +140,7 @@ The workflows will detect your manual bump and respect it.
 ## Documentation
 
 See `.github/workflows/VERSION_WORKFLOWS.md` for complete documentation including:
+
 - Detailed workflow descriptions
 - Sequence diagrams
 - Troubleshooting guide
@@ -144,6 +148,6 @@ See `.github/workflows/VERSION_WORKFLOWS.md` for complete documentation includin
 
 ## Summary
 
-**Yes**, the version bump CI check now auto-updates the version to always be incremental on merge! 
+**Yes**, the version bump CI check now auto-updates the version to always be incremental on merge!
 
 The new `auto-version-on-merge.yml` workflow is a safety net that runs after every merge to `main`, ensuring the version is ALWAYS bumped even if the PR-level check was skipped or failed. This guarantees monotonically increasing version numbers.

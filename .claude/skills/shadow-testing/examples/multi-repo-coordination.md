@@ -5,6 +5,7 @@ This example shows testing coordinated changes across multiple repositories.
 ## Scenario
 
 You're working on two repositories:
+
 - `myorg/api-client` - HTTP client library
 - `myorg/cli-tool` - CLI that depends on api-client
 
@@ -13,6 +14,7 @@ Both have uncommitted changes that must work together.
 ## Local Changes
 
 **api-client** (breaking change):
+
 ```python
 # Old API
 client.get(endpoint)
@@ -22,6 +24,7 @@ client.fetch(endpoint)  # BREAKING: renamed from get()
 ```
 
 **cli-tool** (updated to use new API):
+
 ```python
 # Updated to use new fetch() method
 def download(url):

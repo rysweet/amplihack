@@ -26,7 +26,7 @@ jobs:
       - name: Checkout main branch
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Full history to compare versions
+          fetch-depth: 0 # Full history to compare versions
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Setup Python
@@ -44,12 +44,12 @@ jobs:
         run: |
           # Get current version using reusable script
           CURRENT_VERSION=$(python scripts/get_version.py)
-          
+
           if [ -z "$CURRENT_VERSION" ]; then
             echo "❌ Error: Could not extract current version from pyproject.toml"
             exit 1
           fi
-          
+
           # Get version from previous commit (before this merge)
           # Use HEAD~1 to handle both merge and fast-forward commits
           # Handle errors separately for better diagnostics
@@ -66,10 +66,10 @@ jobs:
               PREVIOUS_VERSION=""
             fi
           fi
-          
+
           echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
           echo "previous_version=$PREVIOUS_VERSION" >> $GITHUB_OUTPUT
-          
+
           if [ -z "$PREVIOUS_VERSION" ]; then
             echo "⚠️  Could not determine previous version (might be first commit)"
             echo "needs_bump=false" >> $GITHUB_OUTPUT
@@ -87,7 +87,7 @@ jobs:
         run: |
           echo "🔧 Automatically bumping patch version..."
           python scripts/auto_bump_version.py
-          
+
           # Extract new version using reusable script
           NEW_VERSION=$(python scripts/get_version.py)
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
@@ -112,17 +112,17 @@ jobs:
           {
             echo "## 🔢 Auto Version Bump Summary"
             echo ""
-            
+
             PREV_VERSION="${{ steps.check-bump.outputs.previous_version }}"
             if [ -z "$PREV_VERSION" ]; then
               echo "**Previous Version**: N/A (first commit or not found)"
             else
               echo "**Previous Version**: $PREV_VERSION"
             fi
-            
+
             echo "**Current Version**: ${{ steps.check-bump.outputs.current_version }}"
             echo ""
-            
+
             if [ "${{ steps.check-bump.outputs.needs_bump }}" == "true" ]; then
               echo "**Action**: Version auto-bumped ✅"
             else
