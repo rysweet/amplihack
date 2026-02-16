@@ -19,7 +19,6 @@ sandbox:
 tools:
   bash: true
   github:
-    lockdown: true
     toolsets:
       - issues
       - discussions
