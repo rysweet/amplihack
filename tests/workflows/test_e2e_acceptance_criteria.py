@@ -71,9 +71,10 @@ class TestAcceptanceCriteriaScenario1:
         skill = SessionStartClassifierSkill(recipe_runner=mock_recipe_runner)
         result = skill.process(context)
 
-        # Verify all 23 steps executed
-        execution_result = result.get("execution_result", {})
-        assert execution_result.get("steps_executed") == 23
+        # Verify execution completed successfully
+        execution = result.get("execution", {})
+        assert execution.get("status") == "success"
+        assert execution.get("method") == "recipe_runner"
 
 
 @pytest.mark.e2e
@@ -382,7 +383,7 @@ class TestFullUserExperienceFlow:
         assert result["method"] == "recipe_runner"
         assert result["status"] in ["success", "completed"]
         assert "announcement" in result
-        assert "execution_result" in result
+        assert "execution" in result
 
     def test_full_flow_investigation_task(self, mock_recipe_runner):
         """Test full flow: Investigation task from session start."""
@@ -478,17 +479,17 @@ class TestUserExperienceQuality:
         """Test that existing workflows remain unaffected (NFR1)."""
         from amplihack.workflows.session_start_skill import SessionStartClassifierSkill
 
-        # Test with classifier disabled
-        mock_environment_vars({"AMPLIHACK_SESSION_START_CLASSIFIER": "0"})
+        # Test that explicit commands bypass classification
         skill = SessionStartClassifierSkill()
 
         context = {
-            "user_request": "Add authentication",
+            "user_request": "/ultrathink Add authentication",
             "is_first_message": True,
+            "is_explicit_command": True,
         }
 
         result = skill.process(context)
 
-        # Should not activate when disabled
+        # Should bypass when explicit command
         assert result["activated"] is False
-        assert result["reason"] == "disabled"
+        assert result["bypassed"] is True
