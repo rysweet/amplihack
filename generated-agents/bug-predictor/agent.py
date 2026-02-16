@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 try:
-    from amplihack_memory_lib import ExperienceStore, ExperienceType, MemoryConnector
+    from amplihack_memory import ExperienceStore, ExperienceType, MemoryConnector
 except ImportError:
     raise ImportError(
         "amplihack-memory-lib is required. Install with: pip install amplihack-memory-lib"

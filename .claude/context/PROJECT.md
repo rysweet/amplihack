@@ -10,7 +10,7 @@ Replace the sections below with information about your project.
 
 ---
 
-## Project: ws-2288
+## Project: amplihack5
 
 ## Overview
 

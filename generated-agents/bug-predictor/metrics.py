@@ -7,7 +7,7 @@ Tracks learning metrics and prediction accuracy for the bug predictor agent.
 from typing import Any
 
 try:
-    from amplihack_memory_lib import ExperienceType, MemoryConnector
+    from amplihack_memory import ExperienceType, MemoryConnector
 except ImportError:
     raise ImportError(
         "amplihack-memory-lib is required. Install with: pip install amplihack-memory-lib"
