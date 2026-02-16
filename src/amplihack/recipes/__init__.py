@@ -24,6 +24,7 @@ from amplihack.recipes.discovery import (
     list_recipes,
     sync_upstream,
     update_manifest,
+    verify_global_installation,
 )
 from amplihack.recipes.models import (
     Recipe,
@@ -60,6 +61,7 @@ __all__ = [
     "run_recipe_by_name",
     "sync_upstream",
     "update_manifest",
+    "verify_global_installation",
 ]
 
 
