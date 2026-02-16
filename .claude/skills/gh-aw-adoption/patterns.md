@@ -45,6 +45,7 @@ done
 ```
 
 **Benefits**:
+
 - Prevents thundering herd during API outages
 - Spreads retry load over time
 - Reduces collision probability
@@ -148,6 +149,7 @@ fi
 ```
 
 **Benefits**:
+
 - Fast failure without wasting retries
 - Automatic recovery with cooldown period
 - Prevents cascading failures
@@ -160,12 +162,13 @@ fi
 
 **Solution**: Isolate operations using separate execution contexts.
 
-```markdown
+````markdown
 ## Bulkhead Pattern Implementation
 
 Divide workflow into isolated sections with independent error handling:
 
 ### Section 1: Issue Processing
+
 Process issues independently. If one fails, continue with others.
 
 ```bash
@@ -177,8 +180,10 @@ for issue in $issues; do
 done
 wait  # Wait for all subprocesses
 ```
+````
 
 ### Section 2: PR Processing
+
 Separate from issue processing. Even if all issues fail, PRs still process.
 
 ```bash
@@ -191,12 +196,14 @@ wait
 ```
 
 ### Section 3: Reporting
+
 Runs regardless of processing failures. Always generate report.
 
 ```bash
 generate_report
 ```
-```
+
+````
 
 **Benefits**:
 - Limits blast radius of failures
@@ -241,9 +248,10 @@ if [ "$METRICS_REPORTING" = true ]; then
 else
   echo "Skipping metrics reporting (service unavailable)"
 fi
-```
+````
 
 **Benefits**:
+
 - Core functionality preserved during outages
 - Better user experience
 - Reduced false positive failures
@@ -308,6 +316,7 @@ fi
 ```
 
 **Benefits**:
+
 - Critical actions always execute first
 - Transparent deferral mechanism
 - Automatic recovery on next run
@@ -323,7 +332,7 @@ fi
 ```yaml
 safe-outputs:
   add-comment:
-    max: 10  # Default for normal operations
+    max: 10 # Default for normal operations
     expiration: 1d
 ```
 
@@ -352,6 +361,7 @@ done
 ```
 
 **Benefits**:
+
 - Flexibility for exceptional situations
 - Maintains safety during normal operations
 - Explicit logging of limit adjustments
@@ -405,6 +415,7 @@ fi
 ```
 
 **Benefits**:
+
 - Real-time budget awareness
 - Historical usage tracking
 - Prevents accidental over-limit attempts
@@ -446,6 +457,7 @@ echo "Processing: $safe_body"
 ```
 
 **Benefits**:
+
 - Prevents command injection
 - Blocks template injection attacks
 - Limits DoS via oversized inputs
@@ -475,15 +487,16 @@ permissions:
 
 **Permission matrix** (use as reference):
 
-| Workflow Type | contents | issues | pull-requests | discussions | actions |
-|--------------|----------|--------|---------------|-------------|---------|
-| Issue triage | read | write | - | - | - |
-| PR labeler | read | - | write | - | - |
-| Security scan | read | write | - | - | - |
-| Workflow monitor | read | - | - | - | read |
-| Deployment | write | - | write | - | write |
+| Workflow Type    | contents | issues | pull-requests | discussions | actions |
+| ---------------- | -------- | ------ | ------------- | ----------- | ------- |
+| Issue triage     | read     | write  | -             | -           | -       |
+| PR labeler       | read     | -      | write         | -           | -       |
+| Security scan    | read     | write  | -             | -           | -       |
+| Workflow monitor | read     | -      | -             | -           | read    |
+| Deployment       | write    | -      | write         | -           | write   |
 
 **Benefits**:
+
 - Reduces blast radius of compromised workflows
 - Clear permission audit trail
 - Easier security review
@@ -519,6 +532,7 @@ network:
 5. Add missing domains if legitimate failures occur
 
 **Benefits**:
+
 - Prevents data exfiltration
 - Enforces declared dependencies
 - Supports security audits
@@ -604,6 +618,7 @@ fi
 ```
 
 **Benefits**:
+
 - Early detection of secret expiration
 - Proactive rotation reminders
 - Audit trail for secret usage
@@ -642,6 +657,7 @@ gh api graphql -f query='
 ```
 
 **Benefits**:
+
 - 10-100x faster for large batches
 - Preserves rate limit quota
 - More reliable (fewer round trips)
@@ -695,6 +711,7 @@ issues=$(cached_api_call "repos/owner/repo/issues?state=open" 300)  # 5 min TTL
 ```
 
 **Benefits**:
+
 - Faster subsequent runs
 - Reduced API rate limit consumption
 - Configurable freshness requirements
@@ -735,6 +752,7 @@ wait  # Wait for remaining jobs
 ```
 
 **Benefits**:
+
 - 5-10x faster for I/O-bound operations
 - Controlled resource usage via concurrency limit
 - Better throughput
@@ -806,6 +824,7 @@ done
 ```
 
 **Benefits**:
+
 - Avoids redundant work
 - Faster execution for partially-updated datasets
 - Automatic change detection
@@ -828,9 +847,9 @@ on:
   workflow_dispatch:
     inputs:
       dry_run:
-        description: 'Enable dry-run mode (no mutations)'
+        description: "Enable dry-run mode (no mutations)"
         required: false
-        default: 'false'
+        default: "false"
         type: boolean
 ```
 
@@ -863,6 +882,7 @@ close_issue() {
 ```
 
 **Benefits**:
+
 - Safe testing in production environment
 - Validates logic without side effects
 - Easy debugging of workflow behavior
@@ -893,6 +913,7 @@ fi
 ```
 
 **Benefits**:
+
 - Limited blast radius for bugs
 - Real production validation
 - Gradual rollout confidence
@@ -909,13 +930,13 @@ fi
 # Test workflow with synthetic data
 on:
   schedule:
-    - cron: '0 2 * * 0'  # Weekly test run
+    - cron: "0 2 * * 0" # Weekly test run
   workflow_dispatch:
     inputs:
       test_mode:
-        description: 'Enable test mode with synthetic data'
+        description: "Enable test mode with synthetic data"
         required: false
-        default: 'false'
+        default: "false"
 ```
 
 ```bash
@@ -945,6 +966,7 @@ fi
 ```
 
 **Benefits**:
+
 - Regular validation without waiting for events
 - Catch regressions early
 - Confidence in workflow health
@@ -973,6 +995,7 @@ fi
 ```
 
 **Why it's bad**:
+
 - Failures go unnoticed
 - No audit trail for debugging
 - Appears successful when it's not
@@ -990,6 +1013,7 @@ gh issue list --repo "${{ github.repository }}"
 ```
 
 **Why it's bad**:
+
 - Not reusable across repositories
 - Breaks when repository renamed
 - Requires manual editing for each use
@@ -1020,6 +1044,7 @@ done
 ```
 
 **Why it's bad**:
+
 - Can exceed GitHub Actions timeout (6 hours)
 - May hit API rate limits
 - Unpredictable resource usage
@@ -1038,6 +1063,7 @@ gh issue close "$issue"
 ```
 
 **Why it's bad**:
+
 - Can't debug issues
 - No compliance trail
 - Can't analyze workflow effectiveness
@@ -1053,6 +1079,7 @@ gh issue close "$issue"
 **Solution**: Extract common patterns to shared files.
 
 **File**: `.github/workflows/shared/error-handling.md`
+
 ```markdown
 ## Standard Error Handling
 
@@ -1065,6 +1092,7 @@ All workflows must implement:
 ```
 
 **Usage in workflows**:
+
 ```markdown
 ---
 # Workflow frontmatter
@@ -1075,6 +1103,7 @@ All workflows must implement:
 @import "../shared/error-handling.md"
 
 ## Workflow-Specific Logic
+
 ...
 ```
 
@@ -1084,7 +1113,7 @@ All workflows must implement:
 
 **Solution**: Create orchestrator workflow that dispatches others.
 
-```yaml
+````yaml
 ---
 on:
   schedule:
@@ -1122,8 +1151,9 @@ for workflow in "${workflows[@]}"; do
   # Wait for completion before next
   sleep 60
 done
-```
-```
+````
+
+````
 
 **Benefits**:
 - Coordinated execution
@@ -1153,7 +1183,7 @@ log() {
 log "info" "Processing issue #123" '{"issue":123,"action":"triage"}'
 log "warn" "Rate limit low" '{"remaining":50,"reset_at":"2026-02-15T12:00:00Z"}'
 log "error" "API call failed" '{"endpoint":"/issues","status":500}'
-```
+````
 
 ### Pattern 2: Metrics Collection
 

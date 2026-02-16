@@ -83,16 +83,19 @@ The ultrathink command follows this execution hierarchy:
 ### When Each Tier Activates
 
 **Recipe Runner (Tier 1):**
+
 - `AMPLIHACK_USE_RECIPES` is unset or set to `1` (default)
 - `amplihack.recipes` module is installed and importable
 - Recipe for the workflow exists (default-workflow, investigation-workflow, qa-workflow)
 
 **Workflow Skills (Tier 2):**
+
 - Recipe Runner unavailable (ImportError when trying `from amplihack.recipes import run_recipe_by_name`)
 - OR `AMPLIHACK_USE_RECIPES=0` is set
 - Skill definition exists in `.claude/skills/` directory
 
 **Markdown Workflows (Tier 3):**
+
 - Recipe Runner unavailable
 - Workflow skill unavailable or fails to load
 - Always works (last resort - workflows always exist in `.claude/workflow/`)
@@ -476,6 +479,7 @@ result = sdk_adapter.invoke_agent(
 ### Problem: Recipe Runner Not Activating
 
 **Symptoms:**
+
 - `/ultrathink` uses workflow skills instead of Recipe Runner
 - No "Using Recipe Runner for code-enforced execution" message
 
@@ -506,6 +510,7 @@ export AMPLIHACK_USE_RECIPES=1
 ### Problem: Recipe Runner Fails with ImportError
 
 **Symptoms:**
+
 - Error message: "ImportError: No module named 'amplihack.recipes'"
 - Falls back to workflow skills
 
@@ -532,6 +537,7 @@ pip install amplihack-recipes
 ### Problem: Recipe Execution Fails Mid-Workflow
 
 **Symptoms:**
+
 - Recipe starts executing
 - Fails at specific step with error message
 - Falls back to workflow skills for remaining steps
@@ -566,6 +572,7 @@ cat ~/.amplihack/.claude/runtime/logs/<session_id>/recipe_runner.log
 ### Problem: Context Not Passing Between Steps
 
 **Symptoms:**
+
 - Recipe executes but later steps missing data from earlier steps
 - Agents report "no design provided" when design was created in Step 5
 
@@ -599,6 +606,7 @@ export AMPLIHACK_USE_RECIPES=0  # Use prompt-based execution
 ### Problem: Force Prompt-Based Not Working
 
 **Symptoms:**
+
 - Set `AMPLIHACK_USE_RECIPES=0`
 - Recipe Runner still activates
 
@@ -628,6 +636,7 @@ echo $AMPLIHACK_USE_RECIPES  # Should print: 0
 ### Problem: Recipe Runner Too Slow
 
 **Symptoms:**
+
 - Recipe execution takes significantly longer than prompt-based
 - Steps seem to pause between execution
 
@@ -671,14 +680,14 @@ export AMPLIHACK_USE_RECIPES=0
 
 ### What Changed Under the Hood
 
-| Aspect | Before (Prompt-Based) | After (Recipe Runner) |
-|--------|----------------------|----------------------|
-| **Execution** | Claude follows markdown prompts | Python SDK adapters execute steps |
-| **Context** | Claude remembers context | Context accumulated in Python dict |
-| **Errors** | Claude continues on errors | Recipe Runner stops immediately (fail-fast) |
-| **Conditionals** | Claude interprets conditions | Python evaluates conditions |
-| **Agents** | Invoked via Task tool | Invoked via SDK adapter |
-| **Fallback** | None (always prompt-based) | Falls back to prompt-based if Recipe Runner unavailable |
+| Aspect           | Before (Prompt-Based)           | After (Recipe Runner)                                   |
+| ---------------- | ------------------------------- | ------------------------------------------------------- |
+| **Execution**    | Claude follows markdown prompts | Python SDK adapters execute steps                       |
+| **Context**      | Claude remembers context        | Context accumulated in Python dict                      |
+| **Errors**       | Claude continues on errors      | Recipe Runner stops immediately (fail-fast)             |
+| **Conditionals** | Claude interprets conditions    | Python evaluates conditions                             |
+| **Agents**       | Invoked via Task tool           | Invoked via SDK adapter                                 |
+| **Fallback**     | None (always prompt-based)      | Falls back to prompt-based if Recipe Runner unavailable |
 
 ### What Stayed the Same
 
@@ -710,16 +719,19 @@ python3 -c "from amplihack.recipes import run_recipe_by_name; print('Recipe Runn
 ### For Developers
 
 **Reliability:**
+
 - Fail-fast prevents cascading errors
 - Code enforcement ensures steps actually execute (not just suggested)
 - Deterministic behavior (same inputs → same outputs)
 
 **Debugging:**
+
 - Clear error messages at exact step that failed
 - Context preserved up to failure point
 - Can fallback to prompt-based for comparison
 
 **Performance:**
+
 - Context accumulation more efficient (Python dict vs. LLM memory)
 - Conditional skips work reliably (no ambiguity)
 - Parallel execution where defined in recipe
@@ -727,16 +739,19 @@ python3 -c "from amplihack.recipes import run_recipe_by_name; print('Recipe Runn
 ### For Workflow Authors
 
 **Maintainability:**
+
 - Single source of truth (markdown workflows drive recipes)
 - Recipe YAML is generated from markdown (not manual maintenance)
 - Changes to markdown automatically update recipes
 
 **Evolution:**
+
 - Can prototype new features in markdown (prompt-based)
 - Graduate to recipes when proven (code-enforced)
 - Both modes work simultaneously (gradual migration)
 
 **Testing:**
+
 - Can test recipes independently (unit tests for workflow steps)
 - Can test prompt-based mode independently (AMPLIHACK_USE_RECIPES=0)
 - Can compare both modes for regression testing

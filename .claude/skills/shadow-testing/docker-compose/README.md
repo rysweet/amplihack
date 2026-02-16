@@ -35,6 +35,7 @@ docker-compose exec shadow bash
 ```
 
 Inside the shadow container:
+
 ```bash
 # Verify git URL rewriting works
 git clone https://github.com/myorg/my-lib /tmp/test
@@ -135,6 +136,7 @@ environment:
 ```
 
 Or use `.env` file:
+
 ```bash
 # .env
 ANTHROPIC_API_KEY=sk-ant-...
@@ -161,11 +163,13 @@ curl -s -u shadow:shadow -H 'Content-Type: application/json' \
 ### Container Won't Start
 
 Check logs:
+
 ```bash
 docker-compose logs shadow
 ```
 
 Common issues:
+
 - Bundle file not found: Check path in volumes section
 - Gitea timeout: Increase sleep time in command
 - Port conflict: Change exposed ports in compose file
@@ -173,6 +177,7 @@ Common issues:
 ### Tests Fail Inside Shadow
 
 Verify local sources are being used:
+
 ```bash
 docker-compose exec shadow bash -c "
   git clone https://github.com/myorg/my-lib /tmp/test &&
@@ -216,6 +221,7 @@ COPY scripts/ /usr/local/bin/
 ```
 
 Update compose file:
+
 ```yaml
 services:
   shadow:
@@ -229,7 +235,7 @@ services:
 
 ```yaml
 # docker-compose.parallel.yml
-version: '3.8'
+version: "3.8"
 
 services:
   shadow-python:
@@ -248,6 +254,7 @@ services:
 ```
 
 Run both:
+
 ```bash
 docker-compose -f docker-compose.parallel.yml up -d
 ```
