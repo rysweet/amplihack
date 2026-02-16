@@ -85,6 +85,87 @@ def disable_github_mcp_server() -> bool:
         return False
 
 
+def enable_awesome_copilot_mcp_server() -> bool:
+    """Enable the awesome-copilot MCP server for community extensions via Docker.
+
+    Adds the awesome-copilot MCP server to ~/.copilot/github-copilot/mcp.json
+    if Docker is available. Uses the read-modify-write pattern to preserve
+    existing MCP configuration.
+
+    Returns:
+        True if the server was added, False if Docker is not available.
+    """
+    if not shutil.which("docker"):
+        return False
+
+    mcp_config_dir = Path.home() / ".copilot" / "github-copilot"
+    mcp_config_file = mcp_config_dir / "mcp.json"
+
+    try:
+        mcp_config_dir.mkdir(parents=True, exist_ok=True)
+
+        # Load existing config or create new
+        if mcp_config_file.exists():
+            config = json.loads(mcp_config_file.read_text())
+        else:
+            config = {}
+
+        # Ensure mcpServers exists
+        if "mcpServers" not in config:
+            config["mcpServers"] = {}
+
+        # Add awesome-copilot MCP server
+        config["mcpServers"]["awesome-copilot"] = {
+            "type": "stdio",
+            "command": "docker",
+            "args": [
+                "run",
+                "-i",
+                "--rm",
+                "ghcr.io/microsoft/mcp-dotnet-samples/awesome-copilot:latest",
+            ],
+        }
+
+        # Write config
+        mcp_config_file.write_text(json.dumps(config, indent=2) + "\n")
+        return True
+    except (OSError, json.JSONDecodeError) as e:
+        print(f"Warning: Could not enable awesome-copilot MCP server: {e}")
+        return False
+
+
+def register_awesome_copilot_marketplace() -> bool:
+    """Register awesome-copilot marketplace extensions (best-effort).
+
+    Runs the copilot plugin marketplace add command if not already registered.
+    Uses a marker file to avoid re-registering on subsequent launches.
+
+    Returns:
+        True if registered (or already registered), False on failure.
+    """
+    marker = Path.home() / ".copilot" / "awesome-copilot-marketplace-registered"
+
+    if marker.exists():
+        return True
+
+    try:
+        result = subprocess.run(
+            ["copilot", "plugin", "marketplace", "add", "github/awesome-copilot"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
+        )
+        if result.returncode == 0:
+            # Create marker file on success
+            marker.parent.mkdir(parents=True, exist_ok=True)
+            marker.write_text("registered\n")
+            return True
+        return False
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        return False
+
+
 def _compare_versions(current: str, latest: str) -> bool:
     """Compare version strings to determine if update is available.
 
@@ -630,6 +711,13 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
         else:
             print("  ⚠ gh CLI not authenticated - run 'gh auth login' for GitHub access")
         print("  To re-enable GitHub MCP, just ask: 'please use the GitHub MCP server'")
+
+    # Enable awesome-copilot MCP server (requires Docker)
+    if enable_awesome_copilot_mcp_server():
+        print("✓ Enabled awesome-copilot MCP server (community extensions via Docker)")
+
+    # Register awesome-copilot marketplace extensions (best-effort, silent on failure)
+    register_awesome_copilot_marketplace()
 
     # Write launcher context before launching
     project_root = Path(os.getcwd())

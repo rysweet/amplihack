@@ -326,37 +326,44 @@ for detailed customization instructions.
 
 ## Commands Reference
 
-| Command                        | Description                                             |
-| ------------------------------ | ------------------------------------------------------- |
-| `amplihack new`                | Generate goal-seeking agents from prompts               |
-| `/amplihack:ultrathink`        | Deep multi-agent analysis (now DEFAULT for all prompts) |
-| `/amplihack:analyze`           | Code analysis and philosophy compliance review          |
-| `/amplihack:auto`              | Autonomous agentic loop (clarify → plan → execute)      |
-| `/amplihack:cascade`           | Fallback cascade for resilient operations               |
-| `/amplihack:debate`            | Multi-agent debate for complex decisions                |
-| `/amplihack:expert-panel`      | Multi-expert review with voting                         |
-| `/amplihack:n-version`         | N-version programming for critical code                 |
-| `/amplihack:socratic`          | Generate Socratic questions to challenge claims         |
-| `/amplihack:reflect`           | Session reflection and improvement analysis             |
-| `/amplihack:improve`           | Capture learnings and implement improvements            |
-| `/amplihack:fix`               | Fix common errors and code issues                       |
-| `/amplihack:modular-build`     | Build self-contained modules with clear contracts       |
-| `/amplihack:knowledge-builder` | Build comprehensive knowledge base                      |
-| `/amplihack:transcripts`       | Conversation transcript management                      |
-| `/amplihack:xpia`              | Security analysis and threat detection                  |
-| `/amplihack:customize`         | Manage user-specific preferences                        |
-| `/amplihack:ddd:0-help`        | Document-Driven Development help and guidance           |
-| `/amplihack:ddd:1-plan`        | Phase 0: Planning & Alignment                           |
-| `/amplihack:ddd:2-docs`        | Phase 1: Documentation Retcon                           |
-| `/amplihack:ddd:3-code-plan`   | Phase 3: Implementation Planning                        |
-| `/amplihack:ddd:4-code`        | Phase 4: Code Implementation                            |
-| `/amplihack:ddd:5-finish`      | Phase 5: Testing & Phase 6: Cleanup                     |
-| `/amplihack:ddd:prime`         | Prime context with DDD overview                         |
-| `/amplihack:ddd:status`        | Check current DDD phase and progress                    |
-| `/amplihack:lock`              | Enable continuous work mode                             |
-| `/amplihack:unlock`            | Disable continuous work mode                            |
-| `/amplihack:install`           | Install amplihack tools                                 |
-| `/amplihack:uninstall`         | Uninstall amplihack tools                               |
+| Command                        | Description                                              |
+| ------------------------------ | -------------------------------------------------------- |
+| `amplihack new`                | Generate goal-seeking agents from prompts                |
+| `/amplihack:ultrathink`        | Deep multi-agent analysis (now DEFAULT for all prompts)  |
+| `/amplihack:analyze`           | Code analysis and philosophy compliance review           |
+| `/amplihack:auto`              | Autonomous agentic loop (clarify → plan → execute)       |
+| `/amplihack:cascade`           | Fallback cascade for resilient operations                |
+| `/amplihack:debate`            | Multi-agent debate for complex decisions                 |
+| `/amplihack:expert-panel`      | Multi-expert review with voting                          |
+| `/amplihack:n-version`         | N-version programming for critical code                  |
+| `/amplihack:socratic`          | Generate Socratic questions to challenge claims          |
+| `/amplihack:reflect`           | Session reflection and improvement analysis              |
+| `/amplihack:improve`           | Capture learnings and implement improvements             |
+| `/amplihack:fix`               | Fix common errors and code issues                        |
+| `/amplihack:modular-build`     | Build self-contained modules with clear contracts        |
+| `/amplihack:knowledge-builder` | Build comprehensive knowledge base                       |
+| `/amplihack:transcripts`       | Conversation transcript management                       |
+| `/amplihack:xpia`              | Security analysis and threat detection                   |
+| `/amplihack:customize`         | Manage user-specific preferences                         |
+| `/amplihack:ddd:0-help`        | Document-Driven Development help and guidance            |
+| `/amplihack:ddd:1-plan`        | Phase 0: Planning & Alignment                            |
+| `/amplihack:ddd:2-docs`        | Phase 1: Documentation Retcon                            |
+| `/amplihack:ddd:3-code-plan`   | Phase 3: Implementation Planning                         |
+| `/amplihack:ddd:4-code`        | Phase 4: Code Implementation                             |
+| `/amplihack:ddd:5-finish`      | Phase 5: Testing & Phase 6: Cleanup                      |
+| `/amplihack:ddd:prime`         | Prime context with DDD overview                          |
+| `/amplihack:ddd:status`        | Check current DDD phase and progress                     |
+| `/amplihack:dev`               | Run full 23-step development workflow (alias)            |
+| `/amplihack:investigation`     | Run 6-phase investigation workflow                       |
+| `/amplihack:hybrid`            | Investigation then development (alias: `/amplihack:run`) |
+| `/amplihack:qa`                | Minimal Q&A workflow for simple questions                |
+| `/amplihack:verification`      | 5-step workflow for trivial changes                      |
+| `/amplihack:consensus`         | Multi-agent consensus with 7 validation gates            |
+| `/amplihack:guide`             | Interactive guide to amplihack features                  |
+| `/amplihack:lock`              | Enable continuous work mode                              |
+| `/amplihack:unlock`            | Disable continuous work mode                             |
+| `/amplihack:install`           | Install amplihack tools                                  |
+| `/amplihack:uninstall`         | Uninstall amplihack tools                                |
 
 ## Agents Reference
 
@@ -372,32 +379,35 @@ for detailed customization instructions.
 | [**reviewer**](~/.amplihack/.claude/agents/amplihack/core/reviewer.md)         | Code quality and best practices review   |
 | [**tester**](~/.amplihack/.claude/agents/amplihack/core/tester.md)             | Test generation and validation           |
 
-### Specialized Agents (27)
+### Specialized Agents (30)
 
-| Agent                                                                                                       | Purpose                                         |
-| ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
-| [**ambiguity**](~/.amplihack/.claude/agents/amplihack/specialized/ambiguity.md)                             | Clarify ambiguous requirements                  |
-| [**amplifier-cli-architect**](~/.amplihack/.claude/agents/amplihack/specialized/amplifier-cli-architect.md) | CLI tool design and architecture                |
-| [**analyzer**](~/.amplihack/.claude/agents/amplihack/specialized/analyzer.md)                               | Deep code analysis                              |
-| [**azure-kubernetes-expert**](~/.amplihack/.claude/agents/amplihack/specialized/azure-kubernetes-expert.md) | Azure Kubernetes Service expertise              |
-| [**ci-diagnostic-workflow**](~/.amplihack/.claude/agents/amplihack/specialized/ci-diagnostic-workflow.md)   | CI/CD pipeline diagnostics                      |
-| [**cleanup**](~/.amplihack/.claude/agents/amplihack/specialized/cleanup.md)                                 | Remove artifacts and enforce philosophy         |
-| [**database**](~/.amplihack/.claude/agents/amplihack/specialized/database.md)                               | Database design and optimization                |
-| [**fallback-cascade**](~/.amplihack/.claude/agents/amplihack/specialized/fallback-cascade.md)               | Resilient fallback strategies                   |
-| [**fix-agent**](~/.amplihack/.claude/agents/amplihack/specialized/fix-agent.md)                             | Automated error fixing                          |
-| [**integration**](~/.amplihack/.claude/agents/amplihack/specialized/integration.md)                         | System integration patterns                     |
-| [**knowledge-archaeologist**](~/.amplihack/.claude/agents/amplihack/specialized/knowledge-archaeologist.md) | Extract and preserve knowledge                  |
-| [**multi-agent-debate**](~/.amplihack/.claude/agents/amplihack/specialized/multi-agent-debate.md)           | Facilitate multi-perspective debates            |
-| [**n-version-validator**](~/.amplihack/.claude/agents/amplihack/specialized/n-version-validator.md)         | Validate N-version implementations              |
-| [**patterns**](~/.amplihack/.claude/agents/amplihack/specialized/patterns.md)                               | Design pattern recommendations                  |
-| [**pre-commit-diagnostic**](~/.amplihack/.claude/agents/amplihack/specialized/pre-commit-diagnostic.md)     | Pre-commit hook diagnostics                     |
-| [**preference-reviewer**](~/.amplihack/.claude/agents/amplihack/specialized/preference-reviewer.md)         | User preference validation                      |
-| [**prompt-writer**](~/.amplihack/.claude/agents/amplihack/specialized/prompt-writer.md)                     | Effective prompt engineering                    |
-| [**rust-programming-expert**](~/.amplihack/.claude/agents/amplihack/specialized/rust-programming-expert.md) | Rust language expertise                         |
-| [**security**](~/.amplihack/.claude/agents/amplihack/specialized/security.md)                               | Security analysis and vulnerability detection   |
-| [**visualization-architect**](~/.amplihack/.claude/agents/amplihack/specialized/visualization-architect.md) | Data visualization design                       |
-| [**xpia-defense**](~/.amplihack/.claude/agents/amplihack/specialized/xpia-defense.md)                       | Advanced threat detection                       |
-| [**philosophy-guardian**](~/.amplihack/.claude/agents/amplihack/specialized/philosophy-guardian.md)         | Philosophy compliance and simplicity validation |
+| Agent                                                                                                       | Purpose                                               |
+| ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| [**ambiguity**](~/.amplihack/.claude/agents/amplihack/specialized/ambiguity.md)                             | Clarify ambiguous requirements                        |
+| [**amplifier-cli-architect**](~/.amplihack/.claude/agents/amplihack/specialized/amplifier-cli-architect.md) | CLI tool design and architecture                      |
+| [**analyzer**](~/.amplihack/.claude/agents/amplihack/specialized/analyzer.md)                               | Deep code analysis                                    |
+| [**azure-kubernetes-expert**](~/.amplihack/.claude/agents/amplihack/specialized/azure-kubernetes-expert.md) | Azure Kubernetes Service expertise                    |
+| [**ci-diagnostic-workflow**](~/.amplihack/.claude/agents/amplihack/specialized/ci-diagnostic-workflow.md)   | CI/CD pipeline diagnostics                            |
+| [**cleanup**](~/.amplihack/.claude/agents/amplihack/specialized/cleanup.md)                                 | Remove artifacts and enforce philosophy               |
+| [**database**](~/.amplihack/.claude/agents/amplihack/specialized/database.md)                               | Database design and optimization                      |
+| [**fallback-cascade**](~/.amplihack/.claude/agents/amplihack/specialized/fallback-cascade.md)               | Resilient fallback strategies                         |
+| [**fix-agent**](~/.amplihack/.claude/agents/amplihack/specialized/fix-agent.md)                             | Automated error fixing                                |
+| [**integration**](~/.amplihack/.claude/agents/amplihack/specialized/integration.md)                         | System integration patterns                           |
+| [**knowledge-archaeologist**](~/.amplihack/.claude/agents/amplihack/specialized/knowledge-archaeologist.md) | Extract and preserve knowledge                        |
+| [**multi-agent-debate**](~/.amplihack/.claude/agents/amplihack/specialized/multi-agent-debate.md)           | Facilitate multi-perspective debates                  |
+| [**n-version-validator**](~/.amplihack/.claude/agents/amplihack/specialized/n-version-validator.md)         | Validate N-version implementations                    |
+| [**patterns**](~/.amplihack/.claude/agents/amplihack/specialized/patterns.md)                               | Design pattern recommendations                        |
+| [**pre-commit-diagnostic**](~/.amplihack/.claude/agents/amplihack/specialized/pre-commit-diagnostic.md)     | Pre-commit hook diagnostics                           |
+| [**preference-reviewer**](~/.amplihack/.claude/agents/amplihack/specialized/preference-reviewer.md)         | User preference validation                            |
+| [**prompt-writer**](~/.amplihack/.claude/agents/amplihack/specialized/prompt-writer.md)                     | Effective prompt engineering                          |
+| [**rust-programming-expert**](~/.amplihack/.claude/agents/amplihack/specialized/rust-programming-expert.md) | Rust language expertise                               |
+| [**security**](~/.amplihack/.claude/agents/amplihack/specialized/security.md)                               | Security analysis and vulnerability detection         |
+| [**visualization-architect**](~/.amplihack/.claude/agents/amplihack/specialized/visualization-architect.md) | Data visualization design                             |
+| [**xpia-defense**](~/.amplihack/.claude/agents/amplihack/specialized/xpia-defense.md)                       | Advanced threat detection                             |
+| [**philosophy-guardian**](~/.amplihack/.claude/agents/amplihack/specialized/philosophy-guardian.md)         | Philosophy compliance and simplicity validation       |
+| [**openapi-scaffolder**](~/.amplihack/.claude/agents/amplihack/specialized/openapi-scaffolder.md)           | Scaffold apps from OpenAPI specs (5 languages)        |
+| [**iac-planner**](~/.amplihack/.claude/agents/amplihack/specialized/iac-planner.md)                         | Infrastructure-as-Code planning (Terraform/Bicep/CFN) |
+| [**mcp-server-builder**](~/.amplihack/.claude/agents/amplihack/specialized/mcp-server-builder.md)           | Build MCP servers in 6 languages                      |
 
 ## Features
 
@@ -638,6 +648,22 @@ Real-time session information displayed at the bottom of Claude Code showing:
 
 **Full documentation:**
 [docs/reference/STATUSLINE.md](https://rysweet.github.io/amplihack/reference/STATUSLINE/)
+
+### Awesome-Copilot Integration
+
+Amplihack integrates with
+[awesome-copilot](https://github.com/github/awesome-copilot) for
+community-curated extensions:
+
+- **MCP Server**: Docker-based MCP server auto-enabled in Copilot sessions
+- **Plugin Marketplace**: Access 48+ community plugins via
+  `copilot plugin install`
+- **Drift Detection**: Monitor awesome-copilot for new content with
+  `/awesome-copilot-sync`
+
+See
+[How to Use Awesome-Copilot Integration](docs/howto/awesome-copilot-integration.md)
+for details.
 
 ## Documentation
 
