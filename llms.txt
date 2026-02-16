@@ -1,0 +1,69 @@
+# Amplihack
+
+> AI-powered agentic coding framework for Claude Code, GitHub Copilot, and more. Accelerates software development through specialized AI agents, structured workflows, and intelligent automation.
+
+## Core Agents
+- [architect](/.claude/agents/amplihack/core/architect.md): System design and problem decomposition
+- [builder](/.claude/agents/amplihack/core/builder.md): Code generation from specifications
+- [reviewer](/.claude/agents/amplihack/core/reviewer.md): Philosophy compliance and code review
+- [tester](/.claude/agents/amplihack/core/tester.md): Test generation and validation
+- [optimizer](/.claude/agents/amplihack/core/optimizer.md): Performance bottleneck analysis
+- [api-designer](/.claude/agents/amplihack/core/api-designer.md): API contract definitions
+- [guide](/.claude/agents/amplihack/core/guide.md): User onboarding and help
+
+## Specialized Agents
+- [security](/.claude/agents/amplihack/specialized/security.md): Vulnerability assessment
+- [database](/.claude/agents/amplihack/specialized/database.md): Schema and query optimization
+- [integration](/.claude/agents/amplihack/specialized/integration.md): External service connections
+- [cleanup](/.claude/agents/amplihack/specialized/cleanup.md): Code simplification
+- [fix-agent](/.claude/agents/amplihack/specialized/fix-agent.md): Rapid resolution of common error patterns
+- [knowledge-archaeologist](/.claude/agents/amplihack/specialized/knowledge-archaeologist.md): Historical codebase research
+- [openapi-scaffolder](/.claude/agents/amplihack/specialized/openapi-scaffolder.md): Scaffold apps from OpenAPI specs
+- [iac-planner](/.claude/agents/amplihack/specialized/iac-planner.md): Terraform, Bicep, and CloudFormation planning
+- [mcp-server-builder](/.claude/agents/amplihack/specialized/mcp-server-builder.md): Build MCP servers in any language
+
+## Skills
+- [ultrathink-orchestrator](/.claude/skills/ultrathink-orchestrator/SKILL.md): Deep analysis orchestration for complex tasks
+- [default-workflow](/.claude/skills/default-workflow/SKILL.md): Standard 23-step development workflow
+- [investigation-workflow](/.claude/skills/investigation-workflow/SKILL.md): 6-phase research and exploration
+- [smart-test](/.claude/skills/smart-test/SKILL.md): Intelligent test generation and execution
+- [code-smell-detector](/.claude/skills/code-smell-detector/SKILL.md): Anti-pattern detection
+- [mermaid-diagram-generator](/.claude/skills/mermaid-diagram-generator/SKILL.md): Architecture diagrams
+- [github-copilot-cli](/.claude/skills/github-copilot-cli/SKILL.md): Copilot CLI integration
+- [pdf](/.claude/skills/pdf/SKILL.md): PDF reading and analysis
+- [docx](/.claude/skills/docx/SKILL.md): Word document handling
+- [xlsx](/.claude/skills/xlsx/SKILL.md): Excel spreadsheet handling
+- [multitask](/.claude/skills/multitask/SKILL.md): Parallel workstream execution
+- [awesome-copilot-sync](/.claude/skills/awesome-copilot-sync/SKILL.md): Monitor awesome-copilot releases for drift
+
+## Recipes
+- [default-workflow](/amplifier-bundle/recipes/default-workflow.yaml): Standard development workflow (23 steps)
+- [investigation-workflow](/amplifier-bundle/recipes/investigation-workflow.yaml): Research and exploration (6 phases)
+- [qa-workflow](/amplifier-bundle/recipes/qa-workflow.yaml): Quick Q&A workflow (3 steps)
+- [auto-workflow](/amplifier-bundle/recipes/auto-workflow.yaml): Autonomous execution workflow
+- [cascade-workflow](/amplifier-bundle/recipes/cascade-workflow.yaml): Fallback cascade for resilient operations
+- [debate-workflow](/amplifier-bundle/recipes/debate-workflow.yaml): Multi-agent debate for decisions
+- [n-version-workflow](/amplifier-bundle/recipes/n-version-workflow.yaml): N-version programming for critical code
+- [consensus-workflow](/amplifier-bundle/recipes/consensus-workflow.yaml): Consensus voting across agents
+- [verification-workflow](/amplifier-bundle/recipes/verification-workflow.yaml): Verification and validation
+- [guide](/amplifier-bundle/recipes/guide.yaml): Guided onboarding recipe
+
+## Commands
+- [/ultrathink](/.claude/commands/amplihack/ultrathink.md): Deep analysis orchestration for complex tasks
+- [/analyze](/.claude/commands/amplihack/analyze.md): Comprehensive code review for philosophy compliance
+- [/improve](/.claude/commands/amplihack/improve.md): Self-improvement and learning capture
+- [/fix](/.claude/commands/amplihack/fix.md): Intelligent fix workflow for common error patterns
+- [/cascade](/.claude/commands/amplihack/cascade.md): Fallback cascade execution
+- [/debate](/.claude/commands/amplihack/debate.md): Multi-agent debate for decisions
+- [/n-version](/.claude/commands/amplihack/n-version.md): N-version programming
+- [/reflect](/.claude/commands/amplihack/reflect.md): Reflection and learning
+- [/customize](/.claude/commands/amplihack/customize.md): User preference management
+- [/modular-build](/.claude/commands/amplihack/modular-build.md): Modular code generation
+- [/install](/.claude/commands/amplihack/install.md): Framework installation
+- [/skill-builder](/.claude/commands/amplihack/skill-builder.md): Create new skills
+
+## Context
+- [PHILOSOPHY.md](/.claude/context/PHILOSOPHY.md): Core principles -- ruthless simplicity, zero-BS, modular design
+- [PATTERNS.md](/.claude/context/PATTERNS.md): Reusable solution patterns and approaches
+- [TRUST.md](/.claude/context/TRUST.md): Anti-sycophancy and direct communication guidelines
+- [PROJECT.md](/.claude/context/PROJECT.md): Project configuration and metadata

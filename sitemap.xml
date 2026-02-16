@@ -2197,6 +2197,14 @@
          <lastmod>2026-02-16</lastmod>
     </url>
     <url>
+         <loc>https://rysweet.github.io/amplihack/howto/agent-learning-eval-harness/</loc>
+         <lastmod>2026-02-16</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/howto/awesome-copilot-integration/</loc>
+         <lastmod>2026-02-16</lastmod>
+    </url>
+    <url>
          <loc>https://rysweet.github.io/amplihack/howto/blarify-code-graph/</loc>
          <lastmod>2026-02-16</lastmod>
     </url>
@@ -2226,6 +2234,10 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/howto/recipe-cli-commands/</loc>
+         <lastmod>2026-02-16</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/howto/settings-hook-configuration/</loc>
          <lastmod>2026-02-16</lastmod>
     </url>
     <url>
@@ -2410,6 +2422,10 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/recipes/RECIPE_RUNNER_ULTRATHINK_INTEGRATION/</loc>
+         <lastmod>2026-02-16</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/recipes/STREAMING_OUTPUT/</loc>
          <lastmod>2026-02-16</lastmod>
     </url>
     <url>
@@ -2614,6 +2630,10 @@
     </url>
     <url>
          <loc>https://rysweet.github.io/amplihack/tutorials/platform-bridge-quickstart/</loc>
+         <lastmod>2026-02-16</lastmod>
+    </url>
+    <url>
+         <loc>https://rysweet.github.io/amplihack/tutorials/session-start-workflow-classification/</loc>
          <lastmod>2026-02-16</lastmod>
     </url>
 </urlset>
