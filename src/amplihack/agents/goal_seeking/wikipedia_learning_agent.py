@@ -9,6 +9,7 @@ Philosophy:
 - Handles question complexity levels (L1-L4)
 """
 
+from pathlib import Path
 from typing import Any
 
 import litellm
@@ -140,6 +141,10 @@ class WikipediaLearningAgent:
     def answer_question(self, question: str, question_level: str = "L1") -> str:
         """Answer a question using stored knowledge and LLM synthesis.
 
+        Uses smart retrieval: for small knowledge bases (<= 50 facts), retrieves
+        ALL facts and lets the LLM decide relevance. Falls back to full retrieval
+        if keyword search returns fewer than 3 results.
+
         Args:
             question: Question to answer
             question_level: Complexity level (L1/L2/L3/L4)
@@ -164,8 +169,20 @@ class WikipediaLearningAgent:
         if not question or not question.strip():
             return "Error: Question is empty"
 
-        # Search memory for relevant facts
-        relevant_facts = self.memory.search(query=question, limit=10, min_confidence=0.5)
+        # Smart retrieval: check memory size first
+        stats = self.memory.get_statistics()
+        total_experiences = stats.get("total_experiences", 0)
+
+        if total_experiences <= 50:
+            # Small knowledge base: retrieve ALL facts and let LLM decide relevance
+            relevant_facts = self.memory.get_all_facts(limit=50)
+        else:
+            # Large knowledge base: use keyword search
+            relevant_facts = self.memory.search(query=question, limit=10, min_confidence=0.5)
+
+            # Fallback: if search returns too few results, retrieve all
+            if len(relevant_facts) < 3:
+                relevant_facts = self.memory.get_all_facts(limit=50)
 
         if not relevant_facts:
             return "I don't have enough information to answer that question."
@@ -175,10 +192,10 @@ class WikipediaLearningAgent:
             question=question, context=relevant_facts, question_level=question_level
         )
 
-        # Store the question-answer pair as a learning
+        # Store the question-answer pair as a learning (truncate to fit)
         self.memory.store_fact(
-            context=f"Question: {question}",
-            fact=f"Answer: {answer}",
+            context=f"Question: {question[:200]}",
+            fact=f"Answer: {answer[:900]}",
             confidence=0.7,
             tags=["q_and_a", question_level.lower()],
         )
@@ -273,9 +290,9 @@ Respond with a JSON list like:
         Returns:
             Synthesized answer string
         """
-        # Build context string
+        # Build context string - include more facts for better coverage
         context_str = "Relevant facts:\n"
-        for i, fact in enumerate(context[:5], 1):
+        for i, fact in enumerate(context[:20], 1):
             context_str += f"{i}. Context: {fact['context']}\n"
             context_str += f"   Fact: {fact['outcome']}\n\n"
 
