@@ -7,6 +7,7 @@ Philosophy:
 - Uses agentic loop for structured learning
 - LLM synthesizes answers (not just retrieval)
 - Handles question complexity levels (L1-L4)
+- Supports hierarchical memory with Graph RAG (use_hierarchical=True)
 """
 
 from pathlib import Path
@@ -16,13 +17,14 @@ import litellm
 
 from .action_executor import ActionExecutor, read_content, search_memory
 from .agentic_loop import AgenticLoop
+from .flat_retriever_adapter import FlatRetrieverAdapter
 from .memory_retrieval import MemoryRetriever
 
 
 class WikipediaLearningAgent:
     """Specialized agent that learns from Wikipedia content and answers questions.
 
-    Uses the PERCEIVE→REASON→ACT→LEARN loop to:
+    Uses the PERCEIVE->REASON->ACT->LEARN loop to:
     1. Read Wikipedia content
     2. Extract and store facts
     3. Answer questions using LLM synthesis of stored knowledge
@@ -32,6 +34,9 @@ class WikipediaLearningAgent:
     - L2 (Inference): Connect multiple facts
     - L3 (Synthesis): Create new understanding
     - L4 (Application): Apply knowledge to new situations
+
+    When use_hierarchical=True, uses HierarchicalMemory with Graph RAG
+    for richer knowledge retrieval via similarity edges and subgraph traversal.
 
     Example:
         >>> agent = WikipediaLearningAgent("wiki_agent")
@@ -50,6 +55,7 @@ class WikipediaLearningAgent:
         agent_name: str = "wikipedia_agent",
         model: str = "gpt-3.5-turbo",
         storage_path: Path | None = None,
+        use_hierarchical: bool = False,
     ):
         """Initialize Wikipedia learning agent.
 
@@ -57,17 +63,26 @@ class WikipediaLearningAgent:
             agent_name: Name for the agent
             model: LLM model to use (litellm format)
             storage_path: Custom storage path for memory
+            use_hierarchical: If True, use HierarchicalMemory via FlatRetrieverAdapter.
+                If False, use original MemoryRetriever (backward compatible).
 
         Note:
             Requires OPENAI_API_KEY or appropriate provider key to be set.
         """
         self.agent_name = agent_name
         self.model = model
+        self.use_hierarchical = use_hierarchical
 
-        # Initialize memory
-        self.memory = MemoryRetriever(
-            agent_name=agent_name, storage_path=storage_path, backend="kuzu"
-        )
+        # Initialize memory based on mode
+        if use_hierarchical:
+            self.memory = FlatRetrieverAdapter(
+                agent_name=agent_name,
+                db_path=storage_path,
+            )
+        else:
+            self.memory = MemoryRetriever(
+                agent_name=agent_name, storage_path=storage_path, backend="kuzu"
+            )
 
         # Initialize action executor
         self.executor = ActionExecutor()
@@ -95,6 +110,9 @@ class WikipediaLearningAgent:
     def learn_from_content(self, content: str) -> dict[str, Any]:
         """Learn from Wikipedia content by extracting and storing facts.
 
+        When use_hierarchical=True, stores the raw content as an episode first,
+        then extracts facts with source_id pointing to the episode for provenance.
+
         Args:
             content: Wikipedia article text
 
@@ -114,6 +132,17 @@ class WikipediaLearningAgent:
         if not content or not content.strip():
             return {"facts_extracted": 0, "facts_stored": 0, "content_summary": "Empty content"}
 
+        # In hierarchical mode, store episode first for provenance tracking
+        episode_id = ""
+        if self.use_hierarchical and hasattr(self.memory, "store_episode"):
+            try:
+                episode_id = self.memory.store_episode(
+                    content=content[:2000],
+                    source_label=f"Wikipedia: {content[:50]}...",
+                )
+            except Exception:
+                pass
+
         # Use LLM to extract facts
         facts = self._extract_facts_with_llm(content)
 
@@ -121,12 +150,17 @@ class WikipediaLearningAgent:
         stored_count = 0
         for fact in facts:
             try:
-                self.memory.store_fact(
-                    context=fact["context"],
-                    fact=fact["fact"],
-                    confidence=fact.get("confidence", 0.8),
-                    tags=fact.get("tags", ["wikipedia"]),
-                )
+                store_kwargs: dict[str, Any] = {
+                    "context": fact["context"],
+                    "fact": fact["fact"],
+                    "confidence": fact.get("confidence", 0.8),
+                    "tags": fact.get("tags", ["wikipedia"]),
+                }
+                # Pass source_id for provenance when in hierarchical mode
+                if self.use_hierarchical and episode_id:
+                    store_kwargs["source_id"] = episode_id
+
+                self.memory.store_fact(**store_kwargs)
                 stored_count += 1
             except Exception:
                 # Continue storing other facts even if one fails
@@ -141,9 +175,9 @@ class WikipediaLearningAgent:
     def answer_question(self, question: str, question_level: str = "L1") -> str:
         """Answer a question using stored knowledge and LLM synthesis.
 
-        Uses smart retrieval: for small knowledge bases (<= 50 facts), retrieves
-        ALL facts and lets the LLM decide relevance. Falls back to full retrieval
-        if keyword search returns fewer than 3 results.
+        When use_hierarchical=True, uses retrieve_subgraph for Graph RAG context.
+        Otherwise uses smart retrieval: for small knowledge bases (<= 50 facts),
+        retrieves ALL facts and lets the LLM decide relevance.
 
         Args:
             question: Question to answer
@@ -169,20 +203,33 @@ class WikipediaLearningAgent:
         if not question or not question.strip():
             return "Error: Question is empty"
 
-        # Smart retrieval: check memory size first
-        stats = self.memory.get_statistics()
-        total_experiences = stats.get("total_experiences", 0)
-
-        if total_experiences <= 50:
-            # Small knowledge base: retrieve ALL facts and let LLM decide relevance
-            relevant_facts = self.memory.get_all_facts(limit=50)
-        else:
-            # Large knowledge base: use keyword search
-            relevant_facts = self.memory.search(query=question, limit=10, min_confidence=0.5)
-
-            # Fallback: if search returns too few results, retrieve all
-            if len(relevant_facts) < 3:
+        # In hierarchical mode, use Graph RAG subgraph retrieval
+        if self.use_hierarchical and hasattr(self.memory, "memory"):
+            subgraph = self.memory.memory.retrieve_subgraph(query=question, max_nodes=20)
+            if subgraph.nodes:
+                # Convert subgraph nodes to flat format for _synthesize_with_llm
+                relevant_facts = [
+                    {
+                        "context": node.concept,
+                        "outcome": node.content,
+                        "confidence": node.confidence,
+                    }
+                    for node in subgraph.nodes
+                ]
+            else:
+                # Fallback to get_all_facts if subgraph empty
                 relevant_facts = self.memory.get_all_facts(limit=50)
+        else:
+            # Original smart retrieval logic
+            stats = self.memory.get_statistics()
+            total_experiences = stats.get("total_experiences", 0)
+
+            if total_experiences <= 50:
+                relevant_facts = self.memory.get_all_facts(limit=50)
+            else:
+                relevant_facts = self.memory.search(query=question, limit=10, min_confidence=0.5)
+                if len(relevant_facts) < 3:
+                    relevant_facts = self.memory.get_all_facts(limit=50)
 
         if not relevant_facts:
             return "I don't have enough information to answer that question."
