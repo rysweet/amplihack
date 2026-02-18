@@ -751,9 +751,10 @@ Respond with a JSON list like:
                 "(gold medals vs total medals vs other)\n"
             )
 
-        # Add summary context if available (birds-eye view of knowledge)
+        # Add summary context only for multi-source synthesis (not every question)
         summary_section = ""
-        if intent.get("summary_context"):
+        intent_type = intent.get("intent", "simple_recall")
+        if intent_type == "multi_source_synthesis" and intent.get("summary_context"):
             summary_section = f"""
 Knowledge Overview (what was learned):
 {intent["summary_context"]}
@@ -761,7 +762,6 @@ Knowledge Overview (what was learned):
 
         # Add contradiction-specific instructions
         contradiction_instructions = ""
-        intent_type = intent.get("intent", "simple_recall")
         if intent_type == "contradiction_resolution":
             contradiction_instructions = (
                 "\n\nIMPORTANT - HANDLING CONFLICTING INFORMATION:\n"
@@ -779,8 +779,7 @@ Level: {question_level} - {instruction}
 {summary_section}
 {context_str}
 
-When answering, cite your sources where possible. If multiple facts support your answer, explain how they connect. If you're uncertain about something, say so and explain what additional information would help.
-If the facts don't fully answer the question, say so.
+Provide a clear, well-reasoned answer. If the facts don't fully answer the question, say so.
 """
 
         try:
@@ -789,10 +788,8 @@ If the facts don't fully answer the question, say so.
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are a knowledgeable assistant that synthesizes information "
-                        "from multiple sources. When doing math, always show your work and verify "
-                        "calculations. When citing information, reference the source if available. "
-                        "Connect related facts to build comprehensive explanations.",
+                        "content": "You are a knowledgeable assistant that synthesizes information. "
+                        "When doing math, always show your work and verify calculations.",
                     },
                     {"role": "user", "content": prompt},
                 ],
