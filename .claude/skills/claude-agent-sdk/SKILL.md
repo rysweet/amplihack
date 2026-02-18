@@ -1,5 +1,5 @@
 ---
-name: agent-sdk
+name: claude-agent-sdk
 description: Comprehensive knowledge of Claude Agent SDK architecture, tools, hooks, skills, and production patterns. Auto-activates for agent building, SDK integration, tool design, and MCP server tasks.
 version: 1.0.0
 last_updated: 2025-11-15
@@ -72,7 +72,7 @@ npm install @anthropics/agent-sdk
 Set your API key as an environment variable:
 
 ```bash
-export ANTHROPIC_API_KEY="your-api-key-here"
+export ANTHROPIC_API_KEY="your-api-key-here"  # pragma: allowlist secret
 ```
 
 Or pass it explicitly in code:
