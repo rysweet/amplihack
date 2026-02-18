@@ -28,6 +28,7 @@ will become stale as development continues. These belong in **issues, PR comment
 commit messages, or external logs** — not in the repo.
 
 Examples:
+
 - Meeting notes, meeting minutes
 - Sprint retrospectives, sprint reviews, sprint planning notes
 - Status updates, weekly reports, daily standups
@@ -43,6 +44,7 @@ Scripts that are specific to a moment in time and are not durable, reusable,
 or part of the project's permanent tooling.
 
 Examples:
+
 - One-off fix scripts (`fix-permissions.sh`, `one-off-migration.py`)
 - Debug scripts (`debug-auth.sh`, `temp-test.py`)
 - Quick-fix / hack / workaround scripts
@@ -53,6 +55,7 @@ Examples:
 ### What is NOT a violation
 
 Do NOT flag these:
+
 - `CHANGELOG.md`, `HISTORY.md` — durable by design
 - Architecture Decision Records (ADRs) — even with dates, these are durable reference docs
 - Configuration files (`.yml`, `.json`, `.toml`) for the project
@@ -72,6 +75,7 @@ post a comment acknowledging the override, who authorized it, and the reason pro
 ## How to analyze
 
 For each changed file in the PR:
+
 1. Check the **filename** for temporal indicators (dates, "temp", "hack", "one-off", etc.)
 2. Read the **file content** and assess whether it is durable reference material or ephemeral
 3. Use your judgment — a file named `2024-01-15-architecture-decision.md` containing a proper ADR is fine; a file named `notes-from-tuesday.md` is not
@@ -80,6 +84,7 @@ For each changed file in the PR:
 ## How to report
 
 If violations are found:
+
 1. Post ONE PR comment with header `## Repo Guardian - Action Required`
 2. List each violating file with the filename, why it was flagged (quote the problematic content or pattern), and where the content should go instead
 3. Include override instructions: "To override, add a PR comment containing `repo-guardian:override <reason>` where `<reason>` is a required non-empty justification for allowing the file(s)"

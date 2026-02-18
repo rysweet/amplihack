@@ -411,7 +411,7 @@ from claude_agents import Agent
 custom_mcp = MCPClient(
     command="node",
     args=["./custom-mcp-server.js"],
-    env={"API_KEY": "secret-key"}
+    env={"API_KEY": "secret-key"}  # pragma: allowlist secret
 )
 
 # Agent automatically gets all tools from MCP server
