@@ -26,7 +26,7 @@ def grade_answer(question: str, expected: str, actual: str, level: str) -> Grade
         question: The quiz question
         expected: Expected answer
         actual: Agent's actual answer
-        level: Cognitive level (L1, L2, L3, L4)
+        level: Cognitive level (L1, L2, L3, L4, L5, L6)
 
     Returns:
         GradeResult with score and reasoning
@@ -37,9 +37,11 @@ def grade_answer(question: str, expected: str, actual: str, level: str) -> Grade
 
 Cognitive Level: {level}
 - L1 (Recall): Direct facts, must be factually accurate
-- L2 (Inference): Reasoning from facts, must show logical connection
-- L3 (Synthesis): Combining sources, must reference multiple pieces
-- L4 (Application): Hypothetical scenarios, must show understanding
+- L2 (Multi-Source Synthesis): Combining information from multiple sources
+- L3 (Temporal Reasoning): Understanding changes over time, computing differences
+- L4 (Procedural Learning): Learning and applying step-by-step procedures
+- L5 (Contradiction Handling): Detecting and reasoning about conflicting information
+- L6 (Incremental Learning): Updating knowledge when new information arrives
 
 Question: {question}
 
@@ -53,6 +55,10 @@ Grade the agent's answer on a scale of 0.0 to 1.0:
 - 0.6-0.7: Partially correct, missing some details
 - 0.4-0.5: Some relevant content, significant gaps
 - 0.0-0.3: Incorrect or unrelated
+
+Special considerations:
+- L5 (Contradictions): Award full points if agent acknowledges the contradiction, even if they don't resolve it
+- L6 (Updates): Agent must use the MOST RECENT information, not outdated data
 
 Return ONLY a JSON object with this structure:
 {{"score": 0.85, "reasoning": "Brief explanation of grade"}}"""
