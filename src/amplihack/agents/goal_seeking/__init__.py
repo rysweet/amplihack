@@ -11,7 +11,8 @@ Public API (the "studs"):
     AgenticLoop: Main PERCEIVE->REASON->ACT->LEARN loop
     ActionExecutor: Tool registry with actions
     MemoryRetriever: Kuzu memory search interface (original)
-    WikipediaLearningAgent: Specialized agent for Wikipedia learning
+    LearningAgent: Generic agent for learning from content and answering questions
+    WikipediaLearningAgent: Backward-compatible alias for LearningAgent
     HierarchicalMemory: Graph-based hierarchical memory system
     FlatRetrieverAdapter: Backward-compatible adapter for HierarchicalMemory
     GraphRAGRetriever: Graph RAG retriever for knowledge subgraphs
@@ -29,9 +30,12 @@ from .hierarchical_memory import (
     MemoryCategory,
     MemoryClassifier,
 )
+from .learning_agent import LearningAgent
 from .memory_retrieval import MemoryRetriever
 from .similarity import compute_similarity, compute_tag_similarity, compute_word_similarity
-from .wikipedia_learning_agent import WikipediaLearningAgent
+
+# Backward compatibility: old name -> new name
+WikipediaLearningAgent = LearningAgent
 
 __all__ = [
     "AgenticLoop",
@@ -42,6 +46,7 @@ __all__ = [
     "KnowledgeEdge",
     "KnowledgeNode",
     "KnowledgeSubgraph",
+    "LearningAgent",
     "MemoryCategory",
     "MemoryClassifier",
     "MemoryRetriever",

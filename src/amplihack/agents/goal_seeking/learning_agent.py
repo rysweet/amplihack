@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-"""Wikipedia learning agent with LLM-powered answer synthesis.
+"""Generic learning agent with LLM-powered answer synthesis.
 
 Philosophy:
-- Single responsibility: Learn from Wikipedia and answer questions
+- Single responsibility: Learn from content sources and answer questions
 - Uses agentic loop for structured learning
 - LLM synthesizes answers (not just retrieval)
 - Handles question complexity levels (L1-L4)
 - Supports hierarchical memory with Graph RAG (use_hierarchical=True)
+- Not Wikipedia-specific - works with any content sources
 """
 
 from pathlib import Path
@@ -21,11 +22,11 @@ from .flat_retriever_adapter import FlatRetrieverAdapter
 from .memory_retrieval import MemoryRetriever
 
 
-class WikipediaLearningAgent:
-    """Specialized agent that learns from Wikipedia content and answers questions.
+class LearningAgent:
+    """Generic agent that learns from content and answers questions.
 
     Uses the PERCEIVE->REASON->ACT->LEARN loop to:
-    1. Read Wikipedia content
+    1. Read content from various sources
     2. Extract and store facts
     3. Answer questions using LLM synthesis of stored knowledge
 
@@ -39,7 +40,7 @@ class WikipediaLearningAgent:
     for richer knowledge retrieval via similarity edges and subgraph traversal.
 
     Example:
-        >>> agent = WikipediaLearningAgent("wiki_agent")
+        >>> agent = LearningAgent("my_agent")
         >>> agent.learn_from_content(
         ...     "Photosynthesis is the process by which plants convert light to energy."
         ... )
@@ -52,12 +53,12 @@ class WikipediaLearningAgent:
 
     def __init__(
         self,
-        agent_name: str = "wikipedia_agent",
+        agent_name: str = "learning_agent",
         model: str = "gpt-3.5-turbo",
         storage_path: Path | None = None,
         use_hierarchical: bool = False,
     ):
-        """Initialize Wikipedia learning agent.
+        """Initialize learning agent.
 
         Args:
             agent_name: Name for the agent
@@ -108,13 +109,13 @@ class WikipediaLearningAgent:
         )
 
     def learn_from_content(self, content: str) -> dict[str, Any]:
-        """Learn from Wikipedia content by extracting and storing facts.
+        """Learn from content by extracting and storing facts.
 
         When use_hierarchical=True, stores the raw content as an episode first,
         then extracts facts with source_id pointing to the episode for provenance.
 
         Args:
-            content: Wikipedia article text
+            content: Article or content text
 
         Returns:
             Dictionary with learning results:
@@ -123,7 +124,7 @@ class WikipediaLearningAgent:
                 - content_summary: Summary of content
 
         Example:
-            >>> agent = WikipediaLearningAgent()
+            >>> agent = LearningAgent()
             >>> result = agent.learn_from_content(
             ...     "Photosynthesis converts light into chemical energy."
             ... )
@@ -138,7 +139,7 @@ class WikipediaLearningAgent:
             try:
                 episode_id = self.memory.store_episode(
                     content=content[:2000],
-                    source_label=f"Wikipedia: {content[:50]}...",
+                    source_label=f"Content: {content[:50]}...",
                 )
             except Exception:
                 pass
@@ -154,7 +155,7 @@ class WikipediaLearningAgent:
                     "context": fact["context"],
                     "fact": fact["fact"],
                     "confidence": fact.get("confidence", 0.8),
-                    "tags": fact.get("tags", ["wikipedia"]),
+                    "tags": fact.get("tags", ["learned"]),
                 }
                 # Pass source_id for provenance when in hierarchical mode
                 if self.use_hierarchical and episode_id:
@@ -193,7 +194,7 @@ class WikipediaLearningAgent:
         - L4 (Application): "How would you use X to solve Y?"
 
         Example:
-            >>> agent = WikipediaLearningAgent()
+            >>> agent = LearningAgent()
             >>> # First learn some facts
             >>> agent.learn_from_content("Dogs are mammals. Mammals have fur.")
             >>> # Then answer questions
