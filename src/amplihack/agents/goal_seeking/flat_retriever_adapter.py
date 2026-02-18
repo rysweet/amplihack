@@ -5,7 +5,7 @@ Philosophy:
 - store_fact -> store_knowledge(category=SEMANTIC)
 - search -> retrieve_subgraph then flatten to list[dict]
 - get_all_facts -> get_all_knowledge then flatten
-- Drop-in replacement for MemoryRetriever in WikipediaLearningAgent
+- Drop-in replacement for MemoryRetriever in LearningAgent
 
 Public API:
     FlatRetrieverAdapter: Backward-compatible interface over HierarchicalMemory
@@ -22,7 +22,7 @@ from .hierarchical_memory import HierarchicalMemory, MemoryCategory
 class FlatRetrieverAdapter:
     """Adapter providing MemoryRetriever-compatible interface over HierarchicalMemory.
 
-    This allows WikipediaLearningAgent to use HierarchicalMemory without
+    This allows LearningAgent to use HierarchicalMemory without
     changing its existing code that expects store_fact/search/get_all_facts.
 
     Args:
