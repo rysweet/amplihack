@@ -1068,6 +1068,122 @@ gh issue close "$issue"
 - No compliance trail
 - Can't analyze workflow effectiveness
 
+### Anti-Pattern 5: Using Direct Write Permissions
+
+**Problem**: Configuring workflows with direct write permissions (`issues: write`, `discussions: write`) instead of using safe-outputs.
+
+```yaml
+# Bad: Direct write permissions (blocked in strict mode)
+permissions:
+  issues: write
+  discussions: write
+
+# Good: Read permissions + safe-outputs
+permissions:
+  contents: read
+  issues: read
+
+safe-outputs:
+  create-issue:
+    max: 5
+  create-discussion:
+    max: 1
+```
+
+**Why it's bad**:
+
+- Violates gh-aw security model (workflows should use safe-outputs)
+- No rate limiting on write operations
+- No audit trail of what was created/modified
+- Compilation fails in strict mode
+- Can't enforce expiration policies
+
+**Best practice**: Always use safe-outputs for write operations, never direct write permissions.
+
+### Anti-Pattern 6: Incompatible MCP Servers in CI
+
+**Problem**: Configuring MCP servers in `.mcp.json` that require resources unavailable in GitHub Actions (Docker, host filesystem access).
+
+```json
+// Bad: docker-mcp requires Docker daemon
+{
+  "mcpServers": {
+    "docker-mcp": {
+      "command": "uvx",
+      "args": ["docker-mcp"]
+    }
+  }
+}
+
+// Good: Only CI-compatible servers
+{
+  "mcpServers": {
+    "workiq": {
+      "command": "npx",
+      "args": ["-y", "@microsoft/workiq", "mcp"]
+    }
+  }
+}
+```
+
+**Why it's bad**:
+
+- Causes entire workflow to fail even if agent completes successfully
+- Hard to debug (MCP launch happens before main workflow)
+- Wastes CI minutes on failed launches
+
+**Best practice**: Only configure MCP servers that work in sandboxed CI environments (npm-based, API-based, built-in).
+
+### Anti-Pattern 7: Unnecessary Lockdown Mode
+
+**Problem**: Enabling `lockdown: true` in workflows when the default `GITHUB_TOKEN` is sufficient.
+
+```yaml
+# Bad: Lockdown mode without clear security requirement
+tools:
+  github:
+    toolsets: [issues]
+    lockdown: true  # Forces custom token requirement
+
+# Good: Default token for standard workflows
+tools:
+  github:
+    toolsets: [issues]
+```
+
+**Why it's bad**:
+
+- Adds complexity and maintenance burden (need to manage custom PAT)
+- Requires additional repository secrets
+- Default GITHUB_TOKEN works fine for 95% of workflows
+- Lockdown mode only needed for cross-repo operations or enhanced audit
+
+**Best practice**: Only use lockdown mode when you have specific security requirements that the default token can't satisfy.
+
+### Anti-Pattern 8: Manually Setting GITHUB_TOKEN
+
+**Problem**: Trying to manually configure `GITHUB_TOKEN` as an environment variable or secret.
+
+```yaml
+# Bad: Manually setting GITHUB_TOKEN (unnecessary!)
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+# Good: Just declare permissions, token is automatic
+permissions:
+  contents: read
+  issues: read
+```
+
+**Why it's bad**:
+
+- `GITHUB_TOKEN` is automatically injected by GitHub Actions
+- Manually setting it is redundant and creates confusion
+- Token permissions come from `permissions:` declaration, not manual config
+- Can cause subtle bugs if misconfigured
+
+**Best practice**: Never manually set `GITHUB_TOKEN`. Just declare the permissions you need and GitHub handles the rest.
+
 ---
 
 ## Workflow Composition
