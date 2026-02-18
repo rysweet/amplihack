@@ -38,6 +38,7 @@ Activate this skill when you want to:
 - Create multiple agentic workflows efficiently
 - Automate repetitive repository tasks (issue triage, PR labeling, security scans, etc.)
 - Debug or upgrade existing agentic workflows
+- **Troubleshoot workflow failures** (MCP server errors, permission issues, CI failures)
 
 ## Quick Start
 
@@ -61,6 +62,16 @@ Adopt gh-aw to automate:
 
 ```
 Investigate what agentic workflows the gh-aw team uses
+```
+
+**Troubleshooting:**
+
+```
+My workflow is failing with "MCP server(s) failed to launch: docker-mcp"
+```
+
+```
+Help me fix the "lockdown mode without custom token" error
 ```
 
 ## How It Works
@@ -383,6 +394,22 @@ Your gh-aw adoption is successful when:
 3. **Create custom workflows**: Use patterns learned to build new automation
 4. **Share learnings**: Document successful patterns for other repositories
 5. **Upgrade workflows**: Keep gh-aw extension updated and apply migrations
+
+---
+
+## Documentation Structure (Diátaxis Framework)
+
+This skill follows the Diátaxis documentation framework with four complementary resources:
+
+1. **SKILL.md** (Tutorial/Overview): Getting started guide, quick reference, high-level concepts
+2. **examples.md** (How-to guides): Step-by-step practical examples and troubleshooting solutions
+3. **patterns.md** (Explanation): Understanding patterns, anti-patterns, and best practices
+4. **reference.md** (Reference): Technical specifications, detailed configurations, troubleshooting reference
+
+**For troubleshooting**:
+- Start with **reference.md** to understand the error and root cause
+- Check **examples.md** for step-by-step fix instructions
+- Review **patterns.md** to avoid the anti-pattern in future workflows
 
 ---
 
