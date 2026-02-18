@@ -6,6 +6,7 @@ Philosophy: Single responsibility - just grading, no other logic.
 
 import json
 import os
+import re
 from dataclasses import dataclass
 
 import anthropic  # type: ignore[import-untyped]
@@ -17,6 +18,54 @@ class GradeResult:
 
     score: float  # 0.0 to 1.0
     reasoning: str
+
+
+def _extract_json(text: str) -> dict:
+    """Extract a JSON object from LLM response text.
+
+    Handles common LLM response patterns:
+    - Raw JSON: {"score": 0.85, ...}
+    - Markdown fenced: ```json\n{...}\n```
+    - Markdown fenced without language tag: ```\n{...}\n```
+
+    Args:
+        text: Raw LLM response text
+
+    Returns:
+        Parsed JSON dict
+
+    Raises:
+        json.JSONDecodeError: If no valid JSON object can be extracted
+    """
+    stripped = text.strip()
+
+    # Try direct parse first
+    try:
+        return json.loads(stripped)
+    except json.JSONDecodeError:
+        pass
+
+    # Strip markdown code fences: ```json ... ``` or ``` ... ```
+    fenced = re.search(r"```(?:json)?\s*\n?(.*?)\n?\s*```", stripped, re.DOTALL)
+    if fenced:
+        try:
+            return json.loads(fenced.group(1).strip())
+        except json.JSONDecodeError:
+            pass
+
+    # Find first { ... } block as last resort
+    brace_match = re.search(r"\{.*\}", stripped, re.DOTALL)
+    if brace_match:
+        try:
+            return json.loads(brace_match.group(0))
+        except json.JSONDecodeError:
+            pass
+
+    raise json.JSONDecodeError(
+        f"No valid JSON found in response: {stripped[:200]}",
+        stripped,
+        0,
+    )
 
 
 def grade_answer(question: str, expected: str, actual: str, level: str) -> GradeResult:
@@ -69,9 +118,9 @@ Return ONLY a JSON object with this structure:
         messages=[{"role": "user", "content": prompt}],
     )
 
-    # Extract JSON from response
+    # Extract JSON from response, handling markdown fences
     response_text = message.content[0].text
-    result_json = json.loads(response_text)
+    result_json = _extract_json(response_text)
 
     return GradeResult(score=result_json["score"], reasoning=result_json["reasoning"])
 
