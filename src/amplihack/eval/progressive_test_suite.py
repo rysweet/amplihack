@@ -17,7 +17,6 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List
 
 from .grader import grade_answer
 from .test_levels import ALL_LEVELS, TestLevel
@@ -29,7 +28,7 @@ class ProgressiveConfig:
 
     output_dir: str
     agent_name: str
-    levels_to_run: List[str] | None = None  # None = run all
+    levels_to_run: list[str] | None = None  # None = run all
     memory_backend: str = "amplihack-memory-lib"
 
 
@@ -49,9 +48,34 @@ class ProgressiveResult:
     """Result of entire progressive test suite."""
 
     success: bool
-    level_results: List[LevelResult]
+    level_results: list[LevelResult]
     overall_scores: dict | None = None
     error_message: str | None = None
+
+
+def _extract_json_line(stdout: str) -> str:
+    """Extract the JSON object line from subprocess stdout.
+
+    Subprocess stdout may contain litellm warnings, deprecation notices,
+    or other non-JSON lines mixed in. This finds the line that is a valid
+    JSON object starting with '{'.
+
+    Args:
+        stdout: Raw subprocess stdout
+
+    Returns:
+        The JSON line, or '{}' if none found
+    """
+    # Search from last line backward (JSON output is printed last by agent_subprocess)
+    for line in reversed(stdout.strip().splitlines()):
+        stripped = line.strip()
+        if stripped.startswith("{") and stripped.endswith("}"):
+            try:
+                json.loads(stripped)
+                return stripped
+            except json.JSONDecodeError:
+                continue
+    return "{}"
 
 
 def run_learning_subprocess(articles: list, agent_name: str) -> tuple[bool, str]:
@@ -70,7 +94,7 @@ def run_learning_subprocess(articles: list, agent_name: str) -> tuple[bool, str]
             "title": a.title,
             "content": a.content,
             "published": a.published,
-            "metadata": a.metadata or {}
+            "metadata": a.metadata or {},
         }
         for a in articles
     ]
@@ -93,7 +117,7 @@ def run_learning_subprocess(articles: list, agent_name: str) -> tuple[bool, str]
     if result.returncode != 0:
         return False, result.stderr
 
-    return True, result.stdout
+    return True, _extract_json_line(result.stdout)
 
 
 def run_testing_subprocess(questions: list, agent_name: str) -> tuple[bool, str]:
@@ -133,7 +157,7 @@ def run_testing_subprocess(questions: list, agent_name: str) -> tuple[bool, str]
     if result.returncode != 0:
         return False, result.stderr
 
-    return True, result.stdout
+    return True, _extract_json_line(result.stdout)
 
 
 def run_single_level(level: TestLevel, config: ProgressiveConfig, level_dir: Path) -> LevelResult:
@@ -153,14 +177,16 @@ def run_single_level(level: TestLevel, config: ProgressiveConfig, level_dir: Pat
         # Handle incremental learning (Level 6)
         if level.requires_update_handling:
             # Phase 1: Learn from initial articles
-            initial_articles = [a for a in level.articles if a.metadata.get("phase") == "initial"]
+            initial_articles = [
+                a for a in level.articles if (a.metadata or {}).get("phase") == "initial"
+            ]
             success, data = run_learning_subprocess(initial_articles, config.agent_name)
             if not success:
                 return LevelResult(
                     level_id=level.level_id,
                     level_name=level.level_name,
                     success=False,
-                    error_message=f"Learning phase 1 failed: {data}"
+                    error_message=f"Learning phase 1 failed: {data}",
                 )
 
             learning1_data = json.loads(data)
@@ -168,14 +194,16 @@ def run_single_level(level: TestLevel, config: ProgressiveConfig, level_dir: Pat
                 json.dump(learning1_data, f, indent=2)
 
             # Phase 2: Learn from update articles
-            update_articles = [a for a in level.articles if a.metadata.get("phase") == "update"]
+            update_articles = [
+                a for a in level.articles if (a.metadata or {}).get("phase") == "update"
+            ]
             success, data = run_learning_subprocess(update_articles, config.agent_name)
             if not success:
                 return LevelResult(
                     level_id=level.level_id,
                     level_name=level.level_name,
                     success=False,
-                    error_message=f"Learning phase 2 failed: {data}"
+                    error_message=f"Learning phase 2 failed: {data}",
                 )
 
             learning2_data = json.loads(data)
@@ -190,7 +218,7 @@ def run_single_level(level: TestLevel, config: ProgressiveConfig, level_dir: Pat
                     level_id=level.level_id,
                     level_name=level.level_name,
                     success=False,
-                    error_message=f"Learning phase failed: {data}"
+                    error_message=f"Learning phase failed: {data}",
                 )
 
             learning_data = json.loads(data)
@@ -204,7 +232,7 @@ def run_single_level(level: TestLevel, config: ProgressiveConfig, level_dir: Pat
                 level_id=level.level_id,
                 level_name=level.level_name,
                 success=False,
-                error_message=f"Testing phase failed: {data}"
+                error_message=f"Testing phase failed: {data}",
             )
 
         testing_data = json.loads(data)
@@ -223,24 +251,22 @@ def run_single_level(level: TestLevel, config: ProgressiveConfig, level_dir: Pat
                 level=question.level,
             )
 
-            all_grades.append({
-                "question": question.question,
-                "level": question.level,
-                "reasoning_type": question.reasoning_type,
-                "expected": question.expected_answer,
-                "actual": answer_data["answer"],
-                "score": grade.score,
-                "reasoning": grade.reasoning,
-            })
+            all_grades.append(
+                {
+                    "question": question.question,
+                    "level": question.level,
+                    "reasoning_type": question.reasoning_type,
+                    "expected": question.expected_answer,
+                    "actual": answer_data["answer"],
+                    "score": grade.score,
+                    "reasoning": grade.reasoning,
+                }
+            )
 
         # Calculate scores
         if all_grades:
             avg_score = sum(g["score"] for g in all_grades) / len(all_grades)
-            scores = {
-                "average": avg_score,
-                "count": len(all_grades),
-                "details": all_grades
-            }
+            scores = {"average": avg_score, "count": len(all_grades), "details": all_grades}
         else:
             scores = {"average": 0.0, "count": 0, "details": []}
 
@@ -249,10 +275,7 @@ def run_single_level(level: TestLevel, config: ProgressiveConfig, level_dir: Pat
             json.dump(scores, f, indent=2)
 
         return LevelResult(
-            level_id=level.level_id,
-            level_name=level.level_name,
-            success=True,
-            scores=scores
+            level_id=level.level_id, level_name=level.level_name, success=True, scores=scores
         )
 
     except Exception as e:
@@ -260,7 +283,7 @@ def run_single_level(level: TestLevel, config: ProgressiveConfig, level_dir: Pat
             level_id=level.level_id,
             level_name=level.level_name,
             success=False,
-            error_message=str(e)
+            error_message=str(e),
         )
 
 
@@ -285,9 +308,9 @@ def run_progressive_suite(config: ProgressiveConfig) -> ProgressiveResult:
     # Run each level
     level_results = []
     for level in levels_to_run:
-        print(f"\n{'='*70}")
+        print(f"\n{'=' * 70}")
         print(f"Running {level.level_id}: {level.level_name}")
-        print(f"{'='*70}")
+        print(f"{'=' * 70}")
         print(f"Description: {level.description}")
         print(f"Articles: {len(level.articles)}, Questions: {len(level.questions)}")
 
@@ -295,7 +318,7 @@ def run_progressive_suite(config: ProgressiveConfig) -> ProgressiveResult:
         result = run_single_level(level, config, level_dir)
         level_results.append(result)
 
-        if result.success:
+        if result.success and result.scores:
             print(f"✓ {level.level_id} completed: {result.scores['average']:.2%} average score")
         else:
             print(f"✗ {level.level_id} failed: {result.error_message}")
@@ -310,7 +333,7 @@ def run_progressive_suite(config: ProgressiveConfig) -> ProgressiveResult:
         for result in successful_levels:
             overall_scores[result.level_id] = {
                 "average": result.scores["average"],
-                "count": result.scores["count"]
+                "count": result.scores["count"],
             }
 
         # Overall average across all levels
@@ -334,10 +357,10 @@ def run_progressive_suite(config: ProgressiveConfig) -> ProgressiveResult:
                 "level_name": r.level_name,
                 "success": r.success,
                 "average_score": r.scores["average"] if r.success else None,
-                "error": r.error_message if not r.success else None
+                "error": r.error_message if not r.success else None,
             }
             for r in level_results
-        ]
+        ],
     }
 
     with open(output_dir / "summary.json", "w") as f:
@@ -350,7 +373,7 @@ def run_progressive_suite(config: ProgressiveConfig) -> ProgressiveResult:
         success=all_success,
         level_results=level_results,
         overall_scores=overall_scores,
-        error_message=None if all_success else "Some levels failed"
+        error_message=None if all_success else "Some levels failed",
     )
 
 
@@ -362,25 +385,19 @@ def main():
         description="Progressive Agent Learning Test Suite (Levels 1-6)"
     )
     parser.add_argument(
-        "--output-dir",
-        default="./eval_progressive",
-        help="Output directory for results"
+        "--output-dir", default="./eval_progressive", help="Output directory for results"
     )
     parser.add_argument(
-        "--agent-name",
-        default="progressive-test-agent",
-        help="Agent name for memory isolation"
+        "--agent-name", default="progressive-test-agent", help="Agent name for memory isolation"
     )
     parser.add_argument(
         "--levels",
         nargs="+",
         choices=["L1", "L2", "L3", "L4", "L5", "L6"],
-        help="Specific levels to run (default: all)"
+        help="Specific levels to run (default: all)",
     )
     parser.add_argument(
-        "--memory-backend",
-        default="amplihack-memory-lib",
-        help="Memory backend to use"
+        "--memory-backend", default="amplihack-memory-lib", help="Memory backend to use"
     )
 
     args = parser.parse_args()
@@ -389,7 +406,7 @@ def main():
         output_dir=args.output_dir,
         agent_name=args.agent_name,
         levels_to_run=args.levels,
-        memory_backend=args.memory_backend
+        memory_backend=args.memory_backend,
     )
 
     print("=" * 70)
@@ -418,16 +435,20 @@ def main():
     if result.overall_scores:
         print("Scores by Level:")
         for level_result in result.level_results:
-            if level_result.success:
+            if level_result.success and level_result.scores:
                 score = level_result.scores["average"]
                 count = level_result.scores["count"]
-                print(f"  {level_result.level_id} ({level_result.level_name}): "
-                      f"{score:.2%} ({count} questions)")
+                print(
+                    f"  {level_result.level_id} ({level_result.level_name}): "
+                    f"{score:.2%} ({count} questions)"
+                )
             else:
                 print(f"  {level_result.level_id} ({level_result.level_name}): FAILED")
 
         print(f"\nOverall Average: {result.overall_scores['overall']:.2%}")
-        print(f"Levels Passed: {result.overall_scores['levels_passed']}/{result.overall_scores['levels_total']}")
+        print(
+            f"Levels Passed: {result.overall_scores['levels_passed']}/{result.overall_scores['levels_total']}"
+        )
         print(f"Pass Rate: {result.overall_scores['pass_rate']:.2%}")
 
     print(f"\nDetailed results saved to: {config.output_dir}")

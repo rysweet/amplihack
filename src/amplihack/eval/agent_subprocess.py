@@ -29,7 +29,7 @@ def learning_phase(news_articles: list[dict], agent_name: str) -> dict:
     storage_path.mkdir(parents=True, exist_ok=True)
 
     # Get model from env or use default
-    model = os.environ.get("OPENAI_MODEL", "gpt-3.5-turbo")
+    model = os.environ.get("EVAL_MODEL", "anthropic/claude-sonnet-4-5-20250929")
 
     agent = LearningAgent(
         agent_name=agent_name,
@@ -68,7 +68,7 @@ def testing_phase(quiz_questions: list[dict], agent_name: str) -> dict:
     storage_path.mkdir(parents=True, exist_ok=True)
 
     # Get model from env or use default
-    model = os.environ.get("OPENAI_MODEL", "gpt-3.5-turbo")
+    model = os.environ.get("EVAL_MODEL", "anthropic/claude-sonnet-4-5-20250929")
 
     agent = LearningAgent(
         agent_name=agent_name,
@@ -123,7 +123,12 @@ def main():
 
     # Execute phase
     if args.phase == "learning":
-        articles = input_data.get("articles", input_data) if isinstance(input_data, dict) else input_data
+        if isinstance(input_data, list):
+            articles = input_data
+        elif isinstance(input_data, dict):
+            articles = input_data.get("articles", [input_data])
+        else:
+            articles = [input_data]
         result = learning_phase(articles, args.agent_name)
     else:  # testing
         result = testing_phase(input_data, args.agent_name)
