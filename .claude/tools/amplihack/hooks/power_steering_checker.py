@@ -71,7 +71,7 @@ except ImportError:
 
 # Try to import completion evidence module
 try:
-    from completion_evidence import (
+    from completion_evidence import (  # type: ignore[import-not-found]
         CompletionEvidenceChecker,
         EvidenceType,
     )
@@ -82,7 +82,7 @@ except ImportError:
 
 # Try to import compaction validator
 try:
-    from compaction_validator import (
+    from compaction_validator import (  # type: ignore[import-not-found]
         CompactionContext,
         CompactionValidator,
     )
@@ -91,9 +91,9 @@ try:
 except ImportError:
     COMPACTION_AVAILABLE = False
 
-    # Create placeholder
-    class CompactionContext:
-        def __init__(self):
+    # Create placeholder type for when module is unavailable
+    class CompactionContext:  # type: ignore[no-redef]
+        def __init__(self) -> None:
             self.has_compaction_event = False
 
 
@@ -140,9 +140,9 @@ def _write_with_retry(filepath: Path, data: str, mode: str = "w", max_retries: i
         try:
             filepath.parent.mkdir(parents=True, exist_ok=True)
             if mode == "w":
-                filepath.write_text(data)
+                filepath.write_text(data, encoding="utf-8")
             else:  # append mode
-                with open(filepath, mode) as f:
+                with open(filepath, mode, encoding="utf-8") as f:
                     f.write(data)
             return  # Success!
         except OSError as e:
@@ -965,13 +965,13 @@ class PowerSteeringChecker:
 
                         # Issue #2196: Generate failure fingerprint for loop detection
                         failed_ids = [r.consideration_id for r in blockers_to_record]
-                        current_fingerprint = turn_state.generate_failure_fingerprint(failed_ids)
+                        current_fingerprint = turn_state.generate_failure_fingerprint(failed_ids)  # type: ignore[attr-defined]
 
                         # Add fingerprint to history
-                        turn_state.failure_fingerprints.append(current_fingerprint)
+                        turn_state.failure_fingerprints.append(current_fingerprint)  # type: ignore[attr-defined]
 
                         # Check for loop (same failures repeating 3+ times)
-                        if turn_state.detect_loop(current_fingerprint, threshold=3):
+                        if turn_state.detect_loop(current_fingerprint, threshold=3):  # type: ignore[attr-defined]
                             self._log(
                                 f"Loop detected: Same failures repeating (fingerprint={current_fingerprint})",
                                 "WARNING",
@@ -979,7 +979,7 @@ class PowerSteeringChecker:
                             self._emit_progress(
                                 progress_callback,
                                 "loop_detected",
-                                f"Same issues repeating {turn_state.failure_fingerprints.count(current_fingerprint)} times",
+                                f"Same issues repeating {turn_state.failure_fingerprints.count(current_fingerprint)} times",  # type: ignore[attr-defined]
                                 {"fingerprint": current_fingerprint, "failed_ids": failed_ids},
                             )
 
@@ -2835,10 +2835,13 @@ class PowerSteeringChecker:
         return next_steps[:5]  # Limit to 5 items
 
     def _check_workflow_invocation(self, transcript: list[dict], session_id: str) -> bool:
-        """Check if workflow was properly invoked via Skill or Read tool.
+        """Check if workflow was properly invoked using Claude SDK analysis.
 
-        Validates that when ultrathink-orchestrator is triggered, the appropriate
-        workflow skill is invoked using Skill tool or Read tool fallback.
+        Uses context-aware AI analysis to detect workflow invocation patterns:
+        - Explicit Skill tool invocation
+        - Explicit Read tool invocation
+        - Implicit step-by-step workflow following
+        - Async completion (PR created for review, CI running)
 
         Issue #2040: Enforce workflow invocation compliance
 
@@ -2850,11 +2853,8 @@ class PowerSteeringChecker:
             True if workflow properly invoked or not required, False otherwise
         """
         try:
-            # Import validator
-            from workflow_invocation_validator import validate_workflow_invocation
-
-            # Convert transcript to string format for validator
-            transcript_text = self._transcript_to_text(transcript)
+            # Import SDK analysis function
+            from claude_power_steering import analyze_workflow_invocation_sync
 
             # Determine session type from state if available
             session_type = "DEVELOPMENT"  # Default
@@ -2866,30 +2866,30 @@ class PowerSteeringChecker:
             except Exception:
                 pass  # Use default
 
-            # Validate workflow invocation
-            result = validate_workflow_invocation(transcript_text, session_type)
+            # Use SDK analysis for workflow invocation validation
+            valid, reason = analyze_workflow_invocation_sync(
+                transcript, session_type, self.project_root
+            )
 
-            if not result.valid:
+            if not valid:
                 # Log violation details
                 self._log_violation(
                     "workflow_invocation",
                     {
-                        "reason": result.reason,
-                        "violation_type": result.violation_type,
-                        "evidence": result.evidence,
+                        "reason": reason or "Workflow not properly invoked",
                         "session_type": session_type,
                     },
                     session_id,
                 )
 
-            return result.valid
+            return valid
 
         except ImportError:
-            # Validator not available - fail open
+            # SDK not available - fail open
             import sys
 
             sys.stderr.write(
-                "[Power Steering] workflow_invocation_validator not found, skipping check\n"
+                "[Power Steering] claude_power_steering not available, skipping workflow check\n"
             )
             return True
         except Exception as e:
@@ -2971,7 +2971,7 @@ class PowerSteeringChecker:
                 }
             )
 
-            log_file.write_text(json.dumps(violations, indent=2))
+            log_file.write_text(json.dumps(violations, indent=2), encoding="utf-8")
         except Exception:
             pass  # Fail silently
 
@@ -3745,15 +3745,19 @@ class PowerSteeringChecker:
 
                         # First check for negation patterns (completion statements)
                         # These should PASS the check (return True)
+                        negation_matched = False
                         for pattern in negation_patterns:
                             if re.search(pattern, text, re.IGNORECASE):
                                 self._log(
                                     "Completion statement found: negation pattern matched",
                                     "INFO",
                                 )
-                                # Continue checking other messages (don't return immediately)
-                                # Only STRUCTURED next steps should fail the check
+                                negation_matched = True
                                 break
+
+                        # Skip structured detection for this message if negation matched
+                        if negation_matched:
+                            continue
 
                         # Check for STRUCTURED next steps (bulleted/numbered lists)
                         # These indicate CONCRETE remaining work
