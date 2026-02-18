@@ -217,8 +217,9 @@ class HierarchicalMemory:
         elif isinstance(db_path, str):
             db_path = Path(db_path)
 
-        self.db_path = db_path
-        # Create parent directory only - Kuzu creates the DB directory itself
+        # Kuzu needs a path to its database directory (it creates it)
+        # If the path already exists as a regular directory without Kuzu files, append /kuzu_db
+        self.db_path = db_path / "kuzu_db" if db_path.is_dir() and not (db_path / "lock").exists() else db_path
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
         self.database = kuzu.Database(str(self.db_path))

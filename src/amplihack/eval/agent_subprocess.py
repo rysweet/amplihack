@@ -123,7 +123,8 @@ def main():
 
     # Execute phase
     if args.phase == "learning":
-        result = learning_phase(input_data, args.agent_name)
+        articles = input_data.get("articles", input_data) if isinstance(input_data, dict) else input_data
+        result = learning_phase(articles, args.agent_name)
     else:  # testing
         result = testing_phase(input_data, args.agent_name)
 
