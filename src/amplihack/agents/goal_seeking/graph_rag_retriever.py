@@ -64,7 +64,7 @@ class GraphRAGRetriever:
             limit: Maximum nodes to return
 
         Returns:
-            List of matching KnowledgeNode instances
+            List of matching KnowledgeNode instances with metadata
         """
         if not keyword or not keyword.strip():
             return []
@@ -94,6 +94,7 @@ class GraphRAGRetriever:
             while result.has_next():
                 row = result.get_next()
                 tags = json.loads(row[5]) if row[5] else []
+                metadata = json.loads(row[6]) if row[6] else {}
                 nodes.append(
                     KnowledgeNode(
                         node_id=row[0],
@@ -104,6 +105,7 @@ class GraphRAGRetriever:
                         source_id=row[4] or "",
                         created_at=row[7] or "",
                         tags=tags,
+                        metadata=metadata,
                     )
                 )
 
@@ -132,7 +134,7 @@ class GraphRAGRetriever:
                 MATCH (a:SemanticMemory {memory_id: $nid})-[r:SIMILAR_TO]->(b:SemanticMemory)
                 WHERE r.weight >= $min_sim AND b.agent_id = $agent_id
                 RETURN b.memory_id, b.concept, b.content, b.confidence,
-                       b.source_id, b.tags, b.created_at, r.weight
+                       b.source_id, b.tags, b.created_at, r.weight, b.metadata
                 ORDER BY r.weight DESC
                 """,
                 {
@@ -145,6 +147,7 @@ class GraphRAGRetriever:
             while result.has_next():
                 row = result.get_next()
                 tags = json.loads(row[5]) if row[5] else []
+                metadata = json.loads(row[8]) if len(row) > 8 and row[8] else {}
                 node = KnowledgeNode(
                     node_id=row[0],
                     category=MemoryCategory.SEMANTIC,
@@ -154,6 +157,7 @@ class GraphRAGRetriever:
                     source_id=row[4] or "",
                     created_at=row[6] or "",
                     tags=tags,
+                    metadata=metadata,
                 )
                 results.append((node, row[7]))
 

@@ -189,11 +189,73 @@ class LearningAgent:
                 # Continue storing other facts even if one fails
                 continue
 
+        # Generate and store a summary concept map for knowledge organization
+        if facts and stored_count > 0:
+            self._store_summary_concept_map(content, facts, episode_id)
+
         return {
             "facts_extracted": len(facts),
             "facts_stored": stored_count,
             "content_summary": content[:200],
         }
+
+    def _store_summary_concept_map(
+        self, content: str, facts: list[dict], episode_id: str = ""
+    ) -> None:
+        """Generate and store a summary concept map for knowledge organization.
+
+        Uses one LLM call to create a brief organizational overview of what
+        was learned from the content. Stored as a SUMMARY node to help the
+        agent explain the overall structure of its knowledge.
+
+        Args:
+            content: Original content that was learned
+            facts: List of extracted fact dicts
+            episode_id: Optional source episode ID
+        """
+        fact_list = "\n".join(
+            f"- [{f.get('context', 'General')}] {f.get('fact', '')}" for f in facts[:15]
+        )
+
+        prompt = f"""Given these extracted facts, create a brief summary of the topics covered.
+List the main themes/categories and how they relate to each other.
+
+Facts:
+{fact_list}
+
+Return a concise summary (2-4 sentences) describing what topics this content covers
+and how they connect. Format: "This content covers: 1) ..., 2) ..., 3) ..."
+"""
+        try:
+            response = litellm.completion(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a knowledge organizer. Create brief, clear summaries.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.2,
+            )
+
+            summary = response.choices[0].message.content.strip()
+
+            # Store as a special SUMMARY node
+            store_kwargs: dict[str, Any] = {
+                "context": "SUMMARY",
+                "fact": summary,
+                "confidence": 0.95,
+                "tags": ["summary", "concept_map"],
+            }
+            if self.use_hierarchical and episode_id:
+                store_kwargs["source_id"] = episode_id
+
+            self.memory.store_fact(**store_kwargs)
+            logger.debug("Stored summary concept map: %s", summary[:100])
+
+        except Exception as e:
+            logger.debug("Failed to generate summary concept map: %s", e)
 
     def _detect_temporal_metadata(self, content: str) -> dict[str, Any]:
         """Detect dates and temporal markers in content using LLM.
@@ -328,6 +390,11 @@ Rules:
             else:
                 # Fallback to get_all_facts if subgraph empty
                 relevant_facts = self.memory.get_all_facts(limit=50)
+
+            # Also retrieve SUMMARY nodes for birds-eye knowledge overview
+            summary_nodes = self._get_summary_nodes()
+            if summary_nodes:
+                intent["summary_context"] = "\n".join(f"- {s['outcome']}" for s in summary_nodes)
         else:
             # Original smart retrieval logic
             stats = self.memory.get_statistics()
@@ -364,6 +431,43 @@ Rules:
         )
 
         return answer
+
+    def _get_summary_nodes(self) -> list[dict[str, Any]]:
+        """Retrieve SUMMARY concept map nodes from memory.
+
+        Returns:
+            List of summary fact dicts with context and outcome fields.
+        """
+        if not (self.use_hierarchical and hasattr(self.memory, "memory")):
+            return []
+
+        try:
+            result = self.memory.memory.connection.execute(
+                """
+                MATCH (m:SemanticMemory)
+                WHERE m.agent_id = $agent_id AND m.concept = 'SUMMARY'
+                RETURN m.memory_id, m.concept, m.content, m.confidence
+                ORDER BY m.created_at DESC
+                LIMIT 5
+                """,
+                {"agent_id": self.agent_name},
+            )
+
+            summaries = []
+            while result.has_next():
+                row = result.get_next()
+                summaries.append(
+                    {
+                        "context": row[1],
+                        "outcome": row[2],
+                        "confidence": row[3],
+                    }
+                )
+            return summaries
+
+        except Exception as e:
+            logger.debug("Failed to retrieve summary nodes: %s", e)
+            return []
 
     def _detect_intent(self, question: str) -> dict[str, Any]:
         """Detect question intent using a single LLM call.
@@ -585,22 +689,29 @@ Respond with a JSON list like:
         """
         intent = intent or {}
 
-        # Build context string - include temporal metadata when available
+        # Build context string - include temporal metadata and source labels when available
         if intent.get("needs_temporal"):
             context_str = "Relevant facts (ordered chronologically where possible):\n"
             for i, fact in enumerate(context[:20], 1):
                 meta = fact.get("metadata", {})
                 time_marker = ""
+                source_marker = ""
                 if meta.get("source_date"):
                     time_marker = f" [Date: {meta['source_date']}]"
                 if meta.get("temporal_order"):
                     time_marker += f" [{meta['temporal_order']}]"
-                context_str += f"{i}. Context: {fact['context']}{time_marker}\n"
+                if meta.get("source_label"):
+                    source_marker = f" [Source: {meta['source_label']}]"
+                context_str += f"{i}. Context: {fact['context']}{time_marker}{source_marker}\n"
                 context_str += f"   Fact: {fact['outcome']}\n\n"
         else:
             context_str = "Relevant facts:\n"
             for i, fact in enumerate(context[:20], 1):
-                context_str += f"{i}. Context: {fact['context']}\n"
+                meta = fact.get("metadata", {})
+                source_marker = ""
+                if meta.get("source_label"):
+                    source_marker = f" [Source: {meta['source_label']}]"
+                context_str += f"{i}. Context: {fact['context']}{source_marker}\n"
                 context_str += f"   Fact: {fact['outcome']}\n\n"
 
         # Build prompt based on question level
@@ -640,15 +751,36 @@ Respond with a JSON list like:
                 "(gold medals vs total medals vs other)\n"
             )
 
+        # Add summary context if available (birds-eye view of knowledge)
+        summary_section = ""
+        if intent.get("summary_context"):
+            summary_section = f"""
+Knowledge Overview (what was learned):
+{intent["summary_context"]}
+"""
+
+        # Add contradiction-specific instructions
+        contradiction_instructions = ""
+        intent_type = intent.get("intent", "simple_recall")
+        if intent_type == "contradiction_resolution":
+            contradiction_instructions = (
+                "\n\nIMPORTANT - HANDLING CONFLICTING INFORMATION:\n"
+                "- Present both viewpoints with their sources if available\n"
+                "- Explain why they might differ (different time periods, different measurements, etc.)\n"
+                "- Let the questioner decide which to trust\n"
+                "- If one source seems more reliable or recent, note that\n"
+            )
+
         prompt = f"""Answer this question using the provided facts.
 
 Question: {question}
 Level: {question_level} - {instruction}
-{extra_instructions}
-
+{extra_instructions}{contradiction_instructions}
+{summary_section}
 {context_str}
 
-Provide a clear, well-reasoned answer. If the facts don't fully answer the question, say so.
+When answering, cite your sources where possible. If multiple facts support your answer, explain how they connect. If you're uncertain about something, say so and explain what additional information would help.
+If the facts don't fully answer the question, say so.
 """
 
         try:
@@ -657,8 +789,10 @@ Provide a clear, well-reasoned answer. If the facts don't fully answer the quest
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are a knowledgeable assistant that synthesizes information. "
-                        "When doing math, always show your work and verify calculations.",
+                        "content": "You are a knowledgeable assistant that synthesizes information "
+                        "from multiple sources. When doing math, always show your work and verify "
+                        "calculations. When citing information, reference the source if available. "
+                        "Connect related facts to build comprehensive explanations.",
                     },
                     {"role": "user", "content": prompt},
                 ],
