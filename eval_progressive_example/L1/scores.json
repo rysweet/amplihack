@@ -1,0 +1,33 @@
+{
+  "average": 1.0,
+  "count": 3,
+  "details": [
+    {
+      "question": "How many total medals does Norway have as of February 15?",
+      "level": "L1",
+      "reasoning_type": "direct_recall",
+      "expected": "26 total medals (12 gold, 8 silver, 6 bronze)",
+      "actual": "Based on the provided facts, **Norway has 26 total medals as of February 15, 2026**.\n\nThis is explicitly stated in Fact 2, and is further confirmed by Fact 7, which breaks down Norway's medals as 12 gold, 8 silver, and 6 bronze medals (12 + 8 + 6 = 26 total).\n\nNorway leads the medal standings at the 2026 Winter Olympics in Milan-Cortina as of this date.",
+      "score": 1.0,
+      "reasoning": "Perfect answer. The agent correctly identifies Norway has 26 total medals as of February 15, provides the exact breakdown (12 gold, 8 silver, 6 bronze) matching the expected answer, cites the relevant facts, and includes verification by showing the math adds up correctly. All information is accurate and complete for this L1 recall question."
+    },
+    {
+      "question": "Which country is in second place?",
+      "level": "L1",
+      "reasoning_type": "direct_recall",
+      "expected": "Italy with 22 total medals",
+      "actual": "Based on the provided facts, **Italy is in second place** at the 2026 Winter Olympics medal standings as of February 15, 2026, with 22 total medals.\n\nThis is explicitly stated in Fact 1, which indicates that Italy holds the second position behind Norway, who leads with 26 total medals.",
+      "score": 1.0,
+      "reasoning": "The agent correctly identifies Italy as being in second place with 22 total medals, which matches the expected answer perfectly. The agent also provides appropriate context by mentioning Norway's first place position with 26 medals and cites the source (Fact 1). This is a complete and accurate L1 recall answer."
+    },
+    {
+      "question": "When do the 2026 Winter Olympics end?",
+      "level": "L1",
+      "reasoning_type": "direct_recall",
+      "expected": "February 21, 2026",
+      "actual": "Based on the provided facts, **the 2026 Winter Olympics end on February 21, 2026**.\n\nThis is explicitly stated in Fact 2, which indicates that \"The 2026 Winter Olympics continue through February 21, 2026.\" The Games are being held in Milan-Cortina, Italy.",
+      "score": 1.0,
+      "reasoning": "The agent's answer is completely correct and matches the expected answer exactly. The agent clearly states that the 2026 Winter Olympics end on February 21, 2026, which is the precise date in the expected answer. The additional context about Milan-Cortina, Italy being the host location is supplementary information that does not detract from the accuracy of the core answer. This is an L1 (Recall) question requiring direct factual accuracy, and the agent has provided it perfectly."
+    }
+  ]
+}
