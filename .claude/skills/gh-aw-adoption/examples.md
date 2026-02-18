@@ -1481,6 +1481,341 @@ gh pr checks feat/secret-validation-workflow
 gh pr checks feat/secret-validation-workflow --watch
 ```
 
+### Issue: MCP Server Launch Errors
+
+**Error**:
+
+```
+##[error]MCP server(s) failed to launch: docker-mcp
+```
+
+**Root cause**: MCP server configured in `.mcp.json` requires Docker, which isn't available in GitHub Actions.
+
+**How to fix**:
+
+**Step 1: Identify incompatible MCP servers**
+
+```bash
+# Review your .mcp.json
+cat .mcp.json
+
+# Common incompatible servers:
+# - docker-mcp (requires Docker)
+# - filesystem with host paths (sandboxed environment)
+```
+
+**Step 2: Remove incompatible servers from .mcp.json**
+
+```json
+{
+  "mcpServers": {
+    "workiq": {
+      "command": "npx",
+      "args": ["-y", "@microsoft/workiq", "mcp"]
+    }
+  }
+}
+```
+
+**Step 3: Test locally before committing**
+
+```bash
+# Test if MCP server works in restricted environment
+uvx docker-mcp  # Should fail if it won't work in CI
+
+# Only keep servers that work:
+# ✅ workiq (npm-based)
+# ✅ github (API-based)
+# ✅ safeoutputs (built-in)
+```
+
+**Step 4: Commit and push**
+
+```bash
+git add .mcp.json
+git commit -m "fix: Remove docker-mcp server for CI compatibility"
+git push
+```
+
+### Issue: Lockdown Mode Without Custom Token
+
+**Error**:
+
+```
+Lockdown mode is enabled (lockdown: true) but no custom GitHub token is configured.
+```
+
+**Root cause**: Workflow has `lockdown: true` but no `GH_AW_GITHUB_TOKEN` secret set.
+
+**How to fix (Option 1: Remove lockdown mode - Recommended)**
+
+Most workflows don't need lockdown mode. The default `GITHUB_TOKEN` works fine.
+
+**Step 1: Remove lockdown from workflow**
+
+```yaml
+# Before
+tools:
+  github:
+    toolsets: [issues, discussions]
+    lockdown: true  # ← Remove this
+
+# After
+tools:
+  github:
+    toolsets: [issues, discussions]
+```
+
+**Step 2: Commit and push**
+
+```bash
+git add .github/workflows/your-workflow.md
+git commit -m "fix: Remove unnecessary lockdown mode"
+git push
+```
+
+**How to fix (Option 2: Configure custom token for enhanced security)**
+
+Only use this if you need enhanced audit trail or cross-repo operations.
+
+**Step 1: Create fine-grained PAT**
+
+```bash
+# Go to GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens
+# Create token with:
+# - Repository access: Your repository
+# - Permissions: issues (write), discussions (write)
+```
+
+**Step 2: Add as repository secret**
+
+```bash
+gh secret set GH_AW_GITHUB_TOKEN --body "github_pat_XXX" --repo owner/repo
+```
+
+**Step 3: Verify workflow runs**
+
+```bash
+gh run list --workflow=your-workflow.lock.yml --limit 1
+```
+
+### Issue: Missing API Keys for Engine
+
+**Error**:
+
+```
+Neither CODEX_API_KEY nor OPENAI_API_KEY secret is set
+```
+
+**Root cause**: Workflow uses `engine: codex` which requires OpenAI API key.
+
+**How to fix (Option 1: Switch to Copilot - Recommended)**
+
+**Step 1: Change engine in workflow**
+
+```yaml
+# Before
+engine: codex
+
+# After
+engine: copilot  # No API key required
+```
+
+**Step 2: Commit and push**
+
+```bash
+git add .github/workflows/your-workflow.md
+git commit -m "fix: Switch from codex to copilot engine"
+git push
+```
+
+**How to fix (Option 2: Configure API key)**
+
+Only if you specifically need OpenAI/Codex.
+
+**Step 1: Get API key from OpenAI**
+
+```bash
+# Visit https://platform.openai.com/api-keys
+# Create new secret key
+```
+
+**Step 2: Add as repository secret**
+
+```bash
+gh secret set OPENAI_API_KEY --body "sk-..." --repo owner/repo
+```
+
+### Issue: Permissions vs Safe-Outputs Mismatch
+
+**Error at compile time**:
+
+```
+Strict mode: Direct write permissions not allowed. Use safe-outputs instead.
+```
+
+**Root cause**: Workflow has `issues: write` or `discussions: write` in permissions. gh-aw uses safe-outputs for write operations, not direct permissions.
+
+**How to fix**:
+
+**Step 1: Understand the gh-aw permission model**
+
+```yaml
+# ❌ WRONG - Direct write permissions (blocked in strict mode)
+permissions:
+  issues: write
+  discussions: write
+
+# ✅ CORRECT - Read permissions + safe-outputs
+permissions:
+  contents: read
+  issues: read
+
+safe-outputs:
+  create-issue:
+    max: 5
+  create-discussion:
+    max: 1
+```
+
+**Step 2: Convert write permissions to safe-outputs**
+
+```yaml
+# Before
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+# After
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+safe-outputs:
+  create-issue:
+    max: 10
+  update-issue:
+    max: 20
+  create-pull-request:
+    max: 5
+```
+
+**Step 3: Verify compilation**
+
+```bash
+gh aw compile your-workflow --validate
+# Should show: Compilation successful ✅
+```
+
+**Step 4: Commit and push**
+
+```bash
+git add .github/workflows/your-workflow.md
+git commit -m "fix: Use safe-outputs instead of direct write permissions"
+git push
+```
+
+### Issue: Python Dependency Conflicts
+
+**Error**:
+
+```
+AttributeError: module 'typer' has no attribute 'rich_utils'
+```
+
+**Root cause**: Incompatible versions of Python dependencies (safety 3.x has typer issues).
+
+**How to fix**:
+
+**Step 1: Pin compatible versions in workflow**
+
+```yaml
+# Before
+- name: Install security tools
+  run: pip install safety bandit pylint
+
+# After
+- name: Install security tools
+  run: |
+    pip install 'safety==2.3.5'
+    pip install 'bandit==1.7.6' 'pylint==3.0.3'
+```
+
+**Step 2: Add conditional tool checks**
+
+```bash
+# Check tool availability before use
+if command -v safety &> /dev/null; then
+  safety check
+else
+  echo "⚠️ safety not available, skipping security scan"
+fi
+```
+
+**Step 3: Commit and push**
+
+```bash
+git add .github/workflows/your-workflow.md
+git commit -m "fix: Pin compatible Python tool versions"
+git push
+```
+
+### Issue: Misunderstanding GITHUB_TOKEN
+
+**Confusion**: "Do I need to set GITHUB_TOKEN as a secret?"
+
+**Answer**: **NO!** `GITHUB_TOKEN` is automatically available in all GitHub Actions workflows.
+
+**How it works**:
+
+**Step 1: Understand automatic token injection**
+
+```yaml
+# ❌ WRONG - Manually setting GITHUB_TOKEN (unnecessary!)
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+# ✅ CORRECT - Just declare permissions, token is automatic
+permissions:
+  contents: read
+  issues: read
+```
+
+**Step 2: The token is automatically injected by GitHub**
+
+- Token has permissions based on your `permissions:` declaration
+- Token is scoped to the repository and workflow run
+- Token expires when workflow completes
+
+**Step 3: When you DO need a custom token**
+
+Only in these specific cases:
+
+```yaml
+# Custom token needed for:
+# - Lockdown mode (lockdown: true)
+# - Cross-repository operations
+# - Enhanced audit requirements
+
+# Then use GH_AW_GITHUB_TOKEN (NOT GITHUB_TOKEN)
+tools:
+  github:
+    lockdown: true
+```
+
+**Step 4: Troubleshooting GITHUB_TOKEN errors**
+
+If you see GITHUB_TOKEN errors:
+
+```bash
+# 1. Check permissions are declared
+# 2. Check if lockdown mode is enabled (needs custom token)
+# 3. Verify safe-outputs are configured correctly
+# 4. Ensure you're NOT setting GITHUB_TOKEN as a secret
+```
+
 ---
 
 ## CI Integration Patterns
