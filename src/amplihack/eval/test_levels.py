@@ -204,7 +204,7 @@ LEVEL_3 = TestLevel(
         ),
         TestQuestion(
             question="Which country improved their gold medal count the most from Day 7 to Day 10?",
-            expected_answer="Italy improved most with +4 golds (5 to 9), compared to Norway +5 total and US +2",
+            expected_answer="Norway improved most with +5 golds (8 to 13), followed by Italy +4 (5 to 9) and US +2 (4 to 6)",
             level="L3",
             reasoning_type="temporal_comparison"
         ),
