@@ -155,7 +155,7 @@ public class MessageProcessorService : BackgroundService
                 var processor = scope.ServiceProvider.GetRequiredService<IMessageProcessor>();
 
                 var message = await queue.DequeueAsync(stoppingToken);
-                
+
                 if (message != null)
                 {
                     await ProcessWithRetryAsync(processor, message, stoppingToken);
@@ -188,7 +188,7 @@ public class MessageProcessorService : BackgroundService
         CancellationToken ct)
     {
         const int maxRetries = 3;
-        
+
         for (int attempt = 1; attempt <= maxRetries; attempt++)
         {
             try
@@ -204,7 +204,7 @@ public class MessageProcessorService : BackgroundService
                 _logger.LogWarning(ex,
                     "Transient error processing message {MessageId} (attempt {Attempt}/{Max})",
                     message.Id, attempt, maxRetries);
-                
+
                 await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, attempt)), ct);
             }
             catch (Exception ex)
@@ -212,7 +212,7 @@ public class MessageProcessorService : BackgroundService
                 _logger.LogError(ex,
                     "Failed to process message {MessageId} after {Max} attempts",
                     message.Id, maxRetries);
-                
+
                 // Move to dead letter queue
                 throw;
             }
@@ -222,6 +222,7 @@ public class MessageProcessorService : BackgroundService
 ```
 
 **Key Points**:
+
 - Outer loop never crashes (except on cancellation)
 - Scoped DI for each message (prevent memory leaks)
 - Retry logic with exponential backoff
@@ -279,11 +280,11 @@ public class DataSyncService : BackgroundService
         var syncService = scope.ServiceProvider.GetRequiredService<ISyncService>();
 
         var sw = Stopwatch.StartNew();
-        
+
         try
         {
             var result = await syncService.SyncAsync(ct);
-            
+
             _logger.LogInformation(
                 "Data sync completed in {Duration}ms: {RecordsSynced} records",
                 sw.ElapsedMilliseconds,
@@ -299,6 +300,7 @@ public class DataSyncService : BackgroundService
 ```
 
 **Key Points**:
+
 - PeriodicTimer for scheduled execution (.NET 6+)
 - Each job execution isolated in try/catch
 - Job failures don't crash the service
@@ -334,18 +336,18 @@ public class EventPublisherService : BackgroundService
     private async Task PublishEventAsync(DomainEvent evt, CancellationToken ct)
     {
         const int maxRetries = 3;
-        
+
         for (int attempt = 1; attempt <= maxRetries; attempt++)
         {
             try
             {
                 await _eventBus.PublishAsync(evt, ct);
-                
+
                 _logger.LogInformation(
                     "Event {EventType} (ID: {EventId}) published successfully",
                     evt.GetType().Name,
                     evt.Id);
-                
+
                 await _queue.MarkCompletedAsync(evt.Id, ct);
                 return;
             }
@@ -354,7 +356,7 @@ public class EventPublisherService : BackgroundService
                 _logger.LogWarning(ex,
                     "Transient error publishing event {EventId} (attempt {Attempt}/{Max})",
                     evt.Id, attempt, maxRetries);
-                
+
                 var delay = TimeSpan.FromSeconds(Math.Pow(2, attempt));
                 await Task.Delay(delay, ct);
             }
@@ -365,10 +367,10 @@ public class EventPublisherService : BackgroundService
                     evt.GetType().Name,
                     evt.Id,
                     maxRetries);
-                
+
                 // Move to dead letter queue
                 await _queue.MoveToDeadLetterAsync(evt.Id, ex.Message, ct);
-                
+
                 // Critical events should alert
                 if (IsCriticalEvent(evt))
                 {
@@ -388,6 +390,7 @@ public class EventPublisherService : BackgroundService
 ```
 
 **Key Points**:
+
 - Fire-and-forget with proper exception boundaries
 - Retry only transient failures
 - Dead letter queue for permanent failures
@@ -414,7 +417,7 @@ public class BlobStorageService
         try
         {
             var blobClient = _containerClient.GetBlobClient(blobName);
-            
+
             var response = await blobClient.UploadAsync(
                 content,
                 overwrite: false,
@@ -458,7 +461,7 @@ public class BlobStorageService
         {
             var blobClient = _containerClient.GetBlobClient(blobName);
             var response = await blobClient.DownloadStreamingAsync(cancellationToken: ct);
-            
+
             return Result<Stream>.Success(response.Value.Content);
         }
         catch (RequestFailedException ex) when (ex.Status == 404)
@@ -506,7 +509,7 @@ public class ServiceBusPublisher
             };
 
             await _sender.SendMessageAsync(serviceBusMessage, ct);
-            
+
             _logger.LogInformation(
                 "Message {MessageId} published to Service Bus",
                 serviceBusMessage.MessageId);
@@ -554,14 +557,14 @@ public class OrderRepository
         CancellationToken ct = default)
     {
         const int maxRetries = 3;
-        
+
         for (int attempt = 1; attempt <= maxRetries; attempt++)
         {
             try
             {
                 _context.Orders.Update(order);
                 await _context.SaveChangesAsync(ct);
-                
+
                 return Result<Order>.Success(order);
             }
             catch (DbUpdateConcurrencyException ex) when (attempt < maxRetries)
@@ -572,7 +575,7 @@ public class OrderRepository
 
                 // Refresh entity from database
                 await ex.Entries.Single().ReloadAsync(ct);
-                
+
                 // Optionally: merge changes or let business logic decide
                 // For now, retry with fresh data
             }
@@ -581,7 +584,7 @@ public class OrderRepository
                 _logger.LogError(ex,
                     "Concurrency conflict persists for order {OrderId} after {Max} attempts",
                     order.Id, maxRetries);
-                
+
                 return Result<Order>.Failure(
                     "This record was modified by another user. Please refresh and try again.");
             }
@@ -607,7 +610,7 @@ public class OrderService
         CancellationToken ct = default)
     {
         await using var transaction = await _context.Database.BeginTransactionAsync(ct);
-        
+
         try
         {
             // Step 1: Create order
@@ -627,7 +630,7 @@ public class OrderService
 
                 product.Stock -= item.Quantity;
             }
-            
+
             await _context.SaveChangesAsync(ct);
 
             // Step 3: Create payment record
@@ -636,16 +639,16 @@ public class OrderService
             await _context.SaveChangesAsync(ct);
 
             await transaction.CommitAsync(ct);
-            
+
             _logger.LogInformation("Order {OrderId} placed successfully", order.Id);
             return Result<Order>.Success(order);
         }
         catch (DbUpdateException ex)
         {
             await transaction.RollbackAsync(ct);
-            
+
             _logger.LogError(ex, "Failed to place order, transaction rolled back");
-            
+
             if (ex.InnerException is SqlException sqlEx)
             {
                 var message = sqlEx.Number switch
@@ -654,7 +657,7 @@ public class OrderService
                     2601 or 2627 => "Duplicate order detected",
                     _ => "A database error occurred"
                 };
-                
+
                 return Result<Order>.Failure(message);
             }
 
@@ -663,7 +666,7 @@ public class OrderService
         catch (Exception ex)
         {
             await transaction.RollbackAsync(ct);
-            
+
             _logger.LogError(ex, "Unexpected error placing order");
             throw;
         }
@@ -712,7 +715,7 @@ public class ExceptionVsResultBenchmark
     {
         if (!email.Contains("@"))
             return Result<string>.Failure("Invalid email");
-        
+
         return Result<string>.Success(email);
     }
 }
@@ -780,7 +783,7 @@ try
 catch (Exception ex)
 {
     _logger.LogError(ex, "Audit logging failed for {EventType}", auditEvent.Type);
-    
+
     // Decision: Is this critical?
     if (auditEvent.IsCritical)
         throw; // Fail the request if audit is critical
@@ -816,7 +819,7 @@ catch (SqlException ex)
 catch (SqlException ex)
 {
     throw new DatabaseException(
-        $"Database error during {operation}", 
+        $"Database error during {operation}",
         ex); // Inner exception preserved
 }
 ```
@@ -824,6 +827,7 @@ catch (SqlException ex)
 ---
 
 **References**:
+
 - [.NET Performance Tips](https://learn.microsoft.com/en-us/dotnet/core/performance/)
 - [Azure SDK Design Guidelines](https://azure.github.io/azure-sdk/general_introduction.html)
 - [EF Core: Concurrency Conflicts](https://learn.microsoft.com/en-us/ef/core/saving/concurrency)

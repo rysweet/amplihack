@@ -95,12 +95,14 @@ When you create a shadow with `~/repos/my-lib:myorg/my-lib`:
 ### Installation
 
 **For Amplifier Users** (native integration):
+
 ```bash
 # Shadow tool is built-in - no installation needed
 amplifier run --bundle amplihack
 ```
 
 **For Other Agents** (standalone CLI):
+
 ```bash
 # Install via uvx (recommended)
 uvx amplifier-shadow --version
@@ -113,6 +115,7 @@ amplifier-shadow --version
 ```
 
 **Prerequisites**:
+
 - Docker or Podman installed and running
 - Git installed
 
@@ -173,6 +176,7 @@ if result.ready:
 ```
 
 **Features**:
+
 - Automatic API key passthrough
 - Built-in smoke tests and health checks
 - Integrated with other Amplifier tools
@@ -328,6 +332,7 @@ amplifier-shadow status shadow-xxx
 Problem: UV may bypass git URL rewriting for cached packages.
 
 Solution:
+
 ```bash
 # Option 1: Install from pre-cloned workspace (recommended)
 amplifier-shadow exec xxx "pip install -e /workspace/org/lib"
@@ -339,6 +344,7 @@ amplifier-shadow exec xxx "rm -rf /tmp/uv-cache && uv tool install git+https://g
 **"PEP 668: Externally-Managed Environment"**:
 
 Solution: Always use virtual environments inside shadow:
+
 ```bash
 amplifier-shadow exec xxx "
   cd /workspace &&
@@ -351,6 +357,7 @@ amplifier-shadow exec xxx "
 **"Container image not found"**:
 
 Solution: Build the image locally:
+
 ```bash
 amplifier-shadow build
 ```
@@ -358,6 +365,7 @@ amplifier-shadow build
 **"/workspace permission denied"**:
 
 Solution: Use `$HOME` or `/tmp` as alternatives:
+
 ```bash
 amplifier-shadow exec xxx "cd $HOME && git clone ..."
 ```
@@ -381,6 +389,7 @@ COPY my-test-script.sh /usr/local/bin/
 ```
 
 Build and use:
+
 ```bash
 docker build -t my-shadow:latest .
 amplifier-shadow create --image my-shadow:latest --local ~/repos/lib:org/lib
@@ -391,6 +400,7 @@ amplifier-shadow create --image my-shadow:latest --local ~/repos/lib:org/lib
 For agents without Amplifier access, use these standalone scripts:
 
 **Script 1: Create Git Bundle** (`scripts/create-bundle.sh`):
+
 ```bash
 #!/bin/bash
 # Create git bundle snapshot of working tree
@@ -430,6 +440,7 @@ echo "Bundle created: $OUTPUT_PATH"
 ```
 
 **Script 2: Setup Shadow Container** (`scripts/setup-shadow.sh`):
+
 ```bash
 #!/bin/bash
 # Start container with Gitea and configure git URL rewriting
@@ -484,6 +495,7 @@ echo "Local source: $ORG/$REPO"
 ```
 
 **Usage**:
+
 ```bash
 # Create bundle from your repo
 ./scripts/create-bundle.sh ~/repos/my-lib /tmp/my-lib.bundle
@@ -504,7 +516,7 @@ docker exec shadow-test bash -c "
 **Example 1: Single Repository** (`docker-compose/single-repo.yml`):
 
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   shadow:
@@ -526,7 +538,7 @@ services:
 **Example 2: Multi-Repository Testing** (`docker-compose/multi-repo.yml`):
 
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   shadow-multi:
@@ -551,6 +563,7 @@ services:
 ```
 
 **Usage**:
+
 ```bash
 # Create bundles for your repos
 git -C ~/repos/core-lib bundle create snapshots/core-lib.bundle --all
@@ -575,7 +588,7 @@ docker-compose down
 **Example 3: CI Integration** (`docker-compose/ci-shadow.yml`):
 
 ```yaml
-version: '3.8'
+version: "3.8"
 
 services:
   ci-shadow:
@@ -595,6 +608,7 @@ services:
 ```
 
 **GitHub Actions Integration**:
+
 ```yaml
 # .github/workflows/shadow-test.yml
 name: Shadow Test
@@ -728,6 +742,7 @@ scenario:
 ```
 
 Run in shadow:
+
 ```bash
 amplifier-shadow create --local ~/repos/lib:org/lib --name test
 amplifier-shadow exec test "gadugi-agentic-test run test-scenario.yaml"

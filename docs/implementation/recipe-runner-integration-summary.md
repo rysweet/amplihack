@@ -7,14 +7,17 @@ This PR integrates Recipe Runner into the ultrathink orchestrator command, enabl
 ## Changes Made
 
 ### File Modified
+
 - `~/.amplihack/.claude/commands/amplihack/ultrathink.md` (global amplihack installation)
 
 ### Integration Approach
+
 Pure documentation enhancement - no new code modules required. The integration adds instructions that Claude reads and follows.
 
 ## Key Features Added
 
 ### 1. Three-Tier Execution System
+
 ```
 Tier 1: Recipe Runner (Code-Enforced)
   ↓ (ImportError or failure)
@@ -24,10 +27,12 @@ Tier 3: Markdown Workflows (Baseline Fallback)
 ```
 
 ### 2. Recipe Runner Detection
+
 - Automatic detection of `amplihack.recipes` module availability
 - Falls back gracefully if module not installed
 
 ### 3. Environment Variable Control
+
 ```bash
 # Enable Recipe Runner (default)
 export AMPLIHACK_USE_RECIPES=1  # or leave unset
@@ -37,7 +42,9 @@ export AMPLIHACK_USE_RECIPES=0
 ```
 
 ### 4. Context Passing
+
 Recipe Runner receives context from ultrathink:
+
 ```python
 run_recipe_by_name(
     "default-workflow",
@@ -50,6 +57,7 @@ run_recipe_by_name(
 ```
 
 ### 5. Error Handling
+
 - ImportError from `amplihack.recipes` → Falls back to Workflow Skills
 - Recipe execution exception → Falls back to Workflow Skills
 - Skills unavailable → Falls back to Markdown workflows
@@ -57,6 +65,7 @@ run_recipe_by_name(
 ## Documentation Created
 
 ### In This Repo
+
 1. `docs/recipes/RECIPE_RUNNER_ULTRATHINK_INTEGRATION.md` - Comprehensive how-to guide
    - Three-tier fallback system explanation
    - Usage examples for all scenarios
@@ -66,6 +75,7 @@ run_recipe_by_name(
 2. `INTEGRATION_SUMMARY.md` (this file) - Summary of changes
 
 ### Updated Files
+
 - `docs/recipes/README.md` - Added link to integration guide
 - `docs/index.md` - Added Recipe Runner section link
 
@@ -81,12 +91,14 @@ run_recipe_by_name(
 ## Testing Results
 
 ### Test 1: Recipe Runner Unavailable (Fallback Path)
+
 - **Environment**: `amplihack.recipes` module not installed
 - **Expected**: Falls back to Workflow Skills
 - **Result**: ✅ PASS - Fallback chain works as designed
 - **Evidence**: Current session successfully executing DEFAULT_WORKFLOW.md
 
 ### Test 2: Environment Variable Control
+
 - **Setting**: `AMPLIHACK_USE_RECIPES=0`
 - **Expected**: Skips Recipe Runner detection, goes directly to Workflow Skills
 - **Result**: ✅ PASS - Environment variable control documented and functional
@@ -94,18 +106,21 @@ run_recipe_by_name(
 ## Review Findings
 
 ### Reviewer Agent (Score: 8.5/10)
+
 - ✅ Strong zero-BS compliance
 - ✅ Clear fallback chain
 - ✅ Comprehensive examples
 - ⚠️ Minor: Could clarify pseudo-code vs actual code (noted for future refinement)
 
 ### Security Agent
+
 - ✅ Safe environment variable handling
 - ✅ Graceful fallback without privilege escalation
 - ⚠️ Recommendation: Document SDK adapter capabilities (noted for future enhancement)
 - ⚠️ Recommendation: Input sanitization for task descriptions (noted for Recipe Runner implementation)
 
 ### Philosophy-Guardian (Grade: B+)
+
 - ✅ Excellent ruthless simplicity
 - ✅ Clean module boundaries (brick & studs pattern)
 - ✅ All user requirements preserved
@@ -114,24 +129,29 @@ run_recipe_by_name(
 ## Implementation Notes
 
 ### Why Documentation-Only?
+
 The architect agent determined that Recipe Runner integration requires no new code modules:
+
 - Recipe Runner detection happens when Claude reads ultrathink.md
 - Fallback chain is conceptual - Claude follows the instructions
 - Environment variable is standard Python `os.environ.get()`
 - All execution methods already exist (Recipe Runner, Skills, Markdown)
 
 ### Files Outside Repository
+
 The modified file (`~/.amplihack/.claude/commands/amplihack/ultrathink.md`) lives in the global amplihack installation, not this git repository. This PR documents the changes and provides comprehensive integration documentation.
 
 ## User Impact
 
 ### For Users With Recipe Runner Installed
+
 - Automatic code-enforced workflow execution
 - Fail-fast behavior catches issues earlier
 - Context accumulation between steps
 - Improved reliability and debugging
 
 ### For Users Without Recipe Runner
+
 - No change to existing behavior
 - Workflows execute via Skills or Markdown as before
 - Can install Recipe Runner later without any migration
@@ -139,6 +159,7 @@ The modified file (`~/.amplihack/.claude/commands/amplihack/ultrathink.md`) live
 ## Next Steps
 
 After this PR is merged:
+
 1. Users can set `AMPLIHACK_USE_RECIPES=0` to test prompt-based execution
 2. Recipe Runner module development can proceed independently
 3. Integration guide helps users understand the three-tier system

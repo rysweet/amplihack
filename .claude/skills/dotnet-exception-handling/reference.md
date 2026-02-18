@@ -23,17 +23,20 @@ Comprehensive reference for .NET exception handling investigation and remediatio
 **Problem**: Catching base `Exception` type instead of specific exceptions.
 
 **Why It's Bad**:
+
 - Masks programming errors (NullReferenceException, ArgumentException)
 - Makes debugging difficult
 - Hides unexpected failures
 - Violates fail-fast principle
 
 **Detection Pattern**:
+
 ```
 catch \(Exception[^\)]*\)
 ```
 
 **Common Locations**:
+
 - Background workers
 - Service layer methods
 - Generic repositories
@@ -41,6 +44,7 @@ catch \(Exception[^\)]*\)
 **Severity**: HIGH
 
 **Fix**: Catch only specific exceptions you can handle:
+
 ```csharp
 // BAD
 try { await ProcessAsync(); }
@@ -59,17 +63,20 @@ catch (HttpRequestException ex) { /* Handle HTTP errors */ }
 **Problem**: Empty catch blocks that hide errors.
 
 **Why It's Bad**:
+
 - Silent failures in production
 - No observability of issues
 - Corrupted state continues executing
 - Impossible to diagnose problems
 
 **Detection Pattern**:
+
 ```
 catch[^{]*\{\s*(//[^\n]*)?\s*\}
 ```
 
 **Common Locations**:
+
 - Event publishing code
 - Cleanup/disposal code
 - Legacy migration code
@@ -77,6 +84,7 @@ catch[^{]*\{\s*(//[^\n]*)?\s*\}
 **Severity**: HIGH
 
 **Fix**: Always log exceptions at minimum:
+
 ```csharp
 // BAD
 try { await PublishEventAsync(evt); }
@@ -84,8 +92,8 @@ catch { /* Ignore event failures */ }
 
 // GOOD
 try { await PublishEventAsync(evt); }
-catch (Exception ex) 
-{ 
+catch (Exception ex)
+{
     Logger.LogError(ex, "Event publishing failed for {EventType}", evt.GetType().Name);
     throw; // Re-throw if critical
 }
@@ -98,17 +106,20 @@ catch (Exception ex)
 **Problem**: Re-throwing with `throw ex;` resets the stack trace.
 
 **Why It's Bad**:
+
 - Loses original stack trace
 - Makes debugging impossible
 - Hides root cause location
 - Breaks exception analysis tools
 
 **Detection Pattern**:
+
 ```
 throw ex;
 ```
 
 **Common Locations**:
+
 - Legacy code
 - Refactored methods
 - Copy-pasted exception handlers
@@ -116,6 +127,7 @@ throw ex;
 **Severity**: MEDIUM
 
 **Fix**: Use `throw;` to preserve stack trace:
+
 ```csharp
 // BAD
 catch (Exception ex)
@@ -139,6 +151,7 @@ catch (Exception ex)
 **Problem**: Defensive try/catch blocks throughout codebase.
 
 **Why It's Bad**:
+
 - Clutters code (200+ lines in typical projects)
 - Hides programming errors
 - Duplicates exception handling logic
@@ -147,6 +160,7 @@ catch (Exception ex)
 **Detection**: Manual code review for excessive try/catch density.
 
 **Common Locations**:
+
 - Every controller action
 - Every service method
 - Repository methods
@@ -154,6 +168,7 @@ catch (Exception ex)
 **Severity**: MEDIUM
 
 **Fix**: Use global exception handler instead:
+
 ```csharp
 // BAD - In every controller action
 [HttpPost]
@@ -186,6 +201,7 @@ public async Task<IActionResult> CreateUser(UserDto dto)
 **Problem**: Throwing exceptions for expected business validation.
 
 **Why It's Bad**:
+
 - Performance overhead (exceptions are expensive)
 - Semantic confusion (not exceptional)
 - Stack trace pollution in logs
@@ -194,6 +210,7 @@ public async Task<IActionResult> CreateUser(UserDto dto)
 **Detection**: Look for validation logic throwing exceptions.
 
 **Common Locations**:
+
 - Input validation
 - State machine transitions
 - Business rule checks
@@ -201,6 +218,7 @@ public async Task<IActionResult> CreateUser(UserDto dto)
 **Severity**: MEDIUM
 
 **Fix**: Use Result<T> pattern for validation:
+
 ```csharp
 // BAD
 public void TransitionState(State from, State to)
@@ -215,7 +233,7 @@ public Result<bool> CanTransitionState(State from, State to)
 {
     if (!IsValidTransition(from, to))
         return Result<bool>.Failure($"Cannot transition from {from} to {to}");
-    
+
     return Result<bool>.Success(true);
 }
 ```
@@ -227,17 +245,20 @@ public Result<bool> CanTransitionState(State from, State to)
 **Problem**: Not awaiting async methods, losing exceptions.
 
 **Why It's Bad**:
+
 - Exceptions lost on background thread
 - Synchronization context issues
 - Race conditions
 - Unobserved task exceptions
 
 **Detection Pattern**:
+
 ```
 Task\w+\([^;]*\);(?!\s*await)
 ```
 
 **Common Locations**:
+
 - Event handlers
 - Fire-and-forget operations
 - Background initialization
@@ -245,6 +266,7 @@ Task\w+\([^;]*\);(?!\s*await)
 **Severity**: HIGH
 
 **Fix**: Always await async calls:
+
 ```csharp
 // BAD
 public void OnMessageReceived(Message msg)
@@ -266,17 +288,20 @@ public async Task OnMessageReceived(Message msg)
 **Problem**: Fire-and-forget tasks with no exception handling.
 
 **Why It's Bad**:
+
 - Silent failures in background work
 - No observability
 - Corrupted state
 - Lost critical operations (audit logs, events)
 
 **Detection Pattern**:
+
 ```
 Task\.Run\(|Task\.Factory\.StartNew
 ```
 
 **Common Locations**:
+
 - Background workers
 - Event publishing
 - Cache warming
@@ -285,6 +310,7 @@ Task\.Run\(|Task\.Factory\.StartNew
 **Severity**: CRITICAL (if critical operations)
 
 **Fix**: Add exception boundaries and observability:
+
 ```csharp
 // BAD
 Task.Run(async () => await PublishEventAsync(evt));
@@ -311,6 +337,7 @@ _ = Task.Run(async () =>
 **Problem**: Using `Exception` or `ApplicationException` instead of specific types.
 
 **Why It's Bad**:
+
 - Cannot distinguish error types
 - Forces broad catch blocks
 - Breaks selective exception handling
@@ -319,6 +346,7 @@ _ = Task.Run(async () =>
 **Detection**: Manual review for generic exception types.
 
 **Common Locations**:
+
 - Business logic validation
 - Custom error scenarios
 - Legacy code
@@ -326,6 +354,7 @@ _ = Task.Run(async () =>
 **Severity**: LOW
 
 **Fix**: Create domain-specific exception types:
+
 ```csharp
 // BAD
 throw new Exception("User not found");
@@ -333,7 +362,7 @@ throw new Exception("User not found");
 // GOOD
 public class UserNotFoundException : Exception
 {
-    public UserNotFoundException(string userId) 
+    public UserNotFoundException(string userId)
         : base($"User with ID {userId} not found")
     {
     }
@@ -349,6 +378,7 @@ throw new UserNotFoundException(userId);
 **Problem**: Creating new exceptions without preserving the original.
 
 **Why It's Bad**:
+
 - Loses root cause information
 - Breaks exception analysis
 - Debugging becomes impossible
@@ -357,6 +387,7 @@ throw new UserNotFoundException(userId);
 **Detection**: Review custom exception constructors.
 
 **Common Locations**:
+
 - Exception translation layers
 - Adapter patterns
 - Legacy migrations
@@ -364,6 +395,7 @@ throw new UserNotFoundException(userId);
 **Severity**: MEDIUM
 
 **Fix**: Always preserve inner exceptions:
+
 ```csharp
 // BAD
 catch (SqlException ex)
@@ -394,12 +426,14 @@ public class DatabaseException : Exception
 **Problem**: No centralized exception-to-HTTP mapping.
 
 **Why It's Bad**:
+
 - Stack traces exposed to clients (security risk)
 - Inconsistent error responses
 - Duplicated exception handling in controllers
 - No centralized logging/monitoring
 
 **Detection**:
+
 ```bash
 # Search for AddExceptionHandler in Program.cs
 # If not found → CRITICAL violation
@@ -476,9 +510,9 @@ public class GlobalExceptionHandler : IExceptionHandler
         Exception exception,
         CancellationToken cancellationToken)
     {
-        _logger.LogError(exception, 
-            "Unhandled exception for {Method} {Path}", 
-            httpContext.Request.Method, 
+        _logger.LogError(exception,
+            "Unhandled exception for {Method} {Path}",
+            httpContext.Request.Method,
             httpContext.Request.Path);
 
         var (statusCode, title) = MapException(exception);
@@ -488,8 +522,8 @@ public class GlobalExceptionHandler : IExceptionHandler
         {
             Status = statusCode,
             Title = title,
-            Detail = statusCode >= 500 
-                ? "An error occurred processing your request" 
+            Detail = statusCode >= 500
+                ? "An error occurred processing your request"
                 : exception.Message,
             Instance = httpContext.Request.Path
         }, cancellationToken);
@@ -510,6 +544,7 @@ public class GlobalExceptionHandler : IExceptionHandler
 ```
 
 **Registration**:
+
 ```csharp
 // Program.cs
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
@@ -549,8 +584,8 @@ public readonly struct Result<T>
         IsSuccess ? onSuccess(Value) : onFailure(ErrorMessage);
 
     public Result<TNew> Map<TNew>(Func<T, TNew> mapper) =>
-        IsSuccess 
-            ? Result<TNew>.Success(mapper(Value)) 
+        IsSuccess
+            ? Result<TNew>.Success(mapper(Value))
             : Result<TNew>.Failure(ErrorMessage);
 }
 
@@ -645,6 +680,7 @@ public class EventPublisherService : BackgroundService
 ### When to Use GlobalExceptionHandler vs Try/Catch
 
 **Use GlobalExceptionHandler for**:
+
 - All ASP.NET Core applications
 - Consistent error response format
 - Security (prevent stack trace leaks)
@@ -652,12 +688,14 @@ public class EventPublisherService : BackgroundService
 - ProblemDetails RFC 7807 compliance
 
 **Use Try/Catch for**:
+
 - Resource cleanup (using/try-finally)
 - Specific operation recovery
 - External service integration with retries
 - Transaction boundaries
 
 **Never use Try/Catch for**:
+
 - Every controller action
 - Validation logic (use Result<T>)
 - Converting exceptions to HTTP responses (use global handler)
@@ -687,14 +725,17 @@ Is the condition expected in normal operation?
 ### OWASP Compliance
 
 **A01:2021 – Broken Access Control**:
+
 - Never expose stack traces in production
 - Use ProblemDetails with sanitized messages
 
 **A03:2021 – Injection**:
+
 - Don't include user input directly in exception messages
 - Sanitize before logging
 
 **A09:2021 – Security Logging and Monitoring Failures**:
+
 - Always log exceptions with context
 - Include correlation IDs
 - Monitor exception rates
@@ -754,9 +795,9 @@ public async Task<Result<User>> CreateUserAsync(UserDto dto)
 {
     var user = new User { Name = dto.Name, Email = dto.Email };
     _context.Users.Add(user);
-    
+
     var saveResult = await _context.SaveChangesWithResultAsync();
-    
+
     return saveResult.IsSuccess
         ? Result<User>.Success(user)
         : Result<User>.Failure(saveResult.ErrorMessage);
@@ -815,23 +856,27 @@ catch (AuthenticationFailedException ex)
 ## Severity Classification Reference
 
 **CRITICAL** (Fix immediately):
+
 - Missing global exception handler (stack trace exposure)
 - Background task exceptions swallowed (data loss risk)
 - Security vulnerabilities (sensitive data in exceptions)
 
 **HIGH** (Fix before production):
+
 - Broad catch (Exception) blocks
 - Empty catch blocks
 - Unawaited async calls
 - Lost inner exceptions
 
 **MEDIUM** (Fix during refactoring):
+
 - Excessive try/catch blocks
 - Exceptions for control flow
 - throw ex (stack trace reset)
 - Wrong HTTP status codes
 
 **LOW** (Fix when convenient):
+
 - Generic exception types
 - Inconsistent exception messages
 - Missing XML documentation on custom exceptions
@@ -839,6 +884,7 @@ catch (AuthenticationFailedException ex)
 ---
 
 **References**:
+
 - [Microsoft: Exception Best Practices](https://learn.microsoft.com/en-us/dotnet/standard/exceptions/best-practices-for-exceptions)
 - [ASP.NET Core: Handle Errors](https://learn.microsoft.com/en-us/aspnet/core/web-api/handle-errors)
 - [OWASP: Error Handling](https://owasp.org/www-community/Improper_Error_Handling)

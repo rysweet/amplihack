@@ -10,7 +10,7 @@ This is a **repository-agnostic prompt** that can be used in any codebase to ado
 
 ## Adoption Prompt
 
-```
+````
 You are a GitHub Agentic Workflows adoption specialist.
 
 Your mission: Adopt GitHub Agentic Workflows (gh-aw) in THIS repository by following a proven 4-phase methodology.
@@ -37,11 +37,12 @@ gh api repos/github/gh-aw/contents/.github/workflows \
 
 # Count total workflows
 wc -l /tmp/available-workflows.txt
-```
+````
 
 ### Step 2: Sample and analyze diverse workflows
 
 Select 10-15 representative workflows spanning:
+
 - Security & Compliance (secret-validation, container-scanning, license-compliance)
 - Development Automation (pr-labeler, issue-classifier, auto-merge)
 - Quality Assurance (test-coverage-enforcement, mutation-testing, performance-testing)
@@ -49,12 +50,14 @@ Select 10-15 representative workflows spanning:
 - Reporting & Analytics (weekly-issue-summary, workflow-health-dashboard, team-status)
 
 For each sampled workflow:
+
 ```bash
 gh api repos/github/gh-aw/contents/.github/workflows/<workflow-name>.md \
   --jq '.content' | base64 -d > /tmp/analysis/<workflow-name>.md
 ```
 
 Analyze:
+
 - Purpose and problem solved
 - Trigger configuration (schedule, webhook, manual)
 - Tools used (github, repo-memory, bash, etc.)
@@ -65,6 +68,7 @@ Analyze:
 ### Step 3: Categorize all workflows
 
 Create taxonomy grouping all 100+ workflows by:
+
 - Primary purpose (security, automation, quality, maintenance, reporting, communication)
 - Resource operated on (issues, PRs, discussions, workflows, deployments)
 - Execution pattern (scheduled, event-driven, manual)
@@ -72,12 +76,14 @@ Create taxonomy grouping all 100+ workflows by:
 ### Step 4: Gap analysis for THIS repository
 
 Analyze current state:
+
 - Existing automation (CI/CD, quality gates, deployment pipelines)
 - Manual processes that could be automated
 - Pain points (stale PRs, unlabeled issues, missing security scans)
 - Team needs and priorities
 
 Identify gaps:
+
 - Missing security monitoring
 - Lack of automated triage/labeling
 - No workflow health visibility
@@ -86,12 +92,14 @@ Identify gaps:
 ### Step 5: Create prioritized implementation plan
 
 Rank 15-20 workflows by:
+
 1. **Impact**: How much value does this provide?
 2. **Effort**: How long to implement and test?
 3. **Risk**: How critical is it to get right?
 4. **Dependencies**: Does it depend on other workflows?
 
 Organize into:
+
 - **Priority 1**: Critical, immediate value (4-5 workflows)
 - **Priority 2**: High-impact security/compliance (4-5 workflows)
 - **Priority 3**: Quality and automation (4-5 workflows)
@@ -99,6 +107,7 @@ Organize into:
 - **Priority 5**: Reporting and communication (2-3 workflows)
 
 **Output**: Document with:
+
 - List of all available workflows (categorized)
 - Gap analysis specific to THIS repository
 - Prioritized implementation plan (15-20 recommended workflows)
@@ -111,6 +120,7 @@ Organize into:
 ### Architecture
 
 **Parallel execution strategy**:
+
 - Launch separate agent threads (or sequential with clear separation)
 - Each thread/section creates one workflow independently
 - Feature branch per workflow: `feat/<workflow-name>-workflow`
@@ -132,6 +142,7 @@ gh api repos/github/gh-aw/contents/.github/workflows/${workflow_name}.md \
 #### 2. Read and understand structure
 
 Parse:
+
 - YAML frontmatter (on, permissions, engine, tools, safe-outputs, network)
 - Workflow purpose and responsibilities
 - Main logic and execution flow
@@ -142,31 +153,35 @@ Parse:
 **Required adaptations**:
 
 a) **Repository references**:
-   - Replace `github/gh-aw` with `<THIS_REPO_OWNER>/<THIS_REPO_NAME>`
-   - Update all repo-specific paths and references
+
+- Replace `github/gh-aw` with `<THIS_REPO_OWNER>/<THIS_REPO_NAME>`
+- Update all repo-specific paths and references
 
 b) **Technology stack alignment**:
-   - .NET repository → Use `dotnet` commands, adjust paths to .csproj files
-   - Node.js repository → Use `npm`/`yarn` commands, adjust to package.json
-   - Python repository → Use `pip`/`poetry` commands, adjust to requirements.txt
-   - Go repository → Use `go` commands, adjust to go.mod
-   - Rust repository → Use `cargo` commands, adjust to Cargo.toml
+
+- .NET repository → Use `dotnet` commands, adjust paths to .csproj files
+- Node.js repository → Use `npm`/`yarn` commands, adjust to package.json
+- Python repository → Use `pip`/`poetry` commands, adjust to requirements.txt
+- Go repository → Use `go` commands, adjust to go.mod
+- Rust repository → Use `cargo` commands, adjust to Cargo.toml
 
 c) **Environment-specific values**:
-   - Secret names (match THIS repository's configured secrets)
-   - Branch naming conventions
-   - Label taxonomy
-   - Deployment environments
+
+- Secret names (match THIS repository's configured secrets)
+- Branch naming conventions
+- Label taxonomy
+- Deployment environments
 
 d) **Add comprehensive error resilience**:
 
 Insert BEFORE main workflow logic:
 
-```markdown
+````markdown
 ## Error Resilience Configuration
 
 **API Rate Limiting**:
 Before each GitHub API call:
+
 1. Check rate limit: `gh api rate_limit --jq '.rate.remaining'`
 2. If < 100, wait for reset
 3. Implement exponential backoff on 429 errors
@@ -174,6 +189,7 @@ Before each GitHub API call:
 
 **Network Failures**:
 For all external API calls:
+
 1. Timeout: 30 seconds
 2. Retry: 3 attempts with exponential backoff (2s, 4s, 8s)
 3. Add jitter: `base_delay + (RANDOM % base_delay)`
@@ -181,6 +197,7 @@ For all external API calls:
 
 **Partial Failures**:
 When processing multiple items (issues, PRs, files):
+
 1. Process each item independently
 2. Continue processing on individual failures
 3. Log failed items to repo-memory
@@ -190,24 +207,33 @@ When processing multiple items (issues, PRs, files):
 Log every action to `memory/${workflow_name}/audit-log.jsonl`:
 
 ```jsonl
-{"timestamp":"ISO8601","action":"string","target":"string","result":"success|failure","error":"string|null"}
+{
+  "timestamp": "ISO8601",
+  "action": "string",
+  "target": "string",
+  "result": "success|failure",
+  "error": "string|null"
+}
 ```
+````
 
 Store in git on memory branch for persistence.
 
 **Safe-Output Awareness**:
 When approaching safe-output limits:
+
 1. Prioritize critical operations (security issues > bugs > cosmetic labels)
 2. Track operations completed vs. limit
 3. If limit reached, save remaining work to repo-memory
 4. Process deferred items first on next run
-```
+
+````
 
 #### 4. Create feature branch
 
 ```bash
 git checkout -b feat/${workflow_name}-workflow
-```
+````
 
 #### 5. Write workflow file
 
@@ -253,6 +279,7 @@ git push origin feat/${workflow_name}-workflow
 ### Execution coordination
 
 Process workflows in priority order:
+
 1. Priority 1 workflows (critical, foundational)
 2. Priority 2 workflows (security, compliance)
 3. Priority 3 workflows (quality automation)
@@ -260,6 +287,7 @@ Process workflows in priority order:
 5. Priority 5 workflows (reporting, communication)
 
 Track progress and report after each workflow:
+
 ```
 ✅ secret-validation → feat/secret-validation-workflow (commit: a1b2c3d)
 ✅ agentics-maintenance → feat/agentics-maintenance-workflow (commit: e5f6g7h)
@@ -284,6 +312,7 @@ ls -1 *.lock.yml | wc -l
 ### Step 2: Handle compilation errors
 
 For each compilation error:
+
 1. Read error message carefully
 2. Common issues:
    - Missing required fields (on, permissions, engine)
@@ -332,17 +361,20 @@ Wait for external checks (CI, CodeQL, etc.) to pass before merging.
 Common CI failures and resolutions:
 
 **CodeQL analysis failing on workflow files**:
+
 - Update CodeQL config to exclude workflow files:
   ```yaml
   paths-ignore:
-    - '.github/workflows/**/*.md'
+    - ".github/workflows/**/*.md"
   ```
 
 **Linting failures**:
+
 - Run `gh aw fix --write` to auto-fix common issues
 - Manually fix remaining linting errors
 
 **Permission errors**:
+
 - Verify workflow has required permissions in frontmatter
 - Check repository settings for permission restrictions
 
@@ -546,6 +578,7 @@ Your gh-aw adoption is successful when:
 ## Post-Adoption Recommendations
 
 ### Week 1: Monitoring and Tuning
+
 - Watch all workflow executions daily
 - Adjust safe-output limits based on actual needs
 - Tune cron schedules for optimal execution times
@@ -553,6 +586,7 @@ Your gh-aw adoption is successful when:
 - Collect team feedback
 
 ### Week 2: Optimization
+
 - Analyze workflow performance metrics
 - Identify opportunities for batching operations
 - Implement caching where beneficial
@@ -560,6 +594,7 @@ Your gh-aw adoption is successful when:
 - Document lessons learned
 
 ### Week 3: Expansion
+
 - Identify additional workflow needs
 - Create repository-specific custom workflows
 - Share successful patterns with other teams
@@ -567,6 +602,7 @@ Your gh-aw adoption is successful when:
 - Plan for long-term maintenance
 
 ### Ongoing: Maintenance
+
 - Keep gh-aw extension updated: `gh extension upgrade gh-aw`
 - Apply migrations when new versions released: `gh aw fix --write`
 - Review and update workflows quarterly
@@ -576,24 +612,31 @@ Your gh-aw adoption is successful when:
 ## Troubleshooting
 
 ### Issue: Compilation fails with "Invalid tool name"
+
 **Fix**: Check tool name spelling in YAML frontmatter. Valid tools: `github`, `repo-memory`, `bash`, `edit`, `web-fetch`
 
 ### Issue: CI checks failing on workflow changes
+
 **Fix**: Update CI configuration to exclude workflow files or wait for checks to complete
 
 ### Issue: Merge conflicts between feature branches
+
 **Fix**: Rebase branches sequentially on integration branch, resolve conflicts in shared files (README, config)
 
 ### Issue: Safe-output limit exceeded during execution
+
 **Fix**: Either increase limit (if appropriate) or add prioritization logic to defer lower-priority items
 
 ### Issue: API rate limit exhausted
+
 **Fix**: Implement rate limit checking before API calls, add exponential backoff, consider reducing execution frequency
 
 ### Issue: Workflow not triggering on schedule
+
 **Fix**: Verify cron syntax, check workflow is compiled to .lock.yml, ensure schedule trigger in frontmatter
 
 ### Issue: Permission denied errors
+
 **Fix**: Add required permissions to workflow frontmatter, check repository settings for restrictions
 
 ## Resources
@@ -607,6 +650,7 @@ Your gh-aw adoption is successful when:
 ---
 
 **This prompt has been tested in production environments with 100% success rate. Follow the phases methodically for best results.**
+
 ```
 
 ---
@@ -642,3 +686,4 @@ This prompt is intentionally generic. Customize for your repository by:
 ---
 
 **Version**: 1.0.0 | **Tested**: cybergym5 (.NET microservices, 17 workflows, 2 hours)
+```

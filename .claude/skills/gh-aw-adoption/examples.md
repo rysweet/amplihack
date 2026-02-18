@@ -25,6 +25,7 @@ This file contains real-world examples from actual gh-aw adoption sessions, incl
 **Context**: .NET microservices repository with 26 open PRs, no existing agentic workflows, active development team.
 
 **Timeline**: ~2 hours total
+
 - Investigation: 20 minutes
 - Parallel workflow creation: 45 minutes
 - CI resolution: 30 minutes
@@ -35,6 +36,7 @@ This file contains real-world examples from actual gh-aw adoption sessions, incl
 ### Phase 1: Investigation (20 minutes)
 
 **Step 1: Enumerate gh-aw workflows**
+
 ```bash
 # List all markdown workflows in gh-aw repository
 gh api repos/github/gh-aw/contents/.github/workflows \
@@ -49,6 +51,7 @@ wc -l available-workflows.txt
 **Step 2: Sample and analyze diverse workflows**
 
 Selected 10 representative workflows:
+
 ```bash
 # Read and analyze each workflow
 workflows=(
@@ -74,6 +77,7 @@ done
 **Step 3: Categorize all 108 workflows**
 
 Created taxonomy:
+
 ```
 Security & Compliance (18 workflows)
 ├── secret-validation.md
@@ -117,6 +121,7 @@ Team Communication (6 workflows)
 **Step 4: Gap analysis for cybergym5**
 
 Current state:
+
 - ✅ Has: CI/CD pipeline, code quality checks, deployment workflows
 - ❌ Missing: Automated issue triage, PR labeling, security monitoring
 - ❌ Missing: Workflow health monitoring, maintenance automation
@@ -126,30 +131,35 @@ Identified 20 high-impact workflows:
 
 ```markdown
 ## Priority 1: Critical (Immediate Value)
+
 1. secret-validation - No secret monitoring currently
 2. agentics-maintenance - No workflow health monitoring
 3. pr-labeler - Manual labeling wastes time
 4. issue-classifier - 100+ open issues need triage
 
 ## Priority 2: Security & Compliance
+
 5. container-security-scanning - Docker images not scanned
 6. license-compliance-scanning - Dependencies not audited
 7. sbom-generation - No SBOM currently
 8. vulnerability-scanning - No regular security scans
 
 ## Priority 3: Quality Assurance
+
 9. test-coverage-enforcement - Coverage tracked but not enforced
 10. mutation-testing - No mutation testing currently
 11. performance-testing - Manual performance checks
 12. code-smell-detection - No automated code quality analysis
 
 ## Priority 4: Maintenance
+
 13. stale-pr-management - 26 open PRs need cleanup
 14. cleanup-deployments - Old deployments lingering
 15. dependency-updates - Manual Dependabot monitoring
 16. changelog-generation - Manual changelog writing
 
 ## Priority 5: Reporting
+
 17. weekly-issue-summary - No issue digests
 18. workflow-health-dashboard - No metrics visibility
 19. team-status-reports - Manual status updates
@@ -163,18 +173,21 @@ Identified 20 high-impact workflows:
 **Strategy**: Create workflows 1-17 in parallel (skipped 18-20 as lower priority)
 
 **Coordinator setup**:
+
 ```markdown
 ## Parallel Workflow Creation Orchestration
 
 **Target**: Create 17 workflows simultaneously
 
 **Agent allocation**:
+
 - Agent 1-5: Priority 1 workflows (critical)
 - Agent 6-9: Security workflows
 - Agent 10-13: Quality workflows
 - Agent 14-17: Maintenance workflows
 
 **Branch strategy**: One feature branch per workflow
+
 - Format: `feat/<workflow-name>-workflow`
 - Example: `feat/secret-validation-workflow`
 
@@ -187,12 +200,14 @@ Identified 20 high-impact workflows:
 ## Worker Agent: Create {WORKFLOW_NAME}
 
 ### Step 1: Read Reference Workflow
+
 ```bash
 gh api repos/github/gh-aw/contents/.github/workflows/{WORKFLOW_NAME}.md \
   --jq '.content' | base64 -d > /tmp/{WORKFLOW_NAME}.md
 ```
 
 ### Step 2: Analyze Structure
+
 - Read workflow frontmatter (on, permissions, engine, tools)
 - Understand workflow purpose and logic
 - Identify adaptation points for target repository
@@ -200,18 +215,21 @@ gh api repos/github/gh-aw/contents/.github/workflows/{WORKFLOW_NAME}.md \
 ### Step 3: Adapt to Target Repository
 
 **Substitutions**:
+
 - Repository name: `github/gh-aw` → `cloud-ecosystem-security/cybergym5`
 - Branch names: Align with target repo conventions
 - Paths: Adjust for target repo structure (e.g., .NET vs JavaScript)
 - Secrets: Map to target repo secret names
 
 **Enhancements**:
+
 - Add comprehensive error resilience
 - Improve API rate limit handling
 - Add detailed audit logging
 - Enhance safe-output prioritization
 
 ### Step 4: Create Feature Branch
+
 ```bash
 git checkout -b feat/{WORKFLOW_NAME}-workflow
 mkdir -p .github/workflows
@@ -221,44 +239,56 @@ cp /tmp/{WORKFLOW_NAME}.md .github/workflows/
 ### Step 5: Add Error Resilience
 
 Insert before main workflow logic:
-```markdown
+
+````markdown
 ## Error Resilience Configuration
 
 **API Rate Limiting**:
 Before each GitHub API call:
+
 1. Check rate limit: `gh api rate_limit --jq '.rate.remaining'`
 2. If < 100, wait for reset
 3. Implement exponential backoff on 429 errors
 
 **Network Failures**:
 For all external API calls:
+
 1. Timeout: 30 seconds
 2. Retry: 3 attempts with exponential backoff (2s, 4s, 8s)
 3. Log failures to repo-memory
 
 **Partial Failures**:
 When processing multiple items:
+
 1. Process each independently
 2. Continue on individual failures
 3. Report aggregate results
 
 **Audit Trail**:
 Log every action to `memory/{WORKFLOW_NAME}/audit-log.jsonl`:
+
 ```jsonl
-{"timestamp": "ISO8601", "action": "string", "result": "success|failure"}
+{
+  "timestamp": "ISO8601",
+  "action": "string",
+  "result": "success|failure"
+}
 ```
+````
 
 **Safe-Output Awareness**:
 Track operations against limits, prioritize critical actions first.
-```
+
+````
 
 ### Step 6: Compile and Validate
 ```bash
 gh aw compile {WORKFLOW_NAME}
 # Check for compilation errors
-```
+````
 
 ### Step 7: Commit and Push
+
 ```bash
 git add .github/workflows/{WORKFLOW_NAME}.md
 git commit -m "feat: Add {WORKFLOW_NAME} workflow
@@ -276,6 +306,7 @@ git push origin feat/{WORKFLOW_NAME}-workflow
 ```
 
 ### Step 8: Report to Coordinator
+
 ```json
 {
   "workflow": "{WORKFLOW_NAME}",
@@ -314,6 +345,7 @@ git push origin feat/{WORKFLOW_NAME}-workflow
 ```
 
 **Statistics**:
+
 - Total time: 45 minutes
 - Average per workflow: ~2.6 minutes
 - No failures in creation phase
@@ -370,6 +402,7 @@ gh aw compile --validate
 ### Phase 4: Validation and Merge (25 minutes)
 
 **Step 1: Compile all workflows**
+
 ```bash
 cd .github/workflows
 gh aw compile
@@ -377,6 +410,7 @@ gh aw compile
 ```
 
 **Step 2: Merge to integration branch**
+
 ```bash
 # Merge feature branches sequentially to integration
 for branch in $(cat prioritized-branches.txt); do
@@ -388,6 +422,7 @@ done
 ```
 
 **Step 3: Integration branch CI validation**
+
 ```bash
 # Wait for integration branch CI to pass
 gh pr checks integration
@@ -395,6 +430,7 @@ gh pr checks integration
 ```
 
 **Step 4: Merge integration → main**
+
 ```bash
 gh pr create --base main --head integration \
   --title "feat: Add 17 agentic workflows for comprehensive automation" \
@@ -404,6 +440,7 @@ gh pr merge --auto --squash
 ```
 
 **Step 5: Post-deployment validation**
+
 ```bash
 # Trigger test runs for each workflow
 for workflow in .github/workflows/*.lock.yml; do
@@ -419,6 +456,7 @@ gh run list --limit 20
 ### Session Metrics
 
 **Time breakdown**:
+
 - Investigation: 20 minutes (20%)
 - Creation: 45 minutes (45%)
 - CI resolution: 30 minutes (30%)
@@ -431,6 +469,7 @@ gh run list --limit 20
 **Success rate**: 100% (all workflows functional)
 
 **Value delivered**:
+
 - Security monitoring: 4 workflows
 - Quality automation: 4 workflows
 - Maintenance automation: 4 workflows
@@ -453,7 +492,7 @@ gh run list --limit 20
 ---
 on:
   schedule:
-    - cron: '0 8 * * 1'  # Every Monday at 8 AM UTC
+    - cron: "0 8 * * 1" # Every Monday at 8 AM UTC
   workflow_dispatch:
 
 permissions:
@@ -493,24 +532,29 @@ Your mission is to monitor required secrets for expiration, misconfiguration, or
 ## Required Secrets to Validate
 
 **Critical Secrets** (workflow failures if missing):
+
 1. `ANTHROPIC_API_KEY` - Claude engine workflows
 2. `AZURE_CREDENTIALS` - Azure deployments
 3. `DOCKER_HUB_TOKEN` - Container publishing
 4. `GITHUB_TOKEN` - GitHub API access (auto-provided)
 
 **Optional Secrets** (degraded functionality if missing):
+
 1. `SLACK_WEBHOOK_URL` - Notification integration
 2. `DATADOG_API_KEY` - Metrics collection
 
 ## Validation Checks
 
 ### Check 1: Secret Presence
+
 For each required secret:
+
 1. Query repository secrets: `gh api repos/cloud-ecosystem-security/cybergym5/actions/secrets`
 2. Verify secret is configured
 3. Note: Cannot read secret values, only check existence
 
 **If missing**:
+
 - Create issue: "Critical secret missing: {SECRET_NAME}"
 - Label: `security`, `urgent`, `secrets`
 - Assign: Repository administrators
@@ -519,28 +563,33 @@ For each required secret:
 ### Check 2: Expiration Monitoring (for known expiring secrets)
 
 **Azure credentials** (`AZURE_CREDENTIALS`):
+
 - Service principals expire based on creation date
 - Check repo-memory for last rotation date
 - Alert if > 90 days since rotation
 
 **API keys** (Anthropic, Docker Hub):
+
 - Track last known successful usage
 - Alert if > 180 days since last use (likely rotated)
 
 ### Check 3: Format Validation (where possible)
 
 **Azure credentials**:
+
 - Parse JSON structure
 - Verify required fields: clientId, clientSecret, subscriptionId, tenantId
 - Check for common format errors
 
 **GitHub token**:
+
 - Verify `ghp_` prefix for personal tokens
 - Verify `ghs_` prefix for app installation tokens
 
 ## Error Resilience
 
 **API rate limiting**:
+
 ```bash
 # Check rate limit before API calls
 remaining=$(gh api rate_limit --jq '.rate.remaining')
@@ -551,11 +600,13 @@ fi
 ```
 
 **Secret API failures**:
+
 - Retry 3 times with exponential backoff
 - If all attempts fail, create issue about validation failure
 - Don't block on inability to validate (fail open)
 
 **Partial validation failures**:
+
 - Continue checking remaining secrets if one fails
 - Report aggregate results at end
 
@@ -573,10 +624,12 @@ Log all validation activities to `memory/secret-validation/audit-log.jsonl`:
 When creating issues for missing/expired secrets:
 
 **Title**: `[Security] {Secret Name} {status}`
+
 - Example: `[Security] AZURE_CREDENTIALS missing`
 - Example: `[Security] ANTHROPIC_API_KEY may be expired`
 
 **Body**:
+
 ```markdown
 ## Secret Validation Alert
 
@@ -586,21 +639,26 @@ When creating issues for missing/expired secrets:
 **Severity**: {critical | warning}
 
 ### Impact
+
 {Description of what fails if secret is missing/expired}
 
 ### Resolution Steps
+
 1. {Step-by-step instructions to configure/rotate secret}
 2. {How to verify secret is working}
 3. {How to update repo-memory tracking (if applicable)}
 
 ### Verification
+
 After fixing, verify by:
+
 - [ ] Running workflow that uses this secret
 - [ ] Checking audit trail in repo-memory
 
 ---
-*Automated alert by Secret Validation Agent*
-*Workflow Run: ${{ github.run_id }}*
+
+_Automated alert by Secret Validation Agent_
+_Workflow Run: ${{ github.run_id }}_
 ```
 
 ## Safe-Output Prioritization
@@ -608,12 +666,14 @@ After fixing, verify by:
 Limits: 2 issues, 5 comments per run
 
 **Priority order**:
+
 1. Critical missing secrets (ANTHROPIC_API_KEY, AZURE_CREDENTIALS)
 2. Expired secrets
 3. Optional secrets
 4. Format warnings
 
 If limits reached:
+
 - Save remaining alerts to repo-memory
 - Process on next run
 - Log: "Deferred N alerts due to safe-output limits"
@@ -621,6 +681,7 @@ If limits reached:
 ## Success Criteria
 
 Validation successful when:
+
 - [x] All critical secrets present
 - [x] No secrets expired (based on tracking)
 - [x] Format validation passed (where possible)
@@ -635,6 +696,7 @@ Manual trigger: `gh workflow run secret-validation.lock.yml`
 ````
 
 **Adaptations made**:
+
 1. ✅ Changed repository name from `github/gh-aw` to `cloud-ecosystem-security/cybergym5`
 2. ✅ Updated secret list to match cybergym5 requirements (Azure, Anthropic, Docker Hub)
 3. ✅ Added comprehensive error resilience (rate limiting, retries, partial failures)
@@ -654,7 +716,7 @@ Manual trigger: `gh workflow run secret-validation.lock.yml`
 ---
 on:
   schedule:
-    - cron: '0 0 * * *'  # Daily at midnight UTC
+    - cron: "0 0 * * *" # Daily at midnight UTC
   workflow_dispatch:
 
 permissions:
@@ -697,6 +759,7 @@ Your mission is to identify inactive pull requests, notify authors, provide grac
 ## Current State Analysis (2026-02-15)
 
 **Observation**: Repository has 26 open pull requests
+
 - Some dating back several months
 - Many without recent activity
 - Blocking visibility of active PRs
@@ -706,12 +769,14 @@ Your mission is to identify inactive pull requests, notify authors, provide grac
 ## Staleness Criteria
 
 A PR is considered **stale** if:
+
 1. No commits in last 30 days AND
 2. No comments in last 30 days AND
 3. Not labeled `keep-open` or `blocked` AND
 4. No review requested in last 14 days
 
 A PR is considered **abandoned** if:
+
 1. No activity in last 90 days OR
 2. Marked with `abandoned` label by author
 
@@ -729,6 +794,7 @@ gh api repos/cloud-ecosystem-security/cybergym5/pulls \
 ```
 
 **Evaluation**:
+
 - Check last commit date
 - Check last comment date
 - Check labels for exclusions
@@ -739,6 +805,7 @@ gh api repos/cloud-ecosystem-security/cybergym5/pulls \
 ### Phase 2: Warning Labels (First Pass)
 
 For PRs stale for 30-60 days:
+
 1. Add label: `stale:warning`
 2. Post warning comment (see template below)
 3. Record in repo-memory: `stale-warnings-{date}.jsonl`
@@ -759,6 +826,7 @@ Store warning timestamp in repo-memory:
 ```
 
 On subsequent runs:
+
 - Check if grace period expired
 - If yes and still no activity → Proceed to closure
 - If activity resumed → Remove warning label, clear tracking
@@ -766,6 +834,7 @@ On subsequent runs:
 ### Phase 4: PR Closure
 
 For PRs with expired grace periods:
+
 1. Post closure comment (see template below)
 2. Add label: `stale:closed`
 3. Close the PR
@@ -776,6 +845,7 @@ For PRs with expired grace periods:
 ### Phase 5: Abandoned PR Fast-Track
 
 For PRs explicitly marked `abandoned` by author:
+
 1. Skip grace period
 2. Post closure comment acknowledging abandonment
 3. Close immediately
@@ -791,12 +861,14 @@ For PRs explicitly marked `abandoned` by author:
 This pull request has had no activity for **{days} days** and is being marked as potentially stale.
 
 **If you're still working on this:**
+
 - Add a comment explaining the status
 - Push new commits if ready
 - Request a review when ready for merge
 - Add the `keep-open` label to prevent closure
 
 **If this PR is blocked:**
+
 - Add the `blocked` label
 - Comment explaining what's blocking progress
 - Update when blocker is resolved
@@ -806,8 +878,9 @@ This pull request has had no activity for **{days} days** and is being marked as
 If closed by automation, you can always reopen later when ready to continue.
 
 ---
-*Automated notice by Stale PR Manager*
-*Workflow Run: ${{ github.run_id }}*
+
+_Automated notice by Stale PR Manager_
+_Workflow Run: ${{ github.run_id }}_
 ```
 
 ### Closure Comment
@@ -825,6 +898,7 @@ This pull request has been automatically closed due to inactivity.
 ### To Reopen
 
 If you'd like to continue work on this PR:
+
 1. Reopen the pull request
 2. Add a comment with status update
 3. Add the `keep-open` label to prevent future automatic closure
@@ -833,8 +907,9 @@ If you'd like to continue work on this PR:
 Thank you for your contribution! Feel free to reopen when you're ready to continue.
 
 ---
-*Automated closure by Stale PR Manager*
-*Workflow Run: ${{ github.run_id }}*
+
+_Automated closure by Stale PR Manager_
+_Workflow Run: ${{ github.run_id }}_
 ```
 
 ### Abandoned PR Closure Comment
@@ -849,18 +924,21 @@ Thank you for the work you put into this PR and for explicitly marking it as aba
 ### If You'd Like to Revive This Later
 
 You can always:
+
 1. Reopen this PR
 2. Create a new PR with the same changes
 3. Reference this PR in the new one
 
 ---
-*Automated closure by Stale PR Manager*
-*Workflow Run: ${{ github.run_id }}*
+
+_Automated closure by Stale PR Manager_
+_Workflow Run: ${{ github.run_id }}_
 ```
 
 ## Exclusion Logic
 
 **Never mark as stale if PR has**:
+
 - `keep-open` label (explicit exclusion)
 - `blocked` label (waiting on external factor)
 - `wip` or `draft` in title (work in progress)
@@ -870,6 +948,7 @@ You can always:
 ## Error Resilience
 
 **API rate limiting**:
+
 ```bash
 # Before processing PRs
 rate_limit=$(gh api rate_limit --jq '.rate.remaining')
@@ -881,11 +960,13 @@ fi
 ```
 
 **Partial processing**:
+
 - Process PRs oldest-first
 - If safe-output limit reached, save remaining PRs for next run
 - Continue processing warnings even if closures exhausted
 
 **Network failures**:
+
 - Retry PR queries up to 3 times
 - Skip individual PRs that fail to process
 - Report summary of failures in audit log
@@ -905,12 +986,14 @@ Log all actions to `memory/stale-pr-management/audit-log.jsonl`:
 Limits: 10 comments, 15 labels, 5 closures per day
 
 **Priority order**:
+
 1. Close abandoned PRs (fast-track)
 2. Warn newly stale PRs (30-60 days old)
 3. Close PRs with expired grace periods
 4. Label cosmetic states
 
 If limits reached:
+
 - Defer lower-priority actions to next run
 - Prioritize communication (comments) over labels
 - Always complete closures for expired grace periods
@@ -933,6 +1016,7 @@ Track in repo-memory:
 ## Success Criteria
 
 Run successful when:
+
 - [x] All open PRs evaluated
 - [x] Stale PRs identified correctly
 - [x] Warnings issued with grace periods
@@ -948,6 +1032,7 @@ Manual trigger: `gh workflow run stale-pr-management.lock.yml`
 ````
 
 **Key adaptations**:
+
 1. ✅ Analyzed current state (26 open PRs specific to cybergym5)
 2. ✅ Implemented grace period (14 days warning before closure)
 3. ✅ Added exclusion logic for active development patterns
@@ -1204,11 +1289,13 @@ if __name__ == "__main__":
 ```
 
 **Usage**:
+
 ```bash
 python parallel_workflow_creator.py
 ```
 
 **Output**:
+
 ```
 Starting parallel creation of 17 workflows...
 Max parallel: 10
@@ -1241,6 +1328,7 @@ Failed: 0
 ### Issue: Workflow Compilation Fails with "Invalid Tool Name"
 
 **Error**:
+
 ```
 Error compiling workflow stale-pr-manager.md:
 Line 15: Invalid tool name 'github-api'
@@ -1250,6 +1338,7 @@ Valid tools: github, repo-memory, bash, edit, web-fetch
 **Root cause**: Typo in tool name (`github-api` should be `github`)
 
 **Fix**:
+
 ```yaml
 # Before (incorrect)
 tools:
@@ -1263,6 +1352,7 @@ tools:
 ```
 
 **Verification**:
+
 ```bash
 gh aw compile stale-pr-manager --validate
 # Output: Compilation successful ✅
@@ -1273,6 +1363,7 @@ gh aw compile stale-pr-manager --validate
 **Scenario**: Closing stale PRs, hit limit of 5 closures
 
 **Workflow log**:
+
 ```
 [2026-02-15 00:15:23] Processing 12 stale PRs with expired grace periods
 [2026-02-15 00:15:45] Closed PR #123
@@ -1286,15 +1377,18 @@ gh aw compile stale-pr-manager --validate
 ```
 
 **Resolution** (automatic):
+
 ```markdown
 ## Deferred Processing Logic
 
 When safe-output limit reached:
+
 1. Save remaining items to repo-memory: `deferred-closures.json`
 2. Log deferral with count and reason
 3. Exit gracefully with success status
 
 **Next run** (24 hours later):
+
 1. Load deferred list from repo-memory
 2. Process deferred items FIRST (before scanning for new stale PRs)
 3. Clear deferred list once processed
@@ -1305,7 +1399,7 @@ When safe-output limit reached:
 ```yaml
 safe-outputs:
   close-pull-request:
-    max: 10  # Increased from 5
+    max: 10 # Increased from 5
     expiration: 1d
 ```
 
@@ -1314,6 +1408,7 @@ safe-outputs:
 **Scenario**: Multiple workflows modifying `README.md`
 
 **Error**:
+
 ```bash
 git merge feat/pr-labeler-workflow
 Auto-merging README.md
@@ -1322,6 +1417,7 @@ Automatic merge failed; fix conflicts and then commit the result.
 ```
 
 **Resolution**:
+
 ```bash
 # View conflicts
 git diff README.md
@@ -1342,6 +1438,7 @@ git commit -m "Merge feat/pr-labeler-workflow, resolve README conflicts"
 ```
 
 **Prevention strategy** (for future):
+
 ```bash
 # Merge to integration branch sequentially, not in parallel
 for branch in feat/*-workflow; do
@@ -1356,6 +1453,7 @@ done
 **Scenario**: CodeQL workflow running on feature branch, failing due to workflow changes
 
 **Error**:
+
 ```
 CodeQL analysis failed on feat/secret-validation-workflow
 Error: Cannot analyze workflow files
@@ -1370,7 +1468,7 @@ Error: Cannot analyze workflow files
 on:
   pull_request:
     paths-ignore:
-      - '.github/workflows/**/*.md'  # Don't trigger on workflow changes
+      - ".github/workflows/**/*.md" # Don't trigger on workflow changes
 ```
 
 **Alternative**: Wait for CodeQL to complete successfully
@@ -1383,6 +1481,341 @@ gh pr checks feat/secret-validation-workflow
 gh pr checks feat/secret-validation-workflow --watch
 ```
 
+### Issue: MCP Server Launch Errors
+
+**Error**:
+
+```
+##[error]MCP server(s) failed to launch: docker-mcp
+```
+
+**Root cause**: MCP server configured in `.mcp.json` requires Docker, which isn't available in GitHub Actions.
+
+**How to fix**:
+
+**Step 1: Identify incompatible MCP servers**
+
+```bash
+# Review your .mcp.json
+cat .mcp.json
+
+# Common incompatible servers:
+# - docker-mcp (requires Docker)
+# - filesystem with host paths (sandboxed environment)
+```
+
+**Step 2: Remove incompatible servers from .mcp.json**
+
+```json
+{
+  "mcpServers": {
+    "workiq": {
+      "command": "npx",
+      "args": ["-y", "@microsoft/workiq", "mcp"]
+    }
+  }
+}
+```
+
+**Step 3: Test locally before committing**
+
+```bash
+# Test if MCP server works in restricted environment
+uvx docker-mcp  # Should fail if it won't work in CI
+
+# Only keep servers that work:
+# ✅ workiq (npm-based)
+# ✅ github (API-based)
+# ✅ safeoutputs (built-in)
+```
+
+**Step 4: Commit and push**
+
+```bash
+git add .mcp.json
+git commit -m "fix: Remove docker-mcp server for CI compatibility"
+git push
+```
+
+### Issue: Lockdown Mode Without Custom Token
+
+**Error**:
+
+```
+Lockdown mode is enabled (lockdown: true) but no custom GitHub token is configured.
+```
+
+**Root cause**: Workflow has `lockdown: true` but no `GH_AW_GITHUB_TOKEN` secret set.
+
+**How to fix (Option 1: Remove lockdown mode - Recommended)**
+
+Most workflows don't need lockdown mode. The default `GITHUB_TOKEN` works fine.
+
+**Step 1: Remove lockdown from workflow**
+
+```yaml
+# Before
+tools:
+  github:
+    toolsets: [issues, discussions]
+    lockdown: true  # ← Remove this
+
+# After
+tools:
+  github:
+    toolsets: [issues, discussions]
+```
+
+**Step 2: Commit and push**
+
+```bash
+git add .github/workflows/your-workflow.md
+git commit -m "fix: Remove unnecessary lockdown mode"
+git push
+```
+
+**How to fix (Option 2: Configure custom token for enhanced security)**
+
+Only use this if you need enhanced audit trail or cross-repo operations.
+
+**Step 1: Create fine-grained PAT**
+
+```bash
+# Go to GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens
+# Create token with:
+# - Repository access: Your repository
+# - Permissions: issues (write), discussions (write)
+```
+
+**Step 2: Add as repository secret**
+
+```bash
+gh secret set GH_AW_GITHUB_TOKEN --body "github_pat_XXX" --repo owner/repo
+```
+
+**Step 3: Verify workflow runs**
+
+```bash
+gh run list --workflow=your-workflow.lock.yml --limit 1
+```
+
+### Issue: Missing API Keys for Engine
+
+**Error**:
+
+```
+Neither CODEX_API_KEY nor OPENAI_API_KEY secret is set
+```
+
+**Root cause**: Workflow uses `engine: codex` which requires OpenAI API key.
+
+**How to fix (Option 1: Switch to Copilot - Recommended)**
+
+**Step 1: Change engine in workflow**
+
+```yaml
+# Before
+engine: codex
+
+# After
+engine: copilot  # No API key required
+```
+
+**Step 2: Commit and push**
+
+```bash
+git add .github/workflows/your-workflow.md
+git commit -m "fix: Switch from codex to copilot engine"
+git push
+```
+
+**How to fix (Option 2: Configure API key)**
+
+Only if you specifically need OpenAI/Codex.
+
+**Step 1: Get API key from OpenAI**
+
+```bash
+# Visit https://platform.openai.com/api-keys
+# Create new secret key
+```
+
+**Step 2: Add as repository secret**
+
+```bash
+gh secret set OPENAI_API_KEY --body "sk-..." --repo owner/repo
+```
+
+### Issue: Permissions vs Safe-Outputs Mismatch
+
+**Error at compile time**:
+
+```
+Strict mode: Direct write permissions not allowed. Use safe-outputs instead.
+```
+
+**Root cause**: Workflow has `issues: write` or `discussions: write` in permissions. gh-aw uses safe-outputs for write operations, not direct permissions.
+
+**How to fix**:
+
+**Step 1: Understand the gh-aw permission model**
+
+```yaml
+# ❌ WRONG - Direct write permissions (blocked in strict mode)
+permissions:
+  issues: write
+  discussions: write
+
+# ✅ CORRECT - Read permissions + safe-outputs
+permissions:
+  contents: read
+  issues: read
+
+safe-outputs:
+  create-issue:
+    max: 5
+  create-discussion:
+    max: 1
+```
+
+**Step 2: Convert write permissions to safe-outputs**
+
+```yaml
+# Before
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+# After
+permissions:
+  contents: read
+  issues: read
+  pull-requests: read
+
+safe-outputs:
+  create-issue:
+    max: 10
+  update-issue:
+    max: 20
+  create-pull-request:
+    max: 5
+```
+
+**Step 3: Verify compilation**
+
+```bash
+gh aw compile your-workflow --validate
+# Should show: Compilation successful ✅
+```
+
+**Step 4: Commit and push**
+
+```bash
+git add .github/workflows/your-workflow.md
+git commit -m "fix: Use safe-outputs instead of direct write permissions"
+git push
+```
+
+### Issue: Python Dependency Conflicts
+
+**Error**:
+
+```
+AttributeError: module 'typer' has no attribute 'rich_utils'
+```
+
+**Root cause**: Incompatible versions of Python dependencies (safety 3.x has typer issues).
+
+**How to fix**:
+
+**Step 1: Pin compatible versions in workflow**
+
+```yaml
+# Before
+- name: Install security tools
+  run: pip install safety bandit pylint
+
+# After
+- name: Install security tools
+  run: |
+    pip install 'safety==2.3.5'
+    pip install 'bandit==1.7.6' 'pylint==3.0.3'
+```
+
+**Step 2: Add conditional tool checks**
+
+```bash
+# Check tool availability before use
+if command -v safety &> /dev/null; then
+  safety check
+else
+  echo "⚠️ safety not available, skipping security scan"
+fi
+```
+
+**Step 3: Commit and push**
+
+```bash
+git add .github/workflows/your-workflow.md
+git commit -m "fix: Pin compatible Python tool versions"
+git push
+```
+
+### Issue: Misunderstanding GITHUB_TOKEN
+
+**Confusion**: "Do I need to set GITHUB_TOKEN as a secret?"
+
+**Answer**: **NO!** `GITHUB_TOKEN` is automatically available in all GitHub Actions workflows.
+
+**How it works**:
+
+**Step 1: Understand automatic token injection**
+
+```yaml
+# ❌ WRONG - Manually setting GITHUB_TOKEN (unnecessary!)
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+# ✅ CORRECT - Just declare permissions, token is automatic
+permissions:
+  contents: read
+  issues: read
+```
+
+**Step 2: The token is automatically injected by GitHub**
+
+- Token has permissions based on your `permissions:` declaration
+- Token is scoped to the repository and workflow run
+- Token expires when workflow completes
+
+**Step 3: When you DO need a custom token**
+
+Only in these specific cases:
+
+```yaml
+# Custom token needed for:
+# - Lockdown mode (lockdown: true)
+# - Cross-repository operations
+# - Enhanced audit requirements
+
+# Then use GH_AW_GITHUB_TOKEN (NOT GITHUB_TOKEN)
+tools:
+  github:
+    lockdown: true
+```
+
+**Step 4: Troubleshooting GITHUB_TOKEN errors**
+
+If you see GITHUB_TOKEN errors:
+
+```bash
+# 1. Check permissions are declared
+# 2. Check if lockdown mode is enabled (needs custom token)
+# 3. Verify safe-outputs are configured correctly
+# 4. Ensure you're NOT setting GITHUB_TOKEN as a secret
+```
+
 ---
 
 ## CI Integration Patterns
@@ -1392,17 +1825,18 @@ gh pr checks feat/secret-validation-workflow --watch
 **Purpose**: Ensure all workflows compile before merging
 
 **.github/workflows/compile-workflows.yml**:
+
 ```yaml
 name: Compile Agentic Workflows
 
 on:
   pull_request:
     paths:
-      - '.github/workflows/*.md'
+      - ".github/workflows/*.md"
   push:
     branches: [main, integration]
     paths:
-      - '.github/workflows/*.md'
+      - ".github/workflows/*.md"
 
 permissions:
   contents: read
@@ -1450,12 +1884,13 @@ jobs:
 **Purpose**: Monitor workflow execution health
 
 **.github/workflows/workflow-health-check.yml**:
+
 ```yaml
 name: Workflow Health Check
 
 on:
   schedule:
-    - cron: '0 */6 * * *'  # Every 6 hours
+    - cron: "0 */6 * * *" # Every 6 hours
   workflow_dispatch:
 
 permissions:
@@ -1520,12 +1955,13 @@ tools:
     enabled: true
 ```
 
-```markdown
+````markdown
 ## Test Coverage Enforcement (.NET Specific)
 
 ### Coverage Tool: Coverlet
 
 Run tests with coverage:
+
 ```bash
 dotnet test \
   /p:CollectCoverage=true \
@@ -1534,6 +1970,7 @@ dotnet test \
   /p:ThresholdType=line \
   /p:ThresholdStat=total
 ```
+````
 
 ### Parse Coverage Report
 
@@ -1549,7 +1986,8 @@ else
   echo "✅ Coverage ${coverage_pct}% meets threshold"
 fi
 ```
-```
+
+````
 
 ### Adaptation 2: JavaScript/TypeScript Repository
 
@@ -1572,7 +2010,7 @@ fi
 Run tests with coverage:
 ```bash
 npm test -- --coverage --coverageReporters=json-summary
-```
+````
 
 ### Parse Coverage Report
 
@@ -1588,7 +2026,8 @@ else
   echo "✅ Coverage ${coverage_pct}% meets threshold"
 fi
 ```
-```
+
+````
 
 ### Adaptation 3: Python Repository
 
@@ -1611,7 +2050,7 @@ fi
 Run tests with coverage:
 ```bash
 pytest --cov=. --cov-report=json --cov-fail-under=80
-```
+````
 
 ### Parse Coverage Report
 
@@ -1626,8 +2065,10 @@ else
   echo "✅ Coverage ${coverage_pct}% meets threshold"
 fi
 ```
+
 ```
 
 ---
 
 **This examples file provides concrete, copy-paste ready implementations based on real adoption sessions. All examples are tested and production-ready.**
+```

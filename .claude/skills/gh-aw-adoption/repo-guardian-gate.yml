@@ -1,0 +1,80 @@
+name: Repo Guardian Gate
+
+# This workflow enforces Repo Guardian findings as a blocking check.
+# Repo Guardian itself is advisory (posts comments). This gate checks
+# whether unresolved "Action Required" findings exist without an override.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main, master]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  check-repo-guardian:
+    name: Repo Guardian Gate
+    runs-on: ubuntu-latest
+    # For issue_comment events, only run if the comment is on a PR
+    if: >
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'issue_comment' && github.event.issue.pull_request)
+    steps:
+      - name: Wait for Repo Guardian to complete
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "Waiting 60s for Repo Guardian agent to post findings..."
+          sleep 60
+
+      - name: Check for unresolved Repo Guardian violations
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          script: |
+            const prNumber = context.issue?.number || context.payload.pull_request?.number;
+            if (!prNumber) {
+              core.info('No PR number found, skipping');
+              return;
+            }
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              per_page: 100
+            });
+
+            // Find the latest Repo Guardian comment
+            const guardianComment = comments
+              .filter(c => c.body.includes('Repo Guardian'))
+              .pop();
+
+            if (!guardianComment) {
+              core.info('No Repo Guardian comment found yet — passing');
+              return;
+            }
+
+            const hasViolations = guardianComment.body.includes('Action Required');
+            const hasOverride = comments.some(c =>
+              !c.body.includes('Repo Guardian') &&
+              c.body.includes('repo-guardian:override') &&
+              c.body.match(/repo-guardian:override\s+\S/)
+            );
+            const hasPassedComment = comments.some(c =>
+              c.body.includes('Repo Guardian - Passed') ||
+              c.body.includes('Override Acknowledged')
+            );
+
+            if (hasViolations && !hasOverride && !hasPassedComment) {
+              core.setFailed(
+                'Repo Guardian found violations that have not been resolved or overridden. ' +
+                'Fix the flagged files or add a comment: repo-guardian:override <reason>'
+              );
+            } else if (hasOverride || hasPassedComment) {
+              core.info('Repo Guardian: passed (override acknowledged or no violations)');
+            } else {
+              core.info('Repo Guardian: passed');
+            }

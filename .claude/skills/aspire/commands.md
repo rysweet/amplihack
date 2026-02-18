@@ -7,6 +7,7 @@ Complete command reference for .NET Aspire CLI, Azure Developer CLI (azd), and r
 ### Aspire Installation
 
 **macOS/Linux:**
+
 ```bash
 # Install via script
 curl -sSL https://aspire.dev/install.sh | bash
@@ -19,6 +20,7 @@ aspire upgrade
 ```
 
 **Windows (PowerShell):**
+
 ```powershell
 # Install via script
 irm https://aspire.dev/install.ps1 | iex
@@ -31,6 +33,7 @@ aspire upgrade
 ```
 
 **Alternative (via .NET SDK):**
+
 ```bash
 # Install as .NET global tool (all platforms)
 dotnet tool install -g Microsoft.DotNet.Aspire
@@ -42,6 +45,7 @@ dotnet tool update -g Microsoft.DotNet.Aspire
 ### Azure Developer CLI (azd)
 
 **macOS/Linux:**
+
 ```bash
 # Install via homebrew (macOS)
 brew tap azure/azd && brew install azd
@@ -54,6 +58,7 @@ azd version
 ```
 
 **Windows (PowerShell):**
+
 ```powershell
 # Install via PowerShell
 powershell -ex AllSigned -c "Invoke-RestMethod 'https://aka.ms/install-azd.ps1' | Invoke-Expression"
@@ -68,6 +73,7 @@ azd version
 ### Prerequisites
 
 **.NET SDK (Required):**
+
 ```bash
 # Install .NET 9 SDK
 # Windows: Download from https://dot.net
@@ -79,6 +85,7 @@ dotnet --version  # Should be 9.0.0 or higher
 ```
 
 **Docker Desktop (Required for local development):**
+
 ```bash
 # Verify Docker is running
 docker --version
@@ -145,6 +152,7 @@ dotnet new aspire -n MyApp --use-redis-cache
 ### Running Services
 
 **Basic Run:**
+
 ```bash
 # Start all services defined in AppHost
 cd MyApp.AppHost
@@ -157,6 +165,7 @@ dotnet run
 ```
 
 **Run with Options:**
+
 ```bash
 # Run without opening browser
 aspire run --no-launch-profile
@@ -188,6 +197,7 @@ aspire down --volumes
 ### Service Management
 
 **View Running Services:**
+
 ```bash
 # List all Aspire resources
 aspire ps
@@ -200,6 +210,7 @@ aspire status
 ```
 
 **Restart Services:**
+
 ```bash
 # Restart specific service (via Dashboard)
 # Or restart all:
@@ -214,12 +225,14 @@ docker restart <container-name>
 ### Logs
 
 **View Logs via Dashboard:**
+
 ```bash
 # Dashboard logs tab shows all services
 # Access at http://localhost:15888/logs
 ```
 
 **View Logs via CLI:**
+
 ```bash
 # Follow logs for specific service
 aspire logs api --follow
@@ -237,6 +250,7 @@ docker logs -f <container-name>
 ### Distributed Tracing
 
 **Access Traces:**
+
 ```bash
 # Dashboard traces tab
 # Access at http://localhost:15888/traces
@@ -248,6 +262,7 @@ aspire traces export --output ./traces.json
 ### Metrics
 
 **View Metrics:**
+
 ```bash
 # Dashboard metrics tab
 # Access at http://localhost:15888/metrics
@@ -334,6 +349,7 @@ azd auth status
 ### Deploy to Azure
 
 **Full Deployment:**
+
 ```bash
 # Deploy everything (infrastructure + code)
 azd up
@@ -344,6 +360,7 @@ azd up
 ```
 
 **Incremental Deployment:**
+
 ```bash
 # Deploy code only (no infrastructure changes)
 azd deploy
@@ -356,6 +373,7 @@ azd provision
 ```
 
 **Environment-Specific Deployment:**
+
 ```bash
 # Deploy to specific environment
 azd deploy -e production
@@ -549,37 +567,38 @@ aspire run --offline
 
 ## Quick Reference Table
 
-| Task | Command | Notes |
-|------|---------|-------|
-| **Setup** |
-| Install Aspire | `curl -sSL https://aspire.dev/install.sh \| bash` | macOS/Linux |
-| Install Aspire | `irm https://aspire.dev/install.ps1 \| iex` | Windows |
-| Install azd | `brew install azd` | macOS |
-| Install azd | `winget install microsoft.azd` | Windows |
-| **Development** |
-| Create project | `dotnet new aspire -n MyApp` | Full template |
-| Run locally | `aspire run` | Opens Dashboard |
-| View logs | `aspire logs api --follow` | Follow logs |
-| Stop services | `aspire stop` | Stop all |
-| **Deployment** |
-| Initialize Azure | `azd init` | One-time setup |
-| Login to Azure | `azd auth login` | Required once |
-| Deploy everything | `azd up` | Infrastructure + code |
-| Deploy code only | `azd deploy` | Faster updates |
-| Tear down | `azd down` | Delete resources |
-| **Debugging** |
-| Dashboard | `http://localhost:15888` | All observability |
-| Health check | `curl localhost:5000/health` | Service health |
-| View traces | Dashboard → Traces tab | Distributed tracing |
-| View metrics | Dashboard → Metrics tab | Performance data |
-| **Cleanup** |
-| Remove containers | `docker rm -f $(docker ps -aq)` | All containers |
-| Remove volumes | `aspire down --volumes` | Includes data |
-| Clean system | `docker system prune -a` | Full cleanup |
+| Task              | Command                                           | Notes                 |
+| ----------------- | ------------------------------------------------- | --------------------- |
+| **Setup**         |
+| Install Aspire    | `curl -sSL https://aspire.dev/install.sh \| bash` | macOS/Linux           |
+| Install Aspire    | `irm https://aspire.dev/install.ps1 \| iex`       | Windows               |
+| Install azd       | `brew install azd`                                | macOS                 |
+| Install azd       | `winget install microsoft.azd`                    | Windows               |
+| **Development**   |
+| Create project    | `dotnet new aspire -n MyApp`                      | Full template         |
+| Run locally       | `aspire run`                                      | Opens Dashboard       |
+| View logs         | `aspire logs api --follow`                        | Follow logs           |
+| Stop services     | `aspire stop`                                     | Stop all              |
+| **Deployment**    |
+| Initialize Azure  | `azd init`                                        | One-time setup        |
+| Login to Azure    | `azd auth login`                                  | Required once         |
+| Deploy everything | `azd up`                                          | Infrastructure + code |
+| Deploy code only  | `azd deploy`                                      | Faster updates        |
+| Tear down         | `azd down`                                        | Delete resources      |
+| **Debugging**     |
+| Dashboard         | `http://localhost:15888`                          | All observability     |
+| Health check      | `curl localhost:5000/health`                      | Service health        |
+| View traces       | Dashboard → Traces tab                            | Distributed tracing   |
+| View metrics      | Dashboard → Metrics tab                           | Performance data      |
+| **Cleanup**       |
+| Remove containers | `docker rm -f $(docker ps -aq)`                   | All containers        |
+| Remove volumes    | `aspire down --volumes`                           | Includes data         |
+| Clean system      | `docker system prune -a`                          | Full cleanup          |
 
 ## Common Command Combinations
 
 **Fresh Start:**
+
 ```bash
 aspire down --volumes
 docker system prune -f
@@ -587,6 +606,7 @@ aspire run
 ```
 
 **Deploy to Azure Production:**
+
 ```bash
 azd auth login
 azd env select production
@@ -595,6 +615,7 @@ azd endpoints  # Get URLs
 ```
 
 **Debug Failing Service:**
+
 ```bash
 aspire logs api --tail 100
 docker logs <container-id>
@@ -602,6 +623,7 @@ curl http://localhost:5000/health
 ```
 
 **Update and Redeploy:**
+
 ```bash
 # Local:
 aspire restart
@@ -648,6 +670,7 @@ export PATH="$PATH:$HOME/.aspire/bin"
 ## Error Resolution Commands
 
 **Port Already in Use:**
+
 ```bash
 # Find process using port
 lsof -i :15888  # macOS/Linux
@@ -659,6 +682,7 @@ taskkill /PID <PID> /F  # Windows
 ```
 
 **Docker Not Running:**
+
 ```bash
 # Start Docker Desktop manually
 # Or check service:
@@ -666,6 +690,7 @@ sudo systemctl start docker  # Linux
 ```
 
 **Cache Issues:**
+
 ```bash
 # Clear NuGet cache
 dotnet nuget locals all --clear

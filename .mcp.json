@@ -1,9 +1,5 @@
 {
   "mcpServers": {
-    "docker-mcp": {
-      "command": "uvx",
-      "args": ["docker-mcp"]
-    },
     "workiq": {
       "command": "npx",
       "args": ["-y", "@microsoft/workiq", "mcp"]

@@ -122,22 +122,26 @@ azd deploy -e production  # Deploy to specific environment
 ## Navigation Guide
 
 **When setting up projects:**
+
 - examples.md lines 8-31 → Minimal project
 - examples.md lines 518-608 → Add Python service
 - examples.md lines 610-669 → Add Node.js service
 - examples.md lines 671-768 → Add Go service
 
 **When adding infrastructure:**
+
 - reference.md lines 47-148 → Database APIs (PostgreSQL, Redis, MongoDB)
 - examples.md lines 39-95 → Redis integration
 - examples.md lines 102-176 → PostgreSQL integration
 
 **When deploying:**
+
 - commands.md lines 215-288 → Full azd workflow
 - examples.md lines 387-515 → Azure deployment walkthrough
 - patterns.md lines 5-42 → HA configuration
 
 **When debugging:**
+
 - troubleshooting.md lines 5-112 → Orchestration failures
 - troubleshooting.md lines 291-397 → Connection issues
 - commands.md lines 131-179 → Debug commands
@@ -147,6 +151,7 @@ azd deploy -e production  # Deploy to specific environment
 **Essential commands:** See commands.md for complete reference
 
 **Polyglot patterns:**
+
 ```csharp
 builder.AddProject<Projects.Api>("api");  // .NET
 builder.AddExecutable("python-api", "python", ".").WithArgs("app.py");  // Python
@@ -159,11 +164,13 @@ builder.AddExecutable("go-svc", "go", ".").WithArgs("run", "main.go");  // Go
 ## Integration with Amplihack
 
 **Command**: `/ultrathink "Setup Aspire for microservices"`
+
 - prompt-writer clarifies requirements → architect uses reference.md for API design
 - builder uses examples.md for implementation → reviewer checks patterns.md for best practices
 - tester uses troubleshooting.md for validation
 
 **Agent-Skill mapping**:
+
 - architect → reference.md (API design)
 - builder → examples.md (implementation)
 - reviewer → patterns.md (best practices)

@@ -9,6 +9,7 @@ Best practices, production deployment strategies, and anti-patterns for .NET Asp
 ### High Availability Configuration
 
 **Multi-Replica Services:**
+
 ```csharp
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -26,6 +27,7 @@ builder.Build().Run();
 **Azure Deployment Result:** Container App scales 1-3 replicas with load balancing, health checks, automatic failover
 
 **Database High Availability:**
+
 ```csharp
 if (builder.Environment.IsProduction())
 {
@@ -45,6 +47,7 @@ else
 ### Multi-Region Deployment
 
 **Primary + Read Replicas:**
+
 ```csharp
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -74,6 +77,7 @@ var apiWest = builder.AddProject<Projects.Api>("api-west")
 ```
 
 **Application Code (CQRS Pattern):**
+
 ```csharp
 public class DatabaseService
 {
@@ -102,6 +106,7 @@ public class DatabaseService
 ### Load Balancing Strategy
 
 **Geographic Load Balancing:**
+
 ```csharp
 // Azure Front Door configuration
 if (builder.Environment.IsProduction())
@@ -123,12 +128,14 @@ See [security overview](https://learn.microsoft.com/dotnet/aspire/security/overv
 ### Secrets Management
 
 **Local Development (User Secrets):**
+
 ```bash
 dotnet user-secrets init
 dotnet user-secrets set "ApiKeys:External" "dev-api-key-12345"
 ```
 
 **Production (Azure Key Vault):**
+
 ```csharp
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -141,6 +148,7 @@ builder.Build().Run();
 ```
 
 **API Access to Secrets:**
+
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 
@@ -154,6 +162,7 @@ builder.Services.AddHttpClient("external", client =>
 ```
 
 **Never Store Secrets in Code:**
+
 ```csharp
 // ❌ BAD - Hardcoded secret
 var apiKey = "sk-12345-secret";
@@ -165,6 +174,7 @@ var apiKey = builder.Configuration["ApiKeys:External"];
 ### Managed Identity Pattern
 
 **Database Access Without Connection Strings:**
+
 ```csharp
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -186,6 +196,7 @@ else
 ```
 
 **API Configuration:**
+
 ```csharp
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
@@ -204,6 +215,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 ### Network Isolation
 
 **Private Endpoints:**
+
 ```csharp
 if (builder.Environment.IsProduction())
 {
@@ -220,6 +232,7 @@ if (builder.Environment.IsProduction())
 ```
 
 **API Management Gateway:**
+
 ```csharp
 var apiManagement = builder.AddAzureApiManagement("apim")
     .WithPolicy(new RateLimitPolicy(requestsPerMinute: 100))
@@ -235,6 +248,7 @@ var api = builder.AddProject<Projects.Api>("api")
 ### Connection Pooling
 
 **Database Connection Pools:**
+
 ```csharp
 builder.Services.AddDbContext<AppDbContext>(options =>
 {
@@ -249,6 +263,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 ```
 
 **Redis Connection Multiplexing:**
+
 ```csharp
 builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 {
@@ -266,6 +281,7 @@ builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
 ### Caching Strategy
 
 **Multi-Level Caching:**
+
 ```csharp
 public class CatalogService
 {
@@ -302,6 +318,7 @@ public class CatalogService
 ```
 
 **Cache Invalidation:**
+
 ```csharp
 public async Task UpdateProductAsync(Product product)
 {
@@ -321,6 +338,7 @@ public async Task UpdateProductAsync(Product product)
 ### Asynchronous Processing
 
 **Background Jobs Pattern:**
+
 ```csharp
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -340,6 +358,7 @@ builder.Build().Run();
 ```
 
 **API Publishes Job:**
+
 ```csharp
 app.MapPost("/process", async (ProcessRequest request, IMessageBus bus) =>
 {
@@ -356,6 +375,7 @@ app.MapGet("/jobs/{jobId}", async (Guid jobId, AppDbContext db) =>
 ```
 
 **Worker Processes Asynchronously:**
+
 ```csharp
 public class Worker : BackgroundService
 {
@@ -378,6 +398,7 @@ public class Worker : BackgroundService
 ### Custom Metrics
 
 **Export Business Metrics:**
+
 ```csharp
 public class OrderService
 {
@@ -407,6 +428,7 @@ public class OrderService
 ### Distributed Tracing
 
 **Custom Spans:**
+
 ```csharp
 public class CatalogService
 {
@@ -433,6 +455,7 @@ public class CatalogService
 ```
 
 **Trace Propagation:** Automatic across HTTP calls, visible in Dashboard
+
 ```csharp
 var client = _httpClientFactory.CreateClient("catalog-api");
 var response = await client.GetAsync("/products/123");
@@ -441,6 +464,7 @@ var response = await client.GetAsync("/products/123");
 ### Structured Logging
 
 **Rich Logging:**
+
 ```csharp
 _logger.LogInformation(
     "Order {OrderId} created by user {UserId} with {ItemCount} items totaling {TotalAmount:C}",
@@ -449,6 +473,7 @@ _logger.LogInformation(
 ```
 
 **Log Correlation:**
+
 ```csharp
 using (_logger.BeginScope(new Dictionary<string, object>
 {
@@ -467,6 +492,7 @@ using (_logger.BeginScope(new Dictionary<string, object>
 ### HTTP Communication
 
 **Pattern: REST API between services**
+
 ```csharp
 // AppHost - Python API calling Node.js service
 var nodeApi = builder.AddExecutable("node-api", "node", ".")
@@ -480,6 +506,7 @@ var pythonApi = builder.AddExecutable("python-api", "python", ".")
 ```
 
 **Python Service (FastAPI):**
+
 ```python
 from fastapi import FastAPI
 import httpx
@@ -498,12 +525,13 @@ async def get_user(user_id: int):
 ```
 
 **Node.js Service (Express):**
+
 ```javascript
-const express = require('express');
+const express = require("express");
 const app = express();
 
-app.get('/users/:id', (req, res) => {
-    res.json({ id: req.params.id, name: 'John Doe' });
+app.get("/users/:id", (req, res) => {
+  res.json({ id: req.params.id, name: "John Doe" });
 });
 
 app.listen(3000);
@@ -512,6 +540,7 @@ app.listen(3000);
 ### gRPC Communication
 
 **Pattern: High-performance RPC between services**
+
 ```csharp
 // AppHost - Go gRPC server with C# client
 var grpcServer = builder.AddExecutable("grpc-server", "go", ".")
@@ -523,6 +552,7 @@ var api = builder.AddProject<Projects.Api>("api")
 ```
 
 **Go gRPC Server:**
+
 ```go
 // server.go
 package main
@@ -551,6 +581,7 @@ func main() {
 ```
 
 **C# gRPC Client:**
+
 ```csharp
 var grpcUrl = builder.Configuration["services:grpc-server:grpc:0"];
 var channel = GrpcChannel.ForAddress(grpcUrl!);
@@ -562,6 +593,7 @@ var response = await client.GetUserAsync(new UserRequest { Id = 123 });
 ### Message Queue Communication
 
 **Pattern: Async communication with RabbitMQ**
+
 ```csharp
 // AppHost - Polyglot services with RabbitMQ
 var rabbitmq = builder.AddRabbitMQ("messaging");
@@ -576,6 +608,7 @@ var nodeConsumer = builder.AddExecutable("consumer", "node", ".")
 ```
 
 **Python Producer (pika):**
+
 ```python
 import pika
 import os
@@ -592,24 +625,26 @@ channel.basic_publish(exchange='', routing_key='tasks',
 ```
 
 **Node.js Consumer (amqplib):**
+
 ```javascript
-const amqp = require('amqplib');
+const amqp = require("amqplib");
 
 const rabbitmqUrl = process.env.ConnectionStrings__messaging;
 const connection = await amqp.connect(rabbitmqUrl);
 const channel = await connection.createChannel();
 
-await channel.assertQueue('tasks');
-channel.consume('tasks', (msg) => {
-    const task = JSON.parse(msg.content.toString());
-    console.log('Processing:', task);
-    channel.ack(msg);
+await channel.assertQueue("tasks");
+channel.consume("tasks", (msg) => {
+  const task = JSON.parse(msg.content.toString());
+  console.log("Processing:", task);
+  channel.ack(msg);
 });
 ```
 
 ### Redis Pub/Sub Communication
 
 **Pattern: Event broadcasting across services**
+
 ```csharp
 var redis = builder.AddRedis("cache");
 
@@ -622,6 +657,7 @@ var subscriber = builder.AddProject<Projects.Subscriber>("subscriber")
 ```
 
 **Python Publisher:**
+
 ```python
 import redis
 import os
@@ -631,6 +667,7 @@ r.publish('events', 'user.created:123')
 ```
 
 **C# Subscriber:**
+
 ```csharp
 var redis = ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("cache")!);
 var subscriber = redis.GetSubscriber();
@@ -646,6 +683,7 @@ await subscriber.SubscribeAsync("events", (channel, message) =>
 ### Python Services
 
 **Async/Await Pattern:**
+
 ```python
 # Use asyncio for I/O-bound operations
 import asyncio
@@ -664,6 +702,7 @@ async def process_request():
 ```
 
 **Environment Variable Handling:**
+
 ```python
 # Aspire uses double underscore for nested config
 # ConnectionStrings__cache → ConnectionStrings:cache
@@ -677,42 +716,45 @@ api_url = os.environ.get("services__api__http__0")
 ### Node.js Services
 
 **Event Loop Optimization:**
+
 ```javascript
 // Use async/await for non-blocking I/O
-const redis = require('redis');
-const { Pool } = require('pg');
+const redis = require("redis");
+const { Pool } = require("pg");
 
 const redisClient = redis.createClient({
-    url: process.env.ConnectionStrings__cache
+  url: process.env.ConnectionStrings__cache,
 });
 const pgPool = new Pool({
-    connectionString: process.env.ConnectionStrings__db
+  connectionString: process.env.ConnectionStrings__db,
 });
 
-app.get('/users/:id', async (req, res) => {
-    // Non-blocking parallel queries
-    const [user, cachedData] = await Promise.all([
-        pgPool.query('SELECT * FROM users WHERE id=$1', [req.params.id]),
-        redisClient.get(`user:${req.params.id}`)
-    ]);
-    res.json(user.rows[0]);
+app.get("/users/:id", async (req, res) => {
+  // Non-blocking parallel queries
+  const [user, cachedData] = await Promise.all([
+    pgPool.query("SELECT * FROM users WHERE id=$1", [req.params.id]),
+    redisClient.get(`user:${req.params.id}`),
+  ]);
+  res.json(user.rows[0]);
 });
 ```
 
 **Graceful Shutdown:**
+
 ```javascript
 // Handle SIGTERM from Aspire orchestration
-process.on('SIGTERM', async () => {
-    console.log('SIGTERM received, shutting down gracefully');
-    await pgPool.end();
-    await redisClient.quit();
-    process.exit(0);
+process.on("SIGTERM", async () => {
+  console.log("SIGTERM received, shutting down gracefully");
+  await pgPool.end();
+  await redisClient.quit();
+  process.exit(0);
 });
 ```
 
 ### Go Services
 
 **Goroutine Management:**
+
 ```go
 // Use context for cancellation propagation
 func handleRequest(ctx context.Context, db *sql.DB, redis *redis.Client) error {
@@ -736,6 +778,7 @@ func handleRequest(ctx context.Context, db *sql.DB, redis *redis.Client) error {
 ```
 
 **Environment Configuration:**
+
 ```go
 // Read Aspire-injected connection strings
 redisConn := os.Getenv("ConnectionStrings__cache")
@@ -753,12 +796,14 @@ db, _ := sql.Open("postgres", dbConn)
 ### Hot Reload per Language
 
 **C# (Built-in):**
+
 ```bash
 # Automatic hot reload with dotnet watch
 aspire run  # Hot reload enabled by default
 ```
 
 **Python (with watchdog):**
+
 ```python
 # Add to Dockerfile or startup script
 pip install watchdog
@@ -766,19 +811,21 @@ watchmedo auto-restart --patterns="*.py" --recursive -- python app.py
 ```
 
 **Node.js (with nodemon):**
+
 ```json
 // package.json
 {
-    "scripts": {
-        "dev": "nodemon server.js"
-    },
-    "devDependencies": {
-        "nodemon": "^3.0.0"
-    }
+  "scripts": {
+    "dev": "nodemon server.js"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  }
 }
 ```
 
 **AppHost Configuration:**
+
 ```csharp
 if (builder.Environment.IsDevelopment())
 {
@@ -797,20 +844,22 @@ else
 **Attach Debugger to Specific Service:**
 
 **Python (VS Code):**
+
 ```json
 // .vscode/launch.json
 {
-    "name": "Attach to Python API",
-    "type": "python",
-    "request": "attach",
-    "connect": {
-        "host": "localhost",
-        "port": 5678
-    }
+  "name": "Attach to Python API",
+  "type": "python",
+  "request": "attach",
+  "connect": {
+    "host": "localhost",
+    "port": 5678
+  }
 }
 ```
 
 **Start Python service with debugpy:**
+
 ```python
 # app.py
 import debugpy
@@ -819,24 +868,26 @@ debugpy.listen(5678)
 ```
 
 **Node.js (VS Code):**
+
 ```json
 // .vscode/launch.json
 {
-    "name": "Attach to Node API",
-    "type": "node",
-    "request": "attach",
-    "port": 9229
+  "name": "Attach to Node API",
+  "type": "node",
+  "request": "attach",
+  "port": 9229
 }
 ```
 
 **Start Node.js with inspect:**
+
 ```javascript
 // AppHost
-builder.AddExecutable("node-api", "node", ".")
-    .WithArgs("--inspect=9229", "server.js");
+builder.AddExecutable("node-api", "node", ".").WithArgs("--inspect=9229", "server.js");
 ```
 
 **Go (Delve):**
+
 ```bash
 # Install delve
 go install github.com/go-delve/delve/cmd/dlv@latest
@@ -848,18 +899,20 @@ dlv debug --headless --listen=:2345 --api-version=2
 ### Shared Configuration Pattern
 
 **appsettings.json (shared config):**
+
 ```json
 {
-    "Logging": {
-        "LogLevel": { "Default": "Information" }
-    },
-    "ConnectionStrings": {
-        "external-api": "https://api.external.com"
-    }
+  "Logging": {
+    "LogLevel": { "Default": "Information" }
+  },
+  "ConnectionStrings": {
+    "external-api": "https://api.external.com"
+  }
 }
 ```
 
 **Read in Python:**
+
 ```python
 import json
 with open('appsettings.json') as f:
@@ -868,12 +921,14 @@ with open('appsettings.json') as f:
 ```
 
 **Read in Node.js:**
+
 ```javascript
-const config = require('./appsettings.json');
-const externalApi = config.ConnectionStrings['external-api'];
+const config = require("./appsettings.json");
+const externalApi = config.ConnectionStrings["external-api"];
 ```
 
 **Read in Go:**
+
 ```go
 import "encoding/json"
 
@@ -892,6 +947,7 @@ externalApi := config.ConnectionStrings["external-api"]
 ### ❌ Language-Specific Serialization Pitfalls
 
 **Bad - Python datetime to JSON:**
+
 ```python
 # BAD - Python datetime not JSON serializable
 import datetime
@@ -900,6 +956,7 @@ json.dumps(data)  # ERROR: datetime not serializable
 ```
 
 **Good - ISO 8601 strings:**
+
 ```python
 # GOOD - Use ISO 8601 strings
 data = {'timestamp': datetime.datetime.now().isoformat()}
@@ -909,6 +966,7 @@ json.dumps(data)  # Works across all languages
 ### ❌ Async/Sync Boundary Violations
 
 **Bad - Blocking in async context:**
+
 ```python
 # BAD - Blocking I/O in async function
 async def get_user(user_id):
@@ -917,6 +975,7 @@ async def get_user(user_id):
 ```
 
 **Good - Use async libraries:**
+
 ```python
 # GOOD - Non-blocking async I/O
 async def get_user(user_id):
@@ -928,6 +987,7 @@ async def get_user(user_id):
 ### ❌ Inconsistent Error Handling
 
 **Bad - Language-specific error formats:**
+
 ```python
 # Python returns dict
 {"error": "Not found", "code": 404}
@@ -937,26 +997,29 @@ async def get_user(user_id):
 ```
 
 **Good - Standardized error format:**
+
 ```json
 {
-    "error": {
-        "code": "NOT_FOUND",
-        "message": "Resource not found",
-        "statusCode": 404,
-        "timestamp": "2026-01-28T12:00:00Z"
-    }
+  "error": {
+    "code": "NOT_FOUND",
+    "message": "Resource not found",
+    "statusCode": 404,
+    "timestamp": "2026-01-28T12:00:00Z"
+  }
 }
 ```
 
 ### ❌ Hardcoded Service URLs
 
 **Bad - Hardcoded endpoints:**
+
 ```python
 # BAD - Hardcoded URL breaks in different environments
 api_url = "http://localhost:3000/users"
 ```
 
 **Good - Environment-based discovery:**
+
 ```python
 # GOOD - Use Aspire service discovery
 api_url = os.environ.get("services__node_api__http__0")
@@ -966,6 +1029,7 @@ users_endpoint = f"{api_url}/users"
 ### ❌ Missing Health Checks
 
 **Bad - No health endpoint:**
+
 ```python
 # BAD - Service has no health check
 app = FastAPI()
@@ -973,6 +1037,7 @@ app = FastAPI()
 ```
 
 **Good - Implement health checks:**
+
 ```python
 # GOOD - Health endpoint for DCP monitoring
 @app.get("/health")
@@ -982,13 +1047,13 @@ async def health():
 
 ## Quick Reference: Polyglot Patterns
 
-| Pattern | Use Case | Languages | Latency | Complexity |
-|---------|----------|-----------|---------|------------|
-| **HTTP REST** | Public APIs, CRUD operations | All | 5-50ms | Low |
-| **gRPC** | Internal services, high throughput | C#, Go, Python | 1-10ms | Medium |
-| **Message Queue** | Async tasks, decoupling | All | 10-100ms | Medium |
-| **Redis Pub/Sub** | Real-time events, broadcasting | All | 1-5ms | Low |
-| **Shared Database** | Data consistency (use sparingly) | All | 1-10ms | Low |
+| Pattern             | Use Case                           | Languages      | Latency  | Complexity |
+| ------------------- | ---------------------------------- | -------------- | -------- | ---------- |
+| **HTTP REST**       | Public APIs, CRUD operations       | All            | 5-50ms   | Low        |
+| **gRPC**            | Internal services, high throughput | C#, Go, Python | 1-10ms   | Medium     |
+| **Message Queue**   | Async tasks, decoupling            | All            | 10-100ms | Medium     |
+| **Redis Pub/Sub**   | Real-time events, broadcasting     | All            | 1-5ms    | Low        |
+| **Shared Database** | Data consistency (use sparingly)   | All            | 1-10ms   | Low        |
 
 **Recommendation:** Start with HTTP REST, migrate to gRPC for performance-critical paths, use message queues for long-running tasks.
 
@@ -1132,6 +1197,7 @@ builder.Services.AddSerilog();  // Unnecessary complexity
 ### Docker Compose → Aspire
 
 **Old (docker-compose.yml):**
+
 ```yaml
 services:
   api:
@@ -1156,6 +1222,7 @@ services:
 ```
 
 **New (AppHost):**
+
 ```csharp
 var builder = DistributedApplication.CreateBuilder(args);
 
@@ -1174,6 +1241,7 @@ builder.Build().Run();
 ```
 
 **Benefits:**
+
 - Type-safe configuration
 - Automatic service discovery
 - Built-in observability
@@ -1251,12 +1319,14 @@ All services access databases, caches, queues via connection strings injected by
 ## Resources
 
 **Production Guidance:**
+
 - [Deployment Overview](https://learn.microsoft.com/dotnet/aspire/deployment/overview)
 - [Azure Deployment Guide](https://learn.microsoft.com/dotnet/aspire/deployment/azure/aca-deployment)
 - [Security Best Practices](https://learn.microsoft.com/dotnet/aspire/security/overview)
 - [Monitoring & Observability](https://learn.microsoft.com/dotnet/aspire/fundamentals/dashboard)
 
 **Advanced Topics:**
+
 - [Testing Strategies](https://learn.microsoft.com/dotnet/aspire/fundamentals/testing)
 - [Performance Tuning](https://learn.microsoft.com/dotnet/aspire/fundamentals/performance)
 - [Multi-Region Deployment](https://learn.microsoft.com/azure/container-apps/disaster-recovery)

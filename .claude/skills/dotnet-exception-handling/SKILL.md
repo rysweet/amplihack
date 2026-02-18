@@ -33,6 +33,7 @@ Systematic investigation and remediation of .NET exception handling anti-pattern
 ```
 
 **Arguments**:
+
 - `project-path`: Directory containing .csproj or .sln (default: current directory)
 - `--priority`: `critical` | `high` | `medium` | `low` | `all` (default: `all`)
 - `--fix-all`: Implement fixes automatically (default: investigate only)
@@ -57,50 +58,59 @@ Systematic investigation and remediation of .NET exception handling anti-pattern
 ### Phase 1: Investigation (6 Steps)
 
 **Step 1: Project Detection**
-- Scan for .csproj, .sln files  
+
+- Scan for .csproj, .sln files
 - Identify project types (ASP.NET Core, worker services, libraries)
 - Count C# files for scope estimation
 
 **Step 2: Parallel Analysis**
+
 - Deploy 5 specialized agents:
   - Background Worker Specialist
-  - API Layer Specialist  
+  - API Layer Specialist
   - Service Layer Specialist
   - Data Layer Specialist
   - Infrastructure Specialist
 
 **Step 3: Violation Detection**
+
 - Use `rg -P` (ripgrep PCRE mode) for pattern matching:
+
   ```bash
   # Mistake #1: Broad catches
   rg -P 'catch\s*\(Exception\b' --glob '*.cs'
-  
-  # Mistake #2: Empty catches  
+
+  # Mistake #2: Empty catches
   rg -P 'catch[^{]*\{\s*(//[^\n]*)?\s*\}' --glob '*.cs'
-  
+
   # Mistake #3: throw ex
   rg 'throw\s+ex;' --glob '*.cs'
   ```
+
 - See `reference.md` for complete pattern list
 
 **Step 4: Severity Classification**
+
 - **CRITICAL**: Security (stack trace exposure, missing global handler)
 - **HIGH**: Reliability (swallowed exceptions, broad catches)
 - **MEDIUM**: Code quality (excessive try/catch)
 - **LOW**: Style issues
 
 **Step 5: Findings Report**
+
 - Generate markdown with file:line references
 - Code snippets + recommended fixes
 - Priority-based roadmap
 
 **Step 6: Knowledge Capture**
+
 - Store in `.claude/runtime/logs/EXCEPTION_INVESTIGATION_YYYY-MM-DD.md`
 - Update project memory
 
 ### Phase 2: Development (If --fix-all)
 
 **Step 7: Orchestrate Default Workflow**
+
 - Create GitHub issue with findings
 - Set up worktree for fixes
 - Implement GlobalExceptionHandler, Result<T>, etc.
@@ -108,6 +118,7 @@ Systematic investigation and remediation of .NET exception handling anti-pattern
 - Three-agent review (reviewer, security, philosophy)
 
 **Step 8: Validation**
+
 - All tests pass
 - Security: Zero stack traces
 - Performance: <5ms p99 overhead
@@ -165,8 +176,8 @@ public class GlobalExceptionHandler : IExceptionHandler
         {
             Status = statusCode,
             Title = title,
-            Detail = statusCode >= 500 
-                ? "An error occurred" 
+            Detail = statusCode >= 500
+                ? "An error occurred"
                 : exception.Message
         }, cancellationToken);
 
@@ -190,7 +201,7 @@ public Result<Order> ValidateOrder(CreateOrderDto dto)
 {
     if (dto.Items.Count == 0)
         return Result<Order>.Failure("Order must have items");
-    
+
     return Result<Order>.Success(new Order(dto));
 }
 
@@ -211,14 +222,16 @@ return result.Match(
 ### When to Read Supporting Files
 
 **reference.md** - Read when you need:
+
 - Detailed descriptions of all 10 exception handling mistakes
-- Complete detection patterns for ripgrep/grep  
+- Complete detection patterns for ripgrep/grep
 - Fix templates for each mistake type
 - Security considerations (OWASP compliance, stack trace prevention)
 - Severity classification reference
 - Integration patterns (Azure SDK, EF Core, Service Bus)
 
 **examples.md** - Read when you need:
+
 - Before/after code examples for each mistake
 - Complete working implementations (GlobalExceptionHandler, Result<T>, DbContextExtensions)
 - Real-world scenarios (order processing, payment systems)
@@ -226,6 +239,7 @@ return result.Match(
 - Copy-paste ready code
 
 **patterns.md** - Read when you need:
+
 - Architecture decision trees (global handler vs try/catch, Result<T> vs exceptions)
 - Background worker exception handling patterns
 - Azure SDK exception translation patterns

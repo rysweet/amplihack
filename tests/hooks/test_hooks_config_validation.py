@@ -13,7 +13,9 @@ from pathlib import Path
 def test_hooks_json_is_valid_json():
     """Verify hooks.json is syntactically valid JSON."""
     # Test the project file (what's in the PR), not the installed file
-    hooks_json_path = Path(__file__).parent.parent.parent / ".claude/tools/amplihack/hooks/hooks.json"
+    hooks_json_path = (
+        Path(__file__).parent.parent.parent / ".claude/tools/amplihack/hooks/hooks.json"
+    )
 
     if not hooks_json_path.exists():
         # Fallback to installed location if project file doesn't exist
@@ -25,7 +27,7 @@ def test_hooks_json_is_valid_json():
         data = json.load(f)  # Should not raise JSONDecodeError
 
     assert isinstance(data, dict), "hooks.json should be a JSON object"
-    print(f"✅ hooks.json is valid JSON")
+    print("✅ hooks.json is valid JSON")
 
 
 def test_hooks_json_has_no_plugin_root_references():
@@ -34,7 +36,9 @@ def test_hooks_json_has_no_plugin_root_references():
     EXPECTED TO FAIL: Before fix, this will find 7 occurrences of ${CLAUDE_PLUGIN_ROOT}
     """
     # Test the project file (what's in the PR), not the installed file
-    hooks_json_path = Path(__file__).parent.parent.parent / ".claude/tools/amplihack/hooks/hooks.json"
+    hooks_json_path = (
+        Path(__file__).parent.parent.parent / ".claude/tools/amplihack/hooks/hooks.json"
+    )
 
     if not hooks_json_path.exists():
         hooks_json_path = Path.home() / ".amplihack/.claude/tools/amplihack/hooks/hooks.json"
@@ -59,7 +63,9 @@ def test_hooks_json_uses_correct_directory_paths():
     EXPECTED TO FAIL: Before fix, paths use ${CLAUDE_PLUGIN_ROOT} instead
     """
     # Test the project file (what's in the PR), not the installed file
-    hooks_json_path = Path(__file__).parent.parent.parent / ".claude/tools/amplihack/hooks/hooks.json"
+    hooks_json_path = (
+        Path(__file__).parent.parent.parent / ".claude/tools/amplihack/hooks/hooks.json"
+    )
 
     if not hooks_json_path.exists():
         hooks_json_path = Path.home() / ".amplihack/.claude/tools/amplihack/hooks/hooks.json"
@@ -89,8 +95,8 @@ def test_hooks_json_uses_correct_directory_paths():
 
     # THIS SHOULD FAIL before fix is applied
     assert len(failed_paths) == 0, (
-        f"Found {len(failed_paths)} hook paths NOT using correct directory:\n" +
-        "\n".join(f"  {event}: {path}" for event, path in failed_paths)
+        f"Found {len(failed_paths)} hook paths NOT using correct directory:\n"
+        + "\n".join(f"  {event}: {path}" for event, path in failed_paths)
     )
 
     print(f"✅ All {len(hook_paths)} hook paths use correct directory")
@@ -99,7 +105,9 @@ def test_hooks_json_uses_correct_directory_paths():
 def test_hooks_json_hook_count():
     """Verify hooks.json contains exactly 7 hook definitions."""
     # Test the project file (what's in the PR), not the installed file
-    hooks_json_path = Path(__file__).parent.parent.parent / ".claude/tools/amplihack/hooks/hooks.json"
+    hooks_json_path = (
+        Path(__file__).parent.parent.parent / ".claude/tools/amplihack/hooks/hooks.json"
+    )
 
     if not hooks_json_path.exists():
         hooks_json_path = Path.home() / ".amplihack/.claude/tools/amplihack/hooks/hooks.json"
@@ -118,13 +126,15 @@ def test_hooks_json_hook_count():
         f"Hook count mismatch may indicate structural issues."
     )
 
-    print(f"✅ Found exactly 7 hook definitions")
+    print("✅ Found exactly 7 hook definitions")
 
 
 def test_hooks_json_critical_hooks_present():
     """Verify critical hooks are present in hooks.json."""
     # Test the project file (what's in the PR), not the installed file
-    hooks_json_path = Path(__file__).parent.parent.parent / ".claude/tools/amplihack/hooks/hooks.json"
+    hooks_json_path = (
+        Path(__file__).parent.parent.parent / ".claude/tools/amplihack/hooks/hooks.json"
+    )
 
     if not hooks_json_path.exists():
         hooks_json_path = Path.home() / ".amplihack/.claude/tools/amplihack/hooks/hooks.json"
@@ -139,7 +149,7 @@ def test_hooks_json_critical_hooks_present():
         "PreToolUse",
         "PostToolUse",
         "UserPromptSubmit",
-        "PreCompact"
+        "PreCompact",
     ]
 
     for event in expected_events:
@@ -164,12 +174,12 @@ if __name__ == "__main__":
     failed = 0
 
     for test_name, test_func in tests:
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Test: {test_name}")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
         try:
             test_func()
-            print(f"✅ PASSED")
+            print("✅ PASSED")
             passed += 1
         except AssertionError as e:
             print(f"❌ FAILED (EXPECTED): {e}")
@@ -178,10 +188,11 @@ if __name__ == "__main__":
             print(f"❌ ERROR: {e}")
             failed += 1
             import traceback
+
             traceback.print_exc()
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"SUMMARY: {passed} passed, {failed} failed")
     if failed > 0:
-        print(f"⚠️  Failures are EXPECTED before fix implementation")
-    print(f"{'='*60}")
+        print("⚠️  Failures are EXPECTED before fix implementation")
+    print(f"{'=' * 60}")

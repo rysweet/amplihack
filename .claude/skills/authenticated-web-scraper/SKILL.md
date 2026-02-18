@@ -60,19 +60,23 @@ When a user asks to scrape an authenticated website:
 ### Phase 1: Launch Edge with Remote Debugging
 
 ```javascript
-import { execSync, spawn } from 'child_process';
+import { execSync, spawn } from "child_process";
 
 // CRITICAL: Kill ALL Edge processes first, otherwise debug flags are ignored
 execSync('cmd.exe /c "taskkill /F /IM msedge.exe /T"');
 await sleep(3000);
 
-const EDGE = '/mnt/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
-spawn(EDGE, [
-  '--remote-debugging-port=9222',
-  '--remote-debugging-address=0.0.0.0',
-  '--remote-allow-origins=*',
-  targetUrl,
-], { detached: true, stdio: 'ignore' }).unref();
+const EDGE = "/mnt/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe";
+spawn(
+  EDGE,
+  [
+    "--remote-debugging-port=9222",
+    "--remote-debugging-address=0.0.0.0",
+    "--remote-allow-origins=*",
+    targetUrl,
+  ],
+  { detached: true, stdio: "ignore" }
+).unref();
 ```
 
 ### Phase 2: Verify CDP and User Auth
@@ -87,6 +91,7 @@ Tell user to authenticate, then confirm they can see content.
 ### Phase 3: Scrape via CDP
 
 Write a Node.js script that:
+
 1. Queries `http://localhost:9222/json/list` for open pages
 2. Connects to the target page via WebSocket (`ws` package)
 3. Uses `Runtime.evaluate` to extract DOM content
@@ -94,6 +99,7 @@ Write a Node.js script that:
 5. Saves `.txt` (clean text), `.html` (full), `_links.json` per page
 
 Run on Windows side:
+
 ```bash
 cp script.mjs /mnt/c/Temp/scraper.mjs
 cmd.exe /c "cd C:\Temp && node scraper.mjs C:\Temp\output" 2>&1
@@ -111,23 +117,24 @@ cmd.exe /c "cd C:\Temp && node scraper.mjs C:\Temp\output" 2>&1
 
 ```javascript
 // Navigate to a page
-await cdpSend(ws, 'Page.navigate', { url });
+await cdpSend(ws, "Page.navigate", { url });
 
 // Extract text content
-await cdpSend(ws, 'Runtime.evaluate', {
+await cdpSend(ws, "Runtime.evaluate", {
   expression: 'document.querySelector("main").innerText',
   returnByValue: true,
 });
 
 // Extract links as JSON
-await cdpSend(ws, 'Runtime.evaluate', {
-  expression: 'JSON.stringify([...document.querySelectorAll("a[href]")].map(a => ({href: a.href, text: a.textContent.trim()})))',
+await cdpSend(ws, "Runtime.evaluate", {
+  expression:
+    'JSON.stringify([...document.querySelectorAll("a[href]")].map(a => ({href: a.href, text: a.textContent.trim()})))',
   returnByValue: true,
 });
 
 // Get full HTML
-await cdpSend(ws, 'Runtime.evaluate', {
-  expression: 'document.documentElement.outerHTML',
+await cdpSend(ws, "Runtime.evaluate", {
+  expression: "document.documentElement.outerHTML",
   returnByValue: true,
 });
 ```
