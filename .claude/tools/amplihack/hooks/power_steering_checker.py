@@ -2971,7 +2971,7 @@ class PowerSteeringChecker:
                 }
             )
 
-            log_file.write_text(json.dumps(violations, indent=2))
+            log_file.write_text(json.dumps(violations, indent=2), encoding="utf-8")
         except Exception:
             pass  # Fail silently
 

@@ -51,6 +51,9 @@ POWER_STEERING_PROMPT_TEMPLATE = TEMPLATE_DIR / "power_steering_prompt.txt"
 
 # Security constants
 MAX_SDK_RESPONSE_LENGTH = 5000
+MAX_CONVERSATION_SUMMARY_LENGTH = (
+    512_000  # Max chars for SDK conversation context (1M token window)
+)
 SUSPICIOUS_PATTERNS = [
     r"<script",
     r"javascript:",
@@ -424,7 +427,9 @@ def _log_sdk_error(consideration_id: str, error: Exception) -> None:
     sys.stderr.flush()
 
 
-def _format_conversation_summary(conversation: list[dict], max_length: int = 50000) -> str:
+def _format_conversation_summary(
+    conversation: list[dict], max_length: int = MAX_CONVERSATION_SUMMARY_LENGTH
+) -> str:
     """Format conversation summary for analysis.
 
     Args:

@@ -92,10 +92,10 @@ class TestFormatConversationSummaryBoundedLength:
         sig = inspect.signature(_format_conversation_summary)
         default = sig.parameters["max_length"].default
 
-        # Should be at most 100K chars to prevent context window overflow
-        assert default <= 100_000, f"max_length={default} may be too large for LLM prompts"
-        # Should be large enough for meaningful conversations
-        assert default >= 1_000, f"max_length={default} is too small for real conversations"
+        # Should be large enough for long sessions (1M context window model)
+        assert default >= 100_000, f"max_length={default} is too small for long sessions"
+        # Should be within a single model's context window (leave room for the prompt)
+        assert default <= 2_000_000, f"max_length={default} exceeds model context limits"
 
     def test_long_conversation_is_truncated_at_default_limit(self):
         """A very long conversation should be truncated at the default max_length."""
