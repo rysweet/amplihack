@@ -70,7 +70,7 @@ skills:
   ultrathink-orchestrator: { path: skills/ultrathink-orchestrator/SKILL.md }
 
   # Technical skills (19)
-  agent-sdk: { path: skills/agent-sdk/SKILL.md }
+  agent-sdk: { path: skills/claude-agent-sdk/SKILL.md }
   azure-admin: { path: skills/azure-admin/SKILL.md }
   azure-devops: { path: skills/azure-devops/SKILL.md }
   azure-devops-cli: { path: skills/azure-devops-cli/skill.md }
