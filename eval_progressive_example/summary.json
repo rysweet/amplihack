@@ -1,31 +1,20 @@
 {
   "overall_scores": {
-    "L1": {
+    "L3": {
       "average": 1.0,
       "count": 3
     },
-    "L2": {
-      "average": 0.7666666666666666,
-      "count": 3
-    },
-    "overall": 0.8833333333333333,
-    "levels_passed": 2,
-    "levels_total": 2,
+    "overall": 1.0,
+    "levels_passed": 1,
+    "levels_total": 1,
     "pass_rate": 1.0
   },
   "level_results": [
     {
-      "level_id": "L1",
-      "level_name": "Single Source Direct Recall",
+      "level_id": "L3",
+      "level_name": "Temporal Reasoning",
       "success": true,
       "average_score": 1.0,
-      "error": null
-    },
-    {
-      "level_id": "L2",
-      "level_name": "Multi-Source Synthesis",
-      "success": true,
-      "average_score": 0.7666666666666666,
       "error": null
     }
   ]

@@ -47,6 +47,7 @@ class FlatRetrieverAdapter:
         confidence: float = 0.9,
         tags: list[str] | None = None,
         source_id: str = "",
+        temporal_metadata: dict | None = None,
     ) -> str:
         """Store a fact as semantic knowledge.
 
@@ -58,6 +59,8 @@ class FlatRetrieverAdapter:
             confidence: Confidence score 0.0-1.0
             tags: Optional tags
             source_id: Optional source episode ID
+            temporal_metadata: Optional temporal context dict with keys like
+                source_date, temporal_order, temporal_index
 
         Returns:
             node_id of stored knowledge
@@ -80,6 +83,7 @@ class FlatRetrieverAdapter:
             category=MemoryCategory.SEMANTIC,
             source_id=source_id,
             tags=tags,
+            temporal_metadata=temporal_metadata,
         )
 
     def search(
