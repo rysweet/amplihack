@@ -3113,6 +3113,7 @@ async def check_health():
 **Solution**:
 
 **macOS:**
+
 ```bash
 # Recommended: Homebrew
 brew install --cask claude-code
@@ -3126,6 +3127,7 @@ claude --version
 ```
 
 **Linux/WSL:**
+
 ```bash
 # Install using script
 curl -fsSL https://claude.ai/install.sh | bash
@@ -3136,6 +3138,7 @@ claude --version
 ```
 
 **Windows:**
+
 ```powershell
 # Recommended: WinGet
 winget install Anthropic.ClaudeCode
@@ -3149,6 +3152,7 @@ claude --version
 ```
 
 **Legacy npm method (deprecated):**
+
 ```bash
 # Check Node.js
 node --version  # Should be 18+

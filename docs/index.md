@@ -166,6 +166,25 @@ Understand the philosophy and architecture behind amplihack.
 
 Proven methodologies for consistent, high-quality results.
 
+### Automatic Workflow Classification ⭐ NEW
+
+**Mandatory at Session Start** (Issue #2353) - amplihack now automatically classifies your request and executes the appropriate workflow when you start a session:
+
+- **4-Way Classification**: Q&A, Operations, Investigation, or Development
+- **Recipe Runner Execution**: Code-enforced workflow steps with fail-fast behavior
+- **Graceful Fallback**: Recipe Runner → Workflow Skills → Markdown
+- **Explicit Command Bypass**: Commands like `/fix`, `/analyze` skip auto-classification
+
+**Quick Reference**:
+| Your Request | Classified As | Workflow | Steps |
+|--------------|---------------|----------|-------|
+| "What is..." | Q&A | Direct answer | 3 |
+| "Clean up..." | Operations | Direct execution | 1 |
+| "How does X work?" | Investigation | Deep exploration | 6 |
+| "Add feature X" | Development | Full workflow | 23 |
+
+**Implementation**: `src/amplihack/workflows/` - classifier, execution_tier_cascade, session_start modules
+
 ### Core Workflows
 
 - [Default Workflow](claude/workflow/DEFAULT_WORKFLOW.md) - Standard multi-step development process

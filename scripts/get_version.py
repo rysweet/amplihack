@@ -36,8 +36,7 @@ def extract_version_from_content(content: str) -> str | None:
 
     if match:
         return match.group(1)
-    else:
-        return None
+    return None
 
 
 def get_version_from_file(pyproject_path: Path) -> str | None:
@@ -105,9 +104,8 @@ def main() -> int:
     if version:
         print(version)
         return 0
-    else:
-        print("Error: Version not found", file=sys.stderr)
-        return 1
+    print("Error: Version not found", file=sys.stderr)
+    return 1
 
 
 if __name__ == "__main__":

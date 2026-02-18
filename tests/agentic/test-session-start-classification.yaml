@@ -1,0 +1,90 @@
+scenario:
+  name: "Session Start Workflow Classification - Automatic Trigger"
+  description: "Verify that workflow classification triggers automatically at session start without explicit command"
+  type: cli
+  tags: [smoke, critical, session-start]
+
+  prerequisites:
+    - "amplihack is installed"
+    - "Python 3.11+ available"
+
+  environment:
+    variables:
+      AMPLIHACK_USE_RECIPES: "1"
+
+  steps:
+    # Test 1: Development request triggers DEFAULT workflow
+    - action: launch
+      target: "python"
+      args:
+        [
+          "-c",
+          'from amplihack.workflows.session_start_skill import SessionStartClassifierSkill; from amplihack.workflows.classifier import WorkflowClassifier; skill = SessionStartClassifierSkill(); result = skill.process({''user_request'': ''Add authentication to the API'', ''is_first_message'': True}); print(f"WORKFLOW: {result[''workflow'']}"); print(f"ACTIVATED: {result[''activated'']}"); print(f"TIER: {result.get(''tier'', ''N/A'')}")',
+        ]
+      description: "Test development request classification"
+
+    - action: verify_output
+      contains: "WORKFLOW: DEFAULT_WORKFLOW"
+      timeout: 5s
+      description: "Should classify as DEFAULT workflow"
+
+    - action: verify_output
+      contains: "ACTIVATED: True"
+      description: "Should activate classification"
+
+    # Test 2: Q&A request triggers Q&A workflow
+    - action: launch
+      target: "python"
+      args:
+        [
+          "-c",
+          'from amplihack.workflows.session_start_skill import SessionStartClassifierSkill; skill = SessionStartClassifierSkill(); result = skill.process({''user_request'': ''What is PHILOSOPHY.md?'', ''is_first_message'': True}); print(f"WORKFLOW: {result[''workflow'']}"); print(f"ACTIVATED: {result[''activated'']}")',
+        ]
+      description: "Test Q&A request classification"
+
+    - action: verify_output
+      contains: "WORKFLOW: Q&A_WORKFLOW"
+      timeout: 5s
+      description: "Should classify as Q&A workflow"
+
+    - action: verify_output
+      contains: "ACTIVATED: True"
+      description: "Should activate classification"
+
+    # Test 3: Explicit command bypasses classification
+    - action: launch
+      target: "python"
+      args:
+        [
+          "-c",
+          'from amplihack.workflows.session_start_skill import SessionStartClassifierSkill; skill = SessionStartClassifierSkill(); result = skill.process({''user_request'': ''/fix import errors'', ''is_first_message'': True, ''is_explicit_command'': True}); print(f"BYPASSED: {result[''bypassed'']}"); print(f"ACTIVATED: {result[''activated'']}")',
+        ]
+      description: "Test explicit command bypass"
+
+    - action: verify_output
+      contains: "BYPASSED: True"
+      timeout: 5s
+      description: "Should bypass classification for slash commands"
+
+    - action: verify_output
+      contains: "ACTIVATED: False"
+      description: "Should not activate classification"
+
+    # Test 4: Investigation request triggers INVESTIGATION workflow
+    - action: launch
+      target: "python"
+      args:
+        [
+          "-c",
+          'from amplihack.workflows.session_start_skill import SessionStartClassifierSkill; skill = SessionStartClassifierSkill(); result = skill.process({''user_request'': ''How does the cleanup system work?'', ''is_first_message'': True}); print(f"WORKFLOW: {result[''workflow'']}"); print(f"ACTIVATED: {result[''activated'']}")',
+        ]
+      description: "Test investigation request classification"
+
+    - action: verify_output
+      contains: "WORKFLOW: INVESTIGATION_WORKFLOW"
+      timeout: 5s
+      description: "Should classify as INVESTIGATION workflow"
+
+    - action: verify_exit_code
+      expected: 0
+      description: "All tests should succeed"

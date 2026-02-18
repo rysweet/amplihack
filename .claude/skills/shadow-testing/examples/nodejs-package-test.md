@@ -12,11 +12,11 @@ You're developing `myorg/ui-components` package and want to test changes with a 
 // ~/repos/ui-components/src/Button.tsx
 // Added new variant prop
 export interface ButtonProps {
-  variant?: 'primary' | 'secondary' | 'danger';  // NEW
+  variant?: "primary" | "secondary" | "danger"; // NEW
   children: React.ReactNode;
 }
 
-export function Button({ variant = 'primary', children }: ButtonProps) {
+export function Button({ variant = "primary", children }: ButtonProps) {
   // ...implementation
 }
 ```
