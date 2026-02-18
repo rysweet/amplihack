@@ -325,12 +325,13 @@ Rules:
         return {"source_date": "", "temporal_order": "", "temporal_index": 0}
 
     def answer_question(self, question: str, question_level: str = "L1") -> str:
-        """Answer a question using stored knowledge and LLM synthesis.
+        """Answer a question using iterative reasoning and LLM synthesis.
 
-        Uses intent detection to classify the question before synthesis.
-        When use_hierarchical=True, uses retrieve_subgraph for Graph RAG context.
-        Otherwise uses smart retrieval: for small knowledge bases (<= 50 facts),
-        retrieves ALL facts and lets the LLM decide relevance.
+        Uses a multi-step approach:
+        1. Intent detection (single LLM call)
+        2. Iterative retrieval: plan -> search -> evaluate -> refine (via AgenticLoop)
+        3. Synthesize answer from collected facts
+        4. Validate arithmetic if needed
 
         Args:
             question: Question to answer
@@ -359,56 +360,42 @@ Rules:
         # Step 1: Intent detection -- single LLM call to classify the question
         intent = self._detect_intent(question)
 
-        # Step 2: Retrieve relevant facts
-        # In hierarchical mode, use Graph RAG subgraph retrieval
-        if self.use_hierarchical and hasattr(self.memory, "memory"):
-            subgraph = self.memory.memory.retrieve_subgraph(query=question, max_nodes=20)
-            if subgraph.nodes:
-                # If temporal question, sort chronologically
-                if intent.get("needs_temporal"):
+        # Step 2: Iterative retrieval via AgenticLoop
+        # The loop plans retrieval, searches, evaluates sufficiency, and refines
+        relevant_facts, collected_nodes = self.loop.reason_iteratively(
+            question=question,
+            memory=self.memory,
+            intent=intent,
+            max_steps=3,
+        )
 
-                    def temporal_sort_key(node):
-                        t_idx = (
-                            node.metadata.get("temporal_index", 999999) if node.metadata else 999999
-                        )
-                        return (t_idx, node.created_at or "")
-
-                    sorted_nodes = sorted(subgraph.nodes, key=temporal_sort_key)
-                else:
-                    sorted_nodes = subgraph.nodes
-
-                # Convert subgraph nodes to flat format for _synthesize_with_llm
-                relevant_facts = [
-                    {
-                        "context": node.concept,
-                        "outcome": node.content,
-                        "confidence": node.confidence,
-                        "metadata": node.metadata if node.metadata else {},
-                    }
-                    for node in sorted_nodes
-                ]
-            else:
-                # Fallback to get_all_facts if subgraph empty
+        # If iterative retrieval found nothing, fall back to getting all facts
+        if not relevant_facts:
+            if self.use_hierarchical and hasattr(self.memory, "get_all_facts"):
                 relevant_facts = self.memory.get_all_facts(limit=50)
-
-            # Also retrieve SUMMARY nodes for birds-eye knowledge overview
-            summary_nodes = self._get_summary_nodes()
-            if summary_nodes:
-                intent["summary_context"] = "\n".join(f"- {s['outcome']}" for s in summary_nodes)
-        else:
-            # Original smart retrieval logic
-            stats = self.memory.get_statistics()
-            total_experiences = stats.get("total_experiences", 0)
-
-            if total_experiences <= 50:
+            elif hasattr(self.memory, "get_all_facts"):
                 relevant_facts = self.memory.get_all_facts(limit=50)
-            else:
-                relevant_facts = self.memory.search(query=question, limit=10, min_confidence=0.5)
-                if len(relevant_facts) < 3:
-                    relevant_facts = self.memory.get_all_facts(limit=50)
 
         if not relevant_facts:
             return "I don't have enough information to answer that question."
+
+        # Sort temporally if needed
+        if intent.get("needs_temporal"):
+
+            def temporal_sort_key(fact):
+                meta = fact.get("metadata", {})
+                t_idx = meta.get("temporal_index", 999999) if meta else 999999
+                return (t_idx, fact.get("timestamp", ""))
+
+            relevant_facts = sorted(relevant_facts, key=temporal_sort_key)
+
+        # Retrieve SUMMARY nodes for birds-eye knowledge overview
+        if self.use_hierarchical:
+            summary_nodes = self._get_summary_nodes()
+            if summary_nodes:
+                intent["summary_context"] = "\n".join(
+                    f"- {s['outcome']}" for s in summary_nodes
+                )
 
         # Step 3: Synthesize answer with intent-aware prompting
         answer = self._synthesize_with_llm(
