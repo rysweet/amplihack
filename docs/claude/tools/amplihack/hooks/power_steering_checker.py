@@ -140,9 +140,9 @@ def _write_with_retry(filepath: Path, data: str, mode: str = "w", max_retries: i
         try:
             filepath.parent.mkdir(parents=True, exist_ok=True)
             if mode == "w":
-                filepath.write_text(data)
+                filepath.write_text(data, encoding="utf-8")
             else:  # append mode
-                with open(filepath, mode) as f:
+                with open(filepath, mode, encoding="utf-8") as f:
                     f.write(data)
             return  # Success!
         except OSError as e:
@@ -3745,15 +3745,19 @@ class PowerSteeringChecker:
 
                         # First check for negation patterns (completion statements)
                         # These should PASS the check (return True)
+                        negation_matched = False
                         for pattern in negation_patterns:
                             if re.search(pattern, text, re.IGNORECASE):
                                 self._log(
                                     "Completion statement found: negation pattern matched",
                                     "INFO",
                                 )
-                                # Continue checking other messages (don't return immediately)
-                                # Only STRUCTURED next steps should fail the check
+                                negation_matched = True
                                 break
+
+                        # Skip structured detection for this message if negation matched
+                        if negation_matched:
+                            continue
 
                         # Check for STRUCTURED next steps (bulleted/numbered lists)
                         # These indicate CONCRETE remaining work

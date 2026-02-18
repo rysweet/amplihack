@@ -356,7 +356,7 @@ def _extract_reason_from_response(response: str) -> str | None:
         response: Full SDK response text
 
     Returns:
-        Extracted reason string (truncated to 200 chars), or generic fallback
+        Full extracted reason string, or generic fallback
 
     Note:
         Looks for patterns like "NOT SATISFIED: reason" or "UNSATISFIED: reason"
@@ -424,19 +424,19 @@ def _log_sdk_error(consideration_id: str, error: Exception) -> None:
     sys.stderr.flush()
 
 
-def _format_conversation_summary(conversation: list[dict], max_length: int | None = None) -> str:
+def _format_conversation_summary(conversation: list[dict], max_length: int = 50000) -> str:
     """Format conversation summary for analysis.
 
     Args:
         conversation: List of message dicts
-        max_length: Optional maximum summary length (None = unlimited, includes all messages)
+        max_length: Maximum summary length in characters (default: 50000 to prevent oversized prompts)
 
     Returns:
         Formatted conversation summary
 
     Note:
-        All messages in the conversation are included in the analysis unless max_length is specified.
-        Individual messages longer than 500 chars are truncated for readability.
+        Individual messages longer than 500 chars are truncated for readability. The summary
+        is truncated at max_length characters to prevent oversized SDK prompts.
     """
     summary_parts = []
     current_length = 0
@@ -484,7 +484,7 @@ def _format_conversation_summary(conversation: list[dict], max_length: int | Non
         msg_summary = f"\n**Message {i + 1} ({role}):** {content_text}\n"
 
         # Only check length limit if max_length is specified
-        if max_length is not None and current_length + len(msg_summary) > max_length:
+        if current_length + len(msg_summary) > max_length:
             truncation_indicator = f"\n[... {len(conversation) - i} more messages ...]"
             # Only add truncation indicator if we have room for it
             if current_length + len(truncation_indicator) <= max_length:
@@ -1065,22 +1065,23 @@ Be conservative - default to INVOKED unless there is clear evidence of ad-hoc wo
             # Security validation failed - fail-open (assume valid)
             return (True, None)
 
-        response_lower = response.lower()
+        response_stripped = response.lstrip()
+        response_lower = response_stripped.lower()
 
-        # Check for INVOKED indicator
-        if "invoked:" in response_lower or "invoked" in response_lower[:50]:
-            return (True, None)
-
-        # Check for NOT INVOKED indicator
-        if "not invoked:" in response_lower or "not invoked" in response_lower[:50]:
+        # Check for NOT INVOKED indicator first to avoid matching "invoked" in "not invoked"
+        if response_lower.startswith("not invoked:") or response_lower.startswith("not invoked"):
             # Extract reason from response
-            idx = response.lower().find("not invoked:")
+            idx = response_lower.find("not invoked:")
             if idx != -1:
-                reason = response[idx + 12 :].strip()
+                reason = response_stripped[idx + 12 :].strip()
                 # Clean up and truncate
                 if reason and len(reason) > 10:
                     return (False, reason[:200])
             return (False, "Workflow not properly invoked")
+
+        # Check for INVOKED indicator
+        if response_lower.startswith("invoked:") or response_lower.startswith("invoked"):
+            return (True, None)
 
         # Ambiguous response - fail-open (assume valid)
         return (True, None)
