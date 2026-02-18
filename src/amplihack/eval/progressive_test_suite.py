@@ -13,9 +13,12 @@ measuring learning capability across multiple dimensions.
 """
 
 import json
+import statistics
 import subprocess
 import sys
-from dataclasses import dataclass
+import time
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from .grader import grade_answer
@@ -377,6 +380,111 @@ def run_progressive_suite(config: ProgressiveConfig) -> ProgressiveResult:
     )
 
 
+@dataclass
+class ParallelResult:
+    """Result of a parallel eval run (multiple runs aggregated)."""
+
+    num_runs: int
+    median_scores: dict[str, float]
+    all_run_results: list[ProgressiveResult]
+    per_run_scores: dict[str, list[float]] = field(default_factory=dict)
+
+
+def _run_single_suite(args: tuple) -> ProgressiveResult:
+    """Run a single suite invocation (used as ProcessPoolExecutor target).
+
+    Args:
+        args: Tuple of (run_id, base_output_dir, levels_to_run, memory_backend)
+
+    Returns:
+        ProgressiveResult for this run
+    """
+    run_id, base_output_dir, levels_to_run, memory_backend = args
+    agent_name = f"agent_{run_id}_{int(time.time())}"
+    output_dir = str(Path(base_output_dir) / f"run_{run_id}")
+
+    config = ProgressiveConfig(
+        output_dir=output_dir,
+        agent_name=agent_name,
+        levels_to_run=levels_to_run,
+        memory_backend=memory_backend,
+    )
+
+    return run_progressive_suite(config)
+
+
+def run_parallel_suite(
+    num_runs: int,
+    base_output_dir: str,
+    levels_to_run: list[str] | None = None,
+    memory_backend: str = "amplihack-memory-lib",
+    max_workers: int = 4,
+) -> ParallelResult:
+    """Run the progressive suite multiple times in parallel and report medians.
+
+    Args:
+        num_runs: Number of parallel runs
+        base_output_dir: Base output directory (each run gets a subdirectory)
+        levels_to_run: Optional list of level IDs to run
+        memory_backend: Memory backend to use
+        max_workers: Maximum concurrent processes (capped at 4)
+
+    Returns:
+        ParallelResult with median scores across all runs
+    """
+    max_workers = min(max_workers, 4)  # Cap at 4 to avoid API overload
+    workers = min(max_workers, num_runs)
+
+    print(f"Starting {num_runs} parallel runs (max {workers} concurrent)...")
+
+    run_args = [(i, base_output_dir, levels_to_run, memory_backend) for i in range(num_runs)]
+
+    all_results: list[ProgressiveResult] = []
+    with ProcessPoolExecutor(max_workers=workers) as executor:
+        futures = {executor.submit(_run_single_suite, args): args[0] for args in run_args}
+        for future in as_completed(futures):
+            run_id = futures[future]
+            try:
+                result = future.result()
+                all_results.append(result)
+                print(f"  Run {run_id} completed (success={result.success})")
+            except Exception as e:
+                print(f"  Run {run_id} failed with exception: {e}")
+                all_results.append(
+                    ProgressiveResult(
+                        success=False,
+                        level_results=[],
+                        overall_scores=None,
+                        error_message=str(e),
+                    )
+                )
+
+    # Collect per-level scores across all runs
+    per_run_scores: dict[str, list[float]] = {}
+    for result in all_results:
+        if not result.level_results:
+            continue
+        for lr in result.level_results:
+            if lr.success and lr.scores:
+                per_run_scores.setdefault(lr.level_id, []).append(lr.scores["average"])
+
+    # Compute median per level
+    median_scores: dict[str, float] = {}
+    for level_id, scores in sorted(per_run_scores.items()):
+        median_scores[level_id] = statistics.median(scores)
+
+    # Overall median
+    if median_scores:
+        median_scores["overall"] = statistics.median(median_scores[k] for k in median_scores)
+
+    return ParallelResult(
+        num_runs=num_runs,
+        median_scores=median_scores,
+        all_run_results=all_results,
+        per_run_scores=per_run_scores,
+    )
+
+
 def main():
     """CLI entry point."""
     import argparse
@@ -399,9 +507,73 @@ def main():
     parser.add_argument(
         "--memory-backend", default="amplihack-memory-lib", help="Memory backend to use"
     )
+    parser.add_argument(
+        "--parallel",
+        type=int,
+        default=0,
+        metavar="N",
+        help="Run suite N times in parallel and report median scores (max 4 concurrent)",
+    )
 
     args = parser.parse_args()
 
+    # Parallel mode
+    if args.parallel > 0:
+        print("=" * 70)
+        print("PROGRESSIVE AGENT LEARNING TEST SUITE - PARALLEL MODE")
+        print("=" * 70)
+        print(f"Number of runs: {args.parallel}")
+        print(f"Output directory: {args.output_dir}")
+        if args.levels:
+            print(f"Levels to run: {', '.join(args.levels)}")
+        else:
+            print("Levels to run: All (L1-L6)")
+        print("=" * 70)
+
+        par_result = run_parallel_suite(
+            num_runs=args.parallel,
+            base_output_dir=args.output_dir,
+            levels_to_run=args.levels,
+            memory_backend=args.memory_backend,
+        )
+
+        # Print parallel summary
+        print("\n" + "=" * 70)
+        print("PARALLEL TEST SUITE SUMMARY")
+        print("=" * 70)
+        print(f"Completed {par_result.num_runs} runs\n")
+
+        print("Median Scores by Level:")
+        for level_id in sorted(k for k in par_result.median_scores if k != "overall"):
+            scores = par_result.per_run_scores.get(level_id, [])
+            median = par_result.median_scores[level_id]
+            scores_str = ", ".join(f"{s:.2%}" for s in scores)
+            print(f"  {level_id}: {median:.2%}  (runs: {scores_str})")
+
+        if "overall" in par_result.median_scores:
+            print(f"\nOverall Median: {par_result.median_scores['overall']:.2%}")
+
+        print(f"\nDetailed results saved to: {args.output_dir}")
+
+        # Save parallel summary
+        summary_path = Path(args.output_dir) / "parallel_summary.json"
+        summary_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(summary_path, "w") as f:
+            json.dump(
+                {
+                    "num_runs": par_result.num_runs,
+                    "median_scores": par_result.median_scores,
+                    "per_run_scores": {
+                        k: [round(s, 4) for s in v] for k, v in par_result.per_run_scores.items()
+                    },
+                },
+                f,
+                indent=2,
+            )
+
+        return
+
+    # Single run mode
     config = ProgressiveConfig(
         output_dir=args.output_dir,
         agent_name=args.agent_name,
@@ -463,8 +635,10 @@ if __name__ == "__main__":
 
 __all__ = [
     "run_progressive_suite",
+    "run_parallel_suite",
     "run_single_level",
     "ProgressiveConfig",
     "ProgressiveResult",
+    "ParallelResult",
     "LevelResult",
 ]
