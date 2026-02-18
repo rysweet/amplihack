@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -114,7 +115,7 @@ class KnowledgeSubgraph:
                 instead of confidence. Useful for temporal reasoning questions.
 
         Returns:
-            Formatted string with numbered facts and relationships.
+            Formatted string with numbered facts, source provenance, and relationships.
         """
         if not self.nodes:
             return "No relevant knowledge found."
@@ -131,15 +132,19 @@ class KnowledgeSubgraph:
             lines.append("Facts (in chronological order):")
             for i, node in enumerate(sorted_nodes, 1):
                 time_marker = ""
+                source_marker = ""
                 if node.metadata:
                     src_date = node.metadata.get("source_date", "")
                     t_order = node.metadata.get("temporal_order", "")
+                    src_label = node.metadata.get("source_label", "")
                     if src_date:
                         time_marker = f" [Date: {src_date}]"
                     elif t_order:
                         time_marker = f" [Time: {t_order}]"
+                    if src_label:
+                        source_marker = f" [Source: {src_label}]"
                 lines.append(
-                    f"  {i}. [{node.concept}]{time_marker} {node.content} "
+                    f"  {i}. [{node.concept}]{time_marker}{source_marker} {node.content} "
                     f"(confidence: {node.confidence:.1f})"
                 )
         else:
@@ -147,9 +152,25 @@ class KnowledgeSubgraph:
             sorted_nodes = sorted(self.nodes, key=lambda n: n.confidence, reverse=True)
             lines.append("Facts:")
             for i, node in enumerate(sorted_nodes, 1):
+                source_marker = ""
+                if node.metadata:
+                    src_label = node.metadata.get("source_label", "")
+                    if src_label:
+                        source_marker = f" [Source: {src_label}]"
                 lines.append(
-                    f"  {i}. [{node.concept}] {node.content} (confidence: {node.confidence:.1f})"
+                    f"  {i}. [{node.concept}]{source_marker} {node.content} "
+                    f"(confidence: {node.confidence:.1f})"
                 )
+
+        # Show contradiction warnings if any exist
+        contradiction_edges = [
+            e for e in self.edges if e.metadata and e.metadata.get("contradiction")
+        ]
+        if contradiction_edges:
+            lines.append("\nContradictions detected:")
+            for edge in contradiction_edges:
+                conflict = edge.metadata.get("conflicting_values", "unknown")
+                lines.append(f"  - WARNING: Conflicting information found: {conflict}")
 
         if self.edges:
             lines.append("\nRelationships:")
@@ -288,7 +309,8 @@ class HierarchicalMemory:
             self.connection.execute("""
                 CREATE REL TABLE IF NOT EXISTS SIMILAR_TO(
                     FROM SemanticMemory TO SemanticMemory,
-                    weight DOUBLE
+                    weight DOUBLE,
+                    metadata STRING
                 )
             """)
 
@@ -460,6 +482,63 @@ class HierarchicalMemory:
         except Exception as e:
             logger.debug("Failed to create DERIVES_FROM edge: %s", e)
 
+    @staticmethod
+    def _detect_contradiction(
+        content_a: str, content_b: str, concept_a: str, concept_b: str
+    ) -> dict:
+        """Detect if two facts about the same concept contain contradictory numbers.
+
+        Simple heuristic: if two facts share a concept and contain different numbers
+        for what appears to be the same measurement, flag as contradiction.
+
+        Args:
+            content_a: Content of first fact
+            content_b: Content of second fact
+            concept_a: Concept of first fact
+            concept_b: Concept of second fact
+
+        Returns:
+            Dict with contradiction info, or empty dict if no contradiction found.
+        """
+        # Only check facts with overlapping concepts
+        concept_words_a = set(concept_a.lower().split()) if concept_a else set()
+        concept_words_b = set(concept_b.lower().split()) if concept_b else set()
+
+        if not concept_words_a or not concept_words_b:
+            return {}
+
+        # Need at least one meaningful concept word in common
+        common = concept_words_a & concept_words_b
+        # Remove very short words
+        common = {w for w in common if len(w) > 2}
+        if not common:
+            return {}
+
+        # Extract numbers from both facts
+        nums_a = re.findall(r"\b\d+(?:\.\d+)?\b", content_a)
+        nums_b = re.findall(r"\b\d+(?:\.\d+)?\b", content_b)
+
+        if not nums_a or not nums_b:
+            return {}
+
+        # If the facts share concept words but have different number sets,
+        # check for direct conflicts (same position in similar sentences)
+        nums_a_set = set(nums_a)
+        nums_b_set = set(nums_b)
+
+        # If there are numbers unique to each fact about the same topic,
+        # that is a potential contradiction
+        unique_to_a = nums_a_set - nums_b_set
+        unique_to_b = nums_b_set - nums_a_set
+
+        if unique_to_a and unique_to_b:
+            return {
+                "contradiction": True,
+                "conflicting_values": f"{', '.join(sorted(unique_to_a))} vs {', '.join(sorted(unique_to_b))}",
+            }
+
+        return {}
+
     def _create_similarity_edges(
         self,
         node_id: str,
@@ -470,7 +549,8 @@ class HierarchicalMemory:
         """Compute similarity against recent nodes and create SIMILAR_TO edges.
 
         Checks the last 100 SemanticMemory nodes. Creates edges for
-        similarity scores > 0.3.
+        similarity scores > 0.3. Also detects potential contradictions
+        between high-similarity facts about the same concept.
         """
         try:
             result = self.connection.execute(
@@ -503,13 +583,27 @@ class HierarchicalMemory:
                 score = compute_similarity(new_node, other_node)
 
                 if score > 0.3:
+                    # Check for contradiction between high-similarity facts
+                    edge_meta = {}
+                    if score > 0.5:
+                        contradiction = self._detect_contradiction(
+                            content, other_content, concept, other_concept
+                        )
+                        if contradiction:
+                            edge_meta = contradiction
+
                     self.connection.execute(
                         """
                         MATCH (a:SemanticMemory {memory_id: $aid})
                         MATCH (b:SemanticMemory {memory_id: $bid})
-                        CREATE (a)-[:SIMILAR_TO {weight: $weight}]->(b)
+                        CREATE (a)-[:SIMILAR_TO {weight: $weight, metadata: $metadata}]->(b)
                         """,
-                        {"aid": node_id, "bid": other_id, "weight": score},
+                        {
+                            "aid": node_id,
+                            "bid": other_id,
+                            "weight": score,
+                            "metadata": json.dumps(edge_meta) if edge_meta else "",
+                        },
                     )
 
         except Exception as e:
@@ -602,7 +696,8 @@ class HierarchicalMemory:
                     MATCH (a:SemanticMemory {memory_id: $sid})-[r:SIMILAR_TO]->(b:SemanticMemory)
                     WHERE b.agent_id = $agent_id
                     RETURN b.memory_id, b.concept, b.content, b.confidence,
-                           b.source_id, b.tags, b.created_at, r.weight, b.metadata
+                           b.source_id, b.tags, b.created_at, r.weight, b.metadata,
+                           r.metadata
                 """
                 if max_depth >= 2:
                     # Also get 2-hop neighbors
@@ -611,7 +706,8 @@ class HierarchicalMemory:
                     MATCH (a:SemanticMemory {memory_id: $sid})-[:SIMILAR_TO]->()-[r2:SIMILAR_TO]->(c:SemanticMemory)
                     WHERE c.agent_id = $agent_id AND c.memory_id <> $sid
                     RETURN c.memory_id, c.concept, c.content, c.confidence,
-                           c.source_id, c.tags, c.created_at, r2.weight, c.metadata
+                           c.source_id, c.tags, c.created_at, r2.weight, c.metadata,
+                           r2.metadata
                     """
 
                 result = self.connection.execute(
@@ -641,12 +737,21 @@ class HierarchicalMemory:
                         )
                         expanded_nodes.append(node)
 
+                    # Parse edge metadata for contradiction info
+                    edge_meta = {}
+                    if len(row) > 9 and row[9]:
+                        try:
+                            edge_meta = json.loads(row[9])
+                        except (json.JSONDecodeError, TypeError):
+                            pass
+
                     edges.append(
                         KnowledgeEdge(
                             source_id=seed.node_id,
                             target_id=nid,
                             relationship="SIMILAR_TO",
                             weight=weight,
+                            metadata=edge_meta,
                         )
                     )
 
@@ -666,10 +771,43 @@ class HierarchicalMemory:
         all_nodes.sort(key=rank_score, reverse=True)
         all_nodes = all_nodes[:max_nodes]
 
+        # Step 4: Attach source provenance labels via DERIVES_FROM edges
+        self._attach_provenance(all_nodes)
+
         subgraph.nodes = all_nodes
         subgraph.edges = edges
 
         return subgraph
+
+    def _attach_provenance(self, nodes: list[KnowledgeNode]) -> None:
+        """Follow DERIVES_FROM edges to attach source labels to node metadata.
+
+        For each node that has a source_id, looks up the EpisodicMemory node
+        and copies its source_label into the node's metadata for display.
+
+        Args:
+            nodes: List of KnowledgeNode to enrich with provenance
+        """
+        for node in nodes:
+            if not node.source_id:
+                continue
+            try:
+                result = self.connection.execute(
+                    """
+                    MATCH (e:EpisodicMemory {memory_id: $eid})
+                    RETURN e.source_label
+                    """,
+                    {"eid": node.source_id},
+                )
+                if result.has_next():
+                    row = result.get_next()
+                    source_label = row[0] or ""
+                    if source_label:
+                        if node.metadata is None:
+                            node.metadata = {}
+                        node.metadata["source_label"] = source_label
+            except Exception as e:
+                logger.debug("Failed to attach provenance for %s: %s", node.node_id, e)
 
     def get_all_knowledge(self, limit: int = 50) -> list[KnowledgeNode]:
         """Retrieve all semantic knowledge nodes.
