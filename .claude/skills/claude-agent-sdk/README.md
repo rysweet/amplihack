@@ -23,7 +23,7 @@ This skill enables Claude to:
 ## File Structure
 
 ```
-agent-sdk/
+claude-agent-sdk/
 ├── SKILL.md                    # Main entry point (~2,100 tokens)
 │   └── Core concepts, quick start, navigation guide
 ├── reference.md                # Complete API reference (~3,900 tokens)
@@ -60,7 +60,7 @@ agent-sdk/
 
 ```python
 # In Claude Code conversations
-@~/.amplihack/.claude/skills/agent-sdk/SKILL.md
+@~/.amplihack/.claude/skills/claude-agent-sdk/SKILL.md
 ```
 
 ## Usage Patterns
@@ -133,7 +133,7 @@ The skill includes automated drift detection:
 ### Running Drift Detection
 
 ```bash
-cd .claude/skills/agent-sdk
+cd .claude/skills/claude-agent-sdk
 
 # Check for drift
 python scripts/check_drift.py
@@ -232,7 +232,7 @@ Token calculation: words × 1.3 (conservative estimate)
 The skill ships with placeholder content hashes. Generate real hashes:
 
 ```bash
-cd .claude/skills/agent-sdk
+cd .claude/skills/claude-agent-sdk
 python scripts/check_drift.py --update
 ```
 
@@ -279,7 +279,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check for drift
         run: |
-          cd .claude/skills/agent-sdk
+          cd .claude/skills/claude-agent-sdk
           python scripts/check_drift.py
 ```
 

@@ -452,6 +452,7 @@ This skill follows the Diátaxis documentation framework with four complementary
 4. **reference.md** (Reference): Technical specifications, detailed configurations, troubleshooting reference
 
 **For troubleshooting**:
+
 - Start with **reference.md** to understand the error and root cause
 - Check **examples.md** for step-by-step fix instructions
 - Review **patterns.md** to avoid the anti-pattern in future workflows

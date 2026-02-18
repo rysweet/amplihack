@@ -241,7 +241,7 @@ agent = Agent(
     model="claude-sonnet-4-5-20250929",
 
     # Authentication (optional if env var set)
-    api_key="sk-ant-...",
+    api_key="sk-ant-...",  # pragma: allowlist secret
 
     # System prompt
     system="You are a helpful assistant.",
@@ -343,7 +343,7 @@ console.log(result.response);
 **Environment Variable (Recommended):**
 
 ```bash
-export ANTHROPIC_API_KEY="sk-ant-..."
+export ANTHROPIC_API_KEY="sk-ant-..."  # pragma: allowlist secret
 ```
 
 **Explicit in Code:**
@@ -351,7 +351,7 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 ```python
 agent = Agent(
     model="claude-sonnet-4-5-20250929",
-    api_key="sk-ant-..."
+    api_key="sk-ant-..."  # pragma: allowlist secret
 )
 ```
 
@@ -1023,7 +1023,7 @@ result = agent.run("How do I use agent sdk tools?")
 ```python
 agent = Agent(
     model="claude-sonnet-4-5-20250929",
-    skills=["agent-sdk", "python-expert"]  # Explicitly activate skills
+    skills=["claude-agent-sdk", "python-expert"]  # Explicitly activate skills
 )
 ```
 
@@ -1074,7 +1074,7 @@ If total content exceeds `token_budget`, SDK:
 Skills can span multiple files for organization:
 
 ```
-.claude/skills/agent-sdk/
+.claude/skills/claude-agent-sdk/
 ├── SKILL.md          # Main entry point (always loaded)
 ├── reference.md      # API reference (loaded on demand)
 ├── examples.md       # Code examples (loaded on demand)

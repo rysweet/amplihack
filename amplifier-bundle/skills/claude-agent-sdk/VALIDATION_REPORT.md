@@ -26,7 +26,7 @@ The Claude Agent SDK skill has been successfully built according to the architec
 ### Directory Structure
 
 ```
-.claude/skills/agent-sdk/
+.claude/skills/claude-agent-sdk/
 ├── SKILL.md
 ├── reference.md
 ├── examples.md
@@ -344,10 +344,10 @@ token_budget: 4500                        ✓ Integer valid
 
 ### Immediate Actions
 
-1. ✓ Deploy skill to `~/.amplihack/.claude/skills/agent-sdk/`
+1. ✓ Deploy skill to `~/.amplihack/.claude/skills/claude-agent-sdk/`
 2. Run drift detection to generate initial hashes:
    ```bash
-   cd .claude/skills/agent-sdk
+   cd .claude/skills/claude-agent-sdk
    python scripts/check_drift.py --update
    ```
 3. Test skill activation with sample queries containing keywords
