@@ -106,8 +106,12 @@ class KnowledgeSubgraph:
     edges: list[KnowledgeEdge] = field(default_factory=list)
     query: str = ""
 
-    def to_llm_context(self) -> str:
+    def to_llm_context(self, chronological: bool = False) -> str:
         """Format subgraph as LLM-readable context string.
+
+        Args:
+            chronological: If True, sort facts by temporal_index (creation time)
+                instead of confidence. Useful for temporal reasoning questions.
 
         Returns:
             Formatted string with numbered facts and relationships.
@@ -117,14 +121,35 @@ class KnowledgeSubgraph:
 
         lines = [f"Knowledge graph context for: {self.query}\n"]
 
-        # Sort nodes by confidence descending
-        sorted_nodes = sorted(self.nodes, key=lambda n: n.confidence, reverse=True)
+        if chronological:
+            # Sort by temporal_index from metadata, then by created_at as fallback
+            def temporal_key(n: KnowledgeNode) -> tuple:
+                t_idx = n.metadata.get("temporal_index", 999999) if n.metadata else 999999
+                return (t_idx, n.created_at or "")
 
-        lines.append("Facts:")
-        for i, node in enumerate(sorted_nodes, 1):
-            lines.append(
-                f"  {i}. [{node.concept}] {node.content} (confidence: {node.confidence:.1f})"
-            )
+            sorted_nodes = sorted(self.nodes, key=temporal_key)
+            lines.append("Facts (in chronological order):")
+            for i, node in enumerate(sorted_nodes, 1):
+                time_marker = ""
+                if node.metadata:
+                    src_date = node.metadata.get("source_date", "")
+                    t_order = node.metadata.get("temporal_order", "")
+                    if src_date:
+                        time_marker = f" [Date: {src_date}]"
+                    elif t_order:
+                        time_marker = f" [Time: {t_order}]"
+                lines.append(
+                    f"  {i}. [{node.concept}]{time_marker} {node.content} "
+                    f"(confidence: {node.confidence:.1f})"
+                )
+        else:
+            # Sort nodes by confidence descending
+            sorted_nodes = sorted(self.nodes, key=lambda n: n.confidence, reverse=True)
+            lines.append("Facts:")
+            for i, node in enumerate(sorted_nodes, 1):
+                lines.append(
+                    f"  {i}. [{node.concept}] {node.content} (confidence: {node.confidence:.1f})"
+                )
 
         if self.edges:
             lines.append("\nRelationships:")
@@ -219,7 +244,9 @@ class HierarchicalMemory:
 
         # Kuzu needs a path to its database directory (it creates it)
         # If the path already exists as a regular directory without Kuzu files, append /kuzu_db
-        self.db_path = db_path / "kuzu_db" if db_path.is_dir() and not (db_path / "lock").exists() else db_path
+        self.db_path = (
+            db_path / "kuzu_db" if db_path.is_dir() and not (db_path / "lock").exists() else db_path
+        )
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
 
         self.database = kuzu.Database(str(self.db_path))
@@ -287,6 +314,7 @@ class HierarchicalMemory:
         category: MemoryCategory | None = None,
         source_id: str = "",
         tags: list[str] | None = None,
+        temporal_metadata: dict | None = None,
     ) -> str:
         """Store a knowledge node in the graph.
 
@@ -303,6 +331,10 @@ class HierarchicalMemory:
             category: Optional memory category (auto-classified if None)
             source_id: Optional source episode ID for provenance
             tags: Optional list of tags
+            temporal_metadata: Optional dict with temporal info:
+                - source_date: Date from the source content
+                - temporal_order: Ordering label (e.g., "Day 7")
+                - temporal_index: Numeric index for chronological sorting
 
         Returns:
             node_id of the stored knowledge node
@@ -316,6 +348,11 @@ class HierarchicalMemory:
         node_id = _make_id()
         tags = tags or []
         now = datetime.utcnow().isoformat()
+
+        # Build metadata with category and any temporal info
+        meta = {"category": category.value}
+        if temporal_metadata:
+            meta.update(temporal_metadata)
 
         # Store as SemanticMemory (primary knowledge store for Graph RAG)
         self.connection.execute(
@@ -340,7 +377,7 @@ class HierarchicalMemory:
                 "source_id": source_id,
                 "agent_id": self.agent_name,
                 "tags": json.dumps(tags),
-                "metadata": json.dumps({"category": category.value}),
+                "metadata": json.dumps(meta),
                 "created_at": now,
             },
         )
@@ -537,6 +574,7 @@ class HierarchicalMemory:
                     if nid not in seen_ids:
                         seen_ids.add(nid)
                         tags = json.loads(row[5]) if row[5] else []
+                        metadata = json.loads(row[6]) if row[6] else {}
                         node = KnowledgeNode(
                             node_id=nid,
                             category=MemoryCategory.SEMANTIC,
@@ -546,6 +584,7 @@ class HierarchicalMemory:
                             source_id=row[4] or "",
                             created_at=row[7] or "",
                             tags=tags,
+                            metadata=metadata,
                         )
                         seed_nodes.append(node)
             except Exception as e:
@@ -563,7 +602,7 @@ class HierarchicalMemory:
                     MATCH (a:SemanticMemory {memory_id: $sid})-[r:SIMILAR_TO]->(b:SemanticMemory)
                     WHERE b.agent_id = $agent_id
                     RETURN b.memory_id, b.concept, b.content, b.confidence,
-                           b.source_id, b.tags, b.created_at, r.weight
+                           b.source_id, b.tags, b.created_at, r.weight, b.metadata
                 """
                 if max_depth >= 2:
                     # Also get 2-hop neighbors
@@ -572,7 +611,7 @@ class HierarchicalMemory:
                     MATCH (a:SemanticMemory {memory_id: $sid})-[:SIMILAR_TO]->()-[r2:SIMILAR_TO]->(c:SemanticMemory)
                     WHERE c.agent_id = $agent_id AND c.memory_id <> $sid
                     RETURN c.memory_id, c.concept, c.content, c.confidence,
-                           c.source_id, c.tags, c.created_at, r2.weight
+                           c.source_id, c.tags, c.created_at, r2.weight, c.metadata
                     """
 
                 result = self.connection.execute(
@@ -588,6 +627,7 @@ class HierarchicalMemory:
                     if nid not in seen_ids and len(seen_ids) < max_nodes:
                         seen_ids.add(nid)
                         tags = json.loads(row[5]) if row[5] else []
+                        metadata = json.loads(row[8]) if len(row) > 8 and row[8] else {}
                         node = KnowledgeNode(
                             node_id=nid,
                             category=MemoryCategory.SEMANTIC,
@@ -597,6 +637,7 @@ class HierarchicalMemory:
                             source_id=row[4] or "",
                             created_at=row[6] or "",
                             tags=tags,
+                            metadata=metadata,
                         )
                         expanded_nodes.append(node)
 
