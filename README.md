@@ -248,9 +248,9 @@ amplihack copilot
 
 and then use **/model**
 
-### Other models with Microosft Amplifier
+### Other models with Microsoft Amplifier
 
-Amplifier wil walk you through model configuration on first startup:
+Amplifier will walk you through model configuration on first startup:
 
 ```sh
 amplihack amplfier
