@@ -1,0 +1,66 @@
+scenario:
+  name: "Hook Path Configuration - UVX Fresh Install"
+  description: "Verifies that fresh UVX installation produces settings.json with absolute hook paths (not relative .claude/... paths)"
+  type: cli
+  tags: [smoke, critical, hooks, path-configuration]
+
+  prerequisites:
+    - "uvx command is available"
+    - "git branch feat/issue-2408-fix-hook-path-relative-paths exists on remote"
+
+  environment:
+    variables:
+      TEST_BRANCH: "feat/issue-2408-fix-hook-path-relative-paths"
+      GITHUB_REPO: "https://github.com/rysweet/amplihack"
+
+  steps:
+    # Test 1: Fresh UVX installation
+    - action: launch
+      target: "uvx"
+      args:
+        - "--from"
+        - "git+${GITHUB_REPO}@${TEST_BRANCH}"
+        - "amplihack"
+        - "--version"
+      description: "Install amplihack via UVX from feature branch"
+      timeout: 120s
+
+    - action: verify_output
+      contains: "0.5"
+      description: "Version output should appear"
+      timeout: 5s
+
+    - action: verify_exit_code
+      expected: 0
+      description: "Installation should succeed"
+
+    # Test 2: Verify settings.json has absolute paths
+    - action: launch
+      target: "cat"
+      args: ["${HOME}/.amplihack/.claude/settings.json"]
+      description: "Read generated settings.json"
+      timeout: 5s
+
+    - action: verify_output
+      contains: "${HOME}/.amplihack/.claude/tools/amplihack/hooks"
+      description: "Hook paths should be absolute (contains full HOME path)"
+      timeout: 2s
+
+    - action: verify_output
+      not_contains: '".claude/tools/amplihack/hooks'
+      description: "Hook paths should NOT be relative (.claude/... prefix)"
+      timeout: 2s
+
+    - action: verify_output
+      not_contains: "$HOME"
+      description: "Variables should be expanded (no $HOME left)"
+      timeout: 2s
+
+    - action: capture_output
+      save_as: "settings-json-content.txt"
+      description: "Save settings.json for evidence"
+
+  cleanup:
+    - action: send_signal
+      signal: SIGTERM
+      description: "Ensure no processes left running"
