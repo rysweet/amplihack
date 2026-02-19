@@ -415,6 +415,10 @@ Respond in this JSON format:
         seen_ids: set[str] = set()
         evaluation = SufficiencyEvaluation()
 
+        # Use larger retrieval window for synthesis questions
+        intent_type = intent.get("intent", "simple_recall")
+        search_max_nodes = 30 if intent_type == "multi_source_synthesis" else 10
+
         for step in range(max_steps):
             # Step 1/1b: Plan or refine retrieval
             if step == 0:
@@ -434,7 +438,7 @@ Respond in this JSON format:
             new_facts_this_round = 0
             for query in plan.search_queries:
                 nodes, facts = self._targeted_search(
-                    query, memory, seen_ids, max_nodes=10
+                    query, memory, seen_ids, max_nodes=search_max_nodes
                 )
                 for node, fact in zip(nodes, facts):
                     nid = getattr(node, "node_id", id(node))
@@ -483,10 +487,23 @@ Respond in this JSON format:
             RetrievalPlan with search queries and reasoning
         """
         intent_type = intent.get("intent", "simple_recall")
+
+        # For multi-source synthesis, explicitly instruct to search each source
+        if intent_type == "multi_source_synthesis":
+            extra_instruction = (
+                "\n\nIMPORTANT: This question requires combining information from MULTIPLE sources. "
+                "Search for facts from EACH source/topic separately, then look for connections. "
+                "Include BROAD queries that would match different source articles, not just narrow specific ones. "
+                "Also include at least one query using key terms from the question itself."
+            )
+        else:
+            extra_instruction = ""
+
         prompt = f"""Given this question, what specific information do I need to find in a knowledge base?
 
 Question: {question}
 Question type: {intent_type}
+{extra_instruction}
 
 Generate 2-4 SHORT, TARGETED search queries (keywords/phrases) that would find the needed facts.
 Each query should target ONE specific piece of information.

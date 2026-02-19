@@ -144,13 +144,22 @@ class LearningAgent:
         # Detect temporal metadata from content before extraction
         temporal_meta = self._detect_temporal_metadata(content)
 
+        # Extract source label from content title if present
+        source_label = ""
+        if content.startswith("Title: "):
+            title_end = content.find("\n")
+            if title_end > 0:
+                source_label = content[7:title_end].strip()
+        if not source_label:
+            source_label = content[:60].strip()
+
         # In hierarchical mode, store episode first for provenance tracking
         episode_id = ""
         if self.use_hierarchical and hasattr(self.memory, "store_episode"):
             try:
                 episode_id = self.memory.store_episode(
                     content=content[:2000],
-                    source_label=f"Content: {content[:50]}...",
+                    source_label=source_label,
                 )
             except Exception:
                 pass
@@ -180,8 +189,15 @@ class LearningAgent:
                     store_kwargs["source_id"] = episode_id
 
                 # Attach temporal metadata for chronological sorting
-                if temporal_meta and self.use_hierarchical:
-                    store_kwargs["temporal_metadata"] = temporal_meta
+                # and source label for provenance tracking
+                if self.use_hierarchical:
+                    fact_metadata = {}
+                    if temporal_meta:
+                        fact_metadata.update(temporal_meta)
+                    if source_label:
+                        fact_metadata["source_label"] = source_label
+                    if fact_metadata:
+                        store_kwargs["temporal_metadata"] = fact_metadata
 
                 self.memory.store_fact(**store_kwargs)
                 stored_count += 1
@@ -324,14 +340,20 @@ Rules:
 
         return {"source_date": "", "temporal_order": "", "temporal_index": 0}
 
-    def answer_question(self, question: str, question_level: str = "L1") -> str:
-        """Answer a question using iterative reasoning and LLM synthesis.
+    # Simple intents: skip iterative loop, use direct retrieval
+    # This avoids the plan/search/evaluate overhead for straightforward questions
+    SIMPLE_INTENTS = {"simple_recall"}
 
-        Uses a multi-step approach:
-        1. Intent detection (single LLM call)
-        2. Iterative retrieval: plan -> search -> evaluate -> refine (via AgenticLoop)
-        3. Synthesize answer from collected facts
-        4. Validate arithmetic if needed
+    # All other intents use iterative reasoning for targeted retrieval
+    # The iterative loop filters noise better than dumping all facts
+
+    def answer_question(self, question: str, question_level: str = "L1") -> str:
+        """Answer a question using adaptive retrieval and LLM synthesis.
+
+        Uses intent complexity to decide the retrieval strategy:
+        - Simple intents (simple_recall): single-pass retrieval, no iteration
+        - Broad retrieval (multi_source_synthesis): get all facts for cross-source synthesis
+        - Iterative intents: plan -> search -> evaluate -> refine loop
 
         Args:
             question: Question to answer
@@ -359,21 +381,28 @@ Rules:
 
         # Step 1: Intent detection -- single LLM call to classify the question
         intent = self._detect_intent(question)
+        intent_type = intent.get("intent", "simple_recall")
 
-        # Step 2: Iterative retrieval via AgenticLoop
-        # The loop plans retrieval, searches, evaluates sufficiency, and refines
-        relevant_facts, collected_nodes = self.loop.reason_iteratively(
-            question=question,
-            memory=self.memory,
-            intent=intent,
-            max_steps=3,
-        )
+        # Step 2: Adaptive retrieval based on intent complexity
+        if intent_type in self.SIMPLE_INTENTS:
+            # Simple intents: single-pass retrieval (no iteration overhead)
+            relevant_facts = self._simple_retrieval(question)
+        else:
+            # Complex intents: use iterative reasoning with plan/search/evaluate
+            relevant_facts, _ = self.loop.reason_iteratively(
+                question=question,
+                memory=self.memory,
+                intent=intent,
+                max_steps=3,
+            )
 
-        # If iterative retrieval found nothing, fall back to getting all facts
+            # For multi-source synthesis, the iterative loop's plan step
+            # should generate queries targeting each source separately.
+            # No brute-force fallback - plan quality is the fix.
+
+        # Fall back to getting all facts if retrieval found nothing
         if not relevant_facts:
-            if self.use_hierarchical and hasattr(self.memory, "get_all_facts"):
-                relevant_facts = self.memory.get_all_facts(limit=50)
-            elif hasattr(self.memory, "get_all_facts"):
+            if hasattr(self.memory, "get_all_facts"):
                 relevant_facts = self.memory.get_all_facts(limit=50)
 
         if not relevant_facts:
@@ -418,6 +447,31 @@ Rules:
         )
 
         return answer
+
+    def _simple_retrieval(self, question: str) -> list[dict[str, Any]]:
+        """Single-pass retrieval for simple recall questions.
+
+        Gets all facts if the knowledge base is small (<=50), otherwise
+        uses keyword search. No iteration overhead.
+
+        Args:
+            question: The question to retrieve facts for
+
+        Returns:
+            List of fact dicts
+        """
+        if not hasattr(self.memory, "get_all_facts"):
+            return []
+
+        # Check knowledge base size
+        all_facts = self.memory.get_all_facts(limit=51)
+        if len(all_facts) <= 50:
+            return all_facts
+
+        # Larger knowledge base: use keyword search
+        results = self.memory.search(query=question, limit=20)
+        return results if results else all_facts[:50]
+
 
     def _get_summary_nodes(self) -> list[dict[str, Any]]:
         """Retrieve SUMMARY concept map nodes from memory.
@@ -675,11 +729,15 @@ Respond with a JSON list like:
             Synthesized answer string
         """
         intent = intent or {}
+        intent_type = intent.get("intent", "simple_recall")
+
+        # Use more facts for synthesis questions that need cross-source connections
+        max_facts = 40 if intent_type == "multi_source_synthesis" else 20
 
         # Build context string - include temporal metadata and source labels when available
         if intent.get("needs_temporal"):
             context_str = "Relevant facts (ordered chronologically where possible):\n"
-            for i, fact in enumerate(context[:20], 1):
+            for i, fact in enumerate(context[:max_facts], 1):
                 meta = fact.get("metadata", {})
                 time_marker = ""
                 source_marker = ""
@@ -693,7 +751,7 @@ Respond with a JSON list like:
                 context_str += f"   Fact: {fact['outcome']}\n\n"
         else:
             context_str = "Relevant facts:\n"
-            for i, fact in enumerate(context[:20], 1):
+            for i, fact in enumerate(context[:max_facts], 1):
                 meta = fact.get("metadata", {})
                 source_marker = ""
                 if meta.get("source_label"):
@@ -738,9 +796,19 @@ Respond with a JSON list like:
                 "(gold medals vs total medals vs other)\n"
             )
 
+        # Add multi-source synthesis instructions
+        if intent_type == "multi_source_synthesis":
+            extra_instructions += (
+                "\n\nIMPORTANT - MULTI-SOURCE SYNTHESIS REQUIRED:\n"
+                "- The answer requires combining information from MULTIPLE different sources/articles\n"
+                "- First, identify which facts come from which source (look at Context labels)\n"
+                "- Then, find connections and comparisons ACROSS sources\n"
+                "- Include specific data points from each relevant source in your answer\n"
+                "- When comparing (e.g., current vs historical), cite the specific numbers from each source\n"
+            )
+
         # Add summary context only for multi-source synthesis (not every question)
         summary_section = ""
-        intent_type = intent.get("intent", "simple_recall")
         if intent_type == "multi_source_synthesis" and intent.get("summary_context"):
             summary_section = f"""
 Knowledge Overview (what was learned):
