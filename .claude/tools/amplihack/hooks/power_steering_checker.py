@@ -2863,8 +2863,10 @@ class PowerSteeringChecker:
                 if state_file.exists():
                     state = json.loads(state_file.read_text())
                     session_type = state.get("session_type", "DEVELOPMENT")
-            except Exception:
-                pass  # Use default
+            except Exception as e:
+                self._log(
+                    f"Could not load session type from state file, using default: {e}", "DEBUG"
+                )
 
             # Use SDK analysis for workflow invocation validation
             valid, reason = analyze_workflow_invocation_sync(
@@ -2972,8 +2974,8 @@ class PowerSteeringChecker:
             )
 
             log_file.write_text(json.dumps(violations, indent=2), encoding="utf-8")
-        except Exception:
-            pass  # Fail silently
+        except Exception as e:
+            self._log(f"Could not write violation log (non-critical): {e}", "WARNING")
 
     def _check_dev_workflow_complete(self, transcript: list[dict], session_id: str) -> bool:
         """Check if full DEFAULT_WORKFLOW followed.
@@ -3653,8 +3655,9 @@ class PowerSteeringChecker:
             # All checks passed
             return True
 
-        except Exception:
+        except Exception as e:
             # Fail-open: Return True on errors to avoid blocking users
+            self._log(f"PR content validation error (fail-open): {e}", "WARNING")
             return True
 
     def _is_docs_only_session(self, transcript: list[dict]) -> bool:
@@ -3693,8 +3696,9 @@ class PowerSteeringChecker:
             # Docs-only session if docs modified but no code files
             return docs_modified and not code_modified
 
-        except Exception:
+        except Exception as e:
             # Fail-open: Return False on errors (assume code might be modified)
+            self._log(f"Docs-only session detection error (fail-open): {e}", "WARNING")
             return False
 
     def _check_next_steps(self, transcript: list[dict], session_id: str) -> bool:
@@ -4523,7 +4527,10 @@ class PowerSteeringChecker:
                     return consideration.get("enabled", True)
 
             return True  # Not found = default enabled
-        except Exception:
+        except Exception as e:
+            self._log(
+                f"Could not check consideration enabled state, defaulting to enabled: {e}", "DEBUG"
+            )
             return True  # Fail-open
 
     def _check_compaction_handling(self, transcript: list[dict], session_id: str) -> bool:

@@ -21,6 +21,7 @@ Example:
 """
 
 import subprocess
+import sys
 import time
 from pathlib import Path
 
@@ -52,10 +53,9 @@ class GitignoreChecker:
         except subprocess.TimeoutExpired:
             # Expected: git command hung
             return False
-        except Exception:
+        except Exception as e:
             # Unexpected: fail safe by returning False
-            # Design decision: Exceptions are silently caught (fail-safe design)
-            # No logging implemented yet to avoid circular dependencies
+            print(f"[gitignore_checker] Unexpected error in is_git_repo: {e}", file=sys.stderr)
             return False
 
     def get_repo_root(self) -> Path | None:
@@ -76,10 +76,9 @@ class GitignoreChecker:
         except subprocess.TimeoutExpired:
             # Expected: git command hung
             return None
-        except Exception:
+        except Exception as e:
             # Unexpected: fail safe by returning None
-            # Design decision: Exceptions are silently caught (fail-safe design)
-            # No logging implemented yet to avoid circular dependencies
+            print(f"[gitignore_checker] Unexpected error in get_repo_root: {e}", file=sys.stderr)
             return None
 
     def parse_gitignore_patterns(self, content: str) -> list[str]:

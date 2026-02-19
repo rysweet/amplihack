@@ -38,9 +38,9 @@ def log_security_event(event_type: str, data: dict) -> None:
     try:
         with open(log_file, "a") as f:
             f.write(json.dumps(log_entry) + "\n")
-    except Exception:
+    except Exception as e:
         # Don't fail post-processing if logging fails
-        pass
+        print(f"[xpia] Security event logging failed (non-fatal): {e}", file=sys.stderr)
 
 
 def analyze_command_output(command: str, output: str, error: str) -> dict[str, Any]:
