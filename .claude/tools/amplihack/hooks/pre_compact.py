@@ -106,7 +106,10 @@ class PreCompactHook(HookProcessor):
                 try:
                     with open(metadata_file) as f:
                         events = json.load(f)
-                except Exception:
+                except Exception as e:
+                    self.log(
+                        f"Could not read existing compaction events, starting fresh: {e}", "WARNING"
+                    )
                     events = []
 
             events.append(compaction_info)

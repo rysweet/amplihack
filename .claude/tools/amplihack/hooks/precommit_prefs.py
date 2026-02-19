@@ -16,6 +16,7 @@ Priority Levels:
 
 import json
 import os
+import sys
 import tempfile
 from datetime import datetime
 from pathlib import Path
@@ -69,9 +70,11 @@ def load_precommit_preference() -> PreferenceValue:
                 except (PermissionError, OSError, UnicodeDecodeError):
                     # Fall through to next priority level
                     pass
-    except Exception:
-        # Fall through to next priority level
-        pass
+    except Exception as e:
+        # Unexpected error reading CLAUDE.md preference (inner handlers cover expected cases)
+        print(
+            f"[precommit_prefs] Unexpected error reading CLAUDE.md preference: {e}", file=sys.stderr
+        )
 
     # Level 2: Check project-level JSON file (SECOND PRIORITY)
     try:
@@ -86,9 +89,11 @@ def load_precommit_preference() -> PreferenceValue:
             except (json.JSONDecodeError, PermissionError, OSError, KeyError):
                 # Fall through to next priority level
                 pass
-    except Exception:
-        # Fall through to next priority level
-        pass
+    except Exception as e:
+        # Unexpected error reading JSON preferences file (inner handlers cover expected cases)
+        print(
+            f"[precommit_prefs] Unexpected error reading JSON preference file: {e}", file=sys.stderr
+        )
 
     # Level 3: Check environment variable (THIRD PRIORITY)
     env_value = os.environ.get("AMPLIHACK_AUTO_PRECOMMIT", "").lower()
@@ -152,8 +157,12 @@ def save_precommit_preference(preference: PreferenceValue) -> None:
         # 4. Atomic rename to target file
         os.replace(temp_path, str(prefs_file))
 
-    except Exception:
-        # Clean up temp file on error
+    except Exception as e:
+        # Clean up temp file on error before re-raising
+        print(
+            f"[precommit_prefs] Error saving preference, cleaning up temp file: {e}",
+            file=sys.stderr,
+        )
         try:
             os.unlink(temp_path)
         except OSError:

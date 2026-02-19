@@ -137,8 +137,9 @@ def _validate_sdk_response(response: str) -> bool:
                 return False
 
         return True
-    except Exception:
+    except Exception as e:
         # Fail-open on validation error
+        _log_sdk_error("validate_response", e)
         return True
 
 
@@ -169,8 +170,9 @@ def _sanitize_html(text: str) -> str:
             sanitized = re.sub(tag_pattern, "", sanitized, flags=re.IGNORECASE | re.DOTALL)
 
         return sanitized
-    except Exception:
+    except Exception as e:
         # On error, return original text (fail-open)
+        _log_sdk_error("sanitize_html", e)
         return text
 
 
@@ -189,7 +191,8 @@ def load_prompt_template() -> str | None:
 
     try:
         return POWER_STEERING_PROMPT_TEMPLATE.read_text()
-    except Exception:
+    except Exception as e:
+        _log_sdk_error("load_prompt_template", e)
         return None
 
 
@@ -590,8 +593,9 @@ Be direct and specific."""
         # Empty or too short - use template fallback
         return _generate_template_guidance(failed_checks)
 
-    except Exception:
+    except Exception as e:
         # Fail-open to template guidance
+        _log_sdk_error("generate_guidance", e)
         return _generate_template_guidance(failed_checks)
 
 
@@ -723,7 +727,8 @@ Be specific - only include actual claims about completion, not general discussio
 
         return []
 
-    except Exception:
+    except Exception as e:
+        _log_sdk_error("analyze_claims", e)
         return []  # Fail-open on any error
 
 
@@ -819,7 +824,8 @@ Be conservative - only say ADDRESSED if there is clear evidence in the new conte
 
         return None
 
-    except Exception:
+    except Exception as e:
+        _log_sdk_error("analyze_if_addressed", e)
         return None  # Fail-open on any error
 
 
@@ -859,7 +865,8 @@ def analyze_claims_sync(delta_text: str, project_root: Path) -> list[str]:
 
     try:
         return asyncio.run(analyze_claims(delta_text, project_root))
-    except Exception:
+    except Exception as e:
+        _log_sdk_error("analyze_claims_sync", e)
         return []  # Fail-open on any error
 
 
@@ -914,7 +921,8 @@ def analyze_if_addressed_sync(
         return asyncio.run(
             analyze_if_addressed(failure_id, failure_reason, delta_text, project_root)
         )
-    except Exception:
+    except Exception as e:
+        _log_sdk_error("analyze_if_addressed_sync", e)
         return None  # Fail-open on any error
 
 
@@ -971,7 +979,8 @@ def analyze_consideration_sync(
 
     try:
         return asyncio.run(analyze_consideration(conversation, consideration, project_root))
-    except Exception:
+    except Exception as e:
+        _log_sdk_error("analyze_consideration_sync", e)
         return (True, None)  # Fail-open on any error
 
 
@@ -1149,7 +1158,8 @@ def analyze_workflow_invocation_sync(
 
     try:
         return asyncio.run(analyze_workflow_invocation(conversation, session_type, project_root))
-    except Exception:
+    except Exception as e:
+        _log_sdk_error("analyze_workflow_invocation_sync", e)
         return (True, None)  # Fail-open on any error
 
 
