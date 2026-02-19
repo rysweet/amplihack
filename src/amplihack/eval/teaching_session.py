@@ -40,6 +40,7 @@ class TeachingResult:
     teacher_facts_count: int
     student_facts_count: int
     total_turns: int
+    student_talk_ratio: float
     topics_covered: list[str]
 
 
@@ -97,6 +98,7 @@ class TeachingSession:
         self._student_learn_from_message(teacher_opening)
 
         teacher_msg = teacher_opening  # Initialize for first iteration
+        exchange_count = 0
         for _ in range(self.max_turns - 1):
             # Student generates a response (question, summary, or "I understand")
             student_response = self._student_respond(teacher_msg)
@@ -104,11 +106,32 @@ class TeachingSession:
                 ConversationTurn(role="student", content=student_response, turn_number=turn_num)
             )
             turn_num += 1
+            exchange_count += 1
 
             # Check if student signals readiness
             if self._student_signals_ready(student_response):
                 logger.debug("Student signaled readiness at turn %d", turn_num)
                 break
+
+            # Self-explanation check every 3 exchanges (Chi effect)
+            # Teacher asks student to explain WHY, not just WHAT
+            if exchange_count % 3 == 0 and exchange_count > 0:
+                why_prompt = self._teacher_ask_why(student_response)
+                self.transcript.append(
+                    ConversationTurn(role="teacher", content=why_prompt, turn_number=turn_num)
+                )
+                turn_num += 1
+
+                # Student self-explains
+                student_explanation = self._student_respond(why_prompt)
+                self.transcript.append(
+                    ConversationTurn(
+                        role="student", content=student_explanation, turn_number=turn_num
+                    )
+                )
+                turn_num += 1
+                self._student_learn_from_message(student_explanation)
+                continue
 
             # Teacher responds to student
             teacher_msg = self._teacher_respond(student_response)
@@ -124,12 +147,18 @@ class TeachingSession:
         teacher_stats = self.teacher.get_memory_stats()
         student_stats = self.student.get_memory_stats()
 
+        # Calculate student talk ratio (TeachLM metric: human tutors achieve ~30%)
+        student_chars = sum(len(t.content) for t in self.transcript if t.role == "student")
+        total_chars = sum(len(t.content) for t in self.transcript)
+        student_talk_ratio = student_chars / max(total_chars, 1)
+
         return TeachingResult(
             transcript=self.transcript,
             teacher_facts_count=teacher_stats.get("total_experiences", 0),
             student_facts_count=student_stats.get("total_experiences", 0),
             total_turns=len(self.transcript),
             topics_covered=self._extract_topics(),
+            student_talk_ratio=student_talk_ratio,
         )
 
     def _teacher_generate_opening(self) -> str:
@@ -240,6 +269,47 @@ Be specific with facts and numbers. Don't just give vague encouragement."""
         except Exception as e:
             logger.error("Teacher response failed: %s", e)
             return "Let me clarify that point..."
+
+    def _teacher_ask_why(self, student_response: str) -> str:
+        """Teacher asks a 'why' question to prompt self-explanation (Chi effect).
+
+        Based on Chi (1994): self-explanation doubles learning gains.
+        Forces the student to integrate new information with existing knowledge.
+        """
+        history = self._format_recent_history(last_n=4)
+
+        prompt = f"""You are a teacher using the Socratic method. The student just said something.
+Ask ONE focused "why" or "how" question that forces them to explain their understanding deeper.
+
+Recent conversation:
+{history}
+
+Student just said: {student_response[:300]}
+
+Generate a single probing question like:
+- "Why do you think that's the case?"
+- "Can you explain the reasoning behind that?"
+- "How does that connect to what we discussed earlier about [specific topic]?"
+- "What would happen if [specific element] were different?"
+
+Keep it to 1-2 sentences. Be specific, not generic."""
+
+        try:
+            response = litellm.completion(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a Socratic teacher who asks probing questions.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.5,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            logger.error("Teacher why-question failed: %s", e)
+            return "Can you explain why you think that's the case?"
 
     def _student_respond(self, teacher_message: str) -> str:
         """Student processes teacher's message and responds.
