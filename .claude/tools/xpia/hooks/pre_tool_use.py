@@ -55,9 +55,9 @@ def log_security_event(event_type: str, data: dict) -> None:
     try:
         with open(log_file, "a") as f:
             f.write(json.dumps(log_entry) + "\n")
-    except Exception:
+    except Exception as e:
         # Don't fail tool execution if logging fails
-        pass
+        print(f"[xpia] Security event logging failed (non-fatal): {e}", file=sys.stderr)
 
 
 def validate_bash_command(command: str, context: dict[str, Any]) -> dict[str, Any]:
@@ -231,9 +231,10 @@ def main():
         # Always exit 0 - the output JSON controls behavior, not exit code
         sys.exit(0)
 
-    except Exception:
+    except Exception as e:
         # Output empty dict to allow on error (fail-open)
         # This follows Claude Code protocol for graceful degradation
+        print(f"[xpia] pre_tool_use hook failed (fail-open): {e}", file=sys.stderr)
         print(json.dumps({}))
         sys.exit(0)
 
