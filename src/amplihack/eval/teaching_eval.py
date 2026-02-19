@@ -38,6 +38,7 @@ class TeachingEvalResult:
     transfer_ratio: float  # student_score / teacher_score
     total_teaching_turns: int
     student_facts_learned: int
+    student_talk_ratio: float  # Target: ≥30% (TeachLM benchmark)
 
     # Per-question details
     student_grades: list[dict[str, Any]]
@@ -184,6 +185,7 @@ def run_teaching_eval(
             transfer_ratio=transfer_ratio,
             total_teaching_turns=teaching_result.total_turns,
             student_facts_learned=teaching_result.student_facts_count,
+            student_talk_ratio=teaching_result.student_talk_ratio,
             student_grades=student_grades,
             teacher_grades=teacher_grades,
             transcript=transcript,
@@ -224,6 +226,7 @@ def main():
     print(f"Transfer Ratio: {result.transfer_ratio:.2%}")
     print(f"Teaching Turns: {result.total_teaching_turns}")
     print(f"Student Facts Learned: {result.student_facts_learned}")
+    print(f"Student Talk Ratio: {result.student_talk_ratio:.1%} (target: ≥30%)")
 
     print("\nStudent Question Scores:")
     for g in result.student_grades:
