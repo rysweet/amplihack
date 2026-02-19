@@ -322,6 +322,16 @@ class HierarchicalMemory:
                 )
             """)
 
+            # SUPERSEDES: newer fact updates/replaces an older fact about same entity
+            # Used for incremental learning (e.g., "9 golds" → "10 golds")
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS SUPERSEDES(
+                    FROM SemanticMemory TO SemanticMemory,
+                    reason STRING,
+                    temporal_delta STRING
+                )
+            """)
+
             logger.debug("HierarchicalMemory schema initialized for agent %s", self.agent_name)
 
         except Exception as e:
@@ -408,6 +418,11 @@ class HierarchicalMemory:
         if source_id:
             self._create_derives_from_edge(node_id, source_id)
 
+        # Detect and create SUPERSEDES edges for temporal updates
+        # (e.g., "Klaebo has 10 golds" supersedes "Klaebo has 9 golds")
+        if temporal_metadata and temporal_metadata.get("temporal_index", 0) > 0:
+            self._detect_supersedes(node_id, content, concept, temporal_metadata)
+
         # Compute similarity edges against recent nodes
         self._create_similarity_edges(node_id, content, concept, tags)
 
@@ -481,6 +496,95 @@ class HierarchicalMemory:
                 )
         except Exception as e:
             logger.debug("Failed to create DERIVES_FROM edge: %s", e)
+
+    def _detect_supersedes(
+        self,
+        new_node_id: str,
+        content: str,
+        concept: str,
+        temporal_metadata: dict,
+    ) -> None:
+        """Detect if this new fact supersedes an existing fact about the same entity.
+
+        At STORAGE time, checks for older facts with the same concept that have
+        a lower temporal_index. If found with conflicting numbers, creates a
+        SUPERSEDES edge (new → old) and boosts the new fact's confidence.
+
+        This implements the Schema Theory pattern: accommodation when new data
+        contradicts existing knowledge, rather than just assimilation.
+
+        Args:
+            new_node_id: ID of the newly stored fact
+            content: Content of the new fact
+            concept: Concept label of the new fact
+            temporal_metadata: Must contain temporal_index > 0
+        """
+        new_temporal_idx = temporal_metadata.get("temporal_index", 0)
+        if new_temporal_idx <= 0:
+            return
+
+        try:
+            # Find existing facts with same/similar concept and LOWER temporal index
+            result = self.connection.execute(
+                """
+                MATCH (m:SemanticMemory)
+                WHERE m.agent_id = $agent_id
+                  AND m.memory_id <> $new_id
+                  AND (LOWER(m.concept) CONTAINS LOWER($concept_key)
+                       OR LOWER($concept_key) CONTAINS LOWER(m.concept))
+                RETURN m.memory_id, m.content, m.concept, m.metadata
+                LIMIT 20
+                """,
+                {
+                    "agent_id": self.agent_name,
+                    "new_id": new_node_id,
+                    "concept_key": concept.split()[0] if concept else "",
+                },
+            )
+
+            while result.has_next():
+                row = result.get_next()
+                old_id = row[0]
+                old_content = row[1]
+                old_metadata_str = row[3]
+
+                # Check if old fact has a lower temporal index
+                old_meta = json.loads(old_metadata_str) if old_metadata_str else {}
+                old_temporal_idx = old_meta.get("temporal_index", 0)
+
+                if old_temporal_idx <= 0 or old_temporal_idx >= new_temporal_idx:
+                    continue
+
+                # Check for conflicting numbers (same entity, different values)
+                contradiction = self._detect_contradiction(content, old_content, concept, row[2])
+                if contradiction.get("contradiction"):
+                    # Create SUPERSEDES edge: new fact replaces old fact
+                    temporal_delta = f"index {old_temporal_idx} → {new_temporal_idx}"
+                    self.connection.execute(
+                        """
+                        MATCH (new_m:SemanticMemory {memory_id: $new_id})
+                        MATCH (old_m:SemanticMemory {memory_id: $old_id})
+                        CREATE (new_m)-[:SUPERSEDES {
+                            reason: $reason,
+                            temporal_delta: $delta
+                        }]->(old_m)
+                        """,
+                        {
+                            "new_id": new_node_id,
+                            "old_id": old_id,
+                            "reason": f"Updated values: {contradiction.get('conflicting_values', '')}",
+                            "delta": temporal_delta,
+                        },
+                    )
+                    logger.debug(
+                        "Created SUPERSEDES edge: %s → %s (%s)",
+                        new_node_id[:8],
+                        old_id[:8],
+                        temporal_delta,
+                    )
+
+        except Exception as e:
+            logger.debug("Failed to detect supersedes: %s", e)
 
     @staticmethod
     def _detect_contradiction(
@@ -774,6 +878,9 @@ class HierarchicalMemory:
         # Step 4: Attach source provenance labels via DERIVES_FROM edges
         self._attach_provenance(all_nodes)
 
+        # Step 5: Mark superseded facts so retrieval prefers latest
+        self._mark_superseded(all_nodes)
+
         subgraph.nodes = all_nodes
         subgraph.edges = edges
 
@@ -808,6 +915,42 @@ class HierarchicalMemory:
                         node.metadata["source_label"] = source_label
             except Exception as e:
                 logger.debug("Failed to attach provenance for %s: %s", node.node_id, e)
+
+    def _mark_superseded(self, nodes: list[KnowledgeNode]) -> None:
+        """Mark facts that have been superseded by newer facts.
+
+        For each node, check if any SUPERSEDES edge points TO it (meaning
+        a newer fact replaced it). If so, mark it in metadata so the
+        synthesis prompt can deprioritize outdated information.
+
+        Args:
+            nodes: List of KnowledgeNode to check for supersede status
+        """
+        node_ids = [n.node_id for n in nodes]
+        if not node_ids:
+            return
+
+        for node in nodes:
+            try:
+                result = self.connection.execute(
+                    """
+                    MATCH (newer:SemanticMemory)-[r:SUPERSEDES]->(old:SemanticMemory {memory_id: $nid})
+                    RETURN newer.memory_id, r.reason, r.temporal_delta
+                    LIMIT 1
+                    """,
+                    {"nid": node.node_id},
+                )
+                if result.has_next():
+                    row = result.get_next()
+                    if node.metadata is None:
+                        node.metadata = {}
+                    node.metadata["superseded"] = True
+                    node.metadata["superseded_by"] = row[0]
+                    node.metadata["supersede_reason"] = row[1] or ""
+                    # Lower confidence of superseded facts
+                    node.confidence = max(0.1, node.confidence * 0.5)
+            except Exception:
+                pass  # SUPERSEDES table might not exist in older DBs
 
     def get_all_knowledge(self, limit: int = 50) -> list[KnowledgeNode]:
         """Retrieve all semantic knowledge nodes.

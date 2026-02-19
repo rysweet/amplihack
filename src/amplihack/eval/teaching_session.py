@@ -113,6 +113,25 @@ class TeachingSession:
                 logger.debug("Student signaled readiness at turn %d", turn_num)
                 break
 
+            # Role reversal every 5 exchanges (Feynman technique)
+            # Student teaches back to teacher - reveals understanding gaps
+            if exchange_count % 5 == 0 and exchange_count > 0:
+                teach_back = self._teacher_request_teach_back()
+                self.transcript.append(
+                    ConversationTurn(role="teacher", content=teach_back, turn_number=turn_num)
+                )
+                turn_num += 1
+
+                # Student teaches the material back
+                student_teaching = self._student_respond(teach_back)
+                self.transcript.append(
+                    ConversationTurn(role="student", content=student_teaching, turn_number=turn_num)
+                )
+                turn_num += 1
+                # Student's own teaching reinforces their learning
+                self._student_learn_from_message(student_teaching)
+                continue
+
             # Self-explanation check every 3 exchanges (Chi effect)
             # Teacher asks student to explain WHY, not just WHAT
             if exchange_count % 3 == 0 and exchange_count > 0:
@@ -269,6 +288,45 @@ Be specific with facts and numbers. Don't just give vague encouragement."""
         except Exception as e:
             logger.error("Teacher response failed: %s", e)
             return "Let me clarify that point..."
+
+    def _teacher_request_teach_back(self) -> str:
+        """Teacher requests the student to teach back what they've learned.
+
+        Based on the Feynman Technique: if you can't explain it simply,
+        you don't understand it well enough. Also from Palincsar & Brown's
+        reciprocal teaching: gradually transferring the teaching role.
+        """
+        history = self._format_recent_history(last_n=4)
+
+        prompt = f"""You are a teacher who wants to check the student's understanding.
+
+Recent conversation:
+{history}
+
+Ask the student to teach you what they've learned so far, as if you were a new student
+who knows nothing about the topic. Be specific about what you want them to explain.
+
+Keep it to 2-3 sentences. Example:
+"Now I'd like you to teach me what you've learned. Pretend I know nothing about the
+2026 Winter Olympics - give me a summary of the key facts and what makes these Games special."
+"""
+
+        try:
+            response = litellm.completion(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a teacher requesting a teach-back from your student.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.4,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            logger.error("Teacher teach-back request failed: %s", e)
+            return "Now teach me what you've learned so far, as if I know nothing about this topic."
 
     def _teacher_ask_why(self, student_response: str) -> str:
         """Teacher asks a 'why' question to prompt self-explanation (Chi effect).
