@@ -2,20 +2,20 @@
 
 Runs as a subprocess with memory isolation.
 Philosophy: Stateless within each phase, state persists via memory backend.
-Now uses LearningAgent with HierarchicalMemory for enhanced knowledge retrieval.
 """
 
 import json
-import os
 import sys
-import tempfile
-from pathlib import Path
 
-from amplihack.agents.goal_seeking import LearningAgent
+from amplihack_memory import (  # type: ignore[import-untyped]
+    Experience,
+    ExperienceType,
+    MemoryConnector,
+)
 
 
 def learning_phase(news_articles: list[dict], agent_name: str) -> dict:
-    """Learning phase: Store news articles using LearningAgent with hierarchical memory.
+    """Learning phase: Store news articles in memory.
 
     Args:
         news_articles: List of article dicts
@@ -24,37 +24,28 @@ def learning_phase(news_articles: list[dict], agent_name: str) -> dict:
     Returns:
         Status dict with count of stored experiences
     """
-    # Create LearningAgent with hierarchical memory enabled
-    storage_path = Path(tempfile.gettempdir()) / "amplihack_eval" / agent_name
-    storage_path.mkdir(parents=True, exist_ok=True)
-
-    # Get model from env or use default
-    model = os.environ.get("EVAL_MODEL", "anthropic/claude-sonnet-4-5-20250929")
-
-    agent = LearningAgent(
-        agent_name=agent_name,
-        model=model,
-        storage_path=storage_path,
-        use_hierarchical=True,
-    )
+    connector = MemoryConnector(agent_name=agent_name)
 
     stored_count = 0
-    try:
-        for article in news_articles:
-            # Combine title and content for learning
-            content = f"Title: {article['title']}\n\n{article['content']}"
+    for article in news_articles:
+        # Store article as an experience (use SUCCESS type)
+        experience = Experience(
+            experience_type=ExperienceType.SUCCESS,
+            context=f"Article: {article['title']}",
+            outcome=article["content"],
+            confidence=1.0,
+            metadata=json.dumps({"url": article["url"], "published": article["published"]}),
+        )
 
-            result = agent.learn_from_content(content)
-            if result["facts_stored"] > 0:
-                stored_count += result["facts_stored"]
-    finally:
-        agent.close()
+        exp_id = connector.store_experience(experience)
+        if exp_id:
+            stored_count += 1
 
     return {"status": "success", "stored_count": stored_count, "total_articles": len(news_articles)}
 
 
 def testing_phase(quiz_questions: list[dict], agent_name: str) -> dict:
-    """Testing phase: Answer questions using LearningAgent with hierarchical memory.
+    """Testing phase: Answer questions using memory.
 
     Args:
         quiz_questions: List of question dicts
@@ -63,70 +54,33 @@ def testing_phase(quiz_questions: list[dict], agent_name: str) -> dict:
     Returns:
         Status dict with answers
     """
-    # Create LearningAgent with same storage path
-    storage_path = Path(tempfile.gettempdir()) / "amplihack_eval" / agent_name
-    storage_path.mkdir(parents=True, exist_ok=True)
+    connector = MemoryConnector(agent_name=agent_name)
 
-    # Get model from env or use default
-    model = os.environ.get("EVAL_MODEL", "anthropic/claude-sonnet-4-5-20250929")
-
-    agent = LearningAgent(
-        agent_name=agent_name,
-        model=model,
-        storage_path=storage_path,
-        use_hierarchical=True,
-    )
+    # Retrieve all stored experiences
+    memories = connector.retrieve_experiences(limit=100)
 
     answers = []
-    try:
-        for question_data in quiz_questions:
-            question = question_data["question"]
-            level = question_data.get("level", "L1")
+    for question_data in quiz_questions:
+        question = question_data["question"]
 
-            # Use agent's answer_question with LLM synthesis and trace
-            result = agent.answer_question(question, question_level=level, return_trace=True)
-            if isinstance(result, tuple):
-                answer, trace = result
-            else:
-                answer, trace = result, None
+        # Formulate answer based on memories
+        if memories:
+            # Combine relevant context from memories (simplified - use all memories)
+            context_parts = [m.outcome[:200] for m in memories[:3]]
+            answer = " ".join(context_parts)
+            confidence = sum(m.confidence for m in memories[:3]) / min(len(memories), 3)
+        else:
+            answer = "No relevant information found in memory"
+            confidence = 0.0
 
-            # Get memory stats for metadata
-            stats = agent.get_memory_stats()
-
-            # Serialize trace if available
-            trace_dict = None
-            if trace is not None:
-                trace_dict = {
-                    "question": trace.question,
-                    "intent": trace.intent,
-                    "steps": [
-                        {
-                            "step_type": s.step_type,
-                            "queries": s.queries,
-                            "facts_found": s.facts_found,
-                            "evaluation": s.evaluation,
-                            "reasoning": s.reasoning,
-                        }
-                        for s in trace.steps
-                    ],
-                    "total_facts_collected": trace.total_facts_collected,
-                    "total_queries_executed": trace.total_queries_executed,
-                    "iterations": trace.iterations,
-                    "final_confidence": trace.final_confidence,
-                    "used_simple_path": trace.used_simple_path,
-                }
-
-            answers.append(
-                {
-                    "question": question,
-                    "answer": answer,
-                    "confidence": 0.8,  # Agent internal confidence
-                    "memories_used": stats.get("total_experiences", 0),
-                    "reasoning_trace": trace_dict,
-                }
-            )
-    finally:
-        agent.close()
+        answers.append(
+            {
+                "question": question,
+                "answer": answer,
+                "confidence": confidence,
+                "memories_used": len(memories),
+            }
+        )
 
     return {"status": "success", "answers": answers}
 
@@ -151,13 +105,7 @@ def main():
 
     # Execute phase
     if args.phase == "learning":
-        if isinstance(input_data, list):
-            articles = input_data
-        elif isinstance(input_data, dict):
-            articles = input_data.get("articles", [input_data])
-        else:
-            articles = [input_data]
-        result = learning_phase(articles, args.agent_name)
+        result = learning_phase(input_data, args.agent_name)
     else:  # testing
         result = testing_phase(input_data, args.agent_name)
 
