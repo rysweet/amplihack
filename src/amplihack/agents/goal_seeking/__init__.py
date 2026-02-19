@@ -6,6 +6,7 @@ Philosophy:
 - Self-contained and regeneratable
 - LLM-powered reasoning for answer synthesis
 - Hierarchical memory with Graph RAG for richer knowledge retrieval
+- CognitiveMemory (6-type) for advanced cognitive capabilities
 
 Public API (the "studs"):
     AgenticLoop: Main PERCEIVE->REASON->ACT->LEARN loop
@@ -15,6 +16,7 @@ Public API (the "studs"):
     WikipediaLearningAgent: Backward-compatible alias for LearningAgent
     HierarchicalMemory: Graph-based hierarchical memory system
     FlatRetrieverAdapter: Backward-compatible adapter for HierarchicalMemory
+    CognitiveAdapter: 6-type cognitive memory adapter
     GraphRAGRetriever: Graph RAG retriever for knowledge subgraphs
 """
 
@@ -26,6 +28,7 @@ from .agentic_loop import (
     RetrievalPlan,
     SufficiencyEvaluation,
 )
+from .cognitive_adapter import HAS_COGNITIVE_MEMORY, CognitiveAdapter
 from .flat_retriever_adapter import FlatRetrieverAdapter
 from .graph_rag_retriever import GraphRAGRetriever
 from .hierarchical_memory import (
@@ -46,6 +49,8 @@ WikipediaLearningAgent = LearningAgent
 __all__ = [
     "AgenticLoop",
     "ActionExecutor",
+    "CognitiveAdapter",
+    "HAS_COGNITIVE_MEMORY",
     "ReasoningStep",
     "ReasoningTrace",
     "RetrievalPlan",
