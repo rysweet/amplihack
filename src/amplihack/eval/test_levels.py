@@ -472,14 +472,201 @@ LEVEL_7 = TestLevel(
 )
 
 
-# Export all levels (L1-L6 for standard eval, L7 for teacher-student)
+# LEVEL 8: Metacognition - Agent reasoning about its own reasoning
+# Based on MUSE framework (arXiv 2024) and Dunlosky & Metcalfe (2009)
+LEVEL_8 = TestLevel(
+    level_id="L8",
+    level_name="Metacognition",
+    description="Agent evaluates its own confidence and identifies knowledge gaps",
+    articles=[
+        TestArticle(
+            title="2026 Winter Olympics Medal Standings - February 15",
+            content=(
+                "As of February 15, Norway leads the 2026 Milan Winter Olympics with 26 total medals and 12 golds. "
+                "Italy is second with 22 medals and 8 golds. The United States has 17 medals with 5 golds. "
+                "Germany has 14 medals with 4 golds. Sweden has 11 medals with 3 golds."
+            ),
+            url="https://olympics.example.com/2026/standings-feb15",
+            published="2026-02-15T18:00:00Z",
+        ),
+    ],
+    questions=[
+        TestQuestion(
+            question="How confident should you be in answering 'How many medals does Canada have?'",
+            expected_answer=(
+                "Low confidence - the provided information only covers Norway, Italy, US, Germany, "
+                "and Sweden. Canada is not mentioned in the data, so I cannot answer this accurately."
+            ),
+            level="L8",
+            reasoning_type="confidence_calibration",
+        ),
+        TestQuestion(
+            question="What additional information would you need to determine if Norway will finish with the most golds?",
+            expected_answer=(
+                "I would need: remaining events and their schedules, which countries are competing "
+                "in remaining events, and current form/rankings of athletes in those events. The data "
+                "only shows standings as of Feb 15, not projections."
+            ),
+            level="L8",
+            reasoning_type="gap_identification",
+        ),
+        TestQuestion(
+            question="Which of these questions can you answer with HIGH confidence and which with LOW: "
+            "(a) How many golds does Norway have? (b) Why does Norway have the most medals? "
+            "(c) Will Italy finish second?",
+            expected_answer=(
+                "(a) HIGH confidence - directly stated: 12 golds. "
+                "(b) LOW confidence - the data shows they lead but doesn't explain why. "
+                "(c) LOW confidence - the data is a snapshot from Feb 15, cannot predict final standings."
+            ),
+            level="L8",
+            reasoning_type="confidence_discrimination",
+        ),
+    ],
+)
+
+
+# LEVEL 9: Causal Reasoning - "Why did X happen?"
+# Based on Pearl's causal hierarchy (2009) and Gopnik's "Theory Theory"
+LEVEL_9 = TestLevel(
+    level_id="L9",
+    level_name="Causal Reasoning",
+    description="Identifying causal chains and mechanisms from correlated observations",
+    articles=[
+        TestArticle(
+            title="Italy's Record-Breaking Olympic Performance Analysis",
+            content=(
+                "Italy's 8 gold medals at the 2026 Milan Games represent their best Winter Olympics performance. "
+                "Several factors contributed: (1) Home advantage - Italian athletes competed before supportive crowds, "
+                "which sports psychology research shows can improve performance by 3-5%. "
+                "(2) Investment in winter sports infrastructure increased 40% after winning the bid in 2019. "
+                "(3) The Italian ski federation hired 12 new international coaches in 2023. "
+                "(4) Federica Brignone, who won giant slalom gold, attributed her success to a new training "
+                "program developed specifically for the Cortina course. "
+                "(5) Italy had their worst Olympics in 2018 PyeongChang (3 golds) which triggered a complete "
+                "restructuring of their winter sports program."
+            ),
+            url="https://olympics.example.com/2026/italy-analysis",
+            published="2026-02-16T10:00:00Z",
+        ),
+    ],
+    questions=[
+        TestQuestion(
+            question="What caused Italy to improve from 3 golds in 2018 to 8 golds in 2026?",
+            expected_answer=(
+                "A chain of causes: Poor 2018 result (3 golds) triggered program restructuring, "
+                "which led to 40% increased infrastructure investment and hiring 12 international coaches "
+                "in 2023. Home advantage (3-5% performance boost) and course-specific training also contributed."
+            ),
+            level="L9",
+            reasoning_type="causal_chain",
+        ),
+        TestQuestion(
+            question="If Italy had not won the 2026 hosting bid, would they still have won 8 golds?",
+            expected_answer=(
+                "Likely not. Without the hosting bid: (1) no home advantage (3-5% boost gone), "
+                "(2) possibly less infrastructure investment (the 40% increase was linked to hosting), "
+                "(3) no course-specific training for Cortina. However, the 2018 program restructuring "
+                "and new coaches might still have improved their count above 3 golds."
+            ),
+            level="L9",
+            reasoning_type="counterfactual_causal",
+        ),
+        TestQuestion(
+            question="Which single factor was most important for Italy's improvement?",
+            expected_answer=(
+                "The program restructuring after 2018 was likely the root cause, as it triggered "
+                "the infrastructure investment and coaching hires. Without the 2018 failure, the "
+                "other changes wouldn't have happened. Home advantage amplified the effect but "
+                "wasn't the root cause."
+            ),
+            level="L9",
+            reasoning_type="root_cause_analysis",
+        ),
+    ],
+)
+
+
+# LEVEL 10: Counterfactual Reasoning - "What if X didn't happen?"
+# Based on Byrne (2005) and nearest possible world constraint
+LEVEL_10 = TestLevel(
+    level_id="L10",
+    level_name="Counterfactual Reasoning",
+    description="Reasoning about hypothetical alternatives and their consequences",
+    articles=[
+        TestArticle(
+            title="Johannes Klaebo's Dominance at Milan 2026",
+            content=(
+                "Johannes Klaebo won 3 individual gold medals at Milan 2026 (sprint, skiathlon, 50km), "
+                "plus 1 relay gold, giving him 4 golds at these Games alone. His total career Olympic "
+                "golds reached 10 across 3 Olympics. The Norwegian cross-country team collectively won "
+                "8 of the 12 available cross-country golds. Without Klaebo, Norway would have won only "
+                "4 cross-country golds based on the silver medalists' nationalities (2 Russian, 1 Swedish, "
+                "1 Finnish). Norway's overall gold count of 13 would have dropped to 9 without Klaebo's "
+                "individual golds (keeping the relay gold since the team might still have won)."
+            ),
+            url="https://olympics.example.com/2026/klaebo-dominance",
+            published="2026-02-18T12:00:00Z",
+        ),
+        TestArticle(
+            title="2026 Winter Olympics Final Medal Count",
+            content=(
+                "Final 2026 medal standings: Norway 30 total (13 gold), Italy 26 total (9 gold), "
+                "Germany 18 total (6 gold), United States 20 total (6 gold), Sweden 14 total (4 gold). "
+                "Cross-country skiing produced the most Norwegian golds (8 of 13). Alpine skiing "
+                "produced the most Italian golds (4 of 9)."
+            ),
+            url="https://olympics.example.com/2026/final-standings",
+            published="2026-02-22T10:00:00Z",
+        ),
+    ],
+    questions=[
+        TestQuestion(
+            question="If Klaebo had not competed at Milan 2026, would Norway still have led the gold medal count?",
+            expected_answer=(
+                "Without Klaebo's 3 individual golds (keeping relay), Norway drops from 13 to 9-10 golds. "
+                "Italy had 9 golds. So it would have been very close - Norway might have tied or slightly "
+                "led Italy. Klaebo was the decisive margin in Norway's gold medal dominance."
+            ),
+            level="L10",
+            reasoning_type="counterfactual_removal",
+        ),
+        TestQuestion(
+            question="What if Italy had won the hosting bid for 2030 instead of 2026?",
+            expected_answer=(
+                "Without home advantage in 2026: Italy's 9 golds might have been lower (home advantage "
+                "estimated at 3-5% performance boost). They might have won 6-7 golds instead. "
+                "However, their infrastructure investments and coaching changes from 2023 would still "
+                "have helped. The 2030 Games would then have given them the home advantage later."
+            ),
+            level="L10",
+            reasoning_type="counterfactual_timing",
+        ),
+        TestQuestion(
+            question="In a world where cross-country skiing was removed from the Olympics, "
+            "how would the medal standings change?",
+            expected_answer=(
+                "Norway would lose 8 of 13 golds (cross-country is their strongest sport), dropping to 5 golds. "
+                "Italy (9 golds, mostly alpine) would lead. Germany and US (6 each) would tie for third. "
+                "The overall standings would flip dramatically - Norway's dominance depends heavily on "
+                "cross-country skiing."
+            ),
+            level="L10",
+            reasoning_type="counterfactual_structural",
+        ),
+    ],
+)
+
+
+# Export all levels (L1-L6 for standard eval, L7 for teacher-student, L8-L10 for advanced)
 ALL_LEVELS = [LEVEL_1, LEVEL_2, LEVEL_3, LEVEL_4, LEVEL_5, LEVEL_6]
 TEACHER_STUDENT_LEVELS = [LEVEL_7]
+ADVANCED_LEVELS = [LEVEL_8, LEVEL_9, LEVEL_10]
 
 
 def get_level_by_id(level_id: str) -> TestLevel | None:
     """Get a test level by its ID."""
-    for level in ALL_LEVELS + TEACHER_STUDENT_LEVELS:
+    for level in ALL_LEVELS + TEACHER_STUDENT_LEVELS + ADVANCED_LEVELS:
         if level.level_id == level_id:
             return level
     return None
@@ -496,7 +683,11 @@ __all__ = [
     "LEVEL_5",
     "LEVEL_6",
     "LEVEL_7",
+    "LEVEL_8",
+    "LEVEL_9",
+    "LEVEL_10",
     "ALL_LEVELS",
     "TEACHER_STUDENT_LEVELS",
+    "ADVANCED_LEVELS",
     "get_level_by_id",
 ]

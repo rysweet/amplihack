@@ -23,7 +23,7 @@ from pathlib import Path
 
 from .grader import grade_answer
 from .metacognition_grader import grade_metacognition
-from .test_levels import ALL_LEVELS, TestLevel
+from .test_levels import ADVANCED_LEVELS, ALL_LEVELS, TestLevel
 
 
 @dataclass
@@ -345,10 +345,11 @@ def run_progressive_suite(config: ProgressiveConfig) -> ProgressiveResult:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Determine which levels to run
+    all_available = ALL_LEVELS + ADVANCED_LEVELS
     if config.levels_to_run:
-        levels_to_run = [lvl for lvl in ALL_LEVELS if lvl.level_id in config.levels_to_run]
+        levels_to_run = [lvl for lvl in all_available if lvl.level_id in config.levels_to_run]
     else:
-        levels_to_run = ALL_LEVELS
+        levels_to_run = ALL_LEVELS  # Default: L1-L6 only (L8-L10 need --advanced)
 
     # Run each level
     level_results = []
@@ -543,8 +544,13 @@ def main():
     parser.add_argument(
         "--levels",
         nargs="+",
-        choices=["L1", "L2", "L3", "L4", "L5", "L6"],
-        help="Specific levels to run (default: all)",
+        choices=["L1", "L2", "L3", "L4", "L5", "L6", "L8", "L9", "L10"],
+        help="Specific levels to run (default: L1-L6, use --advanced for L8-L10)",
+    )
+    parser.add_argument(
+        "--advanced",
+        action="store_true",
+        help="Include advanced levels (L8-L10: metacognition, causal, counterfactual)",
     )
     parser.add_argument(
         "--memory-backend", default="amplihack-memory-lib", help="Memory backend to use"
@@ -558,6 +564,15 @@ def main():
     )
 
     args = parser.parse_args()
+
+    # If --advanced is set, include L8-L10 in levels to run
+    if args.advanced and not args.levels:
+        args.levels = ["L1", "L2", "L3", "L4", "L5", "L6", "L8", "L9", "L10"]
+    elif args.advanced and args.levels:
+        # Add advanced levels to explicit selection
+        for lvl in ["L8", "L9", "L10"]:
+            if lvl not in args.levels:
+                args.levels.append(lvl)
 
     # Parallel mode
     if args.parallel > 0:
