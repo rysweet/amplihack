@@ -691,9 +691,11 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
                     print("✓ Copilot CLI updated successfully")
                 else:
                     print("⚠ Update failed - continuing with current version")
-    except Exception:
-        # Silently ignore update check failures
-        pass
+    except Exception as e:
+        # Ignore update check failures — non-critical background operation
+        import logging
+
+        logging.getLogger(__name__).debug(f"Copilot update check failed: {type(e).__name__}: {e}")
 
     # Ensure copilot is installed
     if not check_copilot():

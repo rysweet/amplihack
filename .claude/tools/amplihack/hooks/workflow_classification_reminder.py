@@ -102,8 +102,8 @@ class WorkflowClassificationReminder(HookProcessor):
                 # If we classified within last 3 turns, assume same topic
                 if turn_count - last_turn <= 3:
                     return False
-            except Exception:
-                pass
+            except Exception as e:
+                self.log(f"Could not read classification state (using default): {e}", "DEBUG")
 
         # Default: treat as new topic to be safe
         return True

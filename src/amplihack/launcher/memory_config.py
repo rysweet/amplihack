@@ -34,7 +34,7 @@ from pathlib import Path
 from typing import Any
 
 try:
-    import psutil
+    import psutil  # pyright: ignore[reportMissingModuleSource]
 
     HAS_PSUTIL = True
 except ImportError:
@@ -104,8 +104,10 @@ def detect_system_ram_gb() -> int | None:
             total_bytes = psutil.virtual_memory().total
             total_gb = int(total_bytes / (1024**3))
             return total_gb
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+
+            logging.getLogger(__name__).debug(f"psutil RAM detection failed: {type(e).__name__}")
 
     return None
 
@@ -146,8 +148,12 @@ def _detect_ram_linux() -> int | None:
                 mb = kb / 1024
                 gb_float = mb / 1024
                 return _round_to_power_of_2(gb_float)
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+
+        logging.getLogger(__name__).debug(
+            f"Linux /proc/meminfo RAM detection failed: {type(e).__name__}"
+        )
     return None
 
 
@@ -466,7 +472,9 @@ def _get_input_with_timeout_signal(
         return None
     except (KeyboardInterrupt, EOFError):
         return None
-    except Exception:
+    except Exception as e:
+        if logger:
+            logger.debug(f"Input-with-timeout failed unexpectedly: {type(e).__name__}")
         return None
 
 
@@ -481,7 +489,10 @@ def _get_input_with_timeout_threading(
             result["value"] = input(prompt)
         except (KeyboardInterrupt, EOFError):
             result["value"] = None
-        except Exception:
+        except Exception as e:
+            import logging
+
+            logging.getLogger(__name__).debug(f"Input thread failed: {type(e).__name__}")
             result["value"] = None
 
     # Create and start thread

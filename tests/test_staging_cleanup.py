@@ -43,7 +43,7 @@ class TestCleanupLegacySkillsWithTempDirs:
             skills_dir = tmppath / "skills"
             skills_dir.mkdir()
             # Add only amplihack skills
-            (skills_dir / "agent-sdk").mkdir()
+            (skills_dir / "claude-agent-sdk").mkdir()
             (skills_dir / "common").mkdir()
 
             result = cleanup_legacy_skills(dry_run=False, legacy_dirs=[skills_dir])
@@ -120,7 +120,7 @@ class TestCleanupLegacySkillsDryRun:
             tmppath = Path(tmpdir)
             skills_dir = tmppath / "skills"
             skills_dir.mkdir()
-            (skills_dir / "agent-sdk").mkdir()
+            (skills_dir / "claude-agent-sdk").mkdir()
 
             result = cleanup_legacy_skills(dry_run=True, legacy_dirs=[skills_dir])
 
@@ -137,7 +137,7 @@ class TestCleanupLegacySkillsDryRun:
             skills_dir2 = tmppath / "skills2"
             skills_dir1.mkdir()
             skills_dir2.mkdir()
-            (skills_dir1 / "agent-sdk").mkdir()
+            (skills_dir1 / "claude-agent-sdk").mkdir()
             (skills_dir2 / "common").mkdir()
 
             result = cleanup_legacy_skills(dry_run=True, legacy_dirs=[skills_dir1, skills_dir2])
@@ -179,7 +179,7 @@ class TestCleanupLegacySkillsMultipleDirectories:
             safe2.mkdir()
             unsafe.mkdir()
 
-            (safe1 / "agent-sdk").mkdir()
+            (safe1 / "claude-agent-sdk").mkdir()
             (safe2 / "common").mkdir()
             (unsafe / "custom-skill").mkdir()
 
@@ -204,7 +204,7 @@ class TestCleanupLegacySkillsMultipleDirectories:
             dir1.mkdir()
             dir2.mkdir()
 
-            (dir1 / "agent-sdk").mkdir()
+            (dir1 / "claude-agent-sdk").mkdir()
             (dir2 / "common").mkdir()
 
             # Mock shutil.rmtree to fail for dir1
@@ -252,7 +252,7 @@ class TestCleanupLegacySkillsDefaultDirectories:
                 default1.mkdir(parents=True)
                 default2.mkdir(parents=True)
 
-                (default1 / "agent-sdk").mkdir()
+                (default1 / "claude-agent-sdk").mkdir()
                 (default2 / "common").mkdir()
 
                 # Call without legacy_dirs argument
@@ -287,7 +287,7 @@ class TestCleanupLegacySkillsErrorHandling:
             tmppath = Path(tmpdir)
             skills_dir = tmppath / "skills"
             skills_dir.mkdir()
-            (skills_dir / "agent-sdk").mkdir()
+            (skills_dir / "claude-agent-sdk").mkdir()
 
             with patch("shutil.rmtree", side_effect=PermissionError("Access denied")):
                 result = cleanup_legacy_skills(dry_run=False, legacy_dirs=[skills_dir])
@@ -303,7 +303,7 @@ class TestCleanupLegacySkillsErrorHandling:
             tmppath = Path(tmpdir)
             skills_dir = tmppath / "skills"
             skills_dir.mkdir()
-            (skills_dir / "agent-sdk").mkdir()
+            (skills_dir / "claude-agent-sdk").mkdir()
 
             with patch("shutil.rmtree", side_effect=OSError("I/O error")):
                 result = cleanup_legacy_skills(dry_run=False, legacy_dirs=[skills_dir])
@@ -319,7 +319,7 @@ class TestCleanupLegacySkillsErrorHandling:
             tmppath = Path(tmpdir)
             skills_dir = tmppath / "skills"
             skills_dir.mkdir()
-            (skills_dir / "agent-sdk").mkdir()
+            (skills_dir / "claude-agent-sdk").mkdir()
 
             with patch("shutil.rmtree", side_effect=shutil.Error("Copy failed")):
                 result = cleanup_legacy_skills(dry_run=False, legacy_dirs=[skills_dir])
@@ -339,7 +339,7 @@ class TestCleanupLegacySkillsLogging:
             tmppath = Path(tmpdir)
             skills_dir = tmppath / "skills"
             skills_dir.mkdir()
-            (skills_dir / "agent-sdk").mkdir()
+            (skills_dir / "claude-agent-sdk").mkdir()
 
             import logging
 
@@ -373,7 +373,7 @@ class TestCleanupLegacySkillsLogging:
             tmppath = Path(tmpdir)
             skills_dir = tmppath / "skills"
             skills_dir.mkdir()
-            (skills_dir / "agent-sdk").mkdir()
+            (skills_dir / "claude-agent-sdk").mkdir()
 
             import logging
 
@@ -390,7 +390,7 @@ class TestCleanupLegacySkillsLogging:
             tmppath = Path(tmpdir)
             skills_dir = tmppath / "skills"
             skills_dir.mkdir()
-            (skills_dir / "agent-sdk").mkdir()
+            (skills_dir / "claude-agent-sdk").mkdir()
 
             import logging
 

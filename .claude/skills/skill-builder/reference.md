@@ -387,7 +387,7 @@ Every skill with supporting documents MUST include a "Navigation Guide" section 
 - [Security patterns]
 ```
 
-**Good Example:** `~/.amplihack/.claude/skills/agent-sdk/SKILL.md` lines 376-408
+**Good Example:** `~/.amplihack/.claude/skills/claude-agent-sdk/SKILL.md` lines 376-408
 
 - Lists each supporting file
 - Clearly states WHEN to read it

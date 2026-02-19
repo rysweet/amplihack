@@ -179,9 +179,13 @@ class ClaudeBinaryManager:
         version = None
         try:
             version = self.detect_version(BinaryInfo(name=binary_name, path=path))
-        except Exception:
-            # Version detection is optional, don't fail
-            pass
+        except Exception as e:
+            # Version detection is optional; log at debug level and continue
+            import logging
+
+            logging.getLogger(__name__).debug(
+                f"Version detection failed for {binary_name}: {type(e).__name__}"
+            )
 
         return BinaryInfo(
             name=binary_name,

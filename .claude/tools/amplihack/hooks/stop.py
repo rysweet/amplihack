@@ -760,7 +760,8 @@ class StopHook(HookProcessor):
 
                 task_slug = re.sub(r"[^a-z0-9]+", "-", first_sentence.lower()).strip("-")
                 task_slug = task_slug[:50]
-        except Exception:
+        except Exception as e:
+            self.log(f"Could not extract task slug from reflection, using 'session': {e}", "DEBUG")
             task_slug = "session"
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")

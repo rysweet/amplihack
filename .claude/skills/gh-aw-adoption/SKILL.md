@@ -286,12 +286,57 @@ Before using this skill, ensure:
 4. **Authentication**: GitHub token with appropriate scopes
 5. **Optional: Integration branch**: For staging workflow changes before main
 
+## Repo Guardian: Featured First Workflow
+
+**Repo Guardian** is the recommended first workflow to adopt in any repository. Ready-to-copy
+templates are included in this skill directory:
+
+- **`repo-guardian.md`** — The gh-aw agentic workflow (natural language prompt for the AI agent)
+- **`repo-guardian-gate.yml`** — Standard GitHub Actions workflow that enforces agent findings as a blocking CI check
+
+### What It Does
+
+Reviews every PR for **ephemeral content that doesn't belong in the repo**:
+
+- Meeting notes, sprint retrospectives, status updates
+- Temporary scripts (`fix-thing.sh`, `one-off-migration.py`)
+- Point-in-time documents that will become stale
+- Files with date prefixes suggesting snapshots
+
+Posts a PR comment with findings. Collaborators can override with `repo-guardian:override <reason>`.
+
+### Quick Setup
+
+```bash
+# 1. Copy templates
+mkdir -p .github/workflows
+cp .claude/skills/gh-aw-adoption/repo-guardian.md .github/workflows/repo-guardian.md
+cp .claude/skills/gh-aw-adoption/repo-guardian-gate.yml .github/workflows/repo-guardian-gate.yml
+
+# 2. Compile the agentic workflow (pins the gh-aw version)
+cd .github/workflows
+gh aw compile repo-guardian
+
+# 3. Add COPILOT_GITHUB_TOKEN secret (PAT with read:org + repo scopes)
+# Repository Settings → Secrets and variables → Actions → New repository secret
+
+# 4. Commit and push all three files
+git add .github/workflows/repo-guardian.md \
+        .github/workflows/repo-guardian.lock.yml \
+        .github/workflows/repo-guardian-gate.yml
+git commit -m "feat: Add Repo Guardian agentic workflow"
+git push
+```
+
+---
+
 ## Common Workflows to Adopt
 
 Based on analysis of 100+ workflows in the gh-aw repository, these are high-impact workflows to consider:
 
 **Security & Compliance** (High Priority):
 
+- `repo-guardian.md` - Block PRs containing ephemeral content (included as template — see above)
 - `secret-validation.md` - Monitor secrets for expiration and leaks
 - `container-security-scanning.md` - Scan container images for vulnerabilities
 - `license-compliance.md` - Verify dependency licenses
@@ -407,6 +452,7 @@ This skill follows the Diátaxis documentation framework with four complementary
 4. **reference.md** (Reference): Technical specifications, detailed configurations, troubleshooting reference
 
 **For troubleshooting**:
+
 - Start with **reference.md** to understand the error and root cause
 - Check **examples.md** for step-by-step fix instructions
 - Review **patterns.md** to avoid the anti-pattern in future workflows

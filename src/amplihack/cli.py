@@ -183,7 +183,8 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
         result = _launch_command_impl(args, claude_args, session_id, tracker)
         tracker.complete_session(session_id)
         return result
-    except Exception:
+    except Exception as e:
+        logger.debug(f"Session {session_id} ended with error: {type(e).__name__}: {e}")
         tracker.crash_session(session_id)
         raise
     finally:
@@ -988,8 +989,8 @@ def _read_auto_update_preference(plugin_dir: str) -> bool:
         for i, line in enumerate(lines):
             if line.strip() == "### Auto Update" and i + 2 < len(lines):
                 return lines[i + 2].strip().lower() == "always"
-    except Exception:
-        pass
+    except Exception as e:
+        logger.debug(f"Could not read auto-update preference: {type(e).__name__}: {e}")
     return False
 
 

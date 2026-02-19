@@ -1,32 +1,67 @@
 # amplihack
 
-Development framework for popular coding agent systems (Claude Code, Github
-Copilot CLI, Microsoft Amplifier, codex) that provides structured dev workflows,
-memory, a package of useful skills and agents, goal-seeking agent generator,
-auto mode, self-improvement with reflection, and commands for getting the most
-out of agentic coding. Unlikely to work on Windows without WSL.
+Development framework for Claude Code, GitHub Copilot CLI, and Microsoft
+Amplifier. Adds structured workflows, persistent memory, specialized agents,
+goal-seeking capabilities, autonomous execution, and continuous improvement for
+systematic software engineering.
 
 **📚 [View Full Documentation](https://rysweet.github.io/amplihack/)**
 
 ```sh
-# Quick start - see below for full Quick Start guide
+# Quick start
 uvx --from git+https://github.com/rysweet/amplihack amplihack claude
 ```
 
-**→ Jump to [Quick Start](#quick-start---rapid-setup) for rapid setup**
+## Table of Contents
 
-## Quick Start - Rapid Setup
+- [Why amplihack?](#why-amplihack)
+- [Quick Start](#quick-start)
+- [Core Concepts](#core-concepts)
+- [Feature Catalog](#feature-catalog)
+- [Configuration](#configuration)
+- [Documentation Navigator](#documentation-navigator)
+- [Development](#development)
+- [RustyClawd Integration](#rustyclawd-integration)
+- [License](#license)
 
-### Step 1: Install UV
+## Why amplihack?
 
-```bash
-# macOS/Linux/WSL
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
+**The Problem**: Claude Code and GitHub Copilot CLI are barebones development
+tools. They provide a chat interface and model access, but no engineering system
+for managing complexity, maintaining consistency, or shipping reliable code at
+scale.
 
-### Step 2: Run amplihack
+**The Solution**: amplihack builds the engineering system around your coding
+agent:
 
-**Option A: Zero-Install** (recommended for first try)
+- **Structured workflows** replace ad-hoc prompting (DEFAULT_WORKFLOW.md defines
+  22 systematic steps)
+- **Specialized agents** handle architecture, building, testing, and review with
+  defined responsibilities
+- **Persistent memory** across sessions with knowledge graphs and discoveries
+- **Quality gates** enforce philosophy compliance, test coverage, and code
+  standards
+- **Self-improvement** through reflection, pattern capture, and continuous
+  learning
+
+**The Benefit**: Systematic workflows and quality gates produce consistent,
+high-quality code.
+
+## Quick Start
+
+### Prerequisites
+
+- **Platform**: macOS, Linux, or WSL (Windows not directly supported)
+- **Runtime**: Python 3.12+, Node.js 18+
+- **Tools**: git, npm, uv ([astral.sh/uv](https://docs.astral.sh/uv/))
+- **Optional**: GitHub CLI (`gh`), Azure CLI (`az`)
+
+Detailed setup:
+[docs/PREREQUISITES.md](https://rysweet.github.io/amplihack/PREREQUISITES/)
+
+### Installation
+
+**Option 1: Zero-Install** (try before you commit)
 
 ```bash
 # Launch with Claude Code
@@ -39,728 +74,376 @@ uvx --from git+https://github.com/rysweet/amplihack amplihack amplifier
 uvx --from git+https://github.com/rysweet/amplihack amplihack copilot
 ```
 
-**Option B: Install Globally** (for frequent use)
+**Option 2: Global Install** (for daily use)
 
 ```bash
 # Install once
 uv tool install git+https://github.com/rysweet/amplihack
 
-# Then use directly
+# Use directly
 amplihack claude
 amplihack amplifier
 amplihack copilot
-```
 
-**That's it!** Try asking the **amplihack-guide** agent for help after
-launching.
-
-For more installation options and upgrade instructions, see
-[Installation](#installation) below.
-
----
-
-## Installation
-
-### UV Tool (Recommended)
-
-amplihack is designed to work as a UV tool for zero-installation or global
-installation:
-
-**Option 1: Zero-Install (No installation needed)**
-
-```sh
-# Use directly without installing
-uvx --from git+https://github.com/rysweet/amplihack amplihack claude
-uvx --from git+https://github.com/rysweet/amplihack amplihack amplifier
-uvx --from git+https://github.com/rysweet/amplihack amplihack copilot
-```
-
-**Option 2: Global Install**
-
-```sh
-# Install once, use anywhere
-uv tool install git+https://github.com/rysweet/amplihack
-
-# Then use directly
-amplihack claude
-amplihack amplifier
-amplihack copilot
-```
-
-**Updating**
-
-```sh
-# Zero-install: Always uses latest (no update needed)
-uvx --from git+https://github.com/rysweet/amplihack amplihack claude
-
-# Global install: Upgrade to latest
+# Update later
 uv tool upgrade amplihack
 ```
 
-## Table of Contents
+**Alias for convenience**:
 
-- [Quick Start - Rapid Setup](#quick-start---rapid-setup)
-- [Installation](#installation)
-  - [UV Tool (Recommended)](#uv-tool-recommended)
-  - [Updating](#updating)
-- [Quick Start](#quick-start)
-  - [Prerequisites](#prerequisites)
-  - [Basic Usage](#basic-usage)
-  - [Create Alias for Easy Access](#create-alias-for-easy-access)
-- [Core Concepts](#core-concepts)
-  - [Workflow](#workflow)
-  - [Philosophy](#philosophy)
-- [Configuration](#configuration)
-  - [Anthropic (Default)](#anthropic-default)
-  - [Azure OpenAI](#azure-openai)
-  - [GitHub Copilot CLI](#github-copilot-cli)
-  - [Custom Workflows](#custom-workflows)
-- [Commands Reference](#commands-reference)
-- [Agents Reference](#agents-reference)
-  - [Core Agents](#core-agents-6)
-  - [Specialized Agents](#specialized-agents-23)
-- [Features](#features)
-  - [Workflow Orchestration by Default](#workflow-orchestration-by-default)
-  - [Goal-Seeking Agent Generator](#goal-seeking-agent-generator)
-  - [Profile Management](#profile-management)
-  - [GitHub Pages Documentation Generation](#github-pages-documentation-generation)
-  - [Additional Features](#additional-features)
-  - [Statusline](#statusline)
-- [Documentation](#documentation)
-  - [Getting Started](#getting-started)
-  - [Features](#features-1)
-  - [Patterns](#patterns)
-  - [Configuration](#configuration-1)
-  - [Development](#development-1)
-  - [Methodology](#methodology)
-  - [Security](#security)
-  - [Core Principles](#core-principles)
-- [Development](#development)
-  - [Contributing](#contributing)
-  - [Local Development](#local-development)
-  - [Testing](#testing)
-- [License](#license)
-
-## Quick Start
-
-### Prerequisites
-
-- MacOS, WSL, or Linux
-- Python 3.2+, Node.js 18+, npm, git
-- GitHub CLI (`gh`) for PR/issue management
-- az cli for AzDO and Azure skills
-- uv ([astral.sh/uv](https://docs.astral.sh/uv/))
-
-For detailed installation instructions, see
-[docs/PREREQUISITES.md](https://rysweet.github.io/amplihack/PREREQUISITES/).
-
-You may find that its useful to use amplihack with
-[azlin](https://github.com/rysweet/azlin) which makes it easy to start linux
-based agentic coding vms in the azure cloud.
-
-### Basic Usage
-
-```sh
-# Launch Claude Code with amplihack
-amplihack launch
-
-# With Azure OpenAI (requires azure.env configuration)
-amplihack launch --with-proxy-config ./azure.env
-
-# Work directly in a GitHub repository
-amplihack launch --checkout-repo owner/repo
-```
-
-**New to amplihack?** After launching, try the interactive tutorial:
-
-```
-Task(subagent_type='guide', prompt='I am new to amplihack. Teach me the basics.')
-```
-
-The guide agent will walk you through workflows, prompting strategies, and
-hands-on exercises. Takes 60-90 minutes to complete.
-
-**Already familiar?** Tell Claude Code to `cd /path/to/my/project` and provide
-your prompt. All prompts are automatically wrapped with `/amplihack:ultrathink`
-for workflow orchestration (use `--no-ultrathink` flag to opt-out for simple
-tasks).
-
-### Create Alias for Easy Access
-
-Instead of typing the full uvx command, create an alias:
-
-```sh
-# Add to your ~/.bashrc or ~/.zshrc
+```bash
+# Add to ~/.bashrc or ~/.zshrc
 alias amplihack='uvx --from git+https://github.com/rysweet/amplihack amplihack'
 
-# Reload your shell
+# Reload shell
 source ~/.bashrc  # or source ~/.zshrc
 ```
 
-Now you can simply run:
+### First Session
 
-```sh
-amplihack launch
-amplihack launch --with-proxy-config ./azure.env
-amplihack launch --checkout-repo owner/repo
+After launching:
+
 ```
+# New users - interactive tutorial (60-90 minutes)
+Task(subagent_type='guide', prompt='I am new to amplihack. Teach me the basics.')
+
+# Experienced users - start coding
+cd /path/to/my/project
+[Your prompt here - automatically uses /amplihack:ultrathink workflow]
+```
+
+All prompts automatically invoke systematic workflow orchestration. Use
+`--no-ultrathink` flag for simple tasks.
 
 ## Core Concepts
 
 ### Philosophy
 
-- **Simplicity** - Start simple, add only justified complexity
-- **Modular** - Self-contained modules with clear interfaces
-- **Test-driven** - Tests before implementation
-- **Zero BS Principle** - continually reinforcing zero tolerance of stubs,
-  TODOs, faked apis or data, etc
+- **Ruthless Simplicity**: Start simple, add complexity only when justified
+- **Modular Design**: Self-contained modules ("bricks") with clear interfaces
+  ("studs")
+- **Zero-BS Implementation**: Every function works or doesn't exist (no stubs,
+  TODOs, or placeholders)
+- **Test-Driven**: Tests before implementation, behavior verification at module
+  boundaries
+
+Philosophy guide:
+[`~/.amplihack/.claude/context/PHILOSOPHY.md`](~/.amplihack/.claude/context/PHILOSOPHY.md)
 
 ### Workflows
 
-The system tries to direct all work to one of a few customizeable
-[structured workflows](~/.amplihack/.claude/workflow/) which attempt to detect
-the user intent and guide the agent through a structured set of steps. The
-workflows try to put solid gaurdrails and multiagent points of view around the
-work. See the
-[DEFAULT_WORKFLOW.md](~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md) for an
-example.
+All work flows through structured workflows that detect user intent and guide
+execution:
+
+- **DEFAULT_WORKFLOW**: 22-step systematic development process (features, bugs,
+  refactoring)
+- **INVESTIGATION_WORKFLOW**: 6-phase knowledge excavation (understanding
+  existing systems)
+- **Q&A_WORKFLOW**: 3-step minimal workflow (simple questions, quick answers)
+- **OPS_WORKFLOW**: 1-step administrative operations (cleanup, maintenance)
+
+Workflows are customizable - edit
+`~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md` to change process.
+
+Workflow customization:
+[docs/WORKFLOW_COMPLETION.md](https://rysweet.github.io/amplihack/WORKFLOW_COMPLETION/)
+
+## Feature Catalog
+
+### Orchestration & Execution
+
+- **[Workflow Orchestration](#workflows)** - Systematic multi-step workflows for
+  development, investigation, and operations
+- **[UltraThink](/amplihack:ultrathink)** - Deep multi-agent analysis and
+  workflow execution (default for all prompts)
+- **[Recipe Runner](docs/recipes/README.md)** - Code-enforced workflows that
+  models cannot skip (10 bundled recipes)
+- **[Auto Mode](https://rysweet.github.io/amplihack/AUTO_MODE/)** - Autonomous
+  agentic loops for multi-turn workflows
+- **[Multitask](~/.amplihack/.claude/skills/multitask/SKILL.md)** - Parallel
+  workstream execution with subprocess isolation
+
+### Agents & Specialized Analysis
+
+- **[37 Agents](~/.amplihack/.claude/agents/)** (7 core, 30 specialized) -
+  Architect, builder, reviewer, tester, security, optimizer, and more
+- **[Goal-Seeking Agent Generator](https://rysweet.github.io/amplihack/GOAL_AGENT_GENERATOR_GUIDE/)** -
+  Create autonomous agents from simple prompts
+- **[Expert Panel](/amplihack:expert-panel)** - Multi-expert review with voting
+  for complex decisions
+- **[Multi-Agent Debate](/amplihack:debate)** - Structured debate for
+  architectural trade-offs
+- **[N-Version Programming](/amplihack:n-version)** - Generate multiple
+  implementations, select best
+
+### Workflows & Methodologies
+
+- **[Document-Driven Development](https://rysweet.github.io/amplihack/document_driven_development/)** -
+  Documentation-first methodology for large features
+- **[Fix Workflow](/amplihack:fix)** - Rapid resolution of common error patterns
+  (imports, CI, tests, config)
+- **[Pre-Commit Diagnostics](~/.amplihack/.claude/agents/amplihack/specialized/pre-commit-diagnostic.md)** -
+  Fix linting, formatting, type checking before push
+- **[CI Diagnostics](~/.amplihack/.claude/agents/amplihack/specialized/ci-diagnostic-workflow.md)** -
+  Iterate until PR is mergeable (never auto-merges)
+- **[Cascade Fallback](/amplihack:cascade)** - Graceful degradation for
+  resilient operations
+
+### Memory & Knowledge Management
+
+- **[Kuzu Memory System](https://rysweet.github.io/amplihack/AGENT_MEMORY_QUICKSTART/)** -
+  Persistent memory and knowledge graphs across sessions
+- **[Discoveries](https://rysweet.github.io/amplihack/DISCOVERIES/)** -
+  Documented problems, solutions, and learnings
+- **[Investigation Workflow](#workflows)** - Deep knowledge excavation with
+  auto-documentation
+- **[Knowledge Builder](/amplihack:knowledge-builder)** - Build comprehensive
+  knowledge base from codebase
+- **[Transcripts Management](/amplihack:transcripts)** - Conversation transcript
+  tracking and search
+
+### Skills & Tools
+
+- **[85+ Skills](~/.amplihack/.claude/skills/README.md)** - PDF, XLSX, DOCX,
+  PPTX manipulation, Azure admin, AzDO, and workflow patterns
+- **[Office Skills](~/.amplihack/.claude/skills/README.md)** - Comprehensive
+  document processing (PDF, Excel, Word, PowerPoint)
+- **[Azure Admin](~/.amplihack/.claude/skills/azure-admin/README.md)** -
+  Identity management, RBAC, resource orchestration
+- **[Azure DevOps CLI](~/.amplihack/.claude/skills/azure-devops-cli/README.md)** -
+  Pipelines, repos, artifacts automation
+- **[Pre-Commit Manager](~/.amplihack/.claude/skills/pre-commit-manager/README.md)** -
+  Automatic hook setup with preference memory
+
+### Development Tools
+
+- **[Profile Management](https://rysweet.github.io/amplihack/PROFILE_MANAGEMENT/)** -
+  Token optimization (72% reduction) via component filtering
+- **[Modular Build](/amplihack:modular-build)** - Self-contained modules with
+  clear contracts
+- **[Cleanup Agent](~/.amplihack/.claude/agents/amplihack/specialized/cleanup.md)** -
+  Remove artifacts and enforce philosophy
+- **[Worktree Management](~/.amplihack/.claude/agents/amplihack/specialized/worktree-manager.md)** -
+  Git worktree automation for parallel development
+- **[Statusline](https://rysweet.github.io/amplihack/reference/STATUSLINE/)** -
+  Real-time session info (tokens, cost, duration, model)
+
+### Quality & Security
+
+- **[Code Analysis](/amplihack:analyze)** - Comprehensive philosophy compliance
+  review
+- **[Security Analysis](/amplihack:xpia)** - XPIA cross-prompt injection defense
+- **[Reflection](/amplihack:reflect)** - Session analysis and improvement
+  recommendations
+- **[Socratic Questioning](/amplihack:socratic)** - Challenge claims and clarify
+  requirements
+- **[Benchmarking](https://rysweet.github.io/amplihack/BENCHMARKING/)** -
+  Performance measurement with eval-recipes
+
+### Documentation & Publishing
+
+- **[GitHub Pages Generation](https://rysweet.github.io/amplihack/howto/github-pages-generation/)** -
+  Automatic documentation sites with MkDocs
+- **[Documentation System](~/.amplihack/.claude/context/PHILOSOPHY.md)** - Eight
+  rules of good documentation
+- **[Implementation Summary](https://rysweet.github.io/amplihack/IMPLEMENTATION_SUMMARY/)** -
+  Architecture overview
+
+### Integration & Compatibility
+
+- **[GitHub Copilot CLI](https://rysweet.github.io/amplihack/github-copilot-litellm-integration/)** -
+  Full compatibility with adaptive hooks
+- **[Microsoft Amplifier](https://github.com/microsoft/amplifier)** -
+  Multi-model support with configuration wizard
+- **[Awesome-Copilot Integration](docs/howto/awesome-copilot-integration.md)** -
+  MCP server, plugin marketplace, drift detection
+- **[RustyClawd Integration](#rustyclawd-integration)** - High-performance Rust
+  implementation (5-10x faster startup)
+- **[Azure OpenAI Proxy](https://rysweet.github.io/amplihack/PROXY_CONFIG_GUIDE/)** -
+  Use Azure models via Claude Code
+
+### Advanced Features
+
+- **[Remote Execution](~/.amplihack/.claude/tools/amplihack/remote/README.md)** -
+  Distribute work across Azure VMs (Beta)
+- **[Power-Steering](https://rysweet.github.io/amplihack/reference/STATUSLINE/#power-steering)** -
+  AI-powered session guidance with redirect detection
+- **[Lock Mode](https://rysweet.github.io/amplihack/reference/STATUSLINE/#lock-mode)** -
+  Continuous work without stopping
+- **[Customization System](/amplihack:customize)** - Manage user preferences
+  (verbosity, style, workflow)
+- **[Session Logs](~/.amplihack/.claude/runtime/logs/)** - Comprehensive logging
+  and decision records
 
 ## Configuration
 
-amplihack works with
-[Claude Code](https://claude.com/product/claude-code?utm_source=google&utm_medium=paid_search_coder&utm_campaign=acq_code_us_q3&utm_content=getstarted_text_v1)
-and Anthropic models by default. You can, however also use it with
-[Microsoft Amplifier](https://github.com/microsoft/amplifier) and
-[Github Copilot CLI](https://github.com/features/copilot/cli).
+### Claude Code (Default)
 
-### Anthropic (Default)
+Set `$ANTHROPIC_API_KEY` before launching:
 
-Set your $ANTHROPIC_API_KEY prior to launching amplihack.
-
-### Other models with GH Copilot CLI
-
-Github Copilot CLI supports all the models supported by GH Copilot - though most
-of the framework is only tested with Anthropic.
-
-```sh
-amplihack copilot
+```bash
+export ANTHROPIC_API_KEY=your-key-here
+amplihack claude
 ```
-
-and then use **/model**
-
-### Other models with Microosft Amplifier
-
-Amplifier wil walk you through model configuration on first startup:
-
-```sh
-amplihack amplfier
-```
-
-### Azure OpenAI in Claude via proxy
-
-To use Azure OpenAI models, create an `azure.env` file with the following
-minimum configuration:
-
-```env
-# Required: Your Azure OpenAI API key
-AZURE_OPENAI_API_KEY=your-api-key
-
-# Required: Azure OpenAI endpoint (base URL without path)
-AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
-
-# Required: Model deployment name (use either BIG_MODEL or AZURE_OPENAI_DEPLOYMENT_NAME)
-AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4.1
-
-# Optional: API version (defaults to 2025-04-01-preview)
-AZURE_OPENAI_API_VERSION=2024-12-01-preview
-```
-
-Launch with Azure configuration:
-
-```sh
-amplihack launch --with-proxy-config ./azure.env
-```
-
-**Note:** The endpoint should be just the base URL (e.g.,
-`https://your-resource.openai.azure.com`) without `/openai` or other path
-suffixes. The proxy will automatically construct the correct API paths.
-
-**Security Warning**: Never commit API keys to version control. Use environment
-variables or secure key management systems.
 
 ### GitHub Copilot CLI
 
-amplihack fully supports GitHub Copilot CLI with adaptive hooks that enable
-preference injection and context loading. All 38 agents, 73 skills, and 24
-commands work seamlessly with Copilot.
-
-**Auto-Update**: The `amplihack copilot` command automatically checks for newer
-Copilot CLI versions and prompts for updates before launching.
+All 38 agents and 73 skills work with Copilot:
 
 ```bash
 # Default mode (no agent)
-amplihack copilot -- -p "Your task here"
+amplihack copilot -- -p "Your task"
 
 # With specific agent
-amplihack copilot -- --agent architect -p "Design a REST API"
-amplihack copilot -- --agent builder -p "Implement the spec"
+amplihack copilot -- --agent architect -p "Design REST API"
 
 # List available agents
 ls .github/agents/*.md
 ```
 
 **Note**: Copilot shows "No custom agents configured" until you select one with
-`--agent <name>`. All 38 amplihack agents are available in `.github/agents/`.
+`--agent <name>`.
 
-See [COPILOT_CLI.md](COPILOT_CLI.md) for complete integration guide and
-[docs/HOOKS_COMPARISON.md](docs/HOOKS_COMPARISON.md) for adaptive hook system
-details.
+Full guide: [COPILOT_CLI.md](COPILOT_CLI.md)
 
-### Custom Workflows
+### Microsoft Amplifier
 
-The iterative-step workflow is fully customizable. Edit
-`~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md` to modify the development
-process - changes apply immediately to `/ultrathink` and other commands. See
-[docs/WORKFLOW_COMPLETION.md](https://rysweet.github.io/amplihack/WORKFLOW_COMPLETION/)
-for detailed customization instructions.
-
-## Commands Reference
-
-| Command                        | Description                                              |
-| ------------------------------ | -------------------------------------------------------- |
-| `amplihack new`                | Generate goal-seeking agents from prompts                |
-| `/amplihack:ultrathink`        | Deep multi-agent analysis (now DEFAULT for all prompts)  |
-| `/amplihack:analyze`           | Code analysis and philosophy compliance review           |
-| `/amplihack:auto`              | Autonomous agentic loop (clarify → plan → execute)       |
-| `/amplihack:cascade`           | Fallback cascade for resilient operations                |
-| `/amplihack:debate`            | Multi-agent debate for complex decisions                 |
-| `/amplihack:expert-panel`      | Multi-expert review with voting                          |
-| `/amplihack:n-version`         | N-version programming for critical code                  |
-| `/amplihack:socratic`          | Generate Socratic questions to challenge claims          |
-| `/amplihack:reflect`           | Session reflection and improvement analysis              |
-| `/amplihack:improve`           | Capture learnings and implement improvements             |
-| `/amplihack:fix`               | Fix common errors and code issues                        |
-| `/amplihack:modular-build`     | Build self-contained modules with clear contracts        |
-| `/amplihack:knowledge-builder` | Build comprehensive knowledge base                       |
-| `/amplihack:transcripts`       | Conversation transcript management                       |
-| `/amplihack:xpia`              | Security analysis and threat detection                   |
-| `/amplihack:customize`         | Manage user-specific preferences                         |
-| `/amplihack:ddd:0-help`        | Document-Driven Development help and guidance            |
-| `/amplihack:ddd:1-plan`        | Phase 0: Planning & Alignment                            |
-| `/amplihack:ddd:2-docs`        | Phase 1: Documentation Retcon                            |
-| `/amplihack:ddd:3-code-plan`   | Phase 3: Implementation Planning                         |
-| `/amplihack:ddd:4-code`        | Phase 4: Code Implementation                             |
-| `/amplihack:ddd:5-finish`      | Phase 5: Testing & Phase 6: Cleanup                      |
-| `/amplihack:ddd:prime`         | Prime context with DDD overview                          |
-| `/amplihack:ddd:status`        | Check current DDD phase and progress                     |
-| `/amplihack:dev`               | Run full 23-step development workflow (alias)            |
-| `/amplihack:investigation`     | Run 6-phase investigation workflow                       |
-| `/amplihack:hybrid`            | Investigation then development (alias: `/amplihack:run`) |
-| `/amplihack:qa`                | Minimal Q&A workflow for simple questions                |
-| `/amplihack:verification`      | 5-step workflow for trivial changes                      |
-| `/amplihack:consensus`         | Multi-agent consensus with 7 validation gates            |
-| `/amplihack:guide`             | Interactive guide to amplihack features                  |
-| `/amplihack:lock`              | Enable continuous work mode                              |
-| `/amplihack:unlock`            | Disable continuous work mode                             |
-| `/amplihack:install`           | Install amplihack tools                                  |
-| `/amplihack:uninstall`         | Uninstall amplihack tools                                |
-
-## Agents Reference
-
-### Core Agents (7)
-
-| Agent                                                                          | Purpose                                  |
-| ------------------------------------------------------------------------------ | ---------------------------------------- |
-| [**api-designer**](~/.amplihack/.claude/agents/amplihack/core/api-designer.md) | API design and endpoint structure        |
-| [**architect**](~/.amplihack/.claude/agents/amplihack/core/architect.md)       | System design and architecture decisions |
-| [**builder**](~/.amplihack/.claude/agents/amplihack/core/builder.md)           | Code generation and implementation       |
-| [**guide**](~/.amplihack/.claude/agents/amplihack/core/guide.md)               | Feature guide and onboarding specialist  |
-| [**optimizer**](~/.amplihack/.claude/agents/amplihack/core/optimizer.md)       | Performance optimization and efficiency  |
-| [**reviewer**](~/.amplihack/.claude/agents/amplihack/core/reviewer.md)         | Code quality and best practices review   |
-| [**tester**](~/.amplihack/.claude/agents/amplihack/core/tester.md)             | Test generation and validation           |
-
-### Specialized Agents (30)
-
-| Agent                                                                                                       | Purpose                                               |
-| ----------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| [**ambiguity**](~/.amplihack/.claude/agents/amplihack/specialized/ambiguity.md)                             | Clarify ambiguous requirements                        |
-| [**amplifier-cli-architect**](~/.amplihack/.claude/agents/amplihack/specialized/amplifier-cli-architect.md) | CLI tool design and architecture                      |
-| [**analyzer**](~/.amplihack/.claude/agents/amplihack/specialized/analyzer.md)                               | Deep code analysis                                    |
-| [**azure-kubernetes-expert**](~/.amplihack/.claude/agents/amplihack/specialized/azure-kubernetes-expert.md) | Azure Kubernetes Service expertise                    |
-| [**ci-diagnostic-workflow**](~/.amplihack/.claude/agents/amplihack/specialized/ci-diagnostic-workflow.md)   | CI/CD pipeline diagnostics                            |
-| [**cleanup**](~/.amplihack/.claude/agents/amplihack/specialized/cleanup.md)                                 | Remove artifacts and enforce philosophy               |
-| [**database**](~/.amplihack/.claude/agents/amplihack/specialized/database.md)                               | Database design and optimization                      |
-| [**fallback-cascade**](~/.amplihack/.claude/agents/amplihack/specialized/fallback-cascade.md)               | Resilient fallback strategies                         |
-| [**fix-agent**](~/.amplihack/.claude/agents/amplihack/specialized/fix-agent.md)                             | Automated error fixing                                |
-| [**integration**](~/.amplihack/.claude/agents/amplihack/specialized/integration.md)                         | System integration patterns                           |
-| [**knowledge-archaeologist**](~/.amplihack/.claude/agents/amplihack/specialized/knowledge-archaeologist.md) | Extract and preserve knowledge                        |
-| [**multi-agent-debate**](~/.amplihack/.claude/agents/amplihack/specialized/multi-agent-debate.md)           | Facilitate multi-perspective debates                  |
-| [**n-version-validator**](~/.amplihack/.claude/agents/amplihack/specialized/n-version-validator.md)         | Validate N-version implementations                    |
-| [**patterns**](~/.amplihack/.claude/agents/amplihack/specialized/patterns.md)                               | Design pattern recommendations                        |
-| [**pre-commit-diagnostic**](~/.amplihack/.claude/agents/amplihack/specialized/pre-commit-diagnostic.md)     | Pre-commit hook diagnostics                           |
-| [**preference-reviewer**](~/.amplihack/.claude/agents/amplihack/specialized/preference-reviewer.md)         | User preference validation                            |
-| [**prompt-writer**](~/.amplihack/.claude/agents/amplihack/specialized/prompt-writer.md)                     | Effective prompt engineering                          |
-| [**rust-programming-expert**](~/.amplihack/.claude/agents/amplihack/specialized/rust-programming-expert.md) | Rust language expertise                               |
-| [**security**](~/.amplihack/.claude/agents/amplihack/specialized/security.md)                               | Security analysis and vulnerability detection         |
-| [**visualization-architect**](~/.amplihack/.claude/agents/amplihack/specialized/visualization-architect.md) | Data visualization design                             |
-| [**xpia-defense**](~/.amplihack/.claude/agents/amplihack/specialized/xpia-defense.md)                       | Advanced threat detection                             |
-| [**philosophy-guardian**](~/.amplihack/.claude/agents/amplihack/specialized/philosophy-guardian.md)         | Philosophy compliance and simplicity validation       |
-| [**openapi-scaffolder**](~/.amplihack/.claude/agents/amplihack/specialized/openapi-scaffolder.md)           | Scaffold apps from OpenAPI specs (5 languages)        |
-| [**iac-planner**](~/.amplihack/.claude/agents/amplihack/specialized/iac-planner.md)                         | Infrastructure-as-Code planning (Terraform/Bicep/CFN) |
-| [**mcp-server-builder**](~/.amplihack/.claude/agents/amplihack/specialized/mcp-server-builder.md)           | Build MCP servers in 6 languages                      |
-
-## Features
-
-### Remote Execution (Beta)
-
-Distribute agentic work across Azure VMs:
-
-```sh
-amplihack remote auto "implement feature" --region westus3 --vm-size s
-```
-
-Documentation:
-[.claude/tools/amplihack/remote/README.md](~/.amplihack/.claude/tools/amplihack/remote/README.md)
-
-### Recipe Runner - Code-Enforced Workflows (NEW!)
-
-Execute workflows with code-enforced step ordering that models cannot skip:
-
-```sh
-# Run a deterministic workflow
-amplihack recipe run default-workflow --context '{"task": "Add auth"}'
-
-# List available recipes
-amplihack recipe list
-
-# Validate before running
-amplihack recipe validate my-recipe.yaml
-```
-
-**Why it exists**: Models skip workflow steps when enforcement is prompt-based.
-The Recipe Runner uses Python code to control step execution — making it
-physically impossible to skip steps.
-
-**Features:**
-
-- 10 bundled workflows (default, investigation, verification, consensus, etc.)
-- Template variables for context passing between steps
-- Safe AST-based condition evaluation
-- Daily upstream sync from microsoft/amplifier-bundle-recipes
-
-📖 [Recipe Runner Documentation](docs/recipes/README.md)
-
-### Pre-Commit Manager - Automatic Hook Setup
-
-Eliminates pre-commit setup friction on fresh repository clones:
-
-```sh
-# Automatic: Hook detects .pre-commit-config.yaml and offers installation
-# Manual: Configure for your language
-Skill(pre-commit-manager, "configure python")
-
-# Check status
-Skill(pre-commit-manager, "status")
-```
-
-**Key Features:**
-
-- **Smart preference memory**: Remembers your choice (always/never/ask) across
-  sessions
-- **Template library**: Pre-configured for Python, JavaScript, TypeScript, Go,
-  Rust
-- **Security-first**: Command injection prevention, path validation, secure
-  storage
-- **Zero friction**: Single prompt, then automatic forever
-
-📖
-[Pre-Commit Manager Documentation](.claude/skills/pre-commit-manager/README.md)
-
-### Workflow Orchestration by Default
-
-All prompts are automatically wrapped with `/amplihack:ultrathink` for maximum
-effectiveness. This enables:
-
-- Multi-agent workflow orchestration
-- Multi-step development workflow
-- Automated architecture, building, and testing
-- Philosophy compliance checking
-
-**Benchmark results:** Amplihack without orchestration = vanilla Claude. The
-orchestration IS the value! See
-[benchmarking guide](https://rysweet.github.io/amplihack/BENCHMARKING/) for
-measuring performance.
-
-**Opt-out for simple tasks:**
-
-```sh
-# Skip orchestration with --no-ultrathink flag
-amplihack launch --no-ultrathink -- -p "simple prompt"
-
-# Or use slash commands directly
-amplihack launch -- -p "/analyze src/file.py"
-```
-
-**How it works:**
-
-```sh
-# Before: Manual orchestration required
-amplihack launch -- -p "/amplihack:ultrathink implement feature"
-
-# Now: Automatic orchestration (same result)
-amplihack launch -- -p "implement feature"
-```
-
-### Goal-Seeking Agent Generator
-
-**Create autonomous agents from simple prompts:**
+Interactive configuration wizard on first startup:
 
 ```bash
-# Write your goal
-cat > my_goal.md <<'EOF'
-# Goal: Automated Code Review
-Review Python code and suggest improvements.
-EOF
-
-# Generate agent
-amplihack new --file my_goal.md
-
-# Run agent
-cd goal_agents/automated-code-review-agent
-python main.py
+amplihack amplifier
 ```
 
-**Features:**
+Supports all models available in GitHub Copilot ecosystem.
 
-- Generate agents in < 0.1 seconds
-- Automatic skill matching
-- Multi-phase execution planning
-- Standalone, distributable agents
+### Azure OpenAI via Proxy
 
-**Learn more:**
-[Goal Agent Generator Guide](https://rysweet.github.io/amplihack/GOAL_AGENT_GENERATOR_GUIDE/)
+Create `azure.env`:
 
-### Profile Management
-
-**Reduce token usage by 72% with profile-based component filtering:**
-
-```sh
-# Install with filtering
-amplihack install
-
-# Result: Only 9/32 agents staged (72% reduction)
-
-# Launch with filtering
-amplihack launch
-
-# Result: Focused environment for coding tasks
+```env
+AZURE_OPENAI_API_KEY=your-api-key
+AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4.1
+AZURE_OPENAI_API_VERSION=2024-12-01-preview  # Optional
 ```
 
-**Built-in Profiles:**
+Launch with configuration:
 
-- `all`: Full environment (32 agents, default)
-- `coding`: Development-focused (9 agents)
-- `research`: Investigation-focused (7 agents)
-
-**Learn more:**
-[Profile Management Guide](https://rysweet.github.io/amplihack/PROFILE_MANAGEMENT/)
-
-### GitHub Pages Documentation Generation
-
-**Generate professional documentation sites automatically:**
-
-- Auto-discovers content from `docs/`, `README.md`, and
-  `~/.amplihack/.claude/commands/`
-- Three-pass validation ensures quality documentation
-- Safe gh-pages deployment with rollback support
-- Local preview server for testing
-- MkDocs + Material theme integration
-
-**Learn more:**
-
-- [Tutorial: Your First Documentation Site](https://rysweet.github.io/amplihack/tutorials/first-docs-site/)
-- [How-To: Generate GitHub Pages Sites](https://rysweet.github.io/amplihack/howto/github-pages-generation/)
-- [API Reference: GitHub Pages Module](https://rysweet.github.io/amplihack/reference/github-pages-api/)
-
-### Additional Features
-
-- **[Power-Steering](https://rysweet.github.io/amplihack/reference/STATUSLINE/#power-steering)** -
-  AI-powered session guidance with intelligent redirect detection (🚦 indicator)
-- **[Auto Mode](https://rysweet.github.io/amplihack/AUTO_MODE/)** - Autonomous
-  agentic loops for multi-turn workflows (`/amplihack:auto`)
-- **[Lock Mode](https://rysweet.github.io/amplihack/reference/STATUSLINE/#lock-mode)** -
-  Continuous work mode without stopping (`/amplihack:lock`, `/amplihack:unlock`)
-  (🔒 indicator)
-- **[Document-Driven Development](https://rysweet.github.io/amplihack/document_driven_development/README/)** -
-  Systematic methodology for large features with documentation-first approach
-- **[Fault-Tolerant Workflows](CLAUDE.md#fault-tolerance-patterns)** - N-version
-  programming, multi-agent debate, and cascade fallback patterns
-- **[Security Analysis](CLAUDE.md#key-commands)** - XPIA cross-prompt injection
-  defense (`/amplihack:xpia`)
-- **[Kuzu Memory System](https://rysweet.github.io/amplihack/AGENT_MEMORY_QUICKSTART/)** -
-  Persistent memory and knowledge graphs across sessions with code-aware context
-- **[Investigation Workflow](CLAUDE.md#investigation-workflow)** - Deep
-  knowledge excavation with historical context
-- **[Skills System](~/.amplihack/.claude/skills/README.md)** - 85+ skills
-  including PDF, XLSX, DOCX, PPTX, analysts, and workflow patterns
-- **[Fix Workflow](CLAUDE.md#key-commands)** - Rapid resolution of common error
-  patterns (`/amplihack:fix`)
-- **[Reflection & Improvement](CLAUDE.md#key-commands)** - Session analysis and
-  learning capture (`/amplihack:reflect`, `/amplihack:improve`)
-- **[Socratic Questioning](CLAUDE.md#key-commands)** - Challenge claims and
-  clarify requirements (`/amplihack:socratic`)
-- **[Expert Panel](CLAUDE.md#key-commands)** - Multi-expert review with voting
-  (`/amplihack:expert-panel`)
-- **[Knowledge Builder](CLAUDE.md#key-commands)** - Build comprehensive
-  knowledge base (`/amplihack:knowledge-builder`)
-- **[Transcripts Management](CLAUDE.md#key-commands)** - Conversation transcript
-  tracking (`/amplihack:transcripts`)
-- **[Modular Build](CLAUDE.md#key-commands)** - Self-contained modules with
-  clear contracts (`/amplihack:modular-build`)
-- **[Pre-commit Diagnostics](CLAUDE.md#development-workflow-agents)** - Fix
-  formatting, linting, type checking before push
-- **[CI Diagnostics](CLAUDE.md#development-workflow-agents)** - Monitor CI,
-  diagnose failures, iterate until mergeable
-- **[Parallel Workstreams](.claude/skills/multitask/SKILL.md)** - Execute
-  multiple tasks in parallel with Recipe Runner code-enforced workflows
-  (`/multitask`)
-- **[Worktree Management](~/.amplihack/.claude/agents/amplihack/specialized/worktree-manager.md)** -
-  Git worktree automation for parallel development
-- **[Session Logs](CLAUDE.md#working-philosophy)** - Comprehensive logging and
-  decision records
-- **[Customization System](CLAUDE.md#key-commands)** - Manage user preferences
-  (`/amplihack:customize`)
-
-### Statusline
-
-Real-time session information displayed at the bottom of Claude Code showing:
-
-- Current directory and git status (branch, clean/dirty)
-- Active model (Opus/Sonnet/Haiku)
-- Token usage 🎫, Cost 💰, and Duration ⏱
-- Feature indicators: Power-Steering 🚦, Lock Mode 🔒
-
-**Example:**
-
-```
-~/src/amplihack (main → origin) Sonnet 🎫 234K 💰$1.23 ⏱12m
+```bash
+amplihack launch --with-proxy-config ./azure.env
 ```
 
-**Full documentation:**
-[docs/reference/STATUSLINE.md](https://rysweet.github.io/amplihack/reference/STATUSLINE/)
+**Security**: Never commit API keys to version control.
 
-### Awesome-Copilot Integration
+Full guide:
+[docs/PROXY_CONFIG_GUIDE.md](https://rysweet.github.io/amplihack/PROXY_CONFIG_GUIDE/)
 
-Amplihack integrates with
-[awesome-copilot](https://github.com/github/awesome-copilot) for
-community-curated extensions:
+### Workflow Customization
 
-- **MCP Server**: Docker-based MCP server auto-enabled in Copilot sessions
-- **Plugin Marketplace**: Access 48+ community plugins via
-  `copilot plugin install`
-- **Drift Detection**: Monitor awesome-copilot for new content with
-  `/awesome-copilot-sync`
+Edit `~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md` to customize the
+development process. Changes apply immediately to all commands.
 
-See
-[How to Use Awesome-Copilot Integration](docs/howto/awesome-copilot-integration.md)
-for details.
+Custom workflows:
+[docs/WORKFLOW_COMPLETION.md](https://rysweet.github.io/amplihack/WORKFLOW_COMPLETION/)
 
-## Documentation
+## Documentation Navigator
 
 ### Getting Started
 
-- [Prerequisites](https://rysweet.github.io/amplihack/PREREQUISITES/) - Platform
-  setup and dependencies
-- [Proxy Configuration](https://rysweet.github.io/amplihack/PROXY_CONFIG_GUIDE/) -
-  Azure OpenAI proxy setup
+- **[Prerequisites](https://rysweet.github.io/amplihack/PREREQUISITES/)** -
+  Platform setup, runtime dependencies, tool installation
+- **[Proxy Configuration](https://rysweet.github.io/amplihack/PROXY_CONFIG_GUIDE/)** -
+  Azure OpenAI setup for Claude Code
+- **[First Session Tutorial](#first-session)** - Interactive guide to amplihack
+  basics
 
-### Features
+### Core Features
 
-- [Auto Mode](https://rysweet.github.io/amplihack/AUTO_MODE/) - Autonomous
-  agentic loop
-- [Agent Bundles](https://rysweet.github.io/amplihack/agent-bundle-generator-guide/) -
-  Custom agent creation
-- [GitHub Copilot Integration](https://rysweet.github.io/amplihack/github-copilot-litellm-integration/) -
-  Copilot CLI support
-- [Office Skills](~/.amplihack/.claude/skills/README.md) - PDF, Excel, Word, and
-  PowerPoint document processing
-  - [PDF Skill](~/.amplihack/.claude/skills/pdf/README.md) - Comprehensive PDF
-    manipulation
-  - [XLSX Skill](~/.amplihack/.claude/skills/xlsx/README.md) - Spreadsheet
-    creation with formulas and financial modeling
-- [Azure Admin Skill](~/.amplihack/.claude/skills/azure-admin/README.md) - Azure
-  administration, identity management, RBAC, and resource orchestration
-- [Azure DevOps CLI Skill](~/.amplihack/.claude/skills/azure-devops-cli/README.md) -
-  Azure DevOps automation, pipelines, repos, and artifacts
-- **[Azure DevOps Boards Tools](docs/azure-devops/README.md) - Work item
-  management with CLI tools**
-- [Benchmarking with eval-recipes](https://rysweet.github.io/amplihack/BENCHMARKING/) -
-  Performance measurement and comparison
-- [Profile Management](https://rysweet.github.io/amplihack/PROFILE_MANAGEMENT/) -
-  Token optimization and environment customization
+- **[Auto Mode](https://rysweet.github.io/amplihack/AUTO_MODE/)** - Autonomous
+  agentic loops for multi-turn workflows
+- **[Profile Management](https://rysweet.github.io/amplihack/PROFILE_MANAGEMENT/)** -
+  Token optimization via component filtering
+- **[Goal Agent Generator](https://rysweet.github.io/amplihack/GOAL_AGENT_GENERATOR_GUIDE/)** -
+  Create autonomous agents from prompts
+- **[Kuzu Memory System](https://rysweet.github.io/amplihack/AGENT_MEMORY_QUICKSTART/)** -
+  Persistent knowledge graphs
+- **[Benchmarking](https://rysweet.github.io/amplihack/BENCHMARKING/)** -
+  Performance measurement with eval-recipes
 
-### Patterns
+### Skills & Integrations
 
-- [Workspace Pattern](https://rysweet.github.io/amplihack/WORKSPACE_PATTERN/) -
-  Multi-project organization with git submodules
+- **[Skills System](~/.amplihack/.claude/skills/README.md)** - 85+ skills
+  including office, Azure, and workflow patterns
+- **[GitHub Copilot Integration](https://rysweet.github.io/amplihack/github-copilot-litellm-integration/)** -
+  Full CLI support
+- **[Awesome-Copilot Integration](docs/howto/awesome-copilot-integration.md)** -
+  MCP server and plugin marketplace
+- **[Azure DevOps Tools](docs/azure-devops/README.md)** - Work item management
+  with CLI tools
 
-### Configuration
+### Methodology & Patterns
 
-- [Hook Configuration](https://rysweet.github.io/amplihack/HOOK_CONFIGURATION_GUIDE/) -
-  Session hooks
-- [Settings Hook Configuration](docs/howto/settings-hook-configuration.md) -
-  Automatic hook setup, validation, and troubleshooting
-- [Workflow Customization](https://rysweet.github.io/amplihack/WORKFLOW_COMPLETION/) -
-  Process customization
-
-### Development
-
-- [Developing amplihack](https://rysweet.github.io/amplihack/DEVELOPING_AMPLIHACK/) -
-  Contributing guide
-- [Implementation Summary](https://rysweet.github.io/amplihack/IMPLEMENTATION_SUMMARY/) -
-  Architecture overview
-
-### Methodology
-
-- [Document-Driven Development](https://rysweet.github.io/amplihack/document_driven_development/README/) -
-  Systematic approach for large features
-- [DDD Overview](https://rysweet.github.io/amplihack/document_driven_development/overview/) -
-  Comprehensive guide to DDD principles
-- [Core Concepts](https://rysweet.github.io/amplihack/document_driven_development/core_concepts/README/) -
-  Context poisoning, file crawling, retcon writing
-- [DDD Phases](https://rysweet.github.io/amplihack/document_driven_development/phases/README/) -
+- **[Document-Driven Development](https://rysweet.github.io/amplihack/document_driven_development/)** -
+  Documentation-first approach for large features
+- **[DDD Phases](https://rysweet.github.io/amplihack/document_driven_development/phases/)** -
   Step-by-step implementation guide
+- **[Core Concepts](https://rysweet.github.io/amplihack/document_driven_development/core_concepts/)** -
+  Context poisoning, file crawling, retcon writing
+- **[Workspace Pattern](https://rysweet.github.io/amplihack/WORKSPACE_PATTERN/)** -
+  Multi-project organization
 
-### Security
+### Configuration & Customization
 
-- [Security Recommendations](https://rysweet.github.io/amplihack/SECURITY_RECOMMENDATIONS/) -
-  Best practices
-- [Security Context Preservation](https://rysweet.github.io/amplihack/SECURITY_CONTEXT_PRESERVATION/) -
-  Context handling
+- **[Hook Configuration](https://rysweet.github.io/amplihack/HOOK_CONFIGURATION_GUIDE/)** -
+  Session hooks and lifecycle management
+- **[Settings Hook](docs/howto/settings-hook-configuration.md)** - Automatic
+  validation and troubleshooting
+- **[Workflow Customization](https://rysweet.github.io/amplihack/WORKFLOW_COMPLETION/)** -
+  Modify development process
+- **[Hooks Comparison](docs/HOOKS_COMPARISON.md)** - Adaptive hook system
+  details
+
+### Development & Contributing
+
+- **[Developing amplihack](https://rysweet.github.io/amplihack/DEVELOPING_AMPLIHACK/)** -
+  Contributing guide, local setup, testing
+- **[Implementation Summary](https://rysweet.github.io/amplihack/IMPLEMENTATION_SUMMARY/)** -
+  Architecture overview
+- **[Creating Tools](https://rysweet.github.io/amplihack/CREATE_YOUR_OWN_TOOLS/)** -
+  Build custom AI-powered tools
 
 ### Core Principles
 
-- [The Amplihack Way](https://rysweet.github.io/amplihack/THIS_IS_THE_WAY/) -
+- **[The Amplihack Way](https://rysweet.github.io/amplihack/THIS_IS_THE_WAY/)** -
   Effective strategies for AI-agent development
-- [Discoveries](https://rysweet.github.io/amplihack/DISCOVERIES/) - Documented
-  problems, solutions, and learnings
-- [Creating Tools](https://rysweet.github.io/amplihack/CREATE_YOUR_OWN_TOOLS/) -
-  Build custom AI-powered tools
-- [Philosophy](~/.amplihack/.claude/context/PHILOSOPHY.md) - Core principles and
-  patterns
-- [Workflows](~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md) - Development
-  process
+- **[Philosophy](~/.amplihack/.claude/context/PHILOSOPHY.md)** - Ruthless
+  simplicity, modular design, zero-BS implementation
+- **[Patterns](~/.amplihack/.claude/context/PATTERNS.md)** - Proven solutions
+  for recurring challenges
+- **[Discoveries](https://rysweet.github.io/amplihack/DISCOVERIES/)** -
+  Problems, solutions, and learnings
+
+### Security
+
+- **[Security Recommendations](https://rysweet.github.io/amplihack/SECURITY_RECOMMENDATIONS/)** -
+  Best practices and guidelines
+- **[Security Context Preservation](https://rysweet.github.io/amplihack/SECURITY_CONTEXT_PRESERVATION/)** -
+  Context handling
 
 ## Development
 
 ### Contributing
 
-Fork, submit PRs. Add agents to `~/.amplihack/.claude/agents/`, patterns to
+Fork the repository and submit PRs. Add agents to
+`~/.amplihack/.claude/agents/`, patterns to
 `~/.amplihack/.claude/context/PATTERNS.md`.
+
+Contributing guide:
+[docs/DEVELOPING_AMPLIHACK.md](https://rysweet.github.io/amplihack/DEVELOPING_AMPLIHACK/)
 
 ### Local Development
 
-```sh
+```bash
 git clone https://github.com/rysweet/amplihack.git
 cd amplihack
 uv pip install -e .
@@ -769,38 +452,19 @@ amplihack launch
 
 ### Testing
 
-```sh
+```bash
 pytest tests/
 ```
 
 ## RustyClawd Integration
 
-Amplihack supports RustyClawd, a high-performance Rust implementation of Claude
-Code.
-
-### Quick Start
-
-```bash
-# Force RustyClawd usage explicitly
-amplihack RustyClawd -- -p "your prompt"
-
-# Or set environment variable
-export AMPLIHACK_USE_RUSTYCLAWD=1
-amplihack launch -- -p "your prompt"
-```
-
-### Benefits
-
-- **5-10x faster startup** compared to Node.js Claude Code
-- **7x less memory** usage
-- **Rust safety guarantees** - no runtime errors
-- **Same features** - drop-in compatible
+RustyClawd is a high-performance Rust implementation of Claude Code with 5-10x
+faster startup, 7x less memory, and Rust safety guarantees. Drop-in compatible
+with amplihack.
 
 ### Installation
 
-RustyClawd must be available in your system PATH:
-
-**Option 1: Install via cargo**
+**Option 1: Via cargo**
 
 ```bash
 cargo install --git https://github.com/rysweet/RustyClawd rusty
@@ -812,21 +476,24 @@ cargo install --git https://github.com/rysweet/RustyClawd rusty
 git clone https://github.com/rysweet/RustyClawd
 cd RustyClawd
 cargo build --release
-# Add to PATH or use RUSTYCLAWD_PATH environment variable
 export RUSTYCLAWD_PATH=$PWD/target/release/rusty
 ```
 
-**Option 3: Custom binary location**
+### Usage
 
 ```bash
-# Point to your custom RustyClawd build
-export RUSTYCLAWD_PATH=/path/to/your/rusty
+# Explicit mode
+amplihack RustyClawd -- -p "your prompt"
+
+# Environment variable
+export AMPLIHACK_USE_RUSTYCLAWD=1
+amplihack launch -- -p "your prompt"
 ```
 
 ### Configuration
 
 - **AMPLIHACK_USE_RUSTYCLAWD**: Force RustyClawd usage (1/true/yes)
-- **RUSTYCLAWD_PATH**: Custom path to RustyClawd binary (optional)
+- **RUSTYCLAWD_PATH**: Custom binary path (optional)
 
 ## License
 

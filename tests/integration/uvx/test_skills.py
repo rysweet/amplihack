@@ -52,7 +52,7 @@ class TestSkillDiscovery:
         result.assert_success()
         # Should have descriptive output about skills
         # Check for common skill names
-        common_skills = ["pdf", "mcp-manager", "agent-sdk"]
+        common_skills = ["pdf", "mcp-manager", "claude-agent-sdk"]
 
         found_any = False
         for skill in common_skills:
@@ -189,11 +189,9 @@ class TestSkillIntegration:
 
         result.assert_success()
         # Should handle multiple skills in one session
-        found_both = False
         try:
             assert_output_contains(result.stdout, "pdf", case_sensitive=False)
             assert_output_contains(result.stdout, "mcp", case_sensitive=False)
-            found_both = True
         except AssertionError:
             pass
 
