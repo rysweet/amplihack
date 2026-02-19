@@ -658,15 +658,168 @@ LEVEL_10 = TestLevel(
 )
 
 
-# Export all levels (L1-L6 for standard eval, L7 for teacher-student, L8-L10 for advanced)
+# LEVEL 11: Novel Skill Acquisition from Documentation
+# Tests learning genuinely NEW skills (gh-aw, released Jan 2026) not in training data
+LEVEL_11 = TestLevel(
+    level_id="L11",
+    level_name="Novel Skill Acquisition",
+    description=(
+        "Agent must learn GitHub Agentic Workflows from documentation, apply it to "
+        "solve problems, and teach it. Tests genuine learning of post-training-cutoff skills."
+    ),
+    articles=[
+        TestArticle(
+            title="GitHub Agentic Workflows: Overview and Core Concepts",
+            content=(
+                "GitHub Agentic Workflows (gh-aw) is a repository automation platform released "
+                "in January 2026. It enables AI-powered automation within GitHub Actions using "
+                "natural language markdown instructions instead of complex YAML.\n\n"
+                "A workflow file lives at .github/workflows/<name>.md and has two parts:\n"
+                "1. YAML frontmatter between --- markers: defines triggers, permissions, tools, "
+                "engine, and safe-outputs.\n"
+                "2. Markdown body: natural language instructions the AI interprets and executes.\n\n"
+                "The `gh aw compile` command transforms the .md file into a .lock.yml file. "
+                "Both the .md source and .lock.yml must be committed to version control. "
+                "Editing markdown instructions alone does NOT require recompilation (loaded at "
+                "runtime), but frontmatter changes DO require running `gh aw compile`.\n\n"
+                "Three AI engines are supported: copilot (default, uses COPILOT_GITHUB_TOKEN), "
+                "claude (uses ANTHROPIC_API_KEY), and codex (uses OPENAI_API_KEY). "
+                "Engine is specified in frontmatter: `engine: claude`.\n\n"
+                "Workflows trigger on GitHub events (issues opened, PRs created, schedules, "
+                "manual dispatch, slash commands). By default, workflows have read-only permissions. "
+                "All write operations go through 'safe outputs'."
+            ),
+            url="https://github.github.com/gh-aw/introduction/overview/",
+            published="2026-01-12T10:00:00Z",
+        ),
+        TestArticle(
+            title="GitHub Agentic Workflows: Security Architecture and Safe Outputs",
+            content=(
+                "gh-aw implements defense-in-depth security across three layers:\n\n"
+                "1. Substrate Layer: GitHub Actions runner VMs with kernel isolation, container "
+                "separation. Three privileged containers: network firewall (iptables), API proxy "
+                "(holds auth tokens), MCP Gateway (spawns isolated MCP-server containers).\n\n"
+                "2. Configuration Layer: YAML validation, action SHA pinning, tool allowlisting, "
+                "security scanning (actionlint, zizmor, poutine).\n\n"
+                "3. Plan Layer: Trusted compiler decomposes workflows into stages. SafeOutputs "
+                "subsystem buffers all external writes until validation completes.\n\n"
+                "SAFE OUTPUTS: The agent NEVER has direct write access. Instead:\n"
+                "- Agent Job (read-only): Executes AI, buffers outputs to agent_output.json\n"
+                "- Detection Job (no write): Scans for secrets/malicious patches\n"
+                "- Safe Output Jobs (scoped write): Execute ONLY after detection passes\n\n"
+                "Available safe output types: create-issue, add-comment, create-pull-request, "
+                "add-labels, dispatch-workflow, minimize-comment.\n\n"
+                "Content sanitization: @mention neutralization, bot trigger protection, "
+                "XML/HTML tag conversion, URI filtering (HTTPS only), 0.5MB max content.\n\n"
+                "The Agent Workflow Firewall (AWF) containerizes the agent and routes all "
+                "HTTP/HTTPS through a Squid proxy with domain allowlists."
+            ),
+            url="https://github.github.com/gh-aw/introduction/architecture/",
+            published="2026-01-12T10:00:00Z",
+        ),
+        TestArticle(
+            title="GitHub Agentic Workflows: Tools, Patterns, and Examples",
+            content=(
+                "gh-aw tools configured in frontmatter: edit, bash, web-fetch, web-search, "
+                "github, playwright, cache-memory, repo-memory, mcp-servers.\n\n"
+                "BASH TOOL: Configurable safety. Default allows safe commands (echo, ls, cat, "
+                "grep, etc). Custom whitelist: `bash: ['echo', 'git:*']`. Wildcard `:*` for "
+                "unrestricted. Disabled: `bash: []`.\n\n"
+                "GITHUB TOOL: Repository interaction via MCP. Toolsets: context, repos, issues, "
+                "pull_requests, users, actions, code_security, search, etc. Default: context, "
+                "repos, issues, pull_requests, users.\n\n"
+                "MCP SERVERS: Custom tool integration. Run in isolated Docker containers. "
+                "`allowed` field restricts which tools the agent can access.\n\n"
+                "PATTERNS:\n"
+                "- IssueOps: Triggered by issue events, automated triage/response\n"
+                "- ChatOps: Slash commands (/command) in issue/PR comments\n"
+                "- DailyOps: Scheduled daily workflows with fuzzy scheduling\n"
+                "- MultiRepoOps: Cross-repo coordination, requires PAT\n"
+                "- Orchestration: Orchestrator dispatches worker workflows, aggregates results\n"
+                "- MemoryOps: Stateful via cache-memory (7-day) and repo-memory (unlimited)\n\n"
+                "Compilation workflow: 1) Author .md file 2) `gh aw compile` to generate "
+                ".lock.yml 3) Commit both files 4) Push to trigger or `gh aw run <name>`."
+            ),
+            url="https://github.github.com/gh-aw/reference/tools/",
+            published="2026-01-12T10:00:00Z",
+        ),
+    ],
+    questions=[
+        TestQuestion(
+            question=(
+                "What is the fundamental difference between a GitHub Agentic Workflow "
+                "and a traditional GitHub Actions workflow?"
+            ),
+            expected_answer=(
+                "Agentic workflows use natural language markdown instructions interpreted "
+                "by an AI engine, while traditional Actions use YAML-based conditional logic. "
+                "Agentic workflows have built-in security controls (read-only defaults, safe "
+                "outputs, sandboxing) and can reason about context."
+            ),
+            level="L11",
+            reasoning_type="concept_discovery",
+        ),
+        TestQuestion(
+            question=(
+                "Write a complete gh-aw workflow file that triggers when a new issue is "
+                "opened, uses Claude as the AI engine, has bash access (only git and echo), "
+                "and can create comments and add labels."
+            ),
+            expected_answer=(
+                "---\non:\n  issues:\n    types: [opened]\nengine: claude\n"
+                "permissions: read-all\ntools:\n  bash: ['git:*', 'echo']\n  github:\n"
+                "    toolsets: [issues, labels]\nsafe-outputs:\n  add-comment:\n  add-labels:\n"
+                "---\n# Issue Label Suggester\nAnalyze the issue and suggest appropriate labels."
+            ),
+            level="L11",
+            reasoning_type="procedural_application",
+        ),
+        TestQuestion(
+            question=(
+                "A developer wants their gh-aw workflow to directly write files during "
+                "the agent execution step. Explain why this is not possible and what to use instead."
+            ),
+            expected_answer=(
+                "The agent job runs with read-only permissions by default. Direct writes are "
+                "prevented because the agent could be compromised via prompt injection. "
+                "Instead, use safe outputs (like create-pull-request) which buffer output to "
+                "an artifact, run a detection job to scan for malicious content, then execute "
+                "the write in a separate permission-scoped job."
+            ),
+            level="L11",
+            reasoning_type="constraint_reasoning",
+        ),
+        TestQuestion(
+            question=(
+                "Teach a junior developer how to create their first gh-aw workflow in 5 steps. "
+                "Include the most common beginner mistake."
+            ),
+            expected_answer=(
+                "1. Create .github/workflows/my-workflow.md with YAML frontmatter and markdown body. "
+                "2. Run `gh aw compile` to generate .lock.yml. "
+                "3. Commit both .md and .lock.yml files. "
+                "4. Push to trigger, or `gh aw run my-workflow`. "
+                "5. Check the Actions tab for results.\n\n"
+                "Common mistake: Editing frontmatter without recompiling. Markdown body changes "
+                "are loaded at runtime, but frontmatter changes require `gh aw compile`."
+            ),
+            level="L11",
+            reasoning_type="teaching_transfer",
+        ),
+    ],
+)
+
+
+# Export all levels
 ALL_LEVELS = [LEVEL_1, LEVEL_2, LEVEL_3, LEVEL_4, LEVEL_5, LEVEL_6]
 TEACHER_STUDENT_LEVELS = [LEVEL_7]
 ADVANCED_LEVELS = [LEVEL_8, LEVEL_9, LEVEL_10]
+NOVEL_SKILL_LEVELS = [LEVEL_11]
 
 
 def get_level_by_id(level_id: str) -> TestLevel | None:
     """Get a test level by its ID."""
-    for level in ALL_LEVELS + TEACHER_STUDENT_LEVELS + ADVANCED_LEVELS:
+    for level in ALL_LEVELS + TEACHER_STUDENT_LEVELS + ADVANCED_LEVELS + NOVEL_SKILL_LEVELS:
         if level.level_id == level_id:
             return level
     return None
@@ -686,8 +839,10 @@ __all__ = [
     "LEVEL_8",
     "LEVEL_9",
     "LEVEL_10",
+    "LEVEL_11",
     "ALL_LEVELS",
     "TEACHER_STUDENT_LEVELS",
     "ADVANCED_LEVELS",
+    "NOVEL_SKILL_LEVELS",
     "get_level_by_id",
 ]
