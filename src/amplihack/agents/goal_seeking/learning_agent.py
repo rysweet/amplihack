@@ -149,6 +149,14 @@ class LearningAgent:
         if not content or not content.strip():
             return {"facts_extracted": 0, "facts_stored": 0, "content_summary": "Empty content"}
 
+        # Input size limit to prevent memory exhaustion (security fix)
+        max_content_length = 50_000
+        if len(content) > max_content_length:
+            logger.warning(
+                "Content truncated from %d to %d chars", len(content), max_content_length
+            )
+            content = content[:max_content_length]
+
         # Detect temporal metadata from content before extraction
         temporal_meta = self._detect_temporal_metadata(content)
 
@@ -956,7 +964,8 @@ Provide a clear, well-reasoned answer. If the facts don't fully answer the quest
             return response.choices[0].message.content.strip()
 
         except Exception as e:
-            return f"Error synthesizing answer: {e!s}"
+            logger.error("LLM synthesis failed: %s", e)
+            return "I was unable to synthesize an answer due to an internal error."
 
     def get_memory_stats(self) -> dict[str, Any]:
         """Get statistics about stored knowledge.

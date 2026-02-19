@@ -49,7 +49,12 @@ class CognitiveAdapter:
         >>> print(results[0]["context"])  # "Biology"
     """
 
-    def __init__(self, agent_name: str, db_path: str | Path | None = None):
+    def __init__(
+        self,
+        agent_name: str,
+        db_path: str | Path | None = None,
+        require_cognitive: bool = False,
+    ):
         self.agent_name = agent_name
 
         if db_path is None:
@@ -67,12 +72,25 @@ class CognitiveAdapter:
             self.memory = CognitiveMemory(agent_name=agent_name, db_path=str(kuzu_path))
             self._cognitive = True
         else:
+            if require_cognitive:
+                raise ImportError(
+                    "CognitiveMemory required but amplihack_memory.cognitive_memory "
+                    "not available. Install amplihack-memory-lib."
+                )
             # Fallback to HierarchicalMemory
             from .hierarchical_memory import HierarchicalMemory
 
-            logger.warning("CognitiveMemory not available, falling back to HierarchicalMemory")
+            logger.error(
+                "CognitiveMemory not available, falling back to HierarchicalMemory. "
+                "Install amplihack-memory-lib for full 6-type cognitive capabilities."
+            )
             self.memory = HierarchicalMemory(agent_name=agent_name, db_path=db_path)
             self._cognitive = False
+
+    @property
+    def backend_type(self) -> str:
+        """Return which memory backend is active."""
+        return "cognitive" if self._cognitive else "hierarchical"
 
     # ------------------------------------------------------------------
     # FlatRetrieverAdapter-compatible interface

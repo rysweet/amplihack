@@ -103,20 +103,24 @@ def run_learning_subprocess(articles: list, agent_name: str) -> tuple[bool, str]
         for a in articles
     ]
 
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "amplihack.eval.agent_subprocess",
-            "--phase",
-            "learning",
-            "--agent-name",
-            agent_name,
-        ],
-        input=json.dumps(learning_input),
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "amplihack.eval.agent_subprocess",
+                "--phase",
+                "learning",
+                "--agent-name",
+                agent_name,
+            ],
+            input=json.dumps(learning_input),
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
+    except subprocess.TimeoutExpired:
+        return False, "Learning phase timed out after 600 seconds"
 
     if result.returncode != 0:
         return False, result.stderr
@@ -143,20 +147,24 @@ def run_testing_subprocess(questions: list, agent_name: str) -> tuple[bool, str]
         for q in questions
     ]
 
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "amplihack.eval.agent_subprocess",
-            "--phase",
-            "testing",
-            "--agent-name",
-            agent_name,
-        ],
-        input=json.dumps(testing_input),
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "amplihack.eval.agent_subprocess",
+                "--phase",
+                "testing",
+                "--agent-name",
+                agent_name,
+            ],
+            input=json.dumps(testing_input),
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
+    except subprocess.TimeoutExpired:
+        return False, "Testing phase timed out after 600 seconds"
 
     if result.returncode != 0:
         return False, result.stderr

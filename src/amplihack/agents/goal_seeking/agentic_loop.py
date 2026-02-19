@@ -284,10 +284,11 @@ Respond in this JSON format:
                 }
 
         except Exception as e:
+            logger.error("LLM reasoning call failed: %s", e)
             return {
-                "reasoning": f"LLM call failed: {e!s}",
+                "reasoning": "LLM call failed due to an internal error",
                 "action": "error",
-                "params": {"error": str(e)},
+                "params": {"error": "Internal reasoning error"},
             }
 
     def act(self, action_decision: dict[str, Any]) -> Any:
