@@ -21,7 +21,7 @@ from typing import Any
 import litellm
 
 from .action_executor import ActionExecutor, calculate, read_content, search_memory
-from .agentic_loop import AgenticLoop
+from .agentic_loop import AgenticLoop, ReasoningTrace
 from .flat_retriever_adapter import FlatRetrieverAdapter
 from .memory_retrieval import MemoryRetriever
 
@@ -164,8 +164,8 @@ class LearningAgent:
             except Exception:
                 pass
 
-        # Use LLM to extract facts
-        facts = self._extract_facts_with_llm(content)
+        # Use LLM to extract facts (pass temporal metadata for conditional hints)
+        facts = self._extract_facts_with_llm(content, temporal_meta)
 
         # Store each fact
         stored_count = 0
@@ -347,7 +347,9 @@ Rules:
     # All other intents use iterative reasoning for targeted retrieval
     # The iterative loop filters noise better than dumping all facts
 
-    def answer_question(self, question: str, question_level: str = "L1") -> str:
+    def answer_question(
+        self, question: str, question_level: str = "L1", return_trace: bool = False
+    ) -> str | tuple[str, ReasoningTrace | None]:
         """Answer a question using adaptive retrieval and LLM synthesis.
 
         Uses intent complexity to decide the retrieval strategy:
@@ -384,12 +386,13 @@ Rules:
         intent_type = intent.get("intent", "simple_recall")
 
         # Step 2: Adaptive retrieval based on intent complexity
+        reasoning_trace = None
         if intent_type in self.SIMPLE_INTENTS:
             # Simple intents: single-pass retrieval (no iteration overhead)
             relevant_facts = self._simple_retrieval(question)
         else:
             # Complex intents: use iterative reasoning with plan/search/evaluate
-            relevant_facts, _ = self.loop.reason_iteratively(
+            relevant_facts, _, reasoning_trace = self.loop.reason_iteratively(
                 question=question,
                 memory=self.memory,
                 intent=intent,
@@ -422,9 +425,7 @@ Rules:
         if self.use_hierarchical:
             summary_nodes = self._get_summary_nodes()
             if summary_nodes:
-                intent["summary_context"] = "\n".join(
-                    f"- {s['outcome']}" for s in summary_nodes
-                )
+                intent["summary_context"] = "\n".join(f"- {s['outcome']}" for s in summary_nodes)
 
         # Step 3: Synthesize answer with intent-aware prompting
         answer = self._synthesize_with_llm(
@@ -438,6 +439,17 @@ Rules:
         if intent.get("needs_math"):
             answer = self._validate_arithmetic(answer)
 
+        # Build trace for simple path
+        if reasoning_trace is None:
+            from .agentic_loop import ReasoningTrace as _RT
+
+            reasoning_trace = _RT(
+                question=question,
+                intent=intent,
+                used_simple_path=True,
+                total_facts_collected=len(relevant_facts),
+            )
+
         # Store the question-answer pair as a learning (truncate to fit)
         self.memory.store_fact(
             context=f"Question: {question[:200]}",
@@ -446,6 +458,8 @@ Rules:
             tags=["q_and_a", question_level.lower()],
         )
 
+        if return_trace:
+            return answer, reasoning_trace
         return answer
 
     def _simple_retrieval(self, question: str) -> list[dict[str, Any]]:
@@ -471,7 +485,6 @@ Rules:
         # Larger knowledge base: use keyword search
         results = self.memory.search(query=question, limit=20)
         return results if results else all_facts[:50]
-
 
     def _get_summary_nodes(self) -> list[dict[str, Any]]:
         """Retrieve SUMMARY concept map nodes from memory.
@@ -636,11 +649,14 @@ Return ONLY a JSON object:
 
         return answer
 
-    def _extract_facts_with_llm(self, content: str) -> list[dict[str, Any]]:
+    def _extract_facts_with_llm(
+        self, content: str, temporal_meta: dict[str, Any] | None = None
+    ) -> list[dict[str, Any]]:
         """Use LLM to extract structured facts from content.
 
         Args:
             content: Text content to extract facts from
+            temporal_meta: Optional temporal metadata detected from content
 
         Returns:
             List of facts as dictionaries with:
@@ -649,11 +665,24 @@ Return ONLY a JSON object:
                 - confidence: Confidence score
                 - tags: Relevant tags
         """
+        temporal_meta = temporal_meta or {}
+        # Add temporal instruction only for content with strong temporal markers
+        temporal_hint = ""
+        if temporal_meta.get("temporal_order") or temporal_meta.get("source_date"):
+            temporal_hint = (
+                "\n\nNote: This content has a specific time context "
+                f"({temporal_meta.get('temporal_order', temporal_meta.get('source_date', ''))}).\n"
+                "Include the time period or day number in each fact where relevant. "
+                "For example: 'As of Day 10, Norway has 28 total medals' rather than just "
+                "'Norway has 28 total medals'."
+            )
+
         prompt = f"""Extract key facts from this content. For each fact, provide:
 1. Context (what topic it relates to)
 2. The fact itself
 3. Confidence (0.0-1.0)
 4. Tags (relevant keywords)
+{temporal_hint}
 
 Content:
 {content[:2000]}
@@ -774,8 +803,10 @@ Respond with a JSON list like:
         if intent.get("needs_math"):
             extra_instructions += (
                 "\n\nIMPORTANT - MATHEMATICAL COMPUTATION REQUIRED:\n"
+                "- Extract the raw numbers from the facts FIRST\n"
                 "- Show all arithmetic step by step\n"
                 "- Write out each calculation explicitly (e.g., 26 - 18 = 8)\n"
+                "- When computing differences for multiple entities, do ALL of them\n"
                 "- Double-check every subtraction and addition\n"
                 "- Verify your final numerical answer by re-doing the computation\n"
             )
@@ -783,17 +814,28 @@ Respond with a JSON list like:
         if intent.get("needs_temporal"):
             extra_instructions += (
                 "\n\nIMPORTANT - TEMPORAL REASONING REQUIRED:\n"
-                "- First, organize ALL facts by time period/date before answering\n"
-                "- For each entity mentioned, list its values at EACH time point\n"
-                "- When comparing changes over time, compute the DIFFERENCE for EACH entity\n"
-                "- When describing trends, report the specific changes in each period "
-                "(e.g., '+3 in period 1, then +1 in period 2') and the total change\n"
-                "- Focus on reporting the FACTUAL changes rather than characterizing trends "
-                "with subjective terms. State exactly how many were gained in each sub-period.\n"
-                "- If the question asks 'which improved most', compute the difference for "
-                "ALL entities and compare them explicitly before concluding\n"
-                "- Pay careful attention to what metric is being asked about "
-                "(gold medals vs total medals vs other)\n"
+                "You MUST follow this exact process:\n\n"
+                "STEP A: Build a data table\n"
+                "Create a table with rows = entities (countries/people) and columns = time periods.\n"
+                "Fill in the EXACT numbers from the facts for each cell.\n"
+                "Example:\n"
+                "| Country | Day 7 Golds | Day 9 Golds | Day 10 Golds |\n"
+                "| Norway  | 8           | 12          | 13           |\n\n"
+                "STEP B: Compute differences\n"
+                "For EACH entity, calculate: later_value - earlier_value = difference\n"
+                "Write out the arithmetic explicitly: '13 - 8 = 5'\n"
+                "Do this for EVERY entity, not just the one you think is the answer.\n\n"
+                "STEP C: Compare and conclude\n"
+                "List all computed differences side by side.\n"
+                "Only THEN identify which is largest/smallest/etc.\n\n"
+                "STEP D: Verify\n"
+                "Re-check your arithmetic. Recompute at least one difference to confirm.\n\n"
+                "CRITICAL RULES:\n"
+                "- NEVER skip the data table step\n"
+                "- NEVER guess differences - always compute them from the raw numbers\n"
+                "- Pay attention to WHICH metric is asked about (gold vs total vs other)\n"
+                "- When describing trends, state the EXACT change in each sub-period "
+                "(e.g., '+4 golds Day 7→9, then +1 gold Day 9→10, total +5')\n"
             )
 
         # Add multi-source synthesis instructions
@@ -801,10 +843,13 @@ Respond with a JSON list like:
             extra_instructions += (
                 "\n\nIMPORTANT - MULTI-SOURCE SYNTHESIS REQUIRED:\n"
                 "- The answer requires combining information from MULTIPLE different sources/articles\n"
-                "- First, identify which facts come from which source (look at Context labels)\n"
-                "- Then, find connections and comparisons ACROSS sources\n"
-                "- Include specific data points from each relevant source in your answer\n"
-                "- When comparing (e.g., current vs historical), cite the specific numbers from each source\n"
+                "- First, identify which facts come from which source (look at [Source: ...] labels)\n"
+                "- If the question asks about a SPECIFIC source/article (e.g., 'mentioned in the athlete article'):\n"
+                "  * Filter facts to ONLY those from that specific source\n"
+                "  * COUNT the relevant items from that source precisely\n"
+                "  * Do NOT use data from other sources for this part\n"
+                "- When finding connections ACROSS sources, cite the specific numbers from each\n"
+                "- When counting entities (athletes, events, etc.), list them explicitly\n"
             )
 
         # Add summary context only for multi-source synthesis (not every question)

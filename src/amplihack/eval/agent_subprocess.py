@@ -83,11 +83,38 @@ def testing_phase(quiz_questions: list[dict], agent_name: str) -> dict:
             question = question_data["question"]
             level = question_data.get("level", "L1")
 
-            # Use agent's answer_question with LLM synthesis
-            answer = agent.answer_question(question, question_level=level)
+            # Use agent's answer_question with LLM synthesis and trace
+            result = agent.answer_question(question, question_level=level, return_trace=True)
+            if isinstance(result, tuple):
+                answer, trace = result
+            else:
+                answer, trace = result, None
 
             # Get memory stats for metadata
             stats = agent.get_memory_stats()
+
+            # Serialize trace if available
+            trace_dict = None
+            if trace is not None:
+                trace_dict = {
+                    "question": trace.question,
+                    "intent": trace.intent,
+                    "steps": [
+                        {
+                            "step_type": s.step_type,
+                            "queries": s.queries,
+                            "facts_found": s.facts_found,
+                            "evaluation": s.evaluation,
+                            "reasoning": s.reasoning,
+                        }
+                        for s in trace.steps
+                    ],
+                    "total_facts_collected": trace.total_facts_collected,
+                    "total_queries_executed": trace.total_queries_executed,
+                    "iterations": trace.iterations,
+                    "final_confidence": trace.final_confidence,
+                    "used_simple_path": trace.used_simple_path,
+                }
 
             answers.append(
                 {
@@ -95,6 +122,7 @@ def testing_phase(quiz_questions: list[dict], agent_name: str) -> dict:
                     "answer": answer,
                     "confidence": 0.8,  # Agent internal confidence
                     "memories_used": stats.get("total_experiences", 0),
+                    "reasoning_trace": trace_dict,
                 }
             )
     finally:

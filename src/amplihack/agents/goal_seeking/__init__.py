@@ -19,7 +19,13 @@ Public API (the "studs"):
 """
 
 from .action_executor import ActionExecutor
-from .agentic_loop import AgenticLoop, RetrievalPlan, SufficiencyEvaluation
+from .agentic_loop import (
+    AgenticLoop,
+    ReasoningStep,
+    ReasoningTrace,
+    RetrievalPlan,
+    SufficiencyEvaluation,
+)
 from .flat_retriever_adapter import FlatRetrieverAdapter
 from .graph_rag_retriever import GraphRAGRetriever
 from .hierarchical_memory import (
@@ -40,6 +46,8 @@ WikipediaLearningAgent = LearningAgent
 __all__ = [
     "AgenticLoop",
     "ActionExecutor",
+    "ReasoningStep",
+    "ReasoningTrace",
     "RetrievalPlan",
     "SufficiencyEvaluation",
     "FlatRetrieverAdapter",

@@ -57,6 +57,53 @@ class RetrievalPlan:
 
 
 @dataclass
+class ReasoningStep:
+    """A single step in the reasoning trace.
+
+    Attributes:
+        step_type: Type of step (plan, search, evaluate, refine)
+        queries: Search queries generated or executed
+        facts_found: Number of new facts found this step
+        evaluation: Sufficiency evaluation if applicable
+        reasoning: LLM reasoning for this step
+    """
+
+    step_type: str  # "plan", "search", "evaluate", "refine"
+    queries: list[str] = field(default_factory=list)
+    facts_found: int = 0
+    evaluation: dict[str, Any] = field(default_factory=dict)
+    reasoning: str = ""
+
+
+@dataclass
+class ReasoningTrace:
+    """Complete trace of the reasoning process for metacognition evaluation.
+
+    Captures the full plan→search→evaluate→refine cycle so the eval
+    harness can assess HOW the agent reasoned, not just WHAT it answered.
+
+    Attributes:
+        question: The original question
+        intent: Classified intent
+        steps: List of reasoning steps taken
+        total_facts_collected: Total unique facts collected
+        total_queries_executed: Total search queries run
+        iterations: Number of plan-search-evaluate iterations
+        final_confidence: Final sufficiency confidence
+        used_simple_path: Whether simple retrieval was used (no iteration)
+    """
+
+    question: str = ""
+    intent: dict[str, Any] = field(default_factory=dict)
+    steps: list[ReasoningStep] = field(default_factory=list)
+    total_facts_collected: int = 0
+    total_queries_executed: int = 0
+    iterations: int = 0
+    final_confidence: float = 0.0
+    used_simple_path: bool = False
+
+
+@dataclass
 class SufficiencyEvaluation:
     """Evaluation of whether collected facts are sufficient to answer.
 
@@ -390,7 +437,7 @@ Respond in this JSON format:
         memory,
         intent: dict[str, Any],
         max_steps: int = 3,
-    ) -> tuple[str, list[Any]]:
+    ) -> tuple[list[dict[str, Any]], list[Any], ReasoningTrace]:
         """Multi-step reasoning: plan, search, evaluate, refine, answer.
 
         Instead of dumping all facts to the LLM, this method:
@@ -407,7 +454,8 @@ Respond in this JSON format:
             max_steps: Maximum retrieval rounds (default 3)
 
         Returns:
-            Tuple of (list of collected fact dicts, list of KnowledgeNode objects)
+            Tuple of (list of collected fact dicts, list of KnowledgeNode objects,
+            ReasoningTrace capturing the full reasoning process)
             The caller is responsible for final synthesis.
         """
         collected_facts: list[dict[str, Any]] = []
@@ -415,38 +463,66 @@ Respond in this JSON format:
         seen_ids: set[str] = set()
         evaluation = SufficiencyEvaluation()
 
-        # Use larger retrieval window for synthesis questions
+        # Initialize reasoning trace
+        trace = ReasoningTrace(
+            question=question,
+            intent=intent,
+        )
+
+        # Use larger retrieval window for complex questions
         intent_type = intent.get("intent", "simple_recall")
-        search_max_nodes = 30 if intent_type == "multi_source_synthesis" else 10
+        if intent_type in ("multi_source_synthesis", "temporal_comparison"):
+            search_max_nodes = 30
+        else:
+            search_max_nodes = 10
+
+        total_queries = 0
 
         for step in range(max_steps):
             # Step 1/1b: Plan or refine retrieval
             if step == 0:
                 plan = self._plan_retrieval(question, intent)
+                step_type = "plan"
             else:
-                plan = self._refine_retrieval(
-                    question, collected_facts, evaluation
-                )
+                plan = self._refine_retrieval(question, collected_facts, evaluation)
+                step_type = "refine"
 
             if not plan.search_queries:
-                logger.debug(
-                    "No search queries generated at step %d, stopping", step
-                )
+                logger.debug("No search queries generated at step %d, stopping", step)
                 break
+
+            # Record plan/refine step
+            trace.steps.append(
+                ReasoningStep(
+                    step_type=step_type,
+                    queries=list(plan.search_queries),
+                    reasoning=plan.reasoning,
+                )
+            )
 
             # Step 2: Targeted search for each query
             new_facts_this_round = 0
             for query in plan.search_queries:
+                total_queries += 1
                 nodes, facts = self._targeted_search(
                     query, memory, seen_ids, max_nodes=search_max_nodes
                 )
-                for node, fact in zip(nodes, facts):
+                for node, fact in zip(nodes, facts, strict=False):
                     nid = getattr(node, "node_id", id(node))
                     if nid not in seen_ids:
                         seen_ids.add(nid)
                         collected_nodes.append(node)
                         collected_facts.append(fact)
                         new_facts_this_round += 1
+
+            # Record search step
+            trace.steps.append(
+                ReasoningStep(
+                    step_type="search",
+                    queries=list(plan.search_queries),
+                    facts_found=new_facts_this_round,
+                )
+            )
 
             logger.debug(
                 "Step %d: %d new facts from %d queries",
@@ -460,8 +536,18 @@ Respond in this JSON format:
                 break
 
             # Step 3: Evaluate sufficiency
-            evaluation = self._evaluate_sufficiency(
-                question, collected_facts, intent
+            evaluation = self._evaluate_sufficiency(question, collected_facts, intent)
+
+            # Record evaluation step
+            trace.steps.append(
+                ReasoningStep(
+                    step_type="evaluate",
+                    evaluation={
+                        "sufficient": evaluation.sufficient,
+                        "confidence": evaluation.confidence,
+                        "missing": evaluation.missing,
+                    },
+                )
             )
 
             if evaluation.sufficient or evaluation.confidence > 0.8:
@@ -472,11 +558,15 @@ Respond in this JSON format:
                 )
                 break
 
-        return collected_facts, collected_nodes
+        # Finalize trace
+        trace.total_facts_collected = len(collected_facts)
+        trace.total_queries_executed = total_queries
+        trace.iterations = min(step + 1, max_steps) if plan.search_queries else 0
+        trace.final_confidence = evaluation.confidence
 
-    def _plan_retrieval(
-        self, question: str, intent: dict[str, Any]
-    ) -> RetrievalPlan:
+        return collected_facts, collected_nodes, trace
+
+    def _plan_retrieval(self, question: str, intent: dict[str, Any]) -> RetrievalPlan:
         """Plan what information to retrieve. One short LLM call.
 
         Args:
@@ -488,13 +578,27 @@ Respond in this JSON format:
         """
         intent_type = intent.get("intent", "simple_recall")
 
-        # For multi-source synthesis, explicitly instruct to search each source
+        # Build intent-specific instructions for plan quality
         if intent_type == "multi_source_synthesis":
             extra_instruction = (
-                "\n\nIMPORTANT: This question requires combining information from MULTIPLE sources. "
-                "Search for facts from EACH source/topic separately, then look for connections. "
-                "Include BROAD queries that would match different source articles, not just narrow specific ones. "
-                "Also include at least one query using key terms from the question itself."
+                "\n\nIMPORTANT: This question requires combining information from MULTIPLE sources.\n"
+                "Strategy:\n"
+                "1. First, identify the DISTINCT topics/sources this question touches (e.g., current standings, historical records, athlete profiles)\n"
+                "2. Generate at least ONE search query for EACH distinct topic\n"
+                "3. Include one BROAD query using the main subject of the question\n"
+                "4. Include one query specifically targeting COMPARISONS or RELATIONSHIPS between topics\n\n"
+                "You MUST generate at least 3 queries covering different aspects of the question."
+            )
+        elif intent_type in ("temporal_comparison", "mathematical_computation"):
+            extra_instruction = (
+                "\n\nIMPORTANT: This question requires comparing data across TIME PERIODS.\n"
+                "Strategy:\n"
+                "1. Extract EVERY time period mentioned in the question (e.g., 'Day 7', 'Day 10', 'February 13')\n"
+                "2. Generate a SEPARATE search query for EACH time period found\n"
+                "3. Each query MUST include the exact time marker as a keyword (e.g., 'Day 7 medals', 'Day 10 gold')\n"
+                "4. Also include a query for the specific metric being compared\n\n"
+                "CRITICAL: If the question mentions 'Day 7 to Day 10', you need queries for Day 7, Day 9, AND Day 10.\n"
+                "Do NOT skip any time period - missing data makes computation impossible."
             )
         else:
             extra_instruction = ""
@@ -505,7 +609,7 @@ Question: {question}
 Question type: {intent_type}
 {extra_instruction}
 
-Generate 2-4 SHORT, TARGETED search queries (keywords/phrases) that would find the needed facts.
+Generate 2-5 SHORT, TARGETED search queries (keywords/phrases) that would find the needed facts.
 Each query should target ONE specific piece of information.
 
 Return ONLY a JSON object:
@@ -524,12 +628,10 @@ Return ONLY a JSON object:
                 temperature=0.0,
             )
 
-            result = self._parse_json_response(
-                response.choices[0].message.content
-            )
+            result = self._parse_json_response(response.choices[0].message.content)
             if result and "search_queries" in result:
                 return RetrievalPlan(
-                    search_queries=result["search_queries"][:4],
+                    search_queries=result["search_queries"][:5],
                     reasoning=result.get("reasoning", ""),
                 )
         except Exception as e:
@@ -559,8 +661,7 @@ Return ONLY a JSON object:
         """
         # Summarize what we have so far (keep it short)
         facts_summary = "\n".join(
-            f"- [{f.get('context', '?')}] {f.get('outcome', '')[:80]}"
-            for f in collected_facts[:10]
+            f"- [{f.get('context', '?')}] {f.get('outcome', '')[:80]}" for f in collected_facts[:10]
         )
 
         prompt = f"""I'm trying to answer: {question}
@@ -589,9 +690,7 @@ Return ONLY a JSON object:
                 temperature=0.0,
             )
 
-            result = self._parse_json_response(
-                response.choices[0].message.content
-            )
+            result = self._parse_json_response(response.choices[0].message.content)
             if result and "search_queries" in result:
                 return RetrievalPlan(
                     search_queries=result["search_queries"][:3],
@@ -667,9 +766,7 @@ Return ONLY a JSON object:
                 temperature=0.0,
             )
 
-            result = self._parse_json_response(
-                response.choices[0].message.content
-            )
+            result = self._parse_json_response(response.choices[0].message.content)
             if result:
                 return SufficiencyEvaluation(
                     sufficient=bool(result.get("sufficient", False)),
@@ -712,9 +809,7 @@ Return ONLY a JSON object:
 
         # Try Graph RAG subgraph retrieval first
         if hasattr(memory, "memory") and hasattr(memory.memory, "retrieve_subgraph"):
-            subgraph = memory.memory.retrieve_subgraph(
-                query=query, max_nodes=max_nodes
-            )
+            subgraph = memory.memory.retrieve_subgraph(query=query, max_nodes=max_nodes)
             for node in subgraph.nodes:
                 if node.node_id not in seen_ids:
                     nodes.append(node)
