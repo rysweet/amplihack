@@ -256,7 +256,14 @@ class HierarchicalMemory:
         if not agent_name or not agent_name.strip():
             raise ValueError("agent_name cannot be empty")
 
-        self.agent_name = agent_name.strip()
+        # Validate agent_name to prevent path traversal (security fix)
+        cleaned = agent_name.strip()
+        if not re.match(r"^[a-zA-Z0-9][a-zA-Z0-9_\-]{0,63}$", cleaned):
+            raise ValueError(
+                f"agent_name must be alphanumeric with hyphens/underscores, "
+                f"1-64 chars, got: {cleaned!r}"
+            )
+        self.agent_name = cleaned
 
         if db_path is None:
             db_path = Path.home() / ".amplihack" / "hierarchical_memory" / self.agent_name

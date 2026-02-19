@@ -203,6 +203,8 @@ def calculate(expression: str) -> dict[str, Any]:
     expr = expression.strip()
 
     # Allow only digits, operators, parentheses, whitespace, and decimal points
+    import ast
+    import operator
     import re
 
     if not re.match(r"^[\d\s\+\-\*/\(\)\.]+$", expr):
@@ -212,18 +214,35 @@ def calculate(expression: str) -> dict[str, Any]:
             "error": f"Invalid characters in expression: {expr}",
         }
 
+    # Safe arithmetic evaluator using AST (no eval() - security fix)
+    _safe_ops = {
+        ast.Add: operator.add,
+        ast.Sub: operator.sub,
+        ast.Mult: operator.mul,
+        ast.Div: operator.truediv,
+        ast.USub: operator.neg,
+        ast.UAdd: operator.pos,
+    }
+
+    def _safe_eval_node(node: ast.AST) -> float:
+        if isinstance(node, ast.Expression):
+            return _safe_eval_node(node.body)
+        if isinstance(node, ast.Constant) and isinstance(node.value, (int, float)):
+            return float(node.value)
+        if isinstance(node, ast.BinOp) and type(node.op) in _safe_ops:
+            left = _safe_eval_node(node.left)
+            right = _safe_eval_node(node.right)
+            return _safe_ops[type(node.op)](left, right)
+        if isinstance(node, ast.UnaryOp) and type(node.op) in _safe_ops:
+            return _safe_ops[type(node.op)](_safe_eval_node(node.operand))
+        raise ValueError(f"Unsupported expression element: {ast.dump(node)}")
+
     try:
-        # Use compile + eval with empty globals for safety
-        code = compile(expr, "<calc>", "eval")
-        # Verify no names are used (only constants and operators)
-        if code.co_names:
-            return {
-                "expression": expr,
-                "result": None,
-                "error": "No variables or functions allowed",
-            }
-        result = eval(code, {"__builtins__": {}}, {})
+        tree = ast.parse(expr, mode="eval")
+        result = _safe_eval_node(tree)
         return {"expression": expr, "result": float(result), "error": None}
+    except ZeroDivisionError:
+        return {"expression": expr, "result": None, "error": "Division by zero"}
     except Exception as e:
         return {"expression": expr, "result": None, "error": str(e)}
 
