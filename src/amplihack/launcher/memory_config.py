@@ -34,7 +34,7 @@ from pathlib import Path
 from typing import Any
 
 try:
-    import psutil
+    import psutil  # pyright: ignore[reportMissingModuleSource]
 
     HAS_PSUTIL = True
 except ImportError:

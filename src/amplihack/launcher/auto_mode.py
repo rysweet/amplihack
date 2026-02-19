@@ -28,8 +28,8 @@ except ImportError:
 
 # Try to import Rich for markdown rendering
 try:
-    from rich.console import Console
-    from rich.markdown import Markdown
+    from rich.console import Console  # pyright: ignore[reportMissingImports]
+    from rich.markdown import Markdown  # pyright: ignore[reportMissingImports]
 
     RICH_AVAILABLE = True
 except ImportError:
@@ -97,12 +97,12 @@ class AutoMode:
     def __init__(
         self,
         sdk: str = "claude",
-        prompt: str = None,
+        prompt: str | None = None,
         max_turns: int = 10,
         working_dir: Path | None = None,
         ui_mode: bool = False,
         query_timeout_minutes: float | None = 30.0,
-        task: str = None,  # Alias for prompt (for testing)
+        task: str | None = None,  # Alias for prompt (for testing)
     ):
         """Initialize auto mode.
 
@@ -124,9 +124,9 @@ class AutoMode:
         # Ensure UTF-8 encoding for stdout/stderr on Windows
         if sys.platform == "win32":
             if hasattr(sys.stdout, "reconfigure"):
-                sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+                sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # pyright: ignore[reportAttributeAccessIssue]
             if hasattr(sys.stderr, "reconfigure"):
-                sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+                sys.stderr.reconfigure(encoding="utf-8", errors="replace")  # pyright: ignore[reportAttributeAccessIssue]
 
         self.sdk = sdk
         self.prompt = prompt
@@ -197,7 +197,7 @@ class AutoMode:
         # Initialize Rich console for markdown rendering
         if RICH_AVAILABLE:
             # Create console with UTF-8 encoding and markup enabled
-            self.console = Console(
+            self.console = Console(  # pyright: ignore[reportOptionalCall]
                 file=sys.stdout,
                 force_terminal=True,
                 markup=True,
@@ -828,7 +828,7 @@ Current Turn: {self.turn}/{self.max_turns}"""
                                     # Render markdown for Claude SDK output if Rich is available
                                     if self.console is not None:
                                         try:
-                                            md = Markdown(text)
+                                            md = Markdown(text)  # pyright: ignore[reportOptionalCall]
                                             self.console.print(md, end="")
                                             sys.stdout.flush()
                                         except Exception as e:
