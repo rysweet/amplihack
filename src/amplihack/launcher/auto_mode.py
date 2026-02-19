@@ -831,8 +831,12 @@ Current Turn: {self.turn}/{self.max_turns}"""
                                             md = Markdown(text)
                                             self.console.print(md, end="")
                                             sys.stdout.flush()
-                                        except Exception:
+                                        except Exception as e:
                                             # Fallback to plain text if markdown rendering fails
+                                            self.log(
+                                                f"Markdown rendering failed, using plain text: {type(e).__name__}",
+                                                level="DEBUG",
+                                            )
                                             print(text, end="", flush=True)
                                     else:
                                         # No Rich available, print plain text
@@ -1639,8 +1643,10 @@ Current Turn: {turn}/{self.max_turns}"""
                     search_paths.append(builders_in_pkg)
             except (ValueError, OSError) as e:
                 self.log(f"Path validation failed in UVX: {type(e).__name__}", level="DEBUG")
-            except Exception:
-                pass
+            except Exception as e:
+                self.log(
+                    f"Unexpected error in UVX path discovery: {type(e).__name__}", level="DEBUG"
+                )
 
             # Path 2: Project root (local development)
             try:
@@ -1664,8 +1670,11 @@ Current Turn: {turn}/{self.max_turns}"""
                 self.log(
                     f"Path validation failed in project root: {type(e).__name__}", level="DEBUG"
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                self.log(
+                    f"Unexpected error in project root path discovery: {type(e).__name__}",
+                    level="DEBUG",
+                )
 
             # Load builder from first valid path
             ClaudeTranscriptBuilder = None
