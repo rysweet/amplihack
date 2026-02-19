@@ -149,40 +149,6 @@ class MemoryRetriever:
 
         return self.connector.store_experience(experience)
 
-    def get_all_facts(self, limit: int = 50) -> list[dict[str, Any]]:
-        """Retrieve all experiences without keyword filtering.
-
-        Bypasses search and retrieves experiences directly from the store.
-        Useful for small knowledge bases where letting the LLM decide
-        relevance is more accurate than keyword matching.
-
-        Args:
-            limit: Maximum number of experiences to retrieve (default: 50)
-
-        Returns:
-            List of all experiences as dictionaries, sorted by recency.
-        """
-        experiences = self.connector.retrieve_experiences(
-            limit=limit,
-            min_confidence=0.0,
-        )
-
-        results = []
-        for exp in experiences:
-            results.append(
-                {
-                    "experience_id": exp.experience_id,
-                    "context": exp.context,
-                    "outcome": exp.outcome,
-                    "confidence": exp.confidence,
-                    "timestamp": exp.timestamp.isoformat(),
-                    "tags": exp.tags,
-                    "metadata": exp.metadata,
-                }
-            )
-
-        return results
-
     def get_statistics(self) -> dict[str, Any]:
         """Get memory statistics.
 

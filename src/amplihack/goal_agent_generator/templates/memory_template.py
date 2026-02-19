@@ -80,39 +80,6 @@ def recall_relevant(query: str, limit: int = 5) -> list[Experience]:
     """Search for relevant past experiences."""
     return experience_store.search(query, limit=limit)
 
-def recall_iteratively(
-    question: str,
-    search_queries: list[str] | None = None,
-    max_rounds: int = 3,
-    limit_per_query: int = 5,
-) -> list[Experience]:
-    """Iterative recall: run multiple targeted queries and deduplicate results.
-
-    Instead of a single broad search, runs multiple focused queries to
-    gather diverse, relevant experiences. Deduplicates by experience ID.
-
-    Args:
-        question: The question being answered (used if search_queries is None)
-        search_queries: Specific queries to run. If None, uses the question.
-        max_rounds: Maximum number of query rounds
-        limit_per_query: Max results per query
-
-    Returns:
-        Deduplicated list of relevant Experience objects
-    """
-    queries = search_queries or [question]
-    seen_ids: set[str] = set()
-    results: list[Experience] = []
-
-    for query in queries[:max_rounds]:
-        for exp in experience_store.search(query, limit=limit_per_query):
-            exp_id = getattr(exp, "id", None) or str(id(exp))
-            if exp_id not in seen_ids:
-                seen_ids.add(exp_id)
-                results.append(exp)
-
-    return results
-
 def cleanup_memory():
     """Close memory connections."""
     memory_connector.close()
@@ -187,13 +154,6 @@ store_insight(context, outcome, confidence=0.8)
 
 # Recall experiences
 recall_relevant(query, limit=5)  # Returns list[Experience]
-
-# Iterative recall (multi-query, deduplicated)
-recall_iteratively(
-    question="What caused the issue?",
-    search_queries=["error logs", "recent failures", "root cause"],
-    max_rounds=3,
-)
 
 # Cleanup
 cleanup_memory()  # Close connections when done
