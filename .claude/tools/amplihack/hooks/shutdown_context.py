@@ -162,8 +162,9 @@ def _is_in_atexit_context() -> bool:
                 return True
 
         return False
-    except Exception:
+    except Exception as e:
         # Fail-open: If stack inspection fails, assume not in atexit
+        print(f"[shutdown_context] Stack inspection failed (fail-open): {e}", file=sys.stderr)
         return False
 
 
@@ -218,7 +219,8 @@ def _is_stdin_closed() -> bool:
             return True
 
         return False
-    except Exception:
+    except Exception as e:
         # Fail-open: If we can't determine stdin state, assume it's closed
         # This prevents blocking on potentially broken stdin
+        print(f"[shutdown_context] stdin state detection failed (fail-open): {e}", file=sys.stderr)
         return True
