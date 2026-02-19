@@ -116,6 +116,20 @@ class LearningAgent:
         )
         self.executor.register_action("calculate", calculate)
 
+        # Tier 2+: Learning, memory management, teaching, and application tools
+        self.executor.register_action(
+            "explain_knowledge",
+            lambda topic, depth="overview": self._explain_knowledge(topic, depth),
+        )
+        self.executor.register_action(
+            "find_knowledge_gaps",
+            lambda topic: self._find_knowledge_gaps(topic),
+        )
+        self.executor.register_action(
+            "verify_fact",
+            lambda fact: self._verify_fact(fact),
+        )
+
         # Initialize agentic loop
         self.loop = AgenticLoop(
             agent_name=agent_name,
@@ -975,6 +989,198 @@ Provide a clear, well-reasoned answer. If the facts don't fully answer the quest
             Dictionary with memory statistics
         """
         return self.memory.get_statistics()
+
+    def _explain_knowledge(self, topic: str, depth: str = "overview") -> str:
+        """Generate an explanation of a topic from stored knowledge.
+
+        Unlike synthesize_answer (which requires a question), this generates
+        topic-driven explanations at varying detail levels.
+
+        Args:
+            topic: Topic to explain
+            depth: "brief" (1 sentence), "overview" (paragraph), "comprehensive"
+
+        Returns:
+            Explanation string
+        """
+        # Retrieve relevant facts about the topic
+        facts = self._simple_retrieval(topic)
+        if not facts:
+            return f"I don't have knowledge about '{topic}'."
+
+        facts_text = "\n".join(f"- {f.get('outcome', '')[:150]}" for f in facts[:20])
+
+        depth_instructions = {
+            "brief": "Provide a 1-2 sentence summary.",
+            "overview": "Provide a clear paragraph-length overview.",
+            "comprehensive": "Provide a comprehensive explanation covering all key aspects.",
+        }
+
+        prompt = f"""Explain the topic '{topic}' using ONLY the facts below.
+{depth_instructions.get(depth, depth_instructions["overview"])}
+
+Available facts:
+{facts_text}
+
+Be factual and specific. Do not add information beyond what the facts support."""
+
+        try:
+            response = litellm.completion(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "You are a knowledgeable explainer."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.3,
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            logger.error("Explanation generation failed: %s", e)
+            return f"Unable to generate explanation for '{topic}'."
+
+    def _find_knowledge_gaps(self, topic: str) -> dict[str, Any]:
+        """Identify what's unknown or uncertain about a topic.
+
+        Analyzes stored facts and identifies missing information,
+        low-confidence areas, and potential contradictions.
+
+        Args:
+            topic: Topic to analyze
+
+        Returns:
+            Dict with gaps, contradictions, and suggestions
+        """
+        facts = self._simple_retrieval(topic)
+        if not facts:
+            return {
+                "topic": topic,
+                "gaps": ["No knowledge stored about this topic"],
+                "contradictions": [],
+                "low_confidence_facts": [],
+                "suggestion": f"Learn about '{topic}' from external content first.",
+            }
+
+        # Find low-confidence facts
+        low_conf = [f for f in facts if f.get("confidence", 1.0) < 0.6]
+
+        # Find potential contradictions (facts with "superseded" metadata)
+        contradictions = [f for f in facts if f.get("metadata", {}).get("superseded")]
+
+        # Use LLM to identify conceptual gaps
+        facts_text = "\n".join(
+            f"- [{f.get('context', '?')}] {f.get('outcome', '')[:100]} "
+            f"(confidence: {f.get('confidence', 0):.1f})"
+            for f in facts[:15]
+        )
+
+        prompt = f"""Given these facts about '{topic}', what important information is MISSING?
+
+Facts:
+{facts_text}
+
+List 2-4 specific gaps (things we don't know but should).
+Return ONLY a JSON object: {{"gaps": ["gap1", "gap2"], "overall_coverage": "low/medium/high"}}"""
+
+        gaps = ["Unable to analyze gaps"]
+        coverage = "unknown"
+        try:
+            response = litellm.completion(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "Identify knowledge gaps. Return JSON."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.2,
+            )
+            from .json_utils import parse_llm_json
+
+            result = parse_llm_json(response.choices[0].message.content)
+            if result:
+                gaps = result.get("gaps", gaps)
+                coverage = result.get("overall_coverage", coverage)
+        except Exception as e:
+            logger.debug("Gap analysis LLM call failed: %s", e)
+
+        return {
+            "topic": topic,
+            "total_facts": len(facts),
+            "gaps": gaps,
+            "contradictions": [f.get("outcome", "")[:100] for f in contradictions],
+            "low_confidence_facts": [
+                {"fact": f.get("outcome", "")[:100], "confidence": f.get("confidence", 0)}
+                for f in low_conf
+            ],
+            "overall_coverage": coverage,
+        }
+
+    def _verify_fact(self, fact: str) -> dict[str, Any]:
+        """Verify if a fact is consistent with stored knowledge.
+
+        Checks the fact against all stored facts for consistency,
+        identifies supporting evidence and contradictions.
+
+        Args:
+            fact: The fact to verify
+
+        Returns:
+            Dict with verification results
+        """
+        # Search for related facts
+        related = self._simple_retrieval(fact)
+        if not related:
+            return {
+                "fact": fact,
+                "verified": False,
+                "confidence": 0.0,
+                "supporting_facts": [],
+                "contradicting_facts": [],
+                "reasoning": "No related knowledge found to verify against.",
+            }
+
+        facts_text = "\n".join(f"- {f.get('outcome', '')[:150]}" for f in related[:15])
+
+        prompt = f"""Verify this fact against the stored knowledge:
+
+Fact to verify: {fact}
+
+Stored knowledge:
+{facts_text}
+
+Is the fact consistent with stored knowledge? Return ONLY a JSON object:
+{{"verified": true/false, "confidence": 0.8, "supporting": ["fact1"], "contradicting": ["fact2"], "reasoning": "explanation"}}"""
+
+        try:
+            response = litellm.completion(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "Verify facts against knowledge. Return JSON."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.1,
+            )
+            from .json_utils import parse_llm_json
+
+            result = parse_llm_json(response.choices[0].message.content)
+            if result:
+                return {
+                    "fact": fact,
+                    "verified": bool(result.get("verified", False)),
+                    "confidence": float(result.get("confidence", 0.5)),
+                    "supporting_facts": result.get("supporting", []),
+                    "contradicting_facts": result.get("contradicting", []),
+                    "reasoning": result.get("reasoning", ""),
+                }
+        except Exception as e:
+            logger.debug("Fact verification LLM call failed: %s", e)
+
+        return {
+            "fact": fact,
+            "verified": False,
+            "confidence": 0.0,
+            "supporting_facts": [],
+            "contradicting_facts": [],
+            "reasoning": "Verification failed due to an internal error.",
+        }
 
     def close(self):
         """Close agent and release resources."""
