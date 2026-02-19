@@ -1,4 +1,4 @@
-"""Tests for WikipediaLearningAgent with mocked LLM.
+"""Tests for LearningAgent with mocked LLM.
 
 Philosophy:
 - Test without requiring API keys
@@ -13,11 +13,11 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from amplihack.agents.goal_seeking import WikipediaLearningAgent
+from amplihack.agents.goal_seeking import LearningAgent
 
 
-class TestWikipediaLearningAgent:
-    """Test suite for WikipediaLearningAgent."""
+class TestLearningAgent:
+    """Test suite for LearningAgent."""
 
     @pytest.fixture
     def temp_storage(self):
@@ -29,14 +29,14 @@ class TestWikipediaLearningAgent:
 
     @pytest.fixture
     def agent(self, temp_storage):
-        """Create WikipediaLearningAgent with temporary storage."""
-        agent = WikipediaLearningAgent(agent_name="test_wiki_agent", storage_path=str(temp_storage))
+        """Create LearningAgent with temporary storage."""
+        agent = LearningAgent(agent_name="test_wiki_agent", storage_path=str(temp_storage))
         yield agent
         agent.close()
 
     def test_init_creates_agent(self, temp_storage):
         """Test initialization creates agent successfully."""
-        agent = WikipediaLearningAgent(agent_name="test", storage_path=str(temp_storage))
+        agent = LearningAgent(agent_name="test", storage_path=str(temp_storage))
 
         assert agent.agent_name == "test"
         assert agent.memory is not None
@@ -44,7 +44,7 @@ class TestWikipediaLearningAgent:
         assert agent.loop is not None
         agent.close()
 
-    @patch("amplihack.agents.goal_seeking.wikipedia_learning_agent.litellm.completion")
+    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
     def test_learn_from_content_extracts_facts(self, mock_completion, agent):
         """Test learning from content extracts and stores facts."""
         # Mock LLM fact extraction
@@ -72,7 +72,7 @@ class TestWikipediaLearningAgent:
         assert result["facts_extracted"] == 1
         assert result["facts_stored"] == 1
 
-    @patch("amplihack.agents.goal_seeking.wikipedia_learning_agent.litellm.completion")
+    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
     def test_learn_from_content_handles_markdown_json(self, mock_completion, agent):
         """Test learning handles JSON in markdown code blocks."""
         # Mock LLM with markdown
@@ -107,7 +107,7 @@ class TestWikipediaLearningAgent:
         assert result["facts_stored"] == 0
         assert result["content_summary"] == "Empty content"
 
-    @patch("amplihack.agents.goal_seeking.wikipedia_learning_agent.litellm.completion")
+    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
     def test_learn_from_content_continues_on_storage_error(self, mock_completion, agent):
         """Test learning continues even if some facts fail to store."""
         # Mock extraction with multiple facts
@@ -130,7 +130,7 @@ class TestWikipediaLearningAgent:
         assert result["facts_extracted"] == 2
         assert result["facts_stored"] >= 1
 
-    @patch("amplihack.agents.goal_seeking.wikipedia_learning_agent.litellm.completion")
+    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
     def test_answer_question_synthesizes_answer(self, mock_completion, agent):
         """Test answering question uses LLM to synthesize answer."""
         # First, store some facts with a context that will match search
@@ -163,14 +163,14 @@ class TestWikipediaLearningAgent:
 
         assert "Error" in answer or "empty" in answer.lower()
 
-    @patch("amplihack.agents.goal_seeking.wikipedia_learning_agent.litellm.completion")
+    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
     def test_answer_question_no_knowledge_returns_message(self, mock_completion, agent):
         """Test answering question with no stored knowledge."""
         answer = agent.answer_question("What is quantum entanglement?")
 
         assert "don't have" in answer.lower() or "no" in answer.lower()
 
-    @patch("amplihack.agents.goal_seeking.wikipedia_learning_agent.litellm.completion")
+    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
     def test_answer_question_stores_qa_pair(self, mock_completion, agent):
         """Test answering question stores Q&A pair in memory."""
         # Store initial fact that will be found by search
@@ -193,7 +193,7 @@ class TestWikipediaLearningAgent:
         # Should store Q&A pair, increasing count by at least 1
         assert final_count >= initial_count
 
-    @patch("amplihack.agents.goal_seeking.wikipedia_learning_agent.litellm.completion")
+    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
     def test_answer_question_l2_level(self, mock_completion, agent):
         """Test L2 (inference) question uses appropriate prompt."""
         agent.memory.store_fact("Test", "Fact", confidence=0.9)
@@ -210,7 +210,7 @@ class TestWikipediaLearningAgent:
         # Should contain L2 instruction about inference
         assert answer is not None
 
-    @patch("amplihack.agents.goal_seeking.wikipedia_learning_agent.litellm.completion")
+    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
     def test_answer_question_l3_synthesis(self, mock_completion, agent):
         """Test L3 (synthesis) question level."""
         agent.memory.store_fact("Context", "Fact", confidence=0.9)
@@ -226,7 +226,7 @@ class TestWikipediaLearningAgent:
         assert answer is not None
         assert len(answer) > 0
 
-    @patch("amplihack.agents.goal_seeking.wikipedia_learning_agent.litellm.completion")
+    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
     def test_answer_question_l4_application(self, mock_completion, agent):
         """Test L4 (application) question level."""
         agent.memory.store_fact("Context", "Fact", confidence=0.9)
@@ -248,7 +248,7 @@ class TestWikipediaLearningAgent:
         assert "total_experiences" in stats
         assert isinstance(stats["total_experiences"], int)
 
-    @patch("amplihack.agents.goal_seeking.wikipedia_learning_agent.litellm.completion")
+    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
     def test_extract_facts_fallback_on_error(self, mock_completion, agent):
         """Test fact extraction falls back gracefully on LLM error."""
         # Mock LLM failure
@@ -262,7 +262,7 @@ class TestWikipediaLearningAgent:
         assert len(result) >= 1
         assert result[0]["context"] == "General"
 
-    @patch("amplihack.agents.goal_seeking.wikipedia_learning_agent.litellm.completion")
+    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
     def test_synthesize_answer_handles_llm_error(self, mock_completion, agent):
         """Test answer synthesis handles LLM errors gracefully."""
         mock_completion.side_effect = Exception("API unavailable")
