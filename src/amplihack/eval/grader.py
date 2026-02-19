@@ -80,7 +80,12 @@ def grade_answer(question: str, expected: str, actual: str, level: str) -> Grade
     Returns:
         GradeResult with score and reasoning
     """
-    client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise OSError("ANTHROPIC_API_KEY environment variable is required for grading")
+    client = anthropic.Anthropic(api_key=api_key)
+
+    grader_model = os.environ.get("GRADER_MODEL", "claude-sonnet-4-5-20250929")
 
     prompt = f"""You are grading an AI agent's answer to a quiz question.
 
@@ -113,7 +118,7 @@ Return ONLY a JSON object with this structure:
 {{"score": 0.85, "reasoning": "Brief explanation of grade"}}"""
 
     message = client.messages.create(
-        model="claude-sonnet-4-5-20250929",
+        model=grader_model,
         max_tokens=500,
         messages=[{"role": "user", "content": prompt}],
     )
