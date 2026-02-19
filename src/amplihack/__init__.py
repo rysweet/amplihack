@@ -135,7 +135,10 @@ def filecmp(f1, f2):
             return False
         with open(f1, "rb") as file1, open(f2, "rb") as file2:
             return file1.read() == file2.read()
-    except Exception:
+    except Exception as e:
+        import logging
+
+        logging.getLogger(__name__).debug(f"File comparison failed for {f1}: {type(e).__name__}")
         return False
 
 
