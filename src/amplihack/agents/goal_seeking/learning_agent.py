@@ -22,6 +22,7 @@ import litellm
 
 from .action_executor import ActionExecutor, calculate, read_content, search_memory
 from .agentic_loop import AgenticLoop, ReasoningTrace
+from .cognitive_adapter import HAS_COGNITIVE_MEMORY, CognitiveAdapter
 from .flat_retriever_adapter import FlatRetrieverAdapter
 from .memory_retrieval import MemoryRetriever
 
@@ -81,11 +82,18 @@ class LearningAgent:
         self.use_hierarchical = use_hierarchical
 
         # Initialize memory based on mode
+        # Prefer CognitiveMemory (6-type) if available, fall back to HierarchicalMemory
         if use_hierarchical:
-            self.memory = FlatRetrieverAdapter(
-                agent_name=agent_name,
-                db_path=storage_path,
-            )
+            if HAS_COGNITIVE_MEMORY:
+                self.memory = CognitiveAdapter(
+                    agent_name=agent_name,
+                    db_path=storage_path,
+                )
+            else:
+                self.memory = FlatRetrieverAdapter(
+                    agent_name=agent_name,
+                    db_path=storage_path,
+                )
         else:
             self.memory = MemoryRetriever(
                 agent_name=agent_name, storage_path=storage_path, backend="kuzu"
@@ -678,12 +686,26 @@ Return ONLY a JSON object:
                 "'Norway has 28 total medals'."
             )
 
+        # Add procedural hint for step-by-step content
+        procedural_hint = ""
+        content_lower = content.lower()
+        if any(
+            kw in content_lower
+            for kw in ("step 1", "step 2", "steps:", "procedure", "instructions")
+        ):
+            procedural_hint = (
+                "\n\nNote: This content contains step-by-step procedures. "
+                "Extract EACH step as a separate fact with its step number preserved. "
+                "Also extract ONE summary fact listing ALL steps in order. "
+                "Example: 'Complete workflow: Step 1: X, Step 2: Y, Step 3: Z'"
+            )
+
         prompt = f"""Extract key facts from this content. For each fact, provide:
 1. Context (what topic it relates to)
 2. The fact itself
 3. Confidence (0.0-1.0)
 4. Tags (relevant keywords)
-{temporal_hint}
+{temporal_hint}{procedural_hint}
 
 Content:
 {content[:2000]}
@@ -793,10 +815,20 @@ Respond with a JSON list like:
 
         # Build prompt based on question level
         level_instructions = {
-            "L1": "Provide a direct, factual answer based on the facts.",
+            "L1": (
+                "Provide a direct, factual answer based on the facts. "
+                "State the answer clearly and concisely. Do NOT add arithmetic "
+                "verification or computation - just report the facts as stored."
+            ),
             "L2": "Connect multiple facts to infer an answer. Explain your reasoning.",
             "L3": "Synthesize information from the facts to create a comprehensive answer.",
-            "L4": "Apply the knowledge to answer the question, showing how the facts relate.",
+            "L4": (
+                "Apply the knowledge to answer the question. For PROCEDURAL questions "
+                "(describing workflows, steps, commands), reconstruct the exact ordered "
+                "sequence of steps from the facts. Number each step. Include specific "
+                "commands or actions at each step. Do not skip steps or add prerequisites "
+                "that aren't in the facts."
+            ),
         }
 
         instruction = level_instructions.get(question_level, level_instructions["L1"])
