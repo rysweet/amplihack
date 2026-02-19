@@ -32,9 +32,11 @@ logger = logging.getLogger(__name__)
 class TeachingEvalResult:
     """Complete result of the teacher-student evaluation."""
 
-    # Teaching quality metrics
-    student_avg_score: float
-    teacher_avg_score: float  # Teacher's own score on same questions (baseline)
+    # Student-outcome-focused metrics (what matters: how much did student learn?)
+    student_avg_score: float  # Post-teaching score
+    student_pre_score: float  # Pre-teaching baseline (parametric knowledge)
+    normalized_learning_gain: float  # NLG = (post - pre) / (max - pre), gold standard
+    teacher_avg_score: float  # Teacher's own score (theoretical ceiling)
     transfer_ratio: float  # student_score / teacher_score
     total_teaching_turns: int
     student_facts_learned: int
@@ -42,6 +44,7 @@ class TeachingEvalResult:
 
     # Per-question details
     student_grades: list[dict[str, Any]]
+    student_pre_grades: list[dict[str, Any]]
     teacher_grades: list[dict[str, Any]]
 
     # Conversation transcript
@@ -101,6 +104,34 @@ def run_teaching_eval(
                 result["facts_stored"],
                 article.title[:40],
             )
+
+        # Phase 1a: PRE-TEST - Student answers BEFORE teaching (NLG baseline)
+        # This establishes the true baseline for Normalized Learning Gain
+        # The student may have parametric knowledge that inflates apparent learning
+        print("  Phase 1a: Pre-test (student baseline before teaching)...")
+        student_pre_grades = []
+        for q in level.questions:
+            answer = str(student.answer_question(q.question, question_level="L2"))
+            grade = grade_answer(
+                question=q.question,
+                expected=q.expected_answer,
+                actual=answer,
+                level=q.level,
+            )
+            student_pre_grades.append(
+                {
+                    "question": q.question,
+                    "answer": answer,
+                    "score": grade.score,
+                }
+            )
+
+        student_pre_avg = (
+            sum(g["score"] for g in student_pre_grades) / len(student_pre_grades)
+            if student_pre_grades
+            else 0
+        )
+        print(f"  Student pre-test score: {student_pre_avg:.2%}")
 
         # Phase 1b: Verify teacher learned by answering questions
         print("  Phase 1b: Verifying teacher's knowledge...")
@@ -170,8 +201,17 @@ def run_teaching_eval(
             sum(g["score"] for g in student_grades) / len(student_grades) if student_grades else 0
         )
 
-        # Calculate transfer ratio
+        # Calculate transfer ratio and Normalized Learning Gain (Hake 1998)
         transfer_ratio = student_avg / teacher_avg if teacher_avg > 0 else 0
+
+        # NLG: gold standard from education research
+        # NLG = (post - pre) / (max - pre)
+        # > 0.7 = high gain, 0.3-0.7 = medium, < 0.3 = low
+        max_possible = teacher_avg  # Teacher score is the ceiling
+        if max_possible > student_pre_avg:
+            nlg = (student_avg - student_pre_avg) / (max_possible - student_pre_avg)
+        else:
+            nlg = 0.0 if student_avg <= student_pre_avg else 1.0
 
         # Serialize transcript
         transcript = [
@@ -181,12 +221,15 @@ def run_teaching_eval(
 
         return TeachingEvalResult(
             student_avg_score=student_avg,
+            student_pre_score=student_pre_avg,
+            normalized_learning_gain=nlg,
             teacher_avg_score=teacher_avg,
             transfer_ratio=transfer_ratio,
             total_teaching_turns=teaching_result.total_turns,
             student_facts_learned=teaching_result.student_facts_count,
             student_talk_ratio=teaching_result.student_talk_ratio,
             student_grades=student_grades,
+            student_pre_grades=student_pre_grades,
             teacher_grades=teacher_grades,
             transcript=transcript,
             topics_covered=teaching_result.topics_covered,
@@ -222,15 +265,18 @@ def main():
     print("RESULTS")
     print(f"{'=' * 70}")
     print(f"Teacher Score: {result.teacher_avg_score:.2%}")
-    print(f"Student Score: {result.student_avg_score:.2%}")
+    print(f"Student Pre-Test: {result.student_pre_score:.2%} (before teaching)")
+    print(f"Student Post-Test: {result.student_avg_score:.2%} (after teaching)")
+    print(f"Normalized Learning Gain: {result.normalized_learning_gain:.2%} (>70% = high)")
     print(f"Transfer Ratio: {result.transfer_ratio:.2%}")
     print(f"Teaching Turns: {result.total_teaching_turns}")
     print(f"Student Facts Learned: {result.student_facts_learned}")
     print(f"Student Talk Ratio: {result.student_talk_ratio:.1%} (target: ≥30%)")
 
-    print("\nStudent Question Scores:")
-    for g in result.student_grades:
-        print(f"  {g['question'][:60]}... → {g['score']:.2%}")
+    print("\nStudent Question Scores (pre → post):")
+    for i, g in enumerate(result.student_grades):
+        pre = result.student_pre_grades[i]["score"] if i < len(result.student_pre_grades) else 0
+        print(f"  {g['question'][:55]}... {pre:.0%} → {g['score']:.0%}")
 
     print(f"\nTopics Covered: {', '.join(result.topics_covered[:8])}")
 
