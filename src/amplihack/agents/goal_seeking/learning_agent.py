@@ -799,9 +799,12 @@ Respond with a JSON list like:
 
         instruction = level_instructions.get(question_level, level_instructions["L1"])
 
-        # Add intent-specific instructions
+        # Add intent-specific instructions only for complex intents
+        # (simple_recall and incremental_update don't need math/temporal prompts
+        #  which can cause the LLM to add wrong verification steps)
         extra_instructions = ""
-        if intent.get("needs_math"):
+        is_complex_intent = intent_type not in self.SIMPLE_INTENTS
+        if is_complex_intent and intent.get("needs_math"):
             extra_instructions += (
                 "\n\nIMPORTANT - MATHEMATICAL COMPUTATION REQUIRED:\n"
                 "- Extract the raw numbers from the facts FIRST\n"
@@ -812,7 +815,7 @@ Respond with a JSON list like:
                 "- Verify your final numerical answer by re-doing the computation\n"
             )
 
-        if intent.get("needs_temporal"):
+        if is_complex_intent and intent.get("needs_temporal"):
             extra_instructions += (
                 "\n\nIMPORTANT - TEMPORAL REASONING REQUIRED:\n"
                 "You MUST follow this exact process:\n\n"
