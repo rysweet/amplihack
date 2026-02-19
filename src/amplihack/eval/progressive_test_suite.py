@@ -353,7 +353,9 @@ def run_progressive_suite(config: ProgressiveConfig) -> ProgressiveResult:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Determine which levels to run
-    all_available = ALL_LEVELS + ADVANCED_LEVELS
+    from .test_levels import TEACHER_STUDENT_LEVELS
+
+    all_available = ALL_LEVELS + TEACHER_STUDENT_LEVELS + ADVANCED_LEVELS
     if config.levels_to_run:
         levels_to_run = [lvl for lvl in all_available if lvl.level_id in config.levels_to_run]
     else:

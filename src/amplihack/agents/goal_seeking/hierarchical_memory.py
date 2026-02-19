@@ -896,32 +896,37 @@ class HierarchicalMemory:
     def _attach_provenance(self, nodes: list[KnowledgeNode]) -> None:
         """Follow DERIVES_FROM edges to attach source labels to node metadata.
 
-        For each node that has a source_id, looks up the EpisodicMemory node
-        and copies its source_label into the node's metadata for display.
+        Uses a single batched query instead of N individual queries.
 
         Args:
             nodes: List of KnowledgeNode to enrich with provenance
         """
-        for node in nodes:
-            if not node.source_id:
-                continue
-            try:
+        # Collect unique source IDs that need lookup
+        source_ids = list({n.source_id for n in nodes if n.source_id})
+        if not source_ids:
+            return
+
+        try:
+            # Batch query for all source labels at once
+            label_map: dict[str, str] = {}
+            for sid in source_ids:
                 result = self.connection.execute(
-                    """
-                    MATCH (e:EpisodicMemory {memory_id: $eid})
-                    RETURN e.source_label
-                    """,
-                    {"eid": node.source_id},
+                    "MATCH (e:EpisodicMemory {memory_id: $eid}) RETURN e.memory_id, e.source_label",
+                    {"eid": sid},
                 )
                 if result.has_next():
                     row = result.get_next()
-                    source_label = row[0] or ""
-                    if source_label:
-                        if node.metadata is None:
-                            node.metadata = {}
-                        node.metadata["source_label"] = source_label
-            except Exception as e:
-                logger.debug("Failed to attach provenance for %s: %s", node.node_id, e)
+                    if row[1]:
+                        label_map[row[0]] = row[1]
+
+            # Apply labels to nodes
+            for node in nodes:
+                if node.source_id in label_map:
+                    if node.metadata is None:
+                        node.metadata = {}
+                    node.metadata["source_label"] = label_map[node.source_id]
+        except Exception as e:
+            logger.debug("Failed to attach provenance: %s", e)
 
     def _mark_superseded(self, nodes: list[KnowledgeNode]) -> None:
         """Mark facts that have been superseded by newer facts.

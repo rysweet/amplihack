@@ -15,6 +15,7 @@ Philosophy:
 
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -61,7 +62,7 @@ class LearningAgent:
     def __init__(
         self,
         agent_name: str = "learning_agent",
-        model: str = "gpt-3.5-turbo",
+        model: str | None = None,
         storage_path: Path | None = None,
         use_hierarchical: bool = False,
     ):
@@ -78,7 +79,7 @@ class LearningAgent:
             Requires OPENAI_API_KEY or appropriate provider key to be set.
         """
         self.agent_name = agent_name
-        self.model = model
+        self.model = model or os.environ.get("EVAL_MODEL", "gpt-3.5-turbo")
         self.use_hierarchical = use_hierarchical
 
         # Initialize memory based on mode
@@ -177,8 +178,8 @@ class LearningAgent:
                     content=content[:2000],
                     source_label=source_label,
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Failed to store episode for provenance: %s", e)
 
         # Use LLM to extract facts (pass temporal metadata for conditional hints)
         facts = self._extract_facts_with_llm(content, temporal_meta)
@@ -217,8 +218,8 @@ class LearningAgent:
 
                 self.memory.store_fact(**store_kwargs)
                 stored_count += 1
-            except Exception:
-                # Continue storing other facts even if one fails
+            except Exception as e:
+                logger.debug("Failed to store fact: %s", e)
                 continue
 
         # Generate and store a summary concept map for knowledge organization
