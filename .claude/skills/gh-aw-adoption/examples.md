@@ -196,7 +196,7 @@ Identified 20 high-impact workflows:
 
 **Worker agent template** (used by each agent):
 
-````markdown
+`````markdown
 ## Worker Agent: Create {WORKFLOW_NAME}
 
 ### Step 1: Read Reference Workflow
@@ -275,6 +275,7 @@ Log every action to `memory/{WORKFLOW_NAME}/audit-log.jsonl`:
 }
 ```
 ````
+`````
 
 **Safe-Output Awareness**:
 Track operations against limits, prioritize critical actions first.
@@ -315,7 +316,8 @@ git push origin feat/{WORKFLOW_NAME}-workflow
   "commit": "{commit_sha}"
 }
 ```
-````
+
+`````
 
 **Actual execution** (coordinated by main agent):
 
@@ -549,7 +551,7 @@ Your mission is to monitor required secrets for expiration, misconfiguration, or
 
 For each required secret:
 
-1. Query repository secrets: `gh api repos/cloud-ecosystem-security/cybergym5/actions/secrets`
+1. Query repository secrets: `gh api repos/cloud-ecosystem-security/cybergym5/actions/secrets`  # pragma: allowlist secret
 2. Verify secret is configured
 3. Note: Cannot read secret values, only check existence
 
@@ -615,8 +617,8 @@ fi
 Log all validation activities to `memory/secret-validation/audit-log.jsonl`:
 
 ```jsonl
-{"timestamp": "2026-02-15T08:00:00Z", "secret": "ANTHROPIC_API_KEY", "status": "present", "checked_by": "secret-validation-agent"}
-{"timestamp": "2026-02-15T08:00:05Z", "secret": "AZURE_CREDENTIALS", "status": "missing", "action": "created-issue-#456"}
+{"timestamp": "2026-02-15T08:00:00Z", "secret": "ANTHROPIC_API_KEY", "status": "present", "checked_by": "secret-validation-agent"}  # pragma: allowlist secret
+{"timestamp": "2026-02-15T08:00:05Z", "secret": "AZURE_CREDENTIALS", "status": "missing", "action": "created-issue-#456"}  # pragma: allowlist secret
 ```
 
 ## Issue Creation Guidelines
@@ -693,7 +695,7 @@ Validation successful when:
 
 Scheduled: Next Monday at 8 AM UTC
 Manual trigger: `gh workflow run secret-validation.lock.yml`
-````
+`````
 
 **Adaptations made**:
 

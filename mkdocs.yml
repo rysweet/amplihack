@@ -133,7 +133,7 @@ nav:
   - Skills:
       - Overview: claude/skills/README.md
       - Available Skills:
-          - Agent SDK: claude/skills/agent-sdk/SKILL.md
+          - Agent SDK: claude/skills/claude-agent-sdk/SKILL.md
           - DOCX: claude/skills/docx/SKILL.md
           - PPTX: claude/skills/pptx/SKILL.md
           - XLSX: claude/skills/xlsx/SKILL.md

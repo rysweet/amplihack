@@ -123,8 +123,13 @@ class NestingDetector:
             # Simple check for [project] name = "amplihack"
             # This is more reliable than full TOML parsing
             return 'name = "amplihack"' in content
-        except Exception:
+        except Exception as e:
             # If we can't read or parse, assume not amplihack
+            import logging
+
+            logging.getLogger(__name__).debug(
+                f"Could not read pyproject.toml for amplihack check: {type(e).__name__}"
+            )
             return False
 
     def _find_active_session(self, cwd: Path) -> SessionEntry | None:
@@ -214,8 +219,13 @@ class NestingDetector:
 
             return None
 
-        except Exception:
+        except Exception as e:
             # If anything fails, assume no active session
+            import logging
+
+            logging.getLogger(__name__).debug(
+                f"Could not find active session in {cwd}: {type(e).__name__}"
+            )
             return None
 
     def _is_process_alive(self, pid: int) -> bool:
@@ -250,8 +260,13 @@ class NestingDetector:
         except PermissionError:
             # Process exists but we can't signal it (still alive)
             return True
-        except Exception:
+        except Exception as e:
             # Any other error, assume dead
+            import logging
+
+            logging.getLogger(__name__).debug(
+                f"PID {pid} liveness check failed, assuming dead: {type(e).__name__}"
+            )
             return False
 
 

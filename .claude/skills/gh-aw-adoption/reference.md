@@ -738,6 +738,7 @@ This section documents common workflow failures discovered in production and the
 ### Failure: MCP Server Launch Errors
 
 **Symptom**:
+
 ```
 ##[error]MCP server(s) failed to launch: docker-mcp
 ```
@@ -745,7 +746,9 @@ This section documents common workflow failures discovered in production and the
 **Root Cause**: MCP servers configured in `.mcp.json` that cannot run in GitHub Actions environment (e.g., docker-mcp requires Docker which isn't available in standard runners).
 
 **Solution**:
+
 1. **Remove incompatible MCP servers** from `.mcp.json`:
+
    ```json
    {
      "mcpServers": {
@@ -777,6 +780,7 @@ This section documents common workflow failures discovered in production and the
 ### Failure: Lockdown Mode Without Custom Token
 
 **Symptom**:
+
 ```
 Lockdown mode is enabled (lockdown: true) but no custom GitHub token is configured.
 ```
@@ -786,6 +790,7 @@ Lockdown mode is enabled (lockdown: true) but no custom GitHub token is configur
 **Solution Options**:
 
 **Option 1: Remove lockdown mode (recommended for most cases)**
+
 ```yaml
 tools:
   github:
@@ -794,12 +799,14 @@ tools:
 ```
 
 **Option 2: Configure custom token (for enhanced security)**
+
 ```bash
 # Create fine-grained PAT with required permissions
 gh secret set GH_AW_GITHUB_TOKEN --body "github_pat_XXX" --repo owner/repo
 ```
 
 **When to use lockdown mode**:
+
 - ✅ Workflows modifying critical infrastructure
 - ✅ Workflows with elevated permissions
 - ✅ Workflows requiring audit trail beyond GitHub Actions
@@ -812,6 +819,7 @@ gh secret set GH_AW_GITHUB_TOKEN --body "github_pat_XXX" --repo owner/repo
 ### Failure: Missing API Keys for Engine
 
 **Symptom**:
+
 ```
 Neither CODEX_API_KEY nor OPENAI_API_KEY secret is set
 ```
@@ -821,6 +829,7 @@ Neither CODEX_API_KEY nor OPENAI_API_KEY secret is set
 **Solution Options**:
 
 **Option 1: Switch to engines that don't require API keys (recommended)**
+
 ```yaml
 # Before
 engine: codex
@@ -831,11 +840,13 @@ engine: claude   # Requires ANTHROPIC_API_KEY
 ```
 
 **Option 2: Configure required API key**
+
 ```bash
 gh secret set OPENAI_API_KEY --body "sk-..." --repo owner/repo
 ```
 
 **Engine requirements**:
+
 - `copilot`: No API key required (built-in)
 - `claude`: Requires `ANTHROPIC_API_KEY` secret
 - `codex`: Requires `OPENAI_API_KEY` or `CODEX_API_KEY` secret
@@ -870,6 +881,7 @@ safe-outputs:
 ```
 
 **Key Principle**: gh-aw workflows use **safe-outputs** for write operations, not direct permissions. This provides:
+
 - Rate limiting (max: N)
 - Audit trail (all writes logged)
 - Security (operations validated before execution)
@@ -877,14 +889,14 @@ safe-outputs:
 
 **What you need for different operations**:
 
-| Operation | Read Permission | Safe-Output |
-|-----------|----------------|-------------|
-| Create issue | `issues: read` | `create-issue` |
-| Update issue | `issues: read` | `update-issue` |
-| Add comment | `issues: read` | `add-comment` |
-| Create discussion | `contents: read` | `create-discussion` |
-| Create PR | `contents: read`, `pull-requests: read` | `create-pull-request` |
-| Add labels | Permission depends on resource | `add-label` |
+| Operation         | Read Permission                         | Safe-Output           |
+| ----------------- | --------------------------------------- | --------------------- |
+| Create issue      | `issues: read`                          | `create-issue`        |
+| Update issue      | `issues: read`                          | `update-issue`        |
+| Add comment       | `issues: read`                          | `add-comment`         |
+| Create discussion | `contents: read`                        | `create-discussion`   |
+| Create PR         | `contents: read`, `pull-requests: read` | `create-pull-request` |
+| Add labels        | Permission depends on resource          | `add-label`           |
 
 **Never add** `issues: write` or `discussions: write` directly - use safe-outputs instead!
 
@@ -893,6 +905,7 @@ safe-outputs:
 ### Failure: Missing Dependencies in CI
 
 **Symptom**:
+
 ```
 The specified go version file at: go.mod does not exist
 AttributeError: module 'typer' has no attribute 'rich_utils'
@@ -903,6 +916,7 @@ AttributeError: module 'typer' has no attribute 'rich_utils'
 **Solution**:
 
 **For missing files**:
+
 ```yaml
 # Remove steps that require files not in repo
 steps:
@@ -913,6 +927,7 @@ steps:
 ```
 
 **For Python dependency conflicts**:
+
 ```yaml
 # Pin compatible versions
 pip install 'safety==2.3.5'  # Not 3.x which has typer issues
@@ -920,6 +935,7 @@ pip install 'bandit==1.7.6 pylint==3.0.3'
 ```
 
 **For missing tools**:
+
 ```bash
 # Check tool availability before use
 if command -v tool_name &> /dev/null; then
@@ -936,16 +952,18 @@ fi
 **Important**: The `GITHUB_TOKEN` environment variable is **automatically available** in all GitHub Actions workflows. You do NOT need to configure it as a secret.
 
 **How it works**:
+
 - GitHub automatically injects `GITHUB_TOKEN` into workflow environment
 - Token has permissions based on workflow's `permissions:` declaration
 - Token is scoped to the repository and workflow run
 - Token expires when workflow completes
 
 **Common mistake**:
+
 ```yaml
 # ❌ WRONG - trying to manually configure GITHUB_TOKEN
 env:
-  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Unnecessary!
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Unnecessary!
 
 # ✅ CORRECT - just declare permissions, token is automatic
 permissions:
@@ -954,12 +972,14 @@ permissions:
 ```
 
 **When workflows fail with "GITHUB_TOKEN" errors**:
+
 1. Check if workflow declares required permissions
 2. Check if lockdown mode is enabled (requires custom token)
 3. Verify safe-outputs are configured correctly
 4. Ensure you're not trying to set GITHUB_TOKEN as a secret
 
 **Custom tokens** (GH_AW_GITHUB_TOKEN) are only needed for:
+
 - Lockdown mode (`lockdown: true`)
 - Cross-repository operations
 - Enhanced audit requirements

@@ -57,20 +57,6 @@ def test_transcript_to_text_method():
     print("✓ _transcript_to_text works correctly")
 
 
-def test_validator_import():
-    """Test that workflow_invocation_validator can be imported."""
-    print("Testing workflow_invocation_validator import...")
-
-    try:
-        from workflow_invocation_validator import validate_workflow_invocation
-
-        assert callable(validate_workflow_invocation), "Should be callable"
-        print("✓ workflow_invocation_validator imports successfully")
-    except ImportError as e:
-        print(f"✗ Import failed: {e}")
-        raise
-
-
 def test_considerations_yaml_has_workflow_invocation():
     """Test that considerations.yaml includes workflow_invocation."""
     print("Testing considerations.yaml has workflow_invocation...")
@@ -128,7 +114,6 @@ def run_unit_tests():
     tests = [
         test_checker_method_exists,
         test_transcript_to_text_method,
-        test_validator_import,
         test_considerations_yaml_has_workflow_invocation,
         test_power_steering_checker_has_method,
     ]

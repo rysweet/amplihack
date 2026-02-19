@@ -643,7 +643,7 @@ When your skill includes supporting documents (reference.md, examples.md, patter
 - Common pitfalls and how to avoid them
 ```
 
-**Reference Example:** See `~/.amplihack/.claude/skills/agent-sdk/SKILL.md` lines 376-408 for an excellent navigation guide implementation.
+**Reference Example:** See `~/.amplihack/.claude/skills/claude-agent-sdk/SKILL.md` lines 376-408 for an excellent navigation guide implementation.
 
 ### For Agent Skills (`agent`)
 

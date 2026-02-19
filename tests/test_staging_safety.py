@@ -195,7 +195,7 @@ class TestIsSafeToDeleteCustomSkills:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmppath = Path(tmpdir)
             # Amplihack skills
-            (tmppath / "agent-sdk").mkdir()
+            (tmppath / "claude-agent-sdk").mkdir()
             (tmppath / "common").mkdir()
             # Custom skill
             (tmppath / "my-custom").mkdir()
@@ -214,7 +214,7 @@ class TestIsSafeToDeleteAmplihackSkills:
         """Test that single amplihack skill returns safe."""
         with tempfile.TemporaryDirectory() as tmpdir:
             tmppath = Path(tmpdir)
-            (tmppath / "agent-sdk").mkdir()
+            (tmppath / "claude-agent-sdk").mkdir()
 
             result = is_safe_to_delete(tmppath)
 
@@ -226,7 +226,7 @@ class TestIsSafeToDeleteAmplihackSkills:
         """Test that multiple amplihack skills returns safe."""
         with tempfile.TemporaryDirectory() as tmpdir:
             tmppath = Path(tmpdir)
-            (tmppath / "agent-sdk").mkdir()
+            (tmppath / "claude-agent-sdk").mkdir()
             (tmppath / "common").mkdir()
             (tmppath / "default-workflow").mkdir()
 
@@ -242,7 +242,7 @@ class TestIsSafeToDeleteAmplihackSkills:
             tmppath = Path(tmpdir)
             # Create subset of known skills
             known_skills = [
-                "agent-sdk",
+                "claude-agent-sdk",
                 "common",
                 "development",
                 "collaboration",
@@ -274,7 +274,7 @@ class TestIsSafeToDeleteAmplihackSkills:
         """Test that amplihack skills with .gitkeep returns safe."""
         with tempfile.TemporaryDirectory() as tmpdir:
             tmppath = Path(tmpdir)
-            (tmppath / "agent-sdk").mkdir()
+            (tmppath / "claude-agent-sdk").mkdir()
             (tmppath / "common").mkdir()
             (tmppath / ".gitkeep").touch()
 
@@ -292,7 +292,7 @@ class TestIsSafeToDeleteEdgeCases:
         """Test that safety check only looks at immediate children."""
         with tempfile.TemporaryDirectory() as tmpdir:
             tmppath = Path(tmpdir)
-            skill_dir = tmppath / "agent-sdk"
+            skill_dir = tmppath / "claude-agent-sdk"
             skill_dir.mkdir()
             # Create nested custom directory (should not be checked)
             (skill_dir / "custom-nested").mkdir()
@@ -336,7 +336,7 @@ class TestIsSafeToDeleteSecurityChecks:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmppath = Path(tmpdir)
             # Amplihack skills
-            (tmppath / "agent-sdk").mkdir()
+            (tmppath / "claude-agent-sdk").mkdir()
             # User's custom skill
             (tmppath / "my-custom-agent").mkdir()
 
@@ -350,7 +350,7 @@ class TestIsSafeToDeleteSecurityChecks:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmppath = Path(tmpdir)
             (tmppath / ".git").mkdir()
-            (tmppath / "agent-sdk").mkdir()
+            (tmppath / "claude-agent-sdk").mkdir()
 
             result = is_safe_to_delete(tmppath)
 

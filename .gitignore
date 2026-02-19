@@ -185,3 +185,4 @@ AUTO_VERSION_CODE_REVIEW.md
 # Ephemeral test scripts and build artifacts
 test-worktree-isolation.sh
 target/
+outputs/

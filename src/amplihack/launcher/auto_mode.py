@@ -28,8 +28,8 @@ except ImportError:
 
 # Try to import Rich for markdown rendering
 try:
-    from rich.console import Console
-    from rich.markdown import Markdown
+    from rich.console import Console  # pyright: ignore[reportMissingImports]
+    from rich.markdown import Markdown  # pyright: ignore[reportMissingImports]
 
     RICH_AVAILABLE = True
 except ImportError:
@@ -97,12 +97,12 @@ class AutoMode:
     def __init__(
         self,
         sdk: str = "claude",
-        prompt: str = None,
+        prompt: str | None = None,
         max_turns: int = 10,
         working_dir: Path | None = None,
         ui_mode: bool = False,
         query_timeout_minutes: float | None = 30.0,
-        task: str = None,  # Alias for prompt (for testing)
+        task: str | None = None,  # Alias for prompt (for testing)
     ):
         """Initialize auto mode.
 
@@ -124,9 +124,9 @@ class AutoMode:
         # Ensure UTF-8 encoding for stdout/stderr on Windows
         if sys.platform == "win32":
             if hasattr(sys.stdout, "reconfigure"):
-                sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+                sys.stdout.reconfigure(encoding="utf-8", errors="replace")  # pyright: ignore[reportAttributeAccessIssue]
             if hasattr(sys.stderr, "reconfigure"):
-                sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+                sys.stderr.reconfigure(encoding="utf-8", errors="replace")  # pyright: ignore[reportAttributeAccessIssue]
 
         self.sdk = sdk
         self.prompt = prompt
@@ -197,7 +197,7 @@ class AutoMode:
         # Initialize Rich console for markdown rendering
         if RICH_AVAILABLE:
             # Create console with UTF-8 encoding and markup enabled
-            self.console = Console(
+            self.console = Console(  # pyright: ignore[reportOptionalCall]
                 file=sys.stdout,
                 force_terminal=True,
                 markup=True,
@@ -828,11 +828,15 @@ Current Turn: {self.turn}/{self.max_turns}"""
                                     # Render markdown for Claude SDK output if Rich is available
                                     if self.console is not None:
                                         try:
-                                            md = Markdown(text)
+                                            md = Markdown(text)  # pyright: ignore[reportOptionalCall]
                                             self.console.print(md, end="")
                                             sys.stdout.flush()
-                                        except Exception:
+                                        except Exception as e:
                                             # Fallback to plain text if markdown rendering fails
+                                            self.log(
+                                                f"Markdown rendering failed, using plain text: {type(e).__name__}",
+                                                level="DEBUG",
+                                            )
                                             print(text, end="", flush=True)
                                     else:
                                         # No Rich available, print plain text
@@ -1639,8 +1643,10 @@ Current Turn: {turn}/{self.max_turns}"""
                     search_paths.append(builders_in_pkg)
             except (ValueError, OSError) as e:
                 self.log(f"Path validation failed in UVX: {type(e).__name__}", level="DEBUG")
-            except Exception:
-                pass
+            except Exception as e:
+                self.log(
+                    f"Unexpected error in UVX path discovery: {type(e).__name__}", level="DEBUG"
+                )
 
             # Path 2: Project root (local development)
             try:
@@ -1664,8 +1670,11 @@ Current Turn: {turn}/{self.max_turns}"""
                 self.log(
                     f"Path validation failed in project root: {type(e).__name__}", level="DEBUG"
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                self.log(
+                    f"Unexpected error in project root path discovery: {type(e).__name__}",
+                    level="DEBUG",
+                )
 
             # Load builder from first valid path
             ClaudeTranscriptBuilder = None
