@@ -107,11 +107,25 @@ def validate_hook_paths(hook_system, hooks_to_validate, hooks_dir_path):
 def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path):
     """Update hook paths for a given hook system (amplihack or xpia).
 
+    This function ensures all hook paths in settings.json are absolute paths,
+    enabling hooks to work from ANY working directory (cross-codebase functionality).
+
+    Path expansion behavior:
+    - Expands ~ (tilde) to user home directory via os.path.expanduser()
+    - Expands $VAR and ${VAR} environment variables via os.path.expandvars()
+    - Converts relative paths to absolute using os.path.join()
+
+    This is CRITICAL for cross-directory execution:
+    - Hooks must work when Claude Code runs from ANY codebase
+    - Relative paths would break when working directory changes
+    - Absolute paths guarantee hooks are always found
+
     Args:
         settings: Settings dictionary to update
         hook_system: Name of the hook system (e.g., "amplihack", "xpia")
         hooks_to_update: List of dicts with keys: type, file, timeout (optional), matcher (optional)
-        hooks_dir_path: Relative path to hooks directory (e.g., ".claude/tools/xpia/hooks")
+        hooks_dir_path: MUST be absolute path to hooks directory after expansion
+                       (e.g., "/home/user/.amplihack/.claude/tools/amplihack/hooks")
 
     Returns:
         Number of hooks updated
@@ -124,8 +138,12 @@ def update_hook_paths(settings, hook_system, hooks_to_update, hooks_dir_path):
         timeout = hook_info.get("timeout")
         matcher = hook_info.get("matcher")
 
-        # Use forward slashes for relative paths (cross-platform JSON compatibility)
-        hook_path = f"{hooks_dir_path}/{hook_file}"
+        # CRITICAL: Path expansion ensures cross-directory execution
+        # Expand environment variables ($HOME) and user directory (~) to absolute paths
+        # This ensures hooks work from ANY working directory (cross-codebase functionality)
+        hook_path = os.path.abspath(
+            os.path.expanduser(os.path.expandvars(f"{hooks_dir_path}/{hook_file}"))
+        )
 
         if hook_type not in settings.get("hooks", {}):
             # Add missing hook configuration
