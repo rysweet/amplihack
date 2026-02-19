@@ -810,16 +810,92 @@ LEVEL_11 = TestLevel(
 )
 
 
+# LEVEL 12: Far Transfer - Same reasoning patterns, different domain
+# Tests whether learned cognitive strategies generalize beyond the training domain
+LEVEL_12 = TestLevel(
+    level_id="L12",
+    level_name="Far Transfer",
+    description=(
+        "Tests temporal reasoning and multi-source synthesis on a completely "
+        "different domain (software releases instead of Olympics). Measures whether "
+        "the agent applies learned REASONING PATTERNS, not just domain knowledge."
+    ),
+    articles=[
+        TestArticle(
+            title="Q1 2026 Open Source Framework Release Summary",
+            content=(
+                "In Q1 2026, major open source frameworks showed varying release velocities. "
+                "React released version 20.1 in January with 47 new features and 23 bug fixes. "
+                "Vue released version 4.2 in February with 31 new features and 18 bug fixes. "
+                "Angular released version 19.1 in March with 28 new features and 35 bug fixes. "
+                "Svelte released version 5.3 in January with 52 new features and 12 bug fixes."
+            ),
+            url="https://devstats.example.com/q1-2026",
+            published="2026-03-30T10:00:00Z",
+            metadata={"quarter": "Q1"},
+        ),
+        TestArticle(
+            title="Q2 2026 Open Source Framework Release Summary",
+            content=(
+                "In Q2 2026, framework releases accelerated. React released version 20.2 in April "
+                "with 53 new features and 19 bug fixes. Vue released version 4.3 in May with "
+                "44 new features and 15 bug fixes. Angular released version 19.2 in June with "
+                "39 new features and 28 bug fixes. Svelte released version 5.4 in May with "
+                "61 new features and 9 bug fixes."
+            ),
+            url="https://devstats.example.com/q2-2026",
+            published="2026-06-30T10:00:00Z",
+            metadata={"quarter": "Q2"},
+        ),
+    ],
+    questions=[
+        TestQuestion(
+            question="Which framework had the most new features in Q2 2026?",
+            expected_answer="Svelte with 61 new features in Q2 2026",
+            level="L12",
+            reasoning_type="far_transfer_recall",
+        ),
+        TestQuestion(
+            question="Which framework improved its feature count the most from Q1 to Q2?",
+            expected_answer=(
+                "Vue improved the most: +13 features (31 to 44), followed by "
+                "Angular +11 (28 to 39), Svelte +9 (52 to 61), React +6 (47 to 53)"
+            ),
+            level="L12",
+            reasoning_type="far_transfer_temporal",
+        ),
+        TestQuestion(
+            question=(
+                "Which framework has the best bug-fix-to-feature ratio trend? "
+                "Is it improving or worsening from Q1 to Q2?"
+            ),
+            expected_answer=(
+                "Angular has the highest bug-fix ratio (35/28=1.25 in Q1, 28/39=0.72 in Q2) "
+                "but it's improving (ratio decreasing = fewer bugs per feature). "
+                "Svelte has the best ratio overall (12/52=0.23 Q1, 9/61=0.15 Q2) and improving."
+            ),
+            level="L12",
+            reasoning_type="far_transfer_synthesis",
+        ),
+    ],
+    requires_temporal_ordering=True,
+)
+
+
 # Export all levels
 ALL_LEVELS = [LEVEL_1, LEVEL_2, LEVEL_3, LEVEL_4, LEVEL_5, LEVEL_6]
 TEACHER_STUDENT_LEVELS = [LEVEL_7]
 ADVANCED_LEVELS = [LEVEL_8, LEVEL_9, LEVEL_10]
 NOVEL_SKILL_LEVELS = [LEVEL_11]
+TRANSFER_LEVELS = [LEVEL_12]
 
 
 def get_level_by_id(level_id: str) -> TestLevel | None:
     """Get a test level by its ID."""
-    for level in ALL_LEVELS + TEACHER_STUDENT_LEVELS + ADVANCED_LEVELS + NOVEL_SKILL_LEVELS:
+    all_lvls = (
+        ALL_LEVELS + TEACHER_STUDENT_LEVELS + ADVANCED_LEVELS + NOVEL_SKILL_LEVELS + TRANSFER_LEVELS
+    )
+    for level in all_lvls:
         if level.level_id == level_id:
             return level
     return None
@@ -840,9 +916,11 @@ __all__ = [
     "LEVEL_9",
     "LEVEL_10",
     "LEVEL_11",
+    "LEVEL_12",
     "ALL_LEVELS",
     "TEACHER_STUDENT_LEVELS",
     "ADVANCED_LEVELS",
     "NOVEL_SKILL_LEVELS",
+    "TRANSFER_LEVELS",
     "get_level_by_id",
 ]
