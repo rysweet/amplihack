@@ -1,0 +1,16 @@
+[
+  {
+    "issue": "TBD",
+    "branch": "feat/llm-agentic-loop",
+    "description": "LLM-powered agentic loop for goal-seeking agents",
+    "task": "Implement complete LLM-powered agentic loop (PERCEIVE→REASON→ACT→LEARN) for goal-seeking agents. Must include: (1) litellm integration for multi-provider LLM access, (2) Hybrid Kuzu memory retrieval (graph + semantic search), (3) Safe action execution framework with tool registry, (4) Wikipedia learning agent that can answer L1-L4 questions. Success criteria: Agent passes Wikipedia learning test with L1≥80%, L2≥60%, L3≥40%. Implementation must integrate with existing goal_agent_generator and use real amplihack-memory-lib Kuzu backend.",
+    "recipe": "default-workflow"
+  },
+  {
+    "issue": "TBD",
+    "branch": "feat/agent-learning-harness",
+    "description": "Agent learning evaluation harness with rigorous testing",
+    "task": "Create production-ready agent learning evaluation harness that proves agents can learn across execution boundaries. Must include: (1) Multi-source news collection (CNN, BBC, Reuters) via WebSearch, (2) Rigorous L1-L4 question generation (recall, inference, synthesis, application), (3) Semantic answer grading with concept coverage scoring, (4) Complete subprocess isolation between learning and testing phases, (5) Kuzu persistent memory integration. Success criteria: Run 20 real agent cycles with 100% consistency, each cycle demonstrating learning→storage→NEW execution→retrieval→answer pattern.",
+    "recipe": "default-workflow"
+  }
+]
