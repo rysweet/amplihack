@@ -421,7 +421,9 @@ def ensure_claude_cli() -> str:
     claude_path = get_claude_cli_path(auto_install=True)
 
     if not claude_path:
-        raise RuntimeError(
+        from ..exceptions import ClaudeBinaryNotFoundError
+
+        raise ClaudeBinaryNotFoundError(
             "Claude CLI not available and auto-installation failed. "
             "Please see https://code.claude.com/docs/en/setup for installation instructions"
         )
