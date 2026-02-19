@@ -79,6 +79,12 @@ class TeachingSession:
         self.max_turns = max_turns
         self.transcript: list[ConversationTurn] = []
 
+        # Adaptive scaffolding: track student competency (Vygotsky ZPD)
+        # Starts at "beginner", promotes based on student response quality
+        self._competency_level = "beginner"  # beginner → intermediate → advanced
+        self._correct_responses = 0
+        self._total_responses = 0
+
     def run(self) -> TeachingResult:
         """Run the complete teaching session.
 
@@ -107,6 +113,9 @@ class TeachingSession:
             )
             turn_num += 1
             exchange_count += 1
+
+            # Update competency tracking (Vygotsky ZPD)
+            self._update_competency(student_response)
 
             # Check if student signals readiness
             if self._student_signals_ready(student_response):
@@ -252,10 +261,16 @@ introduce the topic and invite the student to engage."""
         # Build conversation history for context
         history = self._format_recent_history(last_n=6)
 
+        # Adaptive scaffolding: adjust teaching approach based on student level
+        scaffolding_note = self._get_scaffolding_instruction()
+
         prompt = f"""You are a teacher in a conversation with a student.
 
 Your knowledge about this topic:
 {facts_text}
+
+Student competency level: {self._competency_level.upper()}
+{scaffolding_note}
 
 Recent conversation:
 {history}
@@ -288,6 +303,61 @@ Be specific with facts and numbers. Don't just give vague encouragement."""
         except Exception as e:
             logger.error("Teacher response failed: %s", e)
             return "Let me clarify that point..."
+
+    def _get_scaffolding_instruction(self) -> str:
+        """Get scaffolding instruction based on student's current competency level."""
+        if self._competency_level == "beginner":
+            return (
+                "Teaching approach: BEGINNER level - use simple language, explain one concept "
+                "at a time, provide concrete examples, check understanding frequently."
+            )
+        if self._competency_level == "intermediate":
+            return (
+                "Teaching approach: INTERMEDIATE level - connect multiple concepts, "
+                "use more technical language, ask student to predict or infer, "
+                "provide less hand-holding."
+            )
+        return (
+            "Teaching approach: ADVANCED level - challenge with edge cases, "
+            "ask 'what if' questions, let student lead, focus on deep understanding."
+        )
+
+    def _update_competency(self, student_response: str) -> None:
+        """Update student competency level based on response quality.
+
+        Simple heuristic: if the student uses specific facts/numbers and
+        shows reasoning (not just repeating), they demonstrate higher competency.
+        After consecutive good responses, promote the level.
+
+        Based on Vygotsky's ZPD: advance difficulty when student demonstrates
+        mastery at current level.
+        """
+        self._total_responses += 1
+
+        # Simple quality indicators
+        response_lower = student_response.lower()
+        has_specifics = any(c.isdigit() for c in student_response)
+        has_reasoning = any(
+            kw in response_lower for kw in ("because", "therefore", "this means", "so ")
+        )
+        shows_connection = any(
+            kw in response_lower for kw in ("connects to", "related to", "similar to", "like ")
+        )
+
+        quality_score = sum([has_specifics, has_reasoning, shows_connection])
+
+        if quality_score >= 2:
+            self._correct_responses += 1
+
+        # Promote after 3 consecutive good responses at current level
+        if self._competency_level == "beginner" and self._correct_responses >= 3:
+            self._competency_level = "intermediate"
+            self._correct_responses = 0
+            logger.debug("Student promoted to INTERMEDIATE level")
+        elif self._competency_level == "intermediate" and self._correct_responses >= 3:
+            self._competency_level = "advanced"
+            self._correct_responses = 0
+            logger.debug("Student promoted to ADVANCED level")
 
     def _teacher_request_teach_back(self) -> str:
         """Teacher requests the student to teach back what they've learned.
