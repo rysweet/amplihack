@@ -764,30 +764,32 @@ Respond with a JSON list like:
         # Use more facts for synthesis questions that need cross-source connections
         max_facts = 40 if intent_type == "multi_source_synthesis" else 20
 
-        # Build context string - include temporal metadata and source labels when available
+        # Build context string - include temporal metadata, source labels, and supersede markers
+        def _format_fact(i: int, fact: dict, include_temporal: bool) -> str:
+            meta = fact.get("metadata", {})
+            markers = []
+            if include_temporal:
+                if meta.get("source_date"):
+                    markers.append(f"Date: {meta['source_date']}")
+                if meta.get("temporal_order"):
+                    markers.append(meta["temporal_order"])
+            if meta.get("source_label"):
+                markers.append(f"Source: {meta['source_label']}")
+            if meta.get("superseded"):
+                markers.append("OUTDATED - superseded by newer information")
+            marker_str = f" [{', '.join(markers)}]" if markers else ""
+            line = f"{i}. Context: {fact['context']}{marker_str}\n"
+            line += f"   Fact: {fact['outcome']}\n\n"
+            return line
+
         if intent.get("needs_temporal"):
             context_str = "Relevant facts (ordered chronologically where possible):\n"
             for i, fact in enumerate(context[:max_facts], 1):
-                meta = fact.get("metadata", {})
-                time_marker = ""
-                source_marker = ""
-                if meta.get("source_date"):
-                    time_marker = f" [Date: {meta['source_date']}]"
-                if meta.get("temporal_order"):
-                    time_marker += f" [{meta['temporal_order']}]"
-                if meta.get("source_label"):
-                    source_marker = f" [Source: {meta['source_label']}]"
-                context_str += f"{i}. Context: {fact['context']}{time_marker}{source_marker}\n"
-                context_str += f"   Fact: {fact['outcome']}\n\n"
+                context_str += _format_fact(i, fact, include_temporal=True)
         else:
             context_str = "Relevant facts:\n"
             for i, fact in enumerate(context[:max_facts], 1):
-                meta = fact.get("metadata", {})
-                source_marker = ""
-                if meta.get("source_label"):
-                    source_marker = f" [Source: {meta['source_label']}]"
-                context_str += f"{i}. Context: {fact['context']}{source_marker}\n"
-                context_str += f"   Fact: {fact['outcome']}\n\n"
+                context_str += _format_fact(i, fact, include_temporal=False)
 
         # Build prompt based on question level
         level_instructions = {
