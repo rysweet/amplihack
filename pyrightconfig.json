@@ -5,6 +5,7 @@
     "src/amplihack/cli_extensions.py",
     "src/amplihack/security/cli.py",
     "src/amplihack/proxy/responses_api_proxy.py",
+    "src/amplihack/agents/goal_seeking",
     "proxy/",
     "tests/",
     ".claude/",

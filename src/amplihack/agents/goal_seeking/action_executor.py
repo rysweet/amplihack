@@ -178,6 +178,56 @@ def search_memory(memory_retriever, query: str, limit: int = 5) -> list[dict[str
     return memory_retriever.search(query.strip(), limit=limit)
 
 
+def calculate(expression: str) -> dict[str, Any]:
+    """Evaluate a simple arithmetic expression safely.
+
+    Supports +, -, *, /, parentheses, and integer/float operands.
+    No variable names or function calls allowed.
+
+    Args:
+        expression: Arithmetic expression string (e.g., "26 - 18")
+
+    Returns:
+        Dictionary with result or error:
+            - expression: The input expression
+            - result: The numeric result (if successful)
+            - error: Error message (if failed)
+
+    Example:
+        >>> calculate("26 - 18")
+        {'expression': '26 - 18', 'result': 8.0, 'error': None}
+    """
+    if not expression or not expression.strip():
+        return {"expression": expression, "result": None, "error": "Empty expression"}
+
+    expr = expression.strip()
+
+    # Allow only digits, operators, parentheses, whitespace, and decimal points
+    import re
+
+    if not re.match(r"^[\d\s\+\-\*/\(\)\.]+$", expr):
+        return {
+            "expression": expr,
+            "result": None,
+            "error": f"Invalid characters in expression: {expr}",
+        }
+
+    try:
+        # Use compile + eval with empty globals for safety
+        code = compile(expr, "<calc>", "eval")
+        # Verify no names are used (only constants and operators)
+        if code.co_names:
+            return {
+                "expression": expr,
+                "result": None,
+                "error": "No variables or functions allowed",
+            }
+        result = eval(code, {"__builtins__": {}}, {})
+        return {"expression": expr, "result": float(result), "error": None}
+    except Exception as e:
+        return {"expression": expr, "result": None, "error": str(e)}
+
+
 def synthesize_answer(
     llm_synthesizer, question: str, context: list[dict[str, Any]], question_level: str = "L1"
 ) -> str:
