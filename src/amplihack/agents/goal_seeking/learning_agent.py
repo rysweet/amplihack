@@ -909,11 +909,30 @@ Knowledge Overview (what was learned):
                 "- If one source seems more reliable or recent, note that\n"
             )
 
+        # Add counterfactual/hypothetical reasoning instructions
+        counterfactual_instructions = ""
+        question_lower = question.lower()
+        if any(
+            kw in question_lower
+            for kw in ("what if", "if ", "would ", "without ", "had not", "removed")
+        ):
+            counterfactual_instructions = (
+                "\n\nIMPORTANT - HYPOTHETICAL/COUNTERFACTUAL REASONING:\n"
+                "This question asks you to imagine an alternative scenario. You MUST:\n"
+                "1. Start from the ACTUAL facts as your baseline\n"
+                "2. Apply the hypothetical change (remove X, change timing, etc.)\n"
+                "3. Reason through the CONSEQUENCES of that change step by step\n"
+                "4. Compare the hypothetical outcome to ALL other entities (not just the one asked about)\n"
+                "5. Draw a clear conclusion about how things would be different\n\n"
+                "Do NOT refuse to answer by saying the hypothetical isn't in the facts.\n"
+                "The whole point is to REASON about what WOULD happen based on what you DO know.\n"
+            )
+
         prompt = f"""Answer this question using the provided facts.
 
 Question: {question}
 Level: {question_level} - {instruction}
-{extra_instructions}{contradiction_instructions}
+{extra_instructions}{contradiction_instructions}{counterfactual_instructions}
 {summary_section}
 {context_str}
 
