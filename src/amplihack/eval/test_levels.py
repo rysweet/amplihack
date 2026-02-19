@@ -12,7 +12,6 @@ Philosophy: Data-driven test definition, separates test content from runner logi
 """
 
 from dataclasses import dataclass
-from typing import List
 
 
 @dataclass
@@ -43,8 +42,8 @@ class TestLevel:
     level_id: str
     level_name: str
     description: str
-    articles: List[TestArticle]
-    questions: List[TestQuestion]
+    articles: list[TestArticle]
+    questions: list[TestQuestion]
     requires_temporal_ordering: bool = False
     requires_update_handling: bool = False
 
@@ -67,7 +66,7 @@ LEVEL_1 = TestLevel(
                 "The Games continue through February 21, 2026."
             ),
             url="https://olympics.example.com/2026/medals/feb15",
-            published="2026-02-15T18:00:00Z"
+            published="2026-02-15T18:00:00Z",
         )
     ],
     questions=[
@@ -75,21 +74,21 @@ LEVEL_1 = TestLevel(
             question="How many total medals does Norway have as of February 15?",
             expected_answer="26 total medals (12 gold, 8 silver, 6 bronze)",
             level="L1",
-            reasoning_type="direct_recall"
+            reasoning_type="direct_recall",
         ),
         TestQuestion(
             question="Which country is in second place?",
             expected_answer="Italy with 22 total medals",
             level="L1",
-            reasoning_type="direct_recall"
+            reasoning_type="direct_recall",
         ),
         TestQuestion(
             question="When do the 2026 Winter Olympics end?",
             expected_answer="February 21, 2026",
             level="L1",
-            reasoning_type="direct_recall"
-        )
-    ]
+            reasoning_type="direct_recall",
+        ),
+    ],
 )
 
 
@@ -107,7 +106,7 @@ LEVEL_2 = TestLevel(
                 "Germany has 14 medals with 4 golds. Sweden has 11 medals with 3 golds."
             ),
             url="https://olympics.example.com/2026/standings-feb15",
-            published="2026-02-15T18:00:00Z"
+            published="2026-02-15T18:00:00Z",
         ),
         TestArticle(
             title="Individual Athlete Achievements at Milan 2026",
@@ -118,7 +117,7 @@ LEVEL_2 = TestLevel(
                 "Femke Kok of the Netherlands set an Olympic record of 36.49 seconds in the 500m speed skating event."
             ),
             url="https://olympics.example.com/2026/athletes",
-            published="2026-02-15T20:00:00Z"
+            published="2026-02-15T20:00:00Z",
         ),
         TestArticle(
             title="Historical Context of Milan-Cortina 2026",
@@ -129,29 +128,29 @@ LEVEL_2 = TestLevel(
                 "Winter Olympic medals, with their Milan 2026 performance reinforcing this dominance."
             ),
             url="https://olympics.example.com/2026/history",
-            published="2026-02-14T12:00:00Z"
-        )
+            published="2026-02-14T12:00:00Z",
+        ),
     ],
     questions=[
         TestQuestion(
             question="How does Italy's 2026 gold medal performance compare to their previous best?",
             expected_answer="Italy has 8 golds in 2026, surpassing their previous best of 5 golds from 2006 Turin",
             level="L2",
-            reasoning_type="cross_source_synthesis"
+            reasoning_type="cross_source_synthesis",
         ),
         TestQuestion(
             question="Which country's individual athletes won the most medals mentioned in the athlete achievements article?",
             expected_answer="Italy with 2 athletes mentioned (Federica Brignone and Lisa Vittozzi)",
             level="L2",
-            reasoning_type="cross_source_synthesis"
+            reasoning_type="cross_source_synthesis",
         ),
         TestQuestion(
             question="What makes the 2026 Olympics historically significant for Italy?",
             expected_answer="First Winter Olympics in Italy since 1956 (70-year gap) and Italy already exceeded their previous best gold medal count",
             level="L2",
-            reasoning_type="cross_source_synthesis"
-        )
-    ]
+            reasoning_type="cross_source_synthesis",
+        ),
+    ],
 )
 
 
@@ -170,7 +169,7 @@ LEVEL_3 = TestLevel(
             ),
             url="https://olympics.example.com/2026/day7",
             published="2026-02-13T20:00:00Z",
-            metadata={"day": 7}
+            metadata={"day": 7},
         ),
         TestArticle(
             title="Medal Standings After Day 9 - February 15",
@@ -181,7 +180,7 @@ LEVEL_3 = TestLevel(
             ),
             url="https://olympics.example.com/2026/day9",
             published="2026-02-15T20:00:00Z",
-            metadata={"day": 9}
+            metadata={"day": 9},
         ),
         TestArticle(
             title="Medal Standings After Day 10 - February 16",
@@ -192,30 +191,30 @@ LEVEL_3 = TestLevel(
             ),
             url="https://olympics.example.com/2026/day10",
             published="2026-02-16T20:00:00Z",
-            metadata={"day": 10}
-        )
+            metadata={"day": 10},
+        ),
     ],
     questions=[
         TestQuestion(
             question="How many medals did Norway win between Day 7 and Day 9?",
             expected_answer="8 medals (from 18 to 26)",
             level="L3",
-            reasoning_type="temporal_difference"
+            reasoning_type="temporal_difference",
         ),
         TestQuestion(
             question="Which country improved their gold medal count the most from Day 7 to Day 10?",
             expected_answer="Norway improved most with +5 golds (8 to 13), followed by Italy +4 (5 to 9) and US +2 (4 to 6)",
             level="L3",
-            reasoning_type="temporal_comparison"
+            reasoning_type="temporal_comparison",
         ),
         TestQuestion(
             question="Describe the trend in Italy's gold medal performance over the three days",
             expected_answer="Italy showed acceleration: +3 golds Day 7-9, then +1 gold Day 9-10, gaining 4 golds total",
             level="L3",
-            reasoning_type="temporal_trend"
-        )
+            reasoning_type="temporal_trend",
+        ),
     ],
-    requires_temporal_ordering=True
+    requires_temporal_ordering=True,
 )
 
 
@@ -245,7 +244,7 @@ LEVEL_4 = TestLevel(
                 "- For iOS development, you need Xcode installed (macOS only)."
             ),
             url="https://flutter-guide.example.com/setup-2026",
-            published="2026-02-10T10:00:00Z"
+            published="2026-02-10T10:00:00Z",
         )
     ],
     questions=[
@@ -253,13 +252,13 @@ LEVEL_4 = TestLevel(
             question="What command creates a new Flutter project?",
             expected_answer="flutter create my_app (or flutter create <project_name>)",
             level="L4",
-            reasoning_type="procedural_recall"
+            reasoning_type="procedural_recall",
         ),
         TestQuestion(
             question="What should you do if flutter doctor shows version conflicts?",
             expected_answer="Run 'flutter upgrade' first",
             level="L4",
-            reasoning_type="procedural_troubleshooting"
+            reasoning_type="procedural_troubleshooting",
         ),
         TestQuestion(
             question="Describe the complete workflow from creating a project to running tests",
@@ -268,7 +267,7 @@ LEVEL_4 = TestLevel(
                 "4. add dependencies to pubspec.yaml, 5. flutter pub get, 6. flutter test"
             ),
             level="L4",
-            reasoning_type="procedural_sequence"
+            reasoning_type="procedural_sequence",
         ),
         TestQuestion(
             question="If I want to create a project called 'weather_app' and add the http package, what exact commands would I run?",
@@ -277,9 +276,9 @@ LEVEL_4 = TestLevel(
                 "3. Add 'http: ^1.0.0' to pubspec.yaml dependencies, 4. flutter pub get"
             ),
             level="L4",
-            reasoning_type="procedural_application"
-        )
-    ]
+            reasoning_type="procedural_application",
+        ),
+    ],
 )
 
 
@@ -298,7 +297,7 @@ LEVEL_5 = TestLevel(
                 "The ceremony featured spectacular performances showcasing Italian culture and technology."
             ),
             url="https://olympic-news-a.example.com/viewership-record",
-            published="2026-02-08T09:00:00Z"
+            published="2026-02-08T09:00:00Z",
         ),
         TestArticle(
             title="Milan 2026 Opening Ceremony Viewership Analysis",
@@ -309,8 +308,8 @@ LEVEL_5 = TestLevel(
                 "across streaming platforms. However, digital engagement metrics showed record social media interactions during the event."
             ),
             url="https://media-analytics.example.com/olympics-2026",
-            published="2026-02-09T14:00:00Z"
-        )
+            published="2026-02-09T14:00:00Z",
+        ),
     ],
     questions=[
         TestQuestion(
@@ -320,7 +319,7 @@ LEVEL_5 = TestLevel(
                 "while independent analysts report 800 million viewers"
             ),
             level="L5",
-            reasoning_type="contradiction_detection"
+            reasoning_type="contradiction_detection",
         ),
         TestQuestion(
             question="Why might the two sources disagree about viewership numbers?",
@@ -330,7 +329,7 @@ LEVEL_5 = TestLevel(
                 "or different time windows measured"
             ),
             level="L5",
-            reasoning_type="contradiction_reasoning"
+            reasoning_type="contradiction_reasoning",
         ),
         TestQuestion(
             question="Which viewership figure would you consider more reliable and why?",
@@ -340,9 +339,9 @@ LEVEL_5 = TestLevel(
                 "organizational bias toward reporting higher numbers"
             ),
             level="L5",
-            reasoning_type="source_credibility"
-        )
-    ]
+            reasoning_type="source_credibility",
+        ),
+    ],
 )
 
 
@@ -362,7 +361,7 @@ LEVEL_6 = TestLevel(
             ),
             url="https://olympics.example.com/klaebo-record-feb15",
             published="2026-02-15T17:00:00Z",
-            metadata={"phase": "initial"}
+            metadata={"phase": "initial"},
         ),
         TestArticle(
             title="Klaebo Extends Record with 10th Gold - February 17",
@@ -374,21 +373,21 @@ LEVEL_6 = TestLevel(
             ),
             url="https://olympics.example.com/klaebo-10th-gold",
             published="2026-02-17T16:30:00Z",
-            metadata={"phase": "update"}
-        )
+            metadata={"phase": "update"},
+        ),
     ],
     questions=[
         TestQuestion(
             question="How many Olympic gold medals does Johannes Klaebo have?",
             expected_answer="10 Olympic gold medals (as of February 17, 2026)",
             level="L6",
-            reasoning_type="incremental_update"
+            reasoning_type="incremental_update",
         ),
         TestQuestion(
             question="How did Klaebo's record change between February 15 and February 17?",
             expected_answer="Increased from 9 to 10 golds after winning the individual sprint on February 17",
             level="L6",
-            reasoning_type="incremental_tracking"
+            reasoning_type="incremental_tracking",
         ),
         TestQuestion(
             question="Describe Klaebo's complete Olympic achievement trajectory",
@@ -397,20 +396,90 @@ LEVEL_6 = TestLevel(
                 "extended record to 10 golds in sprint (Feb 17). Has competed across 3 Olympics (2018, 2022, 2026)"
             ),
             level="L6",
-            reasoning_type="incremental_synthesis"
-        )
+            reasoning_type="incremental_synthesis",
+        ),
     ],
-    requires_update_handling=True
+    requires_update_handling=True,
 )
 
 
-# Export all levels
+# LEVEL 7: Teacher-Student Knowledge Transfer
+LEVEL_7 = TestLevel(
+    level_id="L7",
+    level_name="Teacher-Student Knowledge Transfer",
+    description="Teacher agent learns content, teaches student agent, student answers questions",
+    articles=[
+        # Reuse L2 articles - rich, multi-source content good for teaching
+        TestArticle(
+            title="2026 Winter Olympics Medal Standings - February 15",
+            content=(
+                "As of February 15, Norway leads the 2026 Milan Winter Olympics with 26 total medals and 12 golds. "
+                "Italy is second with 22 medals and 8 golds. The United States has 17 medals with 5 golds. "
+                "Germany has 14 medals with 4 golds. Sweden has 11 medals with 3 golds."
+            ),
+            url="https://olympics.example.com/2026/standings-feb15",
+            published="2026-02-15T18:00:00Z",
+        ),
+        TestArticle(
+            title="Individual Athlete Achievements at Milan 2026",
+            content=(
+                "Johannes Klaebo of Norway won his 9th career Olympic gold medal in the cross-country skiing relay event. "
+                "Federica Brignone of Italy won the giant slalom gold at her home Olympics, a historic achievement. "
+                "Lisa Vittozzi of Italy captured the biathlon pursuit gold medal with a stunning performance. "
+                "Femke Kok of the Netherlands set an Olympic record of 36.49 seconds in the 500m speed skating event."
+            ),
+            url="https://olympics.example.com/2026/athletes",
+            published="2026-02-15T20:00:00Z",
+        ),
+        TestArticle(
+            title="Historical Context of Milan-Cortina 2026",
+            content=(
+                "The 2026 Winter Olympics in Milan-Cortina are the first Winter Olympics held in Italy since the 1956 Cortina Games, "
+                "marking a 70-year gap. Italy's current tally of 8 gold medals already surpasses their previous best performance of "
+                "5 gold medals achieved at the 2006 Turin Games. Norway continues their tradition as the all-time leader in "
+                "Winter Olympic medals, with their Milan 2026 performance reinforcing this dominance."
+            ),
+            url="https://olympics.example.com/2026/history",
+            published="2026-02-14T12:00:00Z",
+        ),
+    ],
+    questions=[
+        TestQuestion(
+            question="How many total medals does Norway have in the 2026 Olympics?",
+            expected_answer="26 total medals (12 gold)",
+            level="L7",
+            reasoning_type="knowledge_transfer_recall",
+        ),
+        TestQuestion(
+            question="Which Italian athletes won gold medals at the 2026 Olympics?",
+            expected_answer="Federica Brignone (giant slalom) and Lisa Vittozzi (biathlon pursuit)",
+            level="L7",
+            reasoning_type="knowledge_transfer_recall",
+        ),
+        TestQuestion(
+            question="How does Italy's 2026 performance compare to their previous best?",
+            expected_answer="Italy has 8 golds in 2026, surpassing their previous best of 5 golds from 2006 Turin",
+            level="L7",
+            reasoning_type="knowledge_transfer_synthesis",
+        ),
+        TestQuestion(
+            question="What makes the 2026 Olympics historically significant for Italy?",
+            expected_answer="First Winter Olympics in Italy since 1956 (70-year gap) and Italy exceeded their previous best gold medal count",
+            level="L7",
+            reasoning_type="knowledge_transfer_synthesis",
+        ),
+    ],
+)
+
+
+# Export all levels (L1-L6 for standard eval, L7 for teacher-student)
 ALL_LEVELS = [LEVEL_1, LEVEL_2, LEVEL_3, LEVEL_4, LEVEL_5, LEVEL_6]
+TEACHER_STUDENT_LEVELS = [LEVEL_7]
 
 
 def get_level_by_id(level_id: str) -> TestLevel | None:
     """Get a test level by its ID."""
-    for level in ALL_LEVELS:
+    for level in ALL_LEVELS + TEACHER_STUDENT_LEVELS:
         if level.level_id == level_id:
             return level
     return None
@@ -426,6 +495,8 @@ __all__ = [
     "LEVEL_4",
     "LEVEL_5",
     "LEVEL_6",
+    "LEVEL_7",
     "ALL_LEVELS",
+    "TEACHER_STUDENT_LEVELS",
     "get_level_by_id",
 ]

@@ -22,6 +22,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .grader import grade_answer
+from .metacognition_grader import grade_metacognition
 from .test_levels import ALL_LEVELS, TestLevel
 
 
@@ -254,6 +255,24 @@ def run_single_level(level: TestLevel, config: ProgressiveConfig, level_dir: Pat
                 level=question.level,
             )
 
+            # Grade metacognition if trace available
+            metacog = None
+            trace = answer_data.get("reasoning_trace")
+            if trace:
+                metacog_grade = grade_metacognition(
+                    trace=trace,
+                    answer_score=grade.score,
+                    level=question.level,
+                )
+                metacog = {
+                    "effort_calibration": metacog_grade.effort_calibration,
+                    "sufficiency_judgment": metacog_grade.sufficiency_judgment,
+                    "search_quality": metacog_grade.search_quality,
+                    "self_correction": metacog_grade.self_correction,
+                    "overall": metacog_grade.overall,
+                    "details": metacog_grade.details,
+                }
+
             all_grades.append(
                 {
                     "question": question.question,
@@ -263,15 +282,38 @@ def run_single_level(level: TestLevel, config: ProgressiveConfig, level_dir: Pat
                     "actual": answer_data["answer"],
                     "score": grade.score,
                     "reasoning": grade.reasoning,
+                    "metacognition": metacog,
                 }
             )
 
         # Calculate scores
         if all_grades:
             avg_score = sum(g["score"] for g in all_grades) / len(all_grades)
-            scores = {"average": avg_score, "count": len(all_grades), "details": all_grades}
+
+            # Calculate metacognition averages if available
+            metacog_scores = [g["metacognition"] for g in all_grades if g.get("metacognition")]
+            metacog_avg = None
+            if metacog_scores:
+                metacog_avg = {
+                    "effort_calibration": sum(m["effort_calibration"] for m in metacog_scores)
+                    / len(metacog_scores),
+                    "sufficiency_judgment": sum(m["sufficiency_judgment"] for m in metacog_scores)
+                    / len(metacog_scores),
+                    "search_quality": sum(m["search_quality"] for m in metacog_scores)
+                    / len(metacog_scores),
+                    "self_correction": sum(m["self_correction"] for m in metacog_scores)
+                    / len(metacog_scores),
+                    "overall": sum(m["overall"] for m in metacog_scores) / len(metacog_scores),
+                }
+
+            scores = {
+                "average": avg_score,
+                "count": len(all_grades),
+                "details": all_grades,
+                "metacognition": metacog_avg,
+            }
         else:
-            scores = {"average": 0.0, "count": 0, "details": []}
+            scores = {"average": 0.0, "count": 0, "details": [], "metacognition": None}
 
         # Save grading results
         with open(level_dir / "scores.json", "w") as f:
