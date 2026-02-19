@@ -342,7 +342,11 @@ Rules:
 
     # Simple intents: skip iterative loop, use direct retrieval
     # This avoids the plan/search/evaluate overhead for straightforward questions
-    SIMPLE_INTENTS = {"simple_recall"}
+    # Intents that use simple retrieval (all facts for small KB, keyword search for large)
+    # simple_recall: direct fact lookup
+    # incremental_update: questions about latest/updated/changed information
+    #   (needs ALL facts visible to find the most recent version)
+    SIMPLE_INTENTS = {"simple_recall", "incremental_update"}
 
     # All other intents use iterative reasoning for targeted retrieval
     # The iterative loop filters noise better than dumping all facts
@@ -398,10 +402,6 @@ Rules:
                 intent=intent,
                 max_steps=3,
             )
-
-            # For multi-source synthesis, the iterative loop's plan step
-            # should generate queries targeting each source separately.
-            # No brute-force fallback - plan quality is the fix.
 
         # Fall back to getting all facts if retrieval found nothing
         if not relevant_facts:
@@ -546,11 +546,12 @@ Rules:
 (c) temporal comparison/ordering - comparing values across time periods, tracking changes, describing trends
 (d) multi-source synthesis - combining information from different sources
 (e) contradiction resolution - handling conflicting information
+(f) incremental update - finding the MOST RECENT or UPDATED information. Use this when the question asks about a SINGLE entity's current state or history (keywords: "how many now", "current", "latest", "updated", "changed", "how did X change", "trajectory", "complete history", "describe X's achievement/record/progress")
 
 Question: {question}
 
 Return ONLY a JSON object:
-{{"intent": "one of: simple_recall, mathematical_computation, temporal_comparison, multi_source_synthesis, contradiction_resolution", "needs_math": true/false, "needs_temporal": true/false, "reasoning": "brief explanation"}}"""
+{{"intent": "one of: simple_recall, mathematical_computation, temporal_comparison, multi_source_synthesis, contradiction_resolution, incremental_update", "needs_math": true/false, "needs_temporal": true/false, "reasoning": "brief explanation"}}"""
 
         try:
             response = litellm.completion(
