@@ -353,9 +353,9 @@ def run_progressive_suite(config: ProgressiveConfig) -> ProgressiveResult:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Determine which levels to run
-    from .test_levels import TEACHER_STUDENT_LEVELS
+    from .test_levels import NOVEL_SKILL_LEVELS, TEACHER_STUDENT_LEVELS
 
-    all_available = ALL_LEVELS + TEACHER_STUDENT_LEVELS + ADVANCED_LEVELS
+    all_available = ALL_LEVELS + TEACHER_STUDENT_LEVELS + ADVANCED_LEVELS + NOVEL_SKILL_LEVELS
     if config.levels_to_run:
         levels_to_run = [lvl for lvl in all_available if lvl.level_id in config.levels_to_run]
     else:
@@ -554,8 +554,8 @@ def main():
     parser.add_argument(
         "--levels",
         nargs="+",
-        choices=["L1", "L2", "L3", "L4", "L5", "L6", "L8", "L9", "L10"],
-        help="Specific levels to run (default: L1-L6, use --advanced for L8-L10)",
+        choices=["L1", "L2", "L3", "L4", "L5", "L6", "L8", "L9", "L10", "L11"],
+        help="Specific levels to run (default: L1-L6, use --advanced for L8-L11)",
     )
     parser.add_argument(
         "--advanced",
