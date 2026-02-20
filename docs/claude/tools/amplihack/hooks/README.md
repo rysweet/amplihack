@@ -165,14 +165,49 @@ echo '{"prompt": "test"}' | python session_start.py
 
 ## Error Handling
 
-All hooks implement graceful error handling:
+All hooks implement graceful error handling following Python best practices (see PRs #2407, #2409):
+
+### Error Handling Principles
+
+1. **No Silent Failures** - All exception blocks log errors with appropriate context
+2. **Fail-Open by Default** - Hooks never crash the Claude Code chain
+3. **Appropriate Logging** - Errors logged at DEBUG/WARNING/ERROR levels based on severity
+4. **Sanitized Logging** - Sensitive information (paths, tokens) sanitized before logging
+
+### Specific Error Cases
 
 1. **Invalid JSON input** - Returns error message in output
-2. **Processing exceptions** - Logs error, returns empty dict
-3. **File system errors** - Logs warning, continues operation
-4. **Missing fields** - Uses defaults, continues processing
+2. **Processing exceptions** - Logs error at DEBUG level, returns empty dict
+3. **File system errors** - Logs warning, continues operation with defaults
+4. **Missing fields** - Uses defaults, logs at DEBUG level
+5. **External API failures** - Logs at DEBUG level, degrades gracefully
 
-This ensures that hook failures never break the Claude Code chain.
+### Exception Handling Examples
+
+**Standard Hook Pattern (Fail-Open)**:
+```python
+try:
+    result = process_data(input_data)
+    return {"success": True, "result": result}
+except Exception as e:
+    # Log but don't raise - fail-open
+    print(f"Hook processing failed: {e}", file=sys.stderr)
+    return {}
+```
+
+**Power Steering Pattern (Sanitized Logging)**:
+```python
+try:
+    validate_response(response)
+except Exception as e:
+    # Sanitize before logging
+    _log_sdk_error("validation", e)
+    return False  # Fail-open
+```
+
+This ensures that hook failures never break the Claude Code chain while providing full observability.
+
+See [Exception Handling How-To](../../../../howto/exception-handling.md) for complete implementation guidance.
 
 ## Hook Configuration
 

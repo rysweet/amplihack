@@ -618,6 +618,7 @@ Fix common issues and learn from past solutions.
 
 ### How-To Guides
 
+- [Exception Handling](howto/exception-handling.md) - Implement proper error handling in amplihack code
 - [Configure Memory Consent](howto/configure-memory-consent.md) - Customize prompt behavior, timeouts, and CI/CD integration
 - [Configure Power-Steering Merge Preferences](howto/power-steering-merge-preferences.md) - Set up merge approval workflow
 - [Platform Bridge Quick Start](tutorials/platform-bridge-quickstart.md) - Learn the basics in 10 minutes
@@ -652,6 +653,7 @@ Quick references, guides, and additional resources.
 
 ### Quick References
 
+- [Exception Handling Reference](reference/exception-handling.md) - Complete exception hierarchy and patterns
 - [Command Selection Guide](commands/COMMAND_SELECTION_GUIDE.md) - Choose the right command
 - [Platform Bridge API Reference](reference/platform-bridge-api.md) - Complete API documentation
 - [Power Steering File Locking](reference/power-steering-file-locking.md) - Prevents counter race conditions
