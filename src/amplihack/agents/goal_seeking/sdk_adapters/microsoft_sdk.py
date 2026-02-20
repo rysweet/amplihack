@@ -147,11 +147,11 @@ class MicrosoftGoalSeekingAgent(GoalSeekingAgent):
                 metadata={"sdk": "microsoft", "model": self.model},
             )
         except Exception as e:
-            logger.error("Microsoft Agent Framework run failed: %s", e)
+            logger.exception("Microsoft Agent Framework run failed: %s", type(e).__name__)
             return AgentResult(
-                response=f"Agent execution failed: {e}",
+                response="Agent execution encountered an error.",
                 goal_achieved=False,
-                metadata={"sdk": "microsoft", "error": str(e)},
+                metadata={"sdk": "microsoft", "error": type(e).__name__},
             )
 
     def _get_native_tools(self) -> list[str]:
