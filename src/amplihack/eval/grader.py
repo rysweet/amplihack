@@ -113,6 +113,9 @@ Grade the agent's answer on a scale of 0.0 to 1.0:
 Special considerations:
 - L5 (Contradictions): Award full points if agent acknowledges the contradiction, even if they don't resolve it
 - L6 (Updates): Agent must use the MOST RECENT information, not outdated data
+- IMPORTANT: If the agent shows work/reasoning, look at the FINAL CONCLUSION,
+  not just the opening line. Agents may self-correct during reasoning.
+  The final answer at the end of the response is what matters.
 
 Return ONLY a JSON object with this structure:
 {{"score": 0.85, "reasoning": "Brief explanation of grade"}}"""
