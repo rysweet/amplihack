@@ -40,6 +40,7 @@ class ProgressiveConfig:
     agent_name: str
     levels_to_run: list[str] | None = None  # None = run all
     memory_backend: str = "amplihack-memory-lib"
+    sdk: str = "mini"  # SDK type: mini, claude, copilot, microsoft
 
 
 @dataclass
@@ -88,12 +89,13 @@ def _extract_json_line(stdout: str) -> str:
     return "{}"
 
 
-def run_learning_subprocess(articles: list, agent_name: str) -> tuple[bool, str]:
+def run_learning_subprocess(articles: list, agent_name: str, sdk: str = "mini") -> tuple[bool, str]:
     """Run learning phase as subprocess.
 
     Args:
         articles: List of article dicts to learn from
         agent_name: Agent identifier
+        sdk: SDK type to pass to agent subprocess
 
     Returns:
         Tuple of (success, error_message_or_data)
@@ -119,6 +121,8 @@ def run_learning_subprocess(articles: list, agent_name: str) -> tuple[bool, str]
                 "learning",
                 "--agent-name",
                 agent_name,
+                "--sdk",
+                sdk,
             ],
             input=json.dumps(learning_input),
             capture_output=True,
@@ -134,12 +138,13 @@ def run_learning_subprocess(articles: list, agent_name: str) -> tuple[bool, str]
     return True, _extract_json_line(result.stdout)
 
 
-def run_testing_subprocess(questions: list, agent_name: str) -> tuple[bool, str]:
+def run_testing_subprocess(questions: list, agent_name: str, sdk: str = "mini") -> tuple[bool, str]:
     """Run testing phase as subprocess.
 
     Args:
         questions: List of question dicts to answer
         agent_name: Agent identifier
+        sdk: SDK type to pass to agent subprocess
 
     Returns:
         Tuple of (success, error_message_or_data)
@@ -163,6 +168,8 @@ def run_testing_subprocess(questions: list, agent_name: str) -> tuple[bool, str]
                 "testing",
                 "--agent-name",
                 agent_name,
+                "--sdk",
+                sdk,
             ],
             input=json.dumps(testing_input),
             capture_output=True,
@@ -216,7 +223,7 @@ def run_l7_teaching_eval(
     try:
         # Phase 1: Learn articles (same as other levels)
         agent_name = _isolate_memory_for_level(config.agent_name, "L7")
-        success, data = run_learning_subprocess(level.articles, agent_name)
+        success, data = run_learning_subprocess(level.articles, agent_name, sdk=config.sdk)
         if not success:
             return LevelResult(
                 level_id=level.level_id,
@@ -242,7 +249,7 @@ def run_l7_teaching_eval(
             json.dump(teaching_result, f, indent=2)
 
         # Phase 3: Test the student (same agent, already has knowledge from teaching)
-        success, data = run_testing_subprocess(level.questions, agent_name)
+        success, data = run_testing_subprocess(level.questions, agent_name, sdk=config.sdk)
         if not success:
             return LevelResult(
                 level_id=level.level_id,
@@ -382,7 +389,9 @@ def run_single_level(level: TestLevel, config: ProgressiveConfig, level_dir: Pat
             initial_articles = [
                 a for a in level.articles if (a.metadata or {}).get("phase") == "initial"
             ]
-            success, data = run_learning_subprocess(initial_articles, isolated_agent_name)
+            success, data = run_learning_subprocess(
+                initial_articles, isolated_agent_name, sdk=config.sdk
+            )
             if not success:
                 return LevelResult(
                     level_id=level.level_id,
@@ -399,7 +408,9 @@ def run_single_level(level: TestLevel, config: ProgressiveConfig, level_dir: Pat
             update_articles = [
                 a for a in level.articles if (a.metadata or {}).get("phase") == "update"
             ]
-            success, data = run_learning_subprocess(update_articles, isolated_agent_name)
+            success, data = run_learning_subprocess(
+                update_articles, isolated_agent_name, sdk=config.sdk
+            )
             if not success:
                 return LevelResult(
                     level_id=level.level_id,
@@ -414,7 +425,9 @@ def run_single_level(level: TestLevel, config: ProgressiveConfig, level_dir: Pat
 
         else:
             # Standard learning: all articles at once
-            success, data = run_learning_subprocess(level.articles, isolated_agent_name)
+            success, data = run_learning_subprocess(
+                level.articles, isolated_agent_name, sdk=config.sdk
+            )
             if not success:
                 return LevelResult(
                     level_id=level.level_id,
@@ -428,7 +441,7 @@ def run_single_level(level: TestLevel, config: ProgressiveConfig, level_dir: Pat
                 json.dump(learning_data, f, indent=2)
 
         # Testing phase
-        success, data = run_testing_subprocess(level.questions, isolated_agent_name)
+        success, data = run_testing_subprocess(level.questions, isolated_agent_name, sdk=config.sdk)
         if not success:
             return LevelResult(
                 level_id=level.level_id,
@@ -598,6 +611,7 @@ def run_progressive_suite(config: ProgressiveConfig) -> ProgressiveResult:
 
     # Save summary
     summary = {
+        "sdk": config.sdk,
         "overall_scores": overall_scores,
         "level_results": [
             {
@@ -639,12 +653,12 @@ def _run_single_suite(args: tuple) -> ProgressiveResult:
     """Run a single suite invocation (used as ProcessPoolExecutor target).
 
     Args:
-        args: Tuple of (run_id, base_output_dir, levels_to_run, memory_backend)
+        args: Tuple of (run_id, base_output_dir, levels_to_run, memory_backend, sdk)
 
     Returns:
         ProgressiveResult for this run
     """
-    run_id, base_output_dir, levels_to_run, memory_backend = args
+    run_id, base_output_dir, levels_to_run, memory_backend, sdk = args
     agent_name = f"agent_{run_id}_{int(time.time())}"
     output_dir = str(Path(base_output_dir) / f"run_{run_id}")
 
@@ -653,6 +667,7 @@ def _run_single_suite(args: tuple) -> ProgressiveResult:
         agent_name=agent_name,
         levels_to_run=levels_to_run,
         memory_backend=memory_backend,
+        sdk=sdk,
     )
 
     return run_progressive_suite(config)
@@ -664,6 +679,7 @@ def run_parallel_suite(
     levels_to_run: list[str] | None = None,
     memory_backend: str = "amplihack-memory-lib",
     max_workers: int = 4,
+    sdk: str = "mini",
 ) -> ParallelResult:
     """Run the progressive suite multiple times in parallel and report medians.
 
@@ -673,6 +689,7 @@ def run_parallel_suite(
         levels_to_run: Optional list of level IDs to run
         memory_backend: Memory backend to use
         max_workers: Maximum concurrent processes (capped at 4)
+        sdk: SDK type to use
 
     Returns:
         ParallelResult with median scores across all runs
@@ -682,7 +699,7 @@ def run_parallel_suite(
 
     print(f"Starting {num_runs} parallel runs (max {workers} concurrent)...")
 
-    run_args = [(i, base_output_dir, levels_to_run, memory_backend) for i in range(num_runs)]
+    run_args = [(i, base_output_dir, levels_to_run, memory_backend, sdk) for i in range(num_runs)]
 
     all_results: list[ProgressiveResult] = []
     with ProcessPoolExecutor(max_workers=workers) as executor:
@@ -764,6 +781,13 @@ def main():
         metavar="N",
         help="Run suite N times in parallel and report median scores (max 4 concurrent)",
     )
+    parser.add_argument(
+        "--sdk",
+        default="mini",
+        choices=["mini", "claude", "copilot", "microsoft"],
+        help="SDK type to evaluate (default: mini). All SDKs use the same LearningAgent "
+        "for learning/answering but validate SDK agent creation.",
+    )
 
     args = parser.parse_args()
 
@@ -794,6 +818,7 @@ def main():
             base_output_dir=args.output_dir,
             levels_to_run=args.levels,
             memory_backend=args.memory_backend,
+            sdk=args.sdk,
         )
 
         # Print parallel summary
@@ -838,6 +863,7 @@ def main():
         agent_name=args.agent_name,
         levels_to_run=args.levels,
         memory_backend=args.memory_backend,
+        sdk=args.sdk,
     )
 
     print("=" * 70)
@@ -845,6 +871,7 @@ def main():
     print("=" * 70)
     print(f"Output directory: {config.output_dir}")
     print(f"Agent name: {config.agent_name}")
+    print(f"SDK: {config.sdk}")
     if config.levels_to_run:
         print(f"Levels to run: {', '.join(config.levels_to_run)}")
     else:

@@ -62,12 +62,17 @@ def _compute_dynamic_confidence(trace, stats: dict, level: str) -> float:
     return min(1.0, max(0.1, round(base_confidence, 2)))
 
 
-def learning_phase(news_articles: list[dict], agent_name: str) -> dict:
+def learning_phase(news_articles: list[dict], agent_name: str, sdk: str = "mini") -> dict:
     """Learning phase: Store news articles using LearningAgent with hierarchical memory.
 
     Args:
         news_articles: List of article dicts
         agent_name: Agent identifier
+        sdk: SDK type (mini, claude, copilot, microsoft). All use the same
+             LearningAgent for learning/answering since it contains the eval
+             intelligence (LLM fact extraction, intent detection, synthesis).
+             The SDK parameter validates that the agent can be created and
+             records which SDK was used in the output.
 
     Returns:
         Status dict with count of stored experiences
@@ -78,6 +83,25 @@ def learning_phase(news_articles: list[dict], agent_name: str) -> dict:
 
     # Get model from env or use default
     model = os.environ.get("EVAL_MODEL", "anthropic/claude-sonnet-4-5-20250929")
+
+    # Validate SDK agent can be created (verifies SDK adapter works)
+    sdk_agent_created = False
+    try:
+        from amplihack.agents.goal_seeking.sdk_adapters.factory import create_agent
+
+        sdk_agent = create_agent(
+            name=f"{agent_name}_sdk_check",
+            sdk=sdk,
+            model=model,
+            storage_path=storage_path / "sdk_check",
+            enable_memory=False,
+        )
+        sdk_agent_created = True
+        sdk_agent.close()
+    except Exception as e:
+        import logging
+
+        logging.getLogger(__name__).warning("SDK '%s' creation check failed: %s", sdk, e)
 
     agent = LearningAgent(
         agent_name=agent_name,
@@ -98,15 +122,22 @@ def learning_phase(news_articles: list[dict], agent_name: str) -> dict:
     finally:
         agent.close()
 
-    return {"status": "success", "stored_count": stored_count, "total_articles": len(news_articles)}
+    return {
+        "status": "success",
+        "stored_count": stored_count,
+        "total_articles": len(news_articles),
+        "sdk": sdk,
+        "sdk_agent_created": sdk_agent_created,
+    }
 
 
-def testing_phase(quiz_questions: list[dict], agent_name: str) -> dict:
+def testing_phase(quiz_questions: list[dict], agent_name: str, sdk: str = "mini") -> dict:
     """Testing phase: Answer questions using LearningAgent with hierarchical memory.
 
     Args:
         quiz_questions: List of question dicts
         agent_name: Agent identifier
+        sdk: SDK type for metadata tracking
 
     Returns:
         Status dict with answers
@@ -179,7 +210,7 @@ def testing_phase(quiz_questions: list[dict], agent_name: str) -> dict:
     finally:
         agent.close()
 
-    return {"status": "success", "answers": answers}
+    return {"status": "success", "answers": answers, "sdk": sdk}
 
 
 def main():
@@ -190,6 +221,12 @@ def main():
     parser.add_argument("--phase", required=True, choices=["learning", "testing"])
     parser.add_argument("--agent-name", required=True)
     parser.add_argument("--input-file", help="Input JSON file (alternative to stdin)")
+    parser.add_argument(
+        "--sdk",
+        default="mini",
+        choices=["mini", "claude", "copilot", "microsoft"],
+        help="SDK type to evaluate (default: mini)",
+    )
 
     args = parser.parse_args()
 
@@ -208,9 +245,9 @@ def main():
             articles = input_data.get("articles", [input_data])
         else:
             articles = [input_data]
-        result = learning_phase(articles, args.agent_name)
+        result = learning_phase(articles, args.agent_name, sdk=args.sdk)
     else:  # testing
-        result = testing_phase(input_data, args.agent_name)
+        result = testing_phase(input_data, args.agent_name, sdk=args.sdk)
 
     # Output result as JSON
     print(json.dumps(result))
