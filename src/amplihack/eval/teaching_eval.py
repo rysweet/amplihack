@@ -1,325 +1,430 @@
-"""Teacher-student evaluation runner.
+"""Teaching evaluation layer for domain agents.
 
-Runs the L7 evaluation:
-1. Teacher learns content
-2. Teacher teaches student via multi-turn conversation
-3. Student answers questions from its own memory
-4. Grade student answers + measure teaching quality
+Bridges domain agents with the TeachingSession framework to evaluate
+how well agents can teach their domain skills to students.
 
-Philosophy: Evaluate knowledge transfer, not just recall.
+Two evaluation paths:
+1. Domain agent's own teach() method - grades structured output
+2. Full TeachingSession with LLM student - grades multi-turn dialogue
+
+Philosophy: Teaching ability measures depth of understanding.
 """
 
 from __future__ import annotations
 
-import json
-import logging
-import os
-import tempfile
-from dataclasses import dataclass
-from pathlib import Path
+from dataclasses import dataclass, field
 from typing import Any
 
-from amplihack.agents.goal_seeking import LearningAgent
-
-from .grader import grade_answer
-from .teaching_session import TeachingSession
-from .test_levels import LEVEL_7, TestLevel
-
-logger = logging.getLogger(__name__)
+from amplihack.agents.domain_agents.base import DomainAgent, TeachingResult
 
 
 @dataclass
-class TeachingEvalResult:
-    """Complete result of the teacher-student evaluation."""
+class TeachingDimensionScore:
+    """Score for a single teaching dimension.
 
-    # Student-outcome-focused metrics (what matters: how much did student learn?)
-    student_avg_score: float  # Post-teaching score
-    student_pre_score: float  # Pre-teaching baseline (parametric knowledge)
-    normalized_learning_gain: float  # NLG = (post - pre) / (max - pre), gold standard
-    teacher_avg_score: float  # Teacher's own score (theoretical ceiling)
-    transfer_ratio: float  # student_score / teacher_score
-    total_teaching_turns: int
-    student_facts_learned: int
-    student_talk_ratio: float  # Target: ≥30% (TeachLM benchmark)
-
-    # Per-question details
-    student_grades: list[dict[str, Any]]
-    student_pre_grades: list[dict[str, Any]]
-    teacher_grades: list[dict[str, Any]]
-
-    # Conversation transcript
-    transcript: list[dict[str, str]]
-
-    # Topics covered
-    topics_covered: list[str]
-
-
-def run_teaching_eval(
-    level: TestLevel | None = None,
-    model: str | None = None,
-    max_teaching_turns: int = 8,
-) -> TeachingEvalResult:
-    """Run the complete teacher-student evaluation.
-
-    Args:
-        level: Test level to use (default: LEVEL_7)
-        model: LLM model (default from EVAL_MODEL env var)
-        max_teaching_turns: Maximum conversation turns
-
-    Returns:
-        TeachingEvalResult with all metrics
+    Attributes:
+        dimension: Name of the dimension
+        score: Grade from 0.0 to 1.0
+        weight: Weight in composite score
+        details: How the grade was determined
     """
-    level = level or LEVEL_7
-    model = model or os.environ.get("EVAL_MODEL", "anthropic/claude-sonnet-4-5-20250929")
 
-    # Create separate storage directories for teacher and student
-    base_dir = Path(tempfile.gettempdir()) / "amplihack_eval_teaching"
-    teacher_dir = base_dir / f"teacher_{os.getpid()}"
-    student_dir = base_dir / f"student_{os.getpid()}"
-    teacher_dir.mkdir(parents=True, exist_ok=True)
-    student_dir.mkdir(parents=True, exist_ok=True)
+    dimension: str
+    score: float
+    weight: float
+    details: str
 
-    # Initialize teacher and student with SEPARATE memory databases
-    teacher = LearningAgent(
-        agent_name="teacher",
-        model=model,
-        storage_path=teacher_dir,
-        use_hierarchical=True,
-    )
-    student = LearningAgent(
-        agent_name="student",
-        model=model,
-        storage_path=student_dir,
-        use_hierarchical=True,
-    )
 
-    try:
-        # Phase 1: Teacher learns the content
-        print("  Phase 1: Teacher learning content...")
-        for article in level.articles:
-            content = f"Title: {article.title}\n\n{article.content}"
-            result = teacher.learn_from_content(content)
-            logger.debug(
-                "Teacher learned %d facts from '%s'",
-                result["facts_stored"],
-                article.title[:40],
-            )
+@dataclass
+class DomainTeachingEvalResult:
+    """Complete teaching evaluation result for a domain agent.
 
-        # Phase 1a: PRE-TEST - Student answers BEFORE teaching (NLG baseline)
-        # This establishes the true baseline for Normalized Learning Gain
-        # The student may have parametric knowledge that inflates apparent learning
-        print("  Phase 1a: Pre-test (student baseline before teaching)...")
-        student_pre_grades = []
-        for q in level.questions:
-            answer = str(student.answer_question(q.question, question_level="L2"))
-            grade = grade_answer(
-                question=q.question,
-                expected=q.expected_answer,
-                actual=answer,
-                level=q.level,
-            )
-            student_pre_grades.append(
+    Attributes:
+        agent_name: Agent being evaluated
+        domain: Domain name
+        topic: What was taught
+        student_level: Student level used
+        dimension_scores: Per-dimension scores
+        composite_score: Weighted overall score
+        teaching_result: Raw teaching result from agent
+    """
+
+    agent_name: str
+    domain: str
+    topic: str
+    student_level: str
+    dimension_scores: list[TeachingDimensionScore]
+    composite_score: float
+    teaching_result: TeachingResult
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert to dictionary."""
+        return {
+            "agent_name": self.agent_name,
+            "domain": self.domain,
+            "topic": self.topic,
+            "student_level": self.student_level,
+            "composite_score": round(self.composite_score, 3),
+            "dimensions": [
                 {
-                    "question": q.question,
-                    "answer": answer,
-                    "score": grade.score,
+                    "dimension": d.dimension,
+                    "score": round(d.score, 3),
+                    "weight": d.weight,
+                    "details": d.details,
                 }
-            )
+                for d in self.dimension_scores
+            ],
+        }
 
-        student_pre_avg = (
-            sum(g["score"] for g in student_pre_grades) / len(student_pre_grades)
-            if student_pre_grades
-            else 0
-        )
-        print(f"  Student pre-test score: {student_pre_avg:.2%}")
 
-        # Phase 1b: Verify teacher learned by answering questions
-        print("  Phase 1b: Verifying teacher's knowledge...")
-        teacher_grades = []
-        for q in level.questions:
-            answer = str(teacher.answer_question(q.question, question_level="L2"))
-            grade = grade_answer(
-                question=q.question,
-                expected=q.expected_answer,
-                actual=answer,
-                level=q.level,
-            )
-            teacher_grades.append(
-                {
-                    "question": q.question,
-                    "answer": answer,
-                    "expected": q.expected_answer,
-                    "score": grade.score,
-                    "reasoning": grade.reasoning,
-                }
-            )
+class DomainTeachingEvaluator:
+    """Evaluates a domain agent's teaching ability.
 
-        teacher_avg = (
-            sum(g["score"] for g in teacher_grades) / len(teacher_grades) if teacher_grades else 0
-        )
+    Uses the agent's teach() method and grades the output across
+    4 dimensions: clarity, completeness, student performance, adaptivity.
 
-        print(f"  Teacher score: {teacher_avg:.2%}")
-        if teacher_avg < 0.5:
-            print("  WARNING: Teacher scored poorly - teaching quality will be limited")
+    Example:
+        >>> agent = CodeReviewAgent("reviewer")
+        >>> evaluator = DomainTeachingEvaluator(agent)
+        >>> result = evaluator.evaluate("security review")
+        >>> print(f"Teaching: {result.composite_score:.0%}")
+    """
 
-        # Phase 2: Teaching session
-        print(f"  Phase 2: Teaching session (max {max_teaching_turns} turns)...")
-        session = TeachingSession(
-            teacher=teacher,
-            student=student,
-            model=model,
-            max_turns=max_teaching_turns,
-        )
-        teaching_result = session.run()
-        print(
-            f"  Teaching completed: {teaching_result.total_turns} turns, "
-            f"student learned {teaching_result.student_facts_count} facts"
-        )
+    # Dimension weights
+    WEIGHTS = {
+        "clarity": 0.25,
+        "completeness": 0.25,
+        "student_performance": 0.30,
+        "adaptivity": 0.20,
+    }
 
-        # Phase 3: Test student's knowledge (from its OWN memory only)
-        print("  Phase 3: Testing student's knowledge...")
-        student_grades = []
-        for q in level.questions:
-            answer = str(student.answer_question(q.question, question_level="L2"))
-            grade = grade_answer(
-                question=q.question,
-                expected=q.expected_answer,
-                actual=answer,
-                level=q.level,
-            )
-            student_grades.append(
-                {
-                    "question": q.question,
-                    "answer": answer,
-                    "expected": q.expected_answer,
-                    "score": grade.score,
-                    "reasoning": grade.reasoning,
-                }
-            )
+    def __init__(self, agent: DomainAgent):
+        """Initialize evaluator.
 
-        student_avg = (
-            sum(g["score"] for g in student_grades) / len(student_grades) if student_grades else 0
-        )
+        Args:
+            agent: Domain agent to evaluate
+        """
+        self.agent = agent
 
-        # Calculate transfer ratio and Normalized Learning Gain (Hake 1998)
-        transfer_ratio = student_avg / teacher_avg if teacher_avg > 0 else 0
+    def evaluate(
+        self,
+        topic: str,
+        student_level: str = "beginner",
+    ) -> DomainTeachingEvalResult:
+        """Run teaching evaluation.
 
-        # NLG: gold standard from education research
-        # NLG = (post - pre) / (max - pre)
-        # > 0.7 = high gain, 0.3-0.7 = medium, < 0.3 = low
-        max_possible = teacher_avg  # Teacher score is the ceiling
-        if max_possible > student_pre_avg:
-            nlg = (student_avg - student_pre_avg) / (max_possible - student_pre_avg)
-        else:
-            nlg = 0.0 if student_avg <= student_pre_avg else 1.0
+        Args:
+            topic: Topic for the agent to teach
+            student_level: Student level
 
-        # Serialize transcript
-        transcript = [
-            {"role": t.role, "content": t.content, "turn": t.turn_number}
-            for t in teaching_result.transcript
+        Returns:
+            DomainTeachingEvalResult with scores
+        """
+        # Run the agent's teach method
+        teaching_result = self.agent.teach(topic=topic, student_level=student_level)
+
+        # Grade each dimension
+        dimension_scores = [
+            self._grade_clarity(teaching_result),
+            self._grade_completeness(teaching_result),
+            self._grade_student_performance(teaching_result),
+            self._grade_adaptivity(teaching_result),
         ]
 
-        return TeachingEvalResult(
-            student_avg_score=student_avg,
-            student_pre_score=student_pre_avg,
-            normalized_learning_gain=nlg,
-            teacher_avg_score=teacher_avg,
-            transfer_ratio=transfer_ratio,
-            total_teaching_turns=teaching_result.total_turns,
-            student_facts_learned=teaching_result.student_facts_count,
-            student_talk_ratio=teaching_result.student_talk_ratio,
-            student_grades=student_grades,
-            student_pre_grades=student_pre_grades,
-            teacher_grades=teacher_grades,
-            transcript=transcript,
-            topics_covered=teaching_result.topics_covered,
+        # Calculate composite
+        composite = sum(d.score * d.weight for d in dimension_scores)
+
+        return DomainTeachingEvalResult(
+            agent_name=self.agent.agent_name,
+            domain=self.agent.domain,
+            topic=topic,
+            student_level=student_level,
+            dimension_scores=dimension_scores,
+            composite_score=composite,
+            teaching_result=teaching_result,
         )
 
-    finally:
-        teacher.close()
-        student.close()
+    def _grade_clarity(self, result: TeachingResult) -> TeachingDimensionScore:
+        """Grade clarity of instruction."""
+        instruction = result.instruction
+        score = 0.0
+        details_parts = []
+
+        if not instruction or not instruction.strip():
+            return TeachingDimensionScore(
+                dimension="clarity",
+                score=0.0,
+                weight=self.WEIGHTS["clarity"],
+                details="No instruction provided",
+            )
+
+        # Length check
+        words = instruction.split()
+        if len(words) >= 50:
+            score += 0.25
+            details_parts.append(f"Sufficient length ({len(words)} words)")
+        elif len(words) >= 20:
+            score += 0.15
+            details_parts.append(f"Moderate length ({len(words)} words)")
+        else:
+            details_parts.append(f"Too short ({len(words)} words)")
+
+        # Structure check
+        has_structure = any(m in instruction for m in ["1.", "2.", "- ", "**"])
+        if has_structure:
+            score += 0.25
+            details_parts.append("Has structure")
+
+        # Example check
+        has_examples = any(
+            m in instruction.lower() for m in ["example", "for instance", "bad:", "good:", "e.g."]
+        )
+        if has_examples:
+            score += 0.25
+            details_parts.append("Includes examples")
+
+        # Domain terms check
+        domain_terms = _get_domain_terms(self.agent.domain)
+        terms_found = sum(1 for t in domain_terms if t.lower() in instruction.lower())
+        if terms_found >= 3:
+            score += 0.25
+            details_parts.append(f"Uses {terms_found} domain terms")
+        elif terms_found >= 1:
+            score += 0.15
+            details_parts.append(f"Uses {terms_found} domain terms")
+
+        return TeachingDimensionScore(
+            dimension="clarity",
+            score=min(1.0, score),
+            weight=self.WEIGHTS["clarity"],
+            details=" | ".join(details_parts),
+        )
+
+    def _grade_completeness(self, result: TeachingResult) -> TeachingDimensionScore:
+        """Grade completeness of teaching."""
+        score = 0.0
+        details_parts = []
+
+        # Lesson plan
+        if result.lesson_plan and len(result.lesson_plan.strip()) > 20:
+            plan_items = [ln for ln in result.lesson_plan.split("\n") if ln.strip()]
+            if len(plan_items) >= 4:
+                score += 0.3
+                details_parts.append(f"Lesson plan: {len(plan_items)} items")
+            elif len(plan_items) >= 2:
+                score += 0.2
+                details_parts.append(f"Lesson plan: {len(plan_items)} items")
+        else:
+            details_parts.append("Weak lesson plan")
+
+        # Multi-section instruction
+        if result.instruction:
+            sections = result.instruction.count("\n\n")
+            if sections >= 3:
+                score += 0.25
+                details_parts.append(f"{sections + 1} instruction sections")
+            elif sections >= 1:
+                score += 0.15
+
+        # Answers provided
+        if result.agent_answers:
+            substantive = sum(1 for a in result.agent_answers if len(a) > 20)
+            if substantive >= 2:
+                score += 0.25
+                details_parts.append(f"{substantive} substantive answers")
+            elif substantive >= 1:
+                score += 0.15
+
+        # Practice material
+        if result.student_attempt and len(result.student_attempt.strip()) > 20:
+            score += 0.2
+            details_parts.append("Practice material present")
+
+        return TeachingDimensionScore(
+            dimension="completeness",
+            score=min(1.0, score),
+            weight=self.WEIGHTS["completeness"],
+            details=" | ".join(details_parts),
+        )
+
+    def _grade_student_performance(self, result: TeachingResult) -> TeachingDimensionScore:
+        """Grade student performance on practice."""
+        attempt = result.student_attempt
+        score = 0.0
+        details_parts = []
+
+        if not attempt or not attempt.strip():
+            return TeachingDimensionScore(
+                dimension="student_performance",
+                score=0.0,
+                weight=self.WEIGHTS["student_performance"],
+                details="No student attempt",
+            )
+
+        words = attempt.split()
+        if len(words) >= 30:
+            score += 0.3
+            details_parts.append(f"Substantive attempt ({len(words)} words)")
+        elif len(words) >= 15:
+            score += 0.2
+
+        # Finding indicators
+        finding_markers = ["found", "identified", "detected", "issue", "finding", "action"]
+        has_findings = any(m in attempt.lower() for m in finding_markers)
+        if has_findings:
+            score += 0.35
+            details_parts.append("Shows findings")
+
+        # Structure indicators
+        structure_markers = ["- ", "* ", "1.", ":", "Summary", "Action"]
+        has_structure = any(m in attempt for m in structure_markers)
+        if has_structure:
+            score += 0.35
+            details_parts.append("Structured output")
+
+        return TeachingDimensionScore(
+            dimension="student_performance",
+            score=min(1.0, score),
+            weight=self.WEIGHTS["student_performance"],
+            details=" | ".join(details_parts),
+        )
+
+    def _grade_adaptivity(self, result: TeachingResult) -> TeachingDimensionScore:
+        """Grade agent's adaptivity to student needs."""
+        score = 0.0
+        details_parts = []
+
+        # Different answers to different questions
+        if len(result.agent_answers) >= 2:
+            if result.agent_answers[0] != result.agent_answers[1]:
+                score += 0.35
+                details_parts.append("Varied responses")
+
+        # Answer quality
+        if result.agent_answers:
+            avg_len = sum(len(a) for a in result.agent_answers) / len(result.agent_answers)
+            if avg_len > 100:
+                score += 0.3
+                details_parts.append(f"Detailed answers (avg {avg_len:.0f} chars)")
+            elif avg_len > 50:
+                score += 0.2
+
+        # Level awareness
+        if result.lesson_plan and any(
+            lvl in result.lesson_plan.lower()
+            for lvl in ["beginner", "intermediate", "advanced", "student level"]
+        ):
+            score += 0.35
+            details_parts.append("Level-aware")
+
+        return TeachingDimensionScore(
+            dimension="adaptivity",
+            score=min(1.0, score),
+            weight=self.WEIGHTS["adaptivity"],
+            details=" | ".join(details_parts),
+        )
 
 
-def main():
-    """CLI entry point for teacher-student evaluation."""
-    import argparse
+def _get_domain_terms(domain: str) -> list[str]:
+    """Get domain-specific terms for instruction quality checking."""
+    terms = {
+        "code_review": [
+            "bug",
+            "security",
+            "vulnerability",
+            "style",
+            "naming",
+            "convention",
+            "injection",
+            "refactor",
+            "test",
+            "pattern",
+        ],
+        "meeting_synthesizer": [
+            "action item",
+            "decision",
+            "speaker",
+            "transcript",
+            "summary",
+            "deadline",
+            "owner",
+            "follow-up",
+        ],
+        "document_creator": [
+            "template",
+            "format",
+            "section",
+            "outline",
+            "audience",
+        ],
+        "data_analysis": [
+            "statistics",
+            "trend",
+            "correlation",
+            "dataset",
+            "insight",
+        ],
+        "project_planning": [
+            "task",
+            "milestone",
+            "dependency",
+            "risk",
+            "timeline",
+        ],
+    }
+    return terms.get(domain, [])
 
-    parser = argparse.ArgumentParser(description="Teacher-Student Learning Evaluation")
-    parser.add_argument("--model", default=None, help="LLM model to use")
-    parser.add_argument("--max-turns", type=int, default=8, help="Max teaching turns")
-    parser.add_argument("--output-dir", default="/tmp/teaching_eval", help="Output directory")
 
-    args = parser.parse_args()
+def run_combined_eval(
+    agent: DomainAgent,
+    teaching_topic: str,
+    domain_weight: float = 0.6,
+    teaching_weight: float = 0.4,
+) -> dict[str, Any]:
+    """Run combined domain + teaching evaluation.
 
-    print("=" * 70)
-    print("TEACHER-STUDENT LEARNING EVALUATION (L7)")
-    print("=" * 70)
+    Args:
+        agent: Domain agent to evaluate
+        teaching_topic: Topic for teaching evaluation
+        domain_weight: Weight for domain eval score
+        teaching_weight: Weight for teaching eval score
 
-    result = run_teaching_eval(
-        model=args.model,
-        max_teaching_turns=args.max_turns,
+    Returns:
+        Dictionary with combined scores
+    """
+    from amplihack.eval.domain_eval_harness import DomainEvalHarness
+
+    # Run domain evaluation
+    domain_harness = DomainEvalHarness(agent)
+    domain_report = domain_harness.run()
+
+    # Run teaching evaluation
+    teaching_evaluator = DomainTeachingEvaluator(agent)
+    teaching_result = teaching_evaluator.evaluate(topic=teaching_topic)
+
+    # Combine scores
+    combined_score = (
+        domain_report.overall_score * domain_weight
+        + teaching_result.composite_score * teaching_weight
     )
 
-    # Print results
-    print(f"\n{'=' * 70}")
-    print("RESULTS")
-    print(f"{'=' * 70}")
-    print(f"Teacher Score: {result.teacher_avg_score:.2%}")
-    print(f"Student Pre-Test: {result.student_pre_score:.2%} (before teaching)")
-    print(f"Student Post-Test: {result.student_avg_score:.2%} (after teaching)")
-    print(f"Normalized Learning Gain: {result.normalized_learning_gain:.2%} (>70% = high)")
-    print(f"Transfer Ratio: {result.transfer_ratio:.2%}")
-    print(f"Teaching Turns: {result.total_teaching_turns}")
-    print(f"Student Facts Learned: {result.student_facts_learned}")
-    print(f"Student Talk Ratio: {result.student_talk_ratio:.1%} (target: ≥30%)")
-
-    print("\nStudent Question Scores (pre → post):")
-    for i, g in enumerate(result.student_grades):
-        pre = result.student_pre_grades[i]["score"] if i < len(result.student_pre_grades) else 0
-        print(f"  {g['question'][:55]}... {pre:.0%} → {g['score']:.0%}")
-
-    print(f"\nTopics Covered: {', '.join(result.topics_covered[:8])}")
-
-    # Save results
-    output_dir = Path(args.output_dir)
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    with open(output_dir / "teaching_eval_result.json", "w") as f:
-        json.dump(
-            {
-                "student_avg_score": result.student_avg_score,
-                "teacher_avg_score": result.teacher_avg_score,
-                "transfer_ratio": result.transfer_ratio,
-                "total_teaching_turns": result.total_teaching_turns,
-                "student_facts_learned": result.student_facts_learned,
-                "student_grades": result.student_grades,
-                "teacher_grades": result.teacher_grades,
-                "transcript": result.transcript,
-                "topics_covered": result.topics_covered,
-            },
-            f,
-            indent=2,
-        )
-
-    print(f"\nResults saved to: {output_dir}")
-
-    # Success criteria
-    print(f"\n{'=' * 70}")
-    print("SUCCESS CRITERIA")
-    print(f"{'=' * 70}")
-    criteria = [
-        ("Student > 50% (minimum viable)", result.student_avg_score > 0.5),
-        ("Student > 60% of teacher (good transfer)", result.transfer_ratio > 0.6),
-        ("Student > 75% (good)", result.student_avg_score > 0.75),
-        ("Student > 80% of teacher (excellent)", result.transfer_ratio > 0.8),
-    ]
-    for desc, met in criteria:
-        status = "MET" if met else "NOT MET"
-        print(f"  [{status}] {desc}")
+    return {
+        "agent_name": agent.agent_name,
+        "domain": agent.domain,
+        "domain_score": round(domain_report.overall_score, 3),
+        "teaching_score": round(teaching_result.composite_score, 3),
+        "combined_score": round(combined_score, 3),
+        "domain_weight": domain_weight,
+        "teaching_weight": teaching_weight,
+        "domain_details": domain_report.to_dict(),
+        "teaching_details": teaching_result.to_dict(),
+    }
 
 
-if __name__ == "__main__":
-    main()
-
-
-__all__ = ["run_teaching_eval", "TeachingEvalResult"]
+__all__ = [
+    "DomainTeachingEvaluator",
+    "DomainTeachingEvalResult",
+    "TeachingDimensionScore",
+    "run_combined_eval",
+]

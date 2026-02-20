@@ -3,7 +3,10 @@
 Production-ready framework for evaluating goal-seeking agents
 across execution boundaries using persistent memory.
 
-Includes meta-eval teaching experiment for agent-teaches-agent evaluation.
+Also provides domain-specific evaluation:
+- DomainEvalHarness: Generic harness for domain agents
+- DomainTeachingEvaluator: Teaching ability evaluation
+- run_combined_eval: Combined domain + teaching scores
 """
 
 from .grader import GradeResult, grade_answer
