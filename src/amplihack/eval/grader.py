@@ -63,9 +63,25 @@ Return ONLY a JSON object with this structure:
         messages=[{"role": "user", "content": prompt}],
     )
 
-    # Extract JSON from response
-    response_text = message.content[0].text
-    result_json = json.loads(response_text)
+    # Extract JSON from response (handle markdown code blocks)
+    response_text = message.content[0].text.strip()
+
+    try:
+        result_json = json.loads(response_text)
+    except json.JSONDecodeError:
+        # Try extracting from markdown code block
+        import re
+
+        fenced = re.search(r"```(?:json)?\s*\n?(.*?)\n?\s*```", response_text, re.DOTALL)
+        if fenced:
+            result_json = json.loads(fenced.group(1).strip())
+        else:
+            # Try finding first { ... } block
+            brace = re.search(r"\{.*\}", response_text, re.DOTALL)
+            if brace:
+                result_json = json.loads(brace.group(0))
+            else:
+                return GradeResult(score=0.5, reasoning="Failed to parse grader response")
 
     return GradeResult(score=result_json["score"], reasoning=result_json["reasoning"])
 
