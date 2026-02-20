@@ -92,11 +92,14 @@ RUNTIME_DIRS = [
 ]
 
 # Hook configurations for amplihack and xpia systems
+# MUST match hooks.json - hooks.json is the canonical source of truth
 HOOK_CONFIGS = {
     "amplihack": [
         {"type": "SessionStart", "file": "session_start.py", "timeout": 10},
         {"type": "Stop", "file": "stop.py", "timeout": 120},
+        {"type": "PreToolUse", "file": "pre_tool_use.py", "matcher": "*"},
         {"type": "PostToolUse", "file": "post_tool_use.py", "matcher": "*"},
+        {"type": "UserPromptSubmit", "file": "user_prompt_submit.py", "timeout": 10},
         {"type": "PreCompact", "file": "pre_compact.py", "timeout": 30},
     ],
     "xpia": [
