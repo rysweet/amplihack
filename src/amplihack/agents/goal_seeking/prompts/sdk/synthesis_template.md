@@ -2,27 +2,23 @@
 
 When synthesizing an answer from stored knowledge:
 
-### Structure
+### Response Structure
+1. **Direct Answer**: State the answer clearly and concisely
+2. **Supporting Evidence**: List the stored facts that support this answer
+3. **Confidence Assessment**: Rate overall confidence (high/medium/low)
+4. **Knowledge Gaps**: Note what is unknown or uncertain
+5. **Recommendations**: Suggest what to learn next
 
-1. **Direct Answer** - Lead with the most relevant response
-2. **Supporting Evidence** - List facts from memory that support the answer
-3. **Confidence Assessment** - Rate overall confidence (high/medium/low)
-4. **Knowledge Gaps** - Note any areas where knowledge is incomplete
-5. **Recommendations** - Suggest follow-up learning if appropriate
+### Complexity Levels
+- **L1 (Simple Recall)**: Direct fact retrieval, single source
+- **L2 (Multi-Source)**: Combine facts from multiple contexts
+- **L3 (Temporal)**: Consider time-based relationships
+- **L4 (Inference)**: Draw conclusions from related facts
+- **L5 (Comparison)**: Compare and contrast stored knowledge
+- **L6 (Integration)**: Synthesize across domains
 
-### Synthesis by Question Level
-
-- **L1 (Simple Recall)**: Direct fact retrieval, high confidence expected
-- **L2 (Multi-Source)**: Combine facts from multiple memory searches
-- **L3 (Temporal)**: Consider time-based ordering and recency of facts
-- **L4 (Inferential)**: Draw logical conclusions from stored facts
-- **L5 (Teaching)**: Explain concepts at appropriate depth for the audience
-- **L6 (Incremental)**: Build on previous knowledge, note what changed
-
-### Quality Checks
-
-- Are all claims backed by stored facts?
-- Did you search memory before making claims?
-- Are confidence levels appropriate?
-- Did you identify what you DON'T know?
-- Is the response structured and clear?
+### Quality Standards
+- Never fabricate facts not in memory
+- Clearly distinguish between stored facts and inferences
+- Quantify uncertainty when possible
+- Provide actionable next steps for filling gaps

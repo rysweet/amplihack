@@ -31,9 +31,9 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 _HAS_AGENT_FRAMEWORK = False
 try:
-    from agent_framework import Agent as AFAgent
-    from agent_framework import tool as af_tool
-    from agent_framework.openai import OpenAIChatClient
+    from agent_framework import Agent as AFAgent  # type: ignore[import-not-found]
+    from agent_framework import tool as af_tool  # type: ignore[import-not-found]
+    from agent_framework.openai import OpenAIChatClient  # type: ignore[import-not-found]
 
     _HAS_AGENT_FRAMEWORK = True
 except Exception:
@@ -131,7 +131,7 @@ class MicrosoftGoalSeekingAgent(GoalSeekingAgent):
     - AzureOpenAIChatClient for Azure deployments
     - Mock execution fallback when SDK not importable
     - Prompt templates loaded from markdown files
-    - amplihack-memory-lib (CognitiveAdapter) for persistent knowledge
+    - amplihack-memory-lib (MemoryRetriever) for persistent knowledge
 
     Example:
         >>> agent = MicrosoftGoalSeekingAgent(
