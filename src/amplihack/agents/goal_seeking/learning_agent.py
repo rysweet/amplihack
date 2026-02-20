@@ -649,11 +649,12 @@ Rules:
 (d) multi-source synthesis - combining information from different sources
 (e) contradiction resolution - handling conflicting information
 (f) incremental update - finding the MOST RECENT or UPDATED information. Use this when the question asks about a SINGLE entity's current state or history (keywords: "how many now", "current", "latest", "updated", "changed", "how did X change", "trajectory", "complete history", "describe X's achievement/record/progress")
+(g) causal_counterfactual - reasoning about causes, root causes, "why did X happen", OR hypothetical/counterfactual scenarios like "what if X", "if X had not happened", "without X", "would X still", "in a world where". These questions require reasoning from known facts to explore causes or alternate scenarios - they are NOT simple recall even though they may involve hypotheticals not in the data.
 
 Question: {question}
 
 Return ONLY a JSON object:
-{{"intent": "one of: simple_recall, mathematical_computation, temporal_comparison, multi_source_synthesis, contradiction_resolution, incremental_update", "needs_math": true/false, "needs_temporal": true/false, "reasoning": "brief explanation"}}"""
+{{"intent": "one of: simple_recall, mathematical_computation, temporal_comparison, multi_source_synthesis, contradiction_resolution, incremental_update, causal_counterfactual", "needs_math": true/false, "needs_temporal": true/false, "reasoning": "brief explanation"}}"""
 
         try:
             response = litellm.completion(
@@ -1042,20 +1043,47 @@ Knowledge Overview (what was learned):
         # Add counterfactual/hypothetical reasoning instructions
         counterfactual_instructions = ""
         question_lower = question.lower()
-        if any(
+        is_counterfactual = intent_type == "causal_counterfactual" or any(
             kw in question_lower
             for kw in ("what if", "if ", "would ", "without ", "had not", "removed")
-        ):
+        )
+        is_causal = intent_type == "causal_counterfactual" or any(
+            kw in question_lower
+            for kw in (
+                "cause",
+                "caused",
+                "why did",
+                "most important",
+                "root cause",
+                "single factor",
+            )
+        )
+        if is_counterfactual:
             counterfactual_instructions = (
                 "\n\nIMPORTANT - HYPOTHETICAL/COUNTERFACTUAL REASONING:\n"
                 "This question asks you to imagine an alternative scenario. You MUST:\n"
                 "1. Start from the ACTUAL facts as your baseline\n"
                 "2. Apply the hypothetical change (remove X, change timing, etc.)\n"
                 "3. Reason through the CONSEQUENCES of that change step by step\n"
-                "4. Compare the hypothetical outcome to ALL other entities (not just the one asked about)\n"
-                "5. Draw a clear conclusion about how things would be different\n\n"
-                "Do NOT refuse to answer by saying the hypothetical isn't in the facts.\n"
-                "The whole point is to REASON about what WOULD happen based on what you DO know.\n"
+                "4. For EACH relevant entity, estimate how the change affects them\n"
+                "5. Compare the hypothetical outcome to ALL other entities (not just the one asked about)\n"
+                "6. Acknowledge uncertainty: use language like 'likely', 'might have', 'approximately'\n"
+                "7. Consider what WOULD still remain even without the changed factor\n\n"
+                "CRITICAL: Do NOT refuse to answer by saying the hypothetical isn't in the facts.\n"
+                "The ENTIRE POINT is to REASON about what WOULD happen based on what you DO know.\n"
+                "You MUST engage with the hypothetical scenario and provide a reasoned answer.\n"
+            )
+        if is_causal:
+            counterfactual_instructions += (
+                "\n\nIMPORTANT - CAUSAL/ROOT CAUSE REASONING:\n"
+                "When asked about causes, distinguish between:\n"
+                "- ROOT CAUSES: The original trigger that set everything else in motion\n"
+                "- CONTRIBUTING FACTORS: Things that amplified or enabled the outcome\n"
+                "- PROXIMATE CAUSES: The immediate/direct causes of the outcome\n\n"
+                "A root cause is the one that, if removed, would prevent ALL downstream effects.\n"
+                "Ask yourself: 'Would the other factors have happened without THIS one?'\n"
+                "If Factor A triggered Factor B and C, then A is the root cause,\n"
+                "even if B and C directly produced the outcome.\n"
             )
 
         # Build source-specific section if available
