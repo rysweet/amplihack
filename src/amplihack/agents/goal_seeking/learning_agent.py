@@ -1019,14 +1019,24 @@ Knowledge Overview (what was learned):
 """
 
         # Add contradiction-specific instructions
+        # Also trigger for questions that hint at conflicting data
         contradiction_instructions = ""
-        if intent_type == "contradiction_resolution":
+        has_contradiction_cues = any(
+            kw in question.lower()
+            for kw in ("disagree", "conflicting", "contradiction", "reliable", "trust")
+        )
+        if intent_type == "contradiction_resolution" or (
+            question_level == "L5" or has_contradiction_cues
+        ):
             contradiction_instructions = (
                 "\n\nIMPORTANT - HANDLING CONFLICTING INFORMATION:\n"
-                "- Present both viewpoints with their sources if available\n"
-                "- Explain why they might differ (different time periods, different measurements, etc.)\n"
-                "- Let the questioner decide which to trust\n"
-                "- If one source seems more reliable or recent, note that\n"
+                "Check the facts carefully for CONFLICTING numbers or claims from different sources.\n"
+                "If the facts contain DIFFERENT values for the same metric:\n"
+                "- You MUST present ALL conflicting values with their sources\n"
+                "- Do NOT dismiss any source as an 'outlier' - all sources are equally valid\n"
+                "- State clearly: 'According to [Source A], X. According to [Source B], Y.'\n"
+                "- Explain possible reasons for the discrepancy\n"
+                "- Do NOT pick one value as 'the answer' - the contradiction IS the answer\n"
             )
 
         # Add counterfactual/hypothetical reasoning instructions
