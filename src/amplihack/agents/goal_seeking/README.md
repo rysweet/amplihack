@@ -355,6 +355,46 @@ memory = MemoryRetriever(
 )
 ```
 
+### 5. SDK Adapters (`sdk_adapters/`)
+
+SDK-agnostic abstraction for building goal-seeking agents across multiple AI SDKs.
+See [sdk_adapters/README.md](sdk_adapters/README.md) for full documentation.
+
+**Quick Start:**
+
+```python
+from amplihack.agents.goal_seeking.sdk_adapters.factory import create_agent
+
+# Claude Agent SDK
+agent = create_agent(name="learner", sdk="claude")
+
+# Mini-framework baseline
+agent = create_agent(name="baseline", sdk="mini")
+
+result = await agent.run("Learn about photosynthesis")
+```
+
+**Key Components:**
+- `GoalSeekingAgent` - Abstract base with 7 learning tools
+- `ClaudeGoalSeekingAgent` - Claude SDK with native tools, subagent support, MCP
+- `create_agent()` - Factory for SDK-agnostic creation
+- Native tools: bash, read_file, write_file, edit_file, glob, grep
+
+### 6. LearningAgent (`learning_agent.py`)
+
+Generic agent for learning from any content sources (not Wikipedia-specific).
+Supports hierarchical memory, intent detection, temporal reasoning, and L1-L4 question levels.
+
+### 7. HierarchicalMemory (`hierarchical_memory.py`)
+
+Kuzu graph-based memory with SIMILAR_TO edges, DERIVES_FROM provenance, SUPERSEDES
+for incremental updates, and contradiction detection.
+
+### 8. CognitiveAdapter (`cognitive_adapter.py`)
+
+6-type cognitive memory adapter (sensory, working, episodic, semantic, procedural, prospective).
+Drop-in replacement for FlatRetrieverAdapter with additional cognitive capabilities.
+
 ## Future Enhancements
 
 Potential extensions (not implemented yet):
