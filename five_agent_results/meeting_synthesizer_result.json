@@ -1,0 +1,18 @@
+{
+  "agent_name": "meeting_synthesizer",
+  "domain": "meeting_synthesizer",
+  "description": "Synthesizes meeting transcripts into structured summaries",
+  "eval_overall_score": 0.917,
+  "eval_overall_passed": true,
+  "eval_level_scores": {
+    "L1": 0.667,
+    "L2": 1.0,
+    "L3": 1.0,
+    "L4": 1.0
+  },
+  "teaching_topic": "meeting synthesis",
+  "lesson_plan": "1. What are action items?\n2. Identifying owners\n3. Extracting deadlines\n4. Prioritization\n5. Practice extraction",
+  "instruction_preview": "When extracting action items from meeting transcripts:\n\n1. **Owner Identification**: Look for direct assignments - 'Bob, can you...' or self-assignments 'I will...'\n   Example: 'Alice: Bob, can you dr",
+  "student_attempt": "Student findings:\n- Action: fix the login bug (Owner: Bob)",
+  "combined_score": 0.942
+}

@@ -1,0 +1,18 @@
+{
+  "agent_name": "data_analysis",
+  "domain": "data_analysis",
+  "description": "Analyzes data, detects trends, generates insights",
+  "eval_overall_score": 0.958,
+  "eval_overall_passed": true,
+  "eval_level_scores": {
+    "L1": 0.833,
+    "L2": 1.0,
+    "L3": 1.0,
+    "L4": 1.0
+  },
+  "teaching_topic": "trend detection",
+  "lesson_plan": "1. What are descriptive statistics?\n2. Mean, median, mode\n3. Variance and standard deviation\n4. When to use each measure\n5. Practice computing",
+  "instruction_preview": "When computing statistics:\n\n1. **Mean**: Sum of all values divided by count\n   Example: [10, 20, 30] -> mean = 20\n\n2. **Median**: Middle value when sorted\n   Example: [10, 20, 30] -> median = 20\n   Ex",
+  "student_attempt": "Student findings:\n- Computed mean: 25.167\n- Detected trend: increasing\n- Change rate: 310.0%",
+  "combined_score": 0.971
+}

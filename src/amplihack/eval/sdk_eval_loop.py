@@ -180,7 +180,6 @@ def run_sdk_eval_loop(
     num_loops: int = 5,
     levels: list[str] | None = None,
     base_output_dir: str = "./eval_sdk_loop",
-    grader_votes: int = 1,
 ) -> SDKEvalReport:
     """Run improvement loop for a single SDK.
 
@@ -189,7 +188,6 @@ def run_sdk_eval_loop(
         num_loops: Number of improvement iterations
         levels: Levels to evaluate (default: L1-L6)
         base_output_dir: Base directory for results
-        grader_votes: Number of grading votes per question
 
     Returns:
         SDKEvalReport with all iteration results
@@ -218,7 +216,6 @@ def run_sdk_eval_loop(
             agent_name=agent_name,
             levels_to_run=levels,
             sdk=sdk,
-            grader_votes=grader_votes,
         )
 
         # Step 1: Run eval
@@ -324,7 +321,6 @@ def run_multi_sdk_eval(
     num_loops: int = 5,
     levels: list[str] | None = None,
     base_output_dir: str = "./eval_sdk_loop",
-    grader_votes: int = 1,
 ) -> MultiSDKReport:
     """Run improvement loops for multiple SDKs and compare.
 
@@ -333,7 +329,6 @@ def run_multi_sdk_eval(
         num_loops: Number of improvement iterations per SDK
         levels: Levels to evaluate (default: L1-L6)
         base_output_dir: Base directory for results
-        grader_votes: Number of grading votes per question
 
     Returns:
         MultiSDKReport with comparative results
@@ -350,7 +345,6 @@ def run_multi_sdk_eval(
             num_loops=num_loops,
             levels=levels,
             base_output_dir=base_output_dir,
-            grader_votes=grader_votes,
         )
         sdk_reports[sdk] = report
 
@@ -461,13 +455,6 @@ def main():
         default="./eval_sdk_loop",
         help="Output directory for results",
     )
-    parser.add_argument(
-        "--grader-votes",
-        type=int,
-        default=1,
-        help="Number of grading votes per question (default: 1)",
-    )
-
     args = parser.parse_args()
 
     # Determine SDKs
@@ -483,7 +470,6 @@ def main():
         num_loops=args.loops,
         levels=args.levels,
         base_output_dir=args.output_dir,
-        grader_votes=args.grader_votes,
     )
 
 
