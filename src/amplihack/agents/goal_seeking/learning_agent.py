@@ -985,6 +985,8 @@ Respond with a JSON list like:
                 "- Pay attention to WHICH metric is asked about (gold vs total vs other)\n"
                 "- When describing trends, state the EXACT change in each sub-period "
                 "(e.g., '+4 golds Day 7→9, then +1 gold Day 9→10, total +5')\n"
+                "- Do NOT write your final answer at the top. Show all work FIRST,\n"
+                "  then state your conclusion at the END after all calculations.\n"
             )
 
         # Add multi-source synthesis instructions
