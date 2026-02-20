@@ -107,7 +107,7 @@ pytest tests/agents/goal_seeking/test_claude_sdk_adapter.py -v
 ## Running Evaluation
 
 ```bash
-python run_eval.py --parallel 3
+python src/amplihack/eval/scripts/run_progressive_eval.py --parallel 3
 ```
 
 Runs L1-L6 progressive evaluation with 3 parallel runs and median scoring.
