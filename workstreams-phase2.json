@@ -1,0 +1,23 @@
+[
+  {
+    "issue": 2415,
+    "branch": "feat/pr-b-claude-sdk",
+    "description": "Claude Agent SDK Implementation",
+    "task": "Full integration with claude-agents package in sdk_adapters/claude_sdk.py. Use /claude-agent-sdk skill for API reference. Implement: native tools (bash, read/write/edit, glob, grep), subagent support for teaching, MCP integration, 7 learning tools mapping, unit tests, L1-L12 eval (3-run parallel), quality audit, self-improvement loop (5 iterations). Must score within 10% of mini-framework baseline. Reference: /home/azureuser/src/amplihack5/src/amplihack/agents/goal_seeking/learning_agent.py for baseline implementation.",
+    "recipe": "default-workflow"
+  },
+  {
+    "issue": 2416,
+    "branch": "feat/pr-c-copilot-sdk",
+    "description": "GitHub Copilot SDK Implementation (DEFAULT)",
+    "task": "Full integration with github-copilot-sdk package in sdk_adapters/copilot_sdk.py. Use /github-copilot-sdk skill for API reference. Implement: native tools (file system, git, web --allow-all mode), session-based state management, 7 learning tools mapping, unit tests, L1-L12 eval (3-run parallel), quality audit, self-improvement loop (5 iterations). Update generator default to use this SDK. Must score within 10% of mini-framework baseline.",
+    "recipe": "default-workflow"
+  },
+  {
+    "issue": 2417,
+    "branch": "feat/pr-d-microsoft-sdk",
+    "description": "Microsoft Agent Framework Implementation",
+    "task": "Full integration with agent-framework package in sdk_adapters/microsoft_sdk.py. Use /microsoft-agent-framework skill for API reference. Implement: Thread state + @function_tool decorator + GraphWorkflow, middleware + telemetry integration, 7 learning tools mapping, unit tests, L1-L12 eval (3-run parallel), quality audit, self-improvement loop (5 iterations). Must score within 10% of mini-framework baseline.",
+    "recipe": "default-workflow"
+  }
+]
