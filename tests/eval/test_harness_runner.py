@@ -32,7 +32,7 @@ def test_run_harness_executes_all_phases(tmp_path):
         memory_backend="amplihack-memory-lib",
     )
 
-    with patch("subprocess.run") as mock_run:
+    with patch("amplihack.eval.harness_runner.subprocess.run") as mock_run:
         # Mock learning phase
         learning_response = {"status": "success", "stored_count": 1, "total_articles": 1}
         # Mock testing phase
@@ -46,7 +46,7 @@ def test_run_harness_executes_all_phases(tmp_path):
             MagicMock(returncode=0, stdout=json.dumps(testing_response)),
         ]
 
-        with patch("amplihack.eval.grader.grade_answer") as mock_grade:
+        with patch("amplihack.eval.harness_runner.grade_answer") as mock_grade:
             mock_grade.return_value = MagicMock(score=0.85, reasoning="Good")
 
             result = run_harness(config)

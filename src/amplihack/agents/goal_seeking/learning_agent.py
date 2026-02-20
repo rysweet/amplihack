@@ -26,6 +26,7 @@ from .agentic_loop import AgenticLoop, ReasoningTrace
 from .cognitive_adapter import HAS_COGNITIVE_MEMORY, CognitiveAdapter
 from .flat_retriever_adapter import FlatRetrieverAdapter
 from .memory_retrieval import MemoryRetriever
+from .similarity import rerank_facts_by_query
 
 logger = logging.getLogger(__name__)
 
@@ -461,6 +462,12 @@ Rules:
                 return (t_idx, fact.get("timestamp", ""))
 
             relevant_facts = sorted(relevant_facts, key=temporal_sort_key)
+        else:
+            # Keyword-boosted reranking: put most question-relevant facts first.
+            # Skip for temporal queries (already sorted chronologically).
+            # This helps the LLM focus on the most relevant context, especially
+            # when the fact count approaches the prompt's max_facts limit.
+            relevant_facts = rerank_facts_by_query(relevant_facts, question)
 
         # If the question references a specific article/source, provide a filtered
         # subset of facts from JUST that article. This helps the LLM focus on the
@@ -871,7 +878,8 @@ Respond with a JSON list like:
                     return facts if isinstance(facts, list) else []
                 return []
 
-        except Exception:
+        except Exception as e:
+            logger.warning("Fact extraction LLM call failed: %s", e)
             # Fallback: create simple fact from content
             return [
                 {

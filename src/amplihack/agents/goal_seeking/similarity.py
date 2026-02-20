@@ -228,8 +228,62 @@ def compute_similarity(node_a: dict[str, Any], node_b: dict[str, Any]) -> float:
     return 0.5 * word_sim + 0.2 * tag_sim + 0.3 * concept_sim
 
 
+def rerank_facts_by_query(
+    facts: list[dict[str, Any]],
+    query: str,
+    top_k: int = 0,
+) -> list[dict[str, Any]]:
+    """Rerank retrieved facts by keyword relevance to a query.
+
+    Uses keyword overlap (Jaccard-like) to score each fact against the query,
+    then sorts facts so the most relevant ones appear first. Facts with zero
+    relevance are kept but moved to the end to preserve completeness.
+
+    This is a lightweight reranking step that improves synthesis quality
+    by putting the most relevant context at the top of the LLM prompt.
+
+    Args:
+        facts: List of fact dicts with 'outcome' and/or 'context' keys
+        query: The question or search query
+        top_k: If > 0, return only the top-k facts. If 0, return all (reranked).
+
+    Returns:
+        Reranked list of fact dicts (most relevant first)
+    """
+    if not facts or not query:
+        return facts
+
+    query_tokens = _tokenize(query)
+    if not query_tokens:
+        return facts
+
+    scored: list[tuple[float, int, dict[str, Any]]] = []
+    for idx, fact in enumerate(facts):
+        # Combine outcome and context text for matching
+        fact_text = f"{fact.get('context', '')} {fact.get('outcome', '')}"
+        fact_tokens = _tokenize(fact_text)
+
+        if not fact_tokens:
+            scored.append((0.0, idx, fact))
+            continue
+
+        # Compute overlap: fraction of query tokens found in fact
+        overlap = len(query_tokens & fact_tokens) / len(query_tokens)
+        scored.append((overlap, idx, fact))
+
+    # Sort by relevance score descending, then by original order for ties
+    scored.sort(key=lambda x: (-x[0], x[1]))
+
+    reranked = [item[2] for item in scored]
+
+    if top_k > 0:
+        return reranked[:top_k]
+    return reranked
+
+
 __all__ = [
     "compute_word_similarity",
     "compute_tag_similarity",
     "compute_similarity",
+    "rerank_facts_by_query",
 ]

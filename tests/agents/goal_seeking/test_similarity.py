@@ -12,6 +12,7 @@ from amplihack.agents.goal_seeking.similarity import (
     compute_similarity,
     compute_tag_similarity,
     compute_word_similarity,
+    rerank_facts_by_query,
 )
 
 
@@ -109,3 +110,51 @@ class TestCompositeSimilarity:
         """Empty nodes should have similarity 0.0."""
         score = compute_similarity({}, {})
         assert score == pytest.approx(0.0)
+
+
+class TestRerankFactsByQuery:
+    """Tests for rerank_facts_by_query."""
+
+    def test_reranks_most_relevant_first(self):
+        """Facts most relevant to query should be ranked first."""
+        facts = [
+            {"context": "General", "outcome": "Dogs are popular pets"},
+            {"context": "Climate", "outcome": "Norway won gold medals in skiing"},
+            {"context": "Sports", "outcome": "Gold medal count for Olympics"},
+        ]
+        reranked = rerank_facts_by_query(facts, "How many gold medals did Norway win?")
+        # "Norway" + "gold" + "medals" appear in fact[1], so it should rank first
+        assert "Norway" in reranked[0]["outcome"]
+
+    def test_preserves_all_facts(self):
+        """All facts should be preserved even if irrelevant."""
+        facts = [
+            {"context": "A", "outcome": "Cats are cute"},
+            {"context": "B", "outcome": "Dogs are loyal"},
+            {"context": "C", "outcome": "Fish swim well"},
+        ]
+        reranked = rerank_facts_by_query(facts, "Tell me about quantum physics")
+        assert len(reranked) == 3
+
+    def test_empty_query_returns_original_order(self):
+        """Empty query should return facts in original order."""
+        facts = [
+            {"context": "A", "outcome": "First fact"},
+            {"context": "B", "outcome": "Second fact"},
+        ]
+        reranked = rerank_facts_by_query(facts, "")
+        assert reranked == facts
+
+    def test_empty_facts_returns_empty(self):
+        """Empty facts list should return empty."""
+        assert rerank_facts_by_query([], "some query") == []
+
+    def test_top_k_limits_results(self):
+        """top_k should limit returned facts."""
+        facts = [
+            {"context": "A", "outcome": "Fact one about topic"},
+            {"context": "B", "outcome": "Fact two about something"},
+            {"context": "C", "outcome": "Fact three about topic"},
+        ]
+        reranked = rerank_facts_by_query(facts, "topic", top_k=2)
+        assert len(reranked) == 2
