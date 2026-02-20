@@ -1,0 +1,9 @@
+[
+  {
+    "issue": 2418,
+    "branch": "feat/pr-e-self-improving-skill",
+    "description": "Self-Improving Agent Builder Skill",
+    "task": "Create .claude/skills/self-improving-agent-builder/ with reusable workflow: build → eval → audit → improve → re-eval. Use subprocess sub-agents for each phase. Must work with all 4 implementations (mini-framework + 3 SDKs from issues #2415, #2416, #2417). Configurable iteration limit (default 5). Logs progress and scores. Reverts unsuccessful improvements. Includes documentation, examples, and integration tests with all SDK implementations.",
+    "recipe": "default-workflow"
+  }
+]

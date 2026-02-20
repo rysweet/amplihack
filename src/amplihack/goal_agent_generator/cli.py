@@ -63,6 +63,12 @@ logger = logging.getLogger(__name__)
     is_flag=True,
     help="Enable memory/learning capabilities",
 )
+@click.option(
+    "--sdk",
+    type=click.Choice(["copilot", "claude", "microsoft", "mini"], case_sensitive=False),
+    default="copilot",
+    help="SDK to use for agent execution (default: copilot)",
+)
 def new_goal_agent(
     file: Path,
     output: Path | None,
@@ -70,6 +76,7 @@ def new_goal_agent(
     skills_dir: Path | None,
     verbose: bool,
     enable_memory: bool,
+    sdk: str,
 ) -> int:
     """
     Generate a new goal-seeking agent from a prompt file.
@@ -129,11 +136,17 @@ def new_goal_agent(
         click.echo("\n[4/4] Assembling agent bundle...")
         assembler = AgentAssembler()
         bundle = assembler.assemble(
-            goal_definition, execution_plan, skills, bundle_name=name, enable_memory=enable_memory
+            goal_definition,
+            execution_plan,
+            skills,
+            bundle_name=name,
+            enable_memory=enable_memory,
+            sdk=sdk,
         )
 
         click.echo(f"  Bundle name: {bundle.name}")
         click.echo(f"  Bundle ID: {bundle.id}")
+        click.echo(f"  SDK: {sdk}")
         if enable_memory:
             click.echo("  Memory: Enabled")
 
