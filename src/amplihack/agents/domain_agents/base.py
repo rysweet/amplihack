@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
@@ -71,8 +70,7 @@ class DomainAgent(ABC):
 
         self.agent_name = agent_name.strip()
         self.domain = domain.strip()
-        # Allow env var override: DOMAIN_AGENT_MODEL
-        self.model = os.environ.get("DOMAIN_AGENT_MODEL", model)
+        self.model = model
         self.executor = ActionExecutor()
         self.injected_skills: list[str] = []
 

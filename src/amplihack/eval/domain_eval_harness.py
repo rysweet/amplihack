@@ -7,13 +7,10 @@ Philosophy: Generic harness that works with any domain - agents provide their ow
 from __future__ import annotations
 
 import json
-import logging
 from dataclasses import dataclass, field
 from typing import Any
 
 from amplihack.agents.domain_agents.base import DomainAgent, EvalLevel, EvalScenario
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -223,7 +220,6 @@ class DomainEvalHarness:
         try:
             task_result = self.agent.execute_task(scenario.input_data)
         except Exception as e:
-            logger.exception("Scenario %s execution failed", scenario.scenario_id)
             return ScenarioResult(
                 scenario_id=scenario.scenario_id,
                 scenario_name=scenario.name,
@@ -231,7 +227,7 @@ class DomainEvalHarness:
                 score=0.0,
                 passed=False,
                 agent_output=None,
-                grading_details=f"Agent execution failed: {type(e).__name__}",
+                grading_details=f"Agent execution failed: {e!s}",
             )
 
         if not task_result.success:
