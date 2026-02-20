@@ -12,7 +12,10 @@ Public API (the "studs"):
 import os
 
 # Import constants from package root
-from . import CLAUDE_DIR, HOOK_CONFIGS
+from . import HOME, HOOK_CONFIGS
+
+# Hooks are installed to ~/.amplihack/.claude/ (not ~/.claude/)
+AMPLIHACK_CLAUDE_DIR = os.path.join(HOME, ".amplihack", ".claude")
 
 
 def verify_hooks():
@@ -20,7 +23,7 @@ def verify_hooks():
     all_exist = True
 
     for hook_system, hooks in HOOK_CONFIGS.items():
-        hooks_dir = os.path.join(CLAUDE_DIR, "tools", hook_system, "hooks")
+        hooks_dir = os.path.join(AMPLIHACK_CLAUDE_DIR, "tools", hook_system, "hooks")
 
         # Skip XPIA if directory doesn't exist (optional feature)
         if hook_system == "xpia" and not os.path.exists(hooks_dir):
