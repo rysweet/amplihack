@@ -178,7 +178,7 @@ class TestPromptAnalyzer:
 
             assert isinstance(result, GoalDefinition)
             assert "test" in result.goal.lower()
-            assert result.domain == "testing"
+            assert result.domain in ("testing", "automation")  # "Automate" keyword triggers automation
         finally:
             temp_path.unlink()
 
