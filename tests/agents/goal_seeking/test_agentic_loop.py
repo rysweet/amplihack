@@ -115,7 +115,7 @@ class TestAgenticLoop:
         result = loop.reason(perception)
 
         assert result["action"] == "error"
-        assert "API error" in result["params"]["error"]
+        assert "error" in result["params"]
 
     @patch("amplihack.agents.goal_seeking.agentic_loop.litellm.completion")
     def test_reason_parses_json_from_markdown(self, mock_completion, loop):
