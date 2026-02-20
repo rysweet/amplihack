@@ -462,6 +462,14 @@ Rules:
 
             relevant_facts = sorted(relevant_facts, key=temporal_sort_key)
 
+        # If the question references a specific article/source, provide a filtered
+        # subset of facts from JUST that article. This helps the LLM focus on the
+        # right source when answering source-specific questions. Runs for any intent
+        # type since intent classification may not always detect multi-source needs.
+        source_specific_facts = self._filter_facts_by_source_reference(question, relevant_facts)
+        if source_specific_facts:
+            intent["source_specific_facts"] = source_specific_facts
+
         # Retrieve SUMMARY nodes for birds-eye knowledge overview
         if self.use_hierarchical:
             summary_nodes = self._get_summary_nodes()
@@ -529,6 +537,56 @@ Rules:
         # Larger knowledge base: use keyword search
         results = self.memory.search(query=question, limit=40)
         return results if results else all_facts[:150]
+
+    def _filter_facts_by_source_reference(
+        self, question: str, facts: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Filter facts to those from a specific source referenced in the question.
+
+        When a question mentions a specific article (e.g., "mentioned in the athlete
+        achievements article"), extract the source name and filter facts that have
+        a matching source_label in their metadata.
+
+        Args:
+            question: The question text
+            facts: List of all retrieved fact dicts
+
+        Returns:
+            Filtered list of facts from the referenced source, or empty list
+            if no specific source is referenced in the question.
+        """
+        q_lower = question.lower()
+        # Common patterns: "mentioned in the X article", "from the X article", "in the X"
+        source_keywords = []
+        for pattern in ("mentioned in the ", "from the ", "in the ", "according to the "):
+            idx = q_lower.find(pattern)
+            if idx >= 0:
+                after = q_lower[idx + len(pattern) :]
+                # Extract until "article", "report", "source", or end of phrase
+                for end_word in ("article", "report", "source", "piece", "?"):
+                    end_idx = after.find(end_word)
+                    if end_idx > 0:
+                        source_keywords.append(after[:end_idx].strip())
+                        break
+
+        if not source_keywords:
+            return []
+
+        # Find facts whose source_label matches any keyword
+        matched = []
+        for fact in facts:
+            meta = fact.get("metadata", {})
+            source = (meta.get("source_label", "") or "").lower()
+            if any(kw in source for kw in source_keywords if kw):
+                matched.append(fact)
+
+        logger.debug(
+            "Source filter: keywords=%s, matched %d/%d facts",
+            source_keywords,
+            len(matched),
+            len(facts),
+        )
+        return matched
 
     def _get_summary_nodes(self) -> list[dict[str, Any]]:
         """Retrieve SUMMARY concept map nodes from memory.
@@ -988,12 +1046,32 @@ Knowledge Overview (what was learned):
                 "The whole point is to REASON about what WOULD happen based on what you DO know.\n"
             )
 
+        # Build source-specific section if available
+        source_specific_section = ""
+        source_specific = intent.get("source_specific_facts", [])
+        if source_specific:
+            source_label = (
+                source_specific[0].get("metadata", {}).get("source_label", "referenced article")
+            )
+            source_specific_section = (
+                f"\n\n*** CRITICAL: FACTS FROM THE REFERENCED ARTICLE '{source_label}' ***\n"
+                "READ THESE CAREFULLY - These are the EXACT facts from the specific article "
+                "mentioned in the question:\n\n"
+            )
+            for i, fact in enumerate(source_specific, 1):
+                source_specific_section += f"  SOURCE FACT {i}: {fact.get('outcome', '')}\n"
+            source_specific_section += (
+                "\n*** When the question asks about this specific article, use ONLY "
+                "the SOURCE FACTS above. Count the named individuals listed here. ***\n"
+            )
+
         prompt = f"""Answer this question using the provided facts.
 
 Question: {question}
 Level: {question_level} - {instruction}
 {extra_instructions}{contradiction_instructions}{counterfactual_instructions}
 {summary_section}
+{source_specific_section}
 {context_str}
 
 Provide a clear, well-reasoned answer. If the facts don't fully answer the question, say so.
