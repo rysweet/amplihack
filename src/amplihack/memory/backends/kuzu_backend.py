@@ -41,6 +41,12 @@ from .base import BackendCapabilities
 logger = logging.getLogger(__name__)
 
 
+# Memory types whose schema includes expires_at column.
+# Derived from CREATE TABLE statements in _initialize_sync().
+# If you add expires_at to a new memory type, add it here.
+MEMORY_TYPES_WITH_EXPIRES_AT = frozenset(["EpisodicMemory", "ProspectiveMemory", "WorkingMemory"])
+
+
 class KuzuBackend:
     """Kùzu graph database backend.
 
@@ -1040,10 +1046,7 @@ class KuzuBackend:
             where_conditions.append("m.created_at <= $created_before")
             params["created_before"] = query.created_before
 
-        # Only check expires_at for memory types that have this property
-        # Schema: Episodic, Prospective, Working have expires_at
-        #         Semantic, Procedural do NOT have expires_at
-        if not query.include_expired and node_label in ["EpisodicMemory", "ProspectiveMemory", "WorkingMemory"]:
+        if not query.include_expired and node_label in MEMORY_TYPES_WITH_EXPIRES_AT:
             where_conditions.append("(m.expires_at IS NULL OR m.expires_at > $now)")
             params["now"] = datetime.now()
 
@@ -1290,8 +1293,7 @@ class KuzuBackend:
         Performance: No strict limit (periodic maintenance)
         """
         total_deleted = 0
-        # Only these memory types have expires_at in their schema
-        for node_label in ["EpisodicMemory", "ProspectiveMemory", "WorkingMemory"]:
+        for node_label in MEMORY_TYPES_WITH_EXPIRES_AT:
             try:
                 result = self.connection.execute(
                     f"""

@@ -6,9 +6,10 @@ HOOK="session_start.py"
 AMPLIHACK_HOOKS="$HOME/.amplihack/.claude/tools/amplihack/hooks"
 
 if [[ -f "${AMPLIHACK_HOOKS}/${HOOK}" ]]; then
-    python3 "${AMPLIHACK_HOOKS}/${HOOK}" "$@"
+    exec python3 "${AMPLIHACK_HOOKS}/${HOOK}" "$@"
+# Fallback: assign REPO_ROOT inline; short-circuits if not in a git repo
 elif REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" && [[ -f "${REPO_ROOT}/.claude/tools/amplihack/hooks/${HOOK}" ]]; then
-    python3 "${REPO_ROOT}/.claude/tools/amplihack/hooks/${HOOK}" "$@"
+    exec python3 "${REPO_ROOT}/.claude/tools/amplihack/hooks/${HOOK}" "$@"
 else
-    echo "{}" # No-op if hook not found
+    echo "{}"
 fi
