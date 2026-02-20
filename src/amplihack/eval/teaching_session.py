@@ -1,594 +1,292 @@
-"""Teacher-student teaching session orchestrator.
+"""Multi-turn teacher-student session framework.
 
-Manages a multi-turn conversation between a teacher and student agent,
-each with separate memory databases. The teacher retrieves knowledge
-from its memory and explains it; the student stores what it learns
-in its own memory and asks follow-up questions.
+Orchestrates a structured dialogue where a teacher agent
+transfers knowledge to a student agent across multiple turns.
+Student provides self-explanations (Chi 1994) for metacognition grading.
 
 Philosophy:
-- Separate memory databases enforce genuine knowledge transfer
-- Multi-turn conversation enables scaffolding and adaptation
-- Teacher's quality is measured by student's subsequent performance
+- Single responsibility: Orchestrate teaching dialogue
+- LLM-powered teacher and student via litellm
+- Self-explanation prompts for metacognition evaluation
+- Stateless turns; accumulated via history list
 """
 
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass
 
-import litellm  # type: ignore[import-untyped]
-
-from amplihack.agents.goal_seeking import LearningAgent
+import litellm  # type: ignore[import-unresolved]
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
-class ConversationTurn:
-    """A single turn in the teaching conversation."""
+class TeachingConfig:
+    """Configuration for a teaching session.
 
-    role: str  # "teacher" or "student"
-    content: str
+    Attributes:
+        max_turns: Number of teacher-student exchanges
+        model: LLM model identifier (litellm format)
+        teacher_system_prompt: System prompt for teacher role
+        student_system_prompt: System prompt for student role
+    """
+
+    max_turns: int = 6
+    model: str = "claude-sonnet-4-5-20250929"
+    teacher_system_prompt: str = (
+        "You are an expert teacher. Your job is to teach the student about a topic "
+        "using the knowledge base provided. Each turn, teach one or two key concepts. "
+        "Build on what the student already knows. Be concise and clear."
+    )
+    student_system_prompt: str = (
+        "You are a student learning a new topic. After each teaching message, "
+        "respond with your understanding and explain your reasoning. "
+        "Always respond with a JSON object: "
+        '{"response": "your understanding", "self_explanation": "why you think this is correct"}'
+    )
+
+
+@dataclass
+class Turn:
+    """One turn of teacher-student dialogue.
+
+    Attributes:
+        turn_number: Sequential turn number (1-indexed)
+        teacher_message: What the teacher taught
+        student_response: Student's response
+        self_explanation: Student's self-explanation of understanding
+    """
+
     turn_number: int
+    teacher_message: str
+    student_response: str
+    self_explanation: str
 
 
 @dataclass
 class TeachingResult:
-    """Result of a teaching session."""
+    """Result of a complete teaching session.
 
-    transcript: list[ConversationTurn]
-    teacher_facts_count: int
-    student_facts_count: int
-    total_turns: int
-    student_talk_ratio: float
-    topics_covered: list[str]
+    Attributes:
+        turns: All dialogue turns
+        knowledge_transferred: Key concepts the teacher covered
+        student_accuracy: Rough estimate of student understanding
+    """
+
+    turns: list[Turn]
+    knowledge_transferred: list[str]
+    student_accuracy: float
 
 
 class TeachingSession:
-    """Orchestrates a multi-turn teaching conversation.
+    """Orchestrates multi-turn teacher-student dialogue.
 
-    The teacher and student are separate LearningAgent instances
-    with separate memory databases. Knowledge transfer happens
-    ONLY through the conversation - no shared memory.
-
-    Teaching strategy (informed by learning theory):
-    1. Teacher opens with a structured overview (advance organizer - Ausubel)
-    2. Student asks clarifying questions (elaborative interrogation)
-    3. Teacher adapts explanation (scaffolding - Vygotsky)
-    4. Student summarizes understanding (self-explanation - Chi)
-    5. Teacher corrects and deepens (reciprocal teaching - Palinscar & Brown)
-    6. Loop continues until student signals readiness or max turns
+    Creates a structured teaching session where a teacher agent
+    transfers knowledge from a provided knowledge base to a student
+    agent. The student provides self-explanations for each response
+    to enable metacognition evaluation.
 
     Args:
-        teacher: LearningAgent with content already learned
-        student: LearningAgent with empty memory
-        model: LLM model for generating conversation
-        max_turns: Maximum conversation turns
+        knowledge_base: List of facts/concepts to teach
+        config: Teaching session configuration
+
+    Raises:
+        ValueError: If knowledge_base is empty
+
+    Example:
+        >>> session = TeachingSession(
+        ...     knowledge_base=["L1 tests direct recall.", "L2 tests inference."],
+        ...     config=TeachingConfig(max_turns=3),
+        ... )
+        >>> result = session.run()
+        >>> print(len(result.turns))  # 3
     """
 
-    def __init__(
-        self,
-        teacher: LearningAgent,
-        student: LearningAgent,
-        model: str = "anthropic/claude-sonnet-4-5-20250929",
-        max_turns: int = 10,
-    ):
-        self.teacher = teacher
-        self.student = student
-        self.model = model
-        self.max_turns = max_turns
-        self.transcript: list[ConversationTurn] = []
+    def __init__(self, knowledge_base: list[str], config: TeachingConfig) -> None:
+        if not knowledge_base:
+            raise ValueError("knowledge_base cannot be empty")
 
-        # Adaptive scaffolding: track student competency (Vygotsky ZPD)
-        # Starts at "beginner", promotes based on student response quality
-        self._competency_level = "beginner"  # beginner → intermediate → advanced
-        self._correct_responses = 0
-        self._total_responses = 0
+        self.knowledge_base = knowledge_base
+        self.config = config
 
     def run(self) -> TeachingResult:
-        """Run the complete teaching session.
+        """Run the full teaching session.
 
         Returns:
-            TeachingResult with transcript and statistics
+            TeachingResult with all turns and knowledge transfer metrics
         """
-        turn_num = 0
+        turns: list[Turn] = []
+        history: list[dict[str, str]] = []
+        knowledge_transferred: list[str] = []
 
-        # Step 1: Teacher generates opening overview
-        teacher_opening = self._teacher_generate_opening()
-        self.transcript.append(
-            ConversationTurn(role="teacher", content=teacher_opening, turn_number=turn_num)
-        )
-        turn_num += 1
+        for turn_num in range(1, self.config.max_turns + 1):
+            try:
+                # Teacher generates a teaching message
+                teacher_msg = self._generate_teacher_message(turn_num, history)
 
-        # Student processes the opening and stores what it learns
-        self._student_learn_from_message(teacher_opening)
+                # Student responds with self-explanation
+                student_resp, self_explanation = self._generate_student_response(
+                    teacher_msg, history
+                )
 
-        teacher_msg = teacher_opening  # Initialize for first iteration
-        exchange_count = 0
-        for _ in range(self.max_turns - 1):
-            # Student generates a response (question, summary, or "I understand")
-            student_response = self._student_respond(teacher_msg)
-            self.transcript.append(
-                ConversationTurn(role="student", content=student_response, turn_number=turn_num)
-            )
-            turn_num += 1
-            exchange_count += 1
+                # Record the turn
+                turn = Turn(
+                    turn_number=turn_num,
+                    teacher_message=teacher_msg,
+                    student_response=student_resp,
+                    self_explanation=self_explanation,
+                )
+                turns.append(turn)
 
-            # Update competency tracking (Vygotsky ZPD)
-            self._update_competency(student_response)
+                # Update history for context accumulation
+                history.append({"role": "teacher", "content": teacher_msg})
+                history.append({"role": "student", "content": student_resp})
 
-            # Check if student signals readiness
-            if self._student_signals_ready(student_response):
-                logger.debug("Student signaled readiness at turn %d", turn_num)
+                # Track what was taught
+                knowledge_transferred.append(teacher_msg[:200])
+
+            except Exception as e:
+                logger.warning("Turn %d failed: %s", turn_num, e)
                 break
 
-            # Role reversal every 5 exchanges (Feynman technique)
-            # Student teaches back to teacher - reveals understanding gaps
-            if exchange_count % 5 == 0 and exchange_count > 0:
-                teach_back = self._teacher_request_teach_back()
-                self.transcript.append(
-                    ConversationTurn(role="teacher", content=teach_back, turn_number=turn_num)
-                )
-                turn_num += 1
-
-                # Student teaches the material back
-                student_teaching = self._student_respond(teach_back)
-                self.transcript.append(
-                    ConversationTurn(role="student", content=student_teaching, turn_number=turn_num)
-                )
-                turn_num += 1
-                # Student's own teaching reinforces their learning
-                self._student_learn_from_message(student_teaching)
-                continue
-
-            # Self-explanation check every 3 exchanges (Chi effect)
-            # Teacher asks student to explain WHY, not just WHAT
-            if exchange_count % 3 == 0 and exchange_count > 0:
-                why_prompt = self._teacher_ask_why(student_response)
-                self.transcript.append(
-                    ConversationTurn(role="teacher", content=why_prompt, turn_number=turn_num)
-                )
-                turn_num += 1
-
-                # Student self-explains
-                student_explanation = self._student_respond(why_prompt)
-                self.transcript.append(
-                    ConversationTurn(
-                        role="student", content=student_explanation, turn_number=turn_num
-                    )
-                )
-                turn_num += 1
-                self._student_learn_from_message(student_explanation)
-                continue
-
-            # Teacher responds to student
-            teacher_msg = self._teacher_respond(student_response)
-            self.transcript.append(
-                ConversationTurn(role="teacher", content=teacher_msg, turn_number=turn_num)
-            )
-            turn_num += 1
-
-            # Student processes teacher's response
-            self._student_learn_from_message(teacher_msg)
-
-        # Get statistics
-        teacher_stats = self.teacher.get_memory_stats()
-        student_stats = self.student.get_memory_stats()
-
-        # Calculate student talk ratio (TeachLM metric: human tutors achieve ~30%)
-        student_chars = sum(len(t.content) for t in self.transcript if t.role == "student")
-        total_chars = sum(len(t.content) for t in self.transcript)
-        student_talk_ratio = student_chars / max(total_chars, 1)
+        # Estimate student accuracy from self-explanations
+        accuracy = self._estimate_accuracy(turns)
 
         return TeachingResult(
-            transcript=self.transcript,
-            teacher_facts_count=teacher_stats.get("total_experiences", 0),
-            student_facts_count=student_stats.get("total_experiences", 0),
-            total_turns=len(self.transcript),
-            topics_covered=self._extract_topics(),
-            student_talk_ratio=student_talk_ratio,
+            turns=turns,
+            knowledge_transferred=knowledge_transferred,
+            student_accuracy=accuracy,
         )
 
-    def _teacher_generate_opening(self) -> str:
-        """Teacher generates structured opening based on its memory.
+    def _generate_teacher_message(self, turn_number: int, history: list[dict[str, str]]) -> str:
+        """Generate the teacher's message for this turn.
 
-        Uses the advance organizer pattern: overview first, then details.
-        Teacher retrieves its knowledge and organizes it for teaching.
+        Args:
+            turn_number: Current turn number
+            history: Previous dialogue history
+
+        Returns:
+            Teacher's teaching message
         """
-        # Get teacher's knowledge
-        all_facts = []
-        if hasattr(self.teacher.memory, "get_all_facts"):
-            all_facts = self.teacher.memory.get_all_facts(limit=50)
+        # Build knowledge context
+        kb_text = "\n".join(f"- {fact}" for fact in self.knowledge_base)
 
-        if not all_facts:
-            return "I don't have enough knowledge to teach about this topic."
+        # Build conversation history
+        hist_text = ""
+        if history:
+            hist_text = "\n\nPrevious conversation:\n"
+            for entry in history:
+                role = entry["role"].capitalize()
+                hist_text += f"{role}: {entry['content']}\n"
 
-        facts_text = "\n".join(
-            f"- [{f.get('context', 'General')}] {f.get('outcome', '')[:150]}"
-            for f in all_facts[:30]
+        prompt = (
+            f"Knowledge base to teach from:\n{kb_text}\n"
+            f"{hist_text}\n"
+            f"This is turn {turn_number} of {self.config.max_turns}. "
+            f"Teach the next concept(s). Do not repeat what was already taught."
         )
 
-        prompt = f"""You are a teacher preparing to explain a topic to a student who knows nothing about it.
+        response = litellm.completion(
+            model=self.config.model,
+            messages=[
+                {"role": "system", "content": self.config.teacher_system_prompt},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.7,
+        )
 
-Here is everything you know about this topic:
-{facts_text}
+        return response.choices[0].message.content.strip()
 
-Create a structured teaching introduction that:
-1. Opens with a brief overview of the main topic (1-2 sentences)
-2. Lists 3-5 key concepts the student needs to understand
-3. Explains the most fundamental concept first in detail
-4. Uses concrete examples or analogies
-5. Ends with a question to check the student's understanding
+    def _generate_student_response(
+        self,
+        teacher_message: str,
+        history: list[dict[str, str]],
+    ) -> tuple[str, str]:
+        """Generate the student's response with self-explanation.
 
-Be conversational and encouraging. Don't dump all facts at once -
-introduce the topic and invite the student to engage."""
+        Args:
+            teacher_message: What the teacher just said
+            history: Previous dialogue history
 
-        try:
-            response = litellm.completion(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are an expert teacher who explains clearly and engages students actively.",
-                    },
-                    {"role": "user", "content": prompt},
-                ],
-                temperature=0.4,
-            )
-            return response.choices[0].message.content.strip()
-        except Exception as e:
-            logger.error("Teacher opening generation failed: %s", e)
-            return f"Let me teach you about what I've learned. Here are the key points: {facts_text[:500]}"
-
-    def _teacher_respond(self, student_message: str) -> str:
-        """Teacher responds to student's question or summary.
-
-        Retrieves relevant facts from memory and adapts the explanation.
+        Returns:
+            Tuple of (response, self_explanation)
         """
-        # Search teacher's memory for relevant facts
-        relevant_facts = []
-        if hasattr(self.teacher.memory, "search"):
-            relevant_facts = self.teacher.memory.search(query=student_message, limit=15)
+        # Build conversation history for student
+        hist_text = ""
+        if history:
+            hist_text = "\nPrevious conversation:\n"
+            for entry in history:
+                role = entry["role"].capitalize()
+                hist_text += f"{role}: {entry['content']}\n"
 
-        if not relevant_facts and hasattr(self.teacher.memory, "get_all_facts"):
-            relevant_facts = self.teacher.memory.get_all_facts(limit=20)
-
-        facts_text = "\n".join(
-            f"- [{f.get('context', 'General')}] {f.get('outcome', '')[:150]}"
-            for f in relevant_facts[:20]
+        prompt = (
+            f"{hist_text}\n"
+            f"Teacher: {teacher_message}\n\n"
+            f"Respond with your understanding. "
+            f"Remember to include both your response and self-explanation as JSON."
         )
 
-        # Build conversation history for context
-        history = self._format_recent_history(last_n=6)
+        response = litellm.completion(
+            model=self.config.model,
+            messages=[
+                {"role": "system", "content": self.config.student_system_prompt},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.7,
+        )
 
-        # Adaptive scaffolding: adjust teaching approach based on student level
-        scaffolding_note = self._get_scaffolding_instruction()
+        response_text = response.choices[0].message.content.strip()
 
-        prompt = f"""You are a teacher in a conversation with a student.
-
-Your knowledge about this topic:
-{facts_text}
-
-Student competency level: {self._competency_level.upper()}
-{scaffolding_note}
-
-Recent conversation:
-{history}
-
-Student just said: {student_message}
-
-Respond as the teacher:
-1. If the student asked a question, answer it using your knowledge
-2. If the student summarized, correct any mistakes and add missing details
-3. If the student seems confused, simplify and use analogies
-4. Include at least one new piece of information the student doesn't know yet
-5. End with a question or prompt to keep the student engaged
-6. If you've covered the main topics, start going deeper into details
-
-Be specific with facts and numbers. Don't just give vague encouragement."""
-
+        # Parse JSON response
         try:
-            response = litellm.completion(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are an expert teacher responding to a student.",
-                    },
-                    {"role": "user", "content": prompt},
-                ],
-                temperature=0.4,
-            )
-            return response.choices[0].message.content.strip()
-        except Exception as e:
-            logger.error("Teacher response failed: %s", e)
-            return "Let me clarify that point..."
-
-    def _get_scaffolding_instruction(self) -> str:
-        """Get scaffolding instruction based on student's current competency level."""
-        if self._competency_level == "beginner":
+            parsed = json.loads(response_text)
             return (
-                "Teaching approach: BEGINNER level - use simple language, explain one concept "
-                "at a time, provide concrete examples, check understanding frequently."
+                parsed.get("response", response_text),
+                parsed.get("self_explanation", ""),
             )
-        if self._competency_level == "intermediate":
-            return (
-                "Teaching approach: INTERMEDIATE level - connect multiple concepts, "
-                "use more technical language, ask student to predict or infer, "
-                "provide less hand-holding."
-            )
-        return (
-            "Teaching approach: ADVANCED level - challenge with edge cases, "
-            "ask 'what if' questions, let student lead, focus on deep understanding."
-        )
+        except json.JSONDecodeError:
+            # Try extracting from markdown code block
+            if "```json" in response_text:
+                json_start = response_text.find("```json") + 7
+                json_end = response_text.find("```", json_start)
+                json_str = response_text[json_start:json_end].strip()
+                try:
+                    parsed = json.loads(json_str)
+                    return (
+                        parsed.get("response", response_text),
+                        parsed.get("self_explanation", ""),
+                    )
+                except json.JSONDecodeError:
+                    pass
+            # Fallback: use raw text
+            return response_text, ""
 
-    def _update_competency(self, student_response: str) -> None:
-        """Update student competency level based on response quality.
+    def _estimate_accuracy(self, turns: list[Turn]) -> float:
+        """Rough estimate of student understanding based on self-explanations.
 
-        Simple heuristic: if the student uses specific facts/numbers and
-        shows reasoning (not just repeating), they demonstrate higher competency.
-        After consecutive good responses, promote the level.
+        Turns with non-empty self-explanations score higher.
 
-        Based on Vygotsky's ZPD: advance difficulty when student demonstrates
-        mastery at current level.
+        Args:
+            turns: Completed dialogue turns
+
+        Returns:
+            Accuracy score 0.0-1.0
         """
-        self._total_responses += 1
+        if not turns:
+            return 0.0
 
-        # Simple quality indicators
-        response_lower = student_response.lower()
-        has_specifics = any(c.isdigit() for c in student_response)
-        has_reasoning = any(
-            kw in response_lower for kw in ("because", "therefore", "this means", "so ")
-        )
-        shows_connection = any(
-            kw in response_lower for kw in ("connects to", "related to", "similar to", "like ")
-        )
+        scores = []
+        for turn in turns:
+            if turn.self_explanation and len(turn.self_explanation.strip()) > 10:
+                scores.append(1.0)
+            elif turn.student_response and len(turn.student_response.strip()) > 10:
+                scores.append(0.5)
+            else:
+                scores.append(0.0)
 
-        quality_score = sum([has_specifics, has_reasoning, shows_connection])
-
-        if quality_score >= 2:
-            self._correct_responses += 1
-
-        # Promote after 3 consecutive good responses at current level
-        if self._competency_level == "beginner" and self._correct_responses >= 3:
-            self._competency_level = "intermediate"
-            self._correct_responses = 0
-            logger.debug("Student promoted to INTERMEDIATE level")
-        elif self._competency_level == "intermediate" and self._correct_responses >= 3:
-            self._competency_level = "advanced"
-            self._correct_responses = 0
-            logger.debug("Student promoted to ADVANCED level")
-
-    def _teacher_request_teach_back(self) -> str:
-        """Teacher requests the student to teach back what they've learned.
-
-        Based on the Feynman Technique: if you can't explain it simply,
-        you don't understand it well enough. Also from Palincsar & Brown's
-        reciprocal teaching: gradually transferring the teaching role.
-        """
-        history = self._format_recent_history(last_n=4)
-
-        prompt = f"""You are a teacher who wants to check the student's understanding.
-
-Recent conversation:
-{history}
-
-Ask the student to teach you what they've learned so far, as if you were a new student
-who knows nothing about the topic. Be specific about what you want them to explain.
-
-Keep it to 2-3 sentences. Example:
-"Now I'd like you to teach me what you've learned. Pretend I know nothing about the
-2026 Winter Olympics - give me a summary of the key facts and what makes these Games special."
-"""
-
-        try:
-            response = litellm.completion(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are a teacher requesting a teach-back from your student.",
-                    },
-                    {"role": "user", "content": prompt},
-                ],
-                temperature=0.4,
-            )
-            return response.choices[0].message.content.strip()
-        except Exception as e:
-            logger.error("Teacher teach-back request failed: %s", e)
-            return "Now teach me what you've learned so far, as if I know nothing about this topic."
-
-    def _teacher_ask_why(self, student_response: str) -> str:
-        """Teacher asks a 'why' question to prompt self-explanation (Chi effect).
-
-        Based on Chi (1994): self-explanation doubles learning gains.
-        Forces the student to integrate new information with existing knowledge.
-        """
-        history = self._format_recent_history(last_n=4)
-
-        prompt = f"""You are a teacher using the Socratic method. The student just said something.
-Ask ONE focused "why" or "how" question that forces them to explain their understanding deeper.
-
-Recent conversation:
-{history}
-
-Student just said: {student_response[:300]}
-
-Generate a single probing question like:
-- "Why do you think that's the case?"
-- "Can you explain the reasoning behind that?"
-- "How does that connect to what we discussed earlier about [specific topic]?"
-- "What would happen if [specific element] were different?"
-
-Keep it to 1-2 sentences. Be specific, not generic."""
-
-        try:
-            response = litellm.completion(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": "You are a Socratic teacher who asks probing questions.",
-                    },
-                    {"role": "user", "content": prompt},
-                ],
-                temperature=0.5,
-            )
-            return response.choices[0].message.content.strip()
-        except Exception as e:
-            logger.error("Teacher why-question failed: %s", e)
-            return "Can you explain why you think that's the case?"
-
-    def _student_respond(self, teacher_message: str) -> str:
-        """Student processes teacher's message and responds.
-
-        The student retrieves what it has learned so far from its OWN memory,
-        then generates a thoughtful response (question, summary, or confirmation).
-        """
-        # Get what the student has learned so far
-        student_knowledge = []
-        if hasattr(self.student.memory, "get_all_facts"):
-            student_knowledge = self.student.memory.get_all_facts(limit=30)
-
-        knowledge_text = ""
-        if student_knowledge:
-            knowledge_text = "What I've learned so far:\n" + "\n".join(
-                f"- {f.get('outcome', '')[:100]}" for f in student_knowledge[:15]
-            )
-
-        history = self._format_recent_history(last_n=6)
-
-        prompt = f"""You are a student learning a new topic from a teacher.
-
-{knowledge_text}
-
-Recent conversation:
-{history}
-
-Teacher just said: {teacher_message}
-
-As the student, respond naturally:
-- If you understood, briefly summarize what you learned, then ask about something specific you want to know more about
-- If something was unclear, ask for clarification with a specific question
-- If you think you understand the topic well, say "I think I understand the main concepts now" and summarize everything you've learned
-- Show genuine curiosity - ask "why" and "how" questions, not just "what"
-- If the teacher mentioned numbers or dates, try to repeat them to confirm understanding
-
-Keep your response concise (3-5 sentences max)."""
-
-        try:
-            response = litellm.completion(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": "You are a curious, engaged student."},
-                    {"role": "user", "content": prompt},
-                ],
-                temperature=0.5,
-            )
-            return response.choices[0].message.content.strip()
-        except Exception as e:
-            logger.error("Student response failed: %s", e)
-            return "Can you explain that in more detail?"
-
-    def _student_learn_from_message(self, message: str) -> None:
-        """Student stores what it learned from a teacher message in its own memory."""
-        try:
-            self.student.learn_from_content(f"Teacher explained: {message}")
-        except Exception as e:
-            logger.debug("Student learning from message failed: %s", e)
-
-    def _student_signals_ready(self, response: str) -> bool:
-        """Check if student indicates they've understood enough."""
-        ready_phrases = [
-            "i understand the main concepts",
-            "i think i understand",
-            "i've got a good grasp",
-            "that covers everything",
-            "i understand now",
-            "i feel confident",
-        ]
-        response_lower = response.lower()
-        return any(phrase in response_lower for phrase in ready_phrases)
-
-    def _format_recent_history(self, last_n: int = 6) -> str:
-        """Format recent conversation turns."""
-        recent = self.transcript[-last_n:]
-        lines = []
-        for turn in recent:
-            prefix = "Teacher" if turn.role == "teacher" else "Student"
-            lines.append(f"{prefix}: {turn.content[:200]}")
-        return "\n\n".join(lines) if lines else "(start of conversation)"
-
-    def _extract_topics(self) -> list[str]:
-        """Extract topic keywords mentioned in the teaching transcript."""
-        all_text = " ".join(t.content for t in self.transcript)
-        # Simple keyword extraction - could be enhanced with LLM
-        words = all_text.lower().split()
-        # Count word frequency (excluding common words)
-        stop_words = {
-            "the",
-            "a",
-            "an",
-            "is",
-            "are",
-            "was",
-            "were",
-            "in",
-            "on",
-            "at",
-            "to",
-            "for",
-            "of",
-            "and",
-            "or",
-            "but",
-            "not",
-            "with",
-            "from",
-            "by",
-            "this",
-            "that",
-            "it",
-            "i",
-            "you",
-            "we",
-            "they",
-            "he",
-            "she",
-            "my",
-            "your",
-            "his",
-            "her",
-            "can",
-            "will",
-            "do",
-            "does",
-            "did",
-            "has",
-            "have",
-            "had",
-            "been",
-            "being",
-            "about",
-            "just",
-            "so",
-            "also",
-            "more",
-            "than",
-            "very",
-            "too",
-            "some",
-            "any",
-        }
-        word_counts: dict[str, int] = {}
-        for w in words:
-            clean = w.strip(".,!?;:'\"()-")
-            if len(clean) > 3 and clean not in stop_words:
-                word_counts[clean] = word_counts.get(clean, 0) + 1
-
-        # Return top 10 most frequent topic words
-        sorted_words = sorted(word_counts.items(), key=lambda x: x[1], reverse=True)
-        return [w for w, _ in sorted_words[:10]]
+        return sum(scores) / len(scores)
 
 
-__all__ = ["TeachingSession", "TeachingResult", "ConversationTurn"]
+__all__ = ["TeachingSession", "TeachingConfig", "TeachingResult", "Turn"]

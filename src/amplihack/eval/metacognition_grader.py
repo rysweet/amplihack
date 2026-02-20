@@ -1,275 +1,255 @@
-"""Metacognition grader for evaluating agent reasoning quality.
+"""Metacognition grader with 4-dimension scoring.
 
-Evaluates HOW the agent reasoned, not just WHAT it answered.
-Uses ReasoningTrace from the agentic loop to assess:
-- Effort calibration (proportional effort to complexity)
-- Sufficiency judgment (correctly assessed when enough info collected)
-- Search quality (ratio of useful queries)
-- Self-correction (refinement and verification behaviors)
+Evaluates student learning across four metacognitive dimensions:
+1. Factual Accuracy - Are the facts correct?
+2. Self-Awareness - Does the student know what it knows/doesn't know?
+3. Knowledge Boundaries - Can the student identify gaps?
+4. Explanation Quality - Are self-explanations coherent and insightful?
 
-Philosophy: Single responsibility - just metacognition grading.
+Philosophy:
+- Single responsibility: Grade metacognition only
+- LLM-powered evaluation via litellm
+- Structured JSON output for reliable parsing
+- Graceful degradation on errors
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any
+import json
+import logging
+from dataclasses import dataclass
+
+import litellm  # type: ignore[import-unresolved]
+
+logger = logging.getLogger(__name__)
+
+DIMENSION_NAMES = [
+    "factual_accuracy",
+    "self_awareness",
+    "knowledge_boundaries",
+    "explanation_quality",
+]
 
 
 @dataclass
-class MetacognitionGrade:
-    """Result of metacognition grading.
+class Dimension:
+    """A single scoring dimension.
 
     Attributes:
-        effort_calibration: 0.0-1.0, penalizes over/under-effort
-        sufficiency_judgment: 0.0-1.0, correct sufficient/insufficient decisions
-        search_quality: 0.0-1.0, ratio of queries that found new facts
-        self_correction: 0.0-1.0, refinement and verification behaviors
-        overall: Weighted average of all dimensions
-        details: Explanations for each score
+        name: Dimension identifier
+        score: Score from 0.0 to 1.0
+        reasoning: LLM's reasoning for the score
     """
 
-    effort_calibration: float = 0.0
-    sufficiency_judgment: float = 0.0
-    search_quality: float = 0.0
-    self_correction: float = 0.0
-    overall: float = 0.0
-    details: dict[str, str] = field(default_factory=dict)
+    name: str
+    score: float
+    reasoning: str
 
 
-# Complexity levels and their expected effort ranges
-_COMPLEXITY_EFFORT = {
-    "simple_recall": {"min_queries": 0, "max_queries": 2, "max_iterations": 1},
-    "mathematical_computation": {"min_queries": 2, "max_queries": 6, "max_iterations": 3},
-    "temporal_comparison": {"min_queries": 2, "max_queries": 8, "max_iterations": 3},
-    "multi_source_synthesis": {"min_queries": 3, "max_queries": 8, "max_iterations": 3},
-    "contradiction_resolution": {"min_queries": 2, "max_queries": 5, "max_iterations": 2},
-}
+@dataclass
+class MetacognitionScore:
+    """Complete metacognition evaluation result.
+
+    Attributes:
+        dimensions: List of 4 dimension scores
+        overall_score: Mean of all dimension scores
+        summary: Human-readable summary
+    """
+
+    dimensions: list[Dimension]
+    overall_score: float
+    summary: str
 
 
-def grade_metacognition(
-    trace: dict[str, Any],
-    answer_score: float,
-    level: str,
-) -> MetacognitionGrade:
-    """Grade the reasoning trace for metacognitive quality.
+class MetacognitionGrader:
+    """Grades student metacognition across 4 dimensions.
+
+    Uses LLM to evaluate how well a student understands what they know
+    and what they do not know, beyond just factual correctness.
 
     Args:
-        trace: Serialized ReasoningTrace dict with keys:
-            - question, intent, steps, total_facts_collected,
-              total_queries_executed, iterations, final_confidence,
-              used_simple_path
-        answer_score: The answer quality score (0.0-1.0) for context
-        level: Cognitive level (L1, L2, L3, etc.)
+        model: LLM model identifier (litellm format)
 
-    Returns:
-        MetacognitionGrade with dimension scores and explanations
+    Example:
+        >>> grader = MetacognitionGrader()
+        >>> score = grader.grade(
+        ...     question="What does L1 evaluate?",
+        ...     expected_answer="L1 evaluates direct recall.",
+        ...     student_answer="L1 tests recall of facts.",
+        ...     self_explanation="I know this because recall means remembering.",
+        ... )
+        >>> print(score.overall_score)  # 0.8125
     """
-    details = {}
 
-    # Extract trace info
-    intent_type = trace.get("intent", {}).get("intent", "simple_recall")
-    steps = trace.get("steps", [])
-    total_queries = trace.get("total_queries_executed", 0)
-    total_facts = trace.get("total_facts_collected", 0)
-    iterations = trace.get("iterations", 0)
-    final_confidence = trace.get("final_confidence", 0.0)
-    used_simple = trace.get("used_simple_path", False)
+    def __init__(self, model: str = "claude-sonnet-4-5-20250929") -> None:
+        self.model = model
 
-    # 1. Effort Calibration: Did the agent use proportional effort?
-    effort_score = _grade_effort_calibration(
-        intent_type, total_queries, iterations, used_simple, level, details
-    )
+    def grade(
+        self,
+        question: str,
+        expected_answer: str,
+        student_answer: str,
+        self_explanation: str,
+    ) -> MetacognitionScore:
+        """Grade a single question-answer pair on 4 metacognition dimensions.
 
-    # 2. Sufficiency Judgment: Did it correctly assess when it had enough?
-    sufficiency_score = _grade_sufficiency_judgment(
-        steps, final_confidence, answer_score, total_facts, details
-    )
+        Args:
+            question: The quiz question
+            expected_answer: Correct answer
+            student_answer: Student's answer
+            self_explanation: Student's self-explanation
 
-    # 3. Search Quality: Were queries productive?
-    search_score = _grade_search_quality(steps, total_queries, total_facts, details)
+        Returns:
+            MetacognitionScore with 4 dimensions and overall score
+        """
+        try:
+            return self._grade_with_llm(question, expected_answer, student_answer, self_explanation)
+        except Exception as e:
+            logger.warning("Grading failed: %s", e)
+            return self._zero_score(f"Grading failed: {e}")
 
-    # 4. Self-Correction: Did it refine and verify?
-    correction_score = _grade_self_correction(steps, iterations, details)
+    def batch_grade(self, items: list[dict[str, str]]) -> list[MetacognitionScore]:
+        """Grade multiple question-answer pairs.
 
-    # Weighted overall
-    overall = (
-        0.25 * effort_score
-        + 0.30 * sufficiency_score
-        + 0.25 * search_score
-        + 0.20 * correction_score
-    )
+        Args:
+            items: List of dicts with keys:
+                question, expected, actual, explanation
 
-    return MetacognitionGrade(
-        effort_calibration=round(effort_score, 3),
-        sufficiency_judgment=round(sufficiency_score, 3),
-        search_quality=round(search_score, 3),
-        self_correction=round(correction_score, 3),
-        overall=round(overall, 3),
-        details=details,
-    )
+        Returns:
+            List of MetacognitionScore objects
+        """
+        return [
+            self.grade(
+                question=item["question"],
+                expected_answer=item["expected"],
+                student_answer=item["actual"],
+                self_explanation=item.get("explanation", ""),
+            )
+            for item in items
+        ]
 
+    def _grade_with_llm(
+        self,
+        question: str,
+        expected_answer: str,
+        student_answer: str,
+        self_explanation: str,
+    ) -> MetacognitionScore:
+        """Use LLM to evaluate metacognition."""
+        prompt = f"""Evaluate the student's metacognition across 4 dimensions.
 
-def _grade_effort_calibration(
-    intent_type: str,
-    total_queries: int,
-    iterations: int,
-    used_simple: bool,
-    level: str,
-    details: dict,
-) -> float:
-    """Score effort calibration: proportional effort to complexity."""
-    expected = _COMPLEXITY_EFFORT.get(intent_type, _COMPLEXITY_EFFORT["simple_recall"])
+Question: {question}
+Expected Answer: {expected_answer}
+Student's Answer: {student_answer}
+Student's Self-Explanation: {self_explanation or "(none provided)"}
 
-    # Simple questions should use simple path
-    if intent_type == "simple_recall":
-        if used_simple:
-            details["effort"] = "Correctly used simple retrieval for simple question"
-            return 1.0
-        details["effort"] = (
-            f"Over-effort: used iterative loop ({total_queries} queries) for simple question"
+Score each dimension from 0.0 to 1.0:
+
+1. **factual_accuracy**: Are the student's stated facts correct?
+   - 1.0: All facts correct
+   - 0.5: Mix of correct and incorrect
+   - 0.0: Mostly incorrect
+
+2. **self_awareness**: Does the student accurately assess their own knowledge?
+   - 1.0: Knows what they know and what they do not know
+   - 0.5: Some awareness of knowledge gaps
+   - 0.0: Overconfident or completely unaware
+
+3. **knowledge_boundaries**: Can the student identify the limits of their knowledge?
+   - 1.0: Clearly identifies what is known vs. unknown
+   - 0.5: Vague boundaries
+   - 0.0: Cannot distinguish known from unknown
+
+4. **explanation_quality**: Are the self-explanations coherent and insightful?
+   - 1.0: Clear, logical reasoning that demonstrates understanding
+   - 0.5: Some reasoning but shallow
+   - 0.0: No meaningful explanation
+
+Return ONLY a JSON object with this structure:
+{{"factual_accuracy": {{"score": 0.9, "reasoning": "brief explanation"}},
+"self_awareness": {{"score": 0.8, "reasoning": "brief explanation"}},
+"knowledge_boundaries": {{"score": 0.7, "reasoning": "brief explanation"}},
+"explanation_quality": {{"score": 0.85, "reasoning": "brief explanation"}}}}"""
+
+        response = litellm.completion(
+            model=self.model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a metacognition evaluation expert. Return only valid JSON.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.3,
         )
-        return max(0.3, 1.0 - 0.15 * total_queries)
 
-    # Complex questions should NOT use simple path
-    if used_simple and intent_type != "simple_recall":
-        details["effort"] = f"Under-effort: used simple retrieval for {intent_type}"
-        return 0.3
+        response_text = response.choices[0].message.content.strip()
+        return self._parse_grading_response(response_text)
 
-    # Check if queries are in expected range
-    min_q = expected["min_queries"]
-    max_q = expected["max_queries"]
+    def _parse_grading_response(self, response_text: str) -> MetacognitionScore:
+        """Parse LLM grading response into MetacognitionScore."""
+        try:
+            data = json.loads(response_text)
+        except json.JSONDecodeError:
+            # Try markdown code block extraction
+            if "```json" in response_text:
+                json_start = response_text.find("```json") + 7
+                json_end = response_text.find("```", json_start)
+                json_str = response_text[json_start:json_end].strip()
+                data = json.loads(json_str)
+            else:
+                raise
 
-    if min_q <= total_queries <= max_q:
-        details["effort"] = f"Good effort calibration: {total_queries} queries for {intent_type}"
-        return 1.0
-    if total_queries < min_q:
-        shortfall = min_q - total_queries
-        details["effort"] = f"Under-effort: {total_queries} queries, expected at least {min_q}"
-        return max(0.3, 1.0 - 0.2 * shortfall)
-    excess = total_queries - max_q
-    details["effort"] = f"Over-effort: {total_queries} queries, expected at most {max_q}"
-    return max(0.5, 1.0 - 0.1 * excess)
+        dimensions = []
+        for name in DIMENSION_NAMES:
+            dim_data = data.get(name, {"score": 0.0, "reasoning": "Not evaluated"})
+            score = float(dim_data.get("score", 0.0))
+            # Clamp to valid range
+            score = max(0.0, min(1.0, score))
+            dimensions.append(
+                Dimension(
+                    name=name,
+                    score=score,
+                    reasoning=dim_data.get("reasoning", ""),
+                )
+            )
 
+        overall = sum(d.score for d in dimensions) / len(dimensions) if dimensions else 0.0
 
-def _grade_sufficiency_judgment(
-    steps: list[dict],
-    final_confidence: float,
-    answer_score: float,
-    total_facts: int,
-    details: dict,
-) -> float:
-    """Score sufficiency judgment: correct assessment of information adequacy."""
-    # Find evaluation steps
-    eval_steps = [s for s in steps if s.get("step_type") == "evaluate"]
-
-    if not eval_steps:
-        # No evaluation = no metacognition about sufficiency
-        if answer_score >= 0.8:
-            details["sufficiency"] = "No explicit evaluation, but answer was good"
-            return 0.6
-        details["sufficiency"] = "No explicit evaluation, and answer was poor"
-        return 0.3
-
-    # Check if final confidence correlates with answer quality
-    # High confidence + high score = good calibration
-    # High confidence + low score = overconfident
-    # Low confidence + high score = underconfident
-    # Low confidence + low score = well-calibrated
-    confidence_error = abs(final_confidence - answer_score)
-
-    if confidence_error < 0.2:
-        details["sufficiency"] = (
-            f"Well-calibrated: confidence={final_confidence:.2f}, score={answer_score:.2f}"
+        return MetacognitionScore(
+            dimensions=dimensions,
+            overall_score=overall,
+            summary=self._generate_summary(dimensions, overall),
         )
-        return 1.0
-    if confidence_error < 0.4:
-        details["sufficiency"] = (
-            f"Moderate calibration: confidence={final_confidence:.2f}, score={answer_score:.2f}"
+
+    def _generate_summary(self, dimensions: list[Dimension], overall: float) -> str:
+        """Generate human-readable summary from dimension scores."""
+        if overall >= 0.8:
+            level = "strong metacognition"
+        elif overall >= 0.6:
+            level = "moderate metacognition"
+        elif overall >= 0.4:
+            level = "limited metacognition"
+        else:
+            level = "weak metacognition"
+
+        strongest = max(dimensions, key=lambda d: d.score)
+        weakest = min(dimensions, key=lambda d: d.score)
+
+        return (
+            f"Student demonstrated {level} (overall: {overall:.2f}). "
+            f"Strongest: {strongest.name} ({strongest.score:.2f}). "
+            f"Weakest: {weakest.name} ({weakest.score:.2f})."
         )
-        return 0.7
-    direction = "overconfident" if final_confidence > answer_score else "underconfident"
-    details["sufficiency"] = (
-        f"Poorly calibrated ({direction}): confidence={final_confidence:.2f}, score={answer_score:.2f}"
-    )
-    return max(0.2, 1.0 - confidence_error)
+
+    def _zero_score(self, reason: str) -> MetacognitionScore:
+        """Return a zero score for error cases."""
+        dimensions = [Dimension(name=name, score=0.0, reasoning=reason) for name in DIMENSION_NAMES]
+        return MetacognitionScore(
+            dimensions=dimensions,
+            overall_score=0.0,
+            summary=f"Grading failed: {reason}",
+        )
 
 
-def _grade_search_quality(
-    steps: list[dict],
-    total_queries: int,
-    total_facts: int,
-    details: dict,
-) -> float:
-    """Score search quality: ratio of productive searches."""
-    if total_queries == 0:
-        details["search"] = "No queries executed"
-        return 0.5  # Neutral - might be simple path
-
-    search_steps = [s for s in steps if s.get("step_type") == "search"]
-    productive_queries = sum(1 for s in search_steps if s.get("facts_found", 0) > 0)
-    total_search_queries = sum(len(s.get("queries", [])) for s in search_steps)
-
-    if total_search_queries == 0:
-        details["search"] = "No search queries found in trace"
-        return 0.5
-
-    # Ratio of queries that found at least one fact
-    productivity = productive_queries / len(search_steps) if search_steps else 0
-
-    # Facts-per-query ratio (efficiency)
-    efficiency = min(
-        1.0, total_facts / max(total_queries, 1) / 3
-    )  # Normalize: 3 facts/query = perfect
-
-    score = 0.6 * productivity + 0.4 * efficiency
-    details["search"] = (
-        f"Productivity: {productive_queries}/{len(search_steps)} searches found facts, "
-        f"efficiency: {total_facts} facts from {total_queries} queries"
-    )
-    return min(1.0, score)
-
-
-def _grade_self_correction(
-    steps: list[dict],
-    iterations: int,
-    details: dict,
-) -> float:
-    """Score self-correction: refinement and verification behaviors."""
-    refine_steps = [s for s in steps if s.get("step_type") == "refine"]
-    eval_steps = [s for s in steps if s.get("step_type") == "evaluate"]
-
-    score = 0.5  # Baseline
-
-    # Bonus for having evaluation steps (self-monitoring)
-    if eval_steps:
-        score += 0.2
-        details_parts = ["Has evaluation steps"]
-    else:
-        details_parts = ["No evaluation steps"]
-
-    # Bonus for refinement (adapting search strategy)
-    if refine_steps:
-        score += 0.2
-        details_parts.append("refined queries after evaluation")
-
-    # Bonus for multiple iterations when needed (persistence)
-    if iterations >= 2:
-        score += 0.1
-        details_parts.append(f"iterated {iterations} times")
-
-    # Check if evaluation led to useful refinement
-    for i, step in enumerate(steps):
-        if step.get("step_type") == "evaluate" and not step.get("evaluation", {}).get(
-            "sufficient", True
-        ):
-            # Found insufficient eval - check if next step is refine
-            if i + 1 < len(steps) and steps[i + 1].get("step_type") in ("refine", "plan"):
-                score = min(1.0, score + 0.1)
-                details_parts.append("correctly refined after insufficient evaluation")
-
-    details["self_correction"] = "; ".join(details_parts)
-    return min(1.0, score)
-
-
-__all__ = ["grade_metacognition", "MetacognitionGrade"]
+__all__ = ["MetacognitionGrader", "MetacognitionScore", "Dimension"]
