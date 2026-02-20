@@ -1040,7 +1040,10 @@ class KuzuBackend:
             where_conditions.append("m.created_at <= $created_before")
             params["created_before"] = query.created_before
 
-        if not query.include_expired:
+        # Only check expires_at for memory types that have this property
+        # Schema: Episodic, Prospective, Working have expires_at
+        #         Semantic, Procedural do NOT have expires_at
+        if not query.include_expired and node_label in ["EpisodicMemory", "ProspectiveMemory", "WorkingMemory"]:
             where_conditions.append("(m.expires_at IS NULL OR m.expires_at > $now)")
             params["now"] = datetime.now()
 
