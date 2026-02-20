@@ -739,9 +739,15 @@ Return ONLY a JSON object:
 
         prompt = f"""Extract key facts from this content. For each fact, provide:
 1. Context (what topic it relates to)
-2. The fact itself
+2. The fact itself (MUST include specific names, numbers, and entities)
 3. Confidence (0.0-1.0)
 4. Tags (relevant keywords)
+
+CRITICAL RULES for fact extraction:
+- Each NAMED PERSON must appear in at least one fact with their FULL NAME and COUNTRY
+- Each SPECIFIC NUMBER must be preserved exactly (medals, dates, records)
+- Extract ONE FACT PER PERSON mentioned, even if brief
+- Never summarize multiple people as "various athletes" - name them individually
 {temporal_hint}{procedural_hint}
 
 Content:
@@ -870,8 +876,11 @@ Respond with a JSON list like:
                 "Apply the knowledge to answer the question. For PROCEDURAL questions "
                 "(describing workflows, steps, commands), reconstruct the exact ordered "
                 "sequence of steps from the facts. Number each step. Include specific "
-                "commands or actions at each step. Do not skip steps or add prerequisites "
-                "that aren't in the facts."
+                "commands or actions at each step. CRITICAL: Answer ONLY what is asked. "
+                "If the question says 'from X to Y', start at step X and end at step Y. "
+                "Do NOT include setup/installation prerequisites unless explicitly asked. "
+                "For example, 'from creating a project to running tests' means start at "
+                "the 'create project' step, not at 'install SDK'."
             ),
         }
 
@@ -924,6 +933,8 @@ Respond with a JSON list like:
         if intent_type == "multi_source_synthesis":
             extra_instructions += (
                 "\n\nIMPORTANT - MULTI-SOURCE SYNTHESIS REQUIRED:\n"
+                "Before answering, RESTATE the question in your own words to ensure you understand it.\n\n"
+                "Rules:\n"
                 "- The answer requires combining information from MULTIPLE different sources/articles\n"
                 "- First, identify which facts come from which source (look at [Source: ...] labels)\n"
                 "- If the question asks about a SPECIFIC source/article (e.g., 'mentioned in the athlete article'):\n"
@@ -932,9 +943,11 @@ Respond with a JSON list like:
                 "  * Do NOT use data from other sources for this part\n"
                 "- When finding connections ACROSS sources, cite the specific numbers from each\n"
                 "- When counting entities (athletes, events, etc.), list them explicitly by NAME\n"
-                "- Read the question carefully: 'individual athletes' means named people,\n"
-                "  NOT country totals. 'mentioned in article X' means only count items\n"
-                "  that appear in that specific article/source.\n"
+                "- Read the question carefully:\n"
+                "  * 'individual athletes' = count NAMED PEOPLE, not country medal totals\n"
+                "  * 'mentioned in article X' = count only items that appear in that article\n"
+                "  * 'most medals mentioned' = count how many athletes (medal winners) are named\n"
+                "    from each country IN THAT ARTICLE, then compare country counts\n"
             )
 
         # Add summary context only for multi-source synthesis (not every question)
