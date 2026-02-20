@@ -1,0 +1,267 @@
+name: "domain-agent-eval"
+description: "Evaluate all 5 domain agents: DomainEvalHarness + teaching evaluation + combined scores"
+version: "1.0.0"
+author: "Amplihack Team"
+tags:
+  ["eval", "domain-agents", "teaching", "code-review", "meeting", "document", "data", "planning"]
+
+# DOMAIN AGENT EVAL RECIPE
+#
+# Evaluates all 5 domain-specific agents:
+#   - CodeReviewAgent: Code quality analysis
+#   - MeetingSynthesizerAgent: Meeting notes summarization
+#   - DocumentCreatorAgent: Document generation
+#   - DataAnalysisAgent: Data analysis and insights
+#   - ProjectPlanningAgent: Project planning and estimation
+#
+# Steps:
+#   1. Run DomainEvalHarness on each agent (L1-L4 scenarios)
+#   2. Run teaching evaluation (teacher-student knowledge transfer)
+#   3. Generate combined scores (domain + teaching weighted)
+#   4. Document results with per-agent breakdown
+#
+# Each domain agent provides its own eval levels (L1-L4):
+#   - L1: Basic task execution
+#   - L2: Complex multi-step tasks
+#   - L3: Edge cases and error handling
+#   - L4: Integration and cross-domain tasks
+#
+# Philosophy:
+#   - Domain agents are first-class citizens with their own eval
+#   - Teaching ability is a key differentiator
+#   - Combined scoring gives holistic view
+#   - Per-agent profiles enable targeted improvement
+#
+# Usage:
+#   amplifier recipes execute domain-agent-eval.yaml --context '{
+#     "agents": "code_review meeting_synthesizer document_creator data_analysis project_planning",
+#     "output_dir": "./domain_eval_results"
+#   }'
+#
+# CLI equivalent:
+#   PYTHONPATH=src python -m amplihack.eval.run_domain_evals
+
+recursion:
+  max_depth: 4
+  max_total_steps: 25
+
+context:
+  # Space-separated list of agents to evaluate (or "all" for all 5)
+  agents: "code_review meeting_synthesizer document_creator data_analysis project_planning"
+
+  # Output directory for results
+  output_dir: "./domain_eval_results"
+
+  # SDK for teaching evaluation
+  sdk: "mini"
+
+  # Internal state
+  domain_eval_results: ""
+  teaching_eval_results: ""
+  combined_scores: ""
+  documentation: ""
+
+steps:
+  # ==========================================================================
+  # STEP 1: RUN DOMAIN EVAL HARNESS
+  # Run DomainEvalHarness on each specified agent.
+  # Each agent provides its own L1-L4 eval levels.
+  # ==========================================================================
+  - id: "run-domain-evals"
+    type: "bash"
+    command: |
+      echo "=== Step 1: Running Domain Agent Evaluations ==="
+      echo "Agents: {{agents}}"
+      echo "Output: {{output_dir}}"
+      echo ""
+
+      AGENT_ARGS=""
+      if [ "{{agents}}" != "all" ]; then
+        AGENT_ARGS="--agents {{agents}}"
+      fi
+
+      PYTHONPATH=src python -m amplihack.eval.run_domain_evals \
+        $AGENT_ARGS \
+        --output-dir "{{output_dir}}" \
+        2>&1
+
+      echo ""
+      echo "=== Domain Evals Complete ==="
+
+      if [ -f "{{output_dir}}/all_domain_evals.json" ]; then
+        cat "{{output_dir}}/all_domain_evals.json"
+      else
+        echo '{"error": "all_domain_evals.json not found"}'
+      fi
+    output: "domain_eval_results"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 2: RUN TEACHING EVALUATION
+  # Test each agent's ability to teach its domain knowledge to a student.
+  # Uses TeachingSession with domain-specific knowledge bases.
+  # ==========================================================================
+  - id: "run-teaching-eval"
+    agent: "amplihack:architect"
+    prompt: |
+      # Step 2: Teaching Evaluation
+
+      **Domain Eval Results:** {{domain_eval_results}}
+      **Agents:** {{agents}}
+      **SDK:** {{sdk}}
+
+      ## Your Task
+
+      For each domain agent that was evaluated, assess its teaching ability:
+
+      1. **Knowledge Base Extraction**: Can the agent articulate its domain knowledge?
+      2. **Explanation Quality**: Does it explain concepts clearly?
+      3. **Scaffolding**: Does it build understanding progressively?
+      4. **Self-Explanation**: Can it explain its own reasoning? (Chi 1994 principle)
+      5. **Verification**: Can it check if the student understood?
+
+      Run the teaching evaluation using the TeachingSession framework:
+
+      ```python
+      from amplihack.eval.teaching_session import TeachingSession, TeachingConfig
+      from amplihack.eval.teaching_eval import evaluate_teaching
+
+      for agent_name in agents:
+          config = TeachingConfig(
+              agent_name=f"teaching_{agent_name}",
+              max_turns=4,
+              sdk="{{sdk}}",
+          )
+          session = TeachingSession(config)
+          # Use agent's domain knowledge as the knowledge base
+          result = session.run(knowledge_base=agent.get_domain_knowledge())
+          teaching_score = evaluate_teaching(result)
+      ```
+
+      **Output as JSON:**
+      ```json
+      {
+        "teaching_scores": {
+          "code_review": {
+            "knowledge_articulation": 0.0,
+            "explanation_quality": 0.0,
+            "scaffolding": 0.0,
+            "self_explanation": 0.0,
+            "verification": 0.0,
+            "overall": 0.0
+          }
+        },
+        "best_teacher": "agent with highest teaching score",
+        "teaching_patterns": ["what makes good teaching agents"],
+        "improvement_areas": ["where teaching could improve"]
+      }
+      ```
+    output: "teaching_eval_results"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 3: GENERATE COMBINED SCORES
+  # Combine domain eval scores with teaching scores for holistic assessment.
+  # ==========================================================================
+  - id: "generate-combined-scores"
+    agent: "amplihack:architect"
+    prompt: |
+      # Step 3: Generate Combined Scores
+
+      **Domain Eval Results:** {{domain_eval_results}}
+      **Teaching Eval Results:** {{teaching_eval_results}}
+
+      ## Your Task
+
+      Generate combined scores for each agent using weighted formula:
+
+      **Combined Score = 0.7 * Domain Score + 0.3 * Teaching Score**
+
+      Rationale: Domain competence is the primary measure (70%), but teaching
+      ability indicates deeper understanding and is a valuable differentiator (30%).
+
+      For each agent, produce:
+      1. **Domain Score**: Average across L1-L4 levels
+      2. **Teaching Score**: Average across 5 teaching dimensions
+      3. **Combined Score**: Weighted combination
+      4. **Profile**: Strengths, weaknesses, recommended use cases
+      5. **Ranking**: Overall ranking across all agents
+
+      **Output as JSON:**
+      ```json
+      {
+        "agent_scores": {
+          "code_review": {
+            "domain_score": 0.0,
+            "teaching_score": 0.0,
+            "combined_score": 0.0,
+            "per_level": {"L1": 0.0, "L2": 0.0, "L3": 0.0, "L4": 0.0},
+            "strengths": ["..."],
+            "weaknesses": ["..."],
+            "recommended_use": "..."
+          }
+        },
+        "ranking": [
+          {"rank": 1, "agent": "...", "combined_score": 0.0}
+        ],
+        "overall_average": 0.0,
+        "fleet_health": "healthy|needs_attention|critical"
+      }
+      ```
+    output: "combined_scores"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 4: DOCUMENT RESULTS
+  # Create comprehensive evaluation report.
+  # ==========================================================================
+  - id: "document-results"
+    type: "bash"
+    parse_json: true
+    command: |
+      echo "=== Step 4: Documenting Results ==="
+
+      mkdir -p "{{output_dir}}"
+      REPORT_FILE="{{output_dir}}/domain_eval_report_$(date +%Y%m%d).md"
+
+      cat > "$REPORT_FILE" << 'REPORT_EOF'
+      # Domain Agent Evaluation Report
+
+      **Date:** $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+      **Agents Evaluated:** {{agents}}
+
+      ## Domain Eval Results
+      {{domain_eval_results}}
+
+      ## Teaching Eval Results
+      {{teaching_eval_results}}
+
+      ## Combined Scores
+      {{combined_scores}}
+
+      ---
+      Generated by domain-agent-eval recipe v1.0.0
+      REPORT_EOF
+
+      echo "Report saved to: $REPORT_FILE"
+
+      cat << EOF
+      {
+        "workflow": "domain-agent-eval",
+        "version": "1.0.0",
+        "agents_evaluated": "{{agents}}",
+        "status": "complete",
+        "steps_completed": 4,
+        "steps": [
+          "1. Run DomainEvalHarness",
+          "2. Run Teaching Evaluation",
+          "3. Generate Combined Scores",
+          "4. Document Results"
+        ],
+        "outputs": {
+          "domain_evals": "{{output_dir}}/all_domain_evals.json",
+          "report": "$REPORT_FILE"
+        }
+      }
+      EOF
+    output: "final_result"

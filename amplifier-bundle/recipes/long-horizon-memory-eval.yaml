@@ -1,0 +1,366 @@
+name: "long-horizon-memory-eval"
+description: "1000-turn memory stress test: generate dialogue -> feed turns -> question -> score -> analyze"
+version: "1.0.0"
+author: "Amplihack Team"
+tags: ["eval", "memory", "long-horizon", "stress-test", "1000-turn"]
+
+# LONG-HORIZON MEMORY EVAL RECIPE
+#
+# Runs the 1000-turn memory stress test to evaluate agent memory at scale.
+#
+# The test generates a deterministic dialogue across multiple topic domains,
+# feeds turns to the agent one at a time, then asks questions that require
+# recall from various points in the conversation history.
+#
+# Steps:
+#   1. Generate dialogue data (deterministic, reproducible)
+#   2. Feed turns to agent (via learning phase)
+#   3. Generate and ask questions (spanning different recency/topics)
+#   4. Score answers (LLM-graded on 5 dimensions)
+#   5. Document findings (breakdown by category and recency)
+#
+# Philosophy:
+#   - Short-horizon eval is necessary but not sufficient
+#   - Real agents must handle 100s-1000s of turns
+#   - Memory decay patterns reveal system architecture limits
+#   - Reproducible data enables meaningful comparison across runs
+#
+# Usage:
+#   amplifier recipes execute long-horizon-memory-eval.yaml --context '{
+#     "num_turns": "1000",
+#     "num_questions": "100",
+#     "sdk": "mini"
+#   }'
+#
+# CLI equivalent:
+#   python -m amplihack.eval.long_horizon_memory --turns 1000 --questions 100
+
+recursion:
+  max_depth: 4
+  max_total_steps: 20
+
+context:
+  # Number of dialogue turns to generate and feed
+  num_turns: "1000"
+
+  # Number of questions to generate and ask
+  num_questions: "100"
+
+  # SDK to use for the agent
+  sdk: "mini"
+
+  # Output directory for results
+  output_dir: "./eval_results/long_horizon"
+
+  # Agent name for memory isolation
+  agent_name: "long-horizon-agent"
+
+  # Seed for reproducible data generation
+  seed: "42"
+
+  # Internal state
+  dialogue_data: ""
+  feeding_result: ""
+  question_results: ""
+  score_report: ""
+  analysis: ""
+
+steps:
+  # ==========================================================================
+  # STEP 1: GENERATE DIALOGUE DATA
+  # Create deterministic dialogue turns across multiple topic domains.
+  # ==========================================================================
+  - id: "generate-dialogue"
+    type: "bash"
+    command: |
+      echo "=== Step 1: Generating Dialogue Data ==="
+      echo "Turns: {{num_turns}}"
+      echo "Seed: {{seed}}"
+      echo ""
+
+      PYTHONPATH=src python -c "
+      import json
+      from amplihack.eval.long_horizon_data import generate_dialogue
+
+      dialogue = generate_dialogue(num_turns=int('{{num_turns}}'), seed=int('{{seed}}'))
+
+      # Save full dialogue
+      import os
+      os.makedirs('{{output_dir}}', exist_ok=True)
+      with open('{{output_dir}}/dialogue.json', 'w') as f:
+          turns_data = [
+              {
+                  'turn_id': t.turn_id,
+                  'speaker': t.speaker,
+                  'content': t.content,
+                  'topic': t.topic,
+                  'subtopic': t.subtopic,
+                  'turn_number': t.turn_number,
+              }
+              for t in dialogue
+          ]
+          json.dump(turns_data, f, indent=2)
+
+      print(json.dumps({
+          'num_turns': len(dialogue),
+          'topics': list(set(t.topic for t in dialogue)),
+          'dialogue_file': '{{output_dir}}/dialogue.json'
+      }))
+      " 2>&1
+
+      echo ""
+      echo "=== Dialogue Generation Complete ==="
+    output: "dialogue_data"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 2: FEED TURNS TO AGENT
+  # Feed dialogue turns to the agent through its learning interface.
+  # This simulates a real conversation unfolding over time.
+  # ==========================================================================
+  - id: "feed-turns"
+    type: "bash"
+    command: |
+      echo "=== Step 2: Feeding Turns to Agent ==="
+      echo "Agent: {{agent_name}}"
+      echo "SDK: {{sdk}}"
+      echo "Turns: {{num_turns}}"
+      echo ""
+
+      PYTHONPATH=src python -c "
+      import json
+      import time
+
+      start = time.time()
+
+      # Load dialogue
+      with open('{{output_dir}}/dialogue.json') as f:
+          turns = json.load(f)
+
+      print(f'Loaded {len(turns)} turns')
+
+      # Convert to article format for learning subprocess
+      from amplihack.eval.test_levels import TestArticle
+      from amplihack.eval.progressive_test_suite import run_learning_subprocess
+
+      # Batch turns into chunks of 50 for efficiency
+      batch_size = 50
+      total_batches = (len(turns) + batch_size - 1) // batch_size
+      errors = 0
+
+      for batch_idx in range(total_batches):
+          batch_start = batch_idx * batch_size
+          batch_end = min(batch_start + batch_size, len(turns))
+          batch = turns[batch_start:batch_end]
+
+          # Convert batch to articles
+          articles = []
+          for turn in batch:
+              articles.append(TestArticle(
+                  title=f\"Turn {turn['turn_number']}: {turn['topic']} - {turn['subtopic']}\",
+                  content=f\"{turn['speaker']}: {turn['content']}\",
+                  url=f\"dialogue://turn/{turn['turn_number']}\",
+                  published=f\"2026-01-01T{turn['turn_number']:06d}Z\",
+                  metadata={'topic': turn['topic'], 'subtopic': turn['subtopic']},
+              ))
+
+          agent_name = '{{agent_name}}_$(date +%s)'
+          success, data = run_learning_subprocess(articles, agent_name, sdk='{{sdk}}')
+
+          if not success:
+              errors += 1
+              if errors > 5:
+                  break
+
+          if (batch_idx + 1) % 10 == 0:
+              elapsed = time.time() - start
+              print(f'  Batch {batch_idx + 1}/{total_batches} ({batch_end} turns, {elapsed:.1f}s)')
+
+      elapsed = time.time() - start
+      print(json.dumps({
+          'turns_fed': len(turns),
+          'batches': total_batches,
+          'errors': errors,
+          'duration_seconds': round(elapsed, 1)
+      }))
+      " 2>&1
+
+      echo ""
+      echo "=== Turn Feeding Complete ==="
+    output: "feeding_result"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 3: GENERATE AND ASK QUESTIONS
+  # Generate questions spanning different recency windows and topics,
+  # then ask them to the agent.
+  # ==========================================================================
+  - id: "generate-and-ask"
+    type: "bash"
+    command: |
+      echo "=== Step 3: Generating and Asking Questions ==="
+      echo "Questions: {{num_questions}}"
+      echo ""
+
+      PYTHONPATH=src python -c "
+      import json
+
+      from amplihack.eval.long_horizon_data import generate_dialogue, generate_questions
+
+      # Regenerate dialogue (deterministic with same seed)
+      dialogue = generate_dialogue(num_turns=int('{{num_turns}}'), seed=int('{{seed}}'))
+      questions = generate_questions(dialogue, num_questions=int('{{num_questions}}'), seed=int('{{seed}}'))
+
+      # Save questions
+      import os
+      os.makedirs('{{output_dir}}', exist_ok=True)
+      with open('{{output_dir}}/questions.json', 'w') as f:
+          q_data = [
+              {
+                  'question_id': q.question_id,
+                  'question_text': q.question_text,
+                  'category': q.category,
+                  'expected_answer': q.expected_answer,
+                  'source_turn': q.source_turn,
+              }
+              for q in questions
+          ]
+          json.dump(q_data, f, indent=2)
+
+      print(json.dumps({
+          'num_questions': len(questions),
+          'categories': list(set(q.category for q in questions)),
+          'questions_file': '{{output_dir}}/questions.json'
+      }))
+      " 2>&1
+
+      echo ""
+      echo "=== Question Generation Complete ==="
+    output: "question_results"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 4: SCORE AND ANALYZE
+  # Grade answers and compute per-category breakdowns.
+  # ==========================================================================
+  - id: "score-and-analyze"
+    type: "bash"
+    command: |
+      echo "=== Step 4: Scoring and Analyzing ==="
+
+      PYTHONPATH=src python -m amplihack.eval.long_horizon_memory \
+        --turns {{num_turns}} \
+        --questions {{num_questions}} \
+        --sdk {{sdk}} \
+        --output-dir "{{output_dir}}" \
+        --agent-name "{{agent_name}}" \
+        --seed {{seed}} \
+        2>&1
+
+      echo ""
+      echo "=== Scoring Complete ==="
+
+      if [ -f "{{output_dir}}/eval_report.json" ]; then
+        cat "{{output_dir}}/eval_report.json"
+      else
+        echo '{"status": "report not found"}'
+      fi
+    output: "score_report"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 5: DOCUMENT FINDINGS
+  # Generate a comprehensive report with memory decay analysis.
+  # ==========================================================================
+  - id: "document-findings"
+    agent: "amplihack:architect"
+    prompt: |
+      # Step 5: Document Long-Horizon Memory Findings
+
+      **Dialogue Data:** {{dialogue_data}}
+      **Feeding Result:** {{feeding_result}}
+      **Question Results:** {{question_results}}
+      **Score Report:** {{score_report}}
+
+      ## Your Task
+
+      Analyze the long-horizon memory test results and document findings.
+
+      **Analysis Dimensions:**
+
+      1. **Memory Decay Curve**
+         - How do scores change with turn recency?
+         - Is there a sharp cliff or gradual decay?
+         - What is the effective memory window?
+
+      2. **Category Performance**
+         - Which topic categories are remembered best?
+         - Are there systematic gaps in certain domains?
+
+      3. **Dimension Breakdown**
+         - Accuracy: Are recalled facts correct?
+         - Completeness: Are all relevant facts included?
+         - Specificity: Are details precise or vague?
+         - Relevance: Are retrieved facts on-topic?
+         - Coherence: Is the answer well-structured?
+
+      4. **Architecture Implications**
+         - What does performance reveal about memory architecture?
+         - Where are the bottlenecks?
+         - What changes would improve long-horizon performance?
+
+      Save the analysis to {{output_dir}}/long_horizon_analysis.md.
+
+      **Output as JSON:**
+      ```json
+      {
+        "overall_score": 0.0,
+        "memory_decay": {
+          "recent_100_turns": 0.0,
+          "mid_500_turns": 0.0,
+          "old_1000_turns": 0.0,
+          "decay_pattern": "gradual|cliff|none"
+        },
+        "category_scores": {},
+        "dimension_scores": {},
+        "key_findings": ["..."],
+        "architecture_implications": ["..."],
+        "recommendations": ["..."],
+        "report_file": "{{output_dir}}/long_horizon_analysis.md"
+      }
+      ```
+    output: "analysis"
+    parse_json: true
+
+  # ==========================================================================
+  # FINAL OUTPUT
+  # ==========================================================================
+  - id: "final-output"
+    type: "bash"
+    parse_json: true
+    command: |
+      cat << 'EOF'
+      {
+        "workflow": "long-horizon-memory-eval",
+        "version": "1.0.0",
+        "num_turns": "{{num_turns}}",
+        "num_questions": "{{num_questions}}",
+        "sdk": "{{sdk}}",
+        "status": "complete",
+        "steps_completed": 5,
+        "steps": [
+          "1. Generate Dialogue Data",
+          "2. Feed Turns to Agent",
+          "3. Generate and Ask Questions",
+          "4. Score and Analyze",
+          "5. Document Findings"
+        ],
+        "outputs": {
+          "dialogue": "{{output_dir}}/dialogue.json",
+          "questions": "{{output_dir}}/questions.json",
+          "eval_report": "{{output_dir}}/eval_report.json",
+          "analysis": "{{output_dir}}/long_horizon_analysis.md"
+        }
+      }
+      EOF
+    output: "final_result"
