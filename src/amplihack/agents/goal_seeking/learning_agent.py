@@ -421,12 +421,22 @@ Rules:
         intent_type = intent.get("intent", "simple_recall")
 
         # Step 2: Adaptive retrieval based on intent complexity
+        # For small KBs (<=100 facts), always use simple retrieval (all facts).
+        # The iterative search can miss facts whose text doesn't match queries,
+        # and for small KBs the LLM can easily handle all facts in context.
+        # This is critical for temporal/multi-source questions where completeness matters.
         reasoning_trace = None
-        if intent_type in self.SIMPLE_INTENTS:
-            # Simple intents: single-pass retrieval (no iteration overhead)
+        use_simple = intent_type in self.SIMPLE_INTENTS
+        if not use_simple and hasattr(self.memory, "get_all_facts"):
+            kb_size = len(self.memory.get_all_facts(limit=151))
+            if kb_size <= 150:
+                use_simple = True
+
+        if use_simple:
+            # Simple retrieval: get all facts for complete coverage
             relevant_facts = self._simple_retrieval(question)
         else:
-            # Complex intents: use iterative reasoning with plan/search/evaluate
+            # Large KB: use iterative reasoning with plan/search/evaluate
             relevant_facts, _, reasoning_trace = self.loop.reason_iteratively(
                 question=question,
                 memory=self.memory,
@@ -496,8 +506,11 @@ Rules:
     def _simple_retrieval(self, question: str) -> list[dict[str, Any]]:
         """Single-pass retrieval for simple recall questions.
 
-        Gets all facts if the knowledge base is small (<=50), otherwise
-        uses keyword search. No iteration overhead.
+        Gets all facts if the knowledge base is small (<=150), otherwise
+        uses keyword search. The threshold is set high because:
+        - LLMs can easily handle 150 facts in context
+        - Keyword search may miss relevant facts (e.g., Day 10 data)
+        - Completeness is critical for temporal and multi-source questions
 
         Args:
             question: The question to retrieve facts for
@@ -508,14 +521,14 @@ Rules:
         if not hasattr(self.memory, "get_all_facts"):
             return []
 
-        # Check knowledge base size
-        all_facts = self.memory.get_all_facts(limit=51)
-        if len(all_facts) <= 50:
+        # Check knowledge base size -- use generous threshold
+        all_facts = self.memory.get_all_facts(limit=151)
+        if len(all_facts) <= 150:
             return all_facts
 
         # Larger knowledge base: use keyword search
-        results = self.memory.search(query=question, limit=20)
-        return results if results else all_facts[:50]
+        results = self.memory.search(query=question, limit=40)
+        return results if results else all_facts[:150]
 
     def _get_summary_nodes(self) -> list[dict[str, Any]]:
         """Retrieve SUMMARY concept map nodes from memory.
@@ -701,12 +714,13 @@ Return ONLY a JSON object:
         # Add temporal instruction only for content with strong temporal markers
         temporal_hint = ""
         if temporal_meta.get("temporal_order") or temporal_meta.get("source_date"):
+            time_label = temporal_meta.get("temporal_order") or temporal_meta.get("source_date", "")
             temporal_hint = (
-                "\n\nNote: This content has a specific time context "
-                f"({temporal_meta.get('temporal_order', temporal_meta.get('source_date', ''))}).\n"
-                "Include the time period or day number in each fact where relevant. "
-                "For example: 'As of Day 10, Norway has 28 total medals' rather than just "
-                "'Norway has 28 total medals'."
+                f"\n\nCRITICAL - TEMPORAL CONTEXT: This content is from {time_label}.\n"
+                f"You MUST prefix EVERY fact with '{time_label}' so the time context is preserved.\n"
+                f"Example: 'As of {time_label}, Norway has 28 total medals' NOT just "
+                "'Norway has 28 total medals'.\n"
+                "This is essential for later temporal comparisons across different time periods."
             )
 
         # Add procedural hint for step-by-step content
@@ -806,8 +820,15 @@ Respond with a JSON list like:
         intent = intent or {}
         intent_type = intent.get("intent", "simple_recall")
 
-        # Use more facts for synthesis questions that need cross-source connections
-        max_facts = 40 if intent_type == "multi_source_synthesis" else 20
+        # Use more facts for questions that need complete data coverage
+        if intent_type in (
+            "multi_source_synthesis",
+            "temporal_comparison",
+            "mathematical_computation",
+        ):
+            max_facts = 60
+        else:
+            max_facts = 30
 
         # Build context string - include temporal metadata, source labels, and supersede markers
         def _format_fact(i: int, fact: dict, include_temporal: bool) -> str:
@@ -910,7 +931,10 @@ Respond with a JSON list like:
                 "  * COUNT the relevant items from that source precisely\n"
                 "  * Do NOT use data from other sources for this part\n"
                 "- When finding connections ACROSS sources, cite the specific numbers from each\n"
-                "- When counting entities (athletes, events, etc.), list them explicitly\n"
+                "- When counting entities (athletes, events, etc.), list them explicitly by NAME\n"
+                "- Read the question carefully: 'individual athletes' means named people,\n"
+                "  NOT country totals. 'mentioned in article X' means only count items\n"
+                "  that appear in that specific article/source.\n"
             )
 
         # Add summary context only for multi-source synthesis (not every question)
