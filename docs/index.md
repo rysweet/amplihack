@@ -275,15 +275,24 @@ Specialized AI agents and tools for every development task.
 
 ### Goal-Seeking Agents
 
-**Autonomous agents that iterate toward objectives without stopping.**
+**Autonomous agents that learn, remember, teach, and apply knowledge across four SDK backends.**
 
-- [Goal Agent Generator Guide](GOAL_AGENT_GENERATOR_GUIDE.md) - Create custom goal-seeking agents
+- **[Comprehensive Guide](GOAL_SEEKING_AGENTS.md)** - End-to-end documentation: generation, capabilities, evaluation (L1-L12), self-improvement loop, and architecture
+- [SDK Adapters Guide](SDK_ADAPTERS_GUIDE.md) - Deep dive into Copilot, Claude, Microsoft, and Mini SDK backends
+- [Goal Agent Generator Guide](GOAL_AGENT_GENERATOR_GUIDE.md) - Create custom goal-seeking agents with `amplihack new`
 - [Goal Agent Generator Presentation](GOAL_AGENT_GENERATOR_PRESENTATION.md) - Concept overview
 - [Goal Agent Generator Design](agent-bundle-generator-design.md) - Architecture and patterns
 - [Goal Agent Requirements](agent-bundle-generator-requirements.md) - Specifications
 - [Implementation Summary](goal_agent_generator/IMPLEMENTATION_SUMMARY.md) - Current status
 
-**Key Feature**: Goal-seeking agents work autonomously toward a defined objective, iterating and adapting without requiring user intervention at each step. Perfect for complex, open-ended tasks.
+**Key Features**:
+
+- **SDK-Agnostic**: Write once, run on Copilot, Claude, Microsoft Agent Framework, or lightweight mini-framework
+- **7 Learning Tools**: learn, search, explain, verify, find gaps, store, summary
+- **Progressive Eval (L1-L12)**: From simple recall to far transfer across domains
+- **Teaching Evaluation**: Multi-turn teacher-student knowledge transfer (Chi 1994, Vygotsky ZPD)
+- **Self-Improvement Loop**: BUILD -> EVAL -> AUDIT -> IMPROVE -> RE-EVAL with automated error analysis
+- **Domain Agents**: Code Review, Meeting Synthesizer, with framework for creating custom domain agents
 
 ### Memory-Enabled Agents ⭐ NEW
 
