@@ -1,9 +1,0 @@
-[
-  {
-    "issue": 2419,
-    "branch": "feat/task0-generator-sdk-flag",
-    "description": "Add --sdk flag to generator (PREREQUISITE)",
-    "task": "Update amplihack new command to support --sdk flag with choices [copilot, claude, microsoft, mini]. Default to 'copilot'. Changes needed: 1) Add --sdk option to cli.py with click.option, 2) Update agent_assembler.py to accept sdk parameter and use it instead of hardcoded 'claude', 3) Add tests. This MUST complete before SDK implementations can proceed.",
-    "recipe": "default-workflow"
-  }
-]
