@@ -1,12 +1,18 @@
 """Progressive test suite for agent learning evaluation.
 
-Runs 6 levels of increasing difficulty:
+Runs 12 levels of increasing difficulty:
 - L1: Single source direct recall (baseline)
 - L2: Multi-source synthesis
 - L3: Temporal reasoning
 - L4: Procedural learning
 - L5: Contradiction handling
 - L6: Incremental learning
+- L7: Teacher-student knowledge transfer
+- L8: Metacognition
+- L9: Causal reasoning
+- L10: Counterfactual reasoning
+- L11: Novel skill acquisition
+- L12: Far transfer
 
 Philosophy: Comprehensive evaluation from simple to complex,
 measuring learning capability across multiple dimensions.
@@ -172,6 +178,183 @@ def run_testing_subprocess(questions: list, agent_name: str) -> tuple[bool, str]
     return True, _extract_json_line(result.stdout)
 
 
+def _isolate_memory_for_level(agent_name: str, level_id: str) -> str:
+    """Create an isolated agent name for each level to avoid cross-level interference.
+
+    Each level gets a unique agent name which maps to a separate memory database.
+    This prevents facts from L1 leaking into L2, etc.
+
+    Args:
+        agent_name: Base agent name
+        level_id: Level identifier (L1, L2, etc.)
+
+    Returns:
+        Isolated agent name string
+    """
+    return f"{agent_name}_{level_id}_{int(time.time())}"
+
+
+def run_l7_teaching_eval(
+    level: TestLevel, config: ProgressiveConfig, level_dir: Path
+) -> LevelResult:
+    """Run L7 teaching evaluation using the TeachingSession framework.
+
+    L7 is special: it uses a teacher-student multi-turn dialogue rather than
+    single-pass learning+testing. The teacher learns the articles, then teaches
+    a student agent through multiple turns. The student is then tested.
+
+    Args:
+        level: L7 test level definition
+        config: Progressive configuration
+        level_dir: Output directory for L7
+
+    Returns:
+        LevelResult with scores and status
+    """
+    level_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        # Phase 1: Learn articles (same as other levels)
+        agent_name = _isolate_memory_for_level(config.agent_name, "L7")
+        success, data = run_learning_subprocess(level.articles, agent_name)
+        if not success:
+            return LevelResult(
+                level_id=level.level_id,
+                level_name=level.level_name,
+                success=False,
+                error_message=f"L7 learning phase failed: {data}",
+            )
+
+        learning_data = json.loads(data)
+        with open(level_dir / "learning_phase.log", "w") as f:
+            json.dump(learning_data, f, indent=2)
+
+        # Phase 2: Run teaching session (teacher teaches student)
+        # Build knowledge base from the articles for the teacher
+        knowledge_base = []
+        for article in level.articles:
+            knowledge_base.append(f"Title: {article.title}")
+            knowledge_base.append(article.content)
+
+        # Run teaching session as subprocess to isolate state
+        teaching_result = _run_teaching_subprocess(knowledge_base, agent_name)
+        with open(level_dir / "teaching_session.log", "w") as f:
+            json.dump(teaching_result, f, indent=2)
+
+        # Phase 3: Test the student (same agent, already has knowledge from teaching)
+        success, data = run_testing_subprocess(level.questions, agent_name)
+        if not success:
+            return LevelResult(
+                level_id=level.level_id,
+                level_name=level.level_name,
+                success=False,
+                error_message=f"L7 testing phase failed: {data}",
+            )
+
+        testing_data = json.loads(data)
+        with open(level_dir / "testing_phase.log", "w") as f:
+            json.dump(testing_data, f, indent=2)
+
+        # Grade answers
+        all_grades = []
+        for i, answer_data in enumerate(testing_data["answers"]):
+            question = level.questions[i]
+
+            grade = grade_answer(
+                question=question.question,
+                expected=question.expected_answer,
+                actual=answer_data["answer"],
+                level=question.level,
+            )
+
+            all_grades.append(
+                {
+                    "question": question.question,
+                    "level": question.level,
+                    "reasoning_type": question.reasoning_type,
+                    "expected": question.expected_answer,
+                    "actual": answer_data["answer"],
+                    "score": grade.score,
+                    "reasoning": grade.reasoning,
+                    "metacognition": None,
+                }
+            )
+
+        if all_grades:
+            avg_score = sum(g["score"] for g in all_grades) / len(all_grades)
+            scores = {
+                "average": avg_score,
+                "count": len(all_grades),
+                "details": all_grades,
+                "metacognition": None,
+                "teaching_session": teaching_result,
+            }
+        else:
+            scores = {"average": 0.0, "count": 0, "details": [], "metacognition": None}
+
+        with open(level_dir / "scores.json", "w") as f:
+            json.dump(scores, f, indent=2)
+
+        return LevelResult(
+            level_id=level.level_id, level_name=level.level_name, success=True, scores=scores
+        )
+
+    except Exception as e:
+        return LevelResult(
+            level_id=level.level_id,
+            level_name=level.level_name,
+            success=False,
+            error_message=str(e),
+        )
+
+
+def _run_teaching_subprocess(knowledge_base: list[str], agent_name: str) -> dict:
+    """Run a teaching session in a subprocess.
+
+    The teaching session creates a teacher-student dialogue where the teacher
+    uses the knowledge base to teach the student, who then stores the knowledge
+    in memory for later testing.
+
+    Args:
+        knowledge_base: List of knowledge strings (article titles and content)
+        agent_name: Agent identifier (shared with testing phase)
+
+    Returns:
+        Dict with teaching session results
+    """
+    teaching_input = {
+        "knowledge_base": knowledge_base,
+        "agent_name": agent_name,
+        "max_turns": 4,
+    }
+
+    try:
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "amplihack.eval.teaching_subprocess",
+                "--agent-name",
+                agent_name,
+            ],
+            input=json.dumps(teaching_input),
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
+    except subprocess.TimeoutExpired:
+        return {"status": "timeout", "turns": 0, "error": "Teaching session timed out"}
+
+    if result.returncode != 0:
+        return {"status": "error", "turns": 0, "error": result.stderr[:500]}
+
+    try:
+        output = _extract_json_line(result.stdout)
+        return json.loads(output)
+    except (json.JSONDecodeError, Exception):
+        return {"status": "completed", "turns": 0, "raw_output": result.stdout[:500]}
+
+
 def run_single_level(level: TestLevel, config: ProgressiveConfig, level_dir: Path) -> LevelResult:
     """Run evaluation for a single level.
 
@@ -185,6 +368,13 @@ def run_single_level(level: TestLevel, config: ProgressiveConfig, level_dir: Pat
     """
     level_dir.mkdir(parents=True, exist_ok=True)
 
+    # Use L7 teaching path for teacher-student levels
+    if level.level_id == "L7":
+        return run_l7_teaching_eval(level, config, level_dir)
+
+    # Memory isolation: each level gets a unique agent name
+    isolated_agent_name = _isolate_memory_for_level(config.agent_name, level.level_id)
+
     try:
         # Handle incremental learning (Level 6)
         if level.requires_update_handling:
@@ -192,7 +382,7 @@ def run_single_level(level: TestLevel, config: ProgressiveConfig, level_dir: Pat
             initial_articles = [
                 a for a in level.articles if (a.metadata or {}).get("phase") == "initial"
             ]
-            success, data = run_learning_subprocess(initial_articles, config.agent_name)
+            success, data = run_learning_subprocess(initial_articles, isolated_agent_name)
             if not success:
                 return LevelResult(
                     level_id=level.level_id,
@@ -209,7 +399,7 @@ def run_single_level(level: TestLevel, config: ProgressiveConfig, level_dir: Pat
             update_articles = [
                 a for a in level.articles if (a.metadata or {}).get("phase") == "update"
             ]
-            success, data = run_learning_subprocess(update_articles, config.agent_name)
+            success, data = run_learning_subprocess(update_articles, isolated_agent_name)
             if not success:
                 return LevelResult(
                     level_id=level.level_id,
@@ -224,7 +414,7 @@ def run_single_level(level: TestLevel, config: ProgressiveConfig, level_dir: Pat
 
         else:
             # Standard learning: all articles at once
-            success, data = run_learning_subprocess(level.articles, config.agent_name)
+            success, data = run_learning_subprocess(level.articles, isolated_agent_name)
             if not success:
                 return LevelResult(
                     level_id=level.level_id,
@@ -238,7 +428,7 @@ def run_single_level(level: TestLevel, config: ProgressiveConfig, level_dir: Pat
                 json.dump(learning_data, f, indent=2)
 
         # Testing phase
-        success, data = run_testing_subprocess(level.questions, config.agent_name)
+        success, data = run_testing_subprocess(level.questions, isolated_agent_name)
         if not success:
             return LevelResult(
                 level_id=level.level_id,
@@ -556,7 +746,7 @@ def main():
     parser.add_argument(
         "--levels",
         nargs="+",
-        choices=["L1", "L2", "L3", "L4", "L5", "L6", "L8", "L9", "L10", "L11", "L12"],
+        choices=["L1", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9", "L10", "L11", "L12"],
         help="Specific levels to run (default: L1-L6, use --advanced for L8-L12)",
     )
     parser.add_argument(

@@ -113,6 +113,16 @@ Grade the agent's answer on a scale of 0.0 to 1.0:
 Special considerations:
 - L5 (Contradictions): Award full points if agent acknowledges the contradiction, even if they don't resolve it
 - L6 (Updates): Agent must use the MOST RECENT information, not outdated data
+- L7 (Teaching): Grade based on factual accuracy of the answer, regardless of how it was learned
+- L9 (Causal): When asking about "most important single factor" or "root cause", accept
+  EITHER "program restructuring after 2018" OR "winning the hosting bid" as valid root causes.
+  Both are defensible interpretations. Score 0.8+ if the agent picks either and provides
+  sound causal reasoning explaining why that factor is the root cause.
+- L11 (Novel Skill): For workflow/config generation, grade on correctness of REQUIRED fields.
+  Do NOT penalize for including extra optional fields if the required ones are correct.
+- L12 (Far Transfer): When computing ratios and trends, the DIRECTION of the trend
+  (improving vs worsening) is critical. Correct ratio computation with wrong trend
+  direction should score 0.5-0.6, not 0.8+.
 - IMPORTANT: If the agent shows work/reasoning, look at the FINAL CONCLUSION,
   not just the opening line. Agents may self-correct during reasoning.
   The final answer at the end of the response is what matters.

@@ -14,6 +14,54 @@ from pathlib import Path
 from amplihack.agents.goal_seeking import LearningAgent
 
 
+def _compute_dynamic_confidence(trace, stats: dict, level: str) -> float:
+    """Compute dynamic confidence based on fact coverage and reasoning trace.
+
+    Rather than hardcoding 0.8, estimate actual confidence based on:
+    - Number of facts available vs expected
+    - Whether the trace used simple or iterative path
+    - Level complexity (L1 is simpler = higher base confidence)
+
+    Args:
+        trace: Reasoning trace (may be None)
+        stats: Memory statistics dict
+        level: Question level (L1-L12)
+
+    Returns:
+        Confidence score 0.0-1.0
+    """
+    base_confidence = 0.5
+
+    # Adjust by fact coverage
+    total_facts = stats.get("total_experiences", 0)
+    if total_facts >= 10:
+        base_confidence += 0.2
+    elif total_facts >= 5:
+        base_confidence += 0.1
+
+    # Adjust by trace quality
+    if trace is not None:
+        facts_collected = getattr(trace, "total_facts_collected", 0)
+        if facts_collected >= 5:
+            base_confidence += 0.15
+        elif facts_collected >= 1:
+            base_confidence += 0.05
+
+        # Simple path for simple questions = higher confidence
+        if getattr(trace, "used_simple_path", False) and level in ("L1", "L6"):
+            base_confidence += 0.1
+
+    # Level complexity adjustment
+    simple_levels = {"L1", "L4", "L6"}
+    complex_levels = {"L9", "L10", "L8"}
+    if level in simple_levels:
+        base_confidence += 0.05
+    elif level in complex_levels:
+        base_confidence -= 0.05
+
+    return min(1.0, max(0.1, round(base_confidence, 2)))
+
+
 def learning_phase(news_articles: list[dict], agent_name: str) -> dict:
     """Learning phase: Store news articles using LearningAgent with hierarchical memory.
 
@@ -116,11 +164,14 @@ def testing_phase(quiz_questions: list[dict], agent_name: str) -> dict:
                     "used_simple_path": trace.used_simple_path,
                 }
 
+            # Dynamic confidence based on fact coverage and trace
+            confidence = _compute_dynamic_confidence(trace, stats, level)
+
             answers.append(
                 {
                     "question": question,
                     "answer": answer,
-                    "confidence": 0.8,  # Agent internal confidence
+                    "confidence": confidence,
                     "memories_used": stats.get("total_experiences", 0),
                     "reasoning_trace": trace_dict,
                 }
