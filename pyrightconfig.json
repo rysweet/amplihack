@@ -9,7 +9,8 @@
     "tests/",
     ".claude/",
     "Specs/",
-    "scripts/"
+    "scripts/",
+    "src/amplihack/agents/goal_seeking/sdk_adapters"
   ],
   "typeCheckingMode": "basic",
   "reportMissingImports": true,
