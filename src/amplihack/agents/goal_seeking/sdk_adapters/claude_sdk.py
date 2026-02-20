@@ -25,6 +25,8 @@ try:
     HAS_CLAUDE_SDK = True
 except ImportError:
     HAS_CLAUDE_SDK = False
+    ClaudeAgent = None  # type: ignore[assignment,misc]
+    ClaudeTool = None  # type: ignore[assignment,misc]
     logger.debug("claude-agents not installed. Install with: pip install claude-agents")
 
 

@@ -53,7 +53,13 @@ def test_run_harness_executes_all_phases(tmp_path):
 
             assert isinstance(result, HarnessResult)
             assert result.success
-            assert mock_run.call_count == 2  # Learning + testing phases
+            # Count only agent_subprocess calls (ignore platform-detection calls like uname)
+            agent_calls = [
+                c
+                for c in mock_run.call_args_list
+                if any("agent_subprocess" in str(a) for a in c[0])
+            ]
+            assert len(agent_calls) == 2  # Learning + testing phases
 
 
 def test_run_harness_creates_output_directory(tmp_path):
@@ -172,8 +178,10 @@ def test_run_harness_subprocess_isolation(tmp_path):
 
         run_harness(config)
 
-        # Verify subprocess calls
-        calls = mock_run.call_args_list
+        # Filter to only agent_subprocess calls (ignore platform-detection calls like uname)
+        calls = [
+            c for c in mock_run.call_args_list if any("agent_subprocess" in str(a) for a in c[0])
+        ]
         assert len(calls) == 2
 
         # Check learning phase
