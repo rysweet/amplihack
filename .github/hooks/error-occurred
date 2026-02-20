@@ -1,21 +1,21 @@
 #!/usr/bin/env bash
-# GitHub Copilot compatible error-occurred hook
-# Wrapper that calls Python implementation
+# Copilot hook: error-occurred
+# Logs error to runtime log. No dedicated Python hook exists for this event;
+# error_protocol.py is a utility module, not a hook entry point.
 
-set -e
+AMPLIHACK_HOOKS="$HOME/.amplihack/.claude/tools/amplihack/hooks"
+LOG_DIR="$HOME/.amplihack/.claude/runtime/logs"
 
-# Get the root directory of the repository
-REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
-    echo "Error: Not in a git repository" >&2
-    exit 1
-}
-
-# Call Python implementation (if it exists, otherwise just log)
-if [[ -f "${REPO_ROOT}/.claude/tools/amplihack/hooks/error_occurred.py" ]]; then
+# If a dedicated error_occurred.py hook exists, use it
+if [[ -f "${AMPLIHACK_HOOKS}/error_occurred.py" ]]; then
+    python3 "${AMPLIHACK_HOOKS}/error_occurred.py" "$@"
+elif REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" && [[ -f "${REPO_ROOT}/.claude/tools/amplihack/hooks/error_occurred.py" ]]; then
     python3 "${REPO_ROOT}/.claude/tools/amplihack/hooks/error_occurred.py" "$@"
 else
-    # Fallback: just log the error
+    # Fallback: log the error from stdin
+    mkdir -p "$LOG_DIR"
     INPUT=$(cat)
-    ERROR_MSG=$(echo "$INPUT" | jq -r '.error.message' 2>/dev/null || echo "unknown")
-    echo "$(date): ERROR - $ERROR_MSG" >> "${REPO_ROOT}/.claude/runtime/logs/errors.log"
+    ERROR_MSG=$(echo "$INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('error',{}).get('message','unknown'))" 2>/dev/null || echo "unknown")
+    echo "$(date -Iseconds): ERROR - $ERROR_MSG" >> "${LOG_DIR}/errors.log"
+    echo "{}"
 fi
