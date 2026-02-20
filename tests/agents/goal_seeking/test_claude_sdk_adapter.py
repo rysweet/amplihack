@@ -37,19 +37,17 @@ def _make_agent(**overrides):
     import amplihack.agents.goal_seeking.sdk_adapters.claude_sdk as mod
 
     original_has = mod.HAS_CLAUDE_SDK
-    original_agent = mod.ClaudeAgent
-    original_tool = mod.ClaudeTool
+    original_variant = mod._CLAUDE_SDK_VARIANT
 
     try:
         mod.HAS_CLAUDE_SDK = True
-        mod.ClaudeAgent = MagicMock()
-        mod.ClaudeTool = MagicMock()
+        # Use "claude_agent_sdk" variant which doesn't need ClaudeAgent/ClaudeTool
+        mod._CLAUDE_SDK_VARIANT = "claude_agent_sdk"
 
         return mod.ClaudeGoalSeekingAgent(**defaults)
     finally:
         mod.HAS_CLAUDE_SDK = original_has
-        mod.ClaudeAgent = original_agent
-        mod.ClaudeTool = original_tool
+        mod._CLAUDE_SDK_VARIANT = original_variant
 
 
 # ===========================================================================
@@ -322,17 +320,14 @@ class TestClaudeSDKRegisterTool:
         import amplihack.agents.goal_seeking.sdk_adapters.claude_sdk as mod
 
         original_has = mod.HAS_CLAUDE_SDK
-        original_agent = mod.ClaudeAgent
-        original_tool = mod.ClaudeTool
+        original_variant = mod._CLAUDE_SDK_VARIANT
         try:
             mod.HAS_CLAUDE_SDK = True
-            mod.ClaudeAgent = MagicMock()
-            mod.ClaudeTool = MagicMock()
+            mod._CLAUDE_SDK_VARIANT = "claude_agent_sdk"
             agent._register_tool_with_sdk(new_tool)
         finally:
             mod.HAS_CLAUDE_SDK = original_has
-            mod.ClaudeAgent = original_agent
-            mod.ClaudeTool = original_tool
+            mod._CLAUDE_SDK_VARIANT = original_variant
 
         assert len(agent._tools) == initial_count + 1
 
@@ -363,12 +358,10 @@ class TestFactory:
         import amplihack.agents.goal_seeking.sdk_adapters.claude_sdk as mod
 
         original_has = mod.HAS_CLAUDE_SDK
-        original_agent = mod.ClaudeAgent
-        original_tool = mod.ClaudeTool
+        original_variant = mod._CLAUDE_SDK_VARIANT
         try:
             mod.HAS_CLAUDE_SDK = True
-            mod.ClaudeAgent = MagicMock()
-            mod.ClaudeTool = MagicMock()
+            mod._CLAUDE_SDK_VARIANT = "claude_agent_sdk"
 
             from amplihack.agents.goal_seeking.sdk_adapters.factory import create_agent
 
@@ -376,19 +369,16 @@ class TestFactory:
             assert isinstance(agent, mod.ClaudeGoalSeekingAgent)
         finally:
             mod.HAS_CLAUDE_SDK = original_has
-            mod.ClaudeAgent = original_agent
-            mod.ClaudeTool = original_tool
+            mod._CLAUDE_SDK_VARIANT = original_variant
 
     def test_create_agent_with_enum(self):
         import amplihack.agents.goal_seeking.sdk_adapters.claude_sdk as mod
 
         original_has = mod.HAS_CLAUDE_SDK
-        original_agent = mod.ClaudeAgent
-        original_tool = mod.ClaudeTool
+        original_variant = mod._CLAUDE_SDK_VARIANT
         try:
             mod.HAS_CLAUDE_SDK = True
-            mod.ClaudeAgent = MagicMock()
-            mod.ClaudeTool = MagicMock()
+            mod._CLAUDE_SDK_VARIANT = "claude_agent_sdk"
 
             from amplihack.agents.goal_seeking.sdk_adapters.factory import create_agent
 
@@ -396,8 +386,7 @@ class TestFactory:
             assert isinstance(agent, mod.ClaudeGoalSeekingAgent)
         finally:
             mod.HAS_CLAUDE_SDK = original_has
-            mod.ClaudeAgent = original_agent
-            mod.ClaudeTool = original_tool
+            mod._CLAUDE_SDK_VARIANT = original_variant
 
     def test_invalid_sdk_type_raises(self):
         from amplihack.agents.goal_seeking.sdk_adapters.factory import create_agent

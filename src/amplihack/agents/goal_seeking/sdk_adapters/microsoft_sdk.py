@@ -30,19 +30,45 @@ logger = logging.getLogger(__name__)
 # Optional import of Microsoft Agent Framework
 # ---------------------------------------------------------------------------
 _HAS_AGENT_FRAMEWORK = False
+AFAgent = None  # type: ignore[assignment]
+af_tool = None  # type: ignore[assignment]
+OpenAIChatClient = None  # type: ignore[assignment]
+
 try:
-    from agent_framework import Agent as AFAgent  # type: ignore[import-not-found]
-    from agent_framework import tool as af_tool  # type: ignore[import-not-found]
-    from agent_framework.openai import OpenAIChatClient  # type: ignore[import-not-found]
+    # agent-framework >= 1.0.0b260212 uses ChatAgent instead of Agent
+    from agent_framework import (
+        ChatAgent as AFAgent,  # type: ignore[no-redef,assignment,import-not-found]
+    )
+    from agent_framework import (
+        ai_function as af_tool,  # type: ignore[no-redef,assignment,import-not-found]
+    )
+    from agent_framework.openai import (
+        OpenAIChatClient,  # type: ignore[no-redef,assignment,import-not-found]
+    )
 
     _HAS_AGENT_FRAMEWORK = True
-except Exception:
-    # Binary incompatibility, missing deps, etc.
-    logger.debug(
-        "agent-framework not importable. "
-        "MicrosoftGoalSeekingAgent will use mock execution mode. "
-        "Install with: pip install agent-framework"
-    )
+    logger.debug("agent-framework available (ChatAgent API)")
+except ImportError:
+    try:
+        # Older API
+        from agent_framework import (
+            Agent as AFAgent,  # type: ignore[no-redef,assignment,import-not-found]
+        )
+        from agent_framework import (
+            tool as af_tool,  # type: ignore[no-redef,assignment,import-not-found]
+        )
+        from agent_framework.openai import (
+            OpenAIChatClient,  # type: ignore[no-redef,assignment,import-not-found]
+        )
+
+        _HAS_AGENT_FRAMEWORK = True
+        logger.debug("agent-framework available (legacy Agent API)")
+    except Exception:
+        logger.debug(
+            "agent-framework not importable. "
+            "MicrosoftGoalSeekingAgent will use mock execution mode. "
+            "Install with: pip install agent-framework"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -97,7 +123,6 @@ def _wrap_tool(tool_def: AgentTool, agent_ref: GoalSeekingAgent) -> Any:
     original_fn = tool_def.function
     name = tool_def.name
     description = tool_def.description
-    schema = tool_def.parameters
 
     # Build a wrapper that accepts kwargs matching the JSON schema
     def wrapper(**kwargs: Any) -> str:
@@ -111,7 +136,7 @@ def _wrap_tool(tool_def: AgentTool, agent_ref: GoalSeekingAgent) -> Any:
     wrapper.__doc__ = description
 
     if _HAS_AGENT_FRAMEWORK:
-        return af_tool(wrapper, name=name, description=description, schema=schema)
+        return af_tool(wrapper, name=name, description=description)
     return wrapper
 
 
@@ -185,18 +210,33 @@ class MicrosoftGoalSeekingAgent(GoalSeekingAgent):
         tools = _build_learning_tools(self)
 
         if _HAS_AGENT_FRAMEWORK:
-            # Build real SDK agent
+            # Build real SDK agent (requires OPENAI_API_KEY)
             api_key = os.environ.get("OPENAI_API_KEY", "")
-            client = OpenAIChatClient(model=self.model, api_key=api_key)
+            if not api_key:
+                logger.info(
+                    "OPENAI_API_KEY not set. Agent '%s' initialized in mock mode.",
+                    self.name,
+                )
+                self._sdk_agent = None
+                self._session = None
+                self._session_id = "mock-session-no-key"
+                return
 
-            self._sdk_agent = AFAgent(
-                client=client,
-                instructions=system_prompt,
-                name=self.name,
-                tools=tools,
-            )
-            self._session = self._sdk_agent.create_session()
-            self._session_id = getattr(self._session, "id", "default")
+            try:
+                client = OpenAIChatClient(model_id=self.model, api_key=api_key)
+                self._sdk_agent = AFAgent(
+                    client=client,
+                    instructions=system_prompt,
+                    name=self.name,
+                    tools=tools,
+                )
+                self._session = self._sdk_agent.create_session()
+                self._session_id = getattr(self._session, "id", "default")
+            except Exception as e:
+                logger.warning("Failed to initialize real SDK agent: %s. Using mock mode.", e)
+                self._sdk_agent = None
+                self._session = None
+                self._session_id = "mock-session-error"
         else:
             # Mock mode: store config for mock execution
             self._sdk_agent = None

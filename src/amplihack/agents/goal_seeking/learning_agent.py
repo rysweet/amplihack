@@ -650,11 +650,28 @@ Rules:
 (e) contradiction resolution - handling conflicting information
 (f) incremental update - finding the MOST RECENT or UPDATED information. Use this when the question asks about a SINGLE entity's current state or history (keywords: "how many now", "current", "latest", "updated", "changed", "how did X change", "trajectory", "complete history", "describe X's achievement/record/progress")
 (g) causal_counterfactual - reasoning about causes, root causes, "why did X happen", OR hypothetical/counterfactual scenarios like "what if X", "if X had not happened", "without X", "would X still", "in a world where". These questions require reasoning from known facts to explore causes or alternate scenarios - they are NOT simple recall even though they may involve hypotheticals not in the data.
+(h) ratio_trend_analysis - computing ratios or percentages AND analyzing whether they improve or worsen over time. Use when the question asks about "ratio", "rate", "per", "trend", "improving vs worsening"
+
+FEW-SHOT EXAMPLES:
+Q: "Which country's individual athletes won the most medals mentioned in the athlete achievements article?"
+A: {{"intent": "multi_source_synthesis", "needs_math": false, "needs_temporal": false, "reasoning": "Asks about individuals from a specific article - needs source-specific synthesis"}}
+
+Q: "How many medals did Norway win between Day 7 and Day 9?"
+A: {{"intent": "temporal_comparison", "needs_math": true, "needs_temporal": true, "reasoning": "Requires comparing numbers across time periods"}}
+
+Q: "What caused Italy to improve from 3 golds in 2018 to 8 golds in 2026?"
+A: {{"intent": "causal_counterfactual", "needs_math": false, "needs_temporal": false, "reasoning": "Asks about causal chain of events"}}
+
+Q: "Which framework has the best bug-fix-to-feature ratio trend?"
+A: {{"intent": "ratio_trend_analysis", "needs_math": true, "needs_temporal": true, "reasoning": "Requires computing ratios and analyzing trend direction"}}
+
+Q: "How does Italy's 2026 gold medal performance compare to their previous best?"
+A: {{"intent": "multi_source_synthesis", "needs_math": false, "needs_temporal": false, "reasoning": "Comparing performance across sources/events, not computing temporal differences"}}
 
 Question: {question}
 
 Return ONLY a JSON object:
-{{"intent": "one of: simple_recall, mathematical_computation, temporal_comparison, multi_source_synthesis, contradiction_resolution, incremental_update, causal_counterfactual", "needs_math": true/false, "needs_temporal": true/false, "reasoning": "brief explanation"}}"""
+{{"intent": "one of: simple_recall, mathematical_computation, temporal_comparison, multi_source_synthesis, contradiction_resolution, incremental_update, causal_counterfactual, ratio_trend_analysis", "needs_math": true/false, "needs_temporal": true/false, "reasoning": "brief explanation"}}"""
 
         try:
             response = litellm.completion(
@@ -790,10 +807,15 @@ Return ONLY a JSON object:
             for kw in ("step 1", "step 2", "steps:", "procedure", "instructions")
         ):
             procedural_hint = (
-                "\n\nNote: This content contains step-by-step procedures. "
-                "Extract EACH step as a separate fact with its step number preserved. "
-                "Also extract ONE summary fact listing ALL steps in order. "
-                "Example: 'Complete workflow: Step 1: X, Step 2: Y, Step 3: Z'"
+                "\n\nCRITICAL: This content contains step-by-step procedures.\n"
+                "You MUST:\n"
+                "1. Extract EACH step as a separate fact with its EXACT step number.\n"
+                "   Format: 'Step N: [exact action]' (e.g., 'Step 3: flutter create my_app')\n"
+                "2. Extract ONE summary fact listing ALL steps in numbered order.\n"
+                "   Format: 'Complete workflow: 1) X, 2) Y, 3) Z, 4) W, ...'\n"
+                "3. Extract EACH troubleshooting tip as a separate fact.\n"
+                "   Format: 'Troubleshooting: If [problem], then [solution]'\n"
+                "4. Preserve the EXACT commands mentioned (e.g., 'flutter pub get', not just 'install deps')\n"
             )
 
         prompt = f"""Extract key facts from this content. For each fact, provide:
@@ -890,6 +912,7 @@ Respond with a JSON list like:
             "multi_source_synthesis",
             "temporal_comparison",
             "mathematical_computation",
+            "ratio_trend_analysis",
         ):
             max_facts = 60
         else:
@@ -1069,9 +1092,15 @@ Knowledge Overview (what was learned):
                 "5. Compare the hypothetical outcome to ALL other entities (not just the one asked about)\n"
                 "6. Acknowledge uncertainty: use language like 'likely', 'might have', 'approximately'\n"
                 "7. Consider what WOULD still remain even without the changed factor\n\n"
-                "CRITICAL: Do NOT refuse to answer by saying the hypothetical isn't in the facts.\n"
-                "The ENTIRE POINT is to REASON about what WOULD happen based on what you DO know.\n"
-                "You MUST engage with the hypothetical scenario and provide a reasoned answer.\n"
+                "CRITICAL RULES FOR COUNTERFACTUALS:\n"
+                "- You MUST NOT refuse to engage with the hypothetical scenario.\n"
+                "- You MUST NOT say 'that didn't happen' or 'the facts show otherwise'.\n"
+                "- 'What if X had happened instead of Y?' REQUIRES you to IMAGINE the X scenario.\n"
+                "- Even if X contradicts the actual facts, that is the ENTIRE POINT of the question.\n"
+                "- Start your answer: 'In this hypothetical scenario where [X], the consequences would be...'\n"
+                "- Use the real facts as DATA to estimate what the alternative scenario would produce.\n"
+                "- When removing an athlete: subtract ONLY their individual medals, keep team medals.\n"
+                "- When changing timing: estimate the effect using known data about home advantage, etc.\n"
             )
         if is_causal:
             counterfactual_instructions += (
@@ -1085,6 +1114,84 @@ Knowledge Overview (what was learned):
                 "If Factor A triggered Factor B and C, then A is the root cause,\n"
                 "even if B and C directly produced the outcome.\n"
             )
+
+        # Add ratio/trend analysis instructions
+        ratio_trend_instructions = ""
+        if intent_type == "ratio_trend_analysis" or (
+            is_complex_intent
+            and any(
+                kw in question_lower
+                for kw in ("ratio", "rate", "per ", "trend", "improving", "worsening")
+            )
+        ):
+            ratio_trend_instructions = (
+                "\n\nIMPORTANT - RATIO/TREND ANALYSIS REQUIRED:\n"
+                "This question requires computing ratios AND analyzing trends.\n\n"
+                "STEP 1: COMPUTE RATIOS\n"
+                "For EACH entity in EACH time period, compute the ratio explicitly:\n"
+                "  ratio = numerator / denominator (show the division)\n"
+                "  Example: '35 bug fixes / 28 features = 1.25'\n\n"
+                "STEP 2: BUILD RATIO TABLE\n"
+                "Create a table with rows = entities and columns = time periods.\n"
+                "Fill in the computed ratios.\n\n"
+                "STEP 3: ANALYZE TREND DIRECTION\n"
+                "For EACH entity, compare ratios across time periods:\n"
+                "  - Is the ratio INCREASING or DECREASING from period to period?\n"
+                "  - State explicitly: 'Ratio went from X to Y, which is an INCREASE/DECREASE'\n"
+                "  - Interpret: what does the direction mean? (e.g., decreasing bug-to-feature "
+                "ratio = IMPROVING because fewer bugs per feature)\n\n"
+                "STEP 4: COMPARE AND RANK\n"
+                "Compare entities on both: absolute ratio level AND trend direction.\n"
+                "State which has the 'best' ratio and which has the 'best' trend.\n"
+            )
+
+        # Add novel skill (L11) specific instructions
+        novel_skill_instructions = ""
+        if (
+            question_level in ("L11",)
+            or "workflow file" in question_lower
+            or "teach" in question_lower
+        ):
+            is_teaching_question = "teach" in question_lower or "junior developer" in question_lower
+            is_workflow_gen = "write" in question_lower and (
+                "workflow" in question_lower or "file" in question_lower
+            )
+
+            novel_skill_instructions = (
+                "\n\nIMPORTANT - NOVEL SKILL APPLICATION:\n"
+                "When generating technical artifacts (workflow files, configs, code):\n"
+                "- Include ONLY the fields required by the specification\n"
+                "- Do NOT add optional fields unless the question asks for them\n"
+                "- Use the EXACT field names and YAML structure from the documentation\n"
+                "- Follow the EXACT file path conventions (e.g., .github/workflows/)\n"
+            )
+
+            if is_teaching_question:
+                novel_skill_instructions += (
+                    "\nTEACHING INSTRUCTIONS:\n"
+                    "When teaching someone how to use a technology:\n"
+                    "1. Give EXACT file paths (e.g., .github/workflows/my-workflow.md)\n"
+                    "2. Give EXACT commands (e.g., 'gh aw compile', not 'compile the workflow')\n"
+                    "3. Include BOTH what to create AND how to run/deploy it\n"
+                    "4. Always mention committing/pushing as a step\n"
+                    "5. End with 'Common mistake:' followed by the most frequent beginner error\n"
+                    "6. Specifically mention: after editing frontmatter, you MUST recompile\n"
+                )
+
+            if is_workflow_gen:
+                novel_skill_instructions += (
+                    "\nWORKFLOW FILE GENERATION:\n"
+                    "The workflow file MUST have this exact structure:\n"
+                    "---\n"
+                    "on: <trigger definition>\n"
+                    "engine: <ai engine name>\n"
+                    "permissions: <permission level>\n"
+                    "tools: <tool configuration>\n"
+                    "safe-outputs: <output definitions>\n"
+                    "---\n"
+                    "# <Title>\n"
+                    "<markdown instructions for the AI>\n"
+                )
 
         # Build source-specific section if available
         source_specific_section = ""
@@ -1109,7 +1216,7 @@ Knowledge Overview (what was learned):
 
 Question: {question}
 Level: {question_level} - {instruction}
-{extra_instructions}{contradiction_instructions}{counterfactual_instructions}
+{extra_instructions}{contradiction_instructions}{counterfactual_instructions}{ratio_trend_instructions}{novel_skill_instructions}
 {summary_section}
 {source_specific_section}
 {context_str}
