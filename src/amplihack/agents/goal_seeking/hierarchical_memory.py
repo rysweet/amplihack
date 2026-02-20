@@ -28,7 +28,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-import kuzu
+import kuzu  # type: ignore[import-not-found]
 
 from .similarity import compute_similarity
 
