@@ -1,259 +1,201 @@
-"""Tests for metacognition grader.
+"""Tests for the metacognition grader with 4-dimension scoring."""
 
-Validates that the grader correctly scores reasoning traces
-across different complexity levels and scenarios.
-"""
+from unittest.mock import MagicMock, patch
 
-from amplihack.eval.metacognition_grader import MetacognitionGrade, grade_metacognition
+import pytest
 
-
-class TestEffortCalibration:
-    """Test effort calibration scoring."""
-
-    def test_simple_question_simple_path(self):
-        """Simple recall with simple path should score 1.0."""
-        trace = {
-            "question": "What is X?",
-            "intent": {"intent": "simple_recall"},
-            "steps": [],
-            "total_queries_executed": 0,
-            "total_facts_collected": 5,
-            "iterations": 0,
-            "final_confidence": 0.9,
-            "used_simple_path": True,
-        }
-        result = grade_metacognition(trace, 0.9, "L1")
-        assert result.effort_calibration == 1.0
-
-    def test_simple_question_iterative_penalized(self):
-        """Simple recall with iterative loop should be penalized."""
-        trace = {
-            "question": "What is X?",
-            "intent": {"intent": "simple_recall"},
-            "steps": [
-                {"step_type": "plan", "queries": ["q1", "q2"], "reasoning": ""},
-                {"step_type": "search", "queries": ["q1", "q2"], "facts_found": 5},
-                {"step_type": "evaluate", "evaluation": {"sufficient": True}},
-            ],
-            "total_queries_executed": 5,
-            "total_facts_collected": 10,
-            "iterations": 1,
-            "final_confidence": 0.9,
-            "used_simple_path": False,
-        }
-        result = grade_metacognition(trace, 0.9, "L1")
-        assert result.effort_calibration < 1.0
-
-    def test_complex_question_simple_path_penalized(self):
-        """Temporal comparison with simple path should be penalized."""
-        trace = {
-            "question": "Which improved most?",
-            "intent": {"intent": "temporal_comparison"},
-            "steps": [],
-            "total_queries_executed": 0,
-            "total_facts_collected": 5,
-            "iterations": 0,
-            "final_confidence": 0.5,
-            "used_simple_path": True,
-        }
-        result = grade_metacognition(trace, 0.3, "L3")
-        assert result.effort_calibration <= 0.3
-
-    def test_complex_question_appropriate_effort(self):
-        """Temporal comparison with 3-4 queries should score well."""
-        trace = {
-            "question": "Which improved most?",
-            "intent": {"intent": "temporal_comparison"},
-            "steps": [
-                {"step_type": "plan", "queries": ["day 7", "day 10", "gold"], "reasoning": ""},
-                {"step_type": "search", "queries": ["day 7", "day 10", "gold"], "facts_found": 8},
-                {"step_type": "evaluate", "evaluation": {"sufficient": True, "confidence": 0.9}},
-            ],
-            "total_queries_executed": 3,
-            "total_facts_collected": 8,
-            "iterations": 1,
-            "final_confidence": 0.9,
-            "used_simple_path": False,
-        }
-        result = grade_metacognition(trace, 0.9, "L3")
-        assert result.effort_calibration == 1.0
+from amplihack.eval.metacognition_grader import (
+    Dimension,
+    MetacognitionGrader,
+    MetacognitionScore,
+)
 
 
-class TestSufficiencyJudgment:
-    """Test sufficiency judgment scoring."""
-
-    def test_well_calibrated_high(self):
-        """High confidence + high score = well calibrated."""
-        trace = {
-            "question": "test",
-            "intent": {"intent": "simple_recall"},
-            "steps": [
-                {"step_type": "evaluate", "evaluation": {"sufficient": True, "confidence": 0.9}},
-            ],
-            "total_queries_executed": 2,
-            "total_facts_collected": 5,
-            "iterations": 1,
-            "final_confidence": 0.9,
-            "used_simple_path": False,
-        }
-        result = grade_metacognition(trace, 0.85, "L1")
-        assert result.sufficiency_judgment >= 0.9
-
-    def test_overconfident(self):
-        """High confidence + low score = overconfident."""
-        trace = {
-            "question": "test",
-            "intent": {"intent": "temporal_comparison"},
-            "steps": [
-                {"step_type": "evaluate", "evaluation": {"sufficient": True, "confidence": 0.9}},
-            ],
-            "total_queries_executed": 2,
-            "total_facts_collected": 3,
-            "iterations": 1,
-            "final_confidence": 0.9,
-            "used_simple_path": False,
-        }
-        result = grade_metacognition(trace, 0.3, "L3")
-        assert result.sufficiency_judgment < 0.7
-
-    def test_no_evaluation_steps(self):
-        """No evaluation = low metacognition score."""
-        trace = {
-            "question": "test",
-            "intent": {"intent": "multi_source_synthesis"},
-            "steps": [],
-            "total_queries_executed": 0,
-            "total_facts_collected": 3,
-            "iterations": 0,
-            "final_confidence": 0.0,
-            "used_simple_path": False,
-        }
-        result = grade_metacognition(trace, 0.3, "L2")
-        assert result.sufficiency_judgment <= 0.6
+def _mock_llm_response(text: str) -> MagicMock:
+    """Create a mock litellm response."""
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message.content = text
+    return mock_response
 
 
-class TestSearchQuality:
-    """Test search quality scoring."""
+class TestDimension:
+    """Tests for Dimension dataclass."""
 
-    def test_all_searches_productive(self):
-        """All queries found facts = high search quality."""
-        trace = {
-            "question": "test",
-            "intent": {"intent": "multi_source_synthesis"},
-            "steps": [
-                {"step_type": "plan", "queries": ["q1", "q2", "q3"], "reasoning": ""},
-                {"step_type": "search", "queries": ["q1", "q2", "q3"], "facts_found": 9},
-                {"step_type": "evaluate", "evaluation": {"sufficient": True}},
-            ],
-            "total_queries_executed": 3,
-            "total_facts_collected": 9,
-            "iterations": 1,
-            "final_confidence": 0.9,
-            "used_simple_path": False,
-        }
-        result = grade_metacognition(trace, 0.9, "L2")
-        assert result.search_quality >= 0.8
-
-    def test_no_queries(self):
-        """No queries = neutral score."""
-        trace = {
-            "question": "test",
-            "intent": {"intent": "simple_recall"},
-            "steps": [],
-            "total_queries_executed": 0,
-            "total_facts_collected": 5,
-            "iterations": 0,
-            "final_confidence": 0.8,
-            "used_simple_path": True,
-        }
-        result = grade_metacognition(trace, 0.9, "L1")
-        assert result.search_quality == 0.5
-
-
-class TestSelfCorrection:
-    """Test self-correction scoring."""
-
-    def test_refinement_after_insufficient(self):
-        """Refining after insufficient evaluation should score well."""
-        trace = {
-            "question": "test",
-            "intent": {"intent": "temporal_comparison"},
-            "steps": [
-                {"step_type": "plan", "queries": ["q1"], "reasoning": "initial"},
-                {"step_type": "search", "queries": ["q1"], "facts_found": 3},
-                {"step_type": "evaluate", "evaluation": {"sufficient": False, "confidence": 0.4}},
-                {"step_type": "refine", "queries": ["q2", "q3"], "reasoning": "need more"},
-                {"step_type": "search", "queries": ["q2", "q3"], "facts_found": 5},
-                {"step_type": "evaluate", "evaluation": {"sufficient": True, "confidence": 0.9}},
-            ],
-            "total_queries_executed": 3,
-            "total_facts_collected": 8,
-            "iterations": 2,
-            "final_confidence": 0.9,
-            "used_simple_path": False,
-        }
-        result = grade_metacognition(trace, 0.9, "L3")
-        assert result.self_correction >= 0.8
-
-    def test_no_evaluation_low_correction(self):
-        """No evaluation steps = low self-correction."""
-        trace = {
-            "question": "test",
-            "intent": {"intent": "simple_recall"},
-            "steps": [],
-            "total_queries_executed": 0,
-            "total_facts_collected": 5,
-            "iterations": 0,
-            "final_confidence": 0.0,
-            "used_simple_path": True,
-        }
-        result = grade_metacognition(trace, 0.9, "L1")
-        assert result.self_correction == 0.5
-
-
-class TestOverallGrade:
-    """Test overall grade computation."""
-
-    def test_grade_returns_all_fields(self):
-        """Grade result should have all expected fields."""
-        trace = {
-            "question": "test",
-            "intent": {"intent": "simple_recall"},
-            "steps": [],
-            "total_queries_executed": 0,
-            "total_facts_collected": 5,
-            "iterations": 0,
-            "final_confidence": 0.8,
-            "used_simple_path": True,
-        }
-        result = grade_metacognition(trace, 0.9, "L1")
-
-        assert isinstance(result, MetacognitionGrade)
-        assert 0.0 <= result.effort_calibration <= 1.0
-        assert 0.0 <= result.sufficiency_judgment <= 1.0
-        assert 0.0 <= result.search_quality <= 1.0
-        assert 0.0 <= result.self_correction <= 1.0
-        assert 0.0 <= result.overall <= 1.0
-        assert isinstance(result.details, dict)
-
-    def test_overall_is_weighted_average(self):
-        """Overall should be weighted average of dimensions."""
-        trace = {
-            "question": "test",
-            "intent": {"intent": "simple_recall"},
-            "steps": [],
-            "total_queries_executed": 0,
-            "total_facts_collected": 5,
-            "iterations": 0,
-            "final_confidence": 0.8,
-            "used_simple_path": True,
-        }
-        result = grade_metacognition(trace, 0.9, "L1")
-
-        expected_overall = (
-            0.25 * result.effort_calibration
-            + 0.30 * result.sufficiency_judgment
-            + 0.25 * result.search_quality
-            + 0.20 * result.self_correction
+    def test_dimension_creation(self):
+        dim = Dimension(
+            name="factual_accuracy",
+            score=0.85,
+            reasoning="Most facts were correct.",
         )
-        assert abs(result.overall - round(expected_overall, 3)) < 0.01
+        assert dim.name == "factual_accuracy"
+        assert dim.score == 0.85
+        assert dim.reasoning == "Most facts were correct."
+
+    def test_dimension_score_bounds(self):
+        dim = Dimension(name="test", score=0.0, reasoning="Low")
+        assert dim.score == 0.0
+
+        dim = Dimension(name="test", score=1.0, reasoning="High")
+        assert dim.score == 1.0
+
+
+class TestMetacognitionScore:
+    """Tests for MetacognitionScore dataclass."""
+
+    def test_score_creation(self):
+        dimensions = [
+            Dimension(name="factual_accuracy", score=0.9, reasoning="Good"),
+            Dimension(name="self_awareness", score=0.8, reasoning="Fair"),
+            Dimension(name="knowledge_boundaries", score=0.7, reasoning="OK"),
+            Dimension(name="explanation_quality", score=0.85, reasoning="Solid"),
+        ]
+        score = MetacognitionScore(
+            dimensions=dimensions,
+            overall_score=0.8125,
+            summary="Student demonstrated good metacognition.",
+        )
+        assert len(score.dimensions) == 4
+        assert score.overall_score == 0.8125
+        assert "metacognition" in score.summary.lower()
+
+    def test_overall_score_is_average_of_dimensions(self):
+        dimensions = [
+            Dimension(name="d1", score=0.8, reasoning=""),
+            Dimension(name="d2", score=0.6, reasoning=""),
+            Dimension(name="d3", score=1.0, reasoning=""),
+            Dimension(name="d4", score=0.4, reasoning=""),
+        ]
+        expected_avg = (0.8 + 0.6 + 1.0 + 0.4) / 4
+        score = MetacognitionScore(
+            dimensions=dimensions,
+            overall_score=expected_avg,
+            summary="Test",
+        )
+        assert score.overall_score == pytest.approx(0.7, abs=0.001)
+
+
+class TestMetacognitionGrader:
+    """Tests for the MetacognitionGrader."""
+
+    def test_grader_initialization(self):
+        grader = MetacognitionGrader()
+        assert grader.model is not None
+
+    def test_grader_custom_model(self):
+        grader = MetacognitionGrader(model="gpt-4")
+        assert grader.model == "gpt-4"
+
+    @patch("litellm.completion")
+    def test_grade_produces_4_dimensions(self, mock_completion):
+        """Grading produces exactly 4 metacognition dimensions."""
+        mock_completion.return_value = _mock_llm_response(
+            '{"factual_accuracy": {"score": 0.9, "reasoning": "Good recall"}, '
+            '"self_awareness": {"score": 0.8, "reasoning": "Knows limits"}, '
+            '"knowledge_boundaries": {"score": 0.7, "reasoning": "Some gaps"}, '
+            '"explanation_quality": {"score": 0.85, "reasoning": "Clear explanations"}}'
+        )
+
+        grader = MetacognitionGrader()
+        score = grader.grade(
+            question="What does L1 evaluate?",
+            expected_answer="L1 evaluates direct recall of facts from a single source.",
+            student_answer="L1 tests recall of facts.",
+            self_explanation="I know this because recall means remembering directly.",
+        )
+
+        assert isinstance(score, MetacognitionScore)
+        assert len(score.dimensions) == 4
+        dimension_names = {d.name for d in score.dimensions}
+        assert "factual_accuracy" in dimension_names
+        assert "self_awareness" in dimension_names
+        assert "knowledge_boundaries" in dimension_names
+        assert "explanation_quality" in dimension_names
+
+    @patch("litellm.completion")
+    def test_grade_computes_overall_score(self, mock_completion):
+        """Overall score is mean of all dimensions."""
+        mock_completion.return_value = _mock_llm_response(
+            '{"factual_accuracy": {"score": 0.8, "reasoning": "Good"}, '
+            '"self_awareness": {"score": 0.6, "reasoning": "Fair"}, '
+            '"knowledge_boundaries": {"score": 1.0, "reasoning": "Excellent"}, '
+            '"explanation_quality": {"score": 0.4, "reasoning": "Poor"}}'
+        )
+
+        grader = MetacognitionGrader()
+        score = grader.grade(
+            question="Test?",
+            expected_answer="Expected",
+            student_answer="Actual",
+            self_explanation="Because reasons",
+        )
+
+        expected_overall = (0.8 + 0.6 + 1.0 + 0.4) / 4
+        assert score.overall_score == pytest.approx(expected_overall, abs=0.001)
+
+    @patch("litellm.completion")
+    def test_grade_handles_empty_self_explanation(self, mock_completion):
+        """Grader handles student with no self-explanation."""
+        mock_completion.return_value = _mock_llm_response(
+            '{"factual_accuracy": {"score": 0.5, "reasoning": "Partial"}, '
+            '"self_awareness": {"score": 0.1, "reasoning": "No self-reflection"}, '
+            '"knowledge_boundaries": {"score": 0.2, "reasoning": "Unclear"}, '
+            '"explanation_quality": {"score": 0.0, "reasoning": "No explanation given"}}'
+        )
+
+        grader = MetacognitionGrader()
+        score = grader.grade(
+            question="What is L2?",
+            expected_answer="L2 tests inference.",
+            student_answer="I think L2 is something.",
+            self_explanation="",
+        )
+
+        assert score.overall_score < 0.5  # Should be low without explanation
+
+    @patch("litellm.completion")
+    def test_grade_handles_llm_error(self, mock_completion):
+        """Grader returns zero scores on LLM error."""
+        mock_completion.side_effect = Exception("API Error")
+
+        grader = MetacognitionGrader()
+        score = grader.grade(
+            question="Test?",
+            expected_answer="Expected",
+            student_answer="Actual",
+            self_explanation="Explanation",
+        )
+
+        assert score.overall_score == 0.0
+        assert len(score.dimensions) == 4
+        assert all(d.score == 0.0 for d in score.dimensions)
+
+    @patch("litellm.completion")
+    def test_batch_grade(self, mock_completion):
+        """Batch grading scores multiple question-answer pairs."""
+        mock_completion.return_value = _mock_llm_response(
+            '{"factual_accuracy": {"score": 0.9, "reasoning": "Good"}, '
+            '"self_awareness": {"score": 0.8, "reasoning": "Good"}, '
+            '"knowledge_boundaries": {"score": 0.7, "reasoning": "Good"}, '
+            '"explanation_quality": {"score": 0.85, "reasoning": "Good"}}'
+        )
+
+        grader = MetacognitionGrader()
+        items = [
+            {
+                "question": "What is L1?",
+                "expected": "Recall",
+                "actual": "Recall of facts",
+                "explanation": "Direct recall",
+            },
+            {
+                "question": "What is L2?",
+                "expected": "Inference",
+                "actual": "Reasoning from facts",
+                "explanation": "Connecting facts",
+            },
+        ]
+
+        scores = grader.batch_grade(items)
+        assert len(scores) == 2
+        assert all(isinstance(s, MetacognitionScore) for s in scores)
