@@ -252,4 +252,91 @@ Return ONLY a JSON object with this structure:
         )
 
 
-__all__ = ["MetacognitionGrader", "MetacognitionScore", "Dimension"]
+@dataclass
+class ReasoningTraceScore:
+    """Score from reasoning trace analysis (progressive test suite interface).
+
+    Maps metacognition dimensions to the trace-based naming convention:
+    - effort_calibration: How well the agent calibrated reasoning effort
+    - sufficiency_judgment: Whether the agent knew when it had enough info
+    - search_quality: Quality of memory search and retrieval
+    - self_correction: Ability to detect and correct errors
+    - overall: Mean of all dimensions
+    - details: Raw dimension data
+    """
+
+    effort_calibration: float
+    sufficiency_judgment: float
+    search_quality: float
+    self_correction: float
+    overall: float
+    details: dict
+
+
+def grade_metacognition(
+    trace: dict | str,
+    answer_score: float,
+    level: str,
+    model: str = "claude-sonnet-4-5-20250929",
+) -> ReasoningTraceScore:
+    """Grade metacognition from a reasoning trace (convenience function).
+
+    Bridges the progressive_test_suite interface to MetacognitionGrader.
+
+    Args:
+        trace: Reasoning trace (dict or string) from agent execution
+        answer_score: Score the answer received (0-1)
+        level: Test level (L1-L6)
+        model: LLM model for grading
+
+    Returns:
+        ReasoningTraceScore with dimension scores
+    """
+    if isinstance(trace, str):
+        trace_text = trace
+    else:
+        trace_text = json.dumps(trace)
+
+    grader = MetacognitionGrader(model=model)
+    try:
+        result = grader.grade(
+            question=f"[{level}] Reasoning trace evaluation",
+            expected_answer=f"Score: {answer_score:.2f}",
+            student_answer=trace_text[:2000],
+            self_explanation=trace_text[:2000],
+        )
+
+        # Map 4 dimensions to trace-based naming
+        dim_map = {d.name: d.score for d in result.dimensions}
+        return ReasoningTraceScore(
+            effort_calibration=dim_map.get("self_awareness", 0.0),
+            sufficiency_judgment=dim_map.get("knowledge_boundaries", 0.0),
+            search_quality=dim_map.get("factual_accuracy", 0.0),
+            self_correction=dim_map.get("explanation_quality", 0.0),
+            overall=result.overall_score,
+            details={
+                "dimensions": {
+                    d.name: {"score": d.score, "reasoning": d.reasoning} for d in result.dimensions
+                },
+                "summary": result.summary,
+            },
+        )
+    except Exception as e:
+        logger.warning("Metacognition grading failed: %s", e)
+        return ReasoningTraceScore(
+            effort_calibration=0.0,
+            sufficiency_judgment=0.0,
+            search_quality=0.0,
+            self_correction=0.0,
+            overall=0.0,
+            details={"error": str(e)},
+        )
+
+
+__all__ = [
+    "MetacognitionGrader",
+    "MetacognitionScore",
+    "Dimension",
+    "grade_metacognition",
+    "ReasoningTraceScore",
+]
