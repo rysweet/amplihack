@@ -20,6 +20,7 @@ class AgentAssembler:
         skills: list[SkillDefinition],
         bundle_name: str | None = None,
         enable_memory: bool = False,
+        sdk: str = "copilot",
     ) -> GoalAgentBundle:
         """
         Assemble a complete goal agent bundle.
@@ -39,7 +40,7 @@ class AgentAssembler:
             bundle_name = self._generate_bundle_name(goal_definition)
 
         # Create auto-mode configuration
-        auto_mode_config = self._create_auto_mode_config(goal_definition, execution_plan)
+        auto_mode_config = self._create_auto_mode_config(goal_definition, execution_plan, sdk)
 
         # Create metadata
         metadata = self._create_metadata(goal_definition, execution_plan, skills)
@@ -113,7 +114,7 @@ class AgentAssembler:
         return bundle_name
 
     def _create_auto_mode_config(
-        self, goal_definition: GoalDefinition, execution_plan: ExecutionPlan
+        self, goal_definition: GoalDefinition, execution_plan: ExecutionPlan, sdk: str = "copilot"
     ) -> dict:
         """Create auto-mode configuration for autonomous execution."""
         # Determine max turns based on complexity and phase count
@@ -134,7 +135,7 @@ class AgentAssembler:
             "max_turns": max_turns,
             "initial_prompt": initial_prompt,
             "working_dir": ".",  # Current directory
-            "sdk": "claude",  # Default to Claude SDK
+            "sdk": sdk,  # SDK selected by user (default: copilot)
             "ui_mode": False,  # No UI for goal agents by default
             "success_criteria": goal_definition.success_criteria,
             "constraints": goal_definition.constraints,

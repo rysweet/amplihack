@@ -14,7 +14,7 @@ Replace the sections below with information about your project.
 
 ## Overview
 
-Development framework for popular coding agent systems (Claude Code, Github Copilot CLI, Microsoft Amplifier, codex) that provides structured dev workflows,
+Development framework for Claude Code, GitHub Copilot CLI, and Microsoft Amplifier. Adds structured workflows, persistent memory, specialized agents,
 
 ## Architecture
 
