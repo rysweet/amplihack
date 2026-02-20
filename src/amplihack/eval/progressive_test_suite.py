@@ -41,6 +41,7 @@ class ProgressiveConfig:
     levels_to_run: list[str] | None = None  # None = run all
     memory_backend: str = "amplihack-memory-lib"
     sdk: str = "mini"  # SDK type: mini, claude, copilot, microsoft
+    grader_votes: int = 1  # Number of grading votes per question (1=single, 3=majority)
 
 
 @dataclass
@@ -272,6 +273,7 @@ def run_l7_teaching_eval(
                 expected=question.expected_answer,
                 actual=answer_data["answer"],
                 level=question.level,
+                num_votes=config.grader_votes,
             )
 
             all_grades.append(
@@ -464,6 +466,7 @@ def run_single_level(level: TestLevel, config: ProgressiveConfig, level_dir: Pat
                 expected=question.expected_answer,
                 actual=answer_data["answer"],
                 level=question.level,
+                num_votes=config.grader_votes,
             )
 
             # Grade metacognition if trace available
@@ -653,12 +656,12 @@ def _run_single_suite(args: tuple) -> ProgressiveResult:
     """Run a single suite invocation (used as ProcessPoolExecutor target).
 
     Args:
-        args: Tuple of (run_id, base_output_dir, levels_to_run, memory_backend, sdk)
+        args: Tuple of (run_id, base_output_dir, levels_to_run, memory_backend, sdk, grader_votes)
 
     Returns:
         ProgressiveResult for this run
     """
-    run_id, base_output_dir, levels_to_run, memory_backend, sdk = args
+    run_id, base_output_dir, levels_to_run, memory_backend, sdk, grader_votes = args
     agent_name = f"agent_{run_id}_{int(time.time())}"
     output_dir = str(Path(base_output_dir) / f"run_{run_id}")
 
@@ -668,6 +671,7 @@ def _run_single_suite(args: tuple) -> ProgressiveResult:
         levels_to_run=levels_to_run,
         memory_backend=memory_backend,
         sdk=sdk,
+        grader_votes=grader_votes,
     )
 
     return run_progressive_suite(config)
@@ -782,6 +786,14 @@ def main():
         help="Run suite N times in parallel and report median scores (max 4 concurrent)",
     )
     parser.add_argument(
+        "--runs",
+        type=int,
+        default=0,
+        metavar="N",
+        help="Alias for --parallel. Run suite N times and report median scores. "
+        "Recommended: --runs 3 for stable results on high-variance levels (L2, L5, L9, L10, L11).",
+    )
+    parser.add_argument(
         "--sdk",
         default="mini",
         choices=["mini", "claude", "copilot", "microsoft"],
@@ -790,6 +802,10 @@ def main():
     )
 
     args = parser.parse_args()
+
+    # --runs is an alias for --parallel; prefer --runs if both given
+    if args.runs > 0:
+        args.parallel = args.runs
 
     # If --advanced is set, include L8-L10 in levels to run
     if args.advanced and not args.levels:

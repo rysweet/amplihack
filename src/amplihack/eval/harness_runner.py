@@ -94,6 +94,7 @@ def run_harness(config: HarnessConfig) -> HarnessResult:
             input=json.dumps(learning_input),
             capture_output=True,
             text=True,
+            timeout=600,
         )
 
         if learning_result.returncode != 0:
@@ -128,6 +129,7 @@ def run_harness(config: HarnessConfig) -> HarnessResult:
             input=json.dumps(testing_input),
             capture_output=True,
             text=True,
+            timeout=600,
         )
 
         if testing_result.returncode != 0:

@@ -209,7 +209,7 @@ LEVEL_3 = TestLevel(
         ),
         TestQuestion(
             question="Describe the trend in Italy's gold medal performance over the three days",
-            expected_answer="Italy showed acceleration: +3 golds Day 7-9, then +1 gold Day 9-10, gaining 4 golds total",
+            expected_answer="Italy gained +3 golds from Day 7 to Day 9 (strong growth), then +1 gold from Day 9 to Day 10 (slowing/deceleration). Total gain: 4 golds (from 5 to 9).",
             level="L3",
             reasoning_type="temporal_trend",
         ),
