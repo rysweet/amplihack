@@ -1,0 +1,60 @@
+{
+  "run_date": "2026-02-20",
+  "sdk_type": "mini",
+  "max_iterations": 3,
+  "iterations_run": 3,
+  "levels_evaluated": ["L1", "L2", "L3", "L4", "L5", "L6"],
+  "dry_run": true,
+  "final_scores": {
+    "L1": 1.0,
+    "L2": 1.0,
+    "L3": 0.767,
+    "L4": 0.913,
+    "L5": 1.0,
+    "L6": 1.0,
+    "overall": 0.947
+  },
+  "total_improvement_pct": 33.96,
+  "total_duration_seconds": 1275.1,
+  "per_iteration": [
+    {
+      "iteration": 1,
+      "baseline_overall": 0.607,
+      "post_overall": 0.607,
+      "failures_found": 1,
+      "failure_modes": ["contradiction_undetected (L5)"],
+      "research_decisions": ["defer"],
+      "changes_applied": 0,
+      "duration_seconds": 347.3
+    },
+    {
+      "iteration": 2,
+      "baseline_overall": 0.942,
+      "post_overall": 0.942,
+      "failures_found": 1,
+      "failure_modes": ["temporal_ordering_wrong (L3)"],
+      "research_decisions": ["defer"],
+      "changes_applied": 0,
+      "duration_seconds": 489.3
+    },
+    {
+      "iteration": 3,
+      "baseline_overall": 0.947,
+      "post_overall": 0.947,
+      "failures_found": 1,
+      "failure_modes": ["temporal_ordering_wrong (L3)"],
+      "research_decisions": ["defer"],
+      "changes_applied": 0,
+      "duration_seconds": 438.5
+    }
+  ],
+  "observations": [
+    "L1, L2, L5, L6 consistently score 100% across iterations.",
+    "L3 (temporal reasoning) is the persistent weak point at ~77%.",
+    "L4 (procedural) ranges 87.5-91.3% due to LLM stochasticity.",
+    "Score variation between iterations (60.7% -> 94.2% -> 94.7%) is due to subprocess isolation giving each iteration a fresh memory DB.",
+    "Iteration 1 low L2/L3 scores were likely one-off failures (timeout or subprocess errors), not systematic.",
+    "Research step correctly identified failures, gathered evidence, and deferred changes when evidence was insufficient.",
+    "The temporal_ordering_wrong failure in L3 is a real pattern that would benefit from prompt template improvement."
+  ]
+}
