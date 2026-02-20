@@ -17,7 +17,6 @@ maps native tools to the AgentTool interface.
 from __future__ import annotations
 
 import logging
-import os
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
@@ -30,7 +29,7 @@ logger = logging.getLogger(__name__)
 class SDKType(str, Enum):
     """Supported SDK types for agent generation."""
 
-    COPILOT = "copilot"  # GitHub Copilot SDK
+    COPILOT = "copilot"  # GitHub Copilot SDK (default)
     CLAUDE = "claude"  # Claude Agent SDK (Anthropic)
     MICROSOFT = "microsoft"  # Microsoft Agent Framework
     MINI = "mini"  # Current mini-framework (LearningAgent + litellm)
@@ -41,7 +40,7 @@ class AgentTool:
     """SDK-agnostic tool definition.
 
     Each SDK implementation converts this to its native tool format:
-    - Claude: SdkMcpTool via @tool decorator
+    - Claude: Tool(name, description, input_schema, function)
     - Copilot: defineTool(name, {description, parameters, handler})
     - Microsoft: @function_tool decorated function
 
@@ -107,7 +106,7 @@ class GoalSeekingAgent(ABC):
     - _create_sdk_agent(): Initialize the SDK-specific agent
     - _run_sdk_agent(task): Execute a task through the SDK agent loop
     - _get_native_tools(): Return SDK-native tools (bash, file, web, etc.)
-    - _register_tool_with_sdk(tool): Register a custom tool with the SDK
+    - _register_tool(tool): Register a custom tool with the SDK
 
     The base class provides shared logic for:
     - Goal formation from intent
@@ -127,13 +126,21 @@ class GoalSeekingAgent(ABC):
         enable_memory: bool = True,
         enable_eval: bool = False,
     ):
-        if not name or not name.strip():
-            raise ValueError("Agent name must be non-empty")
+        """Initialize goal-seeking agent.
 
+        Args:
+            name: Agent identifier
+            instructions: System prompt / agent instructions
+            sdk_type: Which SDK to use
+            model: LLM model (SDK-specific default if None)
+            storage_path: Path for memory database
+            enable_memory: Whether to initialize amplihack-memory-lib
+            enable_eval: Whether to include eval harness
+        """
         self.name = name
         self.instructions = instructions
         self.sdk_type = sdk_type
-        self.model = model or os.environ.get("EVAL_MODEL", "claude-sonnet-4-5-20250929")
+        self.model = model
         self.storage_path = storage_path or Path.home() / ".amplihack" / "agents" / name
         self.enable_memory = enable_memory
         self.enable_eval = enable_eval
@@ -155,11 +162,14 @@ class GoalSeekingAgent(ABC):
         self._create_sdk_agent()
 
     def _init_memory(self) -> None:
-        """Initialize amplihack-memory-lib."""
+        """Initialize amplihack-memory-lib (Kuzu backend)."""
         try:
-            from amplihack_memory import ExperienceStore
+            from ..cognitive_adapter import CognitiveAdapter
 
-            self.memory = ExperienceStore(db_path=str(self.storage_path))
+            self.memory = CognitiveAdapter(
+                agent_name=self.name,
+                db_path=self.storage_path,
+            )
             logger.info("Memory initialized for agent '%s' at %s", self.name, self.storage_path)
         except Exception as e:
             logger.warning("Failed to initialize memory: %s. Continuing without memory.", e)
@@ -214,7 +224,7 @@ class GoalSeekingAgent(ABC):
             ),
             AgentTool(
                 name="find_knowledge_gaps",
-                description="Identify what is unknown or uncertain about a topic",
+                description="Identify what's unknown or uncertain about a topic",
                 parameters={
                     "type": "object",
                     "properties": {"topic": {"type": "string", "description": "Topic to analyze"}},
@@ -262,8 +272,8 @@ class GoalSeekingAgent(ABC):
             ),
         ]
 
-        for tool_item in learning_tools:
-            self._tools.append(tool_item)
+        for tool in learning_tools:
+            self._tools.append(tool)
 
     # ------------------------------------------------------------------
     # Tool implementations (shared across all SDKs)
@@ -273,108 +283,71 @@ class GoalSeekingAgent(ABC):
         """Learn from content by extracting and storing facts."""
         if not self.memory:
             return {"error": "Memory not initialized"}
-        if not content or not content.strip():
-            return {"error": "Content must be non-empty"}
-        try:
-            from amplihack_memory import Experience, ExperienceType
-
-            exp = Experience(
-                experience_type=ExperienceType.INSIGHT,
-                context="learned",
-                outcome=content[:500],
-                confidence=0.8,
-            )
-            self.memory.store(exp)
-            return {"status": "learned", "content_length": len(content)}
-        except Exception as e:
-            return {"error": str(e)}
+        # Use the memory adapter's store_fact for each extracted concept
+        # In a full implementation, this would use LLM extraction
+        self.memory.store_fact(context="learned", fact=content[:500], confidence=0.8)
+        return {"status": "learned", "content_length": len(content)}
 
     def _tool_search(self, query: str, limit: int = 10) -> list[dict[str, Any]]:
         """Search memory for relevant facts."""
         if not self.memory:
             return []
-        if not query or not query.strip():
-            return []
-        try:
-            results = self.memory.search(query=query, limit=limit)
-            return results if isinstance(results, list) else []
-        except Exception:
-            return []
+        return self.memory.search(query=query, limit=limit)
 
     def _tool_explain(self, topic: str, depth: str = "overview") -> str:
         """Generate topic explanation from memory."""
         if not self.memory:
             return f"No knowledge about '{topic}'."
-        try:
-            facts = self.memory.search(query=topic, limit=20)
-            if not facts:
-                return f"No knowledge stored about '{topic}'."
-            facts_text = "\n".join(f"- {f.get('outcome', '')[:150]}" for f in facts[:10])
-            return f"Knowledge about '{topic}':\n{facts_text}"
-        except Exception:
-            return f"No knowledge about '{topic}'."
+        facts = self.memory.search(query=topic, limit=20)
+        if not facts:
+            return f"No knowledge stored about '{topic}'."
+        facts_text = "\n".join(f"- {f.get('outcome', '')[:150]}" for f in facts[:10])
+        return f"Knowledge about '{topic}':\n{facts_text}"
 
     def _tool_find_gaps(self, topic: str) -> dict[str, Any]:
         """Identify knowledge gaps about a topic."""
         if not self.memory:
             return {"gaps": ["No memory initialized"], "total_facts": 0}
-        try:
-            facts = self.memory.search(query=topic, limit=20)
-            return {
-                "topic": topic,
-                "total_facts": len(facts),
-                "gaps": [] if facts else ["No knowledge"],
-            }
-        except Exception:
-            return {"gaps": ["Search failed"], "total_facts": 0}
+        facts = self.memory.search(query=topic, limit=20)
+        return {
+            "topic": topic,
+            "total_facts": len(facts),
+            "gaps": [] if facts else ["No knowledge"],
+        }
 
     def _tool_verify(self, fact: str) -> dict[str, Any]:
         """Verify fact against stored knowledge."""
         if not self.memory:
             return {"verified": False, "reason": "No memory"}
-        try:
-            related = self.memory.search(query=fact, limit=10)
-            return {"fact": fact, "related_facts": len(related), "verified": len(related) > 0}
-        except Exception:
-            return {"verified": False, "reason": "Search failed"}
+        related = self.memory.search(query=fact, limit=10)
+        return {"fact": fact, "related_facts": len(related), "verified": len(related) > 0}
 
     def _tool_store(self, context: str, fact: str, confidence: float = 0.8) -> dict[str, Any]:
         """Store a fact in memory."""
         if not self.memory:
             return {"error": "Memory not initialized"}
-        try:
-            from amplihack_memory import Experience, ExperienceType
-
-            # Clamp confidence to [0.0, 1.0]
-            confidence = max(0.0, min(1.0, confidence))
-            exp = Experience(
-                experience_type=ExperienceType.INSIGHT,
-                context=context,
-                outcome=fact,
-                confidence=confidence,
-            )
-            self.memory.store(exp)
-            return {"stored": True, "context": context}
-        except Exception as e:
-            return {"error": str(e)}
+        node_id = self.memory.store_fact(context=context, fact=fact, confidence=confidence)
+        return {"stored": True, "node_id": node_id}
 
     def _tool_summary(self) -> dict[str, Any]:
         """Get memory statistics."""
         if not self.memory:
             return {"error": "Memory not initialized"}
-        try:
-            if hasattr(self.memory, "get_statistics"):
-                return self.memory.get_statistics()
-            return {"status": "memory active", "type": type(self.memory).__name__}
-        except Exception as e:
-            return {"error": str(e)}
+        return self.memory.get_statistics()
 
     # ------------------------------------------------------------------
     # Goal-seeking behavior (shared across all SDKs)
     # ------------------------------------------------------------------
 
     def form_goal(self, user_intent: str) -> Goal:
-        """Form an evaluable goal from user intent."""
+        """Form an evaluable goal from user intent.
+
+        Args:
+            user_intent: What the user wants to achieve
+
+        Returns:
+            Goal with description, success criteria, and initial plan
+        """
         self.current_goal = Goal(
             description=user_intent,
             success_criteria=f"Successfully completed: {user_intent}",
@@ -393,28 +366,48 @@ class GoalSeekingAgent(ABC):
 
     @abstractmethod
     async def _run_sdk_agent(self, task: str, max_turns: int = 10) -> AgentResult:
-        """Execute a task through the SDK agent loop."""
+        """Execute a task through the SDK's agent loop.
+
+        This is where each SDK's native agent loop runs.
+        The SDK handles tool calling, iteration, and response generation.
+
+        Args:
+            task: The task/prompt to execute
+            max_turns: Maximum agent loop iterations
+
+        Returns:
+            AgentResult with response and metadata
+        """
 
     @abstractmethod
     def _get_native_tools(self) -> list[str]:
-        """Return list of native SDK tool names available."""
+        """Return list of native SDK tool names available.
+
+        E.g., Claude SDK: ["bash", "read_file", "write_file", "glob", "grep"]
+        Copilot SDK: ["file_system", "git", "web"]
+        Microsoft: depends on configuration
+        """
 
     @abstractmethod
     def _register_tool_with_sdk(self, tool: AgentTool) -> None:
-        """Register a custom AgentTool with the SDK tool system."""
+        """Register a custom AgentTool with the SDK's tool system."""
 
     # ------------------------------------------------------------------
     # Public API (works the same regardless of SDK)
     # ------------------------------------------------------------------
 
     async def run(self, task: str, max_turns: int = 10) -> AgentResult:
-        """Run the agent on a task."""
-        if not task or not task.strip():
-            return AgentResult(
-                response="Cannot run with empty task.",
-                goal_achieved=False,
-                metadata={"error": "empty_task"},
-            )
+        """Run the agent on a task.
+
+        Forms a goal, executes via the SDK's agent loop, evaluates result.
+
+        Args:
+            task: What to accomplish
+            max_turns: Maximum iterations
+
+        Returns:
+            AgentResult with response and goal achievement status
+        """
         self.form_goal(task)
         result = await self._run_sdk_agent(task, max_turns)
 
@@ -426,10 +419,7 @@ class GoalSeekingAgent(ABC):
     def close(self) -> None:
         """Release resources."""
         if self.memory:
-            try:
-                self.memory.close()
-            except Exception as e:
-                logger.warning("Error closing memory: %s", e)
+            self.memory.close()
 
 
 __all__ = ["GoalSeekingAgent", "AgentTool", "AgentResult", "Goal", "SDKType"]

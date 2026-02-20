@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 # Try importing CognitiveMemory, fall back to HierarchicalMemory
 try:
-    from amplihack_memory.cognitive_memory import CognitiveMemory
+    from amplihack_memory.cognitive_memory import CognitiveMemory  # type: ignore[import-not-found]
 
     HAS_COGNITIVE_MEMORY = True
 except ImportError:
@@ -56,6 +56,7 @@ class CognitiveAdapter:
         require_cognitive: bool = False,
     ):
         self.agent_name = agent_name
+        self.memory: Any = None  # CognitiveMemory or HierarchicalMemory
 
         if db_path is None:
             db_path = Path.home() / ".amplihack" / "cognitive_memory" / agent_name
