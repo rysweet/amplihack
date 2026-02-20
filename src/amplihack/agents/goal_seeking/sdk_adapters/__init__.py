@@ -17,6 +17,7 @@ Philosophy:
 - Goal-oriented: agents form evaluable goals, not just answer questions
 """
 
-from .base import AgentResult, AgentTool, GoalSeekingAgent, SDKType
+from .base import AgentResult, AgentTool, Goal, GoalSeekingAgent, SDKType
+from .factory import create_agent
 
-__all__ = ["GoalSeekingAgent", "AgentTool", "AgentResult", "SDKType"]
+__all__ = ["GoalSeekingAgent", "AgentTool", "AgentResult", "Goal", "SDKType", "create_agent"]
