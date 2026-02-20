@@ -501,14 +501,14 @@ class TestFactory:
         assert isinstance(agent, CopilotGoalSeekingAgent)
 
     @patch(f"{_P}.HAS_COPILOT_SDK", True)
-    def test_factory_default_is_copilot(self):
-        from amplihack.agents.goal_seeking.sdk_adapters.copilot_sdk import (
-            CopilotGoalSeekingAgent,
-        )
+    def test_factory_default_is_microsoft(self):
         from amplihack.agents.goal_seeking.sdk_adapters.factory import create_agent
+        from amplihack.agents.goal_seeking.sdk_adapters.microsoft_sdk import (
+            MicrosoftGoalSeekingAgent,
+        )
 
         agent = create_agent(name="default-test", enable_memory=False)
-        assert isinstance(agent, CopilotGoalSeekingAgent)
+        assert isinstance(agent, MicrosoftGoalSeekingAgent)
 
 
 class TestSecurityAudit:
