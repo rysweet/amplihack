@@ -100,6 +100,7 @@ HOOK_CONFIGS = {
         {"type": "PreToolUse", "file": "pre_tool_use.py", "matcher": "*"},
         {"type": "PostToolUse", "file": "post_tool_use.py", "matcher": "*"},
         {"type": "UserPromptSubmit", "file": "user_prompt_submit.py", "timeout": 10},
+        {"type": "UserPromptSubmit", "file": "workflow_classification_reminder.py", "timeout": 5},
         {"type": "PreCompact", "file": "pre_compact.py", "timeout": 30},
     ],
     "xpia": [
