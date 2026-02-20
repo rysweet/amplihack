@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
@@ -70,11 +71,14 @@ class CopilotGoalSeekingAgent(GoalSeekingAgent):
         self._client: Any = None
         self._session: Any = None
 
+        # Allow env var override: COPILOT_MODEL
+        resolved_model = model or os.environ.get("COPILOT_MODEL", "gpt-4.1")
+
         super().__init__(
             name=name,
             instructions=instructions,
             sdk_type=SDKType.COPILOT,
-            model=model,
+            model=resolved_model,
             storage_path=storage_path,
             enable_memory=enable_memory,
             enable_eval=enable_eval,
@@ -173,11 +177,11 @@ class CopilotGoalSeekingAgent(GoalSeekingAgent):
                 metadata={"sdk": "copilot", "model": self.model},
             )
         except Exception as e:
-            logger.error("Copilot SDK agent run failed: %s", e)
+            logger.exception("Copilot SDK agent run failed: %s", type(e).__name__)
             return AgentResult(
-                response=f"Agent execution failed: {e}",
+                response="Agent execution encountered an error.",
                 goal_achieved=False,
-                metadata={"sdk": "copilot", "error": str(e)},
+                metadata={"sdk": "copilot", "error": type(e).__name__},
             )
 
     def _get_native_tools(self) -> list[str]:

@@ -11,6 +11,7 @@ Install: pip install claude-agents
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
 
 from .base import AgentResult, AgentTool, GoalSeekingAgent, SDKType
@@ -71,11 +72,14 @@ class ClaudeGoalSeekingAgent(GoalSeekingAgent):
             "grep",
         ]
 
+        # Allow env var override: CLAUDE_AGENT_MODEL
+        resolved_model = model or os.environ.get("CLAUDE_AGENT_MODEL", "claude-sonnet-4-5-20250929")
+
         super().__init__(
             name=name,
             instructions=instructions,
             sdk_type=SDKType.CLAUDE,
-            model=model,
+            model=resolved_model,
             storage_path=storage_path,
             enable_memory=enable_memory,
             enable_eval=enable_eval,
@@ -146,11 +150,11 @@ class ClaudeGoalSeekingAgent(GoalSeekingAgent):
                 metadata={"sdk": "claude"},
             )
         except Exception as e:
-            logger.error("Claude SDK agent run failed: %s", e)
+            logger.exception("Claude SDK agent run failed: %s", type(e).__name__)
             return AgentResult(
-                response=f"Agent execution failed: {e}",
+                response="Agent execution encountered an error.",
                 goal_achieved=False,
-                metadata={"sdk": "claude", "error": str(e)},
+                metadata={"sdk": "claude", "error": type(e).__name__},
             )
 
     def _get_native_tools(self) -> list[str]:
