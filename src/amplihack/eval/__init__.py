@@ -11,6 +11,15 @@ Also provides domain-specific evaluation:
 
 from .grader import GradeResult, grade_answer
 from .harness_runner import HarnessConfig, HarnessResult, run_harness
+
+# Long-horizon memory evaluation (1000-turn stress test)
+from .long_horizon_memory import (
+    CategoryBreakdown,
+    DimensionScore,
+    EvalReport,
+    EvalResult,
+    LongHorizonMemoryEval,
+)
 from .meta_eval_experiment import ExperimentConfig, ExperimentReport, MetaEvalExperiment
 from .metacognition_grader import Dimension, MetacognitionGrader, MetacognitionScore
 from .multi_source_collector import NewsArticle, collect_news
@@ -37,4 +46,9 @@ __all__ = [
     "MetaEvalExperiment",
     "ExperimentConfig",
     "ExperimentReport",
+    "LongHorizonMemoryEval",
+    "EvalResult",
+    "EvalReport",
+    "CategoryBreakdown",
+    "DimensionScore",
 ]

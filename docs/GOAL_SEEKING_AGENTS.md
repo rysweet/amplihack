@@ -285,7 +285,7 @@ Agents combine stored knowledge with SDK-native tools to solve real problems:
 
 ## Evaluating Agents
 
-The evaluation system measures agent capability across multiple dimensions using a progressive test suite, teaching evaluation, domain-specific evaluation, and metacognition grading.
+The evaluation system measures agent capability across multiple dimensions using a progressive test suite, multi-vote grading, teaching evaluation, domain-specific evaluation, long-horizon memory stress tests, and metacognition grading.
 
 ### Progressive Test Suite (L1-L12)
 
@@ -326,6 +326,14 @@ PYTHONPATH=src python -m amplihack.eval.progressive_test_suite \
     --levels L1 L2 L5 L6
 ```
 
+**Choose an SDK backend:**
+
+```bash
+PYTHONPATH=src python -m amplihack.eval.progressive_test_suite \
+    --output-dir /tmp/eval \
+    --sdk claude
+```
+
 **Advanced levels (L8-L10: metacognition, causal, counterfactual):**
 
 ```bash
@@ -342,28 +350,49 @@ PYTHONPATH=src python -m amplihack.eval.progressive_test_suite \
     --levels L1 L2 L3 L4 L5 L6 L8 L9 L10 L11 L12
 ```
 
-**Parallel runs for stable medians (recommended for benchmarking):**
+**3-run median for stable benchmarks (recommended):**
 
-LLM-graded evaluations are inherently stochastic. Running 3 times in parallel and taking medians produces more reliable scores:
+LLM-graded evaluations are inherently stochastic. Running 3 times and taking medians produces more reliable scores:
 
 ```bash
 PYTHONPATH=src python -m amplihack.eval.progressive_test_suite \
-    --output-dir /tmp/eval_parallel \
-    --parallel 3
+    --output-dir /tmp/eval_median \
+    --runs 3
 ```
 
-This spawns 3 independent processes (each with its own memory database) and reports median scores per level.
+**Multi-vote grading for noise reduction:**
+
+Each answer can be graded by N independent LLM calls with the median score taken:
+
+```bash
+PYTHONPATH=src python -m amplihack.eval.progressive_test_suite \
+    --output-dir /tmp/eval_votes \
+    --grader-votes 3
+```
+
+**Combined (recommended for final benchmarks):**
+
+```bash
+PYTHONPATH=src python -m amplihack.eval.progressive_test_suite \
+    --output-dir /tmp/eval_final \
+    --runs 3 \
+    --grader-votes 3 \
+    --sdk mini
+```
 
 ### CLI Options
 
-| Option             | Description                   | Default                  |
-| ------------------ | ----------------------------- | ------------------------ |
-| `--output-dir`     | Directory for results         | `./eval_progressive`     |
-| `--agent-name`     | Agent name (memory isolation) | `progressive-test-agent` |
-| `--levels`         | Specific levels to run        | L1-L6                    |
-| `--advanced`       | Include L8-L10                | Off                      |
-| `--memory-backend` | Memory backend                | `amplihack-memory-lib`   |
-| `--parallel N`     | Run N times, report medians   | Off (single run)         |
+| Option             | Description                                                 | Default                  |
+| ------------------ | ----------------------------------------------------------- | ------------------------ |
+| `--output-dir`     | Directory for results                                       | `./eval_progressive`     |
+| `--agent-name`     | Agent name (memory isolation)                               | `progressive-test-agent` |
+| `--levels`         | Specific levels to run                                      | L1-L6                    |
+| `--advanced`       | Include L8-L10                                              | Off                      |
+| `--memory-backend` | Memory backend                                              | `amplihack-memory-lib`   |
+| `--parallel N`     | Run N times, report medians                                 | Off (single run)         |
+| `--runs N`         | Alias for --parallel. Run N times, report medians           | Off (single run)         |
+| `--sdk`            | SDK type: mini, claude, copilot, microsoft                  | `mini`                   |
+| `--grader-votes N` | Number of grading votes per question (1=single, 3=majority) | 1                        |
 
 ### Output Structure
 
@@ -383,10 +412,10 @@ eval_progressive/
     scores.json
 ```
 
-For parallel runs:
+For parallel/multi-run evaluations:
 
 ```
-eval_parallel/
+eval_median/
   parallel_summary.json     # Median scores across all runs
   run_0/
     summary.json
@@ -407,6 +436,16 @@ Each answer is graded using LLM-based semantic grading (Claude Sonnet 4.5). The 
 2. Understands semantic equivalence (paraphrasing is fine).
 3. Adjusts expectations by cognitive level (L1 expects exact recall, L5 expects nuance).
 4. Returns a 0.0-1.0 score and written reasoning.
+
+**Multi-vote grading:** When `--grader-votes N` is set (e.g., 3), each answer is graded N times independently and the **median** score is taken as the final grade. This reduces noise on ambiguous answers where a single grader call might score 0.4 or 0.9 depending on LLM temperature. Individual vote scores are recorded in the output for analysis.
+
+**Level-specific grading criteria:**
+
+- **L3 (Temporal Reasoning):** Numerical correctness is the primary dimension (correct numbers = at least 0.7). Trend direction is secondary.
+- **L5 (Contradiction Handling):** Explicit rubric: naming both conflicting values with sources (0.9-1.0), mentioning both without flagging conflict (0.6-0.8), one value with uncertainty (0.3-0.5).
+- **L9 (Causal Reasoning):** Accepts multiple valid root causes with sound reasoning.
+- **L11 (Novel Skill):** Grades on required fields, does not penalize for extra optional fields.
+- **L12 (Far Transfer):** Trend direction is critical; correct computation with wrong direction scores lower.
 
 If the agent provides a reasoning trace, the **metacognition grader** additionally scores four dimensions:
 
@@ -430,7 +469,7 @@ This tests not just recall but the agent's ability to organize, explain, and ada
 
 ### Domain-Specific Evaluation
 
-For domain agents (code review, meeting synthesis, etc.), the `DomainEvalHarness` provides a separate evaluation framework:
+For domain agents (code review, meeting synthesis, data analysis, document creation, project planning), the `DomainEvalHarness` provides a separate evaluation framework:
 
 ```python
 from amplihack.eval.domain_eval_harness import DomainEvalHarness
@@ -448,9 +487,39 @@ Domain eval levels are defined by each agent (via `get_eval_levels()`). The harn
 
 **Combined scoring:** Domain agents can use a combined score: 60% domain-specific eval + 40% teaching eval.
 
+### Long-Horizon Memory Evaluation
+
+The `long_horizon_memory` module stress-tests agent memory at scale with 1000-turn dialogues:
+
+```bash
+PYTHONPATH=src python -m amplihack.eval.long_horizon_memory \
+    --turns 100 --questions 20
+
+# Full stress test
+PYTHONPATH=src python -m amplihack.eval.long_horizon_memory \
+    --turns 1000 --questions 100
+```
+
+This evaluates whether agents retain knowledge over extended conversations, testing memory persistence, retrieval accuracy, and knowledge organization across five scoring dimensions per question.
+
 ### Meta-Eval Experiment
 
-The `meta_eval_experiment.py` module runs an experiment where an agent learns about the evaluation system itself and then teaches it to a student. This is a self-referential test that validates the entire pipeline end-to-end.
+The `meta_eval_experiment.py` module runs an experiment where an agent learns about the evaluation system itself and then teaches it to a student. This is a self-referential test that validates the entire pipeline end-to-end, including the TeachingSession and MetacognitionGrader.
+
+### Multi-SDK Comparison
+
+The `sdk_eval_loop` module runs eval loops across all four SDKs for comparison:
+
+```bash
+# Compare 2 SDKs with 3 improvement loops each
+PYTHONPATH=src python -m amplihack.eval.sdk_eval_loop \
+    --sdks mini claude --loops 3
+
+# Compare all 4 SDKs
+PYTHONPATH=src python -m amplihack.eval.sdk_eval_loop --all-sdks --loops 3
+```
+
+Output includes per-SDK score progression, failure analysis, prompt tuning recommendations, and a ranked comparison table.
 
 ---
 
@@ -458,24 +527,74 @@ The `meta_eval_experiment.py` module runs an experiment where an agent learns ab
 
 ### Self-Improvement Loop
 
-The self-improvement workflow follows a five-stage cycle:
+The self-improvement workflow follows a six-stage cycle with a research step that prevents blind changes:
 
 ```
-BUILD --> EVAL --> AUDIT --> IMPROVE --> RE-EVAL
-  |                                        |
-  +----------------------------------------+
-                  (iterate)
+EVAL --> ANALYZE --> RESEARCH --> IMPROVE --> RE-EVAL --> DECIDE
+  |                                                        |
+  +--------------------------------------------------------+
+                          (iterate)
 ```
 
-**Stage 1: BUILD** -- Generate or modify the agent code.
+**Stage 1: EVAL** -- Run the progressive test suite (L1-L12) to get baseline scores.
 
-**Stage 2: EVAL** -- Run the progressive test suite to get baseline scores.
+**Stage 2: ANALYZE** -- The error analyzer examines failures and maps them to specific code components.
 
-**Stage 3: AUDIT** -- The error analyzer examines failures and maps them to specific code components.
+**Stage 3: RESEARCH** -- The critical thinking step. For each proposed improvement:
 
-**Stage 4: IMPROVE** -- Based on the audit, modify the identified component (a prompt template, retrieval strategy, or synthesis logic).
+1. State a clear hypothesis about what will fix the failure.
+2. Gather evidence from eval results, failure patterns, and baseline scores.
+3. Consider counter-arguments (regression risk, stochasticity, cross-level impact).
+4. Make a reasoned decision: apply, skip, or defer.
 
-**Stage 5: RE-EVAL** -- Run the suite again to measure improvement. If scores improved, commit. If they regressed, revert.
+Decisions are logged in `research_decisions.json` for auditability.
+
+**Stage 4: IMPROVE** -- Based on the research, apply the approved changes. Priority order: prompt template improvements (safest), retrieval strategy adjustments, code logic fixes (riskiest).
+
+**Stage 5: RE-EVAL** -- Run the suite again to measure impact.
+
+**Stage 6: DECIDE** -- Promotion gate:
+
+- Net improvement >= +2% overall: COMMIT the changes.
+- Any single level regression > 5%: REVERT all changes.
+- Otherwise: COMMIT with marginal improvement note.
+
+### Runner CLI
+
+```bash
+# Basic usage
+python -m amplihack.eval.self_improve.runner --sdk mini --iterations 3
+
+# Full options
+python -m amplihack.eval.self_improve.runner \
+  --sdk mini \
+  --iterations 5 \
+  --improvement-threshold 2.0 \
+  --regression-tolerance 5.0 \
+  --levels L1 L2 L3 L4 L5 L6 \
+  --output-dir ./eval_results/self_improve \
+  --dry-run  # evaluate only, don't apply changes
+```
+
+### Programmatic Usage
+
+```python
+from amplihack.eval.self_improve import run_self_improvement, RunnerConfig
+
+config = RunnerConfig(
+    sdk_type="mini",
+    max_iterations=3,
+    improvement_threshold=2.0,
+    regression_tolerance=5.0,
+    levels=["L1", "L2", "L3", "L4", "L5", "L6"],
+    output_dir="./eval_results/self_improve",
+    dry_run=False,
+)
+
+result = run_self_improvement(config)
+print(f"Total improvement: {result.total_improvement:+.1f}%")
+print(f"Final scores: {result.final_scores}")
+```
 
 ### Error Analyzer
 
@@ -612,6 +731,22 @@ agent = create_agent(name="x", sdk="mini")       # Lightweight mini-framework
 | Env var override  | `COPILOT_MODEL`                  | `CLAUDE_AGENT_MODEL`                    | --                                  | --                                  |
 | Best for          | General dev tasks, file/git/web  | Subagent delegation, MCP integration    | Structured workflows, telemetry     | Testing, benchmarking, no deps      |
 
+### Per-SDK Prompt Tuning
+
+Each SDK has dedicated eval prompt templates in `src/amplihack/agents/goal_seeking/prompts/sdk/`:
+
+| File                     | Purpose                                          |
+| ------------------------ | ------------------------------------------------ |
+| `copilot_eval.md`        | Copilot-specific system prompt for eval sessions |
+| `claude_eval.md`         | Claude-specific eval prompt                      |
+| `microsoft_eval.md`      | Microsoft Agent Framework eval prompt            |
+| `goal_seeking_system.md` | Shared goal-seeking system prompt                |
+| `learning_task.md`       | Shared learning task template                    |
+| `synthesis_template.md`  | Shared synthesis template                        |
+| `teaching_system.md`     | Teaching session system prompt                   |
+
+These allow SDK-specific instruction tuning without modifying shared agent code. The `agent_subprocess.py` uses these prompts when routing eval sessions through the appropriate SDK.
+
 ### Memory Integration
 
 All SDK implementations share the same memory layer via `amplihack-memory-lib`:
@@ -656,7 +791,7 @@ Each domain agent defines its own evaluation levels (via `get_eval_levels()`), w
 
 ## Domain Agents
 
-### Available Agents
+### Available Agents (5)
 
 **Code Review Agent** (`src/amplihack/agents/domain_agents/code_review/agent.py`)
 
@@ -699,13 +834,17 @@ result = agent.execute_task({
 })
 ```
 
-### Planned Domain Agents
+**Data Analysis Agent** (`src/amplihack/agents/domain_agents/data_analysis/agent.py`)
 
-The following agents are designed but not yet implemented (see `Specs/DOMAIN_AGENTS_DESIGN.md`):
+Analyzes datasets and produces insights.
 
-- **Document Creator** -- Generate documentation from code and specifications
-- **Data Analysis** -- Analyze datasets and produce insights
-- **Project Planning** -- Break down projects into tasks with estimates
+**Document Creator Agent** (`src/amplihack/agents/domain_agents/document_creator/agent.py`)
+
+Generates documentation from code and specifications.
+
+**Project Planning Agent** (`src/amplihack/agents/domain_agents/project_planning/agent.py`)
+
+Breaks down projects into tasks with estimates.
 
 ### Creating Custom Domain Agents
 
@@ -821,6 +960,15 @@ src/amplihack/
     cognitive_adapter.py            # Memory adapter (amplihack-memory-lib)
     memory_retrieval.py             # Retrieval strategies
     action_executor.py              # Tool execution engine
+    prompts/
+      sdk/                          # Per-SDK prompt templates
+        copilot_eval.md             # Copilot eval prompt
+        claude_eval.md              # Claude eval prompt
+        microsoft_eval.md           # Microsoft eval prompt
+        goal_seeking_system.md      # Shared system prompt
+        learning_task.md            # Shared learning task template
+        synthesis_template.md       # Shared synthesis template
+        teaching_system.md          # Teaching session prompt
     sdk_adapters/
       base.py                       # GoalSeekingAgent ABC
       factory.py                    # create_agent() factory
@@ -832,17 +980,24 @@ src/amplihack/
     base.py                         # DomainAgent ABC
     code_review/agent.py            # Code Review domain agent
     meeting_synthesizer/agent.py    # Meeting Synthesizer domain agent
+    data_analysis/agent.py          # Data Analysis domain agent
+    document_creator/agent.py       # Document Creator domain agent
+    project_planning/agent.py       # Project Planning domain agent
 
   eval/
     progressive_test_suite.py       # Progressive eval runner (L1-L12)
     test_levels.py                  # Test content definitions
-    grader.py                       # LLM-based semantic grading
+    grader.py                       # LLM-based semantic grading (multi-vote)
     metacognition_grader.py         # Reasoning quality grading
     teaching_session.py             # Teacher-student orchestrator
     domain_eval_harness.py          # Domain agent evaluation
     meta_eval_experiment.py         # Self-referential eval experiment
     agent_subprocess.py             # Subprocess isolation for eval
+    sdk_eval_loop.py                # Multi-SDK comparison eval loop
+    long_horizon_memory.py          # Long-horizon memory stress test
+    long_horizon_data.py            # Data generation for long-horizon eval
     self_improve/
+      runner.py                     # Self-improvement loop runner
       error_analyzer.py             # Failure categorization
     PROGRESSIVE_TEST_SUITE.md       # Eval documentation
     QUICK_START.md                  # Quick start for eval
@@ -850,13 +1005,31 @@ src/amplihack/
 
 ### Related Documentation
 
+- [Eval System Architecture](EVAL_SYSTEM_ARCHITECTURE.md) -- Comprehensive guide to how the eval system is constructed
+- [SDK Adapters Guide](SDK_ADAPTERS_GUIDE.md) -- Deep dive into each SDK
 - [Goal Agent Generator Guide](GOAL_AGENT_GENERATOR_GUIDE.md) -- Detailed generator usage
 - [Agent Memory Integration](AGENT_MEMORY_INTEGRATION.md) -- Memory system details
 - [Agent Memory Quickstart](AGENT_MEMORY_QUICKSTART.md) -- Getting started with memory
 - [Evaluation Framework](evaluation-framework.md) -- General evaluation concepts
-- [SDK Adapters Guide](SDK_ADAPTERS_GUIDE.md) -- Deep dive into each SDK
 
 ---
+
+## Current Scores
+
+Best observed medians from development (3-run median, mini SDK):
+
+| Level       | Median    | Description                           |
+| ----------- | --------- | ------------------------------------- |
+| L1          | 83%       | Single source direct recall           |
+| L2          | 100%      | Multi-source synthesis                |
+| L3          | 88%       | Temporal reasoning                    |
+| L4          | 79%       | Procedural learning                   |
+| L5          | 95%       | Contradiction handling                |
+| L6          | 100%      | Incremental learning                  |
+| L7          | 84%       | Teacher-student transfer              |
+| **Overall** | **97.5%** | **Weighted median across all levels** |
+
+These scores represent the system after iterative prompt tuning and retrieval strategy optimization through the self-improvement loop.
 
 ## Success Criteria by Level
 
@@ -876,5 +1049,3 @@ Target scores for a well-tuned agent:
 | L10   | 60%+   | Agent reasons about hypothetical alternatives.             |
 | L11   | 50%+   | Agent applies post-training-cutoff skills correctly.       |
 | L12   | 60%+   | Agent transfers reasoning patterns to a new domain.        |
-
-**Best observed medians (from development):** L1: 83%, L2: 100%, L3: 88%, L4: 79%, L5: 95%, L6: 100%, L7: 84%.

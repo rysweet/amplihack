@@ -2,45 +2,126 @@
 
 ## 30-Second Overview
 
-Progressive test suite with 6 levels (L1-L6) testing agent learning from simple recall to complex reasoning.
+Progressive test suite with 12 levels (L1-L12) testing agent learning from simple recall to far transfer across domains. Supports 4 SDK backends, 3-run median for stable benchmarks, and multi-vote grading for noise reduction.
 
-**Current Status**: L1 passing at 100%, L2-L6 expected ~30-40% average.
-**Target**: L2-L6 at ~75% average after agent improvements.
+**Current Scores** (3-run median, mini SDK):
+L1: 83%, L2: 100%, L3: 88%, L4: 79%, L5: 95%, L6: 100%, L7: 84%, Overall: 97.5%
 
 ## Run Full Suite
 
 ```bash
 cd /home/azureuser/src/amplihack5
-python examples/run_progressive_eval.py
+PYTHONPATH=src python -m amplihack.eval.progressive_test_suite \
+    --output-dir /tmp/eval
 ```
 
 ## Run Specific Levels
 
 ```bash
 # Just L2 and L3
-python examples/run_progressive_eval.py --levels L2 L3
+PYTHONPATH=src python -m amplihack.eval.progressive_test_suite \
+    --output-dir /tmp/eval --levels L2 L3
 
 # Just L6 (incremental learning)
-python examples/run_progressive_eval.py --levels L6
+PYTHONPATH=src python -m amplihack.eval.progressive_test_suite \
+    --output-dir /tmp/eval --levels L6
+
+# Advanced levels (metacognition, causal, counterfactual)
+PYTHONPATH=src python -m amplihack.eval.progressive_test_suite \
+    --output-dir /tmp/eval --advanced
+
+# All levels
+PYTHONPATH=src python -m amplihack.eval.progressive_test_suite \
+    --output-dir /tmp/eval --levels L1 L2 L3 L4 L5 L6 L8 L9 L10 L11 L12
 ```
+
+## 3-Run Median (Recommended)
+
+Single runs are unreliable due to LLM stochasticity. Run 3 times and take medians:
+
+```bash
+PYTHONPATH=src python -m amplihack.eval.progressive_test_suite \
+    --output-dir /tmp/eval_median --runs 3
+```
+
+## Multi-Vote Grading
+
+Each answer graded N times, median score taken. Reduces noise on ambiguous answers:
+
+```bash
+PYTHONPATH=src python -m amplihack.eval.progressive_test_suite \
+    --output-dir /tmp/eval_votes --grader-votes 3
+```
+
+## Choose an SDK
+
+```bash
+# Mini framework (default, fastest for iteration)
+PYTHONPATH=src python -m amplihack.eval.progressive_test_suite \
+    --output-dir /tmp/eval --sdk mini
+
+# Claude Agent SDK
+PYTHONPATH=src python -m amplihack.eval.progressive_test_suite \
+    --output-dir /tmp/eval --sdk claude
+
+# GitHub Copilot SDK
+PYTHONPATH=src python -m amplihack.eval.progressive_test_suite \
+    --output-dir /tmp/eval --sdk copilot
+
+# Microsoft Agent Framework
+PYTHONPATH=src python -m amplihack.eval.progressive_test_suite \
+    --output-dir /tmp/eval --sdk microsoft
+```
+
+## Recommended: Final Benchmark
+
+Combined 3-run median + 3-vote grading for stable, reliable results:
+
+```bash
+PYTHONPATH=src python -m amplihack.eval.progressive_test_suite \
+    --output-dir /tmp/eval_final \
+    --runs 3 \
+    --grader-votes 3 \
+    --sdk mini
+```
+
+## CLI Options Reference
+
+| Option             | Description                                       | Default                  |
+| ------------------ | ------------------------------------------------- | ------------------------ |
+| `--output-dir`     | Directory for results                             | `./eval_progressive`     |
+| `--agent-name`     | Agent name (memory isolation)                     | `progressive-test-agent` |
+| `--levels`         | Specific levels to run (L1-L12)                   | L1-L6                    |
+| `--advanced`       | Include L8-L10                                    | Off                      |
+| `--memory-backend` | Memory backend                                    | `amplihack-memory-lib`   |
+| `--parallel N`     | Run N times, report medians                       | Off                      |
+| `--runs N`         | Alias for --parallel                              | Off                      |
+| `--sdk`            | SDK type: mini, claude, copilot, microsoft        | `mini`                   |
+| `--grader-votes N` | Grading votes per question (1=single, 3=majority) | 1                        |
 
 ## Check Results
 
 ```bash
-cat eval_progressive_example/summary.json
-cat eval_progressive_example/L1/scores.json
+cat /tmp/eval/summary.json
+cat /tmp/eval/L1/scores.json
 ```
 
-## The 6 Levels
+## The 12 Levels
 
-| Level | Name                     | Tests                          | Target |
-|-------|--------------------------|--------------------------------|--------|
-| L1    | Single Source Recall     | Basic memory retrieval         | 100%   |
-| L2    | Multi-Source Synthesis   | Combining multiple sources     | 90%    |
-| L3    | Temporal Reasoning       | Tracking changes over time     | 75%    |
-| L4    | Procedural Learning      | Learning step-by-step guides   | 65%    |
-| L5    | Contradiction Handling   | Detecting conflicts            | 60%    |
-| L6    | Incremental Learning     | Updating knowledge             | 70%    |
+| Level | Name                   | Tests                               | Current |
+| ----- | ---------------------- | ----------------------------------- | ------- |
+| L1    | Single Source Recall   | Basic memory retrieval              | 83%     |
+| L2    | Multi-Source Synthesis | Combining multiple sources          | 100%    |
+| L3    | Temporal Reasoning     | Tracking changes over time          | 88%     |
+| L4    | Procedural Learning    | Learning step-by-step guides        | 79%     |
+| L5    | Contradiction Handling | Detecting conflicts                 | 95%     |
+| L6    | Incremental Learning   | Updating knowledge                  | 100%    |
+| L7    | Teaching Transfer      | Teacher-student knowledge transfer  | 84%     |
+| L8    | Metacognition          | Self-awareness of reasoning quality | --      |
+| L9    | Causal Reasoning       | Identifying cause-and-effect        | --      |
+| L10   | Counterfactual         | "What if" hypothetical analysis     | --      |
+| L11   | Novel Skill            | Learning post-cutoff task formats   | --      |
+| L12   | Far Transfer           | Applying patterns to new domains    | --      |
 
 ## What Each Level Tests
 
@@ -50,6 +131,43 @@ cat eval_progressive_example/L1/scores.json
 **L4**: "Create weather_app with http package - what commands?" (apply procedure)
 **L5**: "Two sources say 1.2B and 800M viewers - what's correct?" (handle conflict)
 **L6**: "How many golds does Klaebo have?" after update article (must say 10, not 9)
+**L7**: Teacher learns articles, teaches student, student is quizzed
+**L8**: Agent evaluates its own confidence and knowledge gaps
+**L9**: "What caused Italy to improve?" (identify root cause)
+**L10**: "What if Klaebo hadn't competed?" (hypothetical reasoning)
+**L11**: "Write a gh-aw workflow file" (learn from docs, generate config)
+**L12**: "Which framework improved most from Q1 to Q2?" (apply reasoning to new domain)
+
+## Multi-SDK Comparison
+
+Compare all 4 SDKs with improvement loops:
+
+```bash
+# Compare 2 SDKs
+PYTHONPATH=src python -m amplihack.eval.sdk_eval_loop \
+    --sdks mini claude --loops 3
+
+# Compare all 4 SDKs
+PYTHONPATH=src python -m amplihack.eval.sdk_eval_loop --all-sdks --loops 3
+```
+
+## Self-Improvement Runner
+
+Closed-loop: EVAL -> ANALYZE -> RESEARCH -> IMPROVE -> RE-EVAL -> DECIDE
+
+```bash
+PYTHONPATH=src python -m amplihack.eval.self_improve.runner \
+    --sdk mini --iterations 3 --dry-run
+```
+
+## Long-Horizon Memory Eval
+
+1000-turn memory stress test:
+
+```bash
+PYTHONPATH=src python -m amplihack.eval.long_horizon_memory \
+    --turns 100 --questions 20
+```
 
 ## Prerequisites
 
@@ -63,45 +181,48 @@ python -c "from amplihack_memory import MemoryConnector; print('OK')"
 
 ## Output Location
 
-Results saved to: `eval_progressive_example/`
+Results saved to the `--output-dir` directory:
 
 ```
-eval_progressive_example/
-├── summary.json           # Overall scores
-├── L1/scores.json         # Level 1 detailed results
-├── L2/scores.json         # Level 2 detailed results
-├── ...
-└── L6/scores.json         # Level 6 detailed results
+eval_progressive/
+  summary.json              # Overall scores
+  L1/scores.json            # Level 1 detailed results
+  L2/scores.json            # Level 2 detailed results
+  ...
+  L6/scores.json            # Level 6 detailed results
 ```
 
-## Quick Test Infrastructure
+For parallel/multi-run:
 
-```bash
-# Verify test data structure
-pytest tests/eval/test_progressive_suite.py -v
-
-# Should see 15 tests pass
+```
+eval_median/
+  parallel_summary.json     # Median scores across all runs
+  run_0/summary.json        # Run 0 results
+  run_1/summary.json        # Run 1 results
+  run_2/summary.json        # Run 2 results
 ```
 
 ## Common Issues
 
 ### ModuleNotFoundError: No module named 'amplihack.eval'
 
-**Solution**: Use the example script which handles paths:
+**Solution**: Set PYTHONPATH:
+
 ```bash
-python examples/run_progressive_eval.py
+PYTHONPATH=src python -m amplihack.eval.progressive_test_suite --output-dir /tmp/eval
 ```
 
 ### Agent subprocess fails
 
 **Check**:
-1. Memory backend is installed (`amplihack-memory-lib`)
-2. Agent subprocess implementation exists (`agent_subprocess.py`)
-3. No permission issues with temp directories
+
+1. Memory backend is installed (`pip install -e amplihack-memory-lib/`)
+2. No permission issues with temp directories
 
 ### Grading fails with API error
 
 **Check**:
+
 ```bash
 echo $ANTHROPIC_API_KEY  # Should not be empty
 ```
@@ -110,8 +231,12 @@ echo $ANTHROPIC_API_KEY  # Should not be empty
 
 - **Test Data**: `src/amplihack/eval/test_levels.py`
 - **Runner**: `src/amplihack/eval/progressive_test_suite.py`
+- **Grader**: `src/amplihack/eval/grader.py` (multi-vote support)
+- **Agent Subprocess**: `src/amplihack/eval/agent_subprocess.py` (SDK routing)
+- **SDK Eval Loop**: `src/amplihack/eval/sdk_eval_loop.py` (multi-SDK comparison)
+- **Self-Improvement**: `src/amplihack/eval/self_improve/runner.py`
+- **Long-Horizon**: `src/amplihack/eval/long_horizon_memory.py`
 - **Docs**: `src/amplihack/eval/PROGRESSIVE_TEST_SUITE.md`
-- **Example**: `examples/run_progressive_eval.py`
 - **Tests**: `tests/eval/test_progressive_suite.py`
 
 ## Next Steps After Running
@@ -119,26 +244,11 @@ echo $ANTHROPIC_API_KEY  # Should not be empty
 1. Check `summary.json` for overall scores
 2. Identify weakest level (lowest score)
 3. Read detailed results in that level's `scores.json`
-4. Improve agent for that specific cognitive skill
-5. Re-run suite and measure improvement
+4. Run self-improvement loop to automatically fix weak areas
+5. Re-run with `--runs 3` for stable comparison
 
-## Getting Help
+## Related Documentation
 
-**Full Documentation**: `src/amplihack/eval/PROGRESSIVE_TEST_SUITE.md`
-**Implementation Details**: `src/amplihack/eval/IMPLEMENTATION_SUMMARY.md`
-**Test Data**: Look at `test_levels.py` to see exact questions/content
-
-## Expected Timeline
-
-**Current (pre-improvement)**: ~30-40% average L2-L6
-**After improvements**: ~75% average L2-L6
-**Represents**: 135% improvement in learning capability
-
----
-
-**Quick Check**: Can you answer these without the docs?
-1. Which level tests contradiction handling? (L5)
-2. Which level tests temporal reasoning? (L3)
-3. What's the baseline level that should always pass? (L1 at 100%)
-
-If yes, you're ready to run the suite!
+- [Eval System Architecture](../../docs/EVAL_SYSTEM_ARCHITECTURE.md) - Complete eval system design
+- [Goal-Seeking Agents](../../docs/GOAL_SEEKING_AGENTS.md) - End-to-end guide
+- [SDK Adapters Guide](../../docs/SDK_ADAPTERS_GUIDE.md) - SDK details

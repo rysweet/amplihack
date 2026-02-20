@@ -278,7 +278,8 @@ Specialized AI agents and tools for every development task.
 **Autonomous agents that learn, remember, teach, and apply knowledge across four SDK backends.**
 
 - **[Comprehensive Guide](GOAL_SEEKING_AGENTS.md)** - End-to-end documentation: generation, capabilities, evaluation (L1-L12), self-improvement loop, and architecture
-- [SDK Adapters Guide](SDK_ADAPTERS_GUIDE.md) - Deep dive into Copilot, Claude, Microsoft, and Mini SDK backends
+- **[Eval System Architecture](EVAL_SYSTEM_ARCHITECTURE.md)** - How the eval system is constructed: progressive test suite, grading, teaching eval, domain eval, long-horizon memory, self-improvement runner
+- [SDK Adapters Guide](SDK_ADAPTERS_GUIDE.md) - Deep dive into Copilot, Claude, Microsoft, and Mini SDK backends with per-SDK eval prompts and 4-way comparison
 - [Goal Agent Generator Guide](GOAL_AGENT_GENERATOR_GUIDE.md) - Create custom goal-seeking agents with `amplihack new`
 - [Goal Agent Generator Presentation](GOAL_AGENT_GENERATOR_PRESENTATION.md) - Concept overview
 - [Goal Agent Generator Design](agent-bundle-generator-design.md) - Architecture and patterns
@@ -290,9 +291,14 @@ Specialized AI agents and tools for every development task.
 - **SDK-Agnostic**: Write once, run on Copilot, Claude, Microsoft Agent Framework, or lightweight mini-framework
 - **7 Learning Tools**: learn, search, explain, verify, find gaps, store, summary
 - **Progressive Eval (L1-L12)**: From simple recall to far transfer across domains
+- **3-Run Median Eval**: `--runs 3` for stable benchmarks (reduces LLM stochasticity)
+- **Multi-Vote Grading**: `--grader-votes 3` for noise reduction on ambiguous answers
 - **Teaching Evaluation**: Multi-turn teacher-student knowledge transfer (Chi 1994, Vygotsky ZPD)
-- **Self-Improvement Loop**: BUILD -> EVAL -> AUDIT -> IMPROVE -> RE-EVAL with automated error analysis
-- **Domain Agents**: Code Review, Meeting Synthesizer, with framework for creating custom domain agents
+- **Self-Improvement Loop**: EVAL -> ANALYZE -> RESEARCH -> IMPROVE -> RE-EVAL -> DECIDE with automated error analysis
+- **5 Domain Agents**: Code Review, Meeting Synthesizer, Data Analysis, Document Creator, Project Planning
+- **Long-Horizon Memory Eval**: 1000-turn dialogue stress test
+- **Multi-SDK Comparison**: 4-way eval comparison via `sdk_eval_loop.py`
+- **Current Score**: 97.5% overall median (L1-L7, 3-run median, mini SDK)
 
 ### Memory-Enabled Agents ⭐ NEW
 
