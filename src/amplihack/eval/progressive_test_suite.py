@@ -684,6 +684,7 @@ def run_parallel_suite(
     memory_backend: str = "amplihack-memory-lib",
     max_workers: int = 4,
     sdk: str = "mini",
+    grader_votes: int = 1,
 ) -> ParallelResult:
     """Run the progressive suite multiple times in parallel and report medians.
 
@@ -694,6 +695,7 @@ def run_parallel_suite(
         memory_backend: Memory backend to use
         max_workers: Maximum concurrent processes (capped at 4)
         sdk: SDK type to use
+        grader_votes: Number of grading votes per question
 
     Returns:
         ParallelResult with median scores across all runs
@@ -703,7 +705,10 @@ def run_parallel_suite(
 
     print(f"Starting {num_runs} parallel runs (max {workers} concurrent)...")
 
-    run_args = [(i, base_output_dir, levels_to_run, memory_backend, sdk) for i in range(num_runs)]
+    run_args = [
+        (i, base_output_dir, levels_to_run, memory_backend, sdk, grader_votes)
+        for i in range(num_runs)
+    ]
 
     all_results: list[ProgressiveResult] = []
     with ProcessPoolExecutor(max_workers=workers) as executor:
@@ -800,6 +805,14 @@ def main():
         help="SDK type to evaluate (default: mini). All SDKs use the same LearningAgent "
         "for learning/answering but validate SDK agent creation.",
     )
+    parser.add_argument(
+        "--grader-votes",
+        type=int,
+        default=1,
+        metavar="N",
+        help="Number of grading votes per question (default: 1). "
+        "Use 3 for majority-vote grading to reduce noise on ambiguous answers.",
+    )
 
     args = parser.parse_args()
 
@@ -835,6 +848,7 @@ def main():
             levels_to_run=args.levels,
             memory_backend=args.memory_backend,
             sdk=args.sdk,
+            grader_votes=args.grader_votes,
         )
 
         # Print parallel summary
@@ -880,6 +894,7 @@ def main():
         levels_to_run=args.levels,
         memory_backend=args.memory_backend,
         sdk=args.sdk,
+        grader_votes=args.grader_votes,
     )
 
     print("=" * 70)
