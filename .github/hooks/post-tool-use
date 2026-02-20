@@ -1,19 +1,14 @@
 #!/usr/bin/env bash
-# GitHub Copilot compatible post-tool-use hook
-# Wrapper that calls Python implementation in .claude/tools/amplihack/hooks/
-#
-# This hook runs after tool execution to:
-# - Log tool results
-# - Update tool registry
-# - Track tool usage
+# Copilot hook: post-tool-use
+# Calls Python implementation from ~/.amplihack/ (primary) or repo .claude/ (fallback)
 
-set -e
+HOOK="post_tool_use.py"
+AMPLIHACK_HOOKS="$HOME/.amplihack/.claude/tools/amplihack/hooks"
 
-# Get the root directory of the repository
-REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || {
-    echo "Error: Not in a git repository" >&2
-    exit 1
-}
-
-# Call Python implementation
-python3 "${REPO_ROOT}/.claude/tools/amplihack/hooks/post_tool_use.py" "$@"
+if [[ -f "${AMPLIHACK_HOOKS}/${HOOK}" ]]; then
+    python3 "${AMPLIHACK_HOOKS}/${HOOK}" "$@"
+elif REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" && [[ -f "${REPO_ROOT}/.claude/tools/amplihack/hooks/${HOOK}" ]]; then
+    python3 "${REPO_ROOT}/.claude/tools/amplihack/hooks/${HOOK}" "$@"
+else
+    echo "{}" # No-op if hook not found
+fi
