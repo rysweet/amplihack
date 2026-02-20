@@ -178,7 +178,8 @@ def check_xpia_modules() -> dict[str, Any]:
 def get_xpia_hook_paths() -> list[str]:
     """Get list of expected XPIA hook file paths"""
     home_dir = Path.home()
-    hook_base = home_dir / ".claude" / "tools" / "xpia" / "hooks"
+    # XPIA hooks are in ~/.amplihack/.claude/tools/xpia/hooks/ (not ~/.claude/)
+    hook_base = home_dir / ".amplihack" / ".claude" / "tools" / "xpia" / "hooks"
 
     return [
         str(hook_base / "session_start.py"),
