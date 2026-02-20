@@ -380,6 +380,69 @@ This means the mini framework shares its memory instance with the GoalSeekingAge
 
 ---
 
+## Per-SDK Eval Prompts
+
+Each SDK has dedicated eval prompt templates in `src/amplihack/agents/goal_seeking/prompts/sdk/`:
+
+| File                     | Purpose                                          |
+| ------------------------ | ------------------------------------------------ |
+| `copilot_eval.md`        | Copilot-specific system prompt for eval sessions |
+| `claude_eval.md`         | Claude-specific eval prompt                      |
+| `microsoft_eval.md`      | Microsoft Agent Framework eval prompt            |
+| `goal_seeking_system.md` | Shared goal-seeking system prompt                |
+| `learning_task.md`       | Shared learning task template                    |
+| `synthesis_template.md`  | Shared synthesis template                        |
+| `teaching_system.md`     | Teaching session system prompt                   |
+
+These templates allow per-SDK instruction tuning without modifying shared agent code. The `agent_subprocess.py` validates SDK agent creation and records which SDK was used in the output metadata. All SDKs use the same `LearningAgent` for the learning/answering core (since it contains the eval intelligence: LLM fact extraction, intent detection, synthesis), but the per-SDK prompts can influence how the agent processes tasks.
+
+**How SDK-native routing works in `agent_subprocess.py`:**
+
+1. The subprocess creates the LearningAgent (shared core for all SDKs).
+2. It also validates that the specified SDK agent can be created via `create_agent()`.
+3. The `--sdk` flag passed on the CLI is forwarded to both `learning_phase()` and `testing_phase()`.
+4. SDK metadata (whether creation succeeded, which SDK was used) is recorded in the output JSON.
+
+---
+
+## SDK Eval Comparison Loop
+
+The `sdk_eval_loop.py` module provides a 4-way comparison across SDKs:
+
+```bash
+# Compare 2 SDKs with 5 improvement loops
+PYTHONPATH=src python -m amplihack.eval.sdk_eval_loop \
+    --sdks mini claude --loops 5
+
+# Compare all 4 SDKs with 3 loops
+PYTHONPATH=src python -m amplihack.eval.sdk_eval_loop --all-sdks --loops 3
+
+# Specific levels only
+PYTHONPATH=src python -m amplihack.eval.sdk_eval_loop \
+    --sdks mini claude copilot microsoft --loops 3 --levels L1 L2 L3
+```
+
+**Output:**
+
+- Per-SDK score progression across iterations
+- Failure analysis with SDK-specific recommendations
+- Per-level comparison table across all SDKs
+- Ranked SDK comparison by best overall score
+
+Results are saved to `./eval_sdk_loop/` with a `multi_sdk_report.json` containing the full comparison.
+
+**CLI Options:**
+
+| Option         | Description                         | Default           |
+| -------------- | ----------------------------------- | ----------------- |
+| `--sdks`       | SDKs to evaluate (space-separated)  | `mini`            |
+| `--all-sdks`   | Evaluate all 4 SDKs                 | Off               |
+| `--loops`      | Number of improvement loops per SDK | 5                 |
+| `--levels`     | Levels to run                       | L1-L6             |
+| `--output-dir` | Output directory for results        | `./eval_sdk_loop` |
+
+---
+
 ## Adding a New SDK
 
 To add support for a new SDK:
@@ -434,10 +497,17 @@ if sdk == SDKType.NEW_SDK:
     )
 ```
 
-5. **Test** using the progressive test suite to verify equivalent behavior:
+5. **Add per-SDK eval prompt** in `src/amplihack/agents/goal_seeking/prompts/sdk/new_sdk_eval.md`
+
+6. **Test** using the progressive test suite to verify equivalent behavior:
 
 ```bash
 PYTHONPATH=src python -m amplihack.eval.progressive_test_suite \
     --output-dir /tmp/eval_new_sdk \
-    --agent-name new-sdk-test
+    --agent-name new-sdk-test \
+    --sdk new_sdk
+
+# Or run the multi-SDK comparison
+PYTHONPATH=src python -m amplihack.eval.sdk_eval_loop \
+    --sdks mini new_sdk --loops 3
 ```
