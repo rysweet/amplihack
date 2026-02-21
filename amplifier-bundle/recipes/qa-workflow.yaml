@@ -132,21 +132,25 @@ steps:
     parse_json: true
 
   # ==========================================================================
-  # STEP 4: FINAL OUTPUT
-  # Compile the response with any escalation recommendations
+  # STEP 4: FINAL OUTPUT (Q&A path)
+  # Compile the response when question was classified as Q&A
   # ==========================================================================
-  - id: "compile-output"
+  - id: "compile-output-qa"
+    condition: "classification.is_qa == True"
     type: "bash"
     parse_json: true
     command: |
-      cat << 'EOF'
-      {
-        "workflow": "qa-workflow",
-        "question": "{{question}}",
-        "is_qa": "{{classification.is_qa}}",
-        "classification": {{classification}},
-        "escalation": {{escalation_result}},
-        "status": "complete"
-      }
-      EOF
+      echo '{"workflow":"qa-workflow","status":"complete","is_qa":true}'
+    output: "final_output"
+
+  # ==========================================================================
+  # STEP 4b: FINAL OUTPUT (escalation path)
+  # When question was NOT Q&A, report escalation needed
+  # ==========================================================================
+  - id: "compile-output-escalation"
+    condition: "classification.is_qa != True"
+    type: "bash"
+    parse_json: true
+    command: |
+      echo '{"workflow":"qa-workflow","status":"escalated","is_qa":false}'
     output: "final_output"
