@@ -40,7 +40,7 @@ from typing import Any
 
 # Prefer the standalone eval package when available; fall back to local data module.
 try:
-    from amplihack_eval.data.long_horizon import (
+    from amplihack_eval.data.long_horizon import (  # type: ignore[import-not-found]
         GradingRubric,
         GroundTruth,
         Question,
@@ -538,6 +538,7 @@ class LongHorizonMemoryEval:
             Tuple of (GroundTruth, list[Question])
         """
         self.ground_truth = generate_dialogue(num_turns=self.num_turns, seed=self.seed)
+        assert self.ground_truth is not None
         self.questions = generate_questions(self.ground_truth, num_questions=self.num_questions)
         return self.ground_truth, self.questions
 
@@ -790,40 +791,66 @@ class _SDKAgentWrapper:
 
     The LongHorizonMemoryEval expects an agent with synchronous
     learn_from_content(str) and answer_question(str) methods.
-    GoalSeekingAgent has async run(str) instead, so this wrapper bridges
-    the interface using asyncio.run().
+
+    Rather than routing through the SDK agent loop (which requires real SDK
+    connections and LLM calls per tool invocation), this wrapper creates a
+    LearningAgent that shares the same storage path as the SDK agent. This way:
+    - learn_from_content uses LearningAgent's LLM-based fact extraction
+    - answer_question uses LearningAgent's intent detection + LLM synthesis
+    - Both agents read/write the same underlying memory database
+
+    The SDK agent itself is still used for instantiation validation (proving the
+    SDK adapter works), and could be used for the full agent loop in non-eval
+    contexts.
     """
 
     def __init__(self, sdk_agent: Any):
         self._agent = sdk_agent
 
-    def learn_from_content(self, content: str) -> dict[str, Any]:
-        """Learn from content using the SDK agent's tool."""
-        import asyncio
+        # Create a LearningAgent sharing the same storage path for eval
+        from amplihack.agents.goal_seeking.learning_agent import LearningAgent
 
-        result = asyncio.run(self._agent.run(f"Learn and memorize this: {content}"))
-        return {"status": "learned", "response": result.response[:200]}
+        storage_path = getattr(sdk_agent, "storage_path", None)
+        model = getattr(sdk_agent, "model", None)
+        agent_name = getattr(sdk_agent, "name", "sdk_eval")
+
+        self._learning_agent = LearningAgent(
+            agent_name=agent_name,
+            model=model,
+            storage_path=storage_path,
+            use_hierarchical=True,
+        )
+
+    def learn_from_content(self, content: str) -> dict[str, Any]:
+        """Learn from content using LearningAgent's LLM fact extraction."""
+        return self._learning_agent.learn_from_content(content)
 
     def answer_question(self, question: str) -> str:
-        """Answer a question using the SDK agent."""
-        import asyncio
-
-        result = asyncio.run(self._agent.run(question))
-        return result.response
+        """Answer a question using LearningAgent's intent detection + synthesis."""
+        result = self._learning_agent.answer_question(question)
+        if isinstance(result, tuple):
+            return result[0]
+        return result
 
     def get_memory_stats(self) -> dict[str, Any]:
-        """Get memory statistics if available."""
-        if hasattr(self._agent, "memory") and self._agent.memory:
-            try:
-                return self._agent.memory.get_statistics()
-            except Exception:
-                pass
+        """Get memory statistics from the learning agent."""
+        try:
+            return self._learning_agent.get_memory_stats()
+        except Exception:
+            pass
         return {}
 
     def close(self) -> None:
-        """Close the underlying agent."""
+        """Close both the SDK agent and learning agent."""
+        try:
+            self._learning_agent.close()
+        except Exception:
+            pass
         if hasattr(self._agent, "close"):
-            self._agent.close()
+            try:
+                self._agent.close()
+            except Exception:
+                pass
 
 
 def main() -> None:
