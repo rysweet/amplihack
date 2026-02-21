@@ -33,6 +33,7 @@ try:
         handle_run,
         handle_show,
         handle_validate,
+        parse_context_args,
     )
 
     COMMANDS_EXIST = True
@@ -43,6 +44,7 @@ except ImportError:
     handle_list = None
     handle_validate = None
     handle_show = None
+    parse_context_args = None
 
 
 pytestmark = pytest.mark.skipif(not COMMANDS_EXIST, reason="recipe_command.py not yet implemented")
@@ -1001,3 +1003,107 @@ class TestContextMerging:
             )
 
         assert exit_code == 0
+
+
+class TestParseContextArgs:
+    """Tests for parse_context_args with special characters.
+
+    Covers the bug reported in issue #2460: context values containing
+    parentheses, hashes, periods, and quotes should be accepted without error.
+    """
+
+    def test_value_with_parentheses(self) -> None:
+        """Values containing parentheses must be accepted."""
+        context, errors = parse_context_args(["task=Fix bug (issue #42)"])
+        assert errors == []
+        assert context == {"task": "Fix bug (issue #42)"}
+
+    def test_value_with_hash(self) -> None:
+        """Values containing hash characters must be accepted."""
+        context, errors = parse_context_args(["ref=Fix Claude SDK (#2453)"])
+        assert errors == []
+        assert context == {"ref": "Fix Claude SDK (#2453)"}
+
+    def test_value_with_period(self) -> None:
+        """Values containing periods must be accepted."""
+        context, errors = parse_context_args(["task=Fix Claude SDK (#2453). Remove mocks."])
+        assert errors == []
+        assert context == {"task": "Fix Claude SDK (#2453). Remove mocks."}
+
+    def test_value_with_double_quotes(self) -> None:
+        """Values containing double-quote characters must be accepted."""
+        context, errors = parse_context_args(['desc=He said "hello world"'])
+        assert errors == []
+        assert context == {"desc": 'He said "hello world"'}
+
+    def test_value_with_single_quotes(self) -> None:
+        """Values containing single-quote characters must be accepted."""
+        context, errors = parse_context_args(["desc=it's a test"])
+        assert errors == []
+        assert context == {"desc": "it's a test"}
+
+    def test_value_with_url_and_hash(self) -> None:
+        """Values containing URLs with hash fragments must be accepted."""
+        context, errors = parse_context_args(["url=https://github.com/user/repo#anchor"])
+        assert errors == []
+        assert context == {"url": "https://github.com/user/repo#anchor"}
+
+    def test_value_with_multiple_equals(self) -> None:
+        """Only the first '=' is used as the separator; remaining '=' stay in value."""
+        context, errors = parse_context_args(["key=a=b=c"])
+        assert errors == []
+        assert context == {"key": "a=b=c"}
+
+    def test_value_with_spaces(self) -> None:
+        """Values containing spaces must be accepted when passed as a single arg."""
+        context, errors = parse_context_args(["task=fix the bug in module"])
+        assert errors == []
+        assert context == {"task": "fix the bug in module"}
+
+    def test_combined_special_chars(self) -> None:
+        """Values with combined special characters (exact example from issue #2460)."""
+        context, errors = parse_context_args(
+            ["task_description=Fix Claude SDK (#2453). Remove mocks."]
+        )
+        assert errors == []
+        assert context == {"task_description": "Fix Claude SDK (#2453). Remove mocks."}
+
+    def test_multiple_context_entries(self) -> None:
+        """Multiple context entries each with special chars are all parsed."""
+        context, errors = parse_context_args(
+            [
+                "task=Fix (#2453). Remove mocks.",
+                "repo=https://github.com/user/repo#readme",
+            ]
+        )
+        assert errors == []
+        assert context == {
+            "task": "Fix (#2453). Remove mocks.",
+            "repo": "https://github.com/user/repo#readme",
+        }
+
+    def test_empty_value_is_allowed(self) -> None:
+        """An empty value (key=) is accepted."""
+        context, errors = parse_context_args(["key="])
+        assert errors == []
+        assert context == {"key": ""}
+
+    def test_missing_equals_is_error(self) -> None:
+        """A string without '=' produces an error message."""
+        context, errors = parse_context_args(["nodequals"])
+        assert context == {}
+        assert len(errors) == 1
+        assert "nodequals" in errors[0]
+
+    def test_empty_key_is_error(self) -> None:
+        """A string with an empty key (=value) produces an error message."""
+        context, errors = parse_context_args(["=value"])
+        assert context == {}
+        assert len(errors) == 1
+        assert "empty" in errors[0].lower()
+
+    def test_empty_input_list(self) -> None:
+        """An empty input list returns empty context and no errors."""
+        context, errors = parse_context_args([])
+        assert context == {}
+        assert errors == []
