@@ -365,6 +365,14 @@ Custom workflows:
   Token optimization via component filtering
 - **[Goal Agent Generator](https://rysweet.github.io/amplihack/GOAL_AGENT_GENERATOR_GUIDE/)** -
   Create autonomous agents from prompts
+- **[Goal-Seeking Agents](docs/GOAL_SEEKING_AGENTS.md)** -
+  Multi-SDK agents with memory, eval, and self-improvement
+- **[Agent Tutorial](docs/tutorials/GOAL_SEEKING_AGENT_TUTORIAL.md)** -
+  Step-by-step guide to generating and evaluating agents
+- **[Eval System](docs/EVAL_SYSTEM_ARCHITECTURE.md)** -
+  L1-L19 progressive evaluation with multi-agent grading
+- **[amplihack-agent-eval](https://github.com/rysweet/amplihack-agent-eval)** -
+  Standalone eval framework package
 - **[Kuzu Memory System](https://rysweet.github.io/amplihack/AGENT_MEMORY_QUICKSTART/)** -
   Persistent knowledge graphs
 - **[Benchmarking](https://rysweet.github.io/amplihack/BENCHMARKING/)** -
