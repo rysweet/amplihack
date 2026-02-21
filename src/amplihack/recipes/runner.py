@@ -101,25 +101,8 @@ class RecipeRunner:
     def _execute_step(self, step: Step, ctx: RecipeContext, dry_run: bool) -> StepResult:
         """Execute a single step, handling conditions, templates, and errors."""
 
-        # Evaluate condition -- skip if false
-        if step.condition:
-            try:
-                if not ctx.evaluate(step.condition):
-                    logger.info("Skipping step '%s': condition is false", step.id)
-                    return StepResult(
-                        step_id=step.id,
-                        status=StepStatus.SKIPPED,
-                    )
-            except (ValueError, NameError) as exc:
-                logger.warning(
-                    "Condition evaluation failed for step '%s', skipping: %s", step.id, exc
-                )
-                return StepResult(
-                    step_id=step.id,
-                    status=StepStatus.SKIPPED,
-                )
-
-        # Dry run -- record but do not execute
+        # Dry run -- skip condition evaluation (no real data to evaluate against)
+        # and record step as completed
         if dry_run:
             logger.info("DRY RUN: would execute step '%s'", step.id)
 
@@ -135,6 +118,29 @@ class RecipeRunner:
                 output=mock_output,
             )
 
+        # Evaluate condition -- skip if false, FAIL if condition itself errors
+        if step.condition:
+            try:
+                if not ctx.evaluate(step.condition):
+                    logger.info("Skipping step '%s': condition is false", step.id)
+                    return StepResult(
+                        step_id=step.id,
+                        status=StepStatus.SKIPPED,
+                    )
+            except Exception as exc:
+                logger.error(
+                    "Condition evaluation FAILED for step '%s': %s. "
+                    "This usually means a prior parse_json step returned invalid JSON. "
+                    "Fix the upstream step or the condition expression.",
+                    step.id,
+                    exc,
+                )
+                return StepResult(
+                    step_id=step.id,
+                    status=StepStatus.FAILED,
+                    error=f"Condition error: {exc}",
+                )
+
         # Execute the step via the adapter
         try:
             output = self._dispatch_step(step, ctx)
@@ -146,14 +152,23 @@ class RecipeRunner:
                 error=str(exc),
             )
 
-        # Optionally parse JSON output
+        # Optionally parse JSON output -- FAIL if parse_json is set but parsing fails
         if step.parse_json and output:
-            try:
-                output = json.loads(output)
-            except (json.JSONDecodeError, TypeError):
-                logger.warning(
-                    "Step '%s': parse_json is true but output is not valid JSON",
+            parsed = self._parse_json_output(output, step.id)
+            if parsed is not None:
+                output = parsed
+            else:
+                logger.error(
+                    "Step '%s': parse_json is true but output is not valid JSON. "
+                    "Downstream conditions that access attributes WILL fail. "
+                    "Raw output (first 200 chars): %s",
                     step.id,
+                    str(output)[:200],
+                )
+                return StepResult(
+                    step_id=step.id,
+                    status=StepStatus.FAILED,
+                    error="parse_json failed: output is not valid JSON",
                 )
 
         # Store output in context
@@ -167,6 +182,52 @@ class RecipeRunner:
             if isinstance(output, (dict, list))
             else (str(output) if output else ""),
         )
+
+    @staticmethod
+    def _parse_json_output(output: str, step_id: str) -> dict | list | None:
+        """Try to parse JSON from LLM output using multiple strategies.
+
+        Strategy 1: Direct json.loads
+        Strategy 2: Extract from markdown fences (```json ... ```)
+        Strategy 3: Find first { ... } or [ ... ] block
+
+        Returns parsed object or None if all strategies fail.
+        """
+        import re
+
+        text = output.strip()
+
+        # Strategy 1: Direct parse
+        try:
+            return json.loads(text)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+        # Strategy 2: Extract from markdown fences
+        fenced = re.search(r"```(?:json)?\s*\n?(.*?)\n?\s*```", text, re.DOTALL)
+        if fenced:
+            try:
+                return json.loads(fenced.group(1).strip())
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        # Strategy 3: Find first JSON object or array
+        brace = re.search(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", text, re.DOTALL)
+        if brace:
+            try:
+                return json.loads(brace.group(0))
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        bracket = re.search(r"\[.*\]", text, re.DOTALL)
+        if bracket:
+            try:
+                return json.loads(bracket.group(0))
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        logger.warning("All JSON extraction strategies failed for step '%s'", step_id)
+        return None
 
     def _dispatch_step(self, step: Step, ctx: RecipeContext) -> str:
         """Route step execution to the correct adapter method."""
