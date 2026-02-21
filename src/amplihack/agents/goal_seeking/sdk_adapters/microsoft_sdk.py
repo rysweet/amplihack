@@ -1,7 +1,7 @@
 """Microsoft Agent Framework implementation of GoalSeekingAgent.
 
 Uses the agent-framework package (Microsoft's unified AI agent platform).
-API: ChatAgent(client, instructions, tools) -> agent.run(messages, thread=thread)
+API: Agent(client, instructions, name=..., tools=[...]) -> agent.run(messages, session=session)
 
 Install: pip install agent-framework
 """
@@ -23,15 +23,15 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 _HAS_AGENT_FRAMEWORK = False
 AFAgent = None  # type: ignore[assignment]
-af_tool = None  # type: ignore[assignment]
+AFFunctionTool = None  # type: ignore[assignment]
 OpenAIChatClient = None  # type: ignore[assignment]
 
 try:
     from agent_framework import (
-        ChatAgent as AFAgent,  # type: ignore[no-redef,assignment,import-not-found]
+        Agent as AFAgent,  # type: ignore[no-redef,assignment,import-not-found]
     )
     from agent_framework import (
-        ai_function as af_tool,  # type: ignore[no-redef,assignment,import-not-found]
+        FunctionTool as AFFunctionTool,  # type: ignore[no-redef,assignment,import-not-found]
     )
     from agent_framework.openai import (
         OpenAIChatClient,  # type: ignore[no-redef,assignment,import-not-found]
@@ -67,7 +67,11 @@ def _build_learning_tools(agent_ref: GoalSeekingAgent) -> list[Any]:
 
 
 def _wrap_tool(tool_def: AgentTool) -> Any:
-    """Wrap a single AgentTool into a FunctionTool via @ai_function."""
+    """Wrap a single AgentTool into a FunctionTool for the Agent Framework.
+
+    Uses FunctionTool(name=..., description=..., func=...) to create
+    a tool that the Agent can invoke.
+    """
     original_fn = tool_def.function
     name = tool_def.name
     description = tool_def.description
@@ -82,7 +86,7 @@ def _wrap_tool(tool_def: AgentTool) -> Any:
     wrapper.__qualname__ = name
     wrapper.__doc__ = description
 
-    return af_tool(wrapper, name=name, description=description)
+    return AFFunctionTool(name=name, description=description, func=wrapper)
 
 
 # ---------------------------------------------------------------------------
@@ -93,7 +97,7 @@ def _wrap_tool(tool_def: AgentTool) -> Any:
 class MicrosoftGoalSeekingAgent(GoalSeekingAgent):
     """Goal-seeking agent built on Microsoft Agent Framework.
 
-    Uses ChatAgent with OpenAIChatClient. No mock mode.
+    Uses Agent with OpenAIChatClient. No mock mode.
 
     Example:
         >>> agent = MicrosoftGoalSeekingAgent(name="learner")
@@ -117,7 +121,7 @@ class MicrosoftGoalSeekingAgent(GoalSeekingAgent):
 
         resolved_model = model or os.environ.get("MICROSOFT_AGENT_MODEL", "gpt-4o")
 
-        self._thread: Any = None
+        self._session: Any = None
         self._extra_kwargs = kwargs
 
         super().__init__(
@@ -131,22 +135,32 @@ class MicrosoftGoalSeekingAgent(GoalSeekingAgent):
         )
 
     def _create_sdk_agent(self) -> None:
-        """Initialize Microsoft Agent Framework agent with ChatAgent + OpenAIChatClient."""
+        """Initialize Microsoft Agent Framework agent with Agent + OpenAIChatClient.
+
+        Defers to lazy initialization if OPENAI_API_KEY is not set, since the
+        SDK agent is only needed for _run_sdk_agent (not for eval which uses
+        LearningAgent via _SDKAgentWrapper).
+        """
+        api_key = os.environ.get("OPENAI_API_KEY", "")
+        if not api_key:
+            logger.warning(
+                "OPENAI_API_KEY not set. Microsoft Agent Framework SDK agent "
+                "will be created lazily when _run_sdk_agent is called."
+            )
+            self._sdk_agent = None
+            return
+
         system_prompt = self._build_system_prompt()
         tools = _build_learning_tools(self)
 
-        api_key = os.environ.get("OPENAI_API_KEY", "")
-        if not api_key:
-            raise ValueError("OPENAI_API_KEY not set. Required for Microsoft Agent Framework.")
-
         chat_client = OpenAIChatClient(model_id=self.model, api_key=api_key)
         self._sdk_agent = AFAgent(
-            chat_client=chat_client,
+            chat_client,
             instructions=system_prompt,
             name=self.name,
             tools=tools,
         )
-        self._thread = self._sdk_agent.get_new_thread()
+        self._session = self._sdk_agent.create_session()
 
     def _build_system_prompt(self) -> str:
         """Build system prompt from template + custom instructions."""
@@ -180,14 +194,14 @@ class MicrosoftGoalSeekingAgent(GoalSeekingAgent):
         return template
 
     async def _run_sdk_agent(self, task: str, max_turns: int = 10) -> AgentResult:
-        """Execute task through Microsoft Agent Framework ChatAgent.run()."""
+        """Execute task through Microsoft Agent Framework Agent.run()."""
         try:
             response = await self._sdk_agent.run(
                 messages=task,
-                thread=self._thread,
+                session=self._session,
             )
 
-            # Extract text content from AgentRunResponse
+            # Extract text content from AgentResponse
             content = ""
             tools_used: list[str] = []
 
@@ -231,14 +245,14 @@ class MicrosoftGoalSeekingAgent(GoalSeekingAgent):
         self._create_sdk_agent()
 
     def reset_session(self) -> None:
-        """Create a new thread, discarding conversation history."""
-        self._thread = self._sdk_agent.get_new_thread()
-        logger.info("Thread reset for agent '%s'", self.name)
+        """Create a new session, discarding conversation history."""
+        self._session = self._sdk_agent.create_session()
+        logger.info("Session reset for agent '%s'", self.name)
 
     def close(self) -> None:
         """Release resources."""
         super().close()
-        self._thread = None
+        self._session = None
 
     def __repr__(self) -> str:
         return f"MicrosoftGoalSeekingAgent(name={self.name!r}, model={self.model!r})"
