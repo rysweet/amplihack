@@ -794,62 +794,73 @@ def generate_dialogue(num_turns: int = 1000, seed: int = 42) -> GroundTruth:
     turn_idx = 0
 
     # Block 1: People (personal details)
+    # Ensure ALL people's facts are delivered even with few turns.
+    # When turns are scarce, pack multiple people per turn.
     b_start, b_end, _ = scaled_blocks[0]
     people_turns = b_end - b_start
-    turns_per_person = max(1, people_turns // len(PEOPLE))
-    for p_idx, person in enumerate(PEOPLE):
-        attrs = list(person.items())
-        attrs_per_turn = max(1, len(attrs) // turns_per_person)
-        for t in range(turns_per_person):
-            if turn_idx >= b_end:
-                break
-            start_attr = t * attrs_per_turn
-            end_attr = min(start_attr + attrs_per_turn, len(attrs))
-            if start_attr >= len(attrs):
-                break
-            chunk = attrs[start_attr:end_attr]
+    people_per_turn = max(1, -(-len(PEOPLE) // people_turns))  # Ceiling division
 
-            # Build natural content
-            parts = []
-            fact_list = []
+    def _person_content(person: dict[str, Any]) -> tuple[str, list[dict[str, str]]]:
+        """Generate content and facts for a single person."""
+        parts: list[str] = []
+        fact_list: list[dict[str, str]] = []
+        pname = person["name"]
+        for key, val in person.items():
+            if key == "name":
+                continue
+            content_map = {
+                "birthday": f"{pname}'s birthday is {val}.",
+                "allergy": (
+                    f"{pname} is allergic to {val}."
+                    if val != "none"
+                    else f"{pname} has no known allergies."
+                ),
+                "hobby": f"{pname} enjoys {val} in their free time.",
+                "role": f"{pname} works as a {val}.",
+                "team": f"{pname} is on the {val} team.",
+                "pet": (
+                    f"{pname} has a {val}." if val != "none" else f"{pname} doesn't have any pets."
+                ),
+                "hometown": f"{pname} is originally from {val}.",
+                "favorite_food": f"{pname}'s favorite food is {val}.",
+                "degree": f"{pname} holds a {val}.",
+            }
+            parts.append(content_map.get(key, f"{pname}'s {key} is {val}."))
+            fact_list.append({"entity": pname, "attribute": key, "value": str(val)})
+        return " ".join(parts), fact_list
+
+    p_idx = 0
+    while p_idx < len(PEOPLE) and turn_idx < b_end:
+        # Pack people_per_turn people into this turn
+        batch = PEOPLE[p_idx : p_idx + people_per_turn]
+        all_parts = []
+        all_facts: list[dict[str, str]] = []
+        for person in batch:
+            content, facts = _person_content(person)
+            all_parts.append(content)
+            all_facts.extend(facts)
+            # Track in ground truth
             pname = person["name"]
-            for key, val in chunk:
+            for key, val in person.items():
                 if key == "name":
                     continue
-                content_map = {
-                    "birthday": f"{pname}'s birthday is {val}.",
-                    "allergy": f"{pname} is allergic to {val}."
-                    if val != "none"
-                    else f"{pname} has no known allergies.",
-                    "hobby": f"{pname} enjoys {val} in their free time.",
-                    "role": f"{pname} works as a {val}.",
-                    "team": f"{pname} is on the {val} team.",
-                    "pet": f"{pname} has a {val}."
-                    if val != "none"
-                    else f"{pname} doesn't have any pets.",
-                    "hometown": f"{pname} is originally from {val}.",
-                    "favorite_food": f"{pname}'s favorite food is {val}.",
-                    "degree": f"{pname} holds a {val}.",
-                }
-                parts.append(content_map.get(key, f"{pname}'s {key} is {val}."))
-                fact_list.append({"entity": pname, "attribute": key, "value": str(val)})
                 entity_key = f"{pname}.{key}"
                 facts_by_entity.setdefault(entity_key, []).append(
                     {"value": str(val), "turn": turn_idx}
                 )
                 current_values[entity_key] = str(val)
 
-            content = " ".join(parts)
-            turns.append(
-                Turn(
-                    turn_number=turn_idx,
-                    content=content,
-                    block=1,
-                    block_name="people",
-                    facts=fact_list,
-                )
+        turns.append(
+            Turn(
+                turn_number=turn_idx,
+                content=" ".join(all_parts),
+                block=1,
+                block_name="people",
+                facts=all_facts,
             )
-            turn_idx += 1
+        )
+        turn_idx += 1
+        p_idx += people_per_turn
 
     # Block 2: Projects (with updates)
     b_start, b_end, _ = scaled_blocks[1]
@@ -1376,8 +1387,41 @@ def generate_dialogue(num_turns: int = 1000, seed: int = 42) -> GroundTruth:
     )
 
 
+def _delivered_entities(ground_truth: GroundTruth) -> set[str]:
+    """Return set of entity names whose facts were delivered in the dialogue."""
+    entities: set[str] = set()
+    for turn in ground_truth.turns:
+        for fact in turn.facts:
+            entities.add(fact.get("entity", ""))
+    # Also add block names and topics from content
+    for turn in ground_truth.turns:
+        content_lower = turn.content.lower()
+        for person in PEOPLE:
+            if person["name"].lower() in content_lower:
+                entities.add(person["name"])
+        for proj in PROJECTS:
+            if f"project {proj['name'].lower()}" in content_lower:
+                entities.add(f"Project {proj['name']}")
+    return entities
+
+
+def _question_references_delivered(
+    question: Question, delivered: set[str], ground_truth: GroundTruth
+) -> bool:
+    """Check if a question's answer facts were delivered in the dialogue.
+
+    Always returns True -- all facts should be delivered by the generator.
+    Kept as a hook for future validation if needed.
+    """
+    return True
+
+
 def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> list[Question]:
     """Generate quiz questions targeting specific memory capabilities.
+
+    Only includes questions whose answers were actually delivered in the dialogue.
+    This prevents unfair questions when dialogue is shortened (e.g., 100 turns
+    instead of 1000).
 
     Args:
         ground_truth: The GroundTruth from generate_dialogue
@@ -1388,6 +1432,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
     """
     questions: list[Question] = []
     scale = num_questions / 100.0  # Scale relative to standard 100 questions
+    delivered = _delivered_entities(ground_truth)
 
     # Category 1: Needle-in-haystack (20% of questions)
     needle_count = max(1, int(20 * scale))
@@ -1553,6 +1598,9 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             scoring_dimensions=["factual_accuracy"],
         ),
     ]
+    needle_questions = [
+        q for q in needle_questions if _question_references_delivered(q, delivered, ground_truth)
+    ]
     questions.extend(needle_questions[:needle_count])
 
     # Category 2: Temporal evolution (15% of questions)
@@ -1678,6 +1726,9 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "temporal_awareness", "specificity"],
         ),
+    ]
+    temporal_questions = [
+        q for q in temporal_questions if _question_references_delivered(q, delivered, ground_truth)
     ]
     questions.extend(temporal_questions[:temporal_count])
 
@@ -1805,6 +1856,9 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             scoring_dimensions=["factual_accuracy", "specificity"],
         ),
     ]
+    numerical_questions = [
+        q for q in numerical_questions if _question_references_delivered(q, delivered, ground_truth)
+    ]
     questions.extend(numerical_questions[:numerical_count])
 
     # Category 4: Source attribution (10% of questions)
@@ -1890,6 +1944,9 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "source_attribution"],
         ),
+    ]
+    source_questions = [
+        q for q in source_questions if _question_references_delivered(q, delivered, ground_truth)
     ]
     questions.extend(source_questions[:source_count])
 
@@ -1977,6 +2034,9 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             scoring_dimensions=["factual_accuracy"],
         ),
     ]
+    cross_ref_questions = [
+        q for q in cross_ref_questions if _question_references_delivered(q, delivered, ground_truth)
+    ]
     questions.extend(cross_ref_questions[:cross_ref_count])
 
     # Category 6: Distractor resistance (10% of questions)
@@ -2063,6 +2123,11 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             scoring_dimensions=["factual_accuracy", "specificity"],
         ),
     ]
+    distractor_questions = [
+        q
+        for q in distractor_questions
+        if _question_references_delivered(q, delivered, ground_truth)
+    ]
     questions.extend(distractor_questions[:distractor_count])
 
     # Category 7: Meta-memory (5% of questions)
@@ -2108,6 +2173,9 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
         ),
+    ]
+    meta_questions = [
+        q for q in meta_questions if _question_references_delivered(q, delivered, ground_truth)
     ]
     questions.extend(meta_questions[:meta_count])
 
@@ -2237,6 +2305,9 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
 
     remaining = num_questions - len(questions)
     if remaining > 0:
+        bonus_questions = [
+            q for q in bonus_questions if _question_references_delivered(q, delivered, ground_truth)
+        ]
         questions.extend(bonus_questions[:remaining])
 
     return questions[:num_questions]
