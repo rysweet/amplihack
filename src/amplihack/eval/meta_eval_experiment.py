@@ -392,7 +392,7 @@ class MetaEvalExperiment:
                 results.append(
                     {
                         "question": q["question"],
-                        "student_answer": f"Error: {e}",
+                        "student_answer": "Error: unable to answer due to an internal error",
                         "self_explanation": "",
                     }
                 )

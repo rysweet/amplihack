@@ -344,9 +344,9 @@ class MicrosoftGoalSeekingAgent(GoalSeekingAgent):
         except Exception as e:
             logger.error("Microsoft Agent Framework run failed: %s", e)
             return AgentResult(
-                response=f"Agent execution failed: {e}",
+                response="Agent execution failed due to an internal error.",
                 goal_achieved=False,
-                metadata={"sdk": "microsoft", "error": str(e), "mock": False},
+                metadata={"sdk": "microsoft", "error_type": type(e).__name__, "mock": False},
             )
 
     async def _run_mock(self, task: str, max_turns: int = 10) -> AgentResult:

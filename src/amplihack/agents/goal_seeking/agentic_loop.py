@@ -21,6 +21,9 @@ import litellm
 
 logger = logging.getLogger(__name__)
 
+# Default LLM model for the agentic loop (override via constructor parameter)
+DEFAULT_MODEL = "gpt-3.5-turbo"
+
 
 @dataclass
 class LoopState:
@@ -101,6 +104,7 @@ class ReasoningTrace:
     iterations: int = 0
     final_confidence: float = 0.0
     used_simple_path: bool = False
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -160,7 +164,7 @@ class AgenticLoop:
         agent_name: str,
         action_executor,
         memory_retriever,
-        model: str = "gpt-3.5-turbo",
+        model: str = DEFAULT_MODEL,
         max_iterations: int = 10,
     ):
         """Initialize agentic loop.

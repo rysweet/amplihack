@@ -197,9 +197,9 @@ class ClaudeGoalSeekingAgent(GoalSeekingAgent):
         except Exception as e:
             logger.error("Claude SDK agent run failed: %s", e)
             return AgentResult(
-                response=f"Agent execution failed: {e}",
+                response="Agent execution failed due to an internal error.",
                 goal_achieved=False,
-                metadata={"sdk": "claude", "error": str(e)},
+                metadata={"sdk": "claude", "error_type": type(e).__name__},
             )
 
     async def _run_claude_agent_sdk(self, task: str) -> AgentResult:
@@ -232,9 +232,13 @@ class ClaudeGoalSeekingAgent(GoalSeekingAgent):
         except Exception as e:
             logger.error("claude-agent-sdk run failed: %s", e)
             return AgentResult(
-                response=f"Claude Agent SDK execution failed: {e}",
+                response="Claude Agent SDK execution failed due to an internal error.",
                 goal_achieved=False,
-                metadata={"sdk": "claude", "variant": "claude_agent_sdk", "error": str(e)},
+                metadata={
+                    "sdk": "claude",
+                    "variant": "claude_agent_sdk",
+                    "error_type": type(e).__name__,
+                },
             )
 
     def _get_native_tools(self) -> list[str]:
