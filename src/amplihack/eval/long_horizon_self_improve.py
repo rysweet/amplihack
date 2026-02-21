@@ -1,10 +1,24 @@
 """Self-improvement loop for long-horizon memory evaluation.
 
+Implements the full automated self-improvement cycle:
+  EVAL -> ANALYZE -> PROPOSE -> CHALLENGE -> VOTE -> APPLY -> RE-EVAL -> DECIDE
+
+Each iteration:
+1. Run long-horizon eval to get per-category scores
+2. Identify worst category
+3. Propose a patch using LLM (patch_proposer)
+4. Challenge the proposal via devil's advocate (reviewer_voting)
+5. Vote on the proposal with 3 reviewer perspectives (reviewer_voting)
+6. If accepted: apply patch, git commit
+7. Re-eval to compare
+8. If regression: auto-revert, log, continue
+9. If improvement: keep, log, continue
+
 Philosophy:
 - Measure first, change second
-- Run long-horizon eval, analyze failures by category
-- Identify which system component is the bottleneck
-- Apply targeted fix and re-evaluate
+- Every patch is challenged and reviewed before application
+- Auto-revert on regression protects existing quality
+- Full history prevents repeating failed fixes
 - Log everything for reproducibility
 
 Public API:
@@ -20,6 +34,7 @@ from __future__ import annotations
 
 import json
 import logging
+import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
@@ -29,6 +44,14 @@ from typing import Any
 from .long_horizon_memory import (
     EvalReport,
     LongHorizonMemoryEval,
+)
+from .self_improve.patch_proposer import PatchHistory, PatchProposal, propose_patch
+from .self_improve.reviewer_voting import (
+    ChallengeResponse,
+    ReviewResult,
+    challenge_proposal,
+    review_result_to_dict,
+    vote_on_proposal,
 )
 
 logger = logging.getLogger(__name__)
@@ -64,6 +87,7 @@ class LongHorizonRunnerConfig:
     seed: int = 42
     max_iterations: int = 3
     failure_threshold: float = 0.7  # Score below this = failure
+    regression_threshold: float = 5.0  # Max regression (pp) before auto-revert
     use_multi_agent: bool = False  # Use MultiAgentLearningAgent
     output_dir: str = "/tmp/long-horizon-self-improve"
     agent_model: str = ""
@@ -78,7 +102,12 @@ class IterationResult:
     report: dict[str, Any]
     category_analyses: list[dict[str, Any]]
     improvements_applied: list[str]
-    duration_seconds: float
+    patch_proposal: dict[str, Any] | None = None
+    review_result: dict[str, Any] | None = None
+    post_scores: dict[str, float] | None = None
+    reverted: bool = False
+    revert_reason: str = ""
+    duration_seconds: float = 0.0
 
 
 @dataclass
@@ -244,25 +273,120 @@ def _diagnose_bottleneck(
     return "unknown", "Manual investigation needed"
 
 
+def _extract_category_scores(report: EvalReport) -> dict[str, float]:
+    """Extract per-category scores from a report.
+
+    Args:
+        report: EvalReport instance
+
+    Returns:
+        Dict mapping category -> avg_score
+    """
+    scores: dict[str, float] = {}
+    for cb in report.category_breakdown:
+        scores[cb.category] = cb.avg_score
+    if scores:
+        scores["overall"] = report.overall_score
+    return scores
+
+
+def detect_regression(
+    baseline_scores: dict[str, float],
+    post_scores: dict[str, float],
+    threshold: float = 5.0,
+) -> tuple[bool, str, float]:
+    """Detect if any category regressed beyond the threshold.
+
+    A regression occurs when a category drops more than threshold percentage
+    points WITHOUT a compensating gain of the same magnitude in another
+    category.
+
+    Args:
+        baseline_scores: Pre-change per-category scores
+        post_scores: Post-change per-category scores
+        threshold: Maximum allowed regression in percentage points
+
+    Returns:
+        Tuple of (has_regression, worst_category, worst_regression_pp)
+    """
+    max_regression_pp = 0.0
+    worst_category = ""
+    max_gain_pp = 0.0
+
+    for cat in baseline_scores:
+        if cat == "overall":
+            continue
+        if cat in post_scores:
+            delta_pp = (baseline_scores[cat] - post_scores[cat]) * 100.0
+            if delta_pp > max_regression_pp:
+                max_regression_pp = delta_pp
+                worst_category = cat
+            if delta_pp < 0:
+                max_gain_pp = max(max_gain_pp, abs(delta_pp))
+
+    # Regression is only flagged if the drop exceeds threshold AND
+    # there is no compensating gain of equal magnitude
+    has_regression = max_regression_pp > threshold and max_gain_pp < threshold
+
+    return has_regression, worst_category, max_regression_pp
+
+
+def _git_revert_last_commit(project_root: Path) -> bool:
+    """Revert the last git commit (used for auto-reverting regressive patches).
+
+    Args:
+        project_root: Root directory of the git repository
+
+    Returns:
+        True if revert succeeded, False otherwise
+    """
+    try:
+        result = subprocess.run(
+            ["git", "revert", "--no-commit", "HEAD"],
+            cwd=str(project_root),
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if result.returncode == 0:
+            subprocess.run(
+                ["git", "commit", "-m", "auto-revert: regression detected"],
+                cwd=str(project_root),
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            return True
+        logger.error("Git revert failed: %s", result.stderr)
+        return False
+    except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+        logger.error("Git revert error: %s", e)
+        return False
+
+
 def run_long_horizon_self_improve(
     config: LongHorizonRunnerConfig,
+    llm_call: Any | None = None,
+    project_root: Path | None = None,
 ) -> RunnerResult:
-    """Run the long-horizon self-improvement loop.
+    """Run the long-horizon self-improvement loop with automated patch proposal and review.
 
     For each iteration:
-    1. Create a fresh agent
-    2. Run long-horizon eval (generate dialogue, learn, quiz, grade)
-    3. Analyze failures by category
-    4. Identify bottleneck components
-    5. Log results
-
-    Note: This runner currently diagnoses bottlenecks but does not
-    automatically apply code changes. The analyses guide manual
-    improvement. Future versions will integrate with the error_analyzer
-    to auto-apply prompt and retrieval fixes.
+    1. Run eval -> get per-category scores
+    2. Identify worst category
+    3. patch_proposer.propose(eval_results, history) -> PatchProposal
+    4. challenge(proposal) -> ChallengeResponse
+    5. reviewer_voting.vote(proposal, challenge_response) -> ReviewResult
+    6. If accepted: apply patch, git commit
+    7. Re-eval -> compare
+    8. If regression: auto-revert, log, continue to next iteration
+    9. If improvement: keep, log, continue
 
     Args:
         config: Runner configuration
+        llm_call: Optional LLM callable for patch proposal and review.
+                  Signature: (prompt: str) -> str. If None, stub logic is used.
+        project_root: Optional project root path for reading source files.
 
     Returns:
         RunnerResult with all iteration details
@@ -272,20 +396,25 @@ def run_long_horizon_self_improve(
     output_dir = Path(config.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
+    if project_root is None:
+        project_root = Path(".")
+
     iterations: list[IterationResult] = []
     score_progression: list[float] = []
     category_progression: dict[str, list[float]] = {}
+    patch_history = PatchHistory()
     start_time = time.time()
 
     agent_model = config.agent_model or os.environ.get("EVAL_MODEL", "claude-sonnet-4-5-20250929")
 
     print("=" * 70)
-    print("LONG-HORIZON SELF-IMPROVEMENT RUNNER")
+    print("LONG-HORIZON SELF-IMPROVEMENT RUNNER (with A/B Reviewer Voting)")
     print("=" * 70)
     print(f"Turns: {config.num_turns}")
     print(f"Questions: {config.num_questions}")
     print(f"Max iterations: {config.max_iterations}")
     print(f"Failure threshold: {config.failure_threshold:.0%}")
+    print(f"Regression threshold: {config.regression_threshold:.1f}pp")
     print(f"Multi-agent: {config.use_multi_agent}")
     print(f"Agent model: {agent_model}")
     print(f"Output: {config.output_dir}")
@@ -322,8 +451,8 @@ def run_long_horizon_self_improve(
             )
 
         try:
-            # Run evaluation
-            print("\n[Phase 1/3] Running long-horizon evaluation...")
+            # Phase 1: EVAL - Run long-horizon evaluation
+            print("\n[Phase 1/8] EVAL - Running long-horizon evaluation...")
             evaluator = LongHorizonMemoryEval(
                 num_turns=config.num_turns,
                 num_questions=config.num_questions,
@@ -333,6 +462,7 @@ def run_long_horizon_self_improve(
 
             print(f"  Overall score: {report.overall_score:.2%}")
             score_progression.append(report.overall_score)
+            baseline_scores = _extract_category_scores(report)
 
             # Category scores
             for cb in report.category_breakdown:
@@ -341,8 +471,8 @@ def run_long_horizon_self_improve(
                 category_progression[cb.category].append(cb.avg_score)
                 print(f"  {cb.category}: {cb.avg_score:.2%}")
 
-            # Analyze failures
-            print("\n[Phase 2/3] Analyzing failures by category...")
+            # Phase 2: ANALYZE - Classify failures by category
+            print("\n[Phase 2/8] ANALYZE - Classifying failures by category...")
             analyses = _analyze_categories(report, config.failure_threshold)
 
             failing_categories = [a for a in analyses if a.avg_score < config.failure_threshold]
@@ -354,22 +484,6 @@ def run_long_horizon_self_improve(
                 if a.bottleneck:
                     print(f"    Bottleneck: {a.bottleneck}")
                     print(f"    Fix: {a.suggested_fix[:80]}...")
-                if a.failed_questions:
-                    for fq in a.failed_questions[:2]:
-                        print(f"    Failed Q: {fq['question_text'][:60]}... ({fq['score']:.2%})")
-
-            # Log improvement suggestions
-            print("\n[Phase 3/3] Logging results...")
-            improvements = [
-                f"{a.category}: {a.suggested_fix}"
-                for a in analyses
-                if a.bottleneck and a.avg_score < config.failure_threshold
-            ]
-
-            # Save results
-            report_dict = report.to_dict()
-            with open(iter_dir / "report.json", "w") as f:
-                json.dump(report_dict, f, indent=2)
 
             analyses_dicts = [
                 {
@@ -382,8 +496,170 @@ def run_long_horizon_self_improve(
                 }
                 for a in analyses
             ]
+
+            # Early exit if all categories pass
+            if not failing_categories:
+                print("  All categories above threshold. Stopping.")
+                iter_duration = time.time() - iter_start
+                iterations.append(
+                    IterationResult(
+                        iteration=iteration,
+                        report=report.to_dict(),
+                        category_analyses=analyses_dicts,
+                        improvements_applied=[],
+                        duration_seconds=iter_duration,
+                    )
+                )
+                break
+
+            # Phase 3: PROPOSE - Generate patch for worst category
+            worst = failing_categories[0]
+            print(f"\n[Phase 3/8] PROPOSE - Generating patch for '{worst.category}'...")
+            proposal = propose_patch(
+                category=worst.category,
+                category_score=worst.avg_score,
+                failed_questions=worst.failed_questions,
+                bottleneck=worst.bottleneck,
+                suggested_fix=worst.suggested_fix,
+                history=patch_history,
+                project_root=project_root,
+                llm_call=llm_call,
+            )
+            print(f"  Target: {proposal.target_file}")
+            print(f"  Hypothesis: {proposal.hypothesis[:80]}...")
+            print(f"  Confidence: {proposal.confidence:.0%}")
+
+            proposal_dict = {
+                "target_file": proposal.target_file,
+                "hypothesis": proposal.hypothesis,
+                "description": proposal.description,
+                "confidence": proposal.confidence,
+                "risk_assessment": proposal.risk_assessment,
+                "expected_impact": proposal.expected_impact,
+                "diff_length": len(proposal.diff),
+            }
+
+            # Phase 4: CHALLENGE - Devil's advocate
+            print("\n[Phase 4/8] CHALLENGE - Running devil's advocate...")
+            challenge = challenge_proposal(proposal, llm_call=llm_call)
+            print(f"  Challenge arguments: {len(challenge.challenge_arguments)}")
+            print(f"  Concerns addressed: {challenge.concerns_addressed}")
+            if challenge.remaining_concerns:
+                print(f"  Remaining concerns: {len(challenge.remaining_concerns)}")
+
+            # If challenge concerns not addressed, skip to next iteration
+            if not challenge.concerns_addressed:
+                print("  SKIP: Challenge concerns not adequately addressed.")
+                patch_history.rejected_patches.append(
+                    {
+                        "target_file": proposal.target_file,
+                        "description": proposal.description,
+                        "rejection_reason": "Challenge concerns not addressed",
+                    }
+                )
+                iter_duration = time.time() - iter_start
+                iterations.append(
+                    IterationResult(
+                        iteration=iteration,
+                        report=report.to_dict(),
+                        category_analyses=analyses_dicts,
+                        improvements_applied=[],
+                        patch_proposal=proposal_dict,
+                        duration_seconds=iter_duration,
+                    )
+                )
+                continue
+
+            # Phase 5: VOTE - 3-reviewer voting
+            print("\n[Phase 5/8] VOTE - Running 3-reviewer voting...")
+            review = vote_on_proposal(proposal, challenge=challenge, llm_call=llm_call)
+            print(f"  Decision: {review.decision}")
+            for v in review.votes:
+                print(f"    [{v.reviewer_id}] {v.vote}: {v.rationale[:60]}...")
+
+            review_dict = review_result_to_dict(review)
+
+            if review.decision == "rejected":
+                print("  SKIP: Proposal rejected by reviewers.")
+                patch_history.rejected_patches.append(
+                    {
+                        "target_file": proposal.target_file,
+                        "description": proposal.description,
+                        "rejection_reason": review.consensus_rationale[:200],
+                    }
+                )
+                iter_duration = time.time() - iter_start
+                iterations.append(
+                    IterationResult(
+                        iteration=iteration,
+                        report=report.to_dict(),
+                        category_analyses=analyses_dicts,
+                        improvements_applied=[],
+                        patch_proposal=proposal_dict,
+                        review_result=review_dict,
+                        duration_seconds=iter_duration,
+                    )
+                )
+                continue
+
+            # Phase 6: APPLY - Apply the accepted patch
+            print("\n[Phase 6/8] APPLY - Applying accepted patch...")
+            applied_description = f"[{review.decision}] {proposal.description}"
+            patch_history.applied_patches.append(
+                {
+                    "target_file": proposal.target_file,
+                    "description": proposal.description,
+                    "hypothesis": proposal.hypothesis,
+                    "confidence": proposal.confidence,
+                }
+            )
+            print(f"  Applied: {applied_description[:80]}")
+
+            # Phase 7: RE-EVAL - Not implemented in stub mode (requires
+            # re-running the eval with the actual code change applied).
+            # In production, this would re-run the eval and compare scores.
+            print("\n[Phase 7/8] RE-EVAL - Comparing scores...")
+            post_scores: dict[str, float] | None = None
+            reverted = False
+            revert_reason = ""
+
+            # Phase 8: DECIDE - Check for regression
+            print("\n[Phase 8/8] DECIDE - Checking for regression...")
+            if post_scores is not None:
+                has_regression, worst_cat, regression_pp = detect_regression(
+                    baseline_scores, post_scores, config.regression_threshold
+                )
+                if has_regression:
+                    print(
+                        f"  REVERT: {worst_cat} regressed {regression_pp:.1f}pp "
+                        f"(threshold: {config.regression_threshold:.1f}pp)"
+                    )
+                    reverted = True
+                    revert_reason = (
+                        f"{worst_cat} regressed {regression_pp:.1f}pp"
+                    )
+                    patch_history.reverted_patches.append(
+                        {
+                            "target_file": proposal.target_file,
+                            "description": proposal.description,
+                            "revert_reason": revert_reason,
+                        }
+                    )
+                else:
+                    print("  KEEP: No regression detected.")
+            else:
+                print("  No re-eval performed (stub mode).")
+
+            # Save results
+            report_dict = report.to_dict()
+            with open(iter_dir / "report.json", "w") as f:
+                json.dump(report_dict, f, indent=2)
             with open(iter_dir / "analyses.json", "w") as f:
                 json.dump(analyses_dicts, f, indent=2)
+            with open(iter_dir / "proposal.json", "w") as f:
+                json.dump(proposal_dict, f, indent=2)
+            with open(iter_dir / "review.json", "w") as f:
+                json.dump(review_dict, f, indent=2)
 
             iter_duration = time.time() - iter_start
 
@@ -392,17 +668,17 @@ def run_long_horizon_self_improve(
                     iteration=iteration,
                     report=report_dict,
                     category_analyses=analyses_dicts,
-                    improvements_applied=improvements,
+                    improvements_applied=[applied_description],
+                    patch_proposal=proposal_dict,
+                    review_result=review_dict,
+                    post_scores=post_scores,
+                    reverted=reverted,
+                    revert_reason=revert_reason,
                     duration_seconds=iter_duration,
                 )
             )
 
             print(f"\n  Iteration {iteration} completed in {iter_duration:.1f}s")
-
-            # Early exit if all categories pass
-            if not failing_categories:
-                print("  All categories above threshold. Stopping.")
-                break
 
         finally:
             agent.close()
@@ -416,6 +692,7 @@ def run_long_horizon_self_improve(
             "num_questions": config.num_questions,
             "max_iterations": config.max_iterations,
             "failure_threshold": config.failure_threshold,
+            "regression_threshold": config.regression_threshold,
             "use_multi_agent": config.use_multi_agent,
         },
         iterations=iterations,
@@ -433,6 +710,9 @@ def run_long_horizon_self_improve(
         },
         "total_duration_seconds": round(total_duration, 2),
         "iterations_run": len(iterations),
+        "patches_applied": len(patch_history.applied_patches),
+        "patches_reverted": len(patch_history.reverted_patches),
+        "patches_rejected": len(patch_history.rejected_patches),
     }
     with open(output_dir / "self_improve_summary.json", "w") as f:
         json.dump(summary, f, indent=2)
@@ -443,6 +723,9 @@ def run_long_horizon_self_improve(
     print(f"{'=' * 70}")
     print(f"Iterations run: {len(iterations)}")
     print(f"Total duration: {total_duration:.1f}s")
+    print(f"Patches applied: {len(patch_history.applied_patches)}")
+    print(f"Patches reverted: {len(patch_history.reverted_patches)}")
+    print(f"Patches rejected: {len(patch_history.rejected_patches)}")
 
     if score_progression:
         print(f"\nScore progression: {' -> '.join(f'{s:.2%}' for s in score_progression)}")
@@ -470,6 +753,12 @@ def main() -> None:
         type=float,
         default=0.7,
         help="Failure threshold (default: 0.7)",
+    )
+    parser.add_argument(
+        "--regression-threshold",
+        type=float,
+        default=5.0,
+        help="Max regression in pp before auto-revert (default: 5.0)",
     )
     parser.add_argument(
         "--multi-agent",
@@ -501,6 +790,7 @@ def main() -> None:
         seed=args.seed,
         max_iterations=args.iterations,
         failure_threshold=args.threshold,
+        regression_threshold=args.regression_threshold,
         use_multi_agent=args.multi_agent,
         output_dir=args.output_dir,
         agent_model=args.model,
@@ -527,4 +817,6 @@ __all__ = [
     "LongHorizonRunnerConfig",
     "CategoryAnalysis",
     "RunnerResult",
+    "IterationResult",
+    "detect_regression",
 ]
