@@ -9,12 +9,20 @@ Philosophy:
 - LLM-powered reasoning via litellm
 - Clear separation of concerns (perceive, reason, act, learn)
 - Stateless execution (state stored in memory)
+- Iterative reasoning: plan → search → evaluate → refine → answer
 """
 
-from dataclasses import dataclass
+import json
+import logging
+from dataclasses import dataclass, field
 from typing import Any
 
 import litellm
+
+logger = logging.getLogger(__name__)
+
+# Default LLM model for the agentic loop (override via constructor parameter)
+DEFAULT_MODEL = "gpt-3.5-turbo"
 
 
 @dataclass
@@ -36,6 +44,84 @@ class LoopState:
     learning: str
     outcome: Any
     iteration: int
+
+
+@dataclass
+class RetrievalPlan:
+    """Plan for what information to retrieve from memory.
+
+    Attributes:
+        search_queries: Targeted queries to run against memory
+        reasoning: Why these queries were chosen
+    """
+
+    search_queries: list[str] = field(default_factory=list)
+    reasoning: str = ""
+
+
+@dataclass
+class ReasoningStep:
+    """A single step in the reasoning trace.
+
+    Attributes:
+        step_type: Type of step (plan, search, evaluate, refine)
+        queries: Search queries generated or executed
+        facts_found: Number of new facts found this step
+        evaluation: Sufficiency evaluation if applicable
+        reasoning: LLM reasoning for this step
+    """
+
+    step_type: str  # "plan", "search", "evaluate", "refine"
+    queries: list[str] = field(default_factory=list)
+    facts_found: int = 0
+    evaluation: dict[str, Any] = field(default_factory=dict)
+    reasoning: str = ""
+
+
+@dataclass
+class ReasoningTrace:
+    """Complete trace of the reasoning process for metacognition evaluation.
+
+    Captures the full plan→search→evaluate→refine cycle so the eval
+    harness can assess HOW the agent reasoned, not just WHAT it answered.
+
+    Attributes:
+        question: The original question
+        intent: Classified intent
+        steps: List of reasoning steps taken
+        total_facts_collected: Total unique facts collected
+        total_queries_executed: Total search queries run
+        iterations: Number of plan-search-evaluate iterations
+        final_confidence: Final sufficiency confidence
+        used_simple_path: Whether simple retrieval was used (no iteration)
+    """
+
+    question: str = ""
+    intent: dict[str, Any] = field(default_factory=dict)
+    steps: list[ReasoningStep] = field(default_factory=list)
+    total_facts_collected: int = 0
+    total_queries_executed: int = 0
+    iterations: int = 0
+    final_confidence: float = 0.0
+    used_simple_path: bool = False
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class SufficiencyEvaluation:
+    """Evaluation of whether collected facts are sufficient to answer.
+
+    Attributes:
+        sufficient: Whether we have enough information
+        missing: Description of what is still missing
+        confidence: Confidence that we can answer (0.0-1.0)
+        refined_queries: New queries to try if insufficient
+    """
+
+    sufficient: bool = False
+    missing: str = ""
+    confidence: float = 0.0
+    refined_queries: list[str] = field(default_factory=list)
 
 
 class AgenticLoop:
@@ -78,7 +164,7 @@ class AgenticLoop:
         agent_name: str,
         action_executor,
         memory_retriever,
-        model: str = "gpt-3.5-turbo",
+        model: str = DEFAULT_MODEL,
         max_iterations: int = 10,
     ):
         """Initialize agentic loop.
@@ -202,10 +288,11 @@ Respond in this JSON format:
                 }
 
         except Exception as e:
+            logger.error("LLM reasoning call failed: %s", e)
             return {
-                "reasoning": f"LLM call failed: {e!s}",
+                "reasoning": "LLM call failed due to an internal error",
                 "action": "error",
-                "params": {"error": str(e)},
+                "params": {"error": "Internal reasoning error"},
             }
 
     def act(self, action_decision: dict[str, Any]) -> Any:
@@ -344,3 +431,463 @@ Respond in this JSON format:
             observation = f"Previous action result: {state.outcome}"
 
         return states
+
+    # ------------------------------------------------------------------
+    # Iterative reasoning: plan → search → evaluate → refine → answer
+    # ------------------------------------------------------------------
+
+    def reason_iteratively(
+        self,
+        question: str,
+        memory,
+        intent: dict[str, Any],
+        max_steps: int = 3,
+    ) -> tuple[list[dict[str, Any]], list[Any], ReasoningTrace]:
+        """Multi-step reasoning: plan, search, evaluate, refine, answer.
+
+        Instead of dumping all facts to the LLM, this method:
+        1. PLAN - Asks the LLM what specific information is needed
+        2. SEARCH - Runs targeted queries against memory
+        3. EVALUATE - Checks if retrieved facts are sufficient
+        4. REFINE - If not sufficient, generates new queries and loops
+        5. ANSWER - Synthesizes final answer from collected facts
+
+        Args:
+            question: The question to answer
+            memory: Memory object with retrieve_subgraph and/or search methods
+            intent: Intent classification dict from _detect_intent()
+            max_steps: Maximum retrieval rounds (default 3)
+
+        Returns:
+            Tuple of (list of collected fact dicts, list of KnowledgeNode objects,
+            ReasoningTrace capturing the full reasoning process)
+            The caller is responsible for final synthesis.
+        """
+        collected_facts: list[dict[str, Any]] = []
+        collected_nodes: list[Any] = []
+        seen_ids: set[str] = set()
+        evaluation = SufficiencyEvaluation()
+
+        # Initialize reasoning trace
+        trace = ReasoningTrace(
+            question=question,
+            intent=intent,
+        )
+
+        # Use larger retrieval window for complex questions
+        intent_type = intent.get("intent", "simple_recall")
+        if intent_type in ("multi_source_synthesis", "temporal_comparison"):
+            search_max_nodes = 30
+        else:
+            search_max_nodes = 10
+
+        total_queries = 0
+
+        for step in range(max_steps):
+            # Step 1/1b: Plan or refine retrieval
+            if step == 0:
+                plan = self._plan_retrieval(question, intent)
+                step_type = "plan"
+            else:
+                plan = self._refine_retrieval(question, collected_facts, evaluation)
+                step_type = "refine"
+
+            if not plan.search_queries:
+                logger.debug("No search queries generated at step %d, stopping", step)
+                break
+
+            # Record plan/refine step
+            trace.steps.append(
+                ReasoningStep(
+                    step_type=step_type,
+                    queries=list(plan.search_queries),
+                    reasoning=plan.reasoning,
+                )
+            )
+
+            # Step 2: Targeted search for each query
+            new_facts_this_round = 0
+            for query in plan.search_queries:
+                total_queries += 1
+                nodes, facts = self._targeted_search(
+                    query, memory, seen_ids, max_nodes=search_max_nodes
+                )
+                for node, fact in zip(nodes, facts, strict=False):
+                    nid = getattr(node, "node_id", id(node))
+                    if nid not in seen_ids:
+                        seen_ids.add(nid)
+                        collected_nodes.append(node)
+                        collected_facts.append(fact)
+                        new_facts_this_round += 1
+
+            # Record search step
+            trace.steps.append(
+                ReasoningStep(
+                    step_type="search",
+                    queries=list(plan.search_queries),
+                    facts_found=new_facts_this_round,
+                )
+            )
+
+            logger.debug(
+                "Step %d: %d new facts from %d queries",
+                step,
+                new_facts_this_round,
+                len(plan.search_queries),
+            )
+
+            # If no new facts found, no point evaluating again
+            if new_facts_this_round == 0 and step > 0:
+                break
+
+            # Step 3: Evaluate sufficiency
+            evaluation = self._evaluate_sufficiency(question, collected_facts, intent)
+
+            # Record evaluation step
+            trace.steps.append(
+                ReasoningStep(
+                    step_type="evaluate",
+                    evaluation={
+                        "sufficient": evaluation.sufficient,
+                        "confidence": evaluation.confidence,
+                        "missing": evaluation.missing,
+                    },
+                )
+            )
+
+            if evaluation.sufficient or evaluation.confidence > 0.8:
+                logger.debug(
+                    "Sufficient at step %d (confidence=%.2f)",
+                    step,
+                    evaluation.confidence,
+                )
+                break
+
+        # Finalize trace
+        trace.total_facts_collected = len(collected_facts)
+        trace.total_queries_executed = total_queries
+        trace.iterations = min(step + 1, max_steps) if plan.search_queries else 0
+        trace.final_confidence = evaluation.confidence
+
+        return collected_facts, collected_nodes, trace
+
+    def _plan_retrieval(self, question: str, intent: dict[str, Any]) -> RetrievalPlan:
+        """Plan what information to retrieve. One short LLM call.
+
+        Args:
+            question: The question to answer
+            intent: Intent classification
+
+        Returns:
+            RetrievalPlan with search queries and reasoning
+        """
+        intent_type = intent.get("intent", "simple_recall")
+
+        # Build intent-specific instructions for plan quality
+        if intent_type == "multi_source_synthesis":
+            extra_instruction = (
+                "\n\nIMPORTANT: This question requires combining information from MULTIPLE sources.\n"
+                "Strategy:\n"
+                "1. First, identify the DISTINCT topics/sources this question touches (e.g., current standings, historical records, athlete profiles)\n"
+                "2. Generate at least ONE search query for EACH distinct topic\n"
+                "3. Include one BROAD query using the main subject of the question\n"
+                "4. Include one query specifically targeting COMPARISONS or RELATIONSHIPS between topics\n\n"
+                "You MUST generate at least 3 queries covering different aspects of the question."
+            )
+        elif intent_type in ("temporal_comparison", "mathematical_computation"):
+            extra_instruction = (
+                "\n\nIMPORTANT: This question requires comparing data across TIME PERIODS.\n"
+                "Strategy:\n"
+                "1. Extract EVERY time period mentioned in the question (e.g., 'Day 7', 'Day 10', 'February 13')\n"
+                "2. Generate a SEPARATE search query for EACH time period found\n"
+                "3. Each query MUST include the exact time marker as a keyword (e.g., 'Day 7 medals', 'Day 10 gold')\n"
+                "4. Also include a query for the specific metric being compared\n\n"
+                "CRITICAL: If the question mentions 'Day 7 to Day 10', you need queries for Day 7, Day 9, AND Day 10.\n"
+                "Do NOT skip any time period - missing data makes computation impossible."
+            )
+        else:
+            extra_instruction = ""
+
+        prompt = f"""Given this question, what specific information do I need to find in a knowledge base?
+
+Question: {question}
+Question type: {intent_type}
+{extra_instruction}
+
+Generate 2-5 SHORT, TARGETED search queries (keywords/phrases) that would find the needed facts.
+Each query should target ONE specific piece of information.
+
+Return ONLY a JSON object:
+{{"search_queries": ["query1", "query2", ...], "reasoning": "brief explanation of search strategy"}}"""
+
+        try:
+            response = litellm.completion(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a search planner. Generate targeted search queries. Return only JSON.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.0,
+            )
+
+            result = self._parse_json_response(response.choices[0].message.content)
+            if result and "search_queries" in result:
+                return RetrievalPlan(
+                    search_queries=result["search_queries"][:5],
+                    reasoning=result.get("reasoning", ""),
+                )
+        except Exception as e:
+            logger.debug("Plan retrieval failed: %s", e)
+
+        # Fallback: use the question itself as a query
+        return RetrievalPlan(
+            search_queries=[question],
+            reasoning="fallback: using original question",
+        )
+
+    def _refine_retrieval(
+        self,
+        question: str,
+        collected_facts: list[dict[str, Any]],
+        evaluation: SufficiencyEvaluation,
+    ) -> RetrievalPlan:
+        """Refine retrieval based on what is missing. One short LLM call.
+
+        Args:
+            question: The original question
+            collected_facts: Facts collected so far
+            evaluation: Previous sufficiency evaluation
+
+        Returns:
+            RetrievalPlan with refined search queries
+        """
+        # Summarize what we have so far (keep it short)
+        facts_summary = "\n".join(
+            f"- [{f.get('context', '?')}] {f.get('outcome', '')[:80]}" for f in collected_facts[:10]
+        )
+
+        prompt = f"""I'm trying to answer: {question}
+
+I already found these facts:
+{facts_summary}
+
+What's missing: {evaluation.missing}
+
+Generate 2-3 NEW search queries targeting the MISSING information.
+Use different keywords than before.
+
+Return ONLY a JSON object:
+{{"search_queries": ["query1", "query2"], "reasoning": "what these queries target"}}"""
+
+        try:
+            response = litellm.completion(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a search planner. Generate targeted search queries for missing information. Return only JSON.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.0,
+            )
+
+            result = self._parse_json_response(response.choices[0].message.content)
+            if result and "search_queries" in result:
+                return RetrievalPlan(
+                    search_queries=result["search_queries"][:3],
+                    reasoning=result.get("reasoning", ""),
+                )
+        except Exception as e:
+            logger.debug("Refine retrieval failed: %s", e)
+
+        # Fallback: use evaluation's refined queries if available
+        if evaluation.refined_queries:
+            return RetrievalPlan(
+                search_queries=evaluation.refined_queries[:3],
+                reasoning="from evaluation suggestions",
+            )
+        return RetrievalPlan()
+
+    def _evaluate_sufficiency(
+        self,
+        question: str,
+        collected_facts: list[dict[str, Any]],
+        intent: dict[str, Any],
+    ) -> SufficiencyEvaluation:
+        """Evaluate if collected facts are sufficient. One short LLM call.
+
+        Args:
+            question: The question to answer
+            collected_facts: Facts collected so far
+            intent: Intent classification
+
+        Returns:
+            SufficiencyEvaluation with assessment
+        """
+        if not collected_facts:
+            return SufficiencyEvaluation(
+                sufficient=False,
+                missing="No facts found yet",
+                confidence=0.0,
+                refined_queries=[question],
+            )
+
+        facts_summary = "\n".join(
+            f"- [{f.get('context', '?')}] {f.get('outcome', '')[:100]}"
+            for f in collected_facts[:15]
+        )
+
+        intent_type = intent.get("intent", "simple_recall")
+        prompt = f"""Can I answer this question with these facts?
+
+Question: {question}
+Question type: {intent_type}
+
+Available facts:
+{facts_summary}
+
+Evaluate:
+1. Do I have ALL the specific data points needed?
+2. What is STILL MISSING (if anything)?
+3. Confidence I can answer correctly (0.0-1.0)?
+
+Return ONLY a JSON object:
+{{"sufficient": true/false, "missing": "what's missing or empty string", "confidence": 0.8, "refined_queries": ["query if more search needed"]}}"""
+
+        try:
+            response = litellm.completion(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a fact sufficiency evaluator. Be strict: if key data points are missing, say so. Return only JSON.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.0,
+            )
+
+            result = self._parse_json_response(response.choices[0].message.content)
+            if result:
+                return SufficiencyEvaluation(
+                    sufficient=bool(result.get("sufficient", False)),
+                    missing=result.get("missing", ""),
+                    confidence=float(result.get("confidence", 0.5)),
+                    refined_queries=result.get("refined_queries", []),
+                )
+        except Exception as e:
+            logger.debug("Evaluate sufficiency failed: %s", e)
+
+        # Conservative fallback: assume sufficient if we have 5+ facts
+        return SufficiencyEvaluation(
+            sufficient=len(collected_facts) >= 5,
+            missing="" if len(collected_facts) >= 5 else "unable to evaluate",
+            confidence=0.6 if len(collected_facts) >= 5 else 0.3,
+        )
+
+    def _targeted_search(
+        self,
+        query: str,
+        memory,
+        seen_ids: set[str],
+        max_nodes: int = 10,
+    ) -> tuple[list[Any], list[dict[str, Any]]]:
+        """Run a targeted search against memory.
+
+        Tries retrieve_subgraph first (Graph RAG), falls back to search/get_all_facts.
+
+        Args:
+            query: Search query
+            memory: Memory object (FlatRetrieverAdapter or MemoryRetriever)
+            seen_ids: IDs already collected (to avoid duplicates)
+            max_nodes: Max nodes to retrieve per query
+
+        Returns:
+            Tuple of (list of raw nodes, list of fact dicts)
+        """
+        nodes = []
+        facts = []
+
+        # Try Graph RAG subgraph retrieval first
+        if hasattr(memory, "memory") and hasattr(memory.memory, "retrieve_subgraph"):
+            subgraph = memory.memory.retrieve_subgraph(query=query, max_nodes=max_nodes)
+            for node in subgraph.nodes:
+                if node.node_id not in seen_ids:
+                    nodes.append(node)
+                    facts.append(
+                        {
+                            "context": node.concept,
+                            "outcome": node.content,
+                            "confidence": node.confidence,
+                            "metadata": node.metadata if node.metadata else {},
+                        }
+                    )
+        elif hasattr(memory, "search"):
+            results = memory.search(query=query, limit=max_nodes)
+            for r in results:
+                rid = r.get("experience_id", str(id(r)))
+                if rid not in seen_ids:
+                    nodes.append(r)
+                    facts.append(r)
+        elif hasattr(memory, "get_all_facts"):
+            results = memory.get_all_facts(limit=max_nodes)
+            for r in results:
+                rid = r.get("experience_id", str(id(r)))
+                if rid not in seen_ids:
+                    nodes.append(r)
+                    facts.append(r)
+
+        return nodes, facts
+
+    @staticmethod
+    def _parse_json_response(response_text: str) -> dict[str, Any] | None:
+        """Parse JSON from an LLM response, handling markdown code blocks.
+
+        Args:
+            response_text: Raw LLM response text
+
+        Returns:
+            Parsed dict or None if parsing fails
+        """
+        if not response_text:
+            return None
+
+        text = response_text.strip()
+
+        # Try direct parse
+        try:
+            result = json.loads(text)
+            if isinstance(result, dict):
+                return result
+        except json.JSONDecodeError:
+            pass
+
+        # Try extracting from markdown code block
+        if "```json" in text:
+            json_start = text.find("```json") + 7
+            json_end = text.find("```", json_start)
+            if json_end > json_start:
+                try:
+                    result = json.loads(text[json_start:json_end].strip())
+                    if isinstance(result, dict):
+                        return result
+                except json.JSONDecodeError:
+                    pass
+
+        # Try extracting from generic code block
+        if "```" in text:
+            json_start = text.find("```") + 3
+            json_end = text.find("```", json_start)
+            if json_end > json_start:
+                try:
+                    result = json.loads(text[json_start:json_end].strip())
+                    if isinstance(result, dict):
+                        return result
+                except json.JSONDecodeError:
+                    pass
+
+        return None
