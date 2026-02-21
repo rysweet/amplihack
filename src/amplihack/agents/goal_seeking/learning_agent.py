@@ -561,13 +561,14 @@ Rules:
         return answer
 
     def _simple_retrieval(self, question: str) -> list[dict[str, Any]]:
-        """Single-pass retrieval for simple recall questions.
+        """Single-pass retrieval with progressive summarization for large KBs.
 
-        Gets all facts if the knowledge base is small (<=500), otherwise
-        uses keyword search. The threshold is set high because:
-        - LLMs can easily handle 500 facts in context (200K token models)
-        - Keyword search may miss relevant facts (e.g., Day 10 data)
-        - Completeness is critical for temporal and multi-source questions
+        For small KBs (<=500 facts): returns all facts verbatim.
+        For medium KBs (501-1000 facts): returns all facts verbatim.
+        For large KBs (1000+ facts): uses tiered summarization:
+            - Tier 1 (recent 200 facts): verbatim
+            - Tier 2 (facts 201-1000): entity-level summaries
+            - Tier 3 (facts 1000+): topic-level summaries
 
         Args:
             question: The question to retrieve facts for
@@ -578,14 +579,120 @@ Rules:
         if not hasattr(self.memory, "get_all_facts"):
             return []
 
-        # Check knowledge base size -- use generous threshold
-        all_facts = self.memory.get_all_facts(limit=501)
-        if len(all_facts) <= 500:
+        all_facts = self.memory.get_all_facts(limit=1501)
+        kb_size = len(all_facts)
+
+        if kb_size <= 500:
             return all_facts
 
-        # Larger knowledge base: use keyword search
-        results = self.memory.search(query=question, limit=60)
-        return results if results else all_facts[:500]
+        if kb_size <= 1000:
+            return all_facts
+
+        # Large KB (1000+ facts): use progressive summarization tiers
+        return self._tiered_retrieval(question, all_facts)
+
+    def _tiered_retrieval(
+        self, question: str, all_facts: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Tiered retrieval with progressive summarization for large KBs.
+
+        Tier 1 (most recent 200): verbatim.
+        Tier 2 (201-1000): entity-level summaries.
+        Tier 3 (1000+): topic-level summaries.
+
+        Summaries preserve key details: numbers, names, dates, status values.
+        """
+
+        def _sort_key(f: dict) -> tuple:
+            ts = f.get("timestamp", "")
+            meta = f.get("metadata", {})
+            t_idx = meta.get("temporal_index", 0) if meta else 0
+            return (t_idx, ts)
+
+        sorted_facts = sorted(all_facts, key=_sort_key)
+        kb_size = len(sorted_facts)
+        result: list[dict[str, Any]] = []
+
+        # Tier 1: Most recent 200 facts - verbatim
+        tier1_facts = sorted_facts[max(0, kb_size - 200) :]
+        result.extend(tier1_facts)
+
+        # Tier 2: Facts 201-1000 - entity-level summaries
+        tier2_start = max(0, kb_size - 1000)
+        tier2_end = max(0, kb_size - 200)
+        if tier2_end > tier2_start:
+            tier2_facts = sorted_facts[tier2_start:tier2_end]
+            tier2_summaries = self._summarize_old_facts(tier2_facts, level="entity")
+            result.extend(tier2_summaries)
+
+        # Tier 3: Facts 1000+ - topic-level summaries
+        if tier2_start > 0:
+            tier3_facts = sorted_facts[:tier2_start]
+            tier3_summaries = self._summarize_old_facts(tier3_facts, level="topic")
+            result.extend(tier3_summaries)
+
+        logger.info(
+            "Tiered retrieval: %d total -> %d tier1 verbatim + %d summarized items",
+            kb_size,
+            len(tier1_facts),
+            len(result) - len(tier1_facts),
+        )
+        return result
+
+    def _summarize_old_facts(
+        self, facts: list[dict[str, Any]], level: str = "entity"
+    ) -> list[dict[str, Any]]:
+        """Deterministic summarization grouping facts by entity or topic.
+
+        Preserves all numbers, proper names, dates, and status values.
+        No LLM calls -- fast enough for retrieval path.
+        """
+        if not facts:
+            return []
+
+        groups: dict[str, list[dict[str, Any]]] = {}
+        for f in facts:
+            if level == "entity":
+                key = f.get("context", "General")
+            else:
+                ctx = f.get("context", "General")
+                key = ctx.split(":")[0].strip() if ":" in ctx else ctx.split(".")[0].strip()
+            groups.setdefault(key, []).append(f)
+
+        summaries: list[dict[str, Any]] = []
+        for group_key, group_facts in groups.items():
+            if len(group_facts) <= 2:
+                summaries.extend(group_facts)
+                continue
+
+            fact_texts = []
+            for f in group_facts[:30]:
+                outcome = f.get("outcome", f.get("fact", ""))
+                if outcome:
+                    fact_texts.append(outcome[:200])
+
+            if not fact_texts:
+                continue
+
+            combined = "; ".join(fact_texts)
+            if len(combined) > 500:
+                truncate_at = combined.rfind(".", 0, 500)
+                if truncate_at > 100:
+                    combined = combined[: truncate_at + 1]
+                else:
+                    combined = combined[:500] + "..."
+
+            summaries.append(
+                {
+                    "context": f"SUMMARY ({group_key})",
+                    "outcome": f"[Summary of {len(group_facts)} facts about {group_key}]: {combined}",
+                    "confidence": 0.7,
+                    "tags": ["summary", level],
+                    "metadata": {"is_summary": True, "source_count": len(group_facts)},
+                }
+            )
+
+        return summaries
 
     def _aggregation_retrieval(self, question: str, intent: dict[str, Any]) -> list[dict[str, Any]]:
         """Handle meta-memory questions via Cypher aggregation.
