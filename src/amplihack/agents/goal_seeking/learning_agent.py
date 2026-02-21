@@ -487,15 +487,29 @@ Rules:
         # For large fact sets (>80), this ensures we trim noise, not signal.
         relevant_facts = rerank_facts_by_query(relevant_facts, question)
 
-        # Sort temporally if needed (after reranking so top-K are already relevant)
+        # Sort temporally if needed (after reranking so top-K are already relevant).
+        # Only sort facts that HAVE temporal metadata -- leave non-temporal facts
+        # in their reranked (relevance-first) order to avoid pushing relevant
+        # non-temporal facts to the end of the list.
         if intent.get("needs_temporal"):
+            temporal_facts = []
+            non_temporal_facts = []
+            for f in relevant_facts:
+                meta = f.get("metadata", {})
+                t_idx = meta.get("temporal_index", 0) if meta else 0
+                if t_idx > 0:
+                    temporal_facts.append(f)
+                else:
+                    non_temporal_facts.append(f)
 
             def temporal_sort_key(fact):
                 meta = fact.get("metadata", {})
                 t_idx = meta.get("temporal_index", 999999) if meta else 999999
                 return (t_idx, fact.get("timestamp", ""))
 
-            relevant_facts = sorted(relevant_facts, key=temporal_sort_key)
+            temporal_facts.sort(key=temporal_sort_key)
+            # Put temporal facts first (chronological), then non-temporal (by relevance)
+            relevant_facts = temporal_facts + non_temporal_facts
 
         # If the question references a specific article/source, provide a filtered
         # subset of facts from JUST that article. This helps the LLM focus on the
