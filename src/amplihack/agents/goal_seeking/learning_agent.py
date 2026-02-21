@@ -378,7 +378,11 @@ Rules:
     # simple_recall: direct fact lookup
     # incremental_update: questions about latest/updated/changed information
     #   (needs ALL facts visible to find the most recent version)
+    # meta_memory: aggregation queries (how many, list all) -- routed to Cypher
     SIMPLE_INTENTS = {"simple_recall", "incremental_update"}
+
+    # Aggregation intents: routed to Cypher graph queries instead of text search
+    AGGREGATION_INTENTS = {"meta_memory"}
 
     # All other intents use iterative reasoning for targeted retrieval
     # The iterative loop filters noise better than dumping all facts
@@ -427,23 +431,31 @@ Rules:
         # and for small KBs the LLM can easily handle all facts in context.
         # This is critical for temporal/multi-source questions where completeness matters.
         reasoning_trace = None
-        use_simple = intent_type in self.SIMPLE_INTENTS
-        if not use_simple and hasattr(self.memory, "get_all_facts"):
-            kb_size = len(self.memory.get_all_facts(limit=151))
-            if kb_size <= 150:
-                use_simple = True
 
-        if use_simple:
-            # Simple retrieval: get all facts for complete coverage
-            relevant_facts = self._simple_retrieval(question)
+        # Route meta-memory questions to Cypher aggregation
+        if intent_type in self.AGGREGATION_INTENTS:
+            relevant_facts = self._aggregation_retrieval(question, intent)
         else:
-            # Large KB: use iterative reasoning with plan/search/evaluate
-            relevant_facts, _, reasoning_trace = self.loop.reason_iteratively(
-                question=question,
-                memory=self.memory,
-                intent=intent,
-                max_steps=3,
-            )
+            use_simple = intent_type in self.SIMPLE_INTENTS
+            if not use_simple and hasattr(self.memory, "get_all_facts"):
+                kb_size = len(self.memory.get_all_facts(limit=151))
+                if kb_size <= 150:
+                    use_simple = True
+
+            if use_simple:
+                # Simple retrieval: get all facts for complete coverage
+                relevant_facts = self._simple_retrieval(question)
+            else:
+                # Large KB: try entity-centric retrieval first, then iterative
+                relevant_facts = self._entity_retrieval(question)
+                if not relevant_facts:
+                    # Iterative reasoning with plan/search/evaluate
+                    relevant_facts, _, reasoning_trace = self.loop.reason_iteratively(
+                        question=question,
+                        memory=self.memory,
+                        intent=intent,
+                        max_steps=3,
+                    )
 
         # Fall back to getting all facts if retrieval found nothing
         if not relevant_facts:
@@ -544,6 +556,153 @@ Rules:
         # Larger knowledge base: use keyword search
         results = self.memory.search(query=question, limit=40)
         return results if results else all_facts[:150]
+
+    def _aggregation_retrieval(self, question: str, intent: dict[str, Any]) -> list[dict[str, Any]]:
+        """Handle meta-memory questions via Cypher aggregation.
+
+        Routes "how many", "list all", "count" questions to graph aggregation
+        queries instead of text search. Returns synthetic fact dicts containing
+        the aggregation results so the LLM can synthesize an answer.
+
+        Args:
+            question: The meta-memory question
+            intent: Intent classification dict
+
+        Returns:
+            List of fact dicts with aggregation results
+        """
+        if not (self.use_hierarchical and hasattr(self.memory, "execute_aggregation")):
+            # Fall back to simple retrieval if not using hierarchical memory
+            return self._simple_retrieval(question)
+
+        q_lower = question.lower()
+        results: list[dict[str, Any]] = []
+
+        # Detect the entity type being asked about
+        entity_type = ""
+        for kw in ("project", "people", "person", "team", "member"):
+            if kw in q_lower:
+                entity_type = kw
+                break
+
+        # Execute appropriate aggregation
+        if entity_type == "project":
+            agg = self.memory.execute_aggregation("list_concepts", entity_filter="project")
+            if agg.get("items"):
+                # Filter to likely project names (not generic concepts)
+                items = agg["items"]
+                results.append(
+                    {
+                        "context": "Meta-memory: Project count",
+                        "outcome": f"There are {len(items)} distinct project-related concepts: {', '.join(items)}",
+                        "confidence": 1.0,
+                        "timestamp": "",
+                        "tags": ["meta_memory"],
+                        "metadata": {"aggregation": True},
+                    }
+                )
+
+        if entity_type in ("people", "person", "member", "team"):
+            agg = self.memory.execute_aggregation("list_entities")
+            if agg.get("items"):
+                items = agg["items"]
+                results.append(
+                    {
+                        "context": "Meta-memory: Entity list",
+                        "outcome": f"There are {len(items)} distinct entities: {', '.join(items)}",
+                        "confidence": 1.0,
+                        "timestamp": "",
+                        "tags": ["meta_memory"],
+                        "metadata": {"aggregation": True},
+                    }
+                )
+
+        # General aggregation: count all entities and concepts
+        if not results:
+            entity_agg = self.memory.execute_aggregation("list_entities")
+            concept_agg = self.memory.execute_aggregation("count_by_concept")
+            total_agg = self.memory.execute_aggregation("count_total")
+
+            summary_parts = []
+            if total_agg.get("count"):
+                summary_parts.append(f"Total facts stored: {total_agg['count']}")
+            if entity_agg.get("items"):
+                summary_parts.append(
+                    f"Distinct entities ({len(entity_agg['items'])}): "
+                    f"{', '.join(entity_agg['items'][:30])}"
+                )
+            if concept_agg.get("items"):
+                top_concepts = list(concept_agg["items"].items())[:20]
+                concept_str = ", ".join(f"{c} ({n} facts)" for c, n in top_concepts)
+                summary_parts.append(f"Top concepts: {concept_str}")
+
+            if summary_parts:
+                results.append(
+                    {
+                        "context": "Meta-memory: Knowledge summary",
+                        "outcome": ". ".join(summary_parts),
+                        "confidence": 1.0,
+                        "timestamp": "",
+                        "tags": ["meta_memory"],
+                        "metadata": {"aggregation": True},
+                    }
+                )
+
+        # Also get regular facts for context
+        regular_facts = self._simple_retrieval(question)
+        results.extend(regular_facts[:20])
+
+        return results
+
+    def _entity_retrieval(self, question: str) -> list[dict[str, Any]]:
+        """Try entity-centric retrieval for questions about specific people/projects.
+
+        Extracts entity names from the question and uses the entity_name index
+        for targeted retrieval. Returns empty list if no entities found,
+        triggering fallback to iterative retrieval.
+
+        Args:
+            question: The question text
+
+        Returns:
+            List of fact dicts, or empty list if no entity match
+        """
+        if not (self.use_hierarchical and hasattr(self.memory, "retrieve_by_entity")):
+            return []
+
+        import re
+
+        # Extract proper nouns from question
+        # Multi-word names: "Sarah Chen", "Project Atlas"
+        candidates = re.findall(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b", question)
+
+        # Single proper nouns that aren't common words
+        if not candidates:
+            words = question.split()
+            for w in words:
+                cleaned = w.strip(".,;:!?()[]{}\"'")
+                if cleaned and cleaned[0].isupper() and len(cleaned) > 2:
+                    candidates.append(cleaned)
+
+        # Also handle possessives: "Fatima's hobby" -> "Fatima"
+        possessive_matches = re.findall(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)'s\b", question)
+        candidates.extend(possessive_matches)
+
+        if not candidates:
+            return []
+
+        all_facts: list[dict[str, Any]] = []
+        seen_ids: set[str] = set()
+
+        for candidate in candidates:
+            entity_facts = self.memory.retrieve_by_entity(candidate, limit=30)
+            for fact in entity_facts:
+                fid = fact.get("experience_id", "")
+                if fid not in seen_ids:
+                    seen_ids.add(fid)
+                    all_facts.append(fact)
+
+        return all_facts if all_facts else []
 
     def _filter_facts_by_source_reference(
         self, question: str, facts: list[dict[str, Any]]
@@ -658,6 +817,7 @@ Rules:
 (f) incremental update - finding the MOST RECENT or UPDATED information. Use this when the question asks about a SINGLE entity's current state or history (keywords: "how many now", "current", "latest", "updated", "changed", "how did X change", "trajectory", "complete history", "describe X's achievement/record/progress")
 (g) causal_counterfactual - reasoning about causes, root causes, "why did X happen", OR hypothetical/counterfactual scenarios like "what if X", "if X had not happened", "without X", "would X still", "in a world where". These questions require reasoning from known facts to explore causes or alternate scenarios - they are NOT simple recall even though they may involve hypotheticals not in the data.
 (h) ratio_trend_analysis - computing ratios or percentages AND analyzing whether they improve or worsen over time. Use when the question asks about "ratio", "rate", "per", "trend", "improving vs worsening"
+(i) meta_memory - questions ABOUT the knowledge itself: "how many projects", "list all people", "count the teams", "what topics do you know about". These ask about the STRUCTURE or QUANTITY of stored knowledge, not about specific facts.
 
 FEW-SHOT EXAMPLES:
 Q: "Which country's individual athletes won the most medals mentioned in the athlete achievements article?"
@@ -675,10 +835,16 @@ A: {{"intent": "ratio_trend_analysis", "needs_math": true, "needs_temporal": tru
 Q: "How does Italy's 2026 gold medal performance compare to their previous best?"
 A: {{"intent": "multi_source_synthesis", "needs_math": false, "needs_temporal": false, "reasoning": "Comparing performance across sources/events, not computing temporal differences"}}
 
+Q: "How many projects are being tracked?"
+A: {{"intent": "meta_memory", "needs_math": false, "needs_temporal": false, "reasoning": "Asks about the count of stored entities, not about specific project details"}}
+
+Q: "List all team members you know about."
+A: {{"intent": "meta_memory", "needs_math": false, "needs_temporal": false, "reasoning": "Asks for enumeration of stored knowledge, not specific facts"}}
+
 Question: {question}
 
 Return ONLY a JSON object:
-{{"intent": "one of: simple_recall, mathematical_computation, temporal_comparison, multi_source_synthesis, contradiction_resolution, incremental_update, causal_counterfactual, ratio_trend_analysis", "needs_math": true/false, "needs_temporal": true/false, "reasoning": "brief explanation"}}"""
+{{"intent": "one of: simple_recall, mathematical_computation, temporal_comparison, multi_source_synthesis, contradiction_resolution, incremental_update, causal_counterfactual, ratio_trend_analysis, meta_memory", "needs_math": true/false, "needs_temporal": true/false, "reasoning": "brief explanation"}}"""
 
         try:
             response = litellm.completion(

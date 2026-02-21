@@ -1,6 +1,6 @@
 name: "long-horizon-memory-eval"
-description: "1000-turn memory stress test: generate dialogue -> feed turns -> question -> score -> analyze"
-version: "1.0.0"
+description: "1000-turn memory stress test with self-improvement loop: eval -> analyze -> diagnose -> fix -> re-eval"
+version: "2.0.0"
 author: "Amplihack Team"
 tags: ["eval", "memory", "long-horizon", "stress-test", "1000-turn"]
 
@@ -34,6 +34,12 @@ tags: ["eval", "memory", "long-horizon", "stress-test", "1000-turn"]
 #
 # CLI equivalent:
 #   python -m amplihack.eval.long_horizon_memory --turns 1000 --questions 100
+#
+# Self-improvement loop:
+#   python -m amplihack.eval.long_horizon_self_improve --turns 100 --questions 20
+#
+# Multi-agent variant:
+#   python -m amplihack.eval.long_horizon_self_improve --turns 100 --questions 20 --multi-agent
 
 recursion:
   max_depth: 4
@@ -58,12 +64,19 @@ context:
   # Seed for reproducible data generation
   seed: "42"
 
+  # Self-improvement loop settings
+  self_improve: "false"
+  max_iterations: "3"
+  failure_threshold: "0.7"
+  use_multi_agent: "false"
+
   # Internal state
   dialogue_data: ""
   feeding_result: ""
   question_results: ""
   score_report: ""
   analysis: ""
+  self_improve_result: ""
 
 steps:
   # ==========================================================================
@@ -333,6 +346,46 @@ steps:
     parse_json: true
 
   # ==========================================================================
+  # STEP 6: SELF-IMPROVEMENT LOOP (optional)
+  # Run iterative improvement: eval -> analyze -> diagnose -> fix -> re-eval
+  # ==========================================================================
+  - id: "self-improve"
+    type: "bash"
+    condition: "{{self_improve}} == 'true'"
+    command: |
+      echo "=== Step 6: Self-Improvement Loop ==="
+      echo "Max iterations: {{max_iterations}}"
+      echo "Failure threshold: {{failure_threshold}}"
+      echo "Multi-agent: {{use_multi_agent}}"
+      echo ""
+
+      MULTI_AGENT_FLAG=""
+      if [ "{{use_multi_agent}}" = "true" ]; then
+        MULTI_AGENT_FLAG="--multi-agent"
+      fi
+
+      PYTHONPATH=src python -m amplihack.eval.long_horizon_self_improve \
+        --turns {{num_turns}} \
+        --questions {{num_questions}} \
+        --iterations {{max_iterations}} \
+        --threshold {{failure_threshold}} \
+        --output-dir "{{output_dir}}/self_improve" \
+        --seed {{seed}} \
+        $MULTI_AGENT_FLAG \
+        2>&1
+
+      echo ""
+      echo "=== Self-Improvement Loop Complete ==="
+
+      if [ -f "{{output_dir}}/self_improve/self_improve_summary.json" ]; then
+        cat "{{output_dir}}/self_improve/self_improve_summary.json"
+      else
+        echo '{"status": "self-improvement did not produce a summary"}'
+      fi
+    output: "self_improve_result"
+    parse_json: true
+
+  # ==========================================================================
   # FINAL OUTPUT
   # ==========================================================================
   - id: "final-output"
@@ -342,24 +395,28 @@ steps:
       cat << 'EOF'
       {
         "workflow": "long-horizon-memory-eval",
-        "version": "1.0.0",
+        "version": "2.0.0",
         "num_turns": "{{num_turns}}",
         "num_questions": "{{num_questions}}",
         "sdk": "{{sdk}}",
+        "self_improve": "{{self_improve}}",
+        "use_multi_agent": "{{use_multi_agent}}",
         "status": "complete",
-        "steps_completed": 5,
+        "steps_completed": 6,
         "steps": [
           "1. Generate Dialogue Data",
           "2. Feed Turns to Agent",
           "3. Generate and Ask Questions",
           "4. Score and Analyze",
-          "5. Document Findings"
+          "5. Document Findings",
+          "6. Self-Improvement Loop"
         ],
         "outputs": {
           "dialogue": "{{output_dir}}/dialogue.json",
           "questions": "{{output_dir}}/questions.json",
           "eval_report": "{{output_dir}}/eval_report.json",
-          "analysis": "{{output_dir}}/long_horizon_analysis.md"
+          "analysis": "{{output_dir}}/long_horizon_analysis.md",
+          "self_improve": "{{output_dir}}/self_improve/self_improve_summary.json"
         }
       }
       EOF

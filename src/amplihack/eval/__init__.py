@@ -20,6 +20,15 @@ from .long_horizon_memory import (
     EvalResult,
     LongHorizonMemoryEval,
 )
+
+# Long-horizon self-improvement runner
+from .long_horizon_self_improve import (
+    LongHorizonRunnerConfig,
+    run_long_horizon_self_improve,
+)
+from .long_horizon_self_improve import (
+    RunnerResult as LongHorizonRunnerResult,
+)
 from .meta_eval_experiment import ExperimentConfig, ExperimentReport, MetaEvalExperiment
 from .metacognition_grader import Dimension, MetacognitionGrader, MetacognitionScore
 from .multi_source_collector import NewsArticle, collect_news
@@ -51,4 +60,7 @@ __all__ = [
     "EvalReport",
     "CategoryBreakdown",
     "DimensionScore",
+    "run_long_horizon_self_improve",
+    "LongHorizonRunnerConfig",
+    "LongHorizonRunnerResult",
 ]

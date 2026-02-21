@@ -143,6 +143,36 @@ class FlatRetrieverAdapter:
         """
         return self.memory.get_statistics()
 
+    def retrieve_by_entity(self, entity_name: str, limit: int = 50) -> list[dict[str, Any]]:
+        """Retrieve all facts about a specific entity.
+
+        Uses entity-centric indexing for fast lookup without full scan.
+
+        Args:
+            entity_name: Entity name (case-insensitive)
+            limit: Maximum results
+
+        Returns:
+            List of fact dicts matching the entity
+        """
+        nodes = self.memory.retrieve_by_entity(entity_name=entity_name, limit=limit)
+        return [self._node_to_dict(node) for node in nodes]
+
+    def execute_aggregation(self, query_type: str, entity_filter: str = "") -> dict[str, Any]:
+        """Execute Cypher aggregation query for meta-memory questions.
+
+        Routes directly to graph aggregation (COUNT, DISTINCT) instead of
+        text search. Used for questions like "How many projects?".
+
+        Args:
+            query_type: Type of aggregation (count_entities, list_concepts, etc.)
+            entity_filter: Optional filter string
+
+        Returns:
+            Dict with aggregation results
+        """
+        return self.memory.execute_aggregation(query_type=query_type, entity_filter=entity_filter)
+
     def store_episode(self, content: str, source_label: str = "") -> str:
         """Store an episode (raw source content).
 
