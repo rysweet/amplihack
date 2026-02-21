@@ -1,4 +1,11 @@
-"""Base abstraction for SDK-agnostic goal-seeking agents."""
+"""Base abstraction for SDK-agnostic goal-seeking agents.
+
+Philosophy:
+- SDK-agnostic: same interface regardless of underlying SDK
+- Goal-oriented: agents form evaluable goals
+- Spawnable: agents can dynamically create sub-agents for complex tasks
+- Memory-shared: spawned agents share read access to parent memory
+"""
 
 from __future__ import annotations
 
@@ -57,7 +64,12 @@ class Goal:
 
 
 class GoalSeekingAgent(ABC):
-    """Abstract base class for SDK-agnostic goal-seeking agents."""
+    """Abstract base class for SDK-agnostic goal-seeking agents.
+
+    When enable_spawning=True, the agent gains a spawn_agent tool (#8)
+    that allows it to dynamically create sub-agents for complex tasks.
+    Spawned agents share read access to the parent's memory.
+    """
 
     def __init__(
         self,
@@ -68,6 +80,7 @@ class GoalSeekingAgent(ABC):
         storage_path: Path | None = None,
         enable_memory: bool = True,
         enable_eval: bool = False,
+        enable_spawning: bool = False,
     ):
         if not name or not name.strip():
             raise ValueError("Agent name cannot be empty")
@@ -79,10 +92,16 @@ class GoalSeekingAgent(ABC):
         self.storage_path = storage_path or Path.home() / ".amplihack" / "agents" / name
         self.enable_memory = enable_memory
         self.enable_eval = enable_eval
+        self.enable_spawning = enable_spawning
 
         self.memory: Any = None
         if enable_memory:
             self._init_memory()
+
+        # Initialize spawner if enabled
+        self.spawner: Any = None
+        if enable_spawning:
+            self._init_spawner()
 
         self._tools: list[AgentTool] = []
         self._register_learning_tools()
@@ -105,9 +124,25 @@ class GoalSeekingAgent(ABC):
         except Exception as e:
             logger.warning("Failed to initialize memory: %s. Continuing without memory.", e)
 
+    def _init_spawner(self) -> None:
+        """Initialize the AgentSpawner for dynamic sub-agent creation."""
+        try:
+            from amplihack.agents.goal_seeking.sub_agents.agent_spawner import AgentSpawner
+
+            self.spawner = AgentSpawner(
+                parent_agent_name=self.name,
+                parent_memory_path=str(self.storage_path),
+                sdk_type=self.sdk_type.value if isinstance(self.sdk_type, SDKType) else self.sdk_type,
+            )
+            logger.info("Spawner initialized for agent '%s'", self.name)
+        except ImportError:
+            logger.warning("AgentSpawner not available. Continuing without spawning.")
+        except Exception as e:
+            logger.warning("Failed to initialize spawner: %s", e)
+
     def _register_learning_tools(self) -> None:
-        """Register the 7 learning/teaching/applying tools."""
-        tools = [
+        """Register the 7 learning/teaching/applying tools + optional spawn_agent (tool #8)."""
+        tools: list[AgentTool] = [
             AgentTool(
                 name="learn_from_content",
                 description="Learn from text by extracting and storing facts",
@@ -202,8 +237,77 @@ class GoalSeekingAgent(ABC):
                 category="memory",
             ),
         ]
+
+        # Tool #8: spawn_agent (only when spawning is enabled)
+        if self.enable_spawning and self.spawner:
+            tools.append(
+                AgentTool(
+                    name="spawn_agent",
+                    description=(
+                        "Spawn a sub-agent to handle a specific task. "
+                        "Types: retrieval, analysis, synthesis, code_generation, research, auto"
+                    ),
+                    parameters={
+                        "type": "object",
+                        "properties": {
+                            "task": {
+                                "type": "string",
+                                "description": "Task description for the sub-agent",
+                            },
+                            "specialist_type": {
+                                "type": "string",
+                                "enum": [
+                                    "retrieval",
+                                    "analysis",
+                                    "synthesis",
+                                    "code_generation",
+                                    "research",
+                                    "auto",
+                                ],
+                                "default": "auto",
+                                "description": "Type of specialist to spawn",
+                            },
+                        },
+                        "required": ["task"],
+                    },
+                    function=self._tool_spawn_agent,
+                    category="spawning",
+                )
+            )
+
         for t in tools:
             self._tools.append(t)
+
+    def _tool_spawn_agent(self, task: str, specialist_type: str = "auto") -> str:
+        """Tool function: spawn a sub-agent for complex tasks.
+
+        Creates a sub-agent, executes it, and returns the result.
+        The sub-agent shares read access to the parent's memory.
+
+        Args:
+            task: Task description for the sub-agent
+            specialist_type: Type of specialist (auto, retrieval, etc.)
+
+        Returns:
+            Result string from the sub-agent, or error message
+        """
+        if not self.spawner:
+            return "Spawning not enabled for this agent"
+        if not task or not task.strip():
+            return "Error: Task cannot be empty"
+
+        try:
+            self.spawner.spawn(task, specialist_type)
+            results = self.spawner.collect_results(timeout=30.0)
+            completed = [r for r in results if r.status == "completed" and r.task == task]
+            if completed:
+                return completed[-1].result or "Sub-agent completed with no result"
+            failed = [r for r in results if r.status == "failed" and r.task == task]
+            if failed:
+                return f"Sub-agent failed: {failed[-1].error}"
+            return "Sub-agent did not complete"
+        except Exception as e:
+            return f"Spawning failed: {e}"
 
     def _tool_learn(self, content: str) -> dict[str, Any]:
         if not self.memory:
@@ -309,6 +413,11 @@ class GoalSeekingAgent(ABC):
                 self.memory.close()
             except Exception as e:
                 logger.debug("Error closing memory: %s", e)
+        if self.spawner:
+            try:
+                self.spawner.clear()
+            except Exception as e:
+                logger.debug("Error clearing spawner: %s", e)
 
 
 __all__ = ["GoalSeekingAgent", "AgentTool", "AgentResult", "Goal", "SDKType"]

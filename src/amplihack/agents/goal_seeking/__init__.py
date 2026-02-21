@@ -42,12 +42,23 @@ from .hierarchical_memory import (
 from .learning_agent import LearningAgent
 from .memory_retrieval import MemoryRetriever
 from .similarity import compute_similarity, compute_tag_similarity, compute_word_similarity
-from .sub_agents import CoordinatorAgent, MemoryAgent, MultiAgentLearningAgent
+from .sub_agents import (
+    AgentSpawner,
+    CoordinatorAgent,
+    MemoryAgent,
+    MultiAgentLearningAgent,
+    SpawnedAgent,
+    SpecialistType,
+    get_sdk_tool_names,
+    get_sdk_tools,
+    inject_sdk_tools,
+)
 
 # Backward compatibility: old name -> new name
 WikipediaLearningAgent = LearningAgent
 
 __all__ = [
+    "AgentSpawner",
     "AgenticLoop",
     "ActionExecutor",
     "CognitiveAdapter",
@@ -70,7 +81,12 @@ __all__ = [
     "CoordinatorAgent",
     "MemoryAgent",
     "MultiAgentLearningAgent",
+    "SpawnedAgent",
+    "SpecialistType",
     "compute_similarity",
     "compute_tag_similarity",
     "compute_word_similarity",
+    "get_sdk_tool_names",
+    "get_sdk_tools",
+    "inject_sdk_tools",
 ]
