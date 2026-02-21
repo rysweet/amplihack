@@ -310,15 +310,53 @@ class GoalSeekingAgent(ABC):
             return f"Spawning failed: {e}"
 
     def _tool_learn(self, content: str) -> dict[str, Any]:
-        if not self.memory:
-            return {"error": "Memory not initialized"}
+        """Learn from content using LLM-based fact extraction.
+
+        Delegates to LearningAgent.learn_from_content() which extracts
+        structured facts with temporal detection, entity extraction, and
+        proper metadata. This ensures ALL SDK agents get the same quality
+        of fact extraction as the mini/LearningAgent path.
+        """
         if not content or not content.strip():
             return {"error": "Content cannot be empty"}
         content = content[:50_000]
-        self.memory.store_fact(
-            context=f"learned_content_{self.name}", fact=content[:2000], confidence=0.8
-        )
-        return {"status": "learned", "content_length": len(content)}
+
+        # Use LearningAgent for proper LLM-based fact extraction
+        la = self._get_learning_agent()
+        if la:
+            return la.learn_from_content(content)
+
+        # Fallback: raw storage if LearningAgent unavailable
+        if self.memory:
+            self.memory.store_fact(
+                context=f"learned_content_{self.name}", fact=content[:2000], confidence=0.8
+            )
+            return {"status": "learned", "content_length": len(content)}
+        return {"error": "Memory not initialized"}
+
+    def _get_learning_agent(self) -> Any:
+        """Get or create a LearningAgent sharing this agent's memory path.
+
+        Lazily initialized and cached. Used by _tool_learn and _tool_search
+        to provide LLM-based fact extraction and retrieval.
+        """
+        if not hasattr(self, "_learning_agent_cache"):
+            try:
+                from amplihack.agents.goal_seeking.learning_agent import LearningAgent
+
+                # Use Anthropic model for fact extraction regardless of SDK's native model,
+                # since ANTHROPIC_API_KEY is reliably available
+                eval_model = os.environ.get("EVAL_MODEL", "claude-sonnet-4-5-20250929")
+                self._learning_agent_cache: Any = LearningAgent(
+                    agent_name=f"{self.name}_learning",
+                    model=eval_model,
+                    storage_path=self.storage_path,
+                    use_hierarchical=True,
+                )
+            except Exception as e:
+                logger.warning("Failed to create LearningAgent for fact extraction: %s", e)
+                self._learning_agent_cache = None
+        return self._learning_agent_cache
 
     def _tool_search(self, query: str, limit: int = 10) -> list[dict[str, Any]]:
         if not self.memory:
@@ -371,6 +409,58 @@ class GoalSeekingAgent(ABC):
             return self.memory.get_statistics()
         except Exception:
             return {"total_experiences": 0}
+
+    # ------------------------------------------------------------------
+    # Public API: learn_from_content / answer_question
+    # These delegate to LearningAgent for LLM-based extraction/synthesis.
+    # The eval harness and external callers use these directly.
+    # ------------------------------------------------------------------
+
+    def learn_from_content(self, content: str) -> dict[str, Any]:
+        """Learn from content using LLM-based fact extraction.
+
+        Public method matching LearningAgent's interface. Delegates to the
+        internal LearningAgent for proper temporal detection, entity
+        extraction, and structured fact storage.
+        """
+        return self._tool_learn(content)
+
+    def answer_question(self, question: str) -> str:
+        """Answer a question using memory retrieval and LLM synthesis.
+
+        Public method matching LearningAgent's interface. Delegates to the
+        internal LearningAgent for intent detection, retrieval strategy
+        selection, and answer synthesis.
+        """
+        la = self._get_learning_agent()
+        if la:
+            result = la.answer_question(question)
+            if isinstance(result, tuple):
+                return result[0]
+            return result
+        # Fallback: raw memory search
+        results = self._tool_search(query=question, limit=20)
+        if results:
+            facts = "\n".join(r.get("outcome", r.get("fact", ""))[:150] for r in results[:10])
+            return f"Based on stored knowledge:\n{facts}"
+        return "I don't have enough information to answer that question."
+
+    def get_memory_stats(self) -> dict[str, Any]:
+        """Get memory statistics."""
+        return self._tool_summary()
+
+    def close(self) -> None:
+        """Clean up resources."""
+        if hasattr(self, "_learning_agent_cache") and self._learning_agent_cache:
+            try:
+                self._learning_agent_cache.close()
+            except Exception:
+                pass
+        if self.memory and hasattr(self.memory, "close"):
+            try:
+                self.memory.close()
+            except Exception:
+                pass
 
     def form_goal(self, user_intent: str) -> Goal:
         self.current_goal = Goal(
