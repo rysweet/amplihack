@@ -1,0 +1,122 @@
+{
+  "agent_name": "meeting_synthesizer_agent",
+  "domain": "meeting_synthesizer",
+  "overall_score": 0.917,
+  "overall_passed": true,
+  "levels": [
+    {
+      "level_id": "L1",
+      "level_name": "Basic Extraction",
+      "average_score": 0.667,
+      "passed": true,
+      "passing_threshold": 0.6,
+      "scenario_count": 3,
+      "scenarios": [
+        {
+          "scenario_id": "L1-001",
+          "scenario_name": "Simple action extraction",
+          "score": 1.0,
+          "passed": true,
+          "grading_details": "PASS: action_count >= 1 (got 3) | Mentions: 2/2"
+        },
+        {
+          "scenario_id": "L1-002",
+          "scenario_name": "Summary generation",
+          "score": 1.0,
+          "passed": true,
+          "grading_details": "PASS: word_count >= 1 (got 65) | Mentions: 2/2"
+        },
+        {
+          "scenario_id": "L1-003",
+          "scenario_name": "Empty transcript handling",
+          "score": 0.0,
+          "passed": false,
+          "grading_details": "Task failed: No transcript provided"
+        }
+      ]
+    },
+    {
+      "level_id": "L2",
+      "level_name": "Attribution & Detail",
+      "average_score": 1.0,
+      "passed": true,
+      "passing_threshold": 0.6,
+      "scenario_count": 3,
+      "scenarios": [
+        {
+          "scenario_id": "L2-001",
+          "scenario_name": "Owner attribution",
+          "score": 1.0,
+          "passed": true,
+          "grading_details": "PASS: action_count >= 2 (got 3) | Mentions: 2/2"
+        },
+        {
+          "scenario_id": "L2-002",
+          "scenario_name": "Deadline extraction",
+          "score": 1.0,
+          "passed": true,
+          "grading_details": "PASS: action_count >= 1 (got 3) | Mentions: 1/1"
+        },
+        {
+          "scenario_id": "L2-003",
+          "scenario_name": "Multi-speaker identification",
+          "score": 1.0,
+          "passed": true,
+          "grading_details": "PASS: speaker_count >= 4 (got 4) | Mentions: 4/4"
+        }
+      ]
+    },
+    {
+      "level_id": "L3",
+      "level_name": "Decision Tracking",
+      "average_score": 1.0,
+      "passed": true,
+      "passing_threshold": 0.6,
+      "scenario_count": 2,
+      "scenarios": [
+        {
+          "scenario_id": "L3-001",
+          "scenario_name": "Decision identification",
+          "score": 1.0,
+          "passed": true,
+          "grading_details": "PASS: decision_count >= 1 (got 3) | Mentions: 1/1"
+        },
+        {
+          "scenario_id": "L3-002",
+          "scenario_name": "Topic identification",
+          "score": 1.0,
+          "passed": true,
+          "grading_details": "PASS: topic_count >= 1 (got 2)"
+        }
+      ]
+    },
+    {
+      "level_id": "L4",
+      "level_name": "Complex Synthesis",
+      "average_score": 1.0,
+      "passed": true,
+      "passing_threshold": 0.5,
+      "scenario_count": 2,
+      "scenarios": [
+        {
+          "scenario_id": "L4-001",
+          "scenario_name": "Multi-party synthesis",
+          "score": 1.0,
+          "passed": true,
+          "grading_details": "PASS: action_count >= 2 (got 3) | Mentions: 4/4"
+        },
+        {
+          "scenario_id": "L4-002",
+          "scenario_name": "Complete meeting analysis",
+          "score": 1.0,
+          "passed": true,
+          "grading_details": "PASS: action_count >= 2 (got 3) | PASS: decision_count >= 1 (got 1) | Mentions: 2/2"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "levels_evaluated": 4,
+    "total_scenarios": 10
+  }
+}

@@ -1,0 +1,415 @@
+name: "self-improvement-loop"
+description: "Closed-loop eval improvement: EVAL -> ANALYZE -> RESEARCH -> IMPROVE -> RE-EVAL -> DECIDE"
+version: "1.0.0"
+author: "Amplihack Team"
+tags: ["eval", "self-improvement", "learning-agent", "iterative", "quality"]
+
+# SELF-IMPROVEMENT LOOP RECIPE
+#
+# Encodes the iterative improvement process for goal-seeking agents:
+#   1. Run L1-L12 eval with --sdk parameter
+#   2. Run error_analyzer on results
+#   3. Research step (hypothesis, evidence, counter-arguments)
+#   4. Apply improvement (with challenge/review)
+#   5. Re-eval affected levels
+#   6. Commit or revert decision
+#
+# This recipe automates what was previously a manual multi-session process.
+# Each iteration measures before/after, ensuring changes are evidence-based
+# and regressions are caught immediately.
+#
+# Philosophy:
+#   - Measure first, change second
+#   - Every change has a hypothesis and evidence
+#   - Revert on regression, commit on improvement
+#   - Log everything for reproducibility
+#
+# Usage:
+#   amplifier recipes execute self-improvement-loop.yaml --context '{
+#     "sdk": "mini",
+#     "max_iterations": 5,
+#     "levels": "L1 L2 L3 L4 L5 L6",
+#     "improvement_threshold": 2.0,
+#     "regression_tolerance": 5.0
+#   }'
+#
+# CLI equivalent:
+#   python -m amplihack.eval.self_improve.runner --sdk mini --iterations 5
+
+recursion:
+  max_depth: 4
+  max_total_steps: 40
+
+context:
+  # SDK to evaluate: mini, claude, copilot, microsoft
+  sdk: "mini"
+
+  # Maximum number of improvement iterations
+  max_iterations: "5"
+
+  # Levels to evaluate (space-separated)
+  levels: "L1 L2 L3 L4 L5 L6"
+
+  # Minimum percentage improvement required to commit a change
+  improvement_threshold: "2.0"
+
+  # Maximum percentage regression tolerated on any single level
+  regression_tolerance: "5.0"
+
+  # Score threshold below which a question is considered a failure
+  score_threshold: "0.6"
+
+  # Output directory for results
+  output_dir: "./eval_results/self_improve"
+
+  # Agent name prefix for memory isolation
+  agent_name: "self-improve-agent"
+
+  # Dry run mode: analyze only, do not apply changes
+  dry_run: "false"
+
+  # Internal state (populated during execution)
+  baseline_scores: ""
+  analyses: ""
+  research_decisions: ""
+  post_scores: ""
+  iteration_result: ""
+
+steps:
+  # ==========================================================================
+  # STEP 1: RUN BASELINE EVAL (L1-L12)
+  # Run the progressive test suite to establish current scores.
+  # ==========================================================================
+  - id: "run-baseline-eval"
+    type: "bash"
+    command: |
+      echo "=== Step 1: Running Baseline Eval ==="
+      echo "SDK: {{sdk}}"
+      echo "Levels: {{levels}}"
+      echo "Output: {{output_dir}}/baseline"
+      echo ""
+
+      LEVELS_ARGS=""
+      for level in {{levels}}; do
+        LEVELS_ARGS="$LEVELS_ARGS $level"
+      done
+
+      PYTHONPATH=src python -m amplihack.eval.progressive_test_suite \
+        --output-dir "{{output_dir}}/baseline" \
+        --agent-name "{{agent_name}}_baseline_$(date +%s)" \
+        --sdk "{{sdk}}" \
+        --levels $LEVELS_ARGS \
+        2>&1
+
+      echo ""
+      echo "=== Baseline Eval Complete ==="
+      echo ""
+
+      # Output the summary
+      if [ -f "{{output_dir}}/baseline/summary.json" ]; then
+        cat "{{output_dir}}/baseline/summary.json"
+      else
+        echo '{"error": "summary.json not found"}'
+      fi
+    output: "baseline_scores"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 2: ANALYZE FAILURES
+  # Run error_analyzer to classify failures into taxonomy categories.
+  # Maps each failure to a specific code component and prompt template.
+  # ==========================================================================
+  - id: "analyze-failures"
+    agent: "amplihack:architect"
+    prompt: |
+      # Step 2: Analyze Eval Failures
+
+      **Baseline Scores:** {{baseline_scores}}
+      **SDK:** {{sdk}}
+      **Score Threshold:** {{score_threshold}}
+
+      ## Your Task
+
+      Analyze the baseline eval results using the error_analyzer module.
+
+      Run the following Python code to classify failures:
+
+      ```python
+      import json
+      from pathlib import Path
+
+      # Load per-level score files
+      output_dir = Path("{{output_dir}}/baseline")
+      level_results = []
+      for level_dir in sorted(output_dir.iterdir()):
+          scores_file = level_dir / "scores.json"
+          if scores_file.exists():
+              with open(scores_file) as f:
+                  data = json.load(f)
+                  level_results.append({
+                      "level_id": level_dir.name,
+                      "details": data.get("details", [])
+                  })
+
+      # Run error analyzer
+      from amplihack.eval.self_improve.error_analyzer import analyze_eval_results
+      analyses = analyze_eval_results(level_results, score_threshold={{score_threshold}})
+
+      # Output structured results
+      for a in analyses:
+          print(f"  {a.affected_level} | {a.failure_mode} | {a.affected_component} | score={a.score:.0%}")
+          print(f"    Focus: {a.suggested_focus}")
+      ```
+
+      Provide the failure classification results with:
+      - Which levels are underperforming
+      - What failure modes are most common
+      - Which components are responsible
+      - Priority ranking of what to fix first
+
+      Output as JSON:
+      ```json
+      {
+        "total_failures": 0,
+        "failure_summary": [
+          {
+            "failure_mode": "...",
+            "affected_level": "...",
+            "affected_component": "...",
+            "score": 0.0,
+            "priority": 1,
+            "suggested_focus": "..."
+          }
+        ],
+        "patterns": ["recurring patterns across failures"],
+        "highest_priority": "which failure to address first"
+      }
+      ```
+    output: "analyses"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 3: RESEARCH IMPROVEMENTS
+  # For each failure, generate hypothesis, gather evidence, consider
+  # counter-arguments, and decide whether to apply a fix.
+  # ==========================================================================
+  - id: "research-improvements"
+    agent: "amplihack:architect"
+    prompt: |
+      # Step 3: Research Improvements
+
+      **Analyses:** {{analyses}}
+      **Baseline Scores:** {{baseline_scores}}
+      **SDK:** {{sdk}}
+
+      ## Your Task
+
+      For each high-priority failure from the analysis, conduct research:
+
+      1. **Hypothesis**: State a clear hypothesis about what will fix the failure
+      2. **Evidence**: Gather evidence from eval results and codebase
+         - Look at the actual answers vs expected answers
+         - Examine the reasoning traces
+         - Check if it is a systematic pattern or stochastic noise
+      3. **Counter-arguments**: What could go wrong with this fix?
+         - Will it regress other levels?
+         - Is the failure actually stochastic (score > 40%)?
+         - Does the fix affect shared components?
+      4. **Decision**: apply / skip / defer
+
+      Decision criteria:
+      - APPLY if: clear pattern, prompt template available, score < 40%
+      - SKIP if: score > 50% (likely stochastic), no safe fix path
+      - DEFER if: evidence insufficient, need more data
+
+      Output as JSON:
+      ```json
+      {
+        "research_decisions": [
+          {
+            "failure_mode": "...",
+            "affected_level": "...",
+            "hypothesis": "...",
+            "evidence": ["evidence point 1", "evidence point 2"],
+            "counter_arguments": ["risk 1", "risk 2"],
+            "decision": "apply|skip|defer",
+            "reasoning": "...",
+            "proposed_change": "what to change"
+          }
+        ],
+        "apply_count": 0,
+        "skip_count": 0,
+        "defer_count": 0
+      }
+      ```
+    output: "research_decisions"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 4: APPLY IMPROVEMENTS
+  # Apply the researched improvements to code/prompts.
+  # Challenge and review each change before committing.
+  # ==========================================================================
+  - id: "apply-improvements"
+    agent: "amplihack:builder"
+    prompt: |
+      # Step 4: Apply Improvements
+
+      **Research Decisions:** {{research_decisions}}
+      **SDK:** {{sdk}}
+      **Dry Run:** {{dry_run}}
+
+      ## Your Task
+
+      For each decision marked "apply":
+
+      1. **Identify the target file** from the affected_component
+         - Prompt templates: `src/amplihack/agents/goal_seeking/prompts/`
+         - Agent code: `src/amplihack/agents/goal_seeking/`
+         - Memory code: `src/amplihack/memory/`
+      2. **Make the targeted change** based on the proposed_change
+      3. **Challenge the change**: Ask yourself:
+         - Does this change ONLY affect the target failure mode?
+         - Could this regress other levels?
+         - Is this the minimal change needed?
+      4. **Document what was changed** and why
+
+      If dry_run is "true", only describe what would be changed without modifying files.
+
+      Output as JSON:
+      ```json
+      {
+        "changes_applied": [
+          {
+            "file": "path/to/file",
+            "change_description": "what was changed",
+            "failure_mode_targeted": "...",
+            "level_targeted": "...",
+            "risk_assessment": "low|medium|high"
+          }
+        ],
+        "changes_skipped": ["reasons for any skipped changes"],
+        "total_applied": 0
+      }
+      ```
+    output: "applied_changes"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 5: RE-EVAL AFFECTED LEVELS
+  # Run eval again to measure the impact of changes.
+  # Only re-evaluate levels that were affected by the changes.
+  # ==========================================================================
+  - id: "re-eval-affected"
+    type: "bash"
+    command: |
+      echo "=== Step 5: Re-Evaluating Affected Levels ==="
+
+      if [ "{{dry_run}}" = "true" ]; then
+        echo "[DRY RUN] Skipping re-evaluation"
+        echo '{"skipped": true, "reason": "dry_run"}'
+        exit 0
+      fi
+
+      LEVELS_ARGS=""
+      for level in {{levels}}; do
+        LEVELS_ARGS="$LEVELS_ARGS $level"
+      done
+
+      PYTHONPATH=src python -m amplihack.eval.progressive_test_suite \
+        --output-dir "{{output_dir}}/re_eval" \
+        --agent-name "{{agent_name}}_reeval_$(date +%s)" \
+        --sdk "{{sdk}}" \
+        --levels $LEVELS_ARGS \
+        2>&1
+
+      echo ""
+      echo "=== Re-Eval Complete ==="
+      echo ""
+
+      if [ -f "{{output_dir}}/re_eval/summary.json" ]; then
+        cat "{{output_dir}}/re_eval/summary.json"
+      else
+        echo '{"error": "re_eval summary.json not found"}'
+      fi
+    output: "post_scores"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 6: COMMIT OR REVERT DECISION
+  # Compare baseline vs post-change scores.
+  # Commit if improved above threshold, revert if regressed.
+  # ==========================================================================
+  - id: "decide-commit-revert"
+    agent: "amplihack:architect"
+    prompt: |
+      # Step 6: Commit or Revert Decision
+
+      **Baseline Scores:** {{baseline_scores}}
+      **Post-Change Scores:** {{post_scores}}
+      **Applied Changes:** {{applied_changes}}
+      **Improvement Threshold:** {{improvement_threshold}}%
+      **Regression Tolerance:** {{regression_tolerance}}%
+
+      ## Your Task
+
+      Compare baseline and post-change scores:
+
+      1. **Calculate net improvement**: overall post - overall baseline (as percentage)
+      2. **Calculate max regression**: worst single-level regression (as percentage)
+      3. **Decision**:
+         - COMMIT if: net improvement >= threshold AND max regression <= tolerance
+         - REVERT if: max regression > tolerance
+         - MARGINAL COMMIT if: positive improvement but below threshold, no regression
+
+      For COMMIT: describe what to include in the git commit message.
+      For REVERT: describe which changes to undo.
+
+      Output as JSON:
+      ```json
+      {
+        "decision": "commit|revert|marginal_commit",
+        "net_improvement_pct": 0.0,
+        "max_regression_pct": 0.0,
+        "worst_level": "L?",
+        "reasoning": "...",
+        "commit_message": "...",
+        "per_level_deltas": {
+          "L1": "+2.0%",
+          "L2": "-1.0%"
+        }
+      }
+      ```
+    output: "iteration_result"
+    parse_json: true
+
+  # ==========================================================================
+  # FINAL OUTPUT
+  # ==========================================================================
+  - id: "final-output"
+    type: "bash"
+    parse_json: true
+    command: |
+      cat << 'EOF'
+      {
+        "workflow": "self-improvement-loop",
+        "version": "1.0.0",
+        "sdk": "{{sdk}}",
+        "levels": "{{levels}}",
+        "status": "complete",
+        "steps_completed": 6,
+        "steps": [
+          "1. Baseline Eval",
+          "2. Failure Analysis",
+          "3. Research Improvements",
+          "4. Apply Improvements",
+          "5. Re-Eval Affected Levels",
+          "6. Commit/Revert Decision"
+        ],
+        "outputs": {
+          "baseline_dir": "{{output_dir}}/baseline",
+          "re_eval_dir": "{{output_dir}}/re_eval"
+        }
+      }
+      EOF
+    output: "final_result"

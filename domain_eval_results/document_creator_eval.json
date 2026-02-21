@@ -1,0 +1,115 @@
+{
+  "agent_name": "document_creator_agent",
+  "domain": "document_creator",
+  "overall_score": 0.854,
+  "overall_passed": true,
+  "levels": [
+    {
+      "level_id": "L1",
+      "level_name": "Structure Analysis",
+      "average_score": 0.667,
+      "passed": true,
+      "passing_threshold": 0.6,
+      "scenario_count": 3,
+      "scenarios": [
+        {
+          "scenario_id": "L1-001",
+          "scenario_name": "Structured document analysis",
+          "score": 1.0,
+          "passed": true,
+          "grading_details": "PASS: heading_count >= 2 (got 3) | Mentions: 2/2"
+        },
+        {
+          "scenario_id": "L1-002",
+          "scenario_name": "Unstructured content handling",
+          "score": 1.0,
+          "passed": true,
+          "grading_details": "PASS: word_count >= 1 (got 72)"
+        },
+        {
+          "scenario_id": "L1-003",
+          "scenario_name": "Empty content handling",
+          "score": 0.0,
+          "passed": false,
+          "grading_details": "Task failed: No content provided"
+        }
+      ]
+    },
+    {
+      "level_id": "L2",
+      "level_name": "Content Quality",
+      "average_score": 1.0,
+      "passed": true,
+      "passing_threshold": 0.6,
+      "scenario_count": 2,
+      "scenarios": [
+        {
+          "scenario_id": "L2-001",
+          "scenario_name": "Quality evaluation of structured doc",
+          "score": 1.0,
+          "passed": true,
+          "grading_details": "Mentions: 2/2"
+        },
+        {
+          "scenario_id": "L2-002",
+          "scenario_name": "Unstructured doc quality",
+          "score": 1.0,
+          "passed": true,
+          "grading_details": "Mentions: 1/1"
+        }
+      ]
+    },
+    {
+      "level_id": "L3",
+      "level_name": "Formatting",
+      "average_score": 1.0,
+      "passed": true,
+      "passing_threshold": 0.6,
+      "scenario_count": 2,
+      "scenarios": [
+        {
+          "scenario_id": "L3-001",
+          "scenario_name": "Markdown formatting",
+          "score": 1.0,
+          "passed": true,
+          "grading_details": "Mentions: 1/1"
+        },
+        {
+          "scenario_id": "L3-002",
+          "scenario_name": "Format issue detection",
+          "score": 1.0,
+          "passed": true,
+          "grading_details": "Mentions: 1/1"
+        }
+      ]
+    },
+    {
+      "level_id": "L4",
+      "level_name": "Audience Adaptation",
+      "average_score": 0.75,
+      "passed": true,
+      "passing_threshold": 0.5,
+      "scenario_count": 2,
+      "scenarios": [
+        {
+          "scenario_id": "L4-001",
+          "scenario_name": "Technical audience assessment",
+          "score": 0.5,
+          "passed": true,
+          "grading_details": "Mentions: 1/2"
+        },
+        {
+          "scenario_id": "L4-002",
+          "scenario_name": "Executive audience assessment",
+          "score": 1.0,
+          "passed": true,
+          "grading_details": "Mentions: 2/2"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "levels_evaluated": 4,
+    "total_scenarios": 9
+  }
+}

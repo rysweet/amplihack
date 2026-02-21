@@ -2,11 +2,21 @@
 Agent Assembler - Assemble all components into complete goal agent.
 
 Combines goal definition, execution plan, and skills into a runnable agent.
+Supports multi-agent packaging and SDK-specific tool injection.
 """
+
+from __future__ import annotations
 
 import uuid
 
-from .models import ExecutionPlan, GoalAgentBundle, GoalDefinition, SkillDefinition
+from .models import (
+    ExecutionPlan,
+    GoalAgentBundle,
+    GoalDefinition,
+    SDKToolConfig,
+    SkillDefinition,
+    SubAgentConfig,
+)
 from .utils import sanitize_bundle_name
 
 
@@ -20,6 +30,10 @@ class AgentAssembler:
         skills: list[SkillDefinition],
         bundle_name: str | None = None,
         enable_memory: bool = False,
+        sdk: str = "copilot",
+        multi_agent: bool = False,
+        enable_spawning: bool = False,
+        sdk_tools: list[SDKToolConfig] | None = None,
     ) -> GoalAgentBundle:
         """
         Assemble a complete goal agent bundle.
@@ -30,6 +44,10 @@ class AgentAssembler:
             skills: Skills needed for execution
             bundle_name: Optional custom bundle name
             enable_memory: Enable memory/learning capabilities
+            sdk: Target SDK (claude, copilot, microsoft, mini)
+            multi_agent: Enable multi-agent architecture
+            enable_spawning: Enable dynamic sub-agent spawning
+            sdk_tools: SDK-specific tools to include in bundle
 
         Returns:
             Complete GoalAgentBundle ready for packaging
@@ -39,7 +57,9 @@ class AgentAssembler:
             bundle_name = self._generate_bundle_name(goal_definition)
 
         # Create auto-mode configuration
-        auto_mode_config = self._create_auto_mode_config(goal_definition, execution_plan)
+        auto_mode_config = self._create_auto_mode_config(
+            goal_definition, execution_plan, sdk, multi_agent
+        )
 
         # Create metadata
         metadata = self._create_metadata(goal_definition, execution_plan, skills)
@@ -48,6 +68,20 @@ class AgentAssembler:
         if enable_memory:
             metadata["memory_enabled"] = True
             metadata["memory_storage_path"] = "./memory"
+
+        # Add multi-agent metadata
+        if multi_agent:
+            metadata["multi_agent"] = True
+            metadata["enable_spawning"] = enable_spawning
+
+        # Add SDK tool info to metadata
+        if sdk_tools:
+            metadata["sdk_tools"] = [t.to_dict() for t in sdk_tools]
+
+        # Build sub-agent configs when multi_agent is enabled
+        sub_agent_configs: list[SubAgentConfig] = []
+        if multi_agent:
+            sub_agent_configs = self._build_sub_agent_configs(enable_spawning)
 
         # Create bundle
         bundle = GoalAgentBundle(
@@ -59,10 +93,71 @@ class AgentAssembler:
             skills=skills,
             auto_mode_config=auto_mode_config,
             metadata=metadata,
+            sdk_tools=sdk_tools or [],
+            sub_agent_configs=sub_agent_configs,
             status="ready",
         )
 
         return bundle
+
+    def _build_sub_agent_configs(self, enable_spawning: bool) -> list[SubAgentConfig]:
+        """
+        Build sub-agent configurations for multi-agent packaging.
+
+        Args:
+            enable_spawning: Whether to include spawner config
+
+        Returns:
+            List of SubAgentConfig for coordinator, memory agent, and optionally spawner
+        """
+        configs = [
+            SubAgentConfig(
+                role="coordinator",
+                config={
+                    "role": "task_classifier",
+                    "strategies": [
+                        "entity_centric",
+                        "temporal",
+                        "aggregation",
+                        "full_text",
+                        "simple_all",
+                        "two_phase",
+                    ],
+                },
+                filename="coordinator.yaml",
+            ),
+            SubAgentConfig(
+                role="memory_agent",
+                config={
+                    "role": "retrieval_specialist",
+                    "max_facts": 300,
+                    "summarization_threshold": 1000,
+                },
+                filename="memory_agent.yaml",
+            ),
+        ]
+
+        if enable_spawning:
+            configs.append(
+                SubAgentConfig(
+                    role="spawner",
+                    config={
+                        "enabled": True,
+                        "specialist_types": [
+                            "retrieval",
+                            "analysis",
+                            "synthesis",
+                            "code_generation",
+                            "research",
+                        ],
+                        "max_concurrent": 3,
+                        "timeout": 60,
+                    },
+                    filename="spawner.yaml",
+                )
+            )
+
+        return configs
 
     def _generate_bundle_name(self, goal_definition: GoalDefinition) -> str:
         """
@@ -113,7 +208,11 @@ class AgentAssembler:
         return bundle_name
 
     def _create_auto_mode_config(
-        self, goal_definition: GoalDefinition, execution_plan: ExecutionPlan
+        self,
+        goal_definition: GoalDefinition,
+        execution_plan: ExecutionPlan,
+        sdk: str = "copilot",
+        multi_agent: bool = False,
     ) -> dict:
         """Create auto-mode configuration for autonomous execution."""
         # Determine max turns based on complexity and phase count
@@ -127,6 +226,10 @@ class AgentAssembler:
         phase_multiplier = 1 + (execution_plan.phase_count - 3) * 0.2  # Extra turns for more phases
         max_turns = int(base_turns * phase_multiplier)
 
+        # Multi-agent coordination adds overhead; give more turns
+        if multi_agent:
+            max_turns = int(max_turns * 1.5)
+
         # Build initial prompt for auto-mode
         initial_prompt = self._build_initial_prompt(goal_definition, execution_plan)
 
@@ -134,7 +237,7 @@ class AgentAssembler:
             "max_turns": max_turns,
             "initial_prompt": initial_prompt,
             "working_dir": ".",  # Current directory
-            "sdk": "claude",  # Default to Claude SDK
+            "sdk": sdk,  # SDK selected by user (default: copilot)
             "ui_mode": False,  # No UI for goal agents by default
             "success_criteria": goal_definition.success_criteria,
             "constraints": goal_definition.constraints,

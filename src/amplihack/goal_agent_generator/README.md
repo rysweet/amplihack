@@ -72,8 +72,14 @@ Input: prompt.md (natural language goal)
 ### CLI
 
 ```bash
-# Generate from prompt file
+# Generate from prompt file (default SDK: copilot)
 amplihack new --file my_goal.md
+
+# Choose a specific SDK for agent execution
+amplihack new --file my_goal.md --sdk copilot     # GitHub Copilot SDK (default)
+amplihack new --file my_goal.md --sdk claude       # Claude Agent SDK
+amplihack new --file my_goal.md --sdk microsoft    # Microsoft Agent Framework
+amplihack new --file my_goal.md --sdk mini         # Mini-framework (litellm)
 
 # Custom output directory
 amplihack new --file my_goal.md --output ./my_agents
@@ -81,9 +87,23 @@ amplihack new --file my_goal.md --output ./my_agents
 # Custom agent name
 amplihack new --file my_goal.md --name my-custom-agent
 
+# Enable memory/learning capabilities
+amplihack new --file my_goal.md --enable-memory
+
 # Verbose output
 amplihack new --file my_goal.md --verbose
 ```
+
+### SDK Selection
+
+The `--sdk` flag controls which AI SDK the generated agent uses for execution:
+
+| SDK | Package | Best For |
+|---|---|---|
+| `copilot` (default) | `github-copilot-sdk` | General development, file/git/web tools |
+| `claude` | `claude-agents` | Subagent delegation, MCP integration |
+| `microsoft` | `agent-framework` | Structured workflows, telemetry, middleware |
+| `mini` | `litellm` | Lightweight, no SDK dependencies |
 
 ### Python API
 
