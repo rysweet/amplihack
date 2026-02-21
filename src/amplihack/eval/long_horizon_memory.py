@@ -3,7 +3,9 @@
 Philosophy:
 - 1000-turn dialogue tests memory at scale (not just short-horizon recall)
 - Deterministic data generation, reproducible results
-- LLM-graded scoring on 5 dimensions per question
+- Hybrid deterministic + LLM grading: rubric keywords scored without LLM,
+  judgment dimensions (confidence, source attribution) use LLM
+- Multi-vote grading for stability: grade N times, take median per dimension
 - Agent-agnostic: works with any LearningAgent-compatible interface
 
 Public API:
@@ -14,6 +16,7 @@ Public API:
 Usage:
     python -m amplihack.eval.long_horizon_memory --turns 100 --questions 20
     python -m amplihack.eval.long_horizon_memory --turns 1000 --questions 100
+    python -m amplihack.eval.long_horizon_memory --sdk claude --grader-votes 5
 """
 
 from __future__ import annotations
@@ -22,12 +25,15 @@ import argparse
 import json
 import logging
 import os
+import re
+import statistics
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from .long_horizon_data import (
+    GradingRubric,
     GroundTruth,
     Question,
     generate_dialogue,
@@ -141,6 +147,181 @@ ALL_DIMENSIONS = [
     "source_attribution",
     "confidence_calibration",
 ]
+
+
+# Dimensions that can be graded deterministically when a rubric is present
+_DETERMINISTIC_DIMENSIONS = {"factual_accuracy", "specificity"}
+
+# Dimensions that always require LLM judgment
+_LLM_ONLY_DIMENSIONS = {"confidence_calibration", "source_attribution", "temporal_awareness"}
+
+
+def _deterministic_grade(
+    rubric: GradingRubric,
+    actual_answer: str,
+    dimensions: list[str],
+) -> dict[str, DimensionScore]:
+    """Grade deterministic dimensions using regex/string matching against rubric.
+
+    Returns a dict mapping dimension name -> DimensionScore for every dimension
+    in `dimensions` that can be scored deterministically. Dimensions not in
+    _DETERMINISTIC_DIMENSIONS are skipped (returned dict won't contain them).
+
+    Scoring logic:
+    - Start with keyword match ratio (required_keywords found / total required)
+    - Bonus +0.1 for each acceptable_paraphrase found (capped at 1.0)
+    - Score 0.0 if any incorrect_pattern matches
+    """
+    answer_lower = actual_answer.lower()
+    scores: dict[str, DimensionScore] = {}
+
+    for dim in dimensions:
+        if dim not in _DETERMINISTIC_DIMENSIONS:
+            continue
+
+        # Check incorrect patterns first -- instant 0
+        if rubric.incorrect_patterns:
+            found_incorrect = any(
+                re.search(re.escape(pat.lower()), answer_lower) for pat in rubric.incorrect_patterns
+            )
+            if found_incorrect:
+                scores[dim] = DimensionScore(
+                    dimension=dim,
+                    score=0.0,
+                    reasoning="Answer contains incorrect pattern from rubric",
+                )
+                continue
+
+        # Keyword matching
+        if rubric.required_keywords:
+            matched = sum(
+                1
+                for kw in rubric.required_keywords
+                if re.search(re.escape(kw.lower()), answer_lower)
+            )
+            ratio = matched / len(rubric.required_keywords)
+        else:
+            ratio = 0.5  # No keywords = neutral
+
+        # Paraphrase bonus
+        if rubric.acceptable_paraphrases:
+            paraphrase_hits = sum(
+                1
+                for p in rubric.acceptable_paraphrases
+                if re.search(re.escape(p.lower()), answer_lower)
+            )
+            ratio = min(1.0, ratio + paraphrase_hits * 0.1)
+
+        reasoning_parts = []
+        if rubric.required_keywords:
+            reasoning_parts.append(
+                f"Matched {matched}/{len(rubric.required_keywords)} required keywords"
+            )
+        if rubric.acceptable_paraphrases and paraphrase_hits:
+            reasoning_parts.append(f"+{paraphrase_hits} paraphrase bonus")
+
+        scores[dim] = DimensionScore(
+            dimension=dim,
+            score=round(ratio, 4),
+            reasoning="; ".join(reasoning_parts) if reasoning_parts else "Deterministic score",
+        )
+
+    return scores
+
+
+def _grade_hybrid(
+    question: Question,
+    actual_answer: str,
+    dimensions: list[str],
+    grader_model: str = "",
+) -> list[DimensionScore]:
+    """Hybrid grading: deterministic for rubric-compatible dimensions, LLM for the rest.
+
+    If the question has a rubric, factual_accuracy and specificity are scored
+    deterministically. Remaining dimensions (temporal_awareness,
+    source_attribution, confidence_calibration) are sent to the LLM.
+    If no rubric exists, all dimensions go to LLM (backward compatible).
+    """
+    if not question.rubric:
+        return _grade_with_llm(question, actual_answer, dimensions, grader_model)
+
+    # Score deterministic dimensions
+    det_scores = _deterministic_grade(question.rubric, actual_answer, dimensions)
+
+    # Remaining dimensions need LLM
+    remaining = [d for d in dimensions if d not in det_scores]
+
+    if remaining:
+        llm_scores = _grade_with_llm(question, actual_answer, remaining, grader_model)
+        llm_map = {s.dimension: s for s in llm_scores}
+    else:
+        llm_map = {}
+
+    # Merge in original order
+    result: list[DimensionScore] = []
+    for dim in dimensions:
+        if dim in det_scores:
+            result.append(det_scores[dim])
+        elif dim in llm_map:
+            result.append(llm_map[dim])
+        else:
+            result.append(DimensionScore(dimension=dim, score=0.0, reasoning="Not graded"))
+
+    # Apply dimension weights from rubric if provided
+    if question.rubric.dimension_weights:
+        for ds in result:
+            if ds.dimension in question.rubric.dimension_weights:
+                w = question.rubric.dimension_weights[ds.dimension]
+                ds.score = round(ds.score * w, 4)
+                ds.reasoning += f" (weight={w})"
+
+    return result
+
+
+def _grade_multi_vote(
+    question: Question,
+    actual_answer: str,
+    dimensions: list[str],
+    grader_model: str = "",
+    num_votes: int = 3,
+) -> list[DimensionScore]:
+    """Grade with multiple votes and take median score per dimension.
+
+    Calls _grade_hybrid N times and returns the median score per dimension.
+    For N=1, this is equivalent to a single call (no overhead).
+    """
+    if num_votes <= 1:
+        return _grade_hybrid(question, actual_answer, dimensions, grader_model)
+
+    # Collect all vote results
+    all_votes: dict[str, list[float]] = {d: [] for d in dimensions}
+    all_reasoning: dict[str, list[str]] = {d: [] for d in dimensions}
+
+    for _ in range(num_votes):
+        scores = _grade_hybrid(question, actual_answer, dimensions, grader_model)
+        for ds in scores:
+            all_votes[ds.dimension].append(ds.score)
+            all_reasoning[ds.dimension].append(ds.reasoning)
+
+    # Take median per dimension
+    result: list[DimensionScore] = []
+    for dim in dimensions:
+        votes = all_votes[dim]
+        median_score = statistics.median(votes) if votes else 0.0
+        # Pick reasoning from the vote closest to median
+        best_idx = min(range(len(votes)), key=lambda i: abs(votes[i] - median_score))
+        reasoning = all_reasoning[dim][best_idx]
+        reasoning += f" [median of {len(votes)} votes: {', '.join(f'{v:.2f}' for v in votes)}]"
+
+        result.append(
+            DimensionScore(
+                dimension=dim,
+                score=round(median_score, 4),
+                reasoning=reasoning,
+            )
+        )
+
+    return result
 
 
 def _grade_with_llm(
@@ -301,10 +482,16 @@ class LongHorizonMemoryEval:
     Generates structured dialogue content, feeds it to an agent's learn method,
     then quizzes the agent on details from various points in the conversation.
 
+    Grading uses a hybrid approach:
+    - Deterministic: factual_accuracy and specificity scored via rubric keywords
+    - LLM: temporal_awareness, source_attribution, confidence_calibration
+    - Multi-vote: each question graded N times, median score per dimension
+
     Args:
         num_turns: Number of dialogue turns (default 1000)
         num_questions: Number of quiz questions (default 100)
         seed: Random seed for reproducibility (default 42)
+        grader_votes: Number of grading votes per question (default 3)
 
     Example:
         >>> from amplihack.agents.goal_seeking.learning_agent import LearningAgent
@@ -319,10 +506,12 @@ class LongHorizonMemoryEval:
         num_turns: int = 1000,
         num_questions: int = 100,
         seed: int = 42,
+        grader_votes: int = 3,
     ):
         self.num_turns = num_turns
         self.num_questions = num_questions
         self.seed = seed
+        self.grader_votes = max(1, grader_votes)
         self.ground_truth: GroundTruth | None = None
         self.questions: list[Question] = []
 
@@ -413,10 +602,12 @@ class LongHorizonMemoryEval:
                 logger.warning("Agent failed to answer: %s", e)
                 answer = f"Error: {e}"
 
-            # Grade the answer
+            # Grade the answer (hybrid deterministic + LLM, with multi-vote)
             grade_start = time.time()
             dimensions = q.scoring_dimensions or ["factual_accuracy"]
-            dim_scores = _grade_with_llm(q, answer, dimensions, grader_model)
+            dim_scores = _grade_multi_vote(
+                q, answer, dimensions, grader_model, num_votes=self.grader_votes
+            )
             grade_time = time.time() - grade_start
             grade_total += grade_time
 
@@ -578,6 +769,47 @@ def _print_report(report: EvalReport) -> None:
         print()
 
 
+class _SDKAgentWrapper:
+    """Wraps a GoalSeekingAgent to provide learn_from_content/answer_question API.
+
+    The LongHorizonMemoryEval expects an agent with synchronous
+    learn_from_content(str) and answer_question(str) methods.
+    GoalSeekingAgent has async run(str) instead, so this wrapper bridges
+    the interface using asyncio.run().
+    """
+
+    def __init__(self, sdk_agent: Any):
+        self._agent = sdk_agent
+
+    def learn_from_content(self, content: str) -> dict[str, Any]:
+        """Learn from content using the SDK agent's tool."""
+        import asyncio
+
+        result = asyncio.run(self._agent.run(f"Learn and memorize this: {content}"))
+        return {"status": "learned", "response": result.response[:200]}
+
+    def answer_question(self, question: str) -> str:
+        """Answer a question using the SDK agent."""
+        import asyncio
+
+        result = asyncio.run(self._agent.run(question))
+        return result.response
+
+    def get_memory_stats(self) -> dict[str, Any]:
+        """Get memory statistics if available."""
+        if hasattr(self._agent, "memory") and self._agent.memory:
+            try:
+                return self._agent.memory.get_statistics()
+            except Exception:
+                pass
+        return {}
+
+    def close(self) -> None:
+        """Close the underlying agent."""
+        if hasattr(self._agent, "close"):
+            self._agent.close()
+
+
 def main() -> None:
     """CLI entry point for long-horizon memory evaluation."""
     parser = argparse.ArgumentParser(
@@ -611,6 +843,19 @@ def main() -> None:
         default=True,
         help="Use hierarchical memory (default: True)",
     )
+    parser.add_argument(
+        "--grader-votes",
+        type=int,
+        default=3,
+        help="Number of grading votes per question for multi-vote stability (default: 3)",
+    )
+    parser.add_argument(
+        "--sdk",
+        type=str,
+        default="mini",
+        choices=["mini", "claude", "copilot", "microsoft"],
+        help="SDK to use for the agent (default: mini = LearningAgent directly)",
+    )
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
 
     args = parser.parse_args()
@@ -630,20 +875,37 @@ def main() -> None:
     # Set model if provided
     agent_model = args.model or os.environ.get("EVAL_MODEL", "claude-sonnet-4-5-20250929")
 
-    # Create agent
+    # Create agent based on --sdk choice
     logger.info(
-        "Creating LearningAgent with model=%s, hierarchical=%s", agent_model, args.use_hierarchical
+        "Creating agent with sdk=%s, model=%s, hierarchical=%s",
+        args.sdk,
+        agent_model,
+        args.use_hierarchical,
     )
-
-    from amplihack.agents.goal_seeking.learning_agent import LearningAgent
 
     db_path = output_dir / "memory_db"
-    agent = LearningAgent(
-        agent_name="long_horizon_eval",
-        model=agent_model,
-        storage_path=db_path,
-        use_hierarchical=args.use_hierarchical,
-    )
+
+    if args.sdk == "mini":
+        from amplihack.agents.goal_seeking.learning_agent import LearningAgent
+
+        agent = LearningAgent(
+            agent_name="long_horizon_eval",
+            model=agent_model,
+            storage_path=db_path,
+            use_hierarchical=args.use_hierarchical,
+        )
+    else:
+        from amplihack.agents.goal_seeking.sdk_adapters.factory import create_agent
+
+        sdk_agent = create_agent(
+            name="long_horizon_eval",
+            sdk=args.sdk,
+            model=agent_model,
+            storage_path=db_path,
+            enable_memory=True,
+        )
+        # Wrap SDK agent to provide learn_from_content / answer_question interface
+        agent = _SDKAgentWrapper(sdk_agent)
 
     try:
         # Run evaluation
@@ -651,6 +913,7 @@ def main() -> None:
             num_turns=args.turns,
             num_questions=args.questions,
             seed=args.seed,
+            grader_votes=args.grader_votes,
         )
 
         report = evaluator.run(agent, grader_model=args.grader_model)
@@ -699,4 +962,7 @@ __all__ = [
     "EvalReport",
     "CategoryBreakdown",
     "DimensionScore",
+    "_deterministic_grade",
+    "_grade_hybrid",
+    "_grade_multi_vote",
 ]
