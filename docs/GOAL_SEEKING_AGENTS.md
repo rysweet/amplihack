@@ -1126,6 +1126,86 @@ src/amplihack/
 
 ---
 
+## Teaching Agent
+
+An interactive teaching agent is available to guide users through the entire
+goal-seeking agent system. It covers agent generation, SDK selection,
+multi-agent architecture, evaluations, and the self-improvement loop.
+
+### Starting a Teaching Session
+
+```python
+from amplihack.agents.teaching.generator_teacher import GeneratorTeacher
+
+teacher = GeneratorTeacher()
+
+# See the curriculum overview
+print(teacher.get_progress_report())
+
+# Get the next recommended lesson
+lesson = teacher.get_next_lesson()
+
+# Teach it
+content = teacher.teach_lesson(lesson.id)
+print(content)
+```
+
+### Curriculum (10 Lessons)
+
+| Lesson | Title                               | Prerequisites |
+| ------ | ----------------------------------- | ------------- |
+| L01    | Introduction to Goal-Seeking Agents | None          |
+| L02    | Your First Agent (CLI Basics)       | L01           |
+| L03    | SDK Selection Guide                 | L02           |
+| L04    | Multi-Agent Architecture            | L02, L03      |
+| L05    | Agent Spawning                      | L04           |
+| L06    | Running Evaluations                 | L02           |
+| L07    | Understanding Eval Levels L1-L12    | L06           |
+| L08    | Self-Improvement Loop               | L06, L07      |
+| L09    | Security Domain Agents (Advanced)   | L03, L04, L06 |
+| L10    | Custom Eval Levels (Advanced)       | L07, L08      |
+
+Each lesson includes:
+
+- Teaching content with explanations and code examples.
+- 2+ hands-on exercises with validation.
+- 3+ quiz questions with explanations.
+
+### Checking Exercises and Running Quizzes
+
+```python
+# Check a user's exercise submission
+feedback = teacher.check_exercise("L02", "E02-01", user_answer)
+
+# Run the quiz for a lesson (pass answers list)
+result = teacher.run_quiz("L02", answers=["answer1", "answer2", "answer3"])
+print(f"Score: {result.quiz_score:.0%}, Passed: {result.passed}")
+```
+
+### Extending the Curriculum
+
+To add new lessons, create a new `_build_lesson_N()` function in
+`src/amplihack/agents/teaching/generator_teacher.py` and append it to the
+`_build_curriculum()` method. Each lesson needs:
+
+- A unique ID (e.g., `L11`).
+- Prerequisites that reference existing lesson IDs.
+- At least 2 exercises and 3 quiz questions.
+
+### Tutorial Document
+
+A comprehensive written tutorial is available at
+`docs/tutorials/GOAL_SEEKING_AGENT_TUTORIAL.md`, covering all 10 curriculum
+topics with code examples, exercises, and a troubleshooting guide.
+
+### Claude Code Skill
+
+The teaching agent is also available as a Claude Code skill
+(`agent-generator-tutor`). When a user asks about agent generation or
+evaluation, Claude can invoke the skill to start an interactive session.
+
+---
+
 ## Current Scores
 
 Best observed medians from development (3-run median, mini SDK):
