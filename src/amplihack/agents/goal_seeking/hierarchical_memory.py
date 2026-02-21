@@ -665,19 +665,22 @@ class HierarchicalMemory:
     ) -> None:
         """Compute similarity against recent nodes and create SIMILAR_TO edges.
 
-        Scales the scan window proportionally to KB size (50% of total nodes,
-        min 100, max 500) so that older facts remain reachable via similarity
-        edges even as the knowledge base grows. Creates edges for similarity
-        scores > 0.3 and detects contradictions between high-similarity facts.
+        Scans ALL nodes in the knowledge base for similarity comparison.
+        Kuzu graph queries are fast and memory is not a constraint, so there
+        is no artificial cap on the scan window. This ensures older facts
+        remain reachable via similarity edges regardless of KB size.
+        Creates edges for similarity scores > 0.3 and detects contradictions.
         """
         try:
-            # Scale scan window: 50% of KB size, min 100, max 500
+            # Scan all nodes - no artificial cap. Kuzu handles large scans efficiently
+            # and we have plenty of memory. Previous cap of 500 caused retrieval
+            # failures at ~350 nodes (only 29% coverage). Now we scan everything.
             count_result = self.connection.execute(
                 "MATCH (m:SemanticMemory) WHERE m.agent_id = $aid RETURN COUNT(m)",
                 {"aid": self.agent_name},
             )
             total_nodes = count_result.get_next()[0] if count_result.has_next() else 0
-            scan_window = max(100, min(int(total_nodes * 0.5), 500))
+            scan_window = max(100, total_nodes)
 
             result = self.connection.execute(
                 """
