@@ -211,20 +211,38 @@ class RecipeRunner:
             except (json.JSONDecodeError, TypeError):
                 pass
 
-        # Strategy 3: Find first JSON object or array
-        brace = re.search(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", text, re.DOTALL)
-        if brace:
-            try:
-                return json.loads(brace.group(0))
-            except (json.JSONDecodeError, TypeError):
-                pass
-
-        bracket = re.search(r"\[.*\]", text, re.DOTALL)
-        if bracket:
-            try:
-                return json.loads(bracket.group(0))
-            except (json.JSONDecodeError, TypeError):
-                pass
+        # Strategy 3: Find first balanced JSON object or array via counting
+        for open_ch, close_ch in [("{", "}"), ("[", "]")]:
+            start = text.find(open_ch)
+            if start == -1:
+                continue
+            depth = 0
+            in_string = False
+            escape = False
+            for i in range(start, len(text)):
+                ch = text[i]
+                if escape:
+                    escape = False
+                    continue
+                if ch == "\\":
+                    escape = True
+                    continue
+                if ch == '"':
+                    in_string = not in_string
+                    continue
+                if in_string:
+                    continue
+                if ch == open_ch:
+                    depth += 1
+                elif ch == close_ch:
+                    depth -= 1
+                    if depth == 0:
+                        candidate = text[start : i + 1]
+                        try:
+                            return json.loads(candidate)
+                        except (json.JSONDecodeError, TypeError):
+                            break  # Try next delimiter type
+            # If we exit without finding balanced braces, try next type
 
         logger.warning("All JSON extraction strategies failed for step '%s'", step_id)
         return None

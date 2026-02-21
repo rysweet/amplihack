@@ -9,6 +9,7 @@ monitored so callers can observe progress in real time.
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import threading
@@ -63,8 +64,6 @@ class CLISubprocessAdapter:
 
         # Launch process – no timeout
         # CRITICAL: Remove CLAUDECODE env var so nested claude sessions work
-        import os
-
         child_env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
         with open(output_file, "w") as log_fh:
             proc = subprocess.Popen(
@@ -122,12 +121,14 @@ class CLISubprocessAdapter:
         Uses explicit bash invocation instead of shell=True to prevent
         injection vulnerabilities (per PR #2010 security fix).
         """
+        child_env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
         result = subprocess.run(
             ["/bin/bash", "-c", command],
             capture_output=True,
             text=True,
             cwd=working_dir or self._working_dir,
             timeout=timeout,
+            env=child_env,
         )
         if result.returncode != 0:
             raise RuntimeError(

@@ -12,6 +12,7 @@ Covers:
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from amplihack.recipes.models import Step, StepType
@@ -173,35 +174,50 @@ class TestConditionFailure:
 class TestCLAUDECODEStripped:
     """Test that CLAUDECODE is removed from subprocess environment."""
 
-    def test_claudecode_not_in_child_env(self):
+    def test_claudecode_not_in_agent_step_env(self):
         from amplihack.recipes.adapters.cli_subprocess import CLISubprocessAdapter
 
         adapter = CLISubprocessAdapter(cli="echo", working_dir="/tmp")
 
-        # Patch Popen to capture the env argument
-        with patch("subprocess.Popen") as mock_popen:
+        with patch("amplihack.recipes.adapters.cli_subprocess.subprocess.Popen") as mock_popen:
             mock_proc = MagicMock()
             mock_proc.returncode = 0
             mock_proc.wait = MagicMock()
             mock_popen.return_value = mock_proc
 
-            # Set CLAUDECODE in current env
-            with patch.dict(os.environ, {"CLAUDECODE": "1"}):
-                try:
-                    adapter.execute_agent_step("test prompt")
-                except Exception:
-                    pass  # We just want to check the Popen call
+            # Mock the output file operations
+            with patch("builtins.open", MagicMock()):
+                with patch.object(Path, "mkdir"):
+                    with patch.object(Path, "read_text", return_value="test output"):
+                        with patch.object(Path, "unlink"):
+                            with patch.dict(os.environ, {"CLAUDECODE": "1"}):
+                                adapter.execute_agent_step("test prompt")
 
-            # Verify Popen was called with env that does NOT contain CLAUDECODE
-            if mock_popen.called:
-                call_kwargs = mock_popen.call_args
-                child_env = call_kwargs.kwargs.get("env") or (
-                    call_kwargs[1].get("env") if len(call_kwargs) > 1 else None
-                )
-                if child_env is not None:
-                    assert "CLAUDECODE" not in child_env, (
-                        "CLAUDECODE must be stripped from child process environment"
-                    )
+            # Popen MUST have been called
+            assert mock_popen.called, "Popen should have been called"
+            child_env = mock_popen.call_args.kwargs.get("env")
+            assert child_env is not None, "env must be passed to Popen"
+            assert "CLAUDECODE" not in child_env, (
+                "CLAUDECODE must be stripped from agent step subprocess environment"
+            )
+
+    def test_claudecode_not_in_bash_step_env(self):
+        from amplihack.recipes.adapters.cli_subprocess import CLISubprocessAdapter
+
+        adapter = CLISubprocessAdapter(cli="echo", working_dir="/tmp")
+
+        with patch("amplihack.recipes.adapters.cli_subprocess.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stdout="ok", stderr="")
+
+            with patch.dict(os.environ, {"CLAUDECODE": "1"}):
+                adapter.execute_bash_step("echo hello")
+
+            assert mock_run.called, "subprocess.run should have been called"
+            child_env = mock_run.call_args.kwargs.get("env")
+            assert child_env is not None, "env must be passed to subprocess.run"
+            assert "CLAUDECODE" not in child_env, (
+                "CLAUDECODE must be stripped from bash step subprocess environment"
+            )
 
 
 class TestRecipeYAMLValidation:
@@ -249,48 +265,53 @@ class TestRecipeYAMLValidation:
             )
 
     def test_conditions_reference_valid_outputs(self):
-        """Every condition must reference an output variable defined by a prior step."""
+        """Every condition must reference a variable defined by a prior step or context default."""
         import re
 
         from amplihack.recipes.parser import RecipeParser
 
         parser = RecipeParser()
+        errors = []
         for path in self._get_recipe_files():
             recipe = parser.parse_file(path)
             defined_outputs = set()
+            # Context defaults are also valid variable sources
+            context_keys = set(recipe.context.keys()) if recipe.context else set()
 
             for step in recipe.steps:
                 if step.condition:
-                    # Extract variable names from condition
-                    # e.g., "classification.is_qa" → "classification"
-                    vars_used = re.findall(r"\b([a-zA-Z_]\w*)\.", step.condition)
-                    vars_used += re.findall(r"^([a-zA-Z_]\w*)\s", step.condition)
-                    vars_used += re.findall(r"'(\w+)'\s+in\s+(\w+)", step.condition)
+                    # Extract ROOT variable names from condition
+                    # "strategy.parallel_deployment.specialist_agent" → "strategy"
+                    # "'CONTINUE' in iteration_1" → "iteration_1"
+                    # "num_versions >= 4" → "num_versions"
+                    vars_used = set()
+                    # Match the first identifier in a dotted chain
+                    for match in re.findall(r"\b([a-zA-Z_]\w*)(?:\.\w+)+", step.condition):
+                        vars_used.add(match)
+                    # Match standalone identifiers in 'X in Y' patterns
+                    for match in re.findall(r"'[^']+'\s+in\s+(\w+)", step.condition):
+                        vars_used.add(match)
+                    # Match standalone identifiers NOT preceded by a dot
+                    # (to avoid extracting nested attrs like .requires_debate)
+                    for match in re.findall(r"(?<![.\w])([a-zA-Z_]\w+)\s*[=!><]+", step.condition):
+                        vars_used.add(match)
 
-                    for var in vars_used:
-                        if isinstance(var, tuple):
-                            var = var[1]  # Get the variable name from 'X' in Y
-                        # Skip Python builtins and literals
-                        if var in (
-                            "true",
-                            "false",
-                            "True",
-                            "False",
-                            "None",
-                            "not",
-                            "and",
-                            "or",
-                            "in",
-                            "is",
-                            "CONTINUE",
-                        ):
-                            continue
-                        # The variable should be defined as an output of a prior step
-                        # or be a context default
-                        # (We can't enforce this 100% due to context defaults, but flag obviously wrong ones)
+                    builtins = {
+                        "true", "false", "True", "False", "None",
+                        "not", "and", "or", "in", "is", "CONTINUE",
+                    }
+                    for var in vars_used - builtins:
+                        if var not in defined_outputs and var not in context_keys:
+                            errors.append(
+                                f"{recipe.name}/{step.id}: condition references "
+                                f"'{var}' but it is not defined by a prior step "
+                                f"or context default"
+                            )
 
                 if step.output:
                     defined_outputs.add(step.output)
+
+        assert not errors, "Condition-output mismatches found:\n" + "\n".join(errors)
 
 
 class TestRecipeRunnerEndToEnd:
