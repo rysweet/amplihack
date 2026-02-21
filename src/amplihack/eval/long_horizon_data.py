@@ -33,6 +33,27 @@ class Turn:
 
 
 @dataclass
+class GradingRubric:
+    """Deterministic grading rubric for a question.
+
+    Enables hybrid deterministic + LLM grading: when a rubric is present,
+    factual_accuracy and specificity can be scored via regex/string matching
+    instead of calling the LLM.
+
+    Fields:
+        required_keywords: Must appear in answer (case-insensitive)
+        acceptable_paraphrases: Alternative acceptable forms
+        incorrect_patterns: If these appear, score 0
+        dimension_weights: Override default equal weighting per dimension
+    """
+
+    required_keywords: list[str] = field(default_factory=list)
+    acceptable_paraphrases: list[str] = field(default_factory=list)
+    incorrect_patterns: list[str] = field(default_factory=list)
+    dimension_weights: dict[str, float] = field(default_factory=dict)
+
+
+@dataclass
 class Question:
     """A quiz question with expected answer and scoring metadata."""
 
@@ -42,6 +63,7 @@ class Question:
     category: str  # needle_in_haystack, temporal_evolution, etc.
     relevant_turns: list[int]  # Which turns contain the answer
     scoring_dimensions: list[str]  # Which dimensions matter for this question
+    rubric: GradingRubric | None = None
 
 
 @dataclass
@@ -1416,6 +1438,51 @@ def _question_references_delivered(
     return True
 
 
+def _make_rubric(
+    expected_answer: str,
+    keywords: list[str] | None = None,
+    paraphrases: list[str] | None = None,
+    incorrect: list[str] | None = None,
+    weights: dict[str, float] | None = None,
+) -> GradingRubric:
+    """Build a GradingRubric from an expected answer.
+
+    If keywords are not supplied, extracts key terms from the expected answer:
+    numbers, proper nouns, and technical terms. This is a deterministic helper
+    -- no LLM calls.
+    """
+    import re
+
+    if keywords is None:
+        keywords = []
+        # Extract numbers (including $, %, decimals)
+        nums = re.findall(r"[\$]?[\d]+[.,]?[\d]*[%KMB]?", expected_answer)
+        keywords.extend(nums)
+        # Extract capitalised multi-word names (e.g. "Sarah Chen", "Project Atlas")
+        names = re.findall(r"[A-Z][a-z]+(?:\s+[A-Z][a-z]+)+", expected_answer)
+        keywords.extend(names)
+        # Extract single capitalised words > 2 chars that aren't common stop words
+        singles = re.findall(r"\b[A-Z][a-z]{2,}\b", expected_answer)
+        stop = {"The", "And", "For", "From", "Was", "Are", "Not", "All", "Has", "But"}
+        keywords.extend(w for w in singles if w not in stop)
+        # Deduplicate while preserving order
+        seen: set[str] = set()
+        deduped: list[str] = []
+        for k in keywords:
+            kl = k.lower()
+            if kl not in seen:
+                seen.add(kl)
+                deduped.append(k)
+        keywords = deduped
+
+    return GradingRubric(
+        required_keywords=keywords,
+        acceptable_paraphrases=paraphrases or [],
+        incorrect_patterns=incorrect or [],
+        dimension_weights=weights or {},
+    )
+
+
 def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> list[Question]:
     """Generate quiz questions targeting specific memory capabilities.
 
@@ -1444,6 +1511,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="needle_in_haystack",
             relevant_turns=[0],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("March 15", keywords=["March", "15"]),
         ),
         Question(
             question_id="needle_02",
@@ -1452,6 +1520,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="needle_in_haystack",
             relevant_turns=[0],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric("gluten", keywords=["gluten"]),
         ),
         Question(
             question_id="needle_03",
@@ -1460,6 +1529,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="needle_in_haystack",
             relevant_turns=[0],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric("calligraphy", keywords=["calligraphy"]),
         ),
         Question(
             question_id="needle_04",
@@ -1468,6 +1538,11 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="needle_in_haystack",
             relevant_turns=[0],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "PhD Statistics from MIT",
+                keywords=["PhD", "Statistics", "MIT"],
+                paraphrases=["Ph.D.", "doctorate"],
+            ),
         ),
         Question(
             question_id="needle_05",
@@ -1476,6 +1551,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="needle_in_haystack",
             relevant_turns=[0],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("Thor, a husky", keywords=["Thor", "husky"]),
         ),
         Question(
             question_id="needle_06",
@@ -1484,6 +1560,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="needle_in_haystack",
             relevant_turns=[0],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric("Lagos, Nigeria", keywords=["Lagos", "Nigeria"]),
         ),
         Question(
             question_id="needle_07",
@@ -1492,6 +1569,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="needle_in_haystack",
             relevant_turns=[0],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric("Mobile", keywords=["Mobile"]),
         ),
         Question(
             question_id="needle_08",
@@ -1500,6 +1578,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="needle_in_haystack",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("$500K", keywords=["500"], paraphrases=["$500,000", "$500k"]),
         ),
         Question(
             question_id="needle_09",
@@ -1508,6 +1587,11 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="needle_in_haystack",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric(
+                "DuckDB is an in-process OLAP database",
+                keywords=["DuckDB", "OLAP"],
+                paraphrases=["in-process", "analytical"],
+            ),
         ),
         Question(
             question_id="needle_10",
@@ -1516,6 +1600,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="needle_in_haystack",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("10.0", keywords=["10.0"], paraphrases=["10"]),
         ),
         Question(
             question_id="needle_11",
@@ -1524,6 +1609,11 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="needle_in_haystack",
             relevant_turns=[0],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric(
+                "barbecue brisket",
+                keywords=["brisket"],
+                paraphrases=["BBQ brisket", "barbecue"],
+            ),
         ),
         Question(
             question_id="needle_12",
@@ -1532,6 +1622,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="needle_in_haystack",
             relevant_turns=[0],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric("QA Manager", keywords=["QA", "Manager"]),
         ),
         Question(
             question_id="needle_13",
@@ -1540,6 +1631,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="needle_in_haystack",
             relevant_turns=[0],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric("marathon running", keywords=["marathon"]),
         ),
         Question(
             question_id="needle_14",
@@ -1548,6 +1640,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="needle_in_haystack",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric("TypeScript 5.4", keywords=["TypeScript", "5.4"]),
         ),
         Question(
             question_id="needle_15",
@@ -1556,6 +1649,11 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="needle_in_haystack",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric(
+                "Mobile app redesign",
+                keywords=["mobile", "redesign"],
+                paraphrases=["mobile app"],
+            ),
         ),
         Question(
             question_id="needle_16",
@@ -1564,6 +1662,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="needle_in_haystack",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("10", keywords=["10"]),
         ),
         Question(
             question_id="needle_17",
@@ -1572,6 +1671,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="needle_in_haystack",
             relevant_turns=[0],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("A parrot named Rio", keywords=["parrot", "Rio"]),
         ),
         Question(
             question_id="needle_18",
@@ -1580,6 +1680,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="needle_in_haystack",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric("Heroku", keywords=["Heroku"]),
         ),
         Question(
             question_id="needle_19",
@@ -1588,6 +1689,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="needle_in_haystack",
             relevant_turns=[0],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric("Mumbai, India", keywords=["Mumbai", "India"]),
         ),
         Question(
             question_id="needle_20",
@@ -1596,6 +1698,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="needle_in_haystack",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric("Saga pattern", keywords=["Saga"]),
         ),
     ]
     needle_questions = [
@@ -1613,6 +1716,11 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="temporal_evolution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            rubric=_make_rubric(
+                "September 20",
+                keywords=["September", "20"],
+                incorrect=["June 15", "August 3"],
+            ),
         ),
         Question(
             question_id="temporal_02",
@@ -1621,6 +1729,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="temporal_evolution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            rubric=_make_rubric("June 15", keywords=["June", "15"]),
         ),
         Question(
             question_id="temporal_03",
@@ -1629,6 +1738,11 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="temporal_evolution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "temporal_awareness", "specificity"],
+            rubric=_make_rubric(
+                "2 times",
+                keywords=["2"],
+                paraphrases=["twice", "two times"],
+            ),
         ),
         Question(
             question_id="temporal_04",
@@ -1637,6 +1751,11 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="temporal_evolution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            rubric=_make_rubric(
+                "All vulnerabilities resolved",
+                keywords=["resolved"],
+                paraphrases=["all fixed", "all patched"],
+            ),
         ),
         Question(
             question_id="temporal_05",
@@ -1645,6 +1764,11 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="temporal_evolution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "temporal_awareness", "specificity"],
+            rubric=_make_rubric(
+                "150ms to 85ms",
+                keywords=["150", "85"],
+                paraphrases=["150ms", "85ms"],
+            ),
         ),
         Question(
             question_id="temporal_06",
@@ -1653,6 +1777,10 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="temporal_evolution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            rubric=_make_rubric(
+                "Amara Okafor leads now; Marcus Rivera",
+                keywords=["Amara", "Okafor", "Marcus", "Rivera"],
+            ),
         ),
         Question(
             question_id="temporal_07",
@@ -1661,6 +1789,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="temporal_evolution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "temporal_awareness", "specificity"],
+            rubric=_make_rubric("50 to 200", keywords=["50", "200"]),
         ),
         Question(
             question_id="temporal_08",
@@ -1669,6 +1798,11 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="temporal_evolution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            rubric=_make_rubric(
+                "100%",
+                keywords=["100%"],
+                incorrect=["30%", "70%"],
+            ),
         ),
         Question(
             question_id="temporal_09",
@@ -1677,6 +1811,10 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="temporal_evolution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "temporal_awareness", "specificity"],
+            rubric=_make_rubric(
+                "Board approved -> paused -> resumed -> 100%",
+                keywords=["paused", "migration", "100%"],
+            ),
         ),
         Question(
             question_id="temporal_10",
@@ -1685,6 +1823,11 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="temporal_evolution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            rubric=_make_rubric(
+                "Yuki Tanaka",
+                keywords=["Yuki", "Tanaka"],
+                incorrect=["Fatima"],
+            ),
         ),
         Question(
             question_id="temporal_11",
@@ -1693,6 +1836,11 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="temporal_evolution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            rubric=_make_rubric(
+                "18%",
+                keywords=["18%"],
+                incorrect=["22%"],
+            ),
         ),
         Question(
             question_id="temporal_12",
@@ -1701,6 +1849,10 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="temporal_evolution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            rubric=_make_rubric(
+                "May 1 to April 15",
+                keywords=["May", "April", "15"],
+            ),
         ),
         Question(
             question_id="temporal_13",
@@ -1709,6 +1861,12 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="temporal_evolution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            rubric=_make_rubric(
+                "$1.4M",
+                keywords=["1.4"],
+                paraphrases=["$1,400,000", "$1.4 million"],
+                incorrect=["$1.2M"],
+            ),
         ),
         Question(
             question_id="temporal_14",
@@ -1717,6 +1875,10 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="temporal_evolution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "temporal_awareness", "specificity"],
+            rubric=_make_rubric(
+                "Q1: 99.97%, Q2: 99.89%, Q3: 99.995%",
+                keywords=["99.97", "99.89", "99.995"],
+            ),
         ),
         Question(
             question_id="temporal_15",
@@ -1725,6 +1887,10 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="temporal_evolution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "temporal_awareness", "specificity"],
+            rubric=_make_rubric(
+                "$2.7M over $2.5M budget",
+                keywords=["2.7", "2.5", "200"],
+            ),
         ),
     ]
     temporal_questions = [
@@ -1742,6 +1908,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="numerical_precision",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("$450K", keywords=["450"], paraphrases=["$450,000", "$450k"]),
         ),
         Question(
             question_id="numerical_02",
@@ -1750,6 +1917,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="numerical_precision",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("$63K", keywords=["63", "450", "387"]),
         ),
         Question(
             question_id="numerical_03",
@@ -1758,6 +1926,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="numerical_precision",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("15%", keywords=["15%", "2.3", "2.0"]),
         ),
         Question(
             question_id="numerical_04",
@@ -1766,6 +1935,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="numerical_precision",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("p95: 245ms, p99: 890ms", keywords=["245", "890"]),
         ),
         Question(
             question_id="numerical_05",
@@ -1774,6 +1944,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="numerical_precision",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("62.1% to 78.3%", keywords=["62.1", "78.3"]),
         ),
         Question(
             question_id="numerical_06",
@@ -1782,6 +1953,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="numerical_precision",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("$0.42 per user, 285,000", keywords=["0.42", "285"]),
         ),
         Question(
             question_id="numerical_07",
@@ -1790,6 +1962,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="numerical_precision",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("3.1 to 8.3", keywords=["3.1", "8.3"]),
         ),
         Question(
             question_id="numerical_08",
@@ -1798,6 +1971,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="numerical_precision",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("342 total: 123 critical, 219", keywords=["342", "123", "219"]),
         ),
         Question(
             question_id="numerical_09",
@@ -1806,6 +1980,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="numerical_precision",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("$34K/month, 5 to 3 replicas", keywords=["34", "5", "3"]),
         ),
         Question(
             question_id="numerical_10",
@@ -1814,6 +1989,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="numerical_precision",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("$4.7M, 12% above $4.2M", keywords=["4.7", "12%", "4.2"]),
         ),
         Question(
             question_id="numerical_11",
@@ -1822,6 +1998,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="numerical_precision",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("94.3%, target 95%", keywords=["94.3", "95"]),
         ),
         Question(
             question_id="numerical_12",
@@ -1830,6 +2007,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="numerical_precision",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("7.8%", keywords=["7.8"]),
         ),
         Question(
             question_id="numerical_13",
@@ -1838,6 +2016,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="numerical_precision",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("17 issues: 3 critical, 5 high, 9 medium", keywords=["17", "3", "5", "9"]),
         ),
         Question(
             question_id="numerical_14",
@@ -1846,6 +2025,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="numerical_precision",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("$127K, up 8%", keywords=["127", "8%"]),
         ),
         Question(
             question_id="numerical_15",
@@ -1854,6 +2034,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="numerical_precision",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("23 minutes, down from 45", keywords=["23", "45"]),
         ),
     ]
     numerical_questions = [
@@ -1871,6 +2052,10 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="source_attribution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "source_attribution"],
+            rubric=_make_rubric(
+                "Internal audit $450K, vendor $387K",
+                keywords=["450", "387", "63"],
+            ),
         ),
         Question(
             question_id="source_02",
@@ -1879,6 +2064,10 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="source_attribution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "source_attribution", "specificity"],
+            rubric=_make_rubric(
+                "Finance $5.2M, Auditor $4.8M, Board $5.0M",
+                keywords=["5.2", "4.8", "5.0"],
+            ),
         ),
         Question(
             question_id="source_03",
@@ -1887,6 +2076,10 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="source_attribution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "source_attribution"],
+            rubric=_make_rubric(
+                "Gartner 23%, Internal 31%, Newsletter 18%",
+                keywords=["23%", "31%", "18%"],
+            ),
         ),
         Question(
             question_id="source_04",
@@ -1895,6 +2088,10 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="source_attribution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "source_attribution"],
+            rubric=_make_rubric(
+                "4.5/5, 3.8/5, 4.2/5",
+                keywords=["4.5", "3.8", "4.2"],
+            ),
         ),
         Question(
             question_id="source_05",
@@ -1903,6 +2100,10 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="source_attribution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "source_attribution", "specificity"],
+            rubric=_make_rubric(
+                "HR 187, VP 214, LinkedIn 203",
+                keywords=["187", "214", "203"],
+            ),
         ),
         Question(
             question_id="source_06",
@@ -1911,6 +2112,11 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="source_attribution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "source_attribution"],
+            rubric=_make_rubric(
+                "Industry Newsletter 18%",
+                keywords=["18%", "Newsletter"],
+                paraphrases=["newsletter", "industry"],
+            ),
         ),
         Question(
             question_id="source_07",
@@ -1919,6 +2125,11 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="source_attribution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "source_attribution"],
+            rubric=_make_rubric(
+                "DBA low risk, consultant high risk",
+                keywords=["low risk", "high risk"],
+                paraphrases=["DBA", "consultant"],
+            ),
         ),
         Question(
             question_id="source_08",
@@ -1927,6 +2138,10 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="source_attribution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "source_attribution", "specificity"],
+            rubric=_make_rubric(
+                "March 15, April 2, March 22",
+                keywords=["March 15", "April 2", "March 22"],
+            ),
         ),
         Question(
             question_id="source_09",
@@ -1935,6 +2150,10 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="source_attribution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "source_attribution"],
+            rubric=_make_rubric(
+                "2.4 MW, 1.8 MW, 3.1 MW",
+                keywords=["2.4", "1.8", "3.1"],
+            ),
         ),
         Question(
             question_id="source_10",
@@ -1943,6 +2162,11 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="source_attribution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "source_attribution"],
+            rubric=_make_rubric(
+                "declining, flat, increasing",
+                keywords=["declining", "flat", "increasing"],
+                paraphrases=["5%", "decreasing"],
+            ),
         ),
     ]
     source_questions = [
@@ -1960,6 +2184,10 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="cross_reference",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "Sarah Chen, Atlas, Innovation Award, Lars Eriksson",
+                keywords=["Sarah Chen", "Atlas", "Innovation Award"],
+            ),
         ),
         Question(
             question_id="crossref_02",
@@ -1968,6 +2196,10 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="cross_reference",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric(
+                "Fatima Al-Hassan, Echo, Yuki Tanaka",
+                keywords=["Echo", "Yuki Tanaka"],
+            ),
         ),
         Question(
             question_id="crossref_03",
@@ -1976,6 +2208,11 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="cross_reference",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric(
+                "Marcus Rivera strategic planning, Amara Okafor Beacon",
+                keywords=["Amara Okafor", "Beacon"],
+                paraphrases=["strategic planning"],
+            ),
         ),
         Question(
             question_id="crossref_04",
@@ -1984,6 +2221,10 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="cross_reference",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "Lars Eriksson, Thor, Atlas",
+                keywords=["Lars Eriksson", "Thor", "Atlas"],
+            ),
         ),
         Question(
             question_id="crossref_05",
@@ -1992,6 +2233,10 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="cross_reference",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "Atlas, Beacon, Delta, Echo over budget",
+                keywords=["Atlas", "Beacon", "Delta", "Echo"],
+            ),
         ),
         Question(
             question_id="crossref_06",
@@ -2000,6 +2245,10 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="cross_reference",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric(
+                "Priya Patel, marathon",
+                keywords=["Priya Patel", "marathon"],
+            ),
         ),
         Question(
             question_id="crossref_07",
@@ -2008,6 +2257,10 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="cross_reference",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric(
+                "Yuki Tanaka, PhD, Echo",
+                keywords=["Yuki Tanaka", "PhD", "Echo"],
+            ),
         ),
         Question(
             question_id="crossref_08",
@@ -2016,6 +2269,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="cross_reference",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("$126K difference", keywords=["126", "387", "513"]),
         ),
         Question(
             question_id="crossref_09",
@@ -2024,6 +2278,10 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="cross_reference",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "Fatima Al-Hassan, Layla, Echo",
+                keywords=["Fatima", "Layla", "Echo"],
+            ),
         ),
         Question(
             question_id="crossref_10",
@@ -2032,6 +2290,10 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="cross_reference",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric(
+                "Cascade, ahead of schedule, 4 to 3",
+                keywords=["Cascade", "April 15"],
+            ),
         ),
     ]
     cross_ref_questions = [
@@ -2049,6 +2311,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="distractor_resistance",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "confidence_calibration"],
+            rubric=_make_rubric("none", keywords=["none"], paraphrases=["no known", "no allergies"]),
         ),
         Question(
             question_id="distractor_02",
@@ -2057,6 +2320,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="distractor_resistance",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("47 points", keywords=["47"]),
         ),
         Question(
             question_id="distractor_03",
@@ -2065,6 +2329,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="distractor_resistance",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric("no pets", keywords=["no"], paraphrases=["none", "doesn't have"]),
         ),
         Question(
             question_id="distractor_04",
@@ -2073,6 +2338,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="distractor_resistance",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("4.2 hours", keywords=["4.2"]),
         ),
         Question(
             question_id="distractor_05",
@@ -2081,6 +2347,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="distractor_resistance",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric("Java 21", keywords=["Java", "21"]),
         ),
         Question(
             question_id="distractor_06",
@@ -2089,6 +2356,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="distractor_resistance",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("892 total, 387 enterprise", keywords=["892", "387"]),
         ),
         Question(
             question_id="distractor_07",
@@ -2097,6 +2365,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="distractor_resistance",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("14.3, 8.2, 22.1", keywords=["14.3", "8.2", "22.1"]),
         ),
         Question(
             question_id="distractor_08",
@@ -2105,6 +2374,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="distractor_resistance",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("3 critical", keywords=["3"]),
         ),
         Question(
             question_id="distractor_09",
@@ -2113,6 +2383,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="distractor_resistance",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("40%, 12 to 7.2 minutes", keywords=["40%", "12", "7.2"]),
         ),
         Question(
             question_id="distractor_10",
@@ -2121,6 +2392,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="distractor_resistance",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("$6.1M, 18%", keywords=["6.1", "18%"]),
         ),
     ]
     distractor_questions = [
@@ -2140,6 +2412,10 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="meta_memory",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "5 projects",
+                keywords=["5", "Atlas", "Beacon", "Cascade", "Delta", "Echo"],
+            ),
         ),
         Question(
             question_id="meta_02",
@@ -2148,6 +2424,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="meta_memory",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("10 people", keywords=["10"]),
         ),
         Question(
             question_id="meta_03",
@@ -2156,6 +2433,10 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="meta_memory",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "conflicting topics",
+                keywords=["revenue", "market share"],
+            ),
         ),
         Question(
             question_id="meta_04",
@@ -2164,6 +2445,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="meta_memory",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric("Atlas", keywords=["Atlas"]),
         ),
         Question(
             question_id="meta_05",
@@ -2172,6 +2454,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="meta_memory",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("8 domains", keywords=["8"]),
         ),
     ]
     meta_questions = [
@@ -2188,6 +2471,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="temporal_evolution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            rubric=_make_rubric("$2.2M", keywords=["2.2"], incorrect=["$1.8M"]),
         ),
         Question(
             question_id="bonus_02",
@@ -2196,6 +2480,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="temporal_evolution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            rubric=_make_rubric("migration bug, paused, resumed", keywords=["migration", "paused"]),
         ),
         Question(
             question_id="bonus_03",
@@ -2204,6 +2489,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="numerical_precision",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("$127, $156", keywords=["127", "156"]),
         ),
         Question(
             question_id="bonus_04",
@@ -2212,6 +2498,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="needle_in_haystack",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric("Zig", keywords=["Zig"]),
         ),
         Question(
             question_id="bonus_05",
@@ -2220,6 +2507,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="needle_in_haystack",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric("Strangler fig", keywords=["Strangler"]),
         ),
         Question(
             question_id="bonus_06",
@@ -2228,6 +2516,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="needle_in_haystack",
             relevant_turns=[0],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric("Pad thai", keywords=["pad thai"], paraphrases=["padthai"]),
         ),
         Question(
             question_id="bonus_07",
@@ -2236,6 +2525,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="temporal_evolution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric("Sarah Chen", keywords=["Sarah Chen"]),
         ),
         Question(
             question_id="bonus_08",
@@ -2244,6 +2534,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="numerical_precision",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("$127, $156, $29", keywords=["127", "156"]),
         ),
         Question(
             question_id="bonus_09",
@@ -2252,6 +2543,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="needle_in_haystack",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric("PostgreSQL 16, 40%", keywords=["PostgreSQL", "40%"]),
         ),
         Question(
             question_id="bonus_10",
@@ -2260,6 +2552,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="numerical_precision",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("14.2%, 18.5%", keywords=["14.2", "18.5"]),
         ),
         Question(
             question_id="bonus_11",
@@ -2268,6 +2561,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="needle_in_haystack",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric("CRYSTALS-Kyber", keywords=["Kyber"]),
         ),
         Question(
             question_id="bonus_12",
@@ -2276,6 +2570,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="needle_in_haystack",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric("CSS nesting", keywords=["nesting"]),
         ),
         Question(
             question_id="bonus_13",
@@ -2284,6 +2579,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="temporal_evolution",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            rubric=_make_rubric("12 to 15", keywords=["12", "15"]),
         ),
         Question(
             question_id="bonus_14",
@@ -2292,6 +2588,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="needle_in_haystack",
             relevant_turns=[0],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("Scout, border collie", keywords=["Scout", "border collie"]),
         ),
         Question(
             question_id="bonus_15",
@@ -2300,6 +2597,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="numerical_precision",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric("72, 65", keywords=["72", "65"]),
         ),
     ]
 
@@ -2316,6 +2614,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
 __all__ = [
     "Turn",
     "Question",
+    "GradingRubric",
     "GroundTruth",
     "generate_dialogue",
     "generate_questions",
