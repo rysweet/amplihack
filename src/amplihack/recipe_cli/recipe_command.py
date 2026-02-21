@@ -31,7 +31,8 @@ def parse_context_args(context_args: list[str]) -> tuple[dict[str, str], list[st
     """Parse context key=value arguments.
 
     Args:
-        context_args: List of strings in "key=value" format
+        context_args: List of strings in "key=value" format. Values may contain
+            any characters including parentheses, hashes, periods, and quotes.
 
     Returns:
         Tuple of (parsed_context_dict, error_messages)
@@ -42,11 +43,17 @@ def parse_context_args(context_args: list[str]) -> tuple[dict[str, str], list[st
     for ctx_arg in context_args:
         if "=" in ctx_arg:
             key, value = ctx_arg.split("=", 1)
-            context[key] = value
+            if not key.strip():
+                errors.append(
+                    f"Invalid context format '{ctx_arg}': key must not be empty. "
+                    "Use key=value format (e.g., -c task='Fix bug (#123)')"
+                )
+            else:
+                context[key] = value
         else:
             errors.append(
                 f"Invalid context format '{ctx_arg}'. "
-                "Use key=value format (e.g., --context question='What is X?' --context var=value)"
+                "Use key=value format (e.g., -c task='Fix bug (#123)' -c var=value)"
             )
 
     return context, errors
