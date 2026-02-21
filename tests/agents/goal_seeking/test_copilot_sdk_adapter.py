@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -367,26 +368,29 @@ class TestSessionLifecycle:
 
     @patch(f"{_P}.HAS_COPILOT_SDK", True)
     @pytest.mark.asyncio
-    async def test_ensure_client_idempotent(self):
+    async def test_ensure_client_creates_fresh(self):
+        """Each _ensure_client call creates a fresh client to avoid stale event loops."""
         agent = _make_agent()
 
         mock_session = AsyncMock()
         mock_session.on = MagicMock(return_value=lambda: None)
+        mock_session.destroy = AsyncMock()
 
         mock_client = AsyncMock()
         mock_client.start = AsyncMock()
         mock_client.create_session = AsyncMock(return_value=mock_session)
+        mock_client.stop = AsyncMock()
 
         with patch(f"{_P}.CopilotClient", return_value=mock_client):
             await agent._ensure_client()
-            await agent._ensure_client()  # Second call should be no-op
+            await agent._ensure_client()  # Creates fresh each time
 
-        # Only called once
-        mock_client.start.assert_awaited_once()
+        # Called twice (fresh each time to avoid event loop issues)
+        assert mock_client.start.await_count == 2
 
     @patch(f"{_P}.HAS_COPILOT_SDK", True)
     @pytest.mark.asyncio
-    async def test_stop_client(self):
+    async def test_cleanup(self):
         agent = _make_agent()
         mock_session = AsyncMock()
         mock_session.destroy = AsyncMock()
@@ -395,7 +399,7 @@ class TestSessionLifecycle:
         agent._session = mock_session
         agent._client = mock_client
 
-        await agent._stop_client()
+        await agent._cleanup()
 
         mock_session.destroy.assert_awaited_once()
         mock_client.stop.assert_awaited_once()
@@ -414,7 +418,7 @@ class TestSessionLifecycle:
         agent._session = mock_session
         agent._client = mock_client
 
-        await agent._stop_client()
+        await agent._cleanup()
 
         mock_client.force_stop.assert_awaited_once()
 
@@ -507,8 +511,10 @@ class TestFactory:
             MicrosoftGoalSeekingAgent,
         )
 
-        agent = create_agent(name="default-test", enable_memory=False)
-        assert isinstance(agent, MicrosoftGoalSeekingAgent)
+        _key = "test-key"  # pragma: allowlist secret
+        with patch.dict(os.environ, {"OPENAI_API_KEY": _key}):
+            agent = create_agent(name="default-test", enable_memory=False)
+            assert isinstance(agent, MicrosoftGoalSeekingAgent)
 
 
 class TestSecurityAudit:
