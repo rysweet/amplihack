@@ -472,6 +472,17 @@ Rules:
         if not relevant_facts:
             return "I don't have enough information to answer that question."
 
+        # Filter out Q&A self-learning facts from retrieval -- they are stored
+        # for cross-session learning but pollute within-session eval results
+        # by crowding out original data facts in the context window.
+        relevant_facts = [
+            f
+            for f in relevant_facts
+            if not (
+                f.get("context", "").startswith("Question:") and "q_and_a" in (f.get("tags") or [])
+            )
+        ]
+
         # Always rerank by query relevance first to prioritize the most relevant facts.
         # For large fact sets (>80), this ensures we trim noise, not signal.
         relevant_facts = rerank_facts_by_query(relevant_facts, question)
@@ -1086,9 +1097,9 @@ Respond with a JSON list like:
         intent = intent or {}
         intent_type = intent.get("intent", "simple_recall")
 
-        # Use more facts for questions that need complete data coverage.
-        # With 200K token models, we can afford to include many facts.
-        # The LLM handles fact selection better than keyword-based filtering.
+        # Use generous fact limits - with 200K token models, the LLM handles
+        # fact selection better than keyword-based filtering. Trimming too
+        # aggressively causes retrieval failures where facts exist but are cut.
         if intent_type in (
             "multi_source_synthesis",
             "temporal_comparison",
@@ -1096,9 +1107,9 @@ Respond with a JSON list like:
             "ratio_trend_analysis",
             "contradiction_resolution",
         ):
-            max_facts = 200
+            max_facts = 300
         else:
-            max_facts = 100
+            max_facts = 200
 
         # Build context string - include temporal metadata, source labels, and supersede markers
         def _format_fact(i: int, fact: dict, include_temporal: bool) -> str:
