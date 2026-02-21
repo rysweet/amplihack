@@ -8,6 +8,12 @@ Philosophy:
 - Multi-vote grading for stability: grade N times, take median per dimension
 - Agent-agnostic: works with any LearningAgent-compatible interface
 
+Migration note:
+    The standalone ``amplihack-agent-eval`` package provides a superset of this
+    module. When installed, data types and runner are imported from the package
+    to ensure a single source of truth. When not installed, this module's local
+    implementations are used (backward compatible).
+
 Public API:
     LongHorizonMemoryEval: Main evaluation class
     EvalResult: Per-question result with scores
@@ -32,13 +38,23 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from .long_horizon_data import (
-    GradingRubric,
-    GroundTruth,
-    Question,
-    generate_dialogue,
-    generate_questions,
-)
+# Prefer the standalone eval package when available; fall back to local data module.
+try:
+    from amplihack_eval.data.long_horizon import (
+        GradingRubric,
+        GroundTruth,
+        Question,
+        generate_dialogue,
+        generate_questions,
+    )
+except ImportError:
+    from .long_horizon_data import (
+        GradingRubric,
+        GroundTruth,
+        Question,
+        generate_dialogue,
+        generate_questions,
+    )
 
 logger = logging.getLogger(__name__)
 

@@ -577,11 +577,70 @@ print(f"Overall: {report.overall_score:.0%}")
 7. **Run `--levels L1 L2 L3`** to iterate quickly on specific levels
    rather than running all 12 every time.
 
+## Package Architecture (amplihack-agent-eval)
+
+The evaluation framework has been extracted into a standalone package
+(`amplihack-agent-eval`) that can be used independently of the full amplihack
+codebase. The amplihack repo depends on this package for its core eval
+types and provides amplihack-specific adapter implementations.
+
+### Package Relationship
+
+```
+amplihack-agent-eval (standalone)     amplihack (this repo)
+================================     ==========================
+amplihack_eval/                       src/amplihack/eval/
+  adapters/base.py  <-- AgentAdapter    agent_adapter.py  (amplihack adapters)
+  core/runner.py    <-- EvalRunner      compat.py         (re-exports)
+  core/grader.py    <-- grade_answer    long_horizon_memory.py (uses package)
+  data/long_horizon.py                  ...existing eval files...
+  self_improve/
+```
+
+### How It Works
+
+1. **amplihack-agent-eval** provides the core eval types: `AgentAdapter`,
+   `EvalRunner`, `grade_answer`, data generation, and self-improvement
+   primitives (patch proposer, reviewer voting).
+
+2. **amplihack** adds the optional `eval` dependency in `pyproject.toml`:
+   ```toml
+   [project.optional-dependencies]
+   eval = ["amplihack-agent-eval>=0.1.0"]
+   ```
+
+3. **`compat.py`** re-exports all key types from the standalone package,
+   so existing code can `from amplihack.eval.compat import EvalRunner`.
+
+4. **`agent_adapter.py`** provides three adapter implementations that wrap
+   amplihack agents for evaluation:
+   - `AmplihackLearningAgentAdapter` -- wraps `LearningAgent`
+   - `AmplihackMultiAgentAdapter` -- wraps `MultiAgentLearningAgent`
+   - `AmplihackSDKAgentAdapter` -- wraps any SDK-backed `GoalSeekingAgent`
+
+### Using the Adapters
+
+```python
+from amplihack_eval.core.runner import EvalRunner
+from amplihack.eval.agent_adapter import AmplihackLearningAgentAdapter
+
+# Create adapter wrapping amplihack's LearningAgent
+adapter = AmplihackLearningAgentAdapter("eval-agent", model="gpt-4o-mini")
+
+# Run evaluation
+runner = EvalRunner(num_turns=100, num_questions=20, seed=42)
+report = runner.run(adapter)
+print(f"Score: {report.overall_score:.2%}")
+adapter.close()
+```
+
 ## File Map
 
 ```
 src/amplihack/eval/
   __init__.py                    # Public API exports
+  compat.py                      # Re-exports from amplihack-agent-eval package
+  agent_adapter.py               # Amplihack-specific AgentAdapter implementations
   test_levels.py                 # L1-L12 level definitions (articles + questions)
   progressive_test_suite.py      # Main runner (single + parallel + multi-vote)
   agent_subprocess.py            # Subprocess isolation for learning/testing (SDK routing)
@@ -597,7 +656,7 @@ src/amplihack/eval/
   teaching_session.py            # Teacher-student session framework
   teaching_eval.py               # Teaching quality evaluation
   long_horizon_data.py           # Deterministic dialogue generation
-  long_horizon_memory.py         # 1000-turn stress test
+  long_horizon_memory.py         # 1000-turn stress test (uses eval package when available)
   meta_eval_experiment.py        # Meta-eval experiment framework
   five_agent_experiment.py       # 5-agent experiment runner
   self_improve/
@@ -624,6 +683,7 @@ src/amplihack/agents/domain_agents/
   project_planning/agent.py      # Project Planning agent
 
 tests/eval/
+  test_eval_compat.py            # Compat layer + agent adapter tests (32 tests)
   test_grader.py                 # Grader unit tests
   test_harness_runner.py         # Harness runner tests
   test_metacognition_grader.py   # Metacognition grader tests
