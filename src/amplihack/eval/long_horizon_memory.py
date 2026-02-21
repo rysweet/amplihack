@@ -415,7 +415,8 @@ Scoring guide:
             messages=[{"role": "user", "content": prompt}],
         )
 
-        response_text = message.content[0].text.strip()
+        response_text = getattr(message.content[0], "text", "") or ""
+        response_text = response_text.strip()
 
         # Parse JSON from response
         result = _extract_json(response_text)
