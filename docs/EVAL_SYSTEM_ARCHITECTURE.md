@@ -33,6 +33,9 @@ and provides domain-specific evaluation for 5 specialized agents.
 |  self_improve/runner.py      long_horizon_memory.py               |
 |  (closed-loop improvement)   (1000-turn stress test)              |
 |                                                                    |
+|  long_horizon_self_improve.py                                     |
+|  (long-horizon self-improvement loop with category analysis)      |
+|                                                                    |
 |  meta_eval_experiment.py                                          |
 |  (self-referential eval)                                          |
 |                                                                    |

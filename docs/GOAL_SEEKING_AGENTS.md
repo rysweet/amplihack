@@ -502,6 +502,88 @@ PYTHONPATH=src python -m amplihack.eval.long_horizon_memory \
 
 This evaluates whether agents retain knowledge over extended conversations, testing memory persistence, retrieval accuracy, and knowledge organization across five scoring dimensions per question.
 
+**Question categories tested:**
+
+| Category              | What It Tests                                 | Scoring Dimensions                       |
+| --------------------- | --------------------------------------------- | ---------------------------------------- |
+| Needle in Haystack    | Finding specific facts in a large KB          | factual_accuracy, specificity            |
+| Temporal Evolution    | Tracking facts that change over time          | factual_accuracy, temporal_awareness     |
+| Numerical Precision   | Exact number recall and arithmetic            | factual_accuracy, specificity            |
+| Cross Reference       | Connecting facts across different topics      | factual_accuracy, specificity            |
+| Source Attribution    | Attributing facts to their information source | source_attribution, factual_accuracy     |
+| Distractor Resistance | Ignoring irrelevant/noisy information         | factual_accuracy, confidence_calibration |
+| Meta Memory           | Reasoning about stored knowledge structure    | factual_accuracy, specificity            |
+
+### Long-Horizon Self-Improvement
+
+The `long_horizon_self_improve` module runs an iterative improvement loop that evaluates, analyzes failures by category, diagnoses bottleneck components, and logs suggested fixes:
+
+```bash
+# Quick self-improvement run
+PYTHONPATH=src python -m amplihack.eval.long_horizon_self_improve \
+    --turns 100 --questions 20 --iterations 3
+
+# With multi-agent architecture
+PYTHONPATH=src python -m amplihack.eval.long_horizon_self_improve \
+    --turns 100 --questions 20 --multi-agent
+```
+
+**Bottleneck diagnosis maps categories to components:**
+
+| Category           | Bottleneck Component      | Typical Fix                          |
+| ------------------ | ------------------------- | ------------------------------------ |
+| Needle in Haystack | retrieval:keyword_search  | Entity-centric indexing              |
+| Meta Memory        | retrieval:aggregation     | Cypher aggregation queries           |
+| Source Attribution | retrieval:source_tracking | Source label propagation improvement |
+| Temporal Evolution | retrieval:temporal        | Temporal metadata coverage           |
+| Cross Reference    | retrieval:graph_traversal | Similarity edge hop depth expansion  |
+
+### Multi-Agent Memory Architecture
+
+The `sub_agents` module provides a multi-agent decomposition of the monolithic LearningAgent:
+
+```
+MultiAgentLearningAgent
+  |
+  +-- CoordinatorAgent
+  |     Classifies questions and creates execution routes
+  |     Maps intent -> retrieval strategy + reasoning type
+  |
+  +-- MemoryAgent
+  |     Selects optimal retrieval strategy per question:
+  |     - Entity-centric: for who/what questions (uses entity_name index)
+  |     - Temporal: for when/how-did-X-change questions
+  |     - Aggregation: for how-many/list-all questions (Cypher queries)
+  |     - Two-phase: broad keyword search then precise reranking
+  |     - Simple: dump all facts for small KBs
+  |
+  +-- LearningAgent (inherited)
+        Synthesis via _synthesize_with_llm (unchanged)
+```
+
+**Usage:**
+
+```python
+from amplihack.agents.goal_seeking.sub_agents import MultiAgentLearningAgent
+
+agent = MultiAgentLearningAgent(
+    agent_name="multi_eval",
+    use_hierarchical=True,
+    storage_path="/tmp/test_db",
+)
+
+agent.learn_from_content("Sarah Chen has a tabby cat named Mochi.")
+answer = agent.answer_question("What pet does Sarah Chen have?")
+# Uses entity-centric retrieval instead of full scan
+```
+
+**Key improvements over monolithic LearningAgent:**
+
+1. **Entity-centric indexing**: Facts are tagged with entity names at storage time, enabling O(1) lookup instead of full-text scan.
+2. **Cypher aggregation**: Meta-memory questions (how many, list all) route to COUNT/DISTINCT queries on the graph instead of text search.
+3. **Scaled similarity window**: Similarity scan window scales with KB size (50% of nodes, min 100, max 500) instead of fixed 100.
+4. **Two-phase retrieval**: For large KBs, broad keyword search (3x limit) followed by precision reranking replaces the fixed-window approach.
+
 ### Meta-Eval Experiment
 
 The `meta_eval_experiment.py` module runs an experiment where an agent learns about the evaluation system itself and then teaches it to a student. This is a self-referential test that validates the entire pipeline end-to-end, including the TeachingSession and MetacognitionGrader.
@@ -559,7 +641,28 @@ Decisions are logged in `research_decisions.json` for auditability.
 - Any single level regression > 5%: REVERT all changes.
 - Otherwise: COMMIT with marginal improvement note.
 
-### Runner CLI
+### Long-Horizon Self-Improvement CLI
+
+```bash
+# Long-horizon self-improvement (100 turns, 20 questions)
+python -m amplihack.eval.long_horizon_self_improve --turns 100 --questions 20 --iterations 3
+
+# With multi-agent architecture
+python -m amplihack.eval.long_horizon_self_improve --turns 100 --questions 20 --multi-agent
+
+# Programmatic usage
+from amplihack.eval.long_horizon_self_improve import run_long_horizon_self_improve, LongHorizonRunnerConfig
+
+config = LongHorizonRunnerConfig(
+    num_turns=100,
+    num_questions=20,
+    max_iterations=3,
+    use_multi_agent=True,
+)
+result = run_long_horizon_self_improve(config)
+```
+
+### L1-L12 Runner CLI
 
 ```bash
 # Basic usage
@@ -958,8 +1061,16 @@ src/amplihack/
     learning_agent.py               # Mini-framework LearningAgent
     agentic_loop.py                 # PERCEIVE->REASON->ACT->LEARN loop
     cognitive_adapter.py            # Memory adapter (amplihack-memory-lib)
+    hierarchical_memory.py          # Kuzu graph-based memory (entity indexing, aggregation)
+    flat_retriever_adapter.py       # Backward-compatible adapter for HierarchicalMemory
     memory_retrieval.py             # Retrieval strategies
+    similarity.py                   # Text similarity + keyword-boosted reranking
     action_executor.py              # Tool execution engine
+    sub_agents/
+      __init__.py                   # Multi-agent exports
+      coordinator.py                # CoordinatorAgent: task classification + routing
+      memory_agent.py               # MemoryAgent: retrieval strategy selection
+      multi_agent.py                # MultiAgentLearningAgent: drop-in replacement
     prompts/
       sdk/                          # Per-SDK prompt templates
         copilot_eval.md             # Copilot eval prompt
@@ -996,8 +1107,9 @@ src/amplihack/
     sdk_eval_loop.py                # Multi-SDK comparison eval loop
     long_horizon_memory.py          # Long-horizon memory stress test
     long_horizon_data.py            # Data generation for long-horizon eval
+    long_horizon_self_improve.py    # Long-horizon self-improvement loop runner
     self_improve/
-      runner.py                     # Self-improvement loop runner
+      runner.py                     # L1-L12 self-improvement loop runner
       error_analyzer.py             # Failure categorization
     PROGRESSIVE_TEST_SUITE.md       # Eval documentation
     QUICK_START.md                  # Quick start for eval
@@ -1030,6 +1142,27 @@ Best observed medians from development (3-run median, mini SDK):
 | **Overall** | **97.5%** | **Weighted median across all levels** |
 
 These scores represent the system after iterative prompt tuning and retrieval strategy optimization through the self-improvement loop.
+
+### Long-Horizon Memory Scores (100 turns, 20 questions)
+
+| Category              | Score     | Bottleneck (if < 90%)             |
+| --------------------- | --------- | --------------------------------- |
+| Temporal Evolution    | 96.0%     | --                                |
+| Numerical Precision   | 100.0%    | --                                |
+| Distractor Resistance | 92.5%     | --                                |
+| Cross Reference       | 87.5%     | Graph traversal depth             |
+| Source Attribution    | 82.5%     | Source label propagation          |
+| Needle in Haystack    | 75.0%     | Keyword search -> Entity indexing |
+| Meta Memory           | 55.0%     | Text search -> Cypher aggregation |
+| **Overall**           | **88.0%** |                                   |
+
+**Fixes applied in this release:**
+
+1. Entity-centric indexing (entity_name field on SemanticMemory nodes)
+2. Cypher aggregation queries (COUNT, DISTINCT for meta-memory)
+3. Scaled similarity window (50% of KB, min 100, max 500)
+4. Two-phase retrieval (broad keyword search then precision reranking)
+5. Multi-agent architecture (Coordinator + MemoryAgent)
 
 ## Success Criteria by Level
 

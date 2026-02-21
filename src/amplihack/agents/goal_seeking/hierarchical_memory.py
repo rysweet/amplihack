@@ -296,6 +296,7 @@ class HierarchicalMemory:
                     tags STRING,
                     metadata STRING,
                     created_at STRING,
+                    entity_name STRING DEFAULT '',
                     PRIMARY KEY (memory_id)
                 )
             """)
@@ -393,6 +394,9 @@ class HierarchicalMemory:
         if temporal_metadata:
             meta.update(temporal_metadata)
 
+        # Extract entity name for entity-centric indexing
+        entity_name = self._extract_entity_name(content, concept)
+
         # Store as SemanticMemory (primary knowledge store for Graph RAG)
         self.connection.execute(
             """
@@ -405,7 +409,8 @@ class HierarchicalMemory:
                 agent_id: $agent_id,
                 tags: $tags,
                 metadata: $metadata,
-                created_at: $created_at
+                created_at: $created_at,
+                entity_name: $entity_name
             })
             """,
             {
@@ -418,6 +423,7 @@ class HierarchicalMemory:
                 "tags": json.dumps(tags),
                 "metadata": json.dumps(meta),
                 "created_at": now,
+                "entity_name": entity_name,
             },
         )
 
@@ -659,20 +665,29 @@ class HierarchicalMemory:
     ) -> None:
         """Compute similarity against recent nodes and create SIMILAR_TO edges.
 
-        Checks the last 100 SemanticMemory nodes. Creates edges for
-        similarity scores > 0.3. Also detects potential contradictions
-        between high-similarity facts about the same concept.
+        Scales the scan window proportionally to KB size (50% of total nodes,
+        min 100, max 500) so that older facts remain reachable via similarity
+        edges even as the knowledge base grows. Creates edges for similarity
+        scores > 0.3 and detects contradictions between high-similarity facts.
         """
         try:
+            # Scale scan window: 50% of KB size, min 100, max 500
+            count_result = self.connection.execute(
+                "MATCH (m:SemanticMemory) WHERE m.agent_id = $aid RETURN COUNT(m)",
+                {"aid": self.agent_name},
+            )
+            total_nodes = count_result.get_next()[0] if count_result.has_next() else 0
+            scan_window = max(100, min(int(total_nodes * 0.5), 500))
+
             result = self.connection.execute(
                 """
                 MATCH (m:SemanticMemory)
                 WHERE m.memory_id <> $node_id AND m.agent_id = $agent_id
                 RETURN m.memory_id, m.content, m.concept, m.tags
                 ORDER BY m.created_at DESC
-                LIMIT 100
+                LIMIT $scan_limit
                 """,
-                {"node_id": node_id, "agent_id": self.agent_name},
+                {"node_id": node_id, "agent_id": self.agent_name, "scan_limit": scan_window},
             )
 
             new_node = {"content": content, "concept": concept, "tags": tags}
@@ -748,9 +763,19 @@ class HierarchicalMemory:
         subgraph = KnowledgeSubgraph(query=query)
         seen_ids: set[str] = set()
 
+        # Scale keyword search window: search broadly, then rank and trim
+        keyword_limit = max(max_nodes * 3, 60)
+
         # Step 1: Find seed nodes via keyword search
         keywords = query.lower().split()
         seed_nodes: list[KnowledgeNode] = []
+
+        # Also try entity-centric retrieval for proper noun queries
+        entity_nodes = self._entity_seed_search(query, keyword_limit)
+        for node in entity_nodes:
+            if node.node_id not in seen_ids:
+                seen_ids.add(node.node_id)
+                seed_nodes.append(node)
 
         for keyword in keywords:
             if len(keyword) <= 2:
@@ -769,7 +794,7 @@ class HierarchicalMemory:
                     {
                         "agent_id": self.agent_name,
                         "keyword": keyword,
-                        "limit": max_nodes,
+                        "limit": keyword_limit,
                     },
                 )
 
@@ -893,6 +918,77 @@ class HierarchicalMemory:
 
         return subgraph
 
+    def _entity_seed_search(self, query: str, limit: int) -> list[KnowledgeNode]:
+        """Find seed nodes by matching entity_name field.
+
+        Extracts potential entity names from the query (capitalized words,
+        multi-word proper nouns) and searches the entity_name index.
+
+        Args:
+            query: Search query
+            limit: Max nodes to return
+
+        Returns:
+            List of KnowledgeNode matching entity names in the query
+        """
+        nodes: list[KnowledgeNode] = []
+
+        # Extract potential entity names from query
+        # Multi-word proper nouns
+        entity_candidates = re.findall(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b", query)
+        # Also try the whole query lowercased for single-name matches
+        if not entity_candidates:
+            # Try lowercase matching for queries like "fatima's hobby"
+            words = query.lower().split()
+            entity_candidates = [w.strip("'s") for w in words if len(w) > 3]
+
+        seen: set[str] = set()
+        for candidate in entity_candidates:
+            candidate_lower = candidate.lower()
+            if len(candidate_lower) <= 2:
+                continue
+            try:
+                result = self.connection.execute(
+                    """
+                    MATCH (m:SemanticMemory)
+                    WHERE m.agent_id = $agent_id
+                      AND LOWER(m.entity_name) CONTAINS $entity
+                    RETURN m.memory_id, m.concept, m.content, m.confidence,
+                           m.source_id, m.tags, m.metadata, m.created_at
+                    LIMIT $limit
+                    """,
+                    {
+                        "agent_id": self.agent_name,
+                        "entity": candidate_lower,
+                        "limit": limit,
+                    },
+                )
+
+                while result.has_next():
+                    row = result.get_next()
+                    nid = row[0]
+                    if nid not in seen:
+                        seen.add(nid)
+                        tags = json.loads(row[5]) if row[5] else []
+                        metadata = json.loads(row[6]) if row[6] else {}
+                        nodes.append(
+                            KnowledgeNode(
+                                node_id=nid,
+                                category=MemoryCategory.SEMANTIC,
+                                content=row[2],
+                                concept=row[1],
+                                confidence=row[3],
+                                source_id=row[4] or "",
+                                created_at=row[7] or "",
+                                tags=tags,
+                                metadata=metadata,
+                            )
+                        )
+            except Exception as e:
+                logger.debug("Entity seed search failed for '%s': %s", candidate, e)
+
+        return nodes[:limit]
+
     def _attach_provenance(self, nodes: list[KnowledgeNode]) -> None:
         """Follow DERIVES_FROM edges to attach source labels to node metadata.
 
@@ -963,6 +1059,262 @@ class HierarchicalMemory:
                     node.confidence = max(0.1, node.confidence * 0.5)
             except Exception:
                 pass  # SUPERSEDES table might not exist in older DBs
+
+    @staticmethod
+    def _extract_entity_name(content: str, concept: str) -> str:
+        """Extract the primary entity name from content or concept.
+
+        Uses simple heuristics to find proper nouns (capitalized multi-word names)
+        in the concept field first, then the content. Returns lowercase for
+        consistent indexing.
+
+        Args:
+            content: Fact content text
+            concept: Concept/topic label
+
+        Returns:
+            Lowercased entity name, or empty string if none found.
+        """
+        # Try concept field first (usually more specific)
+        for text in [concept, content]:
+            if not text:
+                continue
+            # Find capitalized multi-word names (e.g., "Sarah Chen", "Project Atlas")
+            matches = re.findall(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b", text)
+            if matches:
+                # Return the longest match (most likely to be a full name)
+                best = max(matches, key=len)
+                return best.lower()
+
+            # Single capitalized word that isn't at start of sentence
+            # and isn't a common word
+            words = text.split()
+            for i, word in enumerate(words):
+                if i > 0 and word[0:1].isupper() and len(word) > 2:
+                    cleaned = word.strip(".,;:!?()[]{}\"'")
+                    if cleaned and cleaned[0].isupper():
+                        return cleaned.lower()
+
+        return ""
+
+    def retrieve_by_entity(
+        self,
+        entity_name: str,
+        limit: int = 50,
+    ) -> list[KnowledgeNode]:
+        """Retrieve ALL facts associated with a specific entity.
+
+        Uses the entity_name index for O(1) lookup instead of scanning
+        all nodes. Falls back to content/concept text search if the
+        entity_name field is empty (backward compatibility).
+
+        Args:
+            entity_name: Entity name to search for (case-insensitive)
+            limit: Maximum nodes to return
+
+        Returns:
+            List of KnowledgeNode matching the entity
+        """
+        if not entity_name or not entity_name.strip():
+            return []
+
+        entity_lower = entity_name.strip().lower()
+        nodes: list[KnowledgeNode] = []
+
+        try:
+            # Primary: use entity_name index
+            result = self.connection.execute(
+                """
+                MATCH (m:SemanticMemory)
+                WHERE m.agent_id = $agent_id
+                  AND LOWER(m.entity_name) CONTAINS $entity
+                RETURN m.memory_id, m.concept, m.content, m.confidence,
+                       m.source_id, m.tags, m.metadata, m.created_at
+                ORDER BY m.created_at DESC
+                LIMIT $limit
+                """,
+                {"agent_id": self.agent_name, "entity": entity_lower, "limit": limit},
+            )
+
+            while result.has_next():
+                row = result.get_next()
+                tags = json.loads(row[5]) if row[5] else []
+                metadata = json.loads(row[6]) if row[6] else {}
+                nodes.append(
+                    KnowledgeNode(
+                        node_id=row[0],
+                        category=MemoryCategory.SEMANTIC,
+                        content=row[2],
+                        concept=row[1],
+                        confidence=row[3],
+                        source_id=row[4] or "",
+                        created_at=row[7] or "",
+                        tags=tags,
+                        metadata=metadata,
+                    )
+                )
+
+            # Fallback: also search content/concept text for backward compat
+            if not nodes:
+                result = self.connection.execute(
+                    """
+                    MATCH (m:SemanticMemory)
+                    WHERE m.agent_id = $agent_id
+                      AND (LOWER(m.content) CONTAINS $entity
+                           OR LOWER(m.concept) CONTAINS $entity)
+                    RETURN m.memory_id, m.concept, m.content, m.confidence,
+                           m.source_id, m.tags, m.metadata, m.created_at
+                    ORDER BY m.created_at DESC
+                    LIMIT $limit
+                    """,
+                    {"agent_id": self.agent_name, "entity": entity_lower, "limit": limit},
+                )
+
+                while result.has_next():
+                    row = result.get_next()
+                    tags = json.loads(row[5]) if row[5] else []
+                    metadata = json.loads(row[6]) if row[6] else {}
+                    nodes.append(
+                        KnowledgeNode(
+                            node_id=row[0],
+                            category=MemoryCategory.SEMANTIC,
+                            content=row[2],
+                            concept=row[1],
+                            confidence=row[3],
+                            source_id=row[4] or "",
+                            created_at=row[7] or "",
+                            tags=tags,
+                            metadata=metadata,
+                        )
+                    )
+
+        except Exception as e:
+            logger.debug("Entity retrieval failed for '%s': %s", entity_name, e)
+
+        return nodes
+
+    def execute_aggregation(self, query_type: str, entity_filter: str = "") -> dict[str, Any]:
+        """Execute Cypher aggregation queries for meta-memory questions.
+
+        Supports counting, listing, and enumerating entities stored in memory.
+        This bypasses text search entirely and uses graph aggregation.
+
+        Args:
+            query_type: Type of aggregation:
+                - "count_entities": Count distinct entity names
+                - "count_concepts": Count distinct concept values
+                - "count_by_concept": Count facts grouped by concept
+                - "list_entities": List all distinct entity names
+                - "list_concepts": List all distinct concept values
+                - "count_total": Total number of facts
+            entity_filter: Optional filter string for narrowing results
+
+        Returns:
+            Dict with aggregation results, e.g.:
+                {"count": 5, "items": ["atlas", "beacon", ...]}
+        """
+        try:
+            if query_type == "count_total":
+                result = self.connection.execute(
+                    "MATCH (m:SemanticMemory) WHERE m.agent_id = $aid RETURN COUNT(m)",
+                    {"aid": self.agent_name},
+                )
+                if result.has_next():
+                    return {"count": result.get_next()[0], "query_type": query_type}
+
+            elif query_type == "count_entities":
+                result = self.connection.execute(
+                    """
+                    MATCH (m:SemanticMemory)
+                    WHERE m.agent_id = $aid AND m.entity_name <> ''
+                    RETURN COUNT(DISTINCT m.entity_name)
+                    """,
+                    {"aid": self.agent_name},
+                )
+                if result.has_next():
+                    return {"count": result.get_next()[0], "query_type": query_type}
+
+            elif query_type == "list_entities":
+                result = self.connection.execute(
+                    """
+                    MATCH (m:SemanticMemory)
+                    WHERE m.agent_id = $aid AND m.entity_name <> ''
+                    RETURN DISTINCT m.entity_name
+                    ORDER BY m.entity_name
+                    """,
+                    {"aid": self.agent_name},
+                )
+                items = []
+                while result.has_next():
+                    items.append(result.get_next()[0])
+                return {"count": len(items), "items": items, "query_type": query_type}
+
+            elif query_type == "count_concepts":
+                result = self.connection.execute(
+                    """
+                    MATCH (m:SemanticMemory)
+                    WHERE m.agent_id = $aid AND m.concept <> '' AND m.concept <> 'SUMMARY'
+                    RETURN COUNT(DISTINCT m.concept)
+                    """,
+                    {"aid": self.agent_name},
+                )
+                if result.has_next():
+                    return {"count": result.get_next()[0], "query_type": query_type}
+
+            elif query_type == "list_concepts":
+                filter_clause = ""
+                params: dict[str, Any] = {"aid": self.agent_name}
+                if entity_filter:
+                    filter_clause = " AND LOWER(m.concept) CONTAINS $filter"
+                    params["filter"] = entity_filter.lower()
+
+                result = self.connection.execute(
+                    f"""
+                    MATCH (m:SemanticMemory)
+                    WHERE m.agent_id = $aid AND m.concept <> '' AND m.concept <> 'SUMMARY'
+                    {filter_clause}
+                    RETURN DISTINCT m.concept
+                    ORDER BY m.concept
+                    """,
+                    params,
+                )
+                items = []
+                while result.has_next():
+                    items.append(result.get_next()[0])
+                return {"count": len(items), "items": items, "query_type": query_type}
+
+            elif query_type == "count_by_concept":
+                filter_clause = ""
+                params = {"aid": self.agent_name}
+                if entity_filter:
+                    filter_clause = " AND LOWER(m.concept) CONTAINS $filter"
+                    params["filter"] = entity_filter.lower()
+
+                result = self.connection.execute(
+                    f"""
+                    MATCH (m:SemanticMemory)
+                    WHERE m.agent_id = $aid AND m.concept <> '' AND m.concept <> 'SUMMARY'
+                    {filter_clause}
+                    RETURN m.concept, COUNT(m) AS cnt
+                    ORDER BY cnt DESC
+                    """,
+                    params,
+                )
+                items = {}
+                while result.has_next():
+                    row = result.get_next()
+                    items[row[0]] = row[1]
+                return {
+                    "count": len(items),
+                    "items": items,
+                    "total_facts": sum(items.values()),
+                    "query_type": query_type,
+                }
+
+        except Exception as e:
+            logger.debug("Aggregation query failed (%s): %s", query_type, e)
+
+        return {"count": 0, "query_type": query_type, "error": "Query failed"}
 
     def get_all_knowledge(self, limit: int = 50) -> list[KnowledgeNode]:
         """Retrieve all semantic knowledge nodes.

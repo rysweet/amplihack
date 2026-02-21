@@ -42,6 +42,7 @@ from .hierarchical_memory import (
 from .learning_agent import LearningAgent
 from .memory_retrieval import MemoryRetriever
 from .similarity import compute_similarity, compute_tag_similarity, compute_word_similarity
+from .sub_agents import CoordinatorAgent, MemoryAgent, MultiAgentLearningAgent
 
 # Backward compatibility: old name -> new name
 WikipediaLearningAgent = LearningAgent
@@ -66,6 +67,9 @@ __all__ = [
     "MemoryClassifier",
     "MemoryRetriever",
     "WikipediaLearningAgent",
+    "CoordinatorAgent",
+    "MemoryAgent",
+    "MultiAgentLearningAgent",
     "compute_similarity",
     "compute_tag_similarity",
     "compute_word_similarity",
