@@ -27,7 +27,8 @@ logger = logging.getLogger(__name__)
 _DEFAULT_TIMEOUT = float(os.environ.get("COPILOT_AGENT_TIMEOUT", "300"))
 _MAX_TIMEOUT = 600.0
 
-# Try importing GitHub Copilot SDK
+HAS_COPILOT_SDK = False
+
 try:
     from copilot import CopilotClient
     from copilot.types import (
@@ -40,8 +41,7 @@ try:
 
     HAS_COPILOT_SDK = True
 except ImportError:
-    HAS_COPILOT_SDK = False
-    logger.debug("github-copilot-sdk not installed. Install with: pip install github-copilot-sdk")
+    pass  # Checked in CopilotGoalSeekingAgent.__init__
 
 
 def _make_tool_handler(agent_tool: AgentTool):
@@ -216,12 +216,14 @@ class CopilotGoalSeekingAgent(GoalSeekingAgent):
         return base
 
     async def _ensure_client(self) -> None:
-        """Lazily initialize CopilotClient and create a session.
+        """Initialize CopilotClient and create a session.
 
-        Idempotent: does nothing if already connected.
+        Creates a fresh client+session each time to avoid stale event loop
+        issues when called from separate asyncio.run() invocations (e.g.
+        the eval harness calls learn() and answer() as separate sync calls).
         """
-        if self._session is not None:
-            return
+        # Always create fresh client+session to avoid "Event loop is closed"
+        await self._cleanup()
 
         client_opts = {}
         if self._cli_path:
@@ -249,15 +251,28 @@ class CopilotGoalSeekingAgent(GoalSeekingAgent):
 
         self._session.on(_track_tools)
 
+    async def _cleanup(self) -> None:
+        """Clean up existing client/session resources."""
+        if self._session is not None:
+            try:
+                await self._session.destroy()
+            except Exception:
+                pass
+            self._session = None
+        if self._client is not None:
+            try:
+                await self._client.stop()
+            except Exception:
+                try:
+                    await self._client.force_stop()
+                except Exception:
+                    pass
+            self._client = None
+
     async def _run_sdk_agent(self, task: str, max_turns: int = 10) -> AgentResult:
-        """Execute task through Copilot SDK send_and_wait loop.
+        """Execute task through Copilot SDK send_and_wait.
 
-        Args:
-            task: The prompt/task to execute
-            max_turns: Maximum conversation turns (currently single-turn)
-
-        Returns:
-            AgentResult with response, tools used, and metadata
+        Creates a fresh client+session for each call to avoid event loop issues.
         """
         try:
             await self._ensure_client()
@@ -296,6 +311,8 @@ class CopilotGoalSeekingAgent(GoalSeekingAgent):
                 goal_achieved=False,
                 metadata={"sdk": "copilot", "error": str(type(exc).__name__)},
             )
+        finally:
+            await self._cleanup()
 
     @staticmethod
     def _extract_response_content(response: Any) -> str:
@@ -339,42 +356,13 @@ class CopilotGoalSeekingAgent(GoalSeekingAgent):
         # Invalidate session so next _ensure_client() creates a new one
         self._session = None
 
-    async def _destroy_session(self) -> None:
-        """Destroy the current Copilot session."""
-        if self._session is not None:
-            try:
-                await self._session.destroy()
-            except Exception as exc:
-                logger.debug("Session destroy error (ignored): %s", exc)
-            finally:
-                self._session = None
-
-    async def _stop_client(self) -> None:
-        """Stop the CopilotClient, destroying session first."""
-        await self._destroy_session()
-        if self._client is not None:
-            try:
-                await self._client.stop()
-            except Exception:
-                try:
-                    await self._client.force_stop()
-                except Exception as exc:
-                    logger.debug("Force stop error (ignored): %s", exc)
-            finally:
-                self._client = None
-
     def close(self) -> None:
         """Release all resources (sync wrapper for async cleanup)."""
         super().close()
-        try:
-            loop = asyncio.get_running_loop()
-            self._cleanup_task = loop.create_task(self._stop_client())
-        except RuntimeError:
-            # No running loop - use asyncio.run for sync context
-            try:
-                asyncio.run(self._stop_client())
-            except Exception as exc:
-                logger.debug("Sync close error (ignored): %s", exc)
+        # Resources are cleaned up in _run_sdk_agent's finally block.
+        # Force-clear references so no stale objects remain.
+        self._session = None
+        self._client = None
 
     async def __aenter__(self) -> Self:
         """Async context manager entry."""
@@ -387,8 +375,8 @@ class CopilotGoalSeekingAgent(GoalSeekingAgent):
         exc_val: BaseException | None,
         exc_tb: types.TracebackType | None,
     ) -> None:
-        """Async context manager exit - clean up resources."""
-        await self._stop_client()
+        """Async context manager exit."""
+        await self._cleanup()
 
 
 __all__ = ["CopilotGoalSeekingAgent", "HAS_COPILOT_SDK"]
