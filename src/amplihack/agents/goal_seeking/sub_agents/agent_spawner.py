@@ -23,6 +23,9 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Callable
 
+# Pre-compiled word-boundary check for classification
+_WORD_BOUNDARY = re.compile(r"\b{}\b")
+
 logger = logging.getLogger(__name__)
 
 
@@ -37,12 +40,14 @@ class SpecialistType(str, Enum):
 
 
 # Keywords used to auto-classify task type
+# Order matters: more specific multi-word patterns checked first (research
+# before retrieval) so "web search" matches research not retrieval.
 _CLASSIFICATION_RULES: list[tuple[list[str], SpecialistType]] = [
-    (["find", "search", "retrieve", "lookup", "get facts", "what do we know"], SpecialistType.RETRIEVAL),
-    (["analyze", "pattern", "detect", "compare", "trend", "correlation"], SpecialistType.ANALYSIS),
+    (["research", "web search", "look up online"], SpecialistType.RESEARCH),
+    (["generate", "write code", "script", "implement", "create program", "create a program"], SpecialistType.CODE_GENERATION),
     (["combine", "synthesize", "summarize", "merge", "integrate"], SpecialistType.SYNTHESIS),
-    (["generate", "write code", "script", "implement", "create program"], SpecialistType.CODE_GENERATION),
-    (["research", "web search", "external", "look up online"], SpecialistType.RESEARCH),
+    (["analyze", "pattern", "detect", "compare", "trend", "correlation"], SpecialistType.ANALYSIS),
+    (["find", "search", "retrieve", "lookup", "get facts", "what do we know"], SpecialistType.RETRIEVAL),
 ]
 
 
@@ -271,8 +276,10 @@ class AgentSpawner:
     def _classify_task(self, task: str) -> str:
         """Auto-detect specialist type from task description.
 
-        Uses keyword matching against classification rules to determine
-        the most appropriate specialist type.
+        Uses word-boundary keyword matching against classification rules
+        to determine the most appropriate specialist type. Multi-word
+        keywords use substring matching; single words use word boundaries
+        to avoid false matches (e.g., "find" in "findings").
 
         Args:
             task: Task description text
@@ -283,8 +290,15 @@ class AgentSpawner:
         task_lower = task.lower()
 
         for keywords, specialist_type in _CLASSIFICATION_RULES:
-            if any(kw in task_lower for kw in keywords):
-                return specialist_type.value
+            for kw in keywords:
+                if " " in kw:
+                    # Multi-word keywords: use substring match
+                    if kw in task_lower:
+                        return specialist_type.value
+                else:
+                    # Single-word keywords: use word boundary match
+                    if re.search(rf"\b{re.escape(kw)}\b", task_lower):
+                        return specialist_type.value
 
         # Default to retrieval for unclassified tasks
         return SpecialistType.RETRIEVAL.value
