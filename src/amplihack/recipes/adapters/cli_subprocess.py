@@ -62,12 +62,17 @@ class CLISubprocessAdapter:
         output_file = output_dir / f"agent-step-{int(time.time())}.log"
 
         # Launch process – no timeout
+        # CRITICAL: Remove CLAUDECODE env var so nested claude sessions work
+        import os
+
+        child_env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
         with open(output_file, "w") as log_fh:
             proc = subprocess.Popen(
                 cmd,
                 stdout=log_fh,
                 stderr=subprocess.STDOUT,
                 cwd=actual_cwd,
+                env=child_env,
             )
 
         # Background thread tails the log so callers see progress
@@ -164,7 +169,7 @@ class CLISubprocessAdapter:
                     fh.seek(last_size)
                     new_text = fh.read()
                     # Print last meaningful line as progress
-                    lines = [l for l in new_text.strip().splitlines() if l.strip()]
+                    lines = [ln for ln in new_text.strip().splitlines() if ln.strip()]
                     if lines:
                         print(f"  [agent] {lines[-1][:120]}")
                 last_size = current_size
