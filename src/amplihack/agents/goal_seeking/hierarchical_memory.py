@@ -1060,8 +1060,8 @@ class HierarchicalMemory:
                     node.metadata["supersede_reason"] = row[1] or ""
                     # Lower confidence of superseded facts
                     node.confidence = max(0.1, node.confidence * 0.5)
-            except Exception:
-                pass  # SUPERSEDES table might not exist in older DBs
+            except Exception as e:
+                logger.debug("SUPERSEDES check skipped (table may not exist): %s", e)
 
     @staticmethod
     def _extract_entity_name(content: str, concept: str) -> str:

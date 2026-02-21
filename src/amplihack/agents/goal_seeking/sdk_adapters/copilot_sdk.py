@@ -244,8 +244,8 @@ class CopilotGoalSeekingAgent(GoalSeekingAgent):
                     tool_name = getattr(getattr(event, "data", None), "tool_name", None)
                     if tool_name:
                         self._tools_used.append(str(tool_name))
-            except Exception:
-                pass  # Event tracking is best-effort
+            except Exception as e:
+                logger.debug("Event tracking error (best-effort): %s", e)
 
         self._session.on(_track_tools)
 

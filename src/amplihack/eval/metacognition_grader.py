@@ -106,7 +106,7 @@ class MetacognitionGrader:
             return self._grade_with_llm(question, expected_answer, student_answer, self_explanation)
         except Exception as e:
             logger.warning("Grading failed: %s", e)
-            return self._zero_score(f"Grading failed: {e}")
+            return self._zero_score("Grading failed due to an internal error")
 
     def batch_grade(self, items: list[dict[str, str]]) -> list[MetacognitionScore]:
         """Grade multiple question-answer pairs.

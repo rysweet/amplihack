@@ -99,7 +99,9 @@ class GoalSeekingAgent(ABC):
             self.memory = MemoryRetriever(agent_name=self.name, storage_path=self.storage_path)
             logger.info("Memory initialized for agent '%s'", self.name)
         except ImportError:
-            logger.warning("amplihack-memory-lib not installed. Continuing without persistent memory.")
+            logger.warning(
+                "amplihack-memory-lib not installed. Continuing without persistent memory."
+            )
         except Exception as e:
             logger.warning("Failed to initialize memory: %s. Continuing without memory.", e)
 
@@ -109,42 +111,86 @@ class GoalSeekingAgent(ABC):
             AgentTool(
                 name="learn_from_content",
                 description="Learn from text by extracting and storing facts",
-                parameters={"type": "object", "properties": {"content": {"type": "string", "description": "Content to learn from"}}, "required": ["content"]},
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "content": {"type": "string", "description": "Content to learn from"}
+                    },
+                    "required": ["content"],
+                },
                 function=self._tool_learn,
                 category="learning",
             ),
             AgentTool(
                 name="search_memory",
                 description="Search stored knowledge for relevant facts",
-                parameters={"type": "object", "properties": {"query": {"type": "string", "description": "Search query"}, "limit": {"type": "integer", "description": "Max results", "default": 10}}, "required": ["query"]},
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "Search query"},
+                        "limit": {"type": "integer", "description": "Max results", "default": 10},
+                    },
+                    "required": ["query"],
+                },
                 function=self._tool_search,
                 category="memory",
             ),
             AgentTool(
                 name="explain_knowledge",
                 description="Generate an explanation of a topic from stored knowledge",
-                parameters={"type": "object", "properties": {"topic": {"type": "string", "description": "Topic to explain"}, "depth": {"type": "string", "enum": ["brief", "overview", "comprehensive"], "default": "overview"}}, "required": ["topic"]},
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "topic": {"type": "string", "description": "Topic to explain"},
+                        "depth": {
+                            "type": "string",
+                            "enum": ["brief", "overview", "comprehensive"],
+                            "default": "overview",
+                        },
+                    },
+                    "required": ["topic"],
+                },
                 function=self._tool_explain,
                 category="teaching",
             ),
             AgentTool(
                 name="find_knowledge_gaps",
                 description="Identify what is unknown about a topic",
-                parameters={"type": "object", "properties": {"topic": {"type": "string", "description": "Topic to analyze"}}, "required": ["topic"]},
+                parameters={
+                    "type": "object",
+                    "properties": {"topic": {"type": "string", "description": "Topic to analyze"}},
+                    "required": ["topic"],
+                },
                 function=self._tool_find_gaps,
                 category="learning",
             ),
             AgentTool(
                 name="verify_fact",
                 description="Check if a fact is consistent with stored knowledge",
-                parameters={"type": "object", "properties": {"fact": {"type": "string", "description": "Fact to verify"}}, "required": ["fact"]},
+                parameters={
+                    "type": "object",
+                    "properties": {"fact": {"type": "string", "description": "Fact to verify"}},
+                    "required": ["fact"],
+                },
                 function=self._tool_verify,
                 category="applying",
             ),
             AgentTool(
                 name="store_fact",
                 description="Store a fact in memory with context and confidence",
-                parameters={"type": "object", "properties": {"context": {"type": "string", "description": "Topic/context"}, "fact": {"type": "string", "description": "The fact to store"}, "confidence": {"type": "number", "description": "Confidence 0-1", "default": 0.8}}, "required": ["context", "fact"]},
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "context": {"type": "string", "description": "Topic/context"},
+                        "fact": {"type": "string", "description": "The fact to store"},
+                        "confidence": {
+                            "type": "number",
+                            "description": "Confidence 0-1",
+                            "default": 0.8,
+                        },
+                    },
+                    "required": ["context", "fact"],
+                },
                 function=self._tool_store,
                 category="memory",
             ),
@@ -165,7 +211,9 @@ class GoalSeekingAgent(ABC):
         if not content or not content.strip():
             return {"error": "Content cannot be empty"}
         content = content[:50_000]
-        self.memory.store_fact(context=f"learned_content_{self.name}", fact=content[:2000], confidence=0.8)
+        self.memory.store_fact(
+            context=f"learned_content_{self.name}", fact=content[:2000], confidence=0.8
+        )
         return {"status": "learned", "content_length": len(content)}
 
     def _tool_search(self, query: str, limit: int = 10) -> list[dict[str, Any]]:
@@ -189,7 +237,11 @@ class GoalSeekingAgent(ABC):
         if not self.memory:
             return {"gaps": ["No memory initialized"], "total_facts": 0}
         results = self.memory.search(query=topic, limit=20)
-        return {"topic": topic, "total_facts": len(results), "gaps": [] if results else ["No knowledge"]}
+        return {
+            "topic": topic,
+            "total_facts": len(results),
+            "gaps": [] if results else ["No knowledge"],
+        }
 
     def _tool_verify(self, fact: str) -> dict[str, Any]:
         if not self.memory:
@@ -203,7 +255,9 @@ class GoalSeekingAgent(ABC):
         if not context or not fact:
             return {"error": "Context and fact are required"}
         confidence = max(0.0, min(1.0, confidence))
-        self.memory.store_fact(context=context.strip()[:500], fact=fact.strip()[:2000], confidence=confidence)
+        self.memory.store_fact(
+            context=context.strip()[:500], fact=fact.strip()[:2000], confidence=confidence
+        )
         return {"stored": True}
 
     def _tool_summary(self) -> dict[str, Any]:
@@ -215,7 +269,12 @@ class GoalSeekingAgent(ABC):
             return {"total_experiences": 0}
 
     def form_goal(self, user_intent: str) -> Goal:
-        self.current_goal = Goal(description=user_intent, success_criteria=f"Successfully completed: {user_intent}", plan=[], status="in_progress")
+        self.current_goal = Goal(
+            description=user_intent,
+            success_criteria=f"Successfully completed: {user_intent}",
+            plan=[],
+            status="in_progress",
+        )
         return self.current_goal
 
     @abstractmethod
@@ -244,11 +303,12 @@ class GoalSeekingAgent(ABC):
         return result
 
     def close(self) -> None:
+        """Close the agent and release resources."""
         if self.memory:
             try:
                 self.memory.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Error closing memory: %s", e)
 
 
 __all__ = ["GoalSeekingAgent", "AgentTool", "AgentResult", "Goal", "SDKType"]
