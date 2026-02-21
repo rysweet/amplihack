@@ -1428,11 +1428,36 @@ Knowledge Overview (what was learned):
                 "the SOURCE FACTS above. Count the named individuals listed here. ***\n"
             )
 
+        # Add cross-reference instruction when question involves role transitions
+        cross_ref_instructions = ""
+        cross_ref_cues = (
+            "replaced",
+            "who replaced",
+            "currently leading",
+            "took over",
+            "moved from",
+            "moved to",
+            "who leads",
+            "who is leading",
+            "and what",
+            "who received",
+        )
+        if any(kw in question_lower for kw in cross_ref_cues):
+            cross_ref_instructions = (
+                "\n\nIMPORTANT - CROSS-REFERENCE / ROLE TRANSITION:\n"
+                "When the facts describe role changes or transitions between people:\n"
+                "- Carefully distinguish WHO has the role NOW vs who had it BEFORE\n"
+                "- Look for temporal markers: 'now leads', 'moved to', 'replaced by'\n"
+                "- If person A moved to research and person B took over, then B leads NOW\n"
+                "- 'X leads the maintenance phase' means X (not anyone else) leads it\n"
+                "- State the CURRENT state of affairs, then explain the history\n"
+            )
+
         prompt = f"""Answer this question using the provided facts.
 
 Question: {question}
 Level: {question_level} - {instruction}
-{extra_instructions}{contradiction_instructions}{counterfactual_instructions}{ratio_trend_instructions}{novel_skill_instructions}
+{extra_instructions}{contradiction_instructions}{counterfactual_instructions}{ratio_trend_instructions}{novel_skill_instructions}{cross_ref_instructions}
 {summary_section}
 {source_specific_section}
 {context_str}

@@ -1278,7 +1278,7 @@ def generate_dialogue(num_turns: int = 1000, seed: int = 42) -> GroundTruth:
         (
             "Sarah Chen",
             "role",
-            "Remember what I told you about Sarah Chen's role? She's now leading the Atlas maintenance phase under Lars Eriksson.",
+            "Remember what I told you about the Atlas team? After Sarah Chen received the Innovation Award, Lars Eriksson took over leading the maintenance phase.",
         ),
         (
             "Project Atlas",
