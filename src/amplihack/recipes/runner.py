@@ -152,24 +152,47 @@ class RecipeRunner:
                 error=str(exc),
             )
 
-        # Optionally parse JSON output -- FAIL if parse_json is set but parsing fails
+        # Optionally parse JSON output -- retry once then FAIL
         if step.parse_json and output:
             parsed = self._parse_json_output(output, step.id)
             if parsed is not None:
                 output = parsed
             else:
-                logger.error(
-                    "Step '%s': parse_json is true but output is not valid JSON. "
-                    "Downstream conditions that access attributes WILL fail. "
-                    "Raw output (first 200 chars): %s",
+                # Retry: re-execute with explicit JSON instruction
+                logger.warning(
+                    "Step '%s': parse_json failed on first attempt. Retrying with JSON reminder.",
                     step.id,
-                    str(output)[:200],
                 )
-                return StepResult(
-                    step_id=step.id,
-                    status=StepStatus.FAILED,
-                    error="parse_json failed: output is not valid JSON",
-                )
+                retry_output = self._retry_for_json(step, ctx)
+                if retry_output is not None:
+                    parsed = self._parse_json_output(retry_output, step.id)
+                    if parsed is not None:
+                        output = parsed
+                        logger.info("Step '%s': parse_json succeeded on retry.", step.id)
+                    else:
+                        logger.error(
+                            "Step '%s': parse_json failed on retry. "
+                            "Raw output (first 200 chars): %s",
+                            step.id,
+                            str(retry_output)[:200],
+                        )
+                        return StepResult(
+                            step_id=step.id,
+                            status=StepStatus.FAILED,
+                            error="parse_json failed after retry: output is not valid JSON",
+                        )
+                else:
+                    logger.error(
+                        "Step '%s': parse_json failed and retry not possible. "
+                        "Raw output (first 200 chars): %s",
+                        step.id,
+                        str(output)[:200],
+                    )
+                    return StepResult(
+                        step_id=step.id,
+                        status=StepStatus.FAILED,
+                        error="parse_json failed: output is not valid JSON",
+                    )
 
         # Store output in context
         if step.output:
@@ -182,6 +205,36 @@ class RecipeRunner:
             if isinstance(output, (dict, list))
             else (str(output) if output else ""),
         )
+
+    def _retry_for_json(self, step: Step, ctx: RecipeContext) -> str | None:
+        """Retry an agent step with an explicit JSON-only instruction.
+
+        Only works for agent steps (not bash). Appends a reminder to return
+        ONLY valid JSON to the original prompt and re-executes.
+
+        Returns the raw output string from the retry, or None if retry
+        is not applicable (bash steps) or fails.
+        """
+        if step.step_type != StepType.AGENT:
+            return None  # Can't retry bash steps with different prompts
+
+        original_prompt = step.prompt or ""
+        retry_prompt = (
+            original_prompt
+            + "\n\nIMPORTANT: Your previous response was not valid JSON. "
+            "Return ONLY a valid JSON object. No markdown fences, no explanation, "
+            "no text before or after. Just the raw JSON object starting with { and ending with }."
+        )
+
+        working_dir = step.working_dir or self._working_dir
+        try:
+            return self._adapter.execute_agent_step(
+                prompt=ctx.render(retry_prompt),
+                working_dir=working_dir,
+            )
+        except Exception as exc:
+            logger.warning("Retry for step '%s' failed: %s", step.id, exc)
+            return None
 
     @staticmethod
     def _parse_json_output(output: str, step_id: str) -> dict | list | None:

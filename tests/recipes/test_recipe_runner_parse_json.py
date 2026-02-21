@@ -386,3 +386,116 @@ class TestRecipeRunnerEndToEnd:
         )
         assert classification_step is not None
         assert classification_step.status == StepStatus.COMPLETED
+
+
+class TestParseJsonRetry:
+    """Test that parse_json retries once before failing."""
+
+    def _make_runner(self):
+        adapter = MagicMock()
+        return RecipeRunner(adapter=adapter)
+
+    def _make_step(self, step_id="test-step", parse_json=True, output_name="result"):
+        return Step(
+            id=step_id,
+            step_type=StepType.AGENT,
+            prompt="test prompt",
+            output=output_name,
+            parse_json=parse_json,
+        )
+
+    def test_retry_succeeds_on_second_attempt(self):
+        """First attempt returns non-JSON, retry returns valid JSON."""
+        runner = self._make_runner()
+        runner._adapter.execute_agent_step = MagicMock(
+            side_effect=[
+                "Not JSON at all",  # First call (original)
+                '{"key": "value"}',  # Second call (retry)
+            ]
+        )
+        step = self._make_step()
+
+        from amplihack.recipes.context import RecipeContext
+
+        ctx = RecipeContext()
+        result = runner._execute_step(step, ctx, dry_run=False)
+
+        assert result.status == StepStatus.COMPLETED
+        assert ctx.get("result") == {"key": "value"}
+        assert runner._adapter.execute_agent_step.call_count == 2
+
+    def test_retry_fails_after_both_attempts(self):
+        """Both attempts return non-JSON -> step fails."""
+        runner = self._make_runner()
+        runner._adapter.execute_agent_step = MagicMock(
+            side_effect=["Not JSON", "Still not JSON"]
+        )
+        step = self._make_step()
+
+        from amplihack.recipes.context import RecipeContext
+
+        ctx = RecipeContext()
+        result = runner._execute_step(step, ctx, dry_run=False)
+
+        assert result.status == StepStatus.FAILED
+        assert "retry" in result.error.lower()
+
+    def test_no_retry_for_bash_steps(self):
+        """Bash steps cannot be retried."""
+        runner = self._make_runner()
+        runner._adapter.execute_bash_step = MagicMock(return_value="Not JSON")
+        step = Step(
+            id="bash-step",
+            step_type=StepType.BASH,
+            command="echo hello",
+            output="result",
+            parse_json=True,
+        )
+
+        from amplihack.recipes.context import RecipeContext
+
+        ctx = RecipeContext()
+        result = runner._execute_step(step, ctx, dry_run=False)
+
+        assert result.status == StepStatus.FAILED
+        assert runner._adapter.execute_bash_step.call_count == 1
+
+    def test_retry_prompt_includes_json_reminder(self):
+        """Retry prompt should tell LLM to return only JSON."""
+        runner = self._make_runner()
+        call_prompts = []
+
+        def capture_prompt(prompt, **kwargs):
+            call_prompts.append(prompt)
+            if len(call_prompts) == 1:
+                return "Not JSON"
+            return '{"ok": true}'
+
+        runner._adapter.execute_agent_step = MagicMock(side_effect=capture_prompt)
+        step = self._make_step()
+
+        from amplihack.recipes.context import RecipeContext
+
+        ctx = RecipeContext()
+        runner._execute_step(step, ctx, dry_run=False)
+
+        assert len(call_prompts) == 2
+        assert "valid JSON" in call_prompts[1]
+
+
+class TestQaWorkflowConditionGuard:
+    """Test that qa-workflow compile-output steps have condition guards."""
+
+    def test_compile_output_has_condition(self):
+        from amplihack.recipes.parser import RecipeParser
+
+        parser = RecipeParser()
+        recipe = parser.parse_file("amplifier-bundle/recipes/qa-workflow.yaml")
+
+        compile_steps = [s for s in recipe.steps if s.id.startswith("compile-output")]
+        assert len(compile_steps) >= 1, "Should have at least one compile-output step"
+
+        for step in compile_steps:
+            assert step.condition is not None, (
+                f"Step {step.id} must have a condition guard"
+            )
