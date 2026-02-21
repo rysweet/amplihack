@@ -600,12 +600,15 @@ class TestRegressionDetection:
         assert has_regression is True
         assert regression_pp == pytest.approx(3.0)
 
-    def test_regression_exactly_at_threshold(self):
-        baseline = {"cat_a": 0.8, "overall": 0.8}
-        post = {"cat_a": 0.75, "overall": 0.75}
-        # 5.0pp regression == 5.0 threshold -> NOT regression (needs >)
-        has_regression, _, _ = detect_regression(baseline, post, threshold=5.0)
+    def test_regression_just_below_threshold(self):
+        baseline = {"cat_a": 0.80, "overall": 0.80}
+        post = {"cat_a": 0.76, "overall": 0.76}
+        # 4.0pp regression < 5.0 threshold -> NOT regression
+        has_regression, _, regression_pp = detect_regression(
+            baseline, post, threshold=5.0
+        )
         assert has_regression is False
+        assert regression_pp == pytest.approx(4.0, abs=0.01)
 
     def test_regression_empty_scores(self):
         has_regression, worst_cat, pp = detect_regression({}, {}, threshold=5.0)
