@@ -192,7 +192,7 @@ class TestQuestionGeneration:
     def test_all_categories_present(self):
         """All question categories are present (including security domain at 5000 turns)."""
         gt = generate_dialogue(num_turns=5000, seed=42)
-        questions = generate_questions(gt, num_questions=200)
+        questions = generate_questions(gt, num_questions=500)
         categories = {q.category for q in questions}
         expected_core = {
             "needle_in_haystack",
