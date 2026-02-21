@@ -58,6 +58,9 @@ amplifier = [
 ui = [
     "rich>=13.0.0",  # Required for --ui interactive TUI mode
 ]
+eval = [
+    "amplihack-agent-eval>=0.1.0",
+]
 tui-testing = [
     "pytest-asyncio>=0.21.0",
 ]
