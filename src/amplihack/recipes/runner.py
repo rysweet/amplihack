@@ -101,25 +101,8 @@ class RecipeRunner:
     def _execute_step(self, step: Step, ctx: RecipeContext, dry_run: bool) -> StepResult:
         """Execute a single step, handling conditions, templates, and errors."""
 
-        # Evaluate condition -- skip if false
-        if step.condition:
-            try:
-                if not ctx.evaluate(step.condition):
-                    logger.info("Skipping step '%s': condition is false", step.id)
-                    return StepResult(
-                        step_id=step.id,
-                        status=StepStatus.SKIPPED,
-                    )
-            except (ValueError, NameError) as exc:
-                logger.warning(
-                    "Condition evaluation failed for step '%s', skipping: %s", step.id, exc
-                )
-                return StepResult(
-                    step_id=step.id,
-                    status=StepStatus.SKIPPED,
-                )
-
-        # Dry run -- record but do not execute
+        # Dry run -- skip condition evaluation (no real data to evaluate against)
+        # and record step as completed
         if dry_run:
             logger.info("DRY RUN: would execute step '%s'", step.id)
 
@@ -135,6 +118,29 @@ class RecipeRunner:
                 output=mock_output,
             )
 
+        # Evaluate condition -- skip if false, FAIL if condition itself errors
+        if step.condition:
+            try:
+                if not ctx.evaluate(step.condition):
+                    logger.info("Skipping step '%s': condition is false", step.id)
+                    return StepResult(
+                        step_id=step.id,
+                        status=StepStatus.SKIPPED,
+                    )
+            except Exception as exc:
+                logger.error(
+                    "Condition evaluation FAILED for step '%s': %s. "
+                    "This usually means a prior parse_json step returned invalid JSON. "
+                    "Fix the upstream step or the condition expression.",
+                    step.id,
+                    exc,
+                )
+                return StepResult(
+                    step_id=step.id,
+                    status=StepStatus.FAILED,
+                    error=f"Condition error: {exc}",
+                )
+
         # Execute the step via the adapter
         try:
             output = self._dispatch_step(step, ctx)
@@ -146,15 +152,47 @@ class RecipeRunner:
                 error=str(exc),
             )
 
-        # Optionally parse JSON output
+        # Optionally parse JSON output -- retry once then FAIL
         if step.parse_json and output:
-            try:
-                output = json.loads(output)
-            except (json.JSONDecodeError, TypeError):
+            parsed = self._parse_json_output(output, step.id)
+            if parsed is not None:
+                output = parsed
+            else:
+                # Retry: re-execute with explicit JSON instruction
                 logger.warning(
-                    "Step '%s': parse_json is true but output is not valid JSON",
+                    "Step '%s': parse_json failed on first attempt. Retrying with JSON reminder.",
                     step.id,
                 )
+                retry_output = self._retry_for_json(step, ctx)
+                if retry_output is not None:
+                    parsed = self._parse_json_output(retry_output, step.id)
+                    if parsed is not None:
+                        output = parsed
+                        logger.info("Step '%s': parse_json succeeded on retry.", step.id)
+                    else:
+                        logger.error(
+                            "Step '%s': parse_json failed on retry. "
+                            "Raw output (first 200 chars): %s",
+                            step.id,
+                            str(retry_output)[:200],
+                        )
+                        return StepResult(
+                            step_id=step.id,
+                            status=StepStatus.FAILED,
+                            error="parse_json failed after retry: output is not valid JSON",
+                        )
+                else:
+                    logger.error(
+                        "Step '%s': parse_json failed and retry not possible. "
+                        "Raw output (first 200 chars): %s",
+                        step.id,
+                        str(output)[:200],
+                    )
+                    return StepResult(
+                        step_id=step.id,
+                        status=StepStatus.FAILED,
+                        error="parse_json failed: output is not valid JSON",
+                    )
 
         # Store output in context
         if step.output:
@@ -167,6 +205,100 @@ class RecipeRunner:
             if isinstance(output, (dict, list))
             else (str(output) if output else ""),
         )
+
+    def _retry_for_json(self, step: Step, ctx: RecipeContext) -> str | None:
+        """Retry an agent step with an explicit JSON-only instruction.
+
+        Only works for agent steps (not bash). Appends a reminder to return
+        ONLY valid JSON to the original prompt and re-executes.
+
+        Returns the raw output string from the retry, or None if retry
+        is not applicable (bash steps) or fails.
+        """
+        if step.step_type != StepType.AGENT:
+            return None  # Can't retry bash steps with different prompts
+
+        original_prompt = step.prompt or ""
+        retry_prompt = (
+            original_prompt
+            + "\n\nIMPORTANT: Your previous response was not valid JSON. "
+            "Return ONLY a valid JSON object. No markdown fences, no explanation, "
+            "no text before or after. Just the raw JSON object starting with { and ending with }."
+        )
+
+        working_dir = step.working_dir or self._working_dir
+        try:
+            return self._adapter.execute_agent_step(
+                prompt=ctx.render(retry_prompt),
+                working_dir=working_dir,
+            )
+        except Exception as exc:
+            logger.warning("Retry for step '%s' failed: %s", step.id, exc)
+            return None
+
+    @staticmethod
+    def _parse_json_output(output: str, step_id: str) -> dict | list | None:
+        """Try to parse JSON from LLM output using multiple strategies.
+
+        Strategy 1: Direct json.loads
+        Strategy 2: Extract from markdown fences (```json ... ```)
+        Strategy 3: Find first { ... } or [ ... ] block
+
+        Returns parsed object or None if all strategies fail.
+        """
+        import re
+
+        text = output.strip()
+
+        # Strategy 1: Direct parse
+        try:
+            return json.loads(text)
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+        # Strategy 2: Extract from markdown fences
+        fenced = re.search(r"```(?:json)?\s*\n?(.*?)\n?\s*```", text, re.DOTALL)
+        if fenced:
+            try:
+                return json.loads(fenced.group(1).strip())
+            except (json.JSONDecodeError, TypeError):
+                pass
+
+        # Strategy 3: Find first balanced JSON object or array via counting
+        for open_ch, close_ch in [("{", "}"), ("[", "]")]:
+            start = text.find(open_ch)
+            if start == -1:
+                continue
+            depth = 0
+            in_string = False
+            escape = False
+            for i in range(start, len(text)):
+                ch = text[i]
+                if escape:
+                    escape = False
+                    continue
+                if ch == "\\":
+                    escape = True
+                    continue
+                if ch == '"':
+                    in_string = not in_string
+                    continue
+                if in_string:
+                    continue
+                if ch == open_ch:
+                    depth += 1
+                elif ch == close_ch:
+                    depth -= 1
+                    if depth == 0:
+                        candidate = text[start : i + 1]
+                        try:
+                            return json.loads(candidate)
+                        except (json.JSONDecodeError, TypeError):
+                            break  # Try next delimiter type
+            # If we exit without finding balanced braces, try next type
+
+        logger.warning("All JSON extraction strategies failed for step '%s'", step_id)
+        return None
 
     def _dispatch_step(self, step: Step, ctx: RecipeContext) -> str:
         """Route step execution to the correct adapter method."""
