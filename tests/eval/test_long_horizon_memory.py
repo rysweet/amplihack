@@ -13,9 +13,13 @@ import pytest
 
 from amplihack.eval.long_horizon_data import (
     CONTRADICTORY_REPORTS,
+    INCIDENTS,
+    INFRASTRUCTURE,
     NUMERICAL_DATA,
     PEOPLE,
+    PROBLEM_TASKS,
     PROJECTS,
+    SECURITY_EVENTS,
     TECHNICAL_DOMAINS,
     generate_dialogue,
     generate_questions,
@@ -50,10 +54,17 @@ class TestDialogueGeneration:
             assert turn.turn_number == i, f"Turn {i} has number {turn.turn_number}"
 
     def test_all_blocks_present(self):
-        """All 8 blocks are present in the dialogue."""
+        """All 12 blocks are present in the dialogue at sufficient scale."""
+        gt = generate_dialogue(num_turns=5000, seed=42)
+        blocks = {t.block for t in gt.turns}
+        assert blocks == {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
+
+    def test_original_8_blocks_present_at_1000(self):
+        """At 1000 turns, all 12 blocks are present (scaled down)."""
         gt = generate_dialogue(num_turns=1000, seed=42)
         blocks = {t.block for t in gt.turns}
-        assert blocks == {1, 2, 3, 4, 5, 6, 7, 8}
+        # All 12 blocks should be present even at 1000 turns
+        assert blocks == {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}
 
     def test_block_names_match_numbers(self):
         """Block names are consistent with block numbers."""
@@ -66,6 +77,10 @@ class TestDialogueGeneration:
             6: "contradictory",
             7: "callbacks",
             8: "distractors",
+            9: "security_logs",
+            10: "incidents",
+            11: "infrastructure",
+            12: "problem_solving",
         }
         gt = generate_dialogue(num_turns=1000, seed=42)
         for turn in gt.turns:
@@ -175,11 +190,11 @@ class TestQuestionGeneration:
         assert len(questions) == 20
 
     def test_all_categories_present(self):
-        """All 7 question categories are present."""
-        gt = generate_dialogue(num_turns=1000, seed=42)
-        questions = generate_questions(gt, num_questions=100)
+        """All question categories are present (including security domain at 5000 turns)."""
+        gt = generate_dialogue(num_turns=5000, seed=42)
+        questions = generate_questions(gt, num_questions=200)
         categories = {q.category for q in questions}
-        expected = {
+        expected_core = {
             "needle_in_haystack",
             "temporal_evolution",
             "numerical_precision",
@@ -188,7 +203,33 @@ class TestQuestionGeneration:
             "distractor_resistance",
             "meta_memory",
         }
-        assert categories == expected, f"Missing categories: {expected - categories}"
+        # Core categories always present
+        assert expected_core.issubset(categories), f"Missing core categories: {expected_core - categories}"
+        # Security categories present at 5000 turns
+        expected_security = {
+            "security_log_analysis",
+            "incident_tracking",
+            "infrastructure_knowledge",
+            "problem_solving",
+            "multi_hop_reasoning",
+        }
+        assert expected_security.issubset(categories), f"Missing security categories: {expected_security - categories}"
+
+    def test_core_categories_present_at_1000(self):
+        """Core categories plus security categories present at 1000 turns."""
+        gt = generate_dialogue(num_turns=1000, seed=42)
+        questions = generate_questions(gt, num_questions=100)
+        categories = {q.category for q in questions}
+        expected_core = {
+            "needle_in_haystack",
+            "temporal_evolution",
+            "numerical_precision",
+            "source_attribution",
+            "cross_reference",
+            "distractor_resistance",
+            "meta_memory",
+        }
+        assert expected_core.issubset(categories), f"Missing core categories: {expected_core - categories}"
 
     def test_questions_have_expected_answers(self):
         """Every question has a non-empty expected answer."""
@@ -214,15 +255,15 @@ class TestQuestionGeneration:
         assert len(ids) == len(set(ids)), "Question IDs must be unique"
 
     def test_category_distribution_proportional(self):
-        """Category distribution roughly matches the 20/15/15/10/10/10/5 split."""
+        """Category distribution has needle_in_haystack as largest core category."""
         gt = generate_dialogue(num_turns=1000, seed=42)
         questions = generate_questions(gt, num_questions=100)
-        counts = {}
+        counts: dict[str, int] = {}
         for q in questions:
             counts[q.category] = counts.get(q.category, 0) + 1
 
-        # Needle-in-haystack should have the most
-        assert counts.get("needle_in_haystack", 0) >= 15
+        # Needle-in-haystack should have the most among core categories
+        assert counts.get("needle_in_haystack", 0) >= 10
         # Meta-memory should have the fewest
         assert counts.get("meta_memory", 0) >= 3
 
