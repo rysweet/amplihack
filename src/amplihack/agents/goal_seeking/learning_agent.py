@@ -378,8 +378,15 @@ Rules:
     # simple_recall: direct fact lookup
     # incremental_update: questions about latest/updated/changed information
     #   (needs ALL facts visible to find the most recent version)
+    # contradiction_resolution: needs complete data to find conflicting claims
+    # multi_source_synthesis: needs facts from multiple sources visible
     # meta_memory: aggregation queries (how many, list all) -- routed to Cypher
-    SIMPLE_INTENTS = {"simple_recall", "incremental_update"}
+    SIMPLE_INTENTS = {
+        "simple_recall",
+        "incremental_update",
+        "contradiction_resolution",
+        "multi_source_synthesis",
+    }
 
     # Aggregation intents: routed to Cypher graph queries instead of text search
     AGGREGATION_INTENTS = {"meta_memory"}
@@ -438,8 +445,8 @@ Rules:
         else:
             use_simple = intent_type in self.SIMPLE_INTENTS
             if not use_simple and hasattr(self.memory, "get_all_facts"):
-                kb_size = len(self.memory.get_all_facts(limit=151))
-                if kb_size <= 150:
+                kb_size = len(self.memory.get_all_facts(limit=501))
+                if kb_size <= 500:
                     use_simple = True
 
             if use_simple:
@@ -465,7 +472,11 @@ Rules:
         if not relevant_facts:
             return "I don't have enough information to answer that question."
 
-        # Sort temporally if needed
+        # Always rerank by query relevance first to prioritize the most relevant facts.
+        # For large fact sets (>80), this ensures we trim noise, not signal.
+        relevant_facts = rerank_facts_by_query(relevant_facts, question)
+
+        # Sort temporally if needed (after reranking so top-K are already relevant)
         if intent.get("needs_temporal"):
 
             def temporal_sort_key(fact):
@@ -474,12 +485,6 @@ Rules:
                 return (t_idx, fact.get("timestamp", ""))
 
             relevant_facts = sorted(relevant_facts, key=temporal_sort_key)
-        else:
-            # Keyword-boosted reranking: put most question-relevant facts first.
-            # Skip for temporal queries (already sorted chronologically).
-            # This helps the LLM focus on the most relevant context, especially
-            # when the fact count approaches the prompt's max_facts limit.
-            relevant_facts = rerank_facts_by_query(relevant_facts, question)
 
         # If the question references a specific article/source, provide a filtered
         # subset of facts from JUST that article. This helps the LLM focus on the
@@ -533,9 +538,9 @@ Rules:
     def _simple_retrieval(self, question: str) -> list[dict[str, Any]]:
         """Single-pass retrieval for simple recall questions.
 
-        Gets all facts if the knowledge base is small (<=150), otherwise
+        Gets all facts if the knowledge base is small (<=500), otherwise
         uses keyword search. The threshold is set high because:
-        - LLMs can easily handle 150 facts in context
+        - LLMs can easily handle 500 facts in context (200K token models)
         - Keyword search may miss relevant facts (e.g., Day 10 data)
         - Completeness is critical for temporal and multi-source questions
 
@@ -549,13 +554,13 @@ Rules:
             return []
 
         # Check knowledge base size -- use generous threshold
-        all_facts = self.memory.get_all_facts(limit=151)
-        if len(all_facts) <= 150:
+        all_facts = self.memory.get_all_facts(limit=501)
+        if len(all_facts) <= 500:
             return all_facts
 
         # Larger knowledge base: use keyword search
-        results = self.memory.search(query=question, limit=40)
-        return results if results else all_facts[:150]
+        results = self.memory.search(query=question, limit=60)
+        return results if results else all_facts[:500]
 
     def _aggregation_retrieval(self, question: str, intent: dict[str, Any]) -> list[dict[str, Any]]:
         """Handle meta-memory questions via Cypher aggregation.
@@ -1081,16 +1086,19 @@ Respond with a JSON list like:
         intent = intent or {}
         intent_type = intent.get("intent", "simple_recall")
 
-        # Use more facts for questions that need complete data coverage
+        # Use more facts for questions that need complete data coverage.
+        # With 200K token models, we can afford to include many facts.
+        # The LLM handles fact selection better than keyword-based filtering.
         if intent_type in (
             "multi_source_synthesis",
             "temporal_comparison",
             "mathematical_computation",
             "ratio_trend_analysis",
+            "contradiction_resolution",
         ):
-            max_facts = 60
+            max_facts = 200
         else:
-            max_facts = 30
+            max_facts = 100
 
         # Build context string - include temporal metadata, source labels, and supersede markers
         def _format_fact(i: int, fact: dict, include_temporal: bool) -> str:
