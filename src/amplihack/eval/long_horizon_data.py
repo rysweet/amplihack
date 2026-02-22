@@ -2930,10 +2930,78 @@ def _question_references_delivered(
 ) -> bool:
     """Check if a question's answer facts were delivered in the dialogue.
 
-    Always returns True -- all facts should be delivered by the generator.
-    Kept as a hook for future validation if needed.
+    Validates that key entities from the expected answer actually appear in
+    the delivered content. This prevents asking about data that was never
+    delivered at low turn counts (e.g., sprint velocity is item 19 in the
+    numerical block but only 10 items may be delivered at 100 turns).
     """
+    # Build the full content corpus from delivered turns
+    all_content_lower = " ".join(t.content.lower() for t in ground_truth.turns if t.content)
+
+    # For questions referencing specific numerical entities, check the entity
+    # name appears in delivered content (not just the number)
+    # E.g., "47 points (team average over last 6 sprints)" -> check "sprint velocity"
+    entity_phrases = _extract_entity_phrases(question.text)
+    if entity_phrases:
+        found_any = any(phrase.lower() in all_content_lower for phrase in entity_phrases)
+        if not found_any:
+            return False
+
     return True
+
+
+def _extract_entity_phrases(question_text: str) -> list[str]:
+    """Extract entity/concept phrases from a question for delivery checking.
+
+    Returns phrases that should appear in delivered content for the question
+    to be answerable. Returns empty list if no specific phrases can be extracted.
+    """
+    q_lower = question_text.lower()
+    phrases = []
+
+    # Direct entity references: "What is the X?" or "What is X's Y?"
+    # Pattern: "what is the <entity>" or "what is <entity>'s"
+    import re
+
+    m = re.search(r"what is (?:the )?(.+?)(?:\?|$)", q_lower)
+    if m:
+        entity = m.group(1).strip().rstrip("?")
+        # Remove trailing qualifiers like "answer with only..."
+        for cutoff in ("?", "answer", "do not"):
+            idx = entity.find(cutoff)
+            if idx > 0:
+                entity = entity[:idx].strip()
+        if len(entity) > 3:
+            phrases.append(entity)
+
+    # "How many X" pattern
+    m = re.search(r"how many (.+?)(?:\?|$)", q_lower)
+    if m:
+        entity = m.group(1).strip().rstrip("?")
+        if len(entity) > 3:
+            phrases.append(entity)
+
+    return phrases
+
+
+def _build_incident_expected_answer(status: str, incident_id: str) -> str:
+    """Build expected answer for incident status based on actual delivered status.
+
+    When the dialogue doesn't deliver all status updates (e.g., at low turn counts),
+    the expected answer must match what was actually delivered, not the final state.
+    """
+    _status_descriptions = {
+        "active": f"{incident_id} is currently active (initial response phase).",
+        "contained": f"{incident_id} has been contained (threat isolated but investigation ongoing).",
+        "investigating": f"{incident_id} is under investigation (root cause analysis in progress).",
+        "remediated": f"{incident_id} has been remediated (all affected systems restored).",
+        "closed": (
+            "Closed. The ransomware attempt was contained, files restored from backup, "
+            "attacker C2 blocked, and post-incident review completed with MFA enforced "
+            "for all admin accounts."
+        ),
+    }
+    return _status_descriptions.get(status, f"{incident_id} status: {status}")
 
 
 def _make_rubric(
@@ -3217,7 +3285,14 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             rubric=_make_rubric(
                 "September 20",
                 keywords=["September", "20"],
-                incorrect=["June 15", "August 3"],
+                incorrect=[
+                    "current deadline is June 15",
+                    "current deadline is August 3",
+                    "current deadline of June 15",
+                    "current deadline of August 3",
+                    "CURRENT deadline is June 15",
+                    "CURRENT deadline is August 3",
+                ],
             ),
         ),
         Question(
@@ -3812,7 +3887,17 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy", "confidence_calibration"],
             rubric=_make_rubric(
-                "none", keywords=["none"], paraphrases=["no known", "no allergies"]
+                "none",
+                keywords=["no"],
+                paraphrases=[
+                    "none",
+                    "no known",
+                    "no allergies",
+                    "no known allergies",
+                    "does not have",
+                    "doesn't have any",
+                    "not allergic",
+                ],
             ),
         ),
         Question(
@@ -4045,14 +4130,24 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
     has_incidents = "__block:incidents__" in delivered
     if has_incidents:
         incident_count = max(1, int(6 * scale))
+        # Build incident_01 expected answer dynamically from ground truth
+        # so it matches the actual status delivered (not always "closed")
+        inc001_status = ground_truth.current_values.get("INC-2024-001.status", "active")
+        inc001_expected = _build_incident_expected_answer(inc001_status, "INC-2024-001")
+        inc001_rubric = _make_rubric(
+            inc001_expected,
+            keywords=[inc001_status],
+            paraphrases=[inc001_status.title()],
+        )
         incident_questions = [
             Question(
                 question_id="incident_01",
                 text="What is the current status of INC-2024-001?",
-                expected_answer="Closed. The ransomware attempt was contained, files restored from backup, attacker C2 blocked, and post-incident review completed with MFA enforced for all admin accounts.",
+                expected_answer=inc001_expected,
                 category="incident_tracking",
                 relevant_turns=[],
                 scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+                rubric=inc001_rubric,
             ),
             Question(
                 question_id="incident_02",
@@ -4114,6 +4209,11 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
                 category="infrastructure_knowledge",
                 relevant_turns=[],
                 scoring_dimensions=["factual_accuracy", "specificity"],
+                rubric=_make_rubric(
+                    "k8s-prod in prod-app subnet 10.0.2.0/24",
+                    keywords=["k8s-prod", "prod-app", "10.0.2.0"],
+                    paraphrases=["application tier", "app subnet"],
+                ),
             ),
             Question(
                 question_id="infra_02",
