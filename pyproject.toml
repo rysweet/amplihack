@@ -48,6 +48,7 @@ dependencies = [
     "docker>=7.1.0", # Docker client for blarify containers
     "packaging>=21.0", # Semantic version comparison for auto-update
     "tomli>=2.0.0; python_version < '3.11'", # TOML parser for Python <3.11
+    "amplihack-agent-eval @ git+https://github.com/rysweet/amplihack-agent-eval.git@main", # Eval framework
 ]
 
 [project.optional-dependencies]
@@ -57,9 +58,6 @@ amplifier = [
 ]
 ui = [
     "rich>=13.0.0",  # Required for --ui interactive TUI mode
-]
-eval = [
-    "amplihack-agent-eval @ git+https://github.com/rysweet/amplihack-agent-eval.git@main",
 ]
 tui-testing = [
     "pytest-asyncio>=0.21.0",
