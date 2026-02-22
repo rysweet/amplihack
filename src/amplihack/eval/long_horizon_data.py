@@ -3000,6 +3000,17 @@ def _extract_entity_phrases(question_text: str) -> list[str]:
         if len(entity) > 3:
             phrases.append(entity)
 
+    # "What are the X?" pattern
+    m = re.search(r"what are (?:the )?(.+?)(?:\?|$)", q_lower)
+    if m:
+        entity = m.group(1).strip().rstrip("?")
+        for cutoff in ("?", "answer", "do not", "broken down"):
+            idx = entity.find(cutoff)
+            if idx > 0:
+                entity = entity[:idx].strip()
+        if len(entity) > 3:
+            phrases.append(entity)
+
     # "What was the X?" pattern
     m = re.search(r"what was (?:the )?(.+?)(?:\?|$)", q_lower)
     if m:
@@ -3989,7 +4000,18 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             category="distractor_resistance",
             relevant_turns=[],
             scoring_dimensions=["factual_accuracy"],
-            rubric=_make_rubric("no pets", keywords=["no"], paraphrases=["none", "doesn't have"]),
+            rubric=_make_rubric(
+                "no pets",
+                keywords=["no"],
+                paraphrases=[
+                    "none",
+                    "doesn't have",
+                    "does not have",
+                    "no pets",
+                    "doesn't have any pets",
+                    "does not have any pets",
+                ],
+            ),
         ),
         Question(
             question_id="distractor_04",
