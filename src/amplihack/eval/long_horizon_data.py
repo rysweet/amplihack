@@ -2688,9 +2688,16 @@ def generate_dialogue(num_turns: int = 1000, seed: int = 42) -> GroundTruth:
         for k8s in INFRASTRUCTURE["kubernetes_clusters"]:
             if turn_idx >= b_end:
                 break
+            # Look up the subnet CIDR so the content explicitly links cluster to CIDR
+            subnet_cidr = ""
+            for sn in INFRASTRUCTURE["subnets"]:
+                if sn["name"] == k8s["subnet"]:
+                    subnet_cidr = sn["cidr"]
+                    break
+            subnet_info = f"{k8s['subnet']} ({subnet_cidr})" if subnet_cidr else k8s["subnet"]
             content = (
                 f"Infrastructure: Kubernetes cluster '{k8s['name']}' v{k8s['version']} "
-                f"with {k8s['nodes']} nodes in subnet {k8s['subnet']}. "
+                f"with {k8s['nodes']} nodes runs in subnet {subnet_info}. "
                 f"Namespaces: {k8s['namespace_count']}, Pods: {k8s['pod_count']}."
             )
             facts = [
@@ -2935,9 +2942,17 @@ def _question_references_delivered(
     delivered at low turn counts (e.g., sprint velocity is item 19 in the
     numerical block but only 10 items may be delivered at 100 turns).
     """
-    # Categories that ask ABOUT knowledge (meta) or use cross-block data
-    # should not be filtered by content matching
-    EXEMPT_CATEGORIES = {"meta_memory", "cross_reference", "source_attribution"}
+    # Categories that ask ABOUT knowledge (meta), use cross-block data,
+    # or reference temporal state should not be filtered by content matching.
+    # temporal_evolution questions ask about "current" or "original" values
+    # which won't appear verbatim in the content.
+    EXEMPT_CATEGORIES = {
+        "meta_memory",
+        "cross_reference",
+        "source_attribution",
+        "temporal_evolution",
+        "incident_tracking",
+    }
     if question.category in EXEMPT_CATEGORIES:
         return True
 
