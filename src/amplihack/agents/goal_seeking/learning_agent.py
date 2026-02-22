@@ -237,8 +237,10 @@ class LearningAgent:
                 logger.debug("Failed to store fact: %s", e)
                 continue
 
-        # Generate and store a summary concept map for knowledge organization
-        if facts and stored_count > 0:
+        # Generate summary concept map every 50 turns (not every turn)
+        # to avoid excessive LLM calls at scale (1000+ turns)
+        self._learn_count = getattr(self, "_learn_count", 0) + 1
+        if facts and stored_count > 0 and self._learn_count % 50 == 0:
             self._store_summary_concept_map(content, facts, episode_id)
 
         return {
@@ -306,71 +308,52 @@ and how they connect. Format: "This content covers: 1) ..., 2) ..., 3) ..."
             logger.debug("Failed to generate summary concept map: %s", e)
 
     def _detect_temporal_metadata(self, content: str) -> dict[str, Any]:
-        """Detect dates and temporal markers in content using LLM.
+        """Detect dates and temporal markers using regex (no LLM call).
 
-        Makes a single LLM call to extract temporal context from content.
-
-        Args:
-            content: Text content to analyze
+        Extracts temporal context from deterministic patterns in content:
+        - ISO dates (YYYY-MM-DD)
+        - Day references (Day 7, Day 12)
+        - Month/date references (March 15, February 2026)
+        - Timestamp patterns from security logs
 
         Returns:
             Dictionary with temporal metadata:
-                - source_date: Date string if found (e.g., "2026-02-15")
-                - temporal_order: Ordering label (e.g., "Day 7", "February 13")
-                - temporal_index: Numeric index for sorting (e.g., 7 for Day 7)
+                - source_date: Date string if found
+                - temporal_order: Ordering label
+                - temporal_index: Numeric index for sorting
         """
-        prompt = f"""Analyze this content for temporal markers (dates, day numbers, time references).
-Extract any date or time ordering information.
+        import re
 
-Content (first 500 chars):
-{content[:500]}
+        text = content[:500]
+        result: dict[str, Any] = {"source_date": "", "temporal_order": "", "temporal_index": 0}
 
-Return ONLY a JSON object:
-{{"source_date": "YYYY-MM-DD or empty string", "temporal_order": "brief label like Day 7 or February 13 or empty string", "temporal_index": 0}}
+        # ISO date: 2024-03-15, 2026-02-15
+        iso_match = re.search(r"\b(\d{4}-\d{2}-\d{2})\b", text)
+        if iso_match:
+            result["source_date"] = iso_match.group(1)
 
-Rules:
-- source_date: The primary date mentioned (ISO format YYYY-MM-DD), or "" if none
-- temporal_order: A brief label for ordering (e.g., "Day 7", "After Day 9"), or "" if none
-- temporal_index: A numeric value for chronological sorting (e.g., day number 7, 9, 10), or 0 if none
-"""
-        try:
-            response = litellm.completion(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": "Extract temporal metadata as JSON. Be precise."},
-                    {"role": "user", "content": prompt},
-                ],
-                temperature=0.0,
-            )
+        # Day reference: Day 7, day 12
+        day_match = re.search(r"\bDay\s+(\d+)\b", text, re.IGNORECASE)
+        if day_match:
+            day_num = int(day_match.group(1))
+            result["temporal_order"] = f"Day {day_num}"
+            result["temporal_index"] = day_num
 
-            response_text = response.choices[0].message.content.strip()
+        # Month date: March 15, February 2026
+        month_match = re.search(
+            r"\b(January|February|March|April|May|June|July|August|September|"
+            r"October|November|December)\s+(\d{1,2})\b",
+            text,
+        )
+        if month_match and not result["temporal_order"]:
+            result["temporal_order"] = f"{month_match.group(1)} {month_match.group(2)}"
 
-            # Parse JSON response
-            try:
-                result = json.loads(response_text)
-                if isinstance(result, dict):
-                    return {
-                        "source_date": result.get("source_date", ""),
-                        "temporal_order": result.get("temporal_order", ""),
-                        "temporal_index": result.get("temporal_index", 0),
-                    }
-            except json.JSONDecodeError:
-                # Try extracting from markdown code block
-                if "```json" in response_text:
-                    json_start = response_text.find("```json") + 7
-                    json_end = response_text.find("```", json_start)
-                    json_str = response_text[json_start:json_end].strip()
-                    result = json.loads(json_str)
-                    if isinstance(result, dict):
-                        return {
-                            "source_date": result.get("source_date", ""),
-                            "temporal_order": result.get("temporal_order", ""),
-                            "temporal_index": result.get("temporal_index", 0),
-                        }
-        except Exception as e:
-            logger.debug("Temporal metadata detection failed: %s", e)
+        # Security log timestamp: 2024-03-15 14:23:01
+        ts_match = re.search(r"(\d{4}-\d{2}-\d{2})\s+\d{2}:\d{2}:\d{2}", text)
+        if ts_match and not result["source_date"]:
+            result["source_date"] = ts_match.group(1)
 
-        return {"source_date": "", "temporal_order": "", "temporal_index": 0}
+        return result
 
     # Simple intents: skip iterative loop, use direct retrieval
     # This avoids the plan/search/evaluate overhead for straightforward questions
@@ -1156,8 +1139,10 @@ Respond with a JSON list like:
 """
 
         try:
+            # Use faster model for extraction if available (haiku is 6x faster)
+            extraction_model = os.environ.get("EXTRACTION_MODEL", self.model)
             response = litellm.completion(
-                model=self.model,
+                model=extraction_model,
                 messages=[
                     {"role": "system", "content": "You are a fact extraction expert."},
                     {"role": "user", "content": prompt},
