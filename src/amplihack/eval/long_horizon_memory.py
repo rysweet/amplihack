@@ -38,23 +38,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-# Prefer the standalone eval package when available; fall back to local data module.
-try:
-    from amplihack_eval.data.long_horizon import (  # type: ignore[import-not-found]
-        GradingRubric,
-        GroundTruth,
-        Question,
-        generate_dialogue,
-        generate_questions,
-    )
-except ImportError:
-    from .long_horizon_data import (
-        GradingRubric,
-        GroundTruth,
-        Question,
-        generate_dialogue,
-        generate_questions,
-    )
+# Always use the local data module so improvements are immediately reflected.
+# The standalone amplihack_eval package is a snapshot and may lag behind.
+from .long_horizon_data import (
+    GradingRubric,
+    GroundTruth,
+    Question,
+    generate_dialogue,
+    generate_questions,
+)
 
 logger = logging.getLogger(__name__)
 
