@@ -38,8 +38,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-# Prefer the standalone eval package (kept in sync via CI).
-# Fall back to local module for development before package is updated.
+# Requires amplihack-agent-eval package.
+# Install: pip install "amplihack-agent-eval @ git+https://github.com/rysweet/amplihack-agent-eval.git@main"
 try:
     from amplihack_eval.data.long_horizon import (  # type: ignore[import-not-found]
         GradingRubric,
@@ -49,12 +49,10 @@ try:
         generate_questions,
     )
 except ImportError:
-    from .long_horizon_data import (
-        GradingRubric,
-        GroundTruth,
-        Question,
-        generate_dialogue,
-        generate_questions,
+    raise ImportError(
+        "amplihack-agent-eval package is required but not installed. "
+        "Install with: pip install 'amplihack-agent-eval @ "
+        "git+https://github.com/rysweet/amplihack-agent-eval.git@main'"
     )
 
 logger = logging.getLogger(__name__)
