@@ -2964,9 +2964,20 @@ def _question_references_delivered(
     # E.g., "47 points (team average over last 6 sprints)" -> check "sprint velocity"
     entity_phrases = _extract_entity_phrases(question.text)
     if entity_phrases:
-        found_any = any(phrase.lower() in all_content_lower for phrase in entity_phrases)
-        if not found_any:
-            return False
+        # Separate specific phrases (multi-word or long) from generic ones
+        specific = [p for p in entity_phrases if len(p.split()) >= 2 or len(p) > 8]
+        generic = [p for p in entity_phrases if p not in specific]
+
+        if specific:
+            # If we have specific phrases, require at least one to match
+            found_specific = any(p.lower() in all_content_lower for p in specific)
+            if not found_specific:
+                return False
+        elif generic:
+            # Only generic phrases -- check if any match
+            found_any = any(p.lower() in all_content_lower for p in generic)
+            if not found_any:
+                return False
 
     return True
 
@@ -3035,6 +3046,13 @@ def _extract_entity_phrases(question_text: str) -> list[str]:
 
     # "How much did X improve" pattern
     m = re.search(r"how (?:much|far) did (.+?) (?:improve|change|grow)", q_lower)
+    if m:
+        entity = m.group(1).strip()
+        if len(entity) > 3:
+            phrases.append(entity)
+
+    # "How much does X save/cost" pattern
+    m = re.search(r"how much does (?:the )?(.+?) (?:save|cost|spend)", q_lower)
     if m:
         entity = m.group(1).strip()
         if len(entity) > 3:
@@ -4002,14 +4020,20 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             scoring_dimensions=["factual_accuracy"],
             rubric=_make_rubric(
                 "no pets",
-                keywords=["no"],
+                keywords=[],
                 paraphrases=[
                     "none",
+                    "no pets",
+                    "no known pets",
                     "doesn't have",
                     "does not have",
-                    "no pets",
+                    "doesn't have any",
+                    "does not have any",
                     "doesn't have any pets",
                     "does not have any pets",
+                    "doesn't own",
+                    "does not own",
+                    "have any pets",
                 ],
             ),
         ),
