@@ -143,7 +143,7 @@ class MemoryAgent:
     def _get_kb_size(self) -> int:
         """Get the number of facts in the knowledge base."""
         if hasattr(self.memory, "get_all_facts"):
-            return len(self.memory.get_all_facts(limit=151))
+            return len(self.memory.get_all_facts(limit=15000))
         return 0
 
     def _has_entity_reference(self, question: str) -> bool:

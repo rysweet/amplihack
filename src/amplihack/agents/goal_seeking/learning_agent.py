@@ -445,7 +445,7 @@ Rules:
         else:
             use_simple = intent_type in self.SIMPLE_INTENTS
             if not use_simple and hasattr(self.memory, "get_all_facts"):
-                kb_size = len(self.memory.get_all_facts(limit=501))
+                kb_size = len(self.memory.get_all_facts(limit=15000))
                 if kb_size <= 500:
                     use_simple = True
 
@@ -579,7 +579,7 @@ Rules:
         if not hasattr(self.memory, "get_all_facts"):
             return []
 
-        all_facts = self.memory.get_all_facts(limit=1501)
+        all_facts = self.memory.get_all_facts(limit=15000)
         kb_size = len(all_facts)
 
         if kb_size <= 500:
