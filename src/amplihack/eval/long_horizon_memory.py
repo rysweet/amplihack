@@ -219,14 +219,17 @@ def _deterministic_grade(
         else:
             ratio = 0.5  # No keywords = neutral
 
-        # Paraphrase bonus
+        # Paraphrase bonus -- each paraphrase match adds 0.25 (a paraphrase IS
+        # a valid answer form, so it should carry significant weight). When NO
+        # keywords matched (ratio=0) but paraphrases did, the answer is still
+        # semantically correct.
         if rubric.acceptable_paraphrases:
             paraphrase_hits = sum(
                 1
                 for p in rubric.acceptable_paraphrases
                 if re.search(re.escape(p.lower()), answer_lower)
             )
-            ratio = min(1.0, ratio + paraphrase_hits * 0.1)
+            ratio = min(1.0, ratio + paraphrase_hits * 0.25)
 
         reasoning_parts = []
         if rubric.required_keywords:
