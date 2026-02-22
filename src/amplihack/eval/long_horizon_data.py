@@ -2935,6 +2935,12 @@ def _question_references_delivered(
     delivered at low turn counts (e.g., sprint velocity is item 19 in the
     numerical block but only 10 items may be delivered at 100 turns).
     """
+    # Categories that ask ABOUT knowledge (meta) or use cross-block data
+    # should not be filtered by content matching
+    EXEMPT_CATEGORIES = {"meta_memory", "cross_reference", "source_attribution"}
+    if question.category in EXEMPT_CATEGORIES:
+        return True
+
     # Build the full content corpus from delivered turns
     all_content_lower = " ".join(t.content.lower() for t in ground_truth.turns if t.content)
 
@@ -2956,17 +2962,15 @@ def _extract_entity_phrases(question_text: str) -> list[str]:
     Returns phrases that should appear in delivered content for the question
     to be answerable. Returns empty list if no specific phrases can be extracted.
     """
+    import re
+
     q_lower = question_text.lower()
     phrases = []
 
     # Direct entity references: "What is the X?" or "What is X's Y?"
-    # Pattern: "what is the <entity>" or "what is <entity>'s"
-    import re
-
     m = re.search(r"what is (?:the )?(.+?)(?:\?|$)", q_lower)
     if m:
         entity = m.group(1).strip().rstrip("?")
-        # Remove trailing qualifiers like "answer with only..."
         for cutoff in ("?", "answer", "do not"):
             idx = entity.find(cutoff)
             if idx > 0:
@@ -2980,6 +2984,60 @@ def _extract_entity_phrases(question_text: str) -> list[str]:
         entity = m.group(1).strip().rstrip("?")
         if len(entity) > 3:
             phrases.append(entity)
+
+    # "What was the X?" pattern
+    m = re.search(r"what was (?:the )?(.+?)(?:\?|$)", q_lower)
+    if m:
+        entity = m.group(1).strip().rstrip("?")
+        for cutoff in ("?", "answer", "do not"):
+            idx = entity.find(cutoff)
+            if idx > 0:
+                entity = entity[:idx].strip()
+        if len(entity) > 3:
+            phrases.append(entity)
+
+    # "What language introduced X" pattern -- extract the feature name
+    m = re.search(r"what language introduced (.+?)(?:\?|$)", q_lower)
+    if m:
+        entity = m.group(1).strip().rstrip("?")
+        if len(entity) > 3:
+            phrases.append(entity)
+        # Also extract just the first 2-3 words as a shorter phrase
+        words = entity.split()
+        if len(words) > 2:
+            phrases.append(" ".join(words[:2]))
+
+    # "How much did X improve" pattern
+    m = re.search(r"how (?:much|far) did (.+?) (?:improve|change|grow)", q_lower)
+    if m:
+        entity = m.group(1).strip()
+        if len(entity) > 3:
+            phrases.append(entity)
+
+    # "What percentage" and "What fraction" patterns
+    m = re.search(r"what (?:percentage|fraction) .+ (?:was |is )(?:the )?(.+?)(?:\?|$)", q_lower)
+    if m:
+        entity = m.group(1).strip().rstrip("?")
+        if len(entity) > 3:
+            phrases.append(entity)
+
+    # For possessive patterns like "Priya Patel's allergy", also extract the name
+    m = re.search(r"([a-z]+ [a-z]+(?:-[a-z]+)?)'s", q_lower)
+    if m:
+        name = m.group(1).strip()
+        if len(name) > 3:
+            phrases.append(name)
+
+    # For long phrases, also add shorter sub-phrases (first 2-3 key words)
+    refined = []
+    for p in phrases:
+        refined.append(p)
+        words = p.split()
+        if len(words) > 3:
+            # Also add 2-word and 3-word prefixes
+            refined.append(" ".join(words[:2]))
+            refined.append(" ".join(words[:3]))
+    phrases = refined
 
     return phrases
 
