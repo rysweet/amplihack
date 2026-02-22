@@ -59,7 +59,7 @@ ui = [
     "rich>=13.0.0",  # Required for --ui interactive TUI mode
 ]
 eval = [
-    "amplihack-agent-eval>=0.1.0",
+    "amplihack-agent-eval @ git+https://github.com/rysweet/amplihack-agent-eval.git@main",
 ]
 tui-testing = [
     "pytest-asyncio>=0.21.0",
