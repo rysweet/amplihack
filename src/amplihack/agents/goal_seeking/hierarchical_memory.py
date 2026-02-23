@@ -1519,6 +1519,434 @@ class HierarchicalMemory:
 
         return stats
 
+    def export_to_json(self) -> dict[str, Any]:
+        """Export all memory nodes and edges to a JSON-serializable dict.
+
+        Queries all SemanticMemory nodes, EpisodicMemory nodes, and all edge
+        types (SIMILAR_TO, DERIVES_FROM, SUPERSEDES) for this agent. Returns
+        a portable dict that can be serialized to JSON and imported into
+        another HierarchicalMemory instance.
+
+        Returns:
+            Dict with keys:
+                - agent_name: Name of the source agent
+                - exported_at: ISO timestamp of export
+                - semantic_nodes: List of dicts (one per SemanticMemory node)
+                - episodic_nodes: List of dicts (one per EpisodicMemory node)
+                - similar_to_edges: List of dicts (source_id, target_id, weight, metadata)
+                - derives_from_edges: List of dicts (source_id, target_id, method, confidence)
+                - supersedes_edges: List of dicts (source_id, target_id, reason, delta)
+                - statistics: Summary counts
+        """
+        export_data: dict[str, Any] = {
+            "agent_name": self.agent_name,
+            "exported_at": datetime.utcnow().isoformat(),
+            "format_version": "1.0",
+            "semantic_nodes": [],
+            "episodic_nodes": [],
+            "similar_to_edges": [],
+            "derives_from_edges": [],
+            "supersedes_edges": [],
+            "statistics": {},
+        }
+
+        # Export SemanticMemory nodes
+        try:
+            result = self.connection.execute(
+                """
+                MATCH (m:SemanticMemory)
+                WHERE m.agent_id = $agent_id
+                RETURN m.memory_id, m.concept, m.content, m.confidence,
+                       m.source_id, m.tags, m.metadata, m.created_at, m.entity_name
+                ORDER BY m.created_at ASC
+                """,
+                {"agent_id": self.agent_name},
+            )
+            while result.has_next():
+                row = result.get_next()
+                export_data["semantic_nodes"].append(
+                    {
+                        "memory_id": row[0],
+                        "concept": row[1],
+                        "content": row[2],
+                        "confidence": row[3],
+                        "source_id": row[4] or "",
+                        "tags": json.loads(row[5]) if row[5] else [],
+                        "metadata": json.loads(row[6]) if row[6] else {},
+                        "created_at": row[7] or "",
+                        "entity_name": row[8] or "",
+                    }
+                )
+        except Exception as e:
+            logger.error("Failed to export SemanticMemory nodes: %s", e)
+
+        # Export EpisodicMemory nodes
+        try:
+            result = self.connection.execute(
+                """
+                MATCH (e:EpisodicMemory)
+                WHERE e.agent_id = $agent_id
+                RETURN e.memory_id, e.content, e.source_label, e.tags,
+                       e.metadata, e.created_at
+                ORDER BY e.created_at ASC
+                """,
+                {"agent_id": self.agent_name},
+            )
+            while result.has_next():
+                row = result.get_next()
+                export_data["episodic_nodes"].append(
+                    {
+                        "memory_id": row[0],
+                        "content": row[1],
+                        "source_label": row[2] or "",
+                        "tags": json.loads(row[3]) if row[3] else [],
+                        "metadata": json.loads(row[4]) if row[4] else {},
+                        "created_at": row[5] or "",
+                    }
+                )
+        except Exception as e:
+            logger.error("Failed to export EpisodicMemory nodes: %s", e)
+
+        # Export SIMILAR_TO edges
+        try:
+            result = self.connection.execute(
+                """
+                MATCH (a:SemanticMemory)-[r:SIMILAR_TO]->(b:SemanticMemory)
+                WHERE a.agent_id = $agent_id
+                RETURN a.memory_id, b.memory_id, r.weight, r.metadata
+                """,
+                {"agent_id": self.agent_name},
+            )
+            while result.has_next():
+                row = result.get_next()
+                edge_meta = {}
+                if row[3]:
+                    try:
+                        edge_meta = json.loads(row[3])
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+                export_data["similar_to_edges"].append(
+                    {
+                        "source_id": row[0],
+                        "target_id": row[1],
+                        "weight": row[2],
+                        "metadata": edge_meta,
+                    }
+                )
+        except Exception as e:
+            logger.debug("Failed to export SIMILAR_TO edges: %s", e)
+
+        # Export DERIVES_FROM edges
+        try:
+            result = self.connection.execute(
+                """
+                MATCH (s:SemanticMemory)-[r:DERIVES_FROM]->(e:EpisodicMemory)
+                WHERE s.agent_id = $agent_id
+                RETURN s.memory_id, e.memory_id, r.extraction_method, r.confidence
+                """,
+                {"agent_id": self.agent_name},
+            )
+            while result.has_next():
+                row = result.get_next()
+                export_data["derives_from_edges"].append(
+                    {
+                        "source_id": row[0],
+                        "target_id": row[1],
+                        "extraction_method": row[2] or "",
+                        "confidence": row[3],
+                    }
+                )
+        except Exception as e:
+            logger.debug("Failed to export DERIVES_FROM edges: %s", e)
+
+        # Export SUPERSEDES edges
+        try:
+            result = self.connection.execute(
+                """
+                MATCH (newer:SemanticMemory)-[r:SUPERSEDES]->(older:SemanticMemory)
+                WHERE newer.agent_id = $agent_id
+                RETURN newer.memory_id, older.memory_id, r.reason, r.temporal_delta
+                """,
+                {"agent_id": self.agent_name},
+            )
+            while result.has_next():
+                row = result.get_next()
+                export_data["supersedes_edges"].append(
+                    {
+                        "source_id": row[0],
+                        "target_id": row[1],
+                        "reason": row[2] or "",
+                        "temporal_delta": row[3] or "",
+                    }
+                )
+        except Exception as e:
+            logger.debug("Failed to export SUPERSEDES edges: %s", e)
+
+        # Compute statistics
+        export_data["statistics"] = {
+            "semantic_node_count": len(export_data["semantic_nodes"]),
+            "episodic_node_count": len(export_data["episodic_nodes"]),
+            "similar_to_edge_count": len(export_data["similar_to_edges"]),
+            "derives_from_edge_count": len(export_data["derives_from_edges"]),
+            "supersedes_edge_count": len(export_data["supersedes_edges"]),
+        }
+
+        return export_data
+
+    def import_from_json(self, data: dict[str, Any], merge: bool = False) -> dict[str, Any]:
+        """Import memory from a JSON-serializable dict into this agent's graph.
+
+        Reconstructs SemanticMemory and EpisodicMemory nodes and all edge types
+        (SIMILAR_TO, DERIVES_FROM, SUPERSEDES) from a previously exported dict.
+
+        Args:
+            data: Dict matching the format produced by export_to_json().
+            merge: If True, adds imported nodes to existing memory.
+                   If False, clears existing memory for this agent first.
+
+        Returns:
+            Dict with import statistics:
+                - semantic_nodes_imported: Count of semantic nodes created
+                - episodic_nodes_imported: Count of episodic nodes created
+                - edges_imported: Total count of edges created
+                - skipped: Count of nodes skipped (already exist in merge mode)
+                - errors: Count of individual import errors
+        """
+        stats: dict[str, Any] = {
+            "semantic_nodes_imported": 0,
+            "episodic_nodes_imported": 0,
+            "edges_imported": 0,
+            "skipped": 0,
+            "errors": 0,
+        }
+
+        # Validate format version
+        fmt_version = data.get("format_version", "")
+        if fmt_version and fmt_version != "1.0":
+            logger.warning("Unknown format version %s, attempting import anyway", fmt_version)
+
+        # Clear existing data if not merging
+        if not merge:
+            self._clear_agent_data()
+
+        # Build set of existing node IDs for merge dedup
+        existing_ids: set[str] = set()
+        if merge:
+            existing_ids = self._get_existing_node_ids()
+
+        # Import EpisodicMemory nodes first (referenced by DERIVES_FROM)
+        for ep_node in data.get("episodic_nodes", []):
+            mid = ep_node.get("memory_id", "")
+            if not mid:
+                stats["errors"] += 1
+                continue
+            if mid in existing_ids:
+                stats["skipped"] += 1
+                continue
+            try:
+                self.connection.execute(
+                    """
+                    CREATE (e:EpisodicMemory {
+                        memory_id: $memory_id,
+                        content: $content,
+                        source_label: $source_label,
+                        agent_id: $agent_id,
+                        tags: $tags,
+                        metadata: $metadata,
+                        created_at: $created_at
+                    })
+                    """,
+                    {
+                        "memory_id": mid,
+                        "content": ep_node.get("content", ""),
+                        "source_label": ep_node.get("source_label", ""),
+                        "agent_id": self.agent_name,
+                        "tags": json.dumps(ep_node.get("tags", [])),
+                        "metadata": json.dumps(ep_node.get("metadata", {})),
+                        "created_at": ep_node.get("created_at", ""),
+                    },
+                )
+                stats["episodic_nodes_imported"] += 1
+            except Exception as e:
+                logger.debug("Failed to import episodic node %s: %s", mid[:8], e)
+                stats["errors"] += 1
+
+        # Import SemanticMemory nodes
+        for sem_node in data.get("semantic_nodes", []):
+            mid = sem_node.get("memory_id", "")
+            if not mid:
+                stats["errors"] += 1
+                continue
+            if mid in existing_ids:
+                stats["skipped"] += 1
+                continue
+            try:
+                self.connection.execute(
+                    """
+                    CREATE (m:SemanticMemory {
+                        memory_id: $memory_id,
+                        concept: $concept,
+                        content: $content,
+                        confidence: $confidence,
+                        source_id: $source_id,
+                        agent_id: $agent_id,
+                        tags: $tags,
+                        metadata: $metadata,
+                        created_at: $created_at,
+                        entity_name: $entity_name
+                    })
+                    """,
+                    {
+                        "memory_id": mid,
+                        "concept": sem_node.get("concept", ""),
+                        "content": sem_node.get("content", ""),
+                        "confidence": sem_node.get("confidence", 0.8),
+                        "source_id": sem_node.get("source_id", ""),
+                        "agent_id": self.agent_name,
+                        "tags": json.dumps(sem_node.get("tags", [])),
+                        "metadata": json.dumps(sem_node.get("metadata", {})),
+                        "created_at": sem_node.get("created_at", ""),
+                        "entity_name": sem_node.get("entity_name", ""),
+                    },
+                )
+                stats["semantic_nodes_imported"] += 1
+            except Exception as e:
+                logger.debug("Failed to import semantic node %s: %s", mid[:8], e)
+                stats["errors"] += 1
+
+        # Import SIMILAR_TO edges
+        for edge in data.get("similar_to_edges", []):
+            try:
+                self.connection.execute(
+                    """
+                    MATCH (a:SemanticMemory {memory_id: $sid})
+                    MATCH (b:SemanticMemory {memory_id: $tid})
+                    CREATE (a)-[:SIMILAR_TO {weight: $weight, metadata: $metadata}]->(b)
+                    """,
+                    {
+                        "sid": edge["source_id"],
+                        "tid": edge["target_id"],
+                        "weight": edge.get("weight", 1.0),
+                        "metadata": json.dumps(edge.get("metadata", {}))
+                        if edge.get("metadata")
+                        else "",
+                    },
+                )
+                stats["edges_imported"] += 1
+            except Exception as e:
+                logger.debug("Failed to import SIMILAR_TO edge: %s", e)
+                stats["errors"] += 1
+
+        # Import DERIVES_FROM edges
+        for edge in data.get("derives_from_edges", []):
+            try:
+                self.connection.execute(
+                    """
+                    MATCH (s:SemanticMemory {memory_id: $sid})
+                    MATCH (e:EpisodicMemory {memory_id: $tid})
+                    CREATE (s)-[:DERIVES_FROM {
+                        extraction_method: $method,
+                        confidence: $confidence
+                    }]->(e)
+                    """,
+                    {
+                        "sid": edge["source_id"],
+                        "tid": edge["target_id"],
+                        "method": edge.get("extraction_method", ""),
+                        "confidence": edge.get("confidence", 1.0),
+                    },
+                )
+                stats["edges_imported"] += 1
+            except Exception as e:
+                logger.debug("Failed to import DERIVES_FROM edge: %s", e)
+                stats["errors"] += 1
+
+        # Import SUPERSEDES edges
+        for edge in data.get("supersedes_edges", []):
+            try:
+                self.connection.execute(
+                    """
+                    MATCH (newer:SemanticMemory {memory_id: $sid})
+                    MATCH (older:SemanticMemory {memory_id: $tid})
+                    CREATE (newer)-[:SUPERSEDES {
+                        reason: $reason,
+                        temporal_delta: $delta
+                    }]->(older)
+                    """,
+                    {
+                        "sid": edge["source_id"],
+                        "tid": edge["target_id"],
+                        "reason": edge.get("reason", ""),
+                        "delta": edge.get("temporal_delta", ""),
+                    },
+                )
+                stats["edges_imported"] += 1
+            except Exception as e:
+                logger.debug("Failed to import SUPERSEDES edge: %s", e)
+                stats["errors"] += 1
+
+        return stats
+
+    def _clear_agent_data(self) -> None:
+        """Delete all nodes and edges belonging to this agent.
+
+        Used by import_from_json when merge=False to start fresh.
+        Deletes edges first (Kuzu requires this before node deletion),
+        then deletes all nodes.
+        """
+        try:
+            # Delete edges referencing this agent's nodes first
+            for edge_query in [
+                "MATCH (a:SemanticMemory {agent_id: $aid})-[r:SIMILAR_TO]->() DELETE r",
+                "MATCH ()-[r:SIMILAR_TO]->(b:SemanticMemory {agent_id: $aid}) DELETE r",
+                "MATCH (s:SemanticMemory {agent_id: $aid})-[r:DERIVES_FROM]->() DELETE r",
+                "MATCH (n:SemanticMemory {agent_id: $aid})-[r:SUPERSEDES]->() DELETE r",
+                "MATCH ()-[r:SUPERSEDES]->(o:SemanticMemory {agent_id: $aid}) DELETE r",
+            ]:
+                self.connection.execute(edge_query, {"aid": self.agent_name})
+
+            # Delete nodes
+            self.connection.execute(
+                "MATCH (m:SemanticMemory {agent_id: $aid}) DELETE m",
+                {"aid": self.agent_name},
+            )
+            self.connection.execute(
+                "MATCH (e:EpisodicMemory {agent_id: $aid}) DELETE e",
+                {"aid": self.agent_name},
+            )
+            logger.debug("Cleared all data for agent %s", self.agent_name)
+        except Exception as e:
+            logger.error("Failed to clear agent data: %s", e)
+
+    def _get_existing_node_ids(self) -> set[str]:
+        """Get all existing node IDs for this agent (for merge dedup).
+
+        Returns:
+            Set of memory_id strings for both SemanticMemory and EpisodicMemory.
+        """
+        ids: set[str] = set()
+        try:
+            result = self.connection.execute(
+                "MATCH (m:SemanticMemory {agent_id: $aid}) RETURN m.memory_id",
+                {"aid": self.agent_name},
+            )
+            while result.has_next():
+                ids.add(result.get_next()[0])
+        except Exception as e:
+            logger.debug("Failed to get semantic node IDs: %s", e)
+
+        try:
+            result = self.connection.execute(
+                "MATCH (e:EpisodicMemory {agent_id: $aid}) RETURN e.memory_id",
+                {"aid": self.agent_name},
+            )
+            while result.has_next():
+                ids.add(result.get_next()[0])
+        except Exception as e:
+            logger.debug("Failed to get episodic node IDs: %s", e)
+
+        return ids
+
     def close(self) -> None:
         """Close database connection and release resources."""
         try:

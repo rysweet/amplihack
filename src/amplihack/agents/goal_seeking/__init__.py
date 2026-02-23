@@ -40,6 +40,7 @@ from .hierarchical_memory import (
     MemoryClassifier,
 )
 from .learning_agent import LearningAgent
+from .memory_export import export_memory, import_memory
 from .memory_retrieval import MemoryRetriever
 from .similarity import compute_similarity, compute_tag_similarity, compute_word_similarity
 from .sub_agents import (
@@ -86,7 +87,9 @@ __all__ = [
     "compute_similarity",
     "compute_tag_similarity",
     "compute_word_similarity",
+    "export_memory",
     "get_sdk_tool_names",
     "get_sdk_tools",
+    "import_memory",
     "inject_sdk_tools",
 ]
