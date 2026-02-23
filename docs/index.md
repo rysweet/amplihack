@@ -275,15 +275,30 @@ Specialized AI agents and tools for every development task.
 
 ### Goal-Seeking Agents
 
-**Autonomous agents that iterate toward objectives without stopping.**
+**Autonomous agents that learn, remember, teach, and apply knowledge across four SDK backends.**
 
-- [Goal Agent Generator Guide](GOAL_AGENT_GENERATOR_GUIDE.md) - Create custom goal-seeking agents
+- **[Comprehensive Guide](GOAL_SEEKING_AGENTS.md)** - End-to-end documentation: generation, capabilities, evaluation (L1-L12), self-improvement loop, and architecture
+- **[Eval System Architecture](EVAL_SYSTEM_ARCHITECTURE.md)** - How the eval system is constructed: progressive test suite, grading, teaching eval, domain eval, long-horizon memory, self-improvement runner
+- [SDK Adapters Guide](SDK_ADAPTERS_GUIDE.md) - Deep dive into Copilot, Claude, Microsoft, and Mini SDK backends with per-SDK eval prompts and 4-way comparison
+- [Goal Agent Generator Guide](GOAL_AGENT_GENERATOR_GUIDE.md) - Create custom goal-seeking agents with `amplihack new`
 - [Goal Agent Generator Presentation](GOAL_AGENT_GENERATOR_PRESENTATION.md) - Concept overview
 - [Goal Agent Generator Design](agent-bundle-generator-design.md) - Architecture and patterns
 - [Goal Agent Requirements](agent-bundle-generator-requirements.md) - Specifications
 - [Implementation Summary](goal_agent_generator/IMPLEMENTATION_SUMMARY.md) - Current status
 
-**Key Feature**: Goal-seeking agents work autonomously toward a defined objective, iterating and adapting without requiring user intervention at each step. Perfect for complex, open-ended tasks.
+**Key Features**:
+
+- **SDK-Agnostic**: Write once, run on Copilot, Claude, Microsoft Agent Framework, or lightweight mini-framework
+- **7 Learning Tools**: learn, search, explain, verify, find gaps, store, summary
+- **Progressive Eval (L1-L12)**: From simple recall to far transfer across domains
+- **3-Run Median Eval**: `--runs 3` for stable benchmarks (reduces LLM stochasticity)
+- **Multi-Vote Grading**: `--grader-votes 3` for noise reduction on ambiguous answers
+- **Teaching Evaluation**: Multi-turn teacher-student knowledge transfer (Chi 1994, Vygotsky ZPD)
+- **Self-Improvement Loop**: EVAL -> ANALYZE -> RESEARCH -> IMPROVE -> RE-EVAL -> DECIDE with automated error analysis
+- **5 Domain Agents**: Code Review, Meeting Synthesizer, Data Analysis, Document Creator, Project Planning
+- **Long-Horizon Memory Eval**: 1000-turn dialogue stress test
+- **Multi-SDK Comparison**: 4-way eval comparison via `sdk_eval_loop.py`
+- **Current Score**: 97.5% overall median (L1-L7, 3-run median, mini SDK)
 
 ### Memory-Enabled Agents ⭐ NEW
 
@@ -618,6 +633,7 @@ Fix common issues and learn from past solutions.
 
 ### How-To Guides
 
+- [Exception Handling](howto/exception-handling.md) - Implement proper error handling in amplihack code
 - [Configure Memory Consent](howto/configure-memory-consent.md) - Customize prompt behavior, timeouts, and CI/CD integration
 - [Configure Power-Steering Merge Preferences](howto/power-steering-merge-preferences.md) - Set up merge approval workflow
 - [Platform Bridge Quick Start](tutorials/platform-bridge-quickstart.md) - Learn the basics in 10 minutes
@@ -652,6 +668,7 @@ Quick references, guides, and additional resources.
 
 ### Quick References
 
+- [Exception Handling Reference](reference/exception-handling.md) - Complete exception hierarchy and patterns
 - [Command Selection Guide](commands/COMMAND_SELECTION_GUIDE.md) - Choose the right command
 - [Platform Bridge API Reference](reference/platform-bridge-api.md) - Complete API documentation
 - [Power Steering File Locking](reference/power-steering-file-locking.md) - Prevents counter race conditions

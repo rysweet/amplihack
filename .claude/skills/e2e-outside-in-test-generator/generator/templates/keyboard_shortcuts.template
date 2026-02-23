@@ -1,0 +1,36 @@
+import {{ test, expect }} from '@playwright/test';
+
+test.describe('Keyboard Shortcuts - {feature_name}', () => {{
+  test('should respond to keyboard shortcut: {shortcut_name}', async ({{ page }}) => {{
+    await page.goto('{route}');
+
+    // Press keyboard shortcut
+    await page.keyboard.press('{shortcut_keys}');
+
+    // Verify action occurred
+    await expect(page.getByRole('{result_element_role}', {{ name: '{result_element_name}' }})).toBeVisible();
+  }});
+
+  test('should handle common navigation shortcuts', async ({{ page }}) => {{
+    await page.goto('{route}');
+
+    // Test Tab navigation
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('{first_focusable_role}')).toBeFocused();
+
+    // Test Escape to close
+{escape_test_steps}
+
+    // Test Enter to submit
+{enter_test_steps}
+  }});
+
+  test('should support accessibility keyboard patterns', async ({{ page }}) => {{
+    await page.goto('{route}');
+
+    {accessibility_keyboard_steps}
+
+    // Verify ARIA keyboard patterns work
+    await expect(page.getByRole('{aria_element_role}')).toHaveAttribute('aria-expanded', 'true');
+  }});
+}});

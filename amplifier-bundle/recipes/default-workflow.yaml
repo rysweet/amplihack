@@ -877,7 +877,8 @@ steps:
       git add -A && \
       echo "" && \
       echo "--- Creating Commit ---" && \
-      git commit -m "feat: {{task_description}}
+      if [ -n "$(git diff --cached --name-only)" ]; then \
+        git commit -m "feat: {{task_description}}
 
       Implements issue #{{issue_number}}
 
@@ -886,10 +887,17 @@ steps:
       - Tests added for new functionality
       - Documentation updated
 
-      Closes #{{issue_number}}" && \
+      Closes #{{issue_number}}" ; \
+      else \
+        echo "WARNING: Nothing to commit - changes already committed" ; \
+      fi && \
       echo "" && \
       echo "--- Pushing to Remote ---" && \
-      git push && \
+      if git rev-list --count @{u}..HEAD 2>/dev/null | grep -qv '^0$'; then \
+        git push ; \
+      else \
+        echo "WARNING: Nothing to push - branch is up to date with remote" ; \
+      fi && \
       echo "" && \
       echo "=== Commit and Push Complete ==="
     output: "commit_result"
@@ -1115,13 +1123,21 @@ steps:
       cd "{{worktree_setup.worktree_path}}" && \
       echo "=== Pushing Review Feedback Changes ===" && \
       git add -A && \
-      git commit -m "address review feedback
+      if [ -n "$(git diff --cached --name-only)" ]; then \
+        git commit -m "address review feedback
 
       - Implemented reviewer suggestions
       - Fixed identified issues
       - Updated per security review
-      - Addressed philosophy compliance items" && \
-      git push && \
+      - Addressed philosophy compliance items" ; \
+      else \
+        echo "WARNING: Nothing to commit - feedback changes already committed" ; \
+      fi && \
+      if git rev-list --count @{u}..HEAD 2>/dev/null | grep -qv '^0$'; then \
+        git push ; \
+      else \
+        echo "WARNING: Nothing to push - branch is up to date with remote" ; \
+      fi && \
       echo "=== Changes Pushed ==="
     output: "feedback_push_result"
 

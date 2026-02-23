@@ -48,7 +48,7 @@ def run_harness(config: HarnessConfig) -> HarnessResult:
 
     try:
         # Step 1: Collect news
-        with open(config.news_file) as f:
+        with open(config.news_file, encoding="utf-8") as f:
             websearch_data = json.load(f)
 
         articles = collect_news(websearch_data)
@@ -58,7 +58,7 @@ def run_harness(config: HarnessConfig) -> HarnessResult:
 
         # Save quiz
         quiz_file = output_dir / "quiz.json"
-        with open(quiz_file, "w") as f:
+        with open(quiz_file, "w", encoding="utf-8") as f:
             quiz_data = [
                 {
                     "question": q.question,
@@ -94,6 +94,7 @@ def run_harness(config: HarnessConfig) -> HarnessResult:
             input=json.dumps(learning_input),
             capture_output=True,
             text=True,
+            timeout=600,
         )
 
         if learning_result.returncode != 0:
@@ -102,7 +103,7 @@ def run_harness(config: HarnessConfig) -> HarnessResult:
         learning_data = json.loads(learning_result.stdout)
 
         # Save learning phase log
-        with open(output_dir / "learning_phase.log", "w") as f:
+        with open(output_dir / "learning_phase.log", "w", encoding="utf-8") as f:
             json.dump(learning_data, f, indent=2)
 
         # Step 4: Testing phase (subprocess)
@@ -128,6 +129,7 @@ def run_harness(config: HarnessConfig) -> HarnessResult:
             input=json.dumps(testing_input),
             capture_output=True,
             text=True,
+            timeout=600,
         )
 
         if testing_result.returncode != 0:
@@ -136,7 +138,7 @@ def run_harness(config: HarnessConfig) -> HarnessResult:
         testing_data = json.loads(testing_result.stdout)
 
         # Save testing phase log
-        with open(output_dir / "testing_phase.log", "w") as f:
+        with open(output_dir / "testing_phase.log", "w", encoding="utf-8") as f:
             json.dump(testing_data, f, indent=2)
 
         # Step 5: Grade answers
@@ -177,7 +179,7 @@ def run_harness(config: HarnessConfig) -> HarnessResult:
             scores["overall"] = overall
 
         # Save grading results
-        with open(output_dir / "scores.json", "w") as f:
+        with open(output_dir / "scores.json", "w", encoding="utf-8") as f:
             json.dump({"scores": scores, "details": all_grades}, f, indent=2)
 
         return HarnessResult(success=True, scores=scores)
