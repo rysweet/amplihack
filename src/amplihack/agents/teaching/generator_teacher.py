@@ -6,6 +6,10 @@ This agent teaches users how to:
 3. Run progressive evaluations (L1-L12)
 4. Use the self-improvement loop
 5. Interpret eval results
+6. Understand the retrieval architecture (entity, concept, simple, tiered)
+7. Understand intent classification and math code generation
+8. Run the self-improvement loop with patch proposer and reviewer voting
+9. Export and import memory snapshots
 
 Uses a structured curriculum with exercises and quizzes.
 Each lesson builds on the previous one, with prerequisite checking.
@@ -142,6 +146,41 @@ def _validate_custom_level(user_answer: str) -> bool:
     )
 
 
+def _validate_retrieval_strategy(user_answer: str) -> bool:
+    """Check that user_answer names retrieval strategies correctly."""
+    strategies = ["simple", "entity", "concept", "tiered"]
+    lower = user_answer.lower()
+    return sum(1 for s in strategies if s in lower) >= 2
+
+
+def _validate_intent_types(user_answer: str) -> bool:
+    """Check that user_answer lists intent types correctly."""
+    intents = ["simple_recall", "mathematical", "temporal", "multi_source", "contradiction"]
+    lower = user_answer.lower()
+    return sum(1 for i in intents if i.replace("_", " ") in lower or i in lower) >= 3
+
+
+def _validate_patch_proposer(user_answer: str) -> bool:
+    """Check that user_answer describes the patch proposer workflow."""
+    return _validate_contains(user_answer, ["patch"]) and _validate_contains(
+        user_answer, ["review"]
+    )
+
+
+def _validate_runner_config(user_answer: str) -> bool:
+    """Check that user_answer describes RunnerConfig fields."""
+    return _validate_contains(user_answer, ["iteration"]) and _validate_contains(
+        user_answer, ["threshold"]
+    )
+
+
+def _validate_memory_export(user_answer: str) -> bool:
+    """Check that user_answer describes memory export/import concepts."""
+    return _validate_contains(user_answer, ["export"]) or _validate_contains(
+        user_answer, ["snapshot"]
+    )
+
+
 # Map from validation function name to callable
 VALIDATORS: dict[str, Any] = {
     "validate_prompt_file": _validate_prompt_file,
@@ -154,6 +193,11 @@ VALIDATORS: dict[str, Any] = {
     "validate_self_improve": _validate_self_improve,
     "validate_security_prompt": _validate_security_prompt,
     "validate_custom_level": _validate_custom_level,
+    "validate_retrieval_strategy": _validate_retrieval_strategy,
+    "validate_intent_types": _validate_intent_types,
+    "validate_patch_proposer": _validate_patch_proposer,
+    "validate_runner_config": _validate_runner_config,
+    "validate_memory_export": _validate_memory_export,
 }
 
 # ---------------------------------------------------------------------------
@@ -1087,11 +1131,19 @@ def _build_lesson_8() -> Lesson:
 
             ```bash
             python -m amplihack.eval.self_improve.runner \\
-                --agent-name my-agent \\
+                --sdk mini \\
                 --iterations 5 \\
                 --output-dir improve_results/ \\
-                --sdk mini
+                --agent-name my-agent
             ```
+
+            Key CLI flags:
+            - `--sdk`: SDK to evaluate (mini, claude, copilot, microsoft)
+            - `--iterations`: Max improvement iterations (default: 5)
+            - `--improvement-threshold`: Min % improvement to commit (default: 2.0)
+            - `--regression-tolerance`: Max % regression on any level (default: 5.0)
+            - `--levels`: Levels to evaluate (default: L1 L2 L3 L4 L5 L6)
+            - `--dry-run`: Evaluate and analyze without applying changes
 
             ## Key Principles
 
@@ -1104,10 +1156,12 @@ def _build_lesson_8() -> Lesson:
             ## What the Error Analyzer Finds
 
             The ErrorAnalyzer produces an `ErrorAnalysis` with:
-            - **failure_mode**: What type of failure (e.g., "retrieval_miss", "wrong_synthesis").
+            - **failure_mode**: e.g., "retrieval_insufficient", "temporal_ordering_wrong",
+              "intent_misclassification", "synthesis_hallucination"
             - **affected_level**: Which level failed (e.g., "L3").
-            - **affected_component**: Which code component to fix (e.g., "memory_retrieval.py").
-            - **proposed_change**: Specific code change to try.
+            - **affected_component**: Which code component to fix
+              (e.g., "learning_agent.py::_synthesize_with_llm").
+            - **prompt_template**: Which prompt template to modify.
 
             ## Example Iteration
 
@@ -1492,6 +1546,780 @@ def _build_lesson_10() -> Lesson:
     )
 
 
+def _build_lesson_11() -> Lesson:
+    """Lesson 11: Retrieval Architecture."""
+    return Lesson(
+        id="L11",
+        title="Retrieval Architecture",
+        description="Understand the four retrieval strategies and when each is used.",
+        content=textwrap.dedent("""\
+            # Lesson 11: Retrieval Architecture
+
+            ## The Retrieval Problem
+
+            A goal-seeking agent stores facts in memory. When answering a question,
+            it must decide *which* facts to retrieve. Different questions require
+            different retrieval strategies.
+
+            ## Four Retrieval Strategies
+
+            ### 1. Simple Retrieval
+
+            ```python
+            def _simple_retrieval(self, question: str) -> list[dict]:
+            ```
+
+            - **How it works**: Returns all facts from memory (up to 15,000).
+            - **Used when**: KB has <= 500 facts, or intent is in `SIMPLE_INTENTS`
+              (simple_recall, incremental_update, contradiction_resolution,
+              multi_source_synthesis).
+            - **Why**: For small KBs, the LLM can handle all facts in context.
+              Keyword-based filtering can miss facts whose text does not match
+              the query. Simple retrieval guarantees completeness.
+
+            ### 2. Entity Retrieval
+
+            ```python
+            def _entity_retrieval(self, question: str) -> list[dict]:
+            ```
+
+            - **How it works**: Extracts proper nouns from the question using regex,
+              then calls `memory.retrieve_by_entity(name)` for each entity.
+            - **Used when**: Question contains proper nouns (capitalized names) and
+              KB has > 500 facts.
+            - **Why**: Large KBs cannot fit in context. Entity retrieval targets
+              the specific person/project the question is about.
+            - **Fallback**: If entity retrieval returns nothing, falls back to
+              simple retrieval + reranking.
+
+            ### 3. Concept Retrieval
+
+            ```python
+            def _concept_retrieval(self, question: str) -> list[dict]:
+            ```
+
+            - **How it works**: Extracts key noun phrases (not proper nouns) by
+              filtering stop-words, then searches memory with bigrams and unigrams.
+            - **Used when**: Question has no proper nouns but has domain concepts.
+            - **Why**: Handles questions like "What is the temperature threshold?"
+              where there are no named entities but specific domain terms.
+
+            ### 4. Tiered Retrieval (Progressive Summarization)
+
+            ```python
+            def _tiered_retrieval(self, question: str, all_facts: list) -> list:
+            ```
+
+            - **How it works**: Splits facts into three tiers by recency:
+              - Tier 1 (most recent 200): returned verbatim
+              - Tier 2 (facts 201-1000): entity-level summaries
+              - Tier 3 (facts 1000+): topic-level summaries
+            - **Used when**: KB has > 1000 facts and simple retrieval is triggered.
+            - **Why**: Keeps recent facts detailed while compressing old facts.
+              Summaries preserve numbers, names, dates, and status values.
+
+            ## Retrieval Selection Flow
+
+            ```
+            answer_question()
+                |
+                +-- _detect_intent() -> intent_type
+                |
+                +-- if intent_type in AGGREGATION_INTENTS:
+                |       -> _aggregation_retrieval() (Cypher graph queries)
+                |
+                +-- elif intent_type in SIMPLE_INTENTS or KB <= 500:
+                |       -> _simple_retrieval()
+                |           |
+                |           +-- if KB > 1000: _tiered_retrieval()
+                |
+                +-- else (large KB, complex intent):
+                        -> _entity_retrieval()
+                        |
+                        +-- if empty: _simple_retrieval() + rerank
+            ```
+
+            ## Reranking
+
+            After retrieval, `rerank_facts_by_query()` sorts facts by relevance
+            to the question using token overlap scoring. This ensures the most
+            relevant facts appear first in the LLM context.
+
+            ## Source-Specific Filtering
+
+            If the question references a specific article (e.g., "mentioned in the
+            athlete achievements article"), `_filter_facts_by_source_reference()`
+            extracts the source name and filters facts whose metadata has a matching
+            `source_label`. This filtered subset is passed to the LLM as extra context.
+        """),
+        prerequisites=["L07"],
+        exercises=[
+            Exercise(
+                id="E11-01",
+                instruction=(
+                    "List the four retrieval strategies (simple, entity, concept, tiered) "
+                    "and write one sentence for each explaining when it is used."
+                ),
+                expected_output=(
+                    "Simple: Used for small KBs (<=500 facts) or simple intents; returns all facts. "
+                    "Entity: Used when question has proper nouns and KB > 500; targets named entities. "
+                    "Concept: Used when no proper nouns but domain terms exist; searches bigrams. "
+                    "Tiered: Used when KB > 1000 facts; progressive summarization by recency."
+                ),
+                hint="Each strategy targets a different KB size and question type.",
+                validation_fn="validate_retrieval_strategy",
+            ),
+            Exercise(
+                id="E11-02",
+                instruction=(
+                    "An agent with 2000 facts receives the question 'What is Sarah Chen's role?'. "
+                    "Trace the retrieval path: which strategy is tried first, and what happens "
+                    "if it returns no results?"
+                ),
+                expected_output=(
+                    "1. Intent detection classifies as simple_recall. "
+                    "2. But KB has 2000 facts (> 500), so entity retrieval is tried first. "
+                    "3. 'Sarah Chen' is extracted as a proper noun. "
+                    "4. memory.retrieve_by_entity('Sarah Chen') is called. "
+                    "5. If entity retrieval returns nothing, fallback to simple retrieval + rerank."
+                ),
+                hint="Check the retrieval selection flow diagram in the lesson.",
+            ),
+        ],
+        quiz=[
+            QuizQuestion(
+                question="What is the KB size threshold where simple retrieval always applies?",
+                correct_answer="500 facts or fewer -- all facts are returned verbatim",
+                wrong_answers=[
+                    "100 facts or fewer",
+                    "1000 facts or fewer",
+                    "There is no threshold -- intent determines it",
+                ],
+                explanation="For KBs <= 500 facts, simple retrieval is always used regardless of intent.",
+            ),
+            QuizQuestion(
+                question="What does tiered retrieval do with facts older than the most recent 200?",
+                correct_answer="Summarizes them: entity-level summaries for 201-1000, topic-level for 1000+",
+                wrong_answers=[
+                    "Discards them entirely",
+                    "Returns them verbatim but at the end",
+                    "Compresses them with gzip",
+                ],
+                explanation="Tiered retrieval uses progressive summarization preserving key details.",
+            ),
+            QuizQuestion(
+                question="Why does entity retrieval fall back to simple retrieval when it finds nothing?",
+                correct_answer=(
+                    "The question may not have proper nouns in the memory's entity index, "
+                    "so simple retrieval with reranking surfaces the correct facts"
+                ),
+                wrong_answers=[
+                    "Entity retrieval always finds something",
+                    "It falls back to concept retrieval first",
+                    "Empty results mean the agent has no relevant knowledge",
+                ],
+                explanation="Entity extraction is regex-based and can miss names not in the index.",
+            ),
+        ],
+    )
+
+
+def _build_lesson_12() -> Lesson:
+    """Lesson 12: Intent Classification and Math Code Generation."""
+    return Lesson(
+        id="L12",
+        title="Intent Classification and Math Code Generation",
+        description="How the agent classifies question intent and pre-computes math results.",
+        content=textwrap.dedent("""\
+            # Lesson 12: Intent Classification and Math Code Generation
+
+            ## Why Intent Classification?
+
+            Different questions need different handling. A simple recall question
+            should not trigger temporal reasoning logic, and a math question needs
+            arithmetic verification. The `_detect_intent()` method classifies every
+            question before retrieval.
+
+            ## Intent Types
+
+            The agent recognizes nine intent types:
+
+            | Intent                    | Example                                      | Retrieval Strategy |
+            |---------------------------|----------------------------------------------|-------------------|
+            | `simple_recall`           | "What is X?"                                 | Simple             |
+            | `mathematical_computation`| "What percentage increase?"                  | Simple + math      |
+            | `temporal_comparison`     | "How did X change between Day 7 and 9?"      | Simple + temporal  |
+            | `multi_source_synthesis`  | "Combine info from two articles"             | Simple (all facts) |
+            | `contradiction_resolution`| "Which source is more reliable?"             | Simple (all facts) |
+            | `incremental_update`      | "What is the latest value of X?"             | Simple             |
+            | `causal_counterfactual`   | "What if X had not happened?"                | Iterative          |
+            | `ratio_trend_analysis`    | "Which metric has the best trend?"           | Simple + math      |
+            | `meta_memory`             | "How many projects are tracked?"             | Aggregation (Cypher)|
+
+            ## How Intent Detection Works
+
+            ```python
+            def _detect_intent(self, question: str) -> dict:
+                # Single LLM call with few-shot examples
+                # Returns: {intent, needs_math, needs_temporal, math_type, reasoning}
+            ```
+
+            The LLM classifies the question using a prompt with few-shot examples
+            and returns a JSON object. The `needs_math` and `needs_temporal` flags
+            control downstream processing.
+
+            ## Math Code Generation Pipeline
+
+            When `needs_math=True`, the agent runs a three-step pipeline:
+
+            ### Step 1: Number Extraction
+
+            ```python
+            def _compute_math_result(self, question, facts, intent) -> str | None:
+            ```
+
+            An LLM call extracts the specific numbers from facts and builds an
+            arithmetic expression. For example:
+
+            - Question: "What percentage did Norway improve?"
+            - Numbers: `{{"old_medals": 18, "new_medals": 26}}`
+            - Expression: `(26 - 18) / 18 * 100`
+
+            ### Step 2: Safe Evaluation
+
+            The expression is evaluated using the AST-based `calculate()` function
+            (NOT Python `eval()`). This prevents code injection.
+
+            ```python
+            from .action_executor import calculate
+            result = calculate("(26 - 18) / 18 * 100")
+            # {"result": 44.4444, "expression": "(26 - 18) / 18 * 100"}
+            ```
+
+            ### Step 3: Injection into Synthesis
+
+            The pre-computed result is injected into the synthesis prompt:
+
+            ```
+            PRE-COMPUTED RESULT (use this, do NOT re-calculate):
+            COMPUTED: (26 - 18) / 18 * 100 = 44.44 (percentage increase)
+            ```
+
+            The LLM uses this result directly instead of doing arithmetic itself.
+
+            ### Step 4: Post-Synthesis Validation
+
+            After synthesis, `_validate_arithmetic()` scans the answer for
+            expressions like `26 - 18 = 9` and verifies them with the calculator.
+            Wrong results are corrected in-place.
+
+            ## Intent Routing Summary
+
+            | Intent needs   | Retrieval used        | Extra processing            |
+            |---------------|-----------------------|-----------------------------|
+            | needs_math     | Simple retrieval      | _compute_math_result + validate |
+            | needs_temporal | Simple retrieval      | Temporal sort + worksheet   |
+            | meta_memory    | Aggregation (Cypher)  | Direct count/enumeration    |
+            | contradiction  | Simple (all facts)    | Contradiction instructions  |
+            | causal/counter | Iterative or entity   | Counterfactual prompt       |
+        """),
+        prerequisites=["L07", "L11"],
+        exercises=[
+            Exercise(
+                id="E12-01",
+                instruction=(
+                    "For each of these questions, write the intent type:\n"
+                    "a) 'How many total medals does Norway have?'\n"
+                    "b) 'What percentage did Germany's gold medals increase?'\n"
+                    "c) 'How did the medal count change from Day 7 to Day 9?'\n"
+                    "d) 'How many projects are being tracked?'\n"
+                    "e) 'If Norway had not competed, who would lead?'"
+                ),
+                expected_output=(
+                    "a) simple_recall -- direct fact lookup.\n"
+                    "b) mathematical_computation -- percentage calculation needed.\n"
+                    "c) temporal_comparison -- comparing values across time periods.\n"
+                    "d) meta_memory -- asking about the structure of stored knowledge.\n"
+                    "e) causal_counterfactual -- hypothetical reasoning."
+                ),
+                hint="Match each question to the nine intent types in the table.",
+                validation_fn="validate_intent_types",
+            ),
+            Exercise(
+                id="E12-02",
+                instruction=(
+                    "Describe the three steps of the math code generation pipeline "
+                    "and explain why the LLM does not do the arithmetic itself."
+                ),
+                expected_output=(
+                    "1. Number extraction: LLM extracts numbers and builds expression. "
+                    "2. Safe evaluation: AST-based calculator evaluates the expression. "
+                    "3. Injection: Pre-computed result is inserted into the synthesis prompt. "
+                    "The LLM does not do arithmetic because it is unreliable at computation; "
+                    "the calculator provides exact results."
+                ),
+                hint="The pipeline is: extract -> calculate -> inject.",
+            ),
+        ],
+        quiz=[
+            QuizQuestion(
+                question="How many intent types does the agent recognize?",
+                correct_answer="Nine: simple_recall, mathematical_computation, temporal_comparison, "
+                "multi_source_synthesis, contradiction_resolution, incremental_update, "
+                "causal_counterfactual, ratio_trend_analysis, meta_memory",
+                wrong_answers=[
+                    "Four: recall, inference, synthesis, application",
+                    "Six: one per eval level L1-L6",
+                    "Three: simple, complex, meta",
+                ],
+                explanation="The intent classifier uses nine types with specific retrieval strategies.",
+            ),
+            QuizQuestion(
+                question="Why is the calculate() function used instead of Python eval()?",
+                correct_answer="calculate() uses AST-based safe evaluation to prevent code injection",
+                wrong_answers=[
+                    "eval() is slower",
+                    "eval() cannot do floating-point arithmetic",
+                    "calculate() supports more operations",
+                ],
+                explanation="Security: eval() could execute arbitrary code from LLM output.",
+            ),
+            QuizQuestion(
+                question="What happens after synthesis when needs_math=True?",
+                correct_answer="_validate_arithmetic() scans the answer for expressions and corrects wrong results",
+                wrong_answers=[
+                    "Nothing -- the pre-computed result is sufficient",
+                    "The answer is re-generated from scratch",
+                    "A human reviews the math",
+                ],
+                explanation="Post-synthesis validation catches LLM arithmetic errors in the answer text.",
+            ),
+        ],
+    )
+
+
+def _build_lesson_13() -> Lesson:
+    """Lesson 13: Self-Improvement with Patch Proposer and Reviewer Voting."""
+    return Lesson(
+        id="L13",
+        title="Self-Improvement: Patch Proposer and Reviewer Voting",
+        description="Deep dive into the automated patch proposal and multi-perspective review system.",
+        content=textwrap.dedent("""\
+            # Lesson 13: Patch Proposer and Reviewer Voting
+
+            ## Beyond the Basic Loop
+
+            Lesson 8 introduced the high-level self-improvement cycle:
+            EVAL -> ANALYZE -> RESEARCH -> IMPROVE -> RE-EVAL -> DECIDE.
+
+            This lesson goes deeper into the IMPROVE step: how the system generates
+            specific code patches and reviews them before applying.
+
+            ## The Patch Proposer
+
+            ```python
+            from amplihack.eval.self_improve.patch_proposer import (
+                propose_patch, PatchProposal, PatchHistory
+            )
+            ```
+
+            The `propose_patch()` function takes:
+            - **category**: The failing eval category (e.g., "temporal_comparison")
+            - **category_score**: Current average score (e.g., 0.45)
+            - **failed_questions**: Details of what went wrong
+            - **bottleneck**: Component identifier (e.g., "retrieval:keyword_search")
+            - **history**: Previous patches (applied, reverted, rejected)
+            - **llm_call**: A callable for LLM inference
+
+            It returns a `PatchProposal`:
+
+            ```python
+            @dataclass
+            class PatchProposal:
+                target_file: str      # e.g., "src/amplihack/agents/goal_seeking/learning_agent.py"
+                hypothesis: str       # Why this category fails
+                description: str      # What the patch does
+                diff: str             # Unified diff format
+                expected_impact: dict  # {category: expected_score_delta}
+                risk_assessment: str   # What could go wrong
+                confidence: float      # 0.0 to 1.0
+            ```
+
+            ## Patch History Tracking
+
+            The `PatchHistory` dataclass prevents repeating failed fixes:
+
+            ```python
+            @dataclass
+            class PatchHistory:
+                applied_patches: list   # Patches that were applied and kept
+                reverted_patches: list   # Patches that were applied then reverted
+                rejected_patches: list   # Patches rejected by reviewer voting
+            ```
+
+            The history is passed to the LLM prompt so it avoids re-proposing
+            the same changes that were previously reverted.
+
+            ## Reviewer Voting
+
+            Before a patch is applied, three reviewer perspectives vote:
+
+            ```python
+            from amplihack.eval.self_improve.reviewer_voting import ReviewVote
+            ```
+
+            | Reviewer     | Perspective                                  |
+            |-------------|----------------------------------------------|
+            | **Quality** | Does this patch address the root cause?      |
+            | **Regression** | Could this break other passing levels?    |
+            | **Simplicity** | Is this the smallest effective change?    |
+
+            Each reviewer casts a vote: `accept`, `reject`, or `modify`.
+            Majority vote determines the outcome.
+
+            After voting, there is a **challenge phase** where a devil's advocate
+            argues against the patch. The proposer must defend the change.
+
+            ## RunnerConfig
+
+            The self-improvement runner is configured with `RunnerConfig`:
+
+            ```python
+            @dataclass
+            class RunnerConfig:
+                sdk_type: str = "mini"
+                max_iterations: int = 5
+                improvement_threshold: float = 2.0   # min % improvement to commit
+                regression_tolerance: float = 5.0    # max % regression allowed
+                levels: list[str] = ["L1", "L2", "L3", "L4", "L5", "L6"]
+                output_dir: str = "./eval_results/self_improve"
+                agent_name: str = "self-improve-agent"
+                score_threshold: float = 0.6         # threshold for failure classification
+                dry_run: bool = False
+            ```
+
+            ## Practical: Running the Self-Improvement Loop
+
+            ```bash
+            # Full run with 3 iterations on L1-L6
+            python -m amplihack.eval.self_improve.runner \\
+                --sdk mini \\
+                --iterations 3 \\
+                --levels L1 L2 L3 L4 L5 L6 \\
+                --output-dir ./self_improve_results/
+
+            # Dry run (analyze only, no changes applied)
+            python -m amplihack.eval.self_improve.runner \\
+                --sdk mini \\
+                --iterations 1 \\
+                --dry-run \\
+                --output-dir ./dry_run_results/
+            ```
+
+            ## Output Structure
+
+            Each iteration writes to its own directory:
+
+            ```
+            self_improve_results/
+            +-- iteration_1/
+            |   +-- eval/              # Progressive suite results
+            |   +-- baseline_scores.json
+            |   +-- analyses.json      # ErrorAnalyzer output
+            |   +-- research_decisions.json
+            |   +-- patch_*.json       # Individual patch descriptions
+            |   +-- re_eval/           # Post-change eval results
+            |   +-- post_scores.json
+            |   +-- iteration_result.json
+            +-- iteration_2/
+            +-- self_improve_summary.json  # Final summary
+            ```
+        """),
+        prerequisites=["L08"],
+        exercises=[
+            Exercise(
+                id="E13-01",
+                instruction=(
+                    "Describe the role of each component in the patch pipeline: "
+                    "PatchProposer, PatchHistory, and ReviewerVoting. "
+                    "Explain how they work together."
+                ),
+                expected_output=(
+                    "PatchProposer: Generates specific code patches with hypothesis, diff, "
+                    "and confidence. PatchHistory: Tracks applied, reverted, and rejected "
+                    "patches to avoid repeating failures. ReviewerVoting: Three perspectives "
+                    "(quality, regression, simplicity) vote on each patch before application. "
+                    "Flow: ErrorAnalyzer -> PatchProposer -> ReviewerVoting -> Apply/Reject."
+                ),
+                hint="Each component has a specific role in the pipeline.",
+                validation_fn="validate_patch_proposer",
+            ),
+            Exercise(
+                id="E13-02",
+                instruction=(
+                    "Write a RunnerConfig for a dry run that evaluates L1-L3 with "
+                    "the mini SDK, maximum 2 iterations, 3% improvement threshold."
+                ),
+                expected_output=(
+                    "RunnerConfig(\n"
+                    "    sdk_type='mini',\n"
+                    "    max_iterations=2,\n"
+                    "    improvement_threshold=3.0,\n"
+                    "    levels=['L1', 'L2', 'L3'],\n"
+                    "    dry_run=True,\n"
+                    ")"
+                ),
+                hint="Set dry_run=True and adjust improvement_threshold.",
+                validation_fn="validate_runner_config",
+            ),
+        ],
+        quiz=[
+            QuizQuestion(
+                question="What three perspectives vote on a patch proposal?",
+                correct_answer="Quality (root cause), Regression (breaking other levels), Simplicity (minimal change)",
+                wrong_answers=[
+                    "Speed, Accuracy, Completeness",
+                    "Security, Performance, Reliability",
+                    "Proposer, Reviewer, Manager",
+                ],
+                explanation="The three perspectives catch different categories of problems.",
+            ),
+            QuizQuestion(
+                question="Why does PatchHistory track reverted patches?",
+                correct_answer="To prevent the LLM from re-proposing the same failed fix in later iterations",
+                wrong_answers=[
+                    "For auditing purposes only",
+                    "To compute total regression",
+                    "Reverted patches are not tracked",
+                ],
+                explanation="The history is injected into the LLM prompt to avoid repetition.",
+            ),
+            QuizQuestion(
+                question="What is the default regression_tolerance in RunnerConfig?",
+                correct_answer="5.0% -- any level regressing more than 5% triggers a revert",
+                wrong_answers=[
+                    "0% -- any regression triggers revert",
+                    "10% -- generous tolerance",
+                    "2.0% -- same as improvement_threshold",
+                ],
+                explanation="The default allows up to 5% regression on any individual level.",
+            ),
+        ],
+    )
+
+
+def _build_lesson_14() -> Lesson:
+    """Lesson 14: Memory Export, Import, and Cross-Session Persistence."""
+    return Lesson(
+        id="L14",
+        title="Memory Export, Import, and Cross-Session Persistence",
+        description="Export agent knowledge as snapshots, import into new agents, and persist across sessions.",
+        content=textwrap.dedent("""\
+            # Lesson 14: Memory Export, Import, and Cross-Session Persistence
+
+            ## Why Export/Import?
+
+            Agents accumulate knowledge over time. You need to:
+            - **Back up** knowledge before risky operations.
+            - **Share** knowledge between agents or team members.
+            - **Replay** learning to reproduce eval results.
+            - **Migrate** from one backend to another.
+
+            ## Memory Architecture
+
+            The agent uses `MemoryRetriever` backed by the Kuzu graph database
+            (with SQLite fallback). Each agent has isolated storage:
+
+            ```
+            ~/.amplihack/memory/<agent_name>/
+            ```
+
+            Storage can be overridden with the `storage_path` parameter:
+
+            ```python
+            from amplihack.agents.goal_seeking.memory_retrieval import MemoryRetriever
+
+            retriever = MemoryRetriever(
+                agent_name="my-agent",
+                storage_path=Path("/tmp/test_memory"),
+            )
+            ```
+
+            ## ExperienceStore API
+
+            The underlying `ExperienceStore` provides the core storage interface:
+
+            ```python
+            from amplihack_memory import ExperienceStore, Experience, ExperienceType
+
+            store = ExperienceStore(agent_name="my-agent")
+
+            # Store a fact
+            exp = Experience(
+                experience_type=ExperienceType.SUCCESS,
+                context="Photosynthesis",
+                outcome="Plants convert light energy to chemical energy",
+                confidence=0.9,
+                tags=["biology"],
+            )
+            exp_id = store.connector.store_experience(exp)
+
+            # Search
+            results = store.search(query="photosynthesis", limit=5)
+
+            # Statistics
+            stats = store.get_statistics()
+            ```
+
+            ## Export as JSON Snapshot
+
+            To export an agent's knowledge, retrieve all facts and serialize:
+
+            ```python
+            retriever = MemoryRetriever("my-agent")
+            all_facts = retriever.get_all_facts(limit=50000)
+
+            import json
+            with open("knowledge_snapshot.json", "w") as f:
+                json.dump(all_facts, f, indent=2)
+            ```
+
+            ## Import from Snapshot
+
+            To import into a new agent:
+
+            ```python
+            import json
+
+            with open("knowledge_snapshot.json") as f:
+                facts = json.load(f)
+
+            new_retriever = MemoryRetriever("new-agent")
+            for fact in facts:
+                new_retriever.store_fact(
+                    context=fact["context"],
+                    fact=fact["outcome"],
+                    confidence=fact.get("confidence", 0.8),
+                    tags=fact.get("tags", []),
+                )
+            ```
+
+            ## Eval-Specific Memory Isolation
+
+            The progressive test suite creates fresh memory for each eval run by
+            using unique agent names with timestamps:
+
+            ```python
+            agent_name = f"eval_agent_{int(time.time())}"
+            ```
+
+            This prevents cross-contamination between eval runs. Each run starts
+            with an empty knowledge base.
+
+            ## Memory Statistics
+
+            ```python
+            retriever = MemoryRetriever("my-agent")
+            stats = retriever.get_statistics()
+            # {
+            #     "total_experiences": 142,
+            #     "by_type": {"SUCCESS": 130, "FAILURE": 12},
+            #     "storage_size_kb": 256
+            # }
+            ```
+
+            ## Practical: Comparing Agent Knowledge
+
+            After running the self-improvement loop, compare what two agent
+            versions know:
+
+            ```python
+            v1 = MemoryRetriever("agent-v1")
+            v2 = MemoryRetriever("agent-v2")
+
+            v1_facts = v1.get_all_facts()
+            v2_facts = v2.get_all_facts()
+
+            print(f"v1: {len(v1_facts)} facts, v2: {len(v2_facts)} facts")
+            ```
+        """),
+        prerequisites=["L06"],
+        exercises=[
+            Exercise(
+                id="E14-01",
+                instruction=(
+                    "Write Python code to export all facts from an agent called "
+                    "'security-scanner' to a JSON file, then import them into a "
+                    "new agent called 'security-scanner-v2'."
+                ),
+                expected_output=(
+                    "# Export\n"
+                    "retriever = MemoryRetriever('security-scanner')\n"
+                    "facts = retriever.get_all_facts(limit=50000)\n"
+                    "with open('snapshot.json', 'w') as f:\n"
+                    "    json.dump(facts, f)\n\n"
+                    "# Import\n"
+                    "new_ret = MemoryRetriever('security-scanner-v2')\n"
+                    "for fact in facts:\n"
+                    "    new_ret.store_fact(context=fact['context'], "
+                    "fact=fact['outcome'])"
+                ),
+                hint="Use get_all_facts() to export and store_fact() to import.",
+                validation_fn="validate_memory_export",
+            ),
+            Exercise(
+                id="E14-02",
+                instruction=(
+                    "Explain why the eval suite uses unique agent names with timestamps "
+                    "and what would happen if all eval runs shared the same agent name."
+                ),
+                expected_output=(
+                    "Unique names ensure each eval run starts with an empty knowledge base. "
+                    "If eval runs shared the same name, facts from previous runs would "
+                    "persist, inflating scores because the agent would 'remember' answers "
+                    "from past evaluations instead of learning fresh from the articles."
+                ),
+                hint="Think about what happens when facts from run N persist into run N+1.",
+            ),
+        ],
+        quiz=[
+            QuizQuestion(
+                question="Where does MemoryRetriever store data by default?",
+                correct_answer="~/.amplihack/memory/<agent_name>/ using the Kuzu graph database",
+                wrong_answers=[
+                    "In a SQLite file in the current directory",
+                    "In memory only -- no persistence",
+                    "In a PostgreSQL database",
+                ],
+                explanation="The default backend is Kuzu with storage under ~/.amplihack/memory/.",
+            ),
+            QuizQuestion(
+                question="What method retrieves all facts without keyword filtering?",
+                correct_answer="get_all_facts(limit=N) -- bypasses search and returns all experiences",
+                wrong_answers=[
+                    "search('*') with a wildcard query",
+                    "retrieve_all() method",
+                    "dump_memory() method",
+                ],
+                explanation="get_all_facts() is specifically designed for export and simple retrieval.",
+            ),
+            QuizQuestion(
+                question="Why is memory isolation important during eval?",
+                correct_answer=(
+                    "Without isolation, facts from previous runs would persist and inflate "
+                    "scores because the agent remembers past answers"
+                ),
+                wrong_answers=[
+                    "To save disk space",
+                    "Because Kuzu cannot handle concurrent access",
+                    "To prevent the agent from learning too many facts",
+                ],
+                explanation="Cross-contamination makes eval results unreliable.",
+            ),
+        ],
+    )
+
+
 # ---------------------------------------------------------------------------
 # Main teacher class
 # ---------------------------------------------------------------------------
@@ -1511,6 +2339,10 @@ class GeneratorTeacher:
     8. Self-Improvement Loop
     9. Advanced: Security Domain Agents
     10. Advanced: Custom Eval Levels
+    11. Retrieval Architecture
+    12. Intent Classification and Math Code Generation
+    13. Self-Improvement: Patch Proposer and Reviewer Voting
+    14. Memory Export, Import, and Cross-Session Persistence
     """
 
     def __init__(self, model: str = "") -> None:
@@ -1521,7 +2353,7 @@ class GeneratorTeacher:
     # -- Curriculum construction -------------------------------------------
 
     def _build_curriculum(self) -> list[Lesson]:
-        """Build the complete 10-lesson curriculum."""
+        """Build the complete 14-lesson curriculum."""
         return [
             _build_lesson_1(),
             _build_lesson_2(),
@@ -1533,6 +2365,10 @@ class GeneratorTeacher:
             _build_lesson_8(),
             _build_lesson_9(),
             _build_lesson_10(),
+            _build_lesson_11(),
+            _build_lesson_12(),
+            _build_lesson_13(),
+            _build_lesson_14(),
         ]
 
     # -- Lesson access -----------------------------------------------------

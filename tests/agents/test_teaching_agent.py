@@ -1,13 +1,14 @@
 """Tests for the teaching agent curriculum and exercise validation.
 
 Covers:
-- All 10 lessons load correctly
+- All 14 lessons load correctly
 - Exercises have valid expected outputs and validators
 - Quiz questions have correct answers and explanations
 - Prerequisite chain is acyclic and valid
 - Progress tracking works correctly
 - Self-validation method catches structural issues
 - Integration: walk through lessons 1-2 with mock user
+- New validators for retrieval, intent, patch proposer, runner config, memory
 """
 
 from __future__ import annotations
@@ -45,17 +46,17 @@ def curriculum(teacher: GeneratorTeacher) -> list[Lesson]:
 
 
 class TestCurriculumStructure:
-    """Verify all 10 lessons are present and well-formed."""
+    """Verify all 14 lessons are present and well-formed."""
 
-    def test_has_10_lessons(self, curriculum: list[Lesson]) -> None:
-        assert len(curriculum) == 10
+    def test_has_14_lessons(self, curriculum: list[Lesson]) -> None:
+        assert len(curriculum) == 14
 
     def test_lesson_ids_are_unique(self, curriculum: list[Lesson]) -> None:
         ids = [lesson.id for lesson in curriculum]
         assert len(ids) == len(set(ids)), f"Duplicate IDs: {ids}"
 
     def test_lesson_ids_sequential(self, curriculum: list[Lesson]) -> None:
-        expected = [f"L{i:02d}" for i in range(1, 11)]
+        expected = [f"L{i:02d}" for i in range(1, 15)]
         actual = [lesson.id for lesson in curriculum]
         assert actual == expected
 
@@ -244,7 +245,7 @@ class TestProgressTracking:
     def test_progress_report_format(self, teacher: GeneratorTeacher) -> None:
         report = teacher.get_progress_report()
         assert "Progress Report" in report
-        assert "Completed: 0/10" in report
+        assert "Completed: 0/14" in report
         assert "L01" in report
         assert "Available" in report  # L01 should be available
 
@@ -257,7 +258,7 @@ class TestProgressTracking:
             passed=True,
         )
         report = teacher.get_progress_report()
-        assert "Completed: 1/10" in report
+        assert "Completed: 1/14" in report
         assert "PASSED" in report
 
 
@@ -367,15 +368,15 @@ class TestSelfValidation:
 
     def test_validation_counts_lessons(self, teacher: GeneratorTeacher) -> None:
         result = teacher.validate_tutorial()
-        assert result["stats"]["total_lessons"] == 10
+        assert result["stats"]["total_lessons"] == 14
 
     def test_validation_counts_exercises(self, teacher: GeneratorTeacher) -> None:
         result = teacher.validate_tutorial()
-        assert result["stats"]["total_exercises"] >= 20  # At least 2 per lesson
+        assert result["stats"]["total_exercises"] >= 28  # At least 2 per lesson
 
     def test_validation_counts_quiz_questions(self, teacher: GeneratorTeacher) -> None:
         result = teacher.validate_tutorial()
-        assert result["stats"]["total_quiz_questions"] >= 30  # At least 3 per lesson
+        assert result["stats"]["total_quiz_questions"] >= 42  # At least 3 per 14 lessons
 
     def test_validation_counts_validators(self, teacher: GeneratorTeacher) -> None:
         result = teacher.validate_tutorial()
@@ -464,6 +465,46 @@ class TestValidators:
             "Define TestArticle with content and TestQuestion with expected answer"
         )
 
+    def test_validate_retrieval_strategy_pass(self) -> None:
+        assert VALIDATORS["validate_retrieval_strategy"](
+            "Simple retrieval returns all facts. Entity retrieval targets named entities."
+        )
+
+    def test_validate_retrieval_strategy_fail(self) -> None:
+        assert not VALIDATORS["validate_retrieval_strategy"]("Just use search.")
+
+    def test_validate_intent_types_pass(self) -> None:
+        assert VALIDATORS["validate_intent_types"](
+            "simple_recall for lookups, mathematical for calculations, temporal for time"
+        )
+
+    def test_validate_intent_types_fail(self) -> None:
+        assert not VALIDATORS["validate_intent_types"]("Just one type: recall.")
+
+    def test_validate_patch_proposer_pass(self) -> None:
+        assert VALIDATORS["validate_patch_proposer"](
+            "The patch proposer generates diffs and the review voting decides."
+        )
+
+    def test_validate_patch_proposer_fail(self) -> None:
+        assert not VALIDATORS["validate_patch_proposer"]("Just fix the code.")
+
+    def test_validate_runner_config_pass(self) -> None:
+        assert VALIDATORS["validate_runner_config"](
+            "Set max_iterations to 5 and improvement_threshold to 2.0."
+        )
+
+    def test_validate_runner_config_fail(self) -> None:
+        assert not VALIDATORS["validate_runner_config"]("Run the agent.")
+
+    def test_validate_memory_export_pass(self) -> None:
+        assert VALIDATORS["validate_memory_export"](
+            "Export all facts as a JSON snapshot for backup."
+        )
+
+    def test_validate_memory_export_fail(self) -> None:
+        assert not VALIDATORS["validate_memory_export"]("Remember things.")
+
 
 # ---------------------------------------------------------------------------
 # Serialization tests
@@ -476,7 +517,7 @@ class TestSerialization:
     def test_to_json_is_valid(self, teacher: GeneratorTeacher) -> None:
         data = json.loads(teacher.to_json())
         assert data["model"] == "claude-sonnet-4-5-20250929"
-        assert len(data["curriculum"]) == 10
+        assert len(data["curriculum"]) == 14
         assert data["progress"] == {}
 
     def test_to_json_includes_progress(self, teacher: GeneratorTeacher) -> None:
@@ -562,7 +603,7 @@ class TestIntegrationWalkthrough:
 
         # Progress report should show 2 completed
         report = teacher.get_progress_report()
-        assert "Completed: 2/10" in report
+        assert "Completed: 2/14" in report
 
     def test_cannot_skip_to_lesson_3_without_prerequisites(self, teacher: GeneratorTeacher) -> None:
         """L03 requires L02 which requires L01."""
