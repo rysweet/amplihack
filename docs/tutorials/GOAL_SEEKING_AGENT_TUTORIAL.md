@@ -27,6 +27,51 @@ writing your first prompt file to running self-improvement loops.
 
 ---
 
+## Running the Interactive Tutorial
+
+### Via Python
+
+```python
+from amplihack.agents.teaching.generator_teacher import GeneratorTeacher
+
+teacher = GeneratorTeacher()
+
+# See the full curriculum
+for lesson in teacher.curriculum:
+    print(f"{lesson.id}: {lesson.title}")
+
+# Start lesson 1
+content = teacher.teach_lesson("L01")
+print(content)
+
+# Check an exercise
+result = teacher.check_exercise("L01", "L01_E01", "amplihack new --file my_agent.md")
+print(result)
+
+# Run a quiz
+result = teacher.run_quiz("L01")
+print(f"Score: {result.quiz_score:.0%}")
+
+# Check your progress
+print(teacher.get_progress_report())
+
+# Validate all exercises work
+validation = teacher.validate_tutorial()
+print(f"Valid: {validation['all_valid']}")
+```
+
+### Via Claude Code Skill
+
+In any Claude Code session:
+
+```
+/agent-generator-tutor
+```
+
+This activates the interactive tutor that walks you through all 14 lessons.
+
+---
+
 ## 1. Introduction to Goal-Seeking Agents
 
 ### What Is a Goal-Seeking Agent?
@@ -67,11 +112,13 @@ Prompt (.md) --> PromptAnalyzer --> GoalDefinition
 Every generated agent implements the same interface regardless of SDK:
 
 ```python
-class GoalSeekingAgent:
-    async def learn(self, content: str) -> list[str]
-    async def remember(self, query: str) -> str
-    async def teach(self, topic: str) -> str
-    async def execute(self, instruction: str) -> str
+class GoalSeekingAgent(ABC):
+    def learn_from_content(self, content: str) -> dict[str, Any]
+    def answer_question(self, question: str) -> str
+    async def run(self, task: str, max_turns: int = 10) -> AgentResult
+    def form_goal(self, user_intent: str) -> Goal
+    def get_memory_stats(self) -> dict[str, Any]
+    def close(self) -> None
 ```
 
 Write your agent logic once; swap SDKs freely.
@@ -81,9 +128,10 @@ Write your agent logic once; swap SDKs freely.
 List the four capabilities of a goal-seeking agent and give a one-sentence
 example for each.
 
-**Expected**: Learn (extract facts from articles), Remember (retrieve stored
-knowledge by query), Teach (explain topics to other agents), Apply (use tools
-to solve new problems).
+**Expected**: Learn (extract facts from articles via `learn_from_content()`),
+Answer (retrieve and synthesize knowledge via `answer_question()`), Run
+(execute tasks through the SDK agent loop via `run()`), Goal Formation
+(decompose user intent into evaluable goals via `form_goal()`).
 
 ---
 

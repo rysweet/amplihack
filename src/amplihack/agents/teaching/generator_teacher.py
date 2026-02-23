@@ -251,11 +251,13 @@ def _build_lesson_1() -> Lesson:
             Every generated agent implements the same interface regardless of SDK:
 
             ```python
-            class GoalSeekingAgent:
-                async def learn(self, content: str) -> list[str]
-                async def remember(self, query: str) -> str
-                async def teach(self, topic: str) -> str
-                async def execute(self, instruction: str) -> str
+            class GoalSeekingAgent(ABC):
+                def learn_from_content(self, content: str) -> dict[str, Any]
+                def answer_question(self, question: str) -> str
+                async def run(self, task: str, max_turns: int = 10) -> AgentResult
+                def form_goal(self, user_intent: str) -> Goal
+                def get_memory_stats(self) -> dict[str, Any]
+                def close(self) -> None
             ```
 
             This means you write your agent logic once and swap SDKs freely.
@@ -305,14 +307,14 @@ def _build_lesson_1() -> Lesson:
                 explanation="PromptAnalyzer reads the .md file and produces a GoalDefinition.",
             ),
             QuizQuestion(
-                question="What does the GoalSeekingAgent.teach() method do?",
-                correct_answer="Explains stored knowledge to another agent or human",
+                question="What does the GoalSeekingAgent.answer_question() method do?",
+                correct_answer="Retrieves facts from memory and synthesizes an answer using LLM",
                 wrong_answers=[
                     "Trains a model on new data",
                     "Writes documentation to disk",
                     "Runs the eval suite",
                 ],
-                explanation="teach() is about knowledge transfer, not model training.",
+                explanation="answer_question() uses intent detection, retrieval strategies, and LLM synthesis.",
             ),
             QuizQuestion(
                 question="True or False: Each SDK requires a different agent interface.",

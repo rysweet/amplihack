@@ -476,6 +476,26 @@ The `FAILURE_TAXONOMY` in `error_analyzer.py` maps symptoms to root causes:
 | teaching_coverage_gap      | Student not taught key facts   | `teaching_session.py::_teacher_respond`         |
 | counterfactual_refusal     | Refused hypothetical reasoning | `learning_agent.py::_synthesize_with_llm`       |
 
+## General Capability Evaluation
+
+Beyond memory, the system evaluates 5 general-purpose capabilities via `general_capability_eval.py`:
+
+```bash
+PYTHONPATH=src python -m amplihack.eval.general_capability_eval --eval tool_use,planning,reasoning
+PYTHONPATH=src python -m amplihack.eval.general_capability_eval --eval all --sdk mini
+PYTHONPATH=src python -m amplihack.eval.general_capability_eval --eval planning --output-dir /tmp/cap-eval
+```
+
+| Eval Type                   | What It Tests                                  | Scenarios |
+| --------------------------- | ---------------------------------------------- | --------- |
+| Tool Use Efficiency         | Correct tool selection, chaining, call economy | 4         |
+| Planning                    | Multi-step task decomposition and execution    | 3         |
+| Reasoning Under Uncertainty | Handling incomplete/conflicting evidence       | 3         |
+| Cross-Domain Transfer       | Applying learned patterns to new domains       | 2         |
+| Collaborative Task          | Multi-agent delegation and synthesis           | 2         |
+
+Each eval type defines scenarios with gold-standard expectations, runs the agent through them, and grades using rubric-based LLM evaluation.
+
 ## How to Add New Eval Levels
 
 ### 1. Define the test content in `test_levels.py`
