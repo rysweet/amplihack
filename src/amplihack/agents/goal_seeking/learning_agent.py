@@ -455,6 +455,12 @@ Rules:
             else:
                 # Large KB: try entity-centric retrieval first, then iterative
                 relevant_facts = self._entity_retrieval(question)
+                entity_retrieval_had_results = bool(relevant_facts)
+
+                # If entity retrieval found nothing, try concept-based retrieval
+                if not relevant_facts:
+                    relevant_facts = self._concept_retrieval(question)
+
                 if not relevant_facts:
                     # Iterative reasoning with plan/search/evaluate
                     relevant_facts, _, reasoning_trace = self.loop.reason_iteratively(
@@ -464,17 +470,27 @@ Rules:
                         max_steps=3,
                     )
 
-            # Keyword expansion: if retrieval is sparse for a large KB, try
-            # additional search phrases to catch facts missed by entity/iterative
-            if len(relevant_facts) < 3 and hasattr(self.memory, "get_all_facts"):
-                kb_size = len(self.memory.get_all_facts(limit=15000))
-                if kb_size > 500:
-                    relevant_facts = self._keyword_expanded_retrieval(question, relevant_facts)
-
-        # Fall back to getting all facts if retrieval found nothing
-        if not relevant_facts:
+            # Keyword expansion: fire aggressively when entity retrieval was empty
+            # OR when retrieval is sparse (<3 facts) for a large KB
+            entity_retrieval_empty = not locals().get("entity_retrieval_had_results", True)
             if hasattr(self.memory, "get_all_facts"):
-                relevant_facts = self.memory.get_all_facts(limit=50)
+                kb_check = self.memory.get_all_facts(limit=15000)
+                if len(kb_check) > 500 and (entity_retrieval_empty or len(relevant_facts) < 3):
+                    keyword_facts = self._keyword_expanded_retrieval(question, relevant_facts)
+                    # Merge keyword_facts into relevant_facts (dedup by experience_id)
+                    seen_ids = {
+                        f.get("experience_id", "") for f in relevant_facts if f.get("experience_id")
+                    }
+                    for f in keyword_facts:
+                        eid = f.get("experience_id", "")
+                        if eid and eid not in seen_ids:
+                            seen_ids.add(eid)
+                            relevant_facts.append(f)
+
+        # Fall back to simple retrieval if all strategies found nothing
+        if not relevant_facts:
+            logger.info("All retrieval empty; falling back to _simple_retrieval")
+            relevant_facts = self._simple_retrieval(question)
 
         if not relevant_facts:
             return "I don't have enough information to answer that question."
@@ -823,8 +839,15 @@ Rules:
         import re
 
         # Extract proper nouns from question
-        # Multi-word names: "Sarah Chen", "Project Atlas"
-        candidates = re.findall(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b", question)
+        # Handles: "Sarah Chen", "O'Brien", "Al-Hassan Ahmed"
+        candidates = re.findall(
+            r"\b("
+            r"[A-Z][a-z]*(?:['\u2019\-][A-Z]?[a-z]+)+(?:\s+(?:[A-Z][a-z]+(?:['\u2019\-][A-Z]?[a-z]+)?))*"
+            r"|"
+            r"[A-Z][a-z]+(?:\s+(?:[A-Z][a-z]+(?:['\u2019\-][A-Z]?[a-z]+)?))+)"
+            r"\b",
+            question,
+        )
 
         # Single proper nouns that aren't common words
         if not candidates:
@@ -834,8 +857,15 @@ Rules:
                 if cleaned and cleaned[0].isupper() and len(cleaned) > 2:
                     candidates.append(cleaned)
 
-        # Also handle possessives: "Fatima's hobby" -> "Fatima"
-        possessive_matches = re.findall(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)'s\b", question)
+        # Also handle possessives: "Fatima's hobby", "O'Brien's work" -> "Fatima", "O'Brien"
+        possessive_matches = re.findall(
+            r"\b("
+            r"[A-Z][a-z]*(?:['\u2019\-][A-Z]?[a-z]+)+(?:\s+(?:[A-Z][a-z]+(?:['\u2019\-][A-Z]?[a-z]+)?))*"
+            r"|"
+            r"[A-Z][a-z]+(?:\s+(?:[A-Z][a-z]+(?:['\u2019\-][A-Z]?[a-z]+)?))*"
+            r")'s\b",
+            question,
+        )
         candidates.extend(possessive_matches)
 
         if not candidates:
@@ -853,6 +883,172 @@ Rules:
                     all_facts.append(fact)
 
         return all_facts if all_facts else []
+
+    # Stop-words for concept extraction (common English words to skip)
+    _STOP_WORDS = frozenset(
+        {
+            "a",
+            "an",
+            "the",
+            "is",
+            "are",
+            "was",
+            "were",
+            "be",
+            "been",
+            "being",
+            "have",
+            "has",
+            "had",
+            "do",
+            "does",
+            "did",
+            "will",
+            "would",
+            "could",
+            "should",
+            "may",
+            "might",
+            "shall",
+            "can",
+            "to",
+            "of",
+            "in",
+            "for",
+            "on",
+            "with",
+            "at",
+            "by",
+            "from",
+            "as",
+            "into",
+            "about",
+            "between",
+            "through",
+            "during",
+            "before",
+            "after",
+            "above",
+            "below",
+            "and",
+            "but",
+            "or",
+            "not",
+            "no",
+            "if",
+            "then",
+            "than",
+            "that",
+            "this",
+            "these",
+            "those",
+            "it",
+            "its",
+            "he",
+            "she",
+            "they",
+            "we",
+            "you",
+            "i",
+            "my",
+            "your",
+            "his",
+            "her",
+            "their",
+            "our",
+            "what",
+            "which",
+            "who",
+            "whom",
+            "how",
+            "when",
+            "where",
+            "why",
+            "all",
+            "each",
+            "every",
+            "both",
+            "few",
+            "more",
+            "most",
+            "other",
+            "some",
+            "such",
+            "any",
+            "many",
+            "much",
+            "own",
+            "same",
+            "so",
+            "too",
+            "very",
+            "just",
+            "also",
+        }
+    )
+
+    def _concept_retrieval(self, question: str) -> list[dict[str, Any]]:
+        """Concept-based retrieval fallback for questions without proper nouns.
+
+        Extracts key noun phrases (not proper nouns) from the question using
+        stop-word filtering, then searches memory with 2-word and 1-word
+        phrases. Returns merged, deduplicated results.
+
+        Args:
+            question: The question text
+
+        Returns:
+            List of fact dicts, or empty list if no concept matches found
+        """
+        if not self.use_hierarchical:
+            return []
+
+        # Extract content words (non-stop-words, length > 2)
+        words = [
+            w.strip(".,;:!?()[]{}\"'").lower()
+            for w in question.split()
+            if w.strip(".,;:!?()[]{}\"'").lower() not in self._STOP_WORDS
+            and len(w.strip(".,;:!?()[]{}\"'")) > 2
+        ]
+
+        if not words:
+            return []
+
+        # Build search phrases: 2-word bigrams first, then individual words
+        phrases: list[str] = []
+        for i in range(len(words) - 1):
+            phrases.append(f"{words[i]} {words[i + 1]}")
+        phrases.extend(words)
+
+        all_facts: list[dict[str, Any]] = []
+        seen_ids: set[str] = set()
+
+        # Try search_by_concept on HierarchicalMemory if available
+        if hasattr(self.memory, "search_by_concept"):
+            for phrase in phrases[:8]:
+                concept_facts = self.memory.search_by_concept(keywords=[phrase], limit=15)
+                for fact in concept_facts:
+                    fid = fact.get("experience_id", "")
+                    if fid and fid not in seen_ids:
+                        seen_ids.add(fid)
+                        all_facts.append(fact)
+        else:
+            # Fall back to regular search
+            for phrase in phrases[:8]:
+                results = self.memory.search(query=phrase, limit=15)
+                for fact in results:
+                    fid = fact.get("experience_id", "")
+                    if fid and fid not in seen_ids:
+                        seen_ids.add(fid)
+                        all_facts.append(fact)
+
+        logger.debug(
+            "Concept retrieval: %d phrases -> %d facts from question '%s'",
+            len(phrases),
+            len(all_facts),
+            question[:80],
+        )
+        return all_facts
 
     def _filter_facts_by_source_reference(
         self, question: str, facts: list[dict[str, Any]]
