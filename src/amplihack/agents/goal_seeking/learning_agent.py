@@ -454,39 +454,22 @@ Rules:
                 # Simple retrieval: get all facts for complete coverage
                 relevant_facts = self._simple_retrieval(question)
             else:
-                # Large KB: try entity-centric retrieval first, then iterative
+                # Large KB: try entity-centric retrieval first
                 relevant_facts = self._entity_retrieval(question)
                 entity_retrieval_had_results = bool(relevant_facts)
 
-                # If entity retrieval found nothing, try concept-based retrieval
                 if not relevant_facts:
-                    relevant_facts = self._concept_retrieval(question)
-
-                if not relevant_facts:
-                    # Iterative reasoning with plan/search/evaluate
-                    relevant_facts, _, reasoning_trace = self.loop.reason_iteratively(
-                        question=question,
-                        memory=self.memory,
-                        intent=intent,
-                        max_steps=3,
+                    # No entities found in the question (e.g., "How much did
+                    # test coverage improve?"). Fall back to simple retrieval
+                    # which dumps all facts + reranks by keyword overlap.
+                    # This is more reliable than concept/iterative for questions
+                    # without proper nouns, because the reranker surfaces the
+                    # exact matching facts from the full KB.
+                    logger.info(
+                        "Entity retrieval empty for '%s'; using simple retrieval + rerank",
+                        question[:50],
                     )
-
-            # Keyword expansion: fire aggressively when entity retrieval was empty
-            # OR when retrieval is sparse (<3 facts) for a large KB
-            entity_retrieval_empty = not entity_retrieval_had_results
-            if hasattr(self.memory, "get_all_facts"):
-                kb_check = self.memory.get_all_facts(limit=15000)
-                if len(kb_check) > 500 and (entity_retrieval_empty or len(relevant_facts) < 3):
-                    keyword_facts = self._keyword_expanded_retrieval(question, relevant_facts)
-                    # Merge keyword_facts into relevant_facts (dedup by experience_id)
-                    seen_ids = {
-                        f.get("experience_id", "") for f in relevant_facts if f.get("experience_id")
-                    }
-                    for f in keyword_facts:
-                        eid = f.get("experience_id", "")
-                        if eid and eid not in seen_ids:
-                            seen_ids.add(eid)
-                            relevant_facts.append(f)
+                    relevant_facts = self._simple_retrieval(question)
 
         # Fall back to simple retrieval if all strategies found nothing
         if not relevant_facts:
