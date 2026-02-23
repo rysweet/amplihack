@@ -199,8 +199,9 @@ class LearningAgent:
         # Use LLM to extract facts (pass temporal metadata for conditional hints)
         facts = self._extract_facts_with_llm(content, temporal_meta)
 
-        # Store each fact
+        # Store each fact and collect node IDs for transition detection
         stored_count = 0
+        stored_node_ids: list[tuple[str, dict]] = []  # (node_id, fact_dict)
         for fact in facts:
             try:
                 tags = fact.get("tags", ["learned"])
@@ -231,11 +232,17 @@ class LearningAgent:
                     if fact_metadata:
                         store_kwargs["temporal_metadata"] = fact_metadata
 
-                self.memory.store_fact(**store_kwargs)
+                node_id = self.memory.store_fact(**store_kwargs)
                 stored_count += 1
+                stored_node_ids.append((node_id, fact))
             except Exception as e:
                 logger.debug("Failed to store fact: %s", e)
                 continue
+
+        # Detect temporal transitions in stored facts and create TRANSITIONED_TO edges
+        if self.use_hierarchical and stored_node_ids:
+            turn_number = temporal_meta.get("temporal_index", 0)
+            self._detect_and_create_transitions(stored_node_ids, turn_number)
 
         # Generate and store a summary concept map for knowledge organization
         if facts and stored_count > 0:
@@ -304,6 +311,390 @@ and how they connect. Format: "This content covers: 1) ..., 2) ..., 3) ..."
 
         except Exception as e:
             logger.debug("Failed to generate summary concept map: %s", e)
+
+    # Regex patterns for detecting temporal transitions in fact text
+    _TRANSITION_PATTERNS = [
+        # "changed from X to Y"
+        r"changed\s+from\s+(.+?)\s+to\s+(.+?)(?:\s*[;,.]|\s+(?:due|because|after|when)|\s*$)",
+        # "increased from X to Y" / "decreased from X to Y"
+        r"(?:increased|decreased|grew|dropped|rose|fell|jumped|shifted)\s+from\s+(.+?)\s+to\s+(.+?)(?:\s*[;,.]|\s+(?:due|because|after|when)|\s*$)",
+        # "was X, now Y" / "was X but now Y"
+        r"was\s+(.+?)\s*,?\s*(?:but\s+)?now\s+(.+?)(?:\s*[;,.]|\s*$)",
+        # "moved from X to Y"
+        r"moved\s+from\s+(.+?)\s+to\s+(.+?)(?:\s*[;,.]|\s+(?:due|because|after|when)|\s*$)",
+        # "revised from X to Y"
+        r"revised\s+from\s+(.+?)\s+to\s+(.+?)(?:\s*[;,.]|\s+(?:due|because|after|when)|\s*$)",
+        # "updated to X (was Y)" / "updated to X from Y"
+        r"updated\s+to\s+(.+?)\s+\(?(?:was|from)\s+(.+?)\)?(?:\s*[;,.]|\s*$)",
+        # "replaced X with Y"
+        r"replaced\s+(.+?)\s+with\s+(.+?)(?:\s*[;,.]|\s+(?:due|because|after|when)|\s*$)",
+        # "X was extended/pushed to Y"
+        r"(\S+(?:\s+\S+){0,3})\s+was\s+(?:extended|pushed|delayed|advanced|moved)\s+to\s+(.+?)(?:\s*[;,.]|\s+(?:due|because|after|when)|\s*$)",
+    ]
+
+    def _detect_and_create_transitions(
+        self, stored_facts: list[tuple[str, dict]], turn_number: int = 0
+    ) -> int:
+        """Detect update patterns in newly stored facts and create TRANSITIONED_TO edges.
+
+        Scans each fact's text for transition patterns like "changed from X to Y".
+        When found, searches existing memory for the old-value fact and creates
+        a TRANSITIONED_TO edge from old to new.
+
+        Args:
+            stored_facts: List of (node_id, fact_dict) for newly stored facts
+            turn_number: Current turn number for edge metadata
+
+        Returns:
+            Number of transition edges created
+        """
+        import re as _re
+
+        if not hasattr(self.memory, "create_transition_edge"):
+            return 0
+
+        edges_created = 0
+
+        for new_node_id, fact in stored_facts:
+            fact_text = fact.get("fact", "")
+            fact_context = fact.get("context", "")
+            if not fact_text:
+                continue
+
+            fact_lower = fact_text.lower()
+
+            # Try each transition pattern
+            for pattern in self._TRANSITION_PATTERNS:
+                matches = _re.finditer(pattern, fact_lower, _re.IGNORECASE)
+                for match in matches:
+                    groups = match.groups()
+                    if len(groups) < 2:
+                        continue
+
+                    # For "updated to X (was Y)" pattern, swap order
+                    if "updated" in pattern:
+                        new_value = groups[0].strip()
+                        old_value = groups[1].strip()
+                    elif "replaced" in pattern:
+                        old_value = groups[0].strip()
+                        new_value = groups[1].strip()
+                    else:
+                        old_value = groups[0].strip()
+                        new_value = groups[1].strip()
+
+                    # Skip if values are too short or identical
+                    if len(old_value) < 1 or len(new_value) < 1:
+                        continue
+                    if old_value == new_value:
+                        continue
+
+                    # Extract field name from context or surrounding text
+                    field = self._extract_transition_field(
+                        fact_text, fact_context, old_value, new_value
+                    )
+
+                    # Extract reason from the rest of the fact text
+                    reason = self._extract_transition_reason(fact_text, match.end())
+
+                    # Search for existing fact with the old value
+                    old_node_id = self._find_old_value_fact(fact_context, old_value, new_node_id)
+
+                    if old_node_id:
+                        success = self.memory.create_transition_edge(
+                            old_node_id=old_node_id,
+                            new_node_id=new_node_id,
+                            field=field,
+                            old_value=old_value,
+                            new_value=new_value,
+                            reason=reason,
+                            turn_number=turn_number,
+                        )
+                        if success:
+                            edges_created += 1
+                            logger.debug(
+                                "Temporal transition: %s -> %s (field=%s, %s->%s)",
+                                old_node_id[:8],
+                                new_node_id[:8],
+                                field,
+                                old_value[:30],
+                                new_value[:30],
+                            )
+                    break  # Only process first matching pattern per fact
+
+        if edges_created > 0:
+            logger.info("Created %d TRANSITIONED_TO edges at turn %d", edges_created, turn_number)
+
+        return edges_created
+
+    @staticmethod
+    def _extract_transition_field(
+        fact_text: str, context: str, old_value: str, new_value: str
+    ) -> str:
+        """Extract the field/attribute name from a transition fact.
+
+        Looks for common field names in the context and fact text.
+
+        Args:
+            fact_text: The fact text
+            context: The concept/context
+            old_value: The old value
+            new_value: The new value
+
+        Returns:
+            Field name string
+        """
+        text = f"{context} {fact_text}".lower()
+        # Common project fields
+        for field_name in [
+            "deadline",
+            "budget",
+            "team_size",
+            "team size",
+            "scope",
+            "priority",
+            "status",
+            "phase",
+            "timeline",
+            "schedule",
+            "target",
+            "goal",
+            "estimate",
+            "cost",
+            "revenue",
+            "headcount",
+            "capacity",
+            "duration",
+            "release_date",
+            "launch_date",
+            "completion_date",
+            "start_date",
+        ]:
+            if field_name.replace("_", " ") in text:
+                return field_name.replace(" ", "_")
+
+        # Try extracting from "X changed from" pattern
+        import re as _re
+
+        field_match = _re.search(
+            r"(\w+(?:\s+\w+)?)\s+(?:changed|increased|decreased|moved|revised|updated|shifted|was extended|was pushed)",
+            fact_text,
+            _re.IGNORECASE,
+        )
+        if field_match:
+            return field_match.group(1).strip().lower().replace(" ", "_")
+
+        # Fall back to context
+        if context:
+            return context.lower().replace(" ", "_")[:50]
+
+        return "value"
+
+    @staticmethod
+    def _extract_transition_reason(fact_text: str, match_end: int) -> str:
+        """Extract the reason for a transition from the surrounding text.
+
+        Looks for "due to", "because", "after" clauses after the transition pattern.
+
+        Args:
+            fact_text: The full fact text
+            match_end: Position where the transition pattern match ended
+
+        Returns:
+            Reason string, or empty if none found
+        """
+        remaining = fact_text[match_end:].strip()
+        if not remaining:
+            return ""
+
+        import re as _re
+
+        reason_match = _re.search(
+            r"(?:due to|because of?|after|following|as a result of|caused by)\s+(.+?)(?:[;.]|$)",
+            remaining,
+            _re.IGNORECASE,
+        )
+        if reason_match:
+            return reason_match.group(1).strip()[:200]
+
+        return ""
+
+    def _find_old_value_fact(
+        self, context: str, old_value: str, exclude_node_id: str
+    ) -> str | None:
+        """Search memory for an existing fact containing the old value.
+
+        Looks for a SemanticMemory node with similar context/concept
+        that contains the old value in its content.
+
+        Args:
+            context: Concept/context to match
+            old_value: The old value to search for
+            exclude_node_id: Node ID to exclude (the new fact)
+
+        Returns:
+            memory_id of the matching old fact, or None
+        """
+        if not (self.use_hierarchical and hasattr(self.memory, "memory")):
+            return None
+
+        try:
+            # Search for facts with matching context that contain the old value
+            old_value_lower = old_value.strip().lower()
+            context_lower = context.strip().lower() if context else ""
+
+            # Try entity-based search first
+            result = self.memory.memory.connection.execute(
+                """
+                MATCH (m:SemanticMemory)
+                WHERE m.agent_id = $agent_id
+                  AND m.memory_id <> $exclude_id
+                  AND LOWER(m.content) CONTAINS $old_value
+                  AND (LOWER(m.concept) CONTAINS $context_key
+                       OR LOWER(m.entity_name) CONTAINS $context_key
+                       OR $context_key = '')
+                RETURN m.memory_id
+                ORDER BY m.created_at DESC
+                LIMIT 5
+                """,
+                {
+                    "agent_id": self.agent_name,
+                    "exclude_id": exclude_node_id,
+                    "old_value": old_value_lower,
+                    "context_key": context_lower.split()[0] if context_lower else "",
+                },
+            )
+
+            if result.has_next():
+                return result.get_next()[0]
+
+        except Exception as e:
+            logger.debug("Failed to find old value fact: %s", e)
+
+        return None
+
+    _TEMPORAL_KEYWORDS = frozenset(
+        {
+            "changed",
+            "before",
+            "after",
+            "original",
+            "history",
+            "previously",
+            "initially",
+            "originally",
+            "used to",
+            "evolution",
+            "trajectory",
+            "progression",
+            "over time",
+            "transition",
+            "shift",
+            "moved",
+            "revised",
+            "updated",
+            "how did",
+            "what was",
+            "what were",
+        }
+    )
+
+    @classmethod
+    def _is_temporal_question(cls, question: str) -> bool:
+        """Check if a question involves temporal reasoning about changes.
+
+        Args:
+            question: Question text
+
+        Returns:
+            True if the question contains temporal change keywords
+        """
+        q_lower = question.lower()
+        return any(kw in q_lower for kw in cls._TEMPORAL_KEYWORDS)
+
+    def _retrieve_temporal_chains_for_question(self, question: str) -> str:
+        """Retrieve temporal transition chains relevant to the question.
+
+        Extracts entity names from the question and retrieves
+        TRANSITIONED_TO chains for each entity found.
+
+        Args:
+            question: The question text
+
+        Returns:
+            Formatted temporal chain string for injection into synthesis prompt,
+            or empty string if no chains found.
+        """
+        if not (self.use_hierarchical and hasattr(self.memory, "retrieve_temporal_chain")):
+            return ""
+
+        import re as _re
+
+        # Extract entity names from question (proper nouns)
+        candidates = _re.findall(
+            r"\b("
+            r"[A-Z][a-z]*(?:['\u2019\-][A-Z]?[a-z]+)+(?:\s+(?:[A-Z][a-z]+(?:['\u2019\-][A-Z]?[a-z]+)?))*"
+            r"|"
+            r"[A-Z][a-z]+(?:\s+(?:[A-Z][a-z]+(?:['\u2019\-][A-Z]?[a-z]+)?))*"
+            r")\b",
+            question,
+        )
+
+        # Also try single capitalized words
+        if not candidates:
+            words = question.split()
+            for w in words:
+                cleaned = w.strip(".,;:!?()[]{}\"'")
+                if cleaned and cleaned[0].isupper() and len(cleaned) > 2:
+                    candidates.append(cleaned)
+
+        # Handle possessives
+        possessives = _re.findall(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)'s\b", question)
+        candidates.extend(possessives)
+
+        if not candidates:
+            # Try lowercase entity extraction from question keywords
+            q_lower = question.lower()
+            for word in q_lower.split():
+                cleaned = word.strip(".,;:!?()[]{}\"'")
+                if len(cleaned) > 3 and cleaned not in self._STOP_WORDS:
+                    candidates.append(cleaned)
+
+        chains_text = []
+        seen_entities: set[str] = set()
+
+        for candidate in candidates:
+            candidate_lower = candidate.lower()
+            if candidate_lower in seen_entities:
+                continue
+            seen_entities.add(candidate_lower)
+
+            chain = self.memory.retrieve_temporal_chain(candidate)
+            if not chain:
+                continue
+
+            # Format chain as structured timeline
+            lines = [f"TEMPORAL CHAIN for {candidate}:"]
+            for entry in chain:
+                turn = entry.get("turn_number", 0)
+                content = entry.get("content", "")
+                old_val = entry.get("old_value", "")
+                new_val = entry.get("new_value", "")
+                reason = entry.get("reason", "")
+                is_current = entry.get("is_current", False)
+
+                if old_val and new_val:
+                    reason_str = f" ({reason})" if reason else ""
+                    line = f"  Turn {turn}: {new_val} (changed from {old_val}){reason_str}"
+                else:
+                    line = f"  Turn {turn}: {content[:150]} (original)"
+
+                if is_current:
+                    line += " [CURRENT VALUE]"
+                lines.append(line)
+
+            chains_text.append("\n".join(lines))
+
+        return "\n\n".join(chains_text)
 
     def _detect_temporal_metadata(self, content: str) -> dict[str, Any]:
         """Detect dates and temporal markers in content using LLM.
@@ -386,6 +777,8 @@ Rules:
         "incremental_update",
         "contradiction_resolution",
         "multi_source_synthesis",
+        "temporal_comparison",
+        "causal_counterfactual",
     }
 
     # Aggregation intents: routed to Cypher graph queries instead of text search
@@ -540,6 +933,16 @@ Rules:
         source_specific_facts = self._filter_facts_by_source_reference(question, relevant_facts)
         if source_specific_facts:
             intent["source_specific_facts"] = source_specific_facts
+
+        # Retrieve temporal chains for temporal questions using TRANSITIONED_TO edges
+        if (
+            self.use_hierarchical
+            and hasattr(self.memory, "retrieve_temporal_chain")
+            and intent_type in ("temporal_comparison", "incremental_update")
+        ) or self._is_temporal_question(question):
+            temporal_chains = self._retrieve_temporal_chains_for_question(question)
+            if temporal_chains:
+                intent["temporal_chains"] = temporal_chains
 
         # Retrieve SUMMARY nodes for birds-eye knowledge overview
         if self.use_hierarchical:
@@ -1315,7 +1718,7 @@ Return ONLY a JSON object:
             or None if extraction/computation fails.
         """
         math_type = intent.get("math_type", "none")
-        facts_text = "\n".join(f"- {f.get('outcome', f.get('fact', ''))}" for f in facts[:60])
+        facts_text = "\n".join(f"- {f.get('outcome', f.get('fact', ''))}" for f in facts[:120])
 
         prompt = f"""Extract the numbers needed to answer this math question.
 
@@ -1327,18 +1730,22 @@ Facts:
 
 Return ONLY a JSON object:
 {{
-  "numbers": {{"label1": number1, "label2": number2}},
-  "expression": "arithmetic expression using the numbers (e.g., '(2.3 - 2.0) / 2.0 * 100')",
+  "numbers": {{"label1": number1, "label2": number2, ...}},
+  "expression": "arithmetic expression using the numbers (e.g., '(2.5 - 2.1) / 2.1 * 100')",
+  "sub_calculations": ["step1: 2.5 - 2.1 = 0.4", "step2: 0.4 / 2.1 = 0.1905"],
   "description": "brief description of what the expression computes"
 }}
 
 Rules:
 - Use ONLY numbers that appear explicitly in the facts
-- For percentage: (new - old) / old * 100
-- For delta: new - old
+- For percentage change: (new - old) / old * 100
+- For delta/difference: new - old
 - For ratio: numerator / denominator
-- For comparison: list the values being compared
+- For per-unit: total / count
+- For TOTALS across multiple entities: sum all individual values (e.g., 400 + 150 + 200 + 400)
+- When the question asks about TOTAL or SUM, find EVERY entity's contribution
 - The expression must use ONLY digits, +, -, *, /, parentheses, and decimal points
+- Convert units consistently: $2.1M = 2100000, $400K = 400000 (use same units)
 - If you cannot find the needed numbers, return {{"numbers": {{}}, "expression": "", "description": "insufficient data"}}"""
 
         try:
@@ -1616,9 +2023,9 @@ Respond with a JSON list like:
             "ratio_trend_analysis",
             "contradiction_resolution",
         ):
-            max_facts = 300
+            max_facts = 500
         else:
-            max_facts = 200
+            max_facts = 300
 
         # Build context string - include temporal metadata, source labels, and supersede markers
         def _format_fact(i: int, fact: dict, include_temporal: bool) -> str:
@@ -1727,29 +2134,53 @@ Respond with a JSON list like:
                 f"\n\nPRE-COMPUTED RESULT (use this, do NOT re-calculate):\n{computed_math}\n"
             )
 
-        if is_complex_intent and intent.get("needs_temporal"):
+        # Inject temporal chains from TRANSITIONED_TO graph edges
+        temporal_chains = intent.get("temporal_chains", "")
+        if temporal_chains:
+            extra_instructions += (
+                "\n\n=== STRUCTURED TEMPORAL TRANSITIONS (from graph) ===\n"
+                "The following temporal chains show the EXACT sequence of changes "
+                "extracted from the knowledge graph. Use these as your PRIMARY source "
+                "for temporal reasoning -- they are more reliable than searching "
+                "through individual facts.\n\n"
+                f"{temporal_chains}\n"
+                "\n=== END TEMPORAL TRANSITIONS ===\n"
+            )
+
+        if intent.get("needs_temporal") or intent_type in (
+            "temporal_comparison",
+            "incremental_update",
+        ):
             extra_instructions += (
                 "\n\nIMPORTANT - TEMPORAL REASONING REQUIRED:\n"
                 "You MUST follow this CALCULATION WORKSHEET exactly:\n\n"
-                "=== CALCULATION WORKSHEET ===\n\n"
-                "Step 1: LIST ALL DATA POINTS WITH DATES\n"
-                "For each entity, write the exact value at each time point:\n"
-                "  Entity A: Day 7 = X, Day 9 = Y, Day 10 = Z\n"
-                "  Entity B: Day 7 = X, Day 9 = Y, Day 10 = Z\n\n"
-                "Step 2: CALCULATE DIFFERENCES\n"
+                "=== TEMPORAL CHAIN RECONSTRUCTION ===\n\n"
+                "Step 1: LIST THE COMPLETE CHRONOLOGICAL CHAIN\n"
+                "Find ALL values for the entity over time and list them in order:\n"
+                "  Value 1 (original): X\n"
+                "  Value 2 (after change 1): Y [reason for change]\n"
+                "  Value 3 (after change 2): Z [reason for change]\n"
+                "  ... continue for ALL changes\n\n"
+                "Step 2: IDENTIFY THE SPECIFIC POINT ASKED ABOUT\n"
+                "If the question asks about:\n"
+                "  - 'original' or 'before any changes' -> Value 1\n"
+                "  - 'after first change but before second' -> Value 2 (INTERMEDIATE)\n"
+                "  - 'current' or 'latest' -> Last value in the chain\n"
+                "  - 'BEFORE the change' -> The value immediately BEFORE the mentioned change\n"
+                "  - A specific time period -> The value AT that specific time\n\n"
+                "Step 3: CALCULATE DIFFERENCES (if asked)\n"
                 "For EACH entity, compute: later_value - earlier_value = difference\n"
                 "Write out the arithmetic explicitly: '13 - 8 = 5'\n"
-                "Do this for EVERY entity, not just the one you think is the answer.\n"
-                "When describing trends, state the EXACT change in each sub-period "
-                "(e.g., '+4 golds Day 7 to 9, then +1 gold Day 9 to 10, total +5').\n\n"
-                "Step 3: STATE CONCLUSION\n"
-                "Compare all computed differences side by side.\n"
-                "Only THEN identify which is largest/smallest/etc.\n"
-                "Verify by re-checking at least one subtraction.\n\n"
+                "Do this for EVERY entity, not just the one you think is the answer.\n\n"
+                "Step 4: STATE CONCLUSION\n"
+                "Answer with the SPECIFIC value asked for, not the current value.\n"
+                "Verify by re-checking the temporal chain.\n\n"
                 "=== END WORKSHEET ===\n\n"
                 "CRITICAL RULES:\n"
-                "- NEVER skip Step 1 - always list raw data points first\n"
-                "- NEVER guess differences - always compute them from the raw numbers\n"
+                "- ALWAYS reconstruct the full temporal chain before answering\n"
+                "- When asked for an INTERMEDIATE value, identify the exact position in the chain\n"
+                "- 'BEFORE' means the value immediately prior to the referenced event\n"
+                "- 'AFTER X but BEFORE Y' means the value between those two events\n"
                 "- Pay attention to WHICH metric is asked about (gold vs total vs other)\n"
                 "- Do NOT write your final answer at the top. Show all work FIRST,\n"
                 "  then state your conclusion at the END after all calculations.\n"
@@ -1979,16 +2410,88 @@ Knowledge Overview (what was learned):
                 "- State the CURRENT state of affairs, then explain the history\n"
             )
 
+        # Adversarial distractor confidence boost (Idea 3)
+        adversarial_instructions = ""
+        adversarial_cues = (
+            "be careful",
+            "be precise",
+            "do not confuse",
+            "don't confuse",
+            "note:",
+            "note that",
+            "i want the",
+            "not the current",
+            "not any other",
+        )
+        if any(cue in question_lower for cue in adversarial_cues):
+            adversarial_instructions = (
+                "\n\nIMPORTANT - PRECISION REQUIRED:\n"
+                "The question explicitly warns about potential confusion.\n"
+                "You HAVE the correct data in the facts above. Be CONFIDENT.\n"
+                "- Read the facts carefully and identify the SPECIFIC entity/value asked about\n"
+                "- State the answer DIRECTLY and CONFIDENTLY\n"
+                "- Do NOT hedge with 'I'm not sure' or 'I cannot determine'\n"
+                "- Do NOT say the information is unavailable - search the facts thoroughly\n"
+                "- If the question says 'do not confuse X with Y', find X's specific value\n"
+                "- Answer with the EXACT value from the facts, not approximations\n"
+            )
+
+        # Cross-entity aggregation instruction (Idea 7)
+        aggregation_instructions = ""
+        aggregation_cues = (
+            "total across",
+            "sum of",
+            "combined",
+            "all projects",
+            "across all",
+            "total budget",
+            "total cost",
+            "total count",
+            "per user",
+        )
+        if any(cue in question_lower for cue in aggregation_cues):
+            aggregation_instructions = (
+                "\n\nIMPORTANT - CROSS-ENTITY AGGREGATION:\n"
+                "This question asks about a TOTAL or AGGREGATE across multiple entities.\n"
+                "You MUST:\n"
+                "1. List EACH entity's individual contribution by name\n"
+                "2. Show the value for EACH entity on a separate line\n"
+                "3. Write out the full addition: entity1_value + entity2_value + ... = total\n"
+                "4. Verify the total by re-adding all values\n"
+                "5. If asked for a per-unit value, show: total / count = result\n"
+                "Do NOT skip any entity. Enumerate them ALL.\n"
+            )
+
+        # Numerical reasoning enhancement (Idea 2)
+        numerical_instructions = ""
+        if intent_type == "mathematical_computation" or (
+            intent.get("needs_math") and not computed_math
+        ):
+            numerical_instructions = (
+                "\n\nIMPORTANT - STEP-BY-STEP CALCULATION:\n"
+                "You MUST show ALL intermediate calculations:\n"
+                "1. First, extract ALL relevant numbers from the facts\n"
+                "2. Label each number clearly (e.g., 'Atlas original budget = $2.1M')\n"
+                "3. Write out each arithmetic step on its own line:\n"
+                "   - difference = new - old = $2.5M - $2.1M = $0.4M\n"
+                "   - percentage = difference / original * 100 = $0.4M / $2.1M * 100 = 19.05%\n"
+                "4. Double-check by verifying the result makes sense\n"
+                "5. State the final answer clearly with units\n"
+                "NEVER skip steps. NEVER estimate. Always compute exactly.\n"
+            )
+
         prompt = f"""Answer this question using the provided facts.
 
 Question: {question}
 Level: {question_level} - {instruction}
-{extra_instructions}{contradiction_instructions}{counterfactual_instructions}{ratio_trend_instructions}{novel_skill_instructions}{cross_ref_instructions}
+{extra_instructions}{contradiction_instructions}{counterfactual_instructions}{ratio_trend_instructions}{novel_skill_instructions}{cross_ref_instructions}{adversarial_instructions}{aggregation_instructions}{numerical_instructions}
 {summary_section}
 {source_specific_section}
 {context_str}
 
-Provide a clear, well-reasoned answer. If the facts don't fully answer the question, say so.
+IMPORTANT: Answer the question DIRECTLY based on the facts provided. You have the information needed.
+Do NOT say "I don't have enough information" unless you truly cannot find ANY relevant facts above.
+State your answer confidently and precisely.
 """
 
         try:
@@ -1997,8 +2500,10 @@ Provide a clear, well-reasoned answer. If the facts don't fully answer the quest
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are a knowledgeable assistant that synthesizes information. "
-                        "When doing math, always show your work and verify calculations.",
+                        "content": "You are a knowledgeable assistant that synthesizes information from a knowledge base. "
+                        "You ALWAYS have the relevant facts available. Answer confidently and precisely. "
+                        "When doing math, show your work and verify calculations. "
+                        "Never say you cannot answer unless zero relevant facts exist.",
                     },
                     {"role": "user", "content": prompt},
                 ],

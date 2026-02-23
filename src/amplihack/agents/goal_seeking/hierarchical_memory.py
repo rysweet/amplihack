@@ -340,6 +340,20 @@ class HierarchicalMemory:
                 )
             """)
 
+            # TRANSITIONED_TO: explicit temporal state transitions
+            # Links old-value fact -> new-value fact when a change is detected
+            # (e.g., "deadline changed from June 15 to August 3")
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS TRANSITIONED_TO(
+                    FROM SemanticMemory TO SemanticMemory,
+                    field STRING,
+                    old_value STRING,
+                    new_value STRING,
+                    reason STRING,
+                    turn_number INT64
+                )
+            """)
+
             logger.debug("HierarchicalMemory schema initialized for agent %s", self.agent_name)
 
         except Exception as e:
@@ -1282,6 +1296,224 @@ class HierarchicalMemory:
 
         return nodes
 
+    def retrieve_temporal_chain(
+        self, entity_name: str, field: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Walk TRANSITIONED_TO edges to reconstruct full temporal history.
+
+        Finds all SemanticMemory nodes for the given entity that participate in
+        TRANSITIONED_TO relationships and returns them in chronological order
+        with transition metadata.
+
+        Args:
+            entity_name: Entity name to search for (case-insensitive)
+            field: Optional field name to filter transitions (e.g., "deadline")
+
+        Returns:
+            List of dicts in chronological order, each with:
+                - memory_id: Node ID
+                - content: Fact content
+                - concept: Concept label
+                - turn_number: Turn when this value was established
+                - field: What field changed
+                - old_value: Previous value (empty for first in chain)
+                - new_value: New value (empty for first in chain)
+                - reason: Why the change happened
+                - is_current: True if this is the latest value in the chain
+        """
+        if not entity_name or not entity_name.strip():
+            return []
+
+        entity_lower = entity_name.strip().lower()
+        chain: list[dict[str, Any]] = []
+
+        try:
+            # Find all nodes for this entity that are part of TRANSITIONED_TO chains.
+            # Query both directions: nodes that transitioned TO something, and nodes
+            # that were transitioned FROM.
+            # Pattern: (old_fact)-[:TRANSITIONED_TO]->(new_fact)
+            field_filter = ""
+            params: dict[str, Any] = {"agent_id": self.agent_name, "entity": entity_lower}
+            if field:
+                field_filter = " AND r.field CONTAINS $field"
+                params["field"] = field.lower()
+
+            # Get all transition edges involving this entity
+            result = self.connection.execute(
+                f"""
+                MATCH (old_node:SemanticMemory)-[r:TRANSITIONED_TO]->(new_node:SemanticMemory)
+                WHERE old_node.agent_id = $agent_id
+                  AND (LOWER(old_node.entity_name) CONTAINS $entity
+                       OR LOWER(new_node.entity_name) CONTAINS $entity
+                       OR LOWER(old_node.content) CONTAINS $entity
+                       OR LOWER(new_node.content) CONTAINS $entity
+                       OR LOWER(old_node.concept) CONTAINS $entity
+                       OR LOWER(new_node.concept) CONTAINS $entity)
+                  {field_filter}
+                RETURN old_node.memory_id, old_node.content, old_node.concept,
+                       old_node.metadata,
+                       new_node.memory_id, new_node.content, new_node.concept,
+                       new_node.metadata,
+                       r.field, r.old_value, r.new_value, r.reason, r.turn_number
+                ORDER BY r.turn_number ASC
+                """,
+                params,
+            )
+
+            # Build ordered chain from edges
+            seen_ids: set[str] = set()
+            edges: list[dict[str, Any]] = []
+
+            while result.has_next():
+                row = result.get_next()
+                old_id = row[0]
+                old_content = row[1]
+                old_concept = row[2]
+                old_meta_str = row[3]
+                new_id = row[4]
+                new_content = row[5]
+                new_concept = row[6]
+                new_meta_str = row[7]
+                r_field = row[8] or ""
+                r_old_value = row[9] or ""
+                r_new_value = row[10] or ""
+                r_reason = row[11] or ""
+                r_turn = row[12] or 0
+
+                old_meta = json.loads(old_meta_str) if old_meta_str else {}
+                new_meta = json.loads(new_meta_str) if new_meta_str else {}
+
+                edges.append(
+                    {
+                        "old_id": old_id,
+                        "old_content": old_content,
+                        "old_concept": old_concept,
+                        "old_turn": old_meta.get("temporal_index", 0),
+                        "new_id": new_id,
+                        "new_content": new_content,
+                        "new_concept": new_concept,
+                        "new_turn": new_meta.get("temporal_index", 0),
+                        "field": r_field,
+                        "old_value": r_old_value,
+                        "new_value": r_new_value,
+                        "reason": r_reason,
+                        "turn_number": r_turn,
+                    }
+                )
+
+            if not edges:
+                return []
+
+            # Reconstruct chain: find the root (old node that is never a new node)
+            new_ids = {e["new_id"] for e in edges}
+            old_ids = {e["old_id"] for e in edges}
+            root_ids = old_ids - new_ids
+
+            # Add root nodes first (original values)
+            for edge in edges:
+                if edge["old_id"] in root_ids and edge["old_id"] not in seen_ids:
+                    seen_ids.add(edge["old_id"])
+                    chain.append(
+                        {
+                            "memory_id": edge["old_id"],
+                            "content": edge["old_content"],
+                            "concept": edge["old_concept"],
+                            "turn_number": edge["old_turn"],
+                            "field": edge["field"],
+                            "old_value": "",
+                            "new_value": "",
+                            "reason": "original value",
+                            "is_current": False,
+                        }
+                    )
+
+            # Add each transition target in order
+            for edge in edges:
+                if edge["new_id"] not in seen_ids:
+                    seen_ids.add(edge["new_id"])
+                    chain.append(
+                        {
+                            "memory_id": edge["new_id"],
+                            "content": edge["new_content"],
+                            "concept": edge["new_concept"],
+                            "turn_number": edge["turn_number"],
+                            "field": edge["field"],
+                            "old_value": edge["old_value"],
+                            "new_value": edge["new_value"],
+                            "reason": edge["reason"],
+                            "is_current": False,
+                        }
+                    )
+
+            # Mark the last entry as current
+            if chain:
+                chain[-1]["is_current"] = True
+
+        except Exception as e:
+            logger.debug("retrieve_temporal_chain failed for '%s': %s", entity_name, e)
+
+        return chain
+
+    def create_transition_edge(
+        self,
+        old_node_id: str,
+        new_node_id: str,
+        field: str,
+        old_value: str,
+        new_value: str,
+        reason: str = "",
+        turn_number: int = 0,
+    ) -> bool:
+        """Create a TRANSITIONED_TO edge between two SemanticMemory nodes.
+
+        Args:
+            old_node_id: memory_id of the node with the old value
+            new_node_id: memory_id of the node with the new value
+            field: What field/attribute changed (e.g., "deadline", "budget")
+            old_value: The previous value
+            new_value: The new value
+            reason: Why the change occurred
+            turn_number: Turn number when the transition was detected
+
+        Returns:
+            True if edge was created successfully, False otherwise
+        """
+        try:
+            self.connection.execute(
+                """
+                MATCH (old_m:SemanticMemory {memory_id: $old_id})
+                MATCH (new_m:SemanticMemory {memory_id: $new_id})
+                CREATE (old_m)-[:TRANSITIONED_TO {
+                    field: $field,
+                    old_value: $old_value,
+                    new_value: $new_value,
+                    reason: $reason,
+                    turn_number: $turn_number
+                }]->(new_m)
+                """,
+                {
+                    "old_id": old_node_id,
+                    "new_id": new_node_id,
+                    "field": field,
+                    "old_value": old_value,
+                    "new_value": new_value,
+                    "reason": reason,
+                    "turn_number": turn_number,
+                },
+            )
+            logger.debug(
+                "Created TRANSITIONED_TO edge: %s -> %s (field=%s, %s->%s)",
+                old_node_id[:8],
+                new_node_id[:8],
+                field,
+                old_value,
+                new_value,
+            )
+            return True
+        except Exception as e:
+            logger.debug("Failed to create TRANSITIONED_TO edge: %s", e)
+            return False
+
     def execute_aggregation(self, query_type: str, entity_filter: str = "") -> dict[str, Any]:
         """Execute Cypher aggregation queries for meta-memory questions.
 
@@ -1514,6 +1746,20 @@ class HierarchicalMemory:
             except Exception:
                 stats["derives_from_edges"] = 0
 
+            try:
+                result = self.connection.execute(
+                    """
+                    MATCH (a:SemanticMemory)-[r:TRANSITIONED_TO]->(b:SemanticMemory)
+                    WHERE a.agent_id = $aid
+                    RETURN COUNT(r)
+                    """,
+                    {"aid": self.agent_name},
+                )
+                if result.has_next():
+                    stats["transitioned_to_edges"] = result.get_next()[0]
+            except Exception:
+                stats["transitioned_to_edges"] = 0
+
         except Exception as e:
             logger.error("Failed to get statistics: %s", e)
 
@@ -1523,7 +1769,7 @@ class HierarchicalMemory:
         """Export all memory nodes and edges to a JSON-serializable dict.
 
         Queries all SemanticMemory nodes, EpisodicMemory nodes, and all edge
-        types (SIMILAR_TO, DERIVES_FROM, SUPERSEDES) for this agent. Returns
+        types (SIMILAR_TO, DERIVES_FROM, SUPERSEDES, TRANSITIONED_TO) for this agent. Returns
         a portable dict that can be serialized to JSON and imported into
         another HierarchicalMemory instance.
 
@@ -1536,6 +1782,7 @@ class HierarchicalMemory:
                 - similar_to_edges: List of dicts (source_id, target_id, weight, metadata)
                 - derives_from_edges: List of dicts (source_id, target_id, method, confidence)
                 - supersedes_edges: List of dicts (source_id, target_id, reason, delta)
+                - transitioned_to_edges: List of dicts (source_id, target_id, field, old/new value, reason, turn)
                 - statistics: Summary counts
         """
         export_data: dict[str, Any] = {
@@ -1547,6 +1794,7 @@ class HierarchicalMemory:
             "similar_to_edges": [],
             "derives_from_edges": [],
             "supersedes_edges": [],
+            "transitioned_to_edges": [],
             "statistics": {},
         }
 
@@ -1682,6 +1930,33 @@ class HierarchicalMemory:
         except Exception as e:
             logger.debug("Failed to export SUPERSEDES edges: %s", e)
 
+        # Export TRANSITIONED_TO edges
+        try:
+            result = self.connection.execute(
+                """
+                MATCH (old_m:SemanticMemory)-[r:TRANSITIONED_TO]->(new_m:SemanticMemory)
+                WHERE old_m.agent_id = $agent_id
+                RETURN old_m.memory_id, new_m.memory_id, r.field, r.old_value,
+                       r.new_value, r.reason, r.turn_number
+                """,
+                {"agent_id": self.agent_name},
+            )
+            while result.has_next():
+                row = result.get_next()
+                export_data["transitioned_to_edges"].append(
+                    {
+                        "source_id": row[0],
+                        "target_id": row[1],
+                        "field": row[2] or "",
+                        "old_value": row[3] or "",
+                        "new_value": row[4] or "",
+                        "reason": row[5] or "",
+                        "turn_number": row[6] or 0,
+                    }
+                )
+        except Exception as e:
+            logger.debug("Failed to export TRANSITIONED_TO edges: %s", e)
+
         # Compute statistics
         export_data["statistics"] = {
             "semantic_node_count": len(export_data["semantic_nodes"]),
@@ -1689,6 +1964,7 @@ class HierarchicalMemory:
             "similar_to_edge_count": len(export_data["similar_to_edges"]),
             "derives_from_edge_count": len(export_data["derives_from_edges"]),
             "supersedes_edge_count": len(export_data["supersedes_edges"]),
+            "transitioned_to_edge_count": len(export_data["transitioned_to_edges"]),
         }
 
         return export_data
@@ -1885,6 +2161,36 @@ class HierarchicalMemory:
                 logger.debug("Failed to import SUPERSEDES edge: %s", e)
                 stats["errors"] += 1
 
+        # Import TRANSITIONED_TO edges
+        for edge in data.get("transitioned_to_edges", []):
+            try:
+                self.connection.execute(
+                    """
+                    MATCH (old_m:SemanticMemory {memory_id: $sid})
+                    MATCH (new_m:SemanticMemory {memory_id: $tid})
+                    CREATE (old_m)-[:TRANSITIONED_TO {
+                        field: $field,
+                        old_value: $old_value,
+                        new_value: $new_value,
+                        reason: $reason,
+                        turn_number: $turn_number
+                    }]->(new_m)
+                    """,
+                    {
+                        "sid": edge["source_id"],
+                        "tid": edge["target_id"],
+                        "field": edge.get("field", ""),
+                        "old_value": edge.get("old_value", ""),
+                        "new_value": edge.get("new_value", ""),
+                        "reason": edge.get("reason", ""),
+                        "turn_number": edge.get("turn_number", 0),
+                    },
+                )
+                stats["edges_imported"] += 1
+            except Exception as e:
+                logger.debug("Failed to import TRANSITIONED_TO edge: %s", e)
+                stats["errors"] += 1
+
         return stats
 
     def _clear_agent_data(self) -> None:
@@ -1902,6 +2208,8 @@ class HierarchicalMemory:
                 "MATCH (s:SemanticMemory {agent_id: $aid})-[r:DERIVES_FROM]->() DELETE r",
                 "MATCH (n:SemanticMemory {agent_id: $aid})-[r:SUPERSEDES]->() DELETE r",
                 "MATCH ()-[r:SUPERSEDES]->(o:SemanticMemory {agent_id: $aid}) DELETE r",
+                "MATCH (n:SemanticMemory {agent_id: $aid})-[r:TRANSITIONED_TO]->() DELETE r",
+                "MATCH ()-[r:TRANSITIONED_TO]->(o:SemanticMemory {agent_id: $aid}) DELETE r",
             ]:
                 self.connection.execute(edge_query, {"aid": self.agent_name})
 

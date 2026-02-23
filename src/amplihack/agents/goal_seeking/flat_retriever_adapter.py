@@ -201,6 +201,57 @@ class FlatRetrieverAdapter:
         """
         return self.memory.store_episode(content=content, source_label=source_label)
 
+    def retrieve_temporal_chain(
+        self, entity_name: str, field: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Retrieve temporal transition chain for an entity.
+
+        Walks TRANSITIONED_TO edges to reconstruct the full history of
+        changes for the given entity, in chronological order.
+
+        Args:
+            entity_name: Entity name (case-insensitive)
+            field: Optional field name to filter transitions
+
+        Returns:
+            List of dicts with transition history, chronologically ordered.
+        """
+        return self.memory.retrieve_temporal_chain(entity_name=entity_name, field=field)
+
+    def create_transition_edge(
+        self,
+        old_node_id: str,
+        new_node_id: str,
+        field: str,
+        old_value: str,
+        new_value: str,
+        reason: str = "",
+        turn_number: int = 0,
+    ) -> bool:
+        """Create a TRANSITIONED_TO edge between two facts.
+
+        Args:
+            old_node_id: memory_id of the old-value fact
+            new_node_id: memory_id of the new-value fact
+            field: What changed (e.g., "deadline")
+            old_value: Previous value
+            new_value: New value
+            reason: Why the change happened
+            turn_number: Turn number of the transition
+
+        Returns:
+            True if edge created successfully
+        """
+        return self.memory.create_transition_edge(
+            old_node_id=old_node_id,
+            new_node_id=new_node_id,
+            field=field,
+            old_value=old_value,
+            new_value=new_value,
+            reason=reason,
+            turn_number=turn_number,
+        )
+
     def close(self) -> None:
         """Close underlying HierarchicalMemory."""
         self.memory.close()
