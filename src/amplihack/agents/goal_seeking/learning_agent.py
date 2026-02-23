@@ -438,7 +438,6 @@ Rules:
         # and for small KBs the LLM can easily handle all facts in context.
         # This is critical for temporal/multi-source questions where completeness matters.
         reasoning_trace = None
-        entity_retrieval_had_results = True  # default; overridden in entity retrieval path
 
         # Route meta-memory questions to Cypher aggregation
         if intent_type in self.AGGREGATION_INTENTS:
@@ -446,7 +445,9 @@ Rules:
         else:
             use_simple = intent_type in self.SIMPLE_INTENTS
             if not use_simple and hasattr(self.memory, "get_all_facts"):
-                kb_size = len(self.memory.get_all_facts(limit=15000))
+                # Cache KB snapshot to avoid repeated queries within this call
+                self._cached_all_facts = self.memory.get_all_facts(limit=15000)
+                kb_size = len(self._cached_all_facts)
                 if kb_size <= 500:
                     use_simple = True
 
@@ -459,14 +460,13 @@ Rules:
 
                 # Filter Q&A echoes early so we can correctly detect empty retrieval
                 relevant_facts = [
-                    f for f in relevant_facts
+                    f
+                    for f in relevant_facts
                     if not (
                         f.get("context", "").startswith("Question:")
                         and "q_and_a" in (f.get("tags") or [])
                     )
                 ]
-                entity_retrieval_had_results = bool(relevant_facts)
-
                 if not relevant_facts:
                     # Entity retrieval empty (or only Q&A echoes).
                     # Fall back to simple retrieval + rerank which is proven
@@ -500,9 +500,9 @@ Rules:
         # keep summaries as they provide useful context.
         if intent_type == "meta_memory":
             relevant_facts = [
-                f for f in relevant_facts
-                if f.get("context", "") != "SUMMARY"
-                and "summary" not in (f.get("tags") or [])
+                f
+                for f in relevant_facts
+                if f.get("context", "") != "SUMMARY" and "summary" not in (f.get("tags") or [])
             ]
 
         # Always rerank by query relevance first to prioritize the most relevant facts.
@@ -607,7 +607,12 @@ Rules:
         if not hasattr(self.memory, "get_all_facts"):
             return []
 
-        all_facts = self.memory.get_all_facts(limit=15000)
+        # Reuse cached snapshot from answer_question if available
+        if hasattr(self, "_cached_all_facts") and self._cached_all_facts is not None:
+            all_facts = self._cached_all_facts
+            self._cached_all_facts = None  # consume cache; one-shot per question
+        else:
+            all_facts = self.memory.get_all_facts(limit=15000)
         kb_size = len(all_facts)
 
         if kb_size <= 1000:
@@ -1698,16 +1703,6 @@ Respond with a JSON list like:
                 "\n\nIMPORTANT - TEMPORAL COMPARISON:\n"
                 "Identify the LATEST value for the asked entity.\n"
                 "State what changed from the previous value and by how much.\n"
-            ),
-            "needle_in_haystack": (
-                "\n\nIMPORTANT - SPECIFIC FACT LOOKUP:\n"
-                "The answer is in exactly one fact. Search ALL facts carefully.\n"
-                "Do not summarize or combine - find the ONE matching fact.\n"
-            ),
-            "distractor_resistance": (
-                "\n\nIMPORTANT - FOCUS ON ASKED ENTITY:\n"
-                "Ignore irrelevant facts about other entities.\n"
-                "Focus ONLY on the specific entity/topic asked about in the question.\n"
             ),
         }
 

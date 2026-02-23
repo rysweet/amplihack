@@ -132,7 +132,9 @@ class GoalSeekingAgent(ABC):
             self.spawner = AgentSpawner(
                 parent_agent_name=self.name,
                 parent_memory_path=str(self.storage_path),
-                sdk_type=self.sdk_type.value if isinstance(self.sdk_type, SDKType) else self.sdk_type,
+                sdk_type=self.sdk_type.value
+                if isinstance(self.sdk_type, SDKType)
+                else self.sdk_type,
             )
             logger.info("Spawner initialized for agent '%s'", self.name)
         except ImportError:
@@ -449,19 +451,6 @@ class GoalSeekingAgent(ABC):
         """Get memory statistics."""
         return self._tool_summary()
 
-    def close(self) -> None:
-        """Clean up resources."""
-        if hasattr(self, "_learning_agent_cache") and self._learning_agent_cache:
-            try:
-                self._learning_agent_cache.close()
-            except Exception:
-                pass
-        if self.memory and hasattr(self.memory, "close"):
-            try:
-                self.memory.close()
-            except Exception:
-                pass
-
     def form_goal(self, user_intent: str) -> Goal:
         self.current_goal = Goal(
             description=user_intent,
@@ -497,12 +486,17 @@ class GoalSeekingAgent(ABC):
         return result
 
     def close(self) -> None:
-        """Close the agent and release resources."""
-        if self.memory:
+        """Clean up resources."""
+        if hasattr(self, "_learning_agent_cache") and self._learning_agent_cache:
+            try:
+                self._learning_agent_cache.close()
+            except Exception:
+                pass
+        if self.memory and hasattr(self.memory, "close"):
             try:
                 self.memory.close()
-            except Exception as e:
-                logger.debug("Error closing memory: %s", e)
+            except Exception:
+                pass
         if self.spawner:
             try:
                 self.spawner.clear()

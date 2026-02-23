@@ -12,7 +12,6 @@ from typing import Any
 
 from .models import ExecutionPlan, SDKToolConfig, SkillDefinition
 
-
 # SDK-native tools available per SDK target
 SDK_NATIVE_TOOLS: dict[str, dict[str, dict[str, str]]] = {
     "claude": {

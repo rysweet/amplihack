@@ -11,7 +11,6 @@ Usage:
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 
 from amplihack.agents.domain_agents.code_review import CodeReviewAgent
@@ -79,7 +78,9 @@ def run_all_evals(
                 )
                 for scenario in level.scenarios:
                     s_status = "PASS" if scenario.passed else "FAIL"
-                    print(f"    {scenario.scenario_id}: {scenario.score:.2%} [{s_status}] - {scenario.scenario_name}")
+                    print(
+                        f"    {scenario.scenario_id}: {scenario.score:.2%} [{s_status}] - {scenario.scenario_name}"
+                    )
                     if not scenario.passed:
                         print(f"      Details: {scenario.grading_details[:100]}")
 
@@ -119,11 +120,14 @@ def main():
 
     parser = argparse.ArgumentParser(description="Run Domain Agent Evaluations")
     parser.add_argument(
-        "--agents", nargs="*", default=None,
+        "--agents",
+        nargs="*",
+        default=None,
         help="Agent names to evaluate (default: all)",
     )
     parser.add_argument(
-        "--output-dir", default="./domain_eval_results",
+        "--output-dir",
+        default="./domain_eval_results",
         help="Output directory for results",
     )
     args = parser.parse_args()

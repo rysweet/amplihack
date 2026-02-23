@@ -45,10 +45,8 @@ from .long_horizon_memory import (
     EvalReport,
     LongHorizonMemoryEval,
 )
-from .self_improve.patch_proposer import PatchHistory, PatchProposal, propose_patch
+from .self_improve.patch_proposer import PatchHistory, propose_patch
 from .self_improve.reviewer_voting import (
-    ChallengeResponse,
-    ReviewResult,
     challenge_proposal,
     review_result_to_dict,
     vote_on_proposal,
@@ -635,9 +633,7 @@ def run_long_horizon_self_improve(
                         f"(threshold: {config.regression_threshold:.1f}pp)"
                     )
                     reverted = True
-                    revert_reason = (
-                        f"{worst_cat} regressed {regression_pp:.1f}pp"
-                    )
+                    revert_reason = f"{worst_cat} regressed {regression_pp:.1f}pp"
                     patch_history.reverted_patches.append(
                         {
                             "target_file": proposal.target_file,

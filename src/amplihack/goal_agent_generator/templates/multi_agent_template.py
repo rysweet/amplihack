@@ -205,7 +205,7 @@ def get_multi_agent_readme_section(agent_name: str) -> str:
     Returns:
         Markdown string
     """
-    return f"""
+    return """
 ## Multi-Agent Architecture
 
 This agent uses a multi-agent architecture for improved task handling.

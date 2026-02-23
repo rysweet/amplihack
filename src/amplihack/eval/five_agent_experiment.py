@@ -170,10 +170,7 @@ def run_experiment(
             eval_report = harness.run()
             eval_score = eval_report.overall_score
             eval_passed = eval_report.overall_passed
-            level_scores = {
-                level.level_id: level.average_score
-                for level in eval_report.levels
-            }
+            level_scores = {level.level_id: level.average_score for level in eval_report.levels}
             print(f"    Eval Score: {eval_score:.2%} [{('PASS' if eval_passed else 'FAIL')}]")
             for lid, ls in level_scores.items():
                 print(f"    {lid}: {ls:.2%}")
@@ -198,11 +195,15 @@ def run_experiment(
             has_answers = len(teaching_result.agent_answers) > 0
             has_attempt = bool(student_attempt.strip())
 
-            teaching_score = sum([has_plan, has_instruction, has_questions, has_answers, has_attempt]) / 5.0
+            teaching_score = (
+                sum([has_plan, has_instruction, has_questions, has_answers, has_attempt]) / 5.0
+            )
             print(f"    Teaching Score: {teaching_score:.2%}")
             print(f"    Lesson Plan: {'yes' if has_plan else 'no'}")
             print(f"    Instruction: {'yes' if has_instruction else 'no'}")
-            print(f"    Q&A: {len(teaching_result.student_questions)} questions, {len(teaching_result.agent_answers)} answers")
+            print(
+                f"    Q&A: {len(teaching_result.student_questions)} questions, {len(teaching_result.agent_answers)} answers"
+            )
             print(f"    Student Attempt: {'yes' if has_attempt else 'no'}")
         except Exception as e:
             print(f"    Teaching ERROR: {e}")
@@ -235,7 +236,6 @@ def run_experiment(
 
     # Calculate overall metrics
     eval_scores = [r.eval_overall_score for r in results]
-    teaching_scores = [0.7 * r.eval_overall_score + 0.3 * 1.0 if r.lesson_plan else 0 for r in results]
     combined_scores = [r.combined_score for r in results]
 
     overall_eval = sum(eval_scores) / len(eval_scores) if eval_scores else 0
@@ -276,7 +276,9 @@ def run_experiment(
     print()
     for r in results:
         status = "PASS" if r.eval_overall_passed else "FAIL"
-        print(f"  {r.agent_name}: eval={r.eval_overall_score:.2%} combined={r.combined_score:.2%} [{status}]")
+        print(
+            f"  {r.agent_name}: eval={r.eval_overall_score:.2%} combined={r.combined_score:.2%} [{status}]"
+        )
     print(f"\n{summary}")
     print(f"\nResults saved to: {output_path}")
 
@@ -289,11 +291,14 @@ def main():
 
     parser = argparse.ArgumentParser(description="Five Office Task Agents Experiment")
     parser.add_argument(
-        "--output-dir", default="./five_agent_results",
+        "--output-dir",
+        default="./five_agent_results",
         help="Output directory for results",
     )
     parser.add_argument(
-        "--agents", nargs="*", default=None,
+        "--agents",
+        nargs="*",
+        default=None,
         help="Specific agents to test (default: all 5)",
     )
     args = parser.parse_args()

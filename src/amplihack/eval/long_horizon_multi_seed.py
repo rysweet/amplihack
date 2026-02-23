@@ -27,11 +27,11 @@ import logging
 import math
 import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from .long_horizon_memory import EvalReport, EvalResult, LongHorizonMemoryEval
+from .long_horizon_memory import EvalReport, LongHorizonMemoryEval
 
 logger = logging.getLogger(__name__)
 
@@ -95,9 +95,7 @@ class MultiSeedReport:
                     "stddev": round(cs.stddev, 4),
                     "min_score": round(cs.min_score, 4),
                     "max_score": round(cs.max_score, 4),
-                    "scores_by_seed": {
-                        str(k): round(v, 4) for k, v in cs.scores_by_seed.items()
-                    },
+                    "scores_by_seed": {str(k): round(v, 4) for k, v in cs.scores_by_seed.items()},
                 }
                 for cs in self.category_stats
             ],
@@ -108,9 +106,7 @@ class MultiSeedReport:
                     "category": q.category,
                     "mean_score": round(q.mean_score, 4),
                     "stddev": round(q.stddev, 4),
-                    "scores_by_seed": {
-                        str(k): round(v, 4) for k, v in q.scores_by_seed.items()
-                    },
+                    "scores_by_seed": {str(k): round(v, 4) for k, v in q.scores_by_seed.items()},
                 }
                 for q in self.noisy_questions
             ],
@@ -170,9 +166,7 @@ def run_multi_seed_eval(
             )
             report = evaluator.run(agent, grader_model=grader_model)
             per_seed_reports[seed] = report
-            logger.info(
-                "Seed %d complete: overall=%.2f%%", seed, report.overall_score * 100
-            )
+            logger.info("Seed %d complete: overall=%.2f%%", seed, report.overall_score * 100)
         finally:
             if hasattr(agent, "close"):
                 agent.close()
@@ -297,9 +291,7 @@ def _print_multi_seed_report(report: MultiSeedReport) -> None:
     if report.noisy_questions:
         print(f"\nNOISY QUESTIONS ({len(report.noisy_questions)} with >10pp inter-seed variance):")
         for qv in sorted(report.noisy_questions, key=lambda q: -q.stddev):
-            seeds_str = ", ".join(
-                f"s{s}={v:.0%}" for s, v in sorted(qv.scores_by_seed.items())
-            )
+            seeds_str = ", ".join(f"s{s}={v:.0%}" for s, v in sorted(qv.scores_by_seed.items()))
             print(f"  [{qv.stddev:.2%}] {qv.question_text[:55]}")
             print(f"    {seeds_str}")
     else:
@@ -308,9 +300,7 @@ def _print_multi_seed_report(report: MultiSeedReport) -> None:
 
 def main() -> None:
     """CLI entry point for multi-seed long-horizon evaluation."""
-    parser = argparse.ArgumentParser(
-        description="Multi-seed long-horizon memory evaluation"
-    )
+    parser = argparse.ArgumentParser(description="Multi-seed long-horizon memory evaluation")
     parser.add_argument(
         "--turns", type=int, default=100, help="Number of dialogue turns (default: 100)"
     )
@@ -329,15 +319,9 @@ def main() -> None:
         default="/tmp/memory-eval-multi-seed",
         help="Output directory",
     )
-    parser.add_argument(
-        "--grader-model", type=str, default="", help="LLM model for grading"
-    )
-    parser.add_argument(
-        "--grader-votes", type=int, default=3, help="Grading votes per question"
-    )
-    parser.add_argument(
-        "--model", type=str, default="", help="Agent model"
-    )
+    parser.add_argument("--grader-model", type=str, default="", help="LLM model for grading")
+    parser.add_argument("--grader-votes", type=int, default=3, help="Grading votes per question")
+    parser.add_argument("--model", type=str, default="", help="Agent model")
     parser.add_argument("--verbose", "-v", action="store_true")
 
     args = parser.parse_args()
@@ -356,9 +340,9 @@ def main() -> None:
     agent_model = args.model or os.environ.get("EVAL_MODEL", "claude-sonnet-4-5-20250929")
 
     def agent_factory():
-        from amplihack.agents.goal_seeking.learning_agent import LearningAgent
-
         import tempfile
+
+        from amplihack.agents.goal_seeking.learning_agent import LearningAgent
 
         db_path = Path(tempfile.mkdtemp()) / "memory_db"
         return LearningAgent(
