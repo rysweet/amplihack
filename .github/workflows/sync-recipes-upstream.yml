@@ -2,7 +2,7 @@ name: Sync Recipes from Upstream
 
 on:
   schedule:
-    - cron: "0 8 * * *" # Daily at 8am UTC
+    - cron: "0 8 * * 1" # Weekly on Monday at 8am UTC
   workflow_dispatch: # Manual trigger
 
 permissions:
@@ -25,55 +25,93 @@ jobs:
         run: |
           pip install pyyaml
 
-      - name: Check for upstream changes
-        id: check
+      - name: Sync upstream recipe content
+        id: sync
         run: |
-          python3 << 'CHECKEOF'
+          python3 << 'SYNCEOF'
           import os
+          import shutil
           import subprocess
           import sys
 
-          # Add upstream remote
-          subprocess.run(
-              ["git", "remote", "add", "upstream-amplifier-recipes", "https://github.com/microsoft/amplifier-bundle-recipes"],
-              capture_output=True
-          )
+          UPSTREAM_URL = "https://github.com/microsoft/amplifier-bundle-recipes"
+          CLONE_DIR = "/tmp/upstream-recipes"
 
-          # Fetch upstream
+          # Clone upstream repo (shallow for speed)
           result = subprocess.run(
-              ["git", "fetch", "upstream-amplifier-recipes", "main"],
-              check=True,
-              capture_output=True,
-              timeout=60
+              ["git", "clone", "--depth", "1", UPSTREAM_URL, CLONE_DIR],
+              capture_output=True, text=True, timeout=120
           )
+          if result.returncode != 0:
+              print(f"Failed to clone upstream: {result.stderr}")
+              sys.exit(1)
 
-          # Check diff
+          # Path mappings: upstream path -> local path
+          # The upstream repo root IS the bundle, so paths map into amplifier-bundle/
+          sync_mappings = [
+              # Recipe engine module
+              ("modules/tool-recipes", "amplifier-bundle/modules/tool-recipes"),
+              # Recipe behavior config
+              ("behaviors/recipes.yaml", "amplifier-bundle/behaviors/recipes.yaml"),
+              # Recipe context docs
+              ("context/recipe-awareness.md", "amplifier-bundle/context/recipe-awareness.md"),
+              ("context/recipe-instructions.md", "amplifier-bundle/context/recipe-instructions.md"),
+              # Recipe agent
+              ("agents/recipe-author.md", "amplifier-bundle/agents/specialized/recipe-author.md"),
+          ]
+
+          changes = []
+          for upstream_path, local_path in sync_mappings:
+              src = os.path.join(CLONE_DIR, upstream_path)
+              if not os.path.exists(src):
+                  print(f"Skipping {upstream_path} (not found upstream)")
+                  continue
+
+              # Ensure parent directory exists
+              os.makedirs(os.path.dirname(local_path) or ".", exist_ok=True)
+
+              if os.path.isdir(src):
+                  if os.path.exists(local_path):
+                      shutil.rmtree(local_path)
+                  shutil.copytree(src, local_path)
+              else:
+                  shutil.copy2(src, local_path)
+
+              changes.append(f"{upstream_path} -> {local_path}")
+              print(f"Synced: {upstream_path} -> {local_path}")
+
+          # Clean up clone
+          shutil.rmtree(CLONE_DIR, ignore_errors=True)
+
+          if not changes:
+              print("No upstream content found to sync")
+
+          # Check if there are actual git changes
           diff = subprocess.run(
-              ["git", "diff", "upstream-amplifier-recipes/main", "--", "amplifier-bundle/recipes/"],
-              capture_output=True,
-              text=True
+              ["git", "diff", "--stat"],
+              capture_output=True, text=True
+          )
+          untracked = subprocess.run(
+              ["git", "ls-files", "--others", "--exclude-standard"],
+              capture_output=True, text=True
           )
 
-          has_changes = bool(diff.stdout.strip())
-          print(f"has_changes={str(has_changes).lower()}")
+          has_changes = bool(diff.stdout.strip() or untracked.stdout.strip())
 
-          # Output for GitHub Actions
           github_output = os.environ.get("GITHUB_OUTPUT")
           if github_output:
               with open(github_output, "a") as f:
                   f.write(f"has_changes={str(has_changes).lower()}\n")
 
           if has_changes:
-              print("Changes detected in upstream recipes")
-              sys.exit(0)
+              print("Changes detected from upstream sync")
           else:
-              print("No changes detected")
-              sys.exit(0)
-          CHECKEOF
+              print("No changes - local content matches upstream")
+          SYNCEOF
 
-      - name: Create sync branch and merge upstream changes
+      - name: Create sync branch and commit
         id: create-branch
-        if: steps.check.outputs.has_changes == 'true'
+        if: steps.sync.outputs.has_changes == 'true'
         run: |
           DATE=$(date +%Y%m%d)
           BRANCH="chore/sync-recipes-$DATE"
@@ -83,46 +121,58 @@ jobs:
 
           git checkout -b "$BRANCH"
 
-          # Merge only the recipes directory from upstream
-          git checkout upstream-amplifier-recipes/main -- amplifier-bundle/recipes/
+          git add amplifier-bundle/modules/tool-recipes/
+          git add amplifier-bundle/behaviors/recipes.yaml
+          git add amplifier-bundle/context/recipe-awareness.md
+          git add amplifier-bundle/context/recipe-instructions.md
+          git add amplifier-bundle/agents/specialized/recipe-author.md
 
-          git add amplifier-bundle/recipes/
-          git commit -m "chore: Sync recipes from upstream amplifier-bundle-recipes
+          git commit -m "chore: Sync recipe engine from upstream amplifier-bundle-recipes
 
-          Automated daily sync from microsoft/amplifier-bundle-recipes.
+          Automated weekly sync from microsoft/amplifier-bundle-recipes.
 
-          Changes pulled from upstream-amplifier-recipes/main."
+          Synced paths:
+          - modules/tool-recipes/ (recipe engine)
+          - behaviors/recipes.yaml (recipe behavior config)
+          - context/recipe-*.md (recipe context docs)
+          - agents/recipe-author.md (recipe authoring agent)"
 
           git push -u origin "$BRANCH"
 
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
 
       - name: Create Pull Request
-        if: steps.check.outputs.has_changes == 'true'
+        if: steps.sync.outputs.has_changes == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           BRANCH="${{ steps.create-branch.outputs.branch }}"
 
           gh pr create \
-            --title "chore: Sync recipes from upstream ($(date +%Y-%m-%d))" \
+            --title "chore: Sync recipe engine from upstream ($(date +%Y-%m-%d))" \
             --body "$(cat <<'PREOF'
           ## Automated Recipe Sync
 
-          This PR syncs recipe YAML files from the upstream Microsoft Amplifier bundle repository.
+          This PR syncs recipe engine components from the upstream Microsoft Amplifier bundle repository.
 
           **Upstream**: https://github.com/microsoft/amplifier-bundle-recipes
-          **Sync Date**: $(date +%Y-%m-%d)
+          **Schedule**: Weekly (Monday 8am UTC)
 
-          ### Changes
+          ### Synced Content
 
-          Recipe files updated to match upstream. Review the diff to see what changed in each recipe.
+          | Upstream Path | Local Path | Description |
+          |---|---|---|
+          | `modules/tool-recipes/` | `amplifier-bundle/modules/tool-recipes/` | Recipe execution engine |
+          | `behaviors/recipes.yaml` | `amplifier-bundle/behaviors/recipes.yaml` | Recipe behavior config |
+          | `context/recipe-*.md` | `amplifier-bundle/context/` | Recipe context docs |
+          | `agents/recipe-author.md` | `amplifier-bundle/agents/specialized/` | Recipe authoring agent |
 
           ### Review Checklist
 
-          - [ ] All recipe YAML files still parse correctly
-          - [ ] No breaking changes to recipe schema
-          - [ ] Step count changes are intentional improvements
+          - [ ] Recipe engine changes don't break existing recipe execution
+          - [ ] Behavior config is compatible with current setup
+          - [ ] Context docs don't conflict with existing amplihack context
+          - [ ] No breaking changes to recipe YAML schema
 
           ---
           *Automated by `.github/workflows/sync-recipes-upstream.yml`*
