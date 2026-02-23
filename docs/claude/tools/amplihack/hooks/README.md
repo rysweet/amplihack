@@ -185,6 +185,7 @@ All hooks implement graceful error handling following Python best practices (see
 ### Exception Handling Examples
 
 **Standard Hook Pattern (Fail-Open)**:
+
 ```python
 try:
     result = process_data(input_data)
@@ -196,6 +197,7 @@ except Exception as e:
 ```
 
 **Power Steering Pattern (Sanitized Logging)**:
+
 ```python
 try:
     validate_response(response)
