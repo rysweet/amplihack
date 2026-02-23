@@ -849,7 +849,7 @@ content = teacher.teach_lesson(lesson.id)
 print(content)
 
 # Check an exercise
-result = teacher.check_exercise("L01", "L01_E01", "amplihack new --file my_agent.md")
+result = teacher.check_exercise("L01", "E01-01", "Learn, Remember, Teach, Apply")
 print(result)
 
 # Run a quiz
@@ -858,7 +858,7 @@ print(f"Score: {result.quiz_score:.0%}")
 
 # Validate all exercises work
 validation = teacher.validate_tutorial()
-print(f"Valid: {validation['all_valid']}")
+print(f"Valid: {validation['valid']}")
 ```
 
 ### Via Claude Code Skill
