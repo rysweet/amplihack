@@ -1,10 +1,12 @@
-"""Tests for math intent classification and code generation in LearningAgent.
+"""Tests for math intent classification, code generation, and retrieval filtering in LearningAgent.
 
 Covers:
 - _compute_math_result(): number extraction and arithmetic evaluation
 - _concept_retrieval(): keyword extraction and bigram phrase generation
 - _category_instructions: category-specific synthesis prompt dispatch
 - _detect_intent(): intent classification with math_type field
+- Q&A echo filtering: removal of self-learning echoes from retrieval results
+- SUMMARY conditional filter: meta_memory-only filtering of summary facts
 
 Philosophy:
 - Mock all LLM calls (litellm.completion) so tests run without API keys
@@ -161,6 +163,26 @@ class TestComputeMathResult:
         assert "20" in result
 
     @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
+    def test_division_by_zero_returns_none(self, mock_completion: MagicMock):
+        """Division by zero in expression returns None (calculate returns error)."""
+        mock_completion.return_value = _make_llm_response(
+            json.dumps(
+                {
+                    "numbers": {"a": 10, "b": 0},
+                    "expression": "10 / 0",
+                    "description": "division by zero attempt",
+                }
+            )
+        )
+
+        facts = [{"outcome": "A=10, B=0"}]
+        intent = {"needs_math": True, "math_type": "ratio"}
+
+        result = self.agent._compute_math_result("What is the ratio?", facts, intent)
+
+        assert result is None
+
+    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
     def test_whole_number_formatting(self, mock_completion: MagicMock):
         """Whole-number results should be formatted as integers, not floats."""
         mock_completion.return_value = _make_llm_response(
@@ -273,23 +295,18 @@ class TestCategoryInstructions:
         yield
         self.agent.close()
 
-    def test_all_expected_categories_present(self):
-        """Verify the _category_instructions dict contains all expected keys.
+    def test_category_intents_not_in_simple_intents(self):
+        """Verify category intents that need special instructions are NOT in SIMPLE_INTENTS.
 
-        We check by inspecting the source method because the dict is defined
-        locally inside _synthesize_with_llm. We call the method with controlled
-        inputs and verify behavior through the LLM prompt.
+        mathematical_computation, meta_memory, and temporal_comparison require
+        category-specific synthesis prompts. If they were in SIMPLE_INTENTS,
+        the routing logic would skip entity retrieval and category instructions.
         """
-        # The categories are defined in the code. Verify them by testing that
-        # each category type triggers the appropriate instruction path.
         expected_categories = {
             "mathematical_computation",
             "meta_memory",
             "temporal_comparison",
         }
-        # These are the three keys explicitly listed in _category_instructions
-        # in _synthesize_with_llm. Verify they are handled differently from
-        # generic intents by checking prompt content.
         for category in expected_categories:
             assert category not in self.agent.SIMPLE_INTENTS, (
                 f"{category} should NOT be in SIMPLE_INTENTS "
@@ -533,3 +550,353 @@ class TestDetectIntent:
         assert result["needs_temporal"] is False
         assert isinstance(result["needs_math"], bool)
         assert isinstance(result["needs_temporal"], bool)
+
+
+class TestQAEchoFiltering:
+    """Tests for Q&A echo filtering in answer_question().
+
+    Q&A echoes are facts stored during self-learning (question-answer pairs)
+    that pollute retrieval results. They are identified by BOTH conditions:
+    - context starts with "Question:"
+    - tags contain "q_and_a"
+
+    The filtering at lines ~461-478 of learning_agent.py was the fix that
+    improved eval scores from 90.3% to 98.9%.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup_agent(self, tmp_path: Path):
+        self.agent = LearningAgent(agent_name="test_echo", storage_path=str(tmp_path))
+        yield
+        self.agent.close()
+
+    @patch.object(LearningAgent, "_synthesize_with_llm", return_value="Mocked answer")
+    @patch.object(LearningAgent, "_detect_intent")
+    @patch.object(LearningAgent, "_entity_retrieval")
+    def test_qa_echoes_filtered_from_entity_retrieval(
+        self, mock_entity: MagicMock, mock_intent: MagicMock, mock_synth: MagicMock
+    ):
+        """Q&A echoes (context='Question:...' AND tags=['q_and_a']) are removed."""
+        mock_intent.return_value = {
+            "intent": "needle_in_haystack",
+            "needs_math": False,
+            "needs_temporal": False,
+            "math_type": "none",
+        }
+
+        qa_echo = {
+            "context": "Question: What is X?",
+            "outcome": "X is a variable",
+            "tags": ["q_and_a"],
+        }
+        real_fact = {
+            "context": "Physics",
+            "outcome": "Gravity is 9.8 m/s^2",
+            "tags": ["physics"],
+        }
+        mock_entity.return_value = [qa_echo, real_fact]
+
+        # Ensure KB is large enough to skip simple retrieval
+        self.agent._cached_all_facts = [{}] * 600
+        self.agent.memory = MagicMock()
+        self.agent.memory.get_all_facts.return_value = [{}] * 600
+
+        self.agent.answer_question("What is gravity?", "L1")
+
+        # _synthesize_with_llm should receive only the real fact, not the echo
+        synth_call_args = mock_synth.call_args
+        facts_passed = (
+            synth_call_args[0][1]
+            if len(synth_call_args[0]) > 1
+            else synth_call_args[1].get("context", [])
+        )
+        fact_outcomes = [f.get("outcome", "") for f in facts_passed]
+        assert "Gravity is 9.8 m/s^2" in fact_outcomes
+        assert "X is a variable" not in fact_outcomes
+
+    @patch.object(LearningAgent, "_synthesize_with_llm", return_value="Mocked answer")
+    @patch.object(LearningAgent, "_detect_intent")
+    @patch.object(LearningAgent, "_entity_retrieval")
+    def test_qa_echo_requires_both_conditions(
+        self, mock_entity: MagicMock, mock_intent: MagicMock, mock_synth: MagicMock
+    ):
+        """Filtering requires BOTH context='Question:...' AND tags=['q_and_a'].
+
+        A fact with only ONE condition should be retained.
+        """
+        mock_intent.return_value = {
+            "intent": "needle_in_haystack",
+            "needs_math": False,
+            "needs_temporal": False,
+            "math_type": "none",
+        }
+
+        # Has "Question:" context but no q_and_a tag -> should be RETAINED
+        question_context_only = {
+            "context": "Question: What format should I use?",
+            "outcome": "Use JSON format for API responses",
+            "tags": ["api", "format"],
+        }
+        # Has q_and_a tag but context does NOT start with "Question:" -> RETAINED
+        qa_tag_only = {
+            "context": "User Interaction Log",
+            "outcome": "User asked about deployment steps",
+            "tags": ["q_and_a", "interaction"],
+        }
+        # Has BOTH conditions -> should be FILTERED
+        true_echo = {
+            "context": "Question: How do I deploy?",
+            "outcome": "Deploy using kubectl apply",
+            "tags": ["q_and_a"],
+        }
+        mock_entity.return_value = [question_context_only, qa_tag_only, true_echo]
+
+        self.agent._cached_all_facts = [{}] * 600
+        self.agent.memory = MagicMock()
+        self.agent.memory.get_all_facts.return_value = [{}] * 600
+
+        self.agent.answer_question("How do I deploy?", "L1")
+
+        synth_call_args = mock_synth.call_args
+        facts_passed = (
+            synth_call_args[0][1]
+            if len(synth_call_args[0]) > 1
+            else synth_call_args[1].get("context", [])
+        )
+        fact_outcomes = [f.get("outcome", "") for f in facts_passed]
+        # Both single-condition facts should survive
+        assert "Use JSON format for API responses" in fact_outcomes
+        assert "User asked about deployment steps" in fact_outcomes
+        # The true echo (both conditions) should be filtered
+        assert "Deploy using kubectl apply" not in fact_outcomes
+
+    @patch.object(LearningAgent, "_synthesize_with_llm", return_value="Mocked answer")
+    @patch.object(LearningAgent, "_simple_retrieval")
+    @patch.object(LearningAgent, "_detect_intent")
+    @patch.object(LearningAgent, "_entity_retrieval")
+    def test_entity_retrieval_with_only_echoes_triggers_fallback(
+        self,
+        mock_entity: MagicMock,
+        mock_intent: MagicMock,
+        mock_simple: MagicMock,
+        mock_synth: MagicMock,
+    ):
+        """When entity retrieval returns ONLY Q&A echoes, fallback to simple retrieval."""
+        mock_intent.return_value = {
+            "intent": "needle_in_haystack",
+            "needs_math": False,
+            "needs_temporal": False,
+            "math_type": "none",
+        }
+
+        # Entity retrieval returns only echoes
+        echo1 = {
+            "context": "Question: What is X?",
+            "outcome": "X is something",
+            "tags": ["q_and_a"],
+        }
+        echo2 = {
+            "context": "Question: What is Y?",
+            "outcome": "Y is something else",
+            "tags": ["q_and_a"],
+        }
+        mock_entity.return_value = [echo1, echo2]
+
+        # Simple retrieval returns real facts
+        real_fact = {
+            "context": "Science",
+            "outcome": "Water boils at 100C",
+            "tags": ["chemistry"],
+        }
+        mock_simple.return_value = [real_fact]
+
+        self.agent._cached_all_facts = [{}] * 600
+        self.agent.memory = MagicMock()
+        self.agent.memory.get_all_facts.return_value = [{}] * 600
+
+        self.agent.answer_question("At what temperature does water boil?", "L1")
+
+        # Simple retrieval should have been called as fallback
+        assert mock_simple.called
+        # Synthesize should receive the real fact from simple retrieval
+        synth_call_args = mock_synth.call_args
+        facts_passed = (
+            synth_call_args[0][1]
+            if len(synth_call_args[0]) > 1
+            else synth_call_args[1].get("context", [])
+        )
+        fact_outcomes = [f.get("outcome", "") for f in facts_passed]
+        assert "Water boils at 100C" in fact_outcomes
+        # Echo facts should NOT appear
+        assert "X is something" not in fact_outcomes
+        assert "Y is something else" not in fact_outcomes
+
+
+class TestSummaryConditionalFilter:
+    """Tests for SUMMARY fact filtering in answer_question().
+
+    SUMMARY facts are filtered out ONLY for meta_memory intent (counting,
+    aggregation) to avoid inflating counts. For other intents, SUMMARY facts
+    are retained because they provide useful context for recall.
+
+    The filtering happens at approximately lines 498-506 of learning_agent.py.
+    """
+
+    @pytest.fixture(autouse=True)
+    def setup_agent(self, tmp_path: Path):
+        self.agent = LearningAgent(agent_name="test_summary", storage_path=str(tmp_path))
+        yield
+        self.agent.close()
+
+    @patch.object(LearningAgent, "_synthesize_with_llm", return_value="Mocked answer")
+    @patch.object(LearningAgent, "_detect_intent")
+    @patch.object(LearningAgent, "_aggregation_retrieval")
+    def test_summary_filtered_for_meta_memory(
+        self, mock_agg: MagicMock, mock_intent: MagicMock, mock_synth: MagicMock
+    ):
+        """For meta_memory intent, SUMMARY facts are filtered out."""
+        mock_intent.return_value = {
+            "intent": "meta_memory",
+            "needs_math": False,
+            "needs_temporal": False,
+            "math_type": "none",
+        }
+
+        summary_by_context = {
+            "context": "SUMMARY",
+            "outcome": "Overall project summary with 5 topics",
+            "tags": ["overview"],
+        }
+        summary_by_tag = {
+            "context": "Project Alpha",
+            "outcome": "Summary of all work done",
+            "tags": ["summary"],
+        }
+        real_fact = {
+            "context": "Project Beta",
+            "outcome": "Beta launched in January",
+            "tags": ["project"],
+        }
+        mock_agg.return_value = [summary_by_context, summary_by_tag, real_fact]
+
+        self.agent.answer_question("How many projects are tracked?", "L1")
+
+        synth_call_args = mock_synth.call_args
+        facts_passed = (
+            synth_call_args[0][1]
+            if len(synth_call_args[0]) > 1
+            else synth_call_args[1].get("context", [])
+        )
+        fact_outcomes = [f.get("outcome", "") for f in facts_passed]
+        assert "Beta launched in January" in fact_outcomes
+        assert "Overall project summary with 5 topics" not in fact_outcomes
+        assert "Summary of all work done" not in fact_outcomes
+
+    @patch.object(LearningAgent, "_synthesize_with_llm", return_value="Mocked answer")
+    @patch.object(LearningAgent, "_detect_intent")
+    @patch.object(LearningAgent, "_simple_retrieval")
+    def test_summary_retained_for_other_intents(
+        self, mock_simple: MagicMock, mock_intent: MagicMock, mock_synth: MagicMock
+    ):
+        """For simple_recall and needle_in_haystack, SUMMARY facts are RETAINED."""
+        for intent_type in ("simple_recall", "needle_in_haystack"):
+            mock_intent.return_value = {
+                "intent": intent_type,
+                "needs_math": False,
+                "needs_temporal": False,
+                "math_type": "none",
+            }
+
+            summary_fact = {
+                "context": "SUMMARY",
+                "outcome": "Overview of all project milestones",
+                "tags": ["summary"],
+            }
+            regular_fact = {
+                "context": "Milestones",
+                "outcome": "Milestone 1 completed in March",
+                "tags": ["project"],
+            }
+            mock_simple.return_value = [summary_fact, regular_fact]
+
+            self.agent.answer_question("What are the project milestones?", "L1")
+
+            synth_call_args = mock_synth.call_args
+            facts_passed = (
+                synth_call_args[0][1]
+                if len(synth_call_args[0]) > 1
+                else synth_call_args[1].get("context", [])
+            )
+            fact_outcomes = [f.get("outcome", "") for f in facts_passed]
+            # SUMMARY facts should be RETAINED for non-meta_memory intents
+            assert "Overview of all project milestones" in fact_outcomes, (
+                f"SUMMARY fact should be retained for intent_type={intent_type}"
+            )
+            assert "Milestone 1 completed in March" in fact_outcomes
+
+    @patch.object(LearningAgent, "_synthesize_with_llm", return_value="Mocked answer")
+    @patch.object(LearningAgent, "_detect_intent")
+    @patch.object(LearningAgent, "_aggregation_retrieval")
+    def test_summary_filter_uses_both_conditions(
+        self, mock_agg: MagicMock, mock_intent: MagicMock, mock_synth: MagicMock
+    ):
+        """SUMMARY filter catches facts by context='SUMMARY' OR tags containing 'summary'.
+
+        For meta_memory intent:
+        - context="SUMMARY" -> filtered
+        - tags=["summary"] -> filtered
+        - both context="SUMMARY" and tags=["summary"] -> filtered
+        - neither -> retained
+        """
+        mock_intent.return_value = {
+            "intent": "meta_memory",
+            "needs_math": False,
+            "needs_temporal": False,
+            "math_type": "none",
+        }
+
+        # Only context="SUMMARY" -> filtered
+        summary_context_only = {
+            "context": "SUMMARY",
+            "outcome": "High-level overview",
+            "tags": ["overview"],
+        }
+        # Only tags=["summary"] -> filtered
+        summary_tag_only = {
+            "context": "Project Report",
+            "outcome": "Condensed report",
+            "tags": ["summary", "report"],
+        }
+        # Both conditions -> filtered
+        summary_both = {
+            "context": "SUMMARY",
+            "outcome": "Full summary with tags",
+            "tags": ["summary"],
+        }
+        # Neither condition -> retained
+        regular_fact = {
+            "context": "Team Updates",
+            "outcome": "Team grew by 3 members",
+            "tags": ["team"],
+        }
+        mock_agg.return_value = [
+            summary_context_only,
+            summary_tag_only,
+            summary_both,
+            regular_fact,
+        ]
+
+        self.agent.answer_question("How many team changes happened?", "L1")
+
+        synth_call_args = mock_synth.call_args
+        facts_passed = (
+            synth_call_args[0][1]
+            if len(synth_call_args[0]) > 1
+            else synth_call_args[1].get("context", [])
+        )
+        fact_outcomes = [f.get("outcome", "") for f in facts_passed]
+        # Only the regular fact should survive
+        assert "Team grew by 3 members" in fact_outcomes
+        assert "High-level overview" not in fact_outcomes
+        assert "Condensed report" not in fact_outcomes
+        assert "Full summary with tags" not in fact_outcomes
