@@ -456,17 +456,23 @@ Rules:
             else:
                 # Large KB: try entity-centric retrieval first
                 relevant_facts = self._entity_retrieval(question)
+
+                # Filter Q&A echoes early so we can correctly detect empty retrieval
+                relevant_facts = [
+                    f for f in relevant_facts
+                    if not (
+                        f.get("context", "").startswith("Question:")
+                        and "q_and_a" in (f.get("tags") or [])
+                    )
+                ]
                 entity_retrieval_had_results = bool(relevant_facts)
 
                 if not relevant_facts:
-                    # No entities found in the question (e.g., "How much did
-                    # test coverage improve?"). Fall back to simple retrieval
-                    # which dumps all facts + reranks by keyword overlap.
-                    # This is more reliable than concept/iterative for questions
-                    # without proper nouns, because the reranker surfaces the
-                    # exact matching facts from the full KB.
+                    # Entity retrieval empty (or only Q&A echoes).
+                    # Fall back to simple retrieval + rerank which is proven
+                    # to surface correct facts for non-entity questions.
                     logger.info(
-                        "Entity retrieval empty for '%s'; using simple retrieval + rerank",
+                        "Entity retrieval empty/noise for '%s'; simple retrieval + rerank",
                         question[:50],
                     )
                     relevant_facts = self._simple_retrieval(question)
