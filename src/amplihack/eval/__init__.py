@@ -9,6 +9,21 @@ Also provides domain-specific evaluation:
 - run_combined_eval: Combined domain + teaching scores
 """
 
+# General-purpose capability evaluation (tool use, planning, reasoning, transfer, collaboration)
+from .general_capability_eval import (
+    CapabilityReport,
+    GeneralCapabilityEval,
+    ToolTrajectory,
+)
+from .general_capability_eval import (
+    EvalTypeResult as CapabilityEvalTypeResult,
+)
+from .general_capability_eval import (
+    ScenarioResult as CapabilityScenarioResult,
+)
+from .general_capability_eval import (
+    ToolCall as CapabilityToolCall,
+)
 from .grader import GradeResult, grade_answer
 from .harness_runner import HarnessConfig, HarnessResult, run_harness
 
@@ -63,4 +78,10 @@ __all__ = [
     "run_long_horizon_self_improve",
     "LongHorizonRunnerConfig",
     "LongHorizonRunnerResult",
+    "GeneralCapabilityEval",
+    "CapabilityReport",
+    "CapabilityEvalTypeResult",
+    "CapabilityScenarioResult",
+    "CapabilityToolCall",
+    "ToolTrajectory",
 ]
