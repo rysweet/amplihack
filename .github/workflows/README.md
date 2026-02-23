@@ -63,6 +63,25 @@ npm test
 - Consider running fewer hooks
 - Use `fetch-depth: 1` if full history not needed
 
+## Agentic Workflows (gh-aw)
+
+Several workflows use GitHub's Agentic Workflows framework (`gh-aw`). These are defined as `.md` source files that compile into `.lock.yml` workflow files via `gh aw compile`.
+
+### Lockdown Mode
+
+The GitHub MCP server in gh-aw workflows supports a lockdown mode that restricts the token used for API access:
+
+- **`lockdown: true`** (explicit): Requires `GH_AW_GITHUB_TOKEN` or `GH_AW_GITHUB_MCP_SERVER_TOKEN` as a repository secret with a fine-grained PAT. The workflow will **fail** if neither secret is configured.
+- **`lockdown: false`** (automatic): Uses automatic lockdown detection that enables lockdown when a custom PAT is available and gracefully falls back to `GITHUB_TOKEN` when not. This is the **recommended default** for most workflows.
+
+To change lockdown mode, edit the `tools.github.lockdown` field in the `.md` source file and recompile with `gh aw compile`.
+
+### Editing Agentic Workflows
+
+1. Edit the `.md` source file (e.g., `pr-triage-agent.md`)
+2. Run `gh aw compile` to regenerate the `.lock.yml`
+3. Never edit `.lock.yml` files directly (they are auto-generated)
+
 ## Maintenance
 
 ### Adding new checks
