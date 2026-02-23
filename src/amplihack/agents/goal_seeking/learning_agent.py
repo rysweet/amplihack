@@ -438,6 +438,7 @@ Rules:
         # and for small KBs the LLM can easily handle all facts in context.
         # This is critical for temporal/multi-source questions where completeness matters.
         reasoning_trace = None
+        entity_retrieval_had_results = True  # default; overridden in entity retrieval path
 
         # Route meta-memory questions to Cypher aggregation
         if intent_type in self.AGGREGATION_INTENTS:
@@ -472,7 +473,7 @@ Rules:
 
             # Keyword expansion: fire aggressively when entity retrieval was empty
             # OR when retrieval is sparse (<3 facts) for a large KB
-            entity_retrieval_empty = not locals().get("entity_retrieval_had_results", True)
+            entity_retrieval_empty = not entity_retrieval_had_results
             if hasattr(self.memory, "get_all_facts"):
                 kb_check = self.memory.get_all_facts(limit=15000)
                 if len(kb_check) > 500 and (entity_retrieval_empty or len(relevant_facts) < 3):
@@ -619,9 +620,6 @@ Rules:
 
         all_facts = self.memory.get_all_facts(limit=15000)
         kb_size = len(all_facts)
-
-        if kb_size <= 500:
-            return all_facts
 
         if kb_size <= 1000:
             return all_facts
