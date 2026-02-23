@@ -369,6 +369,10 @@ Custom workflows:
   memory, eval, and self-improvement
 - **[Agent Tutorial](docs/tutorials/GOAL_SEEKING_AGENT_TUTORIAL.md)** -
   Step-by-step guide to generating and evaluating agents
+- **[Interactive Tutorial](/agent-generator-tutor)** - 14-lesson interactive
+  tutor via `/agent-generator-tutor` skill
+- **[Session-to-Agent](/session-to-agent)** - Convert interactive sessions into
+  reusable agents
 - **[Eval System](docs/EVAL_SYSTEM_ARCHITECTURE.md)** - L1-L12 progressive
   evaluation with long-horizon memory testing and self-improvement
 - **[SDK Adapters Guide](docs/SDK_ADAPTERS_GUIDE.md)** - Deep dive into Copilot,

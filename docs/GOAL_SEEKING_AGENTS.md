@@ -743,6 +743,8 @@ These scores represent the system after iterative prompt tuning and retrieval st
 | `MICROSOFT_AGENT_MODEL` | Override for Microsoft SDK model    | `gpt-4o`                     |
 | `DOMAIN_AGENT_MODEL`    | Override for domain agent model     | `gpt-4o-mini`                |
 
+**Model default note:** The `GoalSeekingAgent` base class constructor defaults `self.model` to `gpt-4o` (via `EVAL_MODEL` env var). However, `_get_learning_agent()` -- which handles all fact extraction and question answering -- independently defaults to `claude-sonnet-4-5-20250929` via the same `EVAL_MODEL` env var. This means the SDK agent loop may use one model while learning/answering always uses Anthropic's model. Set `EVAL_MODEL` explicitly to override both.
+
 ### File Layout
 
 ```
@@ -845,25 +847,63 @@ lesson = teacher.get_next_lesson()
 # Teach it
 content = teacher.teach_lesson(lesson.id)
 print(content)
+
+# Check an exercise
+result = teacher.check_exercise("L01", "L01_E01", "amplihack new --file my_agent.md")
+print(result)
+
+# Run a quiz
+result = teacher.run_quiz("L01")
+print(f"Score: {result.quiz_score:.0%}")
+
+# Validate all exercises work
+validation = teacher.validate_tutorial()
+print(f"Valid: {validation['all_valid']}")
 ```
 
-### Curriculum (10 Lessons)
+### Via Claude Code Skill
 
-| Lesson | Title                               | Prerequisites |
-| ------ | ----------------------------------- | ------------- |
-| L01    | Introduction to Goal-Seeking Agents | None          |
-| L02    | Your First Agent (CLI Basics)       | L01           |
-| L03    | SDK Selection Guide                 | L02           |
-| L04    | Multi-Agent Architecture            | L02, L03      |
-| L05    | Agent Spawning                      | L04           |
-| L06    | Running Evaluations                 | L02           |
-| L07    | Understanding Eval Levels L1-L12    | L06           |
-| L08    | Self-Improvement Loop               | L06, L07      |
-| L09    | Security Domain Agents (Advanced)   | L03, L04, L06 |
-| L10    | Custom Eval Levels (Advanced)       | L07, L08      |
+In any Claude Code session:
+
+```
+/agent-generator-tutor
+```
+
+This activates the interactive tutor that walks you through all 14 lessons.
+
+### Curriculum (14 Lessons)
+
+| Lesson | Title                                                | Prerequisites |
+| ------ | ---------------------------------------------------- | ------------- |
+| L01    | Introduction to Goal-Seeking Agents                  | None          |
+| L02    | Your First Agent (CLI Basics)                        | L01           |
+| L03    | SDK Selection Guide                                  | L02           |
+| L04    | Multi-Agent Architecture                             | L02, L03      |
+| L05    | Agent Spawning                                       | L04           |
+| L06    | Running Evaluations                                  | L02           |
+| L07    | Understanding Eval Levels L1-L12                     | L06           |
+| L08    | Self-Improvement Loop                                | L06, L07      |
+| L09    | Security Domain Agents (Advanced)                    | L03, L04, L06 |
+| L10    | Custom Eval Levels (Advanced)                        | L07, L08      |
+| L11    | Retrieval Architecture                               | L06, L07      |
+| L12    | Intent Classification and Math Code Generation       | L07           |
+| L13    | Patch Proposer and Reviewer Voting                   | L08           |
+| L14    | Memory Export, Import, and Cross-Session Persistence | L01, L06      |
 
 ### Tutorial Document
 
 A comprehensive written tutorial is available at
-`docs/tutorials/GOAL_SEEKING_AGENT_TUTORIAL.md`, covering all 10 curriculum
+`docs/tutorials/GOAL_SEEKING_AGENT_TUTORIAL.md`, covering all 14 curriculum
 topics with code examples, exercises, and a troubleshooting guide.
+
+---
+
+## Session-to-Agent Conversion
+
+Convert your interactive session into a reusable goal-seeking agent:
+
+```bash
+/session-to-agent
+```
+
+This skill analyzes your current session transcript, extracts goals/constraints/patterns, and generates a goal-seeking agent with memory. See `amplifier-bundle/skills/session-to-agent/SKILL.md` for details.
