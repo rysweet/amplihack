@@ -6,7 +6,14 @@ Deep dive into the four SDK backends for goal-seeking agents. This guide covers 
 
 ## Overview
 
-The `GoalSeekingAgent` abstraction allows you to write agent logic once and run it on any of four SDK backends. Each SDK provides different native tools, state management, and LLM models, but the seven learning tools and memory system work identically across all of them.
+The `GoalSeekingAgent` abstraction allows you to write agent logic once and run it on any of four SDK backends. Each SDK provides different native tools, state management, and LLM models, but the learning/answering core and memory system work identically across all of them.
+
+**Key design point**: All four SDK adapters delegate `learn_from_content()` and `answer_question()` to a shared `LearningAgent` instance (lazily created via `_get_learning_agent()` in `base.py`). This means:
+
+- The eval harness calls `learn_from_content()` / `answer_question()` directly on the SDK agent, which routes to `LearningAgent` internally.
+- All SDKs get identical fact extraction, intent detection, retrieval strategies, and synthesis prompts.
+- The SDK-specific `_run_sdk_agent()` is used only for general task execution through the SDK's native agent loop (not for eval).
+- There is no mock mode. All SDK adapters require their respective SDK packages to be installed.
 
 ```python
 from amplihack.agents.goal_seeking.sdk_adapters.factory import create_agent
@@ -16,15 +23,83 @@ agent = create_agent(name="learner", sdk="copilot")
 agent = create_agent(name="learner", sdk="claude")
 agent = create_agent(name="learner", sdk="microsoft")
 agent = create_agent(name="learner", sdk="mini")
+
+# All agents share the same public API:
+agent.learn_from_content("Some content to learn.")
+answer = agent.answer_question("What did you learn?")
+agent.close()
 ```
+
+### Import Paths
+
+| Class / Function            | Import Path                                                |
+| --------------------------- | ---------------------------------------------------------- |
+| `create_agent()`            | `amplihack.agents.goal_seeking.sdk_adapters.factory`       |
+| `GoalSeekingAgent` (ABC)    | `amplihack.agents.goal_seeking.sdk_adapters.base`          |
+| `CopilotGoalSeekingAgent`   | `amplihack.agents.goal_seeking.sdk_adapters.copilot_sdk`   |
+| `ClaudeGoalSeekingAgent`    | `amplihack.agents.goal_seeking.sdk_adapters.claude_sdk`    |
+| `MicrosoftGoalSeekingAgent` | `amplihack.agents.goal_seeking.sdk_adapters.microsoft_sdk` |
+| `AgentTool`, `AgentResult`  | `amplihack.agents.goal_seeking.sdk_adapters.base`          |
+| `SDKType`                   | `amplihack.agents.goal_seeking.sdk_adapters.base`          |
+| `LearningAgent`             | `amplihack.agents.goal_seeking.learning_agent`             |
+| `MultiAgentLearningAgent`   | `amplihack.agents.goal_seeking.sub_agents.multi_agent`     |
+
+### How the Base Class Delegates to LearningAgent
+
+The `GoalSeekingAgent` ABC in `base.py` provides `learn_from_content()` and `answer_question()` as public methods. Both delegate to an internal `LearningAgent` instance:
+
+```python
+class GoalSeekingAgent(ABC):
+    def _get_learning_agent(self):
+        """Lazily create a LearningAgent sharing this agent's storage path."""
+        if not hasattr(self, "_learning_agent_cache"):
+            from amplihack.agents.goal_seeking.learning_agent import LearningAgent
+            eval_model = os.environ.get("EVAL_MODEL", "claude-sonnet-4-5-20250929")
+            self._learning_agent_cache = LearningAgent(
+                agent_name=f"{self.name}_learning",
+                model=eval_model,
+                storage_path=self.storage_path,
+                use_hierarchical=True,
+            )
+        return self._learning_agent_cache
+
+    def learn_from_content(self, content: str) -> dict:
+        """Delegates to LearningAgent._extract_facts_with_llm()."""
+        return self._tool_learn(content)  # _tool_learn calls _get_learning_agent()
+
+    def answer_question(self, question: str) -> str:
+        """Delegates to LearningAgent.answer_question()."""
+        la = self._get_learning_agent()
+        return la.answer_question(question)
+```
+
+The `_tool_learn` method (which backs the `learn_from_content` tool) also delegates to the LearningAgent for proper LLM-based fact extraction with temporal detection, entity extraction, and structured fact storage.
+
+### API Surface
+
+All `GoalSeekingAgent` instances expose:
+
+| Method / Property      | Description                                               |
+| ---------------------- | --------------------------------------------------------- |
+| `learn_from_content()` | Learn facts from text (delegates to LearningAgent)        |
+| `answer_question()`    | Answer questions from memory (delegates to LearningAgent) |
+| `run(task, max_turns)` | Execute task via SDK's native agent loop (async)          |
+| `form_goal(intent)`    | Create a structured Goal from user intent                 |
+| `get_memory_stats()`   | Get memory statistics                                     |
+| `close()`              | Clean up resources                                        |
+| `name`                 | Agent name                                                |
+| `model`                | LLM model being used                                      |
+| `memory`               | Memory instance (MemoryRetriever)                         |
+| `storage_path`         | Path to memory database                                   |
 
 ---
 
-## Copilot SDK (Default)
+## Copilot SDK
 
 **Package:** `github-copilot-sdk`
 **Default model:** `gpt-4.1`
 **Env var override:** `COPILOT_MODEL`
+**Source:** `src/amplihack/agents/goal_seeking/sdk_adapters/copilot_sdk.py`
 
 ### Installation
 
@@ -35,7 +110,6 @@ pip install github-copilot-sdk
 Also requires the GitHub Copilot CLI to be installed and authenticated:
 
 ```bash
-# Authenticate with GitHub
 gh auth login
 gh extension install github/gh-copilot
 ```
@@ -57,45 +131,28 @@ gh extension install github/gh-copilot
 
 ### API Mapping
 
-| GoalSeekingAgent Method         | Copilot SDK Equivalent                       |
-| ------------------------------- | -------------------------------------------- |
-| `_create_sdk_agent()`           | `CopilotClient()` + `create_session(config)` |
-| `_run_sdk_agent(task)`          | `session.send_and_wait({"prompt": task})`    |
-| `_register_tool_with_sdk(tool)` | Add to session config `tools` list           |
-
-### Configuration
-
-The Copilot SDK uses a session configuration dict:
-
-```python
-session_config = {
-    "model": "gpt-4.1",
-    "streaming": False,
-    "tools": [...],           # Custom learning tools
-    "systemMessage": {"content": "..."},
-    "customAgents": [{
-        "name": "my-agent",
-        "displayName": "My Agent",
-        "description": "...",
-        "prompt": "...",
-    }],
-}
-```
+| GoalSeekingAgent Method         | Copilot SDK Equivalent                                  |
+| ------------------------------- | ------------------------------------------------------- |
+| `_create_sdk_agent()`           | Build `SessionConfig` with tools and system prompt      |
+| `_run_sdk_agent(task)`          | `_ensure_client()` then `session.send_and_wait(task)`   |
+| `_register_tool_with_sdk(tool)` | Append to Copilot tools list, invalidate session config |
 
 ### Lifecycle
 
-The Copilot client is initialized lazily (on first `run()` call) because it requires async start:
+The Copilot client is initialized lazily (on first `_run_sdk_agent()` call) and creates a fresh client+session each time to avoid stale event loop issues:
 
 ```
 create_agent("x", sdk="copilot")
-    --> stores session_config (sync)
+    --> builds SessionConfig (sync, no client started)
 agent.run("task")
-    --> _ensure_client() initializes CopilotClient (async)
-    --> creates session with config
-    --> sends task to session
+    --> _ensure_client() creates CopilotClient + session
+    --> sends task via send_and_wait
+    --> cleans up client+session in finally block
 agent.close()
-    --> stops CopilotClient
+    --> clears references
 ```
+
+Supports async context manager: `async with CopilotGoalSeekingAgent(...) as agent:`.
 
 ### Troubleshooting
 
@@ -108,22 +165,19 @@ agent.close()
 
 - Run `gh auth login` and ensure your token has Copilot access.
 
-**Session resets after tool registration**
-
-- This is expected. Registering a new tool rebuilds the session config and resets the session. Tools should be registered before the first `run()` call.
-
 ---
 
-## Claude SDK
+## Claude Agent SDK
 
-**Package:** `claude-agents`
+**Package:** `claude-agent-sdk`
 **Default model:** `claude-sonnet-4-5-20250929`
 **Env var override:** `CLAUDE_AGENT_MODEL`
+**Source:** `src/amplihack/agents/goal_seeking/sdk_adapters/claude_sdk.py`
 
 ### Installation
 
 ```bash
-pip install claude-agents
+pip install claude-agent-sdk
 ```
 
 Requires `ANTHROPIC_API_KEY` environment variable.
@@ -148,147 +202,106 @@ Requires `ANTHROPIC_API_KEY` environment variable.
 
 ### API Mapping
 
-| GoalSeekingAgent Method         | Claude SDK Equivalent                              |
-| ------------------------------- | -------------------------------------------------- |
-| `_create_sdk_agent()`           | `ClaudeAgent(model, system, tools, allowed_tools)` |
-| `_run_sdk_agent(task)`          | `agent.run(task)`                                  |
-| `_register_tool_with_sdk(tool)` | Recreate agent with updated tools                  |
+| GoalSeekingAgent Method         | Claude SDK Equivalent                                               |
+| ------------------------------- | ------------------------------------------------------------------- |
+| `_create_sdk_agent()`           | Store config dict with model and system prompt                      |
+| `_run_sdk_agent(task)`          | `ClaudeSDKClient(options)` -> `query(task)` -> `receive_response()` |
+| `_register_tool_with_sdk(tool)` | Append to tools, call `_create_sdk_agent()` to rebuild config       |
 
-### Tool Registration
+### Architecture
 
-The Claude SDK agent is immutable after creation. Registering a new tool requires recreating the entire agent:
+The Claude SDK uses `ClaudeSDKClient` with an async context manager pattern. Each `_run_sdk_agent()` call creates a fresh client with `ClaudeAgentOptions`:
 
 ```python
-def _register_tool_with_sdk(self, tool):
-    self._tools.append(tool)
-    self._create_sdk_agent()  # Recreates the agent
-```
+options = ClaudeAgentOptions(
+    model=self._sdk_agent["model"],
+    system_prompt=self._sdk_agent["system"],
+    max_turns=max_turns,
+    permission_mode="bypassPermissions",
+)
+client = ClaudeSDKClient(options=options)
 
-This means you should register all custom tools before calling `run()`.
-
-### System Prompt Structure
-
-The Claude implementation builds a structured system prompt that covers all four agent capabilities:
-
-```
-GOAL SEEKING:
-1. Determine the user's intent from their message
-2. Form a specific, evaluable goal
-3. Make a plan to achieve the goal
-4. Execute the plan iteratively
-5. Evaluate whether the goal was achieved
-
-LEARNING:
-- Use learn_from_content to extract and store facts
-- Use search_memory to retrieve relevant stored knowledge
-- Use verify_fact to check claims against your knowledge
-- Use find_knowledge_gaps to identify what you don't know
-
-TEACHING:
-- Use explain_knowledge to generate explanations
-- Adapt your explanations to the learner's level
-- Ask probing questions to verify understanding
-
-APPLYING:
-- Use stored knowledge to solve new problems
-- Use native tools (bash, file operations) to take real actions
-- Verify your work using verify_fact and search_memory
-
-ADDITIONAL INSTRUCTIONS:
-[User-provided instructions appended here]
+async with client:
+    await client.query(task)
+    async for msg in client.receive_response():
+        # Process AssistantMessage and ResultMessage
 ```
 
 ### Troubleshooting
 
-**"claude-agents not installed"**
+**"claude-agent-sdk not installed"**
 
-- Install: `pip install claude-agents`
-- Verify: `python -c "from claude_agents import Agent; print('OK')"`
+- Install: `pip install claude-agent-sdk`
+- Verify: `python -c "from claude_agent_sdk import ClaudeSDKClient; print('OK')"`
 
 **"ANTHROPIC_API_KEY not set"**
 
 - Set: `export ANTHROPIC_API_KEY=sk-ant-...`
-
-**Agent seems to ignore new tools**
-
-- Tools added after `_create_sdk_agent()` require recreating the agent. Call `_register_tool_with_sdk()` which handles this automatically.
 
 ---
 
 ## Microsoft Agent Framework
 
 **Package:** `agent-framework`
-**Default model:** `gpt-4`
-**Env var override:** (none; set in code)
+**Default model:** `gpt-4o`
+**Env var override:** `MICROSOFT_AGENT_MODEL`
+**Source:** `src/amplihack/agents/goal_seeking/sdk_adapters/microsoft_sdk.py`
 
 ### Installation
 
 ```bash
-pip install agent-framework --pre
+pip install agent-framework
 ```
 
 ### When to Use
 
-- Structured multi-agent workflows using GraphWorkflow
+- Structured multi-agent workflows
 - When you need middleware for logging, authentication, or validation
 - When you want OpenTelemetry integration for observability
-- When you need structured output via Pydantic models
 - When thread-based multi-turn state management is important
 
 ### Native Tools
 
-| Tool           | Description                           |
-| -------------- | ------------------------------------- |
-| `model_client` | Depends on model client configuration |
+Tools are registered via the `FunctionTool` wrapper pattern. The 7 learning tools from `GoalSeekingAgent` are wrapped as `FunctionTool` objects:
 
-The Microsoft Agent Framework is more flexible about tools -- they are defined via the `@function_tool` decorator pattern, so native tools depend on your model client setup.
+```python
+from agent_framework import FunctionTool
+tool = FunctionTool(name="learn_from_content", description="...", func=wrapper_fn)
+```
 
 ### API Mapping
 
-| GoalSeekingAgent Method         | MS Agent Framework Equivalent                                             |
-| ------------------------------- | ------------------------------------------------------------------------- |
-| `_create_sdk_agent()`           | `MSAgent(name, model=ModelClient(...), instructions, tools)` + `Thread()` |
-| `_run_sdk_agent(task)`          | `agent.run(thread=thread, message=task)`                                  |
-| `_register_tool_with_sdk(tool)` | Recreate agent with updated tools                                         |
+| GoalSeekingAgent Method         | MS Agent Framework Equivalent                                                  |
+| ------------------------------- | ------------------------------------------------------------------------------ |
+| `_create_sdk_agent()`           | `Agent(OpenAIChatClient(...), instructions, name, tools)` + `create_session()` |
+| `_run_sdk_agent(task)`          | `agent.run(messages=task, session=session)`                                    |
+| `_register_tool_with_sdk(tool)` | Append to tools, call `_create_sdk_agent()` to rebuild                         |
 
-### Thread-Based State
+### Session-Based State
 
-Unlike other SDKs, the Microsoft framework uses a `Thread` object for multi-turn conversation state:
-
-```python
-self._thread = Thread()  # Created once during init
-
-# Each run adds to the same thread
-response = await self._sdk_agent.run(
-    thread=self._thread,
-    message=task,
-)
-```
-
-This gives you automatic conversation history without manually managing message arrays.
-
-### Tool Registration
-
-Tools are registered by wrapping Python functions with the appropriate metadata:
+Unlike other SDKs, the Microsoft framework uses a session for multi-turn conversation state:
 
 ```python
-for tool in self._tools:
-    fn = tool.function
-    fn.__name__ = tool.name
-    fn.__doc__ = tool.description
-    ms_tools.append(fn)
+self._sdk_agent = AFAgent(chat_client, instructions=system_prompt, name=self.name, tools=tools)
+self._session = self._sdk_agent.create_session()
+
+# Each run adds to the same session
+response = await self._sdk_agent.run(messages=task, session=self._session)
 ```
+
+Use `agent.reset_session()` to start a fresh conversation.
 
 ### Troubleshooting
 
 **"agent-framework not installed"**
 
-- Install: `pip install agent-framework --pre` (note the `--pre` flag for pre-release)
-- Verify: `python -c "from agents_framework import Agent; print('OK')"`
+- Install: `pip install agent-framework`
+- Verify: `python -c "from agent_framework import Agent; print('OK')"`
 
-**"Thread state lost"**
+**"OPENAI_API_KEY not set"**
 
-- The `close()` method sets `self._thread = None`. Create a new agent instance for a fresh conversation.
+- The SDK agent is created lazily if OPENAI_API_KEY is not set at init time. It will be created when `_run_sdk_agent` is called.
+- Note: `learn_from_content()` / `answer_question()` do NOT need OPENAI_API_KEY since they use the LearningAgent with the EVAL_MODEL (typically Anthropic).
 
 ---
 
@@ -296,7 +309,7 @@ for tool in self._tools:
 
 **Package:** None (uses `litellm` which is already an amplihack dependency)
 **Default model:** Any model supported by litellm
-**Env var override:** (none)
+**Source:** `src/amplihack/agents/goal_seeking/sdk_adapters/factory.py` (`_MiniFrameworkAdapter`)
 
 ### Installation
 
@@ -320,48 +333,17 @@ No additional installation needed. The mini framework wraps the existing `Learni
 
 ### API Mapping
 
-| GoalSeekingAgent Method         | Mini Framework Equivalent                                   |
-| ------------------------------- | ----------------------------------------------------------- |
-| `_create_sdk_agent()`           | `LearningAgent(agent_name, model, storage_path)`            |
-| `_run_sdk_agent(task)`          | `learning_agent.answer_question(task, question_level="L2")` |
-| `_register_tool_with_sdk(tool)` | No-op (fixed tool set)                                      |
-
-### How It Works
-
-The mini framework adapter wraps the existing `LearningAgent` class to make it conform to the `GoalSeekingAgent` interface:
-
-```python
-class _MiniFrameworkAdapter(GoalSeekingAgent):
-    def _create_sdk_agent(self):
-        self._learning_agent = LearningAgent(
-            agent_name=self.name,
-            model=self._mini_model,
-            storage_path=self.storage_path,
-            use_hierarchical=True,
-        )
-        # Share the memory reference
-        self.memory = self._learning_agent.memory
-```
-
-This means the mini framework shares its memory instance with the GoalSeekingAgent base class, so both `self.memory` and `self._learning_agent.memory` point to the same database.
+| GoalSeekingAgent Method         | Mini Framework Equivalent                                 |
+| ------------------------------- | --------------------------------------------------------- |
+| `_create_sdk_agent()`           | `WikipediaLearningAgent(agent_name, model, storage_path)` |
+| `_run_sdk_agent(task)`          | `learning_agent.answer_question(task)`                    |
+| `_register_tool_with_sdk(tool)` | No-op (fixed tool set)                                    |
 
 ### Limitations
 
 - **Fixed tool set** -- You cannot register additional custom tools.
 - **No native file/git/web tools** -- Only learning-focused tools are available.
-- **Synchronous under the hood** -- The `_run_sdk_agent()` is async in signature but calls synchronous `answer_question()`.
 - **Single-turn** -- Each `run()` call is independent; there is no multi-turn conversation state.
-
-### Troubleshooting
-
-**"litellm not installed"**
-
-- Install: `pip install litellm`
-- This should already be available as an amplihack dependency.
-
-**"Memory not shared"**
-
-- The adapter explicitly shares memory: `self.memory = self._learning_agent.memory`. If you see different memory states, check that you are using the same agent instance.
 
 ---
 
@@ -372,7 +354,7 @@ This means the mini framework shares its memory instance with the GoalSeekingAge
 | Quick prototype           | `mini`                | No extra deps, fast setup                                |
 | File/git/web tasks        | `copilot`             | Best native tool coverage                                |
 | Subagent delegation       | `claude`              | Native subagent support                                  |
-| Multi-agent orchestration | `microsoft`           | GraphWorkflow, middleware                                |
+| Multi-agent orchestration | `microsoft`           | Session-based, middleware                                |
 | CI/CD testing             | `mini`                | No SDK installation needed                               |
 | Production deployment     | `copilot` or `claude` | Mature SDKs with full tool access                        |
 | Benchmarking              | `mini`                | Minimal overhead, fair comparison                        |
@@ -394,52 +376,7 @@ Each SDK has dedicated eval prompt templates in `src/amplihack/agents/goal_seeki
 | `synthesis_template.md`  | Shared synthesis template                        |
 | `teaching_system.md`     | Teaching session system prompt                   |
 
-These templates allow per-SDK instruction tuning without modifying shared agent code. The `agent_subprocess.py` validates SDK agent creation and records which SDK was used in the output metadata. All SDKs use the same `LearningAgent` for the learning/answering core (since it contains the eval intelligence: LLM fact extraction, intent detection, synthesis), but the per-SDK prompts can influence how the agent processes tasks.
-
-**How SDK-native routing works in `agent_subprocess.py`:**
-
-1. The subprocess creates the LearningAgent (shared core for all SDKs).
-2. It also validates that the specified SDK agent can be created via `create_agent()`.
-3. The `--sdk` flag passed on the CLI is forwarded to both `learning_phase()` and `testing_phase()`.
-4. SDK metadata (whether creation succeeded, which SDK was used) is recorded in the output JSON.
-
----
-
-## SDK Eval Comparison Loop
-
-The `sdk_eval_loop.py` module provides a 4-way comparison across SDKs:
-
-```bash
-# Compare 2 SDKs with 5 improvement loops
-PYTHONPATH=src python -m amplihack.eval.sdk_eval_loop \
-    --sdks mini claude --loops 5
-
-# Compare all 4 SDKs with 3 loops
-PYTHONPATH=src python -m amplihack.eval.sdk_eval_loop --all-sdks --loops 3
-
-# Specific levels only
-PYTHONPATH=src python -m amplihack.eval.sdk_eval_loop \
-    --sdks mini claude copilot microsoft --loops 3 --levels L1 L2 L3
-```
-
-**Output:**
-
-- Per-SDK score progression across iterations
-- Failure analysis with SDK-specific recommendations
-- Per-level comparison table across all SDKs
-- Ranked SDK comparison by best overall score
-
-Results are saved to `./eval_sdk_loop/` with a `multi_sdk_report.json` containing the full comparison.
-
-**CLI Options:**
-
-| Option         | Description                         | Default           |
-| -------------- | ----------------------------------- | ----------------- |
-| `--sdks`       | SDKs to evaluate (space-separated)  | `mini`            |
-| `--all-sdks`   | Evaluate all 4 SDKs                 | Off               |
-| `--loops`      | Number of improvement loops per SDK | 5                 |
-| `--levels`     | Levels to run                       | L1-L6             |
-| `--output-dir` | Output directory for results        | `./eval_sdk_loop` |
+These templates allow per-SDK instruction tuning without modifying shared agent code. All SDKs use the same `LearningAgent` for the learning/answering core, but the per-SDK prompts can influence how the agent processes general tasks via `_run_sdk_agent()`.
 
 ---
 
@@ -461,11 +398,9 @@ class NewSDKGoalSeekingAgent(GoalSeekingAgent):
 
     async def _run_sdk_agent(self, task: str, max_turns: int = 10) -> AgentResult:
         # Run the task through your SDK's agent loop
-        # Return AgentResult with response, goal_achieved, tools_used, etc.
         pass
 
     def _get_native_tools(self) -> list[str]:
-        # Return list of tool names your SDK provides natively
         return ["tool1", "tool2"]
 
     def _register_tool_with_sdk(self, tool: AgentTool) -> None:
@@ -473,41 +408,10 @@ class NewSDKGoalSeekingAgent(GoalSeekingAgent):
         pass
 ```
 
-3. **Add** to `SDKType` enum in `base.py`:
+3. **Add** to `SDKType` enum in `base.py`
 
-```python
-class SDKType(str, Enum):
-    COPILOT = "copilot"
-    CLAUDE = "claude"
-    MICROSOFT = "microsoft"
-    MINI = "mini"
-    NEW_SDK = "new_sdk"  # Add your SDK
-```
-
-4. **Register** in `factory.py`:
-
-```python
-if sdk == SDKType.NEW_SDK:
-    from .new_sdk import NewSDKGoalSeekingAgent
-    return NewSDKGoalSeekingAgent(
-        name=name,
-        instructions=instructions,
-        model=model or "default-model",
-        ...
-    )
-```
+4. **Register** in `factory.py`
 
 5. **Add per-SDK eval prompt** in `src/amplihack/agents/goal_seeking/prompts/sdk/new_sdk_eval.md`
 
-6. **Test** using the progressive test suite to verify equivalent behavior:
-
-```bash
-PYTHONPATH=src python -m amplihack.eval.progressive_test_suite \
-    --output-dir /tmp/eval_new_sdk \
-    --agent-name new-sdk-test \
-    --sdk new_sdk
-
-# Or run the multi-SDK comparison
-PYTHONPATH=src python -m amplihack.eval.sdk_eval_loop \
-    --sdks mini new_sdk --loops 3
-```
+6. **Test** using the progressive test suite or matrix eval

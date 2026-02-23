@@ -18,8 +18,12 @@ writing your first prompt file to running self-improvement loops.
 8. [Self-Improvement Loop](#8-self-improvement-loop)
 9. [Security Domain Agents](#9-security-domain-agents)
 10. [Custom Eval Levels](#10-custom-eval-levels)
-11. [Troubleshooting](#troubleshooting)
-12. [Reference](#reference)
+11. [Retrieval Architecture](#11-retrieval-architecture)
+12. [Intent Classification and Math Code Generation](#12-intent-classification-and-math-code-generation)
+13. [Patch Proposer and Reviewer Voting](#13-patch-proposer-and-reviewer-voting)
+14. [Memory Export, Import, and Cross-Session Persistence](#14-memory-export-import-and-cross-session-persistence)
+15. [Troubleshooting](#troubleshooting)
+16. [Reference](#reference)
 
 ---
 
@@ -470,10 +474,10 @@ EVAL -> ANALYZE -> RESEARCH -> IMPROVE -> RE-EVAL -> DECIDE
 
 ```bash
 python -m amplihack.eval.self_improve.runner \
-    --agent-name my-agent \
+    --sdk mini \
     --iterations 5 \
     --output-dir improve_results/ \
-    --sdk mini
+    --agent-name my-agent
 ```
 
 ### Key Principles
@@ -635,6 +639,188 @@ article and two questions.
 
 ---
 
+## 11. Retrieval Architecture
+
+The learning agent uses four retrieval strategies, selected automatically based
+on the question intent and knowledge base size.
+
+### Four Strategies
+
+| Strategy    | Trigger                               | How It Works                                                                                        |
+| ----------- | ------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| **Simple**  | KB <= 500 facts, or simple intents    | Returns all facts from memory                                                                       |
+| **Entity**  | Proper nouns in question, KB > 500    | Extracts names via regex, searches entity index                                                     |
+| **Concept** | No proper nouns, domain terms present | Searches with bigrams and unigrams from stop-word filtered question                                 |
+| **Tiered**  | KB > 1000 facts, simple retrieval     | Tier 1 (recent 200): verbatim; Tier 2 (201-1000): entity summaries; Tier 3 (1000+): topic summaries |
+
+### Selection Flow
+
+```
+answer_question()
+    |
+    +-- _detect_intent() -> intent_type
+    |
+    +-- if AGGREGATION_INTENTS: _aggregation_retrieval() (Cypher)
+    |
+    +-- elif SIMPLE_INTENTS or KB <= 500: _simple_retrieval()
+    |       +-- if KB > 1000: _tiered_retrieval()
+    |
+    +-- else: _entity_retrieval()
+            +-- if empty: _simple_retrieval() + rerank
+```
+
+After retrieval, `rerank_facts_by_query()` sorts facts by relevance to the
+question. If the question references a specific article, source-specific
+filtering narrows the facts further.
+
+### Exercise
+
+An agent with 2000 facts receives "What is Sarah Chen's role?". Trace the
+retrieval path.
+
+**Expected**: Entity retrieval extracts "Sarah Chen", calls
+`retrieve_by_entity()`. If nothing found, falls back to simple retrieval +
+rerank.
+
+---
+
+## 12. Intent Classification and Math Code Generation
+
+### Nine Intent Types
+
+| Intent                     | Example                             | Math? | Temporal? |
+| -------------------------- | ----------------------------------- | ----- | --------- |
+| `simple_recall`            | "What is X?"                        | No    | No        |
+| `mathematical_computation` | "What percentage increase?"         | Yes   | No        |
+| `temporal_comparison`      | "How did X change from Day 7 to 9?" | Yes   | Yes       |
+| `multi_source_synthesis`   | "Combine info from two articles"    | No    | No        |
+| `contradiction_resolution` | "Which source is more reliable?"    | No    | No        |
+| `incremental_update`       | "What is the latest value?"         | No    | No        |
+| `causal_counterfactual`    | "What if X had not happened?"       | No    | No        |
+| `ratio_trend_analysis`     | "Best bug-fix-to-feature ratio?"    | Yes   | Yes       |
+| `meta_memory`              | "How many projects are tracked?"    | No    | No        |
+
+### Math Code Generation Pipeline
+
+When `needs_math=True`:
+
+1. **Number extraction**: LLM extracts numbers and builds arithmetic expression
+2. **Safe evaluation**: `calculate()` uses AST-based eval (NOT Python `eval()`)
+3. **Injection**: Pre-computed result inserted into synthesis prompt
+4. **Post-validation**: `_validate_arithmetic()` checks answer for wrong math
+
+```python
+from amplihack.agents.goal_seeking.action_executor import calculate
+result = calculate("(26 - 18) / 18 * 100")
+# {"result": 44.4444, "expression": "(26 - 18) / 18 * 100"}
+```
+
+### Exercise
+
+Classify these questions by intent:
+
+- "How many medals does Norway have?" -> `simple_recall`
+- "What percentage did gold medals increase?" -> `mathematical_computation`
+- "How many projects are being tracked?" -> `meta_memory`
+
+---
+
+## 13. Patch Proposer and Reviewer Voting
+
+### Patch Proposer
+
+The `propose_patch()` function in `amplihack.eval.self_improve.patch_proposer`
+generates specific code patches:
+
+```python
+from amplihack.eval.self_improve.patch_proposer import (
+    propose_patch, PatchProposal, PatchHistory
+)
+```
+
+A `PatchProposal` includes: `target_file`, `hypothesis`, `description`, `diff`
+(unified format), `expected_impact`, `risk_assessment`, and `confidence`.
+
+### Reviewer Voting
+
+Three perspectives vote on each patch:
+
+| Reviewer   | Focus                                |
+| ---------- | ------------------------------------ |
+| Quality    | Does it address the root cause?      |
+| Regression | Could it break other levels?         |
+| Simplicity | Is it the smallest effective change? |
+
+Majority vote determines the outcome. A challenge phase forces the proposer
+to defend the change.
+
+### RunnerConfig
+
+```python
+RunnerConfig(
+    sdk_type="mini",
+    max_iterations=5,
+    improvement_threshold=2.0,   # min % improvement to commit
+    regression_tolerance=5.0,    # max % regression allowed
+    levels=["L1", "L2", "L3", "L4", "L5", "L6"],
+    dry_run=False,
+)
+```
+
+### Exercise
+
+Write a RunnerConfig for a dry run that evaluates L1-L3 with the mini SDK, max
+2 iterations, 3% improvement threshold.
+
+---
+
+## 14. Memory Export, Import, and Cross-Session Persistence
+
+### Memory Architecture
+
+Each agent's knowledge lives in `~/.amplihack/memory/<agent_name>/` using the
+Kuzu graph database (with SQLite fallback).
+
+### Export
+
+```python
+from amplihack.agents.goal_seeking.memory_retrieval import MemoryRetriever
+import json
+
+retriever = MemoryRetriever("my-agent")
+all_facts = retriever.get_all_facts(limit=50000)
+with open("snapshot.json", "w") as f:
+    json.dump(all_facts, f, indent=2)
+```
+
+### Import
+
+```python
+with open("snapshot.json") as f:
+    facts = json.load(f)
+
+new_retriever = MemoryRetriever("new-agent")
+for fact in facts:
+    new_retriever.store_fact(
+        context=fact["context"],
+        fact=fact["outcome"],
+        confidence=fact.get("confidence", 0.8),
+        tags=fact.get("tags", []),
+    )
+```
+
+### Memory Isolation in Eval
+
+The progressive test suite uses unique agent names with timestamps to prevent
+cross-contamination between runs.
+
+### Exercise
+
+Write code to export facts from "security-scanner" and import into
+"security-scanner-v2".
+
+---
+
 ## Troubleshooting
 
 ### Common Issues
@@ -764,10 +950,14 @@ python -m amplihack.eval.domain_eval_harness \
 | Skill Synthesizer   | `src/amplihack/goal_agent_generator/skill_synthesizer.py` |
 | Agent Assembler     | `src/amplihack/goal_agent_generator/agent_assembler.py`   |
 | Packager            | `src/amplihack/goal_agent_generator/packager.py`          |
+| Learning Agent      | `src/amplihack/agents/goal_seeking/learning_agent.py`     |
+| Memory Retrieval    | `src/amplihack/agents/goal_seeking/memory_retrieval.py`   |
 | Test Levels         | `src/amplihack/eval/test_levels.py`                       |
 | Progressive Suite   | `src/amplihack/eval/progressive_test_suite.py`            |
 | Grader              | `src/amplihack/eval/grader.py`                            |
 | Self-Improve Runner | `src/amplihack/eval/self_improve/runner.py`               |
 | Error Analyzer      | `src/amplihack/eval/self_improve/error_analyzer.py`       |
+| Patch Proposer      | `src/amplihack/eval/self_improve/patch_proposer.py`       |
+| Reviewer Voting     | `src/amplihack/eval/self_improve/reviewer_voting.py`      |
 | SDK Eval Loop       | `src/amplihack/eval/sdk_eval_loop.py`                     |
 | Teaching Agent      | `src/amplihack/agents/teaching/generator_teacher.py`      |

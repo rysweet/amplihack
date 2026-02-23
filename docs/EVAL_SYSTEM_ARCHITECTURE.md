@@ -1,15 +1,18 @@
 # Eval System Architecture
 
-Comprehensive guide to how the amplihack evaluation system is constructed, including the progressive test suite, grading system, teaching evaluation, domain evaluation, long-horizon memory testing, meta-evaluation, and the self-improvement runner.
+Comprehensive guide to the evaluation and self-improvement infrastructure for goal-seeking agents. Covers the progressive test suite (L1-L12), long-horizon memory testing with 12 information blocks (including security domain), 5-way matrix evaluation across SDKs, self-improvement loop with patch proposer + reviewer voting, and the standalone amplihack-agent-eval package.
 
 ## Overview
 
 The eval system is a multi-layered framework that tests agent learning and
 reasoning capabilities across 12 progressively harder levels. It supports
-4 SDK implementations, includes a self-improvement loop with a research step,
-and provides domain-specific evaluation for 5 specialized agents.
+4 SDK implementations, includes a self-improvement loop with patch proposer
+and reviewer voting, and provides domain-specific evaluation for 5 specialized
+agents.
 
-**Current best scores (3-run median, mini SDK):**
+**Current best scores:**
+
+Progressive test suite (3-run median, mini SDK):
 
 | Level       | Median    | Description                           |
 | ----------- | --------- | ------------------------------------- |
@@ -22,6 +25,8 @@ and provides domain-specific evaluation for 5 specialized agents.
 | L7          | 84%       | Teacher-student transfer              |
 | **Overall** | **97.5%** | **Weighted median across all levels** |
 
+Long-horizon memory evaluation: **98.9% at 1000 turns**.
+
 ```
 +------------------------------------------------------------------+
 |                    EVALUATION ENTRY POINTS                         |
@@ -31,13 +36,13 @@ and provides domain-specific evaluation for 5 specialized agents.
 |  (L1-L12 single/parallel)   (multi-SDK loop)    (5 domain agents) |
 |                                                                    |
 |  self_improve/runner.py      long_horizon_memory.py               |
-|  (closed-loop improvement)   (1000-turn stress test)              |
+|  (closed-loop improvement)   (1000-turn stress test, 12 blocks)   |
 |                                                                    |
 |  long_horizon_self_improve.py                                     |
-|  (long-horizon self-improvement loop with category analysis)      |
+|  (long-horizon self-improvement with patch proposer + voting)     |
 |                                                                    |
-|  meta_eval_experiment.py                                          |
-|  (self-referential eval)                                          |
+|  matrix_eval.py              meta_eval_experiment.py              |
+|  (5-way SDK comparison)      (self-referential eval)              |
 |                                                                    |
 +------------------------------------------------------------------+
                         |                |
@@ -56,7 +61,7 @@ and provides domain-specific evaluation for 5 specialized agents.
 |  +-----------------+        +------------------------+            |
 |  | long_horizon_   |        +------------------------+            |
 |  | data.py         |        | teaching_subprocess.py |            |
-|  | (1000-turn gen) |        | (teacher-student)      |            |
+|  | (12-block gen)  |        | (teacher-student)      |            |
 |  +-----------------+        +------------------------+            |
 |                                       |                            |
 |  3. GRADING LAYER                     v                            |
@@ -76,26 +81,17 @@ and provides domain-specific evaluation for 5 specialized agents.
 |                    ANALYSIS & IMPROVEMENT                          |
 +------------------------------------------------------------------+
 |                                                                    |
-|  self_improve/error_analyzer.py                                   |
+|  self_improve/error_analyzer.py (10 failure modes)                |
+|  self_improve/patch_proposer.py (LLM-generated diffs)            |
+|  self_improve/reviewer_voting.py (3-perspective review)          |
 |  +----------------------------------------------------------+    |
-|  | FAILURE_TAXONOMY (10 failure modes)                        |    |
-|  | - retrieval_insufficient -> agentic_loop.py               |    |
-|  | - temporal_ordering_wrong -> learning_agent.py            |    |
-|  | - intent_misclassification -> learning_agent.py           |    |
-|  | - fact_extraction_incomplete -> learning_agent.py         |    |
-|  | - synthesis_hallucination -> learning_agent.py            |    |
-|  | - update_not_applied -> hierarchical_memory.py            |    |
-|  | - contradiction_undetected -> learning_agent.py           |    |
-|  | - procedural_ordering_lost -> learning_agent.py           |    |
-|  | - teaching_coverage_gap -> teaching_session.py            |    |
-|  | - counterfactual_refusal -> learning_agent.py             |    |
-|  +----------------------------------------------------------+    |
-|                                                                    |
-|  self_improve/runner.py (closed-loop with research step)         |
-|  +----------------------------------------------------------+    |
-|  | EVAL -> ANALYZE -> RESEARCH -> IMPROVE -> RE-EVAL -> DECIDE|   |
-|  |                     ^                                      |   |
-|  |        hypothesis + evidence + counter-arguments           |   |
+|  | EVAL -> ANALYZE -> PROPOSE -> CHALLENGE -> VOTE ->         |   |
+|  |   APPLY -> RE-EVAL -> DECIDE                               |   |
+|  |                                                             |   |
+|  | Patch proposer: hypothesis + diff + expected impact         |   |
+|  | Reviewer voting: quality/regression/simplicity perspectives |   |
+|  | Challenge phase: devil's advocate arguments + defense       |   |
+|  | Auto-revert on regression > 5%                              |   |
 |  +----------------------------------------------------------+    |
 |                                                                    |
 +------------------------------------------------------------------+
@@ -301,9 +297,9 @@ python -m amplihack.eval.self_improve.runner \
 **6 phases per iteration:**
 
 1. **EVAL**: Run progressive test suite to get baseline scores.
-2. **ANALYZE**: Classify failures using the error taxonomy (10 failure modes).
+2. **ANALYZE**: Classify failures using the error taxonomy (10 failure modes). Maps each failure to the specific code component responsible.
 3. **RESEARCH**: For each proposed fix, state hypothesis, gather evidence from eval results and failure patterns, consider counter-arguments (regression risk, stochasticity, cross-level impact), and make a reasoned decision: apply, skip, or defer. All research decisions are logged to `research_decisions.json`.
-4. **IMPROVE**: Apply approved prompt template changes (safest) or code fixes (riskiest).
+4. **IMPROVE**: Apply approved changes. The **patch proposer** (`self_improve/patch_proposer.py`) generates specific code changes as unified diffs. Each `PatchProposal` includes: target_file, hypothesis, description, diff, expected_impact (per-category score delta), risk_assessment, and confidence (0.0-1.0). Maintains `PatchHistory` to avoid re-proposing reverted/rejected patches. Proposals go through **reviewer voting** (`self_improve/reviewer_voting.py`) where three perspectives (quality, regression, simplicity) vote with majority determining outcome. A challenge phase forces the proposer to defend the change.
 5. **RE-EVAL**: Run eval again on all levels to measure impact.
 6. **DECIDE**: Commit if net improvement >= +2% overall and no single level regresses > 5%. Revert if any level regresses beyond tolerance.
 
@@ -351,27 +347,107 @@ LLM grading.
 
 ### Long-Horizon Memory Eval (`long_horizon_memory.py`)
 
-1000-turn memory stress test:
+1000-turn memory stress test with 12 information blocks (including security domain):
 
 ```bash
 # Quick test
 python -m amplihack.eval.long_horizon_memory --turns 100 --questions 20
 
-# Full stress test
+# Full stress test (best score: 98.9%)
 python -m amplihack.eval.long_horizon_memory --turns 1000 --questions 100
+
+# With SDK agent
+python -m amplihack.eval.long_horizon_memory --sdk claude --turns 500 --questions 50
 ```
+
+**12 information blocks** with proportional turn allocation:
+
+| Block | Name            | % Turns | What It Tests                             |
+| ----- | --------------- | ------- | ----------------------------------------- |
+| 1     | People          | 5%      | Personal details, relationships           |
+| 2     | Projects        | 10%     | Project metadata with evolving updates    |
+| 3     | Technical       | 10%     | Domain-specific knowledge facts           |
+| 4     | Evolving Story  | 15%     | Narrative with corrections over time      |
+| 5     | Numerical       | 10%     | Exact number recall and arithmetic        |
+| 6     | Contradictory   | 8%      | Conflicting sources with different claims |
+| 7     | Callbacks       | 6%      | References to facts from earlier blocks   |
+| 8     | Distractors     | 6%      | Irrelevant noise the agent must resist    |
+| 9     | Security Logs   | 10%     | CVEs, access logs, authentication events  |
+| 10    | Incidents       | 8%      | Incident reports, post-mortems, RCAs      |
+| 11    | Infrastructure  | 7%      | Server inventory, network configuration   |
+| 12    | Problem Solving | 5%      | Multi-step reasoning tasks (code gen)     |
+
+Blocks 9-12 (security domain) together account for 30% of turns.
+
+**Data generation** is deterministic from `long_horizon_data.py` (same seed = same dialogue). When the `amplihack-agent-eval` package is installed, data types are imported from the package.
 
 Tests memory at scale with:
 
 - Deterministic dialogue generation (reproducible with seed)
-- Multiple topic domains
-- Questions spanning different recency windows
+- 12 topic domains covering both narrative and structured operational data
+- Questions spanning different recency windows and complexity levels
 - LLM-graded scoring on 5 dimensions per question:
   1. Factual accuracy
   2. Completeness
   3. Recency (uses most recent info)
   4. Source attribution
   5. Coherence
+
+### Matrix Eval Across SDKs (`matrix_eval.py`)
+
+5-way agent comparison using the long-horizon eval:
+
+```bash
+# Full 5-way matrix
+python -m amplihack.eval.matrix_eval --turns 500 --questions 50
+
+# Specific agents
+python -m amplihack.eval.matrix_eval --agents mini claude --turns 100 --questions 20
+
+# With markdown report
+python -m amplihack.eval.matrix_eval --turns 500 --questions 50 \
+    --report-path Specs/MATRIX_EVAL_REPORT.md
+```
+
+**5 agent configurations:**
+
+| Name                 | SDK       | Multi-Agent | Spawning | What It Tests                             |
+| -------------------- | --------- | ----------- | -------- | ----------------------------------------- |
+| `mini`               | mini      | No          | No       | LearningAgent directly (no SDK wrapper)   |
+| `claude`             | claude    | No          | No       | ClaudeGoalSeekingAgent via SDK factory    |
+| `copilot`            | copilot   | No          | No       | CopilotGoalSeekingAgent via SDK factory   |
+| `microsoft`          | microsoft | No          | No       | MicrosoftGoalSeekingAgent via SDK factory |
+| `multiagent-copilot` | copilot   | Yes         | Yes      | MultiAgentLearningAgent with spawning     |
+
+Key design: dialogue and questions are generated **once** and shared across all agents. Each agent uses a **separate** storage/DB path. SDK agents that fail to instantiate (missing SDK package) are skipped gracefully.
+
+Output: per-agent reports, shared ground truth, matrix comparison JSON, and a markdown report with category-by-category scores, best-performer-per-category, and overall ranking.
+
+### Long-Horizon Self-Improvement (`long_horizon_self_improve.py`)
+
+Automated improvement loop targeting the long-horizon eval. Uses **patch proposer** and **reviewer voting** for safe iteration:
+
+```bash
+python -m amplihack.eval.long_horizon_self_improve \
+    --turns 100 --questions 20 --iterations 3
+
+# With multi-agent architecture
+python -m amplihack.eval.long_horizon_self_improve \
+    --turns 100 --questions 20 --multi-agent
+```
+
+**8-stage cycle per iteration:**
+
+1. **EVAL**: Run long-horizon eval to get per-category scores.
+2. **ANALYZE**: Identify worst-performing category.
+3. **PROPOSE**: Patch proposer generates a unified diff with hypothesis, expected impact (per-category delta), risk assessment, and confidence score.
+4. **CHALLENGE**: Devil's advocate arguments against the proposed patch.
+5. **VOTE**: Three reviewer perspectives (quality, regression, simplicity) vote accept/reject/modify with rationale. Majority vote determines outcome.
+6. **APPLY**: If accepted, apply the patch and git commit.
+7. **RE-EVAL**: Run eval again to measure impact.
+8. **DECIDE**: If regression > 5% on any category, auto-revert via git. If net improvement >= 2%, keep. Otherwise, keep with marginal note.
+
+The `PatchHistory` object tracks all applied, reverted, and rejected patches to prevent repeating failed fixes across iterations.
 
 ### Meta-Eval Experiment (`meta_eval_experiment.py`)
 
@@ -580,9 +656,16 @@ print(f"Overall: {report.overall_score:.0%}")
 ## Package Architecture (amplihack-agent-eval)
 
 The evaluation framework has been extracted into a standalone package
-(`amplihack-agent-eval`) that can be used independently of the full amplihack
-codebase. The amplihack repo depends on this package for its core eval
-types and provides amplihack-specific adapter implementations.
+([amplihack-agent-eval](https://github.com/rysweet/amplihack-agent-eval)) that
+can be used independently of the full amplihack codebase. The amplihack repo
+depends on this package for its core eval types and data generation, and
+provides amplihack-specific adapter implementations.
+
+### Installation
+
+```bash
+pip install "amplihack-agent-eval @ git+https://github.com/rysweet/amplihack-agent-eval.git@main"
+```
 
 ### Package Relationship
 
@@ -593,27 +676,46 @@ amplihack_eval/                       src/amplihack/eval/
   adapters/base.py  <-- AgentAdapter    agent_adapter.py  (amplihack adapters)
   core/runner.py    <-- EvalRunner      compat.py         (re-exports)
   core/grader.py    <-- grade_answer    long_horizon_memory.py (uses package)
-  data/long_horizon.py                  ...existing eval files...
-  self_improve/
+  data/long_horizon.py  <-- data gen    long_horizon_data.py (local copy)
+  self_improve/                         self_improve/ (local copy)
+    patch_proposer.py                     patch_proposer.py
+    reviewer_voting.py                    reviewer_voting.py
 ```
 
 ### How It Works
 
 1. **amplihack-agent-eval** provides the core eval types: `AgentAdapter`,
-   `EvalRunner`, `grade_answer`, data generation, and self-improvement
-   primitives (patch proposer, reviewer voting).
+   `AgentResponse`, `ToolCall`, `EvalRunner`, `grade_answer`, `GradeResult`,
+   data generation (`Turn`, `Question`, `GroundTruth`, `GradingRubric`,
+   `generate_dialogue`, `generate_questions`), and self-improvement primitives
+   (`PatchProposal`, `propose_patch`, `ReviewVote`, `ReviewResult`,
+   `vote_on_proposal`).
 
 2. **amplihack** adds the optional `eval` dependency in `pyproject.toml`:
+
    ```toml
    [project.optional-dependencies]
    eval = ["amplihack-agent-eval>=0.1.0"]
    ```
 
-3. **`compat.py`** re-exports all key types from the standalone package,
-   so existing code can `from amplihack.eval.compat import EvalRunner`.
+3. **`long_horizon_memory.py`** imports data types from the package:
 
-4. **`agent_adapter.py`** provides three adapter implementations that wrap
-   amplihack agents for evaluation:
+   ```python
+   from amplihack_eval.data.long_horizon import (
+       GradingRubric, GroundTruth, Question,
+       generate_dialogue, generate_questions,
+   )
+   ```
+
+   If the package is not installed, an `ImportError` is raised with
+   installation instructions.
+
+4. **`compat.py`** re-exports all key types from the standalone package,
+   so existing code can `from amplihack.eval.compat import EvalRunner`.
+   If the package is not installed, `compat.py` is a no-op (no errors).
+
+5. **`agent_adapter.py`** provides three adapter implementations that wrap
+   amplihack agents for the package's `AgentAdapter` interface:
    - `AmplihackLearningAgentAdapter` -- wraps `LearningAgent`
    - `AmplihackMultiAgentAdapter` -- wraps `MultiAgentLearningAgent`
    - `AmplihackSDKAgentAdapter` -- wraps any SDK-backed `GoalSeekingAgent`
@@ -655,14 +757,19 @@ src/amplihack/eval/
   run_domain_evals.py            # Run all 5 domain agent evals
   teaching_session.py            # Teacher-student session framework
   teaching_eval.py               # Teaching quality evaluation
-  long_horizon_data.py           # Deterministic dialogue generation
-  long_horizon_memory.py         # 1000-turn stress test (uses eval package when available)
+  long_horizon_data.py           # Deterministic dialogue generation (12 blocks)
+  long_horizon_memory.py         # 1000-turn stress test (uses eval package data types)
+  long_horizon_self_improve.py   # Long-horizon self-improvement loop (8 phases)
+  matrix_eval.py                 # 5-way matrix evaluation across SDKs
   meta_eval_experiment.py        # Meta-eval experiment framework
   five_agent_experiment.py       # 5-agent experiment runner
+  QUICK_START.md                 # Quick start guide
   self_improve/
     __init__.py
-    error_analyzer.py            # Failure taxonomy + classification
+    error_analyzer.py            # Failure taxonomy + classification (10 modes)
     runner.py                    # Closed-loop self-improvement (6 phases)
+    patch_proposer.py            # LLM-generated code patches with hypotheses
+    reviewer_voting.py           # 3-perspective review + majority voting
 
 src/amplihack/agents/goal_seeking/
   prompts/sdk/                   # Per-SDK eval prompt templates
