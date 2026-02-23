@@ -1,0 +1,18 @@
+{
+  "agent_name": "code_review",
+  "domain": "code_review",
+  "description": "Reviews code for quality, security, and style issues",
+  "eval_overall_score": 1.0,
+  "eval_overall_passed": true,
+  "eval_level_scores": {
+    "L1": 1.0,
+    "L2": 1.0,
+    "L3": 1.0,
+    "L4": 1.0
+  },
+  "teaching_topic": "security review",
+  "lesson_plan": "1. Common vulnerabilities\n2. SQL injection\n3. Secrets management\n4. Input validation\n5. Practice review",
+  "instruction_preview": "When reviewing for security:\n\n1. **SQL Injection**: Never use f-strings for SQL. Use parameterized queries.\n   Bad: `f\"SELECT * FROM users WHERE name = '{name}'\"`\n   Good: `cursor.execute(\"SELECT * FR",
+  "student_attempt": "Student findings:\n- sql_injection: SQL injection via f-string\n- hardcoded_secret: Hardcoded secret\n- dangerous_function: Use of eval() or exec()",
+  "combined_score": 1.0
+}

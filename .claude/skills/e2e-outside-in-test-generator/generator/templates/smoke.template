@@ -1,0 +1,38 @@
+import {{ test, expect }} from '@playwright/test';
+
+test.describe('Smoke Tests - {feature_name}', () => {{
+  test('should load {route} page successfully', async ({{ page }}) => {{
+    // Navigate to page
+    await page.goto('{route}');
+
+    // Verify page loaded
+    await expect(page).toHaveTitle(/{title_pattern}/);
+
+    // Verify key element exists
+    await expect(page.getByRole('{key_element_role}', {{ name: '{key_element_name}' }})).toBeVisible();
+  }});
+
+  test('should have no console errors on {route}', async ({{ page }}) => {{
+    const errors: string[] = [];
+    page.on('console', msg => {{
+      if (msg.type() === 'error') {{
+        errors.push(msg.text());
+      }}
+    }});
+
+    await page.goto('{route}');
+    await page.waitForLoadState('networkidle');
+
+    expect(errors).toHaveLength(0);
+  }});
+
+  test('should complete critical user flow', async ({{ page }}) => {{
+    // Navigate to start
+    await page.goto('{route}');
+
+    {critical_flow_steps}
+
+    // Verify success state
+    await expect(page.getByRole('{success_element_role}', {{ name: '{success_element_name}' }})).toBeVisible();
+  }});
+}});

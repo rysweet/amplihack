@@ -1,0 +1,44 @@
+import {{ test, expect }} from '@playwright/test';
+
+test.describe('Responsive Design - {feature_name}', () => {{
+  test('should display correctly on mobile (375x667)', async ({{ page }}) => {{
+    await page.setViewportSize({{ width: 375, height: 667 }});
+    await page.goto('{route}');
+
+    // Verify mobile layout
+    await expect(page.getByRole('{mobile_element_role}', {{ name: '{mobile_element_name}' }})).toBeVisible();
+
+    // Verify mobile navigation
+{mobile_nav_steps}
+  }});
+
+  test('should display correctly on tablet (768x1024)', async ({{ page }}) => {{
+    await page.setViewportSize({{ width: 768, height: 1024 }});
+    await page.goto('{route}');
+
+    // Verify tablet layout
+    await expect(page.getByRole('{tablet_element_role}', {{ name: '{tablet_element_name}' }})).toBeVisible();
+  }});
+
+  test('should display correctly on desktop (1920x1080)', async ({{ page }}) => {{
+    await page.setViewportSize({{ width: 1920, height: 1080 }});
+    await page.goto('{route}');
+
+    // Verify desktop layout
+    await expect(page.getByRole('{desktop_element_role}', {{ name: '{desktop_element_name}' }})).toBeVisible();
+  }});
+
+  test('should adapt layout on window resize', async ({{ page }}) => {{
+    await page.setViewportSize({{ width: 1920, height: 1080 }});
+    await page.goto('{route}');
+
+    // Start in desktop mode
+    await expect(page.getByRole('{desktop_element_role}')).toBeVisible();
+
+    // Resize to mobile
+    await page.setViewportSize({{ width: 375, height: 667 }});
+
+    // Verify mobile layout appeared
+    await expect(page.getByRole('{mobile_element_role}')).toBeVisible();
+  }});
+}});

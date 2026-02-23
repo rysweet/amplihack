@@ -1,0 +1,347 @@
+name: "quality-audit-cycle"
+description: "Full quality audit cycle: audit -> fix -> eval -> analyze -> ideate -> document"
+version: "1.0.0"
+author: "Amplihack Team"
+tags: ["quality", "audit", "eval", "improvement", "documentation"]
+
+# QUALITY AUDIT CYCLE RECIPE
+#
+# Encodes a complete quality audit and improvement cycle:
+#   1. Quality audit (no eval, secrets, timeouts, code smells, etc.)
+#   2. Fix findings from the audit
+#   3. Run eval to measure impact
+#   4. Analyze results and ideate next improvements
+#   5. Document findings and create action items
+#
+# This recipe is designed to be run periodically (e.g., weekly) to
+# maintain and improve code quality continuously.
+#
+# Philosophy:
+#   - Quality is measurable and improvable
+#   - Fix known issues before seeking new features
+#   - Every audit produces actionable items
+#   - Document everything for cross-session persistence
+#
+# Usage:
+#   amplifier recipes execute quality-audit-cycle.yaml --context '{
+#     "target_path": "src/amplihack",
+#     "sdk": "mini",
+#     "levels": "L1 L2 L3 L4 L5 L6"
+#   }'
+
+recursion:
+  max_depth: 4
+  max_total_steps: 30
+
+context:
+  # Path to audit
+  target_path: "src/amplihack"
+
+  # SDK for eval step
+  sdk: "mini"
+
+  # Levels for eval step
+  levels: "L1 L2 L3 L4 L5 L6"
+
+  # Output directory
+  output_dir: "./eval_results/quality_audit"
+
+  # Agent name for eval isolation
+  agent_name: "quality-audit-agent"
+
+  # Internal state
+  audit_findings: ""
+  fix_results: ""
+  eval_scores: ""
+  analysis: ""
+  documentation: ""
+
+steps:
+  # ==========================================================================
+  # STEP 1: QUALITY AUDIT
+  # Scan codebase for quality issues without running eval.
+  # Checks: secrets, timeouts, no-eval patterns, code smells, etc.
+  # ==========================================================================
+  - id: "quality-audit"
+    agent: "amplihack:reviewer"
+    prompt: |
+      # Step 1: Quality Audit
+
+      **Target Path:** {{target_path}}
+      **SDK:** {{sdk}}
+
+      ## Your Task
+
+      Conduct a comprehensive quality audit of the codebase at {{target_path}}.
+
+      **Audit Dimensions:**
+
+      1. **Secrets & Credentials**
+         - Scan for hardcoded API keys, tokens, passwords
+         - Check .env files are gitignored
+         - Verify no secrets in committed files
+         - Command: `grep -r "ANTHROPIC_API_KEY\|sk-\|password\|secret" {{target_path}} --include="*.py"`
+
+      2. **Timeout & Error Handling**
+         - Check subprocess calls have timeouts
+         - Verify all external calls have error handling
+         - Look for bare except clauses
+         - Command: `grep -r "subprocess.run\|timeout\|except:" {{target_path}} --include="*.py"`
+
+      3. **No-Eval Patterns** (code that bypasses or short-circuits evaluation)
+         - Look for `# skip eval`, `# noqa`, hardcoded scores
+         - Check for test files that always pass
+         - Command: `grep -r "skip.*eval\|noqa\|always.*pass" {{target_path}} --include="*.py"`
+
+      4. **Code Smells**
+         - Dead code (unused imports, unreachable code)
+         - TODO/FIXME/HACK comments
+         - Functions > 50 lines
+         - Deeply nested code (> 3 levels)
+         - Command: `grep -r "TODO\|FIXME\|HACK\|XXX" {{target_path}} --include="*.py"`
+
+      5. **Test Coverage Gaps**
+         - Source files without corresponding test files
+         - Test files with no assertions
+         - Mock-heavy tests that test nothing
+
+      6. **Documentation Gaps**
+         - Public functions without docstrings
+         - Outdated README content
+         - Missing type hints
+
+      **Output as JSON:**
+      ```json
+      {
+        "audit_timestamp": "2026-02-20T00:00:00Z",
+        "target_path": "{{target_path}}",
+        "findings": [
+          {
+            "category": "secrets|timeouts|no_eval|code_smells|test_gaps|doc_gaps",
+            "severity": "critical|high|medium|low",
+            "file": "path/to/file.py",
+            "line": 42,
+            "description": "what was found",
+            "recommendation": "how to fix it"
+          }
+        ],
+        "summary": {
+          "total_findings": 0,
+          "critical": 0,
+          "high": 0,
+          "medium": 0,
+          "low": 0
+        },
+        "top_priorities": ["ordered list of what to fix first"]
+      }
+      ```
+    output: "audit_findings"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 2: FIX FINDINGS
+  # Address the critical and high-severity findings from the audit.
+  # ==========================================================================
+  - id: "fix-findings"
+    agent: "amplihack:builder"
+    prompt: |
+      # Step 2: Fix Audit Findings
+
+      **Audit Findings:** {{audit_findings}}
+      **Target Path:** {{target_path}}
+
+      ## Your Task
+
+      Fix the critical and high-severity findings from the audit.
+
+      **Priority Order:**
+      1. Critical findings (secrets, security issues)
+      2. High-severity findings (missing timeouts, bare excepts)
+      3. Medium findings if time permits
+
+      **For each fix:**
+      1. Read the affected file
+      2. Apply the minimal fix
+      3. Verify the fix doesn't break existing tests
+      4. Document what was changed
+
+      **Rules:**
+      - Do NOT refactor beyond what the finding requires
+      - Do NOT add features while fixing quality issues
+      - Each fix should be atomic and reviewable
+
+      **Output as JSON:**
+      ```json
+      {
+        "fixes_applied": [
+          {
+            "finding_id": 0,
+            "category": "...",
+            "severity": "...",
+            "file": "...",
+            "change": "description of change",
+            "verified": true
+          }
+        ],
+        "fixes_skipped": [
+          {
+            "finding_id": 0,
+            "reason": "why it was skipped"
+          }
+        ],
+        "total_fixed": 0,
+        "total_skipped": 0
+      }
+      ```
+    output: "fix_results"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 3: RUN EVAL
+  # Run the progressive test suite to measure the impact of fixes.
+  # ==========================================================================
+  - id: "run-eval"
+    type: "bash"
+    command: |
+      echo "=== Step 3: Running Eval After Fixes ==="
+
+      LEVELS_ARGS=""
+      for level in {{levels}}; do
+        LEVELS_ARGS="$LEVELS_ARGS $level"
+      done
+
+      PYTHONPATH=src python -m amplihack.eval.progressive_test_suite \
+        --output-dir "{{output_dir}}/post_fix_eval" \
+        --agent-name "{{agent_name}}_postfix_$(date +%s)" \
+        --sdk "{{sdk}}" \
+        --levels $LEVELS_ARGS \
+        2>&1
+
+      echo ""
+      echo "=== Post-Fix Eval Complete ==="
+
+      if [ -f "{{output_dir}}/post_fix_eval/summary.json" ]; then
+        cat "{{output_dir}}/post_fix_eval/summary.json"
+      else
+        echo '{"error": "summary.json not found"}'
+      fi
+    output: "eval_scores"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 4: ANALYZE RESULTS AND IDEATE
+  # Compare pre/post scores, identify patterns, brainstorm improvements.
+  # ==========================================================================
+  - id: "analyze-and-ideate"
+    agent: "amplihack:architect"
+    prompt: |
+      # Step 4: Analyze Results and Ideate Improvements
+
+      **Audit Findings:** {{audit_findings}}
+      **Fixes Applied:** {{fix_results}}
+      **Eval Scores:** {{eval_scores}}
+
+      ## Your Task
+
+      1. **Analyze eval results**: Which levels improved, which didn't?
+      2. **Correlate with fixes**: Did the quality fixes improve eval scores?
+      3. **Identify remaining gaps**: What quality issues remain unfixed?
+      4. **Ideate improvements**: What changes would have the highest impact?
+
+      **Ideation categories:**
+      - Prompt engineering improvements
+      - Retrieval strategy changes
+      - Memory architecture improvements
+      - Test coverage additions
+      - Code structure improvements
+
+      **Output as JSON:**
+      ```json
+      {
+        "score_analysis": {
+          "per_level_scores": {},
+          "overall_score": 0.0,
+          "improvement_from_fixes": "description"
+        },
+        "correlation": "how fixes correlated with score changes",
+        "remaining_gaps": ["unfixed issues that still affect quality"],
+        "improvement_ideas": [
+          {
+            "idea": "description",
+            "category": "prompt|retrieval|memory|test|code",
+            "estimated_impact": "high|medium|low",
+            "effort": "small|medium|large",
+            "affected_levels": ["L1", "L2"],
+            "priority": 1
+          }
+        ],
+        "next_cycle_focus": "what to prioritize in the next audit cycle"
+      }
+      ```
+    output: "analysis"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 5: DOCUMENT FINDINGS
+  # Create a persistent audit report for cross-session tracking.
+  # ==========================================================================
+  - id: "document-findings"
+    type: "bash"
+    parse_json: true
+    command: |
+      echo "=== Step 5: Documenting Findings ==="
+
+      mkdir -p "{{output_dir}}"
+
+      TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+      REPORT_FILE="{{output_dir}}/quality_audit_report_$(date +%Y%m%d).md"
+
+      cat > "$REPORT_FILE" << 'REPORT_EOF'
+      # Quality Audit Report
+
+      **Date:** $TIMESTAMP
+      **Target:** {{target_path}}
+      **SDK:** {{sdk}}
+
+      ## Audit Summary
+      {{audit_findings}}
+
+      ## Fixes Applied
+      {{fix_results}}
+
+      ## Eval Results
+      {{eval_scores}}
+
+      ## Analysis and Ideas
+      {{analysis}}
+
+      ---
+      Generated by quality-audit-cycle recipe v1.0.0
+      REPORT_EOF
+
+      echo ""
+      echo "Report saved to: $REPORT_FILE"
+      echo ""
+
+      cat << EOF
+      {
+        "workflow": "quality-audit-cycle",
+        "version": "1.0.0",
+        "target_path": "{{target_path}}",
+        "sdk": "{{sdk}}",
+        "status": "complete",
+        "steps_completed": 5,
+        "steps": [
+          "1. Quality Audit",
+          "2. Fix Findings",
+          "3. Run Eval",
+          "4. Analyze & Ideate",
+          "5. Document Findings"
+        ],
+        "outputs": {
+          "report_file": "$REPORT_FILE",
+          "eval_dir": "{{output_dir}}/post_fix_eval"
+        }
+      }
+      EOF
+    output: "final_result"

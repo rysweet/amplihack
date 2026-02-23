@@ -41,6 +41,12 @@ from .base import BackendCapabilities
 logger = logging.getLogger(__name__)
 
 
+# Memory types whose schema includes expires_at column.
+# Derived from CREATE TABLE statements in _initialize_sync().
+# If you add expires_at to a new memory type, add it here.
+MEMORY_TYPES_WITH_EXPIRES_AT = frozenset(["EpisodicMemory", "ProspectiveMemory", "WorkingMemory"])
+
+
 class KuzuBackend:
     """Kùzu graph database backend.
 
@@ -1040,7 +1046,7 @@ class KuzuBackend:
             where_conditions.append("m.created_at <= $created_before")
             params["created_before"] = query.created_before
 
-        if not query.include_expired:
+        if not query.include_expired and node_label in MEMORY_TYPES_WITH_EXPIRES_AT:
             where_conditions.append("(m.expires_at IS NULL OR m.expires_at > $now)")
             params["now"] = datetime.now()
 
@@ -1278,31 +1284,35 @@ class KuzuBackend:
     def _cleanup_expired_sync(self) -> int:
         """Remove expired memory entries (sync helper).
 
+        Only queries memory types that have expires_at in their schema:
+        EpisodicMemory, ProspectiveMemory, WorkingMemory.
+
         Returns:
             Number of entries removed
 
         Performance: No strict limit (periodic maintenance)
         """
-        try:
-            result = self.connection.execute(
-                """
-                MATCH (m:Memory)
-                WHERE m.expires_at IS NOT NULL AND m.expires_at < $now
-                DELETE m
-                RETURN COUNT(m) AS deleted_count
-            """,
-                {"now": datetime.now()},
-            )
+        total_deleted = 0
+        for node_label in MEMORY_TYPES_WITH_EXPIRES_AT:
+            try:
+                result = self.connection.execute(
+                    f"""
+                    MATCH (m:{node_label})
+                    WHERE m.expires_at IS NOT NULL AND m.expires_at < $now
+                    DELETE m
+                    RETURN COUNT(m) AS deleted_count
+                """,
+                    {"now": datetime.now()},
+                )
 
-            if result.has_next():
-                row = result.get_next()
-                return row[0]
+                if result.has_next():
+                    row = result.get_next()
+                    total_deleted += row[0]
 
-            return 0
+            except Exception as e:
+                logger.error(f"Error cleaning up expired {node_label} from Kùzu: {e}")
 
-        except Exception as e:
-            logger.error(f"Error cleaning up expired memories from Kùzu: {e}")
-            return 0
+        return total_deleted
 
     async def cleanup_expired(self) -> int:
         """Remove expired memory entries.

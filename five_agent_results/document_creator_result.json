@@ -1,0 +1,18 @@
+{
+  "agent_name": "document_creator",
+  "domain": "document_creator",
+  "description": "Creates and evaluates structured documents",
+  "eval_overall_score": 0.854,
+  "eval_overall_passed": true,
+  "eval_level_scores": {
+    "L1": 0.667,
+    "L2": 1.0,
+    "L3": 1.0,
+    "L4": 0.75
+  },
+  "teaching_topic": "document structure",
+  "lesson_plan": "1. Why document structure matters\n2. Heading hierarchy and organization\n3. Section flow and transitions\n4. Introduction and conclusion patterns\n5. Practice structuring",
+  "instruction_preview": "When structuring documents:\n\n1. **Heading Hierarchy**: Use H1 for title, H2 for sections, H3 for subsections\n   Bad: All headings at same level\n   Good: Clear nesting that shows relationships\n\n2. **In",
+  "student_attempt": "Student findings:\n- Found 1 sections\n- Structure score: 10%\n- Readability: 99%\n- Completeness: 0%",
+  "combined_score": 0.898
+}

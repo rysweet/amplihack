@@ -1,0 +1,50 @@
+import {{ test, expect }} from '@playwright/test';
+
+test.describe('API Streaming - {api_name}', () => {{
+  test('should handle streaming response from {endpoint}', async ({{ page }}) => {{
+    await page.goto('{route}');
+
+    // Listen for streaming chunks
+    const chunks: string[] = [];
+    await page.route('{api_endpoint}', async route => {{
+      await route.fulfill({{
+        status: 200,
+        headers: {{ 'Content-Type': 'text/event-stream' }},
+        body: '{mock_stream_data}',
+      }});
+    }});
+
+    // Trigger streaming request
+{trigger_steps}
+
+    // Wait for first chunk
+    await expect(page.getByText(/{first_chunk_pattern}/)).toBeVisible({{ timeout: 10000 }});
+
+    // Wait for completion
+    await expect(page.getByText(/{completion_pattern}/)).toBeVisible({{ timeout: 30000 }});
+  }});
+
+  test('should display partial results during streaming', async ({{ page }}) => {{
+    await page.goto('{route}');
+
+    {streaming_setup_steps}
+
+    // Verify progressive display
+    await expect(page.getByRole('{partial_result_role}')).toBeVisible();
+    await expect(page.getByRole('{partial_result_role}')).toContainText(/{partial_text}/);
+  }});
+
+  test('should handle streaming errors gracefully', async ({{ page }}) => {{
+    await page.goto('{route}');
+
+    // Mock streaming error
+    await page.route('{api_endpoint}', async route => {{
+      await route.abort('failed');
+    }});
+
+    {trigger_steps}
+
+    // Verify error handling
+    await expect(page.getByText(/{error_message}/)).toBeVisible();
+  }});
+}});

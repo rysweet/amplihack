@@ -103,6 +103,36 @@ class SkillDefinition:
 
 
 @dataclass
+class SDKToolConfig:
+    """Configuration for an SDK-native tool."""
+
+    name: str
+    description: str
+    category: str  # e.g., "file_ops", "system", "search", "vcs", "network", "ai"
+
+    def to_dict(self) -> dict[str, str]:
+        """Convert to dictionary."""
+        return {
+            "name": self.name,
+            "description": self.description,
+            "category": self.category,
+        }
+
+
+@dataclass
+class SubAgentConfig:
+    """Configuration for a sub-agent in multi-agent setup."""
+
+    role: str
+    config: dict[str, Any] = field(default_factory=dict)
+    filename: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.filename:
+            self.filename = f"{self.role}.yaml"
+
+
+@dataclass
 class GoalAgentBundle:
     """Complete bundle for a goal-seeking agent."""
 
@@ -114,6 +144,8 @@ class GoalAgentBundle:
     skills: list[SkillDefinition] = field(default_factory=list)
     auto_mode_config: dict[str, Any] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
+    sdk_tools: list[SDKToolConfig] = field(default_factory=list)
+    sub_agent_configs: list[SubAgentConfig] = field(default_factory=list)
     status: Literal["pending", "planning", "assembling", "ready", "failed"] = "pending"
     created_at: datetime = field(default_factory=datetime.utcnow)
     updated_at: datetime = field(default_factory=datetime.utcnow)
