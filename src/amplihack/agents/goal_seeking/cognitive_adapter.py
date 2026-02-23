@@ -176,6 +176,58 @@ class CognitiveAdapter:
             stats["total_experiences"] = stats.get("total", 0)
         return stats
 
+    def retrieve_by_entity(self, entity_name: str, limit: int = 50) -> list[dict[str, Any]]:
+        """Retrieve all facts about a specific entity.
+
+        Args:
+            entity_name: Entity name (case-insensitive)
+            limit: Maximum results
+
+        Returns:
+            List of fact dicts matching the entity
+        """
+        if self._cognitive and hasattr(self.memory, "retrieve_by_entity"):
+            results = self.memory.retrieve_by_entity(entity_name=entity_name, limit=limit)
+            return [self._semantic_fact_to_dict(r) for r in results]
+        if hasattr(self.memory, "retrieve_by_entity"):
+            nodes = self.memory.retrieve_by_entity(entity_name=entity_name, limit=limit)
+            return [self._node_to_dict(n) for n in nodes]
+        return []
+
+    def search_by_concept(self, keywords: list[str], limit: int = 30) -> list[dict[str, Any]]:
+        """Search for facts by concept/content keyword matching.
+
+        Args:
+            keywords: List of keyword strings to search for
+            limit: Maximum nodes to return per keyword
+
+        Returns:
+            List of fact dicts matching any of the keywords
+        """
+        if self._cognitive and hasattr(self.memory, "search_by_concept"):
+            results = self.memory.search_by_concept(keywords=keywords, limit=limit)
+            return [self._semantic_fact_to_dict(r) for r in results]
+        if hasattr(self.memory, "search_by_concept"):
+            nodes = self.memory.search_by_concept(keywords=keywords, limit=limit)
+            return [self._node_to_dict(n) for n in nodes]
+        return []
+
+    def execute_aggregation(self, query_type: str, entity_filter: str = "") -> dict[str, Any]:
+        """Execute Cypher aggregation query for meta-memory questions.
+
+        Args:
+            query_type: Type of aggregation
+            entity_filter: Optional filter string
+
+        Returns:
+            Dict with aggregation results
+        """
+        if hasattr(self.memory, "execute_aggregation"):
+            return self.memory.execute_aggregation(
+                query_type=query_type, entity_filter=entity_filter
+            )
+        return {"count": 0, "query_type": query_type, "error": "Not supported"}
+
     def store_episode(self, content: str, source_label: str = "") -> str:
         """Store an episode (raw source content)."""
         if self._cognitive:

@@ -937,8 +937,15 @@ class HierarchicalMemory:
         nodes: list[KnowledgeNode] = []
 
         # Extract potential entity names from query
-        # Multi-word proper nouns
-        entity_candidates = re.findall(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b", query)
+        # Handles apostrophe names (O'Brien), hyphenated (Al-Hassan), and multi-word (Sarah Chen)
+        entity_candidates = re.findall(
+            r"\b("
+            r"[A-Z][a-z]*(?:['\u2019\-][A-Z]?[a-z]+)+(?:\s+(?:[A-Z][a-z]+(?:['\u2019\-][A-Z]?[a-z]+)?))*"
+            r"|"
+            r"[A-Z][a-z]+(?:\s+(?:[A-Z][a-z]+(?:['\u2019\-][A-Z]?[a-z]+)?))*"
+            r")\b",
+            query,
+        )
         # Also try the whole query lowercased for single-name matches
         if not entity_candidates:
             # Try lowercase matching for queries like "fatima's hobby"
@@ -1082,8 +1089,15 @@ class HierarchicalMemory:
         for text in [concept, content]:
             if not text:
                 continue
-            # Find capitalized multi-word names (e.g., "Sarah Chen", "Project Atlas")
-            matches = re.findall(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)\b", text)
+            # Find capitalized multi-word names (e.g., "Sarah Chen", "O'Brien Smith", "Al-Hassan")
+            matches = re.findall(
+                r"\b("
+                r"[A-Z][a-z]*(?:['\u2019\-][A-Z]?[a-z]+)+(?:\s+(?:[A-Z][a-z]+(?:['\u2019\-][A-Z]?[a-z]+)?))*"
+                r"|"
+                r"[A-Z][a-z]+(?:\s+(?:[A-Z][a-z]+(?:['\u2019\-][A-Z]?[a-z]+)?))+)"
+                r"\b",
+                text,
+            )
             if matches:
                 # Return the longest match (most likely to be a full name)
                 best = max(matches, key=len)
@@ -1193,6 +1207,78 @@ class HierarchicalMemory:
 
         except Exception as e:
             logger.debug("Entity retrieval failed for '%s': %s", entity_name, e)
+
+        return nodes
+
+    def search_by_concept(
+        self,
+        keywords: list[str],
+        limit: int = 30,
+    ) -> list[KnowledgeNode]:
+        """Search for facts by concept/content keyword matching.
+
+        Runs a Cypher query matching keywords against both the concept and
+        content fields (case-insensitive). Useful for concept-based retrieval
+        when entity names are not available in the question.
+
+        Args:
+            keywords: List of keyword strings to search for
+            limit: Maximum nodes to return per keyword
+
+        Returns:
+            List of KnowledgeNode matching any of the keywords, deduplicated.
+        """
+        if not keywords:
+            return []
+
+        nodes: list[KnowledgeNode] = []
+        seen: set[str] = set()
+
+        for kw in keywords:
+            kw_lower = kw.strip().lower()
+            if len(kw_lower) <= 2:
+                continue
+            try:
+                result = self.connection.execute(
+                    """
+                    MATCH (m:SemanticMemory)
+                    WHERE m.agent_id = $agent_id
+                      AND (LOWER(m.concept) CONTAINS $kw
+                           OR LOWER(m.content) CONTAINS $kw)
+                    RETURN m.memory_id, m.concept, m.content, m.confidence,
+                           m.source_id, m.tags, m.metadata, m.created_at
+                    ORDER BY m.created_at DESC
+                    LIMIT $limit
+                    """,
+                    {
+                        "agent_id": self.agent_name,
+                        "kw": kw_lower,
+                        "limit": limit,
+                    },
+                )
+
+                while result.has_next():
+                    row = result.get_next()
+                    nid = row[0]
+                    if nid not in seen:
+                        seen.add(nid)
+                        tags = json.loads(row[5]) if row[5] else []
+                        metadata = json.loads(row[6]) if row[6] else {}
+                        nodes.append(
+                            KnowledgeNode(
+                                node_id=nid,
+                                category=MemoryCategory.SEMANTIC,
+                                content=row[2],
+                                concept=row[1],
+                                confidence=row[3],
+                                source_id=row[4] or "",
+                                created_at=row[7] or "",
+                                tags=tags,
+                                metadata=metadata,
+                            )
+                        )
+            except Exception as e:
+                logger.debug("Concept search failed for '%s': %s", kw, e)
 
         return nodes
 

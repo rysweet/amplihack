@@ -158,6 +158,22 @@ class FlatRetrieverAdapter:
         nodes = self.memory.retrieve_by_entity(entity_name=entity_name, limit=limit)
         return [self._node_to_dict(node) for node in nodes]
 
+    def search_by_concept(self, keywords: list[str], limit: int = 30) -> list[dict[str, Any]]:
+        """Search for facts by concept/content keyword matching.
+
+        Delegates to HierarchicalMemory.search_by_concept and flattens results
+        to MemoryRetriever-compatible dict format.
+
+        Args:
+            keywords: List of keyword strings to search for
+            limit: Maximum nodes to return per keyword
+
+        Returns:
+            List of fact dicts matching any of the keywords
+        """
+        nodes = self.memory.search_by_concept(keywords=keywords, limit=limit)
+        return [self._node_to_dict(node) for node in nodes]
+
     def execute_aggregation(self, query_type: str, entity_filter: str = "") -> dict[str, Any]:
         """Execute Cypher aggregation query for meta-memory questions.
 
