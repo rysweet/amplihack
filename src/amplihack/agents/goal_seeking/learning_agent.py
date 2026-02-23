@@ -495,18 +495,25 @@ Rules:
         if not relevant_facts:
             return "I don't have enough information to answer that question."
 
-        # Filter out Q&A self-learning facts and SUMMARY nodes from retrieval.
-        # Q&A facts are stored for cross-session learning but pollute eval.
-        # SUMMARY nodes are organizational metadata, not answer-worthy facts.
+        # Filter out Q&A self-learning facts from retrieval -- they are stored
+        # for cross-session learning but pollute within-session eval results.
         relevant_facts = [
             f
             for f in relevant_facts
             if not (
                 f.get("context", "").startswith("Question:") and "q_and_a" in (f.get("tags") or [])
             )
-            and f.get("context", "") != "SUMMARY"
-            and "summary" not in (f.get("tags") or [])
         ]
+
+        # For meta_memory questions (counting, aggregation), also filter SUMMARY
+        # nodes which inflate counts and confuse aggregation. For other intents,
+        # keep summaries as they provide useful context.
+        if intent_type == "meta_memory":
+            relevant_facts = [
+                f for f in relevant_facts
+                if f.get("context", "") != "SUMMARY"
+                and "summary" not in (f.get("tags") or [])
+            ]
 
         # Always rerank by query relevance first to prioritize the most relevant facts.
         # For large fact sets (>80), this ensures we trim noise, not signal.
