@@ -13,13 +13,9 @@ import pytest
 
 from amplihack.eval.long_horizon_data import (
     CONTRADICTORY_REPORTS,
-    INCIDENTS,
-    INFRASTRUCTURE,
     NUMERICAL_DATA,
     PEOPLE,
-    PROBLEM_TASKS,
     PROJECTS,
-    SECURITY_EVENTS,
     TECHNICAL_DOMAINS,
     generate_dialogue,
     generate_questions,
@@ -204,7 +200,9 @@ class TestQuestionGeneration:
             "meta_memory",
         }
         # Core categories always present
-        assert expected_core.issubset(categories), f"Missing core categories: {expected_core - categories}"
+        assert expected_core.issubset(categories), (
+            f"Missing core categories: {expected_core - categories}"
+        )
         # Security categories present at 5000 turns
         expected_security = {
             "security_log_analysis",
@@ -213,7 +211,9 @@ class TestQuestionGeneration:
             "problem_solving",
             "multi_hop_reasoning",
         }
-        assert expected_security.issubset(categories), f"Missing security categories: {expected_security - categories}"
+        assert expected_security.issubset(categories), (
+            f"Missing security categories: {expected_security - categories}"
+        )
 
     def test_core_categories_present_at_1000(self):
         """Core categories plus security categories present at 1000 turns."""
@@ -229,7 +229,9 @@ class TestQuestionGeneration:
             "distractor_resistance",
             "meta_memory",
         }
-        assert expected_core.issubset(categories), f"Missing core categories: {expected_core - categories}"
+        assert expected_core.issubset(categories), (
+            f"Missing core categories: {expected_core - categories}"
+        )
 
     def test_questions_have_expected_answers(self):
         """Every question has a non-empty expected answer."""
@@ -255,15 +257,18 @@ class TestQuestionGeneration:
         assert len(ids) == len(set(ids)), "Question IDs must be unique"
 
     def test_category_distribution_proportional(self):
-        """Category distribution has needle_in_haystack as largest core category."""
+        """Harder categories (adversarial, multi-hop, temporal trap, numerical reasoning) dominate."""
         gt = generate_dialogue(num_turns=1000, seed=42)
         questions = generate_questions(gt, num_questions=100)
         counts: dict[str, int] = {}
         for q in questions:
             counts[q.category] = counts.get(q.category, 0) + 1
 
-        # Needle-in-haystack should have the most among core categories
-        assert counts.get("needle_in_haystack", 0) >= 10
+        # Harder categories should be well-represented (12% each target)
+        assert counts.get("adversarial_distractor", 0) >= 8
+        assert counts.get("multi_hop_reasoning", 0) >= 8
+        assert counts.get("temporal_trap", 0) >= 8
+        assert counts.get("numerical_reasoning", 0) >= 5
         # Meta-memory should have the fewest
         assert counts.get("meta_memory", 0) >= 3
 

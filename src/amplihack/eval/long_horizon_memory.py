@@ -869,6 +869,19 @@ def main() -> None:
         help="SDK to use for the agent (default: mini = LearningAgent directly)",
     )
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
+    parser.add_argument(
+        "--skip-learning",
+        action="store_true",
+        default=False,
+        help="Skip the learning phase; use with --load-db to test questions against an existing memory DB",
+    )
+    parser.add_argument(
+        "--load-db",
+        type=str,
+        default="",
+        help="Path to an existing memory DB directory to load instead of creating a new one. "
+        "Copies the DB to the output directory before running.",
+    )
 
     args = parser.parse_args()
 
@@ -897,11 +910,26 @@ def main() -> None:
 
     db_path = output_dir / "memory_db"
 
+    # Copy saved DB if --load-db is specified
+    if args.load_db:
+        import shutil
+
+        src_db = Path(args.load_db)
+        if not src_db.exists():
+            raise FileNotFoundError(f"--load-db path does not exist: {src_db}")
+        if db_path.exists():
+            shutil.rmtree(db_path)
+        shutil.copytree(src_db, db_path)
+        logger.info("Loaded existing memory DB from %s -> %s", src_db, db_path)
+
+    # Determine agent name -- match the name used when the DB was created
+    agent_name = "long_horizon_eval_learning" if args.load_db else "long_horizon_eval"
+
     if args.sdk == "mini":
         from amplihack.agents.goal_seeking.learning_agent import LearningAgent
 
         agent = LearningAgent(
-            agent_name="long_horizon_eval",
+            agent_name=agent_name,
             model=agent_model,
             storage_path=db_path,
             use_hierarchical=args.use_hierarchical,
@@ -910,7 +938,7 @@ def main() -> None:
         from amplihack.agents.goal_seeking.sdk_adapters.factory import create_agent
 
         sdk_agent = create_agent(
-            name="long_horizon_eval",
+            name=agent_name,
             sdk=args.sdk,
             model=agent_model,
             storage_path=db_path,
@@ -928,7 +956,17 @@ def main() -> None:
             grader_votes=args.grader_votes,
         )
 
-        report = evaluator.run(agent, grader_model=args.grader_model)
+        if args.skip_learning:
+            # Skip learning: only generate data + questions, then quiz
+            evaluator.generate()
+            logger.info(
+                "SKIP-LEARNING mode: generated %d questions, using existing memory DB",
+                len(evaluator.questions),
+            )
+            report = evaluator.evaluate(agent, grader_model=args.grader_model)
+            report.learning_time_s = 0.0
+        else:
+            report = evaluator.run(agent, grader_model=args.grader_model)
 
         # Print report
         _print_report(report)

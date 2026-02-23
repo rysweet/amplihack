@@ -2951,7 +2951,11 @@ def _question_references_delivered(
         "cross_reference",
         "source_attribution",
         "temporal_evolution",
+        "temporal_trap",
+        "numerical_reasoning",
+        "adversarial_distractor",
         "incident_tracking",
+        "multi_hop_reasoning",
     }
     if question.category in EXEMPT_CATEGORIES:
         return True
@@ -3169,8 +3173,8 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
     scale = num_questions / 100.0  # Scale relative to standard 100 questions
     delivered = _delivered_entities(ground_truth)
 
-    # Category 1: Needle-in-haystack (20% of questions)
-    needle_count = max(1, int(20 * scale))
+    # Category 1: Needle-in-haystack (8% of questions, reduced further to make room for harder categories)
+    needle_count = max(1, int(8 * scale))
     needle_questions = [
         Question(
             question_id="needle_01",
@@ -3374,8 +3378,8 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
     ]
     questions.extend(needle_questions[:needle_count])
 
-    # Category 2: Temporal evolution (15% of questions)
-    temporal_count = max(1, int(15 * scale))
+    # Category 2: Temporal evolution (10% of questions, reduced to make room for harder categories)
+    temporal_count = max(1, int(10 * scale))
     temporal_questions = [
         Question(
             question_id="temporal_01",
@@ -3573,8 +3577,8 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
     ]
     questions.extend(temporal_questions[:temporal_count])
 
-    # Category 3: Numerical precision (15% of questions)
-    numerical_count = max(1, int(15 * scale))
+    # Category 3: Numerical precision (6% of questions, reduced to make room for numerical_reasoning)
+    numerical_count = max(1, int(6 * scale))
     numerical_questions = [
         Question(
             question_id="numerical_01",
@@ -3719,8 +3723,8 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
     ]
     questions.extend(numerical_questions[:numerical_count])
 
-    # Category 4: Source attribution (10% of questions)
-    source_count = max(1, int(10 * scale))
+    # Category 4: Source attribution (5% of questions, reduced from 7%)
+    source_count = max(1, int(5 * scale))
     source_questions = [
         Question(
             question_id="source_01",
@@ -3851,8 +3855,8 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
     ]
     questions.extend(source_questions[:source_count])
 
-    # Category 5: Cross-reference (10% of questions)
-    cross_ref_count = max(1, int(10 * scale))
+    # Category 5: Cross-reference (5% of questions, reduced from 7%)
+    cross_ref_count = max(1, int(5 * scale))
     cross_ref_questions = [
         Question(
             question_id="crossref_01",
@@ -3978,8 +3982,8 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
     ]
     questions.extend(cross_ref_questions[:cross_ref_count])
 
-    # Category 6: Distractor resistance (10% of questions)
-    distractor_count = max(1, int(10 * scale))
+    # Category 6: Distractor resistance (3% of questions, reduced from 5%)
+    distractor_count = max(1, int(3 * scale))
     distractor_questions = [
         Question(
             question_id="distractor_01",
@@ -4171,7 +4175,7 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
     # Category 8: Security log analysis (conditional on security blocks being delivered)
     has_security = "__block:security_logs__" in delivered
     if has_security:
-        sec_log_count = max(1, int(8 * scale))
+        sec_log_count = max(1, int(5 * scale))
         sec_log_questions = [
             Question(
                 question_id="seclog_01",
@@ -4245,10 +4249,10 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
         ]
         questions.extend(sec_log_questions[:sec_log_count])
 
-    # Category 9: Incident tracking (conditional on incidents block)
+    # Category 9: Incident tracking (conditional on incidents block, reduced from 6% to 4%)
     has_incidents = "__block:incidents__" in delivered
     if has_incidents:
-        incident_count = max(1, int(6 * scale))
+        incident_count = max(1, int(4 * scale))
         # Build incident_01 expected answer dynamically from ground truth
         # so it matches the actual status delivered (not always "closed")
         inc001_status = ground_truth.current_values.get("INC-2024-001.status", "active")
@@ -4316,10 +4320,10 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
         ]
         questions.extend(incident_questions[:incident_count])
 
-    # Category 10: Infrastructure knowledge (conditional on infrastructure block)
+    # Category 10: Infrastructure knowledge (conditional on infrastructure block, reduced from 6% to 4%)
     has_infra = "__block:infrastructure__" in delivered
     if has_infra:
-        infra_count = max(1, int(6 * scale))
+        infra_count = max(1, int(4 * scale))
         infra_questions = [
             Question(
                 question_id="infra_01",
@@ -4425,8 +4429,8 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
         ]
         questions.extend(problem_questions[:problem_count])
 
-    # Category 12: Multi-hop reasoning (chains across blocks)
-    multi_hop_count = max(1, int(6 * scale))
+    # Category 12: Multi-hop reasoning (chains across blocks) -- 12% of questions (increased from 6%)
+    multi_hop_count = max(1, int(12 * scale))
     multi_hop_questions: list[Question] = []
 
     # 2-hop questions (always available - chain across original blocks)
@@ -4502,10 +4506,763 @@ def generate_questions(ground_truth: GroundTruth, num_questions: int = 100) -> l
             ]
         )
 
+    # Additional 2-hop questions that chain people -> projects -> numerical data
+    multi_hop_questions.extend(
+        [
+            Question(
+                question_id="multihop_07",
+                text="The person from Dublin, Ireland works in which team, and what security fact from that domain describes the #1 OWASP risk?",
+                expected_answer="James O'Brien is from Dublin and works on the Security team. In the security domain, the OWASP Top 10 2021 lists 'Broken Access Control' as the #1 risk.",
+                category="multi_hop_reasoning",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "specificity"],
+                chain_length=2,
+            ),
+            Question(
+                question_id="multihop_08",
+                text="Which project lead has an allergy to dairy, and what was the budget change for their project?",
+                expected_answer="Yuki Tanaka has a dairy allergy and now leads Project Echo (previously led by Fatima). Echo's budget increased from $1.8M to $2.2M (+$400K for GPU compute costs).",
+                category="multi_hop_reasoning",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "specificity"],
+                chain_length=2,
+            ),
+            Question(
+                question_id="multihop_09",
+                text="Which person's hometown is in Sweden, and how does the Kubernetes cluster version in their project's infrastructure compare to dev?",
+                expected_answer="Lars Eriksson is from Stockholm, Sweden and leads the Atlas maintenance phase. k8s-prod runs v1.29, same version as k8s-dev (v1.29). k8s-staging is on v1.28.",
+                category="multi_hop_reasoning",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "specificity"],
+                chain_length=2,
+            ),
+            Question(
+                question_id="multihop_10",
+                text="The person with a PhD from Oxford leads which team, and what was the GPU cost overrun for a project in that domain?",
+                expected_answer="Fatima Al-Hassan has a PhD from Oxford and was on the AI/ML team. Project Echo (AI chatbot) had its budget increase from $1.8M to $2.2M because GPU compute costs were higher than projected.",
+                category="multi_hop_reasoning",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "specificity"],
+                chain_length=2,
+            ),
+            Question(
+                question_id="multihop_11",
+                text="What is the hobby of the person who was replaced on Project Beacon, and what was the budget increase for that project?",
+                expected_answer="Marcus Rivera (replaced on Beacon) has woodworking as his hobby. Beacon's budget increased from $800K to $950K (+$150K for data visualization library licensing).",
+                category="multi_hop_reasoning",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "specificity"],
+                chain_length=2,
+            ),
+            Question(
+                question_id="multihop_12",
+                text="Which person has a parrot, what team are they on, and how many of their project's QA automation specialists were hired?",
+                expected_answer="Diego Morales has a parrot named Rio. He's on the Mobile team and leads Project Delta, which hired 2 QA automation specialists (team grew from 8 to 10).",
+                category="multi_hop_reasoning",
+                relevant_turns=[],
+                scoring_dimensions=["factual_accuracy", "specificity"],
+                chain_length=2,
+            ),
+        ]
+    )
+
+    # Additional 3-hop questions requiring cross-block reasoning
+    if has_security and has_incidents and has_infra:
+        multi_hop_questions.extend(
+            [
+                Question(
+                    question_id="multihop_13",
+                    text="The database dump was detected from IP 10.0.0.10 targeting credentials tables. Which subnet is the database in, what engine does it run, and which incident involved the exfiltrated data?",
+                    expected_answer="The database (pg-primary, PostgreSQL 16) is at 10.0.3.10 in the prod-db subnet (10.0.3.0/24). The data exfiltration was INC-2024-002, where 2.3GB was exfiltrated via compromised svc_backup, affecting 15,000 customers.",
+                    category="multi_hop_reasoning",
+                    relevant_turns=[],
+                    scoring_dimensions=["factual_accuracy", "specificity"],
+                    chain_length=3,
+                ),
+                Question(
+                    question_id="multihop_14",
+                    text="A container escape was attempted targeting web-app-prod-3. Which Kubernetes cluster likely hosts production web apps, how many pods run there, and what CVE was used in the container escape?",
+                    expected_answer="k8s-prod (v1.29, 12 nodes, 156 pods) runs in prod-app subnet. The container escape used CVE-2024-21626. This CVE is also associated with INC-2024-001 (ransomware attempt).",
+                    category="multi_hop_reasoning",
+                    relevant_turns=[],
+                    scoring_dimensions=["factual_accuracy", "specificity"],
+                    chain_length=3,
+                ),
+                Question(
+                    question_id="multihop_15",
+                    text="The DNS tunneling was detected going to *.tunnel.attacker.net at 50KB/s. Which incident involves this IOC, what APT group is attributed, and what subnet hosts the DNS infrastructure?",
+                    expected_answer="tunnel.attacker.net is an IOC for INC-2024-003 (APT campaign), attributed to APT29 (state-sponsored). The management subnet (10.0.5.0/24) hosts monitoring including the Elasticsearch cluster (es-logs at 10.0.5.30).",
+                    category="multi_hop_reasoning",
+                    relevant_turns=[],
+                    scoring_dimensions=["factual_accuracy", "specificity"],
+                    chain_length=3,
+                ),
+            ]
+        )
+
     multi_hop_questions = [
         q for q in multi_hop_questions if _question_references_delivered(q, delivered, ground_truth)
     ]
     questions.extend(multi_hop_questions[:multi_hop_count])
+
+    # Category 13: Adversarial distractors -- questions where similar-but-wrong
+    # facts exist for confusable entities.  The agent must distinguish carefully.
+    # 12% of questions (increased from 8%)
+    adversarial_count = max(1, int(12 * scale))
+    adversarial_questions = [
+        Question(
+            question_id="adversarial_01",
+            text="What is Sarah Chen's birthday? Be precise -- do not confuse her with any other team member.",
+            expected_answer="March 15",
+            category="adversarial_distractor",
+            relevant_turns=[0],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "March 15",
+                keywords=["March", "15"],
+                incorrect=[
+                    "June 5",  # Elena Volkov
+                    "February 20",  # Fatima Al-Hassan
+                    "April 17",  # Amara Okafor
+                    "July 22",  # Marcus Rivera
+                ],
+            ),
+        ),
+        Question(
+            question_id="adversarial_02",
+            text="What allergy does the Backend Engineer on the Platform team have? Note: there are TWO Platform team members.",
+            expected_answer="Lars Eriksson is the Backend Engineer on Platform and has no allergies (none). Sarah Chen is the Senior Engineer on Platform and is allergic to shellfish.",
+            category="adversarial_distractor",
+            relevant_turns=[0],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "Lars Eriksson no allergies",
+                keywords=["Lars", "none"],
+                incorrect=["shellfish"],  # That's Sarah Chen's allergy
+            ),
+        ),
+        Question(
+            question_id="adversarial_03",
+            text="What is Elena Volkov's hobby? Do not confuse her with Yuki Tanaka.",
+            expected_answer="Elena Volkov's hobby is chess. (Yuki Tanaka's hobby is bonsai cultivation -- they are different people.)",
+            category="adversarial_distractor",
+            relevant_turns=[0],
+            scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric(
+                "chess",
+                keywords=["chess"],
+                incorrect=["bonsai"],  # Yuki Tanaka
+            ),
+        ),
+        Question(
+            question_id="adversarial_04",
+            text="What is the ORIGINAL budget for Project Echo? Do not confuse it with Project Atlas.",
+            expected_answer="$1.8M. (Project Atlas original budget was $2.1M -- different project.)",
+            category="adversarial_distractor",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "$1.8M",
+                keywords=["1.8"],
+                incorrect=["$2.1", "$2.5"],  # Atlas budgets
+            ),
+        ),
+        Question(
+            question_id="adversarial_05",
+            text="Which team member has a cat named Mochi? Be careful -- there are multiple cat owners.",
+            expected_answer="Sarah Chen has a tabby cat named Mochi. (Amara Okafor has a Siamese cat named Nia, and Fatima Al-Hassan has a Persian cat named Layla -- do not confuse them.)",
+            category="adversarial_distractor",
+            relevant_turns=[0],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "Sarah Chen, Mochi",
+                keywords=["Sarah Chen", "Mochi"],
+                incorrect=["Amara", "Nia", "Fatima", "Layla"],
+            ),
+        ),
+        Question(
+            question_id="adversarial_06",
+            text="What is the CURRENT deadline for Project Delta? Do not confuse with Project Atlas deadlines.",
+            expected_answer="August 25 (changed from July 10). Atlas deadline is September 20 -- different project.",
+            category="adversarial_distractor",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            rubric=_make_rubric(
+                "August 25",
+                keywords=["August", "25"],
+                incorrect=[
+                    "September 20",  # Atlas current
+                    "June 15",  # Atlas original
+                    "July 10",  # Delta original
+                ],
+            ),
+        ),
+        Question(
+            question_id="adversarial_07",
+            text="Who replaced Fatima Al-Hassan as project lead? Do not confuse with who replaced Marcus Rivera.",
+            expected_answer="Yuki Tanaka replaced Fatima Al-Hassan on Project Echo. (Amara Okafor replaced Marcus Rivera on Project Beacon -- different leadership change.)",
+            category="adversarial_distractor",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric(
+                "Yuki Tanaka replaced Fatima",
+                keywords=["Yuki Tanaka"],
+                incorrect=["Amara Okafor"],  # That was Beacon
+            ),
+        ),
+        Question(
+            question_id="adversarial_08",
+            text="What degree does Fatima Al-Hassan have? Do not confuse with Yuki Tanaka's degree.",
+            expected_answer="PhD Machine Learning from Oxford. (Yuki Tanaka has PhD Statistics from MIT -- different person.)",
+            category="adversarial_distractor",
+            relevant_turns=[0],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "PhD Machine Learning Oxford",
+                keywords=["Machine Learning", "Oxford"],
+                incorrect=["Statistics", "MIT"],  # That's Yuki
+            ),
+        ),
+        Question(
+            question_id="adversarial_09",
+            text="What is the vendor invoice amount for the server migration? Do not confuse with the internal audit figure.",
+            expected_answer="$387K (vendor invoice). The internal audit figure was $450K -- do not confuse them.",
+            category="adversarial_distractor",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "$387K",
+                keywords=["387"],
+                incorrect=["$450", "450"],
+            ),
+        ),
+        Question(
+            question_id="adversarial_10",
+            text="What is the description of Project Cascade? Do not confuse it with Project Beacon.",
+            expected_answer="Automated testing framework. (Beacon is a real-time analytics dashboard -- different project.)",
+            category="adversarial_distractor",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric(
+                "Automated testing framework",
+                keywords=["testing", "framework"],
+                incorrect=["analytics", "dashboard"],  # Beacon
+            ),
+        ),
+        Question(
+            question_id="adversarial_11",
+            text="What is the server uptime for Q3? Do NOT confuse with Q1 or Q2 figures.",
+            expected_answer="Q3 uptime was 99.995% (1 incident, 2 minutes). Q1 was 99.97% and Q2 was 99.89% -- do not confuse.",
+            category="adversarial_distractor",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "99.995%",
+                keywords=["99.995"],
+                incorrect=["99.97%", "99.89%"],
+            ),
+        ),
+        Question(
+            question_id="adversarial_12",
+            text="What is Priya Patel's degree? Do not confuse with James O'Brien's degree.",
+            expected_answer="BS Computer Engineering from IIT Bombay. (James O'Brien has MS Cybersecurity from Georgia Tech.)",
+            category="adversarial_distractor",
+            relevant_turns=[0],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "BS Computer Engineering IIT Bombay",
+                keywords=["Computer Engineering", "IIT Bombay"],
+                incorrect=["Cybersecurity", "Georgia Tech"],
+            ),
+        ),
+        Question(
+            question_id="adversarial_13",
+            text="What is the Q2 marketing budget? Be precise -- there is also a Q1 revenue figure that is similar in magnitude.",
+            expected_answer="$2.3M (Q2 marketing budget, 15% over $2.0M estimate). Do not confuse with Q1 revenue of $4.7M.",
+            category="adversarial_distractor",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "$2.3M marketing",
+                keywords=["2.3"],
+                incorrect=["$4.7"],
+            ),
+        ),
+        Question(
+            question_id="adversarial_14",
+            text="Which project has Elena Volkov as lead? Do not confuse with projects led by other women on the team.",
+            expected_answer="Elena Volkov leads Project Cascade (automated testing framework). Fatima Al-Hassan originally led Echo, and Amara Okafor now leads Beacon.",
+            category="adversarial_distractor",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy"],
+            rubric=_make_rubric(
+                "Elena Volkov, Cascade",
+                keywords=["Elena Volkov", "Cascade"],
+                incorrect=["Echo", "Beacon"],
+            ),
+        ),
+        Question(
+            question_id="adversarial_15",
+            text="How many people are on Project Cascade's team CURRENTLY? Do not confuse with Atlas team size.",
+            expected_answer="3 people (reduced from 4, one moved to Atlas). Atlas team is 15 -- do not confuse.",
+            category="adversarial_distractor",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "3",
+                keywords=["3"],
+                incorrect=["12", "15"],
+            ),
+        ),
+    ]
+    adversarial_questions = [
+        q
+        for q in adversarial_questions
+        if _question_references_delivered(q, delivered, ground_truth)
+    ]
+    questions.extend(adversarial_questions[:adversarial_count])
+
+    # Category 14: Temporal traps -- questions about superseded facts that test
+    # whether the agent returns the OLD (correct-for-the-question) or CURRENT value.
+    # 10% of questions (increased from 7%)
+    temporal_trap_count = max(1, int(10 * scale))
+    temporal_trap_questions = [
+        Question(
+            question_id="temptrap_01",
+            text="What WAS the Atlas deadline BEFORE the first change? I want the original value, not the current one.",
+            expected_answer="June 15. The first change moved it to August 3 (vendor contract fell through). Current is September 20.",
+            category="temporal_trap",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            rubric=_make_rubric(
+                "June 15",
+                keywords=["June", "15"],
+                incorrect=["September 20", "August 3"],
+            ),
+        ),
+        Question(
+            question_id="temptrap_02",
+            text="What was the Atlas budget AFTER the first increase but BEFORE the final cost was tallied?",
+            expected_answer="$2.5M (revised from $2.1M). The final total cost was $2.7M which is different.",
+            category="temporal_trap",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "temporal_awareness", "specificity"],
+            rubric=_make_rubric(
+                "$2.5M",
+                keywords=["2.5"],
+                incorrect=["$2.1", "$2.7"],
+            ),
+        ),
+        Question(
+            question_id="temptrap_03",
+            text="Who was leading Project Echo BEFORE the leadership change? I want the PREVIOUS leader.",
+            expected_answer="Fatima Al-Hassan was the original leader of Project Echo before she moved to the research division.",
+            category="temporal_trap",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            rubric=_make_rubric(
+                "Fatima Al-Hassan",
+                keywords=["Fatima"],
+                incorrect=["Yuki Tanaka"],  # Current leader
+            ),
+        ),
+        Question(
+            question_id="temptrap_04",
+            text="What was the Atlas deadline AFTER the first change but BEFORE the second change? Return the intermediate value.",
+            expected_answer="August 3. (Changed from June 15 due to vendor contract, then later changed to September 20 for compliance.)",
+            category="temporal_trap",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            rubric=_make_rubric(
+                "August 3",
+                keywords=["August", "3"],
+                incorrect=["June 15", "September 20"],
+            ),
+        ),
+        Question(
+            question_id="temptrap_05",
+            text="What was the original support ticket reduction figure BEFORE it was corrected?",
+            expected_answer="22% was the originally reported figure, later corrected to 18%.",
+            category="temporal_trap",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            rubric=_make_rubric(
+                "22%",
+                keywords=["22"],
+                incorrect=["18%"],  # That's the corrected value
+            ),
+        ),
+        Question(
+            question_id="temptrap_06",
+            text="Who was leading Project Beacon ORIGINALLY, before any leadership changes?",
+            expected_answer="Marcus Rivera was the original lead of Project Beacon before he moved to strategic planning.",
+            category="temporal_trap",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            rubric=_make_rubric(
+                "Marcus Rivera",
+                keywords=["Marcus", "Rivera"],
+                incorrect=["Amara Okafor"],  # Current leader
+            ),
+        ),
+        Question(
+            question_id="temptrap_07",
+            text="What was the Atlas team size BEFORE any contractors were hired?",
+            expected_answer="12 people (original). It grew to 15 after hiring 3 contractors for the security audit.",
+            category="temporal_trap",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            rubric=_make_rubric(
+                "12",
+                keywords=["12"],
+                incorrect=["15"],  # That's the final value
+            ),
+        ),
+        Question(
+            question_id="temptrap_08",
+            text="What was the Atlas response time BEFORE optimization?",
+            expected_answer="150ms average response time before optimization. After optimization it improved to 85ms.",
+            category="temporal_trap",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            rubric=_make_rubric(
+                "150ms",
+                keywords=["150"],
+                incorrect=["85"],  # That's the post-optimization value
+            ),
+        ),
+        Question(
+            question_id="temptrap_09",
+            text="What was the rollout percentage for Atlas AFTER the first expansion but BEFORE full rollout?",
+            expected_answer="70% (went from 30% -> 70% -> 100%). The intermediate value after first expansion was 70%.",
+            category="temporal_trap",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            rubric=_make_rubric(
+                "70%",
+                keywords=["70"],
+                incorrect=["30%", "100%"],
+            ),
+        ),
+        Question(
+            question_id="temptrap_10",
+            text="What was the Cascade team size BEFORE the reduction?",
+            expected_answer="4 people. It was later reduced to 3 when one member moved to Atlas.",
+            category="temporal_trap",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            rubric=_make_rubric(
+                "4",
+                keywords=["4"],
+                incorrect=["3"],  # That's the reduced value
+            ),
+        ),
+        Question(
+            question_id="temptrap_11",
+            text="What was the Delta project deadline BEFORE it was changed? I need the ORIGINAL date.",
+            expected_answer="July 10 was the original deadline. It was later changed to August 25 due to iOS App Store review delays.",
+            category="temporal_trap",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            rubric=_make_rubric(
+                "July 10",
+                keywords=["July", "10"],
+                incorrect=["August 25"],  # That's the current value
+            ),
+        ),
+        Question(
+            question_id="temptrap_12",
+            text="What was the Atlas rollout status AFTER the pause but BEFORE the first partial rollout? What was happening at that exact intermediate stage?",
+            expected_answer="At that stage, the data migration bug had been fixed and rollout was resuming. It had not yet reached the 30% stage.",
+            category="temporal_trap",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            rubric=_make_rubric(
+                "bug fixed, resuming",
+                keywords=["fixed", "resum"],
+                incorrect=["30%", "70%", "100%"],
+            ),
+        ),
+        Question(
+            question_id="temptrap_13",
+            text="What was the Delta team size BEFORE the QA specialists were hired? I need the original value.",
+            expected_answer="8 people originally. It grew to 10 after hiring 2 QA automation specialists.",
+            category="temporal_trap",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            rubric=_make_rubric(
+                "8",
+                keywords=["8"],
+                incorrect=["10"],  # That's the expanded value
+            ),
+        ),
+        Question(
+            question_id="temptrap_14",
+            text="What was the Echo project budget BEFORE the GPU cost overrun? Return the ORIGINAL budget only.",
+            expected_answer="$1.8M was the original budget for Echo. It was later increased to $2.2M for GPU compute costs.",
+            category="temporal_trap",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            rubric=_make_rubric(
+                "$1.8M",
+                keywords=["1.8"],
+                incorrect=["$2.2", "2.2"],  # That's the revised budget
+            ),
+        ),
+        Question(
+            question_id="temptrap_15",
+            text="How many beta users did Atlas have BEFORE the expansion? Give the initial count only.",
+            expected_answer="50 beta users initially. Later expanded to 200 after positive feedback.",
+            category="temporal_trap",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "temporal_awareness"],
+            rubric=_make_rubric(
+                "50",
+                keywords=["50"],
+                incorrect=["200"],  # That's the expanded count
+            ),
+        ),
+    ]
+    temporal_trap_questions = [
+        q
+        for q in temporal_trap_questions
+        if _question_references_delivered(q, delivered, ground_truth)
+    ]
+    questions.extend(temporal_trap_questions[:temporal_trap_count])
+
+    # Category 15: Numerical reasoning -- questions that require computation
+    # from retrieved facts (percentages, differences, ratios).
+    # 12% of questions (increased from 7%)
+    num_reasoning_count = max(1, int(12 * scale))
+    num_reasoning_questions = [
+        Question(
+            question_id="numreason_01",
+            text="By what percentage did the Atlas budget increase from original to the revised budget? Show your calculation.",
+            expected_answer="19.05% increase ($2.1M to $2.5M: ($2.5 - $2.1) / $2.1 = $0.4 / $2.1 = 0.1905 = ~19%)",
+            category="numerical_reasoning",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "~19%",
+                keywords=["19"],
+                paraphrases=["19.05", "19.0", "approximately 19", "about 19"],
+            ),
+        ),
+        Question(
+            question_id="numreason_02",
+            text="How much OVER the revised budget was the final Atlas cost, as a percentage?",
+            expected_answer="8% over budget. Final cost $2.7M vs revised budget $2.5M: ($2.7 - $2.5) / $2.5 = 0.08 = 8%",
+            category="numerical_reasoning",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "8%",
+                keywords=["8%"],
+                paraphrases=["8 percent", "eight percent"],
+            ),
+        ),
+        Question(
+            question_id="numreason_03",
+            text="What is the TOTAL budget increase across all 4 projects that had budget changes (Atlas, Beacon, Delta, Echo)? Sum their increases.",
+            expected_answer="$1.15M total: Atlas +$400K ($2.1M->$2.5M) + Beacon +$150K ($800K->$950K) + Delta +$200K ($1.2M->$1.4M) + Echo +$400K ($1.8M->$2.2M) = $400K + $150K + $200K + $400K = $1.15M",
+            category="numerical_reasoning",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "$1.15M",
+                keywords=["1.15", "1,150"],
+                paraphrases=["$1,150K", "$1.15 million", "1150"],
+            ),
+        ),
+        Question(
+            question_id="numreason_04",
+            text="By what factor did deployment frequency improve? Express as a ratio (e.g. 2.5x).",
+            expected_answer="2.68x improvement (8.3 / 3.1 = 2.677... ~ 2.7x)",
+            category="numerical_reasoning",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "~2.7x",
+                keywords=["2.7", "2.68"],
+                paraphrases=["approximately 2.7", "about 2.7", "~2.7", "2.67", "2.6"],
+            ),
+        ),
+        Question(
+            question_id="numreason_05",
+            text="What is the total monthly infrastructure cost (AWS bill) per monthly active user?",
+            expected_answer="$0.45 per user ($127K / 285,000 = $0.4456). Note: the separately reported 'infrastructure cost per user' was $0.42 -- the AWS bill divided by MAU gives a slightly different figure.",
+            category="numerical_reasoning",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "$0.45",
+                keywords=["0.45", "0.44", "127", "285"],
+                paraphrases=["$0.44", "$0.45", "44 cents", "45 cents"],
+            ),
+        ),
+        Question(
+            question_id="numreason_06",
+            text="By what percentage did the customer acquisition cost decrease from Q2 to Q3?",
+            expected_answer="18.6% decrease ($156 to $127: ($156 - $127) / $156 = $29 / $156 = 0.1859 = ~18.6%)",
+            category="numerical_reasoning",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "~18.6%",
+                keywords=["18.6", "18.5", "19"],
+                paraphrases=["approximately 18.6", "about 19", "18.59"],
+            ),
+        ),
+        Question(
+            question_id="numreason_07",
+            text="What is the total Kubernetes pod count across all clusters, and what percentage runs on the production cluster?",
+            expected_answer="226 total pods. Production (k8s-prod) has 156 pods, which is 69.0% of total (156 / 226 = 0.6903).",
+            category="numerical_reasoning",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "226 total, 69%",
+                keywords=["226", "156", "69"],
+                paraphrases=["69.0%", "roughly 69%"],
+            ),
+        ),
+        Question(
+            question_id="numreason_08",
+            text="What was the TOTAL cost of the Atlas project including the over-budget amount, as a percentage of the original budget?",
+            expected_answer="The final cost was $2.7M vs original budget of $2.1M, which is 128.6% of original ($2.7 / $2.1 = 1.2857), meaning a 28.6% overrun.",
+            category="numerical_reasoning",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "128.6% or 28.6% overrun",
+                keywords=["28.6", "128", "2.7", "2.1"],
+                paraphrases=["approximately 29%", "about 29%", "128.57"],
+            ),
+        ),
+        Question(
+            question_id="numreason_09",
+            text="How much did the mean time to recovery improve as a percentage?",
+            expected_answer="48.9% improvement (from 45 minutes to 23 minutes: (45-23)/45 = 22/45 = 0.4889 = ~48.9%)",
+            category="numerical_reasoning",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "~48.9%",
+                keywords=["48.9", "49", "45", "23"],
+                paraphrases=["approximately 49%", "about 49%", "48.8"],
+            ),
+        ),
+        Question(
+            question_id="numreason_10",
+            text="What is the gap between the customer retention rate and its target, and how many users does that gap represent?",
+            expected_answer="Gap is 0.7 percentage points (94.3% vs 95% target). At 285,000 MAU, that gap represents ~1,995 users (285000 * 0.007 = 1995).",
+            category="numerical_reasoning",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "0.7pp gap, ~1995 users",
+                keywords=["0.7", "1995", "285"],
+                paraphrases=["~2000 users", "approximately 2000", "1,995"],
+            ),
+        ),
+        Question(
+            question_id="numreason_11",
+            text="If each of the 342 open bugs takes an average of 4 developer-hours to fix, and the team has 12 developers working 8-hour days, how many days would it take to clear the entire bug backlog?",
+            expected_answer="342 bugs * 4 hours = 1,368 developer-hours. 12 devs * 8 hours/day = 96 dev-hours/day. 1,368 / 96 = 14.25 days.",
+            category="numerical_reasoning",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "~14.25 days",
+                keywords=["14.25", "1368", "96"],
+                paraphrases=["about 14 days", "approximately 14", "14.3"],
+            ),
+        ),
+        Question(
+            question_id="numreason_12",
+            text="What is the combined REVISED budget of all 5 projects? Sum Atlas revised, Beacon revised, Cascade original, Delta revised, and Echo revised.",
+            expected_answer="$2.5M + $950K + $500K + $1.4M + $2.2M = $7.55M total revised budget across all 5 projects.",
+            category="numerical_reasoning",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "$7.55M",
+                keywords=["7.55"],
+                paraphrases=["$7,550K", "$7.55 million", "7550"],
+            ),
+        ),
+        Question(
+            question_id="numreason_13",
+            text="What percentage of the 17 security audit findings were critical severity? And what fraction of the total were high or critical combined?",
+            expected_answer="Critical: 3/17 = 17.6%. High + Critical: (3+5)/17 = 8/17 = 47.1%.",
+            category="numerical_reasoning",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "17.6% critical, 47.1% high+critical",
+                keywords=["17.6", "47.1", "17", "8"],
+                paraphrases=["17.65%", "approximately 18%", "47%", "about 47%"],
+            ),
+        ),
+        Question(
+            question_id="numreason_14",
+            text="If the monthly AWS bill continues to grow at 8% per month, what will it be in 3 months? Start from the current $127K.",
+            expected_answer="Month 1: $127K * 1.08 = $137.16K. Month 2: $137.16K * 1.08 = $148.13K. Month 3: $148.13K * 1.08 = $159.98K. After 3 months it would be ~$160K.",
+            category="numerical_reasoning",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "~$160K",
+                keywords=["160", "159", "137", "148"],
+                paraphrases=["approximately $160K", "about $160K", "$159.98K"],
+            ),
+        ),
+        Question(
+            question_id="numreason_15",
+            text="What is the average budget increase per project, considering only the 4 projects that had budget changes? Express in dollars and as a percentage.",
+            expected_answer="Total increase: $1.15M across 4 projects. Average increase: $1.15M / 4 = $287.5K. Average percentage: Atlas 19%, Beacon 18.75%, Delta 16.7%, Echo 22.2%, average = 19.2%.",
+            category="numerical_reasoning",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "$287.5K average, ~19% average",
+                keywords=["287.5", "287", "19"],
+                paraphrases=["$287,500", "approximately $288K", "about 19%"],
+            ),
+        ),
+        Question(
+            question_id="numreason_16",
+            text="What is the total number of Kubernetes nodes across all clusters, and what is the ratio of pods-per-node for the production cluster vs the dev cluster?",
+            expected_answer="Total nodes: 12 + 4 + 2 = 18. Prod pods/node: 156/12 = 13.0. Dev pods/node: 28/2 = 14.0. Dev actually has a slightly higher pod density (14 vs 13).",
+            category="numerical_reasoning",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "18 nodes, 13 prod, 14 dev",
+                keywords=["18", "13", "14"],
+                paraphrases=["13.0", "14.0"],
+            ),
+        ),
+        Question(
+            question_id="numreason_17",
+            text="If the premium subscription conversion rate of 7.8% were applied to the 285,000 MAU, how many paid subscribers would there be, and at $9.99/month each, what would the monthly subscription revenue be?",
+            expected_answer="285,000 * 0.078 = 22,230 paid subscribers. Revenue: 22,230 * $9.99 = $222,077.70 per month (~$222K/month).",
+            category="numerical_reasoning",
+            relevant_turns=[],
+            scoring_dimensions=["factual_accuracy", "specificity"],
+            rubric=_make_rubric(
+                "22,230 subscribers, ~$222K",
+                keywords=["22,230", "222"],
+                paraphrases=["22230", "~$222K", "$222,078", "$222,077"],
+            ),
+        ),
+    ]
+    num_reasoning_questions = [
+        q
+        for q in num_reasoning_questions
+        if _question_references_delivered(q, delivered, ground_truth)
+    ]
+    questions.extend(num_reasoning_questions[:num_reasoning_count])
 
     # Add bonus questions to fill up to num_questions if needed
     bonus_questions = [
