@@ -5,13 +5,10 @@ They require a prior `amplihack launch` or equivalent installation.
 Run with: pytest tests/test_claude_md_installation.py -m integration
 """
 
-import shutil
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
-
 
 # --- Integration tests (require installation) ---
 
@@ -65,7 +62,6 @@ def test_hooks_can_find_project_root():
 def test_build_hooks_copies_claude_md():
     """Verify build_hooks.py _CustomBuildBackend has CLAUDE.md paths configured."""
     import importlib
-    import sys
 
     # Find build_hooks.py relative to this test
     repo_root = Path(__file__).parent.parent

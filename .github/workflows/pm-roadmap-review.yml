@@ -14,6 +14,7 @@ on:
 permissions:
   contents: read # Read repository contents only
   issues: write # Post roadmap reviews to designated issue
+  pull-requests: read # Required for gh pr list commands in review script
 
 jobs:
   roadmap-review:
@@ -46,6 +47,7 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ISSUE_NUMBER: ${{ vars.PM_ROADMAP_ISSUE_NUMBER }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set +x  # Disable command echoing to prevent accidental exposure
 

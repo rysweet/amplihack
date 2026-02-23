@@ -120,12 +120,29 @@ Prevents API key exposure in workflow logs.
 ### M2.1: Minimal Permissions
 
 ```yaml
+# Base permissions (all PM workflows)
 permissions:
-  contents: read # Read-only by default
-  issues: write # Only what's needed
+  contents: read # Read repository contents only
+  issues: write # Post reports to designated issue
+
+  # Additional permissions (workflows using gh CLI for PR data)
+  pull-requests: read # Required by gh pr list / gh api for PR metrics
 ```
 
-Follows principle of least privilege.
+Each workflow requests only the permissions it needs. Workflows that query PR data via `gh` CLI (daily status, roadmap review, PR triage) include `pull-requests: read`. Follows principle of least privilege.
+
+### M2.2: GitHub Token Authentication for gh CLI
+
+Workflows that use the `gh` CLI (for querying PRs, milestones, or the GitHub API) must pass `GH_TOKEN` as an environment variable:
+
+```yaml
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+`GITHUB_TOKEN` is auto-provisioned by GitHub Actions (short-lived, auto-rotated, scoped to the repository). No manual secret configuration is needed. Without `GH_TOKEN`, `gh` CLI commands fail with **exit code 4** (authentication error).
+
+**Affected workflows**: `pm-daily-status.yml`, `pm-roadmap-review.yml`, `pm-pr-triage.yml`
 
 ### M3.2: Safe Command Construction
 
@@ -133,6 +150,7 @@ Follows principle of least privilege.
 env:
   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
   ISSUE_NUMBER: ${{ vars.PM_STATUS_ISSUE_NUMBER }}
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 run: |
   # Use environment variables, never string interpolation
 ```
@@ -198,12 +216,23 @@ PM Architect scripts **must** sanitize user inputs and validate for prompt injec
 **Purpose**: Review roadmap alignment and goal progress
 **Output**: Comment on tracking issue (PM_ROADMAP_ISSUE_NUMBER)
 
+**Permissions**: `contents: read`, `issues: write`, `pull-requests: read`
+
+**Environment Variables**:
+
+- `ANTHROPIC_API_KEY` - Claude API key for analysis
+- `ISSUE_NUMBER` - Target tracking issue
+- `GH_TOKEN` - GitHub token for `gh pr list` and `gh api` calls (velocity metrics, milestone progress)
+
 **Generated Review Includes**:
 
+- Executive summary
 - Goal progress tracking
-- Velocity analysis
-- Blocker identification
-- Roadmap adjustment recommendations
+- Velocity and capacity analysis (commits, PRs merged via `gh` CLI)
+- Milestone progress (via `gh api`)
+- Roadmap alignment assessment
+- Strategic risks and opportunities
+- Recommendations for next week
 
 ## Troubleshooting
 
@@ -224,9 +253,34 @@ PM Architect scripts **must** sanitize user inputs and validate for prompt injec
 
 **Solution**: Trigger manually via `workflow_dispatch` to keep workflows active.
 
+### gh CLI fails with exit code 4
+
+**Cause**: `GH_TOKEN` environment variable is not set in the workflow step, or the workflow is missing `pull-requests: read` permission.
+
+**Solution**:
+
+1. Add `GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}` to the `env:` block of the step that runs `gh` commands
+2. Add `pull-requests: read` to the workflow's `permissions:` block
+3. No manual secret setup is needed - `GITHUB_TOKEN` is auto-provisioned by GitHub Actions
+
+**Example fix**:
+
+```yaml
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read # Required for gh pr list / gh api
+
+steps:
+  - name: Review roadmap
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # Required for gh CLI auth
+    run: python .github/scripts/pm_roadmap_review.py
+```
+
 ### "Permission denied" errors
 
-**Solution**: Verify workflow has correct permissions. Should have `contents: read` + `issues: write` or `pull-requests: write`.
+**Solution**: Verify workflow has correct permissions. Should have `contents: read` + `issues: write` or `pull-requests: write`. Workflows using `gh` CLI for PR queries also need `pull-requests: read`.
 
 ## Disabling Workflows
 
@@ -302,6 +356,6 @@ For issues or questions:
 
 ---
 
-**Last Updated**: 2025-11-22
-**Version**: 1.0.0
-**Status**: Initial implementation (Proposal A Lite - Informational Workflows)
+**Last Updated**: 2026-02-23
+**Version**: 1.1.0
+**Status**: Production (gh CLI authentication fix applied to all PM workflows)

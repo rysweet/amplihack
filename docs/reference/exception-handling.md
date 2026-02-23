@@ -56,11 +56,13 @@ Base exception for CLI-level errors.
 Raised when the Claude CLI binary cannot be located or installed.
 
 **Common Causes**:
+
 - Claude CLI not installed
 - Binary not in PATH
 - Installation failed
 
 **Example**:
+
 ```python
 from amplihack.exceptions import ClaudeBinaryNotFoundError
 
@@ -75,6 +77,7 @@ except ClaudeBinaryNotFoundError as e:
 Raised when launching Claude CLI fails.
 
 **Common Causes**:
+
 - Invalid arguments
 - Permission issues
 - Process spawn failure
@@ -84,6 +87,7 @@ Raised when launching Claude CLI fails.
 Raised when appending an instruction to an active session fails.
 
 **Common Causes**:
+
 - Session not found
 - Communication error with Claude CLI
 - Invalid instruction format
@@ -99,6 +103,7 @@ Base exception for launcher-level errors.
 Raised when auto-mode encounters a fatal error.
 
 **Common Causes**:
+
 - Invalid auto-mode configuration
 - File system access issues
 - Markdown rendering failure
@@ -108,6 +113,7 @@ Raised when auto-mode encounters a fatal error.
 Raised when a required active session cannot be found.
 
 **Common Causes**:
+
 - No active Claude Code sessions
 - Session terminated unexpectedly
 - Session search failure
@@ -119,12 +125,14 @@ Raised when a required active session cannot be found.
 Raised when configuration is missing or invalid.
 
 **Common Causes**:
+
 - Missing required configuration files
 - Invalid JSON/YAML syntax
 - Missing required fields
 - Invalid configuration values
 
 **Example**:
+
 ```python
 from amplihack.exceptions import ConfigurationError
 
@@ -140,6 +148,7 @@ except ConfigurationError as e:
 Raised when a plugin operation fails.
 
 **Common Causes**:
+
 - Plugin not found
 - Plugin initialization failure
 - Git clone failure (for git-based plugins)
@@ -156,11 +165,13 @@ Base exception for recipe-related failures.
 Raised when a requested recipe cannot be found.
 
 **Common Causes**:
+
 - Recipe name typo
 - Recipe file missing
 - Invalid recipe directory structure
 
 **Example**:
+
 ```python
 from amplihack.exceptions import RecipeNotFoundError
 
@@ -176,6 +187,7 @@ except RecipeNotFoundError as e:
 Raised when a recipe file fails validation.
 
 **Common Causes**:
+
 - Invalid YAML syntax
 - Missing required fields
 - Invalid step definitions
@@ -302,12 +314,12 @@ except Exception as e:
 
 Use appropriate logging levels based on exception severity:
 
-| Level | Use Case | Example |
-|-------|----------|---------|
-| `DEBUG` | Expected failures, fail-open scenarios | Metrics collection failed |
-| `WARNING` | Degraded operation, using fallbacks | Config file missing, using defaults |
-| `ERROR` | Operation failed but service continues | Request failed, will retry |
-| `CRITICAL` | Fatal errors requiring immediate action | Database corruption detected |
+| Level      | Use Case                                | Example                             |
+| ---------- | --------------------------------------- | ----------------------------------- |
+| `DEBUG`    | Expected failures, fail-open scenarios  | Metrics collection failed           |
+| `WARNING`  | Degraded operation, using fallbacks     | Config file missing, using defaults |
+| `ERROR`    | Operation failed but service continues  | Request failed, will retry          |
+| `CRITICAL` | Fatal errors requiring immediate action | Database corruption detected        |
 
 ## Migration Notes
 
