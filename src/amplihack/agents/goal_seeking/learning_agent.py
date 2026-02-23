@@ -464,6 +464,13 @@ Rules:
                         max_steps=3,
                     )
 
+            # Keyword expansion: if retrieval is sparse for a large KB, try
+            # additional search phrases to catch facts missed by entity/iterative
+            if len(relevant_facts) < 3 and hasattr(self.memory, "get_all_facts"):
+                kb_size = len(self.memory.get_all_facts(limit=15000))
+                if kb_size > 500:
+                    relevant_facts = self._keyword_expanded_retrieval(question, relevant_facts)
+
         # Fall back to getting all facts if retrieval found nothing
         if not relevant_facts:
             if hasattr(self.memory, "get_all_facts"):
@@ -524,6 +531,12 @@ Rules:
             summary_nodes = self._get_summary_nodes()
             if summary_nodes:
                 intent["summary_context"] = "\n".join(f"- {s['outcome']}" for s in summary_nodes)
+
+        # Pre-compute math result if needed, so synthesis can use it directly
+        if intent.get("needs_math"):
+            computed = self._compute_math_result(question, relevant_facts, intent)
+            if computed:
+                intent["computed_math"] = computed
 
         # Step 3: Synthesize answer with intent-aware prompting
         answer = self._synthesize_with_llm(
@@ -973,15 +986,18 @@ Q: "How does Italy's 2026 gold medal performance compare to their previous best?
 A: {{"intent": "multi_source_synthesis", "needs_math": false, "needs_temporal": false, "reasoning": "Comparing performance across sources/events, not computing temporal differences"}}
 
 Q: "How many projects are being tracked?"
-A: {{"intent": "meta_memory", "needs_math": false, "needs_temporal": false, "reasoning": "Asks about the count of stored entities, not about specific project details"}}
+A: {{"intent": "meta_memory", "needs_math": false, "needs_temporal": false, "math_type": "none", "reasoning": "Asks about the count of stored entities, not about specific project details"}}
 
 Q: "List all team members you know about."
-A: {{"intent": "meta_memory", "needs_math": false, "needs_temporal": false, "reasoning": "Asks for enumeration of stored knowledge, not specific facts"}}
+A: {{"intent": "meta_memory", "needs_math": false, "needs_temporal": false, "math_type": "none", "reasoning": "Asks for enumeration of stored knowledge, not specific facts"}}
+
+Q: "By what percentage did the estimate exceed the actual cost?"
+A: {{"intent": "mathematical_computation", "needs_math": true, "needs_temporal": false, "math_type": "percentage", "reasoning": "Requires computing a percentage difference between two values"}}
 
 Question: {question}
 
 Return ONLY a JSON object:
-{{"intent": "one of: simple_recall, mathematical_computation, temporal_comparison, multi_source_synthesis, contradiction_resolution, incremental_update, causal_counterfactual, ratio_trend_analysis, meta_memory", "needs_math": true/false, "needs_temporal": true/false, "reasoning": "brief explanation"}}"""
+{{"intent": "one of: simple_recall, mathematical_computation, temporal_comparison, multi_source_synthesis, contradiction_resolution, incremental_update, causal_counterfactual, ratio_trend_analysis, meta_memory", "needs_math": true/false, "needs_temporal": true/false, "math_type": "none|percentage|delta|ratio|comparison", "reasoning": "brief explanation"}}"""
 
         try:
             response = litellm.completion(
@@ -1005,6 +1021,7 @@ Return ONLY a JSON object:
                         "intent": result.get("intent", "simple_recall"),
                         "needs_math": bool(result.get("needs_math", False)),
                         "needs_temporal": bool(result.get("needs_temporal", False)),
+                        "math_type": result.get("math_type", "none"),
                         "reasoning": result.get("reasoning", ""),
                     }
             except json.JSONDecodeError:
@@ -1019,6 +1036,7 @@ Return ONLY a JSON object:
                             "intent": result.get("intent", "simple_recall"),
                             "needs_math": bool(result.get("needs_math", False)),
                             "needs_temporal": bool(result.get("needs_temporal", False)),
+                            "math_type": result.get("math_type", "none"),
                             "reasoning": result.get("reasoning", ""),
                         }
         except Exception as e:
@@ -1029,6 +1047,7 @@ Return ONLY a JSON object:
             "intent": "simple_recall",
             "needs_math": False,
             "needs_temporal": False,
+            "math_type": "none",
             "reasoning": "default",
         }
 
@@ -1079,6 +1098,178 @@ Return ONLY a JSON object:
                     pass
 
         return answer
+
+    def _compute_math_result(
+        self, question: str, facts: list[dict[str, Any]], intent: dict[str, Any]
+    ) -> str | None:
+        """Pre-compute a math result from facts using LLM extraction + safe eval.
+
+        Uses the LLM to extract relevant numbers from facts and build an
+        arithmetic expression, then evaluates it with the AST-based calculator.
+        This avoids relying on the LLM to do arithmetic correctly during synthesis.
+
+        Args:
+            question: The user's question
+            facts: Retrieved fact dicts
+            intent: Intent classification dict (must have needs_math=True)
+
+        Returns:
+            A string like "COMPUTED: (2.3 - 2.0) / 2.0 * 100 = 15.0 (percentage)"
+            or None if extraction/computation fails.
+        """
+        math_type = intent.get("math_type", "none")
+        facts_text = "\n".join(f"- {f.get('outcome', f.get('fact', ''))}" for f in facts[:60])
+
+        prompt = f"""Extract the numbers needed to answer this math question.
+
+Question: {question}
+Math type: {math_type}
+
+Facts:
+{facts_text}
+
+Return ONLY a JSON object:
+{{
+  "numbers": {{"label1": number1, "label2": number2}},
+  "expression": "arithmetic expression using the numbers (e.g., '(2.3 - 2.0) / 2.0 * 100')",
+  "description": "brief description of what the expression computes"
+}}
+
+Rules:
+- Use ONLY numbers that appear explicitly in the facts
+- For percentage: (new - old) / old * 100
+- For delta: new - old
+- For ratio: numerator / denominator
+- For comparison: list the values being compared
+- The expression must use ONLY digits, +, -, *, /, parentheses, and decimal points
+- If you cannot find the needed numbers, return {{"numbers": {{}}, "expression": "", "description": "insufficient data"}}"""
+
+        try:
+            response = litellm.completion(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You are a precise number extractor. Return only JSON.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.0,
+            )
+
+            response_text = response.choices[0].message.content.strip()
+
+            # Parse JSON response
+            try:
+                result = json.loads(response_text)
+            except json.JSONDecodeError:
+                if "```json" in response_text:
+                    json_start = response_text.find("```json") + 7
+                    json_end = response_text.find("```", json_start)
+                    result = json.loads(response_text[json_start:json_end].strip())
+                else:
+                    return None
+
+            expression = result.get("expression", "").strip()
+            description = result.get("description", "")
+
+            if not expression:
+                return None
+
+            calc = calculate(expression)
+            if calc.get("error") or calc.get("result") is None:
+                logger.debug("Math computation failed: %s", calc.get("error"))
+                return None
+
+            value = calc["result"]
+            # Format nicely: use int when result is whole number
+            formatted = str(int(value)) if value == int(value) else f"{value:.4g}"
+
+            return f"COMPUTED: {expression} = {formatted} ({description})"
+
+        except Exception as e:
+            logger.debug("_compute_math_result failed: %s", e)
+            return None
+
+    def _keyword_expanded_retrieval(
+        self, question: str, existing_facts: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
+        """Expand retrieval with LLM-generated keyword phrases when initial retrieval is sparse.
+
+        For large KBs (>500 facts), if the initial retrieval returned <3 facts,
+        use the LLM to generate alternative search phrases and search memory for
+        each, merging results with existing facts.
+
+        Args:
+            question: The user's question
+            existing_facts: Facts already retrieved
+
+        Returns:
+            Merged list of facts (existing + newly found), deduplicated by experience_id.
+        """
+        prompt = f"""Generate 3-5 short search phrases to find facts relevant to this question.
+Each phrase should be a different angle or keyword combination.
+
+Question: {question}
+
+Return ONLY a JSON array of strings, e.g.: ["phrase 1", "phrase 2", "phrase 3"]"""
+
+        try:
+            response = litellm.completion(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": "You generate search keywords. Return only a JSON array.",
+                    },
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.0,
+            )
+
+            response_text = response.choices[0].message.content.strip()
+            try:
+                phrases = json.loads(response_text)
+            except json.JSONDecodeError:
+                if "```json" in response_text:
+                    json_start = response_text.find("```json") + 7
+                    json_end = response_text.find("```", json_start)
+                    phrases = json.loads(response_text[json_start:json_end].strip())
+                else:
+                    return existing_facts
+
+            if not isinstance(phrases, list):
+                return existing_facts
+
+            # Collect existing experience_ids for deduplication
+            seen_ids: set[str] = set()
+            for f in existing_facts:
+                eid = f.get("experience_id", "")
+                if eid:
+                    seen_ids.add(eid)
+
+            new_facts = list(existing_facts)
+            for phrase in phrases[:5]:
+                if not isinstance(phrase, str) or not phrase.strip():
+                    continue
+                results = self.memory.search(query=phrase.strip(), limit=10)
+                for fact in results:
+                    eid = fact.get("experience_id", "")
+                    if eid and eid not in seen_ids:
+                        seen_ids.add(eid)
+                        new_facts.append(fact)
+
+            logger.debug(
+                "Keyword expansion: %d phrases, %d->%d facts",
+                len(phrases),
+                len(existing_facts),
+                len(new_facts),
+            )
+            return new_facts
+
+        except Exception as e:
+            logger.debug("_keyword_expanded_retrieval failed: %s", e)
+            return existing_facts
 
     def _extract_facts_with_llm(
         self, content: str, temporal_meta: dict[str, Any] | None = None
@@ -1297,7 +1488,41 @@ Respond with a JSON list like:
         #  which can cause the LLM to add wrong verification steps)
         extra_instructions = ""
         is_complex_intent = intent_type not in self.SIMPLE_INTENTS
-        if is_complex_intent and intent.get("needs_math"):
+
+        # Category-specific synthesis instructions: targeted guidance per intent type
+        # instead of generic math instructions that can cause the LLM to hallucinate
+        _category_instructions = {
+            "mathematical_computation": (
+                "\n\nIMPORTANT - MATHEMATICAL COMPUTATION:\n"
+                "A pre-computed result is provided below. Use it directly.\n"
+                "Do NOT re-calculate. State the pre-computed answer and explain what it means.\n"
+            ),
+            "meta_memory": (
+                "\n\nIMPORTANT - COUNTING/ENUMERATION:\n"
+                "Count distinct items explicitly. List each one by name.\n"
+                "Do NOT estimate or approximate - enumerate every item.\n"
+            ),
+            "temporal_comparison": (
+                "\n\nIMPORTANT - TEMPORAL COMPARISON:\n"
+                "Identify the LATEST value for the asked entity.\n"
+                "State what changed from the previous value and by how much.\n"
+            ),
+            "needle_in_haystack": (
+                "\n\nIMPORTANT - SPECIFIC FACT LOOKUP:\n"
+                "The answer is in exactly one fact. Search ALL facts carefully.\n"
+                "Do not summarize or combine - find the ONE matching fact.\n"
+            ),
+            "distractor_resistance": (
+                "\n\nIMPORTANT - FOCUS ON ASKED ENTITY:\n"
+                "Ignore irrelevant facts about other entities.\n"
+                "Focus ONLY on the specific entity/topic asked about in the question.\n"
+            ),
+        }
+
+        if is_complex_intent and intent_type in _category_instructions:
+            extra_instructions += _category_instructions[intent_type]
+        elif is_complex_intent and intent.get("needs_math"):
+            # Fallback generic math instructions for intent types not in the dispatch
             extra_instructions += (
                 "\n\nIMPORTANT - MATHEMATICAL COMPUTATION REQUIRED:\n"
                 "- Extract the raw numbers from the facts FIRST\n"
@@ -1306,6 +1531,13 @@ Respond with a JSON list like:
                 "- When computing differences for multiple entities, do ALL of them\n"
                 "- Double-check every subtraction and addition\n"
                 "- Verify your final numerical answer by re-doing the computation\n"
+            )
+
+        # Inject pre-computed math result when available
+        computed_math = intent.get("computed_math")
+        if computed_math:
+            extra_instructions += (
+                f"\n\nPRE-COMPUTED RESULT (use this, do NOT re-calculate):\n{computed_math}\n"
             )
 
         if is_complex_intent and intent.get("needs_temporal"):
