@@ -299,6 +299,232 @@ class CognitiveAdapter:
     # Utility
     # ------------------------------------------------------------------
 
+    def retrieve_temporal_chain(
+        self, entity_name: str, field: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Retrieve temporal transition chain for an entity.
+
+        Walks TRANSITIONED_TO edges to reconstruct the full history of changes.
+        Handles both CognitiveMemory (node_id PK) and HierarchicalMemory (memory_id PK).
+
+        Args:
+            entity_name: Entity name (case-insensitive)
+            field: Optional field name to filter transitions
+
+        Returns:
+            List of dicts with transition history, chronologically ordered.
+        """
+        if hasattr(self.memory, "retrieve_temporal_chain"):
+            return self.memory.retrieve_temporal_chain(entity_name=entity_name, field=field)
+
+        # Direct Cypher fallback for CognitiveMemory (which uses node_id, not memory_id)
+        conn = self._get_connection()
+        if conn is None:
+            return []
+
+        return self._raw_retrieve_temporal_chain(conn, entity_name, field)
+
+    def _get_connection(self):
+        """Get the underlying Kuzu connection from the memory backend."""
+        # CognitiveMemory typically exposes .conn or .connection
+        for attr in ("connection", "conn", "_conn", "_connection"):
+            if hasattr(self.memory, attr):
+                return getattr(self.memory, attr)
+        # Try deeper access: memory.semantic_store.conn, etc.
+        for store_attr in ("semantic_store", "_semantic_store"):
+            store = getattr(self.memory, store_attr, None)
+            if store is not None:
+                for attr in ("conn", "connection", "_conn"):
+                    if hasattr(store, attr):
+                        return getattr(store, attr)
+        return None
+
+    def _raw_retrieve_temporal_chain(
+        self, conn, entity_name: str, field: str | None = None
+    ) -> list[dict[str, Any]]:
+        """Raw Cypher-based temporal chain retrieval.
+
+        Works directly against the Kuzu DB with the CognitiveMemory schema
+        (uses node_id instead of memory_id).
+        """
+        import json as _json
+
+        entity_lower = entity_name.strip().lower()
+        if not entity_lower:
+            return []
+
+        chain: list[dict[str, Any]] = []
+
+        try:
+            field_filter = ""
+            params: dict[str, Any] = {"agent_id": self.agent_name, "entity": entity_lower}
+            if field:
+                field_filter = " AND r.field CONTAINS $field"
+                params["field"] = field.lower()
+
+            result = conn.execute(
+                f"""
+                MATCH (old_node:SemanticMemory)-[r:TRANSITIONED_TO]->(new_node:SemanticMemory)
+                WHERE old_node.agent_id = $agent_id
+                  AND (LOWER(old_node.entity_name) CONTAINS $entity
+                       OR LOWER(new_node.entity_name) CONTAINS $entity
+                       OR LOWER(old_node.content) CONTAINS $entity
+                       OR LOWER(new_node.content) CONTAINS $entity
+                       OR LOWER(old_node.concept) CONTAINS $entity
+                       OR LOWER(new_node.concept) CONTAINS $entity)
+                  {field_filter}
+                RETURN old_node.node_id, old_node.content, old_node.concept,
+                       old_node.metadata,
+                       new_node.node_id, new_node.content, new_node.concept,
+                       new_node.metadata,
+                       r.field, r.old_value, r.new_value, r.reason, r.turn_number
+                ORDER BY r.turn_number ASC
+                """,
+                params,
+            )
+
+            seen_ids: set[str] = set()
+            edges: list[dict[str, Any]] = []
+
+            while result.has_next():
+                row = result.get_next()
+                old_meta = _json.loads(row[3]) if row[3] and isinstance(row[3], str) else {}
+                new_meta = _json.loads(row[7]) if row[7] and isinstance(row[7], str) else {}
+
+                edges.append(
+                    {
+                        "old_id": row[0],
+                        "old_content": row[1],
+                        "old_concept": row[2],
+                        "old_turn": old_meta.get("temporal_index", 0),
+                        "new_id": row[4],
+                        "new_content": row[5],
+                        "new_concept": row[6],
+                        "new_turn": new_meta.get("temporal_index", 0),
+                        "field": row[8] or "",
+                        "old_value": row[9] or "",
+                        "new_value": row[10] or "",
+                        "reason": row[11] or "",
+                        "turn_number": row[12] or 0,
+                    }
+                )
+
+            if not edges:
+                return []
+
+            new_ids = {e["new_id"] for e in edges}
+            root_ids = {e["old_id"] for e in edges} - new_ids
+
+            for edge in edges:
+                if edge["old_id"] in root_ids and edge["old_id"] not in seen_ids:
+                    seen_ids.add(edge["old_id"])
+                    chain.append(
+                        {
+                            "memory_id": edge["old_id"],
+                            "content": edge["old_content"],
+                            "concept": edge["old_concept"],
+                            "turn_number": edge["old_turn"],
+                            "field": edge["field"],
+                            "old_value": "",
+                            "new_value": "",
+                            "reason": "original value",
+                            "is_current": False,
+                        }
+                    )
+
+            for edge in edges:
+                if edge["new_id"] not in seen_ids:
+                    seen_ids.add(edge["new_id"])
+                    chain.append(
+                        {
+                            "memory_id": edge["new_id"],
+                            "content": edge["new_content"],
+                            "concept": edge["new_concept"],
+                            "turn_number": edge["turn_number"],
+                            "field": edge["field"],
+                            "old_value": edge["old_value"],
+                            "new_value": edge["new_value"],
+                            "reason": edge["reason"],
+                            "is_current": False,
+                        }
+                    )
+
+            if chain:
+                chain[-1]["is_current"] = True
+
+        except Exception as e:
+            logger.debug("_raw_retrieve_temporal_chain failed for '%s': %s", entity_name, e)
+
+        return chain
+
+    def create_transition_edge(
+        self,
+        old_node_id: str,
+        new_node_id: str,
+        field: str,
+        old_value: str,
+        new_value: str,
+        reason: str = "",
+        turn_number: int = 0,
+    ) -> bool:
+        """Create a TRANSITIONED_TO edge between two facts.
+
+        Args:
+            old_node_id: node_id of the old-value fact
+            new_node_id: node_id of the new-value fact
+            field: What changed
+            old_value: Previous value
+            new_value: New value
+            reason: Why the change happened
+            turn_number: Turn number of the transition
+
+        Returns:
+            True if edge created successfully
+        """
+        if hasattr(self.memory, "create_transition_edge"):
+            return self.memory.create_transition_edge(
+                old_node_id=old_node_id,
+                new_node_id=new_node_id,
+                field=field,
+                old_value=old_value,
+                new_value=new_value,
+                reason=reason,
+                turn_number=turn_number,
+            )
+
+        # Direct Cypher fallback for CognitiveMemory
+        conn = self._get_connection()
+        if conn is None:
+            return False
+
+        try:
+            conn.execute(
+                """
+                MATCH (old_m:SemanticMemory {node_id: $old_id})
+                MATCH (new_m:SemanticMemory {node_id: $new_id})
+                CREATE (old_m)-[:TRANSITIONED_TO {
+                    field: $field,
+                    old_value: $old_value,
+                    new_value: $new_value,
+                    reason: $reason,
+                    turn_number: $turn_number
+                }]->(new_m)
+                """,
+                {
+                    "old_id": old_node_id,
+                    "new_id": new_node_id,
+                    "field": field,
+                    "old_value": old_value,
+                    "new_value": new_value,
+                    "reason": reason,
+                    "turn_number": turn_number,
+                },
+            )
+            return True
+        except Exception as e:
+            logger.debug("Failed to create TRANSITIONED_TO edge: %s", e)
+            return False
+
     def close(self) -> None:
         """Close underlying memory."""
         self.memory.close()
