@@ -1,0 +1,50 @@
+[
+  {
+    "pattern": "*.test.*",
+    "reason": "Test files excluded from production audits",
+    "category": "*",
+    "type": "glob"
+  },
+  {
+    "pattern": "test_*.py",
+    "reason": "Python test files",
+    "category": "*",
+    "type": "glob"
+  },
+  {
+    "pattern": "**/tests/**",
+    "reason": "Test directories",
+    "category": "*",
+    "type": "glob"
+  },
+  {
+    "pattern": "**/__tests__/**",
+    "reason": "Jest test directories",
+    "category": "*",
+    "type": "glob"
+  },
+  {
+    "pattern": "**/node_modules/**",
+    "reason": "Third-party Node.js packages",
+    "category": "*",
+    "type": "glob"
+  },
+  {
+    "pattern": "**/vendor/**",
+    "reason": "Third-party vendor code",
+    "category": "*",
+    "type": "glob"
+  },
+  {
+    "pattern": "*.min.js",
+    "reason": "Minified JavaScript files",
+    "category": "*",
+    "type": "glob"
+  },
+  {
+    "pattern": "*.generated.*",
+    "reason": "Generated code files",
+    "category": "*",
+    "type": "glob"
+  }
+]

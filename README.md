@@ -206,6 +206,9 @@ Workflow customization:
 
 - **[85+ Skills](~/.amplihack/.claude/skills/README.md)** - PDF, XLSX, DOCX,
   PPTX manipulation, Azure admin, AzDO, and workflow patterns
+- **[Silent Degradation Audit](~/.amplihack/.claude/skills/silent-degradation-audit/SKILL.md)** -
+  Multi-wave code audit detecting silent failures through 6 progressive waves
+  with multi-agent validation (NEW)
 - **[Office Skills](~/.amplihack/.claude/skills/README.md)** - Comprehensive
   document processing (PDF, Excel, Word, PowerPoint)
 - **[Azure Admin](~/.amplihack/.claude/skills/azure-admin/README.md)** -
