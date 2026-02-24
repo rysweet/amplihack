@@ -43,6 +43,7 @@ class Step:
     mode: str | None = None
     working_dir: str | None = None
     timeout: int = 120
+    auto_stage: bool | None = None  # None = inherit from runner default
 
 
 @dataclass

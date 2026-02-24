@@ -16,6 +16,11 @@ import threading
 import time
 from pathlib import Path
 
+_NON_INTERACTIVE_FOOTER = (
+    "\n\nIMPORTANT: Proceed autonomously. Do not ask questions. "
+    "Make reasonable decisions and continue."
+)
+
 
 class CLISubprocessAdapter:
     """Adapter that uses CLI subprocess calls as the execution backend.
@@ -30,7 +35,7 @@ class CLISubprocessAdapter:
         self._working_dir = working_dir
 
     # ------------------------------------------------------------------
-    # Agent steps – no hard timeout, stream output
+    # Agent steps - no hard timeout, stream output
     # ------------------------------------------------------------------
 
     def execute_agent_step(
@@ -55,6 +60,9 @@ class CLISubprocessAdapter:
             RuntimeError: If the CLI exits with a non-zero code.
         """
         actual_cwd = working_dir or self._working_dir
+        # Append non-interactive footer so nested sessions never ask
+        # interactive questions and hang waiting for input (#2464).
+        prompt = prompt + _NON_INTERACTIVE_FOOTER
         cmd = [self._cli, "-p", prompt]
 
         # Write output to a temp file so we can tail it
@@ -62,7 +70,7 @@ class CLISubprocessAdapter:
         output_dir.mkdir(parents=True, exist_ok=True)
         output_file = output_dir / f"agent-step-{int(time.time())}.log"
 
-        # Launch process – no timeout
+        # Launch process - no timeout
         # CRITICAL: Remove CLAUDECODE env var so nested claude sessions work
         child_env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
         with open(output_file, "w") as log_fh:
@@ -84,7 +92,7 @@ class CLISubprocessAdapter:
         tail_thread.start()
 
         try:
-            proc.wait()  # Block until process finishes – no timeout
+            proc.wait()  # Block until process finishes - no timeout
         finally:
             stop_event.set()
             tail_thread.join(timeout=2)
@@ -107,7 +115,7 @@ class CLISubprocessAdapter:
         return stdout.strip()
 
     # ------------------------------------------------------------------
-    # Bash steps – keep a timeout (these should be fast)
+    # Bash steps - keep a timeout (these should be fast)
     # ------------------------------------------------------------------
 
     def execute_bash_step(

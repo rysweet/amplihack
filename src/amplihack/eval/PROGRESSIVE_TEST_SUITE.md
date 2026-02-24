@@ -9,11 +9,13 @@ The Progressive Test Suite evaluates agent learning capabilities across 6 levels
 ## Test Levels
 
 ### Level 1: Single Source Direct Recall (Baseline)
+
 **Cognitive Skill**: Basic memory retrieval
 
 **Example Content**: Single article about 2026 Winter Olympics medal standings
 
 **Question Types**:
+
 - "How many total medals does Norway have?"
 - "Which country is in second place?"
 
@@ -24,14 +26,17 @@ The Progressive Test Suite evaluates agent learning capabilities across 6 levels
 ---
 
 ### Level 2: Multi-Source Synthesis
+
 **Cognitive Skill**: Combining information from multiple sources
 
 **Example Content**: Three separate articles:
+
 - Article A: Medal standings by country
 - Article B: Individual athlete achievements
 - Article C: Historical context
 
 **Question Types**:
+
 - "How does Italy's 2026 performance compare to their previous best?" (needs A + C)
 - "Which country's individual athletes contributed most?" (needs A + B)
 - "What makes 2026 historically significant for Italy?" (needs all three)
@@ -43,11 +48,13 @@ The Progressive Test Suite evaluates agent learning capabilities across 6 levels
 ---
 
 ### Level 3: Temporal Reasoning
+
 **Cognitive Skill**: Tracking changes over time and computing differences
 
 **Example Content**: Three articles from different days showing medal count progression
 
 **Question Types**:
+
 - "How many medals did Norway win between Day 7 and Day 9?" (26-18=8)
 - "Which country improved their gold medal count the most?" (compare deltas)
 - "Describe the trend in Italy's performance" (acceleration pattern)
@@ -59,11 +66,13 @@ The Progressive Test Suite evaluates agent learning capabilities across 6 levels
 ---
 
 ### Level 4: Procedural Learning
+
 **Cognitive Skill**: Learning and applying step-by-step procedures
 
 **Example Content**: Flutter development setup guide with 9 steps and troubleshooting
 
 **Question Types**:
+
 - "What command creates a new Flutter project?" (recall)
 - "What should you do if flutter doctor shows issues?" (conditional logic)
 - "Describe the complete workflow from installation to testing" (sequence)
@@ -76,13 +85,16 @@ The Progressive Test Suite evaluates agent learning capabilities across 6 levels
 ---
 
 ### Level 5: Contradiction Handling
+
 **Cognitive Skill**: Detecting and reasoning about conflicting information
 
 **Example Content**: Two conflicting articles:
+
 - Source A: "1.2 billion viewers (IOC preliminary data)"
 - Source B: "800 million viewers (independent analysts)"
 
 **Question Types**:
+
 - "How many people watched?" (must acknowledge contradiction)
 - "Why might the sources disagree?" (methodology differences)
 - "Which source is more reliable and why?" (source credibility)
@@ -94,13 +106,16 @@ The Progressive Test Suite evaluates agent learning capabilities across 6 levels
 ---
 
 ### Level 6: Incremental Learning
+
 **Cognitive Skill**: Updating knowledge when new information arrives
 
 **Example Content**: Two-phase learning:
+
 - Phase 1 (Feb 15): "Klaebo has 9 Olympic golds"
 - Phase 2 (Feb 17): "Update: Klaebo won 10th gold in sprint"
 
 **Question Types** (asked AFTER Phase 2):
+
 - "How many golds does Klaebo have?" (must say 10, not 9)
 - "How did Klaebo's record change?" (9→10, won sprint)
 - "Describe complete trajectory" (integrate both phases)
@@ -170,6 +185,7 @@ eval_progressive/
 **Reason**: Content that is NOT in LLM training data (cutoff January 2025).
 
 **Benefits**:
+
 1. Agent cannot rely on pre-training
 2. Forces true learning from provided sources
 3. Eliminates confabulation/hallucination detection issues
@@ -178,6 +194,7 @@ eval_progressive/
 ### Content Authenticity
 
 All test content uses realistic 2026 Winter Olympics scenarios:
+
 - Real countries, real sports, realistic medal counts
 - Real athletes (Johannes Klaebo, Federica Brignone)
 - Real venues (Milan-Cortina)
@@ -190,12 +207,14 @@ This creates a fair test environment where success requires learning, not guessi
 ### Current Agent Status (as of this test creation)
 
 **Expected Baseline**:
+
 - L1: 100% (already passing in existing tests)
 - L2-L6: Unknown, likely 20-50% average
 
 ### Agent Improvement Targets
 
 After agent improvements (better retrieval, reasoning, update handling):
+
 - L1: 100% (maintain)
 - L2: 85-95% (multi-source synthesis)
 - L3: 70-85% (temporal reasoning)
@@ -217,7 +236,8 @@ After agent improvements (better retrieval, reasoning, update handling):
 
 To add Level 7:
 
-1. Define test content in `test_levels.py`:
+1. Define test content in `amplihack_eval.data.progressive_levels`:
+
 ```python
 LEVEL_7 = TestLevel(
     level_id="L7",
@@ -236,13 +256,14 @@ LEVEL_7 = TestLevel(
 
 ### Adding Questions to Existing Levels
 
-Edit the corresponding level in `test_levels.py` and add to the `questions` list.
+Edit the corresponding level in `amplihack_eval.data.progressive_levels` and add to the `questions` list.
 
 ## Technical Details
 
 ### Subprocess Isolation
 
 Each level runs in two subprocesses:
+
 1. **Learning subprocess**: Stores articles in memory
 2. **Testing subprocess**: Fresh process, retrieves from memory only
 
@@ -251,6 +272,7 @@ Each level runs in two subprocesses:
 ### Memory Backend
 
 Uses `amplihack-memory-lib` by default. The agent must:
+
 - Store experiences during learning phase
 - Retrieve experiences during testing phase
 - Handle updates correctly (for L6)
@@ -258,6 +280,7 @@ Uses `amplihack-memory-lib` by default. The agent must:
 ### Grading
 
 Uses LLM-based semantic grading (Claude Sonnet 4.5):
+
 - Understands semantic equivalence
 - Handles paraphrasing
 - Adjusts expectations by cognitive level
@@ -277,6 +300,7 @@ Uses LLM-based semantic grading (Claude Sonnet 4.5):
 ### Current Agent (Pre-Improvement)
 
 Likely scores:
+
 - L1: 100% ✓
 - L2: 30-50% (lacks cross-source synthesis)
 - L3: 20-40% (no temporal reasoning)
@@ -289,6 +313,7 @@ Likely scores:
 ### Improved Agent (Target)
 
 Target scores after improvements:
+
 - L1: 100% ✓
 - L2: 90% ✓
 - L3: 75% ✓
@@ -302,7 +327,7 @@ This represents a **135% improvement** in learning capability.
 
 ## Files
 
-- `test_levels.py`: Test content definitions (articles, questions)
+- `amplihack_eval.data.progressive_levels`: Test content definitions (articles, questions)
 - `progressive_test_suite.py`: Test runner and orchestration
 - `agent_subprocess.py`: Learning and testing subprocess implementation
 - `grader.py`: LLM-based semantic grading

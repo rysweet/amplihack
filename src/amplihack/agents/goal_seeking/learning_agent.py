@@ -16,6 +16,7 @@ Philosophy:
 import json
 import logging
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -116,6 +117,10 @@ class LearningAgent:
             ),
         )
         self.executor.register_action("calculate", calculate)
+        self.executor.register_action(
+            "code_generation",
+            lambda question: self._code_generation_tool(question),
+        )
 
         # Tier 2+: Learning, memory management, teaching, and application tools
         self.executor.register_action(
@@ -386,6 +391,8 @@ Rules:
         "incremental_update",
         "contradiction_resolution",
         "multi_source_synthesis",
+        "causal_counterfactual",
+        "mathematical_computation",
     }
 
     # Aggregation intents: routed to Cypher graph queries instead of text search
@@ -495,15 +502,31 @@ Rules:
             )
         ]
 
-        # For meta_memory questions (counting, aggregation), also filter SUMMARY
-        # nodes which inflate counts and confuse aggregation. For other intents,
-        # keep summaries as they provide useful context.
+        # For math/numerical and temporal questions on large KBs, supplement retrieval
+        # with keyword-targeted search to recover exact numbers/temporal chains
+        # lost in summarization or missed by entity retrieval.
+        _supplement_intents = (
+            "mathematical_computation",
+            "ratio_trend_analysis",
+            "temporal_comparison",
+        )
+        if intent_type in _supplement_intents and hasattr(self.memory, "search"):
+            existing_ids = {
+                f.get("experience_id", "") for f in relevant_facts if f.get("experience_id")
+            }
+            supplemental = self._keyword_expanded_retrieval(question, relevant_facts)
+            for f in supplemental:
+                eid = f.get("experience_id", "")
+                if eid and eid not in existing_ids:
+                    existing_ids.add(eid)
+                    relevant_facts.append(f)
+
+        # For meta_memory questions: keep tiered summaries since they provide
+        # the broad coverage needed for counting/enumerating entities across
+        # a large KB. Only filter out DB-stored SUMMARY nodes (context == "SUMMARY")
+        # which are different from tiered retrieval summaries.
         if intent_type == "meta_memory":
-            relevant_facts = [
-                f
-                for f in relevant_facts
-                if f.get("context", "") != "SUMMARY" and "summary" not in (f.get("tags") or [])
-            ]
+            relevant_facts = [f for f in relevant_facts if f.get("context", "") != "SUMMARY"]
 
         # Always rerank by query relevance first to prioritize the most relevant facts.
         # For large fact sets (>80), this ensures we trim noise, not signal.
@@ -552,6 +575,33 @@ Rules:
             computed = self._compute_math_result(question, relevant_facts, intent)
             if computed:
                 intent["computed_math"] = computed
+
+        # Pre-compute temporal code generation for temporal trap/evolution questions
+        question_lower_for_temporal = question.lower()
+        _temporal_code_keywords = (
+            "after first",
+            "before final",
+            "second",
+            "intermediate",
+            "between",
+            "before the",
+            "before any",
+            "originally",
+            "original",
+            "previous",
+        )
+        is_temporal_code_candidate = (
+            intent.get("needs_temporal")
+            or intent_type in ("temporal_comparison", "incremental_update")
+        ) and any(kw in question_lower_for_temporal for kw in _temporal_code_keywords)
+
+        if is_temporal_code_candidate:
+            try:
+                code_result = self._code_generation_tool(question)
+                if code_result.get("result"):
+                    intent["temporal_code"] = code_result
+            except Exception as e:
+                logger.warning("Temporal code generation failed: %s", e)
 
         # Step 3: Synthesize answer with intent-aware prompting
         answer = self._synthesize_with_llm(
@@ -815,9 +865,11 @@ Rules:
                     }
                 )
 
-        # Also get regular facts for context
+        # Also get regular facts for context -- include ALL tiered results
+        # (tiered retrieval already summarizes, so this is compact enough).
+        # meta_memory needs broad coverage to enumerate entities/projects.
         regular_facts = self._simple_retrieval(question)
-        results.extend(regular_facts[:20])
+        results.extend(regular_facts)
 
         return results
 
@@ -876,7 +928,7 @@ Rules:
         seen_ids: set[str] = set()
 
         for candidate in candidates:
-            entity_facts = self.memory.retrieve_by_entity(candidate, limit=30)
+            entity_facts = self.memory.retrieve_by_entity(candidate, limit=80)
             for fact in entity_facts:
                 fid = fact.get("experience_id", "")
                 if fid not in seen_ids:
@@ -1315,7 +1367,7 @@ Return ONLY a JSON object:
             or None if extraction/computation fails.
         """
         math_type = intent.get("math_type", "none")
-        facts_text = "\n".join(f"- {f.get('outcome', f.get('fact', ''))}" for f in facts[:60])
+        facts_text = "\n".join(f"- {f.get('outcome', f.get('fact', ''))}" for f in facts[:120])
 
         prompt = f"""Extract the numbers needed to answer this math question.
 
@@ -1615,10 +1667,11 @@ Respond with a JSON list like:
             "mathematical_computation",
             "ratio_trend_analysis",
             "contradiction_resolution",
+            "meta_memory",
         ):
-            max_facts = 300
+            max_facts = 500
         else:
-            max_facts = 200
+            max_facts = 300
 
         # Build context string - include temporal metadata, source labels, and supersede markers
         def _format_fact(i: int, fact: dict, include_temporal: bool) -> str:
@@ -1679,6 +1732,7 @@ Respond with a JSON list like:
         }
 
         instruction = level_instructions.get(question_level, level_instructions["L1"])
+        question_lower = question.lower()
 
         # Add intent-specific instructions only for complex intents
         # (simple_recall and incremental_update don't need math/temporal prompts
@@ -1696,8 +1750,9 @@ Respond with a JSON list like:
             ),
             "meta_memory": (
                 "\n\nIMPORTANT - COUNTING/ENUMERATION:\n"
-                "Count distinct items explicitly. List each one by name.\n"
-                "Do NOT estimate or approximate - enumerate every item.\n"
+                "Scan ALL facts below (including summaries) to enumerate every distinct item.\n"
+                "List each one by name. Do NOT stop at the first few facts.\n"
+                "Read EVERY fact before answering. Count precisely -- do NOT estimate.\n"
             ),
             "temporal_comparison": (
                 "\n\nIMPORTANT - TEMPORAL COMPARISON:\n"
@@ -1727,32 +1782,59 @@ Respond with a JSON list like:
                 f"\n\nPRE-COMPUTED RESULT (use this, do NOT re-calculate):\n{computed_math}\n"
             )
 
-        if is_complex_intent and intent.get("needs_temporal"):
+        if intent.get("needs_temporal") or intent_type in (
+            "temporal_comparison",
+            "incremental_update",
+        ):
+            # Detect if this is a temporal_trap question (asks for specific point in chain)
+            temporal_trap_cues = (
+                "before the",
+                "after the first",
+                "before any",
+                "originally",
+                "previous",
+                "intermediate",
+                "i want the",
+                "not the current",
+                "return the",
+            )
+            is_temporal_trap = any(cue in question_lower for cue in temporal_trap_cues)
+
+            if is_temporal_trap:
+                extra_instructions += (
+                    "\n\nIMPORTANT - TEMPORAL TRAP QUESTION:\n"
+                    "This question asks for a SPECIFIC historical value, NOT the current one.\n"
+                    "The facts below CONTAIN the answer -- look for temporal chains, version numbers,\n"
+                    "date-stamped changes, or sequences of values. Do NOT say you cannot find the answer.\n"
+                    "\nSTEP 1: Build the timeline -- list ALL values in chronological order:\n"
+                    "  Value1 (original) -> Value2 (after 1st change) -> Value3 (after 2nd change) -> ...\n"
+                    "STEP 2: Identify which position the question asks for:\n"
+                    "  - 'original' / 'BEFORE any changes' / 'BEFORE the first change' = Value1 (the FIRST in the chain)\n"
+                    "  - 'AFTER first change BUT BEFORE second' = Value2 (the SECOND in the chain)\n"
+                    "  - 'BEFORE the [specific] change' = the value IMMEDIATELY BEFORE that change\n"
+                    "  - 'previous leader' = the person BEFORE the transition\n"
+                    "STEP 3: Report ONLY that one value. Do NOT list the chain.\n"
+                    "\nCRITICAL: 'BEFORE the first change' means the value BEFORE the change happened,\n"
+                    "which is the ORIGINAL value -- NOT the value the first change produced.\n"
+                )
+            else:
+                extra_instructions += (
+                    "\n\nIMPORTANT - TEMPORAL REASONING REQUIRED:\n"
+                    "Step 1: Reconstruct the chronological chain of values\n"
+                    "Step 2: Identify the specific point asked about\n"
+                    "Step 3: Calculate differences if asked\n"
+                    "Step 4: State conclusion clearly\n"
+                    "RULES: 'BEFORE' = value prior to event. 'AFTER X but BEFORE Y' = value between.\n"
+                )
+
+        # Inject temporal code generation result if available
+        temporal_code = intent.get("temporal_code")
+        if temporal_code and temporal_code.get("result"):
             extra_instructions += (
-                "\n\nIMPORTANT - TEMPORAL REASONING REQUIRED:\n"
-                "You MUST follow this CALCULATION WORKSHEET exactly:\n\n"
-                "=== CALCULATION WORKSHEET ===\n\n"
-                "Step 1: LIST ALL DATA POINTS WITH DATES\n"
-                "For each entity, write the exact value at each time point:\n"
-                "  Entity A: Day 7 = X, Day 9 = Y, Day 10 = Z\n"
-                "  Entity B: Day 7 = X, Day 9 = Y, Day 10 = Z\n\n"
-                "Step 2: CALCULATE DIFFERENCES\n"
-                "For EACH entity, compute: later_value - earlier_value = difference\n"
-                "Write out the arithmetic explicitly: '13 - 8 = 5'\n"
-                "Do this for EVERY entity, not just the one you think is the answer.\n"
-                "When describing trends, state the EXACT change in each sub-period "
-                "(e.g., '+4 golds Day 7 to 9, then +1 gold Day 9 to 10, total +5').\n\n"
-                "Step 3: STATE CONCLUSION\n"
-                "Compare all computed differences side by side.\n"
-                "Only THEN identify which is largest/smallest/etc.\n"
-                "Verify by re-checking at least one subtraction.\n\n"
-                "=== END WORKSHEET ===\n\n"
-                "CRITICAL RULES:\n"
-                "- NEVER skip Step 1 - always list raw data points first\n"
-                "- NEVER guess differences - always compute them from the raw numbers\n"
-                "- Pay attention to WHICH metric is asked about (gold vs total vs other)\n"
-                "- Do NOT write your final answer at the top. Show all work FIRST,\n"
-                "  then state your conclusion at the END after all calculations.\n"
+                f"\n\nTEMPORAL CODE GENERATION RESULT (use as hint):\n"
+                f"Code: {temporal_code['code']}\n"
+                f"Resolved value: {temporal_code['result']}\n"
+                f"Chain length: {len(temporal_code.get('transitions', []))}\n"
             )
 
         # Add multi-source synthesis instructions
@@ -1807,7 +1889,6 @@ Knowledge Overview (what was learned):
 
         # Add counterfactual/hypothetical reasoning instructions
         counterfactual_instructions = ""
-        question_lower = question.lower()
         is_counterfactual = intent_type == "causal_counterfactual" or any(
             kw in question_lower
             for kw in ("what if", "if ", "would ", "without ", "had not", "removed")
@@ -1979,16 +2060,72 @@ Knowledge Overview (what was learned):
                 "- State the CURRENT state of affairs, then explain the history\n"
             )
 
+        # Adversarial confidence boost
+        adversarial_instructions = ""
+        adversarial_cues = (
+            "be careful",
+            "be precise",
+            "do not confuse",
+            "don't confuse",
+            "note:",
+            "note that",
+            "i want the",
+            "not the current",
+            "not any other",
+        )
+        if any(cue in question_lower for cue in adversarial_cues):
+            adversarial_instructions = (
+                "\n\nPRECISION REQUIRED: The question warns about potential confusion.\n"
+                "CRITICAL RULES FOR YOUR ANSWER:\n"
+                "1. State ONLY the correct answer for the specific entity asked about\n"
+                "2. Do NOT mention other entities' values, names, or attributes\n"
+                "3. Do NOT explain what might be confused -- just give the right answer\n"
+                "4. Do NOT compare with other entities or provide contrast\n"
+                "5. Keep the answer SHORT and DIRECT\n"
+                "Example: If asked 'What is X's hobby? Do not confuse with Y.'\n"
+                "  GOOD: 'X's hobby is chess.'\n"
+                "  BAD: 'X's hobby is chess. (Y's hobby is painting -- different.)'\n"
+            )
+
+        # Cross-entity aggregation
+        aggregation_instructions = ""
+        aggregation_cues = (
+            "total across",
+            "sum of",
+            "combined",
+            "all projects",
+            "across all",
+            "total budget",
+            "total cost",
+            "per user",
+        )
+        if any(cue in question_lower for cue in aggregation_cues):
+            aggregation_instructions = (
+                "\n\nAGGREGATION REQUIRED: List EACH entity's contribution by name. "
+                "Show the full addition. Verify the total by re-adding.\n"
+            )
+
+        # Numerical step-by-step
+        numerical_instructions = ""
+        if intent_type == "mathematical_computation" or (
+            intent.get("needs_math") and not computed_math
+        ):
+            numerical_instructions = (
+                "\n\nSTEP-BY-STEP CALCULATION: Extract ALL relevant numbers. "
+                "Label each. Show each arithmetic step. Double-check result.\n"
+            )
+
         prompt = f"""Answer this question using the provided facts.
 
 Question: {question}
 Level: {question_level} - {instruction}
-{extra_instructions}{contradiction_instructions}{counterfactual_instructions}{ratio_trend_instructions}{novel_skill_instructions}{cross_ref_instructions}
+{extra_instructions}{contradiction_instructions}{counterfactual_instructions}{ratio_trend_instructions}{novel_skill_instructions}{cross_ref_instructions}{adversarial_instructions}{aggregation_instructions}{numerical_instructions}
 {summary_section}
 {source_specific_section}
 {context_str}
 
-Provide a clear, well-reasoned answer. If the facts don't fully answer the question, say so.
+Answer DIRECTLY based on the facts. You have the information needed.
+Do NOT say "I don't have enough information" unless zero relevant facts exist above.
 """
 
         try:
@@ -1997,8 +2134,9 @@ Provide a clear, well-reasoned answer. If the facts don't fully answer the quest
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are a knowledgeable assistant that synthesizes information. "
-                        "When doing math, always show your work and verify calculations.",
+                        "content": "You are a knowledgeable assistant that synthesizes information from a knowledge base. "
+                        "Answer confidently and precisely. When doing math, show your work. "
+                        "Never say you cannot answer unless zero relevant facts exist.",
                     },
                     {"role": "user", "content": prompt},
                 ],
@@ -2210,6 +2348,236 @@ Is the fact consistent with stored knowledge? Return ONLY a JSON object:
             "contradicting_facts": [],
             "reasoning": "Verification failed due to an internal error.",
         }
+
+    # -- Temporal code generation -----------------------------------------
+
+    # Keyword-to-index mapping for temporal state resolution
+    _TEMPORAL_KEYWORDS: dict[str, str] = {
+        "first": "0",
+        "original": "0",
+        "initial": "0",
+        "second": "1",
+        "third": "2",
+        "intermediate": "len(transitions) // 2",
+        "middle": "len(transitions) // 2",
+        "between": "len(transitions) // 2",
+        "latest": "-1",
+        "current": "-1",
+        "final": "-1",
+        "last": "-1",
+    }
+
+    def retrieve_transition_chain(
+        self, entity: str, field: str
+    ) -> list[dict[str, Any]]:
+        """Retrieve all SUPERSEDED states for an entity/field from memory.
+
+        Queries memory for all facts related to the entity and field,
+        filters to those with superseded metadata, and returns them
+        in chronological order (oldest first, current last).
+
+        Args:
+            entity: Entity name (e.g., "Atlas project")
+            field: Field name (e.g., "deadline")
+
+        Returns:
+            List of state dicts ordered chronologically, each with
+            'value', 'timestamp', and 'metadata' keys.
+        """
+        if not hasattr(self.memory, "get_all_facts"):
+            return []
+
+        all_facts = self.memory.get_all_facts(limit=15000)
+        entity_lower = entity.lower()
+        field_lower = field.lower()
+
+        # Collect facts matching entity and field
+        chain: list[dict[str, Any]] = []
+        for fact in all_facts:
+            context = fact.get("context", "").lower()
+            outcome = fact.get("outcome", fact.get("fact", "")).lower()
+            combined = f"{context} {outcome}"
+
+            if entity_lower in combined and field_lower in combined:
+                meta = fact.get("metadata", {}) or {}
+                chain.append(
+                    {
+                        "value": fact.get("outcome", fact.get("fact", "")),
+                        "timestamp": fact.get("timestamp", ""),
+                        "temporal_index": meta.get("temporal_index", 0),
+                        "superseded": meta.get("superseded", False),
+                        "metadata": meta,
+                    }
+                )
+
+        # Sort by temporal_index (chronological order)
+        chain.sort(key=lambda x: (x["temporal_index"], x["timestamp"]))
+        return chain
+
+    def _parse_temporal_index(self, question: str) -> str:
+        """Parse a temporal question to determine which state index is requested.
+
+        Scans the question for temporal keywords and maps them to a
+        Python index expression.
+
+        Args:
+            question: The temporal question text
+
+        Returns:
+            A Python index expression string (e.g., "0", "-1",
+            "len(transitions) // 2").
+        """
+        question_lower = question.lower()
+
+        # Check "AFTER first BUT BEFORE second" pattern -> index 1
+        after_before = re.search(
+            r"after\s+(?:the\s+)?first.*?(?:but\s+)?before\s+(?:the\s+)?(?:second|final|last)",
+            question_lower,
+        )
+        if after_before:
+            return "1"
+
+        # Check "BEFORE the first" / "BEFORE any" -> index 0 (original)
+        before_first = re.search(
+            r"before\s+(?:the\s+)?(?:first|any)\s+(?:change|update|modification)",
+            question_lower,
+        )
+        if before_first:
+            return "0"
+
+        # Check "AFTER the Nth" pattern
+        after_nth = re.search(r"after\s+(?:the\s+)?(\w+)\s+(?:change|update)", question_lower)
+        if after_nth:
+            ordinal = after_nth.group(1)
+            ordinal_map = {"first": "1", "second": "2", "third": "3"}
+            if ordinal in ordinal_map:
+                return ordinal_map[ordinal]
+
+        # Check "BEFORE the final/last" -> second-to-last
+        before_final = re.search(
+            r"before\s+(?:the\s+)?(?:final|last|latest)\s+(?:change|update|value)",
+            question_lower,
+        )
+        if before_final:
+            return "-2"
+
+        # Simple keyword match
+        for keyword, index_expr in self._TEMPORAL_KEYWORDS.items():
+            if keyword in question_lower:
+                return index_expr
+
+        # Default: latest value
+        return "-1"
+
+    def temporal_code_synthesis(
+        self, question: str, entity: str, field: str
+    ) -> dict[str, Any]:
+        """Generate Python code to resolve a temporal question.
+
+        Produces a code snippet that retrieves the transition chain for
+        the entity/field and indexes into it based on the temporal
+        keywords in the question.
+
+        Args:
+            question: The temporal question text
+            entity: Entity name (e.g., "Atlas project")
+            field: Field name (e.g., "deadline")
+
+        Returns:
+            Dict with:
+                - code: Generated Python code string
+                - index_expr: The resolved index expression
+                - transitions: The actual transition chain retrieved
+                - result: The resolved value (if chain is non-empty)
+        """
+        index_expr = self._parse_temporal_index(question)
+
+        # Generate the code snippet
+        code_lines = [
+            f"transitions = retrieve_transition_chain({entity!r}, {field!r})",
+            f"# Temporal index: {index_expr}",
+        ]
+
+        # Use safe index expression
+        if index_expr.startswith("len("):
+            code_lines.append(f"idx = {index_expr}")
+            code_lines.append("answer = transitions[idx].value")
+        else:
+            code_lines.append(f"answer = transitions[{index_expr}].value")
+
+        code = "\n".join(code_lines)
+
+        # Execute the retrieval
+        transitions = self.retrieve_transition_chain(entity, field)
+        result = None
+        if transitions:
+            try:
+                # Evaluate the index safely
+                if index_expr.startswith("len("):
+                    idx = len(transitions) // 2
+                else:
+                    idx = int(index_expr)
+                if -len(transitions) <= idx < len(transitions):
+                    result = transitions[idx]["value"]
+            except (ValueError, IndexError) as e:
+                logger.warning("Temporal index resolution failed for %r: %s", index_expr, e)
+
+        return {
+            "code": code,
+            "index_expr": index_expr,
+            "transitions": transitions,
+            "result": result,
+        }
+
+    def _code_generation_tool(self, question: str) -> dict[str, Any]:
+        """Tool interface for temporal code generation.
+
+        Extracts entity and field from the question using LLM, then
+        invokes temporal_code_synthesis.
+
+        Args:
+            question: The temporal question
+
+        Returns:
+            Dict with generated code and result
+        """
+        # Extract entity and field from question using LLM
+        prompt = f"""Extract the entity and field from this temporal question.
+
+Question: {question}
+
+Return ONLY a JSON object:
+{{"entity": "the entity name", "field": "the field/attribute being asked about"}}
+
+Examples:
+- "What WAS the Atlas deadline BEFORE the first change?" -> {{"entity": "Atlas", "field": "deadline"}}
+- "What was the original team size?" -> {{"entity": "team", "field": "size"}}
+- "Who led the project BEFORE the leadership change?" -> {{"entity": "project", "field": "leader"}}"""
+
+        try:
+            response = litellm.completion(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "Extract entity and field. Return JSON."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.0,
+            )
+            response_text = response.choices[0].message.content.strip()
+            parsed = json.loads(response_text)
+            if isinstance(parsed, dict):
+                entity = parsed.get("entity", "").strip()
+                field = parsed.get("field", "").strip()
+                if not entity or not field:
+                    logger.warning("LLM returned empty entity=%r or field=%r", entity, field)
+                    return {"code": "", "index_expr": "", "transitions": [], "result": None}
+                return self.temporal_code_synthesis(question, entity, field)
+        except json.JSONDecodeError:
+            logger.warning("LLM did not return valid JSON for entity/field extraction")
+        except Exception as e:
+            logger.warning("Entity/field extraction failed: %s", e)
+
+        return {"code": "", "index_expr": "", "transitions": [], "result": None}
 
     def close(self):
         """Close agent and release resources."""

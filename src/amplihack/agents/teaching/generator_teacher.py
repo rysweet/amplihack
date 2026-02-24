@@ -1415,7 +1415,7 @@ def _build_lesson_10() -> Lesson:
             Each level is defined with three data classes:
 
             ```python
-            from amplihack.eval.test_levels import TestLevel, TestArticle, TestQuestion
+            from amplihack_eval.data.progressive_levels import TestLevel, TestArticle, TestQuestion
 
             CUSTOM_LEVEL = TestLevel(
                 level_id="CUSTOM-1",
@@ -1513,7 +1513,7 @@ def _build_lesson_10() -> Lesson:
                     "EvalConfig, TestCase, Answer",
                     "TestSuite, TestSource, TestAssertion",
                 ],
-                explanation="These are the exact class names from test_levels.py.",
+                explanation="These are the exact class names from amplihack_eval.data.progressive_levels.",
             ),
             QuizQuestion(
                 question="How many questions should a custom level have at minimum?",

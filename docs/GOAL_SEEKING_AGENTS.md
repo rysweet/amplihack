@@ -238,8 +238,9 @@ Agents use amplihack-memory-lib for persistent knowledge storage. The memory sys
 | `verify_fact`         | applying | Check if a claim is consistent with stored knowledge |
 | `store_fact`          | memory   | Directly store a fact with context and confidence    |
 | `get_memory_summary`  | memory   | Get statistics about what the agent knows            |
+| `code_generation`     | temporal | Generate code to resolve temporal trap questions     |
 
-When spawning is enabled, an eighth tool `spawn_agent` is registered for dynamic sub-agent creation.
+When spawning is enabled, a ninth tool `spawn_agent` is registered for dynamic sub-agent creation.
 
 ### Answering Questions (Retrieval Cascade)
 
@@ -263,6 +264,50 @@ The `answer_question()` method uses a multi-step retrieval cascade:
    - `meta_memory`: Entity enumeration and counting
 
 5. **Math validation** -- If math was needed, the answer is checked for arithmetic correctness and corrected if wrong.
+
+6. **Temporal code generation** -- For temporal trap and temporal evolution questions (detected by keywords like "BEFORE first", "AFTER first", "second", "intermediate", "between", "original"), the agent generates a code-based retrieval strategy:
+   - Extracts entity and field from the question via LLM
+   - Retrieves the full transition chain of SUPERSEDED states from memory via `retrieve_transition_chain(entity, field)`
+   - Parses the question to map temporal keywords to chain indices (first=0, second=1, intermediate=middle, latest=-1)
+   - Generates Python code following the pattern: `transitions = retrieve_transition_chain(entity, field); answer = transitions[N].value`
+   - The resolved value is passed as a hint to the synthesis LLM for more accurate temporal answers
+
+**Keyword-to-index mapping:**
+
+| Keyword | Index | Meaning |
+| ------- | ----- | ------- |
+| `first`, `original`, `initial` | `0` | First state in chain |
+| `second` | `1` | Second state |
+| `third` | `2` | Third state |
+| `intermediate`, `middle`, `between` | `len // 2` | Middle of chain |
+| `latest`, `current`, `final`, `last` | `-1` | Most recent state |
+| `BEFORE the first change` | `0` | Original value |
+| `AFTER first BUT BEFORE second` | `1` | Value after first change |
+| `BEFORE the final change` | `-2` | Second-to-last |
+
+**Example:**
+
+```python
+# The agent handles this automatically during answer_question(),
+# but you can also call the methods directly:
+
+# Retrieve the full transition chain for an entity/field
+chain = agent.retrieve_transition_chain("Atlas", "deadline")
+# Returns: [{"value": "June 15", ...}, {"value": "August 3", ...}, {"value": "September 20", ...}]
+
+# Parse a question to get the index expression
+idx = agent._parse_temporal_index("What was the Atlas deadline BEFORE the first change?")
+# Returns: "0"
+
+# Generate code and resolve the value
+result = agent.temporal_code_synthesis(
+    "What was the original Atlas deadline?",
+    "Atlas",
+    "deadline",
+)
+# Returns: {"code": "transitions = retrieve_transition_chain('Atlas', 'deadline')\n...",
+#           "index_expr": "0", "result": "June 15", "transitions": [...]}
+```
 
 ### Teaching
 
