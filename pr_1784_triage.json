@@ -1,0 +1,83 @@
+{
+  "pr_number": 1784,
+  "triage_timestamp": "2026-02-24T00:37:00Z",
+  "workflow_run_id": "22331266497",
+  "metadata": {
+    "title": "feat: Parallel Task Orchestrator for large-scale migrations (Issue #1783)",
+    "author": "rysweet",
+    "created_at": "2025-12-01T23:50:12Z",
+    "state": "open",
+    "draft": true,
+    "head_ref": "feat/issue-1783-parallel-orchestrator",
+    "base_ref": "main",
+    "commits": 3,
+    "files_changed": 39,
+    "files_changed": 39,
+    "additions": 11337,
+    "deletions": 0,
+    "comments": 9
+  },
+  "categorization": {
+    "type": "feature",
+    "area": "core_infrastructure",
+    "scope": "orchestration_system",
+    "impacted_systems": ["task_orchestration", "github_integration", "worktree_management", "agent_deployment"]
+  },
+  "risk_assessment": {
+    "overall_risk": "high",
+    "risk_score": 90,
+    "risk_factors": {
+      "very_large_changeset": true,
+      "core_infrastructure": true,
+      "total_lines": 11337,
+      "files_modified": 39,
+      "stale_pr": true,
+      "age_days": 84,
+      "draft_status": true
+    },
+    "justification": "High risk: massive changeset (11,337 lines, 39 files), core infrastructure changes, 84 days old (likely needs rebase), complex orchestration system. Draft status and high comment count (9) suggest ongoing work/issues."
+  },
+  "priority_assessment": {
+    "priority": "medium",
+    "priority_score": 52,
+    "factors": {
+      "core_feature": true,
+      "resolves_issue": "#1783",
+      "very_stale": true,
+      "draft_status": true,
+      "needs_rebase": true
+    },
+    "justification": "Medium priority: valuable core feature but severely stale (84 days), likely needs significant rebase/conflict resolution. Draft status and age suggest it may need resurrection decision."
+  },
+  "technical_analysis": {
+    "key_changes": [
+      "IssueParser: Parse GitHub issues and extract sub-issues",
+      "AgentDeployer: Deploy Task agents to isolated worktrees",
+      "StatusMonitor: File-based agent status tracking",
+      "PRCreator: Automatic draft PR creation",
+      "Comprehensive parallel task orchestration system",
+      "86% test coverage reported"
+    ],
+    "ci_status": "pending",
+    "tests_status": "reported 86% coverage"
+  },
+  "recommendations": {
+    "action": "assess_viability",
+    "next_steps": [
+      "Decide: resurrect or close?",
+      "If resurrect: check for merge conflicts with main",
+      "Review 9 existing comments for blockers",
+      "Verify test suite still passes after rebase",
+      "Check if requirements/architecture changed in 84 days",
+      "Consider fresh implementation if conflicts too severe"
+    ],
+    "merge_recommendation": "needs_decision",
+    "merge_blockers": [
+      "84 days stale - likely merge conflicts",
+      "Draft status",
+      "Needs rebase onto current main",
+      "Architectural review required"
+    ],
+    "estimated_review_time": "2-4 hours (if resurrecting)"
+  }
+}

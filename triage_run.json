@@ -1,11 +1,23 @@
 {
-  "timestamp": "2026-02-23T18:29:05.010Z",
-  "workflow_run_id": "22319384638",
-  "status": "no_open_prs",
-  "agent_prs_found": 0,
-  "total_open_prs": 0,
-  "search_criteria": [
-    "author:app/github-actions",
-    "author:app/copilot"
-  ]
+  "workflow_run_id": "22331266497",
+  "timestamp": "2026-02-24T00:37:00Z",
+  "prs_analyzed": [2507, 2499, 1784, 1376],
+  "previously_triaged": [2470],
+  "total_open_prs": 5,
+  "actions_taken": {
+    "comments_to_add": 3,
+    "issues_created": 0,
+    "labels_added": 0
+  },
+  "summary": {
+    "high_priority": 2,
+    "medium_priority": 3,
+    "low_priority": 0,
+    "high_risk": 1,
+    "medium_risk": 1,
+    "low_risk": 3,
+    "fast_track_candidates": 1,
+    "stale_prs": 2,
+    "dependency_blockers": 1
+  }
 }
