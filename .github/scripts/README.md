@@ -46,18 +46,55 @@ This works because:
 Both scripts share the same error-handling pattern via a `_run_gh_command(args, description)` helper:
 
 ```python
-def _run_gh_command(args: list[str], description: str) -> list[dict[str, Any]]:
-    """Run a gh CLI command and return parsed JSON, or empty list on failure."""
+def _run_gh_command(args: list[str], description: str) -> Optional[list[dict[str, Any]]]:
+    """Run a gh CLI command and return parsed JSON, or None on failure."""
 ```
 
 **Behavior:**
 
 - Runs `subprocess.run()` with list-form args (no shell injection risk)
-- On non-zero exit code: logs a warning to stderr, returns `[]`
-- On invalid JSON: logs a warning to stderr, returns `[]`
-- The calling function continues with empty data rather than crashing
+- On non-zero exit code: logs error to stderr and stdout, returns `None`
+- On invalid JSON: logs error to stderr and stdout, returns `None`
+- Returns `None` to indicate failure (not empty list `[]`)
 
-This ensures a single failed `gh` command never crashes the entire report. The report generates with whatever data is available.
+This ensures:
+
+- **Failures are explicit** - `None` is clearly different from empty data `[]`
+- **Reports show warnings** - Failed fetches displayed as "⚠️ Data fetch failed"
+- **Workflows fail** - Exit code 1 when any fetch fails (visible in GitHub Actions)
+- **No silent degradation** - Users always know when data is missing
+
+### Failure Visibility
+
+When data fetches fail, reports explicitly show warnings:
+
+**Example report with failures:**
+
+```markdown
+## PM Daily Status - 2026-02-24
+
+### ⚠️ INCOMPLETE DATA - SOME FETCHES FAILED
+
+This report contains partial data. The following information could not be fetched:
+
+- Issue count
+- CI/CD status
+
+**Action Required**: Check workflow logs for details: `gh run view --log`
+
+---
+
+### Open Items
+
+**Open Issues**: ⚠️ Data fetch failed
+**Open PRs**: 5 (3 ready, 2 draft)
+
+### Recommendations
+
+- ⚠️ Verify data manually - some metrics unavailable
+```
+
+The workflow will exit with code 1 (fail) when any fetch fails, making issues immediately visible in the GitHub Actions UI.
 
 ---
 
@@ -105,25 +142,45 @@ No additional token scopes or PATs are required. The default `GITHUB_TOKEN` is s
 
 ## Troubleshooting
 
-### Exit code 4 from `gh` CLI
+### Workflow fails with "Data fetch failed" warnings
 
-**Cause:** The `--search` flag on `gh issue list` or `gh pr list` uses the GitHub Search API, which requires scopes that `GITHUB_TOKEN` does not provide.
+**Cause:** One or more `gh` CLI commands failed (exit code 4 = auth error, other codes = API/network issues).
 
-**Fix:** Already applied. The scripts use `--limit 200` with Python-side date filtering instead of `--search`. If you see exit code 4 warnings in logs, a `gh` command failed gracefully and the report was generated with partial data.
+**What happens:**
+
+- Report is still generated showing which data is missing
+- Report includes "⚠️ Data fetch failed" for failed sections
+- Workflow exits with code 1 (fail) to make issue visible
+- ERROR messages logged to stdout and stderr
+
+**Common causes:**
+
+1. **Exit code 4**: `--search` flag requires Search API scope (we don't use this anymore)
+2. **Exit code 1**: API rate limit, network timeout, or GitHub API outage
+3. **Invalid JSON**: `gh` CLI version mismatch or API format change
+
+**Fix:**
+
+1. Check workflow logs: `gh run view --log`
+2. Look for "ERROR: fetch <operation> failed" messages
+3. Verify `GITHUB_TOKEN` has required permissions (issues:read, pull-requests:read)
+4. For transient errors, re-run the workflow
+
+### Reports show "⚠️ Data fetch failed"
+
+**This is expected behavior** when `gh` commands fail. The report explicitly shows:
+
+- Banner: "⚠️ INCOMPLETE DATA - SOME FETCHES FAILED"
+- List of what couldn't be fetched
+- "⚠️ Data fetch failed" for each missing metric
+
+**This is NOT a bug** - it's designed to prevent silent degradation where you see zeros and think "no issues" when actually the fetch failed.
 
 ### Missing `total` key in CI health analysis
 
 **Cause:** Previous versions of `analyze_ci_health()` in `pm_daily_status.py` returned a dict without `"total": 0` when `workflow_runs` was empty, causing a `KeyError` in report generation.
 
 **Fix:** Already applied. The empty-state return now includes all keys: `status`, `passing`, `failing`, `pending`, and `total`.
-
-### Reports show empty data
-
-If all sections show zeros or "No items," check:
-
-1. The `GH_TOKEN` environment variable is set (should be `${{ secrets.GITHUB_TOKEN }}`)
-2. The repository has issues/PRs/workflow runs to report on
-3. Check the workflow run logs for warning messages from `_run_gh_command()`
 
 ### `--limit 200` is not enough
 

@@ -37,22 +37,22 @@ class TestRunGhCommandRoadmap:
             result = roadmap._run_gh_command(["gh", "issue", "list"], "test")
         assert result == data
 
-    def test_exit_code_4_returns_empty_list(self, capsys):
+    def test_exit_code_4_returns_none(self, capsys):
         """Exit code 4 (auth/permission) must not crash."""
         fake = subprocess.CompletedProcess(args=[], returncode=4, stdout="", stderr="auth error")
         with patch("pm_roadmap_review.subprocess.run", return_value=fake):
             result = roadmap._run_gh_command(["gh", "issue", "list"], "fetch issues")
-        assert result == []
+        assert result is None
         captured = capsys.readouterr()
         assert "exit code 4" in captured.err
 
-    def test_invalid_json_returns_empty_list(self, capsys):
+    def test_invalid_json_returns_none(self, capsys):
         fake = subprocess.CompletedProcess(
             args=[], returncode=0, stdout="<html>not json</html>", stderr=""
         )
         with patch("pm_roadmap_review.subprocess.run", return_value=fake):
             result = roadmap._run_gh_command(["gh", "x"], "test")
-        assert result == []
+        assert result is None
         captured = capsys.readouterr()
         assert "invalid JSON" in captured.err
 
@@ -125,10 +125,10 @@ class TestFetchIssuesCreatedThisWeek:
             state_idx = args.index("--state")
             assert args[state_idx + 1] == "all"
 
-    def test_returns_empty_on_gh_failure(self):
+    def test_returns_none_on_gh_failure(self):
         fake = subprocess.CompletedProcess(args=[], returncode=4, stdout="", stderr="auth")
         with patch("pm_roadmap_review.subprocess.run", return_value=fake):
-            assert roadmap.fetch_issues_created_this_week() == []
+            assert roadmap.fetch_issues_created_this_week() is None
 
     def test_has_limit_200(self):
         fake = subprocess.CompletedProcess(args=[], returncode=0, stdout="[]", stderr="")
@@ -185,10 +185,10 @@ class TestFetchPrsMergedThisWeek:
             state_idx = args.index("--state")
             assert args[state_idx + 1] == "merged"
 
-    def test_returns_empty_on_failure(self):
+    def test_returns_none_on_failure(self):
         fake = subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr="err")
         with patch("pm_roadmap_review.subprocess.run", return_value=fake):
-            assert roadmap.fetch_prs_merged_this_week() == []
+            assert roadmap.fetch_prs_merged_this_week() is None
 
 
 # ---------------------------------------------------------------------------
@@ -232,10 +232,10 @@ class TestFetchBlockedIssues:
             label_idx = args.index("--label")
             assert args[label_idx + 1] == "blocked"
 
-    def test_returns_empty_on_failure(self):
+    def test_returns_none_on_failure(self):
         fake = subprocess.CompletedProcess(args=[], returncode=4, stdout="", stderr="auth")
         with patch("pm_roadmap_review.subprocess.run", return_value=fake):
-            assert roadmap.fetch_blocked_issues() == []
+            assert roadmap.fetch_blocked_issues() is None
 
 
 # ---------------------------------------------------------------------------
@@ -447,15 +447,28 @@ class TestMainIntegration:
         content = report_file.read_text()
         assert "## Weekly Roadmap Review" in content
 
-    def test_main_handles_all_gh_failures_gracefully(self, tmp_path, monkeypatch):
-        """main() completes even when all gh calls return exit code 4."""
+    def test_main_handles_all_gh_failures_with_explicit_warnings(self, tmp_path, monkeypatch):
+        """Integration test: main() generates report with explicit failure indicators and exits with code 1."""
+        import pytest
+
         monkeypatch.chdir(tmp_path)
 
         fake = subprocess.CompletedProcess(args=[], returncode=4, stdout="", stderr="auth error")
         with patch("pm_roadmap_review.subprocess.run", return_value=fake):
-            roadmap.main()
+            with pytest.raises(SystemExit) as exc_info:
+                roadmap.main()
+            assert exc_info.value.code == 1  # Must exit with error code
 
         report_file = tmp_path / "roadmap_review.md"
         assert report_file.exists()
         content = report_file.read_text()
+
+        # Verify report structure exists
         assert "## Weekly Roadmap Review" in content
+
+        # CRITICAL: Must show explicit failure warnings
+        assert "⚠️ INCOMPLETE DATA" in content or "Data fetch failed" in content
+        assert "⚠️" in content  # Warning emoji present
+
+        # Should NOT show false healthy status
+        assert "Continue current trajectory" not in content or "⚠️" in content
