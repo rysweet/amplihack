@@ -8,7 +8,7 @@ Generates weekly roadmap analysis by:
 - Providing velocity metrics
 - Generating actionable recommendations
 
-Uses GitHub API for data collection and Claude for analysis.
+Uses GitHub API for data collection.
 """
 
 import json
@@ -18,7 +18,33 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).parent.parent.parent
+
+def _run_gh_command(args: list[str], description: str) -> list[dict[str, Any]] | None:
+    """Run a gh CLI command and return parsed JSON, or None on failure."""
+    result = subprocess.run(
+        args,
+        capture_output=True,
+        text=True,
+    )
+
+    if result.returncode != 0:
+        print(
+            f"ERROR: {description} failed (exit code {result.returncode}): {result.stderr.strip()}",
+            file=sys.stderr,
+        )
+        # Also print to stdout for GitHub Actions visibility
+        print(f"ERROR: {description} failed")
+        return None
+
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError:
+        print(
+            f"ERROR: {description} returned invalid JSON: {result.stdout[:200]}",
+            file=sys.stderr,
+        )
+        print(f"ERROR: {description} returned invalid JSON")
+        return None
 
 
 def get_week_number() -> str:
@@ -26,88 +52,90 @@ def get_week_number() -> str:
     return datetime.now().strftime("%Y-W%V")
 
 
-def fetch_issues_created_this_week() -> list[dict[str, Any]]:
-    """Fetch issues created in the past week."""
+def fetch_issues_created_this_week() -> list[dict[str, Any]] | None:
+    """Fetch issues created in the past week. Returns None on failure."""
     week_ago = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
 
-    result = subprocess.run(
+    issues = _run_gh_command(
         [
             "gh",
             "issue",
             "list",
+            "--limit",
+            "200",
+            "--state",
+            "all",
             "--json",
             "number,title,state,createdAt,labels,assignees",
-            "--search",
-            f"created:>={week_ago}",
         ],
-        capture_output=True,
-        text=True,
-        check=True,
+        "fetch recent issues",
     )
 
-    return json.loads(result.stdout)
+    if issues is None:
+        return None
+
+    # Filter to issues created this week
+    return [issue for issue in issues if issue.get("createdAt", "") >= week_ago]
 
 
-def fetch_prs_merged_this_week() -> list[dict[str, Any]]:
-    """Fetch PRs merged in the past week."""
+def fetch_prs_merged_this_week() -> list[dict[str, Any]] | None:
+    """Fetch PRs merged in the past week. Returns None on failure."""
     week_ago = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
 
-    result = subprocess.run(
+    prs = _run_gh_command(
         [
             "gh",
             "pr",
             "list",
             "--state",
             "merged",
+            "--limit",
+            "200",
             "--json",
             "number,title,mergedAt,labels,author",
-            "--search",
-            f"merged:>={week_ago}",
         ],
-        capture_output=True,
-        text=True,
-        check=True,
+        "fetch merged PRs",
     )
 
-    return json.loads(result.stdout)
+    if prs is None:
+        return None
+
+    # Filter to PRs merged this week
+    return [pr for pr in prs if pr.get("mergedAt", "") >= week_ago]
 
 
-def fetch_open_prs() -> list[dict[str, Any]]:
-    """Fetch currently open PRs."""
-    result = subprocess.run(
+def fetch_open_prs() -> list[dict[str, Any]] | None:
+    """Fetch currently open PRs. Returns None on failure."""
+    return _run_gh_command(
         [
             "gh",
             "pr",
             "list",
+            "--limit",
+            "200",
             "--json",
             "number,title,createdAt,labels,author,isDraft",
         ],
-        capture_output=True,
-        text=True,
-        check=True,
+        "fetch open PRs",
     )
 
-    return json.loads(result.stdout)
 
-
-def fetch_blocked_issues() -> list[dict[str, Any]]:
-    """Fetch issues labeled as blocked."""
-    result = subprocess.run(
+def fetch_blocked_issues() -> list[dict[str, Any]] | None:
+    """Fetch issues labeled as blocked. Returns None on failure."""
+    return _run_gh_command(
         [
             "gh",
             "issue",
             "list",
             "--label",
             "blocked",
+            "--limit",
+            "200",
             "--json",
             "number,title,labels,assignees",
         ],
-        capture_output=True,
-        text=True,
-        check=True,
+        "fetch blocked issues",
     )
-
-    return json.loads(result.stdout)
 
 
 def analyze_priority_distribution(issues: list[dict[str, Any]]) -> dict[str, int]:
@@ -133,30 +161,91 @@ def analyze_priority_distribution(issues: list[dict[str, Any]]) -> dict[str, int
 
 def generate_roadmap_report(
     week_num: str,
-    new_issues: list[dict[str, Any]],
-    merged_prs: list[dict[str, Any]],
-    open_prs: list[dict[str, Any]],
-    blocked_issues: list[dict[str, Any]],
+    new_issues: list[dict[str, Any]] | None,
+    merged_prs: list[dict[str, Any]] | None,
+    open_prs: list[dict[str, Any]] | None,
+    blocked_issues: list[dict[str, Any]] | None,
 ) -> str:
-    """Generate comprehensive roadmap review report."""
+    """Generate comprehensive roadmap review report. Shows explicit warnings when data fetches fail."""
 
-    priority_dist = analyze_priority_distribution(
-        new_issues + [{"labels": pr.get("labels", [])} for pr in open_prs]
-    )
+    # Track which data fetches failed
+    fetch_failures = []
+    if new_issues is None:
+        fetch_failures.append("Issues created this week")
+    if merged_prs is None:
+        fetch_failures.append("PRs merged this week")
+    if open_prs is None:
+        fetch_failures.append("Open PRs")
+    if blocked_issues is None:
+        fetch_failures.append("Blocked issues")
+
+    # Compute priority distribution only if we have data
+    if new_issues is not None and open_prs is not None:
+        priority_dist = analyze_priority_distribution(
+            new_issues + [{"labels": pr.get("labels", [])} for pr in open_prs]
+        )
+    else:
+        priority_dist = {"critical": 0, "high": 0, "medium": 0, "low": 0, "none": 0}
+
+    draft_count = len([pr for pr in open_prs if pr.get("isDraft")]) if open_prs is not None else 0
 
     report_parts = [
         f"## Weekly Roadmap Review - {week_num}",
         "",
-        f"**Generated**: {datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ')}",
+        f"**Generated**: {datetime.now().strftime('%Y-%m-%dT%H:%M:%SZ')}",
         "",
-        "### Velocity Analysis",
-        "",
-        f"**Issues Created This Week**: {len(new_issues)}",
-        f"**PRs Merged This Week**: {len(merged_prs)}",
-        f"**Open PRs**: {len(open_prs)} ({len([pr for pr in open_prs if pr.get('isDraft')])} drafts)",
-        "",
-        "**Priority Distribution**:",
     ]
+
+    # Add data quality warning banner if any fetches failed
+    if fetch_failures:
+        report_parts.extend(
+            [
+                "### ⚠️ INCOMPLETE DATA - SOME FETCHES FAILED",
+                "",
+                "This report contains partial data. The following information could not be fetched:",
+            ]
+        )
+        for failure in fetch_failures:
+            report_parts.append(f"- {failure}")
+        report_parts.extend(
+            [
+                "",
+                "**Action Required**: Check workflow logs for details: `gh run view --log`",
+                "",
+                "---",
+                "",
+            ]
+        )
+
+    report_parts.extend(
+        [
+            "### Velocity Analysis",
+            "",
+        ]
+    )
+
+    # Show metrics with explicit failure indicators
+    if new_issues is None:
+        report_parts.append("**Issues Created This Week**: ⚠️ Data fetch failed")
+    else:
+        report_parts.append(f"**Issues Created This Week**: {len(new_issues)}")
+
+    if merged_prs is None:
+        report_parts.append("**PRs Merged This Week**: ⚠️ Data fetch failed")
+    else:
+        report_parts.append(f"**PRs Merged This Week**: {len(merged_prs)}")
+
+    if open_prs is None:
+        report_parts.append("**Open PRs**: ⚠️ Data fetch failed")
+    else:
+        report_parts.append(f"**Open PRs**: {len(open_prs)} ({draft_count} drafts)")
+
+    report_parts.extend(
+        [
+            "",
+            "**Priority Distribution**:",
+        ]
+    )
 
     for priority, count in priority_dist.items():
         if count > 0:
@@ -164,7 +253,9 @@ def generate_roadmap_report(
 
     report_parts.extend(["", "### Recent Achievements", ""])
 
-    if merged_prs:
+    if merged_prs is None:
+        report_parts.append("⚠️ **Data fetch failed** - PR merge data unavailable")
+    elif merged_prs:
         for pr in merged_prs[:5]:  # Show top 5
             author = pr.get("author", {}).get("login", "unknown")
             report_parts.append(f"- #{pr['number']}: {pr['title']} (@{author})")
@@ -175,7 +266,9 @@ def generate_roadmap_report(
 
     report_parts.extend(["", "### Active Work (Open PRs)", ""])
 
-    if open_prs:
+    if open_prs is None:
+        report_parts.append("⚠️ **Data fetch failed** - Open PR data unavailable")
+    elif open_prs:
         for pr in open_prs[:5]:  # Show top 5
             author = pr.get("author", {}).get("login", "unknown")
             status = " [DRAFT]" if pr.get("isDraft") else ""
@@ -187,7 +280,9 @@ def generate_roadmap_report(
 
     report_parts.extend(["", "### Blockers", ""])
 
-    if blocked_issues:
+    if blocked_issues is None:
+        report_parts.append("⚠️ **Data fetch failed** - Blocked issues data unavailable")
+    elif blocked_issues:
         for issue in blocked_issues:
             assignees = ", ".join([f"@{a['login']}" for a in issue.get("assignees", [])])
             assignee_str = f" ({assignees})" if assignees else ""
@@ -206,13 +301,16 @@ def generate_roadmap_report(
     # Generate recommendations based on data
     recommendations = []
 
-    if len(blocked_issues) > 0:
+    # Add warning if any data is missing
+    if fetch_failures:
+        recommendations.append("- ⚠️ Verify data manually - some metrics unavailable")
+
+    if blocked_issues is not None and len(blocked_issues) > 0:
         recommendations.append(f"- Address {len(blocked_issues)} blocked issue(s) as priority")
 
-    if len(open_prs) > 10:
+    if open_prs is not None and len(open_prs) > 10:
         recommendations.append(f"- High PR count ({len(open_prs)}), consider focusing on reviews")
 
-    draft_count = len([pr for pr in open_prs if pr.get("isDraft")])
     if draft_count > 5:
         recommendations.append(f"- {draft_count} draft PRs - may need completion or closure")
 
@@ -221,7 +319,7 @@ def generate_roadmap_report(
             f"- {priority_dist['critical']} critical priority item(s) need immediate attention"
         )
 
-    if not recommendations:
+    if not recommendations and not fetch_failures:
         recommendations.append("- Continue current trajectory - healthy project state")
 
     report_parts.extend(recommendations)
@@ -255,6 +353,11 @@ def main():
         open_prs = fetch_open_prs()
         blocked_issues = fetch_blocked_issues()
 
+        # Check if any critical fetches failed
+        has_failures = (
+            new_issues is None or merged_prs is None or open_prs is None or blocked_issues is None
+        )
+
         print(f"Generating roadmap review for {week_num}...")
         report = generate_roadmap_report(
             week_num,
@@ -273,11 +376,15 @@ def main():
         # Also output to console for GitHub Actions summary
         print("\n" + report)
 
-    except subprocess.CalledProcessError as e:
-        print(f"Error running gh command: {e}", file=sys.stderr)
-        print(f"Stdout: {e.stdout}", file=sys.stderr)
-        print(f"Stderr: {e.stderr}", file=sys.stderr)
-        sys.exit(1)
+        # Exit with error code if any data fetches failed
+        # This ensures workflow fails and issues are visible in GitHub Actions UI
+        if has_failures:
+            print(
+                "\n⚠️ WARNING: Some data fetches failed. Check logs above for details.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
     except Exception as e:
         print(f"Error generating roadmap review: {e}", file=sys.stderr)
         import traceback
