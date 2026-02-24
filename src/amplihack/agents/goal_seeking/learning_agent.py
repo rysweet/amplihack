@@ -386,7 +386,6 @@ Rules:
         "incremental_update",
         "contradiction_resolution",
         "multi_source_synthesis",
-        "temporal_comparison",
         "causal_counterfactual",
         "mathematical_computation",
     }
@@ -513,15 +512,12 @@ Rules:
                     existing_ids.add(eid)
                     relevant_facts.append(f)
 
-        # For meta_memory questions (counting, aggregation), also filter SUMMARY
-        # nodes which inflate counts and confuse aggregation. For other intents,
-        # keep summaries as they provide useful context.
+        # For meta_memory questions: keep tiered summaries since they provide
+        # the broad coverage needed for counting/enumerating entities across
+        # a large KB. Only filter out DB-stored SUMMARY nodes (context == "SUMMARY")
+        # which are different from tiered retrieval summaries.
         if intent_type == "meta_memory":
-            relevant_facts = [
-                f
-                for f in relevant_facts
-                if f.get("context", "") != "SUMMARY" and "summary" not in (f.get("tags") or [])
-            ]
+            relevant_facts = [f for f in relevant_facts if f.get("context", "") != "SUMMARY"]
 
         # Always rerank by query relevance first to prioritize the most relevant facts.
         # For large fact sets (>80), this ensures we trim noise, not signal.
@@ -833,9 +829,11 @@ Rules:
                     }
                 )
 
-        # Also get regular facts for context
+        # Also get regular facts for context -- include ALL tiered results
+        # (tiered retrieval already summarizes, so this is compact enough).
+        # meta_memory needs broad coverage to enumerate entities/projects.
         regular_facts = self._simple_retrieval(question)
-        results.extend(regular_facts[:20])
+        results.extend(regular_facts)
 
         return results
 
@@ -1633,6 +1631,7 @@ Respond with a JSON list like:
             "mathematical_computation",
             "ratio_trend_analysis",
             "contradiction_resolution",
+            "meta_memory",
         ):
             max_facts = 500
         else:
@@ -1715,8 +1714,9 @@ Respond with a JSON list like:
             ),
             "meta_memory": (
                 "\n\nIMPORTANT - COUNTING/ENUMERATION:\n"
-                "Count distinct items explicitly. List each one by name.\n"
-                "Do NOT estimate or approximate - enumerate every item.\n"
+                "Scan ALL facts below (including summaries) to enumerate every distinct item.\n"
+                "List each one by name. Do NOT stop at the first few facts.\n"
+                "Read EVERY fact before answering. Count precisely -- do NOT estimate.\n"
             ),
             "temporal_comparison": (
                 "\n\nIMPORTANT - TEMPORAL COMPARISON:\n"
@@ -1768,6 +1768,8 @@ Respond with a JSON list like:
                 extra_instructions += (
                     "\n\nIMPORTANT - TEMPORAL TRAP QUESTION:\n"
                     "This question asks for a SPECIFIC historical value, NOT the current one.\n"
+                    "The facts below CONTAIN the answer -- look for temporal chains, version numbers,\n"
+                    "date-stamped changes, or sequences of values. Do NOT say you cannot find the answer.\n"
                     "Think through the temporal chain internally but in your answer:\n"
                     "1. State ONLY the specific value asked for\n"
                     "2. Do NOT list the full chain of all values\n"
