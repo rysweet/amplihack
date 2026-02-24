@@ -16,13 +16,43 @@ Comprehensive guide from basics to advanced topics. 60-90 minutes of hands-on le
 - All 8 workflow types
 - Prompting techniques
 - Autonomous work (auto mode, lock mode)
-- Goal-seeking agents
+- Goal-seeking agents overview
 - Advanced features (skills, hooks, memory)
 
 **Start Learning**:
 
 ```
 "Start the amplihack tutorial"
+```
+
+### 🤖 [Goal-Seeking Agent Tutorial](GOAL_SEEKING_AGENT_TUTORIAL.md)
+
+Complete hands-on guide to autonomous learning agents. Interactive 10-lesson curriculum with exercises, quizzes, and progressive skill building.
+
+**Topics Covered**:
+
+- Agent generation with `amplihack new`
+- SDK selection (Copilot, Claude, Microsoft, Mini)
+- Multi-agent architecture and dynamic spawning
+- Running evaluations (L1-L12)
+- Self-improvement loops (EVAL→ANALYZE→RESEARCH→IMPROVE)
+- Domain-specific agents and custom eval levels
+- Retrieval architecture and memory systems
+- Intent classification and mathematical reasoning
+- Patch proposers and reviewer voting
+- Cross-session memory persistence
+
+**Prerequisites**: Basic amplihack knowledge (complete Amplihack Tutorial first)
+
+**Duration**: 2-3 hours for full curriculum
+
+**Start Learning**:
+
+```python
+from amplihack.agents.teaching.generator_teacher import GeneratorTeacher
+teacher = GeneratorTeacher()
+content = teacher.teach_lesson("L01")
+print(content)
 ```
 
 ---
