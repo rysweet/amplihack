@@ -271,3 +271,71 @@ class TestLearningAgent:
         answer = agent._synthesize_with_llm("Question?", context, "L1")
 
         assert "unable" in answer.lower() or "error" in answer.lower()
+
+
+class TestTransitionDetection:
+    """Tests for temporal transition pattern detection in LearningAgent."""
+
+    def test_transition_patterns_match(self):
+        """Verify regex patterns detect common transition phrases."""
+        import re
+
+        patterns = LearningAgent._TRANSITION_PATTERNS
+
+        test_cases = [
+            ("deadline changed from June 15 to August 3", "june 15", "august 3"),
+            ("budget increased from 500K to 750K", "500k", "750k"),
+            ("team size was 8, now 12.", "8", "12"),
+            ("timeline moved from Q3 to Q4", "q3", "q4"),
+            ("target revised from 95% to 90%", "95%", "90%"),
+        ]
+
+        for text, expected_old, expected_new in test_cases:
+            found = False
+            for pattern in patterns:
+                matches = list(re.finditer(pattern, text.lower(), re.IGNORECASE))
+                if matches:
+                    m = matches[0]
+                    groups = m.groups()
+                    assert len(groups) >= 2, f"Pattern should capture 2 groups: {text}"
+                    # Normalize and check
+                    assert groups[0].strip() == expected_old, (
+                        f"Old value mismatch for '{text}': "
+                        f"got '{groups[0].strip()}', expected '{expected_old}'"
+                    )
+                    assert groups[1].strip() == expected_new, (
+                        f"New value mismatch for '{text}': "
+                        f"got '{groups[1].strip()}', expected '{expected_new}'"
+                    )
+                    found = True
+                    break
+            assert found, f"No pattern matched: '{text}'"
+
+    def test_extract_transition_field(self):
+        """Field extraction should identify known project fields."""
+        assert (
+            LearningAgent._extract_transition_field(
+                "deadline changed from June to August", "Atlas", "", ""
+            )
+            == "deadline"
+        )
+        assert (
+            LearningAgent._extract_transition_field(
+                "budget increased from 500K to 750K", "Atlas", "", ""
+            )
+            == "budget"
+        )
+
+    def test_extract_transition_reason(self):
+        """Reason extraction should find 'due to' clauses."""
+        reason = LearningAgent._extract_transition_reason(
+            "changed from June 15 to August 3 due to vendor delay", 33
+        )
+        assert "vendor delay" in reason
+
+    def test_is_temporal_question(self):
+        """Temporal question detection should match change keywords."""
+        assert LearningAgent._is_temporal_question("What changed in Project Atlas?")
+        assert LearningAgent._is_temporal_question("What was the original deadline?")
+        assert LearningAgent._is_temporal_question("How did the budget evolve over time?")
+        assert not LearningAgent._is_temporal_question("What is the team size?")

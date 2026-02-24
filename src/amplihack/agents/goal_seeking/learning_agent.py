@@ -672,21 +672,47 @@ and how they connect. Format: "This content covers: 1) ..., 2) ..., 3) ..."
             if not chain:
                 continue
 
+            # Deduplicate: keep only unique (field, old_value, new_value) transitions
+            # Group by field to create per-field timelines
+            seen_transitions: set[str] = set()
+            deduped_chain: list[dict] = []
+            for entry in chain:
+                old_val = entry.get("old_value", "")
+                new_val = entry.get("new_value", "")
+                field = entry.get("field", "")
+
+                if old_val and new_val:
+                    key = f"{field}:{old_val.lower()}:{new_val.lower()}"
+                    if key in seen_transitions:
+                        continue
+                    seen_transitions.add(key)
+                else:
+                    # Original/root values -- keep first per field
+                    key = f"root:{field}:{entry.get('content', '')[:50].lower()}"
+                    if key in seen_transitions:
+                        continue
+                    seen_transitions.add(key)
+
+                deduped_chain.append(entry)
+
+            if not deduped_chain:
+                continue
+
             # Format chain as structured timeline
             lines = [f"TEMPORAL CHAIN for {candidate}:"]
-            for entry in chain:
-                turn = entry.get("turn_number", 0)
+            for entry in deduped_chain:
                 content = entry.get("content", "")
                 old_val = entry.get("old_value", "")
                 new_val = entry.get("new_value", "")
                 reason = entry.get("reason", "")
+                field = entry.get("field", "")
                 is_current = entry.get("is_current", False)
 
                 if old_val and new_val:
                     reason_str = f" ({reason})" if reason else ""
-                    line = f"  Turn {turn}: {new_val} (changed from {old_val}){reason_str}"
+                    line = f"  [{field}] {old_val} -> {new_val}{reason_str}"
                 else:
-                    line = f"  Turn {turn}: {content[:150]} (original)"
+                    line = f"  [{field}] {content[:150]} (original)"
 
                 if is_current:
                     line += " [CURRENT VALUE]"
@@ -935,11 +961,15 @@ Rules:
             intent["source_specific_facts"] = source_specific_facts
 
         # Retrieve temporal chains for temporal questions using TRANSITIONED_TO edges
-        if (
+        should_check_chains = (
             self.use_hierarchical
             and hasattr(self.memory, "retrieve_temporal_chain")
-            and intent_type in ("temporal_comparison", "incremental_update")
-        ) or self._is_temporal_question(question):
+            and (
+                intent_type in ("temporal_comparison", "incremental_update")
+                or self._is_temporal_question(question)
+            )
+        )
+        if should_check_chains:
             temporal_chains = self._retrieve_temporal_chains_for_question(question)
             if temporal_chains:
                 intent["temporal_chains"] = temporal_chains
