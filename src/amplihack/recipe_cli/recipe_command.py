@@ -27,11 +27,18 @@ from .recipe_output import (
 )
 
 
-def parse_context_args(context_args: list[str]) -> tuple[dict[str, str], list[str]]:
+def parse_context_args(
+    context_args: list[str] | list[list[str]],
+) -> tuple[dict[str, str], list[str]]:
     """Parse context key=value arguments.
 
+    Handles two input formats:
+    - list[str]: Each element is a "key=value" string (legacy/direct call)
+    - list[list[str]]: Each element is a list of tokens from argparse nargs="+"
+      that should be joined with spaces before parsing (CLI with special chars)
+
     Args:
-        context_args: List of strings in "key=value" format
+        context_args: Context arguments from argparse or direct invocation
 
     Returns:
         Tuple of (parsed_context_dict, error_messages)
@@ -40,13 +47,18 @@ def parse_context_args(context_args: list[str]) -> tuple[dict[str, str], list[st
     errors: list[str] = []
 
     for ctx_arg in context_args:
+        # Handle nargs="+" format: each -c flag produces a list of tokens
+        # e.g. -c "task=Fix bug (#2453)" may arrive as ["task=Fix", "bug", "(#2453)"]
+        if isinstance(ctx_arg, list):
+            ctx_arg = " ".join(ctx_arg)
+
         if "=" in ctx_arg:
             key, value = ctx_arg.split("=", 1)
             context[key] = value
         else:
             errors.append(
                 f"Invalid context format '{ctx_arg}'. "
-                "Use key=value format (e.g., --context question='What is X?' --context var=value)"
+                "Use key=value format (e.g., -c 'question=What is X?' -c 'var=value')"
             )
 
     return context, errors
