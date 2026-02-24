@@ -29,7 +29,19 @@ from pathlib import Path
 
 from .grader import grade_answer
 from .metacognition_grader import grade_metacognition
-from .test_levels import ADVANCED_LEVELS, ALL_LEVELS, TestLevel
+
+try:
+    from amplihack_eval.data.progressive_levels import (  # type: ignore[import-not-found]
+        ADVANCED_LEVELS,
+        ALL_LEVELS,
+        TestLevel,
+    )
+except ImportError:
+    raise ImportError(
+        "amplihack-agent-eval package is required but not installed. "
+        "Install with: pip install 'amplihack-agent-eval @ "
+        "git+https://github.com/rysweet/amplihack-agent-eval.git@main'"
+    )
 
 
 @dataclass
@@ -559,7 +571,11 @@ def run_progressive_suite(config: ProgressiveConfig) -> ProgressiveResult:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Determine which levels to run
-    from .test_levels import NOVEL_SKILL_LEVELS, TEACHER_STUDENT_LEVELS, TRANSFER_LEVELS
+    from amplihack_eval.data.progressive_levels import (  # type: ignore[import-not-found]
+        NOVEL_SKILL_LEVELS,
+        TEACHER_STUDENT_LEVELS,
+        TRANSFER_LEVELS,
+    )
 
     all_available = (
         ALL_LEVELS + TEACHER_STUDENT_LEVELS + ADVANCED_LEVELS + NOVEL_SKILL_LEVELS + TRANSFER_LEVELS
