@@ -133,19 +133,23 @@ class KnowledgeSubgraph:
             for i, node in enumerate(sorted_nodes, 1):
                 time_marker = ""
                 source_marker = ""
+                chain_marker = ""
                 if node.metadata:
                     src_date = node.metadata.get("source_date", "")
                     t_order = node.metadata.get("temporal_order", "")
                     src_label = node.metadata.get("source_label", "")
+                    chain_pos = node.metadata.get("chain_position", "")
                     if src_date:
                         time_marker = f" [Date: {src_date}]"
                     elif t_order:
                         time_marker = f" [Time: {t_order}]"
                     if src_label:
                         source_marker = f" [Source: {src_label}]"
+                    if chain_pos:
+                        chain_marker = f" [{chain_pos}]"
                 lines.append(
-                    f"  {i}. [{node.concept}]{time_marker}{source_marker} {node.content} "
-                    f"(confidence: {node.confidence:.1f})"
+                    f"  {i}. [{node.concept}]{time_marker}{source_marker}{chain_marker} "
+                    f"{node.content} (confidence: {node.confidence:.1f})"
                 )
         else:
             # Sort nodes by confidence descending
@@ -153,14 +157,34 @@ class KnowledgeSubgraph:
             lines.append("Facts:")
             for i, node in enumerate(sorted_nodes, 1):
                 source_marker = ""
+                chain_marker = ""
                 if node.metadata:
                     src_label = node.metadata.get("source_label", "")
+                    chain_pos = node.metadata.get("chain_position", "")
                     if src_label:
                         source_marker = f" [Source: {src_label}]"
+                    if chain_pos:
+                        chain_marker = f" [{chain_pos}]"
                 lines.append(
-                    f"  {i}. [{node.concept}]{source_marker} {node.content} "
+                    f"  {i}. [{node.concept}]{source_marker}{chain_marker} {node.content} "
                     f"(confidence: {node.confidence:.1f})"
                 )
+
+        # Show transition chains if TRANSITIONED_TO edges exist
+        transition_edges = [
+            e for e in self.edges if e.relationship == "TRANSITIONED_TO"
+        ]
+        if transition_edges:
+            # Sort by turn to show progression
+            transition_edges.sort(
+                key=lambda e: e.metadata.get("turn", 0) if e.metadata else 0
+            )
+            lines.append("\nTransition history:")
+            for edge in transition_edges:
+                from_val = edge.metadata.get("from_value", "?") if edge.metadata else "?"
+                to_val = edge.metadata.get("to_value", "?") if edge.metadata else "?"
+                turn = edge.metadata.get("turn", "?") if edge.metadata else "?"
+                lines.append(f"  - {to_val} -> {from_val} (turn {turn})")
 
         # Show contradiction warnings if any exist
         contradiction_edges = [
@@ -337,6 +361,19 @@ class HierarchicalMemory:
                     FROM SemanticMemory TO SemanticMemory,
                     reason STRING,
                     temporal_delta STRING
+                )
+            """)
+
+            # TRANSITIONED_TO: explicit value transition chain for temporal reasoning
+            # Direction: (newer)-[:TRANSITIONED_TO]->(older) matching SUPERSEDES
+            # Enables multi-hop traversal: latest → intermediate → first
+            self.connection.execute("""
+                CREATE REL TABLE IF NOT EXISTS TRANSITIONED_TO(
+                    FROM SemanticMemory TO SemanticMemory,
+                    from_value STRING,
+                    to_value STRING,
+                    turn INT64,
+                    transition_type STRING
                 )
             """)
 
@@ -573,6 +610,7 @@ class HierarchicalMemory:
                 if contradiction.get("contradiction"):
                     # Create SUPERSEDES edge: new fact replaces old fact
                     temporal_delta = f"index {old_temporal_idx} → {new_temporal_idx}"
+                    conflicting = contradiction.get("conflicting_values", "")
                     self.connection.execute(
                         """
                         MATCH (new_m:SemanticMemory {memory_id: $new_id})
@@ -585,12 +623,39 @@ class HierarchicalMemory:
                         {
                             "new_id": new_node_id,
                             "old_id": old_id,
-                            "reason": f"Updated values: {contradiction.get('conflicting_values', '')}",
+                            "reason": f"Updated values: {conflicting}",
                             "delta": temporal_delta,
                         },
                     )
+
+                    # Create TRANSITIONED_TO edge with explicit value tracking
+                    # Parse from_value/to_value from conflicting_values ("X vs Y")
+                    parts = conflicting.split(" vs ", 1)
+                    from_value = parts[0].strip() if len(parts) >= 1 else ""
+                    to_value = parts[1].strip() if len(parts) >= 2 else ""
+                    self.connection.execute(
+                        """
+                        MATCH (new_m:SemanticMemory {memory_id: $new_id})
+                        MATCH (old_m:SemanticMemory {memory_id: $old_id})
+                        CREATE (new_m)-[:TRANSITIONED_TO {
+                            from_value: $from_val,
+                            to_value: $to_val,
+                            turn: $turn,
+                            transition_type: $ttype
+                        }]->(old_m)
+                        """,
+                        {
+                            "new_id": new_node_id,
+                            "old_id": old_id,
+                            "from_val": to_value,
+                            "to_val": from_value,
+                            "turn": new_temporal_idx,
+                            "ttype": "numeric_update",
+                        },
+                    )
+
                     logger.debug(
-                        "Created SUPERSEDES edge: %s → %s (%s)",
+                        "Created SUPERSEDES + TRANSITIONED_TO edges: %s → %s (%s)",
                         new_node_id[:8],
                         old_id[:8],
                         temporal_delta,
@@ -913,13 +978,141 @@ class HierarchicalMemory:
         # Step 4: Attach source provenance labels via DERIVES_FROM edges
         self._attach_provenance(all_nodes)
 
-        # Step 5: Mark superseded facts so retrieval prefers latest
+        # Step 5: Mark chain positions (first/intermediate/latest)
         self._mark_superseded(all_nodes)
 
+        # Step 6: Expand transition chains for temporal queries
+        # Follow TRANSITIONED_TO edges to include full history
+        chain_nodes, chain_edges = self._expand_transition_chains(all_nodes, seen_ids)
+        if chain_nodes:
+            all_nodes.extend(chain_nodes)
+            self._attach_provenance(chain_nodes)
+            self._mark_superseded(chain_nodes)
+
         subgraph.nodes = all_nodes
-        subgraph.edges = edges
+        subgraph.edges = edges + chain_edges
 
         return subgraph
+
+    def _expand_transition_chains(
+        self, nodes: list[KnowledgeNode], seen_ids: set[str]
+    ) -> tuple[list[KnowledgeNode], list[KnowledgeEdge]]:
+        """Follow TRANSITIONED_TO edges to include full transition chains.
+
+        For any node that participates in a transition chain, walks both
+        directions (newer→older and older→newer) to pull in all chain
+        members not already in the result set.
+
+        Args:
+            nodes: Current result nodes to check for chain membership
+            seen_ids: Set of already-included node IDs
+
+        Returns:
+            Tuple of (new_nodes, new_edges) discovered via chain traversal
+        """
+        new_nodes: list[KnowledgeNode] = []
+        new_edges: list[KnowledgeEdge] = []
+
+        for node in nodes:
+            try:
+                # Walk forward: this node → older nodes in chain
+                result = self.connection.execute(
+                    """
+                    MATCH (start:SemanticMemory {memory_id: $nid})-[r:TRANSITIONED_TO*1..10]->(older:SemanticMemory)
+                    RETURN older.memory_id, older.concept, older.content, older.confidence,
+                           older.source_id, older.tags, older.metadata, older.created_at,
+                           r
+                    """,
+                    {"nid": node.node_id},
+                )
+                while result.has_next():
+                    row = result.get_next()
+                    nid = row[0]
+                    if nid not in seen_ids:
+                        seen_ids.add(nid)
+                        tags = json.loads(row[5]) if row[5] else []
+                        metadata = json.loads(row[6]) if row[6] else {}
+                        new_nodes.append(
+                            KnowledgeNode(
+                                node_id=nid,
+                                category=MemoryCategory.SEMANTIC,
+                                content=row[2],
+                                concept=row[1],
+                                confidence=row[3],
+                                source_id=row[4] or "",
+                                created_at=row[7] or "",
+                                tags=tags,
+                                metadata=metadata,
+                            )
+                        )
+
+                # Walk backward: newer nodes → this node
+                result = self.connection.execute(
+                    """
+                    MATCH (newer:SemanticMemory)-[r:TRANSITIONED_TO*1..10]->(target:SemanticMemory {memory_id: $nid})
+                    RETURN newer.memory_id, newer.concept, newer.content, newer.confidence,
+                           newer.source_id, newer.tags, newer.metadata, newer.created_at,
+                           r
+                    """,
+                    {"nid": node.node_id},
+                )
+                while result.has_next():
+                    row = result.get_next()
+                    nid = row[0]
+                    if nid not in seen_ids:
+                        seen_ids.add(nid)
+                        tags = json.loads(row[5]) if row[5] else []
+                        metadata = json.loads(row[6]) if row[6] else {}
+                        new_nodes.append(
+                            KnowledgeNode(
+                                node_id=nid,
+                                category=MemoryCategory.SEMANTIC,
+                                content=row[2],
+                                concept=row[1],
+                                confidence=row[3],
+                                source_id=row[4] or "",
+                                created_at=row[7] or "",
+                                tags=tags,
+                                metadata=metadata,
+                            )
+                        )
+
+            except Exception as e:
+                logger.debug("Transition chain expansion failed for %s: %s", node.node_id[:8], e)
+
+        # Collect TRANSITIONED_TO edges between all chain members
+        all_ids = seen_ids
+        for node in nodes + new_nodes:
+            try:
+                result = self.connection.execute(
+                    """
+                    MATCH (a:SemanticMemory {memory_id: $nid})-[r:TRANSITIONED_TO]->(b:SemanticMemory)
+                    RETURN a.memory_id, b.memory_id, r.from_value, r.to_value,
+                           r.turn, r.transition_type
+                    """,
+                    {"nid": node.node_id},
+                )
+                while result.has_next():
+                    row = result.get_next()
+                    if row[0] in all_ids and row[1] in all_ids:
+                        new_edges.append(
+                            KnowledgeEdge(
+                                source_id=row[0],
+                                target_id=row[1],
+                                relationship="TRANSITIONED_TO",
+                                weight=1.0,
+                                metadata={
+                                    "from_value": row[2] or "",
+                                    "to_value": row[3] or "",
+                                    "turn": row[4] if row[4] is not None else 0,
+                                    "transition_type": row[5] or "",
+                                },
+                            )
+                        )
+            except Exception as e:
+                logger.debug("Failed to collect transition edges for %s: %s", node.node_id[:8], e)
+
+        return new_nodes, new_edges
 
     def _entity_seed_search(self, query: str, limit: int) -> list[KnowledgeNode]:
         """Find seed nodes by matching entity_name field.
@@ -1035,21 +1228,32 @@ class HierarchicalMemory:
             logger.debug("Failed to attach provenance: %s", e)
 
     def _mark_superseded(self, nodes: list[KnowledgeNode]) -> None:
-        """Mark facts that have been superseded by newer facts.
+        """Mark facts with their position in the transition chain.
 
-        For each node, check if any SUPERSEDES edge points TO it (meaning
-        a newer fact replaced it). If so, mark it in metadata so the
-        synthesis prompt can deprioritize outdated information.
+        For each node, determine its chain_position:
+        - "latest": No SUPERSEDES edge points TO this node (it's the newest)
+        - "first": No SUPERSEDES edge points FROM this node (it's the oldest)
+        - "intermediate": Has both incoming and outgoing SUPERSEDES edges
+
+        Intermediate states are NOT excluded - they remain fully retrievable
+        with their chain position tagged so the synthesis prompt can reason
+        about the full transition history.
 
         Args:
-            nodes: List of KnowledgeNode to check for supersede status
+            nodes: List of KnowledgeNode to check for chain position
         """
-        node_ids = [n.node_id for n in nodes]
-        if not node_ids:
+        if not nodes:
             return
 
         for node in nodes:
             try:
+                if node.metadata is None:
+                    node.metadata = {}
+
+                # Check if something newer supersedes this node (incoming edge)
+                has_newer = False
+                newer_id = ""
+                supersede_reason = ""
                 result = self.connection.execute(
                     """
                     MATCH (newer:SemanticMemory)-[r:SUPERSEDES]->(old:SemanticMemory {memory_id: $nid})
@@ -1060,13 +1264,42 @@ class HierarchicalMemory:
                 )
                 if result.has_next():
                     row = result.get_next()
-                    if node.metadata is None:
-                        node.metadata = {}
+                    has_newer = True
+                    newer_id = row[0]
+                    supersede_reason = row[1] or ""
+
+                # Check if this node supersedes something older (outgoing edge)
+                has_older = False
+                result = self.connection.execute(
+                    """
+                    MATCH (cur:SemanticMemory {memory_id: $nid})-[:SUPERSEDES]->(older:SemanticMemory)
+                    RETURN older.memory_id
+                    LIMIT 1
+                    """,
+                    {"nid": node.node_id},
+                )
+                if result.has_next():
+                    has_older = True
+
+                # Determine chain position
+                if has_newer and has_older:
+                    node.metadata["chain_position"] = "intermediate"
+                elif has_newer and not has_older:
+                    node.metadata["chain_position"] = "first"
+                elif not has_newer and has_older:
+                    node.metadata["chain_position"] = "latest"
+                # else: no chain involvement, no tag needed
+
+                if has_newer:
                     node.metadata["superseded"] = True
-                    node.metadata["superseded_by"] = row[0]
-                    node.metadata["supersede_reason"] = row[1] or ""
-                    # Lower confidence of superseded facts
-                    node.confidence = max(0.1, node.confidence * 0.5)
+                    node.metadata["superseded_by"] = newer_id
+                    node.metadata["supersede_reason"] = supersede_reason
+                    # Slightly lower confidence for non-latest, but keep retrievable
+                    if node.metadata.get("chain_position") == "intermediate":
+                        node.confidence = max(0.3, node.confidence * 0.7)
+                    elif node.metadata.get("chain_position") == "first":
+                        node.confidence = max(0.2, node.confidence * 0.6)
+
             except Exception as e:
                 logger.debug("SUPERSEDES check skipped (table may not exist): %s", e)
 
@@ -1514,6 +1747,20 @@ class HierarchicalMemory:
             except Exception:
                 stats["derives_from_edges"] = 0
 
+            try:
+                result = self.connection.execute(
+                    """
+                    MATCH (a:SemanticMemory)-[r:TRANSITIONED_TO]->(b:SemanticMemory)
+                    WHERE a.agent_id = $aid
+                    RETURN COUNT(r)
+                    """,
+                    {"aid": self.agent_name},
+                )
+                if result.has_next():
+                    stats["transitioned_to_edges"] = result.get_next()[0]
+            except Exception:
+                stats["transitioned_to_edges"] = 0
+
         except Exception as e:
             logger.error("Failed to get statistics: %s", e)
 
@@ -1541,12 +1788,13 @@ class HierarchicalMemory:
         export_data: dict[str, Any] = {
             "agent_name": self.agent_name,
             "exported_at": datetime.utcnow().isoformat(),
-            "format_version": "1.0",
+            "format_version": "1.1",
             "semantic_nodes": [],
             "episodic_nodes": [],
             "similar_to_edges": [],
             "derives_from_edges": [],
             "supersedes_edges": [],
+            "transitioned_to_edges": [],
             "statistics": {},
         }
 
@@ -1682,6 +1930,32 @@ class HierarchicalMemory:
         except Exception as e:
             logger.debug("Failed to export SUPERSEDES edges: %s", e)
 
+        # Export TRANSITIONED_TO edges
+        try:
+            result = self.connection.execute(
+                """
+                MATCH (newer:SemanticMemory)-[r:TRANSITIONED_TO]->(older:SemanticMemory)
+                WHERE newer.agent_id = $agent_id
+                RETURN newer.memory_id, older.memory_id,
+                       r.from_value, r.to_value, r.turn, r.transition_type
+                """,
+                {"agent_id": self.agent_name},
+            )
+            while result.has_next():
+                row = result.get_next()
+                export_data["transitioned_to_edges"].append(
+                    {
+                        "source_id": row[0],
+                        "target_id": row[1],
+                        "from_value": row[2] or "",
+                        "to_value": row[3] or "",
+                        "turn": row[4] if row[4] is not None else 0,
+                        "transition_type": row[5] or "",
+                    }
+                )
+        except Exception as e:
+            logger.debug("Failed to export TRANSITIONED_TO edges: %s", e)
+
         # Compute statistics
         export_data["statistics"] = {
             "semantic_node_count": len(export_data["semantic_nodes"]),
@@ -1689,6 +1963,7 @@ class HierarchicalMemory:
             "similar_to_edge_count": len(export_data["similar_to_edges"]),
             "derives_from_edge_count": len(export_data["derives_from_edges"]),
             "supersedes_edge_count": len(export_data["supersedes_edges"]),
+            "transitioned_to_edge_count": len(export_data["transitioned_to_edges"]),
         }
 
         return export_data
@@ -1722,7 +1997,7 @@ class HierarchicalMemory:
 
         # Validate format version
         fmt_version = data.get("format_version", "")
-        if fmt_version and fmt_version != "1.0":
+        if fmt_version and fmt_version not in ("1.0", "1.1"):
             logger.warning("Unknown format version %s, attempting import anyway", fmt_version)
 
         # Clear existing data if not merging
@@ -1885,6 +2160,34 @@ class HierarchicalMemory:
                 logger.debug("Failed to import SUPERSEDES edge: %s", e)
                 stats["errors"] += 1
 
+        # Import TRANSITIONED_TO edges
+        for edge in data.get("transitioned_to_edges", []):
+            try:
+                self.connection.execute(
+                    """
+                    MATCH (newer:SemanticMemory {memory_id: $sid})
+                    MATCH (older:SemanticMemory {memory_id: $tid})
+                    CREATE (newer)-[:TRANSITIONED_TO {
+                        from_value: $from_val,
+                        to_value: $to_val,
+                        turn: $turn,
+                        transition_type: $ttype
+                    }]->(older)
+                    """,
+                    {
+                        "sid": edge["source_id"],
+                        "tid": edge["target_id"],
+                        "from_val": edge.get("from_value", ""),
+                        "to_val": edge.get("to_value", ""),
+                        "turn": edge.get("turn", 0),
+                        "ttype": edge.get("transition_type", ""),
+                    },
+                )
+                stats["edges_imported"] += 1
+            except Exception as e:
+                logger.debug("Failed to import TRANSITIONED_TO edge: %s", e)
+                stats["errors"] += 1
+
         return stats
 
     def _clear_agent_data(self) -> None:
@@ -1902,6 +2205,8 @@ class HierarchicalMemory:
                 "MATCH (s:SemanticMemory {agent_id: $aid})-[r:DERIVES_FROM]->() DELETE r",
                 "MATCH (n:SemanticMemory {agent_id: $aid})-[r:SUPERSEDES]->() DELETE r",
                 "MATCH ()-[r:SUPERSEDES]->(o:SemanticMemory {agent_id: $aid}) DELETE r",
+                "MATCH (n:SemanticMemory {agent_id: $aid})-[r:TRANSITIONED_TO]->() DELETE r",
+                "MATCH ()-[r:TRANSITIONED_TO]->(o:SemanticMemory {agent_id: $aid}) DELETE r",
             ]:
                 self.connection.execute(edge_query, {"aid": self.agent_name})
 
