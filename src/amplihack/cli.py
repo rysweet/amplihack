@@ -740,7 +740,12 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     run_parser = recipe_subparsers.add_parser("run", help="Execute a recipe from YAML file")
     run_parser.add_argument("recipe_path", help="Path to recipe YAML file")
     run_parser.add_argument(
-        "-c", "--context", action="append", help="Set context variable (key=value)"
+        "-c",
+        "--context",
+        action="append",
+        nargs="+",
+        metavar="KEY=VALUE",
+        help="Set context variable (key=value). Values may contain special characters: -c 'task=Fix bug (#123)'",
     )
     run_parser.add_argument("--dry-run", action="store_true", help="Show what would be executed")
     run_parser.add_argument("-v", "--verbose", action="store_true", help="Show detailed output")
