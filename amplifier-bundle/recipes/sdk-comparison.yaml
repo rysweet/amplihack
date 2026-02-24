@@ -1,0 +1,272 @@
+name: "sdk-comparison"
+description: "Run L1-L12 eval on all 4 SDKs and generate comparative report"
+version: "1.0.0"
+author: "Amplihack Team"
+tags: ["eval", "sdk", "comparison", "benchmark", "multi-sdk"]
+
+# SDK COMPARISON RECIPE
+#
+# Runs the progressive test suite against all 4 SDK implementations and
+# produces a comparative report showing strengths and weaknesses of each.
+#
+# SDKs evaluated:
+#   - mini: Minimal SDK implementation
+#   - claude: Claude SDK (Anthropic)
+#   - copilot: Copilot SDK (Microsoft)
+#   - microsoft: Microsoft SDK
+#
+# This recipe wraps the sdk_eval_loop.py module, encoding the
+# comparison workflow that was previously run manually.
+#
+# Philosophy:
+#   - Same test suite, different SDKs -> apples-to-apples comparison
+#   - Multiple runs per SDK for statistical stability
+#   - Scores and rankings saved as artifacts
+#
+# Usage:
+#   amplifier recipes execute sdk-comparison.yaml --context '{
+#     "sdks": "mini claude copilot microsoft",
+#     "levels": "L1 L2 L3 L4 L5 L6",
+#     "loops_per_sdk": "3"
+#   }'
+#
+# CLI equivalent:
+#   python -m amplihack.eval.sdk_eval_loop --all-sdks --loops 3
+
+recursion:
+  max_depth: 4
+  max_total_steps: 30
+
+context:
+  # Space-separated list of SDKs to evaluate
+  sdks: "mini claude copilot microsoft"
+
+  # Levels to evaluate (space-separated)
+  levels: "L1 L2 L3 L4 L5 L6"
+
+  # Number of improvement loops per SDK (for score stability)
+  loops_per_sdk: "3"
+
+  # Output directory for results
+  output_dir: "./eval_sdk_comparison"
+
+  # Internal state (populated during execution)
+  mini_results: ""
+  claude_results: ""
+  copilot_results: ""
+  microsoft_results: ""
+  comparison_report: ""
+
+steps:
+  # ==========================================================================
+  # STEP 1: EVAL MINI SDK
+  # ==========================================================================
+  - id: "eval-mini"
+    type: "bash"
+    command: |
+      echo "=== Step 1: Evaluating Mini SDK ==="
+
+      LEVELS_ARGS=""
+      for level in {{levels}}; do
+        LEVELS_ARGS="$LEVELS_ARGS $level"
+      done
+
+      PYTHONPATH=src python -m amplihack.eval.sdk_eval_loop \
+        --sdks mini \
+        --loops {{loops_per_sdk}} \
+        --levels $LEVELS_ARGS \
+        --output-dir "{{output_dir}}" \
+        2>&1
+
+      echo ""
+      echo "=== Mini SDK Eval Complete ==="
+
+      if [ -f "{{output_dir}}/mini/sdk_report.json" ]; then
+        cat "{{output_dir}}/mini/sdk_report.json"
+      else
+        echo '{"sdk": "mini", "error": "report not found"}'
+      fi
+    output: "mini_results"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 2: EVAL CLAUDE SDK
+  # ==========================================================================
+  - id: "eval-claude"
+    type: "bash"
+    command: |
+      echo "=== Step 2: Evaluating Claude SDK ==="
+
+      LEVELS_ARGS=""
+      for level in {{levels}}; do
+        LEVELS_ARGS="$LEVELS_ARGS $level"
+      done
+
+      PYTHONPATH=src python -m amplihack.eval.sdk_eval_loop \
+        --sdks claude \
+        --loops {{loops_per_sdk}} \
+        --levels $LEVELS_ARGS \
+        --output-dir "{{output_dir}}" \
+        2>&1
+
+      echo ""
+      echo "=== Claude SDK Eval Complete ==="
+
+      if [ -f "{{output_dir}}/claude/sdk_report.json" ]; then
+        cat "{{output_dir}}/claude/sdk_report.json"
+      else
+        echo '{"sdk": "claude", "error": "report not found"}'
+      fi
+    output: "claude_results"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 3: EVAL COPILOT SDK
+  # ==========================================================================
+  - id: "eval-copilot"
+    type: "bash"
+    command: |
+      echo "=== Step 3: Evaluating Copilot SDK ==="
+
+      LEVELS_ARGS=""
+      for level in {{levels}}; do
+        LEVELS_ARGS="$LEVELS_ARGS $level"
+      done
+
+      PYTHONPATH=src python -m amplihack.eval.sdk_eval_loop \
+        --sdks copilot \
+        --loops {{loops_per_sdk}} \
+        --levels $LEVELS_ARGS \
+        --output-dir "{{output_dir}}" \
+        2>&1
+
+      echo ""
+      echo "=== Copilot SDK Eval Complete ==="
+
+      if [ -f "{{output_dir}}/copilot/sdk_report.json" ]; then
+        cat "{{output_dir}}/copilot/sdk_report.json"
+      else
+        echo '{"sdk": "copilot", "error": "report not found"}'
+      fi
+    output: "copilot_results"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 4: EVAL MICROSOFT SDK
+  # ==========================================================================
+  - id: "eval-microsoft"
+    type: "bash"
+    command: |
+      echo "=== Step 4: Evaluating Microsoft SDK ==="
+
+      LEVELS_ARGS=""
+      for level in {{levels}}; do
+        LEVELS_ARGS="$LEVELS_ARGS $level"
+      done
+
+      PYTHONPATH=src python -m amplihack.eval.sdk_eval_loop \
+        --sdks microsoft \
+        --loops {{loops_per_sdk}} \
+        --levels $LEVELS_ARGS \
+        --output-dir "{{output_dir}}" \
+        2>&1
+
+      echo ""
+      echo "=== Microsoft SDK Eval Complete ==="
+
+      if [ -f "{{output_dir}}/microsoft/sdk_report.json" ]; then
+        cat "{{output_dir}}/microsoft/sdk_report.json"
+      else
+        echo '{"sdk": "microsoft", "error": "report not found"}'
+      fi
+    output: "microsoft_results"
+    parse_json: true
+
+  # ==========================================================================
+  # STEP 5: GENERATE COMPARISON REPORT
+  # Synthesize results from all 4 SDKs into a ranked comparison.
+  # ==========================================================================
+  - id: "generate-comparison"
+    agent: "amplihack:architect"
+    prompt: |
+      # Step 5: Generate SDK Comparison Report
+
+      **Mini SDK Results:** {{mini_results}}
+      **Claude SDK Results:** {{claude_results}}
+      **Copilot SDK Results:** {{copilot_results}}
+      **Microsoft SDK Results:** {{microsoft_results}}
+
+      ## Your Task
+
+      Generate a comprehensive comparison report:
+
+      1. **Rankings**: Rank SDKs by best overall score
+      2. **Per-Level Comparison**: Which SDK wins each level?
+      3. **Strengths/Weaknesses**: What is each SDK best/worst at?
+      4. **Score Stability**: Which SDK has most consistent scores across loops?
+      5. **Recommendations**: Which SDK to use for which use case?
+
+      Also generate the comparison as a markdown table and save it.
+
+      Output as JSON:
+      ```json
+      {
+        "ranking": [
+          {"rank": 1, "sdk": "...", "best_overall": 0.0, "level_wins": 0}
+        ],
+        "per_level_winners": {
+          "L1": {"winner": "...", "score": 0.0},
+          "L2": {"winner": "...", "score": 0.0}
+        },
+        "sdk_profiles": {
+          "mini": {
+            "strengths": ["..."],
+            "weaknesses": ["..."],
+            "best_for": "..."
+          }
+        },
+        "stability_ranking": ["most stable to least stable"],
+        "recommendations": ["..."],
+        "markdown_table": "| SDK | L1 | L2 | ... | Overall |\n|...|"
+      }
+      ```
+    output: "comparison_report"
+    parse_json: true
+
+  # ==========================================================================
+  # FINAL OUTPUT
+  # ==========================================================================
+  - id: "save-report"
+    type: "bash"
+    parse_json: true
+    command: |
+      echo "=== Saving Comparison Report ==="
+
+      # Check for the multi-SDK report
+      if [ -f "{{output_dir}}/multi_sdk_report.json" ]; then
+        echo "Multi-SDK report found at: {{output_dir}}/multi_sdk_report.json"
+      fi
+
+      cat << 'EOF'
+      {
+        "workflow": "sdk-comparison",
+        "version": "1.0.0",
+        "sdks_evaluated": "{{sdks}}",
+        "levels": "{{levels}}",
+        "loops_per_sdk": "{{loops_per_sdk}}",
+        "status": "complete",
+        "steps_completed": 5,
+        "steps": [
+          "1. Eval Mini SDK",
+          "2. Eval Claude SDK",
+          "3. Eval Copilot SDK",
+          "4. Eval Microsoft SDK",
+          "5. Generate Comparison Report"
+        ],
+        "outputs": {
+          "report_dir": "{{output_dir}}",
+          "multi_sdk_report": "{{output_dir}}/multi_sdk_report.json"
+        }
+      }
+      EOF
+    output: "final_result"

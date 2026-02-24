@@ -1,0 +1,39 @@
+import {{ test, expect }} from '@playwright/test';
+
+test.describe('Form Interaction - {form_name}', () => {{
+  test('should fill and submit {form_name} form', async ({{ page }}) => {{
+    await page.goto('{route}');
+
+    // Fill form fields
+{form_fill_steps}
+
+    // Submit form
+    await page.getByRole('button', {{ name: '{submit_button_text}' }}).click();
+
+    // Verify submission
+    await expect(page.getByText(/{success_message}/)).toBeVisible();
+  }});
+
+  test('should validate required fields in {form_name}', async ({{ page }}) => {{
+    await page.goto('{route}');
+
+    // Try to submit empty form
+    await page.getByRole('button', {{ name: '{submit_button_text}' }}).click();
+
+    // Verify validation errors
+{validation_checks}
+  }});
+
+  test('should handle {form_name} form errors gracefully', async ({{ page }}) => {{
+    await page.goto('{route}');
+
+    // Fill with invalid data
+{invalid_data_steps}
+
+    // Submit form
+    await page.getByRole('button', {{ name: '{submit_button_text}' }}).click();
+
+    // Verify error message
+    await expect(page.getByText(/{error_message}/)).toBeVisible();
+  }});
+}});

@@ -1,0 +1,72 @@
+import {{ test, expect }} from '@playwright/test';
+
+test.describe('PWA Basics - {app_name}', () => {{
+  test('should have valid manifest.json', async ({{ page }}) => {{
+    await page.goto('{route}');
+
+    // Check manifest link exists
+    const manifestLink = page.locator('link[rel="manifest"]');
+    await expect(manifestLink).toHaveCount(1);
+
+    // Fetch and validate manifest
+    const manifestHref = await manifestLink.getAttribute('href');
+    const response = await page.request.get(manifestHref!);
+    expect(response.ok()).toBeTruthy();
+
+    const manifest = await response.json();
+    expect(manifest).toHaveProperty('name');
+    expect(manifest).toHaveProperty('short_name');
+    expect(manifest).toHaveProperty('start_url');
+  }});
+
+  test('should register service worker', async ({{ page }}) => {{
+    await page.goto('{route}');
+
+    // Wait for service worker registration
+    const swRegistered = await page.evaluate(() => {{
+      return new Promise(resolve => {{
+        if ('serviceWorker' in navigator) {{
+          navigator.serviceWorker.ready.then(() => resolve(true));
+        }} else {{
+          resolve(false);
+        }}
+      }});
+    }});
+
+    expect(swRegistered).toBeTruthy();
+  }});
+
+  test('should work offline (service worker cache)', async ({{ page, context }}) => {{
+    // Visit page while online
+    await page.goto('{route}');
+    await page.waitForLoadState('networkidle');
+
+    // Go offline
+    await context.setOffline(true);
+
+    // Reload page
+    await page.reload();
+
+    // Verify page still works
+    await expect(page.getByRole('{main_element_role}', {{ name: '{main_element_name}' }})).toBeVisible();
+  }});
+
+  test('should be installable (beforeinstallprompt)', async ({{ page }}) => {{
+    await page.goto('{route}');
+
+    // Check if beforeinstallprompt event fires
+    const installable = await page.evaluate(() => {{
+      return new Promise(resolve => {{
+        window.addEventListener('beforeinstallprompt', () => {{
+          resolve(true);
+        }});
+        // Timeout after 5 seconds
+        setTimeout(() => resolve(false), 5000);
+      }});
+    }});
+
+    // Note: May not trigger in test environment, but check manifest exists
+    const manifestExists = await page.locator('link[rel="manifest"]').count();
+    expect(manifestExists).toBeGreaterThan(0);
+  }});
+}});

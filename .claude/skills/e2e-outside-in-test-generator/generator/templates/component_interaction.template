@@ -1,0 +1,39 @@
+import {{ test, expect }} from '@playwright/test';
+
+test.describe('Component Interaction - {component_name}', () => {{
+  test('should interact with {component_name} component', async ({{ page }}) => {{
+    await page.goto('{route}');
+
+    // Locate component
+    const component = page.getByRole('{component_role}', {{ name: '{component_label}' }});
+    await expect(component).toBeVisible();
+
+    // Perform interaction
+{interaction_steps}
+
+    // Verify result
+    await expect(page.getByText(/{expected_result}/)).toBeVisible();
+  }});
+
+  test('should handle {component_name} state changes', async ({{ page }}) => {{
+    await page.goto('{route}');
+
+    {state_change_steps}
+
+    // Verify state updated
+    await expect(page.getByRole('{result_element_role}', {{ name: '{result_element_name}' }})).toBeVisible();
+  }});
+
+  test('should support keyboard navigation in {component_name}', async ({{ page }}) => {{
+    await page.goto('{route}');
+
+    // Focus component
+    await page.getByRole('{component_role}', {{ name: '{component_label}' }}).focus();
+
+    // Navigate with keyboard
+{keyboard_navigation_steps}
+
+    // Verify keyboard navigation worked
+    await expect(page.getByRole('{focused_element_role}')).toBeFocused();
+  }});
+}});

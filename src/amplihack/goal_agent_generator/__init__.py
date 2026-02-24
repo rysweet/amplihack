@@ -11,7 +11,9 @@ from .models import (
     GoalAgentBundle,
     GoalDefinition,
     PlanPhase,
+    SDKToolConfig,
     SkillDefinition,
+    SubAgentConfig,
 )
 from .objective_planner import ObjectivePlanner
 from .packager import GoalAgentPackager
@@ -24,6 +26,8 @@ __all__ = [
     "GoalDefinition",
     "ExecutionPlan",
     "SkillDefinition",
+    "SDKToolConfig",
+    "SubAgentConfig",
     "GoalAgentBundle",
     "PlanPhase",
     "PromptAnalyzer",

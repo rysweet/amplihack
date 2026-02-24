@@ -28,12 +28,14 @@ See [Exception Handling Reference](../reference/exception-handling.md) for the c
 ### Step 2: Determine Fail-Open vs Fail-Safe Behavior
 
 **Fail-Open** (continue on error):
+
 - Non-critical operations
 - Hooks and monitoring
 - Metrics collection
 - UI enhancements
 
 **Fail-Safe** (halt on error):
+
 - Critical configuration
 - Data integrity operations
 - Security checks

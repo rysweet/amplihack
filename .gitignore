@@ -186,3 +186,8 @@ AUTO_VERSION_CODE_REVIEW.md
 test-worktree-isolation.sh
 target/
 outputs/
+Specs/COMPLETE_SESSION_DOCUMENTATION.md
+Specs/INTENSIVE_MEMORY_EVAL_DESIGN.md
+Specs/MATRIX_EVAL_REPORT.md
+eval_data/
+debug_eval/

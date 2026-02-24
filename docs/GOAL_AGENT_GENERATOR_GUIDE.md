@@ -126,17 +126,35 @@ amplihack new --file <prompt.md>
 ```bash
 amplihack new \
   --file <prompt.md>        # Required: Your goal prompt
+  --sdk <sdk-name>           # Optional: SDK for execution (default: copilot)
   --output <directory>       # Optional: Where to create agent (default: ./goal_agents)
   --name <agent-name>        # Optional: Custom name (default: auto-generated)
+  --enable-memory            # Optional: Enable learning/memory capabilities
   --skills-dir <directory>   # Optional: Custom skills location
   --verbose                  # Optional: Show detailed progress
 ```
 
+#### SDK Choices
+
+| Value | SDK | Best For |
+|---|---|---|
+| `copilot` | GitHub Copilot SDK | General dev, file/git/web tools (default) |
+| `claude` | Claude Agent SDK | Subagent delegation, MCP integration |
+| `microsoft` | Microsoft Agent Framework | Structured workflows, telemetry |
+| `mini` | litellm (mini-framework) | Lightweight, no SDK dependencies |
+
 ### Examples
 
 ```bash
-# Basic - uses defaults
+# Basic - uses defaults (copilot SDK)
 amplihack new --file security_audit.md
+
+# Choose a specific SDK
+amplihack new --file research.md --sdk claude
+amplihack new --file deploy.md --sdk microsoft
+
+# With memory enabled
+amplihack new --file research.md --enable-memory
 
 # Custom output directory
 amplihack new --file research.md --output ~/my-agents

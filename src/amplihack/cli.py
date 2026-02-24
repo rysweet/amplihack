@@ -644,6 +644,47 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
         "--backend", choices=["kuzu", "sqlite"], default="kuzu", help="Memory backend to use"
     )
 
+    # Export subcommand
+    export_parser = memory_subparsers.add_parser(
+        "export", help="Export agent memory to a portable format"
+    )
+    export_parser.add_argument(
+        "--agent", required=True, help="Name of the agent whose memory to export"
+    )
+    export_parser.add_argument(
+        "--output", "-o", required=True, help="Output file path (.json) or directory (kuzu)"
+    )
+    export_parser.add_argument(
+        "--format",
+        "-f",
+        choices=["json", "kuzu"],
+        default="json",
+        help="Export format (default: json)",
+    )
+    export_parser.add_argument("--storage-path", help="Custom storage path for the agent's Kuzu DB")
+
+    # Import subcommand
+    import_parser = memory_subparsers.add_parser(
+        "import", help="Import memory from a portable format into an agent"
+    )
+    import_parser.add_argument(
+        "--agent", required=True, help="Name of the target agent to import into"
+    )
+    import_parser.add_argument(
+        "--input", "-i", required=True, help="Input file path (.json) or directory (kuzu)"
+    )
+    import_parser.add_argument(
+        "--format",
+        "-f",
+        choices=["json", "kuzu"],
+        default="json",
+        help="Import format (default: json)",
+    )
+    import_parser.add_argument(
+        "--merge", action="store_true", help="Merge into existing memory (default: replace)"
+    )
+    import_parser.add_argument("--storage-path", help="Custom storage path for the agent's Kuzu DB")
+
     # Clean subcommand
     clean_parser = memory_subparsers.add_parser(
         "clean",
@@ -699,7 +740,12 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     run_parser = recipe_subparsers.add_parser("run", help="Execute a recipe from YAML file")
     run_parser.add_argument("recipe_path", help="Path to recipe YAML file")
     run_parser.add_argument(
-        "-c", "--context", action="append", help="Set context variable (key=value)"
+        "-c",
+        "--context",
+        action="append",
+        nargs="+",
+        metavar="KEY=VALUE",
+        help="Set context variable (key=value). Values may contain special characters: -c 'task=Fix bug (#123)'",
     )
     run_parser.add_argument("--dry-run", action="store_true", help="Show what would be executed")
     run_parser.add_argument("-v", "--verbose", action="store_true", help="Show detailed output")
@@ -1540,6 +1586,61 @@ def main(argv: list[str] | None = None) -> int:
                 backend.close()
 
             return 0
+
+        if args.memory_command == "export":
+            from pathlib import Path as _Path
+
+            from .agents.goal_seeking.memory_export import export_memory
+
+            storage = _Path(args.storage_path) if args.storage_path else None
+            try:
+                result = export_memory(
+                    agent_name=args.agent,
+                    storage_path=storage,
+                    output_path=args.output,
+                    fmt=getattr(args, "format", "json"),
+                )
+                print(f"Exported memory for agent '{result['agent_name']}'")
+                print(f"  Format: {result['format']}")
+                print(f"  Output: {result['output_path']}")
+                if "file_size_bytes" in result:
+                    size_kb = result["file_size_bytes"] / 1024
+                    print(f"  Size: {size_kb:.1f} KB")
+                stats = result.get("statistics", {})
+                if stats:
+                    for key, val in stats.items():
+                        print(f"  {key}: {val}")
+                return 0
+            except Exception as e:
+                print(f"Error exporting memory: {e}")
+                return 1
+
+        if args.memory_command == "import":
+            from pathlib import Path as _Path
+
+            from .agents.goal_seeking.memory_export import import_memory
+
+            storage = _Path(args.storage_path) if args.storage_path else None
+            try:
+                result = import_memory(
+                    agent_name=args.agent,
+                    storage_path=storage,
+                    input_path=args.input,
+                    fmt=getattr(args, "format", "json"),
+                    merge=args.merge,
+                )
+                print(f"Imported memory into agent '{result['agent_name']}'")
+                print(f"  Format: {result['format']}")
+                print(f"  Source agent: {result.get('source_agent', 'N/A')}")
+                print(f"  Merge mode: {result['merge']}")
+                stats = result.get("statistics", {})
+                if stats:
+                    for key, val in stats.items():
+                        print(f"  {key}: {val}")
+                return 0
+            except Exception as e:
+                print(f"Error importing memory: {e}")
+                return 1
 
         if args.memory_command == "clean":
             from .memory.cli_cleanup import cleanup_memory_sessions
