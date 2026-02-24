@@ -257,6 +257,29 @@ def rerank_facts_by_query(
     if not query_tokens:
         return facts
 
+    # Detect temporal cues for boosting temporal facts
+    query_lower = query.lower()
+    temporal_cues = {
+        "change",
+        "changed",
+        "original",
+        "before",
+        "after",
+        "previous",
+        "current",
+        "first",
+        "initially",
+        "updated",
+        "revised",
+        "intermediate",
+        "over time",
+        "history",
+        "evolution",
+        "timeline",
+        "when",
+    }
+    has_temporal_query = any(cue in query_lower for cue in temporal_cues)
+
     scored: list[tuple[float, int, dict[str, Any]]] = []
     for idx, fact in enumerate(facts):
         # Combine outcome and context text for matching
@@ -269,6 +292,17 @@ def rerank_facts_by_query(
 
         # Compute overlap: fraction of query tokens found in fact
         overlap = len(query_tokens & fact_tokens) / len(query_tokens)
+
+        # Boost temporal facts when query has temporal cues
+        if has_temporal_query:
+            meta = fact.get("metadata", {})
+            if meta and (
+                meta.get("temporal_index", 0) > 0
+                or meta.get("source_date")
+                or meta.get("temporal_order")
+            ):
+                overlap += 0.15
+
         scored.append((overlap, idx, fact))
 
     # Sort by relevance score descending, then by original order for ties
