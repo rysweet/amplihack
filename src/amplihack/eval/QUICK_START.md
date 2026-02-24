@@ -229,7 +229,7 @@ echo $ANTHROPIC_API_KEY  # Should not be empty
 
 ## Files
 
-- **Test Data**: `src/amplihack/eval/test_levels.py`
+- **Test Data**: `amplihack_eval.data.progressive_levels` (from amplihack-agent-eval package)
 - **Runner**: `src/amplihack/eval/progressive_test_suite.py`
 - **Grader**: `src/amplihack/eval/grader.py` (multi-vote support)
 - **Agent Subprocess**: `src/amplihack/eval/agent_subprocess.py` (SDK routing)
