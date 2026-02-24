@@ -10,13 +10,13 @@ import argparse
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-from amplihack.eval.long_horizon_data import (
+from amplihack_eval.data.long_horizon import (
     GradingRubric,
     Question,
     generate_dialogue,
     generate_questions,
 )
+
 from amplihack.eval.long_horizon_memory import (
     DimensionScore,
     LongHorizonMemoryEval,
@@ -24,7 +24,6 @@ from amplihack.eval.long_horizon_memory import (
     _grade_hybrid,
     _grade_multi_vote,
 )
-
 
 # ============================================================
 # Test GradingRubric dataclass
@@ -55,9 +54,7 @@ class TestGradingRubric:
 
     def test_rubric_with_dimension_weights(self):
         """Rubric stores dimension weight overrides."""
-        rubric = GradingRubric(
-            dimension_weights={"factual_accuracy": 2.0, "specificity": 0.5}
-        )
+        rubric = GradingRubric(dimension_weights={"factual_accuracy": 2.0, "specificity": 0.5})
         assert rubric.dimension_weights["factual_accuracy"] == 2.0
 
 
@@ -358,9 +355,7 @@ class TestRubricGeneration:
         assert len(numerical) > 0
         for q in numerical:
             assert q.rubric is not None
-            has_number = any(
-                any(c.isdigit() for c in kw) for kw in q.rubric.required_keywords
-            )
+            has_number = any(any(c.isdigit() for c in kw) for kw in q.rubric.required_keywords)
             assert has_number, (
                 f"Numerical question {q.question_id} should have numeric keywords, "
                 f"got: {q.rubric.required_keywords}"
@@ -383,9 +378,7 @@ class TestRubricGeneration:
         gt = generate_dialogue(num_turns=1000, seed=42)
         questions = generate_questions(gt, num_questions=100)
         temporal = [q for q in questions if q.category == "temporal_evolution"]
-        has_incorrect = any(
-            q.rubric and q.rubric.incorrect_patterns for q in temporal
-        )
+        has_incorrect = any(q.rubric and q.rubric.incorrect_patterns for q in temporal)
         assert has_incorrect, "At least one temporal question should have incorrect_patterns"
 
     def test_source_questions_have_multiple_keywords(self):
@@ -498,9 +491,7 @@ class TestEvalGraderVotes:
         """evaluate() passes grader_votes to _grade_multi_vote."""
         mock_grade.return_value = [DimensionScore("factual_accuracy", 0.8, "OK")]
 
-        evaluator = LongHorizonMemoryEval(
-            num_turns=50, num_questions=3, grader_votes=5
-        )
+        evaluator = LongHorizonMemoryEval(num_turns=50, num_questions=3, grader_votes=5)
         evaluator.generate()
 
         agent = MagicMock()

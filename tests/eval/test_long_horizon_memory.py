@@ -10,8 +10,7 @@ import json
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-from amplihack.eval.long_horizon_data import (
+from amplihack_eval.data.long_horizon import (
     CONTRADICTORY_REPORTS,
     NUMERICAL_DATA,
     PEOPLE,
@@ -20,6 +19,7 @@ from amplihack.eval.long_horizon_data import (
     generate_dialogue,
     generate_questions,
 )
+
 from amplihack.eval.long_horizon_memory import (
     CategoryBreakdown,
     DimensionScore,
@@ -257,18 +257,18 @@ class TestQuestionGeneration:
         assert len(ids) == len(set(ids)), "Question IDs must be unique"
 
     def test_category_distribution_proportional(self):
-        """Harder categories (adversarial, multi-hop, temporal trap, numerical reasoning) dominate."""
+        """Key categories (distractor, temporal, numerical, source) are well-represented."""
         gt = generate_dialogue(num_turns=1000, seed=42)
         questions = generate_questions(gt, num_questions=100)
         counts: dict[str, int] = {}
         for q in questions:
             counts[q.category] = counts.get(q.category, 0) + 1
 
-        # Harder categories should be well-represented (12% each target)
-        assert counts.get("adversarial_distractor", 0) >= 8
-        assert counts.get("multi_hop_reasoning", 0) >= 8
-        assert counts.get("temporal_trap", 0) >= 8
-        assert counts.get("numerical_reasoning", 0) >= 5
+        # Categories from amplihack_eval.data.long_horizon
+        assert counts.get("distractor_resistance", 0) >= 5
+        assert counts.get("temporal_evolution", 0) >= 8
+        assert counts.get("numerical_precision", 0) >= 5
+        assert counts.get("source_attribution", 0) >= 5
         # Meta-memory should have the fewest
         assert counts.get("meta_memory", 0) >= 3
 
