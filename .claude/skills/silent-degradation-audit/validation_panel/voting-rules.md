@@ -6,7 +6,7 @@ Python implementation of 2/3 consensus voting mechanism.
 
 ```python
 from enum import Enum
-from typing import List, Dict, Any, Tuple
+from typing import Callable, Dict, List, Any, Tuple
 
 
 class Vote(Enum):
@@ -150,7 +150,7 @@ def validate_finding(finding: Dict[str, Any], agent_votes: List[Dict[str, Any]])
 
 def batch_validate_findings(
     findings: List[Dict[str, Any]],
-    vote_collector: callable
+    vote_collector: Callable[[Dict[str, Any]], List[Dict[str, Any]]]
 ) -> List[Dict[str, Any]]:
     """Validate a batch of findings.
 

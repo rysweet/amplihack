@@ -5,6 +5,7 @@ degradation patterns. Supports Python, JavaScript, TypeScript, Rust, Go, Java,
 C#, Ruby, and PHP.
 """
 
+import os
 from collections import Counter
 from pathlib import Path
 
@@ -118,8 +119,10 @@ class LanguageDetector:
                 if item.is_file():
                     if not any(ignore_dir in item.parts for ignore_dir in self.IGNORE_DIRS):
                         files.append(item)
-        except PermissionError:
-            pass
+        except PermissionError as e:
+            # Log for visibility but continue scanning
+            if os.environ.get("AUDIT_DEBUG"):
+                print(f"Warning: Permission denied accessing {directory}: {e}")
 
         return files
 
