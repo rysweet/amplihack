@@ -10,13 +10,11 @@ from __future__ import annotations
 import time
 
 import pytest
-
-from amplihack.eval.long_horizon_data import (
+from amplihack_eval.data.long_horizon import (
     INCIDENTS,
     INFRASTRUCTURE,
     PROBLEM_TASKS,
     SECURITY_EVENTS,
-    Question,
     generate_dialogue,
     generate_questions,
 )
@@ -51,9 +49,18 @@ class TestFiveThousandTurnGeneration:
         """All block names are present at 5000 turns."""
         names = {t.block_name for t in gt_5000.turns}
         expected = {
-            "people", "projects", "technical", "evolving_story",
-            "numerical", "contradictory", "callbacks", "distractors",
-            "security_logs", "incidents", "infrastructure", "problem_solving",
+            "people",
+            "projects",
+            "technical",
+            "evolving_story",
+            "numerical",
+            "contradictory",
+            "callbacks",
+            "distractors",
+            "security_logs",
+            "incidents",
+            "infrastructure",
+            "problem_solving",
         }
         assert names == expected
 
@@ -103,10 +110,18 @@ class TestFiveThousandTurnGeneration:
         questions = generate_questions(gt_5000, num_questions=500)
         categories = {q.category for q in questions}
         expected = {
-            "needle_in_haystack", "temporal_evolution", "numerical_precision",
-            "source_attribution", "cross_reference", "distractor_resistance",
-            "meta_memory", "security_log_analysis", "incident_tracking",
-            "infrastructure_knowledge", "problem_solving", "multi_hop_reasoning",
+            "needle_in_haystack",
+            "temporal_evolution",
+            "numerical_precision",
+            "source_attribution",
+            "cross_reference",
+            "distractor_resistance",
+            "meta_memory",
+            "security_log_analysis",
+            "incident_tracking",
+            "infrastructure_knowledge",
+            "problem_solving",
+            "multi_hop_reasoning",
         }
         assert expected.issubset(categories), f"Missing: {expected - categories}"
 
@@ -136,17 +151,24 @@ class TestSecurityLogBlocks:
     def test_brute_force_pattern_present(self):
         """Security events contain a brute force pattern (multiple failed logins from same IP)."""
         from collections import Counter
+
         failed_by_ip: dict[str, int] = Counter()
         for evt in SECURITY_EVENTS:
             if "failed" in evt["event"].lower():
                 failed_by_ip[evt["source_ip"]] += 1
         # At least one IP should have 5+ failed attempts
         max_failures = max(failed_by_ip.values()) if failed_by_ip else 0
-        assert max_failures >= 5, f"Expected brute force pattern (5+ failures), max was {max_failures}"
+        assert max_failures >= 5, (
+            f"Expected brute force pattern (5+ failures), max was {max_failures}"
+        )
 
     def test_data_exfiltration_pattern_present(self):
         """Security events contain data exfiltration indicators."""
-        exfil_events = [e for e in SECURITY_EVENTS if "exfil" in e["event"].lower() or "data transfer" in e["event"].lower()]
+        exfil_events = [
+            e
+            for e in SECURITY_EVENTS
+            if "exfil" in e["event"].lower() or "data transfer" in e["event"].lower()
+        ]
         assert len(exfil_events) >= 1, "Expected data exfiltration events"
 
     def test_port_scan_pattern_present(self):
@@ -167,7 +189,9 @@ class TestSecurityLogBlocks:
         # Check that security events contain IP addresses
         sec_content = " ".join(t.content for t in sec_turns)
         assert "192.168.1.45" in sec_content, "Brute force IP not in security logs"
-        assert "Cobalt Strike" in sec_content or "cobalt" in sec_content.lower(), "Malware not in security logs"
+        assert "Cobalt Strike" in sec_content or "cobalt" in sec_content.lower(), (
+            "Malware not in security logs"
+        )
 
 
 class TestIncidentReports:
@@ -187,9 +211,7 @@ class TestIncidentReports:
     def test_incidents_have_updates(self):
         """Incidents have status update progressions."""
         for inc in INCIDENTS:
-            assert len(inc.get("updates", [])) >= 1, (
-                f"Incident {inc['id']} has no updates"
-            )
+            assert len(inc.get("updates", [])) >= 1, f"Incident {inc['id']} has no updates"
 
     def test_incident_status_evolves_in_dialogue(self):
         """Incident status changes are reflected in dialogue turns."""
@@ -208,9 +230,7 @@ class TestIncidentReports:
     def test_incidents_have_timelines(self):
         """Each incident has a timeline with at least 2 entries."""
         for inc in INCIDENTS:
-            assert len(inc["timeline"]) >= 2, (
-                f"Incident {inc['id']} has too few timeline entries"
-            )
+            assert len(inc["timeline"]) >= 2, f"Incident {inc['id']} has too few timeline entries"
 
     def test_superseded_values_for_incidents(self):
         """Incident status updates create superseded values in ground truth."""
@@ -380,7 +400,13 @@ class TestNewQuestionCategories:
 
     def test_questions_have_expected_answers(self, questions_5000):
         """All new category questions have non-empty expected answers."""
-        new_cats = {"security_log_analysis", "incident_tracking", "infrastructure_knowledge", "problem_solving", "multi_hop_reasoning"}
+        new_cats = {
+            "security_log_analysis",
+            "incident_tracking",
+            "infrastructure_knowledge",
+            "problem_solving",
+            "multi_hop_reasoning",
+        }
         new_qs = [q for q in questions_5000 if q.category in new_cats]
         for q in new_qs:
             assert q.expected_answer, f"Question {q.question_id} has no expected answer"

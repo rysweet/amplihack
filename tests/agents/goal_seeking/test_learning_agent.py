@@ -271,3 +271,248 @@ class TestLearningAgent:
         answer = agent._synthesize_with_llm("Question?", context, "L1")
 
         assert "unable" in answer.lower() or "error" in answer.lower()
+
+
+class TestTemporalCodeGeneration:
+    """Test suite for temporal reasoning code generation."""
+
+    @pytest.fixture
+    def temp_storage(self):
+        """Create temporary storage directory."""
+        temp_dir = Path(tempfile.mkdtemp())
+        yield temp_dir
+        if temp_dir.exists():
+            shutil.rmtree(temp_dir)
+
+    @pytest.fixture
+    def agent(self, temp_storage):
+        """Create LearningAgent with temporary storage."""
+        agent = LearningAgent(agent_name="test_temporal", storage_path=str(temp_storage))
+        yield agent
+        agent.close()
+
+    # -- _parse_temporal_index tests --
+
+    def test_parse_first_keyword(self, agent):
+        """Test 'first' maps to index 0."""
+        result = agent._parse_temporal_index("What was the first value?")
+        assert result == "0"
+
+    def test_parse_original_keyword(self, agent):
+        """Test 'original' maps to index 0."""
+        result = agent._parse_temporal_index("What was the original deadline?")
+        assert result == "0"
+
+    def test_parse_second_keyword(self, agent):
+        """Test 'second' maps to index 1."""
+        result = agent._parse_temporal_index("What was the second value in the chain?")
+        assert result == "1"
+
+    def test_parse_intermediate_keyword(self, agent):
+        """Test 'intermediate' maps to middle index."""
+        result = agent._parse_temporal_index("What was the intermediate value?")
+        assert result == "len(transitions) // 2"
+
+    def test_parse_latest_keyword(self, agent):
+        """Test 'latest' maps to index -1."""
+        result = agent._parse_temporal_index("What is the latest deadline?")
+        assert result == "-1"
+
+    def test_parse_before_first_change(self, agent):
+        """Test 'BEFORE the first change' maps to index 0 (original)."""
+        result = agent._parse_temporal_index(
+            "What WAS the deadline BEFORE the first change?"
+        )
+        assert result == "0"
+
+    def test_parse_after_first_before_second(self, agent):
+        """Test 'AFTER first BUT BEFORE second' maps to index 1."""
+        result = agent._parse_temporal_index(
+            "What was the value AFTER the first change but BEFORE the second change?"
+        )
+        assert result == "1"
+
+    def test_parse_before_final_change(self, agent):
+        """Test 'BEFORE the final change' maps to second-to-last."""
+        result = agent._parse_temporal_index(
+            "What was the value BEFORE the final change?"
+        )
+        assert result == "-2"
+
+    def test_parse_after_second_change(self, agent):
+        """Test 'AFTER the second change' maps to index 2."""
+        result = agent._parse_temporal_index(
+            "What was the deadline AFTER the second change?"
+        )
+        assert result == "2"
+
+    def test_parse_default_returns_latest(self, agent):
+        """Test unrecognized temporal question defaults to latest (-1)."""
+        result = agent._parse_temporal_index("What is the deadline?")
+        assert result == "-1"
+
+    # -- retrieve_transition_chain tests --
+
+    def test_retrieve_transition_chain_empty_memory(self, agent):
+        """Test retrieval from empty memory returns empty list."""
+        chain = agent.retrieve_transition_chain("Atlas", "deadline")
+        assert chain == []
+
+    def test_retrieve_transition_chain_with_facts(self, agent):
+        """Test retrieval finds matching entity/field facts."""
+        agent.memory.store_fact(
+            context="Atlas project deadline",
+            fact="Atlas deadline is June 15",
+            confidence=0.9,
+        )
+        agent.memory.store_fact(
+            context="Atlas project deadline",
+            fact="Atlas deadline changed to August 3",
+            confidence=0.9,
+        )
+
+        chain = agent.retrieve_transition_chain("Atlas", "deadline")
+        assert len(chain) >= 2
+        assert all("value" in state for state in chain)
+
+    def test_retrieve_transition_chain_filters_unrelated(self, agent):
+        """Test retrieval excludes unrelated entity/field facts."""
+        agent.memory.store_fact(
+            context="Atlas project deadline",
+            fact="Atlas deadline is June 15",
+            confidence=0.9,
+        )
+        agent.memory.store_fact(
+            context="Beacon project budget",
+            fact="Beacon budget is $50,000",
+            confidence=0.9,
+        )
+
+        chain = agent.retrieve_transition_chain("Atlas", "deadline")
+        # Should only contain Atlas deadline facts, not Beacon budget
+        for state in chain:
+            assert "atlas" in state["value"].lower() or "deadline" in state["value"].lower()
+
+    # -- temporal_code_synthesis tests --
+
+    def test_temporal_code_synthesis_generates_code(self, agent):
+        """Test code synthesis produces valid Python code string."""
+        agent.memory.store_fact(
+            context="Atlas project deadline",
+            fact="Atlas deadline is June 15",
+            confidence=0.9,
+        )
+
+        result = agent.temporal_code_synthesis(
+            "What was the original Atlas deadline?",
+            "Atlas",
+            "deadline",
+        )
+
+        assert "code" in result
+        assert "retrieve_transition_chain" in result["code"]
+        assert "index_expr" in result
+        assert result["index_expr"] == "0"
+
+    def test_temporal_code_synthesis_resolves_value(self, agent):
+        """Test code synthesis resolves to actual value from chain."""
+        agent.memory.store_fact(
+            context="Atlas project deadline",
+            fact="Atlas deadline is June 15",
+            confidence=0.9,
+        )
+
+        result = agent.temporal_code_synthesis(
+            "What was the original Atlas deadline?",
+            "Atlas",
+            "deadline",
+        )
+
+        assert result["result"] is not None
+        assert "June 15" in result["result"]
+
+    def test_temporal_code_synthesis_empty_chain(self, agent):
+        """Test code synthesis handles empty transition chain gracefully."""
+        result = agent.temporal_code_synthesis(
+            "What was the original Nonexistent deadline?",
+            "Nonexistent",
+            "deadline",
+        )
+
+        assert result["code"] is not None
+        assert result["transitions"] == []
+        assert result["result"] is None
+
+    def test_temporal_code_synthesis_intermediate_index(self, agent):
+        """Test code synthesis with intermediate keyword uses middle index."""
+        agent.memory.store_fact(
+            context="Project deadline",
+            fact="Project deadline is January 1",
+            confidence=0.9,
+        )
+        agent.memory.store_fact(
+            context="Project deadline",
+            fact="Project deadline changed to March 15",
+            confidence=0.9,
+        )
+        agent.memory.store_fact(
+            context="Project deadline",
+            fact="Project deadline changed to June 30",
+            confidence=0.9,
+        )
+
+        result = agent.temporal_code_synthesis(
+            "What was the intermediate project deadline?",
+            "Project",
+            "deadline",
+        )
+
+        assert result["index_expr"] == "len(transitions) // 2"
+        assert "len(transitions) // 2" in result["code"]
+
+    # -- code_generation tool registration --
+
+    def test_code_generation_tool_registered(self, agent):
+        """Test that code_generation is registered as an action."""
+        assert "code_generation" in agent.executor._actions
+
+    # -- Integration test with _code_generation_tool --
+
+    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
+    def test_code_generation_tool_extracts_entity_field(self, mock_completion, agent):
+        """Test _code_generation_tool extracts entity and field via LLM."""
+        mock_response = MagicMock()
+        mock_response.choices = [
+            MagicMock(
+                message=MagicMock(
+                    content='{"entity": "Atlas", "field": "deadline"}'
+                )
+            )
+        ]
+        mock_completion.return_value = mock_response
+
+        agent.memory.store_fact(
+            context="Atlas project deadline",
+            fact="Atlas deadline is June 15",
+            confidence=0.9,
+        )
+
+        result = agent._code_generation_tool(
+            "What WAS the Atlas deadline BEFORE the first change?"
+        )
+
+        assert "code" in result
+        assert "Atlas" in result["code"]
+        assert "deadline" in result["code"]
+
+    @patch("amplihack.agents.goal_seeking.learning_agent.litellm.completion")
+    def test_code_generation_tool_handles_llm_error(self, mock_completion, agent):
+        """Test _code_generation_tool gracefully handles LLM extraction failure."""
+        mock_completion.side_effect = Exception("API error")
+
+        result = agent._code_generation_tool("What was the original value?")
+
+        # Should return empty result instead of proceeding with bad data
+        assert result["code"] == ""
+        assert result["result"] is None
+        assert result["transitions"] == []

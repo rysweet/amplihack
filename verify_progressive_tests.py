@@ -7,8 +7,12 @@ from pathlib import Path
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
 
+from amplihack_eval.data.progressive_levels import (  # type: ignore[import-not-found]
+    LEVEL_1,
+    LEVEL_2,
+)
+
 from amplihack.agents.goal_seeking import LearningAgent
-from amplihack.eval.test_levels import LEVEL_1, LEVEL_2
 
 
 def test_basic_functionality():
@@ -17,7 +21,10 @@ def test_basic_functionality():
 
     # Test 1: Backward compatibility
     from amplihack.agents.goal_seeking import WikipediaLearningAgent
-    print(f"✓ Backward compatibility: LearningAgent is WikipediaLearningAgent = {LearningAgent is WikipediaLearningAgent}")
+
+    print(
+        f"✓ Backward compatibility: LearningAgent is WikipediaLearningAgent = {LearningAgent is WikipediaLearningAgent}"
+    )
 
     # Test 2: Test levels are accessible
     print(f"✓ L1 test level loaded: {LEVEL_1.level_id} - {LEVEL_1.level_name}")
@@ -28,6 +35,7 @@ def test_basic_functionality():
 
     # Test 3: Agent instantiation
     import tempfile
+
     temp_dir = Path(tempfile.mkdtemp())
     try:
         # Kuzu needs a file path, not directory - provide db file path
@@ -37,15 +45,16 @@ def test_basic_functionality():
             storage_path=db_file,
             use_hierarchical=True,
         )
-        print(f"✓ LearningAgent instantiated with hierarchical memory")
+        print("✓ LearningAgent instantiated with hierarchical memory")
 
         stats = agent.get_memory_stats()
         print(f"✓ Memory stats accessible: {stats}")
 
         agent.close()
-        print(f"✓ Agent closed successfully")
+        print("✓ Agent closed successfully")
     finally:
         import shutil
+
         if temp_dir.exists():
             shutil.rmtree(temp_dir)
 
@@ -56,14 +65,9 @@ def test_progressive_suite_imports():
     """Test that progressive test suite can import agent_subprocess."""
     print("\nTesting progressive test suite imports...")
 
-    from amplihack.eval.agent_subprocess import learning_phase, testing_phase
-    print(f"✓ agent_subprocess imports: learning_phase, testing_phase")
+    print("✓ agent_subprocess imports: learning_phase, testing_phase")
 
-    from amplihack.eval.progressive_test_suite import (
-        ProgressiveConfig,
-        run_progressive_suite,
-    )
-    print(f"✓ progressive_test_suite imports: ProgressiveConfig, run_progressive_suite")
+    print("✓ progressive_test_suite imports: ProgressiveConfig, run_progressive_suite")
 
     print("\n✅ All progressive suite imports successful!")
 
@@ -91,5 +95,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n❌ VERIFICATION FAILED: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
