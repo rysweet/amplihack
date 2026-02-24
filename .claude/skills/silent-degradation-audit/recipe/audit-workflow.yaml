@@ -1,0 +1,430 @@
+# Silent Degradation Audit Workflow Recipe
+#
+# Multi-wave audit system with 6 category agents, multi-agent validation,
+# and convergence detection. Based on battle-tested patterns from CyberGym
+# audit (~250 bugs found).
+
+name: silent-degradation-audit-workflow
+version: 1.0.0
+description: |
+  Progressive multi-wave audit for detecting silent degradation across
+  6 categories. Each wave uses 6 parallel category agents + validation
+  panel, continuing until convergence is reached (< 10 new findings or
+  < 5% of Wave 1).
+
+metadata:
+  author: Microsoft Amplifier Team
+  tested_on: CyberGym codebase (~250 findings)
+  languages: Python, JS, TS, Rust, Go, Java, C#, Ruby, PHP
+  integration_modes:
+    - standalone: "/silent-degradation-audit"
+    - sub_loop: "quality-audit-workflow Phase 2"
+
+# Configuration
+config:
+  convergence:
+    absolute_threshold: 10 # New findings < 10 → converged
+    relative_threshold: 0.05 # New findings < 5% of Wave 1 → converged
+  max_waves: 6 # Hard limit to prevent infinite loops
+  exclusions:
+    global_path: "~/.amplihack/.claude/skills/silent-degradation-audit/exclusions-global.json"
+    repo_path: ".silent-degradation-exclusions.json"
+  validation:
+    consensus_required: 0.67 # 2/3 approval threshold
+  parallel_agents: true # Run category agents in parallel
+
+# Steps
+steps:
+  # ==================================================================
+  # STEP 1: INITIALIZATION
+  # ==================================================================
+  - id: init
+    name: Initialize Audit
+    description: Set up audit state, paths, and configuration
+    actions:
+      - type: python
+        module: tools.convergence_tracker
+        function: ConvergenceTracker
+        params:
+          absolute_threshold: ${config.convergence.absolute_threshold}
+          relative_threshold: ${config.convergence.relative_threshold}
+        output_var: tracker
+
+      - type: python
+        module: tools.exclusion_manager
+        function: ExclusionManager
+        output_var: exclusion_manager
+
+      - type: state
+        operation: set
+        key: current_wave
+        value: 0
+
+      - type: state
+        operation: set
+        key: all_findings
+        value: []
+
+      - type: log
+        message: "Silent Degradation Audit initialized"
+
+  # ==================================================================
+  # STEP 2: LANGUAGE DETECTION
+  # ==================================================================
+  - id: detect_languages
+    name: Detect Codebase Languages
+    description: Scan codebase to identify programming languages
+    depends_on: [init]
+    actions:
+      - type: python
+        module: tools.language_detector
+        function: detect_languages
+        params:
+          codebase_path: ${input.codebase_path}
+        output_var: detected_languages
+
+      - type: log
+        message: "Detected languages: ${detected_languages}"
+
+      - type: condition
+        check: ${len(detected_languages) == 0}
+        on_true:
+          - type: error
+            message: "No supported languages detected in codebase"
+
+  # ==================================================================
+  # STEP 3: LOAD EXCLUSIONS
+  # ==================================================================
+  - id: load_exclusions
+    name: Load Exclusion Lists
+    description: Load global and repository-specific exclusions
+    depends_on: [init]
+    actions:
+      - type: python
+        call: ${exclusion_manager.load_exclusions}
+        params:
+          global_path: ${config.exclusions.global_path}
+          repo_path: ${config.exclusions.repo_path}
+        output_var: exclusions
+
+      - type: log
+        message: "Loaded ${len(exclusions)} exclusion patterns"
+
+  # ==================================================================
+  # STEP 4: WAVE LOOP
+  # ==================================================================
+  - id: wave_loop
+    name: Execute Audit Waves
+    description: Run waves until convergence or max waves reached
+    depends_on: [detect_languages, load_exclusions]
+    type: loop
+    max_iterations: ${config.max_waves}
+    until: ${convergence_reached}
+    actions:
+      - type: state
+        operation: increment
+        key: current_wave
+
+      - type: log
+        message: "=== WAVE ${current_wave} ==="
+
+      # ----------------------------------------------------------------
+      # STEP 4.1: Run 6 Category Agents in Parallel
+      # ----------------------------------------------------------------
+      - id: category_analysis
+        name: Category Agent Analysis
+        type: parallel
+        agents:
+          - name: dependency-failures
+            type: agent
+            agent_file: category_agents/dependency-failures.md
+            input:
+              codebase_path: ${input.codebase_path}
+              languages: ${detected_languages}
+              exclusions: ${exclusions}
+              previous_findings: ${state.all_findings}
+            output_var: dep_findings
+
+          - name: config-errors
+            type: agent
+            agent_file: category_agents/config-errors.md
+            input:
+              codebase_path: ${input.codebase_path}
+              languages: ${detected_languages}
+              exclusions: ${exclusions}
+              previous_findings: ${state.all_findings}
+            output_var: config_findings
+
+          - name: background-work
+            type: agent
+            agent_file: category_agents/background-work.md
+            input:
+              codebase_path: ${input.codebase_path}
+              languages: ${detected_languages}
+              exclusions: ${exclusions}
+              previous_findings: ${state.all_findings}
+            output_var: background_findings
+
+          - name: test-effectiveness
+            type: agent
+            agent_file: category_agents/test-effectiveness.md
+            input:
+              codebase_path: ${input.codebase_path}
+              languages: ${detected_languages}
+              exclusions: ${exclusions}
+              previous_findings: ${state.all_findings}
+            output_var: test_findings
+
+          - name: operator-visibility
+            type: agent
+            agent_file: category_agents/operator-visibility.md
+            input:
+              codebase_path: ${input.codebase_path}
+              languages: ${detected_languages}
+              exclusions: ${exclusions}
+              previous_findings: ${state.all_findings}
+            output_var: visibility_findings
+
+          - name: functional-stubs
+            type: agent
+            agent_file: category_agents/functional-stubs.md
+            input:
+              codebase_path: ${input.codebase_path}
+              languages: ${detected_languages}
+              exclusions: ${exclusions}
+              previous_findings: ${state.all_findings}
+            output_var: stub_findings
+
+      # ----------------------------------------------------------------
+      # STEP 4.2: Merge Category Findings
+      # ----------------------------------------------------------------
+      - id: merge_findings
+        name: Merge Category Findings
+        type: python
+        code: |
+          wave_findings = []
+          for findings_var in ['dep_findings', 'config_findings', 'background_findings',
+                               'test_findings', 'visibility_findings', 'stub_findings']:
+              findings = context.get(findings_var, [])
+              wave_findings.extend(findings)
+        output_var: wave_findings
+
+      - type: log
+        message: "Wave ${current_wave}: Found ${len(wave_findings)} potential issues"
+
+      # ----------------------------------------------------------------
+      # STEP 4.3: Validation Panel Review
+      # ----------------------------------------------------------------
+      - id: validation_panel
+        name: Validation Panel Review
+        type: parallel
+        agents:
+          - name: security
+            type: agent
+            agent_file: ~/.amplihack/.claude/agents/amplihack/core/security.md
+            input:
+              findings: ${wave_findings}
+              task: "Review findings and vote APPROVE/REJECT/ABSTAIN for each"
+            output_var: security_votes
+
+          - name: architect
+            type: agent
+            agent_file: ~/.amplihack/.claude/agents/amplihack/core/architect.md
+            input:
+              findings: ${wave_findings}
+              task: "Review findings and vote APPROVE/REJECT/ABSTAIN for each"
+            output_var: architect_votes
+
+          - name: builder
+            type: agent
+            agent_file: ~/.amplihack/.claude/agents/amplihack/core/builder.md
+            input:
+              findings: ${wave_findings}
+              task: "Review findings and vote APPROVE/REJECT/ABSTAIN for each"
+            output_var: builder_votes
+
+      # ----------------------------------------------------------------
+      # STEP 4.4: Tally Validation Votes
+      # ----------------------------------------------------------------
+      - id: tally_votes
+        name: Tally Validation Votes
+        type: python
+        module: validation_panel.voting-rules
+        function: batch_validate_findings
+        params:
+          findings: ${wave_findings}
+          votes:
+            security: ${security_votes}
+            architect: ${architect_votes}
+            builder: ${builder_votes}
+        output_var: validated_findings
+
+      - type: log
+        message: "Validation: ${len(validated_findings)} findings approved"
+
+      # ----------------------------------------------------------------
+      # STEP 4.5: Filter Through Exclusions
+      # ----------------------------------------------------------------
+      - id: filter_exclusions
+        name: Filter Exclusions
+        type: python
+        call: ${exclusion_manager.filter_findings}
+        params:
+          findings: ${validated_findings}
+        output_var: new_findings
+
+      - type: log
+        message: "After exclusions: ${len(new_findings)} new findings"
+
+      # ----------------------------------------------------------------
+      # STEP 4.6: Update State
+      # ----------------------------------------------------------------
+      - id: update_state
+        name: Update Audit State
+        actions:
+          - type: state
+            operation: append
+            key: all_findings
+            value: ${new_findings}
+
+          - type: python
+            call: ${tracker.add_wave}
+            params:
+              wave_number: ${current_wave}
+              findings_count: ${len(new_findings)}
+
+      # ----------------------------------------------------------------
+      # STEP 4.7: Check Convergence
+      # ----------------------------------------------------------------
+      - id: check_convergence
+        name: Check Convergence
+        type: python
+        call: ${tracker.check_convergence}
+        output_var: convergence_result
+
+      - type: state
+        operation: set
+        key: convergence_reached
+        value: ${convergence_result[0]}
+
+      - type: log
+        message: "Convergence check: ${convergence_result[1]}"
+
+      - type: condition
+        check: ${convergence_reached}
+        on_true:
+          - type: log
+            message: "🎯 Convergence reached after wave ${current_wave}"
+          - type: break
+
+  # ==================================================================
+  # STEP 5: GENERATE REPORT
+  # ==================================================================
+  - id: generate_report
+    name: Generate Audit Report
+    depends_on: [wave_loop]
+    actions:
+      - type: python
+        call: ${tracker.generate_convergence_plot}
+        output_var: convergence_plot
+
+      - type: python
+        call: ${tracker.get_metrics_summary}
+        output_var: metrics_summary
+
+      - type: template
+        template: |
+          # Silent Degradation Audit Report
+
+          ## Summary
+
+          - **Total Waves**: ${metrics_summary.total_waves}
+          - **Total Findings**: ${metrics_summary.total_findings}
+          - **Converged**: ${metrics_summary.converged}
+          - **Convergence Ratio**: ${metrics_summary.convergence_ratio:.2%}
+
+          ## Convergence Progress
+
+          ${convergence_plot}
+
+          ## Findings by Category
+
+          {% for category in ['dependency-failures', 'config-errors', 'background-work',
+                              'test-effectiveness', 'operator-visibility', 'functional-stubs'] %}
+          ### {{ category }}
+
+          {% set category_findings = [f for f in state.all_findings if f.category == category] %}
+          - **Count**: {{ len(category_findings) }}
+          - **Severity Distribution**:
+            - High: {{ len([f for f in category_findings if f.severity == 'high']) }}
+            - Medium: {{ len([f for f in category_findings if f.severity == 'medium']) }}
+            - Low: {{ len([f for f in category_findings if f.severity == 'low']) }}
+
+          {% endfor %}
+
+          ## Next Steps
+
+          1. Review findings in `.silent-degradation-findings.json`
+          2. Prioritize by severity and impact
+          3. Apply fixes wave-by-wave for validation
+          4. Update exclusion list for false positives
+
+        output_var: report
+
+      - type: write_file
+        path: ${input.codebase_path}/.silent-degradation-report.md
+        content: ${report}
+
+      - type: write_file
+        path: ${input.codebase_path}/.silent-degradation-findings.json
+        content: ${json.dumps(state.all_findings, indent=2)}
+
+      - type: log
+        message: "Report written to .silent-degradation-report.md"
+
+  # ==================================================================
+  # STEP 6: RETURN RESULTS
+  # ==================================================================
+  - id: finalize
+    name: Finalize Audit
+    depends_on: [generate_report]
+    actions:
+      - type: return
+        value:
+          success: true
+          total_waves: ${metrics_summary.total_waves}
+          total_findings: ${metrics_summary.total_findings}
+          converged: ${metrics_summary.converged}
+          report_path: ".silent-degradation-report.md"
+          findings_path: ".silent-degradation-findings.json"
+
+# Error Handling
+error_handling:
+  on_error: continue_with_next_wave
+  max_retries: 3
+  timeout_per_agent: 300 # 5 minutes
+
+  escalation:
+    - condition: ${current_wave >= max_waves}
+      action: log_and_exit
+      message: "Max waves reached without convergence"
+
+    - condition: ${len(wave_findings) == 0}
+      action: log_and_continue
+      message: "No findings in wave, convergence likely"
+
+# Integration Modes
+integration:
+  standalone:
+    command: "/silent-degradation-audit"
+    parameters:
+      - name: codebase_path
+        type: path
+        required: true
+        description: "Path to codebase to audit"
+
+  sub_loop:
+    parent_workflow: "quality-audit-workflow"
+    phase: 2
+    returns: "findings_list"
+    merge_strategy: "append"
