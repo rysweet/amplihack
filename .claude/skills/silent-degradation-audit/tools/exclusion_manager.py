@@ -18,6 +18,24 @@ class ExclusionManager:
         """Initialize the exclusion manager."""
         self.exclusions: list[dict[str, Any]] = []
 
+    def _validate_pattern(self, pattern: str) -> bool:
+        """Validate that pattern doesn't escape intended scope.
+
+        Args:
+            pattern: Glob or regex pattern to validate
+
+        Returns:
+            True if pattern is safe
+
+        Raises:
+            ValueError: If pattern contains unsafe sequences
+        """
+        if pattern.startswith("/"):
+            raise ValueError(f"Unsafe pattern (absolute path): {pattern}")
+        if ".." in pattern:
+            raise ValueError(f"Unsafe pattern (parent directory): {pattern}")
+        return True
+
     def load_exclusions(
         self, global_path: Path | None = None, repo_path: Path | None = None
     ) -> list[dict[str, Any]]:
@@ -46,8 +64,12 @@ class ExclusionManager:
                 with open(global_path) as f:
                     global_exclusions = json.load(f)
                     if isinstance(global_exclusions, list):
+                        # Validate patterns for security
+                        for excl in global_exclusions:
+                            if "pattern" in excl:
+                                self._validate_pattern(excl["pattern"])
                         exclusions.extend(global_exclusions)
-            except (OSError, json.JSONDecodeError) as e:
+            except (OSError, json.JSONDecodeError, ValueError) as e:
                 print(f"Warning: Could not load global exclusions: {e}")
 
         if repo_path and repo_path.exists():
@@ -55,8 +77,12 @@ class ExclusionManager:
                 with open(repo_path) as f:
                     repo_exclusions = json.load(f)
                     if isinstance(repo_exclusions, list):
+                        # Validate patterns for security
+                        for excl in repo_exclusions:
+                            if "pattern" in excl:
+                                self._validate_pattern(excl["pattern"])
                         exclusions.extend(repo_exclusions)
-            except (OSError, json.JSONDecodeError) as e:
+            except (OSError, json.JSONDecodeError, ValueError) as e:
                 print(f"Warning: Could not load repo exclusions: {e}")
 
         self.exclusions = exclusions
@@ -105,8 +131,17 @@ class ExclusionManager:
         Returns:
             True if exclusion was added successfully
         """
+        pattern = finding.get("file", finding.get("pattern", "*"))
+
+        # Validate pattern for security
+        try:
+            self._validate_pattern(pattern)
+        except ValueError as e:
+            print(f"Error: Invalid exclusion pattern: {e}")
+            return False
+
         exclusion = {
-            "pattern": finding.get("file", finding.get("pattern", "*")),
+            "pattern": pattern,
             "reason": reason,
             "wave": wave,
             "category": finding.get("category", "unknown"),
