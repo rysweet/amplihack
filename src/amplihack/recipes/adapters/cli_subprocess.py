@@ -9,11 +9,17 @@ monitored so callers can observe progress in real time.
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import threading
 import time
 from pathlib import Path
+
+_NON_INTERACTIVE_FOOTER = (
+    "\n\nIMPORTANT: Proceed autonomously. Do not ask questions. "
+    "Make reasonable decisions and continue."
+)
 
 
 class CLISubprocessAdapter:
@@ -29,7 +35,7 @@ class CLISubprocessAdapter:
         self._working_dir = working_dir
 
     # ------------------------------------------------------------------
-    # Agent steps – no hard timeout, stream output
+    # Agent steps - no hard timeout, stream output
     # ------------------------------------------------------------------
 
     def execute_agent_step(
@@ -54,6 +60,9 @@ class CLISubprocessAdapter:
             RuntimeError: If the CLI exits with a non-zero code.
         """
         actual_cwd = working_dir or self._working_dir
+        # Append non-interactive footer so nested sessions never ask
+        # interactive questions and hang waiting for input (#2464).
+        prompt = prompt + _NON_INTERACTIVE_FOOTER
         cmd = [self._cli, "-p", prompt]
 
         # Write output to a temp file so we can tail it
@@ -61,13 +70,16 @@ class CLISubprocessAdapter:
         output_dir.mkdir(parents=True, exist_ok=True)
         output_file = output_dir / f"agent-step-{int(time.time())}.log"
 
-        # Launch process – no timeout
+        # Launch process - no timeout
+        # CRITICAL: Remove CLAUDECODE env var so nested claude sessions work
+        child_env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
         with open(output_file, "w") as log_fh:
             proc = subprocess.Popen(
                 cmd,
                 stdout=log_fh,
                 stderr=subprocess.STDOUT,
                 cwd=actual_cwd,
+                env=child_env,
             )
 
         # Background thread tails the log so callers see progress
@@ -80,7 +92,7 @@ class CLISubprocessAdapter:
         tail_thread.start()
 
         try:
-            proc.wait()  # Block until process finishes – no timeout
+            proc.wait()  # Block until process finishes - no timeout
         finally:
             stop_event.set()
             tail_thread.join(timeout=2)
@@ -103,7 +115,7 @@ class CLISubprocessAdapter:
         return stdout.strip()
 
     # ------------------------------------------------------------------
-    # Bash steps – keep a timeout (these should be fast)
+    # Bash steps - keep a timeout (these should be fast)
     # ------------------------------------------------------------------
 
     def execute_bash_step(
@@ -117,12 +129,14 @@ class CLISubprocessAdapter:
         Uses explicit bash invocation instead of shell=True to prevent
         injection vulnerabilities (per PR #2010 security fix).
         """
+        child_env = {k: v for k, v in os.environ.items() if k != "CLAUDECODE"}
         result = subprocess.run(
             ["/bin/bash", "-c", command],
             capture_output=True,
             text=True,
             cwd=working_dir or self._working_dir,
             timeout=timeout,
+            env=child_env,
         )
         if result.returncode != 0:
             raise RuntimeError(
@@ -164,7 +178,7 @@ class CLISubprocessAdapter:
                     fh.seek(last_size)
                     new_text = fh.read()
                     # Print last meaningful line as progress
-                    lines = [l for l in new_text.strip().splitlines() if l.strip()]
+                    lines = [ln for ln in new_text.strip().splitlines() if ln.strip()]
                     if lines:
                         print(f"  [agent] {lines[-1][:120]}")
                 last_size = current_size

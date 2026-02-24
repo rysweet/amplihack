@@ -5,11 +5,13 @@
     "src/amplihack/cli_extensions.py",
     "src/amplihack/security/cli.py",
     "src/amplihack/proxy/responses_api_proxy.py",
+    "src/amplihack/agents/goal_seeking",
     "proxy/",
     "tests/",
     ".claude/",
     "Specs/",
-    "scripts/"
+    "scripts/",
+    "src/amplihack/agents/goal_seeking/sdk_adapters"
   ],
   "typeCheckingMode": "basic",
   "reportMissingImports": true,

@@ -1,0 +1,18 @@
+{
+  "agent_name": "project_planning",
+  "domain": "project_planning",
+  "description": "Decomposes projects, identifies dependencies, assesses risks",
+  "eval_overall_score": 0.958,
+  "eval_overall_passed": true,
+  "eval_level_scores": {
+    "L1": 0.833,
+    "L2": 1.0,
+    "L3": 1.0,
+    "L4": 1.0
+  },
+  "teaching_topic": "risk assessment",
+  "lesson_plan": "1. Types of project risks\n2. Risk assessment techniques\n3. Mitigation strategies\n4. Risk monitoring\n5. Practice assessment",
+  "instruction_preview": "When assessing risks:\n\n1. **Technical Risks**: New technology, legacy integration\n   Mitigation: Proof of concept, prototyping\n\n2. **Schedule Risks**: Too many complex tasks, unclear timeline\n   Mitig",
+  "student_attempt": "Student findings:\n- Decomposed into 6 tasks\n- Estimated effort: ~1 months\n- Found 5 dependencies",
+  "combined_score": 0.971
+}
