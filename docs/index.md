@@ -277,14 +277,27 @@ Specialized AI agents and tools for every development task.
 
 **Autonomous agents that learn, remember, teach, and apply knowledge across four SDK backends.**
 
-- **[Comprehensive Guide](GOAL_SEEKING_AGENTS.md)** - End-to-end documentation: generation, capabilities, evaluation (L1-L12), self-improvement loop, and architecture
-- **[Eval System Architecture](EVAL_SYSTEM_ARCHITECTURE.md)** - How the eval system is constructed: progressive test suite, grading, teaching eval, domain eval, long-horizon memory, self-improvement runner
-- [SDK Adapters Guide](SDK_ADAPTERS_GUIDE.md) - Deep dive into Copilot, Claude, Microsoft, and Mini SDK backends with per-SDK eval prompts and 4-way comparison
+**📚 Tutorials (Learning-Oriented)**
+
+- **[Goal-Seeking Agent Tutorial](tutorials/GOAL_SEEKING_AGENT_TUTORIAL.md)** - Interactive 10-lesson tutorial covering agent generation, SDK selection, multi-agent architecture, evaluations (L1-L12), and self-improvement loops
+
+**📖 How-To Guides (Problem-Oriented)**
+
 - [Goal Agent Generator Guide](GOAL_AGENT_GENERATOR_GUIDE.md) - Create custom goal-seeking agents with `amplihack new`
-- [Goal Agent Generator Presentation](GOAL_AGENT_GENERATOR_PRESENTATION.md) - Concept overview
-- [Goal Agent Generator Design](agent-bundle-generator-design.md) - Architecture and patterns
-- [Goal Agent Requirements](agent-bundle-generator-requirements.md) - Specifications
-- [Implementation Summary](goal_agent_generator/IMPLEMENTATION_SUMMARY.md) - Current status
+- [SDK Adapters Guide](SDK_ADAPTERS_GUIDE.md) - Choose and configure Copilot, Claude, Microsoft, or Mini SDK backends
+
+**📋 Reference (Information-Oriented)**
+
+- **[Quick Reference Card](reference/goal-seeking-agents-quick-reference.md)** - Fast lookup: commands, SDK selection, eval levels, common patterns
+- [Eval System Architecture](EVAL_SYSTEM_ARCHITECTURE.md) - Progressive test suite (L1-L12), grading pipeline, domain agents, long-horizon memory eval, self-improvement runner
+- [Goal Agent Generator Design](agent-bundle-generator-design.md) - Architecture and design patterns
+- [Goal Agent Requirements](agent-bundle-generator-requirements.md) - Technical specifications
+- [Implementation Summary](goal_agent_generator/IMPLEMENTATION_SUMMARY.md) - Current implementation status
+
+**💡 Explanation (Understanding-Oriented)**
+
+- **[Comprehensive Guide](GOAL_SEEKING_AGENTS.md)** - Complete system overview: capabilities, architecture, memory systems, evaluation framework, and self-improvement
+- [Goal Agent Generator Presentation](GOAL_AGENT_GENERATOR_PRESENTATION.md) - High-level concept introduction
 
 **Key Features**:
 
