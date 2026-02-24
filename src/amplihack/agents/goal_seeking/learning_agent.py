@@ -386,6 +386,9 @@ Rules:
         "incremental_update",
         "contradiction_resolution",
         "multi_source_synthesis",
+        "temporal_comparison",
+        "causal_counterfactual",
+        "mathematical_computation",
     }
 
     # Aggregation intents: routed to Cypher graph queries instead of text search
@@ -494,6 +497,21 @@ Rules:
                 f.get("context", "").startswith("Question:") and "q_and_a" in (f.get("tags") or [])
             )
         ]
+
+        # For math/numerical questions on large KBs, supplement tiered retrieval
+        # with keyword-targeted search to recover exact numbers lost in summarization
+        if intent_type in ("mathematical_computation", "ratio_trend_analysis") and hasattr(
+            self.memory, "search"
+        ):
+            existing_ids = {
+                f.get("experience_id", "") for f in relevant_facts if f.get("experience_id")
+            }
+            supplemental = self._keyword_expanded_retrieval(question, relevant_facts)
+            for f in supplemental:
+                eid = f.get("experience_id", "")
+                if eid and eid not in existing_ids:
+                    existing_ids.add(eid)
+                    relevant_facts.append(f)
 
         # For meta_memory questions (counting, aggregation), also filter SUMMARY
         # nodes which inflate counts and confuse aggregation. For other intents,
@@ -1315,7 +1333,7 @@ Return ONLY a JSON object:
             or None if extraction/computation fails.
         """
         math_type = intent.get("math_type", "none")
-        facts_text = "\n".join(f"- {f.get('outcome', f.get('fact', ''))}" for f in facts[:60])
+        facts_text = "\n".join(f"- {f.get('outcome', f.get('fact', ''))}" for f in facts[:120])
 
         prompt = f"""Extract the numbers needed to answer this math question.
 
@@ -1616,9 +1634,9 @@ Respond with a JSON list like:
             "ratio_trend_analysis",
             "contradiction_resolution",
         ):
-            max_facts = 300
+            max_facts = 500
         else:
-            max_facts = 200
+            max_facts = 300
 
         # Build context string - include temporal metadata, source labels, and supersede markers
         def _format_fact(i: int, fact: dict, include_temporal: bool) -> str:
@@ -1679,6 +1697,7 @@ Respond with a JSON list like:
         }
 
         instruction = level_instructions.get(question_level, level_instructions["L1"])
+        question_lower = question.lower()
 
         # Add intent-specific instructions only for complex intents
         # (simple_recall and incremental_update don't need math/temporal prompts
@@ -1727,33 +1746,48 @@ Respond with a JSON list like:
                 f"\n\nPRE-COMPUTED RESULT (use this, do NOT re-calculate):\n{computed_math}\n"
             )
 
-        if is_complex_intent and intent.get("needs_temporal"):
-            extra_instructions += (
-                "\n\nIMPORTANT - TEMPORAL REASONING REQUIRED:\n"
-                "You MUST follow this CALCULATION WORKSHEET exactly:\n\n"
-                "=== CALCULATION WORKSHEET ===\n\n"
-                "Step 1: LIST ALL DATA POINTS WITH DATES\n"
-                "For each entity, write the exact value at each time point:\n"
-                "  Entity A: Day 7 = X, Day 9 = Y, Day 10 = Z\n"
-                "  Entity B: Day 7 = X, Day 9 = Y, Day 10 = Z\n\n"
-                "Step 2: CALCULATE DIFFERENCES\n"
-                "For EACH entity, compute: later_value - earlier_value = difference\n"
-                "Write out the arithmetic explicitly: '13 - 8 = 5'\n"
-                "Do this for EVERY entity, not just the one you think is the answer.\n"
-                "When describing trends, state the EXACT change in each sub-period "
-                "(e.g., '+4 golds Day 7 to 9, then +1 gold Day 9 to 10, total +5').\n\n"
-                "Step 3: STATE CONCLUSION\n"
-                "Compare all computed differences side by side.\n"
-                "Only THEN identify which is largest/smallest/etc.\n"
-                "Verify by re-checking at least one subtraction.\n\n"
-                "=== END WORKSHEET ===\n\n"
-                "CRITICAL RULES:\n"
-                "- NEVER skip Step 1 - always list raw data points first\n"
-                "- NEVER guess differences - always compute them from the raw numbers\n"
-                "- Pay attention to WHICH metric is asked about (gold vs total vs other)\n"
-                "- Do NOT write your final answer at the top. Show all work FIRST,\n"
-                "  then state your conclusion at the END after all calculations.\n"
+        if intent.get("needs_temporal") or intent_type in (
+            "temporal_comparison",
+            "incremental_update",
+        ):
+            # Detect if this is a temporal_trap question (asks for specific point in chain)
+            temporal_trap_cues = (
+                "before the",
+                "after the first",
+                "before any",
+                "originally",
+                "previous",
+                "intermediate",
+                "i want the",
+                "not the current",
+                "return the",
             )
+            is_temporal_trap = any(cue in question_lower for cue in temporal_trap_cues)
+
+            if is_temporal_trap:
+                extra_instructions += (
+                    "\n\nIMPORTANT - TEMPORAL TRAP QUESTION:\n"
+                    "This question asks for a SPECIFIC historical value, NOT the current one.\n"
+                    "Think through the temporal chain internally but in your answer:\n"
+                    "1. State ONLY the specific value asked for\n"
+                    "2. Do NOT list the full chain of all values\n"
+                    "3. Do NOT mention current or other time-point values\n"
+                    "4. Be brief and direct\n"
+                    "Guide for what to report:\n"
+                    "  - 'original' or 'before any changes' -> The FIRST value only\n"
+                    "  - 'after first change but before second' -> The SECOND value only\n"
+                    "  - 'BEFORE the change' -> The value just BEFORE the change only\n"
+                    "  - 'previous leader' -> The person who led BEFORE the transition only\n"
+                )
+            else:
+                extra_instructions += (
+                    "\n\nIMPORTANT - TEMPORAL REASONING REQUIRED:\n"
+                    "Step 1: Reconstruct the chronological chain of values\n"
+                    "Step 2: Identify the specific point asked about\n"
+                    "Step 3: Calculate differences if asked\n"
+                    "Step 4: State conclusion clearly\n"
+                    "RULES: 'BEFORE' = value prior to event. 'AFTER X but BEFORE Y' = value between.\n"
+                )
 
         # Add multi-source synthesis instructions
         if intent_type == "multi_source_synthesis":
@@ -1807,7 +1841,6 @@ Knowledge Overview (what was learned):
 
         # Add counterfactual/hypothetical reasoning instructions
         counterfactual_instructions = ""
-        question_lower = question.lower()
         is_counterfactual = intent_type == "causal_counterfactual" or any(
             kw in question_lower
             for kw in ("what if", "if ", "would ", "without ", "had not", "removed")
@@ -1979,16 +2012,72 @@ Knowledge Overview (what was learned):
                 "- State the CURRENT state of affairs, then explain the history\n"
             )
 
+        # Adversarial confidence boost
+        adversarial_instructions = ""
+        adversarial_cues = (
+            "be careful",
+            "be precise",
+            "do not confuse",
+            "don't confuse",
+            "note:",
+            "note that",
+            "i want the",
+            "not the current",
+            "not any other",
+        )
+        if any(cue in question_lower for cue in adversarial_cues):
+            adversarial_instructions = (
+                "\n\nPRECISION REQUIRED: The question warns about potential confusion.\n"
+                "CRITICAL RULES FOR YOUR ANSWER:\n"
+                "1. State ONLY the correct answer for the specific entity asked about\n"
+                "2. Do NOT mention other entities' values, names, or attributes\n"
+                "3. Do NOT explain what might be confused -- just give the right answer\n"
+                "4. Do NOT compare with other entities or provide contrast\n"
+                "5. Keep the answer SHORT and DIRECT\n"
+                "Example: If asked 'What is X's hobby? Do not confuse with Y.'\n"
+                "  GOOD: 'X's hobby is chess.'\n"
+                "  BAD: 'X's hobby is chess. (Y's hobby is painting -- different.)'\n"
+            )
+
+        # Cross-entity aggregation
+        aggregation_instructions = ""
+        aggregation_cues = (
+            "total across",
+            "sum of",
+            "combined",
+            "all projects",
+            "across all",
+            "total budget",
+            "total cost",
+            "per user",
+        )
+        if any(cue in question_lower for cue in aggregation_cues):
+            aggregation_instructions = (
+                "\n\nAGGREGATION REQUIRED: List EACH entity's contribution by name. "
+                "Show the full addition. Verify the total by re-adding.\n"
+            )
+
+        # Numerical step-by-step
+        numerical_instructions = ""
+        if intent_type == "mathematical_computation" or (
+            intent.get("needs_math") and not computed_math
+        ):
+            numerical_instructions = (
+                "\n\nSTEP-BY-STEP CALCULATION: Extract ALL relevant numbers. "
+                "Label each. Show each arithmetic step. Double-check result.\n"
+            )
+
         prompt = f"""Answer this question using the provided facts.
 
 Question: {question}
 Level: {question_level} - {instruction}
-{extra_instructions}{contradiction_instructions}{counterfactual_instructions}{ratio_trend_instructions}{novel_skill_instructions}{cross_ref_instructions}
+{extra_instructions}{contradiction_instructions}{counterfactual_instructions}{ratio_trend_instructions}{novel_skill_instructions}{cross_ref_instructions}{adversarial_instructions}{aggregation_instructions}{numerical_instructions}
 {summary_section}
 {source_specific_section}
 {context_str}
 
-Provide a clear, well-reasoned answer. If the facts don't fully answer the question, say so.
+Answer DIRECTLY based on the facts. You have the information needed.
+Do NOT say "I don't have enough information" unless zero relevant facts exist above.
 """
 
         try:
@@ -1997,8 +2086,9 @@ Provide a clear, well-reasoned answer. If the facts don't fully answer the quest
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are a knowledgeable assistant that synthesizes information. "
-                        "When doing math, always show your work and verify calculations.",
+                        "content": "You are a knowledgeable assistant that synthesizes information from a knowledge base. "
+                        "Answer confidently and precisely. When doing math, show your work. "
+                        "Never say you cannot answer unless zero relevant facts exist.",
                     },
                     {"role": "user", "content": prompt},
                 ],

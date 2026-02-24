@@ -922,8 +922,25 @@ def main() -> None:
         shutil.copytree(src_db, db_path)
         logger.info("Loaded existing memory DB from %s -> %s", src_db, db_path)
 
-    # Determine agent name -- match the name used when the DB was created
-    agent_name = "long_horizon_eval_learning" if args.load_db else "long_horizon_eval"
+    # Determine agent name -- match the name used when the DB was created.
+    # When loading a pre-built DB, detect agent_id from the DB to avoid mismatch.
+    agent_name = "long_horizon_eval"
+    if args.load_db:
+        try:
+            import kuzu  # type: ignore[import-not-found]
+
+            _detect_db = kuzu.Database(str(db_path / "kuzu_db"))
+            _detect_conn = kuzu.Connection(_detect_db)
+            _result = _detect_conn.execute(
+                "MATCH (e:EpisodicMemory) RETURN DISTINCT e.agent_id LIMIT 1"
+            )
+            if _result.has_next():
+                agent_name = _result.get_next()[0]
+                logger.info("Detected agent_id from DB: %s", agent_name)
+            del _detect_conn, _detect_db
+        except Exception as _e:
+            logger.warning("Could not detect agent_id from DB: %s", _e)
+            agent_name = "long_horizon_eval_learning"
 
     if args.sdk == "mini":
         from amplihack.agents.goal_seeking.learning_agent import LearningAgent
