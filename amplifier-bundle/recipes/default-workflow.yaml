@@ -560,6 +560,28 @@ steps:
       Skip if no external integrations are required.
     output: "integration_code"
 
+  # --------------------------------------------------------------------------
+  # CHECKPOINT: Stage implementation work to prevent loss if later steps fail
+  # --------------------------------------------------------------------------
+  - id: "checkpoint-after-implementation"
+    type: "bash"
+    command: |
+      cd "{{worktree_setup.worktree_path}}" 2>/dev/null || cd "{{repo_path}}" && \
+      echo "=== Checkpoint: Staging Implementation ===" && \
+      git add -A && \
+      STAGED=$(git diff --cached --name-only) && \
+      if [ -n "$STAGED" ]; then \
+        git commit -m "wip: checkpoint after implementation (steps 7-8)
+
+      Automatic checkpoint to preserve work in progress.
+      Tests and implementation saved before refactoring phase." && \
+        echo "Checkpoint commit created with $(echo "$STAGED" | wc -l) file(s)" ; \
+      else \
+        echo "No changes to checkpoint" ; \
+      fi && \
+      echo "=== Checkpoint Complete ==="
+    output: "impl_checkpoint"
+
   # ==========================================================================
   # STEP 9: REFACTOR AND SIMPLIFY
   # ==========================================================================
@@ -716,6 +738,28 @@ steps:
 
       Output the updated implementation.
     output: "review_feedback"
+
+  # --------------------------------------------------------------------------
+  # CHECKPOINT: Stage review feedback changes before pre-commit hooks
+  # --------------------------------------------------------------------------
+  - id: "checkpoint-after-review-feedback"
+    type: "bash"
+    command: |
+      cd "{{worktree_setup.worktree_path}}" 2>/dev/null || cd "{{repo_path}}" && \
+      echo "=== Checkpoint: Staging Review Feedback ===" && \
+      git add -A && \
+      STAGED=$(git diff --cached --name-only) && \
+      if [ -n "$STAGED" ]; then \
+        git commit -m "wip: checkpoint after review feedback (steps 10-11)
+
+      Automatic checkpoint to preserve review-addressed changes.
+      Saved before running pre-commit hooks and tests." && \
+        echo "Checkpoint commit created with $(echo "$STAGED" | wc -l) file(s)" ; \
+      else \
+        echo "No changes to checkpoint" ; \
+      fi && \
+      echo "=== Checkpoint Complete ==="
+    output: "review_checkpoint"
 
   # ==========================================================================
   # STEP 12: RUN TESTS AND PRE-COMMIT HOOKS

@@ -202,7 +202,6 @@ src/
 content/            # Blog posts (Markdown)
 public/             # Static assets
 ```
-````
 
 ## Development Workflow
 
@@ -235,7 +234,10 @@ This project leverages amplihack's design philosophy:
 
 ````
 
-The key is making this document useful for both AI agents and human developers. It should answer: What is this project? How is it architected? What conventions do we follow? What should I avoid?
+The key is making this document useful for both AI agents and human developers. It should answer: 
+- What is this project?
+- How is it architected?
+- What conventions do we follow? What should I avoid?
 
 ### Optional: Add Philosophy Documents
 
