@@ -17,12 +17,36 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).parent.parent.parent
+
+def _run_gh_command(args: list[str], description: str) -> list[dict[str, Any]]:
+    """Run a gh CLI command and return parsed JSON, or empty list on failure."""
+    result = subprocess.run(
+        args,
+        capture_output=True,
+        text=True,
+    )
+
+    if result.returncode != 0:
+        print(
+            f"Warning: {description} failed (exit code {result.returncode}): "
+            f"{result.stderr.strip()}",
+            file=sys.stderr,
+        )
+        return []
+
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError:
+        print(
+            f"Warning: {description} returned invalid JSON: {result.stdout[:200]}",
+            file=sys.stderr,
+        )
+        return []
 
 
 def get_workflow_runs() -> list[dict[str, Any]]:
     """Fetch recent workflow runs."""
-    result = subprocess.run(
+    return _run_gh_command(
         [
             "gh",
             "run",
@@ -32,36 +56,25 @@ def get_workflow_runs() -> list[dict[str, Any]]:
             "--json",
             "status,conclusion,name,createdAt,workflowName",
         ],
-        capture_output=True,
-        text=True,
-        check=True,
+        "fetch workflow runs",
     )
-
-    return json.loads(result.stdout)
 
 
 def get_open_issues_count() -> int:
     """Get count of open issues."""
-    result = subprocess.run(
-        ["gh", "issue", "list", "--json", "number"],
-        capture_output=True,
-        text=True,
-        check=True,
+    issues = _run_gh_command(
+        ["gh", "issue", "list", "--limit", "200", "--json", "number"],
+        "fetch open issues",
     )
-
-    return len(json.loads(result.stdout))
+    return len(issues)
 
 
 def get_open_prs_count() -> dict[str, int]:
     """Get count of open PRs by state."""
-    result = subprocess.run(
-        ["gh", "pr", "list", "--json", "number,isDraft"],
-        capture_output=True,
-        text=True,
-        check=True,
+    prs = _run_gh_command(
+        ["gh", "pr", "list", "--limit", "200", "--json", "number,isDraft"],
+        "fetch open PRs",
     )
-
-    prs = json.loads(result.stdout)
     return {
         "total": len(prs),
         "draft": len([pr for pr in prs if pr.get("isDraft")]),
@@ -77,11 +90,18 @@ def analyze_ci_health(workflow_runs: list[dict[str, Any]]) -> dict[str, Any]:
             "passing": 0,
             "failing": 0,
             "pending": 0,
+            "total": 0,
         }
 
-    passing = len([r for r in workflow_runs if r.get("conclusion") == "success"])
-    failing = len([r for r in workflow_runs if r.get("conclusion") == "failure"])
-    pending = len([r for r in workflow_runs if r.get("status") == "in_progress"])
+    passing = failing = pending = 0
+    for r in workflow_runs:
+        conclusion = r.get("conclusion")
+        if conclusion == "success":
+            passing += 1
+        elif conclusion == "failure":
+            failing += 1
+        elif r.get("status") == "in_progress":
+            pending += 1
 
     # Determine overall health
     if failing == 0 and passing > 0:
@@ -247,11 +267,6 @@ def main():
         # Also output to console for GitHub Actions summary
         print("\n" + report)
 
-    except subprocess.CalledProcessError as e:
-        print(f"Error running gh command: {e}", file=sys.stderr)
-        print(f"Stdout: {e.stdout}", file=sys.stderr)
-        print(f"Stderr: {e.stderr}", file=sys.stderr)
-        sys.exit(1)
     except Exception as e:
         print(f"Error generating status report: {e}", file=sys.stderr)
         import traceback

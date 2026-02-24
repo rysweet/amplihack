@@ -8,7 +8,7 @@ Generates weekly roadmap analysis by:
 - Providing velocity metrics
 - Generating actionable recommendations
 
-Uses GitHub API for data collection and Claude for analysis.
+Uses GitHub API for data collection.
 """
 
 import json
@@ -18,7 +18,31 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).parent.parent.parent
+
+def _run_gh_command(args: list[str], description: str) -> list[dict[str, Any]]:
+    """Run a gh CLI command and return parsed JSON, or empty list on failure."""
+    result = subprocess.run(
+        args,
+        capture_output=True,
+        text=True,
+    )
+
+    if result.returncode != 0:
+        print(
+            f"Warning: {description} failed (exit code {result.returncode}): "
+            f"{result.stderr.strip()}",
+            file=sys.stderr,
+        )
+        return []
+
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError:
+        print(
+            f"Warning: {description} returned invalid JSON: {result.stdout[:200]}",
+            file=sys.stderr,
+        )
+        return []
 
 
 def get_week_number() -> str:
@@ -30,84 +54,80 @@ def fetch_issues_created_this_week() -> list[dict[str, Any]]:
     """Fetch issues created in the past week."""
     week_ago = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
 
-    result = subprocess.run(
+    issues = _run_gh_command(
         [
             "gh",
             "issue",
             "list",
+            "--limit",
+            "200",
+            "--state",
+            "all",
             "--json",
             "number,title,state,createdAt,labels,assignees",
-            "--search",
-            f"created:>={week_ago}",
         ],
-        capture_output=True,
-        text=True,
-        check=True,
+        "fetch recent issues",
     )
 
-    return json.loads(result.stdout)
+    # Filter to issues created this week
+    return [issue for issue in issues if issue.get("createdAt", "") >= week_ago]
 
 
 def fetch_prs_merged_this_week() -> list[dict[str, Any]]:
     """Fetch PRs merged in the past week."""
     week_ago = (datetime.now() - timedelta(days=7)).strftime("%Y-%m-%d")
 
-    result = subprocess.run(
+    prs = _run_gh_command(
         [
             "gh",
             "pr",
             "list",
             "--state",
             "merged",
+            "--limit",
+            "200",
             "--json",
             "number,title,mergedAt,labels,author",
-            "--search",
-            f"merged:>={week_ago}",
         ],
-        capture_output=True,
-        text=True,
-        check=True,
+        "fetch merged PRs",
     )
 
-    return json.loads(result.stdout)
+    # Filter to PRs merged this week
+    return [pr for pr in prs if pr.get("mergedAt", "") >= week_ago]
 
 
 def fetch_open_prs() -> list[dict[str, Any]]:
     """Fetch currently open PRs."""
-    result = subprocess.run(
+    return _run_gh_command(
         [
             "gh",
             "pr",
             "list",
+            "--limit",
+            "200",
             "--json",
             "number,title,createdAt,labels,author,isDraft",
         ],
-        capture_output=True,
-        text=True,
-        check=True,
+        "fetch open PRs",
     )
-
-    return json.loads(result.stdout)
 
 
 def fetch_blocked_issues() -> list[dict[str, Any]]:
     """Fetch issues labeled as blocked."""
-    result = subprocess.run(
+    return _run_gh_command(
         [
             "gh",
             "issue",
             "list",
             "--label",
             "blocked",
+            "--limit",
+            "200",
             "--json",
             "number,title,labels,assignees",
         ],
-        capture_output=True,
-        text=True,
-        check=True,
+        "fetch blocked issues",
     )
-
-    return json.loads(result.stdout)
 
 
 def analyze_priority_distribution(issues: list[dict[str, Any]]) -> dict[str, int]:
@@ -144,6 +164,8 @@ def generate_roadmap_report(
         new_issues + [{"labels": pr.get("labels", [])} for pr in open_prs]
     )
 
+    draft_count = len([pr for pr in open_prs if pr.get("isDraft")])
+
     report_parts = [
         f"## Weekly Roadmap Review - {week_num}",
         "",
@@ -153,7 +175,7 @@ def generate_roadmap_report(
         "",
         f"**Issues Created This Week**: {len(new_issues)}",
         f"**PRs Merged This Week**: {len(merged_prs)}",
-        f"**Open PRs**: {len(open_prs)} ({len([pr for pr in open_prs if pr.get('isDraft')])} drafts)",
+        f"**Open PRs**: {len(open_prs)} ({draft_count} drafts)",
         "",
         "**Priority Distribution**:",
     ]
@@ -212,7 +234,6 @@ def generate_roadmap_report(
     if len(open_prs) > 10:
         recommendations.append(f"- High PR count ({len(open_prs)}), consider focusing on reviews")
 
-    draft_count = len([pr for pr in open_prs if pr.get("isDraft")])
     if draft_count > 5:
         recommendations.append(f"- {draft_count} draft PRs - may need completion or closure")
 
@@ -273,11 +294,6 @@ def main():
         # Also output to console for GitHub Actions summary
         print("\n" + report)
 
-    except subprocess.CalledProcessError as e:
-        print(f"Error running gh command: {e}", file=sys.stderr)
-        print(f"Stdout: {e.stdout}", file=sys.stderr)
-        print(f"Stderr: {e.stderr}", file=sys.stderr)
-        sys.exit(1)
     except Exception as e:
         print(f"Error generating roadmap review: {e}", file=sys.stderr)
         import traceback
