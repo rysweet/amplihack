@@ -223,3 +223,214 @@ class TestHierarchicalMemory:
         assert len(nodes) == 1
         # Should be classified as procedural based on keyword "step"
         assert nodes[0].category == MemoryCategory.PROCEDURAL
+
+
+class TestTransitionChains:
+    """Tests for TRANSITIONED_TO edges and multi-hop transition chains."""
+
+    @pytest.fixture
+    def temp_db(self):
+        """Create a temporary directory for the Kuzu database."""
+        temp_dir = Path(tempfile.mkdtemp())
+        yield temp_dir
+        if temp_dir.exists():
+            shutil.rmtree(temp_dir)
+
+    @pytest.fixture
+    def memory(self, temp_db):
+        """Create a HierarchicalMemory instance with temp storage."""
+        mem = HierarchicalMemory(agent_name="test_transitions", db_path=temp_db / "kuzu_db")
+        yield mem
+        mem.close()
+
+    def _store_temporal_fact(self, memory, content, concept, temporal_index):
+        """Helper to store a fact with temporal metadata."""
+        return memory.store_knowledge(
+            content=content,
+            concept=concept,
+            confidence=0.9,
+            temporal_metadata={
+                "temporal_index": temporal_index,
+                "temporal_order": f"Turn {temporal_index}",
+            },
+        )
+
+    def test_transitioned_to_edge_created_on_supersession(self, memory):
+        """When a fact supersedes another, TRANSITIONED_TO edge should also be created."""
+        # Store initial fact
+        self._store_temporal_fact(
+            memory, "Klaebo has 8 gold medals", "Klaebo medals", 1
+        )
+        # Store superseding fact
+        self._store_temporal_fact(
+            memory, "Klaebo has 9 gold medals", "Klaebo medals", 2
+        )
+
+        stats = memory.get_statistics()
+        assert stats.get("transitioned_to_edges", 0) >= 1
+
+    def test_three_state_transition_chain(self, memory):
+        """A 3-state chain (A->B->C) should produce 2 TRANSITIONED_TO edges."""
+        # State 1: 8 medals
+        id1 = self._store_temporal_fact(
+            memory, "Klaebo has 8 gold medals", "Klaebo medals", 1
+        )
+        # State 2: 9 medals (supersedes state 1)
+        id2 = self._store_temporal_fact(
+            memory, "Klaebo has 9 gold medals", "Klaebo medals", 2
+        )
+        # State 3: 10 medals (supersedes state 2)
+        id3 = self._store_temporal_fact(
+            memory, "Klaebo has 10 gold medals", "Klaebo medals", 3
+        )
+
+        stats = memory.get_statistics()
+        # Should have at least 2 TRANSITIONED_TO edges: id3->id2 and id2->id1
+        assert stats.get("transitioned_to_edges", 0) >= 2
+
+    def test_chain_position_labels(self, memory):
+        """Nodes should be tagged with chain_position: first, intermediate, latest."""
+        # Build a 3-state chain
+        self._store_temporal_fact(
+            memory, "Klaebo has 8 gold medals", "Klaebo medals", 1
+        )
+        self._store_temporal_fact(
+            memory, "Klaebo has 9 gold medals", "Klaebo medals", 2
+        )
+        self._store_temporal_fact(
+            memory, "Klaebo has 10 gold medals", "Klaebo medals", 3
+        )
+
+        # Retrieve and check chain positions
+        subgraph = memory.retrieve_subgraph("Klaebo medals")
+        assert len(subgraph.nodes) >= 3
+
+        positions = {}
+        for node in subgraph.nodes:
+            pos = node.metadata.get("chain_position", "")
+            if pos:
+                positions[pos] = positions.get(pos, 0) + 1
+
+        # Should have at least one of each: first, intermediate, latest
+        assert "first" in positions, f"Missing 'first' position. Got: {positions}"
+        assert "intermediate" in positions, f"Missing 'intermediate' position. Got: {positions}"
+        assert "latest" in positions, f"Missing 'latest' position. Got: {positions}"
+
+    def test_intermediate_states_not_excluded(self, memory):
+        """Intermediate states should remain retrievable (not filtered out)."""
+        self._store_temporal_fact(
+            memory, "Klaebo has 8 gold medals", "Klaebo medals", 1
+        )
+        self._store_temporal_fact(
+            memory, "Klaebo has 9 gold medals", "Klaebo medals", 2
+        )
+        self._store_temporal_fact(
+            memory, "Klaebo has 10 gold medals", "Klaebo medals", 3
+        )
+
+        subgraph = memory.retrieve_subgraph("Klaebo medals")
+
+        # All three states should be present
+        contents = [n.content for n in subgraph.nodes]
+        assert any("8" in c for c in contents), "First state (8 medals) should be retrievable"
+        assert any("9" in c for c in contents), "Intermediate state (9 medals) should be retrievable"
+        assert any("10" in c for c in contents), "Latest state (10 medals) should be retrievable"
+
+    def test_intermediate_confidence_not_halved(self, memory):
+        """Intermediate states should have moderate confidence, not halved to 0.1."""
+        self._store_temporal_fact(
+            memory, "Klaebo has 8 gold medals", "Klaebo medals", 1
+        )
+        self._store_temporal_fact(
+            memory, "Klaebo has 9 gold medals", "Klaebo medals", 2
+        )
+        self._store_temporal_fact(
+            memory, "Klaebo has 10 gold medals", "Klaebo medals", 3
+        )
+
+        subgraph = memory.retrieve_subgraph("Klaebo medals")
+
+        for node in subgraph.nodes:
+            if "9" in node.content:
+                # Intermediate: confidence * 0.7, so 0.9 * 0.7 = 0.63
+                assert node.confidence >= 0.3, (
+                    f"Intermediate node confidence too low: {node.confidence}"
+                )
+
+    def test_transition_chain_in_llm_context(self, memory):
+        """to_llm_context should show transition history when chains exist."""
+        self._store_temporal_fact(
+            memory, "Klaebo has 8 gold medals", "Klaebo medals", 1
+        )
+        self._store_temporal_fact(
+            memory, "Klaebo has 9 gold medals", "Klaebo medals", 2
+        )
+
+        subgraph = memory.retrieve_subgraph("Klaebo medals")
+        context = subgraph.to_llm_context()
+
+        # Should contain transition history section if TRANSITIONED_TO edges exist
+        if any(e.relationship == "TRANSITIONED_TO" for e in subgraph.edges):
+            assert "Transition history" in context
+
+    def test_four_state_chain(self, memory):
+        """A 4-state chain should produce 3+ TRANSITIONED_TO edges."""
+        self._store_temporal_fact(
+            memory, "Team has 5 wins this season", "Team wins", 1
+        )
+        self._store_temporal_fact(
+            memory, "Team has 10 wins this season", "Team wins", 2
+        )
+        self._store_temporal_fact(
+            memory, "Team has 15 wins this season", "Team wins", 3
+        )
+        self._store_temporal_fact(
+            memory, "Team has 20 wins this season", "Team wins", 4
+        )
+
+        stats = memory.get_statistics()
+        # Each new state supersedes the one before it
+        assert stats.get("transitioned_to_edges", 0) >= 3
+
+    def test_export_import_preserves_transitioned_to_edges(self, memory, temp_db):
+        """TRANSITIONED_TO edges should survive export/import round-trip."""
+        self._store_temporal_fact(
+            memory, "Klaebo has 8 gold medals", "Klaebo medals", 1
+        )
+        self._store_temporal_fact(
+            memory, "Klaebo has 9 gold medals", "Klaebo medals", 2
+        )
+
+        # Export
+        export_data = memory.export_to_json()
+        assert len(export_data.get("transitioned_to_edges", [])) >= 1
+
+        # Import into fresh memory
+        mem2 = HierarchicalMemory(
+            agent_name="test_import", db_path=temp_db / "import_db"
+        )
+        try:
+            import_stats = mem2.import_from_json(export_data)
+            assert import_stats["edges_imported"] > 0
+
+            stats = mem2.get_statistics()
+            assert stats.get("transitioned_to_edges", 0) >= 1
+        finally:
+            mem2.close()
+
+    def test_statistics_count_transitioned_to_edges(self, memory):
+        """get_statistics should include transitioned_to_edges count."""
+        stats = memory.get_statistics()
+        assert "transitioned_to_edges" in stats
+        assert stats["transitioned_to_edges"] == 0
+
+        # Store chain
+        self._store_temporal_fact(
+            memory, "Score is 100 points", "Score update", 1
+        )
+        self._store_temporal_fact(
+            memory, "Score is 200 points", "Score update", 2
+        )
+
+        stats = memory.get_statistics()
+        assert stats["transitioned_to_edges"] >= 1

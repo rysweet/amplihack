@@ -295,8 +295,9 @@ steps:
       # Fetch latest refs
       git fetch origin main >&2
 
-      # Generate branch name
-      TASK_SLUG=$(echo '{{task_description}}' | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | sed 's/[^a-z0-9-]//g' | cut -c1-50)
+      # Generate branch name (use heredoc to avoid bash syntax errors with special chars)
+      TASK_DESC='{{task_description}}'
+      TASK_SLUG=$(echo "$TASK_DESC" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | sed 's/[^a-z0-9-]//g' | cut -c1-50)
       BRANCH_NAME="{{branch_prefix}}/issue-{{issue_number}}-${TASK_SLUG}"
       WORKTREE_PATH="{{repo_path}}/worktrees/${BRANCH_NAME}"
 

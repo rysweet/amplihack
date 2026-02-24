@@ -16,6 +16,7 @@ Philosophy:
 import json
 import logging
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -116,6 +117,10 @@ class LearningAgent:
             ),
         )
         self.executor.register_action("calculate", calculate)
+        self.executor.register_action(
+            "code_generation",
+            lambda question: self._code_generation_tool(question),
+        )
 
         # Tier 2+: Learning, memory management, teaching, and application tools
         self.executor.register_action(
@@ -570,6 +575,33 @@ Rules:
             computed = self._compute_math_result(question, relevant_facts, intent)
             if computed:
                 intent["computed_math"] = computed
+
+        # Pre-compute temporal code generation for temporal trap/evolution questions
+        question_lower_for_temporal = question.lower()
+        _temporal_code_keywords = (
+            "after first",
+            "before final",
+            "second",
+            "intermediate",
+            "between",
+            "before the",
+            "before any",
+            "originally",
+            "original",
+            "previous",
+        )
+        is_temporal_code_candidate = (
+            intent.get("needs_temporal")
+            or intent_type in ("temporal_comparison", "incremental_update")
+        ) and any(kw in question_lower_for_temporal for kw in _temporal_code_keywords)
+
+        if is_temporal_code_candidate:
+            try:
+                code_result = self._code_generation_tool(question)
+                if code_result.get("result"):
+                    intent["temporal_code"] = code_result
+            except Exception as e:
+                logger.warning("Temporal code generation failed: %s", e)
 
         # Step 3: Synthesize answer with intent-aware prompting
         answer = self._synthesize_with_llm(
@@ -1795,6 +1827,16 @@ Respond with a JSON list like:
                     "RULES: 'BEFORE' = value prior to event. 'AFTER X but BEFORE Y' = value between.\n"
                 )
 
+        # Inject temporal code generation result if available
+        temporal_code = intent.get("temporal_code")
+        if temporal_code and temporal_code.get("result"):
+            extra_instructions += (
+                f"\n\nTEMPORAL CODE GENERATION RESULT (use as hint):\n"
+                f"Code: {temporal_code['code']}\n"
+                f"Resolved value: {temporal_code['result']}\n"
+                f"Chain length: {len(temporal_code.get('transitions', []))}\n"
+            )
+
         # Add multi-source synthesis instructions
         if intent_type == "multi_source_synthesis":
             extra_instructions += (
@@ -2306,6 +2348,236 @@ Is the fact consistent with stored knowledge? Return ONLY a JSON object:
             "contradicting_facts": [],
             "reasoning": "Verification failed due to an internal error.",
         }
+
+    # -- Temporal code generation -----------------------------------------
+
+    # Keyword-to-index mapping for temporal state resolution
+    _TEMPORAL_KEYWORDS: dict[str, str] = {
+        "first": "0",
+        "original": "0",
+        "initial": "0",
+        "second": "1",
+        "third": "2",
+        "intermediate": "len(transitions) // 2",
+        "middle": "len(transitions) // 2",
+        "between": "len(transitions) // 2",
+        "latest": "-1",
+        "current": "-1",
+        "final": "-1",
+        "last": "-1",
+    }
+
+    def retrieve_transition_chain(
+        self, entity: str, field: str
+    ) -> list[dict[str, Any]]:
+        """Retrieve all SUPERSEDED states for an entity/field from memory.
+
+        Queries memory for all facts related to the entity and field,
+        filters to those with superseded metadata, and returns them
+        in chronological order (oldest first, current last).
+
+        Args:
+            entity: Entity name (e.g., "Atlas project")
+            field: Field name (e.g., "deadline")
+
+        Returns:
+            List of state dicts ordered chronologically, each with
+            'value', 'timestamp', and 'metadata' keys.
+        """
+        if not hasattr(self.memory, "get_all_facts"):
+            return []
+
+        all_facts = self.memory.get_all_facts(limit=15000)
+        entity_lower = entity.lower()
+        field_lower = field.lower()
+
+        # Collect facts matching entity and field
+        chain: list[dict[str, Any]] = []
+        for fact in all_facts:
+            context = fact.get("context", "").lower()
+            outcome = fact.get("outcome", fact.get("fact", "")).lower()
+            combined = f"{context} {outcome}"
+
+            if entity_lower in combined and field_lower in combined:
+                meta = fact.get("metadata", {}) or {}
+                chain.append(
+                    {
+                        "value": fact.get("outcome", fact.get("fact", "")),
+                        "timestamp": fact.get("timestamp", ""),
+                        "temporal_index": meta.get("temporal_index", 0),
+                        "superseded": meta.get("superseded", False),
+                        "metadata": meta,
+                    }
+                )
+
+        # Sort by temporal_index (chronological order)
+        chain.sort(key=lambda x: (x["temporal_index"], x["timestamp"]))
+        return chain
+
+    def _parse_temporal_index(self, question: str) -> str:
+        """Parse a temporal question to determine which state index is requested.
+
+        Scans the question for temporal keywords and maps them to a
+        Python index expression.
+
+        Args:
+            question: The temporal question text
+
+        Returns:
+            A Python index expression string (e.g., "0", "-1",
+            "len(transitions) // 2").
+        """
+        question_lower = question.lower()
+
+        # Check "AFTER first BUT BEFORE second" pattern -> index 1
+        after_before = re.search(
+            r"after\s+(?:the\s+)?first.*?(?:but\s+)?before\s+(?:the\s+)?(?:second|final|last)",
+            question_lower,
+        )
+        if after_before:
+            return "1"
+
+        # Check "BEFORE the first" / "BEFORE any" -> index 0 (original)
+        before_first = re.search(
+            r"before\s+(?:the\s+)?(?:first|any)\s+(?:change|update|modification)",
+            question_lower,
+        )
+        if before_first:
+            return "0"
+
+        # Check "AFTER the Nth" pattern
+        after_nth = re.search(r"after\s+(?:the\s+)?(\w+)\s+(?:change|update)", question_lower)
+        if after_nth:
+            ordinal = after_nth.group(1)
+            ordinal_map = {"first": "1", "second": "2", "third": "3"}
+            if ordinal in ordinal_map:
+                return ordinal_map[ordinal]
+
+        # Check "BEFORE the final/last" -> second-to-last
+        before_final = re.search(
+            r"before\s+(?:the\s+)?(?:final|last|latest)\s+(?:change|update|value)",
+            question_lower,
+        )
+        if before_final:
+            return "-2"
+
+        # Simple keyword match
+        for keyword, index_expr in self._TEMPORAL_KEYWORDS.items():
+            if keyword in question_lower:
+                return index_expr
+
+        # Default: latest value
+        return "-1"
+
+    def temporal_code_synthesis(
+        self, question: str, entity: str, field: str
+    ) -> dict[str, Any]:
+        """Generate Python code to resolve a temporal question.
+
+        Produces a code snippet that retrieves the transition chain for
+        the entity/field and indexes into it based on the temporal
+        keywords in the question.
+
+        Args:
+            question: The temporal question text
+            entity: Entity name (e.g., "Atlas project")
+            field: Field name (e.g., "deadline")
+
+        Returns:
+            Dict with:
+                - code: Generated Python code string
+                - index_expr: The resolved index expression
+                - transitions: The actual transition chain retrieved
+                - result: The resolved value (if chain is non-empty)
+        """
+        index_expr = self._parse_temporal_index(question)
+
+        # Generate the code snippet
+        code_lines = [
+            f"transitions = retrieve_transition_chain({entity!r}, {field!r})",
+            f"# Temporal index: {index_expr}",
+        ]
+
+        # Use safe index expression
+        if index_expr.startswith("len("):
+            code_lines.append(f"idx = {index_expr}")
+            code_lines.append("answer = transitions[idx].value")
+        else:
+            code_lines.append(f"answer = transitions[{index_expr}].value")
+
+        code = "\n".join(code_lines)
+
+        # Execute the retrieval
+        transitions = self.retrieve_transition_chain(entity, field)
+        result = None
+        if transitions:
+            try:
+                # Evaluate the index safely
+                if index_expr.startswith("len("):
+                    idx = len(transitions) // 2
+                else:
+                    idx = int(index_expr)
+                if -len(transitions) <= idx < len(transitions):
+                    result = transitions[idx]["value"]
+            except (ValueError, IndexError) as e:
+                logger.warning("Temporal index resolution failed for %r: %s", index_expr, e)
+
+        return {
+            "code": code,
+            "index_expr": index_expr,
+            "transitions": transitions,
+            "result": result,
+        }
+
+    def _code_generation_tool(self, question: str) -> dict[str, Any]:
+        """Tool interface for temporal code generation.
+
+        Extracts entity and field from the question using LLM, then
+        invokes temporal_code_synthesis.
+
+        Args:
+            question: The temporal question
+
+        Returns:
+            Dict with generated code and result
+        """
+        # Extract entity and field from question using LLM
+        prompt = f"""Extract the entity and field from this temporal question.
+
+Question: {question}
+
+Return ONLY a JSON object:
+{{"entity": "the entity name", "field": "the field/attribute being asked about"}}
+
+Examples:
+- "What WAS the Atlas deadline BEFORE the first change?" -> {{"entity": "Atlas", "field": "deadline"}}
+- "What was the original team size?" -> {{"entity": "team", "field": "size"}}
+- "Who led the project BEFORE the leadership change?" -> {{"entity": "project", "field": "leader"}}"""
+
+        try:
+            response = litellm.completion(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "Extract entity and field. Return JSON."},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.0,
+            )
+            response_text = response.choices[0].message.content.strip()
+            parsed = json.loads(response_text)
+            if isinstance(parsed, dict):
+                entity = parsed.get("entity", "").strip()
+                field = parsed.get("field", "").strip()
+                if not entity or not field:
+                    logger.warning("LLM returned empty entity=%r or field=%r", entity, field)
+                    return {"code": "", "index_expr": "", "transitions": [], "result": None}
+                return self.temporal_code_synthesis(question, entity, field)
+        except json.JSONDecodeError:
+            logger.warning("LLM did not return valid JSON for entity/field extraction")
+        except Exception as e:
+            logger.warning("Entity/field extraction failed: %s", e)
+
+        return {"code": "", "index_expr": "", "transitions": [], "result": None}
 
     def close(self):
         """Close agent and release resources."""
