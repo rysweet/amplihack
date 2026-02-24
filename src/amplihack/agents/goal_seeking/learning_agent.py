@@ -497,11 +497,15 @@ Rules:
             )
         ]
 
-        # For math/numerical questions on large KBs, supplement tiered retrieval
-        # with keyword-targeted search to recover exact numbers lost in summarization
-        if intent_type in ("mathematical_computation", "ratio_trend_analysis") and hasattr(
-            self.memory, "search"
-        ):
+        # For math/numerical and temporal questions on large KBs, supplement retrieval
+        # with keyword-targeted search to recover exact numbers/temporal chains
+        # lost in summarization or missed by entity retrieval.
+        _supplement_intents = (
+            "mathematical_computation",
+            "ratio_trend_analysis",
+            "temporal_comparison",
+        )
+        if intent_type in _supplement_intents and hasattr(self.memory, "search"):
             existing_ids = {
                 f.get("experience_id", "") for f in relevant_facts if f.get("experience_id")
             }
@@ -892,7 +896,7 @@ Rules:
         seen_ids: set[str] = set()
 
         for candidate in candidates:
-            entity_facts = self.memory.retrieve_by_entity(candidate, limit=30)
+            entity_facts = self.memory.retrieve_by_entity(candidate, limit=80)
             for fact in entity_facts:
                 fid = fact.get("experience_id", "")
                 if fid not in seen_ids:
