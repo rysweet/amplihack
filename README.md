@@ -53,7 +53,10 @@ high-quality code.
 
 - **Platform**: macOS, Linux, or WSL (Windows not directly supported)
 - **Runtime**: Python 3.12+, Node.js 18+
-- **Tools**: git, npm, uv ([astral.sh/uv](https://docs.astral.sh/uv/))
+- **Tools**: git, npm
+- **Package Manager**: **uv** ([astral.sh/uv](https://docs.astral.sh/uv/)) — A fast Python package manager
+  - Install: `curl -LsSf https://astral.sh/uv/install.sh | sh`
+  - Why uv? It's 10-100x faster than pip and includes `uvx` for temporary execution
 - **Optional**: GitHub CLI (`gh`), Azure CLI (`az`)
 
 Detailed setup:
@@ -61,7 +64,14 @@ Detailed setup:
 
 ### Installation
 
-**Option 1: Zero-Install** (try before you commit)
+Amplihack uses **uvx** (part of uv) to launch. Choose your preferred method:
+
+- **uvx**: Temporary execution — nothing installed permanently
+- **uv tool install**: Persistent installation — run `amplihack` from anywhere
+
+**Option 1: Try First (uvx — no installation)**
+
+Run amplihack directly without installing anything. Great for testing:
 
 ```bash
 # Launch with Claude Code
@@ -74,13 +84,18 @@ uvx --from git+https://github.com/rysweet/amplihack amplihack amplifier
 uvx --from git+https://github.com/rysweet/amplihack amplihack copilot
 ```
 
+**What's happening?** `uvx` temporarily downloads and runs amplihack without
+modifying your system. Nothing is installed permanently.
+
 **Option 2: Global Install** (for daily use)
+
+Install amplihack permanently so you can use it from anywhere:
 
 ```bash
 # Install once
 uv tool install git+https://github.com/rysweet/amplihack
 
-# Use directly
+# Use directly — no uvx needed
 amplihack claude
 amplihack amplifier
 amplihack copilot
@@ -88,6 +103,8 @@ amplihack copilot
 # Update later
 uv tool upgrade amplihack
 ```
+
+**New to uv?** Learn more at [docs.astral.sh/uv](https://docs.astral.sh/uv/)
 
 **Alias for convenience**:
 
