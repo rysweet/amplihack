@@ -3,11 +3,8 @@
 Philosophy: Test the test infrastructure, not the actual evaluation results.
 """
 
-import json
-
 import pytest
-
-from amplihack.eval.test_levels import (
+from amplihack_eval.data.progressive_levels import (
     ALL_LEVELS,
     LEVEL_1,
     LEVEL_2,
@@ -154,9 +151,14 @@ def test_reasoning_types():
         "L1": ["direct_recall"],
         "L2": ["cross_source_synthesis"],
         "L3": ["temporal_difference", "temporal_comparison", "temporal_trend"],
-        "L4": ["procedural_recall", "procedural_troubleshooting", "procedural_sequence", "procedural_application"],
+        "L4": [
+            "procedural_recall",
+            "procedural_troubleshooting",
+            "procedural_sequence",
+            "procedural_application",
+        ],
         "L5": ["contradiction_detection", "contradiction_reasoning", "source_credibility"],
-        "L6": ["incremental_update", "incremental_tracking", "incremental_synthesis"]
+        "L6": ["incremental_update", "incremental_tracking", "incremental_synthesis"],
     }
 
     for level in ALL_LEVELS:
@@ -178,7 +180,11 @@ def test_published_dates_are_valid():
         for article in level.articles:
             # Check ISO 8601 format (basic validation)
             assert "T" in article.published
-            assert "Z" in article.published or "+" in article.published or "-" in article.published[-6:]
+            assert (
+                "Z" in article.published
+                or "+" in article.published
+                or "-" in article.published[-6:]
+            )
 
 
 if __name__ == "__main__":
