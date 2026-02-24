@@ -33,6 +33,7 @@ try:
         handle_run,
         handle_show,
         handle_validate,
+        parse_context_args,
     )
 
     COMMANDS_EXIST = True
@@ -43,6 +44,7 @@ except ImportError:
     handle_list = None
     handle_validate = None
     handle_show = None
+    parse_context_args = None
 
 
 pytestmark = pytest.mark.skipif(not COMMANDS_EXIST, reason="recipe_command.py not yet implemented")
@@ -1001,3 +1003,113 @@ class TestContextMerging:
             )
 
         assert exit_code == 0
+
+
+class TestParseContextArgsSpecialChars:
+    """Tests for parse_context_args handling of special characters (Issue #2460).
+
+    When -c/--context uses nargs="+", argparse may split values with special
+    characters (parens, hashes, periods) into multiple tokens. parse_context_args
+    must rejoin them correctly.
+    """
+
+    def test_simple_key_value_string(self) -> None:
+        """Test basic key=value as a single string (legacy format)."""
+        parsed, errors = parse_context_args(["key=value"])
+        assert parsed == {"key": "value"}
+        assert errors == []
+
+    def test_nargs_plus_single_token(self) -> None:
+        """Test nargs='+' format with a single token per -c flag."""
+        parsed, errors = parse_context_args([["key=value"]])
+        assert parsed == {"key": "value"}
+        assert errors == []
+
+    def test_nargs_plus_multiple_tokens_with_parens(self) -> None:
+        """Test nargs='+' format where parens cause token splitting."""
+        parsed, errors = parse_context_args([["task=Fix", "Claude", "SDK", "(#2453)"]])
+        assert parsed == {"task": "Fix Claude SDK (#2453)"}
+        assert errors == []
+
+    def test_nargs_plus_multiple_tokens_with_periods(self) -> None:
+        """Test nargs='+' format where periods cause token splitting."""
+        parsed, errors = parse_context_args([["desc=Remove", "mocks.", "Update", "tests."]])
+        assert parsed == {"desc": "Remove mocks. Update tests."}
+        assert errors == []
+
+    def test_nargs_plus_multiple_tokens_with_hashes(self) -> None:
+        """Test nargs='+' format where hash characters appear in value."""
+        parsed, errors = parse_context_args([["task=Fix", "#2453", "and", "#2454"]])
+        assert parsed == {"task": "Fix #2453 and #2454"}
+        assert errors == []
+
+    def test_nargs_plus_full_issue_example(self) -> None:
+        """Test exact example from issue #2460."""
+        parsed, errors = parse_context_args(
+            [["task_description=Fix", "Claude", "SDK", "(#2453).", "Remove", "mocks."]]
+        )
+        assert parsed == {"task_description": "Fix Claude SDK (#2453). Remove mocks."}
+        assert errors == []
+
+    def test_multiple_context_flags_mixed_formats(self) -> None:
+        """Test multiple -c flags, some with special chars, some simple."""
+        parsed, errors = parse_context_args(
+            [
+                ["task=Fix", "bug", "(#2453)"],
+                ["env=prod"],
+                ["desc=Remove", "mocks.", "Update", "tests."],
+            ]
+        )
+        assert parsed == {
+            "task": "Fix bug (#2453)",
+            "env": "prod",
+            "desc": "Remove mocks. Update tests.",
+        }
+        assert errors == []
+
+    def test_value_with_equals_signs(self) -> None:
+        """Test value containing equals signs is preserved."""
+        parsed, errors = parse_context_args([["equation=a=b+c"]])
+        assert parsed == {"equation": "a=b+c"}
+        assert errors == []
+
+    def test_value_with_dashes(self) -> None:
+        """Test value containing dashes (flag-like)."""
+        parsed, errors = parse_context_args([["flag=--verbose"]])
+        assert parsed == {"flag": "--verbose"}
+        assert errors == []
+
+    def test_nargs_plus_no_equals_error(self) -> None:
+        """Test error when nargs='+' tokens have no equals sign."""
+        parsed, errors = parse_context_args([["noequals"]])
+        assert parsed == {}
+        assert len(errors) == 1
+        assert "key=value" in errors[0]
+
+    def test_legacy_string_list_backward_compat(self) -> None:
+        """Test backward compatibility with legacy list[str] format."""
+        parsed, errors = parse_context_args(
+            [
+                "task=Fix (#2453)",
+                "env=prod",
+                "debug=true",
+            ]
+        )
+        assert parsed == {
+            "task": "Fix (#2453)",
+            "env": "prod",
+            "debug": "true",
+        }
+        assert errors == []
+
+    def test_empty_value(self) -> None:
+        """Test key with empty value."""
+        parsed, errors = parse_context_args([["key="]])
+        assert parsed == {"key": ""}
+        assert errors == []
+
+    def test_empty_input(self) -> None:
+        """Test empty input list."""
+        parsed, errors = parse_context_args([])
+        assert parsed == {}
+        assert errors == []
