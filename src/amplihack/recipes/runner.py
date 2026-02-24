@@ -2,12 +2,16 @@
 
 Runs a parsed Recipe step-by-step through an SDK adapter, managing context
 accumulation, conditional execution, template rendering, and fail-fast behavior.
+
+Supports auto-staging of git changes after agent steps to prevent work loss
+when subsequent steps fail or sessions crash.
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import subprocess
 from typing import Any
 
 from amplihack.recipes.agent_resolver import AgentNotFoundError, AgentResolver
@@ -25,6 +29,39 @@ from amplihack.recipes.models import (
 logger = logging.getLogger(__name__)
 
 
+def _git_stage_all(working_dir: str) -> str | None:
+    """Run ``git add -A`` in the given directory.
+
+    Returns:
+        A summary string on success, or None if git is not available or the
+        directory is not a git repository.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "add", "-A"],
+            cwd=working_dir,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if result.returncode == 0:
+            # Check what was staged
+            diff_result = subprocess.run(
+                ["git", "diff", "--cached", "--name-only"],
+                cwd=working_dir,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            staged_files = diff_result.stdout.strip()
+            if staged_files:
+                return staged_files
+            return None
+        return None
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        return None
+
+
 class RecipeRunner:
     """Executes recipes by delegating steps to an SDK adapter.
 
@@ -32,13 +69,17 @@ class RecipeRunner:
     1. Merges recipe context with optional user context.
     2. For each step: evaluate condition, render templates, execute via adapter.
     3. Stores step output in context for subsequent steps.
-    4. Stops on first failure (fail-fast).
+    4. After successful agent steps, auto-stages git changes (if enabled).
+    5. Stops on first failure (fail-fast).
 
     Args:
         adapter: An object implementing the SDKAdapter protocol.
         agent_resolver: Optional AgentResolver for looking up agent system prompts.
         working_dir: Default working directory for step execution.
         dry_run: If True, skip actual execution (log only).
+        auto_stage: If True (default), run ``git add -A`` after successful agent
+            steps to prevent work loss. Individual steps can override via their
+            ``auto_stage`` field.
     """
 
     def __init__(
@@ -47,11 +88,13 @@ class RecipeRunner:
         agent_resolver: AgentResolver | None = None,
         working_dir: str = ".",
         dry_run: bool = False,
+        auto_stage: bool = True,
     ) -> None:
         self._adapter = adapter
         self._agent_resolver = agent_resolver or AgentResolver()
         self._working_dir = working_dir
         self._default_dry_run = dry_run
+        self._auto_stage = auto_stage
 
     def execute(
         self,
@@ -198,6 +241,10 @@ class RecipeRunner:
         if step.output:
             ctx.set(step.output, output)
 
+        # Auto-stage git changes after successful agent steps to prevent work loss
+        if step.step_type == StepType.AGENT:
+            self._maybe_auto_stage(step, ctx)
+
         return StepResult(
             step_id=step.id,
             status=StepStatus.COMPLETED,
@@ -205,6 +252,28 @@ class RecipeRunner:
             if isinstance(output, (dict, list))
             else (str(output) if output else ""),
         )
+
+    def _maybe_auto_stage(self, step: Step, ctx: RecipeContext) -> None:
+        """Auto-stage git changes if enabled for this step.
+
+        The step's ``auto_stage`` field takes precedence over the runner default.
+        If staging occurs, a log message is emitted with the staged file list.
+        """
+        # Determine whether to stage: step override > runner default
+        should_stage = step.auto_stage if step.auto_stage is not None else self._auto_stage
+        if not should_stage:
+            return
+
+        working_dir = step.working_dir or self._working_dir
+        staged_files = _git_stage_all(working_dir)
+        if staged_files:
+            file_count = len(staged_files.splitlines())
+            logger.info(
+                "Auto-staged %d file(s) after step '%s': %s",
+                file_count,
+                step.id,
+                staged_files,
+            )
 
     def _retry_for_json(self, step: Step, ctx: RecipeContext) -> str | None:
         """Retry an agent step with an explicit JSON-only instruction.
@@ -220,8 +289,7 @@ class RecipeRunner:
 
         original_prompt = step.prompt or ""
         retry_prompt = (
-            original_prompt
-            + "\n\nIMPORTANT: Your previous response was not valid JSON. "
+            original_prompt + "\n\nIMPORTANT: Your previous response was not valid JSON. "
             "Return ONLY a valid JSON object. No markdown fences, no explanation, "
             "no text before or after. Just the raw JSON object starting with { and ending with }."
         )
