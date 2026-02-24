@@ -1,0 +1,9 @@
+Last PR Triage Run: 2026-02-24T06:29:13Z
+Workflow Run ID: 22339393226
+Agent PRs Found: 2
+Actions Taken: 1 comment added
+
+PR #2516: FAST TRACK - Approved for immediate merge (docs only, 100 priority, 10 risk)
+PR #2470: HOLD - Draft status, unstable CI (55 priority, 60 risk)
+
+Next Run: Automatic on next trigger

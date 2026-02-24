@@ -1,77 +1,39 @@
 {
   "pr_number": 2470,
-  "triage_timestamp": "2026-02-23T18:29:05.010Z",
-  "workflow_run_id": "22319384638",
-  "metadata": {
-    "title": "Fix PR Triage Agent: switch from explicit to automatic GitHub MCP lockdown mode",
-    "author": "Copilot",
-    "created_at": "2026-02-22T16:19:00Z",
-    "updated_at": "2026-02-22T16:25:33Z",
-    "state": "open",
-    "draft": true,
-    "head_ref": "copilot/fix-ci-failure",
-    "base_ref": "main",
-    "commits": 2,
-    "files_changed": 2,
+  "title": "Fix PR Triage Agent: switch from explicit to automatic GitHub MCP lockdown mode",
+  "author": "Copilot",
+  "created_at": "2026-02-22T16:19:00Z",
+  "age_days": 1,
+  "age_hours": 38.2,
+  "draft": true,
+  "state": "open",
+  "mergeable_state": "unstable",
+  "category": "CI/CD Infrastructure",
+  "priority_score": 55,
+  "risk_score": 60,
+  "recommendation": "Hold for Author",
+  "metrics": {
     "additions": 7,
     "deletions": 8,
-    "comments": 0,
+    "total_changes": 15,
+    "files_changed": 2,
+    "commits": 2,
+    "comments": 1,
     "review_comments": 0
   },
-  "categorization": {
-    "type": "bugfix",
-    "area": "ci_cd",
-    "scope": "workflow_configuration",
-    "impacted_systems": ["github_actions", "mcp_server", "pr_triage_agent"]
-  },
-  "risk_assessment": {
-    "overall_risk": "low",
-    "risk_factors": {
-      "changes_ci_workflow": true,
-      "changes_authentication": true,
-      "changes_lockdown_mode": true,
-      "files_modified": 2,
-      "lines_changed": 15,
-      "draft_status": true
+  "files_changed": [
+    {
+      "filename": ".github/workflows/pr-triage-agent.lock.yml",
+      "status": "modified",
+      "additions": 6,
+      "deletions": 7
     },
-    "risk_score": 35,
-    "justification": "Changes GitHub Actions workflow security configuration (lockdown mode). Low risk due to: draft status, small changeset (2 files, 15 lines), automatic lockdown logic preserves security when PAT available, fixes existing CI failure."
-  },
-  "priority_assessment": {
-    "priority": "medium",
-    "priority_score": 60,
-    "factors": {
-      "fixes_broken_workflow": true,
-      "unblocks_automation": true,
-      "security_related": true,
-      "draft_needs_review": true
-    },
-    "justification": "Fixes broken PR triage workflow (high value) but draft status and security sensitivity warrant careful review before merge."
-  },
-  "technical_analysis": {
-    "files_changed": [
-      ".github/workflows/pr-triage-agent.lock.yml",
-      ".github/workflows/pr-triage-agent.md"
-    ],
-    "key_changes": [
-      "Replaced validate_lockdown_requirements with determine_automatic_lockdown logic",
-      "Changed lockdown: true to lockdown: false in workflow config",
-      "Added GITHUB_MCP_LOCKDOWN env var for dynamic lockdown mode",
-      "Removed explicit GITHUB_MCP_LOCKDOWN_EXPLICIT and GITHUB_READ_ONLY settings"
-    ],
-    "ci_status": "pending",
-    "tests_status": "unknown"
-  },
-  "recommendations": {
-    "action": "review_and_test",
-    "next_steps": [
-      "Verify automatic lockdown logic works as intended with and without custom PAT",
-      "Confirm workflow runs successfully with lockdown: false",
-      "Review security implications of dynamic lockdown mode",
-      "Test that lockdown mode still activates when GH_AW_GITHUB_MCP_SERVER_TOKEN is present",
-      "Consider marking as ready for review once CI passes"
-    ],
-    "merge_recommendation": "hold_for_review",
-    "estimated_review_time": "15-30 minutes"
-  }
+    {
+      "filename": ".github/workflows/pr-triage-agent.md",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1
+    }
+  ],
+  "triage_timestamp": "2026-02-24T06:31:49.786354Z"
 }
