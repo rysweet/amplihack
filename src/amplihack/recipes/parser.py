@@ -132,6 +132,7 @@ class RecipeParser:
             "mode",
             "working_dir",
             "timeout",
+            "auto_stage",
         }
     )
 
@@ -190,6 +191,7 @@ class RecipeParser:
             mode=raw.get("mode"),
             working_dir=raw.get("working_dir"),
             timeout=raw.get("timeout", 120),
+            auto_stage=raw.get("auto_stage"),
         )
 
     def _infer_step_type(self, raw: dict[str, Any]) -> StepType:
