@@ -542,6 +542,15 @@ Robust handling of conversation compaction in long sessions:
 - [Compaction API Reference](power_steering_compaction_api.md) - Developer documentation for CompactionValidator and CompactionContext
 - [How to Customize Power Steering](../.claude/tools/amplihack/HOW_TO_CUSTOMIZE_POWER_STEERING.md#compaction-handling) - Configuration and troubleshooting
 
+**Git Worktree Support** ⭐ NEW
+
+Full support for git worktrees with shared state management:
+
+- [Worktree Support Guide](worktree-support.md) - Using Power-Steering with git worktrees
+- [Git Utils API Reference](reference/git-utils-api.md) - Worktree detection and shared runtime directory
+- [Worktree Troubleshooting](power-steering-worktree-troubleshooting.md) - Fix common worktree issues
+- [Migration Guide](migration-worktree-support.md) - Upgrade to worktree-aware power-steering
+
 ### Other Features
 
 - [Smart Memory Management](features/smart-memory-management.md) - Automatic Node.js memory optimization for Claude Code

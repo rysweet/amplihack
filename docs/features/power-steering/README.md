@@ -115,6 +115,17 @@ Modify considerations to match your workflow:
 
 **See**: [Customization Guide](customization-guide.md)
 
+### 🔧 Git Worktree Support
+
+Power-Steering fully supports git worktrees with shared state management:
+
+- ✅ State files shared across all worktrees and main repo
+- ✅ `.disabled` file detected from shared location
+- ✅ Counter persists across worktree switches
+- ✅ Automatic worktree detection and configuration
+
+**Learn more**: [Worktree Support Guide](../../worktree-support.md)
+
 ### 🛡️ Fail-Open Design
 
 If Power-Steering encounters errors, it defaults to safe behavior:
@@ -423,10 +434,29 @@ Power-Steering maintains minimal state:
 - [AUTO_MODE](../../AUTO_MODE.md) - Autonomous execution with Power-Steering
 - [DEFAULT_WORKFLOW](../../../.claude/workflow/DEFAULT_WORKFLOW.md) - Structured development process
 - [USER_PREFERENCES](../../reference/user-preferences.md) - Complete preferences reference
+- [Worktree Support](../../worktree-support.md) - Using Power-Steering with git worktrees
+- [Git Utils API](../../reference/git-utils-api.md) - Worktree detection and shared runtime
 
 ---
 
 ## Changelog
+
+### v0.10.1 (2026-02-25)
+
+**Added**:
+
+- Git worktree support with shared state management (PR #2537)
+- Worktree detection using git rev-parse --git-common-dir
+- Shared runtime directory for state files and .disabled flag
+- Automatic fallback for non-worktree repositories
+
+**Fixed**:
+
+- .disabled file path detection in worktree environments (PR #2538)
+- State persistence across worktree switches
+- Counter reset issues in worktree contexts
+
+**See**: [Worktree Migration Guide](../../migration-worktree-support.md)
 
 ### v0.10.0 (Planned)
 
