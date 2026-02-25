@@ -1,0 +1,96 @@
+{
+  "triage_date": "2026-02-25T12:21:33Z",
+  "total_prs": 6,
+  "prs": [
+    {
+      "number": 2541,
+      "title": "[docs] Update documentation for power-steering worktree support and multitask disk management",
+      "author": "github-actions[bot]",
+      "created": "2026-02-25T06:26:13Z",
+      "draft": false,
+      "mergeable": "clean",
+      "changes": "+40/-1 (3 files)",
+      "category": "documentation",
+      "risk": "low",
+      "priority": "medium",
+      "recommendation": "Ready for merge - automated docs update",
+      "rationale": "Auto-generated documentation update by CI bot, small changes, clean merge state"
+    },
+    {
+      "number": 2540,
+      "title": "fix: prevent crash when renaming directory containing CWD",
+      "author": "nlscng",
+      "created": "2026-02-25T03:56:30Z",
+      "draft": false,
+      "mergeable": "clean",
+      "changes": "+2253/-12 (8 files)",
+      "category": "bugfix",
+      "risk": "medium",
+      "priority": "high",
+      "recommendation": "Review for merge - bug fix with significant code additions",
+      "rationale": "Fixes crash bug #2539, clean merge state, but large change set needs review"
+    },
+    {
+      "number": 2533,
+      "title": "Convert precommit_manager.py from loose script to proper skill",
+      "author": "Copilot",
+      "created": "2026-02-25T01:07:14Z",
+      "draft": true,
+      "mergeable": "unstable",
+      "changes": "+36/-7 (5 files)",
+      "category": "refactoring",
+      "risk": "low",
+      "priority": "low",
+      "recommendation": "Needs CI checks to pass before review",
+      "rationale": "Draft PR with unstable merge state, small refactoring, author is bot"
+    },
+    {
+      "number": 2515,
+      "title": "docs: add CONTRIBUTING.md for new contributors",
+      "author": "capparun",
+      "created": "2026-02-24T05:57:44Z",
+      "draft": true,
+      "mergeable": "blocked",
+      "changes": "+212/-3 (2 files)",
+      "category": "documentation",
+      "risk": "low",
+      "priority": "medium",
+      "recommendation": "Needs unblocking before review",
+      "rationale": "Draft PR with blocked merge state, contributor documentation addition"
+    },
+    {
+      "number": 1784,
+      "title": "feat: Parallel Task Orchestrator for large-scale migrations (Issue #1783)",
+      "author": "rysweet",
+      "created": "2025-12-01T23:50:12Z",
+      "draft": true,
+      "mergeable": "clean",
+      "changes": "+11337/-0 (39 files)",
+      "category": "feature",
+      "risk": "high",
+      "priority": "low",
+      "recommendation": "Stale - 86 days old, needs owner review",
+      "rationale": "Large feature PR (11k+ additions), 86 days old, still in draft"
+    },
+    {
+      "number": 1376,
+      "title": "feat: Enable Serena MCP by default (simple integration)",
+      "author": "rysweet",
+      "created": "2025-11-16T22:44:56Z",
+      "draft": true,
+      "mergeable": "dirty",
+      "changes": "+361/-5 (5 files)",
+      "category": "feature",
+      "risk": "medium",
+      "priority": "low",
+      "recommendation": "Stale - 101 days old, has merge conflicts",
+      "rationale": "Feature PR from Nov 2025, merge conflicts, still in draft"
+    }
+  ],
+  "summary": {
+    "ready_for_merge": 1,
+    "needs_review": 1,
+    "needs_work": 2,
+    "stale": 2
+  }
+}
