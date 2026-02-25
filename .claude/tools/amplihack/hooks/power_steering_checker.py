@@ -23,6 +23,9 @@ Phase 4 (Performance) Implementation:
 - Transcript loaded ONCE, shared across parallel workers
 - All checks run (no early exit) for comprehensive feedback
 - No caching (not applicable to session-specific analysis)
+
+Public API for testing:
+    is_disabled() - Standalone function to check if power-steering is disabled
 """
 
 import asyncio
@@ -42,6 +45,16 @@ import yaml
 
 # Clean import structure
 sys.path.insert(0, str(Path(__file__).parent))
+
+# Import git utilities for worktree detection
+try:
+    from git_utils import get_shared_runtime_dir
+except ImportError:
+    # Fallback if git_utils not available (fail-open)
+    def get_shared_runtime_dir(project_root: str | Path) -> str:
+        """Fallback implementation when git_utils is unavailable."""
+        return str(Path(project_root) / ".claude" / "runtime")
+
 
 # Try to import Claude SDK integration
 try:
@@ -417,7 +430,13 @@ class PowerSteeringChecker:
             project_root = self._detect_project_root()
 
         self.project_root = project_root
-        self.runtime_dir = project_root / ".claude" / "runtime" / "power-steering"
+
+        # Use shared runtime directory for worktree support
+        # In worktrees, this resolves to main repo's .claude/runtime
+        # In main repos, this resolves to project_root/.claude/runtime
+        shared_runtime = get_shared_runtime_dir(str(project_root))
+        self.runtime_dir = Path(shared_runtime) / "power-steering"
+
         self.config_path = (
             project_root / ".claude" / "tools" / "amplihack" / ".power_steering_config"
         )
@@ -1155,24 +1174,48 @@ class PowerSteeringChecker:
     def _is_disabled(self) -> bool:
         """Check if power-steering is disabled.
 
-        Three-layer disable system (priority order):
-        1. Semaphore file (highest)
-        2. Environment variable (medium)
-        3. Config file (lowest)
+        Four-layer disable system (priority order):
+        1. Semaphore file in CWD (highest - for worktree-specific disabling)
+        2. Semaphore file in shared runtime (for disabling across all worktrees)
+        3. Environment variable (medium)
+        4. Config file (lowest)
+
+        Worktree Support:
+        - Checks both CWD/.disabled and shared runtime directory for .disabled file
+        - This allows disabling power-steering either locally in a worktree
+          (worktree/.disabled) or globally for all worktrees
+          (main_repo/.claude/runtime/power-steering/.disabled)
 
         Returns:
             True if disabled, False if enabled
         """
-        # Check 1: Semaphore file
-        disabled_file = self.runtime_dir / ".disabled"
-        if disabled_file.exists():
-            return True
+        try:
+            # Check 1: Semaphore file directly in current working directory
+            # This allows worktree-specific disabling with simple `touch .disabled`
+            cwd_disabled = Path.cwd() / ".disabled"
+            if cwd_disabled.exists():
+                return True
+        except (OSError, RuntimeError):
+            # Fail-open: If CWD check fails, continue to other checks
+            pass
 
-        # Check 2: Environment variable
+        try:
+            # Check 2: Semaphore file in shared runtime directory
+            # This affects main repo and all worktrees
+            # Use get_shared_runtime_dir() dynamically to support test mocking
+            shared_runtime = Path(get_shared_runtime_dir(self.project_root))
+            disabled_file = shared_runtime / ".disabled"
+            if disabled_file.exists():
+                return True
+        except (OSError, RuntimeError):
+            # Fail-open: If runtime dir check fails, continue to other checks
+            pass
+
+        # Check 3: Environment variable
         if os.getenv("AMPLIHACK_SKIP_POWER_STEERING"):
             return True
 
-        # Check 3: Config file
+        # Check 4: Config file
         if not self.config.get("enabled", False):
             return True
 
@@ -4602,6 +4645,27 @@ def check_session(
     """
     checker = PowerSteeringChecker(project_root)
     return checker.check(transcript_path, session_id)
+
+
+def is_disabled(project_root: Path | None = None) -> bool:
+    """Standalone function to check if power-steering is disabled.
+
+    This function exists primarily for testing purposes, allowing tests
+    to check the disabled status without creating a full PowerSteeringChecker
+    instance.
+
+    Args:
+        project_root: Project root directory (auto-detected if None)
+
+    Returns:
+        True if power-steering is disabled, False if enabled
+    """
+    try:
+        checker = PowerSteeringChecker(project_root)
+        return checker._is_disabled()
+    except Exception:
+        # Fail-open: If checker creation fails, assume not disabled
+        return False
 
 
 if __name__ == "__main__":
