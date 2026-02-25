@@ -47,6 +47,19 @@ try:
 except ImportError:
     from fallback_heuristics import AddressedChecker
 
+# Import git utilities for worktree detection
+try:
+    from .git_utils import get_shared_runtime_dir
+except ImportError:
+    try:
+        from git_utils import get_shared_runtime_dir
+    except ImportError:
+        # Fallback if git_utils not available (fail-open)
+        def get_shared_runtime_dir(project_root):
+            """Fallback implementation when git_utils is unavailable."""
+            return str(Path(project_root) / ".claude" / "runtime")
+
+
 __all__ = [
     "FailureEvidence",
     "BlockSnapshot",
@@ -229,6 +242,34 @@ class PowerSteeringTurnState:
     def get_previous_block(self) -> BlockSnapshot | None:
         """Get the most recent block snapshot (if any)."""
         return self.block_history[-1] if self.block_history else None
+
+    @property
+    def blocks_until_auto_approve(self) -> int:
+        """Get number of blocks remaining until auto-approval triggers.
+
+        For testing compatibility - returns MAX_CONSECUTIVE_BLOCKS minus consecutive_blocks.
+
+        Returns:
+            Number of blocks remaining (0 means auto-approve now)
+        """
+        return max(0, self.MAX_CONSECUTIVE_BLOCKS - self.consecutive_blocks)
+
+    @blocks_until_auto_approve.setter
+    def blocks_until_auto_approve(self, value: int) -> None:
+        """Set blocks remaining (for testing).
+
+        Args:
+            value: Number of blocks remaining until auto-approve
+        """
+        self.consecutive_blocks = max(0, self.MAX_CONSECUTIVE_BLOCKS - value)
+
+    def should_auto_approve(self) -> bool:
+        """Check if auto-approval should trigger based on consecutive blocks.
+
+        Returns:
+            True if consecutive_blocks >= MAX_CONSECUTIVE_BLOCKS
+        """
+        return self.consecutive_blocks >= self.MAX_CONSECUTIVE_BLOCKS
 
     def get_persistent_failures(self) -> dict[str, int]:
         """Get considerations that have failed multiple times.
@@ -533,19 +574,19 @@ class TurnStateManager:
 
     def __init__(
         self,
-        project_root: Path,
-        session_id: str,
+        project_root: Path | str,
+        session_id: str | None = None,
         log: Callable[[str], None] | None = None,
     ):
         """Initialize turn state manager.
 
         Args:
-            project_root: Project root directory
-            session_id: Current session identifier
+            project_root: Project root directory (Path or string)
+            session_id: Current session identifier (defaults to "test" for testing)
             log: Optional callback for logging messages
         """
-        self.project_root = project_root
-        self.session_id = session_id
+        self.project_root = Path(project_root) if isinstance(project_root, str) else project_root
+        self.session_id = session_id or "test"
         self.log = log or (lambda msg, level="INFO": None)
         self._previous_turn_count: int | None = None
         self._lock_timeout_seconds: float = 2.0  # Default timeout for file lock acquisition
@@ -556,13 +597,13 @@ class TurnStateManager:
             # Try relative import first (when running as module)
             from .power_steering_diagnostics import DiagnosticLogger
 
-            self._diagnostic_logger = DiagnosticLogger(project_root, session_id, log)
+            self._diagnostic_logger = DiagnosticLogger(self.project_root, self.session_id, log)
         except (ImportError, ValueError):
             try:
                 # Try absolute import (when running tests or standalone)
                 from power_steering_diagnostics import DiagnosticLogger
 
-                self._diagnostic_logger = DiagnosticLogger(project_root, session_id, log)
+                self._diagnostic_logger = DiagnosticLogger(self.project_root, self.session_id, log)
             except ImportError as e:
                 # Fail-open: Continue without diagnostic logging
                 self.log(f"Warning: Could not load diagnostic logger: {e}")
@@ -574,17 +615,17 @@ class TurnStateManager:
     def get_state_file_path(self) -> Path:
         """Get path to the state file for this session.
 
+        Worktree Support:
+        - In worktrees, resolves to main repo's .claude/runtime/power-steering
+        - In main repos, resolves to project_root/.claude/runtime/power-steering
+        - This ensures state is shared across all worktrees
+
         Returns:
             Path to turn_state.json file
         """
-        return (
-            self.project_root
-            / ".claude"
-            / "runtime"
-            / "power-steering"
-            / self.session_id
-            / "turn_state.json"
-        )
+        # Use shared runtime directory for worktree support
+        shared_runtime = get_shared_runtime_dir(str(self.project_root))
+        return Path(shared_runtime) / "power-steering" / self.session_id / "turn_state.json"
 
     def load_state(self) -> PowerSteeringTurnState:
         """Load state from disk with validation.
@@ -887,6 +928,23 @@ class TurnStateManager:
         state.turn_count += 1
         self.log(f"Turn count incremented to {state.turn_count}")
         return state
+
+    def increment_consecutive_blocks(self, state: PowerSteeringTurnState | None = None) -> None:
+        """Increment consecutive blocks counter (for testing compatibility).
+
+        This method provides compatibility with tests that expect to increment
+        consecutive blocks directly. In production, blocks are incremented
+        through the record_block method.
+
+        Args:
+            state: State to increment (or loads current state if None)
+        """
+        if state is None:
+            state = self.load_state()
+
+        state.consecutive_blocks += 1
+        self.log(f"Consecutive blocks incremented to {state.consecutive_blocks}")
+        self.save_state(state)
 
     def atomic_increment_turn(self) -> PowerSteeringTurnState:
         """Atomically load, increment, and save turn state with file locking.
