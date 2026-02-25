@@ -2384,16 +2384,20 @@ Is the fact consistent with stored knowledge? Return ONLY a JSON object:
             List of state dicts ordered chronologically, each with
             'value', 'timestamp', and 'metadata' keys.
         """
-        if not hasattr(self.memory, "get_all_facts"):
+        if not hasattr(self.memory, "search"):
             return []
 
-        all_facts = self.memory.get_all_facts(limit=15000)
+        # Use targeted search instead of get_all_facts to avoid memory leak
+        # (get_all_facts with limit=15000 caused 89GB RAM usage during 5000-turn eval)
+        query = f"{entity} {field}"
+        matching_facts = self.memory.search(query=query, limit=100)
+
         entity_lower = entity.lower()
         field_lower = field.lower()
 
         # Collect facts matching entity and field
         chain: list[dict[str, Any]] = []
-        for fact in all_facts:
+        for fact in matching_facts:
             context = fact.get("context", "").lower()
             outcome = fact.get("outcome", fact.get("fact", "")).lower()
             combined = f"{context} {outcome}"
