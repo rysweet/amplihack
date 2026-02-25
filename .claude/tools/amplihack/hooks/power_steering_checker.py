@@ -1204,7 +1204,7 @@ class PowerSteeringChecker:
             # This affects main repo and all worktrees
             # Use get_shared_runtime_dir() dynamically to support test mocking
             shared_runtime = Path(get_shared_runtime_dir(self.project_root))
-            disabled_file = shared_runtime / ".disabled"
+            disabled_file = shared_runtime / "power-steering" / ".disabled"
             if disabled_file.exists():
                 return True
         except (OSError, RuntimeError):
