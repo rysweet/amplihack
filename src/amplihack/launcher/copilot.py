@@ -805,6 +805,17 @@ def launch_copilot(args: list[str] | None = None, interactive: bool = True) -> i
     # Register awesome-copilot marketplace extensions (best-effort, silent on failure)
     register_awesome_copilot_marketplace()
 
+    # Prompt to re-enable power-steering if disabled (#2544)
+    try:
+        from ..power_steering.re_enable_prompt import prompt_re_enable_if_disabled
+
+        prompt_re_enable_if_disabled()
+    except Exception as e:
+        # Fail-open: log error but continue
+        import logging
+
+        logging.getLogger(__name__).debug(f"Error checking power-steering re-enable prompt: {e}")
+
     # Write launcher context before launching
     project_root = Path(os.getcwd())
     detector = LauncherDetector(project_root)
