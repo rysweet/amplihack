@@ -1,0 +1,240 @@
+{
+  "triage_run": {
+    "timestamp": "2026-02-25T18:29:58Z",
+    "workflow_run": "22410330542",
+    "total_prs": 7,
+    "agent_created": 5
+  },
+  "prs": [
+    {
+      "number": 2547,
+      "title": "feat: Add power-steering re-enable prompt on CLI startup (#2544)",
+      "author": "rysweet",
+      "created": "2026-02-25T16:27:06Z",
+      "updated": "2026-02-25T18:11:35Z",
+      "draft": false,
+      "category": "Feature Enhancement",
+      "risk_level": "LOW",
+      "risk_score": 25,
+      "priority": "HIGH",
+      "priority_score": 85,
+      "agent_created": false,
+      "analysis": {
+        "scope": "7 files, 1056 additions, 2 deletions",
+        "changes": "New re-enable prompt module for power-steering, CLI integration, comprehensive tests (24 unit tests), documentation updates",
+        "testing": "24 unit tests (23 passed), manual testing completed, CI pending",
+        "reviews": "Reviewer: APPROVE, Security: APPROVE FOR MERGE, Philosophy: A-",
+        "concerns": [],
+        "strengths": [
+          "Comprehensive test coverage (321 test lines)",
+          "Fail-open design prevents startup crashes",
+          "Cross-platform support (Unix + Windows)",
+          "Worktree-aware implementation",
+          "All 8 user requirements verified"
+        ]
+      },
+      "recommendation": "APPROVE",
+      "action": "Ready to merge - well-tested feature with multiple approvals"
+    },
+    {
+      "number": 2541,
+      "title": "[docs] Update documentation for power-steering worktree support and multitask disk management",
+      "author": "github-actions[bot]",
+      "created": "2026-02-25T06:26:13Z",
+      "updated": "2026-02-25T06:26:14Z",
+      "draft": false,
+      "category": "Documentation",
+      "risk_level": "VERY_LOW",
+      "risk_score": 10,
+      "priority": "MEDIUM",
+      "priority_score": 60,
+      "agent_created": true,
+      "analysis": {
+        "scope": "Documentation updates only",
+        "changes": "Updates docs for power-steering worktree support and multitask disk management",
+        "testing": "Documentation review",
+        "reviews": "None visible",
+        "concerns": [],
+        "strengths": [
+          "Bot-generated documentation update",
+          "Tracks merged features",
+          "Low risk documentation-only change"
+        ]
+      },
+      "recommendation": "APPROVE",
+      "action": "Safe to merge - documentation update for merged features"
+    },
+    {
+      "number": 2540,
+      "title": "fix: prevent crash when renaming directory containing CWD",
+      "author": "nlscng",
+      "created": "2026-02-25T03:56:30Z",
+      "updated": "2026-02-25T16:28:37Z",
+      "draft": true,
+      "category": "Bug Fix",
+      "risk_level": "MEDIUM",
+      "risk_score": 45,
+      "priority": "HIGH",
+      "priority_score": 80,
+      "agent_created": false,
+      "analysis": {
+        "scope": "CWD rename/move protection",
+        "changes": "Adds protection to prevent crashes when renaming directories containing CWD",
+        "testing": "Draft status - testing incomplete",
+        "reviews": "None (draft)",
+        "concerns": [
+          "Still in draft status",
+          "No visible test coverage info",
+          "Needs review before merge"
+        ],
+        "strengths": [
+          "Addresses crash issue #2539",
+          "Important stability fix",
+          "Clear problem statement"
+        ]
+      },
+      "recommendation": "WAIT",
+      "action": "Request author to complete draft, add tests, and request review"
+    },
+    {
+      "number": 2533,
+      "title": "Convert precommit_manager.py from loose script to proper skill",
+      "author": "Copilot",
+      "created": "2026-02-25T01:07:14Z",
+      "updated": "2026-02-25T12:24:53Z",
+      "draft": true,
+      "category": "Refactoring",
+      "risk_level": "MEDIUM",
+      "risk_score": 40,
+      "priority": "LOW",
+      "priority_score": 45,
+      "agent_created": true,
+      "analysis": {
+        "scope": "Skill structure refactoring",
+        "changes": "Moves precommit_manager.py to proper skill directory structure",
+        "testing": "Draft status - incomplete",
+        "reviews": "None (draft)",
+        "concerns": [
+          "Draft PR - not ready for review",
+          "Agent-created but incomplete",
+          "Needs proper skill frontmatter"
+        ],
+        "strengths": [
+          "Improves code organization",
+          "Aligns with skill structure standards"
+        ]
+      },
+      "recommendation": "WAIT",
+      "action": "Wait for Copilot to complete draft and request review"
+    },
+    {
+      "number": 2515,
+      "title": "docs: add CONTRIBUTING.md for new contributors",
+      "author": "capparun",
+      "created": "2026-02-24T05:57:44Z",
+      "updated": "2026-02-25T12:24:52Z",
+      "draft": true,
+      "category": "Documentation",
+      "risk_level": "LOW",
+      "risk_score": 30,
+      "priority": "MEDIUM",
+      "priority_score": 55,
+      "agent_created": false,
+      "analysis": {
+        "scope": "New contributor documentation",
+        "changes": "Comprehensive CONTRIBUTING.md with getting started, workflow, testing, code standards",
+        "testing": "Documentation review needed",
+        "reviews": "None (draft)",
+        "concerns": [
+          "Draft status - needs review",
+          "CI issues noted in previous triage (unstable)",
+          "Needs alignment with existing docs"
+        ],
+        "strengths": [
+          "Important for new contributors",
+          "Comprehensive coverage",
+          "Includes PEP 8, testing, workflow guidance"
+        ]
+      },
+      "recommendation": "REQUEST_REVIEW",
+      "action": "Ready for review - important documentation for onboarding"
+    },
+    {
+      "number": 1784,
+      "title": "feat: Parallel Task Orchestrator for large-scale migrations (Issue #1783)",
+      "author": "rysweet",
+      "created": "2025-12-01T23:50:12Z",
+      "updated": "2026-02-24T00:45:01Z",
+      "draft": true,
+      "category": "Feature - Major",
+      "risk_level": "HIGH",
+      "risk_score": 75,
+      "priority": "LOW",
+      "priority_score": 40,
+      "agent_created": false,
+      "analysis": {
+        "scope": "Parallel task orchestration system",
+        "changes": "Comprehensive parallel task orchestration for deploying multiple Claude Code agents simultaneously",
+        "testing": "86% test coverage claimed",
+        "reviews": "None (draft, 3+ months old)",
+        "concerns": [
+          "Stale PR (3 months old)",
+          "High complexity feature",
+          "Draft status - incomplete",
+          "Likely needs significant rebase",
+          "Major architectural addition"
+        ],
+        "strengths": [
+          "High test coverage (86%)",
+          "Addresses important use case (#1783)",
+          "Comprehensive implementation"
+        ]
+      },
+      "recommendation": "CLOSE_OR_REBASE",
+      "action": "Consider closing if no longer relevant, or request author to rebase and complete"
+    },
+    {
+      "number": 1376,
+      "title": "feat: Enable Serena MCP by default (simple integration)",
+      "author": "rysweet",
+      "created": "2025-11-16T22:44:56Z",
+      "updated": "2026-02-24T00:44:59Z",
+      "draft": true,
+      "category": "Feature - Integration",
+      "risk_level": "MEDIUM",
+      "risk_score": 50,
+      "priority": "LOW",
+      "priority_score": 35,
+      "agent_created": false,
+      "analysis": {
+        "scope": "Serena MCP integration",
+        "changes": "4 files, 361 insertions, 1 deletion - enables Serena MCP server by default",
+        "testing": "Unknown",
+        "reviews": "None (draft, 3+ months old)",
+        "concerns": [
+          "Very stale PR (3+ months old)",
+          "Draft status - incomplete",
+          "External dependency integration",
+          "Needs rebase and review",
+          "May conflict with current architecture"
+        ],
+        "strengths": [
+          "Simple integration approach",
+          "Settings template based",
+          "Warns on missing dependencies"
+        ]
+      },
+      "recommendation": "CLOSE_OR_REBASE",
+      "action": "Consider closing if no longer needed, or request complete rebase and testing"
+    }
+  ],
+  "summary": {
+    "ready_to_merge": 2,
+    "needs_review": 1,
+    "wait_for_author": 2,
+    "stale_consider_close": 2,
+    "high_priority": 2,
+    "medium_priority": 2,
+    "low_priority": 3
+  }
+}

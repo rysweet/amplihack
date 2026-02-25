@@ -1,18 +1,48 @@
-Last PR Triage Run: 2026-02-24T12:22:00Z
-Workflow Run ID: 22350568744
-Total Open PRs: 14 (5 analyzed in detail)
+Last PR Triage Run: 2026-02-25T18:29:58Z
+Workflow Run ID: 22410330542
+Total Open PRs: 7 (5 agent-created)
 
-High Priority PRs:
-- PR #2513: fix(recipe-cli) - APPROVE (85 priority, 40 risk)
-- PR #2514: fix(recipes) auto-stage - REVIEW (85 priority, 55 risk)
+=== READY TO MERGE (2 PRs) ===
 
-Medium Priority:
-- PR #2516: [docs] Diátaxis - APPROVE (65 priority, 25 risk)
+PR #2547: feat: Add power-steering re-enable prompt on CLI startup
+- Priority: HIGH (85), Risk: LOW (25)
+- Status: APPROVED by multiple reviewers
+- Action: ✅ MERGE - well-tested feature with comprehensive approvals
 
-CI Issues (Unstable):
-- PR #2515: CONTRIBUTING.md (45 priority, 30 risk)
-- PR #2517: Quick Start docs (45 priority, 30 risk)
+PR #2541: [docs] Update documentation for power-steering worktree support
+- Priority: MEDIUM (60), Risk: VERY_LOW (10)
+- Status: Bot-generated documentation
+- Action: ✅ MERGE - safe documentation update
 
-Pending Full Analysis: 9 PRs (#2512, #2511, #2510, #2509, #2499, #2507, #2470, #1784, #1376)
+=== NEEDS REVIEW (1 PR) ===
 
-Next Run: Automatic on next trigger or manual analysis
+PR #2515: docs: add CONTRIBUTING.md for new contributors
+- Priority: MEDIUM (55), Risk: LOW (30)
+- Status: Draft, ready for review
+- Action: 📝 REQUEST REVIEW - important onboarding documentation
+
+=== WAIT FOR AUTHOR (2 PRs) ===
+
+PR #2540: fix: prevent crash when renaming directory containing CWD
+- Priority: HIGH (80), Risk: MEDIUM (45)
+- Status: Draft, incomplete testing
+- Action: ⏳ WAIT - needs tests and review request
+
+PR #2533: Convert precommit_manager.py from loose script to proper skill
+- Priority: LOW (45), Risk: MEDIUM (40)
+- Status: Draft, Copilot-created
+- Action: ⏳ WAIT - let Copilot complete
+
+=== STALE - CONSIDER CLOSING (2 PRs) ===
+
+PR #1784: feat: Parallel Task Orchestrator (3 months old)
+- Priority: LOW (40), Risk: HIGH (75)
+- Status: Stale draft, complex feature
+- Action: 🔄 CLOSE OR REBASE - needs author decision
+
+PR #1376: feat: Enable Serena MCP (3+ months old)
+- Priority: LOW (35), Risk: MEDIUM (50)
+- Status: Very stale draft
+- Action: 🔄 CLOSE OR REBASE - likely outdated
+
+Next Triage: Automatic on next trigger

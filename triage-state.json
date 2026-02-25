@@ -1,16 +1,22 @@
 {
-  "last_run": "2026-02-25T06:32:41.378702Z",
-  "prs_triaged": 2,
-  "findings": [
-    {
-      "pr": 2541,
-      "recommendation": "APPROVE - Low risk documentation update",
-      "priority": "MEDIUM"
-    },
-    {
-      "pr": 2533,
-      "recommendation": "WAIT - Complete draft and request review",
-      "priority": "LOW"
-    }
-  ]
+  "last_run": "2026-02-25T18:29:58Z",
+  "workflow_run": "22410330542",
+  "total_prs": 7,
+  "agent_created": 5,
+  "categories": {
+    "ready_to_merge": [2547, 2541],
+    "needs_review": [2515],
+    "wait_for_author": [2540, 2533],
+    "stale_consider_close": [1784, 1376]
+  },
+  "actions_taken": {
+    "issue_created": true,
+    "comments_added": 4,
+    "prs_analyzed": 7
+  },
+  "next_actions": {
+    "merge": ["PR #2547", "PR #2541"],
+    "review": ["PR #2515"],
+    "author_action": ["PR #2540", "PR #2533", "PR #1784", "PR #1376"]
+  }
 }
