@@ -1,0 +1,32 @@
+{
+  "run_date": "2026-02-25T00:41:52.618Z",
+  "total_prs": 3,
+  "by_status": {
+    "draft": 3,
+    "ready": 0
+  },
+  "by_risk": {
+    "high": 1,
+    "medium": 2,
+    "low": 0
+  },
+  "by_age": {
+    "fresh_0_7_days": 1,
+    "moderate_8_30_days": 0,
+    "stale_31_90_days": 1,
+    "very_stale_90_plus_days": 1
+  },
+  "issues_created": 3,
+  "key_findings": [
+    "67% of PRs are stale (60+ days old)",
+    "All PRs in draft status with pending CI",
+    "One massive PR (11k+ lines) needs urgent attention",
+    "No PR age or size policies in place"
+  ],
+  "actions_taken": [
+    "Created issue for stale high-risk PR #1784",
+    "Created issue for very stale PR #1376",
+    "Created issue for process improvement",
+    "Commented on PR #2515 with triage assessment"
+  ]
+}
