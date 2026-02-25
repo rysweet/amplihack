@@ -17,6 +17,7 @@ Usage:
 
 import json
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -77,12 +78,13 @@ class ParallelOrchestrator:
         self._processes: dict[int, subprocess.Popen] = {}
 
     def setup(self) -> None:
-        """Create clean temporary directory for workstreams."""
+        """Create clean temporary directory for workstreams and check disk space."""
         if self.tmp_base.exists():
-            import shutil
-
             shutil.rmtree(self.tmp_base)
         self.tmp_base.mkdir(parents=True)
+
+        # Check disk space and warn if low
+        self._check_disk_space()
 
     def add(
         self,
@@ -164,8 +166,10 @@ class ParallelOrchestrator:
         """
         # Python launcher that uses Recipe Runner directly
         launcher_py = ws.work_dir / "launcher.py"
-        # Escape task text for safe embedding in Python string
-        safe_task = ws.task.replace("\\", "\\\\").replace("'", "\\'")
+        # Use json.dumps for proper escaping of all special characters
+        import json
+
+        safe_task = json.dumps(ws.task)
         launcher_py.write_text(
             textwrap.dedent(f"""\
             #!/usr/bin/env python3
@@ -190,7 +194,7 @@ class ParallelOrchestrator:
                 "{ws.recipe}",
                 adapter=adapter,
                 user_context={{
-                    "task_description": '{safe_task}',
+                    "task_description": {safe_task},
                     "repo_path": ".",
                 }},
             )
@@ -348,11 +352,23 @@ class ParallelOrchestrator:
                 ]
             )
 
+        # Calculate disk usage
+        disk_usage_gb, ws_count = self._calculate_disk_usage()
+
         lines.extend(
             [
                 "",
                 "-" * 70,
                 f"Total: {len(self.workstreams)} | Succeeded: {succeeded} | Failed: {failed}",
+                "",
+                "DISK USAGE:",
+                f"  Workstream directories: {ws_count}",
+                f"  Total disk used: {disk_usage_gb:.2f}GB",
+                f"  Location: {self.tmp_base}",
+                "",
+                "CLEANUP:",
+                "  After merging PRs, run:",
+                f"    python {__file__} --cleanup <config.json>",
                 "=" * 70,
             ]
         )
@@ -367,6 +383,57 @@ class ParallelOrchestrator:
 
         return report_text
 
+    def _check_disk_space(self, min_free_gb: float = 10.0) -> None:
+        """Check available disk space and warn if low."""
+        usage = shutil.disk_usage(self.tmp_base)
+        free_gb = usage.free / (1024**3)
+        total_gb = usage.total / (1024**3)
+        used_percent = (usage.used / usage.total) * 100
+
+        print("\nDisk Space Check:")
+        print(f"  Location: {self.tmp_base}")
+        print(f"  Free: {free_gb:.1f}GB / {total_gb:.1f}GB ({100 - used_percent:.1f}% available)")
+
+        if free_gb < min_free_gb:
+            print(f"\n⚠️  WARNING: Only {free_gb:.1f}GB free (threshold: {min_free_gb}GB)")
+            print("Each workstream requires ~1.5GB. Consider cleaning up old workstreams:")
+            print(f"  rm -rf {self.tmp_base}/ws-*")
+            print()
+            try:
+                response = input("Continue anyway? (y/N): ").strip().lower()
+                if response != "y":
+                    print("Aborted by user.")
+                    sys.exit(0)
+            except (EOFError, KeyboardInterrupt):
+                print("\nAborted.")
+                sys.exit(0)
+
+    def _calculate_disk_usage(self) -> tuple[float, int]:
+        """Calculate total disk usage of all workstream directories.
+
+        Returns:
+            (total_size_gb, workstream_count)
+        """
+        total_bytes = 0
+        ws_count = 0
+
+        if not self.tmp_base.exists():
+            return (0.0, 0)
+
+        for item in self.tmp_base.iterdir():
+            if item.is_dir() and item.name.startswith("ws-"):
+                ws_count += 1
+                for dirpath, _dirnames, filenames in os.walk(item):
+                    for filename in filenames:
+                        filepath = os.path.join(dirpath, filename)
+                        try:
+                            total_bytes += os.path.getsize(filepath)
+                        except OSError:
+                            pass  # File disappeared or inaccessible
+
+        total_gb = total_bytes / (1024**3)
+        return (total_gb, ws_count)
+
     def cleanup_running(self) -> None:
         """Terminate all running workstreams."""
         for ws in self.workstreams:
@@ -378,6 +445,71 @@ class ParallelOrchestrator:
                     proc.wait(timeout=10)
                 except subprocess.TimeoutExpired:
                     proc.kill()
+
+    def cleanup_merged(self, config_path: str, dry_run: bool = False) -> None:
+        """Clean up workstreams whose PRs have been merged.
+
+        Args:
+            config_path: Path to original workstreams config file
+            dry_run: If True, only show what would be deleted without deleting
+        """
+        config = json.loads(Path(config_path).read_text())
+        deleted_count = 0
+        freed_gb = 0.0
+
+        print("\nChecking PR status for workstream cleanup...")
+
+        for item in config:
+            issue = item["issue"]
+            if str(issue).upper() == "TBD":
+                continue
+
+            # Check PR status using gh CLI
+            try:
+                result = subprocess.run(
+                    ["gh", "pr", "list", "--search", f"#{issue}", "--json", "number,state,merged"],
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                if result.returncode == 0:
+                    prs = json.loads(result.stdout)
+                    pr_merged = any(pr.get("merged") or pr.get("state") == "MERGED" for pr in prs)
+
+                    if pr_merged:
+                        ws_dir = self.tmp_base / f"ws-{issue}"
+                        if ws_dir.exists():
+                            # Calculate size before deleting
+                            dir_size = 0
+                            for dirpath, _dirs, files in os.walk(ws_dir):
+                                for f in files:
+                                    fp = os.path.join(dirpath, f)
+                                    try:
+                                        dir_size += os.path.getsize(fp)
+                                    except OSError:
+                                        pass
+                            size_gb = dir_size / (1024**3)
+
+                            if dry_run:
+                                print(f"  [DRY RUN] Would delete ws-{issue} ({size_gb:.2f}GB)")
+                            else:
+                                shutil.rmtree(ws_dir)
+                                print(f"  ✓ Deleted ws-{issue} (PR merged, freed {size_gb:.2f}GB)")
+                                deleted_count += 1
+                                freed_gb += size_gb
+                    else:
+                        print(f"  [SKIP] ws-{issue} (PR not merged yet)")
+                else:
+                    print(f"  [ERROR] Could not check PR status for #{issue}")
+            except Exception as e:
+                print(f"  [ERROR] Failed to process #{issue}: {e}")
+
+        print(f"\n{'DRY RUN ' if dry_run else ''}Summary:")
+        print(f"  Workstreams {'would be ' if dry_run else ''}deleted: {deleted_count}")
+        print(f"  Disk space {'would be ' if dry_run else ''}freed: {freed_gb:.2f}GB")
+
+        if dry_run and deleted_count > 0:
+            print("\nRun without --dry-run to actually delete these workstreams.")
 
 
 def run(config_path: str, mode: str = "recipe", recipe: str = "default-workflow") -> str:
@@ -430,6 +562,26 @@ def run(config_path: str, mode: str = "recipe", recipe: str = "default-workflow"
     return orchestrator.report()
 
 
+def cleanup(config_path: str, dry_run: bool = False) -> None:
+    """Clean up workstreams with merged PRs.
+
+    Args:
+        config_path: Path to JSON config file with workstream definitions
+        dry_run: If True, show what would be deleted without deleting
+    """
+    # Detect repo URL
+    result = subprocess.run(
+        ["git", "remote", "get-url", "origin"],
+        capture_output=True,
+        text=True,
+        timeout=5,
+    )
+    repo_url = result.stdout.strip() if result.returncode == 0 else ""
+
+    orchestrator = ParallelOrchestrator(repo_url=repo_url)
+    orchestrator.cleanup_merged(config_path, dry_run=dry_run)
+
+
 if __name__ == "__main__":
     import argparse
 
@@ -446,6 +598,21 @@ if __name__ == "__main__":
         default="default-workflow",
         help="Recipe name for recipe mode (default: default-workflow)",
     )
+    parser.add_argument(
+        "--cleanup",
+        action="store_true",
+        help="Clean up workstreams with merged PRs instead of running tasks",
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be deleted without actually deleting (use with --cleanup)",
+    )
     args = parser.parse_args()
 
-    run(args.config, mode=args.mode, recipe=args.recipe)
+    if args.cleanup:
+        cleanup(args.config, dry_run=args.dry_run)
+    else:
+        if args.dry_run:
+            print("WARNING: --dry-run only works with --cleanup, ignoring")
+        run(args.config, mode=args.mode, recipe=args.recipe)
