@@ -80,7 +80,34 @@ Each consideration is either:
 
 ## Key Features
 
-### 🎯 Preference Awareness (NEW)
+### 🔄 Auto-Re-enable on Startup (NEW)
+
+Power-Steering can be temporarily disabled when it blocks session completion. When you restart amplihack, you'll see a prompt to re-enable it.
+
+**Prompt behavior**:
+
+- Appears only when Power-Steering is disabled via `.disabled` file
+- Default answer: YES (re-enable)
+- 30-second timeout (auto-enables on timeout)
+- Worktree-aware (each worktree tracks its own state)
+
+```
+Power-Steering is currently disabled.
+Would you like to re-enable it? [Y/n] (30s timeout, defaults to YES):
+```
+
+**Response options**:
+
+- **YES** or timeout: Removes `.disabled` file, Power-Steering enabled
+- **NO**: Keeps Power-Steering disabled for this session
+
+**To permanently disable the re-enable prompt** (not recommended): Remove or rename `re_enable_prompt.py`
+
+**Note**: This disables the _re-enable prompt_, not power-steering itself. To disable power-steering, see [Troubleshooting: Disable Power-Steering](troubleshooting.md#temporarily-disable-power-steering).
+
+**Learn more**: See [Troubleshooting: Disable Power-Steering](troubleshooting.md#temporarily-disable-power-steering)
+
+### 🎯 Preference Awareness
 
 Power-Steering respects your USER_PREFERENCES.md settings, including the "NEVER Merge PRs Without Permission" preference.
 
@@ -269,6 +296,36 @@ Add team-specific checks to considerations.yaml:
 
 **Learn more**: [Customization Guide](customization-guide.md)
 
+### Temporarily Disabling Power-Steering
+
+When Power-Steering blocks session completion, you can temporarily disable it:
+
+```bash
+# Disable for current session
+touch ~/.amplihack/.claude/runtime/power-steering/.disabled
+```
+
+**What happens next**:
+
+1. Power-Steering stops checking for remainder of session
+2. On next amplihack startup, re-enable prompt appears:
+   ```
+   Power-Steering is currently disabled.
+   Would you like to re-enable it? [Y/n] (30s timeout, defaults to YES):
+   ```
+3. Default behavior (YES or timeout) re-enables automatically
+
+**Worktree behavior**: Each git worktree tracks its own disabled state independently.
+
+**To resume checking immediately**:
+
+```bash
+# Re-enable Power-Steering
+rm ~/.amplihack/.claude/runtime/power-steering/.disabled
+```
+
+**Learn more**: See [Troubleshooting: Disable Power-Steering](troubleshooting.md#temporarily-disable-power-steering)
+
 ### Conditional Checks
 
 Some checks only apply in specific contexts:
@@ -303,6 +360,26 @@ No explicit calls needed - Power-Steering runs automatically when Claude attempt
 ## Troubleshooting
 
 ### Common Issues
+
+**Problem**: Re-enable prompt not appearing on startup
+
+**Solution**:
+
+1. Verify `.disabled` file exists:
+   ```bash
+   ls -la ~/.amplihack/.claude/runtime/power-steering/.disabled
+   ```
+2. Check you're using CLI entry point (`cli.py` or `copilot.py`)
+3. Verify module exists: `src/amplihack/power_steering/re_enable_prompt.py`
+4. Check for errors in startup logs
+
+**Problem**: Prompt times out too quickly
+
+**Solution**: The 30-second timeout is hard-coded for safety (fail-open design). If you need more time, answer "n" and manually delete `.disabled` file when ready:
+
+```bash
+rm ~/.amplihack/.claude/runtime/power-steering/.disabled
+```
 
 **Problem**: Power-Steering blocks session end with false positive
 
