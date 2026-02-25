@@ -24,8 +24,11 @@ from unittest.mock import Mock, patch
 
 # These imports will fail until implementation is complete
 try:
-    sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent))
-    from skills.precommit_manager import PrecommitManager
+    sys.path.insert(
+        0,
+        str(Path(__file__).parent.parent.parent.parent.parent / "skills" / "pre-commit-manager"),
+    )
+    from precommit_manager import PrecommitManager
 
     PRECOMMIT_SKILL_AVAILABLE = True
 except ImportError:
