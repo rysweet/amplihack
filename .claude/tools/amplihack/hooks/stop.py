@@ -153,7 +153,11 @@ class StopHook(HookProcessor):
                     from pathlib import Path
 
                     transcript_path = Path(transcript_path_str)
-                    session_id = self._get_current_session_id()
+                    # Use transcript filename stem as session ID (stable across stop invocations).
+                    # Fallback to _get_current_session_id() only if stem is unusable.
+                    # Fix for Issue #2548: timestamp-based IDs changed each invocation,
+                    # preventing _results_shown semaphore from being found on second stop.
+                    session_id = transcript_path.stem or self._get_current_session_id()
 
                     # Create progress tracker (auto-detects verbosity and pirate mode from preferences)
                     progress_tracker = ProgressTracker(project_root=self.project_root)
