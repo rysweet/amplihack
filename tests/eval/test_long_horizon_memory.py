@@ -501,3 +501,153 @@ class TestDataIntegrity:
     def test_projects_count(self):
         """There are exactly 5 projects."""
         assert len(PROJECTS) == 5
+
+
+class TestPeriodicAgentRestart:
+    """Tests for periodic agent restart to cap memory growth (issue #2557)."""
+
+    def test_restart_every_stored_on_evaluator(self):
+        """restart_every parameter is stored and defaults to 0."""
+        evaluator = LongHorizonMemoryEval(num_turns=50, num_questions=5)
+        assert evaluator.restart_every == 0
+
+        evaluator2 = LongHorizonMemoryEval(num_turns=50, num_questions=5, restart_every=100)
+        assert evaluator2.restart_every == 100
+
+    def test_restart_every_negative_clamped_to_zero(self):
+        """Negative restart_every is clamped to 0."""
+        evaluator = LongHorizonMemoryEval(num_turns=50, num_questions=5, restart_every=-10)
+        assert evaluator.restart_every == 0
+
+    def test_run_dialogue_no_restart_without_factory(self):
+        """run_dialogue without agent_factory returns float (no restart)."""
+        evaluator = LongHorizonMemoryEval(num_turns=20, num_questions=5, restart_every=5)
+        evaluator.generate()
+
+        agent = MagicMock()
+        agent.learn_from_content.return_value = {"facts_extracted": 1}
+
+        result = evaluator.run_dialogue(agent)
+
+        # Without factory, returns just float (restart disabled)
+        assert isinstance(result, float)
+        # Agent.close should not be called (no restart without factory)
+        agent.close.assert_not_called()
+
+    def test_run_dialogue_restarts_agent_with_factory(self):
+        """run_dialogue restarts agent at correct intervals when factory provided."""
+        evaluator = LongHorizonMemoryEval(num_turns=20, num_questions=5, restart_every=5)
+        evaluator.generate()
+
+        agents_created = []
+
+        def agent_factory():
+            new_agent = MagicMock()
+            new_agent.learn_from_content.return_value = {"facts_extracted": 1}
+            agents_created.append(new_agent)
+            return new_agent
+
+        initial_agent = MagicMock()
+        initial_agent.learn_from_content.return_value = {"facts_extracted": 1}
+
+        result = evaluator.run_dialogue(initial_agent, agent_factory=agent_factory)
+
+        # With factory, returns tuple (elapsed, final_agent)
+        assert isinstance(result, tuple)
+        elapsed, final_agent = result
+        assert isinstance(elapsed, float)
+
+        # With 20 turns and restart_every=5, restarts at turns 5, 10, 15 = 3 restarts
+        assert len(agents_created) == 3
+        # Initial agent should have been closed 1 time (at turn 5)
+        initial_agent.close.assert_called_once()
+
+    def test_run_dialogue_factory_returns_final_agent(self):
+        """run_dialogue returns the last-created agent for subsequent use."""
+        evaluator = LongHorizonMemoryEval(num_turns=10, num_questions=5, restart_every=5)
+        evaluator.generate()
+
+        last_agent = MagicMock()
+        last_agent.learn_from_content.return_value = {"facts_extracted": 1}
+
+        call_count = [0]
+
+        def agent_factory():
+            call_count[0] += 1
+            if call_count[0] == 1:
+                return last_agent
+            new = MagicMock()
+            new.learn_from_content.return_value = {"facts_extracted": 1}
+            return new
+
+        initial = MagicMock()
+        initial.learn_from_content.return_value = {"facts_extracted": 1}
+
+        _, final = evaluator.run_dialogue(initial, agent_factory=agent_factory)
+
+        # With 10 turns and restart_every=5, restart at turn 5 only
+        # (turn 10 is the last turn, no restart after last turn)
+        assert call_count[0] == 1
+        assert final is last_agent
+
+    def test_run_dialogue_no_restart_at_last_turn(self):
+        """Agent is NOT restarted on the very last turn."""
+        evaluator = LongHorizonMemoryEval(num_turns=10, num_questions=5, restart_every=10)
+        evaluator.generate()
+
+        agents_created = []
+
+        def agent_factory():
+            a = MagicMock()
+            a.learn_from_content.return_value = {}
+            agents_created.append(a)
+            return a
+
+        initial = MagicMock()
+        initial.learn_from_content.return_value = {}
+
+        result = evaluator.run_dialogue(initial, agent_factory=agent_factory)
+
+        # restart_every=10 with 10 turns: turn 10 is the last, no restart
+        assert isinstance(result, tuple)
+        assert len(agents_created) == 0
+        initial.close.assert_not_called()
+
+    def test_run_dialogue_zero_restart_every_no_restart(self):
+        """restart_every=0 disables restarts even with factory."""
+        evaluator = LongHorizonMemoryEval(num_turns=20, num_questions=5, restart_every=0)
+        evaluator.generate()
+
+        agents_created = []
+
+        def agent_factory():
+            a = MagicMock()
+            agents_created.append(a)
+            return a
+
+        initial = MagicMock()
+        initial.learn_from_content.return_value = {}
+
+        result = evaluator.run_dialogue(initial, agent_factory=agent_factory)
+
+        # restart_every=0: no restarts, but factory provided => returns tuple
+        assert isinstance(result, tuple)
+        assert len(agents_created) == 0
+
+    def test_run_dialogue_handles_close_failure(self):
+        """run_dialogue handles close() failures gracefully during restart."""
+        evaluator = LongHorizonMemoryEval(num_turns=10, num_questions=5, restart_every=5)
+        evaluator.generate()
+
+        def agent_factory():
+            a = MagicMock()
+            a.learn_from_content.return_value = {}
+            return a
+
+        initial = MagicMock()
+        initial.learn_from_content.return_value = {}
+        initial.close.side_effect = RuntimeError("close failed")
+
+        # Should not raise even when close() fails
+        result = evaluator.run_dialogue(initial, agent_factory=agent_factory)
+        assert isinstance(result, tuple)
