@@ -38,6 +38,12 @@ The hook system uses a **unified HookProcessor** base class that provides common
   - Manages context and prepares for compaction
   - Logs pre-compact events
 
+- **`pre_tool_use.py`** - Runs before each tool use (Bash only)
+  - **CWD deletion protection**: blocks `rm -rf` / `rmdir` on the current working directory or any parent
+  - **CWD rename/move protection**: blocks `mv` commands that would rename the CWD or any parent (prevents session crash from invalid CWD)
+  - **Main branch protection**: blocks `git commit` directly to `main` or `master`
+  - **No-verify bypass protection**: blocks `git commit --no-verify` and `git push --no-verify`
+
 ## Architecture
 
 ```
