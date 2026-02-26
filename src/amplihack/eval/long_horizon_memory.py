@@ -1152,8 +1152,8 @@ def main() -> None:
             flush_every=args.flush_every,
         )
 
-        # Provide agent_factory when restart_every is set
-        agent_factory = _create_agent if args.restart_every > 0 else None
+        # Provide agent_factory when flush_every is set (not used for flush, only for potential restart)
+        agent_factory = _create_agent if args.flush_every > 0 else None
 
         if args.skip_learning:
             # Skip learning: only generate data + questions, then quiz
