@@ -299,6 +299,11 @@ class CognitiveAdapter:
     # Utility
     # ------------------------------------------------------------------
 
+    def flush_memory(self) -> None:
+        """Flush underlying memory cache without losing data."""
+        if hasattr(self.memory, "flush_memory"):
+            self.memory.flush_memory()
+
     def close(self) -> None:
         """Close underlying memory."""
         self.memory.close()
