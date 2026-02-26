@@ -528,6 +528,9 @@ class LongHorizonMemoryEval:
         grader_votes: Number of grading votes per question (default 3)
         parallel_workers: Number of parallel workers for question answering
             and grading. Set to 1 for sequential execution (default 10, max 20).
+        flush_every: Flush agent memory every N turns during dialogue to cap
+            memory growth. 0 disables (default 0). Requires the agent to
+            expose a ``flush_memory()`` method (e.g. HierarchicalMemory).
 
     Example:
         >>> from amplihack.agents.goal_seeking.learning_agent import LearningAgent
@@ -544,14 +547,14 @@ class LongHorizonMemoryEval:
         seed: int = 42,
         grader_votes: int = 3,
         parallel_workers: int = 10,
-        restart_every: int = 0,
+        flush_every: int = 0,
     ):
         self.num_turns = num_turns
         self.num_questions = num_questions
         self.seed = seed
         self.grader_votes = max(1, grader_votes)
         self.parallel_workers = max(1, min(20, parallel_workers))
-        self.restart_every = max(0, restart_every)
+        self.flush_every = max(0, flush_every)
         self.ground_truth: GroundTruth | None = None
         self.questions: list[Question] = []
 
@@ -574,10 +577,9 @@ class LongHorizonMemoryEval:
     ) -> float | tuple[float, Any]:
         """Feed all turns to the agent's learning method.
 
-        When ``restart_every > 0`` and an ``agent_factory`` is provided, the
-        agent is periodically closed and reopened to flush in-process caches
-        (e.g. Kuzu buffer pool).  The DB persists on disk so all previously
-        learned facts remain accessible after restart.
+        When ``flush_every > 0`` and the agent exposes ``flush_memory()``,
+        the memory connection is periodically recycled to cap in-process
+        cache growth without losing any persisted data.
 
         Args:
             agent: Agent with learn_from_content(content) method
@@ -594,17 +596,17 @@ class LongHorizonMemoryEval:
         if gt is None:
             raise ValueError("Must call generate() first or pass ground_truth")
 
-        restart_every = self.restart_every
-        if restart_every > 0 and agent_factory is None:
+        flush_every = self.flush_every
+        can_flush = flush_every > 0 and hasattr(agent, "flush_memory")
+        if flush_every > 0 and not can_flush:
             logger.warning(
-                "restart_every=%d but no agent_factory provided; disabling periodic restart",
-                restart_every,
+                "flush_every=%d but agent has no flush_memory(); disabling periodic flush",
+                flush_every,
             )
-            restart_every = 0
 
         start = time.time()
         total = len(gt.turns)
-        restarts = 0
+        flushes = 0
 
         for i, turn in enumerate(gt.turns):
             if not turn.content or not turn.content.strip():
@@ -626,36 +628,27 @@ class LongHorizonMemoryEval:
                     turn.block_name,
                 )
 
-            # Periodic restart to cap memory growth
-            if (
-                restart_every > 0
-                and agent_factory is not None
-                and (i + 1) % restart_every == 0
-                and (i + 1) < total
-            ):
+            # Periodic memory flush to cap cache growth
+            if can_flush and (i + 1) % flush_every == 0 and (i + 1) < total:
                 logger.info(
-                    "Restarting agent at turn %d/%d to flush memory cache (restart #%d)",
+                    "Flushing memory at turn %d/%d (flush #%d)",
                     i + 1,
                     total,
-                    restarts + 1,
+                    flushes + 1,
                 )
                 try:
-                    agent.close()
+                    agent.flush_memory()
                 except Exception as e:
-                    logger.warning("Agent close failed during restart: %s", e)
-                agent = agent_factory()
-                restarts += 1
+                    logger.warning("flush_memory failed at turn %d: %s", i + 1, e)
+                flushes += 1
 
         elapsed = time.time() - start
         logger.info(
-            "Dialogue complete: %d turns in %.1fs (%d agent restarts)",
+            "Dialogue complete: %d turns in %.1fs (%d memory flushes)",
             total,
             elapsed,
-            restarts,
+            flushes,
         )
-
-        if agent_factory is not None:
-            return elapsed, agent
         return elapsed
 
     def evaluate(
@@ -1058,11 +1051,11 @@ def main() -> None:
         help="Number of parallel workers for question answering/grading (1=sequential, max 20, default: 10)",
     )
     parser.add_argument(
-        "--restart-every",
+        "--flush-every",
         type=int,
-        default=0,
-        help="Restart agent every N turns to flush Kuzu buffer cache and cap memory. "
-        "0 disables (default: 0). Recommended: 100 for 5000-turn evals.",
+        default=100,
+        help="Flush agent memory every N turns to cap cache growth. "
+        "0 disables. Agent must expose flush_memory() (default: 100).",
     )
 
     args = parser.parse_args()
@@ -1156,7 +1149,7 @@ def main() -> None:
             seed=args.seed,
             grader_votes=args.grader_votes,
             parallel_workers=args.parallel_workers,
-            restart_every=args.restart_every,
+            flush_every=args.flush_every,
         )
 
         # Provide agent_factory when restart_every is set

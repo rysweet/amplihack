@@ -165,6 +165,15 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
     # Ensure amplihack framework is staged to ~/.amplihack/.claude/
     _ensure_amplihack_staged()
 
+    # Prompt to re-enable power-steering if disabled (#2544)
+    try:
+        from .power_steering.re_enable_prompt import prompt_re_enable_if_disabled
+
+        prompt_re_enable_if_disabled()
+    except Exception as e:
+        # Fail-open: log error but continue
+        logger.debug(f"Error checking power-steering re-enable prompt: {e}")
+
     # Start session tracking
     tracker = SessionTracker()
     is_auto_mode = getattr(args, "auto", False)
