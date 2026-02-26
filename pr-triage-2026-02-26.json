@@ -1,0 +1,84 @@
+{
+  "timestamp": "2026-02-26T06:28:22Z",
+  "triage_run_id": "pr-triage-2026-02-26-062822",
+  "total_agent_prs": 3,
+  "prs": [
+    {
+      "number": 2554,
+      "title": "[docs] Daily Documentation Updates - February 26, 2026",
+      "creator": "github-actions[bot]",
+      "created_at": "2026-02-26T06:26:03Z",
+      "category": "documentation",
+      "risk_score": 10,
+      "priority_score": 85,
+      "recommendation": "auto-merge",
+      "mergeable_state": "clean",
+      "draft": false,
+      "checks_status": "pending",
+      "changed_files": 4,
+      "additions": 1432,
+      "deletions": 0,
+      "labels": ["documentation", "automation"],
+      "analysis": {
+        "scope": "Documentation-only changes with new tutorial, how-to guides, and changelog updates",
+        "risk_factors": ["None - documentation-only", "No code changes", "Clean mergeable state"],
+        "blocking_issues": "None",
+        "recommendation_reason": "Automated documentation updates following Diátaxis framework. Clean state, no risk factors. Should be merged to keep documentation current."
+      }
+    },
+    {
+      "number": 2541,
+      "title": "[docs] Update documentation for power-steering worktree support and multitask disk management",
+      "creator": "github-actions[bot]",
+      "created_at": "2026-02-25T06:26:13Z",
+      "category": "documentation",
+      "risk_score": 15,
+      "priority_score": 70,
+      "recommendation": "review-then-merge",
+      "mergeable_state": "unknown",
+      "draft": false,
+      "checks_status": "pending",
+      "changed_files": 3,
+      "additions": 40,
+      "deletions": 1,
+      "labels": ["documentation", "automation"],
+      "analysis": {
+        "scope": "Documentation updates for power-steering worktree support (PRs #2537, #2538) and multitask disk management (PR #2536)",
+        "risk_factors": ["Unknown mergeable state", "Depends on multiple merged PRs", "Updates to core feature documentation"],
+        "blocking_issues": "Need to verify base PRs were actually merged",
+        "recommendation_reason": "Documentation reflects recent feature changes. Unknown mergeable state suggests potential conflicts. Quick review recommended to ensure accuracy against merged code."
+      }
+    },
+    {
+      "number": 2533,
+      "title": "Convert precommit_manager.py from loose script to proper skill",
+      "creator": "Copilot",
+      "created_at": "2026-02-25T01:07:14Z",
+      "category": "refactoring",
+      "risk_score": 45,
+      "priority_score": 60,
+      "recommendation": "review-required",
+      "mergeable_state": "unknown",
+      "draft": true,
+      "checks_status": "pending",
+      "changed_files": 5,
+      "additions": 36,
+      "deletions": 7,
+      "labels": [],
+      "analysis": {
+        "scope": "Structural refactoring - moves precommit_manager.py from loose script to proper skill with YAML frontmatter and updated import paths",
+        "risk_factors": ["Draft status", "Import path changes across 5 files", "Test file updates required", "No labels assigned", "Unknown mergeable state"],
+        "blocking_issues": "DRAFT status indicates incomplete. Import path changes need verification. Tests must pass before merge.",
+        "recommendation_reason": "Architectural change to skill structure. Multiple import path updates create breaking risk. Must verify all tests pass and imports resolve correctly before removing draft status."
+      }
+    }
+  ],
+  "summary": {
+    "auto_merge_count": 1,
+    "review_then_merge_count": 1,
+    "review_required_count": 1,
+    "high_risk_count": 0,
+    "medium_risk_count": 1,
+    "low_risk_count": 2
+  }
+}
