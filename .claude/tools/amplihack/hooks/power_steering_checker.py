@@ -336,6 +336,14 @@ class PowerSteeringChecker:
         "git rebase",
         "merge main",
         "merge master",
+        "merge pr",
+        "merge the pr",
+        "merge this pr",
+        "merge it",
+        "review pr",
+        "review the pr",
+        "review and merge",
+        "approve and merge",
         "workspace",
         "stash",
         "git stash",
@@ -1807,19 +1815,20 @@ class PowerSteeringChecker:
         self,
         code_files_modified: bool,
         test_executions: int,
-        pr_operations: bool,
+        pr_dev_operations: bool,
     ) -> bool:
         """Check if transcript shows development indicators.
 
         Args:
             code_files_modified: Whether code files were modified
             test_executions: Number of test executions
-            pr_operations: Whether PR operations were performed
+            pr_dev_operations: Whether PR creation/edit operations were performed
+                (PR view/merge/review are ops, not development signals)
 
         Returns:
             True if development indicators present
         """
-        return code_files_modified or test_executions > 0 or pr_operations
+        return code_files_modified or test_executions > 0 or pr_dev_operations
 
     def _has_informational_indicators(
         self,
@@ -2015,7 +2024,7 @@ class PowerSteeringChecker:
         write_edit_operations = 0
         read_grep_operations = 0
         test_executions = 0
-        pr_operations = False
+        pr_dev_operations = False  # PR creation/edit (development signals)
         git_operations = False
 
         # Count questions in user messages for INFORMATIONAL detection
@@ -2070,9 +2079,11 @@ class PowerSteeringChecker:
                             if any(pattern in command for pattern in self.TEST_COMMAND_PATTERNS):
                                 test_executions += 1
 
-                            # PR operations
-                            if "gh pr create" in command or "gh pr" in command:
-                                pr_operations = True
+                            # PR operations - distinguish dev (create/edit) from ops (view/merge/review)
+                            if "gh pr create" in command or "gh pr edit" in command:
+                                pr_dev_operations = True
+                            elif "gh pr" in command:
+                                pass  # view/merge/checks/diff/ready - ops, not development
 
                             # Git operations
                             if "git commit" in command or "git push" in command:
@@ -2090,8 +2101,9 @@ class PowerSteeringChecker:
         # DEVELOPMENT: CODE modifications override investigation keywords (fixes #2196)
         # Only override keywords if we have actual CODE file modifications
         # Doc/config updates or git operations should NOT override investigation keywords
-        if code_files_modified or test_executions > 0 or pr_operations:
-            # Strong signal: Write/Edit of CODE files, tests run, PR operations
+        # PR ops (view/merge/review/checks) are NOT development signals (fixes #2563)
+        if code_files_modified or test_executions > 0 or pr_dev_operations:
+            # Strong signal: Write/Edit of CODE files, tests run, PR creation/editing
             self._log("Session classified as DEVELOPMENT via CODE modification patterns", "INFO")
             return "DEVELOPMENT"
 
