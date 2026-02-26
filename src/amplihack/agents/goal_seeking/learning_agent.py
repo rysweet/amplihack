@@ -81,7 +81,7 @@ class LearningAgent:
             Requires OPENAI_API_KEY or appropriate provider key to be set.
         """
         self.agent_name = agent_name
-        self.model = model or os.environ.get("EVAL_MODEL", "gpt-3.5-turbo")
+        self.model = model or os.environ.get("EVAL_MODEL", "claude-opus-4-6")
         self.use_hierarchical = use_hierarchical
 
         # Initialize memory based on mode
