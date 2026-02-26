@@ -569,7 +569,12 @@ class LongHorizonMemoryEval:
         self.questions = generate_questions(self.ground_truth, num_questions=self.num_questions)
         return self.ground_truth, self.questions
 
-    def run_dialogue(self, agent: Any, ground_truth: GroundTruth | None = None) -> float:
+    def run_dialogue(
+        self,
+        agent: Any,
+        ground_truth: GroundTruth | None = None,
+        agent_factory: Any | None = None,
+    ) -> float | tuple[float, Any]:
         """Feed all turns to the agent's learning method.
 
         When ``flush_every > 0`` and the agent exposes ``flush_memory()``,
@@ -579,9 +584,13 @@ class LongHorizonMemoryEval:
         Args:
             agent: Agent with learn_from_content(content) method
             ground_truth: Override ground truth (uses self.ground_truth if None)
+            agent_factory: Optional callable that returns a fresh agent.
+                Required when restart_every > 0.  Signature: ``() -> agent``.
 
         Returns:
-            Time taken in seconds
+            When agent_factory is None: elapsed time in seconds (float).
+            When agent_factory is provided: tuple of (elapsed_seconds, final_agent)
+                so the caller can use the most recent agent instance.
         """
         gt = ground_truth or self.ground_truth
         if gt is None:
@@ -846,12 +855,20 @@ class LongHorizonMemoryEval:
 
         return result
 
-    def run(self, agent: Any, grader_model: str = "") -> EvalReport:
+    def run(
+        self,
+        agent: Any,
+        grader_model: str = "",
+        agent_factory: Any | None = None,
+    ) -> EvalReport:
         """Run the complete evaluation: generate, learn, quiz, grade.
 
         Args:
             agent: Agent with learn_from_content and answer_question methods
             grader_model: Model for LLM grading
+            agent_factory: Optional callable ``() -> agent`` for periodic restart.
+                When provided with restart_every > 0, the agent is closed and
+                reopened every N turns to cap memory growth.
 
         Returns:
             Complete EvalReport
@@ -870,8 +887,12 @@ class LongHorizonMemoryEval:
             len(self.questions),
         )
 
-        # Step 2: Feed dialogue to agent
-        learning_time = self.run_dialogue(agent)
+        # Step 2: Feed dialogue to agent (with optional periodic restart)
+        result = self.run_dialogue(agent, agent_factory=agent_factory)
+        if isinstance(result, tuple):
+            learning_time, agent = result
+        else:
+            learning_time = result
 
         # Step 3: Quiz and grade
         report = self.evaluate(agent, grader_model=grader_model)
@@ -1096,16 +1117,17 @@ def main() -> None:
             logger.warning("Could not detect agent_id from DB: %s", _e)
             agent_name = "long_horizon_eval_learning"
 
-    if args.sdk == "mini":
-        from amplihack.agents.goal_seeking.learning_agent import LearningAgent
+    def _create_agent() -> Any:
+        """Factory to create (or recreate) the eval agent."""
+        if args.sdk == "mini":
+            from amplihack.agents.goal_seeking.learning_agent import LearningAgent
 
-        agent = LearningAgent(
-            agent_name=agent_name,
-            model=agent_model,
-            storage_path=db_path,
-            use_hierarchical=args.use_hierarchical,
-        )
-    else:
+            return LearningAgent(
+                agent_name=agent_name,
+                model=agent_model,
+                storage_path=db_path,
+                use_hierarchical=args.use_hierarchical,
+            )
         from amplihack.agents.goal_seeking.sdk_adapters.factory import create_agent
 
         sdk_agent = create_agent(
@@ -1115,8 +1137,9 @@ def main() -> None:
             storage_path=db_path,
             enable_memory=True,
         )
-        # Wrap SDK agent to provide learn_from_content / answer_question interface
-        agent = _SDKAgentWrapper(sdk_agent)
+        return _SDKAgentWrapper(sdk_agent)
+
+    agent = _create_agent()
 
     try:
         # Run evaluation
@@ -1129,6 +1152,9 @@ def main() -> None:
             flush_every=args.flush_every,
         )
 
+        # Provide agent_factory when restart_every is set
+        agent_factory = _create_agent if args.restart_every > 0 else None
+
         if args.skip_learning:
             # Skip learning: only generate data + questions, then quiz
             evaluator.generate()
@@ -1139,7 +1165,9 @@ def main() -> None:
             report = evaluator.evaluate(agent, grader_model=args.grader_model)
             report.learning_time_s = 0.0
         else:
-            report = evaluator.run(agent, grader_model=args.grader_model)
+            report = evaluator.run(
+                agent, grader_model=args.grader_model, agent_factory=agent_factory
+            )
 
         # Print report
         _print_report(report)
