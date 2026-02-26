@@ -1,22 +1,22 @@
 {
-  "last_run": "2026-02-25T18:29:58Z",
-  "workflow_run": "22410330542",
-  "total_prs": 7,
-  "agent_created": 5,
+  "last_run": "2026-02-26T00:36:47Z",
+  "workflow_run": "22422486195",
+  "total_prs": 8,
+  "agent_created": 6,
   "categories": {
     "ready_to_merge": [2547, 2541],
+    "ready_to_review": [2551],
     "needs_review": [2515],
     "wait_for_author": [2540, 2533],
     "stale_consider_close": [1784, 1376]
   },
   "actions_taken": {
-    "issue_created": true,
-    "comments_added": 4,
-    "prs_analyzed": 7
+    "comment_added_to_pr_2551": true,
+    "prs_analyzed": 8
   },
   "next_actions": {
     "merge": ["PR #2547", "PR #2541"],
-    "review": ["PR #2515"],
+    "review": ["PR #2551 - verify model name", "PR #2515"],
     "author_action": ["PR #2540", "PR #2533", "PR #1784", "PR #1376"]
   }
 }

@@ -1,6 +1,14 @@
-Last PR Triage Run: 2026-02-25T18:29:58Z
-Workflow Run ID: 22410330542
-Total Open PRs: 7 (5 agent-created)
+Last PR Triage Run: 2026-02-26T00:36:47Z
+Workflow Run ID: 22422486195
+Total Open PRs: 8 (6 agent-created)
+
+=== NEW THIS RUN ===
+
+PR #2551: fix: change LearningAgent default model from gpt-3.5-turbo to claude-sonnet
+- Priority: HIGH (75), Risk: VERY_LOW (20)
+- Status: Needs review - model name inconsistency
+- Files: 2 changed (learning_agent.py + version bump)
+- Action: 📝 COMMENT ADDED - clarify claude-opus-4-6 vs claude-sonnet
 
 === READY TO MERGE (2 PRs) ===
 
@@ -13,6 +21,13 @@ PR #2541: [docs] Update documentation for power-steering worktree support
 - Priority: MEDIUM (60), Risk: VERY_LOW (10)
 - Status: Bot-generated documentation
 - Action: ✅ MERGE - safe documentation update
+
+=== READY TO REVIEW (1 PR) ===
+
+PR #2551: fix: change LearningAgent default model
+- Priority: HIGH (75), Risk: VERY_LOW (20)
+- Status: New PR, needs review
+- Action: 📝 REVIEW - verify model name matches intent
 
 === NEEDS REVIEW (1 PR) ===
 
