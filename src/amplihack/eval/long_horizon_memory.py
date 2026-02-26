@@ -29,6 +29,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 import logging
 import os
@@ -548,6 +549,7 @@ class LongHorizonMemoryEval:
         grader_votes: int = 3,
         parallel_workers: int = 10,
         flush_every: int = 0,
+        restart_every: int = 0,
     ):
         self.num_turns = num_turns
         self.num_questions = num_questions
@@ -555,6 +557,7 @@ class LongHorizonMemoryEval:
         self.grader_votes = max(1, grader_votes)
         self.parallel_workers = max(1, min(20, parallel_workers))
         self.flush_every = max(0, flush_every)
+        self.restart_every = max(0, restart_every)
         self.ground_truth: GroundTruth | None = None
         self.questions: list[Question] = []
 
@@ -604,9 +607,13 @@ class LongHorizonMemoryEval:
                 flush_every,
             )
 
+        restart_every = self.restart_every
+        can_restart = restart_every > 0 and agent_factory is not None
+
         start = time.time()
         total = len(gt.turns)
         flushes = 0
+        restarts = 0
 
         for i, turn in enumerate(gt.turns):
             if not turn.content or not turn.content.strip():
@@ -642,13 +649,34 @@ class LongHorizonMemoryEval:
                     logger.warning("flush_memory failed at turn %d: %s", i + 1, e)
                 flushes += 1
 
+            # Periodic agent restart to free memory (issue #2566)
+            if can_restart and (i + 1) % restart_every == 0 and (i + 1) < total:
+                restarts += 1
+                logger.info(
+                    "Restarting agent at turn %d/%d (restart #%d)",
+                    i + 1,
+                    total,
+                    restarts,
+                )
+                try:
+                    agent.close()
+                except Exception as e:
+                    logger.warning("agent.close() failed at turn %d: %s", i + 1, e)
+                del agent
+                gc.collect()
+                assert agent_factory is not None  # guarded by can_restart
+                agent = agent_factory()
+
         elapsed = time.time() - start
         logger.info(
-            "Dialogue complete: %d turns in %.1fs (%d memory flushes)",
+            "Dialogue complete: %d turns in %.1fs (%d flushes, %d restarts)",
             total,
             elapsed,
             flushes,
+            restarts,
         )
+        if agent_factory is not None:
+            return elapsed, agent
         return elapsed
 
     def evaluate(
@@ -1057,6 +1085,13 @@ def main() -> None:
         help="Flush agent memory every N turns to cap cache growth. "
         "0 disables. Agent must expose flush_memory() (default: 100).",
     )
+    parser.add_argument(
+        "--restart-every",
+        type=int,
+        default=0,
+        help="Restart agent every N turns to free memory via del + gc.collect. "
+        "0 disables. Requires agent recreation (default: 0).",
+    )
 
     args = parser.parse_args()
 
@@ -1150,6 +1185,7 @@ def main() -> None:
             grader_votes=args.grader_votes,
             parallel_workers=args.parallel_workers,
             flush_every=args.flush_every,
+            restart_every=args.restart_every,
         )
 
         # Provide agent_factory when restart_every is set
