@@ -30,8 +30,11 @@ try:
     import precommit_prefs
     from precommit_installer import PrecommitInstallerHook
 
-    sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent.parent))
-    from skills.precommit_manager import PrecommitManager
+    sys.path.insert(
+        0,
+        str(Path(__file__).parent.parent.parent.parent.parent / "skills" / "pre-commit-manager"),
+    )
+    from precommit_manager import PrecommitManager
 
     SECURITY_TEST_AVAILABLE = True
 except ImportError:

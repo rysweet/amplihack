@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 # Import preference management
-sys.path.insert(0, str(Path(__file__).parent.parent / "tools" / "amplihack" / "hooks"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "tools" / "amplihack" / "hooks"))
 try:
     import precommit_prefs
 
