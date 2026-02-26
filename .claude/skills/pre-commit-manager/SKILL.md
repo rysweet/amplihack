@@ -1,3 +1,23 @@
+---
+name: pre-commit-manager
+version: 1.0.0
+description: |
+  Manage pre-commit hooks with preference memory and template-based configuration.
+  Use when installing, configuring, enabling/disabling, or checking status of pre-commit hooks.
+  Supports templates for python, javascript, typescript, go, rust, and generic projects.
+auto_activates:
+  - "Install pre-commit hooks"
+  - "Configure pre-commit"
+  - "Enable pre-commit auto-install"
+  - "Disable pre-commit auto-install"
+  - "Show pre-commit status"
+  - "Check pre-commit status"
+  - "Generate secrets baseline"
+  - "Create detect-secrets baseline"
+  - "Set up pre-commit"
+priority_score: 38.0
+---
+
 # Pre-Commit Manager Skill
 
 Manage pre-commit hooks with preference memory and template-based configuration.
