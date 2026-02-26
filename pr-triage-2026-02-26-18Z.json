@@ -1,0 +1,73 @@
+{
+  "triage_timestamp": "2026-02-26T18:22:00Z",
+  "workflow_run": "22455379392",
+  "total_open_prs": 7,
+  "agent_created_prs": 2,
+  "prs_analyzed": [
+    {
+      "number": 2558,
+      "title": "feat: periodic agent restart in eval harness to cap memory (#2557)",
+      "author": "rysweet",
+      "created_at": "2026-02-26T15:45:22Z",
+      "age_hours": 3,
+      "is_draft": false,
+      "is_agent_created": false,
+      "category": "feature",
+      "priority_score": 80,
+      "risk_score": 30,
+      "assessment": {
+        "summary": "Well-tested memory optimization feature with comprehensive test coverage",
+        "changes": "+249/-19 lines across 3 files",
+        "tests": "8 new tests added, all 53 tests passing",
+        "complexity": "Medium - refactors agent creation into factory pattern",
+        "impact": "High - solves critical memory growth issue in long-running evals"
+      },
+      "checks": {
+        "status": "pending",
+        "has_tests": true,
+        "test_coverage": "comprehensive"
+      },
+      "recommendation": {
+        "action": "READY_FOR_REVIEW",
+        "confidence": "high",
+        "reviewers_suggested": ["@rysweet"],
+        "rationale": "Non-draft PR with solid test coverage and clear problem/solution. Ready for review once CI passes."
+      }
+    },
+    {
+      "number": 2554,
+      "title": "[docs] Daily Documentation Updates - February 26, 2026",
+      "author": "github-actions[bot]",
+      "created_at": "2026-02-26T06:26:03Z",
+      "age_hours": 12,
+      "is_draft": false,
+      "is_agent_created": true,
+      "category": "documentation",
+      "priority_score": 60,
+      "risk_score": 10,
+      "assessment": {
+        "summary": "Automated documentation updates following Diátaxis framework",
+        "changes": "+1432/-0 lines across 4 files (docs additions only)",
+        "tests": "N/A - documentation only",
+        "complexity": "Low - additive changes only",
+        "impact": "Medium - improves documentation discoverability"
+      },
+      "checks": {
+        "status": "pending",
+        "has_tests": false,
+        "test_coverage": "n/a"
+      },
+      "recommendation": {
+        "action": "AUTO_MERGE_CANDIDATE",
+        "confidence": "high",
+        "rationale": "Bot-generated documentation with no code changes. Low risk, additive only. Can merge once CI passes."
+      }
+    }
+  ],
+  "summary": {
+    "new_prs_this_run": 2,
+    "ready_for_review": ["2558"],
+    "auto_merge_candidates": ["2554"],
+    "wait_for_ci": ["2558", "2554"]
+  }
+}

@@ -1,63 +1,53 @@
-Last PR Triage Run: 2026-02-26T00:36:47Z
-Workflow Run ID: 22422486195
-Total Open PRs: 8 (6 agent-created)
+Last PR Triage Run: 2026-02-26T18:22:00Z
+Workflow Run ID: 22455379392
+Total Open PRs: 7 (2 agent-created)
 
 === NEW THIS RUN ===
 
-PR #2551: fix: change LearningAgent default model from gpt-3.5-turbo to claude-sonnet
-- Priority: HIGH (75), Risk: VERY_LOW (20)
-- Status: Needs review - model name inconsistency
-- Files: 2 changed (learning_agent.py + version bump)
-- Action: 📝 COMMENT ADDED - clarify claude-opus-4-6 vs claude-sonnet
+PR #2558: feat: periodic agent restart in eval harness to cap memory
+- Priority: HIGH (80), Risk: LOW (30)
+- Status: Ready for review - well-tested memory optimization
+- Files: 3 changed (+249/-19 lines)
+- Action: 📝 COMMENT ADDED - ready for review once CI passes
 
-=== READY TO MERGE (2 PRs) ===
-
-PR #2547: feat: Add power-steering re-enable prompt on CLI startup
-- Priority: HIGH (85), Risk: LOW (25)
-- Status: APPROVED by multiple reviewers
-- Action: ✅ MERGE - well-tested feature with comprehensive approvals
-
-PR #2541: [docs] Update documentation for power-steering worktree support
+PR #2554: [docs] Daily Documentation Updates - February 26, 2026
 - Priority: MEDIUM (60), Risk: VERY_LOW (10)
-- Status: Bot-generated documentation
-- Action: ✅ MERGE - safe documentation update
+- Status: Auto-merge candidate - bot-generated documentation
+- Files: 4 changed (+1432/-0 lines, docs only)
+- Action: 📝 COMMENT ADDED - can auto-merge after CI passes
 
-=== READY TO REVIEW (1 PR) ===
+=== STATUS SUMMARY ===
 
-PR #2551: fix: change LearningAgent default model
-- Priority: HIGH (75), Risk: VERY_LOW (20)
-- Status: New PR, needs review
-- Action: 📝 REVIEW - verify model name matches intent
+Ready for Review (1 PR):
+- PR #2558: Eval memory optimization
 
-=== NEEDS REVIEW (1 PR) ===
+Auto-Merge Candidates (1 PR):
+- PR #2554: Documentation updates
 
-PR #2515: docs: add CONTRIBUTING.md for new contributors
-- Priority: MEDIUM (55), Risk: LOW (30)
-- Status: Draft, ready for review
-- Action: 📝 REQUEST REVIEW - important onboarding documentation
+Needs Review (1 PR):
+- PR #2515: CONTRIBUTING.md (draft)
 
-=== WAIT FOR AUTHOR (2 PRs) ===
+Wait for Author (2 PRs):
+- PR #2540: CWD crash fix (draft)
+- PR #2533: Precommit skill conversion (draft, Copilot-created)
 
-PR #2540: fix: prevent crash when renaming directory containing CWD
-- Priority: HIGH (80), Risk: MEDIUM (45)
-- Status: Draft, incomplete testing
-- Action: ⏳ WAIT - needs tests and review request
+Stale - Consider Closing (2 PRs):
+- PR #1784: Parallel Task Orchestrator (3+ months old)
+- PR #1376: Enable Serena MCP (3+ months old)
 
-PR #2533: Convert precommit_manager.py from loose script to proper skill
-- Priority: LOW (45), Risk: MEDIUM (40)
-- Status: Draft, Copilot-created
-- Action: ⏳ WAIT - let Copilot complete
+=== ACTIONS TAKEN ===
 
-=== STALE - CONSIDER CLOSING (2 PRs) ===
+✅ Analyzed 2 new PRs (#2558, #2554)
+✅ Added triage comments to both PRs
+✅ Updated triage state and memory files
+✅ Categorized all PRs by status
 
-PR #1784: feat: Parallel Task Orchestrator (3 months old)
-- Priority: LOW (40), Risk: HIGH (75)
-- Status: Stale draft, complex feature
-- Action: 🔄 CLOSE OR REBASE - needs author decision
+=== NEXT ACTIONS ===
 
-PR #1376: feat: Enable Serena MCP (3+ months old)
-- Priority: LOW (35), Risk: MEDIUM (50)
-- Status: Very stale draft
-- Action: 🔄 CLOSE OR REBASE - likely outdated
+1. Wait for CI on PRs #2558, #2554
+2. Review PR #2558 once CI passes
+3. Auto-merge PR #2554 once CI passes
+4. Follow up with draft PR authors (#2540, #2533, #2515)
+5. Consider closing stale PRs (#1784, #1376)
 
-Next Triage: Automatic on next trigger
+Next Triage: Automatic on next workflow trigger
