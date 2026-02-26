@@ -1071,8 +1071,11 @@ class PowerSteeringChecker:
 
             if is_first_stop:
                 # FIRST STOP: Block to show results (visibility feature)
-                # Mark results shown immediately to prevent race condition
+                # Mark results shown AND complete immediately.
+                # Defense-in-depth for Issue #2548: if session_id lookup fails on the next stop,
+                # _already_ran() returning True prevents the visibility block from re-triggering.
                 self._mark_results_shown(session_id)
+                self._mark_complete(session_id)
                 self._log("First stop - blocking to display all results for visibility", "INFO")
                 self._emit_progress(
                     progress_callback,
