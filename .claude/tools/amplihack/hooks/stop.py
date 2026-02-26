@@ -171,10 +171,36 @@ class StopHook(HookProcessor):
                     self._increment_power_steering_counter(session_id)
 
                     if ps_result.decision == "block":
-                        # Check if this is first stop (visibility feature)
-                        if ps_result.is_first_stop and ps_result.analysis:
-                            # FIRST STOP: Display all results for visibility
-                            # Note: Semaphore marking already done in checker to prevent race condition
+                        # Fix for Issue #2473: Distinguish between visibility block
+                        # (all checks passed) and failure block (actual issues found).
+                        # Previously, both returned decision="block" to Claude Code,
+                        # causing false failures when all checks actually passed.
+                        is_visibility_only = (
+                            ps_result.is_first_stop
+                            and ps_result.reasons == ["first_stop_visibility"]
+                        )
+
+                        if is_visibility_only and ps_result.analysis:
+                            # FIRST STOP, ALL CHECKS PASSED: Display results but APPROVE
+                            # the stop. The results are shown via stderr for user visibility.
+                            # This prevents the false failure where the stop was blocked
+                            # even though all checks passed.
+                            self.log(
+                                "First stop - all checks passed, displaying results and approving"
+                            )
+                            progress_tracker.display_all_results(
+                                analysis=ps_result.analysis,
+                                considerations=ps_checker.considerations,
+                                is_first_stop=True,
+                            )
+                            self.save_metric("power_steering_first_stop_visibility", 1)
+                            self.log(
+                                "=== STOP HOOK ENDED (decision: approve - all checks passed) ==="
+                            )
+                            return {"decision": "approve"}
+
+                        elif ps_result.is_first_stop and ps_result.analysis:
+                            # FIRST STOP with actual failures: Block and display results
                             self.log(
                                 "First stop - displaying all consideration results for visibility"
                             )
@@ -183,9 +209,9 @@ class StopHook(HookProcessor):
                                 considerations=ps_checker.considerations,
                                 is_first_stop=True,
                             )
-                            self.save_metric("power_steering_first_stop_visibility", 1)
+                            self.save_metric("power_steering_blocks", 1)
                         else:
-                            # Subsequent stop with failures OR first stop with failures
+                            # Subsequent stop with failures
                             self.log("Power-steering blocking stop - work incomplete")
                             self.save_metric("power_steering_blocks", 1)
                             # Display final summary

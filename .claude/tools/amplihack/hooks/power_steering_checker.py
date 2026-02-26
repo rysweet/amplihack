@@ -1091,6 +1091,14 @@ class PowerSteeringChecker:
                     "Power-steering analysis complete - all checks passed (first stop - displaying results)",
                 )
 
+                # Fix for Issue #2473: Record turn state approval on first-stop visibility.
+                # Previously, turn state was incremented but never approved/blocked on this path,
+                # leaving it in an ambiguous state that could cause premature auto-approve
+                # thresholds on subsequent stops if _already_ran() fails.
+                if turn_state_manager and turn_state:
+                    turn_state = turn_state_manager.record_approval(turn_state)
+                    turn_state_manager.save_state(turn_state)
+
                 # Format results for inclusion in continuation_prompt
                 # This ensures results are visible even when stderr is not shown
                 results_text = self._format_results_text(analysis, session_type)
@@ -2262,8 +2270,19 @@ class PowerSteeringChecker:
                     severity=old_result.severity,
                 )
 
-        # Create new analysis with modified results
-        return ConsiderationAnalysis(results=modified_results)
+        # Create new analysis with modified results and rebuild failed lists
+        # Fix for Issue #2473: Previously, failed_blockers and failed_warnings
+        # defaulted to empty lists, creating inconsistent state where results
+        # dict contained unsatisfied items but the lists were empty. This caused
+        # _format_results_text() and display_all_results() to show false failures.
+        new_analysis = ConsiderationAnalysis(results=modified_results)
+        for result in modified_results.values():
+            if not result.satisfied:
+                if result.severity == "blocker":
+                    new_analysis.failed_blockers.append(result)
+                else:
+                    new_analysis.failed_warnings.append(result)
+        return new_analysis
 
     def _convert_to_failure_evidence(
         self,
