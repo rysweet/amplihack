@@ -23,6 +23,9 @@ Phase 4 (Performance) Implementation:
 - Transcript loaded ONCE, shared across parallel workers
 - All checks run (no early exit) for comprehensive feedback
 - No caching (not applicable to session-specific analysis)
+
+Public API for testing:
+    is_disabled() - Standalone function to check if power-steering is disabled
 """
 
 import asyncio
@@ -42,6 +45,16 @@ import yaml
 
 # Clean import structure
 sys.path.insert(0, str(Path(__file__).parent))
+
+# Import git utilities for worktree detection
+try:
+    from git_utils import get_shared_runtime_dir
+except ImportError:
+    # Fallback if git_utils not available (fail-open)
+    def get_shared_runtime_dir(project_root: str | Path) -> str:
+        """Fallback implementation when git_utils is unavailable."""
+        return str(Path(project_root) / ".claude" / "runtime")
+
 
 # Try to import Claude SDK integration
 try:
@@ -323,6 +336,14 @@ class PowerSteeringChecker:
         "git rebase",
         "merge main",
         "merge master",
+        "merge pr",
+        "merge the pr",
+        "merge this pr",
+        "merge it",
+        "review pr",
+        "review the pr",
+        "review and merge",
+        "approve and merge",
         "workspace",
         "stash",
         "git stash",
@@ -417,7 +438,13 @@ class PowerSteeringChecker:
             project_root = self._detect_project_root()
 
         self.project_root = project_root
-        self.runtime_dir = project_root / ".claude" / "runtime" / "power-steering"
+
+        # Use shared runtime directory for worktree support
+        # In worktrees, this resolves to main repo's .claude/runtime
+        # In main repos, this resolves to project_root/.claude/runtime
+        shared_runtime = get_shared_runtime_dir(str(project_root))
+        self.runtime_dir = Path(shared_runtime) / "power-steering"
+
         self.config_path = (
             project_root / ".claude" / "tools" / "amplihack" / ".power_steering_config"
         )
@@ -1052,8 +1079,11 @@ class PowerSteeringChecker:
 
             if is_first_stop:
                 # FIRST STOP: Block to show results (visibility feature)
-                # Mark results shown immediately to prevent race condition
+                # Mark results shown AND complete immediately.
+                # Defense-in-depth for Issue #2548: if session_id lookup fails on the next stop,
+                # _already_ran() returning True prevents the visibility block from re-triggering.
                 self._mark_results_shown(session_id)
+                self._mark_complete(session_id)
                 self._log("First stop - blocking to display all results for visibility", "INFO")
                 self._emit_progress(
                     progress_callback,
@@ -1155,24 +1185,48 @@ class PowerSteeringChecker:
     def _is_disabled(self) -> bool:
         """Check if power-steering is disabled.
 
-        Three-layer disable system (priority order):
-        1. Semaphore file (highest)
-        2. Environment variable (medium)
-        3. Config file (lowest)
+        Four-layer disable system (priority order):
+        1. Semaphore file in CWD (highest - for worktree-specific disabling)
+        2. Semaphore file in shared runtime (for disabling across all worktrees)
+        3. Environment variable (medium)
+        4. Config file (lowest)
+
+        Worktree Support:
+        - Checks both CWD/.disabled and shared runtime directory for .disabled file
+        - This allows disabling power-steering either locally in a worktree
+          (worktree/.disabled) or globally for all worktrees
+          (main_repo/.claude/runtime/power-steering/.disabled)
 
         Returns:
             True if disabled, False if enabled
         """
-        # Check 1: Semaphore file
-        disabled_file = self.runtime_dir / ".disabled"
-        if disabled_file.exists():
-            return True
+        try:
+            # Check 1: Semaphore file directly in current working directory
+            # This allows worktree-specific disabling with simple `touch .disabled`
+            cwd_disabled = Path.cwd() / ".disabled"
+            if cwd_disabled.exists():
+                return True
+        except (OSError, RuntimeError):
+            # Fail-open: If CWD check fails, continue to other checks
+            pass
 
-        # Check 2: Environment variable
+        try:
+            # Check 2: Semaphore file in shared runtime directory
+            # This affects main repo and all worktrees
+            # Use get_shared_runtime_dir() dynamically to support test mocking
+            shared_runtime = Path(get_shared_runtime_dir(self.project_root))
+            disabled_file = shared_runtime / "power-steering" / ".disabled"
+            if disabled_file.exists():
+                return True
+        except (OSError, RuntimeError):
+            # Fail-open: If runtime dir check fails, continue to other checks
+            pass
+
+        # Check 3: Environment variable
         if os.getenv("AMPLIHACK_SKIP_POWER_STEERING"):
             return True
 
-        # Check 3: Config file
+        # Check 4: Config file
         if not self.config.get("enabled", False):
             return True
 
@@ -1761,19 +1815,20 @@ class PowerSteeringChecker:
         self,
         code_files_modified: bool,
         test_executions: int,
-        pr_operations: bool,
+        pr_dev_operations: bool,
     ) -> bool:
         """Check if transcript shows development indicators.
 
         Args:
             code_files_modified: Whether code files were modified
             test_executions: Number of test executions
-            pr_operations: Whether PR operations were performed
+            pr_dev_operations: Whether PR creation/edit operations were performed
+                (PR view/merge/review are ops, not development signals)
 
         Returns:
             True if development indicators present
         """
-        return code_files_modified or test_executions > 0 or pr_operations
+        return code_files_modified or test_executions > 0 or pr_dev_operations
 
     def _has_informational_indicators(
         self,
@@ -1969,7 +2024,7 @@ class PowerSteeringChecker:
         write_edit_operations = 0
         read_grep_operations = 0
         test_executions = 0
-        pr_operations = False
+        pr_dev_operations = False  # PR creation/edit (development signals)
         git_operations = False
 
         # Count questions in user messages for INFORMATIONAL detection
@@ -2024,9 +2079,11 @@ class PowerSteeringChecker:
                             if any(pattern in command for pattern in self.TEST_COMMAND_PATTERNS):
                                 test_executions += 1
 
-                            # PR operations
-                            if "gh pr create" in command or "gh pr" in command:
-                                pr_operations = True
+                            # PR operations - distinguish dev (create/edit) from ops (view/merge/review)
+                            if "gh pr create" in command or "gh pr edit" in command:
+                                pr_dev_operations = True
+                            elif "gh pr" in command:
+                                pass  # view/merge/checks/diff/ready - ops, not development
 
                             # Git operations
                             if "git commit" in command or "git push" in command:
@@ -2044,8 +2101,9 @@ class PowerSteeringChecker:
         # DEVELOPMENT: CODE modifications override investigation keywords (fixes #2196)
         # Only override keywords if we have actual CODE file modifications
         # Doc/config updates or git operations should NOT override investigation keywords
-        if code_files_modified or test_executions > 0 or pr_operations:
-            # Strong signal: Write/Edit of CODE files, tests run, PR operations
+        # PR ops (view/merge/review/checks) are NOT development signals (fixes #2563)
+        if code_files_modified or test_executions > 0 or pr_dev_operations:
+            # Strong signal: Write/Edit of CODE files, tests run, PR creation/editing
             self._log("Session classified as DEVELOPMENT via CODE modification patterns", "INFO")
             return "DEVELOPMENT"
 
@@ -2863,8 +2921,10 @@ class PowerSteeringChecker:
                 if state_file.exists():
                     state = json.loads(state_file.read_text())
                     session_type = state.get("session_type", "DEVELOPMENT")
-            except Exception:
-                pass  # Use default
+            except Exception as e:
+                self._log(
+                    f"Could not load session type from state file, using default: {e}", "DEBUG"
+                )
 
             # Use SDK analysis for workflow invocation validation
             valid, reason = analyze_workflow_invocation_sync(
@@ -2972,8 +3032,8 @@ class PowerSteeringChecker:
             )
 
             log_file.write_text(json.dumps(violations, indent=2), encoding="utf-8")
-        except Exception:
-            pass  # Fail silently
+        except Exception as e:
+            self._log(f"Could not write violation log (non-critical): {e}", "WARNING")
 
     def _check_dev_workflow_complete(self, transcript: list[dict], session_id: str) -> bool:
         """Check if full DEFAULT_WORKFLOW followed.
@@ -3653,8 +3713,9 @@ class PowerSteeringChecker:
             # All checks passed
             return True
 
-        except Exception:
+        except Exception as e:
             # Fail-open: Return True on errors to avoid blocking users
+            self._log(f"PR content validation error (fail-open): {e}", "WARNING")
             return True
 
     def _is_docs_only_session(self, transcript: list[dict]) -> bool:
@@ -3693,8 +3754,9 @@ class PowerSteeringChecker:
             # Docs-only session if docs modified but no code files
             return docs_modified and not code_modified
 
-        except Exception:
+        except Exception as e:
             # Fail-open: Return False on errors (assume code might be modified)
+            self._log(f"Docs-only session detection error (fail-open): {e}", "WARNING")
             return False
 
     def _check_next_steps(self, transcript: list[dict], session_id: str) -> bool:
@@ -4523,7 +4585,10 @@ class PowerSteeringChecker:
                     return consideration.get("enabled", True)
 
             return True  # Not found = default enabled
-        except Exception:
+        except Exception as e:
+            self._log(
+                f"Could not check consideration enabled state, defaulting to enabled: {e}", "DEBUG"
+            )
             return True  # Fail-open
 
     def _check_compaction_handling(self, transcript: list[dict], session_id: str) -> bool:
@@ -4595,6 +4660,27 @@ def check_session(
     """
     checker = PowerSteeringChecker(project_root)
     return checker.check(transcript_path, session_id)
+
+
+def is_disabled(project_root: Path | None = None) -> bool:
+    """Standalone function to check if power-steering is disabled.
+
+    This function exists primarily for testing purposes, allowing tests
+    to check the disabled status without creating a full PowerSteeringChecker
+    instance.
+
+    Args:
+        project_root: Project root directory (auto-detected if None)
+
+    Returns:
+        True if power-steering is disabled, False if enabled
+    """
+    try:
+        checker = PowerSteeringChecker(project_root)
+        return checker._is_disabled()
+    except Exception:
+        # Fail-open: If checker creation fails, assume not disabled
+        return False
 
 
 if __name__ == "__main__":
