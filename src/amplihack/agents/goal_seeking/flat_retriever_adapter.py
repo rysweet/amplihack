@@ -201,6 +201,11 @@ class FlatRetrieverAdapter:
         """
         return self.memory.store_episode(content=content, source_label=source_label)
 
+    def flush_memory(self) -> None:
+        """Flush underlying memory cache without losing data."""
+        if hasattr(self.memory, "flush_memory"):
+            self.memory.flush_memory()
+
     def close(self) -> None:
         """Close underlying HierarchicalMemory."""
         self.memory.close()

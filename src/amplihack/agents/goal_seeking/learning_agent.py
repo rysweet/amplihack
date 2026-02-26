@@ -2367,9 +2367,7 @@ Is the fact consistent with stored knowledge? Return ONLY a JSON object:
         "last": "-1",
     }
 
-    def retrieve_transition_chain(
-        self, entity: str, field: str
-    ) -> list[dict[str, Any]]:
+    def retrieve_transition_chain(self, entity: str, field: str) -> list[dict[str, Any]]:
         """Retrieve all SUPERSEDED states for an entity/field from memory.
 
         Queries memory for all facts related to the entity and field,
@@ -2473,9 +2471,7 @@ Is the fact consistent with stored knowledge? Return ONLY a JSON object:
         # Default: latest value
         return "-1"
 
-    def temporal_code_synthesis(
-        self, question: str, entity: str, field: str
-    ) -> dict[str, Any]:
+    def temporal_code_synthesis(self, question: str, entity: str, field: str) -> dict[str, Any]:
         """Generate Python code to resolve a temporal question.
 
         Produces a code snippet that retrieves the transition chain for
@@ -2582,6 +2578,11 @@ Examples:
             logger.warning("Entity/field extraction failed: %s", e)
 
         return {"code": "", "index_expr": "", "transitions": [], "result": None}
+
+    def flush_memory(self):
+        """Flush memory cache without losing data or agent state."""
+        if hasattr(self.memory, "flush_memory"):
+            self.memory.flush_memory()
 
     def close(self):
         """Close agent and release resources."""

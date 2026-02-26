@@ -18,6 +18,7 @@ Public API:
 
 from __future__ import annotations
 
+import gc
 import json
 import logging
 import re
@@ -171,14 +172,10 @@ class KnowledgeSubgraph:
                 )
 
         # Show transition chains if TRANSITIONED_TO edges exist
-        transition_edges = [
-            e for e in self.edges if e.relationship == "TRANSITIONED_TO"
-        ]
+        transition_edges = [e for e in self.edges if e.relationship == "TRANSITIONED_TO"]
         if transition_edges:
             # Sort by turn to show progression
-            transition_edges.sort(
-                key=lambda e: e.metadata.get("turn", 0) if e.metadata else 0
-            )
+            transition_edges.sort(key=lambda e: e.metadata.get("turn", 0) if e.metadata else 0)
             lines.append("\nTransition history:")
             for edge in transition_edges:
                 from_val = edge.metadata.get("from_value", "?") if edge.metadata else "?"
@@ -2251,6 +2248,23 @@ class HierarchicalMemory:
             logger.debug("Failed to get episodic node IDs: %s", e)
 
         return ids
+
+    def flush_memory(self) -> None:
+        """Close and reopen Kuzu connection to flush buffer cache.
+
+        This releases Kuzu's in-process buffer pool memory without losing
+        any persisted data.  Much lighter than a full agent restart: the
+        Database object (and its on-disk files) stays intact, only the
+        Connection is recycled.
+        """
+        try:
+            if hasattr(self, "connection"):
+                del self.connection
+            gc.collect()
+            self.connection = kuzu.Connection(self.database)
+            logger.debug("flush_memory: Kuzu connection recycled for %s", self.agent_name)
+        except Exception as e:
+            logger.warning("flush_memory failed: %s", e)
 
     def close(self) -> None:
         """Close database connection and release resources."""
