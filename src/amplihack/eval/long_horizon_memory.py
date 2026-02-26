@@ -528,6 +528,9 @@ class LongHorizonMemoryEval:
         grader_votes: Number of grading votes per question (default 3)
         parallel_workers: Number of parallel workers for question answering
             and grading. Set to 1 for sequential execution (default 10, max 20).
+        flush_every: Flush agent memory every N turns during dialogue to cap
+            memory growth. 0 disables (default 0). Requires the agent to
+            expose a ``flush_memory()`` method (e.g. HierarchicalMemory).
 
     Example:
         >>> from amplihack.agents.goal_seeking.learning_agent import LearningAgent
@@ -544,12 +547,14 @@ class LongHorizonMemoryEval:
         seed: int = 42,
         grader_votes: int = 3,
         parallel_workers: int = 10,
+        flush_every: int = 0,
     ):
         self.num_turns = num_turns
         self.num_questions = num_questions
         self.seed = seed
         self.grader_votes = max(1, grader_votes)
         self.parallel_workers = max(1, min(20, parallel_workers))
+        self.flush_every = max(0, flush_every)
         self.ground_truth: GroundTruth | None = None
         self.questions: list[Question] = []
 
@@ -567,6 +572,10 @@ class LongHorizonMemoryEval:
     def run_dialogue(self, agent: Any, ground_truth: GroundTruth | None = None) -> float:
         """Feed all turns to the agent's learning method.
 
+        When ``flush_every > 0`` and the agent exposes ``flush_memory()``,
+        the memory connection is periodically recycled to cap in-process
+        cache growth without losing any persisted data.
+
         Args:
             agent: Agent with learn_from_content(content) method
             ground_truth: Override ground truth (uses self.ground_truth if None)
@@ -578,8 +587,17 @@ class LongHorizonMemoryEval:
         if gt is None:
             raise ValueError("Must call generate() first or pass ground_truth")
 
+        flush_every = self.flush_every
+        can_flush = flush_every > 0 and hasattr(agent, "flush_memory")
+        if flush_every > 0 and not can_flush:
+            logger.warning(
+                "flush_every=%d but agent has no flush_memory(); disabling periodic flush",
+                flush_every,
+            )
+
         start = time.time()
         total = len(gt.turns)
+        flushes = 0
 
         for i, turn in enumerate(gt.turns):
             if not turn.content or not turn.content.strip():
@@ -601,8 +619,27 @@ class LongHorizonMemoryEval:
                     turn.block_name,
                 )
 
+            # Periodic memory flush to cap cache growth
+            if can_flush and (i + 1) % flush_every == 0 and (i + 1) < total:
+                logger.info(
+                    "Flushing memory at turn %d/%d (flush #%d)",
+                    i + 1,
+                    total,
+                    flushes + 1,
+                )
+                try:
+                    agent.flush_memory()
+                except Exception as e:
+                    logger.warning("flush_memory failed at turn %d: %s", i + 1, e)
+                flushes += 1
+
         elapsed = time.time() - start
-        logger.info("Dialogue complete: %d turns in %.1fs", total, elapsed)
+        logger.info(
+            "Dialogue complete: %d turns in %.1fs (%d memory flushes)",
+            total,
+            elapsed,
+            flushes,
+        )
         return elapsed
 
     def evaluate(
@@ -992,6 +1029,13 @@ def main() -> None:
         default=10,
         help="Number of parallel workers for question answering/grading (1=sequential, max 20, default: 10)",
     )
+    parser.add_argument(
+        "--flush-every",
+        type=int,
+        default=100,
+        help="Flush agent memory every N turns to cap cache growth. "
+        "0 disables. Agent must expose flush_memory() (default: 100).",
+    )
 
     args = parser.parse_args()
 
@@ -1082,6 +1126,7 @@ def main() -> None:
             seed=args.seed,
             grader_votes=args.grader_votes,
             parallel_workers=args.parallel_workers,
+            flush_every=args.flush_every,
         )
 
         if args.skip_learning:
