@@ -756,6 +756,22 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     )
     new_parser.add_argument("--enable-memory", action="store_true", help="Enable memory/learning")
     new_parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
+    new_parser.add_argument(
+        "--sdk",
+        choices=["copilot", "claude", "microsoft", "mini"],
+        default="copilot",
+        help="SDK to use for agent execution (default: copilot)",
+    )
+    new_parser.add_argument(
+        "--multi-agent",
+        action="store_true",
+        help="Enable multi-agent architecture with coordinator, memory agent, and sub-agents",
+    )
+    new_parser.add_argument(
+        "--enable-spawning",
+        action="store_true",
+        help="Enable dynamic sub-agent spawning (requires --multi-agent)",
+    )
 
     # Recipe commands
     recipe_parser = subparsers.add_parser("recipe", help="Recipe management and execution commands")
@@ -1723,6 +1739,9 @@ def main(argv: list[str] | None = None) -> int:
             skills_dir=args.skills_dir,
             verbose=args.verbose,
             enable_memory=args.enable_memory,
+            sdk=args.sdk,
+            multi_agent=args.multi_agent,
+            enable_spawning=args.enable_spawning,
         )
 
     elif args.command == "recipe":

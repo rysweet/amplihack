@@ -329,8 +329,8 @@ def _local_install(repo_root, profile_uri=None):
             sys.path.insert(0, profile_mgmt_dir)
 
         # Now import staging module (from tools/amplihack/)
-        from profile_management.staging import (
-            create_staging_manifest,  # type: ignore[import-not-found]
+        from profile_management.staging import (  # type: ignore[import-not-found]
+            create_staging_manifest,  # pyright: ignore[reportMissingImports]
         )
 
         manifest = create_staging_manifest(ESSENTIAL_DIRS, profile_uri)
