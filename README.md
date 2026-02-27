@@ -104,16 +104,61 @@ source ~/.bashrc  # or source ~/.zshrc
 After launching:
 
 ```
-# New users - interactive tutorial (60-90 minutes)
+# New users — interactive tutorial (30 min)
 Task(subagent_type='guide', prompt='I am new to amplihack. Teach me the basics.')
 
-# Experienced users - start coding
+# Experienced developers — start immediately
 cd /path/to/my/project
-[Your prompt here - automatically uses /amplihack:ultrathink workflow]
+/dev fix the login timeout bug
+/dev build a REST API and React webui for user management
 ```
 
-All prompts automatically invoke systematic workflow orchestration. Use
-`--no-ultrathink` flag for simple tasks.
+The `/dev` command automatically classifies your task, detects parallel workstreams, and orchestrates execution.
+
+### Developer Quick Example
+
+Here is a complete end-to-end example of amplihack in action:
+
+**1. Single task** — fix a bug:
+```bash
+cd /path/to/your/project
+/dev fix the authentication bug where JWT tokens expire too early
+```
+
+What happens:
+- Classifies as: `Development` | `1 workstream`
+- Builder agent follows the full 23-step DEFAULT_WORKFLOW
+- Creates a branch, implements the fix, creates a PR
+- Reviewer evaluates the result — if incomplete, automatically runs another round
+- Final output: `# Dev Orchestrator -- Execution Complete` with PR link
+
+**2. Parallel task** — two independent features at once:
+```bash
+/dev build a REST API and a React webui for user management
+```
+
+What happens:
+- Classifies as: `Development` | `2 workstreams`
+- Both workstreams launch in parallel (separate `/tmp` clones)
+- Each follows the full workflow independently
+- Both PRs created simultaneously
+
+**3. Investigation** — understand existing code before changing it:
+```bash
+/dev investigate how the caching layer works, then add Redis support
+```
+
+What happens:
+- Detects two workstreams: investigate + implement
+- Investigation phase runs first, findings pass to implementation
+- Result: informed implementation with full context
+
+**What you'll see during execution:**
+1. `[dev-orchestrator] Classified as: Development | Workstreams: 2 — starting execution...`
+2. Builder agent output streaming (the actual work)
+3. Reviewer evaluation with `GOAL_STATUS: ACHIEVED` or `PARTIAL`
+4. If partial — another round runs automatically (up to 3 total)
+5. `# Dev Orchestrator -- Execution Complete` with summary and PR links
 
 ## Core Concepts
 
@@ -135,6 +180,8 @@ Philosophy guide:
 All work flows through structured workflows that detect user intent and guide
 execution:
 
+For most tasks, type `/dev <your task>` — the smart-orchestrator automatically selects the right workflow.
+
 - **DEFAULT_WORKFLOW**: 22-step systematic development process (features, bugs,
   refactoring)
 - **INVESTIGATION_WORKFLOW**: 6-phase knowledge excavation (understanding
@@ -154,8 +201,11 @@ Workflow customization:
 
 - **[Workflow Orchestration](#workflows)** - Systematic multi-step workflows for
   development, investigation, and operations
-- **[UltraThink](/amplihack:ultrathink)** - Deep multi-agent analysis and
-  workflow execution (default for all prompts)
+- **[dev-orchestrator (`/dev`)](/dev)** - Unified task orchestrator: classifies
+  tasks, detects parallel workstreams, executes via recipe runner, reflects on
+  goal achievement (default for all non-trivial tasks)
+- **[smart-orchestrator recipe](amplifier-bundle/recipes/smart-orchestrator.yaml)** -
+  Core recipe powering /dev: classify → decompose → execute → goal-seeking loop
 - **[Recipe Runner](docs/recipes/README.md)** - Code-enforced workflows that
   models cannot skip (10 bundled recipes)
 - **[Auto Mode](https://rysweet.github.io/amplihack/AUTO_MODE/)** - Autonomous
