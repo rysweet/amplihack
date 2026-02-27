@@ -358,7 +358,12 @@ python -m amplihack.eval.long_horizon_memory --turns 1000 --questions 100
 
 # With SDK agent
 python -m amplihack.eval.long_horizon_memory --sdk claude --turns 500 --questions 50
+
+# Large-scale with subprocess segmentation (prevents OOM on 5000+ turns)
+python -m amplihack.eval.long_horizon_memory --turns 5000 --questions 200 --segment-size 100
 ```
+
+**Subprocess segmentation** (`--segment-size N`): For 5000+ turn evaluations, native memory from Kuzu C++ and aiohttp accumulates ~3MB/turn. The `--segment-size` flag splits the learning phase into subprocess segments of N turns each. Each subprocess loads its turn slice, learns it into the shared on-disk DB, then exits -- freeing all native memory. After all segments complete, the questioning phase runs against the accumulated DB. Default (`--segment-size 0`) runs everything in one process.
 
 **12 information blocks** with proportional turn allocation:
 

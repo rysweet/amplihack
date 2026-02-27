@@ -320,9 +320,7 @@ class TestTemporalCodeGeneration:
 
     def test_parse_before_first_change(self, agent):
         """Test 'BEFORE the first change' maps to index 0 (original)."""
-        result = agent._parse_temporal_index(
-            "What WAS the deadline BEFORE the first change?"
-        )
+        result = agent._parse_temporal_index("What WAS the deadline BEFORE the first change?")
         assert result == "0"
 
     def test_parse_after_first_before_second(self, agent):
@@ -334,16 +332,12 @@ class TestTemporalCodeGeneration:
 
     def test_parse_before_final_change(self, agent):
         """Test 'BEFORE the final change' maps to second-to-last."""
-        result = agent._parse_temporal_index(
-            "What was the value BEFORE the final change?"
-        )
+        result = agent._parse_temporal_index("What was the value BEFORE the final change?")
         assert result == "-2"
 
     def test_parse_after_second_change(self, agent):
         """Test 'AFTER the second change' maps to index 2."""
-        result = agent._parse_temporal_index(
-            "What was the deadline AFTER the second change?"
-        )
+        result = agent._parse_temporal_index("What was the deadline AFTER the second change?")
         assert result == "2"
 
     def test_parse_default_returns_latest(self, agent):
@@ -483,11 +477,7 @@ class TestTemporalCodeGeneration:
         """Test _code_generation_tool extracts entity and field via LLM."""
         mock_response = MagicMock()
         mock_response.choices = [
-            MagicMock(
-                message=MagicMock(
-                    content='{"entity": "Atlas", "field": "deadline"}'
-                )
-            )
+            MagicMock(message=MagicMock(content='{"entity": "Atlas", "field": "deadline"}'))
         ]
         mock_completion.return_value = mock_response
 
@@ -497,9 +487,7 @@ class TestTemporalCodeGeneration:
             confidence=0.9,
         )
 
-        result = agent._code_generation_tool(
-            "What WAS the Atlas deadline BEFORE the first change?"
-        )
+        result = agent._code_generation_tool("What WAS the Atlas deadline BEFORE the first change?")
 
         assert "code" in result
         assert "Atlas" in result["code"]

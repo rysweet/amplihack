@@ -85,9 +85,9 @@ class MultiAgentLearningAgent(LearningAgent):
             try:
                 self.spawner = AgentSpawner(
                     parent_agent_name=agent_name,
-                    parent_memory_path=str(storage_path) if storage_path else str(
-                        Path.home() / ".amplihack" / "agents" / agent_name
-                    ),
+                    parent_memory_path=str(storage_path)
+                    if storage_path
+                    else str(Path.home() / ".amplihack" / "agents" / agent_name),
                 )
                 logger.info("Spawner initialized for MultiAgentLearningAgent '%s'", agent_name)
             except Exception as e:
@@ -253,9 +253,7 @@ class MultiAgentLearningAgent(LearningAgent):
             return answer, trace
         return answer
 
-    def _spawn_retrieval(
-        self, question: str, reasoning_type: str
-    ) -> list[dict[str, Any]]:
+    def _spawn_retrieval(self, question: str, reasoning_type: str) -> list[dict[str, Any]]:
         """Spawn a retrieval sub-agent for multi-hop fact gathering.
 
         Creates a retrieval specialist that searches the parent's memory
@@ -286,12 +284,14 @@ class MultiAgentLearningAgent(LearningAgent):
                     if line.startswith("- ") and ":" in line:
                         parts = line[2:].split(":", 1)
                         if len(parts) == 2:
-                            facts.append({
-                                "context": parts[0].strip(),
-                                "outcome": parts[1].strip(),
-                                "confidence": 0.7,
-                                "metadata": {"source": "spawned_retrieval"},
-                            })
+                            facts.append(
+                                {
+                                    "context": parts[0].strip(),
+                                    "outcome": parts[1].strip(),
+                                    "confidence": 0.7,
+                                    "metadata": {"source": "spawned_retrieval"},
+                                }
+                            )
 
         # Clear spawner for next use
         self.spawner.clear()

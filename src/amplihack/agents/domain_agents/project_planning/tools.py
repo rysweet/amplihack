@@ -39,7 +39,21 @@ def decompose_project(description: str, max_depth: int = 2) -> dict[str, Any]:
         list_match = re.match(r"^(?:\d+[.)]\s*|[-*+]\s*|>\s*)(.*)", stripped)
         if list_match:
             task_text = list_match.group(1).strip()
-        elif any(word in stripped.lower() for word in ["need to", "should", "must", "will", "create", "build", "implement", "design", "test", "deploy"]):
+        elif any(
+            word in stripped.lower()
+            for word in [
+                "need to",
+                "should",
+                "must",
+                "will",
+                "create",
+                "build",
+                "implement",
+                "design",
+                "test",
+                "deploy",
+            ]
+        ):
             task_text = stripped
         else:
             continue
@@ -53,7 +67,10 @@ def decompose_project(description: str, max_depth: int = 2) -> dict[str, Any]:
         complexity = "medium"
         if any(w in task_text.lower() for w in ["simple", "quick", "update", "fix", "minor"]):
             complexity = "low"
-        elif any(w in task_text.lower() for w in ["architecture", "redesign", "migrate", "integrate", "complex"]):
+        elif any(
+            w in task_text.lower()
+            for w in ["architecture", "redesign", "migrate", "integrate", "complex"]
+        ):
             complexity = "high"
 
         # Estimate effort
@@ -63,20 +80,19 @@ def decompose_project(description: str, max_depth: int = 2) -> dict[str, Any]:
         owner_match = re.search(r"(?:assigned to|owner:|by)\s+(\w+)", task_text, re.IGNORECASE)
         owner = owner_match.group(1) if owner_match else ""
 
-        tasks.append({
-            "id": f"T{task_id:03d}",
-            "title": task_text[:200],
-            "complexity": complexity,
-            "estimated_effort": effort_map[complexity],
-            "owner": owner,
-            "status": "planned",
-        })
+        tasks.append(
+            {
+                "id": f"T{task_id:03d}",
+                "title": task_text[:200],
+                "complexity": complexity,
+                "estimated_effort": effort_map[complexity],
+                "owner": owner,
+                "status": "planned",
+            }
+        )
 
     # Estimate total effort
-    total_days = sum(
-        {"low": 1.5, "medium": 4, "high": 10}.get(t["complexity"], 4)
-        for t in tasks
-    )
+    total_days = sum({"low": 1.5, "medium": 4, "high": 10}.get(t["complexity"], 4) for t in tasks)
     if total_days <= 5:
         estimated_effort = f"~{total_days:.0f} days"
     elif total_days <= 20:
@@ -116,40 +132,67 @@ def analyze_dependencies(tasks: list[dict[str, Any]]) -> dict[str, Any]:
     task_titles = {t["id"]: t.get("title", "").lower() for t in tasks}
 
     # Heuristic dependency detection based on task content
-    design_tasks = [t for t in tasks if any(w in task_titles.get(t["id"], "") for w in ["design", "architecture", "plan", "spec"])]
-    impl_tasks = [t for t in tasks if any(w in task_titles.get(t["id"], "") for w in ["implement", "build", "create", "develop", "code"])]
-    test_tasks = [t for t in tasks if any(w in task_titles.get(t["id"], "") for w in ["test", "verify", "validate", "qa"])]
-    deploy_tasks = [t for t in tasks if any(w in task_titles.get(t["id"], "") for w in ["deploy", "release", "launch", "ship"])]
+    design_tasks = [
+        t
+        for t in tasks
+        if any(
+            w in task_titles.get(t["id"], "") for w in ["design", "architecture", "plan", "spec"]
+        )
+    ]
+    impl_tasks = [
+        t
+        for t in tasks
+        if any(
+            w in task_titles.get(t["id"], "")
+            for w in ["implement", "build", "create", "develop", "code"]
+        )
+    ]
+    test_tasks = [
+        t
+        for t in tasks
+        if any(w in task_titles.get(t["id"], "") for w in ["test", "verify", "validate", "qa"])
+    ]
+    deploy_tasks = [
+        t
+        for t in tasks
+        if any(w in task_titles.get(t["id"], "") for w in ["deploy", "release", "launch", "ship"])
+    ]
 
     # Design before implementation
     for d in design_tasks:
         for i in impl_tasks:
-            dependencies.append({
-                "from": d["id"],
-                "to": i["id"],
-                "type": "finish-to-start",
-                "reason": "Design must precede implementation",
-            })
+            dependencies.append(
+                {
+                    "from": d["id"],
+                    "to": i["id"],
+                    "type": "finish-to-start",
+                    "reason": "Design must precede implementation",
+                }
+            )
 
     # Implementation before testing
     for i in impl_tasks:
         for t in test_tasks:
-            dependencies.append({
-                "from": i["id"],
-                "to": t["id"],
-                "type": "finish-to-start",
-                "reason": "Implementation must precede testing",
-            })
+            dependencies.append(
+                {
+                    "from": i["id"],
+                    "to": t["id"],
+                    "type": "finish-to-start",
+                    "reason": "Implementation must precede testing",
+                }
+            )
 
     # Testing before deployment
     for t in test_tasks:
         for d in deploy_tasks:
-            dependencies.append({
-                "from": t["id"],
-                "to": d["id"],
-                "type": "finish-to-start",
-                "reason": "Testing must precede deployment",
-            })
+            dependencies.append(
+                {
+                    "from": t["id"],
+                    "to": d["id"],
+                    "type": "finish-to-start",
+                    "reason": "Testing must precede deployment",
+                }
+            )
 
     # Critical path (sequential chain)
     critical_path = []
@@ -165,17 +208,21 @@ def analyze_dependencies(tasks: list[dict[str, Any]]) -> dict[str, Any]:
     # Parallel groups (tasks at same phase)
     parallel_groups = []
     if len(impl_tasks) > 1:
-        parallel_groups.append({
-            "phase": "implementation",
-            "tasks": [t["id"] for t in impl_tasks],
-            "can_parallel": True,
-        })
+        parallel_groups.append(
+            {
+                "phase": "implementation",
+                "tasks": [t["id"] for t in impl_tasks],
+                "can_parallel": True,
+            }
+        )
     if len(test_tasks) > 1:
-        parallel_groups.append({
-            "phase": "testing",
-            "tasks": [t["id"] for t in test_tasks],
-            "can_parallel": True,
-        })
+        parallel_groups.append(
+            {
+                "phase": "testing",
+                "tasks": [t["id"] for t in test_tasks],
+                "can_parallel": True,
+            }
+        )
 
     # Blocking tasks (tasks that many others depend on)
     dependency_counts: dict[str, int] = {}
@@ -222,72 +269,88 @@ def assess_risks(tasks: list[dict[str, Any]], context: str = "") -> dict[str, An
 
     # Technical risks
     if any(w in combined_text.lower() for w in ["migrate", "legacy", "integrate"]):
-        risks.append({
-            "type": "technical",
-            "severity": "high",
-            "description": "Integration with legacy systems carries technical risk",
-            "likelihood": "medium",
-        })
+        risks.append(
+            {
+                "type": "technical",
+                "severity": "high",
+                "description": "Integration with legacy systems carries technical risk",
+                "likelihood": "medium",
+            }
+        )
     if any(w in combined_text.lower() for w in ["new technology", "prototype", "experiment"]):
-        risks.append({
-            "type": "technical",
-            "severity": "medium",
-            "description": "New technology adoption may require learning curve",
-            "likelihood": "medium",
-        })
+        risks.append(
+            {
+                "type": "technical",
+                "severity": "medium",
+                "description": "New technology adoption may require learning curve",
+                "likelihood": "medium",
+            }
+        )
 
     # Schedule risks
     high_complexity_count = sum(1 for t in tasks if t.get("complexity") == "high")
     if high_complexity_count >= 3:
-        risks.append({
-            "type": "schedule",
-            "severity": "high",
-            "description": f"{high_complexity_count} high-complexity tasks increase schedule risk",
-            "likelihood": "high",
-        })
+        risks.append(
+            {
+                "type": "schedule",
+                "severity": "high",
+                "description": f"{high_complexity_count} high-complexity tasks increase schedule risk",
+                "likelihood": "high",
+            }
+        )
     elif len(tasks) > 10:
-        risks.append({
-            "type": "schedule",
-            "severity": "medium",
-            "description": f"Large number of tasks ({len(tasks)}) may cause estimation errors",
-            "likelihood": "medium",
-        })
+        risks.append(
+            {
+                "type": "schedule",
+                "severity": "medium",
+                "description": f"Large number of tasks ({len(tasks)}) may cause estimation errors",
+                "likelihood": "medium",
+            }
+        )
 
     # Resource risks
     owners = {t.get("owner", "") for t in tasks if t.get("owner")}
     unassigned = sum(1 for t in tasks if not t.get("owner"))
     if unassigned > len(tasks) * 0.5:
-        risks.append({
-            "type": "resource",
-            "severity": "medium",
-            "description": f"{unassigned} of {len(tasks)} tasks are unassigned",
-            "likelihood": "high",
-        })
+        risks.append(
+            {
+                "type": "resource",
+                "severity": "medium",
+                "description": f"{unassigned} of {len(tasks)} tasks are unassigned",
+                "likelihood": "high",
+            }
+        )
     if len(owners) == 1 and len(tasks) > 3:
-        risks.append({
-            "type": "resource",
-            "severity": "medium",
-            "description": "Single point of failure: all tasks assigned to one person",
-            "likelihood": "medium",
-        })
+        risks.append(
+            {
+                "type": "resource",
+                "severity": "medium",
+                "description": "Single point of failure: all tasks assigned to one person",
+                "likelihood": "medium",
+            }
+        )
 
     # Scope risks
     if any(w in combined_text.lower() for w in ["tbd", "unclear", "maybe", "possibly"]):
-        risks.append({
-            "type": "scope",
-            "severity": "high",
-            "description": "Scope contains uncertain elements",
-            "likelihood": "high",
-        })
+        risks.append(
+            {
+                "type": "scope",
+                "severity": "high",
+                "description": "Scope contains uncertain elements",
+                "likelihood": "high",
+            }
+        )
 
     # If no specific risks found, add a baseline
     if not risks:
-        risks.append({
-            "type": "general",
-            "severity": "low",
-            "description": "Standard project execution risk",
-            "likelihood": "low",
-        })
+        risks.append(
+            {
+                "type": "general",
+                "severity": "low",
+                "description": "Standard project execution risk",
+                "likelihood": "low",
+            }
+        )
 
     # Risk score
     severity_weights = {"high": 3, "medium": 2, "low": 1}
@@ -317,7 +380,9 @@ def assess_risks(tasks: list[dict[str, Any]], context: str = "") -> dict[str, An
     }
 
 
-def evaluate_plan(tasks: list[dict[str, Any]], dependencies: dict[str, Any], risks: dict[str, Any]) -> dict[str, Any]:
+def evaluate_plan(
+    tasks: list[dict[str, Any]], dependencies: dict[str, Any], risks: dict[str, Any]
+) -> dict[str, Any]:
     """Evaluate overall plan quality.
 
     Scores the plan across multiple dimensions: completeness, feasibility,
@@ -384,12 +449,7 @@ def evaluate_plan(tasks: list[dict[str, Any]], dependencies: dict[str, Any], ris
     risk_management = (1.0 - risk_score_raw) * 0.7 + 0.3 * (1.0 if has_mitigations else 0.0)
 
     # Overall
-    plan_score = (
-        0.30 * completeness
-        + 0.25 * feasibility
-        + 0.20 * clarity
-        + 0.25 * risk_management
-    )
+    plan_score = 0.30 * completeness + 0.25 * feasibility + 0.20 * clarity + 0.25 * risk_management
 
     if plan_score >= 0.8:
         quality_level = "excellent"

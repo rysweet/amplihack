@@ -108,9 +108,7 @@ class DataAnalysisAgent(DomainAgent):
             metadata={"task_type": "narrative"},
         )
 
-    def _full_analysis(
-        self, values: list, labels: list, title: str, style: str
-    ) -> TaskResult:
+    def _full_analysis(self, values: list, labels: list, title: str, style: str) -> TaskResult:
         tool_results = {}
 
         # Statistics
@@ -119,7 +117,9 @@ class DataAnalysisAgent(DomainAgent):
 
         # Trends (needs at least 2 data points)
         if len(values) >= 2:
-            r = self.executor.execute("detect_trends", data=values, labels=labels if labels else None)
+            r = self.executor.execute(
+                "detect_trends", data=values, labels=labels if labels else None
+            )
             tool_results["trends"] = r.output if r.success else {}
         else:
             tool_results["trends"] = {"trend_direction": "insufficient_data"}

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
 
@@ -41,7 +40,7 @@ def compute_statistics(data: list[float | int], label: str = "values") -> dict[s
 
     # Standard deviation
     variance = sum((x - mean) ** 2 for x in data) / n
-    std_dev = variance ** 0.5
+    std_dev = variance**0.5
 
     return {
         "label": label,
@@ -107,23 +106,31 @@ def detect_trends(data: list[float | int], labels: list[str] | None = None) -> d
     for i in range(1, len(data)):
         direction = "up" if data[i] > data[i - 1] else "down" if data[i] < data[i - 1] else "flat"
         if direction != current_direction and current_direction != "start":
-            segments.append({
-                "direction": current_direction,
-                "start_label": labels[segment_start] if segment_start < len(labels) else str(segment_start),
-                "end_label": labels[i - 1] if i - 1 < len(labels) else str(i - 1),
-                "length": i - segment_start,
-            })
+            segments.append(
+                {
+                    "direction": current_direction,
+                    "start_label": labels[segment_start]
+                    if segment_start < len(labels)
+                    else str(segment_start),
+                    "end_label": labels[i - 1] if i - 1 < len(labels) else str(i - 1),
+                    "length": i - segment_start,
+                }
+            )
             segment_start = i - 1
         current_direction = direction
 
     # Final segment
     if segment_start < len(data) - 1:
-        segments.append({
-            "direction": current_direction,
-            "start_label": labels[segment_start] if segment_start < len(labels) else str(segment_start),
-            "end_label": labels[-1] if labels else str(len(data) - 1),
-            "length": len(data) - segment_start,
-        })
+        segments.append(
+            {
+                "direction": current_direction,
+                "start_label": labels[segment_start]
+                if segment_start < len(labels)
+                else str(segment_start),
+                "end_label": labels[-1] if labels else str(len(data) - 1),
+                "length": len(data) - segment_start,
+            }
+        )
 
     return {
         "trend_direction": trend_direction,
@@ -178,7 +185,9 @@ def generate_insights(data: dict[str, Any]) -> dict[str, Any]:
     std_dev = stats["std_dev"]
 
     # Basic insights
-    insights.append(f"Dataset contains {stats['count']} values ranging from {stats['min']} to {stats['max']}")
+    insights.append(
+        f"Dataset contains {stats['count']} values ranging from {stats['min']} to {stats['max']}"
+    )
     insights.append(f"Mean: {mean}, Median: {stats['median']}, Std Dev: {std_dev}")
 
     # Detect anomalies (values > 2 std deviations from mean)
@@ -187,13 +196,15 @@ def generate_insights(data: dict[str, Any]) -> dict[str, Any]:
             z_score = abs(v - mean) / std_dev
             if z_score > 2:
                 label = labels[i] if i < len(labels) else f"point_{i}"
-                anomalies.append({
-                    "index": i,
-                    "label": label,
-                    "value": v,
-                    "z_score": round(z_score, 2),
-                    "direction": "above" if v > mean else "below",
-                })
+                anomalies.append(
+                    {
+                        "index": i,
+                        "label": label,
+                        "value": v,
+                        "z_score": round(z_score, 2),
+                        "direction": "above" if v > mean else "below",
+                    }
+                )
 
     if anomalies:
         insights.append(f"Found {len(anomalies)} anomalous values (>2 std deviations)")
@@ -201,12 +212,16 @@ def generate_insights(data: dict[str, Any]) -> dict[str, Any]:
     # Trend insights
     if len(values) >= 3:
         trend = detect_trends(values, labels)
-        insights.append(f"Overall trend: {trend['trend_direction']} (change rate: {trend['change_rate']:.1%})")
+        insights.append(
+            f"Overall trend: {trend['trend_direction']} (change rate: {trend['change_rate']:.1%})"
+        )
 
     # Skewness check
     if mean != stats["median"]:
         direction = "right" if mean > stats["median"] else "left"
-        insights.append(f"Distribution is skewed {direction} (mean {'>' if direction == 'right' else '<'} median)")
+        insights.append(
+            f"Distribution is skewed {direction} (mean {'>' if direction == 'right' else '<'} median)"
+        )
 
     # Key finding
     if anomalies:
@@ -296,14 +311,18 @@ def create_narrative(data: dict[str, Any], style: str = "executive") -> dict[str
 
     elif style == "technical":
         narrative_parts.append(f"# {title} - Technical Analysis\n")
-        narrative_parts.append(f"n={stats['count']}, mean={stats['mean']}, "
-                              f"median={stats['median']}, sd={stats['std_dev']}")
+        narrative_parts.append(
+            f"n={stats['count']}, mean={stats['mean']}, "
+            f"median={stats['median']}, sd={stats['std_dev']}"
+        )
         narrative_parts.append(f"Range: [{stats['min']}, {stats['max']}]")
         key_points.append(f"SD={stats['std_dev']}")
 
         if len(values) >= 3:
             trend = detect_trends(values, labels)
-            narrative_parts.append(f"Trend: {trend['trend_direction']} (rate={trend['change_rate']:.3f})")
+            narrative_parts.append(
+                f"Trend: {trend['trend_direction']} (rate={trend['change_rate']:.3f})"
+            )
             key_points.append(f"Trend={trend['trend_direction']}")
 
     else:  # storytelling

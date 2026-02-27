@@ -13,15 +13,11 @@ Tests:
 from __future__ import annotations
 
 import json
-from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
 from amplihack.eval.long_horizon_self_improve import (
     LongHorizonRunnerConfig,
-    _analyze_categories,
-    _diagnose_bottleneck,
     detect_regression,
 )
 from amplihack.eval.self_improve.patch_proposer import (
@@ -42,7 +38,6 @@ from amplihack.eval.self_improve.reviewer_voting import (
     review_result_to_dict,
     vote_on_proposal,
 )
-
 
 # ============================================================
 # PatchProposal Tests
@@ -168,9 +163,7 @@ class TestPatchProposal:
         analysis_dict = {
             "category": "temporal_evolution",
             "avg_score": 0.4,
-            "failed_questions": [
-                {"question_text": "When did X happen?", "score": 0.3}
-            ],
+            "failed_questions": [{"question_text": "When did X happen?", "score": 0.3}],
             "bottleneck": "retrieval:temporal_ordering",
             "suggested_fix": "Add temporal metadata",
         }
@@ -302,9 +295,7 @@ class TestReviewerVoting:
             call_count += 1
             # First two accept, third rejects
             if call_count <= 2:
-                return json.dumps(
-                    {"vote": "accept", "rationale": "Fine", "concerns": []}
-                )
+                return json.dumps({"vote": "accept", "rationale": "Fine", "concerns": []})
             return json.dumps(
                 {
                     "vote": "reject",
@@ -327,12 +318,8 @@ class TestReviewerVoting:
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                return json.dumps(
-                    {"vote": "accept", "rationale": "OK", "concerns": []}
-                )
-            return json.dumps(
-                {"vote": "reject", "rationale": "Bad", "concerns": ["issue"]}
-            )
+                return json.dumps({"vote": "accept", "rationale": "OK", "concerns": []})
+            return json.dumps({"vote": "reject", "rationale": "Bad", "concerns": ["issue"]})
 
         result = vote_on_proposal(proposal, llm_call=mock_llm)
         assert result.decision == "rejected"
@@ -554,17 +541,13 @@ class TestRegressionDetection:
     def test_no_regression(self):
         baseline = {"cat_a": 0.8, "cat_b": 0.7, "overall": 0.75}
         post = {"cat_a": 0.85, "cat_b": 0.72, "overall": 0.785}
-        has_regression, worst_cat, regression_pp = detect_regression(
-            baseline, post, threshold=5.0
-        )
+        has_regression, worst_cat, regression_pp = detect_regression(baseline, post, threshold=5.0)
         assert has_regression is False
 
     def test_regression_detected(self):
         baseline = {"cat_a": 0.8, "cat_b": 0.7, "overall": 0.75}
         post = {"cat_a": 0.8, "cat_b": 0.60, "overall": 0.70}
-        has_regression, worst_cat, regression_pp = detect_regression(
-            baseline, post, threshold=5.0
-        )
+        has_regression, worst_cat, regression_pp = detect_regression(baseline, post, threshold=5.0)
         assert has_regression is True
         assert worst_cat == "cat_b"
         assert regression_pp == pytest.approx(10.0)
@@ -574,9 +557,7 @@ class TestRegressionDetection:
         baseline = {"cat_a": 0.8, "cat_b": 0.5, "overall": 0.65}
         post = {"cat_a": 0.70, "cat_b": 0.65, "overall": 0.675}
         # cat_a regresses 10pp, but cat_b gains 15pp (> 5pp threshold)
-        has_regression, worst_cat, regression_pp = detect_regression(
-            baseline, post, threshold=5.0
-        )
+        has_regression, worst_cat, regression_pp = detect_regression(baseline, post, threshold=5.0)
         assert has_regression is False
 
     def test_regression_without_compensating_gain(self):
@@ -584,9 +565,7 @@ class TestRegressionDetection:
         baseline = {"cat_a": 0.8, "cat_b": 0.5, "overall": 0.65}
         post = {"cat_a": 0.70, "cat_b": 0.52, "overall": 0.61}
         # cat_a regresses 10pp, cat_b gains only 2pp (< 5pp threshold)
-        has_regression, worst_cat, regression_pp = detect_regression(
-            baseline, post, threshold=5.0
-        )
+        has_regression, worst_cat, regression_pp = detect_regression(baseline, post, threshold=5.0)
         assert has_regression is True
         assert worst_cat == "cat_a"
 
@@ -594,9 +573,7 @@ class TestRegressionDetection:
         baseline = {"cat_a": 0.8, "overall": 0.8}
         post = {"cat_a": 0.77, "overall": 0.77}
         # 3pp regression, threshold=2.0 -> should trigger
-        has_regression, _, regression_pp = detect_regression(
-            baseline, post, threshold=2.0
-        )
+        has_regression, _, regression_pp = detect_regression(baseline, post, threshold=2.0)
         assert has_regression is True
         assert regression_pp == pytest.approx(3.0)
 
@@ -604,9 +581,7 @@ class TestRegressionDetection:
         baseline = {"cat_a": 0.80, "overall": 0.80}
         post = {"cat_a": 0.76, "overall": 0.76}
         # 4.0pp regression < 5.0 threshold -> NOT regression
-        has_regression, _, regression_pp = detect_regression(
-            baseline, post, threshold=5.0
-        )
+        has_regression, _, regression_pp = detect_regression(baseline, post, threshold=5.0)
         assert has_regression is False
         assert regression_pp == pytest.approx(4.0, abs=0.01)
 
@@ -761,9 +736,7 @@ class TestFullIterationFlow:
         post = {"needle_in_haystack": 0.85, "meta_memory": 0.55, "overall": 0.70}
 
         # meta_memory regressed 15pp, no compensating gain >= threshold
-        has_regression, worst_cat, regression_pp = detect_regression(
-            baseline, post, threshold=5.0
-        )
+        has_regression, worst_cat, regression_pp = detect_regression(baseline, post, threshold=5.0)
         assert has_regression is True
         assert worst_cat == "meta_memory"
         assert regression_pp == pytest.approx(15.0)

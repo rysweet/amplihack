@@ -98,12 +98,12 @@ amplihack new --file my_goal.md --verbose
 
 The `--sdk` flag controls which AI SDK the generated agent uses for execution:
 
-| SDK | Package | Best For |
-|---|---|---|
-| `copilot` (default) | `github-copilot-sdk` | General development, file/git/web tools |
-| `claude` | `claude-agents` | Subagent delegation, MCP integration |
-| `microsoft` | `agent-framework` | Structured workflows, telemetry, middleware |
-| `mini` | `litellm` | Lightweight, no SDK dependencies |
+| SDK                 | Package              | Best For                                    |
+| ------------------- | -------------------- | ------------------------------------------- |
+| `copilot` (default) | `github-copilot-sdk` | General development, file/git/web tools     |
+| `claude`            | `claude-agents`      | Subagent delegation, MCP integration        |
+| `microsoft`         | `agent-framework`    | Structured workflows, telemetry, middleware |
+| `mini`              | `litellm`            | Lightweight, no SDK dependencies            |
 
 ### Python API
 

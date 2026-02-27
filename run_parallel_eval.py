@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """Run progressive eval N times in parallel with unique agent/DB pairs. Report medians."""
+
 from __future__ import annotations
 
 import json
+import statistics
 import subprocess
 import sys
-import statistics
 import time
-from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from pathlib import Path
 
 
 def run_single_eval(run_id: int, levels: list[str]) -> dict:
@@ -18,13 +19,18 @@ def run_single_eval(run_id: int, levels: list[str]) -> dict:
 
     # Clean previous
     import shutil
+
     shutil.rmtree(output_dir, ignore_errors=True)
     shutil.rmtree(f"/tmp/amplihack_eval/{agent_name}", ignore_errors=True)
 
     cmd = [
-        sys.executable, "-m", "amplihack.eval.progressive_test_suite",
-        "--output-dir", output_dir,
-        "--agent-name", agent_name,
+        sys.executable,
+        "-m",
+        "amplihack.eval.progressive_test_suite",
+        "--output-dir",
+        output_dir,
+        "--agent-name",
+        agent_name,
     ]
     if levels:
         cmd.extend(["--levels"] + levels)
@@ -41,6 +47,7 @@ def run_single_eval(run_id: int, levels: list[str]) -> dict:
 
 def main():
     import argparse
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--runs", type=int, default=3, help="Number of parallel runs")
     parser.add_argument("--levels", nargs="+", default=None)
@@ -50,7 +57,7 @@ def main():
     n_runs = args.runs
 
     print(f"Running {n_runs} parallel evals for levels: {', '.join(levels)}")
-    print(f"Each run gets a unique agent name and Kuzu DB\n")
+    print("Each run gets a unique agent name and Kuzu DB\n")
 
     # Run in parallel
     results = []
@@ -64,16 +71,18 @@ def main():
                 if "error" in result:
                     print(f"  Run {run_id}: ERROR - {result['error'][:100]}")
                 else:
-                    scores = {lr["level_id"]: lr.get("average_score", 0)
-                              for lr in result.get("level_results", [])}
+                    scores = {
+                        lr["level_id"]: lr.get("average_score", 0)
+                        for lr in result.get("level_results", [])
+                    }
                     print(f"  Run {run_id}: {scores}")
             except Exception as e:
                 print(f"  Run {run_id}: EXCEPTION - {e}")
 
     # Compute medians per level
-    print(f"\n{'='*70}")
+    print(f"\n{'=' * 70}")
     print(f"MEDIAN SCORES ({n_runs} runs)")
-    print(f"{'='*70}\n")
+    print(f"{'=' * 70}\n")
 
     level_scores: dict[str, list[float]] = {}
     for result in results:

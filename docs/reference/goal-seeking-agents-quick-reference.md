@@ -24,57 +24,57 @@ amplihack new --enable-spawning --sdk claude "Adaptive learning agent"
 
 ### Agent Generation
 
-| Command | Description |
-|---------|-------------|
-| `amplihack new <goal>` | Generate agent with default SDK (copilot) |
-| `--sdk {copilot,claude,microsoft,mini}` | Choose SDK backend |
-| `--multi-agent` | Enable coordinator + memory + spawner architecture |
-| `--enable-spawning` | Enable dynamic sub-agent spawning |
-| `--domain {security,meetings,data,...}` | Generate domain-specific agent |
+| Command                                 | Description                                        |
+| --------------------------------------- | -------------------------------------------------- |
+| `amplihack new <goal>`                  | Generate agent with default SDK (copilot)          |
+| `--sdk {copilot,claude,microsoft,mini}` | Choose SDK backend                                 |
+| `--multi-agent`                         | Enable coordinator + memory + spawner architecture |
+| `--enable-spawning`                     | Enable dynamic sub-agent spawning                  |
+| `--domain {security,meetings,data,...}` | Generate domain-specific agent                     |
 
 ### Evaluation Commands
 
-| Command | Description |
-|---------|-------------|
-| `python -m amplihack.eval.progressive_test_suite` | Run L1-L12 eval |
-| `--runs 3` | 3-run median eval (recommended) |
-| `--grader-votes 3` | Multi-vote grading for stability |
-| `--sdk {mini,claude,copilot,microsoft}` | Test specific SDK |
-| `--parallel N` | Run N evals concurrently |
+| Command                                           | Description                      |
+| ------------------------------------------------- | -------------------------------- |
+| `python -m amplihack.eval.progressive_test_suite` | Run L1-L12 eval                  |
+| `--runs 3`                                        | 3-run median eval (recommended)  |
+| `--grader-votes 3`                                | Multi-vote grading for stability |
+| `--sdk {mini,claude,copilot,microsoft}`           | Test specific SDK                |
+| `--parallel N`                                    | Run N evals concurrently         |
 
 ### Self-Improvement Loop
 
-| Command | Description |
-|---------|-------------|
+| Command                                  | Description                |
+| ---------------------------------------- | -------------------------- |
 | `python -m amplihack.eval.sdk_eval_loop` | Run improvement iterations |
-| `--sdk copilot --iterations 5` | 5 loops on Copilot SDK |
-| `python -m amplihack.eval.matrix_eval` | 5-way agent comparison |
+| `--sdk copilot --iterations 5`           | 5 loops on Copilot SDK     |
+| `python -m amplihack.eval.matrix_eval`   | 5-way agent comparison     |
 
 ## SDK Selection Guide
 
-| SDK | Best For | Pros | Cons |
-|-----|----------|------|------|
-| **Copilot** | GitHub workflows, code review | Native GitHub integration, fast | Requires GitHub account |
-| **Claude** | Complex reasoning, research | Large context, strong reasoning | Higher cost |
-| **Microsoft** | Enterprise workflows, Teams | Azure integration, governance | Requires Azure setup |
-| **Mini** | Testing, prototypes, cost-sensitive | Lightweight, no dependencies | Limited capabilities |
+| SDK           | Best For                            | Pros                            | Cons                    |
+| ------------- | ----------------------------------- | ------------------------------- | ----------------------- |
+| **Copilot**   | GitHub workflows, code review       | Native GitHub integration, fast | Requires GitHub account |
+| **Claude**    | Complex reasoning, research         | Large context, strong reasoning | Higher cost             |
+| **Microsoft** | Enterprise workflows, Teams         | Azure integration, governance   | Requires Azure setup    |
+| **Mini**      | Testing, prototypes, cost-sensitive | Lightweight, no dependencies    | Limited capabilities    |
 
 ## Evaluation Levels (L1-L12)
 
-| Level | Focus | Pass Threshold |
-|-------|-------|----------------|
-| **L1** | Simple Recall | ≥85% |
-| **L2** | Multi-Source Synthesis | ≥85% |
-| **L3** | Temporal Reasoning | ≥70% |
-| **L4** | Procedural Application | ≥80% |
-| **L5** | Contradiction Resolution | ≥75% |
-| **L6** | Incremental Updates | ≥85% |
-| **L7** | Teaching Transfer | NLG ≥0.7 |
-| **L8** | Metacognition | ≥50% |
-| **L9** | Causal Reasoning | ≥50% |
-| **L10** | Counterfactual Reasoning | ≥40% |
-| **L11** | Novel Skill Acquisition | ≥50% |
-| **L12** | Far Transfer | ≥60% |
+| Level   | Focus                    | Pass Threshold |
+| ------- | ------------------------ | -------------- |
+| **L1**  | Simple Recall            | ≥85%           |
+| **L2**  | Multi-Source Synthesis   | ≥85%           |
+| **L3**  | Temporal Reasoning       | ≥70%           |
+| **L4**  | Procedural Application   | ≥80%           |
+| **L5**  | Contradiction Resolution | ≥75%           |
+| **L6**  | Incremental Updates      | ≥85%           |
+| **L7**  | Teaching Transfer        | NLG ≥0.7       |
+| **L8**  | Metacognition            | ≥50%           |
+| **L9**  | Causal Reasoning         | ≥50%           |
+| **L10** | Counterfactual Reasoning | ≥40%           |
+| **L11** | Novel Skill Acquisition  | ≥50%           |
+| **L12** | Far Transfer             | ≥60%           |
 
 ## Common Patterns
 
@@ -178,37 +178,37 @@ python -m amplihack.eval.long_horizon_memory \
 
 ## 7 Learning Tools
 
-| Tool | Purpose | Example |
-|------|---------|---------|
-| `learn_from_content` | Extract and store facts | Learn from articles, docs |
-| `search_memory` | Retrieve knowledge | Find relevant facts |
-| `synthesize_answer` | Combine facts to answer | Answer complex questions |
-| `calculate` | Safe arithmetic | Compute medal totals |
-| `explain_knowledge` | Teach concepts | Explain to beginners |
-| `find_knowledge_gaps` | Identify missing info | Know what you don't know |
-| `verify_fact` | Cross-check claims | Validate contradictions |
+| Tool                  | Purpose                 | Example                   |
+| --------------------- | ----------------------- | ------------------------- |
+| `learn_from_content`  | Extract and store facts | Learn from articles, docs |
+| `search_memory`       | Retrieve knowledge      | Find relevant facts       |
+| `synthesize_answer`   | Combine facts to answer | Answer complex questions  |
+| `calculate`           | Safe arithmetic         | Compute medal totals      |
+| `explain_knowledge`   | Teach concepts          | Explain to beginners      |
+| `find_knowledge_gaps` | Identify missing info   | Know what you don't know  |
+| `verify_fact`         | Cross-check claims      | Validate contradictions   |
 
 ## Environment Variables
 
-| Variable | Purpose | Default |
-|----------|---------|---------|
-| `ANTHROPIC_API_KEY` | Claude API access | Required for Claude/Mini |
-| `OPENAI_API_KEY` | OpenAI access | Required for Microsoft SDK |
-| `COPILOT_MODEL` | Copilot model selection | `gpt-4` |
-| `CLAUDE_AGENT_MODEL` | Claude SDK model | `claude-opus-4` |
-| `MICROSOFT_AGENT_MODEL` | Microsoft SDK model | `gpt-4` |
-| `EVAL_MODEL` | Evaluation LLM | `claude-opus-4` |
-| `GRADER_MODEL` | Grading LLM | `claude-opus-4` |
+| Variable                | Purpose                 | Default                    |
+| ----------------------- | ----------------------- | -------------------------- |
+| `ANTHROPIC_API_KEY`     | Claude API access       | Required for Claude/Mini   |
+| `OPENAI_API_KEY`        | OpenAI access           | Required for Microsoft SDK |
+| `COPILOT_MODEL`         | Copilot model selection | `gpt-4`                    |
+| `CLAUDE_AGENT_MODEL`    | Claude SDK model        | `claude-opus-4`            |
+| `MICROSOFT_AGENT_MODEL` | Microsoft SDK model     | `gpt-4`                    |
+| `EVAL_MODEL`            | Evaluation LLM          | `claude-opus-4`            |
+| `GRADER_MODEL`          | Grading LLM             | `claude-opus-4`            |
 
 ## Troubleshooting
 
-| Problem | Solution |
-|---------|----------|
-| Import errors for SDK | Install SDK: `pip install github-copilot-sdk` / `claude-agents` / `agent-framework` |
-| Low eval scores | Run with `--runs 3 --grader-votes 3` for stability |
-| Memory retrieval failures | Increase `simple_retrieval_threshold` in config |
-| Slow evaluation | Use `--parallel 4` for concurrent runs |
-| SDK agent not responding | Check API keys, verify SDK installation |
+| Problem                   | Solution                                                                            |
+| ------------------------- | ----------------------------------------------------------------------------------- |
+| Import errors for SDK     | Install SDK: `pip install github-copilot-sdk` / `claude-agents` / `agent-framework` |
+| Low eval scores           | Run with `--runs 3 --grader-votes 3` for stability                                  |
+| Memory retrieval failures | Increase `simple_retrieval_threshold` in config                                     |
+| Slow evaluation           | Use `--parallel 4` for concurrent runs                                              |
+| SDK agent not responding  | Check API keys, verify SDK installation                                             |
 
 ## File Structure
 

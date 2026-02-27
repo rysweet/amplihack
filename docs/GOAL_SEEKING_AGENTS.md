@@ -274,16 +274,16 @@ The `answer_question()` method uses a multi-step retrieval cascade:
 
 **Keyword-to-index mapping:**
 
-| Keyword | Index | Meaning |
-| ------- | ----- | ------- |
-| `first`, `original`, `initial` | `0` | First state in chain |
-| `second` | `1` | Second state |
-| `third` | `2` | Third state |
-| `intermediate`, `middle`, `between` | `len // 2` | Middle of chain |
-| `latest`, `current`, `final`, `last` | `-1` | Most recent state |
-| `BEFORE the first change` | `0` | Original value |
-| `AFTER first BUT BEFORE second` | `1` | Value after first change |
-| `BEFORE the final change` | `-2` | Second-to-last |
+| Keyword                              | Index      | Meaning                  |
+| ------------------------------------ | ---------- | ------------------------ |
+| `first`, `original`, `initial`       | `0`        | First state in chain     |
+| `second`                             | `1`        | Second state             |
+| `third`                              | `2`        | Third state              |
+| `intermediate`, `middle`, `between`  | `len // 2` | Middle of chain          |
+| `latest`, `current`, `final`, `last` | `-1`       | Most recent state        |
+| `BEFORE the first change`            | `0`        | Original value           |
+| `AFTER first BUT BEFORE second`      | `1`        | Value after first change |
+| `BEFORE the final change`            | `-2`       | Second-to-last           |
 
 **Example:**
 
@@ -602,7 +602,13 @@ PYTHONPATH=src python -m amplihack.eval.long_horizon_memory \
 # Full stress test
 PYTHONPATH=src python -m amplihack.eval.long_horizon_memory \
     --turns 1000 --questions 100
+
+# Large-scale with subprocess segmentation (prevents OOM on 5000+ turns)
+PYTHONPATH=src python -m amplihack.eval.long_horizon_memory \
+    --turns 5000 --questions 200 --segment-size 100
 ```
+
+For 5000+ turn evaluations, `--segment-size N` splits the learning phase into subprocess segments to prevent OOM. Each segment runs in a separate Python process, freeing all native memory between segments.
 
 ### Matrix Evaluation Across SDKs
 
