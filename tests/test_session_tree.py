@@ -647,6 +647,49 @@ class TestCorruptedJsonRecovery(unittest.TestCase):
         self.assertIn("sessions", result)
         self.assertEqual(result["sessions"], {})
 
+    def test_load_with_sessions_as_string_returns_empty_state(self):
+        """When sessions is a string (wrong type), _load must return empty state."""
+        tree = self._unique_tree()
+        st._ensure_state_dir()
+        (st.STATE_DIR / f"{tree}.json").write_text('{"sessions": "not_a_dict"}')
+        result = st._load(tree)
+        self.assertEqual(result, {"sessions": {}},
+            "Schema-invalid state file must be treated as empty state")
+
+    def test_load_with_sessions_as_list_returns_empty_state(self):
+        """When sessions is a list (wrong type), _load must return empty state."""
+        tree = self._unique_tree()
+        st._ensure_state_dir()
+        (st.STATE_DIR / f"{tree}.json").write_text('{"sessions": []}')
+        result = st._load(tree)
+        self.assertEqual(result, {"sessions": {}})
+
+
+class TestGetStatusEdgeCases(unittest.TestCase):
+    def setUp(self):
+        self._trees_created = []
+
+    def tearDown(self):
+        for tree in self._trees_created:
+            for suffix in ('.json', '.lock'):
+                (st.STATE_DIR / f'{tree}{suffix}').unlink(missing_ok=True)
+
+    def _unique_tree(self):
+        import uuid
+        t = "test-" + uuid.uuid4().hex[:8]
+        self._trees_created.append(t)
+        return t
+
+    def test_status_for_never_registered_tree_returns_empty(self):
+        """get_status for a tree with no state file must return empty lists."""
+        import uuid
+        tree = "test-never-" + uuid.uuid4().hex[:8]
+        result = st.get_status(tree)
+        self.assertEqual(result["tree_id"], tree)
+        self.assertEqual(result["active"], [])
+        self.assertEqual(result["completed"], [])
+        self.assertEqual(result["depths"], {})
+
 
 class TestStaleLockCleanup(unittest.TestCase):
     """Stale lock file from a dead PID must be cleaned up by _locked()."""

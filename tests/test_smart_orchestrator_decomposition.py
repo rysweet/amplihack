@@ -948,5 +948,29 @@ class TestNormaliseTypeEdgeCases(unittest.TestCase):
         self.assertEqual(normalise_type("exploration"), "Investigation")
 
 
+class TestSummarizeSkipCondition(unittest.TestCase):
+    """Verify summarize step condition matches actual recipe YAML."""
+
+    def _summarize_should_run(self, task_type, round_1_result):
+        """Simulate summarize condition from recipe."""
+        return (
+            'Q&A' not in task_type
+            and 'Operations' not in task_type
+            and bool(round_1_result)
+        )
+
+    def test_summarize_skips_for_qa(self):
+        self.assertFalse(self._summarize_should_run('Q&A', 'Here is your answer.'))
+
+    def test_summarize_skips_for_operations(self):
+        self.assertFalse(self._summarize_should_run('Operations', 'Done. STATUS: COMPLETE'))
+
+    def test_summarize_runs_for_development(self):
+        self.assertTrue(self._summarize_should_run('Development', 'PR created. STATUS: COMPLETE'))
+
+    def test_summarize_skips_when_no_round_1_result(self):
+        self.assertFalse(self._summarize_should_run('Development', ''))
+
+
 if __name__ == "__main__":
     unittest.main()

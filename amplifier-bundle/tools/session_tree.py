@@ -171,7 +171,17 @@ def _load(tree_id: str) -> dict:
     if not p.exists():
         return {"sessions": {}}
     try:
-        return json.loads(p.read_text())
+        data = json.loads(p.read_text())
+        # Validate schema: sessions must be a dict
+        if not isinstance(data.get("sessions"), dict):
+            print(
+                f"WARNING: session_tree: invalid schema for {tree_id!r}: "
+                f"'sessions' is {type(data.get('sessions')).__name__}, expected dict. "
+                "Treating as empty state.",
+                file=sys.stderr
+            )
+            return {"sessions": {}}
+        return data
     except (json.JSONDecodeError, OSError) as e:
         # Log corruption — do not silently discard state
         print(f"WARNING: session_tree: corrupted state for {tree_id!r}: {e}", file=sys.stderr)
