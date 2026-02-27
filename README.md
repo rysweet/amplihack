@@ -332,7 +332,7 @@ Workflow customization:
 
 ### Claude Code (Default)
 
-Get your API key from [console.anthropic.com/account/keys](https://console.anthropic.com/account/keys).
+Get your API key from [platform.claude.com/account/keys](https://platform.claude.com/account/keys).
 Claude API is pay-per-use; typical amplihack sessions cost $0.01–$2 depending on task complexity.
 
 Add to `~/.bashrc` or `~/.zshrc` for permanent setup:
