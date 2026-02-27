@@ -1,7 +1,7 @@
 """
 Tests for amplifier-bundle/tools/session_tree.py
 
-Covers: depth enforcement, max-session limits, queueing,
+Covers: depth enforcement, max-session limits,
 concurrent access (via locking), env var propagation.
 """
 
@@ -203,98 +203,15 @@ class TestSessionRegistration(unittest.TestCase):
         state = st._load(tree)
         self.assertEqual(state["sessions"]["real"]["status"], "active")
 
-
-class TestQueueing(unittest.TestCase):
-    """Items over capacity should queue and dequeue when space opens."""
-
-    def setUp(self):
-        self._trees_created = []
-
-    def tearDown(self):
-        for tree in self._trees_created:
-            for suffix in ('.json', '.lock'):
-                p = st.STATE_DIR / f'{tree}{suffix}'
-                p.unlink(missing_ok=True)
-
-    def _unique_tree(self) -> str:
-        import uuid
-        t = "test-" + uuid.uuid4().hex[:8]
-        self._trees_created.append(t)
-        return t
-
-    def test_enqueue_adds_to_queue(self):
+    def test_register_raises_runtime_error_when_depth_exceeds_max(self):
+        """register_session must raise RuntimeError when depth > max_depth."""
         tree = self._unique_tree()
-        spec = {"issue": "TBD", "branch": "feat/test", "description": "test", "task": "do it"}
-        st.enqueue_session(spec, tree_id=tree)
-        state = st._load(tree)
-        self.assertEqual(len(state["queue"]), 1)
-        self.assertEqual(state["queue"][0]["spec"]["branch"], "feat/test")
-
-    def test_dequeue_returns_items_when_capacity_available(self):
-        tree = self._unique_tree()
-        for i in range(3):
-            spec = {"issue": str(i), "branch": f"feat/ws-{i}", "description": f"ws{i}", "task": f"t{i}"}
-            st.enqueue_session(spec, tree_id=tree)
-        # No active sessions — all 3 should dequeue
-        ready = st.dequeue_ready(tree_id=tree, max_sessions=10)
-        self.assertEqual(len(ready), 3)
-        state = st._load(tree)
-        self.assertEqual(len(state["queue"]), 0)
-
-    def test_dequeue_respects_capacity(self):
-        tree = self._unique_tree()
-        # 1 active session, max_sessions=2 → only 1 slot
-        st.register_session("active-s", tree_id=tree, depth=0)
-        for i in range(3):
-            st.enqueue_session({"branch": f"b{i}"}, tree_id=tree)
-        ready = st.dequeue_ready(tree_id=tree, max_sessions=2)
-        self.assertEqual(len(ready), 1)
-        state = st._load(tree)
-        self.assertEqual(len(state["queue"]), 2)  # 2 remain queued
-
-    def test_dequeue_fifo_order(self):
-        tree = self._unique_tree()
-        for i in range(3):
-            st.enqueue_session({"order": i}, tree_id=tree)
-        ready = st.dequeue_ready(tree_id=tree, max_sessions=10)
-        orders = [r["order"] for r in ready]
-        self.assertEqual(orders, [0, 1, 2])
-
-
-class TestEnvForChild(unittest.TestCase):
-    """env_for_child must correctly increment depth and propagate limits."""
-
-    def setUp(self):
-        self._trees_created = []
-
-    def tearDown(self):
-        for tree in self._trees_created:
-            for suffix in ('.json', '.lock'):
-                p = st.STATE_DIR / f'{tree}{suffix}'
-                p.unlink(missing_ok=True)
-
-    def test_increments_depth(self):
-        saved = os.environ.get("AMPLIHACK_SESSION_DEPTH")
-        os.environ["AMPLIHACK_SESSION_DEPTH"] = "1"
-        try:
-            env = st.env_for_child("tree123", 1)
-            self.assertEqual(env["AMPLIHACK_SESSION_DEPTH"], "2")
-        finally:
-            if saved is None:
-                os.environ.pop("AMPLIHACK_SESSION_DEPTH", None)
-            else:
-                os.environ["AMPLIHACK_SESSION_DEPTH"] = saved
-
-    def test_tree_id_preserved(self):
-        env = st.env_for_child("my-tree", 0)
-        self.assertEqual(env["AMPLIHACK_TREE_ID"], "my-tree")
-
-    def test_max_depth_propagated(self):
         saved = os.environ.get("AMPLIHACK_MAX_DEPTH")
         os.environ["AMPLIHACK_MAX_DEPTH"] = "2"
         try:
-            env = st.env_for_child("t", 0)
-            self.assertEqual(env["AMPLIHACK_MAX_DEPTH"], "2")
+            with self.assertRaises(RuntimeError) as ctx:
+                st.register_session("deep", tree_id=tree, depth=3)
+            self.assertIn("max_depth", str(ctx.exception))
         finally:
             if saved is None:
                 os.environ.pop("AMPLIHACK_MAX_DEPTH", None)
@@ -325,13 +242,13 @@ class TestGetStatus(unittest.TestCase):
         st.register_session("a", tree_id=tree, depth=0)
         st.register_session("b", tree_id=tree, depth=0)
         st.complete_session("a", tree_id=tree)
-        st.enqueue_session({"x": 1}, tree_id=tree)
 
         status = st.get_status(tree)
         self.assertEqual(status["tree_id"], tree)
         self.assertIn("b", status["active"])
         self.assertIn("a", status["completed"])
-        self.assertEqual(status["queued"], 1)
+        # queued key should not be present anymore
+        self.assertNotIn("queued", status)
 
 
 class TestPathTraversalRejection(unittest.TestCase):
@@ -498,9 +415,7 @@ class TestCLISubcommands(unittest.TestCase):
                 p.unlink(missing_ok=True)
 
     def _run_cli(self, args, extra_env=None):
-        import re as _re
         import subprocess
-        from pathlib import Path
         script = str(Path(__file__).parent.parent / "amplifier-bundle" / "tools" / "session_tree.py")
         env = os.environ.copy()
         if extra_env:
@@ -524,7 +439,7 @@ class TestCLISubcommands(unittest.TestCase):
             self._trees_created.append(m.group(1))
 
     def test_check_outputs_allowed_for_new_tree(self):
-        """The recipe's check-recursion-guard step calls: session_tree.py check"""
+        """The recipe's derive-recursion-guard step calls: session_tree.py check"""
         r = self._run_cli(["check"], extra_env={"AMPLIHACK_TREE_ID": ""})
         self.assertEqual(r.returncode, 0)
         self.assertEqual(r.stdout.strip(), "ALLOWED")
@@ -551,6 +466,35 @@ class TestCLISubcommands(unittest.TestCase):
         )
         self.assertEqual(r.returncode, 0)
         self.assertIn("BLOCKED", r.stdout.strip())
+
+    def test_register_exits_rc1_on_capacity_overflow(self):
+        """CLI register exits rc=1 when capacity is exceeded (recipe depends on this)."""
+        import re as _re
+        import uuid
+        tree = "test-" + uuid.uuid4().hex[:8]
+        self._trees_created.append(tree)
+        saved = os.environ.get("AMPLIHACK_MAX_SESSIONS")
+        os.environ["AMPLIHACK_MAX_SESSIONS"] = "1"
+        try:
+            # Fill the single slot
+            r1 = self._run_cli(
+                ["register", "first-session"],
+                extra_env={"AMPLIHACK_TREE_ID": tree, "AMPLIHACK_MAX_SESSIONS": "1"}
+            )
+            self.assertEqual(r1.returncode, 0, f"first register should succeed: {r1.stderr}")
+
+            # Second register must fail with rc=1
+            r2 = self._run_cli(
+                ["register", "second-session"],
+                extra_env={"AMPLIHACK_TREE_ID": tree, "AMPLIHACK_MAX_SESSIONS": "1"}
+            )
+            self.assertEqual(r2.returncode, 1,
+                f"register should exit 1 on capacity overflow, got rc={r2.returncode}, stderr={r2.stderr}")
+        finally:
+            if saved is None:
+                os.environ.pop("AMPLIHACK_MAX_SESSIONS", None)
+            else:
+                os.environ["AMPLIHACK_MAX_SESSIONS"] = saved
 
 
 class TestDuplicateSessionRegistration(unittest.TestCase):
@@ -597,6 +541,91 @@ class TestTreeIdBoundary(unittest.TestCase):
         """65-character tree_id exceeds the limit."""
         with self.assertRaises(ValueError):
             st._validate_tree_id("a" * 65)
+
+
+class TestCorruptedJsonRecovery(unittest.TestCase):
+    """_load must return clean state on corrupted JSON, not raise."""
+
+    def setUp(self):
+        self._trees_created = []
+
+    def tearDown(self):
+        for tree in self._trees_created:
+            for suffix in ('.json', '.lock'):
+                p = st.STATE_DIR / f'{tree}{suffix}'
+                p.unlink(missing_ok=True)
+
+    def _unique_tree(self):
+        import uuid
+        t = "test-" + uuid.uuid4().hex[:8]
+        self._trees_created.append(t)
+        return t
+
+    def test_corrupted_json_returns_empty_state(self):
+        """Write a corrupt JSON file; _load must recover gracefully."""
+        tree = self._unique_tree()
+        st._ensure_state_dir()
+        state_file = st.STATE_DIR / f"{tree}.json"
+        state_file.write_text("this is not valid json {{{{")
+        result = st._load(tree)
+        self.assertIn("sessions", result)
+        self.assertEqual(result["sessions"], {})
+
+    def test_truncated_json_returns_empty_state(self):
+        """Truncated JSON should be treated as corrupt."""
+        tree = self._unique_tree()
+        st._ensure_state_dir()
+        state_file = st.STATE_DIR / f"{tree}.json"
+        state_file.write_text('{"sessions": {"abc": {"status": "active"')
+        result = st._load(tree)
+        self.assertIn("sessions", result)
+        self.assertEqual(result["sessions"], {})
+
+
+class TestStaleLockCleanup(unittest.TestCase):
+    """Stale lock file from a dead PID must be cleaned up by _locked()."""
+
+    def setUp(self):
+        self._trees_created = []
+
+    def tearDown(self):
+        for tree in self._trees_created:
+            for suffix in ('.json', '.lock'):
+                p = st.STATE_DIR / f'{tree}{suffix}'
+                p.unlink(missing_ok=True)
+
+    def _unique_tree(self):
+        import uuid
+        t = "test-" + uuid.uuid4().hex[:8]
+        self._trees_created.append(t)
+        return t
+
+    def test_stale_lock_from_dead_pid_is_cleaned_up(self):
+        """Write a lock file with a dead PID; _locked() must acquire successfully."""
+        tree = self._unique_tree()
+        st._ensure_state_dir()
+        lock_file = st.STATE_DIR / f"{tree}.lock"
+        # PID 1 is always init/systemd and will never be a session_tree process.
+        # We need a truly dead PID. Use a high PID unlikely to exist, or find one.
+        # The safest approach: use a PID we just know is dead.
+        # We can fork a process, get its PID, wait for it to exit, then use that PID.
+        import subprocess
+        proc = subprocess.Popen([sys.executable, "-c", "import sys; sys.exit(0)"])
+        dead_pid = proc.pid
+        proc.wait()  # Ensure it's dead
+
+        lock_file.write_text(str(dead_pid))
+
+        # _locked() must clean up the stale lock and proceed
+        acquired = False
+        try:
+            with st._locked(tree, timeout=5.0):
+                acquired = True
+        except TimeoutError:
+            pass
+
+        self.assertTrue(acquired, "Should have acquired lock after stale lock cleanup")
+        self.assertFalse(lock_file.exists(), "Lock file should be removed after release")
 
 
 if __name__ == "__main__":

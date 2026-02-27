@@ -3,7 +3,7 @@
 Session tree management for amplihack orchestration.
 
 Prevents infinite recursion by tracking active sessions in a tree structure.
-Enforces max depth and max concurrent session limits with FIFO queueing.
+Enforces max depth and max concurrent session limits.
 
 Environment variables:
   AMPLIHACK_TREE_ID        - shared ID for this orchestration tree (auto-generated at root)
@@ -35,9 +35,8 @@ from __future__ import annotations
 import json
 import os
 import re
-import shlex
 import sys
-import threading
+import tempfile
 import time
 import uuid
 from contextlib import contextmanager
@@ -47,28 +46,6 @@ from typing import Optional
 DEFAULT_MAX_DEPTH = 3
 DEFAULT_MAX_SESSIONS = 10
 STATE_DIR = Path(os.environ.get("TMPDIR", "/tmp")) / "amplihack-session-trees"
-
-# Per-tree threading locks for intra-process coordination.
-#
-# NOTE: All current callers (recipe runner bash steps via CLI, orchestrator.py)
-# are single-threaded at the point where session_tree is called. The thread lock
-# is a no-op for existing callers but is retained for correctness if future
-# callers introduce thread-based parallelism (e.g., a thread-pool recipe runner).
-# It adds negligible overhead (~1μs per acquire) and prevents subtle bugs if
-# the execution model changes.
-#
-# The file-based lock (O_EXCL) handles cross-process exclusion;
-# this dict handles concurrent threads within the same process.
-_THREAD_LOCKS: dict[str, threading.Lock] = {}
-_THREAD_LOCKS_LOCK = threading.Lock()
-
-
-def _get_thread_lock(tree_id: str) -> threading.Lock:
-    """Return the per-tree threading.Lock, creating it if necessary."""
-    with _THREAD_LOCKS_LOCK:
-        if tree_id not in _THREAD_LOCKS:
-            _THREAD_LOCKS[tree_id] = threading.Lock()
-        return _THREAD_LOCKS[tree_id]
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Security: tree_id validation
@@ -116,28 +93,6 @@ def get_tree_context() -> dict:
     }
 
 
-def env_for_child(tree_id: str, depth: int) -> dict[str, str]:
-    """
-    Return environment variables to pass to child subprocesses.
-
-    NOTE: The orchestrator (orchestrator.py) constructs these variables
-    directly rather than calling this function. This function exists as
-    a reference implementation and for the CLI env-for-child subcommand.
-    Currently not called programmatically — use orchestrator.py's
-    _write_recipe_launcher/_write_classic_launcher for actual env propagation.
-    """
-    return {
-        "AMPLIHACK_TREE_ID": tree_id,
-        "AMPLIHACK_SESSION_DEPTH": str(depth + 1),
-        "AMPLIHACK_MAX_DEPTH": str(
-            int(os.environ.get("AMPLIHACK_MAX_DEPTH", str(DEFAULT_MAX_DEPTH)))
-        ),
-        "AMPLIHACK_MAX_SESSIONS": str(
-            int(os.environ.get("AMPLIHACK_MAX_SESSIONS", str(DEFAULT_MAX_SESSIONS)))
-        ),
-    }
-
-
 # ─────────────────────────────────────────────────────────────────────────────
 # File I/O with locking
 # ─────────────────────────────────────────────────────────────────────────────
@@ -162,21 +117,7 @@ def _lock_path(tree_id: str) -> Path:
 
 @contextmanager
 def _locked(tree_id: str, timeout: float = 10.0):
-    """Acquire an intra-process threading lock plus a file-based lock (O_EXCL).
-
-    The threading lock serialises concurrent threads within the same process,
-    preventing the TOCTOU race where a thread reads an empty/partial PID file
-    and wrongly removes the lock held by a sibling thread.
-
-    The file lock still provides cross-process mutual exclusion.
-    """
-    thread_lock = _get_thread_lock(tree_id)
-    acquired_thread = thread_lock.acquire(timeout=timeout)
-    if not acquired_thread:
-        raise TimeoutError(
-            f"Could not acquire thread lock for tree {tree_id!r} within {timeout}s"
-        )
-
+    """Acquire a file-based lock (O_EXCL) for cross-process mutual exclusion."""
     lock = _lock_path(tree_id)
     acquired_file = False
     deadline = time.monotonic() + timeout
@@ -190,16 +131,18 @@ def _locked(tree_id: str, timeout: float = 10.0):
                 acquired_file = True
                 break
             except FileExistsError:
-                # Check for stale lock from a DEAD external process.
-                # We already hold the thread lock, so no sibling thread can
-                # be between O_EXCL-create and os.write — safe to read PID.
+                # Check for stale lock from a dead process.
                 try:
                     lock_content = lock.read_text().strip()
                     pid = int(lock_content)
                     os.kill(pid, 0)  # Raises OSError if process doesn't exist
-                    # External process is alive — keep waiting
-                except (ValueError, OSError):
-                    # Process is dead or PID unreadable — remove stale lock
+                    # Process is alive — keep waiting
+                except ValueError:
+                    # PID file is empty or non-numeric — holder is mid-write.
+                    # Do NOT remove the lock; just wait and retry.
+                    pass
+                except OSError:
+                    # Process is dead — remove stale lock.
                     lock.unlink(missing_ok=True)
                 time.sleep(0.05)
 
@@ -212,19 +155,18 @@ def _locked(tree_id: str, timeout: float = 10.0):
     finally:
         if acquired_file:
             lock.unlink(missing_ok=True)
-        thread_lock.release()
 
 
 def _load(tree_id: str) -> dict:
     p = _state_path(tree_id)
     if not p.exists():
-        return {"sessions": {}, "queue": []}
+        return {"sessions": {}}
     try:
         return json.loads(p.read_text())
     except (json.JSONDecodeError, OSError) as e:
         # Log corruption — do not silently discard state
         print(f"WARNING: session_tree: corrupted state for {tree_id!r}: {e}", file=sys.stderr)
-        return {"sessions": {}, "queue": []}
+        return {"sessions": {}}
 
 
 def _save(tree_id: str, state: dict, max_age_hours: float = 24.0, active_max_age_hours: float = 4.0) -> None:
@@ -256,7 +198,6 @@ def _save(tree_id: str, state: dict, max_age_hours: float = 24.0, active_max_age
     # Atomic write via temp file + rename
     target = _state_path(tree_id)
     content = json.dumps(state, indent=2)
-    import tempfile
     fd, tmp = tempfile.mkstemp(dir=str(STATE_DIR), prefix=f".{tree_id}-", suffix=".tmp")
     try:
         with os.fdopen(fd, "w") as f:
@@ -285,7 +226,7 @@ def check_can_spawn(tree_id: Optional[str] = None, depth: int = -1) -> dict:
     call register_session() directly and handle RuntimeError for capacity exceeded.
 
     Returns:
-        {"allowed": bool, "reason": str, "queued_count": int, "active_count": int, "depth": int}
+        {"allowed": bool, "reason": str, "active_count": int, "depth": int}
     """
     ctx = get_tree_context()
     tree_id = tree_id or ctx["tree_id"]
@@ -298,7 +239,6 @@ def check_can_spawn(tree_id: Optional[str] = None, depth: int = -1) -> dict:
         return {
             "allowed": False,
             "reason": f"max_depth={max_depth} exceeded at depth={depth}",
-            "queued_count": 0,
             "active_count": 0,
             "depth": depth,
         }
@@ -308,7 +248,6 @@ def check_can_spawn(tree_id: Optional[str] = None, depth: int = -1) -> dict:
         return {
             "allowed": True,
             "reason": "new_tree",
-            "queued_count": 0,
             "active_count": 0,
             "depth": 0,
         }
@@ -316,13 +255,11 @@ def check_can_spawn(tree_id: Optional[str] = None, depth: int = -1) -> dict:
     _validate_tree_id(tree_id)
     state = _load(tree_id)
     active = [s for s in state["sessions"].values() if s.get("status") == "active"]
-    queued = state.get("queue", [])
 
     if len(active) >= max_sessions:
         return {
             "allowed": False,
-            "reason": f"max_sessions={max_sessions} reached ({len(active)} active, {len(queued)} queued)",
-            "queued_count": len(queued),
+            "reason": f"max_sessions={max_sessions} reached ({len(active)} active)",
             "active_count": len(active),
             "depth": depth,
         }
@@ -330,7 +267,6 @@ def check_can_spawn(tree_id: Optional[str] = None, depth: int = -1) -> dict:
     return {
         "allowed": True,
         "reason": "ok",
-        "queued_count": len(queued),
         "active_count": len(active),
         "depth": depth,
     }
@@ -361,8 +297,7 @@ def register_session(
         active = [s for s in state["sessions"].values() if s.get("status") == "active"]
         if len(active) >= max_sessions:
             raise RuntimeError(
-                f"max_sessions={max_sessions} reached ({len(active)} active); "
-                "call enqueue_session() to queue for later execution"
+                f"max_sessions={max_sessions} reached ({len(active)} active)"
             )
         if depth > max_depth:
             raise RuntimeError(
@@ -383,48 +318,8 @@ def register_session(
     return {"tree_id": tree_id, "depth": depth, "session_id": session_id}
 
 
-def enqueue_session(workstream_spec: dict, tree_id: str) -> None:
-    """
-    Add a workstream spec to the FIFO queue for later execution.
-
-    NOTE: This function exists for future use but is NOT currently called
-    by any recipe or orchestrator. Do not rely on it being called.
-    See: amplifier-bundle/recipes/smart-orchestrator.yaml recursion-limit-notice
-    for the intended (but not yet implemented) integration point.
-    """
-    _validate_tree_id(tree_id)
-    with _locked(tree_id):
-        state = _load(tree_id)
-        state.setdefault("queue", []).append(
-            {"spec": workstream_spec, "queued_at": time.time()}
-        )
-        _save(tree_id, state)
-
-
-def dequeue_ready(tree_id: str, max_sessions: int) -> list[dict]:
-    """
-    Pop items from the queue that can now be executed (active < max_sessions).
-    Returns list of workstream specs that should now be started.
-
-    NOTE: This function exists for future use but is NOT currently called
-    by any recipe or orchestrator. It is the counterpart to enqueue_session()
-    and is intended for a future queuing integration.
-    """
-    _validate_tree_id(tree_id)
-    with _locked(tree_id):
-        state = _load(tree_id)
-        active = [s for s in state["sessions"].values() if s.get("status") == "active"]
-        slots = max_sessions - len(active)
-        if slots <= 0:
-            return []
-        ready, remaining = state.get("queue", [])[:slots], state.get("queue", [])[slots:]
-        state["queue"] = remaining
-        _save(tree_id, state)
-    return [item["spec"] for item in ready]
-
-
 def complete_session(session_id: str, tree_id: Optional[str] = None) -> None:
-    """Mark a session as completed and process any queued items."""
+    """Mark a session as completed."""
     ctx = get_tree_context()
     tree_id = tree_id or ctx["tree_id"]
     if not tree_id:
@@ -450,7 +345,6 @@ def get_status(tree_id: str) -> dict:
         "tree_id": tree_id,
         "active": active,
         "completed": completed,
-        "queued": len(state.get("queue", [])),
         "depths": {sid: s.get("depth", 0) for sid, s in sessions.items()},
     }
 
@@ -478,7 +372,11 @@ def main(argv: list[str]) -> int:
     if cmd == "register":
         session_id = argv[2] if len(argv) > 2 else uuid.uuid4().hex[:8]
         parent_id = argv[3] if len(argv) > 3 else None
-        result = register_session(session_id, parent_id=parent_id)
+        try:
+            result = register_session(session_id, parent_id=parent_id)
+        except RuntimeError as e:
+            print(f"ERROR: {e}", file=sys.stderr)
+            return 1
         print(f"TREE_ID={result['tree_id']} DEPTH={result['depth']}")
         return 0
 
@@ -496,15 +394,6 @@ def main(argv: list[str]) -> int:
         _validate_tree_id(tree_id)
         status = get_status(tree_id)
         print(json.dumps(status, indent=2))
-        return 0
-
-    if cmd == "env-for-child":
-        ctx = get_tree_context()
-        raw_tree_id = ctx["tree_id"] or uuid.uuid4().hex[:8]
-        tree_id = _validate_tree_id(raw_tree_id)
-        depth = ctx["depth"]
-        for k, v in env_for_child(tree_id, depth).items():
-            print(f"export {k}={shlex.quote(str(v))}")
         return 0
 
     print(f"Unknown command: {cmd}", file=sys.stderr)
