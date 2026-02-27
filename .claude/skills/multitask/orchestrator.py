@@ -240,7 +240,7 @@ class ParallelOrchestrator:
             #!/bin/bash
             cd "{ws.work_dir}"
             unset CLAUDECODE
-            amplihack claude -- -p "@TASK.md
+            amplihack claude --subprocess-safe -- -p "@TASK.md
 
             Execute task autonomously following DEFAULT_WORKFLOW.md.
             NO QUESTIONS. Work through all steps. Create PR when complete."

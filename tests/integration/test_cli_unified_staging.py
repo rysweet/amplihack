@@ -287,6 +287,186 @@ class TestStagingErrorHandling:
                         main(["copilot"])
 
 
+class TestSubprocessSafeFlag:
+    """Tests for --subprocess-safe flag (Issue #2567).
+
+    The flag prevents staging/env updates when running as a subprocess delegate
+    from another amplihack process, avoiding concurrent write races.
+    """
+
+    def test_subprocess_safe_skips_staging_for_copilot(self, clean_staging_dir):
+        """Test that --subprocess-safe skips staging for copilot command."""
+        from src.amplihack.cli import main
+
+        with patch("src.amplihack.cli.is_uvx_deployment", return_value=True):
+            with patch("src.amplihack.cli.copytree_manifest") as mock_copy:
+                with patch("src.amplihack.launcher.copilot.launch_copilot", return_value=0):
+                    with patch("src.amplihack.safety.GitConflictDetector") as mock_detector:
+                        mock_detector.return_value.detect_conflicts.return_value.has_conflicts = (
+                            False
+                        )
+                        mock_copy.return_value = True
+
+                        exit_code = main(["copilot", "--subprocess-safe"])
+
+                        # Staging should NOT have been called
+                        assert not mock_copy.called, (
+                            "copytree_manifest should not be called with --subprocess-safe"
+                        )
+                        assert exit_code == 0
+
+    def test_subprocess_safe_skips_staging_for_codex(self, clean_staging_dir):
+        """Test that --subprocess-safe skips staging for codex command."""
+        from src.amplihack.cli import main
+
+        with patch("src.amplihack.cli.is_uvx_deployment", return_value=True):
+            with patch("src.amplihack.cli.copytree_manifest") as mock_copy:
+                with patch("src.amplihack.launcher.codex.launch_codex", return_value=0):
+                    with patch("src.amplihack.safety.GitConflictDetector") as mock_detector:
+                        mock_detector.return_value.detect_conflicts.return_value.has_conflicts = (
+                            False
+                        )
+                        mock_copy.return_value = True
+
+                        exit_code = main(["codex", "--subprocess-safe"])
+
+                        assert not mock_copy.called
+                        assert exit_code == 0
+
+    def test_subprocess_safe_skips_staging_for_launch(self, clean_staging_dir):
+        """Test that --subprocess-safe skips staging for launch command."""
+        from src.amplihack.cli import main
+
+        with patch("src.amplihack.cli.is_uvx_deployment", return_value=True):
+            with patch("src.amplihack.cli.copytree_manifest") as mock_copy:
+                with patch("src.amplihack.cli.ClaudeLauncher") as mock_launcher:
+                    with patch(
+                        "src.amplihack.launcher.session_tracker.SessionTracker"
+                    ) as mock_tracker:
+                        with patch("src.amplihack.safety.GitConflictDetector") as mock_detector:
+                            mock_detector.return_value.detect_conflicts.return_value.has_conflicts = False
+                            mock_copy.return_value = True
+                            mock_launcher.return_value.launch_interactive.return_value = 0
+                            mock_tracker.return_value.start_session.return_value = "test-session-id"
+
+                            exit_code = main(["launch", "--subprocess-safe"])
+
+                            assert not mock_copy.called
+                            assert exit_code == 0
+
+    def test_subprocess_safe_skips_staging_for_amplifier(self, clean_staging_dir):
+        """Test that --subprocess-safe skips staging for amplifier command."""
+        from src.amplihack.cli import main
+
+        with patch("src.amplihack.cli.is_uvx_deployment", return_value=True):
+            with patch("src.amplihack.cli.copytree_manifest") as mock_copy:
+                with patch("src.amplihack.launcher.amplifier.launch_amplifier", return_value=0):
+                    with patch("src.amplihack.safety.GitConflictDetector") as mock_detector:
+                        mock_detector.return_value.detect_conflicts.return_value.has_conflicts = (
+                            False
+                        )
+                        mock_copy.return_value = True
+
+                        exit_code = main(["amplifier", "--subprocess-safe"])
+
+                        assert not mock_copy.called
+                        assert exit_code == 0
+
+    def test_without_subprocess_safe_does_stage(self, clean_staging_dir):
+        """Verify that WITHOUT --subprocess-safe, staging still occurs."""
+        from src.amplihack.cli import main
+
+        with patch("src.amplihack.cli.is_uvx_deployment", return_value=True):
+            with patch("src.amplihack.cli.copytree_manifest") as mock_copy:
+                with patch("src.amplihack.launcher.copilot.launch_copilot", return_value=0):
+                    with patch("src.amplihack.safety.GitConflictDetector") as mock_detector:
+                        mock_detector.return_value.detect_conflicts.return_value.has_conflicts = (
+                            False
+                        )
+                        mock_copy.return_value = True
+
+                        exit_code = main(["copilot"])
+
+                        # Staging SHOULD be called without the flag
+                        assert mock_copy.called, (
+                            "copytree_manifest should be called without --subprocess-safe"
+                        )
+                        assert exit_code == 0
+
+    @pytest.fixture
+    def clean_staging_dir(self, tmp_path, monkeypatch):
+        """Provide a clean staging directory for tests."""
+        staging_dir = tmp_path / ".amplihack" / ".claude"
+        monkeypatch.setenv("HOME", str(tmp_path))
+        yield staging_dir
+
+
+class TestCopytreeManifestSyncBehavior:
+    """Tests for copytree_manifest sync-in-place behavior (Issue #2567).
+
+    Verifies that copytree_manifest no longer calls shutil.rmtree()
+    and instead syncs in-place using dirs_exist_ok=True.
+    """
+
+    def test_copytree_manifest_does_not_rmtree(self, tmp_path):
+        """Test that copytree_manifest syncs without deleting directories."""
+        import shutil
+
+        from src.amplihack.install import copytree_manifest
+
+        # Create source .claude/ with a test directory
+        src_dir = tmp_path / "src"
+        claude_dir = src_dir / ".claude"
+        agents_dir = claude_dir / "agents" / "amplihack"
+        agents_dir.mkdir(parents=True)
+        (agents_dir / "test_agent.md").write_text("# Test Agent")
+
+        # Create destination with existing content
+        dst_dir = tmp_path / "dst"
+        dst_agents = dst_dir / "agents" / "amplihack"
+        dst_agents.mkdir(parents=True)
+        (dst_agents / "existing.md").write_text("# Existing")
+
+        # Patch shutil.rmtree to detect if it's called
+        original_rmtree = shutil.rmtree
+        rmtree_called = []
+
+        def tracking_rmtree(*args, **kwargs):
+            rmtree_called.append(args[0])
+            return original_rmtree(*args, **kwargs)
+
+        with patch("src.amplihack.install.shutil.rmtree", side_effect=tracking_rmtree):
+            copytree_manifest(str(src_dir), str(dst_dir), ".claude")
+
+        assert len(rmtree_called) == 0, (
+            f"shutil.rmtree was called on {rmtree_called} - "
+            "copytree_manifest should sync in-place, not delete+recreate"
+        )
+
+    def test_copytree_manifest_overwrites_existing_files(self, tmp_path):
+        """Test that copytree_manifest overwrites files without rmtree."""
+        from src.amplihack.install import copytree_manifest
+
+        # Create source .claude/ with content
+        src_dir = tmp_path / "src"
+        claude_dir = src_dir / ".claude"
+        context_dir = claude_dir / "context"
+        context_dir.mkdir(parents=True)
+        (context_dir / "PHILOSOPHY.md").write_text("# Updated Philosophy")
+
+        # Create destination with OLD content
+        dst_dir = tmp_path / "dst"
+        dst_context = dst_dir / "context"
+        dst_context.mkdir(parents=True)
+        (dst_context / "PHILOSOPHY.md").write_text("# Old Philosophy")
+
+        copytree_manifest(str(src_dir), str(dst_dir), ".claude")
+
+        # File should be overwritten with new content
+        result = (dst_context / "PHILOSOPHY.md").read_text()
+        assert result == "# Updated Philosophy", f"File not overwritten. Got: {result}"
+
+
 class TestStagingE2EBehavior:
     """End-to-end tests for staging behavior with real subprocess calls (optional)."""
 
