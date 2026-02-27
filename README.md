@@ -332,10 +332,21 @@ Workflow customization:
 
 ### Claude Code (Default)
 
-Set `$ANTHROPIC_API_KEY` before launching:
+Get your API key from [console.anthropic.com/account/keys](https://console.anthropic.com/account/keys).
+Claude API is pay-per-use; typical amplihack sessions cost $0.01–$2 depending on task complexity.
+
+Add to `~/.bashrc` or `~/.zshrc` for permanent setup:
 
 ```bash
 export ANTHROPIC_API_KEY=your-key-here
+```
+
+Then verify and launch:
+
+```bash
+# Verify the key is set
+echo $ANTHROPIC_API_KEY
+
 amplihack claude
 ```
 

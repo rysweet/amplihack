@@ -55,7 +55,7 @@ classifies your task, detects parallel workstreams, and executes via recipe runn
 **Goal-Seeking Loop**: The up-to-3-round retry mechanism. After each execution
 round, a reviewer agent evaluates whether the goal was achieved. If PARTIAL or
 NOT_ACHIEVED, another round runs automatically (up to 3 total). After all rounds
-complete, a mandatory `reflect-final` step runs unconditionally to produce the
+complete, a `reflect-final` step runs for all completed development and investigation tasks to produce the
 definitive `GOAL_STATUS` assessment used in the summary.
 
 **Recursion Guard Fallback**: When the session depth limit is reached and

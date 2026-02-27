@@ -265,7 +265,7 @@ prompt in <1ms and injects a directive for development tasks.
 ```
 fix the login timeout bug      → auto-routes to dev-orchestrator
 add OAuth support              → auto-routes
-how do I add pagination?       → auto-routes (action intent detected)
+how do I add pagination?       → auto-routes (action + explanation detected)
 investigate the slow queries   → auto-routes
 ```
 
@@ -335,7 +335,9 @@ The auto-routing hook classified your prompt as a development task.
 - To override for one prompt: prefix with "just answer" or "without workflow"
 - To check what the classifier decides: use Python directly:
   ```python
-  from amplifier-bundle.tools.amplihack.hooks.dev_intent_router import classify
+  import sys
+  sys.path.insert(0, 'amplifier-bundle/tools/amplihack/hooks')
+  from dev_intent_router import classify
   print(classify("your prompt here"))
   ```
 
