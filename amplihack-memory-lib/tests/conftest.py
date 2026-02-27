@@ -33,3 +33,9 @@ def temp_storage(tmp_path):
     yield storage_path
     if storage_path.exists():
         shutil.rmtree(storage_path, ignore_errors=True)
+
+
+@pytest.fixture(params=["sqlite", "kuzu"])
+def backend_type(request):
+    """Parametrize tests to run with both SQLite and Kuzu backends."""
+    return request.param

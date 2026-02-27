@@ -11,7 +11,8 @@
     ".claude/",
     "Specs/",
     "scripts/",
-    "src/amplihack/agents/goal_seeking/sdk_adapters"
+    "src/amplihack/agents/goal_seeking/sdk_adapters",
+    "amplihack-memory-lib/"
   ],
   "typeCheckingMode": "basic",
   "reportMissingImports": true,
