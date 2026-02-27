@@ -349,8 +349,12 @@ class GoalSeekingAgent(ABC):
                 # Use Anthropic model for fact extraction regardless of SDK's native model,
                 # since ANTHROPIC_API_KEY is reliably available
                 eval_model = os.environ.get("EVAL_MODEL", "claude-sonnet-4-5-20250929")
+                # Use self.name (not f"{self.name}_learning") so the
+                # LearningAgent opens the same CognitiveMemory namespace
+                # as the pre-built DB.  Appending '_learning' caused
+                # agent_id mismatch in skip-learning mode (#2661).
                 self._learning_agent_cache: Any = LearningAgent(
-                    agent_name=f"{self.name}_learning",
+                    agent_name=self.name,
                     model=eval_model,
                     storage_path=self.storage_path,
                     use_hierarchical=True,
