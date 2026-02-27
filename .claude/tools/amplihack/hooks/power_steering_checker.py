@@ -3200,50 +3200,6 @@ class PowerSteeringChecker:
                     return True
         return False
 
-    def _check_decisions_logged(self, transcript: list[dict], session_id: str) -> bool:
-        """Check if architectural decisions were logged to DECISIONS.md.
-
-        Per CLAUDE.md: 'All Agents MUST log their decisions and reasoning in
-        .claude/runtime/logs/<session_id>/DECISIONS.md'
-
-        Only fires if there were significant implementation decisions (agent
-        invocations, architecture discussions). Simple changes don't need
-        decision logs.
-
-        Args:
-            transcript: List of message dictionaries
-            session_id: Session identifier
-
-        Returns:
-            True if decisions logged or no significant decisions were made
-        """
-        # Check if there were agent invocations (Task tool calls) suggesting
-        # significant decisions were being made
-        has_agent_calls = False
-        has_decisions_file = False
-
-        for msg in transcript:
-            if msg.get("type") == "assistant" and "message" in msg:
-                content = msg["message"].get("content", [])
-                if isinstance(content, list):
-                    for block in content:
-                        if isinstance(block, dict) and block.get("type") == "tool_use":
-                            tool_name = block.get("name", "")
-                            # Agent invocations suggest architectural decisions
-                            if tool_name == "Task":
-                                has_agent_calls = True
-                            # Check if DECISIONS.md was written to
-                            if tool_name in ["Write", "Edit"]:
-                                file_path = block.get("input", {}).get("file_path", "")
-                                if "DECISIONS.md" in file_path:
-                                    has_decisions_file = True
-
-        # Only require DECISIONS.md if there were agent invocations
-        if has_agent_calls and not has_decisions_file:
-            return False
-
-        return True
-
     def _check_dev_workflow_complete(self, transcript: list[dict], session_id: str) -> bool:
         """Check if full DEFAULT_WORKFLOW followed.
 
