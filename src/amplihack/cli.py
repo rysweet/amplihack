@@ -176,6 +176,16 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
         # Ensure amplihack framework is staged to ~/.amplihack/.claude/
         _ensure_amplihack_staged()
 
+        # Auto-install missing SDK dependencies (e.g. agent-framework)
+        try:
+            from .dep_check import ensure_sdk_deps
+
+            dep_result = ensure_sdk_deps()
+            if not dep_result.all_ok:
+                logger.warning("Some SDK deps could not be installed: %s", dep_result.missing)
+        except Exception as e:
+            logger.debug("SDK dep check skipped: %s", e)
+
         # Prompt to re-enable power-steering if disabled (#2544)
         try:
             from .power_steering.re_enable_prompt import prompt_re_enable_if_disabled
