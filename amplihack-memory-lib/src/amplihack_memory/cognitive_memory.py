@@ -698,7 +698,7 @@ class CognitiveMemory:
                 try:
                     meta = json.loads(row[6])
                 except (json.JSONDecodeError, TypeError):
-                    pass
+                    logger.debug("Failed to parse episode metadata: %s", row[6])
             episodes.append(
                 EpisodicMemory(
                     node_id=row[0],
@@ -854,13 +854,13 @@ class CognitiveMemory:
                 try:
                     tags = json.loads(row[5])
                 except (json.JSONDecodeError, TypeError):
-                    pass
+                    logger.debug("Failed to parse fact tags: %s", row[5])
             meta: dict = {}
             if row[6]:
                 try:
                     meta = json.loads(row[6])
                 except (json.JSONDecodeError, TypeError):
-                    pass
+                    logger.debug("Failed to parse fact metadata: %s", row[6])
             facts.append(
                 SemanticFact(
                     node_id=row[0],
@@ -983,13 +983,13 @@ class CognitiveMemory:
                 try:
                     steps = json.loads(row[2])
                 except (json.JSONDecodeError, TypeError):
-                    pass
+                    logger.debug("Failed to parse procedure steps: %s", row[2])
             prereqs: list[str] = []
             if row[3]:
                 try:
                     prereqs = json.loads(row[3])
                 except (json.JSONDecodeError, TypeError):
-                    pass
+                    logger.debug("Failed to parse procedure prereqs: %s", row[3])
             procs.append(
                 ProceduralMemory(
                     node_id=row[0],
