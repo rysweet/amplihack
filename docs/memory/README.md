@@ -8,8 +8,9 @@ Ahoy, matey! Welcome to the memory system documentation - where agents remember 
 
 **New to memory systems?** Start here:
 
-- [5-Type Memory Guide](5-TYPE-MEMORY-GUIDE.md) - **NEW!** Understand the 5 psychological memory types
-- [Quick Reference](5-TYPE-MEMORY-QUICKREF.md) - **NEW!** One-page cheat sheet for memory system
+- [CognitiveMemory (6-type)](../../amplihack-memory-lib/README.md) - 6-type cognitive memory: sensory, working, episodic, semantic, procedural, prospective (Kuzu backend)
+- [5-Type Memory Guide](5-TYPE-MEMORY-GUIDE.md) - Understand the 5 psychological memory types
+- [Quick Reference](5-TYPE-MEMORY-QUICKREF.md) - One-page cheat sheet for memory system
 - [Agent Memory Integration](../AGENT_MEMORY_INTEGRATION.md) - How agents share and persist knowledge
 - [Agent Memory Quickstart](../AGENT_MEMORY_QUICKSTART.md) - Get started in 5 minutes
 
