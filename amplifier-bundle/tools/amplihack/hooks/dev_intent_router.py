@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
 """
-dev_intent_router.py — Classifies user prompts and injects workflow routing signals.
+dev_intent_router.py — Smart prompt routing for amplihack development workflows.
 
-Three routing outcomes:
-  DEV  → Invoke dev-orchestrator (DEFAULT_WORKFLOW for builds, fixes, docs, verification)
-  Q&A  → Answer directly (knowledge questions, explanations)
-  OPS  → Execute directly (shell commands, admin tasks, maintenance)
-  SKIP → No injection (existing slash commands, greetings, explicit bypasses)
+Six routing outcomes, matching amplihack's workflow types:
 
-Why three routes matter:
-  - DEV tasks: "fix the bug", "write the docs", "make sure it works", "add rate limiting"
-  - Q&A tasks: "what is OAuth?", "how does JWT work?" — deserve direct concise answers
-  - OPS tasks: "run git status", "delete old logs" — execute, don't orchestrate
+  DEV         → dev-orchestrator + DEFAULT_WORKFLOW (build, fix, write, verify, deploy)
+  INVESTIGATE → dev-orchestrator + INVESTIGATION_WORKFLOW (analyze, explore, understand)
+  HYBRID      → dev-orchestrator (investigate first, then implement)
+  Q&A         → direct concise answer (knowledge questions)
+  OPS         → direct execution (shell commands, admin)
+  SKIP        → no injection (existing slash commands, greetings, bypasses)
 
-Performance: <1ms per call (pure keyword matching, no LLM).
-Disable:     export AMPLIHACK_AUTO_DEV=false (also: 0, no, off)
+Design principles:
+  - Fast: <1ms (pure regex + keyword matching, no LLM)
+  - Conservative on SKIP: anything that might be work gets routed somewhere
+  - Human injection text: brief, helpful, not robotic
+  - Disable: export AMPLIHACK_AUTO_DEV=false (also: 0, no, off)
 """
 
 import os
@@ -24,21 +25,21 @@ from dataclasses import dataclass
 
 @dataclass
 class IntentResult:
-    route_type: str    # "dev" | "qa" | "ops" | "skip"
+    route_type: str    # "dev" | "investigate" | "hybrid" | "qa" | "ops" | "skip"
     confidence: float  # 0.0–1.0
     tier: str          # "required" | "recommended" | "suggested" | "skip"
     reason: str
 
     @property
     def should_route(self) -> bool:
-        """True for any route that produces an injection (dev, qa, ops)."""
+        """True for any route that produces an injection."""
         return self.route_type != "skip"
 
 # Backwards-compatible alias
 DevIntentResult = IntentResult
 
 
-# ── Hard bypasses: always skip ────────────────────────────────────────────────
+# ── Hard bypasses ─────────────────────────────────────────────────────────────
 
 _SKIP_PREFIXES = ('/', 'task(', 'skill(')
 
@@ -53,7 +54,7 @@ _BYPASS_RE = re.compile(
 )
 
 
-# ── Greetings and acknowledgements ───────────────────────────────────────────
+# ── Greetings ─────────────────────────────────────────────────────────────────
 
 _GREETING_RE = re.compile(
     r'^(?:hi\b|hello\b|hey\b|thanks\b|thank\s+you|ok\b|okay\b|'
@@ -63,8 +64,7 @@ _GREETING_RE = re.compile(
 )
 
 
-# ── Operations: shell/admin — route_type="ops" ───────────────────────────────
-# Note: (?<![/A-Z])\bcd\b avoids matching "CI/CD"
+# ── Operations (shell/admin) ─────────────────────────────────────────────────
 
 _OPS_RE = re.compile(
     r'(?:'
@@ -81,7 +81,7 @@ _OPS_RE = re.compile(
 )
 
 
-# ── Q&A / knowledge patterns — route_type="qa" ───────────────────────────────
+# ── Q&A / knowledge patterns ─────────────────────────────────────────────────
 
 _KNOWLEDGE_RE = re.compile(
     r'\b(?:what\s+is\b|what\s+are\b|what\'s\s+\w|'
@@ -95,24 +95,36 @@ _KNOWLEDGE_RE = re.compile(
 )
 
 
-# ── Development action verbs — route_type="dev" ───────────────────────────────
-# Includes documentation and verification work (they belong in DEFAULT_WORKFLOW)
+# ── Development action verbs ─────────────────────────────────────────────────
+# Build, fix, write, verify, deploy — things that CHANGE the codebase
 
-_ACTION_RE = re.compile(
+_DEV_RE = re.compile(
     r'\b(?:implement|build|create|fix|add|develop|make|generate|configure|'
     r'optimize|improve|patch|repair|resolve|handle|update|upgrade|refactor|'
-    r'migrate|deploy|integrate|scaffold|debug|verify|review|analyze|'
-    r'investigate|explore|research|audit|'
+    r'migrate|deploy|integrate|scaffold|debug|verify|'
     r'structure|architect|design|organize|arrange|'
     r'set\s+up|clean\s+up|wire\s+up|hook\s+up|spin\s+up|'
     r'port\s+(?:to|from)|extract|split|merge|combine|'
     r'profile|monitor|benchmark|secure|harden|automate|'
-    r'document|write)\b',     # 'write' and 'document' belong in dev actions
+    r'document|write)\b',
     re.I,
 )
 
 
-# ── Test-verb detection (distinguishes "test the flow" from "a test result") ──
+# ── Investigation verbs ──────────────────────────────────────────────────────
+# Understand, explore, analyze — things that READ and LEARN about the codebase
+
+_INVESTIGATE_RE = re.compile(
+    r'\b(?:investigate|analyze|explore|research|understand|'
+    r'audit|study|examine|'
+    r'map\s+(?:out|the)|trace|'
+    r'look\s+(?:at|into)|dig\s+into|'
+    r'figure\s+out|find\s+out)\b',
+    re.I,
+)
+
+
+# ── Test-verb detection ──────────────────────────────────────────────────────
 
 _TEST_NOUN_FOLLOW = frozenset({
     'suite', 'suites', 'case', 'cases', 'coverage', 'result', 'results',
@@ -133,7 +145,7 @@ _TEST_NONVERB_BEFORE = re.compile(
 
 
 def _is_test_imperative(text_lower: str) -> bool:
-    """True when 'test' is used as an imperative verb (not a noun or modal context)."""
+    """True when 'test' is an imperative verb (not a noun or modal context)."""
     for m in re.finditer(r'\btest[s]?\b', text_lower):
         pos = m.start()
         before = text_lower[:pos]
@@ -149,7 +161,7 @@ def _is_test_imperative(text_lower: str) -> bool:
     return False
 
 
-# ── Technology context words (two+ → implicit dev context) ───────────────────
+# ── Technology context ────────────────────────────────────────────────────────
 
 _TECH_WORDS = frozenset({
     'api', 'endpoint', 'service', 'database', 'schema', 'oauth', 'jwt',
@@ -165,17 +177,23 @@ _TECH_WORDS = frozenset({
 })
 
 
-# ── Main classifier ───────────────────────────────────────────────────────────
+# ── Review verb (can be either investigate or dev depending on context) ──────
+
+_REVIEW_RE = re.compile(r'\breview\b', re.I)
+
+
+# ── Main classifier ──────────────────────────────────────────────────────────
 
 def classify(prompt: str) -> IntentResult:
     """
-    Classify a user prompt into one of four routing outcomes.
+    Classify a user prompt into one of six routing outcomes.
 
-    DEV:  Development/investigation task → dev-orchestrator (DEFAULT_WORKFLOW)
-          Includes: coding, fixing, testing, documenting, verifying, deploying
-    Q&A:  Knowledge/explanation question → direct concise answer (Q&A_WORKFLOW)
-    OPS:  Shell/admin task → direct execution (OPS_WORKFLOW)
-    SKIP: Existing slash command, greeting, or explicit bypass → no injection
+    DEV:         Build, fix, write, verify, deploy → DEFAULT_WORKFLOW
+    INVESTIGATE: Analyze, explore, understand → INVESTIGATION_WORKFLOW
+    HYBRID:      Both investigate AND dev verbs → investigate then implement
+    Q&A:         Knowledge/explanation question → direct answer
+    OPS:         Shell/admin → execute directly
+    SKIP:        Existing commands, greetings, bypasses → no injection
     """
     if not prompt or not prompt.strip():
         return IntentResult("skip", 0.0, "skip", "empty prompt")
@@ -183,50 +201,86 @@ def classify(prompt: str) -> IntentResult:
     p = prompt.strip()
     p_lower = p.lower()
 
-    # 1. Hard bypasses — always skip, respect explicit user intent
+    # 1. Hard bypasses
     for prefix in _SKIP_PREFIXES:
         if p_lower.startswith(prefix):
-            return IntentResult("skip", 0.0, "skip", "existing command/invocation")
+            return IntentResult("skip", 0.0, "skip", "existing command")
 
     if _BYPASS_RE.search(p):
         return IntentResult("skip", 0.0, "skip", "explicit bypass")
 
-    # 2. Short greetings and acknowledgements
+    # 2. Greetings
     if _GREETING_RE.match(p) and len(p.split()) <= 5:
-        return IntentResult("skip", 0.0, "skip", "greeting/acknowledgement")
+        return IntentResult("skip", 0.0, "skip", "greeting")
 
-    # 3. Operations tasks → OPS routing (execute directly, no workflow overhead)
+    # 3. Operations
     if _OPS_RE.search(p):
-        return IntentResult("ops", 0.85, "required", "operations/admin task")
+        return IntentResult("ops", 0.85, "required", "operations task")
 
     # 4. Feature extraction
-    has_action = bool(_ACTION_RE.search(p)) or _is_test_imperative(p_lower)
+    has_dev = bool(_DEV_RE.search(p)) or _is_test_imperative(p_lower)
+    has_investigate = bool(_INVESTIGATE_RE.search(p))
+    has_review = bool(_REVIEW_RE.search(p))
     has_knowledge = bool(_KNOWLEDGE_RE.search(p))
     words = frozenset(re.findall(r'\b\w+\b', p_lower))
     tech_hits = _TECH_WORDS & words
 
-    # 5. Clear development action → DEV (includes "make sure", "write docs",
-    #    "verify deployment" — verification and documentation ARE dev work)
-    if has_action and not has_knowledge:
-        return IntentResult("dev", 0.95, "required", "clear action request")
+    # 'review' context: "review PR #42" = dev; "review the architecture" = investigate
+    if has_review and not has_dev and not has_investigate:
+        if tech_hits & {'pr', 'code', 'implementation', 'fix', 'patch'}:
+            has_dev = True
+        else:
+            has_investigate = True
 
-    # 6. Action + explanation context ("explain how to implement X") → DEV
-    if has_action and has_knowledge:
+    # For hybrid detection: filter out dev-verb matches that are actually nouns.
+    # "the build is failing" → "build" is a noun; "investigate then build it" → verb.
+    # Check ALL dev matches — if any real verb exists (not preceded by article), keep has_dev.
+    if has_investigate and has_dev:
+        _article_re = re.compile(r'\b(?:the|a|an|this|that|my|our|your|its)\s+$', re.I)
+        has_real_dev_verb = False
+        for dev_m in _DEV_RE.finditer(p):
+            before = p[:dev_m.start()]
+            if not _article_re.search(before):
+                has_real_dev_verb = True
+                break
+        if not has_real_dev_verb:
+            has_dev = False
+
+    # 5. HYBRID: both investigate AND dev verbs present
+    #    "investigate X then implement Y", "analyze and fix", "understand then add"
+    if has_investigate and has_dev:
+        return IntentResult("hybrid", 0.90, "required",
+                            "investigate then implement")
+
+    # 6. Pure development action (no investigation verb, no knowledge question)
+    if has_dev and not has_knowledge:
+        return IntentResult("dev", 0.95, "required", "development task")
+
+    # 7. Development + knowledge ("explain how to implement X")
+    if has_dev and has_knowledge:
         return IntentResult("dev", 0.80, "recommended",
-                            "action + knowledge: dev task with explanation")
+                            "development task with explanation")
 
-    # 7. Pure knowledge / Q&A → Q&A routing (direct answer, no workflow)
-    if has_knowledge and not has_action:
-        return IntentResult("qa", 0.85, "required", "knowledge/Q&A question")
+    # 8. Pure investigation (no dev verb)
+    if has_investigate and not has_knowledge:
+        return IntentResult("investigate", 0.90, "required", "investigation task")
 
-    # 8. Implicit dev context via tech word co-occurrence
-    if not has_action and not has_knowledge:
-        if len(tech_hits) >= 2:
-            return IntentResult("dev", 0.55, "suggested",
-                                f"implicit dev context: {tech_hits}")
-        if tech_hits:
-            # Single tech word — ambiguous, skip rather than misroute
-            return IntentResult("skip", 0.30, "skip", "single tech word, ambiguous")
+    # 9. Investigation + knowledge ("how does the caching layer work")
+    if has_investigate and has_knowledge:
+        return IntentResult("investigate", 0.80, "recommended",
+                            "investigation with explanation")
+
+    # 10. Pure Q&A (knowledge question, no action verbs)
+    if has_knowledge and not has_dev and not has_investigate:
+        return IntentResult("qa", 0.85, "required", "knowledge question")
+
+    # 11. Implicit dev context via tech words
+    if len(tech_hits) >= 2:
+        return IntentResult("dev", 0.55, "suggested",
+                            f"implicit dev context: {tech_hits}")
+
+    if tech_hits:
+        return IntentResult("skip", 0.30, "skip", "single tech word, ambiguous")
 
     return IntentResult("skip", 0.10, "skip", "no clear intent")
 
@@ -234,43 +288,60 @@ def classify(prompt: str) -> IntentResult:
 # ── Injection builders ────────────────────────────────────────────────────────
 
 def build_context_injection(result: IntentResult, prompt: str) -> str:
-    """Build the additionalContext system reminder for the given route type."""
+    """Build human-readable routing signal for Claude."""
+
+    task_preview = prompt[:200]
 
     if result.route_type == "dev":
         directives = {
-            "required":    'You MUST immediately invoke Skill(skill="dev-orchestrator"). '
-                           'Do not answer inline.',
-            "recommended": 'Invoke Skill(skill="dev-orchestrator") for this task '
-                           'unless you have a specific reason to answer directly.',
-            "suggested":   'Consider invoking Skill(skill="dev-orchestrator") '
-                           'if this is a development or investigation task.',
+            "required":    'Invoke Skill(skill="dev-orchestrator") — this is a development task.',
+            "recommended": 'This looks like a dev task. Invoke Skill(skill="dev-orchestrator") '
+                           'unless you have a reason to answer directly.',
+            "suggested":   'This might be a dev task. Consider invoking '
+                           'Skill(skill="dev-orchestrator").',
         }
-        directive = directives.get(result.tier, "")
         return (
             f'<system-reminder source="auto-dev-router">\n'
-            f'DEVELOPMENT TASK DETECTED (confidence: {result.confidence:.0%}).\n'
-            f'{directive}\n'
-            f'Task to pass: "{prompt[:300]}"\n'
+            f'{directives.get(result.tier, "")}\n'
+            f'Task: "{task_preview}"\n'
+            f'</system-reminder>'
+        )
+
+    if result.route_type == "investigate":
+        return (
+            f'<system-reminder source="auto-dev-router">\n'
+            f'This is an investigation/research task. '
+            f'Invoke Skill(skill="dev-orchestrator") — it will use the '
+            f'INVESTIGATION_WORKFLOW to analyze the system.\n'
+            f'Task: "{task_preview}"\n'
+            f'</system-reminder>'
+        )
+
+    if result.route_type == "hybrid":
+        return (
+            f'<system-reminder source="auto-dev-router">\n'
+            f'This is a hybrid task — investigate first, then implement. '
+            f'Invoke Skill(skill="dev-orchestrator") — it will create '
+            f'investigation and development workstreams.\n'
+            f'Task: "{task_preview}"\n'
             f'</system-reminder>'
         )
 
     if result.route_type == "qa":
         return (
             f'<system-reminder source="auto-qa-router">\n'
-            f'KNOWLEDGE/Q&A REQUEST DETECTED (confidence: {result.confidence:.0%}).\n'
-            f'Answer this question directly and concisely. '
-            f'No workflow invocation is needed.\n'
-            f'Question: "{prompt[:300]}"\n'
+            f'Knowledge/Q&A question — answer directly and concisely. '
+            f'No workflow invocation needed.\n'
+            f'Question: "{task_preview}"\n'
             f'</system-reminder>'
         )
 
     if result.route_type == "ops":
         return (
             f'<system-reminder source="auto-ops-router">\n'
-            f'OPERATIONS TASK DETECTED (confidence: {result.confidence:.0%}).\n'
-            f'Execute this admin/maintenance task directly. '
-            f'No workflow invocation is needed.\n'
-            f'Task: "{prompt[:300]}"\n'
+            f'Operations/admin task — execute directly. '
+            f'No workflow invocation needed.\n'
+            f'Task: "{task_preview}"\n'
             f'</system-reminder>'
         )
 
@@ -281,10 +352,8 @@ def should_auto_route(prompt: str) -> tuple[bool, str]:
     """
     Main entry point for user_prompt_submit.py.
 
-    Returns (should_inject, injection_text) for dev, qa, and ops routes.
-    Returns (False, "") when routing is disabled or prompt should be skipped.
-
-    Disable entirely: export AMPLIHACK_AUTO_DEV=false (also: 0, no, off)
+    Returns (should_inject, injection_text).
+    Disable: export AMPLIHACK_AUTO_DEV=false (also: 0, no, off)
     """
     auto_dev = os.environ.get("AMPLIHACK_AUTO_DEV", "true").lower().strip()
     if auto_dev in ("false", "0", "no", "off"):
