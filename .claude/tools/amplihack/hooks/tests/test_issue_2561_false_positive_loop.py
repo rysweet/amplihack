@@ -18,7 +18,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from power_steering_checker import PowerSteeringChecker
 
-
 # =============================================================================
 # Fix 1: _check_next_steps - Completion Summary Patterns
 # =============================================================================
@@ -407,11 +406,7 @@ class TestSmallCompletedSession:
         """Helper: Create a transcript message with text content."""
         return {
             "type": msg_type,
-            "message": {
-                "content": [
-                    {"type": "text", "text": text}
-                ]
-            },
+            "message": {"content": [{"type": "text", "text": text}]},
         }
 
     def test_one_edit_with_completion_signal(self):
@@ -485,7 +480,9 @@ class TestSmallCompletedSession:
         transcript = [
             self._make_text_msg("Fix the null pointer", "user"),
             self._make_edit_msg("src/handler.py"),
-            self._make_text_msg("Successfully resolved the null pointer exception by adding a null check."),
+            self._make_text_msg(
+                "Successfully resolved the null pointer exception by adding a null check."
+            ),
         ]
         assert checker._is_small_completed_session(transcript) is True
 

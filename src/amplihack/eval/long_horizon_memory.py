@@ -1062,6 +1062,9 @@ def _run_segmented_learning(args: argparse.Namespace) -> None:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     db_path = output_dir / "memory_db"
+    # Pre-create as directory so HierarchicalMemory uses db_path/kuzu_db
+    # (not a flat file), keeping consistent with --load-db expectations.
+    db_path.mkdir(parents=True, exist_ok=True)
 
     # Step 1: Generate dialogue and save to JSON
     logger.info("Generating %d-turn dialogue (seed=%d)...", args.turns, args.seed)

@@ -297,8 +297,17 @@ class TestRecipeYAMLValidation:
                         vars_used.add(match)
 
                     builtins = {
-                        "true", "false", "True", "False", "None",
-                        "not", "and", "or", "in", "is", "CONTINUE",
+                        "true",
+                        "false",
+                        "True",
+                        "False",
+                        "None",
+                        "not",
+                        "and",
+                        "or",
+                        "in",
+                        "is",
+                        "CONTINUE",
                     }
                     for var in vars_used - builtins:
                         if var not in defined_outputs and var not in context_keys:
@@ -427,9 +436,7 @@ class TestParseJsonRetry:
     def test_retry_fails_after_both_attempts(self):
         """Both attempts return non-JSON -> step fails."""
         runner = self._make_runner()
-        runner._adapter.execute_agent_step = MagicMock(
-            side_effect=["Not JSON", "Still not JSON"]
-        )
+        runner._adapter.execute_agent_step = MagicMock(side_effect=["Not JSON", "Still not JSON"])
         step = self._make_step()
 
         from amplihack.recipes.context import RecipeContext
@@ -496,6 +503,4 @@ class TestQaWorkflowConditionGuard:
         assert len(compile_steps) >= 1, "Should have at least one compile-output step"
 
         for step in compile_steps:
-            assert step.condition is not None, (
-                f"Step {step.id} must have a condition guard"
-            )
+            assert step.condition is not None, f"Step {step.id} must have a condition guard"

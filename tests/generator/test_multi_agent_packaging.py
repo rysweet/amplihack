@@ -30,7 +30,6 @@ from src.amplihack.goal_agent_generator.templates.multi_agent_template import (
     get_spawner_yaml,
 )
 
-
 # --- Fixtures ---
 
 
@@ -236,9 +235,7 @@ class TestAssemblerMultiAgent:
         assert spawner.config["max_concurrent"] == 3
         assert spawner.config["timeout"] == 60
 
-    def test_multi_agent_metadata_flags(
-        self, goal_definition, execution_plan, sample_skills
-    ):
+    def test_multi_agent_metadata_flags(self, goal_definition, execution_plan, sample_skills):
         """Bundle metadata should include multi_agent and enable_spawning flags."""
         assembler = AgentAssembler()
         bundle = assembler.assemble(
@@ -265,9 +262,7 @@ class TestAssemblerMultiAgent:
         assert bundle.sub_agent_configs == []
         assert "multi_agent" not in bundle.metadata
 
-    def test_multi_agent_increases_max_turns(
-        self, goal_definition, execution_plan, sample_skills
-    ):
+    def test_multi_agent_increases_max_turns(self, goal_definition, execution_plan, sample_skills):
         """Multi-agent should get 1.5x more turns for coordination overhead."""
         assembler = AgentAssembler()
 

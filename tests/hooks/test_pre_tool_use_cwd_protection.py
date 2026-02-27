@@ -8,7 +8,6 @@ Tests cover:
 - Path extraction helpers
 """
 
-import os
 import sys
 from pathlib import Path
 from unittest.mock import patch
@@ -19,9 +18,12 @@ except ImportError:
     pytest = None
 
 # Import from the amplifier-bundle location
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "amplifier-bundle" / "tools" / "amplihack" / "hooks"))
+sys.path.insert(
+    0,
+    str(Path(__file__).parent.parent.parent / "amplifier-bundle" / "tools" / "amplihack" / "hooks"),
+)
 
-from pre_tool_use import PreToolUseHook, _MV_RE, _RM_RECURSIVE_RE, _RMDIR_RE
+from pre_tool_use import _MV_RE, PreToolUseHook
 
 
 class TestCwdDeletionBlocking:

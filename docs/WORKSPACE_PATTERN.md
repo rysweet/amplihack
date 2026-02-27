@@ -231,10 +231,10 @@ This project leverages amplihack's design philosophy:
 - **Modular design**: Follow @~/.amplihack/.claude/context/PHILOSOPHY.md for architectural decisions
 - **Agent support**: Use `/amplihack:ultrathink` for architectural analysis
 - **Code transformations**: Use `/amplihack:codemod` for refactoring tasks
-
 ````
 
-The key is making this document useful for both AI agents and human developers. It should answer: 
+The key is making this document useful for both AI agents and human developers. It should answer:
+
 - What is this project?
 - How is it architected?
 - What conventions do we follow? What should I avoid?
@@ -245,7 +245,7 @@ For larger projects, consider documenting your architectural principles separate
 
 ```bash
 mkdir -p docs
-````
+```
 
 Create `docs/DESIGN_PHILOSOPHY.md`:
 

@@ -94,7 +94,9 @@ class DocumentCreatorAgent(DomainAgent):
         )
 
     def _audience(self, content: str, target_audience: str) -> TaskResult:
-        r = self.executor.execute("assess_audience", content=content, target_audience=target_audience)
+        r = self.executor.execute(
+            "assess_audience", content=content, target_audience=target_audience
+        )
         if not r.success:
             return TaskResult(success=False, output=None, error=str(r.output))
         return TaskResult(

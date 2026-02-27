@@ -175,10 +175,9 @@ class StopHook(HookProcessor):
                         # (all checks passed) and failure block (actual issues found).
                         # Previously, both returned decision="block" to Claude Code,
                         # causing false failures when all checks actually passed.
-                        is_visibility_only = (
-                            ps_result.is_first_stop
-                            and ps_result.reasons == ["first_stop_visibility"]
-                        )
+                        is_visibility_only = ps_result.is_first_stop and ps_result.reasons == [
+                            "first_stop_visibility"
+                        ]
 
                         if is_visibility_only and ps_result.analysis:
                             # FIRST STOP, ALL CHECKS PASSED: Display results but APPROVE
@@ -199,7 +198,7 @@ class StopHook(HookProcessor):
                             )
                             return {"decision": "approve"}
 
-                        elif ps_result.is_first_stop and ps_result.analysis:
+                        if ps_result.is_first_stop and ps_result.analysis:
                             # FIRST STOP with actual failures: Block and display results
                             self.log(
                                 "First stop - displaying all consideration results for visibility"

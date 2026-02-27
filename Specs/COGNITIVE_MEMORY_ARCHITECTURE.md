@@ -1,6 +1,7 @@
 # Cognitive Memory Architecture for Goal-Seeking Agents
 
 ## Version: 1.0 (2026-02-18)
+
 ## Status: Active Development (PR #2395 + amplihack-memory-lib)
 
 ## Overview
@@ -10,18 +11,20 @@ This document codifies the complete memory architecture for goal-seeking agents 
 ## 1. Memory Types
 
 ### 1.1 Sensory Memory
+
 **Purpose:** Ultra-short-term buffer for raw input. Decays unless attended to.
 
-| Property | Value |
-|---|---|
-| Kuzu Table | SensoryMemory |
-| Duration | Auto-expires (TTL, default 300s) |
-| Capacity | Unlimited (pruned by TTL) |
-| Key Fields | modality, raw_data, observation_order, expires_at |
-| Promotes To | EpisodicMemory (via attend_to_sensory) |
-| Edge | ATTENDED_TO (SensoryMemory → EpisodicMemory) |
+| Property    | Value                                             |
+| ----------- | ------------------------------------------------- |
+| Kuzu Table  | SensoryMemory                                     |
+| Duration    | Auto-expires (TTL, default 300s)                  |
+| Capacity    | Unlimited (pruned by TTL)                         |
+| Key Fields  | modality, raw_data, observation_order, expires_at |
+| Promotes To | EpisodicMemory (via attend_to_sensory)            |
+| Edge        | ATTENDED_TO (SensoryMemory → EpisodicMemory)      |
 
 **Use Cases:**
+
 - Buffering raw content before fact extraction
 - Tracking observation order (what was seen first/last)
 - Environment orientation (current date/time, session context)
@@ -29,17 +32,19 @@ This document codifies the complete memory architecture for goal-seeking agents 
 - Time series data snapshots
 
 ### 1.2 Working Memory
+
 **Purpose:** Active task tracking. Like the TaskCreate/TaskUpdate/TaskList tools but for generated agents.
 
-| Property | Value |
-|---|---|
-| Kuzu Table | WorkingMemory |
-| Duration | Task-scoped (cleared on task completion) |
-| Capacity | 20 items max (evicts lowest relevance) |
-| Key Fields | slot_type, content, relevance, task_id |
-| Integrates With | All other memory types |
+| Property        | Value                                    |
+| --------------- | ---------------------------------------- |
+| Kuzu Table      | WorkingMemory                            |
+| Duration        | Task-scoped (cleared on task completion) |
+| Capacity        | 20 items max (evicts lowest relevance)   |
+| Key Fields      | slot_type, content, relevance, task_id   |
+| Integrates With | All other memory types                   |
 
 **Slot Types:**
+
 - `question` - The current question being answered
 - `retrieved_fact` - A fact pulled from semantic/procedural memory
 - `reasoning_step` - An intermediate reasoning step
@@ -48,6 +53,7 @@ This document codifies the complete memory architecture for goal-seeking agents 
 - `evaluation` - Sufficiency evaluation result
 
 **Integration with Other Memory Types:**
+
 - Working ← Sensory: New input buffered for attention
 - Working → Episodic: Completed tasks become episodic memories
 - Working ← Procedural: Tracks which step of a procedure you're on
@@ -55,17 +61,19 @@ This document codifies the complete memory architecture for goal-seeking agents 
 - Working ← Semantic: Retrieved facts during reasoning
 
 ### 1.3 Episodic Memory
+
 **Purpose:** What happened when. Long-term with periodic consolidation.
 
-| Property | Value |
-|---|---|
-| Kuzu Table | EpisodicMemory + ConsolidatedEpisode |
-| Duration | Long-term (with consolidation) |
-| Capacity | Unlimited (consolidated after batch_size threshold) |
-| Key Fields | content, source_label, temporal_index, compressed |
-| Edge | CONSOLIDATES (ConsolidatedEpisode → EpisodicMemory) |
+| Property   | Value                                               |
+| ---------- | --------------------------------------------------- |
+| Kuzu Table | EpisodicMemory + ConsolidatedEpisode                |
+| Duration   | Long-term (with consolidation)                      |
+| Capacity   | Unlimited (consolidated after batch_size threshold) |
+| Key Fields | content, source_label, temporal_index, compressed   |
+| Edge       | CONSOLIDATES (ConsolidatedEpisode → EpisodicMemory) |
 
 **Consolidation Process (mirrors human sleep-based memory consolidation):**
+
 1. After N unconsolidated episodes accumulate (default: 10)
 2. LLM summarizes them into a ConsolidatedEpisode
 3. Originals get `compressed=true` flag but are NOT deleted
@@ -73,34 +81,38 @@ This document codifies the complete memory architecture for goal-seeking agents 
 5. Retrieval prefers consolidated summaries, falls back to originals
 
 ### 1.4 Semantic Memory
+
 **Purpose:** Extracted facts and concepts. The core knowledge store.
 
-| Property | Value |
-|---|---|
-| Kuzu Table | SemanticMemory |
-| Duration | Long-term, accumulates across sessions |
-| Capacity | Unlimited |
-| Key Fields | concept, content, confidence, source_id, tags, metadata |
-| Edges | SIMILAR_TO (SemanticMemory ↔ SemanticMemory), DERIVES_FROM (SemanticMemory → EpisodicMemory) |
+| Property   | Value                                                                                        |
+| ---------- | -------------------------------------------------------------------------------------------- |
+| Kuzu Table | SemanticMemory                                                                               |
+| Duration   | Long-term, accumulates across sessions                                                       |
+| Capacity   | Unlimited                                                                                    |
+| Key Fields | concept, content, confidence, source_id, tags, metadata                                      |
+| Edges      | SIMILAR_TO (SemanticMemory ↔ SemanticMemory), DERIVES_FROM (SemanticMemory → EpisodicMemory) |
 
 **Graph RAG Features:**
+
 - SIMILAR_TO edges auto-computed at store time (Jaccard similarity > 0.3)
 - DERIVES_FROM edges track provenance (which episode a fact came from)
 - Retrieval via keyword search → SIMILAR_TO expansion (1-2 hops) → confidence ranking
 - Contradiction detection: high-similarity + conflicting values flagged in edge metadata
 
 ### 1.5 Procedural Memory
+
 **Purpose:** How to do things. Ordered step sequences that strengthen with use.
 
-| Property | Value |
-|---|---|
-| Kuzu Table | ProceduralMemory |
-| Duration | Long-term, strengthens with use |
-| Capacity | Unlimited |
-| Key Fields | name, steps (JSON array), prerequisites, usage_count |
-| Edge | PROCEDURE_DERIVES_FROM (ProceduralMemory → EpisodicMemory) |
+| Property   | Value                                                      |
+| ---------- | ---------------------------------------------------------- |
+| Kuzu Table | ProceduralMemory                                           |
+| Duration   | Long-term, strengthens with use                            |
+| Capacity   | Unlimited                                                  |
+| Key Fields | name, steps (JSON array), prerequisites, usage_count       |
+| Edge       | PROCEDURE_DERIVES_FROM (ProceduralMemory → EpisodicMemory) |
 
 **Key Behaviors:**
+
 - usage_count increments each time procedure is recalled (like muscle memory)
 - Higher usage_count = stronger memory, preferred in retrieval
 - Steps stored as ordered JSON array
@@ -108,17 +120,19 @@ This document codifies the complete memory architecture for goal-seeking agents 
 - Critical for teaching: teacher recalls procedures to explain step-by-step
 
 ### 1.6 Prospective Memory
+
 **Purpose:** Future intentions. Things to remember to do or check.
 
-| Property | Value |
-|---|---|
-| Kuzu Table | ProspectiveMemory |
-| Duration | Until triggered or resolved |
-| Capacity | Unlimited |
-| Key Fields | description, trigger_condition, action_on_trigger, status, priority |
-| Status Values | pending, triggered, resolved |
+| Property      | Value                                                               |
+| ------------- | ------------------------------------------------------------------- |
+| Kuzu Table    | ProspectiveMemory                                                   |
+| Duration      | Until triggered or resolved                                         |
+| Capacity      | Unlimited                                                           |
+| Key Fields    | description, trigger_condition, action_on_trigger, status, priority |
+| Status Values | pending, triggered, resolved                                        |
 
 **Trigger Mechanism:**
+
 - When new content arrives, check all pending ProspectiveMemory items
 - If trigger_condition (keyword/concept) appears in new content → status changes to "triggered"
 - Teaching use: "Check if student understands variables before teaching functions"
@@ -131,13 +145,13 @@ The agent REASONS about how complex a question is before deciding its approach. 
 
 **Intent Classification → Effort Allocation:**
 
-| Intent | Retrieval Strategy | Max Steps | Expected LLM Calls |
-|---|---|---|---|
-| simple_recall | Single-pass (get all facts ≤50 or keyword search) | 1 | 2 (intent + answer) |
-| mathematical_computation | Iterative with calculator tool | 3 | 4-6 (intent + plan + search + eval + answer) |
-| temporal_comparison | Iterative with chronological sorting | 3 | 4-6 |
-| multi_source_synthesis | Broad retrieval, 2-hop SIMILAR_TO, max_nodes=30 | 2 | 3-5 |
-| contradiction_resolution | Retrieve conflicting sources, present both | 2 | 3-4 |
+| Intent                   | Retrieval Strategy                                | Max Steps | Expected LLM Calls                           |
+| ------------------------ | ------------------------------------------------- | --------- | -------------------------------------------- |
+| simple_recall            | Single-pass (get all facts ≤50 or keyword search) | 1         | 2 (intent + answer)                          |
+| mathematical_computation | Iterative with calculator tool                    | 3         | 4-6 (intent + plan + search + eval + answer) |
+| temporal_comparison      | Iterative with chronological sorting              | 3         | 4-6                                          |
+| multi_source_synthesis   | Broad retrieval, 2-hop SIMILAR_TO, max_nodes=30   | 2         | 3-5                                          |
+| contradiction_resolution | Retrieve conflicting sources, present both        | 2         | 3-4                                          |
 
 ### 2.2 Iterative Reasoning Cycle (Complex Questions Only)
 
@@ -163,33 +177,37 @@ Step 4: ANSWER - Synthesize from collected facts
 
 ### 2.3 Metacognition Metrics (Eval Harness)
 
-| Metric | What It Measures | Scoring |
-|---|---|---|
-| Effort Calibration | Proportional effort to complexity | Penalize over-retrieval (5 steps for L1) and under-retrieval (1 step for L3) |
-| Sufficiency Judgment | Correctly assessed when it had enough | % of correct sufficient/insufficient decisions |
-| Search Quality | Were queries targeted? | Ratio of retrieved facts actually used in answer |
-| Self-Correction | Caught and fixed own errors | Count of arithmetic validations, retrieval refinements |
+| Metric               | What It Measures                      | Scoring                                                                      |
+| -------------------- | ------------------------------------- | ---------------------------------------------------------------------------- |
+| Effort Calibration   | Proportional effort to complexity     | Penalize over-retrieval (5 steps for L1) and under-retrieval (1 step for L3) |
+| Sufficiency Judgment | Correctly assessed when it had enough | % of correct sufficient/insufficient decisions                               |
+| Search Quality       | Were queries targeted?                | Ratio of retrieved facts actually used in answer                             |
+| Self-Correction      | Caught and fixed own errors           | Count of arithmetic validations, retrieval refinements                       |
 
 ## 3. Implementation Location
 
 ### amplihack-memory-lib (https://github.com/rysweet/amplihack-memory-lib)
+
 - `src/amplihack_memory/memory_types.py` - Dataclasses for all 6 types
 - `src/amplihack_memory/cognitive_memory.py` - CognitiveMemory class with all operations
 - `src/amplihack_memory/backends/kuzu_backend.py` - Kuzu schema for all tables
 - Tests for each memory type
 
 ### amplihack (goal-seeking agents)
+
 - `src/amplihack/agents/goal_seeking/learning_agent.py` - LearningAgent using CognitiveMemory
 - `src/amplihack/agents/goal_seeking/agentic_loop.py` - Iterative reasoning with working memory
 - `src/amplihack/agents/goal_seeking/hierarchical_memory.py` - Bridge to CognitiveMemory (to be refactored)
 - `src/amplihack/goal_agent_generator/templates/memory_template.py` - Generated agent template
 
 ### Key Principle
+
 The memory system lives in amplihack-memory-lib. The agents IMPORT from it. Generated agents automatically get the full cognitive memory system.
 
 ## 4. Graph Schema (Kuzu)
 
 ### Node Tables
+
 ```
 SensoryMemory(memory_id PK, modality, raw_data, observation_order, agent_id, expires_at, created_at)
 WorkingMemory(memory_id PK, slot_type, content, relevance, agent_id, task_id, created_at)
@@ -201,6 +219,7 @@ ConsolidatedEpisode(memory_id PK, summary, original_count, agent_id, created_at)
 ```
 
 ### Edge Tables
+
 ```
 SIMILAR_TO(FROM SemanticMemory TO SemanticMemory, similarity_score, method, metadata)
 DERIVES_FROM(FROM SemanticMemory TO EpisodicMemory, extraction_method, confidence)
@@ -212,6 +231,7 @@ ATTENDED_TO(FROM SensoryMemory TO EpisodicMemory, attention_reason)
 ## 5. Teaching Scenario Integration
 
 ### Teacher Agent Memory Usage
+
 1. **Sensory**: Receives raw content, buffers it
 2. **Episodic**: Records "I read article X about topic Y at time T"
 3. **Semantic**: Extracts facts with confidence and SIMILAR_TO connections
@@ -220,6 +240,7 @@ ATTENDED_TO(FROM SensoryMemory TO EpisodicMemory, attention_reason)
 6. **Working**: Tracks teaching session state, covered topics, student questions
 
 ### Student Agent Memory Usage
+
 1. **Sensory**: Receives teacher's explanations in real-time
 2. **Episodic**: Records "Teacher explained X, I asked about Y"
 3. **Semantic**: Stores understood concepts from teacher's explanations
@@ -228,6 +249,7 @@ ATTENDED_TO(FROM SensoryMemory TO EpisodicMemory, attention_reason)
 6. **Prospective**: "Ask teacher about Z when we get to that topic"
 
 ### Separate Databases
+
 - Teacher: `~/.amplihack/memory/teacher_{session}/kuzu_db`
 - Student: `~/.amplihack/memory/student_{session}/kuzu_db`
 - NO shared state. Knowledge transfer ONLY through conversation.
@@ -236,16 +258,17 @@ ATTENDED_TO(FROM SensoryMemory TO EpisodicMemory, attention_reason)
 
 ### Current Scores (3-run median, adaptive loop)
 
-| Level | Scenario | Median | Target |
-|---|---|---|---|
-| L1 | Single source recall (Olympics medal standings) | 100% | ≥100% |
-| L2 | Multi-source synthesis (3 Olympics articles cross-referenced) | 67% | ≥85% |
-| L3 | Temporal reasoning (medal changes Day 7→9→10, compute differences) | 43% | ≥70% |
-| L4 | Procedural learning (Flutter tutorial, apply to new input) | 86% | ≥80% |
-| L5 | Contradiction handling (conflicting Olympics viewership numbers) | 95% | ≥90% |
-| L6 | Incremental learning (Klaebo record updated from 9→10 golds) | 98% | ≥95% |
+| Level | Scenario                                                           | Median | Target |
+| ----- | ------------------------------------------------------------------ | ------ | ------ |
+| L1    | Single source recall (Olympics medal standings)                    | 100%   | ≥100%  |
+| L2    | Multi-source synthesis (3 Olympics articles cross-referenced)      | 67%    | ≥85%   |
+| L3    | Temporal reasoning (medal changes Day 7→9→10, compute differences) | 43%    | ≥70%   |
+| L4    | Procedural learning (Flutter tutorial, apply to new input)         | 86%    | ≥80%   |
+| L5    | Contradiction handling (conflicting Olympics viewership numbers)   | 95%    | ≥90%   |
+| L6    | Incremental learning (Klaebo record updated from 9→10 golds)       | 98%    | ≥95%   |
 
 ### Future Test Levels
+
 - L7: Teacher-student knowledge transfer (measure student learning from teacher)
 - L8: Metacognition (evaluate agent's reasoning about its own reasoning)
 - L9: Causal reasoning (why X caused Y)

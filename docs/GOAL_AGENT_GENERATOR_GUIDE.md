@@ -136,12 +136,12 @@ amplihack new \
 
 #### SDK Choices
 
-| Value | SDK | Best For |
-|---|---|---|
-| `copilot` | GitHub Copilot SDK | General dev, file/git/web tools (default) |
-| `claude` | Claude Agent SDK | Subagent delegation, MCP integration |
-| `microsoft` | Microsoft Agent Framework | Structured workflows, telemetry |
-| `mini` | litellm (mini-framework) | Lightweight, no SDK dependencies |
+| Value       | SDK                       | Best For                                  |
+| ----------- | ------------------------- | ----------------------------------------- |
+| `copilot`   | GitHub Copilot SDK        | General dev, file/git/web tools (default) |
+| `claude`    | Claude Agent SDK          | Subagent delegation, MCP integration      |
+| `microsoft` | Microsoft Agent Framework | Structured workflows, telemetry           |
+| `mini`      | litellm (mini-framework)  | Lightweight, no SDK dependencies          |
 
 ### Examples
 

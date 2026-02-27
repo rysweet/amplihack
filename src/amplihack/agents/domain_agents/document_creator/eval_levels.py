@@ -130,7 +130,11 @@ def _l3() -> EvalLevel:
             EvalScenario(
                 scenario_id="L3-001",
                 name="Markdown formatting",
-                input_data={"content": _TECHNICAL_CONTENT, "task_type": "format", "format_type": "markdown"},
+                input_data={
+                    "content": _TECHNICAL_CONTENT,
+                    "task_type": "format",
+                    "format_type": "markdown",
+                },
                 expected_output={
                     "must_mention": ["formatted"],
                 },
