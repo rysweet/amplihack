@@ -656,6 +656,108 @@ class TestPeriodicAgentRestart:
         assert isinstance(result, tuple)
 
 
+class TestSegmentedLearningRetry:
+    """Tests for segment retry/skip logic in _run_segmented_learning (issue #2611)."""
+
+    @patch("subprocess.run")
+    @patch("amplihack.eval.long_horizon_memory.generate_dialogue")
+    @patch("amplihack.eval.long_horizon_memory._save_dialogue_json")
+    def test_segment_retries_once_then_skips(self, mock_save, mock_gen, mock_run):
+        """A failing segment is retried once, then skipped (not crash)."""
+        from amplihack.eval.long_horizon_memory import _run_segmented_learning
+
+        mock_gen.return_value = MagicMock(turns=[MagicMock()] * 20)
+
+        # Segment 1 succeeds, segment 2 fails both attempts, questioning succeeds
+        call_count = [0]
+
+        def run_side_effect(*_args, **_kwargs):
+            call_count[0] += 1
+            result = MagicMock()
+            # call 1: seg1 attempt1 = success
+            # call 2: seg2 attempt1 = fail
+            # call 3: seg2 attempt2/retry = fail
+            # call 4: questioning phase = success
+            if call_count[0] == 1 or call_count[0] >= 4:
+                result.returncode = 0
+            else:
+                result.returncode = 1
+                result.stdout = ""
+                result.stderr = "some error"
+            return result
+
+        mock_run.side_effect = run_side_effect
+
+        args = MagicMock()
+        args.turns = 20
+        args.seed = 42
+        args.segment_size = 10
+        args.output_dir = "/tmp/test_seg"
+        args.model = "test-model"
+        args.sdk = "anthropic"
+        args.use_hierarchical = False
+        args.flush_every = 0
+        args.questions = 5
+        args.grader_model = ""
+        args.grader_votes = 1
+        args.parallel_workers = 1
+        args.verbose = False
+
+        # Should NOT raise (previously would raise RuntimeError)
+        _run_segmented_learning(args)
+
+        # subprocess.run called: seg1(1) + seg2(2 attempts) + questioning(1) = 4
+        assert mock_run.call_count == 4
+
+    @patch("subprocess.run")
+    @patch("amplihack.eval.long_horizon_memory.generate_dialogue")
+    @patch("amplihack.eval.long_horizon_memory._save_dialogue_json")
+    def test_segment_succeeds_on_retry(self, mock_save, mock_gen, mock_run):
+        """A segment that fails once but succeeds on retry continues normally."""
+        from amplihack.eval.long_horizon_memory import _run_segmented_learning
+
+        mock_gen.return_value = MagicMock(turns=[MagicMock()] * 10)
+
+        call_count = [0]
+
+        def run_side_effect(*_args, **_kwargs):
+            call_count[0] += 1
+            result = MagicMock()
+            # call 1: seg1 attempt1 = fail
+            # call 2: seg1 retry = success
+            # call 3: questioning = success
+            if call_count[0] == 1:
+                result.returncode = 1
+                result.stdout = ""
+                result.stderr = "transient error"
+            else:
+                result.returncode = 0
+            return result
+
+        mock_run.side_effect = run_side_effect
+
+        args = MagicMock()
+        args.turns = 10
+        args.seed = 42
+        args.segment_size = 10
+        args.output_dir = "/tmp/test_seg2"
+        args.model = "test-model"
+        args.sdk = "anthropic"
+        args.use_hierarchical = False
+        args.flush_every = 0
+        args.questions = 5
+        args.grader_model = ""
+        args.grader_votes = 1
+        args.parallel_workers = 1
+        args.verbose = False
+
+        # Should NOT raise
+        _run_segmented_learning(args)
+
+        # 2 calls for the segment (fail + retry success), plus questioning = 3
+        assert mock_run.call_count == 3
+
+
 class TestDialogueSaveLoad:
     """Tests for dialogue JSON save/load used by segmented learning."""
 
