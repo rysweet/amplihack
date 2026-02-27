@@ -1,7 +1,7 @@
 """
 Tests for dev_intent_router.py — auto-dev routing via UserPromptSubmit hook.
 
-Coverage: 71 tests across 9 categories.
+Coverage: 71+ tests across 9+ categories.
 Accuracy target: ≥98% (minimal false positives, precision-first design).
 """
 
@@ -49,6 +49,23 @@ class TestDevImperatives(unittest.TestCase):
         """'test' as imperative verb with direct object should route."""
         self._assert_routes("test the checkout flow")
         self._assert_routes("test the payment service integration")
+
+    def test_she_tests_routes(self):
+        """'she tests the service' — subject-verb-object, should route."""
+        self._assert_routes("she tests the service")
+        self._assert_routes("she test the endpoint")
+
+    def test_write_code_artifacts_route(self):
+        self._assert_routes("write unit tests for auth")
+        self._assert_routes("write a migration script")
+        self._assert_routes("write the implementation for the API")
+
+    def test_check_security_routes(self):
+        self._assert_routes("check for security vulnerabilities")
+        self._assert_routes("check the authentication module for security issues")
+
+    def test_do_code_review_routes(self):
+        self._assert_routes("do a code review")
 
 
 class TestDevQuestions(unittest.TestCase):
@@ -110,6 +127,25 @@ class TestQA(unittest.TestCase):
         """'test' as a standalone noun should not route."""
         self._assert_skips("just a quick test")
         self._assert_skips("run a test to see")
+
+    def test_test_in_question_context_skips(self):
+        self._assert_skips("what should I test next?")
+        self._assert_skips("I want to test this theory")
+        self._assert_skips("can you test this for me?")
+
+    def test_test_suite_compound_skips(self):
+        self._assert_skips("running test suite")
+        self._assert_skips("unit test suite configuration")
+        self._assert_skips("a test to run")
+
+    def test_make_sure_and_make_it_skip(self):
+        self._assert_skips("make sure it works")
+        self._assert_skips("make it work")
+
+    def test_write_nondoc_skips(self):
+        self._assert_skips("write some docs")
+        self._assert_skips("write a blog post")
+        self._assert_skips("write an email to the team")
 
 
 class TestGreetingsAndAcks(unittest.TestCase):
@@ -244,6 +280,48 @@ class TestConfidenceTiers(unittest.TestCase):
         r = classify(long_prompt)
         ctx = build_context_injection(r, long_prompt)
         self.assertLess(len(ctx), 700, "Injection should not balloon for very long prompts")
+
+    def test_recommended_tier_does_not_have_must(self):
+        from dev_intent_router import build_context_injection
+        r = classify("how do I add pagination?")
+        ctx = build_context_injection(r, "how do I add pagination?")
+        self.assertIn("dev-orchestrator", ctx)
+        self.assertNotIn("MUST", ctx)
+
+    def test_confidence_is_float_in_range(self):
+        r = classify("fix the login bug")
+        self.assertIsInstance(r.confidence, float)
+        self.assertGreaterEqual(r.confidence, 0.0)
+        self.assertLessEqual(r.confidence, 1.0)
+
+    def test_tier_is_valid(self):
+        valid_tiers = {"required", "recommended", "suggested", "skip"}
+        for p in ["implement auth", "what is oauth?", "how do I add caching?"]:
+            r = classify(p)
+            self.assertIn(r.tier, valid_tiers)
+
+
+class TestEnvVarBypassExtended(unittest.TestCase):
+    """Extended env var bypass tests."""
+
+    def test_off_value_disables_routing(self):
+        os.environ["AMPLIHACK_AUTO_DEV"] = "off"
+        try:
+            ok, _ = should_auto_route("fix the login bug")
+            self.assertFalse(ok)
+        finally:
+            del os.environ["AMPLIHACK_AUTO_DEV"]
+
+
+class TestShouldAutoRouteEdgeCases(unittest.TestCase):
+    def test_empty_string_returns_false(self):
+        ok, ctx = should_auto_route("")
+        self.assertFalse(ok)
+        self.assertEqual(ctx, "")
+
+    def test_whitespace_only_returns_false(self):
+        ok, ctx = should_auto_route("   ")
+        self.assertFalse(ok)
 
 
 if __name__ == "__main__":

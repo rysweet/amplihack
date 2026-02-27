@@ -64,9 +64,9 @@ After execution completes, look for the final summary at the bottom:
 ```
 # Dev Orchestrator -- Execution Complete
 
-Task: fix the login timeout bug
-Type: Development
-Workstreams: 1
+**Task**: fix the login timeout bug
+**Type**: Development
+**Workstreams**: 1
 
 ## Summary
 
@@ -214,9 +214,9 @@ faster:
 ```
 # Dev Orchestrator -- Execution Complete
 
-Task: [your task]
-Type: [Q&A | Development | Investigation | Operations]
-Workstreams: [number]
+**Task**: [your task]
+**Type**: [Q&A | Development | Investigation | Operations]
+**Workstreams**: [number]
 
 ## Summary
 
@@ -332,7 +332,7 @@ completes.
 **"Dev Orchestrator started when I didn't type /dev"**
 The auto-routing hook classified your prompt as a development task.
 - To disable for this session: `export AMPLIHACK_AUTO_DEV=false`
-- To override for one prompt: prefix with "just answer" or "without workflow"
+- To override for one prompt: prefix with "just answer", "without workflow", or "skip orchestration"
 - To check what the classifier decides: use Python directly:
   ```python
   import sys

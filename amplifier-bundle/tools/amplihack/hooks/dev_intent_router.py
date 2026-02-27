@@ -74,7 +74,7 @@ _KNOWLEDGE_RE = re.compile(
 # ── Action / imperative patterns ─────────────────────────────────────────────
 
 _ACTION_RE = re.compile(
-    r'\b(?:implement|build|create|fix|add|write|develop|make|generate|configure|'
+    r'\b(?:implement|build|create|fix|add|develop|make|generate|configure|'
     r'optimize|improve|patch|repair|resolve|handle|update|upgrade|refactor|'
     r'migrate|deploy|integrate|scaffold|debug|verify|review|analyze|'
     r'investigate|explore|research|audit|'
@@ -85,12 +85,80 @@ _ACTION_RE = re.compile(
     re.I,
 )
 
-# 'test' as an imperative verb: must be followed by whitespace + a word,
-# and must NOT be preceded by an article (a/an/the) which signals noun use.
-_TEST_VERB_RE = re.compile(
-    r'(?<! a )(?<!an )(?<!he )\btest\s+\w',
+# Exclude "make sure" and "make it" from matching as dev action
+_MAKE_NONDEV_RE = re.compile(r'\bmake\s+(?:sure\b|it\b)', re.I)
+
+# Words that follow 'test' indicating it's used as a noun (compound nouns)
+_TEST_NOUN_FOLLOW = frozenset({
+    'suite', 'suites', 'case', 'cases', 'coverage', 'result', 'results',
+    'run', 'runner', 'runners', 'data', 'bed', 'driven', 'environment',
+    'setup', 'teardown', 'fixture', 'fixtures', 'harness', 'plan', 'plans',
+    'report', 'reports', 'output', 'outputs', 'execution',
+})
+
+# Context words before 'test' indicating it's NOT an imperative verb.
+# Handles both "should test" and "should I test", "can you test", etc.
+_TEST_NONVERB_BEFORE = re.compile(
+    r'\b(?:a|an|the|this|that|these|those|my|your|our|their|its|'
+    r'to|should|can|will|would|must|might|could|may|need\s+to|'
+    r'quick|simple|basic|initial|final|unit|integration|end[\s-]to[\s-]end|'
+    r'want\s+to|like\s+to|going\s+to|trying\s+to|'
+    r'just|only|simple|another|one|some|any)'
+    r'(?:\s+(?:i|you|we|he|she|they|me|us|him|her|them|it))?\s+$',
     re.I,
 )
+
+# Code artifacts that make 'write X' a development task
+_WRITE_CODE_WORDS = frozenset({
+    'test', 'tests', 'spec', 'specs', 'migration', 'migrations', 'query', 'queries',
+    'function', 'functions', 'method', 'methods', 'class', 'classes', 'module',
+    'modules', 'script', 'scripts', 'endpoint', 'endpoints', 'handler', 'handlers',
+    'middleware', 'hook', 'hooks', 'component', 'components', 'service', 'services',
+    'fixture', 'fixtures', 'mock', 'mocks', 'stub', 'stubs', 'code', 'implementation',
+    'algorithm', 'algorithms', 'parser', 'parsers', 'validator', 'validators',
+    'schema', 'model', 'models', 'route', 'routes', 'controller', 'controllers',
+})
+
+
+def _is_test_imperative(text_lower: str) -> bool:
+    """Return True only when 'test' is used as an imperative verb with a direct object.
+
+    Filters out:
+    - 'test' as a noun (test suite, test case, a test, the test)
+    - 'test' in modal/question contexts (should I test, can you test)
+    - 'test' in infinitive context (want to test, going to test)
+    """
+    for m in re.finditer(r'\btest[s]?\b', text_lower):
+        pos = m.start()
+        before = text_lower[:pos]
+        after = text_lower[pos + len(m.group()):].lstrip()
+
+        # Must be followed by at least one word
+        next_word_m = re.match(r'(\w+)', after)
+        if not next_word_m:
+            continue
+        next_word = next_word_m.group(1)
+
+        # Exclude noun compounds (test suite, test case, etc.)
+        if next_word in _TEST_NOUN_FOLLOW:
+            continue
+
+        # Exclude non-imperative contexts before 'test'
+        if _TEST_NONVERB_BEFORE.search(before):
+            continue
+
+        # 'test' with a direct object in non-excluded context = imperative
+        return True
+
+    return False
+
+
+def _write_is_dev(text_lower: str) -> bool:
+    """Return True when 'write' is followed (near) by a code artifact word."""
+    if 'write' not in text_lower:
+        return False
+    words = frozenset(re.findall(r'\b\w+\b', text_lower))
+    return bool(words & _WRITE_CODE_WORDS)
 
 
 # ── Greetings and acknowledgements ───────────────────────────────────────────
@@ -115,6 +183,7 @@ _TECH_WORDS = frozenset({
     'package', 'lambda', 'serverless', 'container', 'kubernetes', 'docker',
     'terraform', 'redis', 'postgres', 'mysql', 'mongodb', 'elasticsearch',
     'graphql', 'grpc', 'websocket', 'cron', 'queue', 'worker',
+    'security', 'vulnerability', 'vulnerabilities', 'injection', 'xss', 'csrf', 'exploit',
 })
 
 
@@ -153,7 +222,9 @@ def classify(prompt: str) -> DevIntentResult:
         return DevIntentResult(False, 0.1, "skip", "operations task")
 
     # 4. Feature extraction
-    has_action = bool(_ACTION_RE.search(p)) or bool(_TEST_VERB_RE.search(p))
+    has_action = (bool(_ACTION_RE.search(p)) and not bool(_MAKE_NONDEV_RE.search(p))) \
+                 or _write_is_dev(p_lower) \
+                 or _is_test_imperative(p_lower)
     has_knowledge = bool(_KNOWLEDGE_RE.search(p))
     words = frozenset(re.findall(r'\b\w+\b', p_lower))
     tech_hits = _TECH_WORDS & words

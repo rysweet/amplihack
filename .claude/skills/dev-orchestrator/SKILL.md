@@ -225,6 +225,8 @@ Appears at the end of round execution steps:
 
 - `STATUS: COMPLETE` — the round's work is fully done
 - `STATUS: CONTINUE` — more work remains after this round
+- `STATUS: PARTIAL` — the final round (round 3) reached partial completion
+- `STATUS: DEPTH_LIMITED` — (legacy, no longer emitted; use BLOCKED path instead)
 
 ### Goal status (from reviewer agents)
 
