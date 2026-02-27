@@ -48,7 +48,38 @@ Total: 10 tests | Passed: 10 | Failed: 0
 
 ## Step 3: Use in Your Code (1 minute)
 
-### Option A: Explicit Integration (for custom agents)
+### Option A: CognitiveMemory (6-Type Memory System)
+
+**New in v0.2.0**: amplihack now supports `CognitiveMemory`, a 6-type cognitive memory system:
+
+```python
+from amplihack_memory import CognitiveMemory
+
+# Initialize cognitive memory
+memory = CognitiveMemory()
+
+# Store semantic facts
+fact_id = memory.store_fact("Biology", "Cells are the basic unit of life")
+
+# Record sensory input
+memory.record_sensory("User query", {"query": "What are cells?"})
+
+# Push to working memory
+memory.push_working("Processing query about cells", task_id="task_123")
+
+# Search across memory types
+results = memory.search("cells")
+```
+
+**Memory Types:**
+- **Sensory**: Raw inputs (queries, observations)
+- **Working**: Active processing tasks
+- **Episodic**: Event sequences with context
+- **Semantic**: Facts and knowledge
+- **Procedural**: How-to knowledge
+- **Prospective**: Future intentions
+
+### Option B: Explicit Integration (for custom agents)
 
 ```python
 from amplihack.memory.neo4j.agent_integration import (
@@ -76,7 +107,7 @@ memory_ids = extract_and_store_learnings(
 )
 ```
 
-### Option B: Automatic Integration (built-in agents)
+### Option C: Automatic Integration (built-in agents)
 
 Memory integration is **automatic** for amplihack's built-in agents:
 

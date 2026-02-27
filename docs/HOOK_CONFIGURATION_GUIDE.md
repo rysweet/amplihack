@@ -245,3 +245,51 @@ Here's a complete example of a project's `~/.amplihack/.claude/settings.json` wi
 ```
 
 This configuration runs both your project's hooks AND amplihack's hooks.
+
+## Recent Improvements
+
+### Stop Hook False Failure Fixes (v0.9.1)
+
+**Fixed in PRs #2569 and #2570**
+
+The power-steering stop hook has been enhanced to eliminate false-positive failures:
+
+#### Issue #2473: False Failures When All Checks Pass
+
+**Fixed:** Stop hook now correctly approves when all checks pass, even on first-stop visibility display.
+
+**Root causes addressed:**
+1. Visibility block returned `decision="block"` instead of `decision="approve"`
+2. `_create_passing_analysis()` had inconsistent state
+3. Missing turn state approval in first-stop path
+
+**Impact:** No more false "failure" reports when all checks actually passed.
+
+#### Issue #2561: False-Positive Loop on Completed Bug Fixes
+
+**Fixed:** Stop hook no longer mistakes completion summaries for action items.
+
+**Root causes addressed:**
+1. Completion summary headers (e.g., "Summary:\n- Fixed the bug") no longer trigger next-steps warnings
+2. SDK response keyword matching now uses structured prefix detection instead of bare words
+3. Added `_is_small_completed_session()` to auto-pass trivial 1-3 edit sessions
+
+**Impact:** Clean exits after one-line bug fixes without infinite blocking loops.
+
+#### Verification
+
+If you're experiencing stop hook issues, ensure you're on v0.9.1+:
+
+```bash
+amplihack --version
+```
+
+If issues persist, check:
+
+```bash
+# View stop hook logs
+tail -f ~/.amplihack/.claude/runtime/logs/*/stop_hook.log
+
+# Test hook directly
+python ~/.claude/tools/amplihack/hooks/stop.py
+```
