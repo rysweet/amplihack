@@ -810,22 +810,24 @@ class TestRound1SuccessPath(unittest.TestCase):
             )
         )
 
-    def test_reflect_round1_skips_depth_limited(self):
-        """reflect-round-1 condition includes DEPTH_LIMITED guard (NEW-5 fix)."""
-        round_1_result = (
-            "RECURSION GUARD: session depth limit reached.\nSTATUS: DEPTH_LIMITED"
-        )
-        # reflect-round-1 condition from recipe:
-        # 'Q&A' not in task_type and 'Operations' not in task_type and round_1_result
-        # and 'DEPTH_LIMITED' not in round_1_result
-        should_reflect_round1 = (
+    def test_reflect_round1_skips_when_no_result(self):
+        """reflect-round-1 must not run when round_1_result is empty."""
+        # Actual recipe condition: Q&A/Ops excluded AND round_1_result must be truthy
+        should_reflect = (
             "Q&A" not in "Development"
             and "Operations" not in "Development"
-            and bool(round_1_result)
-            and "DEPTH_LIMITED" not in round_1_result
+            and bool("")  # empty round_1_result -> False
         )
-        self.assertFalse(should_reflect_round1,
-            "reflect-round-1 must NOT run when result is DEPTH_LIMITED")
+        self.assertFalse(should_reflect)
+
+    def test_reflect_round1_runs_with_real_result(self):
+        """reflect-round-1 runs when there is a real round_1_result."""
+        should_reflect = (
+            "Q&A" not in "Development"
+            and "Operations" not in "Development"
+            and bool("PR created at https://github.com/... STATUS: COMPLETE")
+        )
+        self.assertTrue(should_reflect)
 
     def test_reflect_final_runs_when_depth_limited(self):
         """reflect-final does NOT have a DEPTH_LIMITED guard (just Q&A/Ops exclusion).

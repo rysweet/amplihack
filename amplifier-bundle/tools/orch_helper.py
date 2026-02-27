@@ -73,12 +73,10 @@ def normalise_type(raw: str) -> str:
 
 
 if __name__ == "__main__":
-    """CLI for manual testing and debugging.
-
-    Usage:
-        echo '{"task_type": "dev", "workstreams": []}' | python3 orch_helper.py extract
-        echo "dev" | python3 orch_helper.py normalise
-    """
+    # CLI for manual testing and debugging.
+    # Usage:
+    #   echo '{"task_type": "dev", "workstreams": []}' | python3 orch_helper.py extract
+    #   echo "dev" | python3 orch_helper.py normalise
     import sys
     cmd = sys.argv[1] if len(sys.argv) > 1 else "extract"
     text = sys.stdin.read()
