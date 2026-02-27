@@ -12,7 +12,9 @@ context:
   task_description: ""
   repo_path: "."
   decomposition_json: ""
-  helper_script: ""
+  session_id: ""
+  tree_id: ""
+  session_info: ""
   task_type: ""
   workstream_count: ""
   workstreams_file: ""
@@ -24,41 +26,9 @@ context:
   round_3_result: ""
   reflection_final: ""
   summary: ""
+  force_single_workstream: "false"  # set to "true" to prevent parallel decomposition
 
 steps:
-  # ─────────────────────────────────────────────────────────────────────────
-  # Setup: shared JSON helper (written once, used by parse + config steps)
-  # ─────────────────────────────────────────────────────────────────────────
-
-  - id: "write-json-helper"
-    type: "bash"
-    command: |
-      HELPER=$(mktemp /tmp/orch-helper-XXXXXX.py)
-      chmod 600 "$HELPER"
-      cat > "$HELPER" << 'PYEOF'
-      import json, re
-
-      def extract_json(text):
-          m = re.search(r'```(?:json)?\s*(\{.*\})\s*```', text, re.DOTALL)
-          if m:
-              try: return json.loads(m.group(1))
-              except: pass
-          m = re.search(r'(\{.*\})', text, re.DOTALL)
-          if m:
-              try: return json.loads(m.group(1))
-              except: pass
-          return {}
-
-      def normalise_type(raw):
-          t = raw.lower()
-          if any(k in t for k in ("q&a","qa","question","answer")): return "Q&A"
-          if any(k in t for k in ("ops","operation","admin","command")): return "Operations"
-          if any(k in t for k in ("invest","research","explor","analys","understand")): return "Investigation"
-          return "Development"
-      PYEOF
-      echo "$HELPER"
-    output: "helper_script"
-
   # ─────────────────────────────────────────────────────────────────────────
   # Phase 1: Classify & Decompose
   # ─────────────────────────────────────────────────────────────────────────
@@ -83,6 +53,8 @@ steps:
                 "investigate X then implement Y" -> 2 workstreams
          - recipe: "default-workflow" (dev) | "investigation-workflow" (research)
 
+      **Decomposition override**: {{force_single_workstream}} — if "true", use exactly 1 workstream regardless of task structure.
+
       **Output exactly this JSON**:
       ```json
       {
@@ -99,17 +71,15 @@ steps:
   - id: "parse-decomposition"
     type: "bash"
     command: |
-      HELPER_PATH={{helper_script}}
+      HELPER_PATH="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/orch_helper.py"
       DECOMP_JSON={{decomposition_json}}
-      export HELPER_PATH DECOMP_JSON
+      export DECOMP_JSON HELPER_PATH
       python3 - <<'PYEOF'
-      import os, json, importlib.util
-      h_path = os.environ['HELPER_PATH']
-      decomp = os.environ['DECOMP_JSON']
-      spec = importlib.util.spec_from_file_location("h", h_path)
-      h = importlib.util.module_from_spec(spec); spec.loader.exec_module(h)
-      obj = h.extract_json(decomp)
-      task_type = h.normalise_type(obj.get("task_type", "Development"))
+      import os, json, sys
+      sys.path.insert(0, os.path.dirname(os.environ['HELPER_PATH']))
+      import orch_helper
+      obj = orch_helper.extract_json(os.environ['DECOMP_JSON'])
+      task_type = orch_helper.normalise_type(obj.get("task_type", "Development"))
       count = max(1, len(obj.get("workstreams", [{}])))
       print(json.dumps({"task_type": task_type, "workstream_count": count}))
       PYEOF
@@ -140,13 +110,44 @@ steps:
     output: "workstream_count"
 
   # ─────────────────────────────────────────────────────────────────────────
+  # Setup: register this session in the session tree (atomic check+register)
+  # Runs for Development and Investigation tasks before any workstream spawning.
+  # session_info output format: "SESSION_ID:TREE_ID:DEPTH"
+  # ─────────────────────────────────────────────────────────────────────────
+
+  - id: "setup-session"
+    type: "bash"
+    condition: "'Development' in task_type or 'Investigation' in task_type or task_type == ''"
+    command: |
+      TREE_SCRIPT="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/session_tree.py"
+      SESSION_ID=$(python3 -c "import uuid; print(uuid.uuid4().hex[:8])")
+
+      if [ -f "$TREE_SCRIPT" ]; then
+        # Register this session — atomic check+register under lock
+        if OUTPUT=$(python3 "$TREE_SCRIPT" register "$SESSION_ID" 2>&1); then
+          # Output: "TREE_ID=abc123 DEPTH=0"
+          TREE_ID=$(echo "$OUTPUT" | grep -oE 'TREE_ID=[A-Za-z0-9_-]+' | cut -d= -f2)
+          DEPTH=$(echo "$OUTPUT" | grep -oE 'DEPTH=[0-9]+' | cut -d= -f2)
+          echo "$SESSION_ID:${TREE_ID:-unknown}:${DEPTH:-0}"
+        else
+          # Registration failed (capacity exceeded or depth limit) — propagate the error
+          echo "REGISTRATION_FAILED:$OUTPUT"
+        fi
+      else
+        # No session_tree.py — generate a tree_id from env or fresh uuid
+        TREE_ID="${AMPLIHACK_TREE_ID:-$(python3 -c "import uuid; print(uuid.uuid4().hex[:8])")}"
+        echo "$SESSION_ID:$TREE_ID:${AMPLIHACK_SESSION_DEPTH:-0}"
+      fi
+    output: "session_info"
+
+  # ─────────────────────────────────────────────────────────────────────────
   # Phase 2a: Q&A -- route by intent (technical vs general)
   # ─────────────────────────────────────────────────────────────────────────
 
   - id: "handle-qa"
     type: "agent"
     condition: "'Q&A' in task_type"
-    agent: "amplihack:analyzer"
+    agent: "amplihack:core:analyzer"
     prompt: |
       Answer this question directly.
 
@@ -178,32 +179,53 @@ steps:
 
   # ─────────────────────────────────────────────────────────────────────────
   # Recursion guard -- enforce session tree depth before spawning workstreams
+  # Uses the registered tree_id from setup-session for accurate depth tracking.
   # ─────────────────────────────────────────────────────────────────────────
 
   - id: "check-recursion-guard"
     type: "bash"
     condition: "'Development' in task_type or 'Investigation' in task_type"
     command: |
+      # Extract tree_id from registered session_info
+      TREE_ID=$(echo '{{session_info}}' | cut -d: -f2)
       TREE_SCRIPT="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/session_tree.py"
+
       if [ -f "$TREE_SCRIPT" ]; then
-          python3 "$TREE_SCRIPT" check
+          # Use registered tree_id for accurate check
+          AMPLIHACK_TREE_ID="$TREE_ID" python3 "$TREE_SCRIPT" check
       else
+          DEPTH="${AMPLIHACK_SESSION_DEPTH:-0}"
+          MAX="${AMPLIHACK_MAX_DEPTH:-3}"
           python3 -c "
       import sys
       depth, max_d = int(sys.argv[1]), int(sys.argv[2])
       print('ALLOWED' if depth < max_d else f'BLOCKED:depth={depth}>=max={max_d}')
-      " "${AMPLIHACK_SESSION_DEPTH:-0}" "${AMPLIHACK_MAX_DEPTH:-3}"
+      " "$DEPTH" "$MAX"
       fi
     output: "recursion_guard"
 
   # ─────────────────────────────────────────────────────────────────────────
   # Phase 2c: Single dev/investigation workstream -- round 1
+  # NOTE: workstream_count is a bash command output and may contain a trailing
+  # newline. The .strip() and `or '1'` are load-bearing — do not remove them.
+  # If workstream_count is empty (step failed), we default to 1 (single workstream).
   # ─────────────────────────────────────────────────────────────────────────
+
+  - id: "announce-execution-start"
+    type: "bash"
+    condition: "('Development' in task_type or 'Investigation' in task_type) and int(str(workstream_count).strip() or '1') == 1"
+    command: |
+      echo ""
+      echo "╔══════════════════════════════════════════════════════════════╗"
+      echo "║  Smart Orchestrator: Executing (Round 1 of 3)               ║"
+      echo "║  Type: {{task_type}} | Workstreams: {{workstream_count}}     ║"
+      echo "╚══════════════════════════════════════════════════════════════╝"
+    output: "announce_start_status"
 
   - id: "execute-single-round-1"
     type: "agent"
     condition: |
-      ('Development' in task_type or 'Investigation' in task_type) and int(str(workstream_count).strip() or '1') == 1
+      ('Development' in task_type or 'Investigation' in task_type) and (int(str(workstream_count).strip() or '1') == 1 or force_single_workstream == 'true')
     agent: "amplihack:core:builder"
     prompt: |
       Execute this task following the complete development workflow (DEFAULT_WORKFLOW.md, steps 0-22).
@@ -223,18 +245,17 @@ steps:
   - id: "create-workstreams-config"
     type: "bash"
     condition: |
-      ('Development' in task_type or 'Investigation' in task_type) and int(str(workstream_count).strip() or '1') > 1 and 'ALLOWED' in recursion_guard
+      ('Development' in task_type or 'Investigation' in task_type) and int(str(workstream_count).strip() or '1') > 1 and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
     command: |
-      HELPER_PATH={{helper_script}}
+      HELPER_PATH="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/orch_helper.py"
       DECOMP_JSON={{decomposition_json}}
-      export HELPER_PATH DECOMP_JSON
+      export DECOMP_JSON HELPER_PATH
       python3 - <<'PYEOF'
-      import json, os, re, tempfile, importlib.util
-      h_path = os.environ['HELPER_PATH']
+      import json, os, re, tempfile, sys
+      sys.path.insert(0, os.path.dirname(os.environ['HELPER_PATH']))
+      import orch_helper
       decomp = os.environ['DECOMP_JSON']
-      spec = importlib.util.spec_from_file_location("h", h_path)
-      h = importlib.util.module_from_spec(spec); spec.loader.exec_module(h)
-      obj = h.extract_json(decomp)
+      obj = orch_helper.extract_json(decomp)
       config = []
       for i, ws in enumerate(obj.get("workstreams", [])):
           name = ws.get("name", f"workstream-{i+1}")
@@ -253,21 +274,36 @@ steps:
       PYEOF
     output: "workstreams_file"
 
+  - id: "announce-parallel-start"
+    type: "bash"
+    condition: "('Development' in task_type or 'Investigation' in task_type) and int(str(workstream_count).strip() or '1') > 1 and 'ALLOWED' in recursion_guard"
+    command: |
+      COUNT={{workstream_count}}
+      echo ""
+      echo "╔══════════════════════════════════════════════════════════════╗"
+      echo "║  Smart Orchestrator: Launching $COUNT parallel workstream(s)          ║"
+      echo "║  Round 1 of 3 — running in /tmp/amplihack-workstreams/      ║"
+      echo "╚══════════════════════════════════════════════════════════════╝"
+    output: "announce_parallel_status"
+
   - id: "launch-parallel-round-1"
     type: "bash"
     condition: |
-      ('Development' in task_type or 'Investigation' in task_type) and int(str(workstream_count).strip() or '1') > 1 and 'ALLOWED' in recursion_guard
+      ('Development' in task_type or 'Investigation' in task_type) and int(str(workstream_count).strip() or '1') > 1 and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
     command: |
       REPO_PATH={{repo_path}}
       WS_FILE={{workstreams_file}}
+      TREE_ID=$(echo '{{session_info}}' | cut -d: -f2)
+      DEPTH=$(echo '{{session_info}}' | cut -d: -f3)
       if [ ! -d "$REPO_PATH" ]; then
         echo "ERROR: repo_path does not exist: $REPO_PATH" >&2; exit 1
       fi
       cd "$REPO_PATH"
-      echo "Launching parallel workstreams:"
+      echo "Launching parallel workstreams (tree: $TREE_ID, depth: $DEPTH):"
       cat "$WS_FILE"
       echo "---"
-      python3 .claude/skills/multitask/orchestrator.py "$WS_FILE"
+      AMPLIHACK_TREE_ID="$TREE_ID" AMPLIHACK_SESSION_DEPTH="$DEPTH" \
+        python3 .claude/skills/multitask/orchestrator.py "$WS_FILE"
     output: "round_1_result"
 
   - id: "recursion-limit-notice"
@@ -275,19 +311,23 @@ steps:
     condition: |
       ('Development' in task_type or 'Investigation' in task_type) and 'BLOCKED' in recursion_guard and int(str(workstream_count).strip() or '1') > 1
     command: |
-      echo "RECURSION GUARD: session depth limit reached -- cannot spawn sub-workstreams."
+      echo "RECURSION GUARD: session depth limit reached — cannot spawn sub-workstreams."
       echo "Depth state: {{recursion_guard}}"
-      echo "Continuing as single-session execution without spawning children."
+      echo ""
+      echo "REMEDIATION:"
+      echo "  To allow deeper orchestration, set in your shell:"
+      echo "    export AMPLIHACK_MAX_DEPTH=5"
+      echo "  To make this persistent, add it to ~/.bashrc or your project .env file."
+      echo ""
+      echo "Continuing as single-session execution (no child workstreams)."
       echo "STATUS: DEPTH_LIMITED"
     output: "round_1_result"
 
-  # Cleanup helper
+  # Cleanup temp workstreams file
   - id: "cleanup-helper"
     type: "bash"
     command: |
-      HELPER_PATH={{helper_script}}
       WS_FILE={{workstreams_file}}
-      [ -f "$HELPER_PATH" ] && rm -f "$HELPER_PATH"
       [ -f "$WS_FILE" ] && rm -f "$WS_FILE"
       echo "ok"
     output: "cleanup_status"
@@ -299,7 +339,8 @@ steps:
 
   - id: "reflect-round-1"
     type: "agent"
-    condition: "'Q&A' not in task_type and 'Operations' not in task_type and round_1_result"
+    condition: |
+      'Q&A' not in task_type and 'Operations' not in task_type and round_1_result and 'DEPTH_LIMITED' not in round_1_result
     agent: "amplihack:core:reviewer"
     prompt: |
       Evaluate goal achievement after round 1.
@@ -314,6 +355,16 @@ steps:
       - `GOAL_STATUS: PARTIAL -- [what's missing]` -- needs another round
       - `GOAL_STATUS: NOT_ACHIEVED -- [reason]` -- needs another round
     output: "reflection_1"
+
+  - id: "announce-round-2"
+    type: "bash"
+    condition: "reflection_1 and ('PARTIAL' in reflection_1 or 'NOT_ACHIEVED' in reflection_1)"
+    command: |
+      echo ""
+      echo "┌──────────────────────────────────────────────────────────────┐"
+      echo "│  Smart Orchestrator: Goal not yet achieved — Round 2 of 3   │"
+      echo "└──────────────────────────────────────────────────────────────┘"
+    output: "announce_round2_status"
 
   - id: "execute-round-2"
     type: "agent"
@@ -350,6 +401,16 @@ steps:
       - `GOAL_STATUS: NOT_ACHIEVED -- [reason]`
     output: "reflection_2"
 
+  - id: "announce-round-3"
+    type: "bash"
+    condition: "reflection_2 and ('PARTIAL' in reflection_2 or 'NOT_ACHIEVED' in reflection_2)"
+    command: |
+      echo ""
+      echo "┌──────────────────────────────────────────────────────────────┐"
+      echo "│  Smart Orchestrator: Final attempt — Round 3 of 3           │"
+      echo "└──────────────────────────────────────────────────────────────┘"
+    output: "announce_round3_status"
+
   - id: "execute-round-3"
     type: "agent"
     condition: |
@@ -369,7 +430,7 @@ steps:
 
   - id: "reflect-final"
     type: "agent"
-    condition: "'Q&A' not in task_type and 'Operations' not in task_type and round_1_result and (not reflection_1 or 'PARTIAL' in reflection_1 or 'NOT_ACHIEVED' in reflection_1 or round_2_result)"
+    condition: "'Q&A' not in task_type and 'Operations' not in task_type and round_1_result"
     agent: "amplihack:core:reviewer"
     prompt: |
       Final assessment after all execution rounds.
@@ -378,8 +439,10 @@ steps:
 
       **Results**:
       - Round 1: {{round_1_result}}
-      {% if round_2_result %}- Round 2: {{round_2_result}}{% endif %}
-      {% if round_3_result %}- Round 3: {{round_3_result}}{% endif %}
+      - Round 2 (if any): {{round_2_result}}
+      - Round 3 (if any): {{round_3_result}}
+
+      Note: empty strings above mean that round was not needed.
 
       Was the overall goal achieved? Summarize what was done.
       End with `GOAL_STATUS: ACHIEVED`, `GOAL_STATUS: PARTIAL -- [gaps]`,
@@ -398,9 +461,11 @@ steps:
 
       **Task**: {{task_description}}
       **Final Reflection**: {{reflection_final}}
-      {% if round_1_result %}**Round 1**: {{round_1_result}}{% endif %}
-      {% if round_2_result %}**Round 2**: {{round_2_result}}{% endif %}
-      {% if round_3_result %}**Round 3**: {{round_3_result}}{% endif %}
+      **Round 1**: {{round_1_result}}
+      **Round 2 (if any)**: {{round_2_result}}
+      **Round 3 (if any)**: {{round_3_result}}
+
+      Note: empty strings above mean that round was not needed.
 
       Provide:
       1. What was accomplished (2-3 sentences)
@@ -408,6 +473,26 @@ steps:
       3. Goal status (ACHIEVED / PARTIAL / NOT_ACHIEVED)
       4. Remaining work if PARTIAL
     output: "summary"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Teardown: mark this session complete in the session tree
+  # Runs unconditionally so the slot is freed even on partial/failed runs.
+  # ─────────────────────────────────────────────────────────────────────────
+
+  - id: "complete-session"
+    type: "bash"
+    command: |
+      SESSION_ID=$(echo '{{session_info}}' | cut -d: -f1)
+      TREE_ID=$(echo '{{session_info}}' | cut -d: -f2)
+      TREE_SCRIPT="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/session_tree.py"
+
+      if [ -n "$SESSION_ID" ] && [ "$SESSION_ID" != "REGISTRATION_FAILED" ] && [ -f "$TREE_SCRIPT" ]; then
+        AMPLIHACK_TREE_ID="$TREE_ID" python3 "$TREE_SCRIPT" complete "$SESSION_ID"
+        echo "Session $SESSION_ID completed in tree $TREE_ID"
+      else
+        echo "No session to complete (session_info: {{session_info}})"
+      fi
+    output: "session_complete_status"
 
 output:
   format: "markdown"

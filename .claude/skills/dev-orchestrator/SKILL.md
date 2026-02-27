@@ -179,3 +179,25 @@ After execution completes, verify the goal was achieved. If not:
 - **Primary**: `/dev <task description>`
 - **Auto-activation**: Via CLAUDE.md default behavior + hook injection
 - **Legacy**: `/ultrathink <task>` (deprecated alias → redirects to `/dev`)
+
+## Status Signal Reference
+
+The orchestrator uses two status signal formats:
+
+### Execution status (from builder agents)
+
+Appears at the end of round execution steps:
+
+- `STATUS: COMPLETE` — the round's work is fully done
+- `STATUS: CONTINUE` — more work remains after this round
+- `STATUS: DEPTH_LIMITED` — spawning was blocked by recursion guard
+
+### Goal status (from reviewer agents)
+
+Appears at the end of reflection steps:
+
+- `GOAL_STATUS: ACHIEVED` — all success criteria met, task is done
+- `GOAL_STATUS: PARTIAL — [description]` — some criteria met, more work needed
+- `GOAL_STATUS: NOT_ACHIEVED — [reason]` — goal not met, another round needed
+
+The goal-seeking loop uses GOAL_STATUS signals to decide whether to run round 2 or 3.

@@ -47,12 +47,12 @@ turns, it's the same topic. Continue in the current workflow.
 
 ### Quick Classification (3 seconds max)
 
-| Task Type         | Workflow               | When to Use                                            |
-| ----------------- | ---------------------- | ------------------------------------------------------ |
-| **Q&A**           | Q&A_WORKFLOW           | Simple questions, single-turn answers, no code changes |
-| **Operations**    | OPS_WORKFLOW           | Admin tasks, commands, disk cleanup, repo management   |
-| **Investigation** | INVESTIGATION_WORKFLOW | Understanding code, exploring systems, research        |
-| **Development**   | smart-orchestrator (/dev) | Code changes, features, bugs, refactoring              |
+| Task Type         | Action                    | When to Use                                            |
+| ----------------- | ------------------------- | ------------------------------------------------------ |
+| **Q&A**           | Respond directly          | Simple questions, single-turn answers, no code changes |
+| **Operations**    | Respond directly          | Admin tasks, commands, disk cleanup, repo management   |
+| **Investigation** | smart-orchestrator (`/dev`) | Understanding code, exploring systems, research        |
+| **Development**   | smart-orchestrator (`/dev`) | Code changes, features, bugs, refactoring              |
 
 ### Classification Keywords
 
@@ -69,9 +69,9 @@ turns, it's the same topic. Continue in the current workflow.
 State your classification before proceeding:
 
 ```
-WORKFLOW: [Q&A | OPERATIONS | INVESTIGATION | DEFAULT]
+WORKFLOW: [Q&A | OPERATIONS | INVESTIGATION | DEVELOPMENT]
 Reason: [Brief justification]
-Following: .claude/workflow/[WORKFLOW_NAME].md
+Action: [Respond directly | Respond directly | Invoke /dev | Invoke /dev]
 ```
 
 ### Workflow Execution
@@ -98,8 +98,9 @@ orchestration" for direct implementation.
 2. **If uncertain**: Choose DEFAULT_WORKFLOW (never skip workflow)
 3. **Q&A is for simple questions ONLY**: If answer needs exploration, use
    INVESTIGATION
-4. **For DEFAULT_WORKFLOW**: Create TodoWrite entries for ALL 22 steps before
-   implementation
+4. **For Development tasks using /dev**: The smart-orchestrator recipe handles
+   step ordering automatically via the recipe runner. TodoWrite tracking is
+   handled within each workstream's execution.
 
 ### Anti-Patterns (DO NOT)
 
@@ -606,10 +607,18 @@ infinite sub-orchestration. Four environment variables control this:
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `AMPLIHACK_TREE_ID` | (auto) | Shared tree ID — auto-generated at root, do not set manually |
+| `AMPLIHACK_TREE_ID` | (auto-generated per invocation) | Shared tree ID. Auto-generated when `/dev` runs. Not persistent across Claude Code sessions. To inspect state after a session ends, check `/tmp/amplihack-session-trees/` for `.json` files. |
 | `AMPLIHACK_SESSION_DEPTH` | `0` | Current depth — auto-incremented, do not set manually |
 | `AMPLIHACK_MAX_DEPTH` | `3` | Max recursion depth before sub-workstream spawning is blocked |
 | `AMPLIHACK_MAX_SESSIONS` | `10` | Max concurrent active sessions per tree |
+
+**Important**: `AMPLIHACK_TREE_ID` is auto-generated when the recipe starts and lives only within that Claude Code session's environment. It is not exported to your shell. To find a tree ID from a past session:
+
+```bash
+ls /tmp/amplihack-session-trees/*.json
+# Then use the filename (without .json) as the tree_id:
+python3 amplifier-bundle/tools/session_tree.py status <tree_id>
+```
 
 **Debugging a blocked session:**
 
@@ -645,7 +654,7 @@ Intelligent fix workflow optimization for common error patterns. Key features:
 - **Template-based**: Uses pre-built templates for 80% of common fixes
 - **Mode selection**: QUICK (< 5 min), DIAGNOSTIC (root cause), COMPREHENSIVE
   (full workflow)
-- **Integration**: Seamlessly works with UltraThink and existing agents
+- **Integration**: Seamlessly works with **dev-orchestrator** (`/dev`) and existing agents
 
 **Usage Examples:**
 

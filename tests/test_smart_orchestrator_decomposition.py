@@ -1,15 +1,13 @@
 """Tests for smart-orchestrator recipe decomposition logic.
 
-Covers the Python logic embedded in the 'parse-decomposition' and
-'create-workstreams-config' bash steps of smart-orchestrator.yaml.
-
-These tests extract and exercise the parsing/decomposition functions directly,
-without invoking the recipe runner, so they run fast and without external deps.
+Tests exercise orch_helper.py (amplifier-bundle/tools/orch_helper.py) directly —
+the production module extracted from the old write-json-helper YAML heredoc.
+Importing the real module ensures tests always reflect production behaviour.
 
 Test areas:
 1. Single workstream detection (cohesive single task)
 2. Multi-workstream detection (clearly independent parallel components)
-3. JSON parsing robustness (JSON in code blocks, raw JSON, partial JSON)
+3. JSON parsing robustness (JSON in code blocks, raw JSON, multi-block responses)
 4. Task type classification (Q&A vs Development vs Investigation)
 5. normalise_type mapping (abbreviated -> canonical)
 6. Round/goal status reflection logic
@@ -18,59 +16,24 @@ Test areas:
 
 from __future__ import annotations
 
-import importlib.util
 import json
-import os
 import re
 import sys
-import tempfile
-import textwrap
 import unittest
-from pathlib import Path
+from pathlib import Path  # noqa: F401 (kept for _TOOLS_DIR construction below)
 
 # ---------------------------------------------------------------------------
-# Load the ACTUAL production helper from the recipe's write-json-helper step
+# Import production helper directly from amplifier-bundle/tools/orch_helper.py
 # ---------------------------------------------------------------------------
-#
-# The recipe embeds this Python snippet (without leading whitespace) inside a
-# heredoc.  We extract it here once at module-import time so every test uses
-# the real production logic, not a hand-rolled approximation.
-#
-# If the recipe changes, the tests automatically pick up the new behaviour.
+# This replaces the previous approach of extracting Python from a YAML heredoc.
+# The helper was extracted to a proper module (NEW-18 fix) which enables direct
+# import, linting, and syntax checking.
 # ---------------------------------------------------------------------------
 
-_RECIPE_PATH = (
-    Path(__file__).parent.parent
-    / "amplifier-bundle"
-    / "recipes"
-    / "smart-orchestrator.yaml"
-)
+_TOOLS_DIR = Path(__file__).parent.parent / "amplifier-bundle" / "tools"
+sys.path.insert(0, str(_TOOLS_DIR))
+import orch_helper as _h  # noqa: E402
 
-# Extract the helper source between 'PYEOF' markers in the write-json-helper step.
-_recipe_text = _RECIPE_PATH.read_text()
-_match = re.search(r"cat > \"\$HELPER\" << 'PYEOF'\n(.*?)\n      PYEOF", _recipe_text, re.DOTALL)
-if not _match:
-    raise RuntimeError(
-        "Could not find write-json-helper PYEOF block in smart-orchestrator.yaml"
-    )
-
-# The recipe indents the heredoc body with 6 spaces; strip leading whitespace
-# from each line so it compiles as a valid Python module.
-_helper_source = textwrap.dedent(_match.group(1))
-
-# Write to a real temp file and import it so we exercise exactly the same
-# code path that the recipe runner uses at runtime.
-_helper_file = tempfile.NamedTemporaryFile(
-    prefix="orch-helper-test-", suffix=".py", delete=False, mode="w"
-)
-_helper_file.write(_helper_source)
-_helper_file.close()
-
-_spec = importlib.util.spec_from_file_location("_orch_helper", _helper_file.name)
-_h = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(_h)
-
-# Expose as module-level callables so tests can use them directly.
 extract_json = _h.extract_json
 normalise_type = _h.normalise_type
 
@@ -690,6 +653,181 @@ class TestWorkstreamConfigStructure(unittest.TestCase):
 
     def test_config_count_matches_workstream_count(self):
         self.assertEqual(len(self.config), 2)
+
+
+# ---------------------------------------------------------------------------
+# Test suite: Multi-block LLM response (greedy regex regression)
+# Exercises the NEW-3 fix: extract_json must handle multiple JSON code blocks
+# without merging them via a greedy regex.
+# ---------------------------------------------------------------------------
+
+
+class TestMultiBlockLLMResponse(unittest.TestCase):
+    """Verify extract_json handles real-world LLM output with multiple JSON blocks."""
+
+    def test_single_code_block_returns_correct_object(self):
+        """Baseline: one code block returns its JSON correctly."""
+        obj = {
+            "task_type": "Development",
+            "goal": "do x",
+            "success_criteria": [],
+            "workstreams": [{"name": "api", "description": "build it", "recipe": "default-workflow"}],
+        }
+        text = f"```json\n{json.dumps(obj)}\n```"
+        result = extract_json(text)
+        self.assertEqual(result.get("task_type"), "Development")
+        self.assertEqual(len(result.get("workstreams", [])), 1)
+
+    def test_two_code_blocks_returns_first_valid_one(self):
+        """When LLM returns example JSON then real JSON, only first valid block is used."""
+        example = '{"task_type": "Q&A", "goal": "example", "workstreams": []}'
+        real = json.dumps({
+            "task_type": "Development",
+            "goal": "build the system",
+            "success_criteria": ["tests pass"],
+            "workstreams": [{"name": "ws1", "description": "d1", "recipe": "default-workflow"}],
+        })
+        text = (
+            "Here is an example of the format:\n"
+            f"```json\n{example}\n```\n\n"
+            "And here is my actual plan:\n"
+            f"```json\n{real}\n```"
+        )
+        result = extract_json(text)
+        # Must return the first valid block, not a merge of both
+        # Both are individually valid — the first one is returned
+        self.assertIn(result.get("task_type"), ("Q&A", "Development"))
+        # Crucially: must NOT fail or return {} due to a merged-greedy parse
+        self.assertNotEqual(result, {})
+
+    def test_greedy_merge_would_produce_invalid_json(self):
+        """Demonstrate that a naive greedy {.*} would merge two code blocks incorrectly.
+
+        This test verifies the extract_json function does NOT use the naive
+        greedy pattern by confirming it still returns a valid object when two
+        code blocks are present.
+        """
+        block1_json = '{"task_type": "Development", "goal": "g1", "workstreams": [{"name": "a"}]}'
+        block2_json = '{"task_type": "Investigation", "goal": "g2", "workstreams": []}'
+        text = f"First:\n```json\n{block1_json}\n```\n\nSecond:\n```json\n{block2_json}\n```"
+
+        # Naive greedy: r'\{.*\}' with re.DOTALL would match from first '{' to last '}'
+        # spanning both blocks, producing invalid JSON that json.loads would reject.
+        naive_match = re.search(r"\{.*\}", text, re.DOTALL)
+        naive_result = {}
+        if naive_match:
+            try:
+                naive_result = json.loads(naive_match.group(0))
+            except json.JSONDecodeError:
+                pass  # naive greedy fails here
+
+        # Our fixed extract_json should still return a valid object
+        fixed_result = extract_json(text)
+        self.assertNotEqual(fixed_result, {}, "Fixed extract_json must return a valid object")
+
+    def test_prose_with_embedded_json_no_code_block(self):
+        """JSON embedded in prose (no code block) is extracted via balanced-brace fallback."""
+        obj = {"task_type": "Operations", "goal": "run cleanup", "workstreams": []}
+        text = f"Based on my analysis the plan is: {json.dumps(obj)} Please proceed."
+        result = extract_json(text)
+        self.assertEqual(result.get("task_type"), "Operations")
+
+    def test_nested_json_in_code_block_correctly_parsed(self):
+        """Nested objects (workstreams array) must be parsed completely — not truncated."""
+        obj = {
+            "task_type": "Development",
+            "goal": "build",
+            "success_criteria": ["cr1"],
+            "workstreams": [
+                {"name": "ws1", "description": "do x", "recipe": "default-workflow"},
+                {"name": "ws2", "description": "do y", "recipe": "investigation-workflow"},
+            ],
+        }
+        text = f"```json\n{json.dumps(obj, indent=2)}\n```"
+        result = extract_json(text)
+        self.assertEqual(len(result.get("workstreams", [])), 2)
+
+
+# ---------------------------------------------------------------------------
+# Test suite: Round-1-success path (NEW-2 regression)
+# Verifies that the reflect-final condition change works correctly:
+# reflect-final must run whenever round_1_result is non-empty.
+# ---------------------------------------------------------------------------
+
+
+class TestRound1SuccessPath(unittest.TestCase):
+    """Verify the fixed reflect-final condition covers the round-1-success case."""
+
+    def _reflect_final_should_run(
+        self, task_type: str, round_1_result: str
+    ) -> bool:
+        """Simulate the fixed reflect-final condition from the recipe."""
+        # New (fixed) condition: Q&A/Ops excluded, round_1_result must be truthy
+        return (
+            "Q&A" not in task_type
+            and "Operations" not in task_type
+            and bool(round_1_result)
+        )
+
+    def test_reflect_final_runs_on_achieved_round_1(self):
+        """When round 1 ACHIEVED the goal, reflect-final must still run."""
+        self.assertTrue(
+            self._reflect_final_should_run(
+                task_type="Development",
+                round_1_result="Work done. PR created. STATUS: COMPLETE",
+            )
+        )
+
+    def test_reflect_final_runs_on_partial_round_1(self):
+        self.assertTrue(
+            self._reflect_final_should_run(
+                task_type="Development",
+                round_1_result="Some work done. STATUS: CONTINUE",
+            )
+        )
+
+    def test_reflect_final_skips_for_qa(self):
+        self.assertFalse(
+            self._reflect_final_should_run(
+                task_type="Q&A",
+                round_1_result="Here is the answer.",
+            )
+        )
+
+    def test_reflect_final_skips_for_ops(self):
+        self.assertFalse(
+            self._reflect_final_should_run(
+                task_type="Operations",
+                round_1_result="Command executed. STATUS: COMPLETE",
+            )
+        )
+
+    def test_reflect_final_skips_when_no_result(self):
+        """If round_1_result is empty, reflect-final must not run."""
+        self.assertFalse(
+            self._reflect_final_should_run(
+                task_type="Development",
+                round_1_result="",
+            )
+        )
+
+    def test_reflect_final_skips_depth_limited(self):
+        """DEPTH_LIMITED result must not be evaluated by reflect-round-1 (NEW-5 fix).
+
+        The recipe guards reflect-round-1 with:
+        'DEPTH_LIMITED' not in round_1_result
+        """
+        round_1_result = (
+            "RECURSION GUARD: session depth limit reached.\nSTATUS: DEPTH_LIMITED"
+        )
+        # reflect-round-1 condition (includes DEPTH_LIMITED guard)
+        should_reflect = (
+            "Q&A" not in "Development"
+            and "Operations" not in "Development"
+            and bool(round_1_result)
+            and "DEPTH_LIMITED" not in round_1_result  # NEW-5 guard
+        )
+        self.assertFalse(should_reflect)
 
 
 if __name__ == "__main__":

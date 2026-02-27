@@ -49,6 +49,14 @@ DEFAULT_MAX_SESSIONS = 10
 STATE_DIR = Path(os.environ.get("TMPDIR", "/tmp")) / "amplihack-session-trees"
 
 # Per-tree threading locks for intra-process coordination.
+#
+# NOTE: All current callers (recipe runner bash steps via CLI, orchestrator.py)
+# are single-threaded at the point where session_tree is called. The thread lock
+# is a no-op for existing callers but is retained for correctness if future
+# callers introduce thread-based parallelism (e.g., a thread-pool recipe runner).
+# It adds negligible overhead (~1μs per acquire) and prevents subtle bugs if
+# the execution model changes.
+#
 # The file-based lock (O_EXCL) handles cross-process exclusion;
 # this dict handles concurrent threads within the same process.
 _THREAD_LOCKS: dict[str, threading.Lock] = {}
@@ -199,8 +207,19 @@ def _load(tree_id: str) -> dict:
         return {"sessions": {}, "queue": []}
 
 
-def _save(tree_id: str, state: dict) -> None:
-    """Write state atomically using a temp file + rename (prevents partial reads)."""
+def _save(tree_id: str, state: dict, max_age_hours: float = 24.0) -> None:
+    """Write state atomically using a temp file + rename (prevents partial reads).
+
+    Prunes completed sessions older than max_age_hours before saving to prevent
+    unbounded growth of the state file.
+    """
+    # Prune stale completed sessions before saving
+    cutoff = time.time() - (max_age_hours * 3600)
+    state["sessions"] = {
+        sid: s for sid, s in state["sessions"].items()
+        if not (s.get("status") == "completed" and s.get("completed_at", float("inf")) < cutoff)
+    }
+
     target = _state_path(tree_id)
     content = json.dumps(state, indent=2)
     # Write to a sibling temp file, then atomically rename into place.
