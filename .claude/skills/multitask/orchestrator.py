@@ -17,6 +17,7 @@ Usage:
 
 import json
 import os
+import shlex
 import shutil
 import signal
 import subprocess
@@ -117,6 +118,14 @@ class ParallelOrchestrator:
                 issue = int(time.time()) % 100000
                 print(f"[{issue}] Could not create issue, using fallback ID")
 
+        # Validate issue is a positive integer to prevent path/shell injection
+        try:
+            issue = int(issue)
+            if issue <= 0:
+                raise ValueError(f"issue must be positive, got {issue}")
+        except (TypeError, ValueError) as e:
+            raise ValueError(f"Invalid issue number in workstream config: {issue!r}") from e
+
         ws = Workstream(
             issue=issue,
             branch=branch,
@@ -133,19 +142,28 @@ class ParallelOrchestrator:
 
             shutil.rmtree(ws.work_dir)
 
-        print(f"[{issue}] Cloning from main (workflow will create {branch})...")
+        # Detect the default branch of the remote repository
+        try:
+            default_branch_result = subprocess.run(
+                ["git", "ls-remote", "--symref", self.repo_url, "HEAD"],
+                capture_output=True, text=True, timeout=30,
+            )
+            # Output: "ref: refs/heads/main\tHEAD" -> extract "main"
+            default_branch = "main"  # fallback
+            for line in default_branch_result.stdout.splitlines():
+                if line.startswith("ref: refs/heads/"):
+                    default_branch = line.split("refs/heads/")[1].split("\t")[0].strip()
+                    break
+        except Exception:
+            default_branch = "main"
+
+        print(f"[{issue}] Cloning default branch '{default_branch}' from remote...")
         subprocess.run(
             [
-                "git",
-                "clone",
-                "--depth=1",
-                "--branch=main",
-                self.repo_url,
-                str(ws.work_dir),
+                "git", "clone", "--depth=1", f"--branch={default_branch}",
+                self.repo_url, str(ws.work_dir),
             ],
-            check=True,
-            capture_output=True,
-            timeout=120,
+            check=True, capture_output=True, timeout=120,
         )
         # Note: The workflow Step 4 will create the feature branch
 
@@ -170,6 +188,7 @@ class ParallelOrchestrator:
         import json
 
         safe_task = json.dumps(ws.task)
+        safe_recipe = json.dumps(ws.recipe)
         launcher_py.write_text(
             textwrap.dedent(f"""\
             #!/usr/bin/env python3
@@ -191,7 +210,7 @@ class ParallelOrchestrator:
 
             adapter = CLISubprocessAdapter(cli="claude", working_dir=".")
             result = run_recipe_by_name(
-                "{ws.recipe}",
+                {safe_recipe},
                 adapter=adapter,
                 user_context={{
                     "task_description": {safe_task},
@@ -211,13 +230,32 @@ class ParallelOrchestrator:
         )
         launcher_py.chmod(0o755)
 
-        # Shell wrapper that handles CLAUDECODE env var
+        # Shell wrapper: unset CLAUDECODE and propagate session tree context
+        # AMPLIHACK_TREE_ID and AMPLIHACK_SESSION_DEPTH are inherited from the
+        # parent environment (set by the recipe that invoked this orchestrator).
+        # This ensures the session tree depth limit is enforced in child recipes.
+        import uuid
+
+        current_depth = int(os.environ.get("AMPLIHACK_SESSION_DEPTH", "0"))
+        tree_id = os.environ.get("AMPLIHACK_TREE_ID") or uuid.uuid4().hex[:8]
+
+        safe_work_dir = shlex.quote(str(ws.work_dir))
+        safe_tree = shlex.quote(tree_id)
+        safe_depth = shlex.quote(str(current_depth + 1))
+        safe_max_depth = shlex.quote(os.environ.get("AMPLIHACK_MAX_DEPTH", "3"))
+        safe_max_sessions = shlex.quote(os.environ.get("AMPLIHACK_MAX_SESSIONS", "10"))
+
         run_sh = ws.work_dir / "run.sh"
         run_sh.write_text(
             textwrap.dedent(f"""\
             #!/bin/bash
-            cd "{ws.work_dir}"
+            cd {safe_work_dir}
             unset CLAUDECODE  # Allow nested Claude sessions
+            # Propagate session tree context so child recipes obey depth limits
+            export AMPLIHACK_TREE_ID={safe_tree}
+            export AMPLIHACK_SESSION_DEPTH={safe_depth}
+            export AMPLIHACK_MAX_DEPTH={safe_max_depth}
+            export AMPLIHACK_MAX_SESSIONS={safe_max_sessions}
             exec python3 launcher.py
             """)
         )
@@ -234,12 +272,27 @@ class ParallelOrchestrator:
         )
 
         # Shell launcher
+        import uuid as _uuid
+
+        _depth = int(os.environ.get("AMPLIHACK_SESSION_DEPTH", "0"))
+        _tree = os.environ.get("AMPLIHACK_TREE_ID") or _uuid.uuid4().hex[:8]
+
+        _safe_work_dir = shlex.quote(str(ws.work_dir))
+        _safe_tree = shlex.quote(_tree)
+        _safe_depth = shlex.quote(str(_depth + 1))
+        _safe_max_depth = shlex.quote(os.environ.get("AMPLIHACK_MAX_DEPTH", "3"))
+        _safe_max_sessions = shlex.quote(os.environ.get("AMPLIHACK_MAX_SESSIONS", "10"))
+
         run_sh = ws.work_dir / "run.sh"
         run_sh.write_text(
             textwrap.dedent(f"""\
             #!/bin/bash
-            cd "{ws.work_dir}"
+            cd {_safe_work_dir}
             unset CLAUDECODE
+            export AMPLIHACK_TREE_ID={_safe_tree}
+            export AMPLIHACK_SESSION_DEPTH={_safe_depth}
+            export AMPLIHACK_MAX_DEPTH={_safe_max_depth}
+            export AMPLIHACK_MAX_SESSIONS={_safe_max_sessions}
             amplihack claude --subprocess-safe -- -p "@TASK.md
 
             Execute task autonomously following DEFAULT_WORKFLOW.md.
@@ -395,18 +448,31 @@ class ParallelOrchestrator:
         print(f"  Free: {free_gb:.1f}GB / {total_gb:.1f}GB ({100 - used_percent:.1f}% available)")
 
         if free_gb < min_free_gb:
-            print(f"\n⚠️  WARNING: Only {free_gb:.1f}GB free (threshold: {min_free_gb}GB)")
-            print("Each workstream requires ~1.5GB. Consider cleaning up old workstreams:")
-            print(f"  rm -rf {self.tmp_base}/ws-*")
+            # Non-interactive: fail loudly if disk is low, don't prompt
+            print(f"\n⚠  WARNING: Only {free_gb:.1f}GB free (threshold: {min_free_gb}GB)")
+            print(f"  Each workstream requires ~1.5GB. Clean up old workstreams to proceed:")
+            print(f"    rm -rf {self.tmp_base}/ws-*")
+            print(f"  Or set AMPLIHACK_SKIP_DISK_CHECK=1 to bypass this check.")
             print()
-            try:
-                response = input("Continue anyway? (y/N): ").strip().lower()
-                if response != "y":
-                    print("Aborted by user.")
-                    sys.exit(0)
-            except (EOFError, KeyboardInterrupt):
-                print("\nAborted.")
-                sys.exit(0)
+
+            if os.environ.get("AMPLIHACK_SKIP_DISK_CHECK") == "1":
+                print("Disk check bypassed via AMPLIHACK_SKIP_DISK_CHECK=1")
+                return
+
+            # In a TTY, prompt. In non-interactive context, abort.
+            if sys.stdin.isatty():
+                try:
+                    response = input("Continue anyway? (y/N): ").strip().lower()
+                    if response != "y":
+                        print("Aborted by user.")
+                        sys.exit(0)
+                except (EOFError, KeyboardInterrupt):
+                    print("\nAborted.")
+                    sys.exit(1)  # Exit code 1 (not 0) so recipe runner detects failure
+            else:
+                print("Non-interactive environment: aborting due to low disk space.")
+                print("Set AMPLIHACK_SKIP_DISK_CHECK=1 to proceed anyway.")
+                sys.exit(1)  # Exit code 1 so recipe runner step fails loudly
 
     def _calculate_disk_usage(self) -> tuple[float, int]:
         """Calculate total disk usage of all workstream directories.
