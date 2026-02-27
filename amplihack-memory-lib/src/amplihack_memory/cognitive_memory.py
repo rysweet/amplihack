@@ -9,6 +9,7 @@ node table.
 """
 
 import json
+import logging
 import time
 import uuid
 from collections.abc import Callable
@@ -16,6 +17,8 @@ from datetime import datetime
 from pathlib import Path
 
 import kuzu
+
+logger = logging.getLogger(__name__)
 
 from .memory_types import (
     EpisodicMemory,
@@ -47,13 +50,6 @@ def _new_id(prefix: str = "mem") -> str:
 def _ts_now() -> int:
     """Current Unix timestamp as integer."""
     return int(time.time())
-
-
-def _safe_execute(conn: kuzu.Connection, query: str, params: dict | None = None):
-    """Execute a Kuzu query, returning the QueryResult or None on error."""
-    if params is None:
-        params = {}
-    return conn.execute(query, params)
 
 
 # ---------------------------------------------------------------------------
@@ -360,8 +356,8 @@ class CognitiveMemory:
                 """,
                 {"sid": sensory_id, "eid": ep_id, "ts": now},
             )
-        except Exception:
-            pass  # edge creation is best-effort
+        except Exception as exc:
+            logger.debug("ATTENDED_TO edge creation failed (best-effort): %s", exc)
 
         return ep_id
 
@@ -663,8 +659,8 @@ class CognitiveMemory:
                     """,
                     {"cid": cons_id, "eid": ep_id, "ts": now},
                 )
-            except Exception:
-                pass  # edge creation is best-effort
+            except Exception as exc:
+                logger.debug("CONSOLIDATES edge creation failed (best-effort): %s", exc)
 
         return cons_id
 
@@ -888,8 +884,6 @@ class CognitiveMemory:
         name: str,
         steps: list[str],
         prerequisites: list[str] | None = None,
-        source_id: str = "",
-        tags: list[str] | None = None,
     ) -> str:
         """Store a reusable procedure.
 
@@ -897,8 +891,6 @@ class CognitiveMemory:
             name: Human-readable procedure name.
             steps: Ordered list of step descriptions.
             prerequisites: Conditions required before executing.
-            source_id: Origin reference (unused in storage but kept for API compat).
-            tags: Categorisation tags (unused in storage but kept for API compat).
 
         Returns:
             node_id of the stored procedure.
