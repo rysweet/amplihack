@@ -76,21 +76,21 @@ Following: .claude/workflow/[WORKFLOW_NAME].md
 
 ### Workflow Execution
 
-**Default Behavior**: Claude invokes ultrathink-orchestrator for non-trivial
+**Default Behavior**: Claude invokes dev-orchestrator for non-trivial
 development and investigation tasks.
 
-| Task Type         | Claude's Action     |
-| ----------------- | ------------------- |
-| **Q&A**           | Responds directly   |
-| **Operations**    | Responds directly   |
-| **Investigation** | Invokes /ultrathink |
-| **Development**   | Invokes /ultrathink |
+| Task Type         | Claude's Action   |
+| ----------------- | ----------------- |
+| **Q&A**           | Responds directly |
+| **Operations**    | Responds directly |
+| **Investigation** | Invokes /dev      |
+| **Development**   | Invokes /dev      |
 
 **Task classification**: See "Classification Keywords" section above for keyword
 triggers.
 
 **Override**: Use explicit commands (/analyze, /improve) or request "without
-ultrathink" for direct implementation.
+orchestration" for direct implementation.
 
 ### Rules
 
@@ -122,9 +122,9 @@ ultrathink" for direct implementation.
   appropriate workflow file and follow all steps.
 - **No workflow = No action**: If you haven't announced your workflow
   classification, you haven't started the task. Period.
-- **ALWAYS use UltraThink**: For non-trivial tasks, ALWAYS start with
-  Skill(ultrathink-orchestrator) which reads the workflow and orchestrates
-  agents to execute it - this is defined in the ultrathink skill.
+- **ALWAYS use dev-orchestrator**: For non-trivial tasks, ALWAYS start with
+  Skill(skill="dev-orchestrator") which classifies the task, decomposes into
+  workstreams if needed, and executes via recipe runner.
 - **Maximize agent usage**: Every workflow step should leverage specialized
   agents - delegate aggressively to agents in
   `~/.amplihack/.claude/agents/amplihack/*.md`
@@ -338,19 +338,20 @@ granularity of tasks (eg when going off to do something specific where context
 from the whole conversation is not necessary, such as managing a git worktree or
 cleaning some data).
 
-### Workflow and UltraThink Integration
+### Workflow and Dev Orchestrator Integration
 
-**The workflow defines WHAT to do, UltraThink orchestrates HOW to do it:**
+**The workflow defines WHAT to do, dev-orchestrator routes HOW to do it:**
 
 ```
 Example - Any Non-Trivial Task:
 
 User: "Add authentication to the API"
 
-1. Invoke /ultrathink with the task
-   → UltraThink reads [DEFAULT_WORKFLOW.md](~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md)
-   → Follows all workflow steps in order
-   → Orchestrates multiple agents at each step
+1. Invoke /dev with the task
+   → dev-orchestrator classifies task (Development)
+   → Detects 1 workstream (single cohesive task)
+   → Runs smart-orchestrator recipe
+   → smart-orchestrator runs default-workflow recipe
 
 2. Workflow provides the authoritative process:
    → Step order must be followed
@@ -363,6 +364,16 @@ User: "Add authentication to the API"
    → architect designs the solution
    → builder implements the code
    → reviewer ensures quality
+
+Example - Parallel Tasks:
+
+User: "Build a webui and an API for user management"
+
+1. Invoke /dev with the task
+   → dev-orchestrator classifies (Development)
+   → Detects 2 workstreams: API + WebUI
+   → Launches multitask orchestrator
+   → Both workstreams run in parallel via recipe runner
 ```
 
 The workflow file is the single source of truth - edit it to change the process.
@@ -578,15 +589,15 @@ Makefile             # Easy access to scenario tools
 
 ## Key Commands
 
-### /ultrathink <task>
+### /dev <task>
 
-Default execution mode for non-trivial tasks. UltraThink:
+Default execution mode for all non-trivial tasks. The dev-orchestrator:
 
-- Reads the workflow from
-  [`DEFAULT_WORKFLOW.md`](~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md)
-- Orchestrates specialized agents through each workflow step
-- Enforces systematic execution with TodoWrite tracking
-- Ensures philosophy compliance throughout
+- Classifies task type (Q&A / Investigation / Development)
+- Detects parallel workstreams automatically
+- Executes via smart-orchestrator recipe (recipe runner)
+- Reflects on goal achievement after completion
+- Formerly known as `/ultrathink` (deprecated)
 
 ### /analyze <path>
 
@@ -670,9 +681,9 @@ pragmatic → minimal ensures reliable completion.
 /amplihack:cascade "Generate API documentation from codebase"
 ```
 
-**Integration with UltraThink:** These patterns can be combined with
-`/ultrathink` by customizing the workflow file to include consensus or fallback
-stages at specific steps.
+**Integration with dev-orchestrator:** These patterns can be combined with
+`/dev` by customizing the workflow file to include consensus or fallback stages
+at specific steps.
 
 ### /multitask
 

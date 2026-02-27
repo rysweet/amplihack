@@ -1,61 +1,129 @@
 ---
 name: amplihack:dev
-version: 1.0.0
-description: Alias for /amplihack:default-workflow - Run the full 23-step development workflow
-aliases_for: amplihack:default-workflow
+version: 2.0.0
+description: |
+  Primary entry point for all development and investigation work.
+  Classifies task, decomposes into workstreams if parallel-capable,
+  and launches execution via recipe runner. The default orchestrator.
 triggers:
-  - "dev workflow"
-  - "start development"
+  - "implement"
+  - "build"
+  - "create"
+  - "fix"
+  - "refactor"
+  - "investigate"
+  - "develop"
+  - "make"
+  - "add feature"
 invokes:
   - type: recipe
+    name: smart-orchestrator
+  - type: recipe
     name: default-workflow
+  - type: recipe
+    name: investigation-workflow
 dependencies:
   required:
-    - amplifier-bundle/recipes/default-workflow.yaml
+    - amplifier-bundle/recipes/smart-orchestrator.yaml
 examples:
-  - "/amplihack:dev Add user authentication"
-  - "/amplihack:dev Fix login timeout bug"
+  - "/dev add user authentication"
+  - "/dev build a webui and an API for user management"
+  - "/dev fix the login timeout bug"
+  - "/dev investigate how the caching layer works"
+  - "/dev implement OAuth and add structured logging"
 ---
 
-# Dev Command (Alias)
+# Dev Command
 
 ## Usage
 
-`/amplihack:dev <TASK_DESCRIPTION>`
+`/dev <TASK_DESCRIPTION>`
 
-This is an alias for `/amplihack:default-workflow`. See that command for full documentation.
+The primary entry point for all development work in amplihack. This command
+classifies your task, detects parallel workstreams, and executes via recipe runner.
+
+## Examples
+
+**Single task** (one workstream):
+
+```
+/dev fix the authentication bug where tokens expire too early
+/dev add pagination to the user listing API
+/dev investigate how the caching layer works
+```
+
+**Parallel tasks** (multiple workstreams launched simultaneously):
+
+```
+/dev build a REST API and a React webui for user management
+/dev add OAuth support and add structured logging
+/dev investigate the auth system then implement refresh tokens
+```
+
+## How It Works
+
+```
+/dev <request>
+      │
+      ▼
+[smart-orchestrator recipe]
+      │
+      ├─ Q&A / Ops ─────────────────────────→ Direct response
+      │
+      ├─ 1 workstream ──────────────────────→ default-workflow recipe
+      │
+      └─ N workstreams (parallel) ──────────→ multitask orchestrator
+                                                    │
+                                                    ▼
+                                           [Reflect on goal]
+```
 
 ## EXECUTION INSTRUCTIONS FOR CLAUDE
 
-When this command is invoked, execute exactly as `/amplihack:default-workflow`:
+When this command is invoked with `{TASK_DESCRIPTION}`:
 
-1. **Attempt Recipe Runner execution** (preferred):
+### Option A: Recipe Runner (PREFERRED when available)
 
-   ```python
-   from amplihack.recipes import run_recipe_by_name
-   result = run_recipe_by_name(
-       "default-workflow",
-       adapter=sdk_adapter,
-       user_context={
-           "task_description": "{TASK_DESCRIPTION}",
-           "repo_path": "."
-       }
-   )
-   ```
+> Note: `{TASK_DESCRIPTION}` below is the literal user text passed to this command.
+> Claude must substitute the actual task text — do not pass the string `"{TASK_DESCRIPTION}"`.
 
-2. **Fallback to Skill** (if Recipe Runner unavailable):
+```python
+from amplihack.recipes import run_recipe_by_name
+from amplihack.recipes.adapters.sdk import ClaudeSDKAdapter
 
-   ```
-   Skill(skill="default-workflow")
-   ```
+# IMPORTANT: Replace TASK_DESCRIPTION with the actual user request text
+task = "<the actual task from the user>"
 
-3. **Final fallback to Markdown** (if skill unavailable):
+adapter = ClaudeSDKAdapter()
+result = run_recipe_by_name(
+    "smart-orchestrator",
+    adapter=adapter,
+    user_context={
+        "task_description": task,  # actual text, not literal "{TASK_DESCRIPTION}"
+        "repo_path": ".",
+    }
+)
+```
 
-   ```
-   Read(file_path="~/.amplihack/.claude/workflow/DEFAULT_WORKFLOW.md")
-   ```
+### Option B: Skill invocation (if Recipe Runner unavailable)
 
-4. **Create TodoWrite entries** for all 23 steps and execute systematically.
+```
+Skill(skill="dev-orchestrator")
+```
+
+### Option C: Direct classification + routing (final fallback)
+
+1. **Classify** the task type from `{TASK_DESCRIPTION}`:
+   - **Q&A** (what is, explain, how do I): respond directly
+   - **Operations** (cleanup, delete, run command): execute directly
+   - **Investigation** (investigate, analyze, understand): `Skill(skill="investigation-workflow")`
+   - **Development** (implement, build, fix, create, refactor): continue below
+
+2. **Detect parallel workstreams**:
+   - If single cohesive task: `Skill(skill="default-workflow")`
+   - If multiple independent components: split into workstreams and launch multitask orchestrator
+
+3. **Reflect on goal achievement**: After execution, verify success criteria met.
 
 ## Task Description
 

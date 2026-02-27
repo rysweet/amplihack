@@ -3,7 +3,7 @@
 Workflow Classification Reminder Hook - System reminder for topic boundary classification.
 
 Injects a system reminder when a new topic is detected, prompting the agent to classify
-the request into the appropriate workflow (Q&A, Investigation, or Default).
+the request into the appropriate workflow and route through dev-orchestrator.
 
 This hook fires on user.prompt.submitted and injects additionalContext as a system reminder.
 """
@@ -118,37 +118,24 @@ class WorkflowClassificationReminder(HookProcessor):
 
     def build_reminder(self, user_prompt: str) -> str:
         """Build the system reminder message."""
-        return f"""🎯 NEW TOPIC DETECTED - Workflow Classification Required
-
-Before proceeding, classify this request:
-
-User request: "{user_prompt[:100]}{"..." if len(user_prompt) > 100 else ""}"
-
-Quick classification (choose ONE):
-┌─────────────────────────────────────────────────────────────┐
-│ Q&A           → Simple question, no code changes            │
-│                 Keywords: "what is", "explain", "how do I"  │
-│                                                              │
-│ OPERATIONS    → Admin tasks, simple commands                │
-│                 Keywords: "cleanup", "delete old", "git status"│
-│                                                              │
-│ INVESTIGATION → Understanding/exploring code                │
-│                 Keywords: "investigate", "analyze", "how does"│
-│                                                              │
-│ DEFAULT       → Any code changes (features, bugs, refactor) │
-│                 Keywords: "implement", "add", "fix", "build"│
-└─────────────────────────────────────────────────────────────┘
-
-Required actions:
-1. Output: "WORKFLOW: [Q&A | OPERATIONS | INVESTIGATION | DEFAULT]"
-2. Output: "Reason: [one sentence]"
-3. For Q&A/INVESTIGATION/DEFAULT: Execute recipes tool
-   For OPERATIONS: Execute directly (no recipe needed)
-
-If uncertain, choose DEFAULT.
-
-DO NOT start implementation without classifying first.
-"""
+        truncated = user_prompt[:100] + ("..." if len(user_prompt) > 100 else "")
+        return (
+            f'NEW TOPIC DETECTED - Classify and Route\n\n'
+            f'Request: "{truncated}"\n\n'
+            "Classify (choose ONE):\n"
+            '  Q&A         -> "what is", "explain", "how do I"        -> respond directly\n'
+            '  OPERATIONS  -> "cleanup", "delete", "git status"       -> execute directly\n'
+            "  INVESTIGATION/DEVELOPMENT -> all other non-trivial work -> use dev-orchestrator\n\n"
+            "For INVESTIGATION or DEVELOPMENT tasks:\n"
+            '  Invoke Skill(skill="dev-orchestrator") -- the smart-orchestrator will:\n'
+            "    - Classify the task and formulate a clear goal\n"
+            "    - Detect parallel workstreams if task has independent components\n"
+            "    - Execute via recipe runner (single task or parallel workstreams)\n"
+            "    - Reflect on goal achievement\n\n"
+            "  Entry point: /dev <task description>\n"
+            "  (Legacy: /ultrathink is deprecated -- use /dev)\n\n"
+            "DO NOT start implementation without invoking dev-orchestrator first."
+        )
 
     def process(self, input_data: dict[str, Any]) -> dict[str, Any]:
         """Process user prompt submit event.

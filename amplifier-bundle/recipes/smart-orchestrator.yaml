@@ -1,0 +1,329 @@
+name: "smart-orchestrator"
+description: |
+  Unified intelligent task orchestrator. Replaces ultrathink.
+  Classifies task → formulates goal → decomposes into workstreams →
+  executes via recipe runner (single or parallel) → reflects on achievement.
+version: "1.0.0"
+author: "Amplihack Team"
+tags: ["orchestration", "routing", "parallel", "auto-classify", "goal-seeking"]
+
+context:
+  # The user's raw request
+  task_description: ""
+
+  # Path to the repository
+  repo_path: "."
+
+  # Internal state (populated during execution)
+  decomposition_json: ""
+  helper_script: ""
+  task_type: ""
+  workstream_count: ""
+  workstreams_file: ""
+  execution_result: ""
+  parallel_results: ""
+  reflection: ""
+
+steps:
+  # ────────────────────────────────────────────────────────────────────────────
+  # Setup: write shared JSON extraction helper to /tmp (used by parse + config steps)
+  # ────────────────────────────────────────────────────────────────────────────
+
+  - id: "write-json-helper"
+    type: "bash"
+    command: |
+      HELPER=$(mktemp /tmp/orch-helper-XXXXXX.py)
+      cat > "$HELPER" << 'PYEOF'
+      """Shared helper: extract first JSON object from LLM output text."""
+      import json
+      import re
+
+      def extract_json(text: str) -> object:
+          """Extract and parse first JSON object, handling markdown code blocks."""
+          # Code block first (greedy DOTALL handles nested objects)
+          m = re.search(r'```(?:json)?\s*(\{.*\})\s*```', text, re.DOTALL)
+          if m:
+              try:
+                  return json.loads(m.group(1))
+              except json.JSONDecodeError:
+                  pass
+          # Raw JSON object (greedy)
+          m = re.search(r'(\{.*\})', text, re.DOTALL)
+          if m:
+              try:
+                  return json.loads(m.group(1))
+              except json.JSONDecodeError:
+                  pass
+          return {}
+
+      def normalise_task_type(raw: str) -> str:
+          """Normalise LLM task_type strings to canonical values."""
+          t = raw.lower()
+          if any(k in t for k in ("q&a", "qa", "question", "answer")):
+              return "Q&A"
+          if any(k in t for k in ("ops", "operation", "admin", "command")):
+              return "Operations"
+          if any(k in t for k in ("invest", "research", "explor", "analys", "understand")):
+              return "Investigation"
+          return "Development"
+      PYEOF
+      echo "$HELPER"
+    output: "helper_script"
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Phase 1: Classify & Decompose
+  # ────────────────────────────────────────────────────────────────────────────
+
+  - id: "classify-and-decompose"
+    type: "agent"
+    agent: "amplihack:prompt-writer"
+    prompt: |
+      You are an intelligent task orchestrator. Analyze the request below and produce a
+      structured orchestration plan.
+
+      **REQUEST**: {{task_description}}
+
+      Your job:
+      1. Classify the task type (Q&A / Operations / Investigation / Development)
+      2. Formulate a clear goal statement (1 sentence)
+      3. Define verifiable success criteria (numbered list)
+      4. Decompose into independent workstreams
+
+      **Workstream decomposition rules**:
+      - Use 1 workstream if: task is cohesive, sequential, or a single concern
+      - Use 2-5 workstreams if: task has CLEARLY INDEPENDENT components that can run in parallel
+        Examples of parallel decomposition:
+          "build a webui and an api" → ws1: API, ws2: WebUI
+          "add auth and add logging" → ws1: auth, ws2: logging (if truly independent)
+          "investigate X then implement Y" → ws1: investigation, ws2: development
+      - Each workstream must be independently completable (no cross-dependencies during execution)
+      - Recipe choices: "default-workflow" (dev work), "investigation-workflow" (research)
+
+      **Output exactly this JSON** (no other text):
+      ```json
+      {
+        "task_type": "Development",
+        "goal": "One sentence goal",
+        "success_criteria": [
+          "Criterion 1",
+          "Criterion 2"
+        ],
+        "workstreams": [
+          {
+            "name": "short-name",
+            "description": "Full task description for this workstream",
+            "recipe": "default-workflow"
+          }
+        ]
+      }
+      ```
+    output: "decomposition_json"
+
+  # Extract task type and workstream count from the JSON
+  # Uses temp file to avoid triple-quote injection from {{decomposition_json}}
+  - id: "parse-decomposition"
+    type: "bash"
+    command: |
+      DECFILE=$(mktemp /tmp/decomp-XXXXXX.txt)
+      cat > "$DECFILE" << 'CONTENT_END'
+      {{decomposition_json}}
+      CONTENT_END
+
+      python3 - "$DECFILE" "{{helper_script}}" <<'PYEOF'
+      import sys, json, os
+      sys.path.insert(0, os.path.dirname(sys.argv[2]))
+      import importlib.util
+      spec = importlib.util.spec_from_file_location("helper", sys.argv[2])
+      helper = importlib.util.module_from_spec(spec)
+      spec.loader.exec_module(helper)
+
+      text = open(sys.argv[1]).read()
+      obj = helper.extract_json(text)
+
+      task_type = helper.normalise_task_type(obj.get("task_type", "Development"))
+      workstreams = obj.get("workstreams", [{}])
+      count = max(1, len(workstreams))
+
+      print(json.dumps({"task_type": task_type, "workstream_count": count}))
+      os.unlink(sys.argv[1])
+      PYEOF
+    output: "parse_output"
+
+  - id: "extract-task-type"
+    type: "bash"
+    command: |
+      echo '{{parse_output}}' | python3 -c "import sys,json; print(json.loads(sys.stdin.read()).get('task_type','Development'))"
+    output: "task_type"
+
+  - id: "extract-workstream-count"
+    type: "bash"
+    command: |
+      echo '{{parse_output}}' | python3 -c "import sys,json; print(json.loads(sys.stdin.read()).get('workstream_count',1))"
+    output: "workstream_count"
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Phase 2a: Q&A / Operations path — respond directly
+  # ────────────────────────────────────────────────────────────────────────────
+
+  - id: "handle-qa-ops"
+    type: "agent"
+    condition: "'Q&A' in task_type or 'Operations' in task_type or 'Ops' in task_type"
+    agent: "amplihack:core:architect"
+    prompt: |
+      Answer this request directly and concisely. No workflow orchestration needed.
+
+      **Request**: {{task_description}}
+      **Classification**: {{task_type}}
+    output: "execution_result"
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Phase 2b: Single workstream — run default-workflow recipe directly
+  # ────────────────────────────────────────────────────────────────────────────
+
+  - id: "execute-single-workstream"
+    type: "agent"
+    condition: "('Development' in task_type or 'Investigation' in task_type) and int(str(workstream_count).strip() or '1') == 1"
+    agent: "amplihack:core:builder"
+    prompt: |
+      Execute this task following the complete development workflow (DEFAULT_WORKFLOW.md steps 0-22).
+
+      **Goal and Context**:
+      {{decomposition_json}}
+
+      **Task**: {{task_description}}
+      **Repo**: {{repo_path}}
+
+      Follow all steps 0-22 of DEFAULT_WORKFLOW.md. Use specialized agents at each step.
+      Create a PR at the end. Report the PR URL in your final output.
+      Work autonomously. Do not stop to ask questions.
+    output: "execution_result"
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Phase 2c: Multiple workstreams — create config and launch in parallel
+  # ────────────────────────────────────────────────────────────────────────────
+
+  - id: "create-workstreams-config"
+    type: "bash"
+    condition: "int(str(workstream_count).strip() or '1') > 1"
+    command: |
+      DECFILE=$(mktemp /tmp/decomp-XXXXXX.txt)
+      cat > "$DECFILE" << 'CONTENT_END'
+      {{decomposition_json}}
+      CONTENT_END
+
+      python3 - "$DECFILE" "{{helper_script}}" <<'PYEOF'
+      import json, sys, os, re, tempfile
+      sys.path.insert(0, os.path.dirname(sys.argv[2]))
+      import importlib.util
+      spec = importlib.util.spec_from_file_location("helper", sys.argv[2])
+      helper = importlib.util.module_from_spec(spec)
+      spec.loader.exec_module(helper)
+
+      text = open(sys.argv[1]).read()
+      obj = helper.extract_json(text)
+
+      workstreams = obj.get("workstreams", [])
+      config = []
+      for i, ws in enumerate(workstreams):
+          name = ws.get("name", f"workstream-{i+1}")
+          slug = re.sub(r'[^a-z0-9-]', '-', name.lower())[:30].strip('-') or f"ws-{i+1}"
+          config.append({
+              "issue": "TBD",
+              "branch": f"feat/orch-{i+1}-{slug}",
+              "description": name,
+              "task": ws.get("description", name),
+              "recipe": ws.get("recipe", "default-workflow")
+          })
+
+      fd, config_path = tempfile.mkstemp(prefix="smart-orch-ws-", suffix=".json", dir="/tmp")
+      with os.fdopen(fd, "w") as f:
+          json.dump(config, f, indent=2)
+
+      os.unlink(sys.argv[1])
+      print(config_path)
+      PYEOF
+    output: "workstreams_file"
+
+  - id: "launch-parallel-workstreams"
+    type: "bash"
+    condition: "int(str(workstream_count).strip() or '1') > 1"
+    command: |
+      # Validate repo_path before use (no interpolation into cd directly)
+      REPO_PATH="{{repo_path}}"
+      if [ ! -d "$REPO_PATH" ]; then
+        echo "ERROR: repo_path '$REPO_PATH' does not exist" >&2
+        exit 1
+      fi
+      cd "$REPO_PATH"
+      echo "Launching parallel workstreams from: {{workstreams_file}}"
+      cat "{{workstreams_file}}"
+      echo "---"
+      python3 .claude/skills/multitask/orchestrator.py "{{workstreams_file}}"
+    output: "parallel_results"
+
+  # Cleanup shared helper script
+  - id: "cleanup-helper"
+    type: "bash"
+    command: |
+      rm -f "{{helper_script}}"
+      echo "helper cleaned up"
+    output: "cleanup_status"
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Phase 3: Reflect on goal achievement
+  # ────────────────────────────────────────────────────────────────────────────
+
+  - id: "reflect-on-achievement"
+    type: "agent"
+    condition: "'Q&A' not in task_type and 'Operations' not in task_type and 'Ops' not in task_type"
+    agent: "amplihack:core:reviewer"
+    prompt: |
+      Evaluate whether the goal was achieved.
+
+      **Goal and Success Criteria**:
+      {{decomposition_json}}
+
+      **Execution Results**:
+      {% if execution_result %}Single workstream result:
+      {{execution_result}}{% endif %}
+      {% if parallel_results %}Parallel workstreams result:
+      {{parallel_results}}{% endif %}
+
+      Assess each success criterion. End your response with EXACTLY one of:
+      - `GOAL_STATUS: ACHIEVED` — all criteria met
+      - `GOAL_STATUS: PARTIAL — [specific gaps]` — some criteria met
+      - `GOAL_STATUS: NOT_ACHIEVED — [reason]` — goal not met
+    output: "reflection"
+
+  # Summary for all task types
+  - id: "summarize"
+    type: "agent"
+    condition: "'Q&A' not in task_type and 'Operations' not in task_type and 'Ops' not in task_type"
+    agent: "amplihack:core:architect"
+    prompt: |
+      Produce a concise execution summary.
+
+      **Task**: {{task_description}}
+      **Goal**: {{decomposition_json}}
+      **Reflection**: {{reflection}}
+      {% if execution_result %}**Execution**: {{execution_result}}{% endif %}
+      {% if parallel_results %}**Parallel workstreams**: {{parallel_results}}{% endif %}
+
+      Provide: 1) What was accomplished (2-3 sentences), 2) PR links (if any), 3) Next steps if any.
+    output: "summary"
+
+output:
+  format: "markdown"
+  template: |
+    # Smart Orchestrator — Execution Complete
+
+    **Task**: {{task_description}}
+    **Type**: {{task_type}}
+    **Workstreams**: {{workstream_count}}
+
+    ## Summary
+
+    {{summary}}
+
+    ---
+    *Executed via amplihack smart-orchestrator recipe*
