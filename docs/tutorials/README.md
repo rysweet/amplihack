@@ -55,6 +55,30 @@ content = teacher.teach_lesson("L01")
 print(content)
 ```
 
+### [Dev Orchestrator Tutorial](dev-orchestrator-tutorial.md)
+
+Hands-on guide to `/dev` — the primary entry point for all development and
+investigation work. Covers single tasks, parallel workstreams, the goal-seeking
+loop, and output interpretation.
+
+**Topics Covered**:
+
+- Your first `/dev` command and reading the output
+- Parallel workstreams — when and how `/dev` splits tasks
+- Investigation + implementation pattern for unfamiliar code
+- The goal-seeking loop and automatic retry rounds
+- Troubleshooting common warnings and errors
+
+**Prerequisites**: amplihack installed, any git repository
+
+**Duration**: ~20 minutes
+
+**Start Learning**:
+
+```
+/dev fix the login timeout bug
+```
+
 ---
 
 ## Platform-Specific Quick Starts
