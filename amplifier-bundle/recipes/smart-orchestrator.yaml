@@ -4,7 +4,7 @@ description: |
   Classifies -> formulates goal -> decomposes into workstreams ->
   executes via recipe runner (single or parallel) -> goal-seeking
   reflection loop (3 rounds max, auto-mode pattern) -> summarizes.
-version: "1.2.0"
+version: "1.3.0"
 author: "Amplihack Team"
 tags: ["orchestration", "routing", "parallel", "auto-classify", "goal-seeking"]
 
@@ -74,7 +74,7 @@ steps:
     type: "bash"
     command: |
       HELPER_PATH="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/orch_helper.py"
-      DECOMP_JSON='{{decomposition_json}}'
+      DECOMP_JSON={{decomposition_json}}
       export DECOMP_JSON HELPER_PATH
       python3 - <<'PYEOF'
       import os, sys
@@ -91,13 +91,13 @@ steps:
   - id: "extract-task-type"
     type: "bash"
     command: |
-      echo '{{parse_output}}' | grep '^task_type=' | cut -d= -f2 || echo 'Development'
+      echo {{parse_output}} | grep '^task_type=' | cut -d= -f2 || echo 'Development'
     output: "task_type"
 
   - id: "extract-workstream-count"
     type: "bash"
     command: |
-      echo '{{parse_output}}' | grep '^workstream_count=' | cut -d= -f2 || echo '1'
+      echo {{parse_output}} | grep '^workstream_count=' | cut -d= -f2 || echo '1'
     output: "workstream_count"
 
   # ─────────────────────────────────────────────────────────────────────────
@@ -188,7 +188,7 @@ steps:
     type: "bash"
     condition: "'Development' in task_type or 'Investigation' in task_type"
     command: |
-      SESSION_JSON='{{session_info}}'
+      SESSION_JSON={{session_info}}
       SESSION_STATUS=$(echo "$SESSION_JSON" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('status','ok'))")
       if [ "$SESSION_STATUS" = "ok" ] || [ "$SESSION_STATUS" = "no_tree_script" ]; then
         echo "ALLOWED"
@@ -230,7 +230,7 @@ steps:
       ('Development' in task_type or 'Investigation' in task_type) and int(str(workstream_count).strip() or '1') > 1 and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
     command: |
       HELPER_PATH="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/orch_helper.py"
-      DECOMP_JSON='{{decomposition_json}}'
+      DECOMP_JSON={{decomposition_json}}
       export DECOMP_JSON HELPER_PATH
       python3 - <<'PYEOF'
       import json, os, re, tempfile, sys
@@ -261,11 +261,21 @@ steps:
     condition: |
       ('Development' in task_type or 'Investigation' in task_type) and int(str(workstream_count).strip() or '1') > 1 and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
     command: |
-      REPO_PATH='{{repo_path}}'
-      WS_FILE='{{workstreams_file}}'
-      SESSION_JSON='{{session_info}}'
-      TREE_ID=$(echo "$SESSION_JSON" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('tree_id',''))")
-      SESSION_DEPTH=$(echo "$SESSION_JSON" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('depth',0))")
+      REPO_PATH={{repo_path}}
+      WS_FILE={{workstreams_file}}
+      SESSION_JSON={{session_info}}
+      # Parse tree_id and depth in one Python subprocess
+      read -r TREE_ID SESSION_DEPTH < <(echo $SESSION_JSON | python3 - <<'PYEOF'
+      import sys, json
+      try:
+          d = json.loads(sys.stdin.read())
+          print(d.get('tree_id',''), d.get('depth',0))
+      except Exception:
+          print('', 0)
+      PYEOF
+      )
+      TREE_ID=${TREE_ID:-}
+      SESSION_DEPTH=${SESSION_DEPTH:-0}
 
       if [ -z "$WS_FILE" ] || [ ! -f "$WS_FILE" ]; then
         echo "ERROR: workstreams_file is missing or empty. create-workstreams-config may have failed." >&2
@@ -299,7 +309,7 @@ steps:
     condition: |
       ('Development' in task_type or 'Investigation' in task_type) and 'BLOCKED' in recursion_guard and int(str(workstream_count).strip() or '1') > 1
     command: |
-      GUARD_STATE='{{recursion_guard}}'
+      GUARD_STATE={{recursion_guard}}
       echo ""
       echo "WARNING: RECURSION GUARD: Parallel workstream spawning blocked ($GUARD_STATE)"
       echo "  Falling back to single-session execution."
@@ -329,7 +339,7 @@ steps:
   - id: "cleanup-helper"
     type: "bash"
     command: |
-      WS_FILE='{{workstreams_file}}'
+      WS_FILE={{workstreams_file}}
       [ -f "$WS_FILE" ] && rm -f "$WS_FILE"
       echo "ok"
     output: "cleanup_status"
@@ -465,10 +475,20 @@ steps:
   - id: "complete-session"
     type: "bash"
     command: |
-      SESSION_JSON='{{session_info}}'
-      SESSION_ID=$(echo "$SESSION_JSON" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('session_id',''))" 2>/dev/null || echo "")
-      TREE_ID=$(echo "$SESSION_JSON" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('tree_id',''))" 2>/dev/null || echo "")
-      STATUS=$(echo "$SESSION_JSON" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('status',''))" 2>/dev/null || echo "")
+      SESSION_JSON={{session_info}}
+      # Parse all fields in one Python subprocess
+      read -r SESSION_ID TREE_ID STATUS < <(echo $SESSION_JSON | python3 - <<'PYEOF'
+      import sys, json
+      try:
+          d = json.loads(sys.stdin.read())
+          print(d.get('session_id',''), d.get('tree_id',''), d.get('status',''))
+      except Exception:
+          print('', '', '')
+      PYEOF
+      )
+      SESSION_ID=${SESSION_ID:-}
+      TREE_ID=${TREE_ID:-}
+      STATUS=${STATUS:-}
       TREE_SCRIPT="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/session_tree.py"
 
       if [ -n "$SESSION_ID" ] && [ "$STATUS" = "ok" ] && [ -f "$TREE_SCRIPT" ]; then
@@ -493,4 +513,4 @@ output:
     {{summary}}
 
     ---
-    *amplihack smart-orchestrator v1.2.0*
+    *amplihack smart-orchestrator v1.3.0*
