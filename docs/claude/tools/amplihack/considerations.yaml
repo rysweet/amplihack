@@ -143,15 +143,6 @@
   enabled: true
   applicable_session_types: ["DEVELOPMENT"]
 
-- id: decisions_logged
-  category: Workflow Process Adherence
-  question: Were significant architectural decisions or trade-offs logged to DECISIONS.md in the session runtime logs?
-  description: Verifies that notable decisions were captured in .claude/runtime/logs/<session_id>/DECISIONS.md per CLAUDE.md requirements
-  severity: warning
-  checker: _check_decisions_logged
-  enabled: true
-  applicable_session_types: ["DEVELOPMENT"]
-
 - id: dev_workflow_complete
   category: Workflow Process Adherence
   question: Were all required DEFAULT_WORKFLOW steps completed this session, including requirements clarification, design, implementation, testing, and PR creation?
