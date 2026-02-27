@@ -76,7 +76,7 @@ _KNOWLEDGE_RE = re.compile(
 _ACTION_RE = re.compile(
     r'\b(?:implement|build|create|fix|add|write|develop|make|generate|configure|'
     r'optimize|improve|patch|repair|resolve|handle|update|upgrade|refactor|'
-    r'migrate|deploy|integrate|scaffold|debug|test|verify|review|analyze|'
+    r'migrate|deploy|integrate|scaffold|debug|verify|review|analyze|'
     r'investigate|explore|research|audit|'
     r'structure|architect|design|organize|arrange|'
     r'set\s+up|clean\s+up|wire\s+up|hook\s+up|spin\s+up|'
@@ -85,16 +85,10 @@ _ACTION_RE = re.compile(
     re.I,
 )
 
-
-# ── Ambiguous question starters that usually imply action ────────────────────
-
-_AMBIGUOUS_QA_RE = re.compile(
-    r'^(?:how\s+(?:do\s+I|can\s+I|should\s+I|would\s+I)|'
-    r'could\s+you\s+(?:help|show|create|build|fix|add|write|implement)|'
-    r'can\s+you\s+(?:help|create|build|fix|add|write|implement|show\s+how)|'
-    r'would\s+you\s+(?:help|create|build|fix)|'
-    r'i\'d\s+like\s+(?:to|you\s+to)|'
-    r'help\s+me\s+(?:with|to|build|fix|create|implement|debug|refactor|set\s+up))',
+# 'test' as an imperative verb: must be followed by whitespace + a word,
+# and must NOT be preceded by an article (a/an/the) which signals noun use.
+_TEST_VERB_RE = re.compile(
+    r'(?<! a )(?<!an )(?<!he )\btest\s+\w',
     re.I,
 )
 
@@ -116,11 +110,11 @@ _TECH_WORDS = frozenset({
     'auth', 'authentication', 'middleware', 'component', 'module', 'function',
     'class', 'pipeline', 'dockerfile', 'migration', 'query', 'cache', 'caching',
     'feature', 'bug', 'issue', 'pr', 'test', 'spec', 'webhook', 'ui',
-    'microservice', 'microservices', 'ci', 'cd', 'cicd', 'workflow', 'hook',
+    'microservice', 'microservices', 'ci', 'cicd', 'workflow', 'hook',
     'plugin', 'backend', 'frontend', 'fullstack', 'cli', 'sdk', 'library',
     'package', 'lambda', 'serverless', 'container', 'kubernetes', 'docker',
     'terraform', 'redis', 'postgres', 'mysql', 'mongodb', 'elasticsearch',
-    'graphql', 'grpc', 'rest', 'websocket', 'cron', 'queue', 'worker',
+    'graphql', 'grpc', 'websocket', 'cron', 'queue', 'worker',
 })
 
 
@@ -159,9 +153,8 @@ def classify(prompt: str) -> DevIntentResult:
         return DevIntentResult(False, 0.1, "skip", "operations task")
 
     # 4. Feature extraction
-    has_action = bool(_ACTION_RE.search(p))
+    has_action = bool(_ACTION_RE.search(p)) or bool(_TEST_VERB_RE.search(p))
     has_knowledge = bool(_KNOWLEDGE_RE.search(p))
-    has_ambiguous = bool(_AMBIGUOUS_QA_RE.match(p))
     words = frozenset(re.findall(r'\b\w+\b', p_lower))
     tech_hits = _TECH_WORDS & words
 
@@ -174,19 +167,12 @@ def classify(prompt: str) -> DevIntentResult:
         return DevIntentResult(True, 0.80, "recommended",
                                "action + knowledge: dev task with explanation request")
 
-    # 7. Ambiguous question form with action verb ("how do I add X")
-    # Requires has_action — tech_hits alone is not sufficient (prevents FP on
-    # "how do I understand microservices?" which has tech word but no action verb)
-    if has_ambiguous and has_action:
-        return DevIntentResult(True, 0.75, "recommended",
-                               "ambiguous question with dev intent")
-
-    # 8. Pure knowledge request → Q&A, do not route
-    if has_knowledge and not has_action and not has_ambiguous:
+    # 7. Pure knowledge request → Q&A, do not route
+    if has_knowledge and not has_action:
         return DevIntentResult(False, 0.25, "skip",
-                               f"knowledge/explanatory question")
+                               "knowledge/explanatory question")
 
-    # 9. No question pattern, implicit dev context via tech words
+    # 8. No question pattern, implicit dev context via tech words
     if not has_action and not has_knowledge:
         if len(tech_hits) >= 2:
             return DevIntentResult(True, 0.55, "suggested",
@@ -202,10 +188,10 @@ def build_context_injection(result: DevIntentResult, prompt: str) -> str:
     """
     Build the additionalContext system reminder to inject.
 
-    Confidence tiers map to directive strength:
-    - required (>=0.85):   MUST invoke immediately
-    - recommended (0.6-0.85): should invoke unless reason not to
-    - suggested (<0.6):    consider invoking
+    Injection strength is determined by the `tier` field of the result:
+    - 'required':    MUST invoke immediately (action verbs, high confidence)
+    - 'recommended': Should invoke (action + explanation requests)
+    - 'suggested':   Consider invoking (implicit tech context, low confidence)
     """
     directives = {
         "required":    'You MUST immediately invoke Skill(skill="dev-orchestrator"). '

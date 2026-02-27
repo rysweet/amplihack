@@ -1,7 +1,7 @@
 """
 Tests for dev_intent_router.py — auto-dev routing via UserPromptSubmit hook.
 
-Coverage: 63 tests across 10 categories.
+Coverage: 71 tests across 9 categories.
 Accuracy target: ≥98% (minimal false positives, precision-first design).
 """
 
@@ -44,6 +44,11 @@ class TestDevImperatives(unittest.TestCase):
     def test_structure(self):           self._assert_routes("structure the authentication module properly")
     def test_automate(self):            self._assert_routes("automate the deployment pipeline")
     def test_secure(self):              self._assert_routes("secure the API endpoints with rate limiting")
+
+    def test_test_with_object_routes(self):
+        """'test' as imperative verb with direct object should route."""
+        self._assert_routes("test the checkout flow")
+        self._assert_routes("test the payment service integration")
 
 
 class TestDevQuestions(unittest.TestCase):
@@ -96,6 +101,16 @@ class TestQA(unittest.TestCase):
     def test_how_do_i_understand(self): self._assert_skips("how do I understand microservices?")
     def test_how_do_i_know(self):       self._assert_skips("how do I know when to use Redis?")
 
+    def test_rest_not_tech_when_used_as_noun(self):
+        """'rest' as plain English noun should not route even with other tech context."""
+        self._assert_skips("I need some rest from the database work")
+        self._assert_skips("take a rest from the api drama")
+
+    def test_test_noun_does_not_route(self):
+        """'test' as a standalone noun should not route."""
+        self._assert_skips("just a quick test")
+        self._assert_skips("run a test to see")
+
 
 class TestGreetingsAndAcks(unittest.TestCase):
     """Greetings and acknowledgements — should NOT route."""
@@ -107,6 +122,11 @@ class TestGreetingsAndAcks(unittest.TestCase):
     def test_hello(self):           self._assert_skips("hello")
     def test_thanks(self):          self._assert_skips("thanks, that worked!")
     def test_ok(self):              self._assert_skips("ok sounds good")
+
+    def test_long_greeting_skips(self):
+        """Long acknowledgements should not route even without hitting the <= 5 word limit."""
+        self._assert_skips("ok that all sounds good to me")
+        self._assert_skips("great that makes sense now")
 
 
 class TestExistingCommands(unittest.TestCase):

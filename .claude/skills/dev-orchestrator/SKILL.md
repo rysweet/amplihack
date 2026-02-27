@@ -183,10 +183,13 @@ Set `AMPLIHACK_MAX_DEPTH=0` before running `/dev`. This causes the recursion gua
 to block parallel spawning and fall back to single-session mode for all tasks:
 
 ```bash
-AMPLIHACK_MAX_DEPTH=0 /dev build a webui and an api
+export AMPLIHACK_MAX_DEPTH=0  # set in your shell first
+/dev build a webui and an api  # then type in Claude Code
 ```
 
-Note: This affects all depth checks, not just parallel workstream spawning.
+Note: The env var must be set in your shell before starting Claude Code — it cannot
+be prefixed inline on the `/dev` command. This affects all depth checks, not just
+parallel workstream spawning.
 
 ## Canonical Sources
 
