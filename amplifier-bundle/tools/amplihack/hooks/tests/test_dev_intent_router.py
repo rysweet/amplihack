@@ -152,10 +152,11 @@ class TestQA(unittest.TestCase):
         self.assertEqual(r.route_type, "qa")
 
     def test_how_do_i_understand(self):
-        """'how do I understand X' — pure knowledge question, routes as Q&A."""
+        """'how do I understand X' — 'understand' is now an investigation verb.
+        Routes as investigate (with knowledge context) which is correct."""
         r = classify("how do I understand microservices?")
-        self.assertIn(r.route_type, ("qa", "skip"),
-            f"Expected QA or SKIP for knowledge-only prompt — got: {r.route_type}")
+        self.assertIn(r.route_type, ("investigate", "qa"),
+            f"Expected investigate or QA for 'understand' prompt — got: {r.route_type}")
 
     def test_how_do_i_know(self):
         """'how do I know when to use X' — pure knowledge question."""
@@ -244,6 +245,66 @@ class TestBypassPhrases(unittest.TestCase):
 
     def test_just_answer(self):     self._assert_skips("just answer briefly — what is OAuth?")
     def test_without_workflow(self): self._assert_skips("without workflow, fix this quick: what is caching?")
+
+
+class TestInvestigation(unittest.TestCase):
+    """Investigation tasks — should route as investigate."""
+
+    def _assert_investigate(self, prompt: str):
+        r = classify(prompt)
+        self.assertEqual(r.route_type, "investigate",
+            f"Expected investigate for: '{prompt}' — got: {r.route_type} reason={r.reason}")
+
+    def test_investigate(self):           self._assert_investigate("investigate why the build is failing")
+    def test_analyze(self):              self._assert_investigate("analyze the performance bottlenecks")
+    def test_understand(self):           self._assert_investigate("understand how the caching layer works")
+    def test_explore(self):              self._assert_investigate("explore the authentication architecture")
+    def test_research(self):             self._assert_investigate("research the best approach for rate limiting")
+    def test_map_out(self):              self._assert_investigate("map out the database dependencies")
+    def test_trace(self):                self._assert_investigate("trace the request flow through middleware")
+    def test_look_into(self):            self._assert_investigate("look into why the tests are flaky")
+    def test_review_architecture(self):  self._assert_investigate("review the architecture")
+
+
+class TestHybrid(unittest.TestCase):
+    """Hybrid tasks — investigate + develop in one prompt."""
+
+    def _assert_hybrid(self, prompt: str):
+        r = classify(prompt)
+        self.assertEqual(r.route_type, "hybrid",
+            f"Expected hybrid for: '{prompt}' — got: {r.route_type} reason={r.reason}")
+
+    def test_investigate_then_add(self):      self._assert_hybrid("investigate how auth works then add OAuth")
+    def test_understand_and_add(self):        self._assert_hybrid("understand the caching layer and add Redis")
+    def test_analyze_and_fix(self):           self._assert_hybrid("analyze why queries are slow and fix them")
+    def test_explore_then_refactor(self):     self._assert_hybrid("explore the architecture then refactor")
+    def test_research_and_implement(self):    self._assert_hybrid("research rate limiting and implement it")
+    def test_understand_then_refactor(self):  self._assert_hybrid("understand the design then refactor it")
+
+
+class TestInvestigationInjection(unittest.TestCase):
+    """Verify investigation and hybrid injection text."""
+
+    def test_investigate_injection_mentions_investigation_workflow(self):
+        from dev_intent_router import build_context_injection
+        r = classify("investigate why the build is failing")
+        ctx = build_context_injection(r, "investigate why the build is failing")
+        self.assertIn("investigation", ctx.lower())
+        self.assertIn("dev-orchestrator", ctx)
+
+    def test_hybrid_injection_mentions_investigate_then_implement(self):
+        from dev_intent_router import build_context_injection
+        r = classify("investigate auth then add OAuth")
+        ctx = build_context_injection(r, "investigate auth then add OAuth")
+        self.assertIn("investigate", ctx.lower())
+        self.assertIn("implement", ctx.lower())
+        self.assertIn("dev-orchestrator", ctx)
+
+    def test_noun_build_not_hybrid(self):
+        """'investigate why the build is failing' — 'build' is a noun, not hybrid."""
+        r = classify("investigate why the build is failing")
+        self.assertEqual(r.route_type, "investigate",
+            "'the build' is a noun — should be pure investigation, not hybrid")
 
 
 class TestEnvVarBypass(unittest.TestCase):
@@ -376,7 +437,7 @@ class TestQAInjection(unittest.TestCase):
         from dev_intent_router import build_context_injection
         r = classify("run git status")
         ctx = build_context_injection(r, "run git status")
-        self.assertIn("OPERATIONS", ctx)
+        self.assertIn("Operations", ctx)
         self.assertIn("directly", ctx.lower())
         self.assertNotIn("dev-orchestrator", ctx)
 
@@ -412,7 +473,7 @@ class TestShouldAutoRouteEdgeCases(unittest.TestCase):
     def test_ops_prompt_returns_true(self):
         ok, ctx = should_auto_route("run git status")
         self.assertTrue(ok)
-        self.assertIn("OPERATIONS", ctx)
+        self.assertIn("Operations", ctx)
 
 
 if __name__ == "__main__":
