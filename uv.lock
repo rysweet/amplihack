@@ -519,10 +519,9 @@ dependencies = [
 
 [[package]]
 name = "amplihack"
-version = "0.5.71"
+version = "0.5.72"
 source = { editable = "." }
 dependencies = [
-    { name = "agent-framework" },
     { name = "aiohttp" },
     { name = "amplihack-agent-eval" },
     { name = "amplihack-memory-lib" },
@@ -542,7 +541,6 @@ dependencies = [
     { name = "langchain-openai" },
     { name = "litellm" },
     { name = "neo4j" },
-    { name = "opentelemetry-semantic-conventions-ai" },
     { name = "packaging" },
     { name = "protobuf" },
     { name = "psutil" },
@@ -579,6 +577,10 @@ dev = [
     { name = "rich" },
     { name = "ruff" },
 ]
+microsoft-sdk = [
+    { name = "agent-framework" },
+    { name = "opentelemetry-semantic-conventions-ai" },
+]
 test = [
     { name = "pytest" },
     { name = "pytest-asyncio" },
@@ -599,7 +601,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "agent-framework", specifier = ">=1.0.0rc1" },
+    { name = "agent-framework", marker = "extra == 'microsoft-sdk'", specifier = ">=1.0.0rc1" },
     { name = "aiohttp", specifier = ">=3.8.0" },
     { name = "amplifier-core", marker = "extra == 'amplifier'", git = "https://github.com/microsoft/amplifier-core?rev=main" },
     { name = "amplihack-agent-eval", git = "https://github.com/rysweet/amplihack-agent-eval.git?rev=main" },
@@ -624,7 +626,7 @@ requires-dist = [
     { name = "litellm", specifier = ">=1.0.0" },
     { name = "lxml", marker = "extra == 'dev'", specifier = ">=4.6.0" },
     { name = "neo4j", specifier = ">=5.25.0" },
-    { name = "opentelemetry-semantic-conventions-ai", specifier = ">=0.4.1,<0.4.14" },
+    { name = "opentelemetry-semantic-conventions-ai", marker = "extra == 'microsoft-sdk'", specifier = ">=0.4.1,<0.4.14" },
     { name = "packaging", specifier = ">=21.0" },
     { name = "pre-commit", marker = "extra == 'dev'" },
     { name = "protobuf", specifier = ">=5.29.0" },
@@ -656,7 +658,7 @@ requires-dist = [
     { name = "typing-extensions", specifier = ">=4.12.2" },
     { name = "uvicorn", specifier = ">=0.15.0" },
 ]
-provides-extras = ["amplifier", "ui", "tui-testing", "test", "dev", "blarify-all"]
+provides-extras = ["microsoft-sdk", "amplifier", "ui", "tui-testing", "test", "dev", "blarify-all"]
 
 [package.metadata.requires-dev]
 dev = [
