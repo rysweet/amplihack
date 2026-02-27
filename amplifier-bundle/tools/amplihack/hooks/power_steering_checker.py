@@ -3916,7 +3916,9 @@ class PowerSteeringChecker:
                 return True
 
             # Edge case 2: Docs-only session (no code files modified)
-            if self._is_docs_only_session(transcript):
+            # But NOT if the "docs" are actually feature definitions (.md files
+            # in commands/agents/skills) — those ARE the feature, not just docs
+            if self._is_docs_only_session(transcript) and not new_features:
                 return True
 
             # Edge case 3: Internal changes (tools/, tests/, etc.)
@@ -3947,7 +3949,7 @@ class PowerSteeringChecker:
                                     file_path = block.get("input", {}).get("file_path", "")
 
                                     # Check if README was edited
-                                    if "README.md" in file_path.lower():
+                                    if "readme.md" in file_path.lower():
                                         # Get the new content to check for documentation links
                                         new_string = block.get("input", {}).get("new_string", "")
                                         content_to_check = block.get("input", {}).get("content", "")
@@ -4212,11 +4214,11 @@ class PowerSteeringChecker:
         """
         # Look for shortcut indicators in code
         shortcut_patterns = [
-            r"\bpass\b.*#.*later",
-            r"#.*hack",
-            r"#.*workaround",
-            r"#.*temporary",
-            r"#.*fix.*later",
+            r"\bpass\b.*#.*\blater\b",
+            r"#.*\bhack\b",
+            r"#.*\bworkaround\b",
+            r"#.*\btemporary\b",
+            r"#.*\bfix\b.*\blater\b",
         ]
 
         for msg in transcript:
@@ -4373,8 +4375,25 @@ class PowerSteeringChecker:
                                         "makefile",
                                         "dockerfile",
                                         ".gitignore",
+                                        ".gitattributes",
+                                        ".dockerignore",
+                                        ".editorconfig",
+                                        ".env.example",
                                         "setup.py",
+                                        "setup.cfg",
+                                        "pyproject.toml",
                                         "requirements.txt",
+                                        "package.json",
+                                        "tsconfig.json",
+                                        "cargo.toml",
+                                        "go.mod",
+                                        "docker-compose",
+                                        "justfile",
+                                        "claude.md",
+                                        ".pre-commit",
+                                        "conftest.py",
+                                        "pytest.ini",
+                                        "manifest.in",
                                     ]
 
                                     if not any(
