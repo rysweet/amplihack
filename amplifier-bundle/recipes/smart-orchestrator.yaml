@@ -29,6 +29,7 @@ context:
   depth_limited_notice: ""
   session_complete_status: ""
   force_single_workstream: "false"  # set to "true" to prevent parallel decomposition
+  announce_classification: ""
 
 steps:
   # ─────────────────────────────────────────────────────────────────────────
@@ -74,14 +75,32 @@ steps:
     type: "bash"
     command: |
       HELPER_PATH="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/orch_helper.py"
+      if [ ! -f "$HELPER_PATH" ]; then
+          echo "ERROR: orch_helper.py not found at: $HELPER_PATH" >&2
+          echo "Set AMPLIHACK_HOME to your amplihack repo root, or run from within the repo." >&2
+          exit 1
+      fi
       DECOMP_JSON={{decomposition_json}}
       export DECOMP_JSON HELPER_PATH
       python3 - <<'PYEOF'
-      import os, sys
-      sys.path.insert(0, os.path.dirname(os.environ['HELPER_PATH']))
-      import orch_helper
-      obj = orch_helper.extract_json(os.environ['DECOMP_JSON'])
-      task_type = orch_helper.normalise_type(obj.get("task_type", "Development"))
+      import sys, json, os, importlib.util
+
+      helper_path = os.environ['HELPER_PATH']
+      decomp_json = os.environ['DECOMP_JSON']
+
+      spec = importlib.util.spec_from_file_location('orch_helper', helper_path)
+      h = importlib.util.module_from_spec(spec); spec.loader.exec_module(h)
+      obj = h.extract_json(decomp_json)
+
+      if not obj:
+          print(
+              "WARNING: Could not parse decomposition JSON from architect agent response.",
+              "Defaulting to: task_type=Development, workstream_count=1.",
+              "The goal specification may be incomplete. Consider re-running /dev.",
+              sep="\n", file=sys.stderr
+          )
+
+      task_type = h.normalise_type(obj.get("task_type", "Development"))
       count = max(1, len(obj.get("workstreams", [{}])))
       print(f"task_type={task_type}")
       print(f"workstream_count={count}")
@@ -99,6 +118,15 @@ steps:
     command: |
       echo {{parse_output}} | grep '^workstream_count=' | cut -d= -f2 || echo '1'
     output: "workstream_count"
+
+  - id: "announce-classification"
+    type: "bash"
+    command: |
+      TASK_TYPE={{task_type}}
+      WS_COUNT={{workstream_count}}
+      echo ""
+      echo "[dev-orchestrator] Classified as: $TASK_TYPE | Workstreams: $WS_COUNT — starting execution..."
+    output: "announce_classification"
 
   # ─────────────────────────────────────────────────────────────────────────
   # Setup: register this session in the session tree (atomic check+register)
@@ -125,9 +153,10 @@ steps:
             python3 -c "import json; print(json.dumps({'session_id': 'error', 'tree_id': 'error', 'depth': 0, 'status': 'registration_failed', 'error': 'invalid tree_id extracted'}))"
             exit 0
           fi
-          python3 -c "import json; print(json.dumps({'session_id': '$SESSION_ID', 'tree_id': '$TREE_ID', 'depth': $DEPTH_VAL, 'status': 'ok'}))"
+          python3 -c "import sys,json; sid,tid,depth=sys.argv[1],sys.argv[2],int(sys.argv[3]); print(json.dumps({'session_id':sid,'tree_id':tid,'depth':depth,'status':'ok'}))" "$SESSION_ID" "$TREE_ID" "$DEPTH_VAL"
         else
           # Registration failed (capacity exceeded or depth limit) — encode structured error
+          echo "NOTE: Session registration failed — proceeding without recursion tracking." >&2
           python3 -c "import json; print(json.dumps({'session_id': 'none', 'tree_id': 'none', 'depth': 0, 'status': 'registration_failed'}))"
         fi
       else
@@ -193,6 +222,10 @@ steps:
 
       if [ "$SESSION_STATUS" = "ok" ] || [ "$SESSION_STATUS" = "no_tree_script" ]; then
         echo "ALLOWED"
+      elif [ "$SESSION_STATUS" = "registration_failed" ]; then
+        echo "NOTE: Session tree registration was skipped — depth and capacity limits inactive." >&2
+        echo "BLOCKED:registration_failed"
+        exit 0
       else
         echo "BLOCKED:${SESSION_STATUS}"
       fi
@@ -231,6 +264,11 @@ steps:
       ('Development' in task_type or 'Investigation' in task_type) and int(str(workstream_count).strip() or '1') > 1 and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
     command: |
       HELPER_PATH="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/orch_helper.py"
+      if [ ! -f "$HELPER_PATH" ]; then
+          echo "ERROR: orch_helper.py not found at: $HELPER_PATH" >&2
+          echo "Set AMPLIHACK_HOME to your amplihack repo root, or run from within the repo." >&2
+          exit 1
+      fi
       DECOMP_JSON={{decomposition_json}}
       export DECOMP_JSON HELPER_PATH
       python3 - <<'PYEOF'
@@ -312,10 +350,18 @@ steps:
     command: |
       GUARD_STATE={{recursion_guard}}
       echo ""
-      echo "WARNING: RECURSION GUARD: Parallel workstream spawning blocked ($GUARD_STATE)"
-      echo "  Falling back to single-session execution."
-      echo "  To allow deeper orchestration: export AMPLIHACK_MAX_DEPTH=5"
-      echo "  To persist: add to ~/.bashrc or project .env"
+      echo "NOTE: Parallel workstream spawning is unavailable."
+      echo "  Reason: $GUARD_STATE"
+      echo "  Your task will run as a single-session execution (all workstreams handled sequentially)."
+      echo ""
+      if echo "$GUARD_STATE" | grep -q "max_depth\|depth.*exceeded\|max.*depth"; then
+          echo "  To enable parallel execution: export AMPLIHACK_MAX_DEPTH=5 (add to ~/.bashrc to persist)"
+      elif echo "$GUARD_STATE" | grep -q "registration_failed"; then
+          echo "  Session registration failed. Check /tmp/amplihack-session-trees/ for lock files."
+          echo "  If stuck: rm -f /tmp/amplihack-session-trees/*.lock"
+      else
+          echo "  To investigate: python3 amplifier-bundle/tools/session_tree.py check"
+      fi
     output: "depth_limited_notice"
 
   - id: "execute-single-fallback-blocked"
