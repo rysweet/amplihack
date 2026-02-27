@@ -1049,6 +1049,27 @@ def _load_dialogue_slice(path: Path, start: int, end: int) -> list[dict[str, Any
     return all_turns[start:end]
 
 
+def _count_facts_in_db(db_path: Path) -> int:
+    """Count semantic facts in the Kuzu DB for early failure detection."""
+    try:
+        import kuzu  # type: ignore[import-not-found]
+
+        kuzu_path = db_path / "kuzu_db"
+        if not kuzu_path.exists():
+            kuzu_path = db_path
+        db = kuzu.Database(str(kuzu_path))
+        conn = kuzu.Connection(db)
+        result = conn.execute("MATCH (n:SemanticMemory) RETURN count(n)")
+        count = 0
+        if result.has_next():
+            count = result.get_next()[0]
+        del conn, db
+        return count
+    except Exception as e:
+        logger.warning("Could not count facts in DB at %s: %s", db_path, e)
+        return 0
+
+
 def _run_segmented_learning(args: argparse.Namespace) -> None:
     """Orchestrate segmented learning by spawning subprocess workers.
 
@@ -1156,6 +1177,24 @@ def _run_segmented_learning(args: argparse.Namespace) -> None:
             )
             failed_segments.append(seg_idx + 1)
 
+        # Early failure detection: after first segment completes, verify
+        # facts were actually stored. Catches schema mismatches silently
+        # swallowing store_fact errors (issue #2655).
+        if seg_idx == 0 and succeeded and args.sdk == "mini":
+            fact_count = _count_facts_in_db(db_path)
+            if fact_count == 0:
+                raise RuntimeError(
+                    f"ABORTING: First segment completed but 0 facts stored "
+                    f"in DB at {db_path}. This indicates a fundamental issue "
+                    f"with the memory backend (schema mismatch, silent store "
+                    f"failures, or wrong db_path). Check --memory-type "
+                    f"setting and ensure the DB schema is compatible."
+                )
+            logger.info(
+                "Early check: %d facts after first segment -- storage OK",
+                fact_count,
+            )
+
     if failed_segments:
         logger.warning(
             "%d of %d segments failed and were skipped: %s",
@@ -1249,27 +1288,41 @@ def _run_segment_worker(args: argparse.Namespace) -> None:
     if args.sdk == "mini":
         from amplihack.agents.goal_seeking.learning_agent import LearningAgent
 
+        # When --memory-type is explicitly set, bypass auto-detection in
+        # LearningAgent.__init__ by passing use_hierarchical=False. This
+        # prevents CognitiveAdapter from polluting the Kuzu schema before
+        # we override with FlatRetrieverAdapter (schema mismatch = 0 facts).
+        memory_type = getattr(args, "memory_type", "auto")
+        init_hierarchical = args.use_hierarchical and memory_type == "auto"
+
         agent = LearningAgent(
             agent_name=agent_name,
             model=agent_model,
             storage_path=db_path,
-            use_hierarchical=args.use_hierarchical,
+            use_hierarchical=init_hierarchical,
         )
 
         # Override memory backend if --memory-type specified
-        memory_type = getattr(args, "memory_type", "auto")
         if memory_type == "hierarchical":
             from amplihack.agents.goal_seeking.flat_retriever_adapter import (
                 FlatRetrieverAdapter,
             )
 
-            agent.memory = FlatRetrieverAdapter(
-                agent_name=agent_name, db_path=db_path
-            )
+            try:
+                agent.memory.close()
+            except Exception:
+                pass
+            agent.memory = FlatRetrieverAdapter(agent_name=agent_name, db_path=db_path)
+            agent.use_hierarchical = True
         elif memory_type == "cognitive":
             from amplihack.agents.goal_seeking.cognitive_adapter import CognitiveAdapter
 
+            try:
+                agent.memory.close()
+            except Exception:
+                pass
             agent.memory = CognitiveAdapter(agent_name=agent_name, db_path=db_path)
+            agent.use_hierarchical = True
     else:
         from amplihack.agents.goal_seeking.sdk_adapters.factory import create_agent
 
@@ -1523,32 +1576,42 @@ def main() -> None:
         if args.sdk == "mini":
             from amplihack.agents.goal_seeking.learning_agent import LearningAgent
 
+            # Same fix as _run_segment_worker: bypass auto-detection when
+            # --memory-type is explicitly set to prevent schema conflicts.
+            memory_type = getattr(args, "memory_type", "auto")
+            init_hierarchical = args.use_hierarchical and memory_type == "auto"
+
             agent = LearningAgent(
                 agent_name=agent_name,
                 model=agent_model,
                 storage_path=db_path,
-                use_hierarchical=args.use_hierarchical,
+                use_hierarchical=init_hierarchical,
             )
 
             # Override memory backend if --memory-type specified
-            memory_type = getattr(args, "memory_type", "auto")
             if memory_type == "hierarchical":
                 from amplihack.agents.goal_seeking.flat_retriever_adapter import (
                     FlatRetrieverAdapter,
                 )
 
-                agent.memory = FlatRetrieverAdapter(
-                    agent_name=agent_name, db_path=db_path
-                )
+                try:
+                    agent.memory.close()
+                except Exception:
+                    pass
+                agent.memory = FlatRetrieverAdapter(agent_name=agent_name, db_path=db_path)
+                agent.use_hierarchical = True
                 logger.info("Forced HierarchicalMemory via --memory-type=hierarchical")
             elif memory_type == "cognitive":
                 from amplihack.agents.goal_seeking.cognitive_adapter import (
                     CognitiveAdapter,
                 )
 
-                agent.memory = CognitiveAdapter(
-                    agent_name=agent_name, db_path=db_path
-                )
+                try:
+                    agent.memory.close()
+                except Exception:
+                    pass
+                agent.memory = CognitiveAdapter(agent_name=agent_name, db_path=db_path)
+                agent.use_hierarchical = True
                 logger.info("Forced CognitiveMemory via --memory-type=cognitive")
 
             return agent
