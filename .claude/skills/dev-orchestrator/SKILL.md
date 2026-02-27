@@ -43,17 +43,42 @@ this skill ensures:
 User request
      │
      ▼
-[Classify] ──→ Q&A / Ops ──→ Respond directly
+[Classify] ──→ Q&A ──────────────────→ analyzer agent (technical/code questions)
      │
-     ▼ Development / Investigation
-[Decompose] ──→ 1 workstream ──→ [default-workflow recipe]
-     │                                      │
-     └──────→ N workstreams ──→ [multitask] ┤
-                                            ▼
-                                    [Reflect on goal]
-                                    GOAL_STATUS: ACHIEVED / PARTIAL / NOT_ACHIEVED
-                                    (result reported to user)
+     ├──────→ Ops ────────────────────→ bash (simple cmd) | builder agent (complex)
+     │
+     └──→ Development / Investigation
+             │
+         [Recursion guard] (AMPLIHACK_SESSION_DEPTH vs AMPLIHACK_MAX_DEPTH=3)
+             │         │
+           ALLOWED   BLOCKED → single-session fallback (no sub-spawning)
+             │
+         [Decompose]
+             │         │
+             1 ws     N ws ──→ [multitask parallel] + tree context in env
+             │
+         [Execute round 1]
+             │
+         [Reflect] ──→ ACHIEVED ──→ [Summarize]
+             │
+           PARTIAL/NOT_ACHIEVED
+             │
+         [Execute round 2]
+             │
+         [Reflect] ──→ ACHIEVED ──→ [Summarize]
+             │
+           PARTIAL/NOT_ACHIEVED
+             │
+         [Execute round 3 (final)]
+             │
+         [Final reflect + Summarize]
 ```
+
+**Session tree enforcement** (prevents infinite recursion):
+- Each subprocess inherits `AMPLIHACK_TREE_ID`, `AMPLIHACK_SESSION_DEPTH`, `AMPLIHACK_MAX_DEPTH`
+- Depth >= 3: recursion guard blocks sub-workstream spawning, falls back to single-session
+- Max 10 concurrent sessions per tree; extras queue in FIFO order
+- State tracked in `/tmp/amplihack-session-trees/{tree_id}.json`
 
 ## Activation
 

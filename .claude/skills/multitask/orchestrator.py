@@ -211,13 +211,26 @@ class ParallelOrchestrator:
         )
         launcher_py.chmod(0o755)
 
-        # Shell wrapper that handles CLAUDECODE env var
+        # Shell wrapper: unset CLAUDECODE and propagate session tree context
+        # AMPLIHACK_TREE_ID and AMPLIHACK_SESSION_DEPTH are inherited from the
+        # parent environment (set by the recipe that invoked this orchestrator).
+        # This ensures the session tree depth limit is enforced in child recipes.
+        import uuid
+
+        current_depth = int(os.environ.get("AMPLIHACK_SESSION_DEPTH", "0"))
+        tree_id = os.environ.get("AMPLIHACK_TREE_ID") or uuid.uuid4().hex[:8]
+
         run_sh = ws.work_dir / "run.sh"
         run_sh.write_text(
             textwrap.dedent(f"""\
             #!/bin/bash
             cd "{ws.work_dir}"
             unset CLAUDECODE  # Allow nested Claude sessions
+            # Propagate session tree context so child recipes obey depth limits
+            export AMPLIHACK_TREE_ID="{tree_id}"
+            export AMPLIHACK_SESSION_DEPTH="{current_depth + 1}"
+            export AMPLIHACK_MAX_DEPTH="{os.environ.get("AMPLIHACK_MAX_DEPTH", "3")}"
+            export AMPLIHACK_MAX_SESSIONS="{os.environ.get("AMPLIHACK_MAX_SESSIONS", "10")}"
             exec python3 launcher.py
             """)
         )
@@ -234,12 +247,21 @@ class ParallelOrchestrator:
         )
 
         # Shell launcher
+        import uuid as _uuid
+
+        _depth = int(os.environ.get("AMPLIHACK_SESSION_DEPTH", "0"))
+        _tree = os.environ.get("AMPLIHACK_TREE_ID") or _uuid.uuid4().hex[:8]
+
         run_sh = ws.work_dir / "run.sh"
         run_sh.write_text(
             textwrap.dedent(f"""\
             #!/bin/bash
             cd "{ws.work_dir}"
             unset CLAUDECODE
+            export AMPLIHACK_TREE_ID="{_tree}"
+            export AMPLIHACK_SESSION_DEPTH="{_depth + 1}"
+            export AMPLIHACK_MAX_DEPTH="{os.environ.get("AMPLIHACK_MAX_DEPTH", "3")}"
+            export AMPLIHACK_MAX_SESSIONS="{os.environ.get("AMPLIHACK_MAX_SESSIONS", "10")}"
             amplihack claude --subprocess-safe -- -p "@TASK.md
 
             Execute task autonomously following DEFAULT_WORKFLOW.md.
