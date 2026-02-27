@@ -37,6 +37,7 @@ import os
 import re
 import sys
 import tempfile
+import threading
 import time
 import uuid
 from contextlib import contextmanager
@@ -46,6 +47,14 @@ from typing import Optional
 DEFAULT_MAX_DEPTH = 3
 DEFAULT_MAX_SESSIONS = 10
 STATE_DIR = Path(os.environ.get("TMPDIR", "/tmp")) / "amplihack-session-trees"
+
+# Per-process thread lock for intra-process mutual exclusion.
+# The O_EXCL file lock handles cross-process serialization.
+# Without this, threads in the same process can observe an empty lock file
+# during the O_CREAT→write window (TOCTOU), take the ValueError/pass branch,
+# sleep 50ms, wake AFTER the holder releases, and both acquire the file lock
+# concurrently — causing lost writes.
+_PROCESS_LOCK = threading.Lock()
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Security: tree_id validation
@@ -117,44 +126,44 @@ def _lock_path(tree_id: str) -> Path:
 
 @contextmanager
 def _locked(tree_id: str, timeout: float = 10.0):
-    """Acquire a file-based lock (O_EXCL) for cross-process mutual exclusion."""
-    lock = _lock_path(tree_id)
-    acquired_file = False
-    deadline = time.monotonic() + timeout
-    try:
-        while time.monotonic() < deadline:
-            try:
-                fd = os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-                # Write PID for liveness detection by other processes
-                os.write(fd, str(os.getpid()).encode())
-                os.close(fd)
-                acquired_file = True
-                break
-            except FileExistsError:
-                # Check for stale lock from a dead process.
+    """Acquire exclusive access for one tree (thread-safe + process-safe).
+
+    Two-layer locking:
+    - _PROCESS_LOCK (threading.Lock): serializes threads within this process.
+    - O_EXCL file lock: serializes access across OS processes.
+    """
+    with _PROCESS_LOCK:
+        lock = _lock_path(tree_id)
+        acquired_file = False
+        deadline = time.monotonic() + timeout
+        try:
+            while time.monotonic() < deadline:
                 try:
-                    lock_content = lock.read_text().strip()
-                    pid = int(lock_content)
-                    os.kill(pid, 0)  # Raises OSError if process doesn't exist
-                    # Process is alive — keep waiting
-                except ValueError:
-                    # PID file is empty or non-numeric — holder is mid-write.
-                    # Do NOT remove the lock; just wait and retry.
-                    pass
-                except OSError:
-                    # Process is dead — remove stale lock.
-                    lock.unlink(missing_ok=True)
-                time.sleep(0.05)
+                    fd = os.open(str(lock), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+                    os.write(fd, str(os.getpid()).encode())
+                    os.close(fd)
+                    acquired_file = True
+                    break
+                except FileExistsError:
+                    try:
+                        lock_content = lock.read_text().strip()
+                        pid = int(lock_content)
+                        os.kill(pid, 0)
+                    except ValueError:
+                        pass
+                    except OSError:
+                        lock.unlink(missing_ok=True)
+                    time.sleep(0.05)
 
-        if not acquired_file:
-            raise TimeoutError(
-                f"Could not acquire file lock for tree {tree_id!r} within {timeout}s"
-            )
+            if not acquired_file:
+                raise TimeoutError(
+                    f"Could not acquire file lock for tree {tree_id!r} within {timeout}s"
+                )
 
-        yield
-    finally:
-        if acquired_file:
-            lock.unlink(missing_ok=True)
+            yield
+        finally:
+            if acquired_file:
+                lock.unlink(missing_ok=True)
 
 
 def _load(tree_id: str) -> dict:
@@ -181,11 +190,15 @@ def _save(tree_id: str, state: dict, max_age_hours: float = 24.0, active_max_age
     completed_cutoff = now - (max_age_hours * 3600)
     active_cutoff = now - (active_max_age_hours * 3600)
 
+    # started_at defaults to 0 (epoch): sessions with no start time are treated
+    #   as maximally old and always pruned when their slot would otherwise be leaked.
+    # completed_at defaults to float("inf"): sessions with no completion time are
+    #   treated as never completed and are preserved (safe default: don't prune).
     pruned = {}
     for sid, s in state["sessions"].items():
         if s.get("status") == "completed" and s.get("completed_at", float("inf")) < completed_cutoff:
             continue  # prune old completed session
-        if s.get("status") == "active" and s.get("started_at", float("inf")) < active_cutoff:
+        if s.get("status") == "active" and s.get("started_at", 0) < active_cutoff:
             print(
                 f"WARNING: session_tree: pruning leaked active session {sid!r} "
                 f"(started {(now - s.get('started_at', now)) / 3600:.1f}h ago)",

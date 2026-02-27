@@ -190,6 +190,7 @@ steps:
     command: |
       SESSION_JSON={{session_info}}
       SESSION_STATUS=$(echo "$SESSION_JSON" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('status','ok'))")
+
       if [ "$SESSION_STATUS" = "ok" ] || [ "$SESSION_STATUS" = "no_tree_script" ]; then
         echo "ALLOWED"
       else
@@ -265,7 +266,7 @@ steps:
       WS_FILE={{workstreams_file}}
       SESSION_JSON={{session_info}}
       # Parse tree_id and depth in one Python subprocess
-      read -r TREE_ID SESSION_DEPTH < <(echo $SESSION_JSON | python3 - <<'PYEOF'
+      read -r TREE_ID SESSION_DEPTH < <(echo "$SESSION_JSON" | python3 - <<'PYEOF'
       import sys, json
       try:
           d = json.loads(sys.stdin.read())
@@ -477,7 +478,7 @@ steps:
     command: |
       SESSION_JSON={{session_info}}
       # Parse all fields in one Python subprocess
-      read -r SESSION_ID TREE_ID STATUS < <(echo $SESSION_JSON | python3 - <<'PYEOF'
+      read -r SESSION_ID TREE_ID STATUS < <(echo "$SESSION_JSON" | python3 - <<'PYEOF'
       import sys, json
       try:
           d = json.loads(sys.stdin.read())

@@ -435,6 +435,30 @@ class TestTTLPruning(unittest.TestCase):
         self.assertIn("fresh", state_after["sessions"],
             "Fresh active session must not be pruned")
 
+    def test_active_session_missing_started_at_is_pruned(self):
+        """Active sessions with no started_at are treated as epoch 0 and always pruned."""
+        tree = self._unique_tree()
+        st.register_session("no-ts", tree_id=tree, depth=0)
+        state = st._load(tree)
+        del state["sessions"]["no-ts"]["started_at"]  # Remove the timestamp
+        st._save(tree, state)
+        # _save() triggers TTL pruning; session with no started_at should be pruned
+        state_after = st._load(tree)
+        self.assertNotIn("no-ts", state_after["sessions"],
+            "Active session with missing started_at must be pruned")
+
+    def test_completed_session_missing_completed_at_is_preserved(self):
+        """Completed sessions with no completed_at default to float('inf') — preserved."""
+        tree = self._unique_tree()
+        st.register_session("no-ct", tree_id=tree, depth=0)
+        st.complete_session("no-ct", tree_id=tree)
+        state = st._load(tree)
+        del state["sessions"]["no-ct"]["completed_at"]
+        st._save(tree, state)  # triggers TTL; should NOT prune (float('inf') default)
+        state_after = st._load(tree)
+        self.assertIn("no-ct", state_after["sessions"],
+            "Completed session with missing completed_at must be preserved")
+
 
 class TestCLISubcommands(unittest.TestCase):
     """Verify that the CLI paths called by the recipe actually work."""
