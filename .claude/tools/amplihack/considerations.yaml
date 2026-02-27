@@ -1,7 +1,7 @@
 # Power-Steering Considerations Configuration
 # ============================================
 #
-# This file defines the 21 considerations used by power-steering mode to verify
+# This file defines the 24 considerations used by power-steering mode to verify
 # session completeness. Each consideration checks a specific aspect of the work.
 #
 # YAML Structure:
@@ -56,7 +56,7 @@
   severity: warning
   checker: _check_agent_unnecessary_questions
   enabled: true
-  applicable_session_types: ["DEVELOPMENT"]
+  applicable_session_types: ["*"]
   guidance: |
     Look for the AskUserQuestion tool being used excessively. Count how many
     times the agent invoked AskUserQuestion during the session.
@@ -87,7 +87,7 @@
   severity: blocker
   checker: _check_objective_completion
   enabled: true
-  applicable_session_types: ["DEVELOPMENT", "MAINTENANCE", "INVESTIGATION"]
+  applicable_session_types: ["*"]
   guidance: |
     Read the FIRST user message carefully to understand what was requested.
     Then check if the session's work actually accomplished that request.

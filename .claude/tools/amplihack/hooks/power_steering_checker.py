@@ -309,7 +309,7 @@ class PowerSteeringChecker:
         ".cpp",
         ".h",
     ]
-    DOC_FILE_EXTENSIONS = [".md", ".txt", ".rst", "README", "CHANGELOG"]
+    DOC_FILE_EXTENSIONS = [".md", ".txt", ".rst", "readme", "changelog"]
     CONFIG_FILE_EXTENSIONS = [".yml", ".yaml", ".json"]
     TEST_COMMAND_PATTERNS = [
         "pytest",
@@ -3172,11 +3172,23 @@ class PowerSteeringChecker:
                                     # Check NEARBY messages for branch context
                                     if self._is_on_main_branch_near(transcript, i):
                                         return False
-                                # Detect git push to main/master
-                                if "git push" in command and (
-                                    "origin main" in command or "origin master" in command
-                                ):
-                                    return False
+                                # Detect git push to main/master (explicit or bare)
+                                if "git push" in command:
+                                    if "origin main" in command or "origin master" in command:
+                                        return False
+                                    # Bare git push (no branch specified) while on main
+                                    if "origin main" not in command and "origin master" not in command:
+                                        # Only flag if no branch is specified at all
+                                        # (git push, git push origin, git push -u origin)
+                                        parts = command.strip().split()
+                                        # If command is just "git push" or "git push origin"
+                                        # (no branch arg), check if we're on main
+                                        has_branch_arg = len(parts) > 3 or any(
+                                            p.startswith("feat/") or p.startswith("fix/") or p.startswith("docs/")
+                                            for p in parts
+                                        )
+                                        if not has_branch_arg and self._is_on_main_branch_near(transcript, i):
+                                            return False
         return True
 
     def _is_on_main_branch_near(self, transcript: list[dict], commit_index: int) -> bool:
@@ -3302,18 +3314,18 @@ class PowerSteeringChecker:
                                 if "NotImplementedError" in content_to_check:
                                     return False
 
-                                # Look for stub patterns:
-                                # - Single-line: def f(): pass
+                                # Look for stub patterns (with optional -> return type):
+                                # - Single-line: def f(): pass / def f() -> None: pass
                                 # - Multi-line:  def f():\n    pass
-                                # - Ellipsis:    def f(): ...
+                                # - Ellipsis:    def f(): ... / def f() -> int: ...
                                 if re.search(
-                                    r"def\s+\w+\([^)]*\):\s*(?:pass|\.\.\.)\s*$",
+                                    r"def\s+\w+\([^)]*\)(?:\s*->.*?)?:\s*(?:pass|\.\.\.)\s*$",
                                     content_to_check,
                                     re.MULTILINE,
                                 ):
                                     return False
                                 if re.search(
-                                    r"def\s+\w+\([^)]*\):\s*\n\s+(?:pass|\.\.\.)\s*$",
+                                    r"def\s+\w+\([^)]*\)(?:\s*->.*?)?:\s*\n\s+(?:pass|\.\.\.)\s*$",
                                     content_to_check,
                                     re.MULTILINE,
                                 ):
@@ -3706,13 +3718,15 @@ class PowerSteeringChecker:
         return False  # No completion indicators found
 
     # Paths that indicate user-facing/public code changes requiring doc updates
+    # Paths indicating user-facing/public code. __init__.py and __main__.py
+    # are only public when inside a public directory (commands, skills, etc.)
+    # so they are checked separately via _is_public_init.
     PUBLIC_CODE_INDICATORS = [
         "/commands/",
         "/skills/",
         "/scenarios/",
         "/cli/",
         "/cli.py",
-        "__init__.py",
         "__main__.py",
         "setup.py",
         "pyproject.toml",
@@ -3747,12 +3761,19 @@ class PowerSteeringChecker:
                                 file_path = tool_input.get("file_path", "").lower()
 
                                 # Only flag public-facing code changes
-                                if any(
-                                    ext in file_path for ext in self.CODE_FILE_EXTENSIONS
-                                ) and any(
+                                is_code = any(
+                                    file_path.endswith(ext) for ext in self.CODE_FILE_EXTENSIONS
+                                )
+                                is_public = any(
                                     indicator in file_path
                                     for indicator in self.PUBLIC_CODE_INDICATORS
+                                )
+                                # __init__.py is public only inside public dirs
+                                if "__init__.py" in file_path and any(
+                                    d in file_path for d in ["/commands/", "/skills/", "/scenarios/"]
                                 ):
+                                    is_public = True
+                                if is_code and is_public:
                                     public_code_modified = True
 
                                 # Check for doc files using class constant
@@ -3962,7 +3983,7 @@ class PowerSteeringChecker:
                                     file_path = block.get("input", {}).get("file_path", "")
 
                                     # Check for code files using class constant
-                                    if any(ext in file_path for ext in self.CODE_FILE_EXTENSIONS):
+                                    if any(file_path.endswith(ext) for ext in self.CODE_FILE_EXTENSIONS):
                                         code_modified = True
 
                                     # Check for doc files using class constant

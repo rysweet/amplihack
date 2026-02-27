@@ -1,7 +1,7 @@
 # Power-Steering Considerations Configuration
 # ============================================
 #
-# This file defines the 21 considerations used by power-steering mode to verify
+# This file defines the 24 considerations used by power-steering mode to verify
 # session completeness. Each consideration checks a specific aspect of the work.
 #
 # YAML Structure:
