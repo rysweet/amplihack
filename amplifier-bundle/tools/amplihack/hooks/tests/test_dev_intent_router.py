@@ -476,5 +476,134 @@ class TestShouldAutoRouteEdgeCases(unittest.TestCase):
         self.assertIn("Operations", ctx)
 
 
+class TestBugFixes(unittest.TestCase):
+    """Regression tests for confirmed quality-audit bugs."""
+
+    # FIX 1: _KNOWLEDGE_RE missing patterns
+    def test_what_does_routes_qa(self):
+        r = classify("what does this function do?")
+        self.assertEqual(r.route_type, "qa",
+            "'what does' should match _KNOWLEDGE_RE and route as Q&A")
+
+    def test_what_did_routes_qa(self):
+        r = classify("what did the migration change?")
+        self.assertEqual(r.route_type, "qa",
+            "'what did' should match _KNOWLEDGE_RE and route as Q&A")
+
+    def test_where_is_routes_qa(self):
+        r = classify("where is the database config?")
+        self.assertEqual(r.route_type, "qa",
+            "'where is' should match _KNOWLEDGE_RE and route as Q&A")
+
+    def test_where_does_routes_qa(self):
+        r = classify("where does the logging go?")
+        self.assertEqual(r.route_type, "qa",
+            "'where does' should match _KNOWLEDGE_RE and route as Q&A")
+
+    def test_whats_wrong_routes_qa(self):
+        r = classify("what's wrong with the tests?")
+        self.assertEqual(r.route_type, "qa",
+            "'what\\'s wrong' should match _KNOWLEDGE_RE — trailing \\b must work")
+
+    def test_what_would_routes_qa(self):
+        r = classify("what would happen if the cache fails?")
+        self.assertEqual(r.route_type, "qa",
+            "'what would' should match _KNOWLEDGE_RE and route as Q&A")
+
+    def test_what_can_routes_qa(self):
+        r = classify("what can cause this error?")
+        self.assertEqual(r.route_type, "qa",
+            "'what can' should match _KNOWLEDGE_RE and route as Q&A")
+
+    # FIX 2: Review disambiguation uses words not tech_hits
+    def test_do_a_code_review_routes_dev(self):
+        r = classify("do a code review")
+        self.assertEqual(r.route_type, "dev",
+            "'code' is in words (not just tech_hits) — review + code = dev")
+
+    # FIX 3: redesign/rebuild/rewrite in _DEV_RE
+    def test_redesign_routes_hybrid(self):
+        r = classify("study the architecture and redesign it")
+        self.assertEqual(r.route_type, "hybrid",
+            "'redesign' should be in _DEV_RE, combined with 'study' = hybrid")
+
+    def test_rewrite_routes_dev(self):
+        r = classify("rewrite the auth module")
+        self.assertEqual(r.route_type, "dev",
+            "'rewrite' should be in _DEV_RE and route as dev")
+
+    def test_rebuild_routes_dev(self):
+        r = classify("rebuild the dashboard from scratch")
+        self.assertEqual(r.route_type, "dev",
+            "'rebuild' should be in _DEV_RE and route as dev")
+
+    def test_rearchitect_routes_dev(self):
+        r = classify("rearchitect the data pipeline")
+        self.assertEqual(r.route_type, "dev",
+            "'rearchitect' should be in _DEV_RE and route as dev")
+
+    # FIX 4: _is_test_imperative — tests-as-noun and want-to-test
+    def test_tests_are_passing_not_dev(self):
+        r = classify("tests are passing")
+        self.assertNotEqual(r.route_type, "dev",
+            "'tests are passing' — 'tests' is a noun subject, not an imperative")
+
+    def test_tests_fail_not_dev(self):
+        r = classify("tests fail on CI")
+        self.assertNotEqual(r.route_type, "dev",
+            "'tests fail' — 'tests' is a noun subject, not an imperative")
+
+    def test_want_to_test_routes_dev(self):
+        r = classify("I want to test the login")
+        self.assertEqual(r.route_type, "dev",
+            "'want to test' IS a dev request — modal verbs should not block")
+
+    def test_should_test_routes_dev(self):
+        r = classify("we should test this before release")
+        self.assertEqual(r.route_type, "dev",
+            "'should test' IS a dev request — modal verbs should not block")
+
+    def test_need_to_test_routes_dev(self):
+        r = classify("I need to test the payment flow")
+        self.assertEqual(r.route_type, "dev",
+            "'need to test' IS a dev request — intent verbs should not block")
+
+    def test_can_you_test_routes_dev(self):
+        r = classify("can you test the API endpoint?")
+        self.assertTrue(r.should_route,
+            "'can you test' IS a dev request — modal should not block")
+
+    def test_wh_question_test_not_dev(self):
+        r = classify("what should I test next?")
+        self.assertNotEqual(r.route_type, "dev",
+            "WH-question with 'test' is knowledge, not imperative")
+
+    # FIX 5: run in _OPS_RE
+    def test_run_tests_routes_ops(self):
+        r = classify("run the tests")
+        self.assertEqual(r.route_type, "ops",
+            "'run the tests' should route as ops")
+
+    def test_run_linter_routes_ops(self):
+        r = classify("run the linter")
+        self.assertEqual(r.route_type, "ops",
+            "'run the linter' should route as ops")
+
+    def test_run_migrations_routes_ops(self):
+        r = classify("run the migrations")
+        self.assertEqual(r.route_type, "ops",
+            "'run the migrations' should route as ops")
+
+    def test_run_build_routes_ops(self):
+        r = classify("run build")
+        self.assertEqual(r.route_type, "ops",
+            "'run build' should route as ops")
+
+    def test_run_checks_routes_ops(self):
+        r = classify("run the checks")
+        self.assertEqual(r.route_type, "ops",
+            "'run the checks' should route as ops")
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

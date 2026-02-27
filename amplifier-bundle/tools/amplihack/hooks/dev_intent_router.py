@@ -73,6 +73,7 @@ _OPS_RE = re.compile(
     r'|\bls\b|\bpwd\b|\brm\b|\bcp\b|\bmv\b|\bcat\b|\bgrep\b'
     r'|disk\s+usage|\bdf\b|\bdu\b|\bps\b|\bkill\b'
     r'|restart\s+\w+'
+    r'|run\s+(?:the\s+)?(?:test|tests|linter|lint|migration|migrations|script|scripts|checks?|build)\b'
     r'|clean\s+up\s+(?:old|temp|log)'
     r'|delete\s+(?:old|temp|log)\s+files?'
     r'|show\s+me\s+(?:the\s+)?(?:files?|directory|output|log\s+files?)'
@@ -84,13 +85,17 @@ _OPS_RE = re.compile(
 # ── Q&A / knowledge patterns ─────────────────────────────────────────────────
 
 _KNOWLEDGE_RE = re.compile(
-    r'\b(?:what\s+is\b|what\s+are\b|what\'s\s+\w|'
+    r'\b(?:'
+    r'what\s+is\b|what\s+are\b|what\s+does\b|what\s+do\b|what\s+did\b|'
+    r"what's\s+\w+\b|what\s+would\b|what\s+should\b|what\s+can\b|"
+    r'where\s+(?:is|are|does|do|can|should)\s|'
     r'explain\b|describe\b|'
     r'tell\s+me\s+(?:about|what)|'
     r'how\s+(?:does|do|is|are)\s|'
     r'why\s+(?:does|do|is|are|would|should)\s|'
     r'when\s+(?:should|would|do)\s|'
-    r'difference\s+between|compare\b|define\b)\b',
+    r'difference\s+between|compare\b|define\b'
+    r')\b',
     re.I,
 )
 
@@ -106,7 +111,8 @@ _DEV_RE = re.compile(
     r'set\s+up|clean\s+up|wire\s+up|hook\s+up|spin\s+up|'
     r'port\s+(?:to|from)|extract|split|merge|combine|'
     r'profile|monitor|benchmark|secure|harden|automate|'
-    r'document|write)\b',
+    r'document|write|'
+    r'redesign|rebuild|rewrite|rework|rearchitect)\b',
     re.I,
 )
 
@@ -131,16 +137,24 @@ _TEST_NOUN_FOLLOW = frozenset({
     'run', 'runner', 'runners', 'data', 'bed', 'driven', 'environment',
     'setup', 'teardown', 'fixture', 'fixtures', 'harness', 'plan', 'plans',
     'report', 'reports', 'output', 'outputs', 'execution',
+    # Auxiliary/copula verbs that follow 'tests' when it's a noun-subject
+    'are', 'is', 'were', 'was', 'fail', 'fails', 'failed',
+    'pass', 'passed', 'passing', 'have', 'had', 'do', 'did',
+    'will', 'would', 'can', 'could', 'should', 'might',
+    'broke', 'break', 'ran', 'take', 'took',
 })
 
 _TEST_NONVERB_BEFORE = re.compile(
     r'\b(?:a|an|the|this|that|these|those|my|your|our|their|its|'
-    r'to|should|can|will|would|must|might|could|may|need\s+to|'
     r'quick|simple|basic|initial|final|unit|integration|end[\s-]to[\s-]end|'
-    r'want\s+to|like\s+to|going\s+to|trying\s+to|'
-    r'just|only|simple|another|one|some|any)'
+    r'just|only|another|one|some|any)'
     r'(?:\s+(?:i|you|we|he|she|they|me|us|him|her|them|it))?\s+$',
     re.I,
+)
+
+
+_WH_QUESTION_RE = re.compile(
+    r'^\s*(?:what|when|where|which|who|how)\b', re.I,
 )
 
 
@@ -156,6 +170,9 @@ def _is_test_imperative(text_lower: str) -> bool:
         if next_word_m.group(1) in _TEST_NOUN_FOLLOW:
             continue
         if _TEST_NONVERB_BEFORE.search(before):
+            continue
+        # "what should I test next?" — WH-question context, not imperative
+        if _WH_QUESTION_RE.match(text_lower):
             continue
         return True
     return False
@@ -180,6 +197,8 @@ _TECH_WORDS = frozenset({
 # ── Review verb (can be either investigate or dev depending on context) ──────
 
 _REVIEW_RE = re.compile(r'\breview\b', re.I)
+
+_ARTICLE_BEFORE_RE = re.compile(r'\b(?:the|a|an|this|that|my|our|your|its)\s+$', re.I)
 
 
 # ── Main classifier ──────────────────────────────────────────────────────────
@@ -227,7 +246,7 @@ def classify(prompt: str) -> IntentResult:
 
     # 'review' context: "review PR #42" = dev; "review the architecture" = investigate
     if has_review and not has_dev and not has_investigate:
-        if tech_hits & {'pr', 'code', 'implementation', 'fix', 'patch'}:
+        if words & {'pr', 'code', 'implementation', 'fix', 'patch'}:
             has_dev = True
         else:
             has_investigate = True
@@ -236,11 +255,10 @@ def classify(prompt: str) -> IntentResult:
     # "the build is failing" → "build" is a noun; "investigate then build it" → verb.
     # Check ALL dev matches — if any real verb exists (not preceded by article), keep has_dev.
     if has_investigate and has_dev:
-        _article_re = re.compile(r'\b(?:the|a|an|this|that|my|our|your|its)\s+$', re.I)
         has_real_dev_verb = False
         for dev_m in _DEV_RE.finditer(p):
             before = p[:dev_m.start()]
-            if not _article_re.search(before):
+            if not _ARTICLE_BEFORE_RE.search(before):
                 has_real_dev_verb = True
                 break
         if not has_real_dev_verb:

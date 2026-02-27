@@ -37,7 +37,7 @@ and how to interpret what you see during execution.
 
 `/dev` is the unified entry point for all development and investigation work. It:
 
-1. **Classifies** your request (Q&A, Operations, Investigation, or Development)
+1. **Classifies** your request (Q&A, Operations, Investigation, Development, or Hybrid)
 2. **Decomposes** it into workstreams if it contains independent parallel components
 3. **Executes** via the recipe runner with a goal-seeking loop (up to 3 rounds)
 4. **Reflects** on whether the goal was achieved
@@ -215,7 +215,7 @@ faster:
 # Dev Orchestrator -- Execution Complete
 
 **Task**: [your task]
-**Type**: [Q&A | Development | Investigation | Operations]
+**Type**: [Q&A | Development | Investigation | Operations | Hybrid]
 **Workstreams**: [number]
 
 ## Summary
@@ -269,11 +269,11 @@ how do I add pagination?       → auto-routes (action + explanation detected)
 investigate the slow queries   → auto-routes
 ```
 
-**It stays out of the way for:**
+**It routes Q&A and Ops with lightweight signals (no workflow overhead):**
 ```
-what is OAuth?                 → direct Claude response (Q&A)
-/analyze the auth module       → your explicit command respected
-run git status                 → operations task, not routed
+what is OAuth?                 → Q&A signal (answer directly, no workflow)
+/analyze the auth module       → your explicit command respected (no injection)
+run git status                 → Ops signal (execute directly, no workflow)
 ```
 
 **Disable auto-routing:**
