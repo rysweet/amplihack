@@ -178,6 +178,16 @@ run_recipe_by_name(
 )
 ```
 
+**To force single-workstream execution without modifying recipe context:**
+Set `AMPLIHACK_MAX_DEPTH=0` before running `/dev`. This causes the recursion guard
+to block parallel spawning and fall back to single-session mode for all tasks:
+
+```bash
+AMPLIHACK_MAX_DEPTH=0 /dev build a webui and an api
+```
+
+Note: This affects all depth checks, not just parallel workstream spawning.
+
 ## Canonical Sources
 
 - **Recipe**: `amplifier-bundle/recipes/smart-orchestrator.yaml`
