@@ -42,6 +42,18 @@ examples:
 The primary entry point for all development work in amplihack. This command
 classifies your task, detects parallel workstreams, and executes via recipe runner.
 
+## Glossary
+
+**Workstream**: An isolated parallel execution unit. When your request contains multiple independent components (e.g., "build an API and a webui"), the orchestrator splits them into separate workstreams that run concurrently in `/tmp/amplihack-workstreams/`.
+
+**Recipe**: A YAML workflow definition that specifies the exact sequence of steps Claude follows. The `smart-orchestrator` recipe is what runs when you invoke `/dev`.
+
+**Recipe Runner**: The Python execution engine (`amplihack.recipes.run_recipe_by_name`) that executes recipes with code-enforced step ordering. When available, it's strongly preferred over prompt-based execution.
+
+**Session Tree**: A lightweight state tracker in `/tmp/amplihack-session-trees/` that prevents infinite recursive orchestration by tracking active sessions and enforcing depth and capacity limits.
+
+**Goal-Seeking Loop**: The up-to-3-round retry mechanism. After each execution round, a reviewer agent evaluates whether the goal was achieved. If PARTIAL or NOT_ACHIEVED, another round runs automatically (up to 3 total).
+
 ## Examples
 
 **Single task** (one workstream):
@@ -81,6 +93,8 @@ classifies your task, detects parallel workstreams, and executes via recipe runn
 ```
 
 ## EXECUTION INSTRUCTIONS FOR CLAUDE
+
+> **Note for users**: The section below documents how Claude internally executes this command. You do not need to run any of this code yourself — just type `/dev <your task>`.
 
 When this command is invoked with `{TASK_DESCRIPTION}`:
 
