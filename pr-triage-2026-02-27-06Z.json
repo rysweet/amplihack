@@ -1,0 +1,81 @@
+{
+  "triage_timestamp": "2026-02-27T06:24:00Z",
+  "workflow_run_id": "22475406261",
+  "total_open_prs": 6,
+  "agent_created_prs": 2,
+  "prs_triaged": [
+    {
+      "number": 2579,
+      "title": "[docs] docs: daily documentation updates for merged PRs (2026-02-27)",
+      "author": "github-actions[bot]",
+      "created_at": "2026-02-27T06:19:52Z",
+      "category": "DOCUMENTATION",
+      "risk_level": "VERY_LOW",
+      "risk_score": 10,
+      "priority": "MEDIUM",
+      "priority_score": 60,
+      "files_changed": 3,
+      "additions": 333,
+      "deletions": 2,
+      "ci_status": "pending",
+      "assessment": {
+        "complexity": "LOW",
+        "blast_radius": "MINIMAL",
+        "testing_needs": "NONE",
+        "review_depth": "LIGHT"
+      },
+      "rationale": "Automated documentation PR following Diataxis framework. Updates existing tutorial (AGENT_MEMORY_QUICKSTART.md), creates new how-to guide (cli-flags-reference.md), and documents recent bug fixes. All changes are additive or clarifying. No code changes, no breaking changes.",
+      "recommendation": "AUTO_MERGE_CANDIDATE",
+      "action_items": [
+        "Wait for CI completion",
+        "Auto-merge if checks pass",
+        "No manual review required"
+      ]
+    },
+    {
+      "number": 2578,
+      "title": "feat: unified smart-orchestrator — replace ultrathink, auto-detect parallel workstreams",
+      "author": "rysweet",
+      "created_at": "2026-02-27T05:46:03Z",
+      "category": "FEATURE",
+      "risk_level": "HIGH",
+      "risk_score": 75,
+      "priority": "CRITICAL",
+      "priority_score": 95,
+      "files_changed": 12,
+      "additions": 2013,
+      "deletions": 643,
+      "ci_status": "pending",
+      "assessment": {
+        "complexity": "HIGH",
+        "blast_radius": "WIDE",
+        "testing_needs": "EXTENSIVE",
+        "review_depth": "DEEP"
+      },
+      "rationale": "Major architectural change replacing fragmented task execution system (ultrathink, default-workflow, multitask, hybrid, auto, work-delegator) with single intelligent orchestrator. Significant code churn (2k+ additions, 600+ deletions). Core workflow changes in CLAUDE.md, new session_tree.py utility, new smart-orchestrator recipe with 436 lines. High complexity with wide blast radius affecting core orchestration logic. Includes comprehensive tests (577 lines for decomposition, 261 for session_tree).",
+      "recommendation": "THOROUGH_REVIEW_REQUIRED",
+      "concerns": [
+        "Breaking changes to core orchestration system",
+        "Migration path for existing workflows unclear",
+        "Extensive command/skill refactoring",
+        "User experience impact needs validation"
+      ],
+      "action_items": [
+        "Deep code review of orchestrator logic",
+        "Verify all tests pass with >90% coverage",
+        "Validate migration strategy for existing users",
+        "Manual testing of orchestration scenarios",
+        "Check backward compatibility with existing commands"
+      ]
+    }
+  ],
+  "summary": {
+    "new_prs_since_last_triage": 2,
+    "documentation_prs": 1,
+    "feature_prs": 1,
+    "high_risk_count": 1,
+    "critical_priority_count": 1,
+    "auto_merge_candidates": 1,
+    "requires_manual_review": 1
+  }
+}
