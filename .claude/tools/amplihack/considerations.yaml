@@ -134,6 +134,24 @@
   enabled: true
   applicable_session_types: ["DEVELOPMENT", "INVESTIGATION"]
 
+- id: no_direct_main_commit
+  category: Workflow Process Adherence
+  question: Did all code commits go to a feature branch rather than directly to the main branch, with a PR created for review?
+  description: Verifies the agent did not bypass the PR workflow by committing directly to main - a mandatory user requirement that cannot be overridden
+  severity: blocker
+  checker: _check_no_direct_main_commit
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT"]
+
+- id: decisions_logged
+  category: Workflow Process Adherence
+  question: Were significant architectural decisions or trade-offs logged to DECISIONS.md in the session runtime logs?
+  description: Verifies that notable decisions were captured in .claude/runtime/logs/<session_id>/DECISIONS.md per CLAUDE.md requirements
+  severity: warning
+  checker: _check_decisions_logged
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT"]
+
 - id: dev_workflow_complete
   category: Workflow Process Adherence
   question: Were all required DEFAULT_WORKFLOW steps completed this session, including requirements clarification, design, implementation, testing, and PR creation?

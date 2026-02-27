@@ -122,8 +122,35 @@
   applicable_session_types: ["MAINTENANCE", "INVESTIGATION"]
 
 # ============================================================================
-# CATEGORY 2: Workflow Process Adherence (2 considerations)
+# CATEGORY 2: Workflow Process Adherence (5 considerations)
 # ============================================================================
+
+- id: workflow_invocation
+  category: Workflow Process Adherence
+  question: Did the ultrathink-orchestrator explicitly invoke a workflow using either the Skill tool (for workflow skills) or the Read tool (to load a workflow markdown file), rather than skipping workflow invocation entirely?
+  description: Validates that ultrathink-orchestrator used either Skill tool to invoke a workflow skill or Read tool to load a workflow markdown file - not bypassing workflow invocation (Issue #2040)
+  severity: blocker
+  checker: _check_workflow_invocation
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT", "INVESTIGATION"]
+
+- id: no_direct_main_commit
+  category: Workflow Process Adherence
+  question: Did all code commits go to a feature branch rather than directly to the main branch, with a PR created for review?
+  description: Verifies the agent did not bypass the PR workflow by committing directly to main - a mandatory user requirement that cannot be overridden
+  severity: blocker
+  checker: _check_no_direct_main_commit
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT"]
+
+- id: decisions_logged
+  category: Workflow Process Adherence
+  question: Were significant architectural decisions or trade-offs logged to DECISIONS.md in the session runtime logs?
+  description: Verifies that notable decisions were captured in .claude/runtime/logs/<session_id>/DECISIONS.md per CLAUDE.md requirements
+  severity: warning
+  checker: _check_decisions_logged
+  enabled: true
+  applicable_session_types: ["DEVELOPMENT"]
 
 - id: dev_workflow_complete
   category: Workflow Process Adherence
