@@ -78,17 +78,24 @@ _TREE_ID_RE = re.compile(r'^[a-zA-Z0-9_-]{1,64}$')
 
 
 def _validate_tree_id(tree_id: str) -> str:
-    """Validate tree_id to prevent path traversal attacks."""
+    """Validate tree_id format. Pure function — no side effects.
+
+    Raises ValueError if tree_id is invalid.
+    """
     if not tree_id:
         raise ValueError("tree_id cannot be empty")
     if not _TREE_ID_RE.match(tree_id):
         raise ValueError(f"Invalid tree_id {tree_id!r}: must match [a-zA-Z0-9_-]{{1,64}}")
-    # Belt-and-suspenders: verify resolved path stays within STATE_DIR
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
-    candidate = (STATE_DIR / f"{tree_id}.json").resolve()
-    if not str(candidate).startswith(str(STATE_DIR.resolve())):
-        raise ValueError(f"Path traversal detected for tree_id {tree_id!r}")
     return tree_id
+
+
+def _ensure_state_dir() -> None:
+    """Create state directory with restricted permissions (0o700)."""
+    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        STATE_DIR.chmod(0o700)
+    except OSError:
+        pass  # Non-fatal if chmod fails (e.g., different owner)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -110,7 +117,15 @@ def get_tree_context() -> dict:
 
 
 def env_for_child(tree_id: str, depth: int) -> dict[str, str]:
-    """Return environment variables to pass to child subprocesses."""
+    """
+    Return environment variables to pass to child subprocesses.
+
+    NOTE: The orchestrator (orchestrator.py) constructs these variables
+    directly rather than calling this function. This function exists as
+    a reference implementation and for the CLI env-for-child subcommand.
+    Currently not called programmatically — use orchestrator.py's
+    _write_recipe_launcher/_write_classic_launcher for actual env propagation.
+    """
     return {
         "AMPLIHACK_TREE_ID": tree_id,
         "AMPLIHACK_SESSION_DEPTH": str(depth + 1),
@@ -130,13 +145,18 @@ def env_for_child(tree_id: str, depth: int) -> dict[str, str]:
 
 def _state_path(tree_id: str) -> Path:
     _validate_tree_id(tree_id)
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    _ensure_state_dir()
+    # Belt-and-suspenders path traversal check
+    candidate = (STATE_DIR / f"{tree_id}.json").resolve()
+    state_resolved = STATE_DIR.resolve()
+    if not str(candidate).startswith(str(state_resolved)):
+        raise ValueError(f"Path traversal detected for tree_id {tree_id!r}")
     return STATE_DIR / f"{tree_id}.json"
 
 
 def _lock_path(tree_id: str) -> Path:
     _validate_tree_id(tree_id)
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
+    _ensure_state_dir()
     return STATE_DIR / f"{tree_id}.lock"
 
 
@@ -207,23 +227,35 @@ def _load(tree_id: str) -> dict:
         return {"sessions": {}, "queue": []}
 
 
-def _save(tree_id: str, state: dict, max_age_hours: float = 24.0) -> None:
-    """Write state atomically using a temp file + rename (prevents partial reads).
+def _save(tree_id: str, state: dict, max_age_hours: float = 24.0, active_max_age_hours: float = 4.0) -> None:
+    """Write state atomically. Prunes stale sessions before saving.
 
-    Prunes completed sessions older than max_age_hours before saving to prevent
-    unbounded growth of the state file.
+    Pruning rules:
+    - Completed sessions older than max_age_hours (default 24h) are removed.
+    - Active sessions older than active_max_age_hours (default 4h) are treated
+      as leaked (process died without calling complete) and pruned.
     """
-    # Prune stale completed sessions before saving
-    cutoff = time.time() - (max_age_hours * 3600)
-    state["sessions"] = {
-        sid: s for sid, s in state["sessions"].items()
-        if not (s.get("status") == "completed" and s.get("completed_at", float("inf")) < cutoff)
-    }
+    now = time.time()
+    completed_cutoff = now - (max_age_hours * 3600)
+    active_cutoff = now - (active_max_age_hours * 3600)
 
+    pruned = {}
+    for sid, s in state["sessions"].items():
+        if s.get("status") == "completed" and s.get("completed_at", float("inf")) < completed_cutoff:
+            continue  # prune old completed session
+        if s.get("status") == "active" and s.get("started_at", float("inf")) < active_cutoff:
+            print(
+                f"WARNING: session_tree: pruning leaked active session {sid!r} "
+                f"(started {(now - s.get('started_at', now)) / 3600:.1f}h ago)",
+                file=sys.stderr
+            )
+            continue  # prune leaked active session
+        pruned[sid] = s
+    state["sessions"] = pruned
+
+    # Atomic write via temp file + rename
     target = _state_path(tree_id)
     content = json.dumps(state, indent=2)
-    # Write to a sibling temp file, then atomically rename into place.
-    # os.replace() is atomic on POSIX — readers never see a partial write.
     import tempfile
     fd, tmp = tempfile.mkstemp(dir=str(STATE_DIR), prefix=f".{tree_id}-", suffix=".tmp")
     try:
@@ -245,16 +277,15 @@ def _save(tree_id: str, state: dict, max_age_hours: float = 24.0) -> None:
 
 def check_can_spawn(tree_id: Optional[str] = None, depth: int = -1) -> dict:
     """
-    Check whether a new child session can be spawned right now.
+    ADVISORY CHECK ONLY — not atomic. For atomic admission control, use register_session().
+
+    This function reads state WITHOUT holding the lock. By the time the caller
+    acts on the result, the state may have changed. Use this only for informational
+    purposes (displaying capacity to a user). For actual session admission control,
+    call register_session() directly and handle RuntimeError for capacity exceeded.
 
     Returns:
-        {
-          "allowed": bool,
-          "reason": str,
-          "queued_count": int,
-          "active_count": int,
-          "depth": int,
-        }
+        {"allowed": bool, "reason": str, "queued_count": int, "active_count": int, "depth": int}
     """
     ctx = get_tree_context()
     tree_id = tree_id or ctx["tree_id"]
@@ -353,7 +384,14 @@ def register_session(
 
 
 def enqueue_session(workstream_spec: dict, tree_id: str) -> None:
-    """Add a workstream spec to the FIFO queue for later execution."""
+    """
+    Add a workstream spec to the FIFO queue for later execution.
+
+    NOTE: This function exists for future use but is NOT currently called
+    by any recipe or orchestrator. Do not rely on it being called.
+    See: amplifier-bundle/recipes/smart-orchestrator.yaml recursion-limit-notice
+    for the intended (but not yet implemented) integration point.
+    """
     _validate_tree_id(tree_id)
     with _locked(tree_id):
         state = _load(tree_id)
@@ -367,6 +405,10 @@ def dequeue_ready(tree_id: str, max_sessions: int) -> list[dict]:
     """
     Pop items from the queue that can now be executed (active < max_sessions).
     Returns list of workstream specs that should now be started.
+
+    NOTE: This function exists for future use but is NOT currently called
+    by any recipe or orchestrator. It is the counterpart to enqueue_session()
+    and is intended for a future queuing integration.
     """
     _validate_tree_id(tree_id)
     with _locked(tree_id):

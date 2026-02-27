@@ -26,6 +26,8 @@ context:
   round_3_result: ""
   reflection_final: ""
   summary: ""
+  depth_limited_notice: ""
+  session_complete_status: ""
   force_single_workstream: "false"  # set to "true" to prevent parallel decomposition
 
 steps:
@@ -112,7 +114,7 @@ steps:
   # ─────────────────────────────────────────────────────────────────────────
   # Setup: register this session in the session tree (atomic check+register)
   # Runs for Development and Investigation tasks before any workstream spawning.
-  # session_info output format: "SESSION_ID:TREE_ID:DEPTH"
+  # session_info output format: JSON {"session_id":..,"tree_id":..,"depth":..,"status":..}
   # ─────────────────────────────────────────────────────────────────────────
 
   - id: "setup-session"
@@ -126,17 +128,27 @@ steps:
         # Register this session — atomic check+register under lock
         if OUTPUT=$(python3 "$TREE_SCRIPT" register "$SESSION_ID" 2>&1); then
           # Output: "TREE_ID=abc123 DEPTH=0"
-          TREE_ID=$(echo "$OUTPUT" | grep -oE 'TREE_ID=[A-Za-z0-9_-]+' | cut -d= -f2)
-          DEPTH=$(echo "$OUTPUT" | grep -oE 'DEPTH=[0-9]+' | cut -d= -f2)
-          echo "$SESSION_ID:${TREE_ID:-unknown}:${DEPTH:-0}"
+          TREE_ID=$(echo "$OUTPUT" | grep -oE 'TREE_ID=[A-Za-z0-9_-]+' | head -1 | cut -d= -f2)
+          DEPTH_STR=$(echo "$OUTPUT" | grep -oE 'DEPTH=[0-9]+' | head -1 | cut -d= -f2)
+          DEPTH_VAL=${DEPTH_STR:-0}
+          # Validate extracted values
+          if ! echo "$TREE_ID" | grep -qE '^[A-Za-z0-9_-]+$'; then
+            python3 -c "import json; print(json.dumps({'session_id': 'error', 'tree_id': 'error', 'depth': 0, 'status': 'registration_failed', 'error': 'invalid tree_id extracted'}))"
+            exit 0
+          fi
+          python3 -c "import json; print(json.dumps({'session_id': '$SESSION_ID', 'tree_id': '$TREE_ID', 'depth': $DEPTH_VAL, 'status': 'ok'}))"
         else
-          # Registration failed (capacity exceeded or depth limit) — propagate the error
-          echo "REGISTRATION_FAILED:$OUTPUT"
+          # Registration failed (capacity exceeded or depth limit) — encode structured error
+          python3 -c "import json; print(json.dumps({'session_id': 'none', 'tree_id': 'none', 'depth': 0, 'status': 'registration_failed'}))"
         fi
       else
         # No session_tree.py — generate a tree_id from env or fresh uuid
-        TREE_ID="${AMPLIHACK_TREE_ID:-$(python3 -c "import uuid; print(uuid.uuid4().hex[:8])")}"
-        echo "$SESSION_ID:$TREE_ID:${AMPLIHACK_SESSION_DEPTH:-0}"
+        TREE_ID=$(echo "${AMPLIHACK_TREE_ID:-}" | grep -E '^[A-Za-z0-9_-]+$' | head -1)
+        if [ -z "$TREE_ID" ]; then
+          TREE_ID=$(python3 -c "import uuid; print(uuid.uuid4().hex[:8])")
+        fi
+        DEPTH_VAL=${AMPLIHACK_SESSION_DEPTH:-0}
+        python3 -c "import json; print(json.dumps({'session_id': '$SESSION_ID', 'tree_id': '$TREE_ID', 'depth': $DEPTH_VAL, 'status': 'no_tree_script'}))"
       fi
     output: "session_info"
 
@@ -186,21 +198,29 @@ steps:
     type: "bash"
     condition: "'Development' in task_type or 'Investigation' in task_type"
     command: |
-      # Extract tree_id from registered session_info
-      TREE_ID=$(echo '{{session_info}}' | cut -d: -f2)
+      # Extract tree_id and depth from registered session_info (JSON)
+      SESSION_JSON={{session_info}}
+      SESSION_STATUS=$(echo "$SESSION_JSON" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('status','ok'))")
+      TREE_ID=$(echo "$SESSION_JSON" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('tree_id',''))")
+      SESSION_DEPTH=$(echo "$SESSION_JSON" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('depth',0))")
+
+      # Skip check if registration failed
+      if [ "$SESSION_STATUS" = "registration_failed" ]; then
+        echo "BLOCKED:registration_failed"
+        exit 0
+      fi
+
       TREE_SCRIPT="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/session_tree.py"
 
       if [ -f "$TREE_SCRIPT" ]; then
-          # Use registered tree_id for accurate check
-          AMPLIHACK_TREE_ID="$TREE_ID" python3 "$TREE_SCRIPT" check
+        # Use registered tree_id and depth for accurate check
+        AMPLIHACK_TREE_ID="$TREE_ID" AMPLIHACK_SESSION_DEPTH="$SESSION_DEPTH" python3 "$TREE_SCRIPT" check
       else
-          DEPTH="${AMPLIHACK_SESSION_DEPTH:-0}"
-          MAX="${AMPLIHACK_MAX_DEPTH:-3}"
-          python3 -c "
+        python3 -c "
       import sys
       depth, max_d = int(sys.argv[1]), int(sys.argv[2])
       print('ALLOWED' if depth < max_d else f'BLOCKED:depth={depth}>=max={max_d}')
-      " "$DEPTH" "$MAX"
+      " "$SESSION_DEPTH" "${AMPLIHACK_MAX_DEPTH:-3}"
       fi
     output: "recursion_guard"
 
@@ -215,10 +235,12 @@ steps:
     type: "bash"
     condition: "('Development' in task_type or 'Investigation' in task_type) and int(str(workstream_count).strip() or '1') == 1"
     command: |
+      TASK_TYPE={{task_type}}
+      WS_COUNT={{workstream_count}}
       echo ""
       echo "╔══════════════════════════════════════════════════════════════╗"
       echo "║  Smart Orchestrator: Executing (Round 1 of 3)               ║"
-      echo "║  Type: {{task_type}} | Workstreams: {{workstream_count}}     ║"
+      printf "║  Type: %-14s  Workstreams: %-24s║\n" "$TASK_TYPE" "$WS_COUNT"
       echo "╚══════════════════════════════════════════════════════════════╝"
     output: "announce_start_status"
 
@@ -293,34 +315,66 @@ steps:
     command: |
       REPO_PATH={{repo_path}}
       WS_FILE={{workstreams_file}}
-      TREE_ID=$(echo '{{session_info}}' | cut -d: -f2)
-      DEPTH=$(echo '{{session_info}}' | cut -d: -f3)
+      SESSION_JSON={{session_info}}
+      TREE_ID=$(echo "$SESSION_JSON" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('tree_id',''))")
+      SESSION_DEPTH=$(echo "$SESSION_JSON" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('depth',0))")
+
+      if [ -z "$WS_FILE" ] || [ ! -f "$WS_FILE" ]; then
+        echo "ERROR: workstreams_file is missing or empty. create-workstreams-config may have failed." >&2
+        exit 1
+      fi
+
+      # Validate it's a non-empty JSON array
+      WS_COUNT_CHECK=$(python3 -c "import json,sys; data=json.load(open(sys.argv[1])); print(len(data))" "$WS_FILE" 2>/dev/null || echo "0")
+      if [ "$WS_COUNT_CHECK" = "0" ]; then
+        echo "ERROR: workstreams config has 0 entries — decomposition may have failed." >&2
+        exit 1
+      fi
+
       if [ ! -d "$REPO_PATH" ]; then
         echo "ERROR: repo_path does not exist: $REPO_PATH" >&2; exit 1
       fi
       cd "$REPO_PATH"
-      echo "Launching parallel workstreams (tree: $TREE_ID, depth: $DEPTH):"
+      echo "Launching parallel workstreams (tree: $TREE_ID, depth: $SESSION_DEPTH):"
       cat "$WS_FILE"
       echo "---"
-      AMPLIHACK_TREE_ID="$TREE_ID" AMPLIHACK_SESSION_DEPTH="$DEPTH" \
+      AMPLIHACK_TREE_ID="$TREE_ID" AMPLIHACK_SESSION_DEPTH="$SESSION_DEPTH" \
         python3 .claude/skills/multitask/orchestrator.py "$WS_FILE"
     output: "round_1_result"
 
-  - id: "recursion-limit-notice"
+  # ─────────────────────────────────────────────────────────────────────────
+  # Recursion depth limit: announce and fall back to single-session execution
+  # ─────────────────────────────────────────────────────────────────────────
+
+  - id: "announce-depth-limited"
     type: "bash"
     condition: |
       ('Development' in task_type or 'Investigation' in task_type) and 'BLOCKED' in recursion_guard and int(str(workstream_count).strip() or '1') > 1
     command: |
-      echo "RECURSION GUARD: session depth limit reached — cannot spawn sub-workstreams."
-      echo "Depth state: {{recursion_guard}}"
+      GUARD_STATE={{recursion_guard}}
       echo ""
-      echo "REMEDIATION:"
-      echo "  To allow deeper orchestration, set in your shell:"
-      echo "    export AMPLIHACK_MAX_DEPTH=5"
-      echo "  To make this persistent, add it to ~/.bashrc or your project .env file."
-      echo ""
-      echo "Continuing as single-session execution (no child workstreams)."
-      echo "STATUS: DEPTH_LIMITED"
+      echo "WARNING: RECURSION GUARD: Parallel workstream spawning blocked ($GUARD_STATE)"
+      echo "  Falling back to single-session execution."
+      echo "  To allow deeper orchestration: export AMPLIHACK_MAX_DEPTH=5"
+      echo "  To persist: add to ~/.bashrc or project .env"
+    output: "depth_limited_notice"
+
+  - id: "execute-single-fallback-blocked"
+    type: "agent"
+    # Fires when blocked from spawning subworkstreams — executes as single session instead
+    condition: |
+      ('Development' in task_type or 'Investigation' in task_type) and 'BLOCKED' in recursion_guard
+    agent: "amplihack:core:builder"
+    prompt: |
+      Execute this task as a single session (parallel execution is depth-limited).
+
+      **Goal**: {{decomposition_json}}
+      **Task**: {{task_description}}
+      **Repo**: {{repo_path}}
+      **Note**: Parallel workstream spawning was blocked by the recursion guard.
+      Execute the full task in this single session following DEFAULT_WORKFLOW.md steps 0-22.
+      Create a PR. Report PR URL.
+      End with "STATUS: COMPLETE" or "STATUS: CONTINUE".
     output: "round_1_result"
 
   # Cleanup temp workstreams file
@@ -455,6 +509,7 @@ steps:
 
   - id: "summarize"
     type: "agent"
+    condition: "'Q&A' not in task_type and 'Operations' not in task_type and round_1_result"
     agent: "amplihack:core:architect"
     prompt: |
       Produce a concise execution summary.
@@ -482,15 +537,17 @@ steps:
   - id: "complete-session"
     type: "bash"
     command: |
-      SESSION_ID=$(echo '{{session_info}}' | cut -d: -f1)
-      TREE_ID=$(echo '{{session_info}}' | cut -d: -f2)
+      SESSION_JSON={{session_info}}
+      SESSION_ID=$(echo "$SESSION_JSON" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('session_id',''))" 2>/dev/null || echo "")
+      TREE_ID=$(echo "$SESSION_JSON" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('tree_id',''))" 2>/dev/null || echo "")
+      STATUS=$(echo "$SESSION_JSON" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('status',''))" 2>/dev/null || echo "")
       TREE_SCRIPT="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/session_tree.py"
 
-      if [ -n "$SESSION_ID" ] && [ "$SESSION_ID" != "REGISTRATION_FAILED" ] && [ -f "$TREE_SCRIPT" ]; then
+      if [ -n "$SESSION_ID" ] && [ "$STATUS" = "ok" ] && [ -f "$TREE_SCRIPT" ]; then
         AMPLIHACK_TREE_ID="$TREE_ID" python3 "$TREE_SCRIPT" complete "$SESSION_ID"
         echo "Session $SESSION_ID completed in tree $TREE_ID"
       else
-        echo "No session to complete (session_info: {{session_info}})"
+        echo "No session to complete (status: ${STATUS:-empty})"
       fi
     output: "session_complete_status"
 

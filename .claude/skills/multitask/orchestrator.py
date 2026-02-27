@@ -142,19 +142,28 @@ class ParallelOrchestrator:
 
             shutil.rmtree(ws.work_dir)
 
-        print(f"[{issue}] Cloning from main (workflow will create {branch})...")
+        # Detect the default branch of the remote repository
+        try:
+            default_branch_result = subprocess.run(
+                ["git", "ls-remote", "--symref", self.repo_url, "HEAD"],
+                capture_output=True, text=True, timeout=30,
+            )
+            # Output: "ref: refs/heads/main\tHEAD" -> extract "main"
+            default_branch = "main"  # fallback
+            for line in default_branch_result.stdout.splitlines():
+                if line.startswith("ref: refs/heads/"):
+                    default_branch = line.split("refs/heads/")[1].split("\t")[0].strip()
+                    break
+        except Exception:
+            default_branch = "main"
+
+        print(f"[{issue}] Cloning default branch '{default_branch}' from remote...")
         subprocess.run(
             [
-                "git",
-                "clone",
-                "--depth=1",
-                "--branch=main",
-                self.repo_url,
-                str(ws.work_dir),
+                "git", "clone", "--depth=1", f"--branch={default_branch}",
+                self.repo_url, str(ws.work_dir),
             ],
-            check=True,
-            capture_output=True,
-            timeout=120,
+            check=True, capture_output=True, timeout=120,
         )
         # Note: The workflow Step 4 will create the feature branch
 
@@ -439,18 +448,31 @@ class ParallelOrchestrator:
         print(f"  Free: {free_gb:.1f}GB / {total_gb:.1f}GB ({100 - used_percent:.1f}% available)")
 
         if free_gb < min_free_gb:
-            print(f"\n⚠️  WARNING: Only {free_gb:.1f}GB free (threshold: {min_free_gb}GB)")
-            print("Each workstream requires ~1.5GB. Consider cleaning up old workstreams:")
-            print(f"  rm -rf {self.tmp_base}/ws-*")
+            # Non-interactive: fail loudly if disk is low, don't prompt
+            print(f"\n⚠  WARNING: Only {free_gb:.1f}GB free (threshold: {min_free_gb}GB)")
+            print(f"  Each workstream requires ~1.5GB. Clean up old workstreams to proceed:")
+            print(f"    rm -rf {self.tmp_base}/ws-*")
+            print(f"  Or set AMPLIHACK_SKIP_DISK_CHECK=1 to bypass this check.")
             print()
-            try:
-                response = input("Continue anyway? (y/N): ").strip().lower()
-                if response != "y":
-                    print("Aborted by user.")
-                    sys.exit(0)
-            except (EOFError, KeyboardInterrupt):
-                print("\nAborted.")
-                sys.exit(0)
+
+            if os.environ.get("AMPLIHACK_SKIP_DISK_CHECK") == "1":
+                print("Disk check bypassed via AMPLIHACK_SKIP_DISK_CHECK=1")
+                return
+
+            # In a TTY, prompt. In non-interactive context, abort.
+            if sys.stdin.isatty():
+                try:
+                    response = input("Continue anyway? (y/N): ").strip().lower()
+                    if response != "y":
+                        print("Aborted by user.")
+                        sys.exit(0)
+                except (EOFError, KeyboardInterrupt):
+                    print("\nAborted.")
+                    sys.exit(1)  # Exit code 1 (not 0) so recipe runner detects failure
+            else:
+                print("Non-interactive environment: aborting due to low disk space.")
+                print("Set AMPLIHACK_SKIP_DISK_CHECK=1 to proceed anyway.")
+                sys.exit(1)  # Exit code 1 so recipe runner step fails loudly
 
     def _calculate_disk_usage(self) -> tuple[float, int]:
         """Calculate total disk usage of all workstream directories.
