@@ -5,6 +5,7 @@ Covers: extract_json, normalise_type, and CLI subcommands.
 """
 
 import json
+import os
 import subprocess
 import sys
 import unittest
@@ -175,6 +176,23 @@ class TestCLIUnknownSubcommand(unittest.TestCase):
         )
         self.assertEqual(r.returncode, 1, f"Expected rc=1 for unknown command, got {r.returncode}")
         self.assertIn("Unknown", r.stderr)
+
+
+class TestHelperPathImport(unittest.TestCase):
+    """Verify the recipe's HELPER_PATH import pattern works."""
+
+    def test_import_via_helper_path_env_var(self):
+        """Verify the recipe's import pattern works: HELPER_PATH must be importable."""
+        tools_dir = str(Path(__file__).parent.parent / "amplifier-bundle" / "tools")
+        r = subprocess.run(
+            [sys.executable, "-c",
+             "import os,sys; sys.path.insert(0,os.path.dirname(os.environ['HELPER_PATH'])); import orch_helper; print('ok')"],
+            env={**os.environ, "HELPER_PATH": f"{tools_dir}/orch_helper.py"},
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(r.returncode, 0, f"Import via HELPER_PATH failed: {r.stderr}")
+        self.assertEqual(r.stdout.strip(), "ok")
 
 
 if __name__ == "__main__":
