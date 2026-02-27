@@ -393,35 +393,35 @@ class PowerSteeringChecker:
         {
             "id": "todos_complete",
             "category": "Session Completion & Progress",
-            "question": "Were all TODO items completed?",
+            "question": "Were all TodoWrite task items marked as completed before the session ended?",
             "severity": "blocker",
             "checker": "_check_todos_complete",
         },
         {
             "id": "dev_workflow_complete",
             "category": "Workflow Process Adherence",
-            "question": "Was full DEFAULT_WORKFLOW followed?",
+            "question": "Were all required DEFAULT_WORKFLOW steps completed this session, including requirements clarification, design, implementation, testing, and PR creation?",
             "severity": "blocker",
             "checker": "_check_dev_workflow_complete",
         },
         {
             "id": "philosophy_compliance",
             "category": "Code Quality & Philosophy",
-            "question": "PHILOSOPHY adherence (zero-BS)?",
+            "question": "Does all code written this session comply with the zero-BS philosophy, meaning no TODO comments, no NotImplementedError stubs, no placeholder functions, and no unimplemented code paths?",
             "severity": "blocker",
             "checker": "_check_philosophy_compliance",
         },
         {
             "id": "local_testing",
             "category": "Testing & Local Validation",
-            "question": "Sure agent tested locally?",
+            "question": "Did the agent run the test suite locally (e.g., pytest, npm test, cargo test) and confirm all tests passed before declaring the work complete?",
             "severity": "blocker",
             "checker": "_check_local_testing",
         },
         {
             "id": "ci_status",
             "category": "CI/CD & Mergeability",
-            "question": "CI passing/mergeable?",
+            "question": "Are all GitHub Actions CI checks passing and the PR in a mergeable state, with no failing required checks or unresolved merge conflicts?",
             "severity": "blocker",
             "checker": "_check_ci_status",
         },
@@ -3146,6 +3146,104 @@ class PowerSteeringChecker:
         except Exception as e:
             self._log(f"Could not write violation log (non-critical): {e}", "WARNING")
 
+    def _check_no_direct_main_commit(self, transcript: list[dict], session_id: str) -> bool:
+        """Check that the agent did not commit directly to main.
+
+        Verifies the mandatory user preference that all code changes go through
+        a feature branch and PR, never committing directly to main/master.
+
+        Args:
+            transcript: List of message dictionaries
+            session_id: Session identifier
+
+        Returns:
+            True if no direct-to-main commits detected, False otherwise
+        """
+        for msg in transcript:
+            if msg.get("type") == "assistant" and "message" in msg:
+                content = msg["message"].get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "tool_use":
+                            if block.get("name") == "Bash":
+                                command = block.get("input", {}).get("command", "")
+                                # Detect git commit on main/master (not on a feature branch)
+                                # Pattern: git commit while on main/master branch
+                                if "git commit" in command:
+                                    # Check if we're on main/master by looking at
+                                    # recent tool results for branch context
+                                    if self._is_on_main_branch(transcript):
+                                        return False
+                                # Detect git push to main/master
+                                if "git push" in command and (
+                                    "origin main" in command or "origin master" in command
+                                ):
+                                    return False
+        return True
+
+    def _is_on_main_branch(self, transcript: list[dict]) -> bool:
+        """Helper: check if recent git context shows we're on main/master.
+
+        Args:
+            transcript: List of message dictionaries
+
+        Returns:
+            True if evidence suggests we're on main/master branch
+        """
+        for msg in reversed(transcript[-30:]):
+            if msg.get("type") == "tool_result":
+                output = str(msg.get("message", {}).get("content", "")).lower()
+                # Look for branch indicators in git output
+                if "on branch main" in output or "on branch master" in output:
+                    return True
+                if "* main" in output or "* master" in output:
+                    return True
+        return False
+
+    def _check_decisions_logged(self, transcript: list[dict], session_id: str) -> bool:
+        """Check if architectural decisions were logged to DECISIONS.md.
+
+        Per CLAUDE.md: 'All Agents MUST log their decisions and reasoning in
+        .claude/runtime/logs/<session_id>/DECISIONS.md'
+
+        Only fires if there were significant implementation decisions (agent
+        invocations, architecture discussions). Simple changes don't need
+        decision logs.
+
+        Args:
+            transcript: List of message dictionaries
+            session_id: Session identifier
+
+        Returns:
+            True if decisions logged or no significant decisions were made
+        """
+        # Check if there were agent invocations (Task tool calls) suggesting
+        # significant decisions were being made
+        has_agent_calls = False
+        has_decisions_file = False
+
+        for msg in transcript:
+            if msg.get("type") == "assistant" and "message" in msg:
+                content = msg["message"].get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "tool_use":
+                            tool_name = block.get("name", "")
+                            # Agent invocations suggest architectural decisions
+                            if tool_name == "Task":
+                                has_agent_calls = True
+                            # Check if DECISIONS.md was written to
+                            if tool_name in ["Write", "Edit"]:
+                                file_path = block.get("input", {}).get("file_path", "")
+                                if "DECISIONS.md" in file_path:
+                                    has_decisions_file = True
+
+        # Only require DECISIONS.md if there were agent invocations
+        if has_agent_calls and not has_decisions_file:
+            return False
+
+        return True
+
     def _check_dev_workflow_complete(self, transcript: list[dict], session_id: str) -> bool:
         """Check if full DEFAULT_WORKFLOW followed.
 
@@ -3185,13 +3283,19 @@ class PowerSteeringChecker:
 
         return True
 
+    # File extensions where TODO/FIXME/stubs are acceptable (docs, config, YAML)
+    NON_CODE_EXTENSIONS = [".md", ".txt", ".rst", ".yml", ".yaml", ".json", ".toml", ".cfg", ".ini"]
+
     def _check_philosophy_compliance(self, transcript: list[dict], session_id: str) -> bool:
         """Check for PHILOSOPHY adherence (zero-BS).
 
         Heuristics:
-        - Look for "TODO", "FIXME", "XXX" in Write/Edit tool calls
+        - Look for "TODO", "FIXME", "XXX" in Write/Edit tool calls to CODE files
         - Check for stub implementations (NotImplementedError, pass)
         - Detect placeholder comments
+        - Skip documentation, YAML, and config files where these words may
+          appear legitimately (e.g., YAML questions mentioning TODO, docs
+          explaining the philosophy)
 
         Args:
             transcript: List of message dictionaries
@@ -3210,6 +3314,12 @@ class PowerSteeringChecker:
                             tool_name = block.get("name", "")
                             if tool_name in ["Write", "Edit"]:
                                 tool_input = block.get("input", {})
+                                file_path = tool_input.get("file_path", "")
+
+                                # Skip non-code files (docs, YAML, config) where
+                                # TODO/FIXME may appear legitimately
+                                if any(file_path.endswith(ext) for ext in self.NON_CODE_EXTENSIONS):
+                                    continue
 
                                 # Check content for anti-patterns
                                 content_to_check = ""
@@ -3544,31 +3654,34 @@ class PowerSteeringChecker:
         return True  # Phase 2: Always satisfied (fail-open)
 
     def _check_agent_unnecessary_questions(self, transcript: list[dict], session_id: str) -> bool:
-        """Check if agent asked unnecessary questions instead of proceeding.
+        """Check if agent asked unnecessary questions instead of proceeding autonomously.
 
-        Detects questions that could have been inferred from context.
+        Detects use of AskUserQuestion tool, which is the concrete signal that the
+        agent stopped to ask the user something. Simple question marks in prose
+        (explanations, documentation, rhetorical questions) are NOT counted.
 
         Args:
             transcript: List of message dictionaries
             session_id: Session identifier
 
         Returns:
-            True if no unnecessary questions, False otherwise
+            True if no excessive questioning, False if agent over-asked
         """
-        # Count questions asked by assistant
-        assistant_questions = 0
+        # Count actual AskUserQuestion tool invocations (the concrete signal)
+        ask_user_count = 0
         for msg in transcript:
-            if msg.get("type") == "assistant":
-                content = msg.get("message", {}).get("content", [])
+            if msg.get("type") == "assistant" and "message" in msg:
+                content = msg["message"].get("content", [])
                 if isinstance(content, list):
                     for block in content:
-                        if isinstance(block, dict) and block.get("type") == "text":
-                            text = str(block.get("text", ""))
-                            # Count question marks in assistant responses
-                            assistant_questions += text.count("?")
+                        if isinstance(block, dict) and block.get("type") == "tool_use":
+                            if block.get("name") == "AskUserQuestion":
+                                ask_user_count += 1
 
-        # Heuristic: If assistant asked more than 3 questions, might be excessive
-        if assistant_questions > 3:
+        # More than 3 explicit AskUserQuestion invocations suggests the agent
+        # was not working autonomously. This avoids false positives from
+        # question marks in prose, documentation, or code comments.
+        if ask_user_count > 3:
             return False
 
         return True
@@ -3617,10 +3730,24 @@ class PowerSteeringChecker:
 
         return False  # No completion indicators found
 
+    # Paths that indicate user-facing/public code changes requiring doc updates
+    PUBLIC_CODE_INDICATORS = [
+        "/commands/",
+        "/skills/",
+        "/scenarios/",
+        "cli",
+        "__init__.py",
+        "__main__.py",
+        "setup.py",
+        "pyproject.toml",
+    ]
+
     def _check_documentation_updates(self, transcript: list[dict], session_id: str) -> bool:
         """Check if relevant documentation files were updated.
 
-        Looks for Write/Edit operations on documentation files.
+        Only flags missing docs when PUBLIC-FACING code was changed (commands,
+        skills, CLIs, public APIs). Internal code changes (hooks, utilities,
+        tests, configs) do not require documentation updates.
 
         Args:
             transcript: List of message dictionaries
@@ -3629,8 +3756,7 @@ class PowerSteeringChecker:
         Returns:
             True if docs updated or not applicable, False if needed but missing
         """
-        # Check if code changes were made
-        code_files_modified = False
+        public_code_modified = False
         doc_files_modified = False
 
         for msg in transcript:
@@ -3642,18 +3768,23 @@ class PowerSteeringChecker:
                             tool_name = block.get("name", "")
                             if tool_name in ["Write", "Edit"]:
                                 tool_input = block.get("input", {})
-                                file_path = tool_input.get("file_path", "")
+                                file_path = tool_input.get("file_path", "").lower()
 
-                                # Check for code files using class constant
-                                if any(ext in file_path for ext in self.CODE_FILE_EXTENSIONS):
-                                    code_files_modified = True
+                                # Only flag public-facing code changes
+                                if any(
+                                    ext in file_path for ext in self.CODE_FILE_EXTENSIONS
+                                ) and any(
+                                    indicator in file_path
+                                    for indicator in self.PUBLIC_CODE_INDICATORS
+                                ):
+                                    public_code_modified = True
 
                                 # Check for doc files using class constant
                                 if any(ext in file_path for ext in self.DOC_FILE_EXTENSIONS):
                                     doc_files_modified = True
 
-        # If code was modified but no docs updated, flag as issue
-        if code_files_modified and not doc_files_modified:
+        # Only flag if public-facing code was changed without doc updates
+        if public_code_modified and not doc_files_modified:
             return False
 
         return True
@@ -4116,14 +4247,18 @@ class PowerSteeringChecker:
         Returns:
             True if interactive testing done, False if only automated tests
         """
-        # Look for interactive testing indicators
+        # Look for interactive testing indicators in assistant messages
         interactive_keywords = [
             "manually tested",
-            "tried",
-            "verified",
-            "checked",
-            "confirmed",
-            "validated",
+            "manually verified",
+            "tried it",
+            "verified the output",
+            "checked the result",
+            "confirmed it works",
+            "validated the behavior",
+            "tested end-to-end",
+            "ran the command",
+            "tested with real",
         ]
 
         for msg in transcript:
@@ -4136,44 +4271,43 @@ class PowerSteeringChecker:
                             if any(keyword in text for keyword in interactive_keywords):
                                 return True
 
-        # Also accept if automated tests are comprehensive (10+ tests)
-        test_count = 0
+        # Also accept if automated tests show a substantial passing count.
+        # Use regex to find patterns like "N passed" or "N tests passed"
+        # instead of naively counting occurrences of "passed" and "ok".
         for msg in transcript:
             if msg.get("type") == "tool_result":
                 output = str(msg.get("message", {}).get("content", ""))
-                # Count test results
-                test_count += output.lower().count("passed")
-                test_count += output.lower().count("ok")
-
-        if test_count >= 10:
-            return True  # Comprehensive automated testing is acceptable
+                # Match pytest-style "N passed" or "N tests passed"
+                match = re.search(r"(\d+)\s+passed", output, re.IGNORECASE)
+                if match:
+                    count = int(match.group(1))
+                    if count >= 10:
+                        return True
 
         return False
 
     def _check_unrelated_changes(self, transcript: list[dict], session_id: str) -> bool:
         """Check if there are unrelated changes in PR.
 
-        Detects scope creep and unrelated modifications.
+        Detects scope creep by checking if files span too many unrelated
+        top-level directories. A focused change should touch files in 1-3
+        related directories. Touching 6+ distinct top-level directories
+        suggests scope creep.
+
+        Previous heuristic (>20 files = scope creep) was replaced because
+        file count has no correlation with relatedness — a legitimate refactor
+        can touch 50 files in one module while a 5-file change can span
+        unrelated areas.
 
         Args:
             transcript: List of message dictionaries
             session_id: Session identifier
 
         Returns:
-            True if no unrelated changes, False if scope creep detected
+            True if changes appear focused, False if too scattered
         """
-        # Get original objective from first user message
-        first_user_msg = None
-        for msg in transcript:
-            if msg.get("type") == "user":
-                first_user_msg = str(msg.get("message", {}).get("content", "")).lower()
-                break
-
-        if not first_user_msg:
-            return True
-
-        # Check files modified
-        files_modified = []
+        # Collect distinct top-level directories of modified files
+        top_dirs = set()
         for msg in transcript:
             if msg.get("type") == "assistant" and "message" in msg:
                 content = msg["message"].get("content", [])
@@ -4182,10 +4316,19 @@ class PowerSteeringChecker:
                         if isinstance(block, dict) and block.get("type") == "tool_use":
                             if block.get("name") in ["Write", "Edit"]:
                                 file_path = block.get("input", {}).get("file_path", "")
-                                files_modified.append(file_path.lower())
+                                # Extract top-level directory from absolute or relative path
+                                parts = file_path.strip("/").split("/")
+                                # Skip if single file in root
+                                if len(parts) >= 2:
+                                    # Use the first meaningful directory component
+                                    # (skip common prefixes like /home/user/src/project)
+                                    for part in parts:
+                                        if part not in ("home", "root", "tmp", "var"):
+                                            top_dirs.add(part)
+                                            break
 
-        # Heuristic: If more than 20 files modified, might have scope creep
-        if len(files_modified) > 20:
+        # 6+ distinct top-level directories suggests scattered changes
+        if len(top_dirs) >= 6:
             return False
 
         return True
@@ -4275,33 +4418,53 @@ class PowerSteeringChecker:
     def _check_review_responses(self, transcript: list[dict], session_id: str) -> bool:
         """Check if PR review comments were addressed.
 
-        Verifies reviewer feedback was acknowledged and resolved.
+        Only triggers when there is concrete evidence of actual PR review activity
+        (gh pr review, gh api for PR comments, reviewer requested changes). Does NOT
+        trigger on the generic word 'review' in user messages, which caused widespread
+        false positives.
 
         Args:
             transcript: List of message dictionaries
             session_id: Session identifier
 
         Returns:
-            True if reviews addressed or no reviews, False if unaddressed feedback
+            True if reviews addressed or no PR reviews exist, False if unaddressed
         """
-        # Look for review-related activity
-        review_keywords = ["review", "feedback", "comment", "requested changes"]
-        has_reviews = False
+        # Look for concrete PR review signals in tool calls, not generic keywords.
+        # These indicate actual GitHub PR review comments exist.
+        pr_review_patterns = [
+            "gh pr review",
+            "gh api repos/",
+            "requested changes",
+            "changes_requested",
+            "reviewer comment",
+            "review comment",
+        ]
+        has_pr_reviews = False
 
         for msg in transcript:
-            if msg.get("type") == "user":
-                content = str(msg.get("message", {}).get("content", "")).lower()
-                if any(keyword in content for keyword in review_keywords):
-                    has_reviews = True
-                    break
+            # Check Bash tool calls for gh pr review commands
+            if msg.get("type") == "assistant" and "message" in msg:
+                content = msg["message"].get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "tool_use":
+                            if block.get("name") == "Bash":
+                                command = block.get("input", {}).get("command", "").lower()
+                                if any(p in command for p in pr_review_patterns):
+                                    has_pr_reviews = True
+                                    break
+            # Check tool results for review-related output
+            if msg.get("type") == "tool_result":
+                output = str(msg.get("message", {}).get("content", "")).lower()
+                if "requested changes" in output or "changes_requested" in output:
+                    has_pr_reviews = True
 
-        if not has_reviews:
-            return True  # No reviews to address
+        if not has_pr_reviews:
+            return True  # No PR reviews to address
 
-        # Look for response indicators
-        response_keywords = ["addressed", "fixed", "updated", "changed", "resolved"]
-        has_responses = False
-
+        # Look for response indicators showing reviews were handled
+        response_keywords = ["addressed", "fixed", "updated", "resolved", "pushed"]
         for msg in transcript:
             if msg.get("type") == "assistant":
                 content = msg.get("message", {}).get("content", [])
@@ -4310,10 +4473,9 @@ class PowerSteeringChecker:
                         if isinstance(block, dict) and block.get("type") == "text":
                             text = str(block.get("text", "")).lower()
                             if any(keyword in text for keyword in response_keywords):
-                                has_responses = True
-                                break
+                                return True
 
-        return has_responses
+        return False
 
     def _check_branch_rebase(self, transcript: list[dict], session_id: str) -> bool:
         """Check if branch needs rebase on main.
