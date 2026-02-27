@@ -200,13 +200,12 @@ def _save(tree_id: str, state: dict, max_age_hours: float = 24.0, active_max_age
     completed_cutoff = now - (max_age_hours * 3600)
     active_cutoff = now - (active_max_age_hours * 3600)
 
-    # started_at defaults to 0 (epoch): sessions with no start time are treated
-    #   as maximally old and always pruned when their slot would otherwise be leaked.
-    # completed_at defaults to float("inf"): sessions with no completion time are
-    #   treated as never completed and are preserved (safe default: don't prune).
+    # started_at and completed_at default to 0 (epoch): sessions missing these
+    #   timestamps are treated as maximally old and always pruned, preventing
+    #   leaked sessions from occupying capacity slots permanently.
     pruned = {}
     for sid, s in state["sessions"].items():
-        if s.get("status") == "completed" and s.get("completed_at", float("inf")) < completed_cutoff:
+        if s.get("status") == "completed" and s.get("completed_at", 0) < completed_cutoff:
             continue  # prune old completed session
         if s.get("status") == "active" and s.get("started_at", 0) < active_cutoff:
             print(

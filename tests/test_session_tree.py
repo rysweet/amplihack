@@ -447,17 +447,17 @@ class TestTTLPruning(unittest.TestCase):
         self.assertNotIn("no-ts", state_after["sessions"],
             "Active session with missing started_at must be pruned")
 
-    def test_completed_session_missing_completed_at_is_preserved(self):
-        """Completed sessions with no completed_at default to float('inf') — preserved."""
+    def test_completed_session_missing_completed_at_is_pruned(self):
+        """Completed sessions with no completed_at default to 0 (epoch) — always pruned."""
         tree = self._unique_tree()
         st.register_session("no-ct", tree_id=tree, depth=0)
         st.complete_session("no-ct", tree_id=tree)
         state = st._load(tree)
         del state["sessions"]["no-ct"]["completed_at"]
-        st._save(tree, state)  # triggers TTL; should NOT prune (float('inf') default)
+        st._save(tree, state)  # triggers TTL; epoch default means always prunable
         state_after = st._load(tree)
-        self.assertIn("no-ct", state_after["sessions"],
-            "Completed session with missing completed_at must be preserved")
+        self.assertNotIn("no-ct", state_after["sessions"],
+            "Completed session with missing completed_at must be pruned")
 
 
 class TestCLISubcommands(unittest.TestCase):
