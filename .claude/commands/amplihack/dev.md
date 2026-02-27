@@ -25,6 +25,25 @@ examples:
 
 This is an alias for `/amplihack:default-workflow`. See that command for full documentation.
 
+## What to Expect
+
+When you run `/amplihack:dev <task>`, Claude will:
+
+1. Parse your task description
+2. Execute the full 23-step development workflow (branch, design, implement, test, PR)
+3. Work autonomously through each step, delegating to specialized agents
+4. Create a PR with your changes when complete
+
+Just type `/dev <task>` and let it run.
+
+## Task Description
+
+```
+{TASK_DESCRIPTION}
+```
+
+---
+
 ## EXECUTION INSTRUCTIONS FOR CLAUDE
 
 When this command is invoked, execute exactly as `/amplihack:default-workflow`:
@@ -56,9 +75,3 @@ When this command is invoked, execute exactly as `/amplihack:default-workflow`:
    ```
 
 4. **Create TodoWrite entries** for all 23 steps and execute systematically.
-
-## Task Description
-
-```
-{TASK_DESCRIPTION}
-```
