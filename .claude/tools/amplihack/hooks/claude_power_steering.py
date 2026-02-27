@@ -355,14 +355,24 @@ def _format_consideration_prompt(consideration: dict, conversation: list[dict]) 
     # Format conversation summary
     conv_summary = _format_conversation_summary(conversation)
 
+    # Build the evaluation guidance section
+    guidance = consideration.get("guidance", "")
+    guidance_section = ""
+    if guidance:
+        guidance_section = f"""
+## Evaluation Guidance (specific to this consideration)
+
+{guidance}
+"""
+
     # Simple inline prompt (no template file needed for fail-open behavior)
     # Issue #2561: Enhanced prompt to distinguish completion summaries from action items
-    prompt = f"""You are analyzing a Claude Code session to determine if the following consideration is satisfied:
+    prompt = f"""You are analyzing a Claude Code session to determine if the following consideration is satisfied.
 
 **Consideration**: {consideration["question"]}
 **Description**: {consideration.get("description", consideration.get("question", ""))}
 **Category**: {consideration.get("category", "General")}
-
+{guidance_section}
 **Session Conversation** ({len(conversation)} messages):
 {conv_summary}
 
@@ -370,22 +380,18 @@ def _format_consideration_prompt(consideration: dict, conversation: list[dict]) 
 
 Analyze the conversation and determine if this consideration is satisfied.
 
-**IMPORTANT - Distinguish completion summaries from action items (Issue #2561):**
-- A message that SUMMARIZES what was accomplished (past tense: "fixed", "resolved", "applied", "pushed") is a COMPLETION CONFIRMATION, not remaining work.
-- Bullet lists describing what WAS done (e.g., "Changes made:\\n- Fixed the bug\\n- Updated tests") are SUMMARIES, not action items.
-- Only flag as NOT SATISFIED if there are genuine FUTURE-TENSE action items that the agent stated it would do but hasn't completed yet.
+**General principles:**
+- A message that SUMMARIZES what was accomplished (past tense) is a COMPLETION CONFIRMATION, not remaining work.
+- Only flag as NOT SATISFIED if there is concrete evidence the consideration was violated.
 - For small sessions (few edits, one-line fixes), lean toward SATISFIED if the core task appears done.
+- If the consideration is not applicable to this session, respond SATISFIED.
 
 **Respond with ONE of:**
 - "SATISFIED: [brief reason]" if the consideration is met
 - "NOT SATISFIED: [brief reason]" if the consideration is not met
 
 Your response MUST start with either "SATISFIED:" or "NOT SATISFIED:".
-
-Be direct and specific. Reference actual events from the conversation.
-Focus on evidence - what tools were used, what actions were taken, what the user and assistant discussed.
-
-If the consideration is not applicable to this session (e.g., no relevant work was done), respond with SATISFIED.
+Be direct. Reference actual evidence from the conversation.
 """
 
     return prompt
