@@ -9,6 +9,7 @@ import json
 import os
 import sys
 import time
+import threading
 import unittest
 from pathlib import Path
 
@@ -33,6 +34,21 @@ def _fresh_env(**overrides) -> dict:
 
 class TestDepthEnforcement(unittest.TestCase):
     """Max depth of 3 must be enforced."""
+
+    def setUp(self):
+        self._trees_created = []
+
+    def tearDown(self):
+        for tree in self._trees_created:
+            for suffix in ('.json', '.lock'):
+                p = st.STATE_DIR / f'{tree}{suffix}'
+                p.unlink(missing_ok=True)
+
+    def _unique_tree(self) -> str:
+        import uuid
+        t = "test-" + uuid.uuid4().hex[:8]
+        self._trees_created.append(t)
+        return t
 
     def test_root_session_is_allowed(self):
         result = st.check_can_spawn(tree_id="", depth=0)
@@ -75,9 +91,20 @@ class TestDepthEnforcement(unittest.TestCase):
 class TestMaxSessionsLimit(unittest.TestCase):
     """Active session count must be enforced."""
 
+    def setUp(self):
+        self._trees_created = []
+
+    def tearDown(self):
+        for tree in self._trees_created:
+            for suffix in ('.json', '.lock'):
+                p = st.STATE_DIR / f'{tree}{suffix}'
+                p.unlink(missing_ok=True)
+
     def _unique_tree(self) -> str:
         import uuid
-        return "test-" + uuid.uuid4().hex[:8]
+        t = "test-" + uuid.uuid4().hex[:8]
+        self._trees_created.append(t)
+        return t
 
     def test_new_tree_is_always_allowed(self):
         result = st.check_can_spawn(tree_id="nonexistent-tree-xyz", depth=0)
@@ -126,9 +153,20 @@ class TestMaxSessionsLimit(unittest.TestCase):
 class TestSessionRegistration(unittest.TestCase):
     """register_session must track parent-child relationships."""
 
+    def setUp(self):
+        self._trees_created = []
+
+    def tearDown(self):
+        for tree in self._trees_created:
+            for suffix in ('.json', '.lock'):
+                p = st.STATE_DIR / f'{tree}{suffix}'
+                p.unlink(missing_ok=True)
+
     def _unique_tree(self) -> str:
         import uuid
-        return "test-" + uuid.uuid4().hex[:8]
+        t = "test-" + uuid.uuid4().hex[:8]
+        self._trees_created.append(t)
+        return t
 
     def test_register_creates_state_file(self):
         tree = self._unique_tree()
@@ -157,13 +195,32 @@ class TestSessionRegistration(unittest.TestCase):
         state = st._load(tree)
         self.assertEqual(state["sessions"]["s"]["status"], "completed")
 
+    def test_complete_nonexistent_session_is_silent(self):
+        """complete_session with unknown session_id must not raise."""
+        tree = self._unique_tree()
+        st.register_session("real", tree_id=tree, depth=0)
+        st.complete_session("nonexistent", tree_id=tree)  # Must not raise
+        state = st._load(tree)
+        self.assertEqual(state["sessions"]["real"]["status"], "active")
+
 
 class TestQueueing(unittest.TestCase):
     """Items over capacity should queue and dequeue when space opens."""
 
+    def setUp(self):
+        self._trees_created = []
+
+    def tearDown(self):
+        for tree in self._trees_created:
+            for suffix in ('.json', '.lock'):
+                p = st.STATE_DIR / f'{tree}{suffix}'
+                p.unlink(missing_ok=True)
+
     def _unique_tree(self) -> str:
         import uuid
-        return "test-" + uuid.uuid4().hex[:8]
+        t = "test-" + uuid.uuid4().hex[:8]
+        self._trees_created.append(t)
+        return t
 
     def test_enqueue_adds_to_queue(self):
         tree = self._unique_tree()
@@ -207,6 +264,15 @@ class TestQueueing(unittest.TestCase):
 class TestEnvForChild(unittest.TestCase):
     """env_for_child must correctly increment depth and propagate limits."""
 
+    def setUp(self):
+        self._trees_created = []
+
+    def tearDown(self):
+        for tree in self._trees_created:
+            for suffix in ('.json', '.lock'):
+                p = st.STATE_DIR / f'{tree}{suffix}'
+                p.unlink(missing_ok=True)
+
     def test_increments_depth(self):
         saved = os.environ.get("AMPLIHACK_SESSION_DEPTH")
         os.environ["AMPLIHACK_SESSION_DEPTH"] = "1"
@@ -239,9 +305,20 @@ class TestEnvForChild(unittest.TestCase):
 class TestGetStatus(unittest.TestCase):
     """get_status returns a useful tree summary."""
 
+    def setUp(self):
+        self._trees_created = []
+
+    def tearDown(self):
+        for tree in self._trees_created:
+            for suffix in ('.json', '.lock'):
+                p = st.STATE_DIR / f'{tree}{suffix}'
+                p.unlink(missing_ok=True)
+
     def _unique_tree(self) -> str:
         import uuid
-        return "test-" + uuid.uuid4().hex[:8]
+        t = "test-" + uuid.uuid4().hex[:8]
+        self._trees_created.append(t)
+        return t
 
     def test_status_counts_correctly(self):
         tree = self._unique_tree()
@@ -255,6 +332,98 @@ class TestGetStatus(unittest.TestCase):
         self.assertIn("b", status["active"])
         self.assertIn("a", status["completed"])
         self.assertEqual(status["queued"], 1)
+
+
+class TestPathTraversalRejection(unittest.TestCase):
+    """Security: invalid tree_ids must be rejected."""
+
+    def test_path_traversal_tree_id_rejected(self):
+        with self.assertRaises((ValueError, Exception)):
+            st.register_session("s", tree_id="../../etc/evil", depth=0)
+
+    def test_empty_tree_id_rejected(self):
+        with self.assertRaises((ValueError, Exception)):
+            st._validate_tree_id("")
+
+
+class TestConcurrentAccess(unittest.TestCase):
+    """Concurrent register/complete operations must not corrupt state."""
+
+    def setUp(self):
+        self._trees_created = []
+
+    def tearDown(self):
+        for tree in self._trees_created:
+            for suffix in ('.json', '.lock'):
+                p = st.STATE_DIR / f'{tree}{suffix}'
+                p.unlink(missing_ok=True)
+
+    def _unique_tree(self) -> str:
+        import uuid
+        t = "test-" + uuid.uuid4().hex[:8]
+        self._trees_created.append(t)
+        return t
+
+    def test_concurrent_register_session_no_corruption(self):
+        """10 threads registering simultaneously must not corrupt state."""
+        tree = self._unique_tree()
+        # Use large enough max_sessions to avoid blocking
+        saved = os.environ.get("AMPLIHACK_MAX_SESSIONS")
+        os.environ["AMPLIHACK_MAX_SESSIONS"] = "20"
+        errors = []
+
+        def register(sid):
+            try:
+                st.register_session(sid, tree_id=tree, depth=0)
+            except Exception as e:
+                errors.append(e)
+
+        threads = [threading.Thread(target=register, args=(f"s{i}",)) for i in range(10)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        self.assertEqual([], errors, f"Unexpected errors: {errors}")
+        state = st._load(tree)
+        self.assertEqual(len(state["sessions"]), 10, "All 10 sessions must be registered")
+
+        # Restore
+        if saved is None:
+            os.environ.pop("AMPLIHACK_MAX_SESSIONS", None)
+        else:
+            os.environ["AMPLIHACK_MAX_SESSIONS"] = saved
+
+    def test_concurrent_register_respects_max_sessions(self):
+        """When 5 threads compete for 3 slots, exactly 3 register and 2 raise."""
+        tree = self._unique_tree()
+        saved = os.environ.get("AMPLIHACK_MAX_SESSIONS")
+        os.environ["AMPLIHACK_MAX_SESSIONS"] = "3"
+        results = {"ok": [], "err": []}
+        lock = threading.Lock()
+
+        def register(sid):
+            try:
+                st.register_session(sid, tree_id=tree, depth=0)
+                with lock:
+                    results["ok"].append(sid)
+            except RuntimeError:
+                with lock:
+                    results["err"].append(sid)
+
+        threads = [threading.Thread(target=register, args=(f"s{i}",)) for i in range(5)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        self.assertEqual(len(results["ok"]), 3, f"Exactly 3 should succeed, got: {results}")
+        self.assertEqual(len(results["err"]), 2, f"Exactly 2 should fail, got: {results}")
+
+        if saved is None:
+            os.environ.pop("AMPLIHACK_MAX_SESSIONS", None)
+        else:
+            os.environ["AMPLIHACK_MAX_SESSIONS"] = saved
 
 
 if __name__ == "__main__":
