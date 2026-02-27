@@ -17,8 +17,9 @@ dependencies = [
     "litellm>=1.0.0",
     "python-dotenv>=0.19.0",
 
-    "agent-framework>=1.0.0rc1", # Microsoft Agent Framework for goal-seeking agents
-    "opentelemetry-semantic-conventions-ai>=0.4.1,<0.4.14", # Pin for agent-framework compat (0.4.14 removed LLM_REQUEST_MODEL)
+    # agent-framework is optional because it requires pre-release Azure deps
+    # that break uv resolution outside the project. Install separately:
+    #   pip install "agent-framework>=1.0.0rc1" --prerelease=allow
     "claude-agent-sdk>=0.1.0", # Claude Python Agent SDK for auto mode streaming
     "github-copilot-sdk>=0.1.0", # GitHub Copilot SDK for embedding Copilot in applications
     "rich>=13.0.0", # Required for --ui interactive TUI mode
@@ -54,6 +55,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Microsoft Agent Framework requires pre-release Azure deps
+microsoft-sdk = [
+    "agent-framework>=1.0.0rc1",
+    "opentelemetry-semantic-conventions-ai>=0.4.1,<0.4.14",
+]
 # When running as an Amplifier bundle, hook modules need amplifier-core
 amplifier = [
     "amplifier-core @ git+https://github.com/microsoft/amplifier-core@main",
