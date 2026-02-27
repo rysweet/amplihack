@@ -74,41 +74,30 @@ steps:
     type: "bash"
     command: |
       HELPER_PATH="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/orch_helper.py"
-      DECOMP_JSON={{decomposition_json}}
+      DECOMP_JSON='{{decomposition_json}}'
       export DECOMP_JSON HELPER_PATH
       python3 - <<'PYEOF'
-      import os, json, sys
+      import os, sys
       sys.path.insert(0, os.path.dirname(os.environ['HELPER_PATH']))
       import orch_helper
       obj = orch_helper.extract_json(os.environ['DECOMP_JSON'])
       task_type = orch_helper.normalise_type(obj.get("task_type", "Development"))
       count = max(1, len(obj.get("workstreams", [{}])))
-      print(json.dumps({"task_type": task_type, "workstream_count": count}))
+      print(f"task_type={task_type}")
+      print(f"workstream_count={count}")
       PYEOF
     output: "parse_output"
 
   - id: "extract-task-type"
     type: "bash"
     command: |
-      echo '{{parse_output}}' | python3 -c "
-      import sys, json
-      try:
-          print(json.loads(sys.stdin.read()).get('task_type', 'Development'))
-      except Exception:
-          print('Development')
-      "
+      echo '{{parse_output}}' | grep '^task_type=' | cut -d= -f2 || echo 'Development'
     output: "task_type"
 
   - id: "extract-workstream-count"
     type: "bash"
     command: |
-      echo '{{parse_output}}' | python3 -c "
-      import sys, json
-      try:
-          print(json.loads(sys.stdin.read()).get('workstream_count', 1))
-      except Exception:
-          print(1)
-      "
+      echo '{{parse_output}}' | grep '^workstream_count=' | cut -d= -f2 || echo '1'
     output: "workstream_count"
 
   # ─────────────────────────────────────────────────────────────────────────
@@ -147,8 +136,10 @@ steps:
         if [ -z "$TREE_ID" ]; then
           TREE_ID=$(python3 -c "import uuid; print(uuid.uuid4().hex[:8])")
         fi
-        DEPTH_VAL=${AMPLIHACK_SESSION_DEPTH:-0}
-        python3 -c "import json; print(json.dumps({'session_id': '$SESSION_ID', 'tree_id': '$TREE_ID', 'depth': $DEPTH_VAL, 'status': 'no_tree_script'}))"
+        DEPTH_RAW="${AMPLIHACK_SESSION_DEPTH:-0}"
+        # Validate it's an integer (default to 0 if not)
+        DEPTH_VAL=$(echo "$DEPTH_RAW" | grep -E '^[0-9]+$' || echo '0')
+        python3 -c "import sys,json; sid,tid,depth=sys.argv[1],sys.argv[2],int(sys.argv[3]); print(json.dumps({'session_id':sid,'tree_id':tid,'depth':depth,'status':'no_tree_script'}))" "$SESSION_ID" "$TREE_ID" "$DEPTH_VAL"
       fi
     output: "session_info"
 
@@ -190,37 +181,19 @@ steps:
     output: "round_1_result"
 
   # ─────────────────────────────────────────────────────────────────────────
-  # Recursion guard -- enforce session tree depth before spawning workstreams
-  # Uses the registered tree_id from setup-session for accurate depth tracking.
+  # Recursion guard -- derive from session_info (registered atomically in setup-session)
   # ─────────────────────────────────────────────────────────────────────────
 
-  - id: "check-recursion-guard"
+  - id: "derive-recursion-guard"
     type: "bash"
     condition: "'Development' in task_type or 'Investigation' in task_type"
     command: |
-      # Extract tree_id and depth from registered session_info (JSON)
-      SESSION_JSON={{session_info}}
+      SESSION_JSON='{{session_info}}'
       SESSION_STATUS=$(echo "$SESSION_JSON" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('status','ok'))")
-      TREE_ID=$(echo "$SESSION_JSON" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('tree_id',''))")
-      SESSION_DEPTH=$(echo "$SESSION_JSON" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('depth',0))")
-
-      # Skip check if registration failed
-      if [ "$SESSION_STATUS" = "registration_failed" ]; then
-        echo "BLOCKED:registration_failed"
-        exit 0
-      fi
-
-      TREE_SCRIPT="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/session_tree.py"
-
-      if [ -f "$TREE_SCRIPT" ]; then
-        # Use registered tree_id and depth for accurate check
-        AMPLIHACK_TREE_ID="$TREE_ID" AMPLIHACK_SESSION_DEPTH="$SESSION_DEPTH" python3 "$TREE_SCRIPT" check
+      if [ "$SESSION_STATUS" = "ok" ] || [ "$SESSION_STATUS" = "no_tree_script" ]; then
+        echo "ALLOWED"
       else
-        python3 -c "
-      import sys
-      depth, max_d = int(sys.argv[1]), int(sys.argv[2])
-      print('ALLOWED' if depth < max_d else f'BLOCKED:depth={depth}>=max={max_d}')
-      " "$SESSION_DEPTH" "${AMPLIHACK_MAX_DEPTH:-3}"
+        echo "BLOCKED:${SESSION_STATUS}"
       fi
     output: "recursion_guard"
 
@@ -230,19 +203,6 @@ steps:
   # newline. The .strip() and `or '1'` are load-bearing — do not remove them.
   # If workstream_count is empty (step failed), we default to 1 (single workstream).
   # ─────────────────────────────────────────────────────────────────────────
-
-  - id: "announce-execution-start"
-    type: "bash"
-    condition: "('Development' in task_type or 'Investigation' in task_type) and int(str(workstream_count).strip() or '1') == 1"
-    command: |
-      TASK_TYPE={{task_type}}
-      WS_COUNT={{workstream_count}}
-      echo ""
-      echo "╔══════════════════════════════════════════════════════════════╗"
-      echo "║  Smart Orchestrator: Executing (Round 1 of 3)               ║"
-      printf "║  Type: %-14s  Workstreams: %-24s║\n" "$TASK_TYPE" "$WS_COUNT"
-      echo "╚══════════════════════════════════════════════════════════════╝"
-    output: "announce_start_status"
 
   - id: "execute-single-round-1"
     type: "agent"
@@ -270,7 +230,7 @@ steps:
       ('Development' in task_type or 'Investigation' in task_type) and int(str(workstream_count).strip() or '1') > 1 and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
     command: |
       HELPER_PATH="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/orch_helper.py"
-      DECOMP_JSON={{decomposition_json}}
+      DECOMP_JSON='{{decomposition_json}}'
       export DECOMP_JSON HELPER_PATH
       python3 - <<'PYEOF'
       import json, os, re, tempfile, sys
@@ -296,26 +256,14 @@ steps:
       PYEOF
     output: "workstreams_file"
 
-  - id: "announce-parallel-start"
-    type: "bash"
-    condition: "('Development' in task_type or 'Investigation' in task_type) and int(str(workstream_count).strip() or '1') > 1 and 'ALLOWED' in recursion_guard"
-    command: |
-      COUNT={{workstream_count}}
-      echo ""
-      echo "╔══════════════════════════════════════════════════════════════╗"
-      echo "║  Smart Orchestrator: Launching $COUNT parallel workstream(s)          ║"
-      echo "║  Round 1 of 3 — running in /tmp/amplihack-workstreams/      ║"
-      echo "╚══════════════════════════════════════════════════════════════╝"
-    output: "announce_parallel_status"
-
   - id: "launch-parallel-round-1"
     type: "bash"
     condition: |
       ('Development' in task_type or 'Investigation' in task_type) and int(str(workstream_count).strip() or '1') > 1 and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
     command: |
-      REPO_PATH={{repo_path}}
-      WS_FILE={{workstreams_file}}
-      SESSION_JSON={{session_info}}
+      REPO_PATH='{{repo_path}}'
+      WS_FILE='{{workstreams_file}}'
+      SESSION_JSON='{{session_info}}'
       TREE_ID=$(echo "$SESSION_JSON" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('tree_id',''))")
       SESSION_DEPTH=$(echo "$SESSION_JSON" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('depth',0))")
 
@@ -351,7 +299,7 @@ steps:
     condition: |
       ('Development' in task_type or 'Investigation' in task_type) and 'BLOCKED' in recursion_guard and int(str(workstream_count).strip() or '1') > 1
     command: |
-      GUARD_STATE={{recursion_guard}}
+      GUARD_STATE='{{recursion_guard}}'
       echo ""
       echo "WARNING: RECURSION GUARD: Parallel workstream spawning blocked ($GUARD_STATE)"
       echo "  Falling back to single-session execution."
@@ -381,7 +329,7 @@ steps:
   - id: "cleanup-helper"
     type: "bash"
     command: |
-      WS_FILE={{workstreams_file}}
+      WS_FILE='{{workstreams_file}}'
       [ -f "$WS_FILE" ] && rm -f "$WS_FILE"
       echo "ok"
     output: "cleanup_status"
@@ -394,7 +342,7 @@ steps:
   - id: "reflect-round-1"
     type: "agent"
     condition: |
-      'Q&A' not in task_type and 'Operations' not in task_type and round_1_result and 'DEPTH_LIMITED' not in round_1_result
+      'Q&A' not in task_type and 'Operations' not in task_type and round_1_result
     agent: "amplihack:core:reviewer"
     prompt: |
       Evaluate goal achievement after round 1.
@@ -409,16 +357,6 @@ steps:
       - `GOAL_STATUS: PARTIAL -- [what's missing]` -- needs another round
       - `GOAL_STATUS: NOT_ACHIEVED -- [reason]` -- needs another round
     output: "reflection_1"
-
-  - id: "announce-round-2"
-    type: "bash"
-    condition: "reflection_1 and ('PARTIAL' in reflection_1 or 'NOT_ACHIEVED' in reflection_1)"
-    command: |
-      echo ""
-      echo "┌──────────────────────────────────────────────────────────────┐"
-      echo "│  Smart Orchestrator: Goal not yet achieved — Round 2 of 3   │"
-      echo "└──────────────────────────────────────────────────────────────┘"
-    output: "announce_round2_status"
 
   - id: "execute-round-2"
     type: "agent"
@@ -454,16 +392,6 @@ steps:
       - `GOAL_STATUS: PARTIAL -- [gaps]`
       - `GOAL_STATUS: NOT_ACHIEVED -- [reason]`
     output: "reflection_2"
-
-  - id: "announce-round-3"
-    type: "bash"
-    condition: "reflection_2 and ('PARTIAL' in reflection_2 or 'NOT_ACHIEVED' in reflection_2)"
-    command: |
-      echo ""
-      echo "┌──────────────────────────────────────────────────────────────┐"
-      echo "│  Smart Orchestrator: Final attempt — Round 3 of 3           │"
-      echo "└──────────────────────────────────────────────────────────────┘"
-    output: "announce_round3_status"
 
   - id: "execute-round-3"
     type: "agent"
@@ -537,7 +465,7 @@ steps:
   - id: "complete-session"
     type: "bash"
     command: |
-      SESSION_JSON={{session_info}}
+      SESSION_JSON='{{session_info}}'
       SESSION_ID=$(echo "$SESSION_JSON" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('session_id',''))" 2>/dev/null || echo "")
       TREE_ID=$(echo "$SESSION_JSON" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('tree_id',''))" 2>/dev/null || echo "")
       STATUS=$(echo "$SESSION_JSON" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('status',''))" 2>/dev/null || echo "")

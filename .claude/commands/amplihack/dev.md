@@ -52,7 +52,16 @@ classifies your task, detects parallel workstreams, and executes via recipe runn
 
 **Session Tree**: A lightweight state tracker in `/tmp/amplihack-session-trees/` that prevents infinite recursive orchestration by tracking active sessions and enforcing depth and capacity limits.
 
-**Goal-Seeking Loop**: The up-to-3-round retry mechanism. After each execution round, a reviewer agent evaluates whether the goal was achieved. If PARTIAL or NOT_ACHIEVED, another round runs automatically (up to 3 total).
+**Goal-Seeking Loop**: The up-to-3-round retry mechanism. After each execution
+round, a reviewer agent evaluates whether the goal was achieved. If PARTIAL or
+NOT_ACHIEVED, another round runs automatically (up to 3 total). After all rounds
+complete, a mandatory `reflect-final` step runs unconditionally to produce the
+definitive `GOAL_STATUS` assessment used in the summary.
+
+**Recursion Guard Fallback**: When the session depth limit is reached and
+parallel workstream spawning is blocked, the orchestrator automatically falls
+back to single-session execution (via `execute-single-fallback-blocked`). The
+task runs as a single Claude session without sub-workstream spawning.
 
 ## Examples
 
@@ -86,7 +95,9 @@ classifies your task, detects parallel workstreams, and executes via recipe runn
       │
       ├─ 1 workstream ──────────────────────→ default-workflow recipe
       │
-      └─ N workstreams (parallel) ──────────→ multitask orchestrator
+      ├─ N workstreams (parallel) ──────────→ multitask orchestrator
+      │         [if BLOCKED by depth limit: falls back to]
+      └─────────────────────────────────────→ single-session execution
                                                     │
                                                     ▼
                                            [Reflect on goal]

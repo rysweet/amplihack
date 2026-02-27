@@ -51,7 +51,11 @@ User request
              │
          [Recursion guard] (AMPLIHACK_SESSION_DEPTH vs AMPLIHACK_MAX_DEPTH=3)
              │         │
-           ALLOWED   BLOCKED → single-session fallback (no sub-spawning)
+           ALLOWED   BLOCKED → [announce-depth-limited banner]
+                                    ↓
+                           [execute-single-fallback-blocked]
+                                    ↓
+                           [Execute round 1 (single-session)]
              │
          [Decompose]
              │         │
@@ -156,6 +160,24 @@ After execution completes, verify the goal was achieved. If not:
 | "investigate auth system then add OAuth" | 2: investigate + implement (sequential) |
 | "fix bug in payment flow"                | 1: bugfix (default-workflow)            |
 
+## Override Options
+
+**Single workstream override**: Pass `force_single_workstream: "true"` in the
+recipe user_context to prevent automatic parallel decomposition regardless of
+task structure. This is a programmatic option (not directly settable from `/dev`):
+
+```python
+run_recipe_by_name(
+    "smart-orchestrator",
+    adapter=adapter,
+    user_context={
+        "task_description": task,
+        "repo_path": ".",
+        "force_single_workstream": "true",  # disables parallel decomposition
+    }
+)
+```
+
 ## Canonical Sources
 
 - **Recipe**: `amplifier-bundle/recipes/smart-orchestrator.yaml`
@@ -190,7 +212,6 @@ Appears at the end of round execution steps:
 
 - `STATUS: COMPLETE` — the round's work is fully done
 - `STATUS: CONTINUE` — more work remains after this round
-- `STATUS: DEPTH_LIMITED` — spawning was blocked by recursion guard
 
 ### Goal status (from reviewer agents)
 
@@ -201,3 +222,10 @@ Appears at the end of reflection steps:
 - `GOAL_STATUS: NOT_ACHIEVED — [reason]` — goal not met, another round needed
 
 The goal-seeking loop uses GOAL_STATUS signals to decide whether to run round 2 or 3.
+
+**BLOCKED path (recursion guard)**: When multi-workstream spawning is blocked
+by the depth limit, the orchestrator falls back to single-session execution:
+1. `announce-depth-limited` — prints a warning banner with remediation info
+2. `execute-single-fallback-blocked` — executes the full task as a single
+   builder agent session (same as single-workstream path, produces
+   `STATUS: COMPLETE` or `STATUS: CONTINUE`)
