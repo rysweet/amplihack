@@ -7,6 +7,7 @@ scoring logic, and report generation -- all without LLM calls.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -27,6 +28,8 @@ from amplihack.eval.long_horizon_memory import (
     EvalResult,
     LongHorizonMemoryEval,
     _extract_json,
+    _load_dialogue_slice,
+    _save_dialogue_json,
 )
 
 
@@ -651,3 +654,93 @@ class TestPeriodicAgentRestart:
         # Should not raise even when close() fails
         result = evaluator.run_dialogue(initial, agent_factory=agent_factory)
         assert isinstance(result, tuple)
+
+
+class TestDialogueSaveLoad:
+    """Tests for dialogue JSON save/load used by segmented learning."""
+
+    def test_save_and_load_roundtrip(self, tmp_path: Path):
+        """Saved dialogue can be loaded back with identical content."""
+        gt = generate_dialogue(num_turns=50, seed=42)
+        json_path = tmp_path / "dialogue.json"
+        _save_dialogue_json(gt, json_path)
+
+        assert json_path.exists()
+        turns = _load_dialogue_slice(json_path, 0, 50)
+        assert len(turns) == 50
+        for i, turn in enumerate(turns):
+            assert turn["content"] == gt.turns[i].content
+            assert turn["turn_number"] == gt.turns[i].turn_number
+
+    def test_load_slice_subset(self, tmp_path: Path):
+        """Loading a slice returns only the requested range."""
+        gt = generate_dialogue(num_turns=100, seed=42)
+        json_path = tmp_path / "dialogue.json"
+        _save_dialogue_json(gt, json_path)
+
+        # Load turns 20-40 (exclusive end)
+        turns = _load_dialogue_slice(json_path, 20, 40)
+        assert len(turns) == 20
+        assert turns[0]["turn_number"] == gt.turns[20].turn_number
+        assert turns[-1]["turn_number"] == gt.turns[39].turn_number
+
+    def test_load_slice_at_boundary(self, tmp_path: Path):
+        """Loading the last slice works correctly even if it's smaller."""
+        gt = generate_dialogue(num_turns=50, seed=42)
+        json_path = tmp_path / "dialogue.json"
+        _save_dialogue_json(gt, json_path)
+
+        # Load last segment (turns 40-50)
+        turns = _load_dialogue_slice(json_path, 40, 50)
+        assert len(turns) == 10
+        assert turns[0]["turn_number"] == gt.turns[40].turn_number
+
+    def test_load_slice_beyond_end(self, tmp_path: Path):
+        """Slice beyond the end returns available turns (Python slice behavior)."""
+        gt = generate_dialogue(num_turns=50, seed=42)
+        json_path = tmp_path / "dialogue.json"
+        _save_dialogue_json(gt, json_path)
+
+        turns = _load_dialogue_slice(json_path, 45, 100)
+        assert len(turns) == 5
+
+    def test_load_empty_slice(self, tmp_path: Path):
+        """Empty slice returns empty list."""
+        gt = generate_dialogue(num_turns=50, seed=42)
+        json_path = tmp_path / "dialogue.json"
+        _save_dialogue_json(gt, json_path)
+
+        turns = _load_dialogue_slice(json_path, 50, 50)
+        assert len(turns) == 0
+
+    def test_saved_json_is_valid(self, tmp_path: Path):
+        """Saved file is valid JSON with expected structure."""
+        gt = generate_dialogue(num_turns=20, seed=42)
+        json_path = tmp_path / "dialogue.json"
+        _save_dialogue_json(gt, json_path)
+
+        with open(json_path) as f:
+            data = json.load(f)
+        assert isinstance(data, list)
+        assert len(data) == 20
+        assert "content" in data[0]
+        assert "turn_number" in data[0]
+        assert "block" in data[0]
+        assert "block_name" in data[0]
+
+    def test_multiple_segments_cover_all_turns(self, tmp_path: Path):
+        """Multiple non-overlapping slices cover all turns exactly once."""
+        gt = generate_dialogue(num_turns=100, seed=42)
+        json_path = tmp_path / "dialogue.json"
+        _save_dialogue_json(gt, json_path)
+
+        all_contents = []
+        segment_size = 30
+        for start in range(0, 100, segment_size):
+            end = min(start + segment_size, 100)
+            turns = _load_dialogue_slice(json_path, start, end)
+            all_contents.extend(t["content"] for t in turns)
+
+        assert len(all_contents) == 100
+        for i, content in enumerate(all_contents):
+            assert content == gt.turns[i].content

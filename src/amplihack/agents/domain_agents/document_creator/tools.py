@@ -69,16 +69,24 @@ def analyze_structure(content: str, doc_type: str = "report") -> dict[str, Any]:
 
     # If no sections detected, create one from the whole content
     if not sections and word_count > 0:
-        sections = [{"title": "Main Content", "level": 1, "line_start": 1, "content_lines": len(lines)}]
+        sections = [
+            {"title": "Main Content", "level": 1, "line_start": 1, "content_lines": len(lines)}
+        ]
 
     # Structure score based on doc type expectations
     expected_sections = {"report": 4, "memo": 3, "proposal": 5, "guide": 4}.get(doc_type, 3)
     section_ratio = min(1.0, len(sections) / expected_sections)
-    has_intro = any("intro" in s["title"].lower() or "overview" in s["title"].lower() for s in sections)
+    has_intro = any(
+        "intro" in s["title"].lower() or "overview" in s["title"].lower() for s in sections
+    )
     has_conclusion = any(
         "conclusion" in s["title"].lower() or "summary" in s["title"].lower() for s in sections
     )
-    structure_score = 0.4 * section_ratio + 0.3 * (1.0 if has_intro else 0.0) + 0.3 * (1.0 if has_conclusion else 0.0)
+    structure_score = (
+        0.4 * section_ratio
+        + 0.3 * (1.0 if has_intro else 0.0)
+        + 0.3 * (1.0 if has_conclusion else 0.0)
+    )
 
     return {
         "sections": sections,
@@ -125,21 +133,47 @@ def evaluate_content(content: str, audience: str = "general") -> dict[str, Any]:
 
     # Readability scoring (simplified Flesch-Kincaid approximation)
     if avg_sentence_len > 25:
-        issues.append({"type": "readability", "message": f"Average sentence length is {avg_sentence_len:.0f} words (target: <25)"})
+        issues.append(
+            {
+                "type": "readability",
+                "message": f"Average sentence length is {avg_sentence_len:.0f} words (target: <25)",
+            }
+        )
     if long_word_ratio > 0.3:
-        issues.append({"type": "readability", "message": f"High ratio of complex words: {long_word_ratio:.0%}"})
+        issues.append(
+            {
+                "type": "readability",
+                "message": f"High ratio of complex words: {long_word_ratio:.0%}",
+            }
+        )
 
-    readability = max(0.0, 1.0 - 0.02 * max(0, avg_sentence_len - 15) - 0.5 * max(0, long_word_ratio - 0.15))
+    readability = max(
+        0.0, 1.0 - 0.02 * max(0, avg_sentence_len - 15) - 0.5 * max(0, long_word_ratio - 0.15)
+    )
 
     # Completeness checks
-    has_intro = bool(re.search(r"\b(introduction|overview|purpose|objective)\b", content, re.IGNORECASE))
-    has_conclusion = bool(re.search(r"\b(conclusion|summary|next steps|recommendation)\b", content, re.IGNORECASE))
+    has_intro = bool(
+        re.search(r"\b(introduction|overview|purpose|objective)\b", content, re.IGNORECASE)
+    )
+    has_conclusion = bool(
+        re.search(r"\b(conclusion|summary|next steps|recommendation)\b", content, re.IGNORECASE)
+    )
     has_body = word_count > 100
-    completeness = (0.3 * has_intro + 0.4 * has_body + 0.3 * has_conclusion)
+    completeness = 0.3 * has_intro + 0.4 * has_body + 0.3 * has_conclusion
 
     # Audience match
-    technical_indicators = len(re.findall(r"\b(API|SDK|implementation|algorithm|infrastructure|deploy|config)\b", content, re.IGNORECASE))
-    executive_indicators = len(re.findall(r"\b(ROI|strategy|revenue|budget|timeline|stakeholder|KPI)\b", content, re.IGNORECASE))
+    technical_indicators = len(
+        re.findall(
+            r"\b(API|SDK|implementation|algorithm|infrastructure|deploy|config)\b",
+            content,
+            re.IGNORECASE,
+        )
+    )
+    executive_indicators = len(
+        re.findall(
+            r"\b(ROI|strategy|revenue|budget|timeline|stakeholder|KPI)\b", content, re.IGNORECASE
+        )
+    )
 
     audience_scores = {
         "technical": min(1.0, technical_indicators / 3),
@@ -150,7 +184,9 @@ def evaluate_content(content: str, audience: str = "general") -> dict[str, Any]:
     audience_match = audience_scores.get(audience, 0.5)
 
     if not has_intro:
-        issues.append({"type": "completeness", "message": "Missing introduction or overview section"})
+        issues.append(
+            {"type": "completeness", "message": "Missing introduction or overview section"}
+        )
     if not has_conclusion:
         issues.append({"type": "completeness", "message": "Missing conclusion or summary section"})
 
@@ -199,7 +235,9 @@ def format_document(content: str, format_type: str = "markdown") -> dict[str, An
                     hashes = heading_match.group(1)
                     title = heading_match.group(2)
                     if not title:
-                        format_issues.append({"type": "empty_heading", "message": f"Line {i+1}: Empty heading"})
+                        format_issues.append(
+                            {"type": "empty_heading", "message": f"Line {i + 1}: Empty heading"}
+                        )
                     formatted_lines.append(f"{hashes} {title}")
                     continue
 
@@ -217,7 +255,12 @@ def format_document(content: str, format_type: str = "markdown") -> dict[str, An
     for line in formatted_lines:
         if line.strip().startswith("#"):
             if prev_was_heading:
-                format_issues.append({"type": "consecutive_headings", "message": "Consecutive headings without content"})
+                format_issues.append(
+                    {
+                        "type": "consecutive_headings",
+                        "message": "Consecutive headings without content",
+                    }
+                )
             prev_was_heading = True
         elif line.strip():
             prev_was_heading = False
@@ -268,8 +311,14 @@ def assess_audience(content: str, target_audience: str = "general") -> dict[str,
         vocabulary_level = "basic"
 
     # Tone detection
-    formal_indicators = len(re.findall(r"\b(furthermore|consequently|therefore|henceforth|pursuant)\b", content, re.IGNORECASE))
-    casual_indicators = len(re.findall(r"\b(you|your|we|let's|here's|isn't|don't|can't)\b", content, re.IGNORECASE))
+    formal_indicators = len(
+        re.findall(
+            r"\b(furthermore|consequently|therefore|henceforth|pursuant)\b", content, re.IGNORECASE
+        )
+    )
+    casual_indicators = len(
+        re.findall(r"\b(you|your|we|let's|here's|isn't|don't|can't)\b", content, re.IGNORECASE)
+    )
 
     if formal_indicators > casual_indicators:
         tone = "formal"
@@ -283,16 +332,30 @@ def assess_audience(content: str, target_audience: str = "general") -> dict[str,
     audience_score = 0.5  # baseline
 
     if target_audience == "technical":
-        tech_terms = len(re.findall(r"\b(API|SDK|config|deploy|instance|server|database|query)\b", content, re.IGNORECASE))
-        audience_score = min(1.0, 0.3 + tech_terms * 0.1 + 0.2 * (1 if vocabulary_level != "basic" else 0))
+        tech_terms = len(
+            re.findall(
+                r"\b(API|SDK|config|deploy|instance|server|database|query)\b",
+                content,
+                re.IGNORECASE,
+            )
+        )
+        audience_score = min(
+            1.0, 0.3 + tech_terms * 0.1 + 0.2 * (1 if vocabulary_level != "basic" else 0)
+        )
         if tech_terms < 2:
             recommendations.append("Include more technical terminology")
         if tone == "casual":
             recommendations.append("Consider a more formal tone for technical audience")
 
     elif target_audience == "executive":
-        exec_terms = len(re.findall(r"\b(ROI|revenue|strategy|budget|impact|risk|timeline)\b", content, re.IGNORECASE))
-        audience_score = min(1.0, 0.3 + exec_terms * 0.1 + 0.2 * (1 if vocabulary_level != "advanced" else 0.5))
+        exec_terms = len(
+            re.findall(
+                r"\b(ROI|revenue|strategy|budget|impact|risk|timeline)\b", content, re.IGNORECASE
+            )
+        )
+        audience_score = min(
+            1.0, 0.3 + exec_terms * 0.1 + 0.2 * (1 if vocabulary_level != "advanced" else 0.5)
+        )
         if exec_terms < 2:
             recommendations.append("Include business metrics and strategic language")
         if vocabulary_level == "advanced":
@@ -307,7 +370,12 @@ def assess_audience(content: str, target_audience: str = "general") -> dict[str,
             recommendations.append("Use a more approachable tone")
 
     else:  # general
-        audience_score = min(1.0, 0.5 + 0.2 * (1 if vocabulary_level == "intermediate" else 0) + 0.3 * (1 if tone == "neutral" else 0))
+        audience_score = min(
+            1.0,
+            0.5
+            + 0.2 * (1 if vocabulary_level == "intermediate" else 0)
+            + 0.3 * (1 if tone == "neutral" else 0),
+        )
 
     if not recommendations:
         recommendations.append("Content appears well-suited for target audience")

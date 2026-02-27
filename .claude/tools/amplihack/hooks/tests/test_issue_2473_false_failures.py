@@ -141,12 +141,8 @@ class TestCreatePassingAnalysisConsistency(unittest.TestCase):
         checker = PowerSteeringChecker(self.project_root)
 
         original = ConsiderationAnalysis()
-        original.add_result(
-            CheckerResult("b1", satisfied=False, reason="Fail", severity="blocker")
-        )
-        original.add_result(
-            CheckerResult("w1", satisfied=False, reason="Fail", severity="warning")
-        )
+        original.add_result(CheckerResult("b1", satisfied=False, reason="Fail", severity="blocker"))
+        original.add_result(CheckerResult("w1", satisfied=False, reason="Fail", severity="warning"))
 
         # Address everything
         addressed = {"b1": "Done", "w1": "Done"}
@@ -197,9 +193,7 @@ class TestStopHookVisibilityDecisionLogic(unittest.TestCase):
         )
 
         # This is the exact condition from the fix in stop.py
-        is_visibility_only = (
-            result.is_first_stop and result.reasons == ["first_stop_visibility"]
-        )
+        is_visibility_only = result.is_first_stop and result.reasons == ["first_stop_visibility"]
         self.assertTrue(
             is_visibility_only,
             "first_stop_visibility result should be detected as visibility-only",
@@ -215,9 +209,7 @@ class TestStopHookVisibilityDecisionLogic(unittest.TestCase):
             is_first_stop=True,
         )
 
-        is_visibility_only = (
-            result.is_first_stop and result.reasons == ["first_stop_visibility"]
-        )
+        is_visibility_only = result.is_first_stop and result.reasons == ["first_stop_visibility"]
         self.assertFalse(
             is_visibility_only,
             "Actual failure result should NOT be detected as visibility-only",
@@ -233,9 +225,7 @@ class TestStopHookVisibilityDecisionLogic(unittest.TestCase):
             is_first_stop=False,
         )
 
-        is_visibility_only = (
-            result.is_first_stop and result.reasons == ["first_stop_visibility"]
-        )
+        is_visibility_only = result.is_first_stop and result.reasons == ["first_stop_visibility"]
         self.assertFalse(
             is_visibility_only,
             "Subsequent stop should NOT be treated as visibility-only",
@@ -262,9 +252,7 @@ class TestStopHookVisibilityDecisionLogic(unittest.TestCase):
             is_first_stop=True,
         )
 
-        is_visibility_only = (
-            result.is_first_stop and result.reasons == ["first_stop_visibility"]
-        )
+        is_visibility_only = result.is_first_stop and result.reasons == ["first_stop_visibility"]
         self.assertFalse(
             is_visibility_only,
             "Mixed reasons should not be treated as visibility-only",
@@ -312,9 +300,7 @@ class TestFirstStopVisibilityTurnState(unittest.TestCase):
 
         # Write minimal transcript
         transcript_file = self.project_root / f"{session_id}.jsonl"
-        line = json.dumps(
-            {"type": "user", "message": {"role": "user", "content": "Fix login bug"}}
-        )
+        line = json.dumps({"type": "user", "message": {"role": "user", "content": "Fix login bug"}})
         transcript_file.write_text(line + "\n")
 
         # Subsequent check should approve via _already_ran
@@ -371,12 +357,8 @@ class TestFormatResultsTextWithPassingAnalysis(unittest.TestCase):
         checker = PowerSteeringChecker(self.project_root)
 
         original = ConsiderationAnalysis()
-        original.add_result(
-            CheckerResult("c1", satisfied=False, reason="Fail", severity="blocker")
-        )
-        original.add_result(
-            CheckerResult("c2", satisfied=False, reason="Fail", severity="blocker")
-        )
+        original.add_result(CheckerResult("c1", satisfied=False, reason="Fail", severity="blocker"))
+        original.add_result(CheckerResult("c2", satisfied=False, reason="Fail", severity="blocker"))
 
         addressed = {"c1": "Done", "c2": "Done"}
         passing_analysis = checker._create_passing_analysis(original, addressed)
@@ -503,12 +485,8 @@ class TestEndToEndFalseFailurePrevention(unittest.TestCase):
         """
         # Simulate what power-steering checker returns when all checks pass
         analysis = ConsiderationAnalysis()
-        analysis.add_result(
-            CheckerResult("c1", satisfied=True, reason="OK", severity="blocker")
-        )
-        analysis.add_result(
-            CheckerResult("c2", satisfied=True, reason="OK", severity="warning")
-        )
+        analysis.add_result(CheckerResult("c1", satisfied=True, reason="OK", severity="blocker"))
+        analysis.add_result(CheckerResult("c2", satisfied=True, reason="OK", severity="warning"))
 
         ps_result = PowerSteeringResult(
             decision="block",
@@ -519,10 +497,9 @@ class TestEndToEndFalseFailurePrevention(unittest.TestCase):
         )
 
         # Apply the same decision logic as the fixed stop.py
-        is_visibility_only = (
-            ps_result.is_first_stop
-            and ps_result.reasons == ["first_stop_visibility"]
-        )
+        is_visibility_only = ps_result.is_first_stop and ps_result.reasons == [
+            "first_stop_visibility"
+        ]
 
         if is_visibility_only and ps_result.analysis:
             # Fixed behavior: approve
@@ -545,9 +522,7 @@ class TestEndToEndFalseFailurePrevention(unittest.TestCase):
         Verify that an actual failure result would still be blocked.
         """
         analysis = ConsiderationAnalysis()
-        analysis.add_result(
-            CheckerResult("c1", satisfied=False, reason="Fail", severity="blocker")
-        )
+        analysis.add_result(CheckerResult("c1", satisfied=False, reason="Fail", severity="blocker"))
 
         ps_result = PowerSteeringResult(
             decision="block",
@@ -557,10 +532,9 @@ class TestEndToEndFalseFailurePrevention(unittest.TestCase):
             is_first_stop=True,
         )
 
-        is_visibility_only = (
-            ps_result.is_first_stop
-            and ps_result.reasons == ["first_stop_visibility"]
-        )
+        is_visibility_only = ps_result.is_first_stop and ps_result.reasons == [
+            "first_stop_visibility"
+        ]
 
         if is_visibility_only and ps_result.analysis:
             decision = "approve"

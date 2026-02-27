@@ -131,7 +131,9 @@ class ProjectPlanningAgent(DomainAgent):
         deps = r_deps.output if r_deps.success else {}
 
         # Step 3: Risks
-        r_risks = self.executor.execute("assess_risks", tasks=tasks, context=context + " " + description)
+        r_risks = self.executor.execute(
+            "assess_risks", tasks=tasks, context=context + " " + description
+        )
         risks = r_risks.output if r_risks.success else {}
 
         # Step 4: Evaluate plan quality

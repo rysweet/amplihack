@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 # Each tool has a name, description, parameters schema, and a no-op function
 # The actual implementations are provided by the SDK runtime
 
+
 def _noop(**kwargs: Any) -> dict[str, Any]:
     """No-op placeholder function for SDK-native tools.
 

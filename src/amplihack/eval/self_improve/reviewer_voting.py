@@ -275,7 +275,7 @@ def challenge_proposal(
     defense_prompt = f"""The following arguments have been raised AGAINST your proposed patch:
 
 ## Arguments Against
-{chr(10).join(f'- {a}' for a in challenge_arguments)}
+{chr(10).join(f"- {a}" for a in challenge_arguments)}
 
 ## Your Original Proposal
 - Hypothesis: {proposal.hypothesis}
@@ -314,7 +314,9 @@ Respond with JSON:
     # Determine if concerns were adequately addressed
     total_challenges = len(challenge_arguments)
     addressed_count = len(acknowledged) + len(refuted)
-    concerns_addressed = addressed_count >= (total_challenges * 0.5) if total_challenges > 0 else True
+    concerns_addressed = (
+        addressed_count >= (total_challenges * 0.5) if total_challenges > 0 else True
+    )
 
     remaining = [
         a

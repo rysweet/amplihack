@@ -13,7 +13,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
 # ===========================================================================
 # Test 1: compat.py imports
 # ===========================================================================
@@ -90,10 +89,11 @@ class TestCompatImports:
 
     def test_types_are_same_objects(self):
         """Compat types should be the exact same objects as the eval package types."""
-        from amplihack.eval.compat import AgentAdapter as CompatAdapter
-        from amplihack.eval.compat import EvalRunner as CompatRunner
         from amplihack_eval.adapters.base import AgentAdapter as EvalAdapter
         from amplihack_eval.core.runner import EvalRunner as EvalRunnerOrig
+
+        from amplihack.eval.compat import AgentAdapter as CompatAdapter
+        from amplihack.eval.compat import EvalRunner as CompatRunner
 
         assert CompatAdapter is EvalAdapter
         assert CompatRunner is EvalRunnerOrig
@@ -214,9 +214,7 @@ class TestAmplihackLearningAgentAdapter:
 class TestAmplihackMultiAgentAdapter:
     """Test AmplihackMultiAgentAdapter wraps MultiAgentLearningAgent correctly."""
 
-    @patch(
-        "amplihack.agents.goal_seeking.sub_agents.multi_agent.MultiAgentLearningAgent"
-    )
+    @patch("amplihack.agents.goal_seeking.sub_agents.multi_agent.MultiAgentLearningAgent")
     def test_init_creates_agent_with_hierarchical(self, mock_agent_cls):
         """Constructor should pass use_hierarchical=True."""
         from amplihack.eval.agent_adapter import AmplihackMultiAgentAdapter
@@ -226,9 +224,7 @@ class TestAmplihackMultiAgentAdapter:
         assert call_kwargs["use_hierarchical"] is True
         assert adapter.name == "AmplihackMultiAgent(multi-test)"
 
-    @patch(
-        "amplihack.agents.goal_seeking.sub_agents.multi_agent.MultiAgentLearningAgent"
-    )
+    @patch("amplihack.agents.goal_seeking.sub_agents.multi_agent.MultiAgentLearningAgent")
     def test_capabilities_include_multi_agent(self, mock_agent_cls):
         """Capabilities should include 'multi_agent'."""
         from amplihack.eval.agent_adapter import AmplihackMultiAgentAdapter
@@ -237,9 +233,7 @@ class TestAmplihackMultiAgentAdapter:
         assert "multi_agent" in adapter.capabilities
         assert "memory" in adapter.capabilities
 
-    @patch(
-        "amplihack.agents.goal_seeking.sub_agents.multi_agent.MultiAgentLearningAgent"
-    )
+    @patch("amplihack.agents.goal_seeking.sub_agents.multi_agent.MultiAgentLearningAgent")
     def test_learn_delegates(self, mock_agent_cls):
         """learn() should delegate to learn_from_content()."""
         from amplihack.eval.agent_adapter import AmplihackMultiAgentAdapter
@@ -252,9 +246,7 @@ class TestAmplihackMultiAgentAdapter:
 
         mock_instance.learn_from_content.assert_called_once_with("Some facts.")
 
-    @patch(
-        "amplihack.agents.goal_seeking.sub_agents.multi_agent.MultiAgentLearningAgent"
-    )
+    @patch("amplihack.agents.goal_seeking.sub_agents.multi_agent.MultiAgentLearningAgent")
     def test_implements_agent_adapter(self, mock_agent_cls):
         """Adapter should be a valid AgentAdapter subclass."""
         from amplihack_eval.adapters.base import AgentAdapter

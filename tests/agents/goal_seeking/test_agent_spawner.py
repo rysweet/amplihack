@@ -13,11 +13,13 @@ Tests:
 from __future__ import annotations
 
 import time
-from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 
+from amplihack.agents.goal_seeking.sdk_adapters.base import (
+    AgentTool,
+    SDKType,
+)
 from amplihack.agents.goal_seeking.sub_agents.agent_spawner import (
     AgentSpawner,
     SpawnedAgent,
@@ -28,11 +30,6 @@ from amplihack.agents.goal_seeking.sub_agents.tool_injector import (
     get_sdk_tools,
     inject_sdk_tools,
 )
-from amplihack.agents.goal_seeking.sdk_adapters.base import (
-    AgentTool,
-    SDKType,
-)
-
 
 # ============================================================
 # AgentSpawner Lifecycle Tests

@@ -170,7 +170,15 @@ def _l4() -> EvalLevel:
                 name="Storytelling narrative",
                 input_data={
                     "values": [50, 30, 20, 25, 40, 55, 70],
-                    "labels": ["Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6", "Week 7"],
+                    "labels": [
+                        "Week 1",
+                        "Week 2",
+                        "Week 3",
+                        "Week 4",
+                        "Week 5",
+                        "Week 6",
+                        "Week 7",
+                    ],
                     "title": "Recovery Story",
                     "task_type": "narrative",
                     "style": "storytelling",

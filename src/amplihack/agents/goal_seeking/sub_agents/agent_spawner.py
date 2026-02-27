@@ -17,11 +17,12 @@ from __future__ import annotations
 import logging
 import re
 import time
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 # Pre-compiled word-boundary check for classification
 _WORD_BOUNDARY = re.compile(r"\b{}\b")
@@ -44,10 +45,16 @@ class SpecialistType(str, Enum):
 # before retrieval) so "web search" matches research not retrieval.
 _CLASSIFICATION_RULES: list[tuple[list[str], SpecialistType]] = [
     (["research", "web search", "look up online"], SpecialistType.RESEARCH),
-    (["generate", "write code", "script", "implement", "create program", "create a program"], SpecialistType.CODE_GENERATION),
+    (
+        ["generate", "write code", "script", "implement", "create program", "create a program"],
+        SpecialistType.CODE_GENERATION,
+    ),
     (["combine", "synthesize", "summarize", "merge", "integrate"], SpecialistType.SYNTHESIS),
     (["analyze", "pattern", "detect", "compare", "trend", "correlation"], SpecialistType.ANALYSIS),
-    (["find", "search", "retrieve", "lookup", "get facts", "what do we know"], SpecialistType.RETRIEVAL),
+    (
+        ["find", "search", "retrieve", "lookup", "get facts", "what do we know"],
+        SpecialistType.RETRIEVAL,
+    ),
 ]
 
 

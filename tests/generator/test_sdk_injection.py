@@ -26,7 +26,6 @@ from src.amplihack.goal_agent_generator.skill_synthesizer import (
     SkillSynthesizer,
 )
 
-
 # --- Fixtures ---
 
 
@@ -285,7 +284,9 @@ class TestAssemblerSDKIntegration:
         assert len(bundle.sdk_tools) == 2
         assert bundle.sdk_tools[0].name == "bash"
 
-    def test_bundle_metadata_contains_sdk_tools(self, goal_definition, execution_plan, sample_skills):
+    def test_bundle_metadata_contains_sdk_tools(
+        self, goal_definition, execution_plan, sample_skills
+    ):
         """Bundle metadata should list SDK tools when provided."""
         sdk_tools = [
             SDKToolConfig(name="file_system", description="File ops", category="file_ops"),
@@ -428,9 +429,7 @@ class TestSDKEndToEnd:
         with tempfile.TemporaryDirectory() as tmpdir:
             yield Path(tmpdir)
 
-    def test_claude_sdk_e2e(
-        self, synthesizer, goal_definition, execution_plan, temp_output_dir
-    ):
+    def test_claude_sdk_e2e(self, synthesizer, goal_definition, execution_plan, temp_output_dir):
         """Full pipeline with Claude SDK should produce agent with bash/read_file tools."""
         # Synthesize
         result = synthesizer.synthesize_with_sdk_tools(execution_plan, sdk="claude")
@@ -465,9 +464,7 @@ class TestSDKEndToEnd:
         tool_names = {t["name"] for t in tools_config["tools"]}
         assert "bash" in tool_names or "read_file" in tool_names
 
-    def test_copilot_sdk_e2e(
-        self, synthesizer, goal_definition, execution_plan, temp_output_dir
-    ):
+    def test_copilot_sdk_e2e(self, synthesizer, goal_definition, execution_plan, temp_output_dir):
         """Full pipeline with Copilot SDK should produce agent with file_system/git tools."""
         result = synthesizer.synthesize_with_sdk_tools(execution_plan, sdk="copilot")
         skills = result["skills"]

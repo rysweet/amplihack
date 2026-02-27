@@ -10,30 +10,21 @@ Tests:
 
 from __future__ import annotations
 
-from pathlib import Path
-from unittest.mock import MagicMock, patch
-
-import pytest
-
-from amplihack.agents.goal_seeking.sub_agents.agent_spawner import (
-    AgentSpawner,
-    SpawnedAgent,
-)
-from amplihack.agents.goal_seeking.sub_agents.coordinator import (
-    CoordinatorAgent,
-    TaskRoute,
-)
-from amplihack.agents.goal_seeking.sub_agents.tool_injector import (
-    get_sdk_tool_names,
-    inject_sdk_tools,
-)
 from amplihack.agents.goal_seeking.sdk_adapters.base import (
     AgentResult,
     AgentTool,
     GoalSeekingAgent,
     SDKType,
 )
-
+from amplihack.agents.goal_seeking.sub_agents.agent_spawner import (
+    AgentSpawner,
+)
+from amplihack.agents.goal_seeking.sub_agents.coordinator import (
+    CoordinatorAgent,
+)
+from amplihack.agents.goal_seeking.sub_agents.tool_injector import (
+    inject_sdk_tools,
+)
 
 # ============================================================
 # Minimal GoalSeekingAgent for testing
