@@ -322,12 +322,18 @@ class PowerSteeringChecker:
         "uvx --from git+",  # Outside-in from branch
     ]
     # Broader validation patterns (config checks, smoke tests, linting)
+    # Note: python -c requires an additional content check (must contain
+    # import/open/load/parse/validate) to avoid accepting trivial no-ops
+    # like python -c "print('hello')". See _is_meaningful_validation().
     VALIDATION_COMMAND_PATTERNS = [
-        "python -c",   # Inline validation (YAML, imports, smoke tests)
-        "node -e",     # Inline JS validation
         "ruff check",  # Linting
         "mypy",        # Type checking
         "flake8",      # Linting
+    ]
+    # These patterns require content validation via _is_meaningful_validation()
+    INLINE_VALIDATION_PATTERNS = [
+        "python -c",   # Inline validation (YAML, imports, smoke tests)
+        "node -e",     # Inline JS validation
     ]
 
     # Keywords that indicate simple housekeeping tasks (skip power-steering)
@@ -3265,7 +3271,7 @@ class PowerSteeringChecker:
 
         # Check for ACTUAL test/validation commands, not just "Bash was used"
         has_tests = False
-        all_patterns = self.TEST_COMMAND_PATTERNS + self.VALIDATION_COMMAND_PATTERNS
+        direct_patterns = self.TEST_COMMAND_PATTERNS + self.VALIDATION_COMMAND_PATTERNS
         for msg in transcript:
             if msg.get("type") == "assistant" and "message" in msg:
                 content = msg["message"].get("content", [])
@@ -3274,7 +3280,13 @@ class PowerSteeringChecker:
                         if isinstance(block, dict) and block.get("type") == "tool_use":
                             if block.get("name") == "Bash":
                                 command = block.get("input", {}).get("command", "")
-                                if any(p in command for p in all_patterns):
+                                if any(p in command for p in direct_patterns):
+                                    has_tests = True
+                                    break
+                                # Accept python -c/node -e only with real validation
+                                if any(
+                                    p in command for p in self.INLINE_VALIDATION_PATTERNS
+                                ) and self._is_meaningful_validation(command):
                                     has_tests = True
                                     break
                 if has_tests:
@@ -3356,7 +3368,14 @@ class PowerSteeringChecker:
                                 # - Multi-line:  def f():\n    pass
                                 # - Ellipsis:    def f(): ... / def f() -> int: ...
                                 # Skip if @abstractmethod context detected (legitimate pattern)
-                                has_abstract = "@abstractmethod" in content_to_check or "ABC" in content_to_check
+                                # Use specific ABC patterns to avoid false matches on
+                                # "ABC Corp", "ABC123", etc. (Issue: round 4 audit D4)
+                                has_abstract = (
+                                    "@abstractmethod" in content_to_check
+                                    or "from abc import" in content_to_check.lower()
+                                    or "import abc" in content_to_check.lower()
+                                    or re.search(r"class\s+\w+\(.*\bABC\b", content_to_check)
+                                )
                                 if not has_abstract:
                                     if re.search(
                                         r"def\s+\w+\([^)]*\)(?:\s*->.*?)?:\s*(?:pass|\.\.\.)\s*$",
@@ -3372,6 +3391,27 @@ class PowerSteeringChecker:
                                         return False
 
         return True
+
+    @staticmethod
+    def _is_meaningful_validation(command: str) -> bool:
+        """Check if a python -c or node -e command does meaningful validation.
+
+        Rejects trivial commands like print('hello') and accepts commands that
+        import modules, open files, parse data, or run actual validation logic.
+
+        Args:
+            command: The full Bash command string
+
+        Returns:
+            True if the command appears to do real validation
+        """
+        validation_signals = [
+            "import ", "from ", "open(", "load(", "parse(",
+            "validate", "check", "assert", "yaml", "json",
+            "safe_load", "read_text", "read()",
+        ]
+        cmd_lower = command.lower()
+        return any(signal in cmd_lower for signal in validation_signals)
 
     def _check_local_testing(self, transcript: list[dict], session_id: str) -> bool:
         """Check if agent tested locally.
@@ -3438,7 +3478,7 @@ class PowerSteeringChecker:
                                                                     ):
                                                                         return True
 
-        # Also accept validation commands (python -c, ruff, mypy) as testing
+        # Also accept validation commands (ruff, mypy, etc.) as testing
         # for sessions where formal test suites don't exist or aren't applicable
         for msg in transcript:
             if msg.get("type") == "assistant" and "message" in msg:
@@ -3448,10 +3488,18 @@ class PowerSteeringChecker:
                         if isinstance(block, dict) and block.get("type") == "tool_use":
                             if block.get("name") == "Bash":
                                 command = block.get("input", {}).get("command", "")
+                                # Accept linting/type-checking tools directly
                                 if any(
                                     pattern in command
                                     for pattern in self.VALIDATION_COMMAND_PATTERNS
                                 ):
+                                    return True
+                                # Accept python -c / node -e only if they do
+                                # meaningful validation (not just print('hello'))
+                                if any(
+                                    pattern in command
+                                    for pattern in self.INLINE_VALIDATION_PATTERNS
+                                ) and self._is_meaningful_validation(command):
                                     return True
 
         # No tests or validation found
@@ -4256,9 +4304,13 @@ class PowerSteeringChecker:
         """
         # Look for investigation indicators
         investigation_keywords = [
+            "investigate",
             "investigation",
+            "explore",
             "exploration",
             "research",
+            "analyze",
+            "analyse",
             "analysis",
             "findings",
         ]
