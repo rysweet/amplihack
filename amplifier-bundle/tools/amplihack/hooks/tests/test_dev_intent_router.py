@@ -1,8 +1,8 @@
 """
 Tests for dev_intent_router.py — auto-dev routing via UserPromptSubmit hook.
 
-Coverage: 51 prompts across 7 categories.
-Accuracy target: ≥98% (0 false positives, ≤1 false negative).
+Coverage: 63 tests across 10 categories.
+Accuracy target: ≥98% (minimal false positives, precision-first design).
 """
 
 import os
@@ -93,6 +93,8 @@ class TestQA(unittest.TestCase):
     def test_why_redis(self):       self._assert_skips("why use Redis instead of Memcached?")
     def test_when_microservices(self): self._assert_skips("when should I use microservices?")
     def test_solid_principles(self): self._assert_skips("what are the SOLID principles?")
+    def test_how_do_i_understand(self): self._assert_skips("how do I understand microservices?")
+    def test_how_do_i_know(self):       self._assert_skips("how do I know when to use Redis?")
 
 
 class TestGreetingsAndAcks(unittest.TestCase):
@@ -161,6 +163,24 @@ class TestEnvVarBypass(unittest.TestCase):
         self.assertTrue(ok, "should_auto_route must return True by default for dev tasks")
         self.assertIn("dev-orchestrator", ctx)
 
+    def test_zero_also_disables(self):
+        """AMPLIHACK_AUTO_DEV=0 should also disable routing."""
+        os.environ["AMPLIHACK_AUTO_DEV"] = "0"
+        try:
+            ok, _ = should_auto_route("fix the login bug")
+            self.assertFalse(ok)
+        finally:
+            del os.environ["AMPLIHACK_AUTO_DEV"]
+
+    def test_no_also_disables(self):
+        """AMPLIHACK_AUTO_DEV=no should also disable routing."""
+        os.environ["AMPLIHACK_AUTO_DEV"] = "no"
+        try:
+            ok, _ = should_auto_route("fix the login bug")
+            self.assertFalse(ok)
+        finally:
+            del os.environ["AMPLIHACK_AUTO_DEV"]
+
 
 class TestConfidenceTiers(unittest.TestCase):
     """Verify confidence and tier values for key prompt categories."""
@@ -187,6 +207,23 @@ class TestConfidenceTiers(unittest.TestCase):
         ctx = build_context_injection(r, "fix the login bug")
         self.assertIn("dev-orchestrator", ctx)
         self.assertIn("system-reminder", ctx)
+
+    def test_injection_contains_prompt_text(self):
+        """Verify the original prompt appears in the injection text."""
+        from dev_intent_router import build_context_injection
+        prompt = "fix the login timeout bug"
+        r = classify(prompt)
+        ctx = build_context_injection(r, prompt)
+        self.assertIn(prompt, ctx,
+            "Injection must include the original prompt text for Claude to forward it")
+
+    def test_long_prompt_truncated_in_injection(self):
+        """Prompts longer than 300 chars are truncated in injection."""
+        from dev_intent_router import build_context_injection
+        long_prompt = "implement " + "x" * 350
+        r = classify(long_prompt)
+        ctx = build_context_injection(r, long_prompt)
+        self.assertLess(len(ctx), 700, "Injection should not balloon for very long prompts")
 
 
 if __name__ == "__main__":

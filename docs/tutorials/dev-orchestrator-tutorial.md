@@ -18,6 +18,7 @@ and how to interpret what you see during execution.
 - [Part 4: The Goal-Seeking Loop](#part-4-the-goal-seeking-loop-5-minutes)
 - [Part 5: Interpreting Output](#part-5-interpreting-output-2-minutes)
 - [Common Patterns](#common-patterns)
+- [Auto-Routing: `/dev` Without Typing It](#auto-routing-dev-without-typing-it)
 - [Troubleshooting](#troubleshooting)
 - [Next Steps](#next-steps)
 
@@ -254,6 +255,43 @@ expected — those task types respond directly and do not generate summaries.
 
 ---
 
+## Auto-Routing: `/dev` Without Typing It
+
+amplihack automatically routes development-intent prompts to the dev-orchestrator
+even when you don't type `/dev`. The `UserPromptSubmit` hook classifies every
+prompt in <1ms and injects a directive for development tasks.
+
+**It fires for prompts like:**
+```
+fix the login timeout bug      → auto-routes to dev-orchestrator
+add OAuth support              → auto-routes
+how do I add pagination?       → auto-routes (action intent detected)
+investigate the slow queries   → auto-routes
+```
+
+**It stays out of the way for:**
+```
+what is OAuth?                 → direct Claude response (Q&A)
+/analyze the auth module       → your explicit command respected
+run git status                 → operations task, not routed
+```
+
+**Disable auto-routing:**
+```bash
+# For one session
+export AMPLIHACK_AUTO_DEV=false
+
+# Add to ~/.bashrc to disable permanently
+echo 'export AMPLIHACK_AUTO_DEV=false' >> ~/.bashrc
+```
+
+**Override for a single prompt** — add one of these phrases:
+- "just answer briefly..."
+- "without workflow..."
+- "skip orchestration..."
+
+---
+
 ## Troubleshooting
 
 **"BLOCKED: max_depth exceeded"**
@@ -290,6 +328,16 @@ The recipe cannot locate its helper module. This happens when:
 The agent is working — there are no progress bars between major steps. A complex
 task can take 10–15 minutes. Output resumes when the current agent call
 completes.
+
+**"Dev Orchestrator started when I didn't type /dev"**
+The auto-routing hook classified your prompt as a development task.
+- To disable for this session: `export AMPLIHACK_AUTO_DEV=false`
+- To override for one prompt: prefix with "just answer" or "without workflow"
+- To check what the classifier decides: use Python directly:
+  ```python
+  from amplifier-bundle.tools.amplihack.hooks.dev_intent_router import classify
+  print(classify("your prompt here"))
+  ```
 
 ---
 

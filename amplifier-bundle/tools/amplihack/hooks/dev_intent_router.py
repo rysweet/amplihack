@@ -2,13 +2,13 @@
 """
 dev_intent_router.py — Auto-routes development prompts to /dev (dev-orchestrator).
 
-Injected by user_prompt_submit.py when AMPLIHACK_AUTO_DEV != "false".
+Injected by user_prompt_submit.py when AMPLIHACK_AUTO_DEV is not disabled.
 
-Algorithm: Candidate C (Contextual), 98%+ accuracy on 50-prompt test suite.
+Algorithm: Candidate C (Contextual), minimal false positives, precision-first design.
 Strategy: Distinguish "ask about X" from "do X" using syntax + semantics.
 
 Performance: <1ms per call (pure keyword matching, no LLM).
-Disable: export AMPLIHACK_AUTO_DEV=false
+Disable: export AMPLIHACK_AUTO_DEV=false (also: 0, no, off)
 """
 
 import os
@@ -28,16 +28,13 @@ class DevIntentResult:
 
 _SKIP_PREFIXES = ('/', 'task(', 'skill(')
 
-_BYPASS_PHRASES = (
-    'without /dev', 'without dev', 'just answer', 'skip orchestration',
-    'directly answer', 'no workflow', "don't use /dev",
-    'skip workflow', 'quick answer', 'briefly answer',
-)
-
 _BYPASS_RE = re.compile(
     r'\b(just\s+(?:answer|explain|tell)|only\s+(?:explain|tell|describe)|'
-    r'briefly\s+|without\s+(?:orchestration|workflow|/dev)|'
-    r'quick(?:ly)?\s+(?:answer|tell|explain|show))\b',
+    r'briefly\s+(?:answer\b)?|without\s+(?:orchestration|workflow|/dev|dev\b)|'
+    r'quick(?:ly)?\s+(?:answer|tell|explain|show)|'
+    r'skip\s+(?:orchestration|workflow)|'
+    r'directly\s+answer|no\s+workflow|'
+    r'don\'t\s+use\s+/dev)\b',
     re.I,
 )
 
@@ -150,9 +147,6 @@ def classify(prompt: str) -> DevIntentResult:
         if p_lower.startswith(prefix):
             return DevIntentResult(False, 0.0, "skip", "existing command/invocation")
 
-    if any(phrase in p_lower for phrase in _BYPASS_PHRASES):
-        return DevIntentResult(False, 0.0, "skip", "explicit bypass phrase")
-
     if _BYPASS_RE.search(p):
         return DevIntentResult(False, 0.0, "skip", "bypass pattern")
 
@@ -180,8 +174,10 @@ def classify(prompt: str) -> DevIntentResult:
         return DevIntentResult(True, 0.80, "recommended",
                                "action + knowledge: dev task with explanation request")
 
-    # 7. Ambiguous question form with dev hint ("how do I add X")
-    if has_ambiguous and (has_action or tech_hits):
+    # 7. Ambiguous question form with action verb ("how do I add X")
+    # Requires has_action — tech_hits alone is not sufficient (prevents FP on
+    # "how do I understand microservices?" which has tech word but no action verb)
+    if has_ambiguous and has_action:
         return DevIntentResult(True, 0.75, "recommended",
                                "ambiguous question with dev intent")
 
@@ -236,9 +232,10 @@ def should_auto_route(prompt: str) -> tuple[bool, str]:
     Returns (should_inject, injection_text).
     Returns (False, "") when routing is disabled or prompt doesn't qualify.
 
-    Disable entirely: export AMPLIHACK_AUTO_DEV=false
+    Disable entirely: export AMPLIHACK_AUTO_DEV=false (also: 0, no, off)
     """
-    if os.environ.get("AMPLIHACK_AUTO_DEV", "true").lower() == "false":
+    auto_dev = os.environ.get("AMPLIHACK_AUTO_DEV", "true").lower().strip()
+    if auto_dev in ("false", "0", "no", "off"):
         return False, ""
 
     result = classify(prompt)
