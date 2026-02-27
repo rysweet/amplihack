@@ -1012,6 +1012,269 @@ class _SDKAgentWrapper:
                 pass
 
 
+def _save_dialogue_json(gt: GroundTruth, path: Path) -> None:
+    """Save generated dialogue to JSON for subprocess segment workers."""
+    turns_data = []
+    for t in gt.turns:
+        turns_data.append(
+            {
+                "turn_number": t.turn_number,
+                "content": t.content,
+                "block": t.block,
+                "block_name": t.block_name,
+                "facts": t.facts if hasattr(t, "facts") else [],
+            }
+        )
+    with open(path, "w") as f:
+        json.dump(turns_data, f)
+    logger.info("Saved dialogue (%d turns) to %s", len(turns_data), path)
+
+
+def _load_dialogue_slice(path: Path, start: int, end: int) -> list[dict[str, Any]]:
+    """Load a slice of turns from a dialogue JSON file.
+
+    Args:
+        path: Path to dialogue JSON file
+        start: Start index (inclusive, 0-based)
+        end: End index (exclusive)
+
+    Returns:
+        List of turn dicts with 'content' key
+    """
+    with open(path) as f:
+        all_turns = json.load(f)
+    return all_turns[start:end]
+
+
+def _run_segmented_learning(args: argparse.Namespace) -> None:
+    """Orchestrate segmented learning by spawning subprocess workers.
+
+    For each segment of --segment-size turns, spawns a new Python process
+    that loads the dialogue slice, learns it, and exits. This frees ALL
+    native memory (Kuzu C++, aiohttp) between segments.
+    """
+    import subprocess
+    import sys
+
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    db_path = output_dir / "memory_db"
+
+    # Step 1: Generate dialogue and save to JSON
+    logger.info("Generating %d-turn dialogue (seed=%d)...", args.turns, args.seed)
+    gt = generate_dialogue(num_turns=args.turns, seed=args.seed)
+    dialogue_path = output_dir / "dialogue.json"
+    _save_dialogue_json(gt, dialogue_path)
+
+    # Step 2: Run learning in segments
+    total = args.turns
+    seg_size = args.segment_size
+    num_segments = (total + seg_size - 1) // seg_size
+    agent_model = args.model or os.environ.get("EVAL_MODEL", "claude-sonnet-4-5-20250929")
+
+    logger.info(
+        "Segmented learning: %d turns in %d segments of %d",
+        total,
+        num_segments,
+        seg_size,
+    )
+
+    segment_start_time = time.time()
+    for seg_idx in range(num_segments):
+        seg_start = seg_idx * seg_size
+        seg_end = min(seg_start + seg_size, total)
+
+        logger.info(
+            "[Segment %d/%d] turns %d:%d",
+            seg_idx + 1,
+            num_segments,
+            seg_start,
+            seg_end,
+        )
+
+        # Build subprocess command reusing this module
+        cmd = [
+            sys.executable,
+            "-m",
+            "amplihack.eval.long_horizon_memory",
+            "--turns",
+            str(total),
+            "--seed",
+            str(args.seed),
+            "--output-dir",
+            str(output_dir),
+            "--model",
+            agent_model,
+            "--sdk",
+            args.sdk,
+            "--dialogue-json",
+            str(dialogue_path),
+            "--turns-slice",
+            f"{seg_start}:{seg_end}",
+            "--skip-questions",
+        ]
+        if args.use_hierarchical:
+            cmd.append("--use-hierarchical")
+        if args.flush_every > 0:
+            cmd.extend(["--flush-every", str(args.flush_every)])
+
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            logger.error(
+                "Segment %d failed (exit %d):\nstdout: %s\nstderr: %s",
+                seg_idx + 1,
+                result.returncode,
+                result.stdout[-500:] if result.stdout else "",
+                result.stderr[-500:] if result.stderr else "",
+            )
+            raise RuntimeError(f"Segment {seg_idx + 1} failed with exit code {result.returncode}")
+
+        logger.info("[Segment %d/%d] complete", seg_idx + 1, num_segments)
+
+    learning_elapsed = time.time() - segment_start_time
+    logger.info(
+        "All %d segments complete in %.1fs. DB at %s",
+        num_segments,
+        learning_elapsed,
+        db_path,
+    )
+
+    # Step 3: Run questioning phase with the accumulated DB
+    logger.info("Starting questioning phase with %d questions...", args.questions)
+    questions_cmd = [
+        sys.executable,
+        "-m",
+        "amplihack.eval.long_horizon_memory",
+        "--turns",
+        str(total),
+        "--questions",
+        str(args.questions),
+        "--seed",
+        str(args.seed),
+        "--output-dir",
+        str(output_dir),
+        "--model",
+        agent_model,
+        "--grader-model",
+        args.grader_model or "",
+        "--sdk",
+        args.sdk,
+        "--grader-votes",
+        str(args.grader_votes),
+        "--parallel-workers",
+        str(args.parallel_workers),
+        "--skip-learning",
+        "--load-db",
+        str(db_path),
+    ]
+    if args.use_hierarchical:
+        questions_cmd.append("--use-hierarchical")
+    if args.verbose:
+        questions_cmd.append("--verbose")
+
+    result = subprocess.run(questions_cmd)
+    if result.returncode != 0:
+        raise RuntimeError(f"Questioning phase failed with exit code {result.returncode}")
+
+
+def _run_segment_worker(args: argparse.Namespace) -> None:
+    """Subprocess worker: learn a slice of turns from a dialogue JSON, then exit.
+
+    This is invoked by _run_segmented_learning for each segment. The worker:
+    1. Loads turn slice from the dialogue JSON
+    2. Creates an agent connected to the shared DB
+    3. Learns the slice
+    4. Closes the agent and exits (freeing ALL native memory)
+    """
+    # Parse slice
+    parts = args.turns_slice.split(":")
+    if len(parts) != 2:
+        raise ValueError(f"--turns-slice must be START:END, got: {args.turns_slice}")
+    slice_start, slice_end = int(parts[0]), int(parts[1])
+
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    db_path = output_dir / "memory_db"
+    agent_model = args.model or os.environ.get("EVAL_MODEL", "claude-sonnet-4-5-20250929")
+
+    # Load dialogue slice from JSON
+    dialogue_path = Path(args.dialogue_json) if args.dialogue_json else output_dir / "dialogue.json"
+    if not dialogue_path.exists():
+        raise FileNotFoundError(f"Dialogue JSON not found: {dialogue_path}")
+
+    turns = _load_dialogue_slice(dialogue_path, slice_start, slice_end)
+    logger.info(
+        "Segment worker: turns %d:%d (%d turns), db=%s",
+        slice_start,
+        slice_end,
+        len(turns),
+        db_path,
+    )
+
+    # Create agent
+    agent_name = "long_horizon_eval"
+    if args.sdk == "mini":
+        from amplihack.agents.goal_seeking.learning_agent import LearningAgent
+
+        agent = LearningAgent(
+            agent_name=agent_name,
+            model=agent_model,
+            storage_path=db_path,
+            use_hierarchical=args.use_hierarchical,
+        )
+    else:
+        from amplihack.agents.goal_seeking.sdk_adapters.factory import create_agent
+
+        sdk_agent = create_agent(
+            name=agent_name,
+            sdk=args.sdk,
+            model=agent_model,
+            storage_path=db_path,
+            enable_memory=True,
+        )
+        agent = _SDKAgentWrapper(sdk_agent)
+
+    # Learn the slice
+    flush_every = args.flush_every if hasattr(args, "flush_every") else 0
+    can_flush = flush_every > 0 and hasattr(agent, "flush_memory")
+
+    try:
+        for i, turn in enumerate(turns):
+            content = turn.get("content", "")
+            if not content or not content.strip():
+                continue
+            try:
+                agent.learn_from_content(content)
+            except Exception as e:
+                logger.warning(
+                    "Failed to learn turn %d (global %d): %s",
+                    i,
+                    slice_start + i,
+                    e,
+                )
+
+            if can_flush and (i + 1) % flush_every == 0:
+                try:
+                    agent.flush_memory()  # type: ignore[union-attr]
+                except Exception:
+                    pass
+
+            if (i + 1) % 50 == 0 or i == len(turns) - 1:
+                logger.info(
+                    "  Turn %d/%d (global %d)",
+                    i + 1,
+                    len(turns),
+                    slice_start + i + 1,
+                )
+    finally:
+        try:
+            agent.close()
+        except Exception:
+            pass
+
+    logger.info("Segment worker complete: turns %d:%d", slice_start, slice_end)
+
+
 def main() -> None:
     """CLI entry point for long-horizon memory evaluation."""
     parser = argparse.ArgumentParser(
@@ -1092,6 +1355,34 @@ def main() -> None:
         help="Restart agent every N turns to free memory via del + gc.collect. "
         "0 disables. Requires agent recreation (default: 0).",
     )
+    parser.add_argument(
+        "--segment-size",
+        type=int,
+        default=0,
+        help="Run learning phase in subprocess segments of N turns each. "
+        "Each segment runs in a NEW Python process so native memory (Kuzu C++, "
+        "aiohttp) is fully freed between segments. 0 disables (default: 0).",
+    )
+    parser.add_argument(
+        "--turns-slice",
+        type=str,
+        default="",
+        help="Internal: learn only turns START:END from a pre-generated dialogue JSON. "
+        "Format: START:END (0-indexed, exclusive end). Used by --segment-size orchestrator.",
+    )
+    parser.add_argument(
+        "--dialogue-json",
+        type=str,
+        default="",
+        help="Internal: path to pre-generated dialogue JSON file. "
+        "Used with --turns-slice for subprocess segment workers.",
+    )
+    parser.add_argument(
+        "--skip-questions",
+        action="store_true",
+        default=False,
+        help="Skip the questioning phase (learn only). Used by segment workers.",
+    )
 
     args = parser.parse_args()
 
@@ -1102,6 +1393,18 @@ def main() -> None:
         format="%(asctime)s %(name)s %(levelname)s: %(message)s",
         datefmt="%H:%M:%S",
     )
+
+    # MODE 1: Segmented orchestrator -- delegates learning to subprocess workers
+    if args.segment_size > 0 and not args.turns_slice:
+        _run_segmented_learning(args)
+        return
+
+    # MODE 2: Subprocess worker -- learn a slice of turns, then exit
+    if args.turns_slice:
+        _run_segment_worker(args)
+        return
+
+    # MODE 3: Normal (original behavior)
 
     # Create output directory
     output_dir = Path(args.output_dir)
@@ -1200,6 +1503,12 @@ def main() -> None:
             )
             report = evaluator.evaluate(agent, grader_model=args.grader_model)
             report.learning_time_s = 0.0
+        elif args.skip_questions:
+            # Learn only, no questions (used by segment workers calling normal mode)
+            evaluator.generate()
+            evaluator.run_dialogue(agent, agent_factory=agent_factory)
+            logger.info("Learning-only mode complete")
+            return
         else:
             report = evaluator.run(
                 agent, grader_model=args.grader_model, agent_factory=agent_factory
@@ -1252,4 +1561,6 @@ __all__ = [
     "_deterministic_grade",
     "_grade_hybrid",
     "_grade_multi_vote",
+    "_save_dialogue_json",
+    "_load_dialogue_slice",
 ]
