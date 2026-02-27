@@ -57,6 +57,28 @@
   checker: _check_agent_unnecessary_questions
   enabled: true
   applicable_session_types: ["DEVELOPMENT"]
+  guidance: |
+    Look for the AskUserQuestion tool being used excessively. Count how many
+    times the agent invoked AskUserQuestion during the session.
+
+    This is NOT about question marks in prose. Agents naturally use question
+    marks in explanations ("Did you notice the change?") and documentation.
+    Those are fine.
+
+    What IS a problem:
+    - Agent used AskUserQuestion 4+ times in one session
+    - Agent asked about things it could have inferred (e.g., "which file?" when
+      there's only one relevant file)
+    - Agent asked permission to proceed between workflow steps instead of just
+      continuing
+
+    What is NOT a problem:
+    - 1-2 AskUserQuestion calls for genuinely ambiguous requirements
+    - Question marks in prose explanations
+    - Questions embedded in PR descriptions or test documentation
+    - The agent asking for clarification when the user's request was truly vague
+
+    Lean toward SATISFIED unless there's a clear pattern of excessive asking.
 
 - id: objective_completion
   category: Session Completion & Progress
@@ -66,6 +88,25 @@
   checker: _check_objective_completion
   enabled: true
   applicable_session_types: ["DEVELOPMENT", "MAINTENANCE", "INVESTIGATION"]
+  guidance: |
+    Read the FIRST user message carefully to understand what was requested.
+    Then check if the session's work actually accomplished that request.
+
+    SATISFIED when:
+    - The user asked for X and X was done (PR created, code changed, question answered)
+    - The user asked for investigation and findings were reported
+    - The scope naturally evolved with user input and the final scope was completed
+
+    NOT SATISFIED when:
+    - User asked for 3 things and only 2 were done
+    - User asked for a PR and no PR was created
+    - Agent acknowledged the request but got sidetracked and never finished
+    - Work was started but not completed (partial implementation)
+
+    Be careful about scope evolution: if the user said "fix X" and during the
+    session they said "actually, also do Y", then both X and Y need to be done.
+    But if the user said "fix X" and the agent decided on its own to also do Y,
+    only X needs to be verified.
 
 - id: documentation_updates
   category: Session Completion & Progress
@@ -75,6 +116,25 @@
   checker: _check_documentation_updates
   enabled: true
   applicable_session_types: ["DEVELOPMENT", "MAINTENANCE", "INVESTIGATION"]
+  guidance: |
+    This check should only fire when PUBLIC-FACING code was changed.
+
+    Changes that DO need doc updates:
+    - New CLI commands or slash commands
+    - New user-facing features or skills
+    - Changes to public APIs or configuration formats
+    - Modified user-facing behavior or error messages
+
+    Changes that do NOT need doc updates:
+    - Internal refactors (hooks, utilities, internal modules)
+    - Bug fixes that don't change user-visible behavior
+    - Test file changes
+    - CI/CD configuration changes
+    - Dependency updates
+
+    If only internal code was modified, respond SATISFIED regardless of whether
+    docs were touched. This is a WARNING, not a blocker — don't block sessions
+    over documentation for internal changes.
 
 - id: tutorial_needed
   category: Session Completion & Progress
@@ -111,6 +171,29 @@
   checker: _check_next_steps
   enabled: true
   applicable_session_types: ["DEVELOPMENT", "INVESTIGATION"]
+  guidance: |
+    This check is about distinguishing COMPLETION SUMMARIES from REMAINING WORK.
+
+    SATISFIED when the agent's final messages:
+    - Summarize what was accomplished ("Here's what I did: ...")
+    - List completed items in past tense ("Fixed X, Updated Y, Created Z")
+    - Say "no remaining work" or "all done"
+    - Describe PR contents or test results
+
+    NOT SATISFIED when the agent's final messages contain:
+    - Future-tense action items: "Next steps:\n- Deploy to staging\n- Update config"
+    - Explicit remaining work: "Still need to:\n- Fix the edge case\n- Add tests"
+    - Deferred items: "TODO: handle error case" or "Will address in follow-up"
+
+    CRITICAL false positive to avoid:
+    A bullet list summarizing COMPLETED work (past tense) is NOT "next steps".
+    "Changes made:\n- Fixed bug\n- Updated tests\n- Created PR" is a COMPLETION
+    SUMMARY, not remaining work. Do NOT flag this as unresolved next steps.
+
+    Also NOT a problem:
+    - "CI is running" (status observation, not remaining work)
+    - "PR ready for review" (awaiting human action, agent's job is done)
+    - "Waiting for approval" (expected end state per user preferences)
 
 - id: docs_organization
   category: Session Completion & Progress
@@ -142,6 +225,26 @@
   checker: _check_no_direct_main_commit
   enabled: true
   applicable_session_types: ["DEVELOPMENT"]
+  guidance: |
+    This enforces a MANDATORY user preference: never commit directly to main.
+
+    Look for these specific signals in the transcript:
+    1. Did the agent create a feature branch (git checkout -b, git switch -c)?
+    2. Did commits happen on a non-main branch?
+    3. Was a PR created (gh pr create)?
+
+    SATISFIED when:
+    - Agent created a feature branch and committed there
+    - Agent created a PR for the changes
+    - No code changes were made (investigation/Q&A session)
+
+    NOT SATISFIED when:
+    - Agent ran "git commit" while on main/master branch
+    - Agent ran "git push origin main" with code changes
+    - Agent merged a PR without explicit user permission (look for user saying
+      "merge", "please merge", or "go ahead and merge")
+
+    This is a HARD rule — no exceptions, no rationalization.
 
 - id: dev_workflow_complete
   category: Workflow Process Adherence
@@ -173,6 +276,27 @@
   checker: _check_philosophy_compliance
   enabled: true
   applicable_session_types: ["DEVELOPMENT", "MAINTENANCE"]
+  guidance: |
+    Look at Write and Edit tool calls for code anti-patterns. Focus on CODE
+    files (.py, .js, .ts, .rs, .go) — NOT documentation or configuration.
+
+    Violations (in code files only):
+    - "# TODO: ..." or "// TODO: ..." comments
+    - "# FIXME: ..." or "# XXX: ..."
+    - "raise NotImplementedError"
+    - Functions that are just "pass" or "..." with no implementation
+    - "# placeholder" or "# stub" comments
+
+    NOT violations:
+    - "TODO" appearing in .md documentation (discussing the philosophy itself)
+    - "TODO" in .yaml configuration (e.g., a consideration question about TODOs)
+    - "TODO" in test assertions that verify TODO detection
+    - Comments explaining WHY something was removed ("removed TODO that was here")
+    - "pass" in abstract base class methods (legitimate Python pattern)
+
+    This is about the AGENT's own code output. If the codebase already had TODOs
+    before this session, that's not the agent's fault — only check code the
+    agent WROTE or EDITED in this session.
 
 - id: shortcuts
   category: Code Quality & Philosophy Compliance
@@ -195,6 +319,27 @@
   checker: _check_local_testing
   enabled: true
   applicable_session_types: ["DEVELOPMENT"]
+  guidance: |
+    Look for Bash tool calls that executed test commands AND check their results.
+
+    SATISFIED when:
+    - Agent ran pytest/npm test/cargo test and output shows passing results
+    - Agent ran a validation script and confirmed it passed
+    - Agent used "uvx --from git+..." to test the installed package (outside-in)
+    - YAML/config-only changes where agent verified with "python -c 'import yaml; ...'"
+
+    NOT SATISFIED when:
+    - Agent wrote test files but never ran them
+    - Agent said "tests should pass" without actually running them
+    - Test commands were run but showed failures that were not addressed
+    - No test-related Bash commands appear in the transcript at all
+
+    Important edge cases:
+    - If the project has NO tests (no test files exist), this check should be
+      SATISFIED — you can't run tests that don't exist
+    - If the change is purely to YAML/docs/config and agent verified the files
+      parse correctly, that counts as testing
+    - "uv run pytest" and "python -m pytest" both count as test execution
 
 - id: interactive_testing
   category: Testing & Local Validation
@@ -204,6 +349,24 @@
   checker: _check_interactive_testing
   enabled: true
   applicable_session_types: ["DEVELOPMENT"]
+  guidance: |
+    Look for evidence the agent went beyond "run pytest" to actually try the
+    feature from a user's perspective.
+
+    SATISFIED when:
+    - Agent ran the CLI tool with real arguments and checked output
+    - Agent used "uvx --from git+..." to test the installed package
+    - Agent imported a module and called functions interactively
+    - Agent tested with edge case inputs (empty, large, malformed)
+    - Automated test count is substantial (10+ tests passing)
+
+    NOT SATISFIED when:
+    - Agent only ran "pytest" and nothing else
+    - No evidence of trying the actual user workflow
+    - Agent said it would test but never did
+
+    This is a WARNING, not a blocker. Be lenient — if the automated tests are
+    comprehensive, that's sufficient. This check is aspirational.
 
 # ============================================================================
 # CATEGORY 5: PR Content & Quality (4 considerations)
