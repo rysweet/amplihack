@@ -1,0 +1,81 @@
+{
+  "triage_timestamp": "2026-02-27T12:19:00Z",
+  "total_open_prs": 8,
+  "agent_created_prs": [
+    {
+      "number": 2613,
+      "title": "feat: add --memory-type flag for memory backend A/B comparison",
+      "author": "rysweet",
+      "created": "2026-02-27T11:01:23Z",
+      "age_hours": 1,
+      "status": "ready",
+      "draft": false,
+      "category": "feature",
+      "risk_level": "low",
+      "priority": "high",
+      "changes": {
+        "additions": 50,
+        "deletions": 2,
+        "files": 2
+      },
+      "mergeable": "clean",
+      "recommendation": "MERGE - Small, well-scoped feature for memory backend testing",
+      "reasoning": "Clean implementation, small scope, enables A/B testing for memory backends"
+    },
+    {
+      "number": 2609,
+      "title": "fix: prevent Issue Classifier cascade failures on [agentics] tracking issues",
+      "author": "Copilot",
+      "created": "2026-02-27T06:45:24Z",
+      "age_hours": 5,
+      "status": "draft",
+      "draft": true,
+      "category": "bugfix",
+      "risk_level": "low",
+      "priority": "high",
+      "changes": {
+        "additions": 12,
+        "deletions": 1,
+        "files": 2
+      },
+      "recommendation": "REVIEW & MERGE - Fixes cascade failure loop in Issue Classifier",
+      "reasoning": "Addresses specific failure mode where [agentics] tracking issues trigger the classifier recursively. Small, targeted fix."
+    },
+    {
+      "number": 2579,
+      "title": "[docs] docs: daily documentation updates for merged PRs (2026-02-27)",
+      "author": "github-actions[bot]",
+      "created": "2026-02-27T06:19:52Z",
+      "age_hours": 6,
+      "status": "ready",
+      "draft": false,
+      "category": "documentation",
+      "risk_level": "very_low",
+      "priority": "medium",
+      "recommendation": "MERGE - Automated daily documentation update",
+      "reasoning": "Automated documentation updates following Diátaxis framework"
+    },
+    {
+      "number": 1784,
+      "title": "feat: Parallel Task Orchestrator for large-scale migrations (Issue #1783)",
+      "author": "rysweet",
+      "created": "2025-12-01T23:50:12Z",
+      "age_days": 88,
+      "status": "stale_draft",
+      "draft": true,
+      "category": "feature",
+      "risk_level": "high",
+      "priority": "low",
+      "recommendation": "CLOSE OR REFRESH - 88 days old, likely conflicts with main",
+      "reasoning": "Very old draft PR, likely has significant merge conflicts and may be superseded by newer work"
+    }
+  ],
+  "summary": {
+    "ready_to_merge": 2,
+    "needs_review": 1,
+    "stale": 1,
+    "high_priority": 2,
+    "medium_priority": 1,
+    "low_priority": 1
+  }
+}
