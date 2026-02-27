@@ -144,11 +144,11 @@ After execution completes, verify the goal was achieved. If not:
 
 | Type          | Keywords                                                      | Action                        |
 | ------------- | ------------------------------------------------------------- | ----------------------------- |
-| Q&A           | "what is", "explain", "how do I", "quick question"            | Respond directly              |
-| Operations    | "cleanup", "delete", "git status", "run command"              | builder agent (direct execution, no workflow steps) |
-| Investigation | "investigate", "analyze", "how does", "understand", "explore" | investigation-workflow        |
+| Q&A           | "what is", "explain", "how does", "how do I", "quick question" | Respond directly              |
+| Operations    | "clean up", "delete", "git status", "run command"              | builder agent (direct execution, no workflow steps) |
+| Investigation | "investigate", "analyze", "understand", "explore"              | investigation-workflow        |
 | Development   | "implement", "build", "create", "add", "fix", "refactor"      | smart-orchestrator            |
-| Hybrid        | Both investigation + development keywords                     | investigation first, then dev |
+| Hybrid        | Both investigation + development keywords                      | investigation first, then dev |
 
 ## Workstream Decomposition Examples
 
