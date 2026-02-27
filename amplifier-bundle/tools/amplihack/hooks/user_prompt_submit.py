@@ -277,6 +277,19 @@ class UserPromptSubmitHook(HookProcessor):
         else:
             self.log("No USER_PREFERENCES.md found - skipping preference injection")
 
+        # Auto-route development intent to /dev (dev-orchestrator).
+        # Classifies prompts in <1ms using contextual keyword heuristics.
+        # Disable: export AMPLIHACK_AUTO_DEV=false
+        try:
+            from dev_intent_router import should_auto_route
+            should_inject, dev_context = should_auto_route(user_prompt)
+            if should_inject:
+                context_parts.append(dev_context)
+                self.log("Auto-routed to dev-orchestrator via intent classifier")
+                self.save_metric("auto_dev_routed", 1)
+        except Exception as e:
+            self.log(f"Dev intent router failed (non-fatal): {e}", "WARNING")
+
         # Combine all context parts
         full_context = "\n\n".join(context_parts)
 
