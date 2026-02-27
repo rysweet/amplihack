@@ -16,34 +16,47 @@ def extract_json(text: str) -> dict:
 
     Handles:
     - Markdown code blocks (```json ... ``` or ``` ... ```)
-    - Raw JSON embedded in prose
-    - Multiple code blocks (returns only the first valid one)
+    - Raw JSON embedded in prose (tries each candidate in document order)
+    - Multiple code blocks (tries each independently)
+    - Prose with non-JSON braces before actual JSON
     """
-    # Try each code block in order — use non-greedy within each block
-    # to avoid merging multiple blocks.
-    # [^`]* stops at the next backtick, ensuring one code block is parsed at a time.
+    # Try each code block in order (non-greedy within block = one block at a time)
     for m in re.finditer(r'```(?:json)?\s*(\{[^`]*\})\s*```', text, re.DOTALL):
         try:
             return json.loads(m.group(1))
         except json.JSONDecodeError:
             continue  # malformed block, try next
 
-    # Fallback: find the first complete balanced-brace JSON object
-    start = text.find('{')
-    if start == -1:
-        return {}
+    # Fallback: scan for balanced-brace JSON objects in document order
+    # Tries each { candidate; if one fails JSON decode, tries the next
+    pos = 0
+    while True:
+        start = text.find('{', pos)
+        if start == -1:
+            break  # no more candidates
 
-    depth = 0
-    for i, ch in enumerate(text[start:], start):
-        if ch == '{':
-            depth += 1
-        elif ch == '}':
-            depth -= 1
-            if depth == 0:
-                try:
-                    return json.loads(text[start:i + 1])
-                except json.JSONDecodeError:
+        # Find the matching close brace via depth counting
+        depth = 0
+        end = -1
+        for i, ch in enumerate(text[start:], start):
+            if ch == '{':
+                depth += 1
+            elif ch == '}':
+                depth -= 1
+                if depth == 0:
+                    end = i
                     break
+
+        if end == -1:
+            break  # unbalanced, no complete object found
+
+        try:
+            return json.loads(text[start:end + 1])
+        except json.JSONDecodeError:
+            # This candidate failed; try the next { after the current start
+            pos = start + 1
+            continue
+
     return {}
 
 
@@ -60,6 +73,19 @@ def normalise_type(raw: str) -> str:
 
 
 if __name__ == "__main__":
-    # CLI: echo '{"task_type": "Development"}' | python3 orch_helper.py
+    """CLI for manual testing and debugging.
+
+    Usage:
+        echo '{"task_type": "dev", "workstreams": []}' | python3 orch_helper.py extract
+        echo "dev" | python3 orch_helper.py normalise
+    """
     import sys
-    print(json.dumps(extract_json(sys.stdin.read())))
+    cmd = sys.argv[1] if len(sys.argv) > 1 else "extract"
+    text = sys.stdin.read()
+    if cmd == "extract":
+        print(json.dumps(extract_json(text)))
+    elif cmd == "normalise":
+        print(normalise_type(text.strip()))
+    else:
+        print(f"Unknown command: {cmd}. Use: extract | normalise", file=sys.stderr)
+        sys.exit(1)

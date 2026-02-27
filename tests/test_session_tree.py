@@ -426,5 +426,178 @@ class TestConcurrentAccess(unittest.TestCase):
             os.environ["AMPLIHACK_MAX_SESSIONS"] = saved
 
 
+class TestTTLPruning(unittest.TestCase):
+    """Verify _save() prunes stale sessions according to TTL rules."""
+
+    def setUp(self):
+        self._trees_created = []
+
+    def tearDown(self):
+        for tree in self._trees_created:
+            for suffix in ('.json', '.lock'):
+                p = st.STATE_DIR / f'{tree}{suffix}'
+                p.unlink(missing_ok=True)
+
+    def _unique_tree(self):
+        import uuid
+        t = "test-" + uuid.uuid4().hex[:8]
+        self._trees_created.append(t)
+        return t
+
+    def test_old_completed_session_pruned(self):
+        tree = self._unique_tree()
+        st.register_session("old", tree_id=tree, depth=0)
+        st.complete_session("old", tree_id=tree)
+        # Backdate completed_at to 25 hours ago
+        state = st._load(tree)
+        state["sessions"]["old"]["completed_at"] = time.time() - (25 * 3600)
+        st._save(tree, state)  # This triggers pruning
+        state_after = st._load(tree)
+        self.assertNotIn("old", state_after["sessions"],
+            "Completed session older than 24h must be pruned")
+
+    def test_recent_completed_session_preserved(self):
+        tree = self._unique_tree()
+        st.register_session("recent", tree_id=tree, depth=0)
+        st.complete_session("recent", tree_id=tree)
+        # completed_at is now — should NOT be pruned
+        state_after = st._load(tree)
+        self.assertIn("recent", state_after["sessions"],
+            "Recently completed session must not be pruned")
+
+    def test_leaked_active_session_pruned_after_4h(self):
+        tree = self._unique_tree()
+        st.register_session("leaked", tree_id=tree, depth=0)
+        # Backdate started_at to 5 hours ago
+        state = st._load(tree)
+        state["sessions"]["leaked"]["started_at"] = time.time() - (5 * 3600)
+        st._save(tree, state)  # This triggers active pruning
+        state_after = st._load(tree)
+        self.assertNotIn("leaked", state_after["sessions"],
+            "Active session older than 4h must be pruned as leaked")
+
+    def test_fresh_active_session_preserved(self):
+        tree = self._unique_tree()
+        st.register_session("fresh", tree_id=tree, depth=0)
+        # started_at is now — should NOT be pruned
+        state_after = st._load(tree)
+        self.assertIn("fresh", state_after["sessions"],
+            "Fresh active session must not be pruned")
+
+
+class TestCLISubcommands(unittest.TestCase):
+    """Verify that the CLI paths called by the recipe actually work."""
+
+    def setUp(self):
+        self._trees_created = []
+
+    def tearDown(self):
+        for tree in self._trees_created:
+            for suffix in ('.json', '.lock'):
+                p = st.STATE_DIR / f'{tree}{suffix}'
+                p.unlink(missing_ok=True)
+
+    def _run_cli(self, args, extra_env=None):
+        import re as _re
+        import subprocess
+        from pathlib import Path
+        script = str(Path(__file__).parent.parent / "amplifier-bundle" / "tools" / "session_tree.py")
+        env = os.environ.copy()
+        if extra_env:
+            env.update(extra_env)
+        return subprocess.run(
+            [sys.executable, script] + args,
+            capture_output=True, text=True, env=env,
+            cwd=str(Path(__file__).parent.parent)
+        )
+
+    def test_register_outputs_tree_id_and_depth(self):
+        """The recipe's setup-session step calls: session_tree.py register <session_id>"""
+        import re as _re
+        r = self._run_cli(["register", "test-sess-cli"])
+        self.assertEqual(r.returncode, 0, f"register should exit 0: {r.stderr}")
+        self.assertRegex(r.stdout.strip(), r'^TREE_ID=[A-Za-z0-9_-]+ DEPTH=\d+$',
+            f"Output must be 'TREE_ID=... DEPTH=...' format, got: {r.stdout!r}")
+        # Record tree for cleanup
+        m = _re.search(r'TREE_ID=([A-Za-z0-9_-]+)', r.stdout)
+        if m:
+            self._trees_created.append(m.group(1))
+
+    def test_check_outputs_allowed_for_new_tree(self):
+        """The recipe's check-recursion-guard step calls: session_tree.py check"""
+        r = self._run_cli(["check"], extra_env={"AMPLIHACK_TREE_ID": ""})
+        self.assertEqual(r.returncode, 0)
+        self.assertEqual(r.stdout.strip(), "ALLOWED")
+
+    def test_complete_exits_zero(self):
+        """The recipe's complete-session step calls: session_tree.py complete <id>"""
+        import re as _re
+        # Register first
+        reg = self._run_cli(["register", "sess-for-complete"])
+        m = _re.search(r'TREE_ID=([A-Za-z0-9_-]+)', reg.stdout)
+        self.assertIsNotNone(m, f"register output malformed: {reg.stdout!r}")
+        tree_id = m.group(1)
+        self._trees_created.append(tree_id)
+        # Complete
+        r = self._run_cli(["complete", "sess-for-complete"],
+                         extra_env={"AMPLIHACK_TREE_ID": tree_id})
+        self.assertEqual(r.returncode, 0, f"complete should exit 0: {r.stderr}")
+
+    def test_check_blocked_at_max_depth(self):
+        """Session at max depth must return BLOCKED."""
+        r = self._run_cli(
+            ["check"],
+            extra_env={"AMPLIHACK_TREE_ID": "", "AMPLIHACK_SESSION_DEPTH": "3", "AMPLIHACK_MAX_DEPTH": "3"}
+        )
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("BLOCKED", r.stdout.strip())
+
+
+class TestDuplicateSessionRegistration(unittest.TestCase):
+    """Verify behavior when registering the same session_id twice."""
+
+    def setUp(self):
+        self._trees_created = []
+
+    def tearDown(self):
+        for tree in self._trees_created:
+            for suffix in ('.json', '.lock'):
+                p = st.STATE_DIR / f'{tree}{suffix}'
+                p.unlink(missing_ok=True)
+
+    def _unique_tree(self):
+        import uuid
+        t = "test-" + uuid.uuid4().hex[:8]
+        self._trees_created.append(t)
+        return t
+
+    def test_register_same_session_id_twice_overwrites(self):
+        """Documenting current behavior: duplicate registration silently overwrites."""
+        tree = self._unique_tree()
+        st.register_session("dup", tree_id=tree, depth=0)
+        st.complete_session("dup", tree_id=tree)
+        # Re-register same id — overwrites the completed record
+        st.register_session("dup", tree_id=tree, depth=1)
+        state = st._load(tree)
+        # Documents behavior: status reset to active, depth updated
+        self.assertEqual(state["sessions"]["dup"]["status"], "active")
+        self.assertEqual(state["sessions"]["dup"]["depth"], 1)
+
+
+class TestTreeIdBoundary(unittest.TestCase):
+    """Verify tree_id length boundary validation (MISS-7)."""
+
+    def test_tree_id_exactly_64_chars_is_valid(self):
+        """64-character tree_id is within the limit."""
+        valid_id = "a" * 64
+        result = st._validate_tree_id(valid_id)
+        self.assertEqual(result, valid_id)
+
+    def test_tree_id_65_chars_is_invalid(self):
+        """65-character tree_id exceeds the limit."""
+        with self.assertRaises(ValueError):
+            st._validate_tree_id("a" * 65)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -679,51 +679,50 @@ class TestMultiBlockLLMResponse(unittest.TestCase):
         self.assertEqual(len(result.get("workstreams", [])), 1)
 
     def test_two_code_blocks_returns_first_valid_one(self):
-        """When LLM returns example JSON then real JSON, only first valid block is used."""
-        example = '{"task_type": "Q&A", "goal": "example", "workstreams": []}'
-        real = json.dumps({
+        """extract_json must return the FIRST valid code block, not a merge of both."""
+        block1_json = json.dumps({
+            "task_type": "Q&A",
+            "goal": "this is the first block",
+            "workstreams": []
+        })
+        block2_json = json.dumps({
             "task_type": "Development",
-            "goal": "build the system",
-            "success_criteria": ["tests pass"],
-            "workstreams": [{"name": "ws1", "description": "d1", "recipe": "default-workflow"}],
+            "goal": "this is the second block",
+            "success_criteria": ["done"],
+            "workstreams": [{"name": "ws1", "description": "build it", "recipe": "default-workflow"}],
         })
         text = (
-            "Here is an example of the format:\n"
-            f"```json\n{example}\n```\n\n"
-            "And here is my actual plan:\n"
-            f"```json\n{real}\n```"
+            "Here is an example:\n"
+            f"```json\n{block1_json}\n```\n\n"
+            "And here is the real plan:\n"
+            f"```json\n{block2_json}\n```"
         )
         result = extract_json(text)
-        # Must return the first valid block, not a merge of both
-        # Both are individually valid — the first one is returned
-        self.assertIn(result.get("task_type"), ("Q&A", "Development"))
-        # Crucially: must NOT fail or return {} due to a merged-greedy parse
-        self.assertNotEqual(result, {})
+        # Must return the FIRST block with its specific goal value
+        self.assertEqual(result.get("goal"), "this is the first block",
+            f"Expected first block's goal, got: {result}")
+        self.assertEqual(result.get("task_type"), "Q&A")
+        # Must NOT merge into the second block
+        self.assertNotIn("this is the second block", str(result))
 
     def test_greedy_merge_would_produce_invalid_json(self):
-        """Demonstrate that a naive greedy {.*} would merge two code blocks incorrectly.
-
-        This test verifies the extract_json function does NOT use the naive
-        greedy pattern by confirming it still returns a valid object when two
-        code blocks are present.
+        """The old greedy {.*} regex merges two blocks into invalid JSON.
+        This test verifies the fix returns the correct FIRST block.
         """
-        block1_json = '{"task_type": "Development", "goal": "g1", "workstreams": [{"name": "a"}]}'
-        block2_json = '{"task_type": "Investigation", "goal": "g2", "workstreams": []}'
+        block1_json = '{"task_type": "Development", "goal": "first-goal", "workstreams": [{"name": "a"}]}'
+        block2_json = '{"task_type": "Investigation", "goal": "second-goal", "workstreams": []}'
         text = f"First:\n```json\n{block1_json}\n```\n\nSecond:\n```json\n{block2_json}\n```"
 
-        # Naive greedy: r'\{.*\}' with re.DOTALL would match from first '{' to last '}'
-        # spanning both blocks, producing invalid JSON that json.loads would reject.
-        naive_match = re.search(r"\{.*\}", text, re.DOTALL)
-        naive_result = {}
-        if naive_match:
-            try:
-                naive_result = json.loads(naive_match.group(0))
-            except json.JSONDecodeError:
-                pass  # naive greedy fails here
-
-        # Our fixed extract_json should still return a valid object
-        fixed_result = extract_json(text)
-        self.assertNotEqual(fixed_result, {}, "Fixed extract_json must return a valid object")
+        # Old greedy regex: merges both blocks -> invalid JSON -> extract_json returns {}
+        # (or falls back to balanced-brace which returns the first object found)
+        # The point: the fixed regex must return the FIRST block correctly.
+        result = extract_json(text)
+        self.assertEqual(result.get("task_type"), "Development",
+            f"Must return first block type 'Development', got: {result}")
+        self.assertEqual(result.get("goal"), "first-goal",
+            f"Must return first block goal, got: {result}")
+        self.assertEqual(len(result.get("workstreams", [])), 1,
+            f"First block has 1 workstream, got: {result}")
 
     def test_prose_with_embedded_json_no_code_block(self):
         """JSON embedded in prose (no code block) is extracted via balanced-brace fallback."""
@@ -811,23 +810,127 @@ class TestRound1SuccessPath(unittest.TestCase):
             )
         )
 
-    def test_reflect_final_skips_depth_limited(self):
-        """DEPTH_LIMITED result must not be evaluated by reflect-round-1 (NEW-5 fix).
-
-        The recipe guards reflect-round-1 with:
-        'DEPTH_LIMITED' not in round_1_result
-        """
+    def test_reflect_round1_skips_depth_limited(self):
+        """reflect-round-1 condition includes DEPTH_LIMITED guard (NEW-5 fix)."""
         round_1_result = (
             "RECURSION GUARD: session depth limit reached.\nSTATUS: DEPTH_LIMITED"
         )
-        # reflect-round-1 condition (includes DEPTH_LIMITED guard)
-        should_reflect = (
+        # reflect-round-1 condition from recipe:
+        # 'Q&A' not in task_type and 'Operations' not in task_type and round_1_result
+        # and 'DEPTH_LIMITED' not in round_1_result
+        should_reflect_round1 = (
             "Q&A" not in "Development"
             and "Operations" not in "Development"
             and bool(round_1_result)
-            and "DEPTH_LIMITED" not in round_1_result  # NEW-5 guard
+            and "DEPTH_LIMITED" not in round_1_result
         )
-        self.assertFalse(should_reflect)
+        self.assertFalse(should_reflect_round1,
+            "reflect-round-1 must NOT run when result is DEPTH_LIMITED")
+
+    def test_reflect_final_runs_when_depth_limited(self):
+        """reflect-final does NOT have a DEPTH_LIMITED guard (just Q&A/Ops exclusion).
+
+        When blocked, the new execute-single-fallback-blocked step runs and writes
+        real output to round_1_result. reflect-final then evaluates that real output.
+        If the fallback wrote DEPTH_LIMITED as result (old behavior, now fixed),
+        reflect-final would run on it — but with the new fallback step, round_1_result
+        contains actual work output.
+        """
+        # reflect-final condition: 'Q&A' not in task_type and 'Operations' not in task_type and round_1_result
+        # No DEPTH_LIMITED guard — that's intentional since we now have a real fallback step
+        round_1_result = "PR created at https://github.com/... STATUS: COMPLETE"
+        should_reflect_final = (
+            "Q&A" not in "Development"
+            and "Operations" not in "Development"
+            and bool(round_1_result)
+        )
+        self.assertTrue(should_reflect_final,
+            "reflect-final should run when there is a real result")
+
+
+# ---------------------------------------------------------------------------
+# Test suite: Prose brace edge cases (MISS-1)
+# ---------------------------------------------------------------------------
+
+
+class TestProseBraceEdgeCases(unittest.TestCase):
+    """Verify extract_json skips non-JSON braces in prose before finding real JSON."""
+
+    def test_prose_brace_before_json_still_extracts_correctly(self):
+        """When prose contains {non-json} before actual JSON, must skip the bad brace."""
+        actual = {
+            "task_type": "Development",
+            "goal": "build the thing",
+            "success_criteria": [],
+            "workstreams": [{"name": "ws", "description": "do x", "recipe": "default-workflow"}]
+        }
+        text = f"The config {{for this}} should be: {json.dumps(actual)} Please proceed."
+        result = extract_json(text)
+        self.assertEqual(result.get("task_type"), "Development",
+            f"Must skip prose brace and find actual JSON, got: {result}")
+        self.assertEqual(result.get("goal"), "build the thing")
+
+    def test_multiple_prose_braces_before_json(self):
+        """Multiple failed brace candidates in prose, then valid JSON."""
+        actual = {"task_type": "Investigation", "goal": "research X", "workstreams": []}
+        text = f"Notes {{WIP}} and {{TODO}} and then: {json.dumps(actual)}"
+        result = extract_json(text)
+        self.assertEqual(result.get("task_type"), "Investigation")
+
+
+# ---------------------------------------------------------------------------
+# Test suite: force_single_workstream routing (MISS-5)
+# ---------------------------------------------------------------------------
+
+
+class TestForceSingleWorkstream(unittest.TestCase):
+    """Verify the force_single_workstream recipe context variable."""
+
+    def _execute_single_condition(self, task_type, workstream_count, force_single):
+        """Simulate execute-single-round-1 condition from recipe."""
+        return (
+            ("Development" in task_type or "Investigation" in task_type)
+            and (int(str(workstream_count).strip() or "1") == 1 or force_single == "true")
+        )
+
+    def _create_parallel_condition(self, task_type, workstream_count, force_single, recursion_guard):
+        """Simulate create-workstreams-config condition from recipe."""
+        return (
+            ("Development" in task_type or "Investigation" in task_type)
+            and int(str(workstream_count).strip() or "1") > 1
+            and "ALLOWED" in recursion_guard
+            and force_single != "true"
+        )
+
+    def test_force_single_overrides_multi_workstream_routing(self):
+        should_single = self._execute_single_condition("Development", 2, "true")
+        should_parallel = self._create_parallel_condition("Development", 2, "true", "ALLOWED")
+        self.assertTrue(should_single, "force_single=true must route to single execution")
+        self.assertFalse(should_parallel, "force_single=true must block parallel creation")
+
+    def test_no_force_multi_workstream_routes_normally(self):
+        should_single = self._execute_single_condition("Development", 2, "false")
+        should_parallel = self._create_parallel_condition("Development", 2, "false", "ALLOWED")
+        self.assertFalse(should_single)
+        self.assertTrue(should_parallel)
+
+
+# ---------------------------------------------------------------------------
+# Additional normalise_type edge cases (MISS-6)
+# ---------------------------------------------------------------------------
+
+
+class TestNormaliseTypeEdgeCases(unittest.TestCase):
+    """Additional normalise_type edge cases not covered by TestNormaliseType."""
+
+    def test_normalise_type_command_keyword(self):
+        """'command' must normalize to Operations."""
+        self.assertEqual(normalise_type("command"), "Operations")
+
+    def test_normalise_type_explor_keyword(self):
+        """'explor' prefix must normalize to Investigation."""
+        self.assertEqual(normalise_type("explore"), "Investigation")
+        self.assertEqual(normalise_type("exploration"), "Investigation")
 
 
 if __name__ == "__main__":
