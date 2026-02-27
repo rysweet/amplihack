@@ -4,7 +4,7 @@ description: |
   Classifies -> formulates goal -> decomposes into workstreams ->
   executes via recipe runner (single or parallel) -> goal-seeking
   reflection loop (3 rounds max, auto-mode pattern) -> summarizes.
-version: "1.1.0"
+version: "1.2.0"
 author: "Amplihack Team"
 tags: ["orchestration", "routing", "parallel", "auto-classify", "goal-seeking"]
 
@@ -17,7 +17,6 @@ context:
   workstream_count: ""
   workstreams_file: ""
   recursion_guard: ""
-  ops_mode: ""
   round_1_result: ""
   reflection_1: ""
   round_2_result: ""
@@ -66,7 +65,7 @@ steps:
 
   - id: "classify-and-decompose"
     type: "agent"
-    agent: "amplihack:prompt-writer"
+    agent: "amplihack:core:architect"
     prompt: |
       You are an intelligent task orchestrator. Analyze this request and produce a
       structured orchestration plan.
@@ -100,18 +99,16 @@ steps:
   - id: "parse-decomposition"
     type: "bash"
     command: |
-      HELPER_PATH="{{helper_script}}"
-      python3 - "$HELPER_PATH" <<'PYEOF' <<< "{{decomposition_json}}"
-      import sys, json, os, tempfile, importlib.util
-      h_path = sys.argv[1]
-      decomp = sys.stdin.read()
-      fd, tmp = tempfile.mkstemp(prefix="decomp-", suffix=".txt", dir="/tmp")
-      os.chmod(tmp, 0o600)
-      with os.fdopen(fd, "w") as f: f.write(decomp)
+      HELPER_PATH={{helper_script}}
+      DECOMP_JSON={{decomposition_json}}
+      export HELPER_PATH DECOMP_JSON
+      python3 - <<'PYEOF'
+      import os, json, importlib.util
+      h_path = os.environ['HELPER_PATH']
+      decomp = os.environ['DECOMP_JSON']
       spec = importlib.util.spec_from_file_location("h", h_path)
       h = importlib.util.module_from_spec(spec); spec.loader.exec_module(h)
-      obj = h.extract_json(open(tmp).read())
-      os.unlink(tmp)
+      obj = h.extract_json(decomp)
       task_type = h.normalise_type(obj.get("task_type", "Development"))
       count = max(1, len(obj.get("workstreams", [{}])))
       print(json.dumps({"task_type": task_type, "workstream_count": count}))
@@ -121,13 +118,25 @@ steps:
   - id: "extract-task-type"
     type: "bash"
     command: |
-      echo '{{parse_output}}' | python3 -c "import sys,json; print(json.loads(sys.stdin.read()).get('task_type','Development'))"
+      echo '{{parse_output}}' | python3 -c "
+      import sys, json
+      try:
+          print(json.loads(sys.stdin.read()).get('task_type', 'Development'))
+      except Exception:
+          print('Development')
+      "
     output: "task_type"
 
   - id: "extract-workstream-count"
     type: "bash"
     command: |
-      echo '{{parse_output}}' | python3 -c "import sys,json; print(json.loads(sys.stdin.read()).get('workstream_count',1))"
+      echo '{{parse_output}}' | python3 -c "
+      import sys, json
+      try:
+          print(json.loads(sys.stdin.read()).get('workstream_count', 1))
+      except Exception:
+          print(1)
+      "
     output: "workstream_count"
 
   # ─────────────────────────────────────────────────────────────────────────
@@ -151,34 +160,12 @@ steps:
     output: "round_1_result"
 
   # ─────────────────────────────────────────────────────────────────────────
-  # Phase 2b: Operations -- classify then route to bash or builder agent
+  # Phase 2b: Operations -- route to builder agent
   # ─────────────────────────────────────────────────────────────────────────
-
-  - id: "classify-ops-intent"
-    type: "bash"
-    condition: "'Operations' in task_type or 'Ops' in task_type"
-    command: |
-      echo "{{task_description}}" | python3 -c "
-      import sys
-      task = sys.stdin.read().lower()
-      simple = ['git ','ls ','rm ','cp ','mv ','mkdir','chmod','cat ','grep ','find ','df ','du ','ps ','kill','echo ']
-      print('BASH' if any(p in task for p in simple) and len(task) < 200 else 'AGENT')
-      "
-    output: "ops_mode"
-
-  - id: "handle-ops-bash"
-    type: "bash"
-    condition: "('Operations' in task_type or 'Ops' in task_type) and ops_mode == 'BASH'"
-    command: |
-      REPO_PATH="{{repo_path}}"
-      [ -d "$REPO_PATH" ] && cd "$REPO_PATH"
-      echo "Ops (bash): {{task_description}}"
-      echo "STATUS: COMPLETE"
-    output: "round_1_result"
 
   - id: "handle-ops-agent"
     type: "agent"
-    condition: "('Operations' in task_type or 'Ops' in task_type) and ops_mode != 'BASH'"
+    condition: "'Operations' in task_type"
     agent: "amplihack:core:builder"
     prompt: |
       Execute this operational task directly.
@@ -197,13 +184,15 @@ steps:
     type: "bash"
     condition: "'Development' in task_type or 'Investigation' in task_type"
     command: |
-      TREE_SCRIPT="amplifier-bundle/tools/session_tree.py"
+      TREE_SCRIPT="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/session_tree.py"
       if [ -f "$TREE_SCRIPT" ]; then
           python3 "$TREE_SCRIPT" check
       else
-          DEPTH="${AMPLIHACK_SESSION_DEPTH:-0}"
-          MAX="${AMPLIHACK_MAX_DEPTH:-3}"
-          python3 -c "print('ALLOWED' if int('$DEPTH') < int('$MAX') else 'BLOCKED:depth=$DEPTH>=max=$MAX')"
+          python3 -c "
+      import sys
+      depth, max_d = int(sys.argv[1]), int(sys.argv[2])
+      print('ALLOWED' if depth < max_d else f'BLOCKED:depth={depth}>=max={max_d}')
+      " "${AMPLIHACK_SESSION_DEPTH:-0}" "${AMPLIHACK_MAX_DEPTH:-3}"
       fi
     output: "recursion_guard"
 
@@ -236,18 +225,16 @@ steps:
     condition: |
       ('Development' in task_type or 'Investigation' in task_type) and int(str(workstream_count).strip() or '1') > 1 and 'ALLOWED' in recursion_guard
     command: |
-      HELPER_PATH="{{helper_script}}"
-      python3 - "$HELPER_PATH" <<'PYEOF' <<< "{{decomposition_json}}"
-      import json, sys, os, re, tempfile, importlib.util
-      h_path = sys.argv[1]
-      decomp = sys.stdin.read()
-      fd, tmp = tempfile.mkstemp(prefix="decomp-", suffix=".txt", dir="/tmp")
-      os.chmod(tmp, 0o600)
-      with os.fdopen(fd, "w") as f: f.write(decomp)
+      HELPER_PATH={{helper_script}}
+      DECOMP_JSON={{decomposition_json}}
+      export HELPER_PATH DECOMP_JSON
+      python3 - <<'PYEOF'
+      import json, os, re, tempfile, importlib.util
+      h_path = os.environ['HELPER_PATH']
+      decomp = os.environ['DECOMP_JSON']
       spec = importlib.util.spec_from_file_location("h", h_path)
       h = importlib.util.module_from_spec(spec); spec.loader.exec_module(h)
-      obj = h.extract_json(open(tmp).read())
-      os.unlink(tmp)
+      obj = h.extract_json(decomp)
       config = []
       for i, ws in enumerate(obj.get("workstreams", [])):
           name = ws.get("name", f"workstream-{i+1}")
@@ -271,8 +258,8 @@ steps:
     condition: |
       ('Development' in task_type or 'Investigation' in task_type) and int(str(workstream_count).strip() or '1') > 1 and 'ALLOWED' in recursion_guard
     command: |
-      REPO_PATH="{{repo_path}}"
-      WS_FILE="{{workstreams_file}}"
+      REPO_PATH={{repo_path}}
+      WS_FILE={{workstreams_file}}
       if [ ! -d "$REPO_PATH" ]; then
         echo "ERROR: repo_path does not exist: $REPO_PATH" >&2; exit 1
       fi
@@ -286,7 +273,7 @@ steps:
   - id: "recursion-limit-notice"
     type: "bash"
     condition: |
-      ('Development' in task_type or 'Investigation' in task_type) and 'BLOCKED' in recursion_guard
+      ('Development' in task_type or 'Investigation' in task_type) and 'BLOCKED' in recursion_guard and int(str(workstream_count).strip() or '1') > 1
     command: |
       echo "RECURSION GUARD: session depth limit reached -- cannot spawn sub-workstreams."
       echo "Depth state: {{recursion_guard}}"
@@ -298,8 +285,10 @@ steps:
   - id: "cleanup-helper"
     type: "bash"
     command: |
-      HELPER_PATH="{{helper_script}}"
+      HELPER_PATH={{helper_script}}
+      WS_FILE={{workstreams_file}}
       [ -f "$HELPER_PATH" ] && rm -f "$HELPER_PATH"
+      [ -f "$WS_FILE" ] && rm -f "$WS_FILE"
       echo "ok"
     output: "cleanup_status"
 
@@ -310,7 +299,7 @@ steps:
 
   - id: "reflect-round-1"
     type: "agent"
-    condition: "'Q&A' not in task_type and 'Operations' not in task_type"
+    condition: "'Q&A' not in task_type and 'Operations' not in task_type and round_1_result"
     agent: "amplihack:core:reviewer"
     prompt: |
       Evaluate goal achievement after round 1.
@@ -370,6 +359,7 @@ steps:
       Final round. Complete as much remaining work as possible.
 
       **Original Goal**: {{decomposition_json}}
+      **Round 2 Result**: {{round_2_result}}
       **Round 2 Gaps**: {{reflection_2}}
 
       Prioritize the most critical missing items. This is the last round.
@@ -379,7 +369,7 @@ steps:
 
   - id: "reflect-final"
     type: "agent"
-    condition: "'Q&A' not in task_type and 'Operations' not in task_type"
+    condition: "'Q&A' not in task_type and 'Operations' not in task_type and round_1_result and (not reflection_1 or 'PARTIAL' in reflection_1 or 'NOT_ACHIEVED' in reflection_1 or round_2_result)"
     agent: "amplihack:core:reviewer"
     prompt: |
       Final assessment after all execution rounds.
@@ -433,4 +423,4 @@ output:
     {{summary}}
 
     ---
-    *amplihack smart-orchestrator v1.1.0*
+    *amplihack smart-orchestrator v1.2.0*

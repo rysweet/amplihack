@@ -11,16 +11,73 @@ Test areas:
 2. Multi-workstream detection (clearly independent parallel components)
 3. JSON parsing robustness (JSON in code blocks, raw JSON, partial JSON)
 4. Task type classification (Q&A vs Development vs Investigation)
+5. normalise_type mapping (abbreviated -> canonical)
+6. Round/goal status reflection logic
+7. Empty slug fallback
 """
 
 from __future__ import annotations
 
+import importlib.util
 import json
+import os
 import re
+import sys
+import tempfile
+import textwrap
 import unittest
+from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# Extracted logic from parse-decomposition bash step (lines 88-115 of recipe)
+# Load the ACTUAL production helper from the recipe's write-json-helper step
+# ---------------------------------------------------------------------------
+#
+# The recipe embeds this Python snippet (without leading whitespace) inside a
+# heredoc.  We extract it here once at module-import time so every test uses
+# the real production logic, not a hand-rolled approximation.
+#
+# If the recipe changes, the tests automatically pick up the new behaviour.
+# ---------------------------------------------------------------------------
+
+_RECIPE_PATH = (
+    Path(__file__).parent.parent
+    / "amplifier-bundle"
+    / "recipes"
+    / "smart-orchestrator.yaml"
+)
+
+# Extract the helper source between 'PYEOF' markers in the write-json-helper step.
+_recipe_text = _RECIPE_PATH.read_text()
+_match = re.search(r"cat > \"\$HELPER\" << 'PYEOF'\n(.*?)\n      PYEOF", _recipe_text, re.DOTALL)
+if not _match:
+    raise RuntimeError(
+        "Could not find write-json-helper PYEOF block in smart-orchestrator.yaml"
+    )
+
+# The recipe indents the heredoc body with 6 spaces; strip leading whitespace
+# from each line so it compiles as a valid Python module.
+_helper_source = textwrap.dedent(_match.group(1))
+
+# Write to a real temp file and import it so we exercise exactly the same
+# code path that the recipe runner uses at runtime.
+_helper_file = tempfile.NamedTemporaryFile(
+    prefix="orch-helper-test-", suffix=".py", delete=False, mode="w"
+)
+_helper_file.write(_helper_source)
+_helper_file.close()
+
+_spec = importlib.util.spec_from_file_location("_orch_helper", _helper_file.name)
+_h = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_h)
+
+# Expose as module-level callables so tests can use them directly.
+extract_json = _h.extract_json
+normalise_type = _h.normalise_type
+
+
+# ---------------------------------------------------------------------------
+# Compatibility shims so existing tests that call parse_decomposition /
+# create_workstreams_config still work unchanged.
 # ---------------------------------------------------------------------------
 
 
@@ -30,32 +87,11 @@ def parse_decomposition(text: str) -> tuple[str, int]:
 
     Returns (task_type, workstream_count).
     """
-    # Extract JSON from markdown code block or raw text
-    json_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
-    if not json_match:
-        json_match = re.search(r'(\{[^{}]*"task_type"[^{}]*\})', text, re.DOTALL)
-    if not json_match:
-        # Try to find any JSON object
-        json_match = re.search(r"(\{.*\})", text, re.DOTALL)
-
-    try:
-        if json_match:
-            obj = json.loads(json_match.group(1))
-        else:
-            obj = {}
-    except json.JSONDecodeError:
-        obj = {}
-
-    task_type = obj.get("task_type", "Development")
+    obj = extract_json(text)
+    task_type = normalise_type(obj.get("task_type", "Development"))
     workstreams = obj.get("workstreams", [{}])
     count = max(1, len(workstreams))
-
     return task_type, count
-
-
-# ---------------------------------------------------------------------------
-# Extracted logic from create-workstreams-config bash step (lines 183-215)
-# ---------------------------------------------------------------------------
 
 
 def create_workstreams_config(text: str) -> list[dict]:
@@ -64,21 +100,12 @@ def create_workstreams_config(text: str) -> list[dict]:
 
     Returns the list of workstream config dicts (normally written to JSON file).
     """
-    # Extract JSON from the decomposition output
-    json_match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
-    if not json_match:
-        json_match = re.search(r"(\{.*\})", text, re.DOTALL)
-
-    try:
-        obj = json.loads(json_match.group(1)) if json_match else {}
-    except Exception:
-        obj = {}
-
+    obj = extract_json(text)
     workstreams = obj.get("workstreams", [])
     config = []
     for i, ws in enumerate(workstreams):
         name = ws.get("name", f"workstream-{i + 1}")
-        slug = re.sub(r"[^a-z0-9-]", "-", name.lower())[:30].strip("-")
+        slug = re.sub(r"[^a-z0-9-]", "-", name.lower())[:30].strip("-") or f"ws-{i + 1}"
         config.append(
             {
                 "issue": "TBD",
@@ -88,7 +115,6 @@ def create_workstreams_config(text: str) -> list[dict]:
                 "recipe": ws.get("recipe", "default-workflow"),
             }
         )
-
     return config
 
 
@@ -407,6 +433,31 @@ class TestJsonParsingRobustness(unittest.TestCase):
         config = create_workstreams_config("")
         self.assertEqual(config, [])
 
+    def test_nested_json_in_code_block(self):
+        """Greedy regex must handle nested objects inside the code block correctly."""
+        inner = json.dumps({
+            "task_type": "Development",
+            "goal": "Ship it",
+            "success_criteria": ["Tests pass"],
+            "workstreams": [
+                {
+                    "name": "backend",
+                    "description": "Build backend with config: {\"debug\": true}",
+                    "recipe": "default-workflow",
+                    "metadata": {"priority": "high"},
+                },
+                {
+                    "name": "frontend",
+                    "description": "Build frontend",
+                    "recipe": "default-workflow",
+                },
+            ],
+        })
+        text = f"```json\n{inner}\n```"
+        task_type, count = parse_decomposition(text)
+        self.assertEqual(task_type, "Development")
+        self.assertEqual(count, 2)
+
 
 # ---------------------------------------------------------------------------
 # Test suite: Task type classification
@@ -448,9 +499,9 @@ class TestTaskTypeClassification(unittest.TestCase):
         self.assertIn("Operations", task_type)
 
     def test_condition_ops_abbreviation_in_task_type(self):
-        """Recipe checks for 'Ops' as well as 'Operations'."""
+        """Recipe normalise_type maps 'Ops' -> 'Operations'."""
         task_type, _ = parse_decomposition(self._make("Ops"))
-        self.assertIn("Ops", task_type)
+        self.assertEqual(task_type, "Operations")
 
     def test_condition_development_in_task_type(self):
         task_type, _ = parse_decomposition(self._make("Development"))
@@ -480,6 +531,67 @@ class TestTaskTypeClassification(unittest.TestCase):
         _, count2 = parse_decomposition(raw_multi)
         self.assertNotEqual(str(count2).strip(), "1")
         self.assertEqual(int(str(count2).strip()), 2)
+
+
+# ---------------------------------------------------------------------------
+# Test suite: normalise_type mapping
+# ---------------------------------------------------------------------------
+
+
+class TestNormaliseType(unittest.TestCase):
+    """Verify normalise_type maps abbreviated/variant strings to canonical types."""
+
+    def test_normalise_type_qa(self):
+        """'qa', 'question', 'Q&A' all resolve to 'Q&A'."""
+        for raw in ("qa", "question", "Q&A", "answer"):
+            with self.subTest(raw=raw):
+                self.assertEqual(normalise_type(raw), "Q&A")
+
+    def test_normalise_type_ops(self):
+        """'ops', 'operation', 'admin' all resolve to 'Operations'."""
+        for raw in ("ops", "operation", "admin", "Operations"):
+            with self.subTest(raw=raw):
+                self.assertEqual(normalise_type(raw), "Operations")
+
+    def test_normalise_type_investigation(self):
+        """'invest', 'research', 'understand' all resolve to 'Investigation'."""
+        for raw in ("invest", "research", "understand", "Investigation", "analysis"):
+            with self.subTest(raw=raw):
+                self.assertEqual(normalise_type(raw), "Investigation")
+
+    def test_normalise_type_development(self):
+        """Everything else resolves to 'Development'."""
+        for raw in ("dev", "build", "feature", "Development", "implement", "unknown"):
+            with self.subTest(raw=raw):
+                self.assertEqual(normalise_type(raw), "Development")
+
+
+# ---------------------------------------------------------------------------
+# Test suite: Round / goal-status reflection logic
+# ---------------------------------------------------------------------------
+
+
+class TestRoundGoalStatus(unittest.TestCase):
+    """Verify the reflection conditions used in the recipe YAML."""
+
+    def test_round_goal_status_partial_triggers_round_2(self):
+        """'PARTIAL' anywhere in the reflection string should trigger round 2."""
+        reflection = "GOAL_STATUS: PARTIAL -- missing tests and CI config"
+        self.assertIn("PARTIAL", reflection)
+        # The recipe condition: 'PARTIAL' in reflection_1 or 'NOT_ACHIEVED' in reflection_1
+        should_trigger = "PARTIAL" in reflection or "NOT_ACHIEVED" in reflection
+        self.assertTrue(should_trigger)
+
+    def test_round_goal_status_achieved_does_not_trigger(self):
+        """'ACHIEVED' alone must not trigger round 2."""
+        reflection = "GOAL_STATUS: ACHIEVED"
+        should_trigger = "PARTIAL" in reflection or "NOT_ACHIEVED" in reflection
+        self.assertFalse(should_trigger)
+
+    def test_not_achieved_triggers_round_2(self):
+        reflection = "GOAL_STATUS: NOT_ACHIEVED -- CI is still red"
+        should_trigger = "PARTIAL" in reflection or "NOT_ACHIEVED" in reflection
+        self.assertTrue(should_trigger)
 
 
 # ---------------------------------------------------------------------------
@@ -531,6 +643,13 @@ class TestBranchSlugGeneration(unittest.TestCase):
         config = self._config_for(["api", "webui", "auth"])
         indices = [c["branch"].split("/")[1].split("-")[1] for c in config]
         self.assertEqual(indices, ["1", "2", "3"])
+
+    def test_empty_slug_fallback(self):
+        """A name that produces an all-special-char slug must fall back to ws-{i+1}."""
+        config = self._config_for(["@@@"])
+        branch = config[0]["branch"]
+        # slug after stripping non-alnum and stripping hyphens -> empty -> ws-1
+        self.assertIn("ws-1", branch, f"Expected ws-1 fallback in branch, got: {branch}")
 
 
 # ---------------------------------------------------------------------------

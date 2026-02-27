@@ -45,7 +45,7 @@ User request
      ▼
 [Classify] ──→ Q&A ──────────────────→ analyzer agent (technical/code questions)
      │
-     ├──────→ Ops ────────────────────→ bash (simple cmd) | builder agent (complex)
+     ├──────→ Ops ────────────────────→ builder agent
      │
      └──→ Development / Investigation
              │

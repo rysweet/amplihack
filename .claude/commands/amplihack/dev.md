@@ -68,7 +68,9 @@ classifies your task, detects parallel workstreams, and executes via recipe runn
       ▼
 [smart-orchestrator recipe]
       │
-      ├─ Q&A / Ops ─────────────────────────→ Direct response
+      ├─ Q&A ──────────────────────────────→ analyzer agent (direct answer)
+      │
+      ├─ Ops ──────────────────────────────→ builder agent (executes operation)
       │
       ├─ 1 workstream ──────────────────────→ default-workflow recipe
       │

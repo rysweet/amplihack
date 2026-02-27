@@ -17,6 +17,7 @@ Usage:
 
 import json
 import os
+import shlex
 import shutil
 import signal
 import subprocess
@@ -117,6 +118,14 @@ class ParallelOrchestrator:
                 issue = int(time.time()) % 100000
                 print(f"[{issue}] Could not create issue, using fallback ID")
 
+        # Validate issue is a positive integer to prevent path/shell injection
+        try:
+            issue = int(issue)
+            if issue <= 0:
+                raise ValueError(f"issue must be positive, got {issue}")
+        except (TypeError, ValueError) as e:
+            raise ValueError(f"Invalid issue number in workstream config: {issue!r}") from e
+
         ws = Workstream(
             issue=issue,
             branch=branch,
@@ -170,6 +179,7 @@ class ParallelOrchestrator:
         import json
 
         safe_task = json.dumps(ws.task)
+        safe_recipe = json.dumps(ws.recipe)
         launcher_py.write_text(
             textwrap.dedent(f"""\
             #!/usr/bin/env python3
@@ -191,7 +201,7 @@ class ParallelOrchestrator:
 
             adapter = CLISubprocessAdapter(cli="claude", working_dir=".")
             result = run_recipe_by_name(
-                "{ws.recipe}",
+                {safe_recipe},
                 adapter=adapter,
                 user_context={{
                     "task_description": {safe_task},
@@ -220,17 +230,23 @@ class ParallelOrchestrator:
         current_depth = int(os.environ.get("AMPLIHACK_SESSION_DEPTH", "0"))
         tree_id = os.environ.get("AMPLIHACK_TREE_ID") or uuid.uuid4().hex[:8]
 
+        safe_work_dir = shlex.quote(str(ws.work_dir))
+        safe_tree = shlex.quote(tree_id)
+        safe_depth = shlex.quote(str(current_depth + 1))
+        safe_max_depth = shlex.quote(os.environ.get("AMPLIHACK_MAX_DEPTH", "3"))
+        safe_max_sessions = shlex.quote(os.environ.get("AMPLIHACK_MAX_SESSIONS", "10"))
+
         run_sh = ws.work_dir / "run.sh"
         run_sh.write_text(
             textwrap.dedent(f"""\
             #!/bin/bash
-            cd "{ws.work_dir}"
+            cd {safe_work_dir}
             unset CLAUDECODE  # Allow nested Claude sessions
             # Propagate session tree context so child recipes obey depth limits
-            export AMPLIHACK_TREE_ID="{tree_id}"
-            export AMPLIHACK_SESSION_DEPTH="{current_depth + 1}"
-            export AMPLIHACK_MAX_DEPTH="{os.environ.get("AMPLIHACK_MAX_DEPTH", "3")}"
-            export AMPLIHACK_MAX_SESSIONS="{os.environ.get("AMPLIHACK_MAX_SESSIONS", "10")}"
+            export AMPLIHACK_TREE_ID={safe_tree}
+            export AMPLIHACK_SESSION_DEPTH={safe_depth}
+            export AMPLIHACK_MAX_DEPTH={safe_max_depth}
+            export AMPLIHACK_MAX_SESSIONS={safe_max_sessions}
             exec python3 launcher.py
             """)
         )
@@ -252,16 +268,22 @@ class ParallelOrchestrator:
         _depth = int(os.environ.get("AMPLIHACK_SESSION_DEPTH", "0"))
         _tree = os.environ.get("AMPLIHACK_TREE_ID") or _uuid.uuid4().hex[:8]
 
+        _safe_work_dir = shlex.quote(str(ws.work_dir))
+        _safe_tree = shlex.quote(_tree)
+        _safe_depth = shlex.quote(str(_depth + 1))
+        _safe_max_depth = shlex.quote(os.environ.get("AMPLIHACK_MAX_DEPTH", "3"))
+        _safe_max_sessions = shlex.quote(os.environ.get("AMPLIHACK_MAX_SESSIONS", "10"))
+
         run_sh = ws.work_dir / "run.sh"
         run_sh.write_text(
             textwrap.dedent(f"""\
             #!/bin/bash
-            cd "{ws.work_dir}"
+            cd {_safe_work_dir}
             unset CLAUDECODE
-            export AMPLIHACK_TREE_ID="{_tree}"
-            export AMPLIHACK_SESSION_DEPTH="{_depth + 1}"
-            export AMPLIHACK_MAX_DEPTH="{os.environ.get("AMPLIHACK_MAX_DEPTH", "3")}"
-            export AMPLIHACK_MAX_SESSIONS="{os.environ.get("AMPLIHACK_MAX_SESSIONS", "10")}"
+            export AMPLIHACK_TREE_ID={_safe_tree}
+            export AMPLIHACK_SESSION_DEPTH={_safe_depth}
+            export AMPLIHACK_MAX_DEPTH={_safe_max_depth}
+            export AMPLIHACK_MAX_SESSIONS={_safe_max_sessions}
             amplihack claude --subprocess-safe -- -p "@TASK.md
 
             Execute task autonomously following DEFAULT_WORKFLOW.md.

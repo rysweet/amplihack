@@ -52,7 +52,7 @@ turns, it's the same topic. Continue in the current workflow.
 | **Q&A**           | Q&A_WORKFLOW           | Simple questions, single-turn answers, no code changes |
 | **Operations**    | OPS_WORKFLOW           | Admin tasks, commands, disk cleanup, repo management   |
 | **Investigation** | INVESTIGATION_WORKFLOW | Understanding code, exploring systems, research        |
-| **Development**   | DEFAULT_WORKFLOW       | Code changes, features, bugs, refactoring              |
+| **Development**   | smart-orchestrator (/dev) | Code changes, features, bugs, refactoring              |
 
 ### Classification Keywords
 
@@ -175,7 +175,7 @@ Amplihack provides four extensibility mechanisms with clear invocation patterns:
   commands (`/help`, `/clear`) cannot be invoked programmatically.
 
   ```python
-  SlashCommand(command="/ultrathink Analyze architecture")
+  SlashCommand(command="/dev Analyze architecture")
   ```
 
 - **Skill Tool**: Invoke skills explicitly when auto-discovery isn't sufficient
@@ -198,7 +198,7 @@ Amplihack provides four extensibility mechanisms with clear invocation patterns:
 
 **Composition Examples:**
 
-- Command invoking workflow: `/ultrathink` reads `DEFAULT_WORKFLOW.md`
+- Command invoking workflow: `/dev` invokes `smart-orchestrator` recipe which calls `default-workflow`
 - Command invoking command: `/improve` can invoke `/amplihack:reflect`
 - Skill invoking agent: `test-gap-analyzer` invokes `tester` agent
 - Agent invoking skill: `architect` can invoke `mermaid-diagram-generator`
@@ -567,7 +567,7 @@ Execute comprehensive system review with all relevant agents in parallel.
 .claude/
 ├── context/          # Philosophy, patterns, project info
 ├── agents/           # Specialized AI agents
-├── commands/         # Slash commands (/ultrathink, /analyze, /improve)
+├── commands/         # Slash commands (/dev, /analyze, /improve)
 ├── scenarios/        # Production-ready user-facing tools
 │   ├── README.md     # Scenarios pattern documentation
 │   ├── tool-name/    # Each tool gets its own directory
@@ -598,6 +598,36 @@ Default execution mode for all non-trivial tasks. The dev-orchestrator:
 - Executes via smart-orchestrator recipe (recipe runner)
 - Reflects on goal achievement after completion
 - Formerly known as `/ultrathink` (deprecated)
+
+### Session Tree Configuration (Recursion Guard)
+
+The dev-orchestrator enforces recursion limits via a session tree to prevent
+infinite sub-orchestration. Four environment variables control this:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `AMPLIHACK_TREE_ID` | (auto) | Shared tree ID — auto-generated at root, do not set manually |
+| `AMPLIHACK_SESSION_DEPTH` | `0` | Current depth — auto-incremented, do not set manually |
+| `AMPLIHACK_MAX_DEPTH` | `3` | Max recursion depth before sub-workstream spawning is blocked |
+| `AMPLIHACK_MAX_SESSIONS` | `10` | Max concurrent active sessions per tree |
+
+**Debugging a blocked session:**
+
+```bash
+# Inspect current tree state
+python3 amplifier-bundle/tools/session_tree.py status $AMPLIHACK_TREE_ID
+
+# Check if spawning is allowed at current depth
+python3 amplifier-bundle/tools/session_tree.py check
+
+# Increase depth limit for deep orchestration
+export AMPLIHACK_MAX_DEPTH=5
+```
+
+**When you see "RECURSION GUARD: session depth limit reached":**
+The orchestrator is blocking sub-workstream spawning to prevent infinite recursion.
+Increase `AMPLIHACK_MAX_DEPTH` if you need deeper orchestration.
+State is tracked in `/tmp/amplihack-session-trees/{tree_id}.json`.
 
 ### /analyze <path>
 
