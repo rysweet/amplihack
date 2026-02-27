@@ -321,7 +321,7 @@ steps:
     type: "agent"
     # Fires when blocked from spawning subworkstreams — executes as single session instead
     condition: |
-      ('Development' in task_type or 'Investigation' in task_type) and 'BLOCKED' in recursion_guard
+      ('Development' in task_type or 'Investigation' in task_type) and 'BLOCKED' in recursion_guard and int(str(workstream_count).strip() or '1') > 1
     agent: "amplihack:core:builder"
     prompt: |
       Execute this task as a single session (parallel execution is depth-limited).
@@ -513,4 +513,4 @@ output:
     {{summary}}
 
     ---
-    *amplihack smart-orchestrator v1.3.0*
+    *amplihack dev-orchestrator v1.3.0 (smart-orchestrator)*

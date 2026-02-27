@@ -501,32 +501,45 @@ class TestTaskTypeClassification(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 
-class TestNormaliseType(unittest.TestCase):
-    """Verify normalise_type maps abbreviated/variant strings to canonical types."""
+class TestNormaliseTypeRoundTrip(unittest.TestCase):
+    """One round-trip smoke test: parse_decomposition passes task_type through normalise_type.
+    Full normalise_type coverage is in test_orch_helper.py::TestNormaliseType.
+    """
 
-    def test_normalise_type_qa(self):
-        """'qa', 'question', 'Q&A' all resolve to 'Q&A'."""
-        for raw in ("qa", "question", "Q&A", "answer"):
-            with self.subTest(raw=raw):
-                self.assertEqual(normalise_type(raw), "Q&A")
+    def test_abbreviated_type_normalised_in_parse_decomposition(self):
+        """'Ops' input normalises to 'Operations' through the parse_decomposition shim."""
+        raw = _make_decomposition_json(
+            "Ops",
+            [{"name": "ws", "description": "task", "recipe": "default-workflow"}]
+        )
+        task_type, _ = parse_decomposition(raw)
+        self.assertEqual(task_type, "Operations")
 
-    def test_normalise_type_ops(self):
-        """'ops', 'operation', 'admin' all resolve to 'Operations'."""
-        for raw in ("ops", "operation", "admin", "Operations"):
-            with self.subTest(raw=raw):
-                self.assertEqual(normalise_type(raw), "Operations")
 
-    def test_normalise_type_investigation(self):
-        """'invest', 'research', 'understand' all resolve to 'Investigation'."""
-        for raw in ("invest", "research", "understand", "Investigation", "analysis"):
-            with self.subTest(raw=raw):
-                self.assertEqual(normalise_type(raw), "Investigation")
+class TestFallbackBlockedCondition(unittest.TestCase):
+    """Tests for execute-single-fallback-blocked recipe condition (fixed round-3)."""
 
-    def test_normalise_type_development(self):
-        """Everything else resolves to 'Development'."""
-        for raw in ("dev", "build", "feature", "Development", "implement", "unknown"):
-            with self.subTest(raw=raw):
-                self.assertEqual(normalise_type(raw), "Development")
+    def _fallback_condition(self, task_type, recursion_guard, workstream_count):
+        """Simulate the FIXED execute-single-fallback-blocked condition."""
+        return (
+            ("Development" in task_type or "Investigation" in task_type)
+            and "BLOCKED" in recursion_guard
+            and int(str(workstream_count).strip() or "1") > 1
+        )
+
+    def test_fires_for_multi_workstream_blocked(self):
+        """Fires when parallel spawning blocked and multiple workstreams planned."""
+        self.assertTrue(self._fallback_condition("Development", "BLOCKED:depth=3>=max=3", 2))
+
+    def test_does_not_fire_for_single_workstream_blocked(self):
+        """Must NOT fire for single workstream even when blocked — execute-single handles it."""
+        self.assertFalse(self._fallback_condition("Development", "BLOCKED:depth=3>=max=3", 1))
+
+    def test_does_not_fire_when_allowed(self):
+        self.assertFalse(self._fallback_condition("Development", "ALLOWED", 2))
+
+    def test_does_not_fire_for_qa(self):
+        self.assertFalse(self._fallback_condition("Q&A", "BLOCKED:depth=3>=max=3", 2))
 
 
 # ---------------------------------------------------------------------------
