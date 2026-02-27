@@ -785,6 +785,32 @@ class PowerSteeringChecker:
                     summary=None,
                 )
 
+            # 4b2. Issue #2561: Small completed session auto-pass
+            # One-line bug fixes and trivial sessions should not be subjected to
+            # full 21-check analysis which causes false-positive blocking loops.
+            # Detect sessions with minimal edits and completion signals, and auto-pass
+            # checks that are not applicable to the actual scope of work performed.
+            if self._is_small_completed_session(transcript):
+                self._log(
+                    "Small completed session detected - auto-approving (Issue #2561)",
+                    "INFO",
+                )
+                self._emit_progress(
+                    progress_callback,
+                    "small_session_autopass",
+                    "Small completed session - checks auto-passed",
+                    {"session_type": session_type},
+                )
+                if turn_state_manager and turn_state:
+                    turn_state = turn_state_manager.record_approval(turn_state)
+                    turn_state_manager.save_state(turn_state)
+                return PowerSteeringResult(
+                    decision="approve",
+                    reasons=["small_completed_session"],
+                    continuation_prompt=None,
+                    summary=None,
+                )
+
             # 4c. State-based verification (Issue #1962 - robust fallback for post-compaction)
             # When compaction is detected, supplement transcript analysis with actual state checks
             # This provides ground truth even when transcript history is incomplete
@@ -2229,6 +2255,72 @@ class PowerSteeringChecker:
         # Short sessions with few tools = likely Q&A
         if len(transcript) < 5 and tool_uses < 2:
             return True
+
+        return False
+
+    def _is_small_completed_session(self, transcript: list[dict]) -> bool:
+        """Detect small completed sessions that should auto-pass (Issue #2561).
+
+        One-line bug fixes and trivial changes should not be subjected to full
+        21-check analysis which causes false-positive blocking loops. This method
+        detects sessions where:
+        1. Few file edits were made (1-3 Write/Edit operations)
+        2. The most recent assistant message contains completion signals
+
+        Args:
+            transcript: List of message dictionaries
+
+        Returns:
+            True if session is a small completed task, False otherwise
+        """
+        # Count Write/Edit operations in the session
+        write_edit_count = 0
+        for msg in transcript:
+            if msg.get("type") == "assistant" and "message" in msg:
+                content = msg["message"].get("content", [])
+                if not isinstance(content, list):
+                    continue
+                for block in content:
+                    if isinstance(block, dict) and block.get("type") == "tool_use":
+                        if block.get("name") in ("Write", "Edit"):
+                            write_edit_count += 1
+
+        # Not a small session if many edits were made
+        if write_edit_count > 3:
+            return False
+
+        # Must have at least one edit (otherwise it's a Q&A, handled elsewhere)
+        if write_edit_count == 0:
+            return False
+
+        # Check the last few assistant messages for completion signals
+        recent_assistant = [m for m in transcript[-10:] if m.get("type") == "assistant"][-5:]
+
+        completion_signals = [
+            r"(?:fix|bug\s*fix|change|update|patch)\s+(?:has been|is)\s+(?:applied|complete|done|merged)",
+            r"(?:task|issue|bug|fix|work)\s+(?:is\s+)?(?:complete|done|finished|resolved)",
+            r"successfully\s+(?:fixed|resolved|completed|implemented|applied)",
+            r"(?:pr|pull\s+request|commit)\s+(?:created|merged|submitted|pushed)",
+            r"(?:pushed|committed)\s+(?:the\s+)?(?:fix|change|update|patch)",
+            r"all\s+(?:done|complete|finished)",
+            r"(?:has|have)\s+been\s+(?:completed|fixed|resolved|implemented)",
+            r"the\s+(?:fix|change|bug\s*fix|update|patch)\s+(?:is|was)\s+(?:applied|pushed|committed|merged)",
+        ]
+
+        for msg in reversed(recent_assistant):
+            content = msg.get("message", {}).get("content", [])
+            if not isinstance(content, list):
+                continue
+            for block in content:
+                if isinstance(block, dict) and block.get("type") == "text":
+                    text = str(block.get("text", ""))
+                    for pattern in completion_signals:
+                        if re.search(pattern, text, re.IGNORECASE):
+                            self._log(
+                                f"Small completed session: {write_edit_count} edits with completion signal",
+                                "INFO",
+                            )
+                            return True
 
         return False
 
@@ -3762,11 +3854,14 @@ class PowerSteeringChecker:
     def _check_next_steps(self, transcript: list[dict], session_id: str) -> bool:
         """Check that work is complete with NO remaining next steps (Issue #2196 - Enhanced).
 
-        UPDATED LOGIC (Issue #2196):
+        UPDATED LOGIC (Issue #2196, #2561):
         - Uses regex patterns to detect STRUCTURED next steps (bulleted lists)
         - Handles negation ("no next steps", "no remaining work")
         - Ignores status observations ("CI pending", "waiting for")
         - Prevents false positives on completion statements
+        - Issue #2561: Detects completion summaries (past-tense bullet lists describing
+          what WAS done, not what NEEDS to be done) to prevent false-positive loops
+          on completed one-line bug fixes.
 
         INVERTED LOGIC: If the agent mentions concrete next steps in structured format,
         work is incomplete. Simple keywords without structure are ignored to prevent
@@ -3795,6 +3890,19 @@ class PowerSteeringChecker:
             r"nothing\s+(?:left|remaining|outstanding)",
         ]
 
+        # Issue #2561: Completion summary HEADER patterns with bullet structure.
+        # These have DIFFERENT header keywords than next-steps patterns (e.g.,
+        # "Summary:" vs "Next steps:") and are safe to check before structural
+        # next-steps detection to prevent false positives where a bullet-list
+        # summary of completed work is mistaken for remaining action items.
+        # IMPORTANT: Only patterns with `:` + bullet structure go here.
+        # Standalone phrases like "work is done" MUST NOT go here because they
+        # can co-occur with structural next steps in the same message (e.g.,
+        # "Current work done. Next steps:\n- ..." should still FAIL).
+        completion_header_patterns = [
+            r"(?:summary|changes\s+made|what\s+(?:was|i)\s+(?:done|did|changed|fixed)|completed|accomplished):\s*[\r\n]+\s*[-•*\d.]",
+        ]
+
         # Check RECENT assistant messages (last 10) for structured next steps
         recent_messages = [m for m in transcript[-20:] if m.get("type") == "assistant"][-10:]
 
@@ -3819,6 +3927,25 @@ class PowerSteeringChecker:
 
                         # Skip structured detection for this message if negation matched
                         if negation_matched:
+                            continue
+
+                        # Issue #2561: Check for completion summary HEADERS before
+                        # structural next-steps detection. Only headers with specific
+                        # completion keywords (Summary:, Changes made:, etc.) followed
+                        # by bullet lists are safe to skip here. These have different
+                        # keywords than the next-steps patterns, so no ambiguity.
+                        completion_header_matched = False
+                        for pattern in completion_header_patterns:
+                            if re.search(pattern, text, re.IGNORECASE):
+                                self._log(
+                                    "Completion summary header found: status confirmation, not action items (Issue #2561)",
+                                    "INFO",
+                                )
+                                completion_header_matched = True
+                                break
+
+                        # Skip structural next-steps detection if completion header matched
+                        if completion_header_matched:
                             continue
 
                         # Check for STRUCTURED next steps (bulleted/numbered lists)

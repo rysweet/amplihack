@@ -271,37 +271,64 @@ async def analyze_consideration(
             # Security validation failed - fail-open (assume satisfied)
             return (True, None)
 
-        response_lower = response.lower()
+        response_lower = response.lower().strip()
 
-        # Parse response for yes/no decision
-        # Look for clear indicators of satisfaction
+        # Issue #2561: Parse response using STRUCTURED prefixes first.
+        # The prompt asks the SDK to respond with "SATISFIED: [reason]" or
+        # "NOT SATISFIED: [reason]". We should prefer these structured responses
+        # over generic keyword matching to avoid false positives where words like
+        # "no", "missing", "failed" appear in completion summaries (e.g.,
+        # "No issues found", "Fixed the missing validation", "Tests no longer failed").
+
+        # Priority 1: Check for structured NOT SATISFIED prefix (most specific)
+        not_satisfied_prefixes = [
+            "not satisfied:",
+            "not satisfied.",
+            "unsatisfied:",
+            "not met:",
+        ]
+        for prefix in not_satisfied_prefixes:
+            if response_lower.startswith(prefix):
+                reason = _extract_reason_from_response(response)
+                return (False, reason)
+
+        # Priority 2: Check for structured SATISFIED prefix
+        satisfied_prefixes = [
+            "satisfied:",
+            "satisfied.",
+            "satisfied -",
+            "yes,",
+            "yes.",
+            "yes -",
+        ]
+        for prefix in satisfied_prefixes:
+            if response_lower.startswith(prefix):
+                return (True, None)
+
+        # Priority 3: Look for NOT SATISFIED anywhere (but require the full phrase,
+        # not just "no" or "missing" which cause false positives on completion summaries)
+        unsatisfied_phrases = [
+            "not satisfied",
+            "not fulfilled",
+            "not met",
+            "not complete",
+            "incomplete",
+            "unfulfilled",
+        ]
+        for phrase in unsatisfied_phrases:
+            if phrase in response_lower:
+                reason = _extract_reason_from_response(response)
+                return (False, reason)
+
+        # Priority 4: Look for SATISFIED indicators
         satisfied_indicators = [
             "satisfied",
-            "yes",
             "complete",
             "fulfilled",
             "met",
             "achieved",
             "accomplished",
         ]
-        unsatisfied_indicators = [
-            "not satisfied",
-            "no",
-            "incomplete",
-            "unfulfilled",
-            "not met",
-            "missing",
-            "failed",
-        ]
-
-        # Check for unsatisfied indicators first (more specific)
-        for indicator in unsatisfied_indicators:
-            if indicator in response_lower:
-                # Extract reason from response
-                reason = _extract_reason_from_response(response)
-                return (False, reason)
-
-        # Then check for satisfied indicators
         for indicator in satisfied_indicators:
             if indicator in response_lower:
                 return (True, None)
@@ -329,6 +356,7 @@ def _format_consideration_prompt(consideration: dict, conversation: list[dict]) 
     conv_summary = _format_conversation_summary(conversation)
 
     # Simple inline prompt (no template file needed for fail-open behavior)
+    # Issue #2561: Enhanced prompt to distinguish completion summaries from action items
     prompt = f"""You are analyzing a Claude Code session to determine if the following consideration is satisfied:
 
 **Consideration**: {consideration["question"]}
@@ -342,9 +370,17 @@ def _format_consideration_prompt(consideration: dict, conversation: list[dict]) 
 
 Analyze the conversation and determine if this consideration is satisfied.
 
+**IMPORTANT - Distinguish completion summaries from action items (Issue #2561):**
+- A message that SUMMARIZES what was accomplished (past tense: "fixed", "resolved", "applied", "pushed") is a COMPLETION CONFIRMATION, not remaining work.
+- Bullet lists describing what WAS done (e.g., "Changes made:\\n- Fixed the bug\\n- Updated tests") are SUMMARIES, not action items.
+- Only flag as NOT SATISFIED if there are genuine FUTURE-TENSE action items that the agent stated it would do but hasn't completed yet.
+- For small sessions (few edits, one-line fixes), lean toward SATISFIED if the core task appears done.
+
 **Respond with ONE of:**
 - "SATISFIED: [brief reason]" if the consideration is met
 - "NOT SATISFIED: [brief reason]" if the consideration is not met
+
+Your response MUST start with either "SATISFIED:" or "NOT SATISFIED:".
 
 Be direct and specific. Reference actual events from the conversation.
 Focus on evidence - what tools were used, what actions were taken, what the user and assistant discussed.
