@@ -145,7 +145,7 @@ After execution completes, verify the goal was achieved. If not:
 | Type          | Keywords                                                      | Action                        |
 | ------------- | ------------------------------------------------------------- | ----------------------------- |
 | Q&A           | "what is", "explain", "how do I", "quick question"            | Respond directly              |
-| Operations    | "cleanup", "delete", "git status", "run command"              | Execute directly              |
+| Operations    | "cleanup", "delete", "git status", "run command"              | builder agent (direct execution, no workflow steps) |
 | Investigation | "investigate", "analyze", "how does", "understand", "explore" | investigation-workflow        |
 | Development   | "implement", "build", "create", "add", "fix", "refactor"      | smart-orchestrator            |
 | Hybrid        | Both investigation + development keywords                     | investigation first, then dev |
@@ -228,8 +228,8 @@ Appears at the end of round execution steps:
 Appears at the end of reflection steps:
 
 - `GOAL_STATUS: ACHIEVED` — all success criteria met, task is done
-- `GOAL_STATUS: PARTIAL — [description]` — some criteria met, more work needed
-- `GOAL_STATUS: NOT_ACHIEVED — [reason]` — goal not met, another round needed
+- `GOAL_STATUS: PARTIAL -- [description]` — some criteria met, more work needed
+- `GOAL_STATUS: NOT_ACHIEVED -- [reason]` — goal not met, another round needed
 
 The goal-seeking loop uses GOAL_STATUS signals to decide whether to run round 2 or 3.
 

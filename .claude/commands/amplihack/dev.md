@@ -85,13 +85,16 @@ task runs as a single Claude session without sub-workstream spawning.
 
 When you run `/dev fix the login bug`, here is what you will see:
 
-1. **Classification** (~30 seconds): The orchestrator analyzes your request and outputs a structured plan. You will see agent reasoning and a JSON decomposition.
+1. **Classification** (~1 minute): The orchestrator analyzes your request and outputs a structured plan. You will see agent reasoning and a JSON decomposition.
 
-2. **Execution** (1–5 minutes for typical tasks): The builder agent does the actual work — you will see detailed implementation output streaming in real time.
+2. **Execution** (~5–15min for a typical bug fix, longer for complex features): The builder agent does the actual work — you will see detailed implementation output streaming in real time.
 
 3. **Reflection** (~1 minute): A reviewer evaluates whether the goal was achieved. If not, another round runs automatically (up to 3 total). You will see `GOAL_STATUS: PARTIAL` or `GOAL_STATUS: ACHIEVED` in the output.
 
 4. **Summary**: When complete, look for `# Dev Orchestrator -- Execution Complete` at the bottom. This contains the structured summary including PR links and goal status.
+
+> **Timing varies significantly** based on task complexity, model load, and number of reflection rounds.
+> Simple Q&A: seconds. Typical bug fix: 5–15 minutes. Complex multi-workstream features: 30+ minutes.
 
 **If execution takes longer than 2 minutes with no output**, the agent is working — there are no progress bars between major steps.
 
