@@ -182,7 +182,7 @@ execution:
 
 For most tasks, type `/dev <your task>` — the smart-orchestrator automatically selects the right workflow.
 
-- **DEFAULT_WORKFLOW**: 22-step systematic development process (features, bugs,
+- **DEFAULT_WORKFLOW**: 23-step systematic development process, steps 0–22 (features, bugs,
   refactoring)
 - **INVESTIGATION_WORKFLOW**: 6-phase knowledge excavation (understanding
   existing systems)

@@ -43,7 +43,7 @@ and how to interpret what you see during execution.
 
 ### Try it
 
-In your Claude Code session, type:
+Claude Code opens an interactive chat prompt in your terminal (not a bash shell). Type slash commands directly into that prompt. At the `>` or input line, type:
 
 ```
 /dev fix the login timeout bug
@@ -98,13 +98,13 @@ them simultaneously.
 
 ```
 [dev-orchestrator] Classified as: Development | Workstreams: 2 — starting execution...
-Launching parallel workstreams:
-[{"issue": "TBD", "branch": "feat/orch-1-rest-api", "description": "rest-api", ...},
- {"issue": "TBD", "branch": "feat/orch-2-react-webui", "description": "react-webui", ...}]
+Launching parallel workstreams (tree: abc12345, depth: 0):
+[{"issue": "TBD", "branch": "feat/orch-1-rest-api", ...},
+ {"issue": "TBD", "branch": "feat/orch-2-react-webui", ...}]
 ---
-[1] Launched PID 12345 (recipe mode)
-[2] Launched PID 12346 (recipe mode)
-2 workstreams launched in parallel
+[TBD] Launched PID 12345 (recipe mode)
+[TBD] Launched PID 12346 (recipe mode)
+2 workstreams launched in parallel (recipe mode)
 ```
 
 Both workstreams run in isolated `/tmp` clones. When they complete, you get two
@@ -143,7 +143,10 @@ For tasks requiring understanding before building, use the hybrid pattern:
 /dev investigate how the payment service handles retries, then add exponential backoff
 ```
 
-### What happens
+### What typically happens
+
+> The architect agent decides workstream decomposition. "investigate X then implement Y"
+> usually produces two workstreams, but may produce one for simpler cases.
 
 1. **Workstream 1** (investigation-workflow): Explores the payment service code,
    maps the retry logic, produces findings.
@@ -268,12 +271,19 @@ Development/1-workstream default. Re-run for better results or simplify the
 task description.
 
 **"orch_helper.py not found"**
+The recipe cannot locate its helper module. This happens when:
 
-You are not running from the repo root or `AMPLIHACK_HOME` is not set:
-
-```bash
-export AMPLIHACK_HOME=/path/to/your/amplihack
-```
+- **Cloned-repo users**: Not running from the repo root. Fix:
+  ```bash
+  cd /path/to/amplihack
+  /dev your task
+  # OR set AMPLIHACK_HOME:
+  export AMPLIHACK_HOME=/path/to/your/amplihack
+  ```
+- **`uvx` users**: This indicates a packaging issue. Try reinstalling:
+  ```bash
+  uv tool install --reinstall git+https://github.com/rysweet/amplihack
+  ```
 
 **Execution appears stuck with no output**
 

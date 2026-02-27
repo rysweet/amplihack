@@ -549,7 +549,7 @@ steps:
 output:
   format: "markdown"
   template: |
-    # Smart Orchestrator -- Execution Complete
+    # Dev Orchestrator -- Execution Complete
 
     **Task**: {{task_description}}
     **Type**: {{task_type}}
