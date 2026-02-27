@@ -169,6 +169,31 @@ PYTHONPATH=src python -m amplihack.eval.long_horizon_memory \
     --turns 100 --questions 20
 ```
 
+### Large-Scale (5000+ turns) with Subprocess Segmentation
+
+For large turn counts, native memory from Kuzu C++ and aiohttp accumulates
+~3MB/turn and cannot be freed without process exit. Use `--segment-size` to
+run the learning phase in subprocess segments:
+
+```bash
+# 5000 turns in 100-turn segments (50 subprocesses, each exits and frees memory)
+python -m amplihack.eval.long_horizon_memory \
+    --turns 5000 --questions 200 --segment-size 100
+
+# 2000 turns in 500-turn segments
+python -m amplihack.eval.long_horizon_memory \
+    --turns 2000 --questions 100 --segment-size 500
+```
+
+Each segment:
+
+1. Loads its slice of turns from a pre-generated JSON
+2. Learns the turns into the shared Kuzu DB on disk
+3. Exits (freeing ALL native memory)
+
+After all segments, questions run against the accumulated DB.
+Default (`--segment-size 0`) runs everything in one process as before.
+
 ## Prerequisites
 
 ```bash

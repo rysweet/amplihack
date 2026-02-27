@@ -24,6 +24,9 @@ Usage:
     python -m amplihack.eval.long_horizon_memory --turns 1000 --questions 100
     python -m amplihack.eval.long_horizon_memory --sdk claude --grader-votes 5
     python -m amplihack.eval.long_horizon_memory --turns 100 --questions 20 --parallel-workers 10
+
+    # Large-scale with subprocess segmentation (prevents OOM on 5000+ turns):
+    python -m amplihack.eval.long_horizon_memory --turns 5000 --segment-size 100
 """
 
 from __future__ import annotations
@@ -1427,13 +1430,20 @@ def main() -> None:
     if args.load_db:
         import shutil
 
-        src_db = Path(args.load_db)
+        src_db = Path(args.load_db).resolve()
         if not src_db.exists():
             raise FileNotFoundError(f"--load-db path does not exist: {src_db}")
-        if db_path.exists():
-            shutil.rmtree(db_path)
-        shutil.copytree(src_db, db_path)
-        logger.info("Loaded existing memory DB from %s -> %s", src_db, db_path)
+        # Skip copy when src and dst are the same (e.g. segment orchestrator)
+        if src_db != db_path.resolve():
+            if db_path.exists():
+                if db_path.is_dir():
+                    shutil.rmtree(db_path)
+                else:
+                    db_path.unlink()
+            shutil.copytree(src_db, db_path)
+            logger.info("Loaded existing memory DB from %s -> %s", src_db, db_path)
+        else:
+            logger.info("Using existing memory DB in-place at %s", db_path)
 
     # Determine agent name -- match the name used when the DB was created.
     # When loading a pre-built DB, detect agent_id from the DB to avoid mismatch.
