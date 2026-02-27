@@ -1124,6 +1124,8 @@ def _run_segmented_learning(args: argparse.Namespace) -> None:
             cmd.append("--use-hierarchical")
         if args.flush_every > 0:
             cmd.extend(["--flush-every", str(args.flush_every)])
+        if getattr(args, "memory_type", "auto") != "auto":
+            cmd.extend(["--memory-type", args.memory_type])
 
         # Retry once on failure, then skip the segment
         max_attempts = 2
@@ -1253,6 +1255,21 @@ def _run_segment_worker(args: argparse.Namespace) -> None:
             storage_path=db_path,
             use_hierarchical=args.use_hierarchical,
         )
+
+        # Override memory backend if --memory-type specified
+        memory_type = getattr(args, "memory_type", "auto")
+        if memory_type == "hierarchical":
+            from amplihack.agents.goal_seeking.flat_retriever_adapter import (
+                FlatRetrieverAdapter,
+            )
+
+            agent.memory = FlatRetrieverAdapter(
+                agent_name=agent_name, db_path=db_path
+            )
+        elif memory_type == "cognitive":
+            from amplihack.agents.goal_seeking.cognitive_adapter import CognitiveAdapter
+
+            agent.memory = CognitiveAdapter(agent_name=agent_name, db_path=db_path)
     else:
         from amplihack.agents.goal_seeking.sdk_adapters.factory import create_agent
 
@@ -1351,6 +1368,14 @@ def main() -> None:
         default="mini",
         choices=["mini", "claude", "copilot", "microsoft"],
         help="SDK to use for the agent (default: mini = LearningAgent directly)",
+    )
+    parser.add_argument(
+        "--memory-type",
+        type=str,
+        default="auto",
+        choices=["auto", "hierarchical", "cognitive"],
+        help="Force memory backend: auto (prefer cognitive if available), "
+        "hierarchical (FlatRetrieverAdapter), cognitive (CognitiveAdapter). Default: auto.",
     )
     parser.add_argument("--verbose", "-v", action="store_true", help="Enable verbose logging")
     parser.add_argument(
@@ -1498,12 +1523,35 @@ def main() -> None:
         if args.sdk == "mini":
             from amplihack.agents.goal_seeking.learning_agent import LearningAgent
 
-            return LearningAgent(
+            agent = LearningAgent(
                 agent_name=agent_name,
                 model=agent_model,
                 storage_path=db_path,
                 use_hierarchical=args.use_hierarchical,
             )
+
+            # Override memory backend if --memory-type specified
+            memory_type = getattr(args, "memory_type", "auto")
+            if memory_type == "hierarchical":
+                from amplihack.agents.goal_seeking.flat_retriever_adapter import (
+                    FlatRetrieverAdapter,
+                )
+
+                agent.memory = FlatRetrieverAdapter(
+                    agent_name=agent_name, db_path=db_path
+                )
+                logger.info("Forced HierarchicalMemory via --memory-type=hierarchical")
+            elif memory_type == "cognitive":
+                from amplihack.agents.goal_seeking.cognitive_adapter import (
+                    CognitiveAdapter,
+                )
+
+                agent.memory = CognitiveAdapter(
+                    agent_name=agent_name, db_path=db_path
+                )
+                logger.info("Forced CognitiveMemory via --memory-type=cognitive")
+
+            return agent
         from amplihack.agents.goal_seeking.sdk_adapters.factory import create_agent
 
         sdk_agent = create_agent(
