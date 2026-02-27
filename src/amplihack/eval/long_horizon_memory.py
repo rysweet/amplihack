@@ -1086,6 +1086,7 @@ def _run_segmented_learning(args: argparse.Namespace) -> None:
     )
 
     segment_start_time = time.time()
+    failed_segments: list[int] = []
     for seg_idx in range(num_segments):
         seg_start = seg_idx * seg_size
         seg_end = min(seg_start + seg_size, total)
@@ -1124,18 +1125,42 @@ def _run_segmented_learning(args: argparse.Namespace) -> None:
         if args.flush_every > 0:
             cmd.extend(["--flush-every", str(args.flush_every)])
 
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        if result.returncode != 0:
-            logger.error(
-                "Segment %d failed (exit %d):\nstdout: %s\nstderr: %s",
+        # Retry once on failure, then skip the segment
+        max_attempts = 2
+        succeeded = False
+        for attempt in range(1, max_attempts + 1):
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            if result.returncode == 0:
+                succeeded = True
+                break
+            logger.warning(
+                "Segment %d attempt %d/%d failed (exit %d):\nstderr: %s",
                 seg_idx + 1,
+                attempt,
+                max_attempts,
                 result.returncode,
-                result.stdout[-500:] if result.stdout else "",
                 result.stderr[-500:] if result.stderr else "",
             )
-            raise RuntimeError(f"Segment {seg_idx + 1} failed with exit code {result.returncode}")
 
-        logger.info("[Segment %d/%d] complete", seg_idx + 1, num_segments)
+        if succeeded:
+            logger.info("[Segment %d/%d] complete", seg_idx + 1, num_segments)
+        else:
+            logger.error(
+                "Segment %d failed after %d attempts, skipping turns %d:%d",
+                seg_idx + 1,
+                max_attempts,
+                seg_start,
+                seg_end,
+            )
+            failed_segments.append(seg_idx + 1)
+
+    if failed_segments:
+        logger.warning(
+            "%d of %d segments failed and were skipped: %s",
+            len(failed_segments),
+            num_segments,
+            failed_segments,
+        )
 
     learning_elapsed = time.time() - segment_start_time
     logger.info(

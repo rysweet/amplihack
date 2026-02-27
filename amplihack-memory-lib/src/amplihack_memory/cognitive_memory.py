@@ -224,14 +224,21 @@ class CognitiveMemory:
                     raise
 
     def _load_max_order(self, table: str, column: str) -> int:
-        result = self._conn.execute(
-            f"MATCH (n:{table}) WHERE n.agent_id = $aid RETURN max(n.{column})",
-            {"aid": self.agent_name},
-        )
-        if result.has_next():
-            val = result.get_next()[0]
-            if val is not None:
-                return int(val)
+        try:
+            result = self._conn.execute(
+                f"MATCH (n:{table}) WHERE n.agent_id = $aid RETURN max(n.{column})",
+                {"aid": self.agent_name},
+            )
+            if result.has_next():
+                val = result.get_next()[0]
+                if val is not None:
+                    return int(val)
+        except Exception:
+            logger.warning(
+                "Could not load max %s from %s (schema mismatch?), defaulting to 0",
+                column,
+                table,
+            )
         return 0
 
     # ==================================================================
