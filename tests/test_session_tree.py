@@ -218,6 +218,40 @@ class TestSessionRegistration(unittest.TestCase):
             else:
                 os.environ["AMPLIHACK_MAX_DEPTH"] = saved
 
+    def test_register_session_raises_on_capacity_overflow(self):
+        """register_session raises RuntimeError when session count exceeds max_sessions."""
+        tree = self._unique_tree()
+        saved = os.environ.get("AMPLIHACK_MAX_SESSIONS")
+        os.environ["AMPLIHACK_MAX_SESSIONS"] = "2"
+        try:
+            st.register_session("s1", tree_id=tree, depth=0)
+            st.register_session("s2", tree_id=tree, depth=0)
+            with self.assertRaises(RuntimeError) as ctx:
+                st.register_session("s3", tree_id=tree, depth=0)
+            self.assertIn("max_sessions", str(ctx.exception))
+        finally:
+            if saved is None:
+                os.environ.pop("AMPLIHACK_MAX_SESSIONS", None)
+            else:
+                os.environ["AMPLIHACK_MAX_SESSIONS"] = saved
+
+    def test_register_allows_session_at_exactly_max_depth(self):
+        """register_session uses depth > max_depth (strict); depth==max_depth is allowed."""
+        tree = self._unique_tree()
+        saved = os.environ.get("AMPLIHACK_MAX_DEPTH")
+        os.environ["AMPLIHACK_MAX_DEPTH"] = "2"
+        try:
+            # depth=2 with max_depth=2: 2 > 2 is False -> should not raise
+            result = st.register_session("leaf", tree_id=tree, depth=2)
+            self.assertEqual(result["depth"], 2)
+            state = st._load(tree)
+            self.assertEqual(state["sessions"]["leaf"]["status"], "active")
+        finally:
+            if saved is None:
+                os.environ.pop("AMPLIHACK_MAX_DEPTH", None)
+            else:
+                os.environ["AMPLIHACK_MAX_DEPTH"] = saved
+
 
 class TestGetStatus(unittest.TestCase):
     """get_status returns a useful tree summary."""
@@ -440,7 +474,15 @@ class TestCLISubcommands(unittest.TestCase):
 
     def test_check_outputs_allowed_for_new_tree(self):
         """The recipe's derive-recursion-guard step calls: session_tree.py check"""
-        r = self._run_cli(["check"], extra_env={"AMPLIHACK_TREE_ID": ""})
+        r = self._run_cli(
+            ["check"],
+            extra_env={
+                "AMPLIHACK_TREE_ID": "",
+                "AMPLIHACK_SESSION_DEPTH": "0",
+                "AMPLIHACK_MAX_DEPTH": "3",
+                "AMPLIHACK_MAX_SESSIONS": "10",
+            }
+        )
         self.assertEqual(r.returncode, 0)
         self.assertEqual(r.stdout.strip(), "ALLOWED")
 

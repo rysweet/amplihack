@@ -27,36 +27,20 @@ def extract_json(text: str) -> dict:
         except json.JSONDecodeError:
             continue  # malformed block, try next
 
-    # Fallback: scan for balanced-brace JSON objects in document order
-    # Tries each { candidate; if one fails JSON decode, tries the next
+    # Fallback: scan for first valid JSON object in document order.
+    # json.JSONDecoder.raw_decode() correctly handles } inside string values,
+    # unlike a manual depth counter which treats all } as structural.
+    _decoder = json.JSONDecoder()
     pos = 0
     while True:
         start = text.find('{', pos)
         if start == -1:
-            break  # no more candidates
-
-        # Find the matching close brace via depth counting
-        depth = 0
-        end = -1
-        for i, ch in enumerate(text[start:], start):
-            if ch == '{':
-                depth += 1
-            elif ch == '}':
-                depth -= 1
-                if depth == 0:
-                    end = i
-                    break
-
-        if end == -1:
-            break  # unbalanced, no complete object found
-
+            break
         try:
-            return json.loads(text[start:end + 1])
+            return _decoder.raw_decode(text, start)[0]
         except json.JSONDecodeError:
-            # This candidate failed; try the next { after the current start
             pos = start + 1
             continue
-
     return {}
 
 
