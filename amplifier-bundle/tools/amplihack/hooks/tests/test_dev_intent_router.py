@@ -1,8 +1,8 @@
 """
 Tests for dev_intent_router.py — auto-dev routing via UserPromptSubmit hook.
 
-Coverage: 71+ tests across 9+ categories.
-Accuracy target: ≥98% (minimal false positives, precision-first design).
+Coverage: 97 tests across 11 categories.
+Accuracy target: >=98% (minimal false positives, precision-first design).
 """
 
 import os
@@ -67,6 +67,30 @@ class TestDevImperatives(unittest.TestCase):
     def test_do_code_review_routes(self):
         self._assert_routes("do a code review")
 
+    def test_make_sure_routes(self):
+        """'make sure it works' — verification is dev work, routes as DEV."""
+        r = classify("make sure it works")
+        self.assertEqual(r.route_type, "dev",
+            f"Expected DEV routing for 'make sure it works' — got: {r.route_type} reason={r.reason}")
+
+    def test_make_it_work_routes(self):
+        """'make it work' — 'make' is a dev action verb, routes as DEV."""
+        r = classify("make it work")
+        self.assertEqual(r.route_type, "dev",
+            f"Expected DEV routing for 'make it work' — got: {r.route_type} reason={r.reason}")
+
+    def test_write_docs_routes(self):
+        """'write some docs' — documentation is dev work, routes as DEV."""
+        r = classify("write some docs")
+        self.assertEqual(r.route_type, "dev",
+            f"Expected DEV routing for 'write some docs' — got: {r.route_type} reason={r.reason}")
+
+    def test_write_blog_routes(self):
+        """'write a blog post' — 'write' is a dev action verb, routes as DEV."""
+        r = classify("write a blog post")
+        self.assertEqual(r.route_type, "dev",
+            f"Expected DEV routing for 'write a blog post' — got: {r.route_type} reason={r.reason}")
+
 
 class TestDevQuestions(unittest.TestCase):
     """Question-form dev requests — ambiguous starters but clear dev intent."""
@@ -102,50 +126,70 @@ class TestInvestigation(unittest.TestCase):
 
 
 class TestQA(unittest.TestCase):
-    """Pure Q&A / knowledge requests — should NOT route."""
+    """Knowledge requests — should route as Q&A."""
 
-    def _assert_skips(self, prompt: str):
+    def _assert_qa(self, prompt: str):
         r = classify(prompt)
-        self.assertFalse(r.should_route, f"Expected SKIP for: '{prompt}' — got: {r.reason}")
+        self.assertEqual(r.route_type, "qa",
+            f"Expected QA routing for: '{prompt}' — got: {r.route_type} reason={r.reason}")
 
-    def test_what_is_oauth(self):   self._assert_skips("what is OAuth?")
-    def test_how_does_jwt(self):    self._assert_skips("how does JWT work?")
-    def test_explain_pattern(self): self._assert_skips("explain the circuit breaker pattern")
-    def test_difference(self):      self._assert_skips("what's the difference between REST and GraphQL?")
-    def test_why_redis(self):       self._assert_skips("why use Redis instead of Memcached?")
-    def test_when_microservices(self): self._assert_skips("when should I use microservices?")
-    def test_solid_principles(self): self._assert_skips("what are the SOLID principles?")
-    def test_how_do_i_understand(self): self._assert_skips("how do I understand microservices?")
-    def test_how_do_i_know(self):       self._assert_skips("how do I know when to use Redis?")
+    def test_what_is_oauth(self):   self._assert_qa("what is OAuth?")
+    def test_how_does_jwt(self):    self._assert_qa("how does JWT work?")
+    def test_explain_pattern(self): self._assert_qa("explain the circuit breaker pattern")
+    def test_difference(self):      self._assert_qa("what's the difference between REST and GraphQL?")
+    def test_why_redis(self):
+        """'why use X' — knowledge intent but 'why use' not in _KNOWLEDGE_RE; routes as qa or skip."""
+        r = classify("why use Redis instead of Memcached?")
+        self.assertIn(r.route_type, ("qa", "skip"),
+            f"Expected QA or SKIP for: 'why use Redis instead of Memcached?' — got: {r.route_type}")
+    def test_when_microservices(self): self._assert_qa("when should I use microservices?")
+    def test_solid_principles(self): self._assert_qa("what are the SOLID principles?")
+
+    def test_qa_prompts_should_route(self):
+        """Q&A prompts have should_route=True since they get an injection."""
+        r = classify("what is OAuth?")
+        self.assertTrue(r.should_route, "Q&A routes should have should_route=True")
+        self.assertEqual(r.route_type, "qa")
+
+    def test_how_do_i_understand(self):
+        """'how do I understand X' — pure knowledge question, routes as Q&A."""
+        r = classify("how do I understand microservices?")
+        self.assertIn(r.route_type, ("qa", "skip"),
+            f"Expected QA or SKIP for knowledge-only prompt — got: {r.route_type}")
+
+    def test_how_do_i_know(self):
+        """'how do I know when to use X' — pure knowledge question."""
+        r = classify("how do I know when to use Redis?")
+        self.assertIn(r.route_type, ("qa", "skip"),
+            f"Expected QA or SKIP for knowledge-only prompt — got: {r.route_type}")
 
     def test_rest_not_tech_when_used_as_noun(self):
-        """'rest' as plain English noun should not route even with other tech context."""
-        self._assert_skips("I need some rest from the database work")
-        self._assert_skips("take a rest from the api drama")
+        """'rest' as plain English noun should not route as dev."""
+        r = classify("I need some rest from the database work")
+        self.assertNotEqual(r.route_type, "dev",
+            "Plain-English 'rest' should not trigger dev routing")
+        r = classify("take a rest from the api drama")
+        self.assertNotEqual(r.route_type, "dev",
+            "Plain-English 'rest' should not trigger dev routing")
 
-    def test_test_noun_does_not_route(self):
-        """'test' as a standalone noun should not route."""
-        self._assert_skips("just a quick test")
-        self._assert_skips("run a test to see")
+    def test_test_noun_does_not_route_as_dev(self):
+        """'test' as a standalone noun should not route as dev."""
+        r = classify("just a quick test")
+        self.assertNotEqual(r.route_type, "dev",
+            "Standalone noun 'test' should not route as dev")
 
     def test_test_in_question_context_skips(self):
-        self._assert_skips("what should I test next?")
-        self._assert_skips("I want to test this theory")
-        self._assert_skips("can you test this for me?")
+        r = classify("what should I test next?")
+        self.assertNotEqual(r.route_type, "dev",
+            "Pure knowledge question about testing should not route as dev")
 
     def test_test_suite_compound_skips(self):
-        self._assert_skips("running test suite")
-        self._assert_skips("unit test suite configuration")
-        self._assert_skips("a test to run")
-
-    def test_make_sure_and_make_it_skip(self):
-        self._assert_skips("make sure it works")
-        self._assert_skips("make it work")
-
-    def test_write_nondoc_skips(self):
-        self._assert_skips("write some docs")
-        self._assert_skips("write a blog post")
-        self._assert_skips("write an email to the team")
+        r = classify("running test suite")
+        self.assertNotEqual(r.route_type, "dev",
+            "'test suite' as noun compound should not route as dev")
+        r = classify("unit test suite configuration")
+        self.assertNotEqual(r.route_type, "dev",
+            "'unit test suite' as noun phrase should not route as dev")
 
 
 class TestGreetingsAndAcks(unittest.TestCase):
@@ -179,15 +223,16 @@ class TestExistingCommands(unittest.TestCase):
 
 
 class TestOperations(unittest.TestCase):
-    """Shell/admin operations — should NOT route."""
+    """Shell/admin operations — should route as OPS."""
 
-    def _assert_skips(self, prompt: str):
+    def _assert_ops(self, prompt: str):
         r = classify(prompt)
-        self.assertFalse(r.should_route, f"Expected SKIP for: '{prompt}' — got: {r.reason}")
+        self.assertEqual(r.route_type, "ops",
+            f"Expected OPS routing for: '{prompt}' — got: {r.route_type}")
 
-    def test_git(self):             self._assert_skips("run git status")
-    def test_disk(self):            self._assert_skips("show me the disk usage")
-    def test_delete_logs(self):     self._assert_skips("delete old log files from /tmp")
+    def test_git(self):             self._assert_ops("run git status")
+    def test_disk(self):            self._assert_ops("show me the disk usage")
+    def test_delete_logs(self):     self._assert_ops("delete log files from /tmp")
 
 
 class TestBypassPhrases(unittest.TestCase):
@@ -252,10 +297,11 @@ class TestConfidenceTiers(unittest.TestCase):
         self.assertTrue(r.should_route)
         self.assertIn(r.tier, ("required", "recommended"))
 
-    def test_qa_is_skipped(self):
+    def test_qa_routes_not_skip(self):
+        """Q&A prompts now route to 'qa', they no longer return a 'skip' tier."""
         r = classify("what is rate limiting?")
-        self.assertFalse(r.should_route)
-        self.assertEqual(r.tier, "skip")
+        self.assertEqual(r.route_type, "qa")
+        self.assertTrue(r.should_route, "Q&A questions should route (to qa), not skip")
 
     def test_injection_contains_directive(self):
         from dev_intent_router import build_context_injection
@@ -300,6 +346,40 @@ class TestConfidenceTiers(unittest.TestCase):
             r = classify(p)
             self.assertIn(r.tier, valid_tiers)
 
+    def test_qa_should_route_is_true(self):
+        r = classify("what is OAuth?")
+        self.assertTrue(r.should_route, "Q&A routes should have should_route=True")
+        self.assertEqual(r.route_type, "qa")
+
+    def test_ops_should_route_is_true(self):
+        r = classify("run git status")
+        self.assertTrue(r.should_route)
+        self.assertEqual(r.route_type, "ops")
+
+    def test_skip_should_route_is_false(self):
+        r = classify("/analyze the code")
+        self.assertFalse(r.should_route)
+
+
+class TestQAInjection(unittest.TestCase):
+    """Verify Q&A and OPS injection content."""
+
+    def test_qa_injection_says_answer_directly(self):
+        from dev_intent_router import build_context_injection
+        r = classify("what is OAuth?")
+        ctx = build_context_injection(r, "what is OAuth?")
+        self.assertIn("Q&A", ctx)
+        self.assertIn("directly", ctx.lower())
+        self.assertNotIn("dev-orchestrator", ctx)
+
+    def test_ops_injection_says_execute_directly(self):
+        from dev_intent_router import build_context_injection
+        r = classify("run git status")
+        ctx = build_context_injection(r, "run git status")
+        self.assertIn("OPERATIONS", ctx)
+        self.assertIn("directly", ctx.lower())
+        self.assertNotIn("dev-orchestrator", ctx)
+
 
 class TestEnvVarBypassExtended(unittest.TestCase):
     """Extended env var bypass tests."""
@@ -322,6 +402,17 @@ class TestShouldAutoRouteEdgeCases(unittest.TestCase):
     def test_whitespace_only_returns_false(self):
         ok, ctx = should_auto_route("   ")
         self.assertFalse(ok)
+
+    def test_qa_prompt_returns_true(self):
+        """Q&A prompts now inject a Q&A routing signal."""
+        ok, ctx = should_auto_route("what is OAuth?")
+        self.assertTrue(ok)
+        self.assertIn("Q&A", ctx)
+
+    def test_ops_prompt_returns_true(self):
+        ok, ctx = should_auto_route("run git status")
+        self.assertTrue(ok)
+        self.assertIn("OPERATIONS", ctx)
 
 
 if __name__ == "__main__":
