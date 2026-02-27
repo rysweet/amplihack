@@ -136,43 +136,54 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
     Returns:
         Exit code.
     """
-    # Detect nesting BEFORE any .claude/ operations
-    from .launcher.auto_stager import AutoStager
-    from .launcher.nesting_detector import NestingDetector
+    # --subprocess-safe: skip all staging/env mutations to avoid concurrent
+    # write races when running as a delegate from another amplihack process
+    # (e.g. multitask workstreams).  See issue #2567.
+    subprocess_safe = getattr(args, "subprocess_safe", False)
+
     from .launcher.session_tracker import SessionTracker
 
-    detector = NestingDetector()
-    nesting_result = detector.detect_nesting(Path.cwd(), sys.argv)
-
-    # Auto-stage if nested execution in source repo detected
+    # Detect nesting BEFORE any .claude/ operations
     original_cwd = None
-    if nesting_result.requires_staging:
-        print("\n🚨 SELF-MODIFICATION PROTECTION ACTIVATED")
-        print("   Running nested in amplihack source repository")
-        print("   Auto-staging .claude/ to temp directory for safety")
+    nesting_result = None
 
-        stager = AutoStager()
-        original_cwd = Path.cwd()
-        staging_result = stager.stage_for_nested_execution(original_cwd, f"nested-{os.getpid()}")
+    if not subprocess_safe:
+        from .launcher.auto_stager import AutoStager
+        from .launcher.nesting_detector import NestingDetector
 
-        print(f"   📁 Staged to: {staging_result.temp_root}")
-        print("   Your original .claude/ files are protected")
+        detector = NestingDetector()
+        nesting_result = detector.detect_nesting(Path.cwd(), sys.argv)
 
-        # CRITICAL: Change to temp directory so all .claude/ operations happen there
-        os.chdir(staging_result.temp_root)
-        print(f"   📂 CWD changed to: {staging_result.temp_root}\n")
+        # Auto-stage if nested execution in source repo detected
+        if nesting_result.requires_staging:
+            print("\n🚨 SELF-MODIFICATION PROTECTION ACTIVATED")
+            print("   Running nested in amplihack source repository")
+            print("   Auto-staging .claude/ to temp directory for safety")
 
-    # Ensure amplihack framework is staged to ~/.amplihack/.claude/
-    _ensure_amplihack_staged()
+            stager = AutoStager()
+            original_cwd = Path.cwd()
+            staging_result = stager.stage_for_nested_execution(
+                original_cwd, f"nested-{os.getpid()}"
+            )
 
-    # Prompt to re-enable power-steering if disabled (#2544)
-    try:
-        from .power_steering.re_enable_prompt import prompt_re_enable_if_disabled
+            print(f"   📁 Staged to: {staging_result.temp_root}")
+            print("   Your original .claude/ files are protected")
 
-        prompt_re_enable_if_disabled()
-    except Exception as e:
-        # Fail-open: log error but continue
-        logger.debug(f"Error checking power-steering re-enable prompt: {e}")
+            # CRITICAL: Change to temp directory so all .claude/ operations happen there
+            os.chdir(staging_result.temp_root)
+            print(f"   📂 CWD changed to: {staging_result.temp_root}\n")
+
+        # Ensure amplihack framework is staged to ~/.amplihack/.claude/
+        _ensure_amplihack_staged()
+
+        # Prompt to re-enable power-steering if disabled (#2544)
+        try:
+            from .power_steering.re_enable_prompt import prompt_re_enable_if_disabled
+
+            prompt_re_enable_if_disabled()
+        except Exception as e:
+            # Fail-open: log error but continue
+            logger.debug(f"Error checking power-steering re-enable prompt: {e}")
 
     # Start session tracking
     tracker = SessionTracker()
@@ -183,8 +194,8 @@ def launch_command(args: argparse.Namespace, claude_args: list[str] | None = Non
         launch_dir=str(Path.cwd()),
         argv=sys.argv,
         is_auto_mode=is_auto_mode,
-        is_nested=nesting_result.is_nested,
-        parent_session_id=nesting_result.parent_session_id,
+        is_nested=nesting_result.is_nested if nesting_result else False,
+        parent_session_id=nesting_result.parent_session_id if nesting_result else None,
     )
 
     # Wrap execution in try/finally to ensure session is marked complete/crashed
@@ -470,6 +481,13 @@ def add_common_sdk_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Disable post-session reflection analysis. Reflection normally runs after sessions to capture insights and learnings.",
     )
+    parser.add_argument(
+        "--subprocess-safe",
+        action="store_true",
+        help="Skip all staging/env updates (staging, cleanup, settings sync). "
+        "Use when running as a subprocess delegate from an existing amplihack "
+        "session to avoid concurrent write races on ~/.amplihack/.claude/.",
+    )
 
 
 def add_claude_specific_args(parser: argparse.ArgumentParser) -> None:
@@ -738,6 +756,22 @@ For comprehensive auto mode documentation, see docs/AUTO_MODE.md""",
     )
     new_parser.add_argument("--enable-memory", action="store_true", help="Enable memory/learning")
     new_parser.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
+    new_parser.add_argument(
+        "--sdk",
+        choices=["copilot", "claude", "microsoft", "mini"],
+        default="copilot",
+        help="SDK to use for agent execution (default: copilot)",
+    )
+    new_parser.add_argument(
+        "--multi-agent",
+        action="store_true",
+        help="Enable multi-agent architecture with coordinator, memory agent, and sub-agents",
+    )
+    new_parser.add_argument(
+        "--enable-spawning",
+        action="store_true",
+        help="Enable dynamic sub-agent spawning (requires --multi-agent)",
+    )
 
     # Recipe commands
     recipe_parser = subparsers.add_parser("recipe", help="Recipe management and execution commands")
@@ -1402,8 +1436,9 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
-        # Ensure amplihack framework is staged
-        _ensure_amplihack_staged()
+        # Ensure amplihack framework is staged (skip in subprocess-safe mode)
+        if not getattr(args, "subprocess_safe", False):
+            _ensure_amplihack_staged()
 
         # Force RustyClawd usage (Rust implementation of Claude Code)
         os.environ["AMPLIHACK_USE_RUSTYCLAWD"] = "1"
@@ -1427,8 +1462,9 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
-        # Ensure amplihack framework is staged
-        _ensure_amplihack_staged()
+        # Ensure amplihack framework is staged (skip in subprocess-safe mode)
+        if not getattr(args, "subprocess_safe", False):
+            _ensure_amplihack_staged()
 
         # Handle auto mode
         exit_code = handle_auto_mode("copilot", args, claude_args)
@@ -1450,8 +1486,9 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
-        # Ensure amplihack framework is staged
-        _ensure_amplihack_staged()
+        # Ensure amplihack framework is staged (skip in subprocess-safe mode)
+        if not getattr(args, "subprocess_safe", False):
+            _ensure_amplihack_staged()
 
         # Handle auto mode
         exit_code = handle_auto_mode("codex", args, claude_args)
@@ -1473,8 +1510,9 @@ def main(argv: list[str] | None = None) -> int:
         if getattr(args, "append", None):
             return handle_append_instruction(args)
 
-        # Ensure amplihack framework is staged
-        _ensure_amplihack_staged()
+        # Ensure amplihack framework is staged (skip in subprocess-safe mode)
+        if not getattr(args, "subprocess_safe", False):
+            _ensure_amplihack_staged()
 
         # Environment setup
         if getattr(args, "no_reflection", False):
@@ -1701,6 +1739,9 @@ def main(argv: list[str] | None = None) -> int:
             skills_dir=args.skills_dir,
             verbose=args.verbose,
             enable_memory=args.enable_memory,
+            sdk=args.sdk,
+            multi_agent=args.multi_agent,
+            enable_spawning=args.enable_spawning,
         )
 
     elif args.command == "recipe":

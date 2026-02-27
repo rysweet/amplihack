@@ -86,9 +86,10 @@ def copytree_manifest(
         # Create parent directories if needed
         os.makedirs(os.path.dirname(target_dir), exist_ok=True)
 
-        # Remove existing target if it exists
-        if os.path.exists(target_dir):
-            shutil.rmtree(target_dir)
+        # Sync in-place using dirs_exist_ok=True instead of rmtree+copytree.
+        # This avoids concurrent-process races on the shared staging dir
+        # (see issue #2567) and is safe because copytree with dirs_exist_ok
+        # overwrites existing files while preserving the directory structure.
 
         # Copy the directory with optional file filtering
         try:
@@ -328,8 +329,8 @@ def _local_install(repo_root, profile_uri=None):
             sys.path.insert(0, profile_mgmt_dir)
 
         # Now import staging module (from tools/amplihack/)
-        from profile_management.staging import (
-            create_staging_manifest,  # type: ignore[import-not-found]
+        from profile_management.staging import (  # type: ignore[import-not-found]
+            create_staging_manifest,  # pyright: ignore[reportMissingImports]
         )
 
         manifest = create_staging_manifest(ESSENTIAL_DIRS, profile_uri)

@@ -89,7 +89,8 @@ Report: PR numbers, success/failure, runtime
 
 1. **`/tmp` clones** (not worktrees): Worktree symlinks confuse nested Claude sessions. Clean clones avoid this.
 2. **`unset CLAUDECODE`**: Claude Code blocks nested sessions via this env var. Unsetting allows controlled parallel execution.
-3. **Recipe Runner adapter**: `CLISubprocessAdapter` shells out to `claude -p` for each agent step within the recipe.
+3. **`--subprocess-safe`**: Classic mode passes this flag to skip staging/env updates, preventing concurrent write races on `~/.amplihack/.claude/` (issue #2567).
+4. **Recipe Runner adapter**: `CLISubprocessAdapter` shells out to `claude -p` for each agent step within the recipe (no `amplihack` wrapper, so no staging race).
 
 ## Execution Modes
 
@@ -108,11 +109,16 @@ result = run_recipe_by_name("default-workflow", adapter=adapter,
 
 ### Classic Mode
 
-Falls back to single-session prompt-based execution:
+Falls back to single-session prompt-based execution with `--subprocess-safe`
+to avoid concurrent staging races (see issue #2567):
 
 ```bash
-amplihack claude -- -p "@TASK.md Execute autonomously following DEFAULT_WORKFLOW.md."
+amplihack claude --subprocess-safe -- -p "@TASK.md Execute autonomously following DEFAULT_WORKFLOW.md."
 ```
+
+The `--subprocess-safe` flag skips all staging/env updates so parallel
+workstreams don't race on `~/.amplihack/.claude/`. The parent `amplihack`
+process has already staged the framework files.
 
 Use `--mode classic` when Recipe Runner is unavailable or for tasks that benefit from full session context.
 
