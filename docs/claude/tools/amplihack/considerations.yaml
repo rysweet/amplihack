@@ -195,6 +195,13 @@
     - "PR ready for review" (awaiting human action, agent's job is done)
     - "Waiting for approval" (expected end state per user preferences)
 
+    CRITICAL distinction — agent work vs user handoff:
+    Instructions directed at the USER ("You should review the PR", "When CI
+    passes, you can merge") are HANDOFF instructions, not remaining agent work.
+    Only flag as NOT SATISFIED if the agent describes work IT should have done
+    but did not. Deferring to a tracked issue ("Filed as #123 for follow-up")
+    is acceptable scope management, not incomplete work.
+
 - id: docs_organization
   category: Session Completion & Progress
   question: Are session logs stored in .claude/runtime/logs/ and investigation documents placed in the correct docs/ subdirectory, following the project's documentation structure?
@@ -205,7 +212,7 @@
   applicable_session_types: ["MAINTENANCE", "INVESTIGATION"]
 
 # ============================================================================
-# CATEGORY 2: Workflow Process Adherence (5 considerations)
+# CATEGORY 2: Workflow Process Adherence (4 considerations)
 # ============================================================================
 
 - id: workflow_invocation
@@ -254,6 +261,30 @@
   checker: _check_dev_workflow_complete
   enabled: true
   applicable_session_types: ["DEVELOPMENT"]
+  guidance: |
+    The DEFAULT_WORKFLOW has major phases. Look for evidence of EACH:
+
+    1. Requirements/Design: Agent used architect/analyzer agents (Task tool) or
+       discussed approach before coding
+    2. Implementation: Agent used Write/Edit tools to create or modify code
+    3. Testing: Agent ran tests via Bash (pytest, npm test, etc.)
+    4. Git operations: Agent created a branch, committed changes, pushed
+    5. PR creation: Agent ran "gh pr create"
+
+    SATISFIED when:
+    - All 5 phases have evidence in the transcript
+    - Small fixes may legitimately compress phases (design is implicit)
+    - Investigation-then-fix sessions where investigation served as design
+
+    NOT SATISFIED when:
+    - Agent wrote code but never ran tests
+    - Agent ran tests but never created a PR
+    - Agent created a PR but skipped testing entirely
+    - Major phases are completely absent from the transcript
+
+    For small, focused changes (one-line fix, config update), compress phases
+    proportionally. A 2-line bug fix doesn't need a formal design phase.
+    Judge by the spirit of the workflow, not rigid step counting.
 
 - id: investigation_docs
   category: Workflow Process Adherence

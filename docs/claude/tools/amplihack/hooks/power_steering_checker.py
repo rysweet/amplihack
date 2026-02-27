@@ -3048,7 +3048,7 @@ class PowerSteeringChecker:
         Returns:
             True if no direct-to-main commits detected, False otherwise
         """
-        for msg in transcript:
+        for i, msg in enumerate(transcript):
             if msg.get("type") == "assistant" and "message" in msg:
                 content = msg["message"].get("content", [])
                 if isinstance(content, list):
@@ -3056,12 +3056,10 @@ class PowerSteeringChecker:
                         if isinstance(block, dict) and block.get("type") == "tool_use":
                             if block.get("name") == "Bash":
                                 command = block.get("input", {}).get("command", "")
-                                # Detect git commit on main/master (not on a feature branch)
-                                # Pattern: git commit while on main/master branch
+                                # Detect git commit on main/master
                                 if "git commit" in command:
-                                    # Check if we're on main/master by looking at
-                                    # recent tool results for branch context
-                                    if self._is_on_main_branch(transcript):
+                                    # Check NEARBY messages for branch context
+                                    if self._is_on_main_branch_near(transcript, i):
                                         return False
                                 # Detect git push to main/master
                                 if "git push" in command and (
@@ -3070,23 +3068,35 @@ class PowerSteeringChecker:
                                     return False
         return True
 
-    def _is_on_main_branch(self, transcript: list[dict]) -> bool:
-        """Helper: check if recent git context shows we're on main/master.
+    def _is_on_main_branch_near(self, transcript: list[dict], commit_index: int) -> bool:
+        """Check if git context NEAR a commit command shows we're on main/master.
+
+        Searches within 10 messages before the commit for the most recent
+        branch indicator. This avoids false positives where the session started
+        on main but switched to a feature branch before committing.
 
         Args:
             transcript: List of message dictionaries
+            commit_index: Index of the message containing the git commit
 
         Returns:
-            True if evidence suggests we're on main/master branch
+            True if nearest branch evidence shows main/master
         """
-        for msg in reversed(transcript[-30:]):
+        # Search the 10 messages before the commit for branch context
+        start = max(0, commit_index - 10)
+        # Also check the most recent branch indicator, not just any indicator
+        for msg in reversed(transcript[start:commit_index]):
             if msg.get("type") == "tool_result":
                 output = str(msg.get("message", {}).get("content", "")).lower()
-                # Look for branch indicators in git output
+                # If we find a feature branch indicator, we're NOT on main
+                if "on branch " in output and "on branch main" not in output and "on branch master" not in output:
+                    return False
+                # If we find main/master indicator, we ARE on main
                 if "on branch main" in output or "on branch master" in output:
                     return True
                 if "* main" in output or "* master" in output:
                     return True
+        # No branch context found nearby — fail-open (assume not on main)
         return False
 
     def _check_dev_workflow_complete(self, transcript: list[dict], session_id: str) -> bool:
@@ -3181,9 +3191,18 @@ class PowerSteeringChecker:
                                 if "NotImplementedError" in content_to_check:
                                     return False
 
-                                # Look for stub patterns (function with only pass)
+                                # Look for stub patterns:
+                                # - Single-line: def f(): pass
+                                # - Multi-line:  def f():\n    pass
+                                # - Ellipsis:    def f(): ...
                                 if re.search(
-                                    r"def\s+\w+\([^)]*\):\s*pass\s*$",
+                                    r"def\s+\w+\([^)]*\):\s*(?:pass|\.\.\.)\s*$",
+                                    content_to_check,
+                                    re.MULTILINE,
+                                ):
+                                    return False
+                                if re.search(
+                                    r"def\s+\w+\([^)]*\):\s*\n\s+(?:pass|\.\.\.)\s*$",
                                     content_to_check,
                                     re.MULTILINE,
                                 ):
@@ -3580,7 +3599,8 @@ class PowerSteeringChecker:
         "/commands/",
         "/skills/",
         "/scenarios/",
-        "cli",
+        "/cli/",
+        "/cli.py",
         "__init__.py",
         "__main__.py",
         "setup.py",
@@ -3625,7 +3645,7 @@ class PowerSteeringChecker:
                                     public_code_modified = True
 
                                 # Check for doc files using class constant
-                                if any(ext in file_path for ext in self.DOC_FILE_EXTENSIONS):
+                                if any(file_path.endswith(ext) if ext.startswith(".") else ext in file_path for ext in self.DOC_FILE_EXTENSIONS):
                                     doc_files_modified = True
 
         # Only flag if public-facing code was changed without doc updates
@@ -3835,7 +3855,7 @@ class PowerSteeringChecker:
                                         code_modified = True
 
                                     # Check for doc files using class constant
-                                    if any(ext in file_path for ext in self.DOC_FILE_EXTENSIONS):
+                                    if any(file_path.endswith(ext) if ext.startswith(".") else ext in file_path for ext in self.DOC_FILE_EXTENSIONS):
                                         docs_modified = True
 
             # Docs-only session if docs modified but no code files
@@ -4116,8 +4136,10 @@ class PowerSteeringChecker:
         Returns:
             True if changes appear focused, False if too scattered
         """
-        # Collect distinct top-level directories of modified files
+        # Collect distinct top-level project directories of modified files
         top_dirs = set()
+        project_root_str = str(self.project_root)
+
         for msg in transcript:
             if msg.get("type") == "assistant" and "message" in msg:
                 content = msg["message"].get("content", [])
@@ -4126,18 +4148,19 @@ class PowerSteeringChecker:
                         if isinstance(block, dict) and block.get("type") == "tool_use":
                             if block.get("name") in ["Write", "Edit"]:
                                 file_path = block.get("input", {}).get("file_path", "")
-                                # Extract top-level directory from absolute or relative path
-                                parts = file_path.strip("/").split("/")
-                                # Skip if single file in root
-                                if len(parts) >= 2:
-                                    # Use the first meaningful directory component
-                                    # (skip common prefixes like /home/user/src/project)
-                                    for part in parts:
-                                        if part not in ("home", "root", "tmp", "var"):
-                                            top_dirs.add(part)
-                                            break
+                                if not file_path:
+                                    continue
+                                # Convert to project-relative path
+                                try:
+                                    rel = os.path.relpath(file_path, project_root_str)
+                                except ValueError:
+                                    continue  # Different drives on Windows
+                                parts = rel.split(os.sep)
+                                # Skip paths outside project (.. prefix)
+                                if parts and parts[0] != ".." and len(parts) >= 2:
+                                    top_dirs.add(parts[0])
 
-        # 6+ distinct top-level directories suggests scattered changes
+        # 6+ distinct top-level project directories suggests scattered changes
         if len(top_dirs) >= 6:
             return False
 
@@ -4242,9 +4265,8 @@ class PowerSteeringChecker:
         """
         # Look for concrete PR review signals in tool calls, not generic keywords.
         # These indicate actual GitHub PR review comments exist.
-        pr_review_patterns = [
+        pr_review_command_patterns = [
             "gh pr review",
-            "gh api repos/",
             "requested changes",
             "changes_requested",
             "reviewer comment",
@@ -4253,7 +4275,7 @@ class PowerSteeringChecker:
         has_pr_reviews = False
 
         for msg in transcript:
-            # Check Bash tool calls for gh pr review commands
+            # Check Bash tool calls for PR review commands
             if msg.get("type") == "assistant" and "message" in msg:
                 content = msg["message"].get("content", [])
                 if isinstance(content, list):
@@ -4261,7 +4283,13 @@ class PowerSteeringChecker:
                         if isinstance(block, dict) and block.get("type") == "tool_use":
                             if block.get("name") == "Bash":
                                 command = block.get("input", {}).get("command", "").lower()
-                                if any(p in command for p in pr_review_patterns):
+                                if any(p in command for p in pr_review_command_patterns):
+                                    has_pr_reviews = True
+                                    break
+                                # Narrow gh api match: only review/comment endpoints
+                                if "gh api repos/" in command and (
+                                    "/reviews" in command or "/comments" in command
+                                ):
                                     has_pr_reviews = True
                                     break
             # Check tool results for review-related output
