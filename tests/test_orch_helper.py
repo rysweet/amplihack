@@ -178,6 +178,27 @@ class TestCLIUnknownSubcommand(unittest.TestCase):
         self.assertIn("Unknown", r.stderr)
 
 
+class TestNormaliseTypePriority(unittest.TestCase):
+    """Document keyword priority when input matches multiple categories.
+    Priority order: Q&A > Operations > Investigation > Development
+    """
+
+    def test_qa_beats_operations_on_overlap(self):
+        """Q&A keywords are checked first."""
+        self.assertEqual(_h.normalise_type("question about operations"), "Q&A")
+
+    def test_operations_beats_investigation_on_overlap(self):
+        """Operations keywords are checked before Investigation.
+        'investigate operations' -> Operations, not Investigation.
+        """
+        self.assertEqual(_h.normalise_type("investigate operations"), "Operations")
+        self.assertEqual(_h.normalise_type("research command"), "Operations")
+
+    def test_investigation_beats_development_on_overlap(self):
+        """Investigation keywords win over the Development default."""
+        self.assertEqual(_h.normalise_type("research and build"), "Investigation")
+
+
 class TestHelperPathImport(unittest.TestCase):
     """Verify the recipe's HELPER_PATH import pattern works."""
 
