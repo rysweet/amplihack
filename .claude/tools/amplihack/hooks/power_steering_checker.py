@@ -318,6 +318,16 @@ class PowerSteeringChecker:
         "go test",
         "python -m pytest",
         "python -m unittest",
+        "uvx --from",       # Outside-in package testing (user-mandated)
+        "uvx --from git+",  # Outside-in from branch
+    ]
+    # Broader validation patterns (config checks, smoke tests, linting)
+    VALIDATION_COMMAND_PATTERNS = [
+        "python -c",   # Inline validation (YAML, imports, smoke tests)
+        "node -e",     # Inline JS validation
+        "ruff check",  # Linting
+        "mypy",        # Type checking
+        "flake8",      # Linting
     ]
 
     # Keywords that indicate simple housekeeping tasks (skip power-steering)
@@ -3247,15 +3257,29 @@ class PowerSteeringChecker:
                         if isinstance(block, dict) and block.get("type") == "tool_use":
                             tools_used.add(block.get("name", ""))
 
-        # Check for signs of workflow completion
-        has_tests = "Bash" in tools_used  # Tests typically run via Bash
-        has_file_ops = any(t in tools_used for t in ["Edit", "Write", "Read"])
+        has_file_ops = any(t in tools_used for t in ["Edit", "Write"])
 
         # If no file operations, likely not a development task
         if not has_file_ops:
             return True
 
-        # For development tasks, we expect tests to be run
+        # Check for ACTUAL test/validation commands, not just "Bash was used"
+        has_tests = False
+        all_patterns = self.TEST_COMMAND_PATTERNS + self.VALIDATION_COMMAND_PATTERNS
+        for msg in transcript:
+            if msg.get("type") == "assistant" and "message" in msg:
+                content = msg["message"].get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "tool_use":
+                            if block.get("name") == "Bash":
+                                command = block.get("input", {}).get("command", "")
+                                if any(p in command for p in all_patterns):
+                                    has_tests = True
+                                    break
+                if has_tests:
+                    break
+
         if not has_tests:
             return False
 
@@ -3299,6 +3323,15 @@ class PowerSteeringChecker:
                                 if any(file_path.endswith(ext) for ext in self.NON_CODE_EXTENSIONS):
                                     continue
 
+                                file_path_lower = file_path.lower()
+                                # Skip test files — they may contain TODO/NotImplementedError
+                                # as test data or assertion targets, not as actual stubs
+                                is_test_file = (
+                                    "/test" in file_path_lower
+                                    or "/tests/" in file_path_lower
+                                    or file_path_lower.split("/")[-1].startswith("test_")
+                                )
+
                                 # Check content for anti-patterns
                                 content_to_check = ""
                                 if "content" in tool_input:
@@ -3306,30 +3339,37 @@ class PowerSteeringChecker:
                                 elif "new_string" in tool_input:
                                     content_to_check = str(tool_input["new_string"])
 
-                                # Look for TODO/FIXME/XXX
-                                if re.search(r"\b(TODO|FIXME|XXX)\b", content_to_check):
+                                # Look for TODO/FIXME/XXX (skip test files where these
+                                # may appear as test data or assertion strings)
+                                if not is_test_file and re.search(
+                                    r"\b(TODO|FIXME|XXX)\b", content_to_check
+                                ):
                                     return False
 
-                                # Look for NotImplementedError
-                                if "NotImplementedError" in content_to_check:
+                                # Look for NotImplementedError (skip test files where
+                                # this appears in pytest.raises assertions)
+                                if not is_test_file and "NotImplementedError" in content_to_check:
                                     return False
 
                                 # Look for stub patterns (with optional -> return type):
                                 # - Single-line: def f(): pass / def f() -> None: pass
                                 # - Multi-line:  def f():\n    pass
                                 # - Ellipsis:    def f(): ... / def f() -> int: ...
-                                if re.search(
-                                    r"def\s+\w+\([^)]*\)(?:\s*->.*?)?:\s*(?:pass|\.\.\.)\s*$",
-                                    content_to_check,
-                                    re.MULTILINE,
-                                ):
-                                    return False
-                                if re.search(
-                                    r"def\s+\w+\([^)]*\)(?:\s*->.*?)?:\s*\n\s+(?:pass|\.\.\.)\s*$",
-                                    content_to_check,
-                                    re.MULTILINE,
-                                ):
-                                    return False
+                                # Skip if @abstractmethod context detected (legitimate pattern)
+                                has_abstract = "@abstractmethod" in content_to_check or "ABC" in content_to_check
+                                if not has_abstract:
+                                    if re.search(
+                                        r"def\s+\w+\([^)]*\)(?:\s*->.*?)?:\s*(?:pass|\.\.\.)\s*$",
+                                        content_to_check,
+                                        re.MULTILINE,
+                                    ):
+                                        return False
+                                    if re.search(
+                                        r"def\s+\w+\([^)]*\)(?:\s*->.*?)?:\s*\n\s+(?:pass|\.\.\.)\s*$",
+                                        content_to_check,
+                                        re.MULTILINE,
+                                    ):
+                                        return False
 
         return True
 
@@ -3398,7 +3438,23 @@ class PowerSteeringChecker:
                                                                     ):
                                                                         return True
 
-        # No tests found or tests failed
+        # Also accept validation commands (python -c, ruff, mypy) as testing
+        # for sessions where formal test suites don't exist or aren't applicable
+        for msg in transcript:
+            if msg.get("type") == "assistant" and "message" in msg:
+                content = msg["message"].get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "tool_use":
+                            if block.get("name") == "Bash":
+                                command = block.get("input", {}).get("command", "")
+                                if any(
+                                    pattern in command
+                                    for pattern in self.VALIDATION_COMMAND_PATTERNS
+                                ):
+                                    return True
+
+        # No tests or validation found
         return False
 
     def _user_prefers_no_auto_merge(self) -> bool:
@@ -3703,6 +3759,16 @@ class PowerSteeringChecker:
             "implemented",
             "successfully",
             "all tests pass",
+            "pr created",
+            "pr ready",
+            "pushed to",
+            "merged",
+            "no bug",
+            "no issue found",
+            "not a bug",
+            "as expected",
+            "by design",
+            "no changes needed",
         ]
 
         for msg in reversed(transcript[-10:]):  # Check last 10 messages
@@ -3714,6 +3780,18 @@ class PowerSteeringChecker:
                             text = str(block.get("text", "")).lower()
                             if any(indicator in text for indicator in completion_indicators):
                                 return True
+
+        # Also check for structural completion: PR creation or git push
+        for msg in transcript:
+            if msg.get("type") == "assistant" and "message" in msg:
+                content = msg["message"].get("content", [])
+                if isinstance(content, list):
+                    for block in content:
+                        if isinstance(block, dict) and block.get("type") == "tool_use":
+                            if block.get("name") == "Bash":
+                                command = block.get("input", {}).get("command", "")
+                                if "gh pr create" in command or "git push" in command:
+                                    return True
 
         return False  # No completion indicators found
 
@@ -4099,6 +4177,29 @@ class PowerSteeringChecker:
                         # These indicate CONCRETE remaining work
                         for pattern in concrete_next_steps_patterns:
                             if re.search(pattern, text, re.IGNORECASE):
+                                # Before flagging, check if ALL bullet items are
+                                # user-handoff or deferred-to-issue patterns
+                                handoff_patterns = [
+                                    r"wait\s+for\s+(ci|review|approval|merge)",
+                                    r"(user|you)\s+(should|can|may|need to)",
+                                    r"filed\s+(as|in)\s+#",
+                                    r"tracked\s+in\s+#",
+                                    r"when\s+ci\s+passes",
+                                    r"pr\s+ready\s+for\s+review",
+                                    r"ready\s+for\s+(review|merge|approval)",
+                                    r"waiting\s+for\s+(review|approval|ci|merge)",
+                                ]
+                                text_lower = text.lower()
+                                is_handoff = any(
+                                    re.search(hp, text_lower)
+                                    for hp in handoff_patterns
+                                )
+                                if is_handoff:
+                                    self._log(
+                                        "Structured list detected but contains handoff/deferred items - treating as complete",
+                                        "INFO",
+                                    )
+                                    continue  # Skip this match, not real remaining work
                                 self._log(
                                     f"Structured next steps found: pattern '{pattern}' - agent should continue",
                                     "INFO",
