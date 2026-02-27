@@ -95,4 +95,55 @@ def validate_sdk_deps(raise_on_missing: bool = True) -> DepCheckResult:
     return result
 
 
-__all__ = ["validate_sdk_deps", "check_sdk_dep", "DepCheckResult", "SDK_DEPENDENCIES"]
+def ensure_sdk_deps() -> DepCheckResult:
+    """Check SDK deps and auto-install any that are missing.
+
+    For packages requiring pre-release versions (like agent-framework),
+    uses subprocess to run pip install with --prerelease=allow.
+
+    Returns:
+        DepCheckResult after installation attempt.
+    """
+    result = validate_sdk_deps(raise_on_missing=False)
+    if result.all_ok:
+        return result
+
+    import shutil
+    import subprocess
+
+    # Try uv first, fall back to pip
+    installer = shutil.which("uv")
+    if installer:
+        base_cmd = [installer, "pip", "install", "--prerelease=allow"]
+    else:
+        installer = shutil.which("pip")
+        if installer:
+            base_cmd = [installer, "install"]
+        else:
+            logger.warning("Neither uv nor pip found. Cannot auto-install SDK deps.")
+            return result
+
+    for import_name in result.missing:
+        pip_name = SDK_DEPENDENCIES[import_name]
+        cmd = base_cmd + [pip_name]
+        logger.info("Auto-installing SDK dep: %s", pip_name)
+        try:
+            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+            if proc.returncode == 0:
+                logger.info("Installed %s successfully", pip_name)
+            else:
+                logger.warning(
+                    "Failed to install %s (exit %d): %s",
+                    pip_name, proc.returncode, proc.stderr[:200]
+                )
+        except Exception as e:
+            logger.warning("Failed to install %s: %s", pip_name, e)
+
+    # Re-check after install
+    return validate_sdk_deps(raise_on_missing=False)
+
+
+__all__ = [
+    "validate_sdk_deps", "check_sdk_dep", "ensure_sdk_deps",
+    "DepCheckResult", "SDK_DEPENDENCIES",
+]
