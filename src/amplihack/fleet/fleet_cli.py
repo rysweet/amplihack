@@ -174,9 +174,10 @@ def watch(vm_name, session_name, lines):
 
     Shows what the agent is currently displaying.
     """
+    import shlex
     import subprocess
 
-    cmd = f"tmux capture-pane -t {session_name} -p -S -{lines}"
+    cmd = f"tmux capture-pane -t {shlex.quote(session_name)} -p -S -{lines}"
     try:
         result = subprocess.run(
             [AZLIN_PATH, "connect", vm_name, "--no-tmux", "--", cmd],

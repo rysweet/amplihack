@@ -18,7 +18,6 @@ Public API:
 
 from __future__ import annotations
 
-import json
 import shlex
 import subprocess
 import time

@@ -173,7 +173,7 @@ elif [ -f "Cargo.toml" ]; then
 elif [ -f "go.mod" ]; then
     echo "Go project detected"
     go mod download 2>/dev/null || true
-elif [ -f "*.sln" ] || [ -f "*.csproj" ]; then
+elif ls *.sln >/dev/null 2>&1 || ls *.csproj >/dev/null 2>&1; then
     echo ".NET project detected"
     dotnet restore --quiet 2>/dev/null || true
 fi

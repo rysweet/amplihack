@@ -33,7 +33,6 @@ COMPLETION_PATTERNS = [
     r"Workflow Complete",
     r"All \d+ steps completed",
     r"pushed to.*branch",
-    r"gh pr create",
 ]
 
 ERROR_PATTERNS = [
@@ -156,8 +155,10 @@ class FleetObserver:
 
     def _capture_pane(self, vm_name: str, session_name: str) -> Optional[str]:
         """Capture tmux pane content from a remote VM."""
+        import shlex
+
         cmd = (
-            f"tmux capture-pane -t {session_name} -p -S -{self.capture_lines} 2>/dev/null"
+            f"tmux capture-pane -t {shlex.quote(session_name)} -p -S -{self.capture_lines} 2>/dev/null"
         )
         try:
             result = subprocess.run(
