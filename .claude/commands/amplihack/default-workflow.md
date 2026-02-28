@@ -1,5 +1,5 @@
 ---
-name: amplihack:default-workflow
+name: default-workflow
 version: 1.0.0
 description: Run the full 23-step development workflow via Recipe Runner
 aliases: [amplihack:dev]

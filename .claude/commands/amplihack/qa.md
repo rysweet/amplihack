@@ -1,5 +1,5 @@
 ---
-name: amplihack:qa
+name: qa
 version: 1.0.0
 description: Run the minimal Q&A workflow for simple questions
 triggers:
