@@ -1,5 +1,5 @@
 ---
-name: amplihack:expert-panel
+name: expert-panel
 version: 1.0.0
 description: Expert panel review with voting and consensus decision-making
 triggers:

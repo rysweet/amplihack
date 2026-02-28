@@ -1,5 +1,5 @@
 ---
-name: amplihack:verification
+name: verification
 version: 1.0.0
 description: Run the 5-step verification workflow for trivial changes
 triggers:

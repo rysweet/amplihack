@@ -1,5 +1,5 @@
 ---
-name: amplihack:dev
+name: dev
 version: 2.0.0
 description: |
   Primary entry point for all development and investigation work.

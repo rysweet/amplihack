@@ -1,5 +1,5 @@
 ---
-name: amplihack:auto-dev
+name: auto-dev
 version: 1.0.0
 description: Enable auto-routing so development tasks use the smart orchestrator automatically.
 ---

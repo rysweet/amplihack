@@ -1,5 +1,5 @@
 ---
-name: amplihack:no-auto-dev
+name: no-auto-dev
 version: 1.0.0
 description: Disable auto-routing so Claude responds directly without invoking the smart orchestrator.
 ---

@@ -1,5 +1,5 @@
 ---
-name: amplihack:cascade
+name: cascade
 version: 1.0.0
 description: Fallback cascade pattern for resilient operations
 triggers:

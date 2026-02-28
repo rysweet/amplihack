@@ -1,5 +1,5 @@
 ---
-name: amplihack:unlock
+name: unlock
 version: 1.0.0
 description: Disable continuous work mode and resume normal behavior
 triggers:
