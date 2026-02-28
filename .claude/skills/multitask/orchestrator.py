@@ -77,6 +77,8 @@ class ParallelOrchestrator:
         self.mode = mode
         self.workstreams: list[Workstream] = []
         self._processes: dict[int, subprocess.Popen] = {}
+        self._cleaned_up: set[int] = set()  # Track cleaned workstream issues
+        self._freed_bytes: int = 0  # Track total disk freed by auto-cleanup
 
     def setup(self) -> None:
         """Create clean temporary directory for workstreams and check disk space."""
@@ -146,7 +148,9 @@ class ParallelOrchestrator:
         try:
             default_branch_result = subprocess.run(
                 ["git", "ls-remote", "--symref", self.repo_url, "HEAD"],
-                capture_output=True, text=True, timeout=30,
+                capture_output=True,
+                text=True,
+                timeout=30,
             )
             # Output: "ref: refs/heads/main\tHEAD" -> extract "main"
             default_branch = "main"  # fallback
@@ -160,10 +164,16 @@ class ParallelOrchestrator:
         print(f"[{issue}] Cloning default branch '{default_branch}' from remote...")
         subprocess.run(
             [
-                "git", "clone", "--depth=1", f"--branch={default_branch}",
-                self.repo_url, str(ws.work_dir),
+                "git",
+                "clone",
+                "--depth=1",
+                f"--branch={default_branch}",
+                self.repo_url,
+                str(ws.work_dir),
             ],
-            check=True, capture_output=True, timeout=120,
+            check=True,
+            capture_output=True,
+            timeout=120,
         )
         # Note: The workflow Step 4 will create the feature branch
 
@@ -342,8 +352,41 @@ class ParallelOrchestrator:
 
         return status
 
+    def _cleanup_workstream_dir(self, ws: Workstream) -> None:
+        """Remove a completed workstream's work directory to free disk space.
+
+        Log files are preserved (they live in tmp_base, not work_dir).
+        This is the key fix for issue #2527 — without auto-cleanup, 60
+        workstreams consume ~90GB (1.5GB each) and fill the disk.
+        """
+        if ws.issue in self._cleaned_up:
+            return
+        if not ws.work_dir.exists():
+            self._cleaned_up.add(ws.issue)
+            return
+
+        # Measure size before deleting
+        dir_bytes = 0
+        for dirpath, _dirs, files in os.walk(ws.work_dir):
+            for f in files:
+                try:
+                    dir_bytes += os.path.getsize(os.path.join(dirpath, f))
+                except OSError:
+                    pass
+
+        shutil.rmtree(ws.work_dir, ignore_errors=True)
+        self._cleaned_up.add(ws.issue)
+        self._freed_bytes += dir_bytes
+        freed_mb = dir_bytes / (1024**2)
+        print(
+            f"[{ws.issue}] Cleaned up work dir ({freed_mb:.0f}MB freed, log preserved at {ws.log_file})"
+        )
+
     def monitor(self, check_interval: int = 60, max_runtime: int = 7200) -> None:
-        """Monitor all workstreams until complete or timeout."""
+        """Monitor all workstreams until complete or timeout.
+
+        Auto-cleans completed workstream directories to prevent disk exhaustion.
+        """
         start = time.time()
 
         while time.time() - start < max_runtime:
@@ -355,6 +398,11 @@ class ParallelOrchestrator:
             print(f"  Running:   {len(status['running'])} {status['running']}")
             print(f"  Completed: {len(status['completed'])} {status['completed']}")
             print(f"  Failed:    {len(status['failed'])} {status['failed']}")
+
+            # Auto-cleanup completed and failed workstream directories
+            for ws in self.workstreams:
+                if ws.issue not in self._cleaned_up and ws.exit_code is not None:
+                    self._cleanup_workstream_dir(ws)
 
             if not status["running"]:
                 break
@@ -373,6 +421,7 @@ class ParallelOrchestrator:
                     proc.kill()
                 ws.exit_code = -1
                 ws.end_time = time.time()
+                self._cleanup_workstream_dir(ws)
 
     def report(self) -> str:
         """Generate final report."""
@@ -405,8 +454,9 @@ class ParallelOrchestrator:
                 ]
             )
 
-        # Calculate disk usage
+        # Calculate remaining disk usage (after auto-cleanup)
         disk_usage_gb, ws_count = self._calculate_disk_usage()
+        freed_gb = self._freed_bytes / (1024**3)
 
         lines.extend(
             [
@@ -414,14 +464,10 @@ class ParallelOrchestrator:
                 "-" * 70,
                 f"Total: {len(self.workstreams)} | Succeeded: {succeeded} | Failed: {failed}",
                 "",
-                "DISK USAGE:",
-                f"  Workstream directories: {ws_count}",
-                f"  Total disk used: {disk_usage_gb:.2f}GB",
-                f"  Location: {self.tmp_base}",
-                "",
-                "CLEANUP:",
-                "  After merging PRs, run:",
-                f"    python {__file__} --cleanup <config.json>",
+                "DISK MANAGEMENT:",
+                f"  Auto-cleaned: {len(self._cleaned_up)} workstream dirs ({freed_gb:.2f}GB freed)",
+                f"  Remaining on disk: {ws_count} dirs ({disk_usage_gb:.2f}GB)",
+                f"  Log files preserved at: {self.tmp_base}/log-*.txt",
                 "=" * 70,
             ]
         )
@@ -436,8 +482,13 @@ class ParallelOrchestrator:
 
         return report_text
 
-    def _check_disk_space(self, min_free_gb: float = 10.0) -> None:
-        """Check available disk space and warn if low."""
+    def _check_disk_space(self, min_free_gb: float = 5.0) -> None:
+        """Check available disk space and abort if critically low.
+
+        Threshold lowered from 10GB to 5GB because shallow clones (--depth=1)
+        use ~50MB each instead of ~1.5GB. Auto-cleanup reclaims space as
+        workstreams complete.
+        """
         usage = shutil.disk_usage(self.tmp_base)
         free_gb = usage.free / (1024**3)
         total_gb = usage.total / (1024**3)
@@ -450,9 +501,9 @@ class ParallelOrchestrator:
         if free_gb < min_free_gb:
             # Non-interactive: fail loudly if disk is low, don't prompt
             print(f"\n⚠  WARNING: Only {free_gb:.1f}GB free (threshold: {min_free_gb}GB)")
-            print(f"  Each workstream requires ~1.5GB. Clean up old workstreams to proceed:")
+            print("  Each shallow clone requires ~50MB. Clean up old workstreams to proceed:")
             print(f"    rm -rf {self.tmp_base}/ws-*")
-            print(f"  Or set AMPLIHACK_SKIP_DISK_CHECK=1 to bypass this check.")
+            print("  Or set AMPLIHACK_SKIP_DISK_CHECK=1 to bypass this check.")
             print()
 
             if os.environ.get("AMPLIHACK_SKIP_DISK_CHECK") == "1":
