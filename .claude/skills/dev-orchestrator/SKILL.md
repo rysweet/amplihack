@@ -128,7 +128,8 @@ result = run_recipe_by_name(
 
 **FALLBACK — Direct workflow execution (if Recipe Runner unavailable)**:
 
-- Q&A / Operations: Respond directly
+- Q&A: Respond directly (analyzer agent)
+- Operations: Builder agent (direct execution, no workflow steps)
 - Investigation: `Skill(skill="investigation-workflow")`
 - Development with single task: `Skill(skill="default-workflow")`
 - Development with parallel tasks: Invoke `Task(subagent_type="general-purpose")` to run
