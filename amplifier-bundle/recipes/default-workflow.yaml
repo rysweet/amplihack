@@ -1044,6 +1044,85 @@ steps:
     output: "pr_url"
 
   # ==========================================================================
+  # STEP 16b: OUTSIDE-IN TESTING AND FIX LOOP
+  # After the PR is open, run outside-in tests from the PR branch.
+  # If failures are found, fix them and re-test in a loop until all pass.
+  # ==========================================================================
+  - id: "step-16b-outside-in-fix-loop"
+    agent: "amplihack:builder"
+    prompt: |
+      # Step 16b: Outside-In Testing and Fix Loop (MANDATORY)
+
+      The PR is now open. You MUST test the change as a user would FROM THE PR BRANCH
+      and fix any problems found before proceeding to review.
+
+      **Task:** {{task_description}}
+      **PR URL:** {{pr_url}}
+      **Branch:** Run `git branch --show-current` to get branch name.
+      **Remote:** Run `git remote get-url origin` for the repo URL.
+
+      ## Required Actions
+
+      ### Phase 1: Run Outside-In Tests
+
+      Use the `outside-in-testing` skill to test from the PR branch:
+
+      ```
+      Skill(skill="outside-in-testing")
+      ```
+
+      Test using the PR branch:
+      ```bash
+      uvx --from git+<remote-url>@<branch-name> amplihack <command>
+      ```
+
+      Run at minimum:
+      1. **Simple scenario**: Basic user-facing behavior this PR changes
+      2. **Complex scenario**: Edge case or integration point affected
+
+      ### Phase 2: Fix Loop (if failures found)
+
+      If any test fails:
+
+      1. **Diagnose** the root cause from the test output
+      2. **Fix** the code in the current branch
+      3. **Commit and push** the fix:
+         ```bash
+         git add -A && git commit -m "fix: <describe the fix found during outside-in testing>"
+         git push
+         ```
+      4. **Re-run** the outside-in tests from the updated branch
+      5. **Repeat** until all tests pass (max 3 fix iterations)
+
+      If failures persist after 3 iterations, document them clearly and continue —
+      blocking is not acceptable, but honest documentation is required.
+
+      ### Phase 3: Update PR Description
+
+      After all tests pass (or after 3 iterations), update the PR description with
+      a "Step 16b: Outside-In Testing Results" section:
+
+      ```bash
+      gh pr edit {{pr_url}} --body "$(gh pr view {{pr_url}} --json body -q .body)
+
+      ## Step 16b: Outside-In Testing Results
+
+      ### Scenario 1 — <description>
+      Command: \`uvx --from git+...@<branch> amplihack <command>\`
+      Result: PASS
+      Output: <key output>
+
+      ### Scenario 2 — <description>
+      Command: \`uvx --from git+...@<branch> amplihack <command>\`
+      Result: PASS
+      Output: <key output>
+
+      Fix iterations: 0 (or N if fixes were required)
+      "
+      ```
+    output: "outside_in_fix_loop_results"
+
+  # ==========================================================================
   # STEP 17: REVIEW THE PR (MANDATORY - DO NOT SKIP)
   # Granular sub-steps with verification gates to prevent completion bias.
   # Each sub-step invokes a specific agent and requires evidence.
