@@ -1,5 +1,5 @@
 ---
-name: amplihack:consensus
+name: consensus
 version: 1.0.0
 description: Run the consensus workflow with multi-agent validation gates
 triggers:

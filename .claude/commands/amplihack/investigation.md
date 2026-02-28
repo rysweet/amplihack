@@ -1,5 +1,5 @@
 ---
-name: amplihack:investigation
+name: investigation
 version: 1.0.0
 description: Run the 6-phase investigation workflow via Recipe Runner
 triggers:

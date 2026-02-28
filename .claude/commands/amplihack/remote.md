@@ -1,5 +1,5 @@
 ---
-name: amplihack:remote
+name: remote
 version: 1.0.0
 description: Execute amplihack commands on remote Azure VMs using azlin
 triggers:
@@ -218,7 +218,7 @@ ERROR: Secret detected during packaging
 
 File: src/config/api.py
 Line: 15
-Content: ANTHROPIC_API_KEY = "sk-ant-1234..."
+Content: ANTHROPIC_API_KEY = "sk-ant-1234..."  # pragma: allowlist secret
 
 Action required:
   1. Remove hardcoded API key from source code

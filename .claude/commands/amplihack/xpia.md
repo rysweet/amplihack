@@ -1,5 +1,5 @@
 ---
-name: amplihack:xpia
+name: xpia
 version: 1.0.0
 description: Cross-Prompt Injection Attack defense and security management
 triggers:
