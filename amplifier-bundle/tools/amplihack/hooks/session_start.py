@@ -163,6 +163,9 @@ class SessionStartHook(HookProcessor):
         self.log("Using Kuzu memory backend (Neo4j removed)")
         self.save_metric("kuzu_backend", True)
 
+        # Show auto-routing status to the user (visible in terminal via stderr)
+        self._show_auto_routing_status()
+
         # Build context if needed
         context_parts = []
 
@@ -295,6 +298,26 @@ class SessionStartHook(HookProcessor):
             self.log(f"Injected {len(full_context)} characters of context")
 
         return output
+
+    def _show_auto_routing_status(self) -> None:
+        """Print a visible auto-routing status line to stderr at session start."""
+        try:
+            sys.path.insert(0, str(Path(__file__).parent))
+            from dev_intent_router import is_auto_dev_enabled
+
+            if is_auto_dev_enabled():
+                print(
+                    '⚡ Auto-routing active — dev tasks use smart orchestrator automatically. Disable: /amplihack:no-auto-dev | Bypass: "just answer"',
+                    file=sys.stderr,
+                )
+            else:
+                print(
+                    "⏸  Auto-routing disabled — use /dev <task> for orchestration, or /amplihack:auto-dev to re-enable",
+                    file=sys.stderr,
+                )
+            self.save_metric("auto_routing_enabled", is_auto_dev_enabled())
+        except Exception as e:
+            self.log(f"Auto-routing status check failed (non-fatal): {e}", "WARNING")
 
     def _select_strategy(self):
         """Detect launcher and select appropriate strategy."""

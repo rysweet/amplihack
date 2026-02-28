@@ -28,7 +28,7 @@ context:
   summary: ""
   depth_limited_notice: ""
   session_complete_status: ""
-  force_single_workstream: "false"  # set to "true" to prevent parallel decomposition
+  force_single_workstream: "false" # set to "true" to prevent parallel decomposition
   announce_classification: ""
 
 steps:
@@ -126,6 +126,15 @@ steps:
       WS_COUNT={{workstream_count}}
       echo ""
       echo "[dev-orchestrator] Classified as: $TASK_TYPE | Workstreams: $WS_COUNT — starting execution..."
+      # Set workflow-active semaphore so the hook skips injection during execution
+      HOOKS_DIR="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/amplihack/hooks"
+      export HOOKS_DIR TASK_TYPE WS_COUNT
+      python3 - <<'PYEOF'
+      import os, sys
+      sys.path.insert(0, os.environ["HOOKS_DIR"])
+      from dev_intent_router import set_workflow_active
+      set_workflow_active(os.environ.get("TASK_TYPE", ""), int(os.environ.get("WS_COUNT", "1") or "1"))
+      PYEOF
     output: "announce_classification"
 
   # ─────────────────────────────────────────────────────────────────────────
@@ -538,6 +547,11 @@ steps:
       STATUS=${STATUS:-}
       TREE_SCRIPT="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/session_tree.py"
 
+      # Clear workflow-active semaphore so the hook resumes injection
+      HOOKS_DIR="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/amplihack/hooks"
+      export HOOKS_DIR
+      python3 -c "import os,sys; sys.path.insert(0,os.environ['HOOKS_DIR']); from dev_intent_router import clear_workflow_active; clear_workflow_active()" 2>/dev/null || true
+
       if [ -n "$SESSION_ID" ] && [ "$STATUS" = "ok" ] && [ -f "$TREE_SCRIPT" ]; then
         AMPLIHACK_TREE_ID="$TREE_ID" python3 "$TREE_SCRIPT" complete "$SESSION_ID"
         echo "Session $SESSION_ID completed in tree $TREE_ID"
@@ -549,7 +563,7 @@ steps:
 output:
   format: "markdown"
   template: |
-    # Smart Orchestrator -- Execution Complete
+    # Dev Orchestrator -- Execution Complete
 
     **Task**: {{task_description}}
     **Type**: {{task_type}}
