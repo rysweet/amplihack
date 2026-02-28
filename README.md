@@ -101,16 +101,25 @@ source ~/.bashrc  # or source ~/.zshrc
 
 ### First Session
 
-After launching:
+After launching amplihack (e.g., `amplihack claude`), you'll be inside an
+**interactive agent session** — a chat interface powered by your chosen coding
+agent. Everything you type in this session is interpreted by amplihack's
+workflow engine, not by your regular shell.
+
+**New users** — start with the interactive tutorial:
 
 ```
-# New users — interactive tutorial (30 min)
-Task(subagent_type='guide', prompt='I am new to amplihack. Teach me the basics.')
+I am new to amplihack. Teach me the basics.
+```
 
-# Experienced developers — start immediately
+This triggers a guided tutorial (60-90 minutes) that walks you through
+amplihack's core concepts and workflows.
+
+**Experienced users** — just describe what you want to build:
+
+```
 cd /path/to/my/project
-/dev fix the login timeout bug
-/dev build a REST API and React webui for user management
+Add user authentication with OAuth2 support
 ```
 
 The `/dev` command automatically classifies your task, detects parallel workstreams, and orchestrates execution.
@@ -159,6 +168,10 @@ What happens:
 3. Reviewer evaluation with `GOAL_STATUS: ACHIEVED` or `PARTIAL`
 4. If partial — another round runs automatically (up to 3 total)
 5. `# Dev Orchestrator -- Execution Complete` with summary and PR links
+
+> **Note**: The `Task()` syntax shown in some documentation is an advanced
+> programmatic API for scripting agent workflows. For interactive use, plain
+> natural language prompts are all you need.
 
 ## Core Concepts
 
