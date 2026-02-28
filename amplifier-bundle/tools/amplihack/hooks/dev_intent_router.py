@@ -23,48 +23,23 @@ import os
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# Routing prompt (injected as additionalContext)
+# Routing prompt (loaded from external template file)
 # ---------------------------------------------------------------------------
 
-_ROUTING_PROMPT = """\
-<system-reminder source="auto-intent-router">
-Before responding, classify this prompt into one of these categories and act accordingly:
+_TEMPLATE_DIR = Path(__file__).parent / "templates"
 
-  DEV (build, fix, write, test, verify, deploy, document, refactor, configure, review code, add feature)
-    → Say "[auto-routed] DEV → launching dev-orchestrator" then Invoke Skill(skill="dev-orchestrator"). Do not answer inline.
 
-  INVESTIGATE (analyze, understand, explore, research, audit, trace, map out, what's broken, what's failing)
-    → Say "[auto-routed] INVESTIGATE → launching dev-orchestrator" then Invoke Skill(skill="dev-orchestrator"). Do not answer inline. It will use INVESTIGATION_WORKFLOW.
+def _load_routing_prompt() -> str:
+    """Load the routing prompt from external template file."""
+    prompt_file = _TEMPLATE_DIR / "routing_prompt.txt"
+    try:
+        return prompt_file.read_text()
+    except FileNotFoundError:
+        # Fail-open: if template missing, return empty (no injection)
+        return ""
 
-  HYBRID (investigate/understand THEN implement/fix/build, or run command THEN fix — two phases in one prompt)
-    → Say "[auto-routed] HYBRID → launching dev-orchestrator" then Invoke Skill(skill="dev-orchestrator"). Do not answer inline. It will create parallel workstreams.
 
-  Q&A (what is, how does, explain, describe, compare, define — knowledge questions)
-    → Answer directly and concisely. No workflow invocation needed.
-
-  OPS (run git, show disk, run tests, run linter, check logs, delete temp files, restart service — admin/shell tasks)
-    → Execute directly. No workflow invocation needed.
-
-  SKIP (bypass phrases: "just answer", "skip workflow", "skip orchestration", "without workflow")
-    → Respect the bypass. Do not invoke any workflow.
-
-MANDATORY RULE — Code File Edits Are ALWAYS DEV:
-  If the task will require editing ANY source code files (.py, .yaml, .ts, .js, .rs, .go, .json, .toml, etc.),
-  it is ALWAYS DEV — never Q&A or OPS, regardless of how "trivial" the change seems.
-  "Change one default value" = DEV. "Update a version string" = DEV. "Fix a typo in code" = DEV.
-  Only pure knowledge questions (no file changes) qualify as Q&A.
-  Only shell commands that don't modify code qualify as OPS.
-
-Key: "make sure it works" = DEV. "write docs" = DEV. "review this PR" = DEV.
-     "run tests" = OPS. "run tests and fix failures" = HYBRID. "what's broken?" = INVESTIGATE.
-     "tests are failing" without a clear action request = ask if they want you to investigate/fix.
-     "investigate X then fix Y" = HYBRID. "what is OAuth?" = Q&A.
-     "change the default model" = DEV (edits code files). "update a config value" = DEV (edits code files).
-     "just change one line" = DEV (still edits code files — workflow required).
-
-When in doubt, choose DEV. False positive (workflow for a simple task) costs minutes.
-False negative (no workflow for code changes) costs quality, testing, and trust.
-</system-reminder>"""
+_ROUTING_PROMPT = _load_routing_prompt()
 
 _WELCOME_BANNER = ""  # Deprecated: visible notice now shown by session_start hook via stderr
 
