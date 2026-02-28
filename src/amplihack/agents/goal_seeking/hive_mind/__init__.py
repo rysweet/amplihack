@@ -73,3 +73,41 @@ try:
     ]
 except ImportError:
     pass
+
+# Hierarchical knowledge graph module (Experiment 4)
+try:
+    from .hierarchical import (
+        HierarchicalKnowledgeGraph,
+        HiveFact,
+        LocalFact,
+        PromotionManager,
+        PromotionPolicy,
+        PullManager,
+    )
+
+    __all__ += [
+        "HierarchicalKnowledgeGraph",
+        "HiveFact",
+        "LocalFact",
+        "PromotionManager",
+        "PromotionPolicy",
+        "PullManager",
+    ]
+except ImportError:
+    pass
+
+# Unified hive mind module (Experiment 5)
+try:
+    from .unified import (
+        HiveMindAgent,
+        HiveMindConfig,
+        UnifiedHiveMind,
+    )
+
+    __all__ += [
+        "HiveMindAgent",
+        "HiveMindConfig",
+        "UnifiedHiveMind",
+    ]
+except ImportError:
+    pass
