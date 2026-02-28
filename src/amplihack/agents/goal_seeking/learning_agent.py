@@ -153,12 +153,13 @@ class LearningAgent:
             lambda fact: self._verify_fact(fact),
         )
 
-        # Initialize agentic loop
+        # Initialize agentic loop -- pass self.model (resolved from env/default)
+        # not the raw `model` parameter which may be None.
         self.loop = AgenticLoop(
             agent_name=agent_name,
             action_executor=self.executor,
             memory_retriever=self.memory,
-            model=model,
+            model=self.model,
         )
 
     def learn_from_content(self, content: str) -> dict[str, Any]:
@@ -671,6 +672,77 @@ class LearningAgent:
 
         if return_trace:
             return answer, reasoning_trace
+        return answer
+
+    def answer_question_agentic(self, question: str, max_iterations: int = 5) -> str:
+        """Answer using the iterative PERCEIVE->REASON->ACT->LEARN loop.
+
+        Unlike single-shot answer_question() (one LLM call), this lets the
+        agent iteratively use its registered tools (search_memory,
+        verify_fact, find_knowledge_gaps, calculate, code_generation,
+        synthesize_answer).
+
+        Args:
+            question: The question to answer
+            max_iterations: Max PERCEIVE->REASON->ACT->LEARN cycles
+
+        Returns:
+            Synthesized answer string; falls back to single-shot on failure.
+        """
+        if not question or not question.strip():
+            return "Error: Question is empty"
+
+        goal = (
+            f"Answer this question accurately and completely: {question}\n\n"
+            "Strategy:\n"
+            "1. Use search_memory with different queries to gather facts\n"
+            "2. Use verify_fact to check key claims if needed\n"
+            "3. Use find_knowledge_gaps to identify missing info\n"
+            "4. Use calculate for numerical questions\n"
+            "5. When confident, use synthesize_answer for the final answer\n"
+            "6. The synthesize_answer result IS the final answer"
+        )
+        initial_obs = f"Question to answer: {question}"
+
+        def _goal_achieved(state) -> bool:
+            action = state.action if hasattr(state, "action") else {}
+            name = action.get("action", "") if isinstance(action, dict) else ""
+            return name == "synthesize_answer"
+
+        try:
+            states = self.loop.run_until_goal(
+                goal=goal,
+                initial_observation=initial_obs,
+                is_goal_achieved=_goal_achieved,
+            )
+        except Exception as exc:
+            logger.warning("Agentic loop failed: %s; single-shot fallback", exc)
+            return self.answer_question(question)
+
+        if not states:
+            logger.info("Agentic loop empty; single-shot fallback")
+            return self.answer_question(question)
+
+        last = states[-1]
+        outcome = last.outcome
+
+        if isinstance(outcome, str) and outcome.strip():
+            answer = outcome.strip()
+        elif isinstance(outcome, dict):
+            answer = str(outcome.get("answer", outcome.get("result", str(outcome))))
+        else:
+            answer = str(outcome) if outcome else ""
+
+        if not answer or answer == "None" or "error" in answer.lower()[:20]:
+            logger.info("Agentic loop no useful answer; single-shot fallback")
+            return self.answer_question(question)
+
+        self.memory.store_fact(
+            context=f"Question: {question[:200]}",
+            fact=f"Answer: {answer[:900]}",
+            confidence=0.7,
+            tags=["q_and_a", "agentic"],
+        )
         return answer
 
     def _simple_retrieval(self, question: str) -> list[dict[str, Any]]:
