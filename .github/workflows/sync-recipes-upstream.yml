@@ -121,11 +121,21 @@ jobs:
 
           git checkout -b "$BRANCH"
 
-          git add amplifier-bundle/modules/tool-recipes/
-          git add amplifier-bundle/behaviors/recipes.yaml
-          git add amplifier-bundle/context/recipe-awareness.md
-          git add amplifier-bundle/context/recipe-instructions.md
-          git add amplifier-bundle/agents/specialized/recipe-author.md
+          # Only add files that were actually synced (--ignore-missing prevents
+          # failure when upstream doesn't have some paths)
+          git add --ignore-missing \
+            amplifier-bundle/modules/tool-recipes/ \
+            amplifier-bundle/behaviors/recipes.yaml \
+            amplifier-bundle/context/recipe-awareness.md \
+            amplifier-bundle/context/recipe-instructions.md \
+            amplifier-bundle/agents/specialized/recipe-author.md
+
+          # Check if there's anything staged before committing
+          if git diff --cached --quiet; then
+            echo "Nothing staged to commit"
+            echo "branch=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
           git commit -m "chore: Sync recipe engine from upstream amplifier-bundle-recipes
 
@@ -142,7 +152,7 @@ jobs:
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
 
       - name: Create Pull Request
-        if: steps.sync.outputs.has_changes == 'true'
+        if: steps.sync.outputs.has_changes == 'true' && steps.create-branch.outputs.branch != ''
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

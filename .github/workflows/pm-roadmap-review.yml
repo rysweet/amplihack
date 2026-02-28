@@ -47,9 +47,16 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           ISSUE_NUMBER: ${{ vars.PM_ROADMAP_ISSUE_NUMBER }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set +x  # Disable command echoing to prevent accidental exposure
+
+          # Verify gh CLI can authenticate before running the script
+          if ! gh auth status >/dev/null 2>&1; then
+            echo "::error::gh CLI authentication failed. GH_TOKEN may not be set."
+            exit 1
+          fi
 
           # NOTE M3.1: PM scripts must sanitize user inputs from roadmap content
           # NOTE M3.4: PM scripts must validate for prompt injection
@@ -58,8 +65,10 @@ jobs:
           python .github/scripts/pm_roadmap_review.py
 
           # Add summary to GitHub Actions step summary
-          echo "## Roadmap Review Summary" >> $GITHUB_STEP_SUMMARY
-          cat roadmap_review.md >> $GITHUB_STEP_SUMMARY
+          if [ -f roadmap_review.md ]; then
+            echo "## Roadmap Review Summary" >> $GITHUB_STEP_SUMMARY
+            cat roadmap_review.md >> $GITHUB_STEP_SUMMARY
+          fi
 
       - name: Post review to tracking issue
         uses: peter-evans/create-or-update-comment@v4
