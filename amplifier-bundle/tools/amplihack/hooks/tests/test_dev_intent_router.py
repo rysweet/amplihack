@@ -395,5 +395,50 @@ class TestWorkflowActiveSemaphore(unittest.TestCase):
         self.assertFalse(is_workflow_active())
 
 
+class TestIssue2662DeadCodeRemoved(unittest.TestCase):
+    """Regression test: Issue #2662 — dead code in classify() must stay removed.
+
+    The old regex-based dev_intent_router had a classify() function with:
+      - _AMBIGUOUS_QA_RE: a regex constant used only by dead Step 7
+      - has_ambiguous: a variable set from _AMBIGUOUS_QA_RE
+      - Step 7 block: `if has_ambiguous and has_action:` — provably unreachable
+        because Steps 5+6 exhausted all has_action=True cases first
+
+    These were removed in commit e5cfbbdd as part of PR #2653 (closes #2662).
+    This test ensures they are never reintroduced.
+    """
+
+    def test_ambiguous_qa_re_not_in_module(self):
+        """_AMBIGUOUS_QA_RE must not exist in dev_intent_router."""
+        import dev_intent_router
+
+        self.assertFalse(
+            hasattr(dev_intent_router, "_AMBIGUOUS_QA_RE"),
+            "_AMBIGUOUS_QA_RE is dead code (issue #2662) and must not be reintroduced",
+        )
+
+    def test_classify_function_not_in_module(self):
+        """The old regex-based classify() function must not exist in dev_intent_router.
+
+        The function was replaced by should_auto_route() + LLM-based routing prompt.
+        """
+        import dev_intent_router
+
+        self.assertFalse(
+            hasattr(dev_intent_router, "classify"),
+            "classify() is the old regex classifier (dead code) and must not be reintroduced",
+        )
+
+    def test_should_auto_route_is_the_routing_entrypoint(self):
+        """should_auto_route() is the current routing entrypoint (not classify())."""
+        import dev_intent_router
+
+        self.assertTrue(
+            hasattr(dev_intent_router, "should_auto_route"),
+            "should_auto_route() must exist as the routing entrypoint",
+        )
+        self.assertTrue(callable(dev_intent_router.should_auto_route))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
