@@ -283,10 +283,11 @@ class UserPromptSubmitHook(HookProcessor):
         # Disable: export AMPLIHACK_AUTO_DEV=false
         try:
             from dev_intent_router import should_auto_route
+
             should_inject, dev_context = should_auto_route(user_prompt)
             if should_inject:
                 context_parts.append(dev_context)
-                self.log("Auto-routed to dev-orchestrator via intent classifier")
+                self.log("Injected dev-intent routing context")
                 self.save_metric("auto_dev_routed", 1)
         except Exception as e:
             self.log(f"Dev intent router failed (non-fatal): {e}", "WARNING")

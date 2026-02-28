@@ -79,6 +79,7 @@ User request
 ```
 
 **Session tree enforcement** (prevents infinite recursion):
+
 - Each subprocess inherits `AMPLIHACK_TREE_ID`, `AMPLIHACK_SESSION_DEPTH`, `AMPLIHACK_MAX_DEPTH`
 - Depth >= 3: recursion guard blocks sub-workstream spawning, falls back to single-session
 - Max 10 concurrent sessions per tree; extras queue in FIFO order
@@ -142,13 +143,15 @@ After execution completes, verify the goal was achieved. If not:
 
 ## Task Type Classification
 
-| Type          | Keywords                                                      | Action                        |
-| ------------- | ------------------------------------------------------------- | ----------------------------- |
-| Q&A           | "what is", "explain", "how does", "how do I", "quick question" | Respond directly              |
+| Type          | Keywords                                                       | Action                                              |
+| ------------- | -------------------------------------------------------------- | --------------------------------------------------- |
+| Q&A           | "what is", "explain", "how does", "how do I", "quick question" | Respond directly                                    |
 | Operations    | "clean up", "delete", "git status", "run command"              | builder agent (direct execution, no workflow steps) |
-| Investigation | "investigate", "analyze", "understand", "explore"              | investigation-workflow        |
-| Development   | "implement", "build", "create", "add", "fix", "refactor"      | smart-orchestrator            |
-| Hybrid        | Both investigation + development keywords                      | investigation first, then dev |
+| Investigation | "investigate", "analyze", "understand", "explore"              | investigation-workflow                              |
+| Development   | "implement", "build", "create", "add", "fix", "refactor"       | smart-orchestrator                                  |
+| Hybrid\*      | Both investigation + development keywords                      | Decomposed into investigation + dev workstreams     |
+
+\* Hybrid is not a distinct task_type — the orchestrator classifies as Development and decomposes into multiple workstreams (one investigation, one development).
 
 ## Workstream Decomposition Examples
 
@@ -240,6 +243,7 @@ The goal-seeking loop uses GOAL_STATUS signals to decide whether to run round 2 
 
 **BLOCKED path (recursion guard)**: When multi-workstream spawning is blocked
 by the depth limit, the orchestrator falls back to single-session execution:
+
 1. `announce-depth-limited` — prints a warning banner with remediation info
 2. `execute-single-fallback-blocked` — executes the full task as a single
    builder agent session (same as single-workstream path, produces

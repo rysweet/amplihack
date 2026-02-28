@@ -108,7 +108,7 @@ every message (except slash commands). Claude classifies your intent and invokes
 
 - **Disable**: `export AMPLIHACK_AUTO_DEV=false`
 - **Override for one prompt**: Include "just answer" or "without workflow"
-- **Details**: See the [auto-routing tutorial section](../../docs/tutorials/dev-orchestrator-tutorial.md#auto-routing-how-it-works)
+- **Details**: See the [auto-routing tutorial section](../../../docs/tutorials/dev-orchestrator-tutorial.md#auto-routing-how-it-works)
 
 ## How It Works
 

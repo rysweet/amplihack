@@ -18,7 +18,7 @@ and how to interpret what you see during execution.
 - [Part 4: The Goal-Seeking Loop](#part-4-the-goal-seeking-loop-5-minutes)
 - [Part 5: Interpreting Output](#part-5-interpreting-output-2-minutes)
 - [Common Patterns](#common-patterns)
-- [Auto-Routing: `/dev` Without Typing It](#auto-routing-dev-without-typing-it)
+- [Auto-Routing: How It Works](#auto-routing-how-it-works)
 - [Troubleshooting](#troubleshooting)
 - [Next Steps](#next-steps)
 
@@ -37,8 +37,8 @@ and how to interpret what you see during execution.
 
 `/dev` is the unified entry point for all development and investigation work. It:
 
-1. **Classifies** your request (Q&A, Operations, Investigation, Development, or Hybrid)
-2. **Decomposes** it into workstreams if it contains independent parallel components
+1. **Classifies** your request (Q&A, Operations, Investigation, or Development)
+2. **Decomposes** it into workstreams if it contains independent parallel components (hybrid "investigate then build" requests become multiple workstreams)
 3. **Executes** via the recipe runner with a goal-seeking loop (up to 3 rounds)
 4. **Reflects** on whether the goal was achieved
 
@@ -76,11 +76,11 @@ Goal status: ACHIEVED — JWT expiry logic corrected, tests passing.
 
 **Key signals to watch:**
 
-| Signal | Meaning |
-|--------|---------|
-| `GOAL_STATUS: ACHIEVED` | Done — review the PR |
+| Signal                                  | Meaning                             |
+| --------------------------------------- | ----------------------------------- |
+| `GOAL_STATUS: ACHIEVED`                 | Done — review the PR                |
 | `GOAL_STATUS: PARTIAL -- [description]` | Another round running automatically |
-| `GOAL_STATUS: NOT_ACHIEVED -- [reason]` | Failed — check the error above |
+| `GOAL_STATUS: NOT_ACHIEVED -- [reason]` | Failed — check the error above      |
 
 ---
 
@@ -200,14 +200,14 @@ faster:
 
 ### During execution
 
-| You see | Meaning |
-|---------|---------|
-| `[dev-orchestrator] Classified as: ...` | Classification complete, execution starting |
-| Agent output streaming | The builder is working |
-| `GOAL_STATUS: PARTIAL -- [reason]` | Round N incomplete, round N+1 starting |
-| `NOTE: Session registration failed` | Tree tracking inactive (non-blocking) |
-| `WARNING: Could not parse decomposition JSON` | Architect output was ambiguous; defaulted to Development/1-workstream |
-| `NOTE: Parallel workstream spawning is unavailable` | Depth/capacity limit hit; running as single session |
+| You see                                             | Meaning                                                               |
+| --------------------------------------------------- | --------------------------------------------------------------------- |
+| `[dev-orchestrator] Classified as: ...`             | Classification complete, execution starting                           |
+| Agent output streaming                              | The builder is working                                                |
+| `GOAL_STATUS: PARTIAL -- [reason]`                  | Round N incomplete, round N+1 starting                                |
+| `NOTE: Session registration failed`                 | Tree tracking inactive (non-blocking)                                 |
+| `WARNING: Could not parse decomposition JSON`       | Architect output was ambiguous; defaulted to Development/1-workstream |
+| `NOTE: Parallel workstream spawning is unavailable` | Depth/capacity limit hit; running as single session                   |
 
 ### At completion
 
@@ -215,7 +215,7 @@ faster:
 # Dev Orchestrator -- Execution Complete
 
 **Task**: [your task]
-**Type**: [Q&A | Development | Investigation | Operations | Hybrid]
+**Type**: [Q&A | Development | Investigation | Operations]
 **Workstreams**: [number]
 
 ## Summary
@@ -261,19 +261,20 @@ The `UserPromptSubmit` hook injects a short routing prompt on every message
 (except slash commands like `/dev` or `/analyze`). This prompt tells Claude
 which workflow to use based on your intent:
 
-| Your intent | What Claude does |
-|-------------|-----------------|
-| Build, fix, write, test, deploy | Invokes `dev-orchestrator` (DEFAULT_WORKFLOW) |
-| Investigate, analyze, understand | Invokes `dev-orchestrator` (INVESTIGATION_WORKFLOW) |
-| Both investigate AND implement | Invokes `dev-orchestrator` (creates parallel workstreams) |
-| Knowledge question (what is, how does) | Answers directly — no workflow |
-| Shell/admin command (git, ls, restart) | Executes directly — no workflow |
-| Existing `/command` or "just answer" bypass | Respects your explicit intent |
+| Your intent                                 | What Claude does                                          |
+| ------------------------------------------- | --------------------------------------------------------- |
+| Build, fix, write, test, deploy             | Invokes `dev-orchestrator` (DEFAULT_WORKFLOW)             |
+| Investigate, analyze, understand            | Invokes `dev-orchestrator` (INVESTIGATION_WORKFLOW)       |
+| Both investigate AND implement              | Invokes `dev-orchestrator` (creates parallel workstreams) |
+| Knowledge question (what is, how does)      | Answers directly — no workflow                            |
+| Shell/admin command (git, ls, restart)      | Executes directly — no workflow                           |
+| Existing `/command` or "just answer" bypass | Respects your explicit intent                             |
 
 The hook itself does NOT classify — it injects the same routing guidance for
 every message. Claude's natural language understanding handles the rest.
 
 **Disable auto-routing:**
+
 ```bash
 export AMPLIHACK_AUTO_DEV=false   # for one session
 echo 'export AMPLIHACK_AUTO_DEV=false' >> ~/.bashrc  # permanent
@@ -325,6 +326,7 @@ completes.
 **"Dev Orchestrator started when I didn't type /dev"**
 The auto-routing hook injected a routing prompt, and Claude classified your
 message as a development task.
+
 - To disable for this session: `export AMPLIHACK_AUTO_DEV=false`
 - To override for one prompt: prefix with "just answer", "without workflow", or "skip orchestration"
 - To check whether the hook would inject the routing prompt:
