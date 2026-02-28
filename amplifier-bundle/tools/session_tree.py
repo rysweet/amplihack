@@ -42,7 +42,6 @@ import time
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Optional
 
 DEFAULT_MAX_DEPTH = 3
 DEFAULT_MAX_SESSIONS = 10
@@ -60,7 +59,7 @@ _PROCESS_LOCK = threading.Lock()
 # Security: tree_id validation
 # ─────────────────────────────────────────────────────────────────────────────
 
-_TREE_ID_RE = re.compile(r'^[a-zA-Z0-9_-]{1,64}$')
+_TREE_ID_RE = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
 
 
 def _validate_tree_id(tree_id: str) -> str:
@@ -96,9 +95,7 @@ def get_tree_context() -> dict:
         "session_id": os.environ.get("AMPLIHACK_SESSION_ID", ""),
         "depth": int(os.environ.get("AMPLIHACK_SESSION_DEPTH", "0")),
         "max_depth": int(os.environ.get("AMPLIHACK_MAX_DEPTH", str(DEFAULT_MAX_DEPTH))),
-        "max_sessions": int(
-            os.environ.get("AMPLIHACK_MAX_SESSIONS", str(DEFAULT_MAX_SESSIONS))
-        ),
+        "max_sessions": int(os.environ.get("AMPLIHACK_MAX_SESSIONS", str(DEFAULT_MAX_SESSIONS))),
     }
 
 
@@ -188,7 +185,9 @@ def _load(tree_id: str) -> dict:
         return {"sessions": {}}
 
 
-def _save(tree_id: str, state: dict, max_age_hours: float = 24.0, active_max_age_hours: float = 4.0) -> None:
+def _save(
+    tree_id: str, state: dict, max_age_hours: float = 24.0, active_max_age_hours: float = 4.0
+) -> None:
     """Write state atomically. Prunes stale sessions before saving.
 
     Pruning rules:
@@ -211,7 +210,7 @@ def _save(tree_id: str, state: dict, max_age_hours: float = 24.0, active_max_age
             print(
                 f"WARNING: session_tree: pruning leaked active session {sid!r} "
                 f"(started {(now - s.get('started_at', now)) / 3600:.1f}h ago)",
-                file=sys.stderr
+                file=sys.stderr,
             )
             continue  # prune leaked active session
         pruned[sid] = s
@@ -238,7 +237,7 @@ def _save(tree_id: str, state: dict, max_age_hours: float = 24.0, active_max_age
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def check_can_spawn(tree_id: Optional[str] = None, depth: int = -1) -> dict:
+def check_can_spawn(tree_id: str | None = None, depth: int = -1) -> dict:
     """
     ADVISORY CHECK ONLY — not atomic. For atomic admission control, use register_session().
 
@@ -296,8 +295,8 @@ def check_can_spawn(tree_id: Optional[str] = None, depth: int = -1) -> dict:
 
 def register_session(
     session_id: str,
-    tree_id: Optional[str] = None,
-    parent_id: Optional[str] = None,
+    tree_id: str | None = None,
+    parent_id: str | None = None,
     depth: int = -1,
 ) -> dict:
     """
@@ -318,13 +317,9 @@ def register_session(
         # Atomic capacity and depth check (fixes TOCTOU from check_can_spawn)
         active = [s for s in state["sessions"].values() if s.get("status") == "active"]
         if len(active) >= max_sessions:
-            raise RuntimeError(
-                f"max_sessions={max_sessions} reached ({len(active)} active)"
-            )
+            raise RuntimeError(f"max_sessions={max_sessions} reached ({len(active)} active)")
         if depth > max_depth:
-            raise RuntimeError(
-                f"depth={depth} exceeds max_depth={max_depth}"
-            )
+            raise RuntimeError(f"depth={depth} exceeds max_depth={max_depth}")
 
         state["sessions"][session_id] = {
             "depth": depth,
@@ -340,7 +335,7 @@ def register_session(
     return {"tree_id": tree_id, "depth": depth, "session_id": session_id}
 
 
-def complete_session(session_id: str, tree_id: Optional[str] = None) -> None:
+def complete_session(session_id: str, tree_id: str | None = None) -> None:
     """Mark a session as completed."""
     ctx = get_tree_context()
     tree_id = tree_id or ctx["tree_id"]
