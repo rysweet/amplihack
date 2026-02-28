@@ -42,7 +42,6 @@ class TestInjectionFires(unittest.TestCase):
 
     def setUp(self):
         os.environ.pop("AMPLIHACK_AUTO_DEV", None)
-        # Ensure semaphore file exists (enabled by default)
         self._tmp = tempfile.mkdtemp()
         self._patch = patch(
             "dev_intent_router._get_semaphore_path",
@@ -52,14 +51,19 @@ class TestInjectionFires(unittest.TestCase):
             "dev_intent_router._get_banner_flag_path",
             return_value=Path(self._tmp) / ".auto_dev_banner_shown",
         )
+        self._patch_workflow = patch(
+            "dev_intent_router._get_workflow_active_path",
+            return_value=Path(self._tmp) / ".workflow_active",
+        )
         self._patch.start()
         self._patch_banner.start()
-        # Create semaphore (enabled)
+        self._patch_workflow.start()
         (Path(self._tmp) / ".auto_dev_active").write_text("enabled\n")
 
     def tearDown(self):
         self._patch.stop()
         self._patch_banner.stop()
+        self._patch_workflow.stop()
         import shutil
 
         shutil.rmtree(self._tmp, ignore_errors=True)
@@ -103,13 +107,19 @@ class TestInjectionSkips(unittest.TestCase):
             "dev_intent_router._get_banner_flag_path",
             return_value=Path(self._tmp) / ".auto_dev_banner_shown",
         )
+        self._patch_workflow = patch(
+            "dev_intent_router._get_workflow_active_path",
+            return_value=Path(self._tmp) / ".workflow_active",
+        )
         self._patch.start()
         self._patch_banner.start()
+        self._patch_workflow.start()
         (Path(self._tmp) / ".auto_dev_active").write_text("enabled\n")
 
     def tearDown(self):
         self._patch.stop()
         self._patch_banner.stop()
+        self._patch_workflow.stop()
         import shutil
 
         shutil.rmtree(self._tmp, ignore_errors=True)
@@ -238,6 +248,20 @@ class TestSemaphoreToggle(unittest.TestCase):
         msg = disable_auto_dev()
         self.assertIn("disabled", msg.lower())
 
+    def test_disable_preserves_workflow_active(self):
+        """Disabling auto-routing does NOT clear an active workflow semaphore.
+        The orchestrator is still running and will clear it when done."""
+        enable_auto_dev()
+        # Need to mock workflow path too for this test
+        workflow_path = Path(self._tmp) / ".workflow_active"
+        with patch(
+            "dev_intent_router._get_workflow_active_path",
+            return_value=workflow_path,
+        ):
+            set_workflow_active("Development", 1)
+            disable_auto_dev()
+            self.assertTrue(workflow_path.exists(), "Workflow semaphore must persist after disable")
+
 
 class TestEnvVarFallback(unittest.TestCase):
     """AMPLIHACK_AUTO_DEV env var works when no semaphore dir exists (legacy)."""
@@ -290,14 +314,20 @@ class TestWelcomeBanner(unittest.TestCase):
             "dev_intent_router._get_banner_flag_path",
             return_value=Path(self._tmp) / ".auto_dev_banner_shown",
         )
+        self._patch_workflow = patch(
+            "dev_intent_router._get_workflow_active_path",
+            return_value=Path(self._tmp) / ".workflow_active",
+        )
         self._patch.start()
         self._patch_banner.start()
+        self._patch_workflow.start()
         os.environ.pop("AMPLIHACK_AUTO_DEV", None)
         (Path(self._tmp) / ".auto_dev_active").write_text("enabled\n")
 
     def tearDown(self):
         self._patch.stop()
         self._patch_banner.stop()
+        self._patch_workflow.stop()
         import shutil
 
         shutil.rmtree(self._tmp, ignore_errors=True)
@@ -314,6 +344,30 @@ class TestWelcomeBanner(unittest.TestCase):
         self.assertTrue(ok)
         self.assertNotIn(_WELCOME_BANNER, ctx)
         self.assertEqual(ctx, _ROUTING_PROMPT)
+
+    def test_banner_creates_semaphore_when_missing(self):
+        """Bug fix: banner must create auto-dev semaphore to prevent
+        locks dir creation from accidentally disabling routing."""
+        import shutil
+
+        # Simulate truly fresh first run: no locks dir at all
+        # This forces env-var fallback (enabled by default)
+        fresh_tmp = tempfile.mkdtemp()
+        sem_path = Path(fresh_tmp) / "locks" / ".auto_dev_active"
+        banner_path = Path(fresh_tmp) / "locks" / ".auto_dev_banner_shown"
+        workflow_path = Path(fresh_tmp) / "locks" / ".workflow_active"
+
+        with (
+            patch("dev_intent_router._get_semaphore_path", return_value=sem_path),
+            patch("dev_intent_router._get_banner_flag_path", return_value=banner_path),
+            patch("dev_intent_router._get_workflow_active_path", return_value=workflow_path),
+        ):
+            ok, ctx = should_auto_route("fix the login timeout bug")
+            self.assertTrue(ok, "First injection should fire via env-var fallback")
+            self.assertIn(_WELCOME_BANNER, ctx)
+            self.assertTrue(sem_path.exists(), "Semaphore must be created by banner logic")
+
+        shutil.rmtree(fresh_tmp, ignore_errors=True)
 
 
 class TestRoutingPromptContent(unittest.TestCase):
@@ -429,14 +483,18 @@ class TestWorkflowActiveSemaphore(unittest.TestCase):
         self.assertEqual(data["workstreams"], 2)
         self.assertTrue(data["active"])
 
+    def test_dead_pid_clears_semaphore(self):
+        """Semaphore with a dead PID is treated as orphaned."""
+        set_workflow_active("Development", 1, pid=99999999)  # nonexistent PID
+        self.assertFalse(is_workflow_active())
+
     def test_stale_semaphore_ignored(self):
-        """Semaphore older than 30 min is treated as stale."""
-        set_workflow_active("Development", 1)
+        """Semaphore older than 2 hours is treated as stale even with live PID."""
+        set_workflow_active("Development", 1, pid=os.getpid())
         path = Path(self._tmp) / ".workflow_active"
-        # Backdate the file 31 minutes
         import time
 
-        old_time = time.time() - 1860
+        old_time = time.time() - 7201  # 2 hours + 1 second
         os.utime(str(path), (old_time, old_time))
         self.assertFalse(is_workflow_active())
 

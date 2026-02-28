@@ -149,8 +149,14 @@ def _get_workflow_active_path() -> Path:
     return base / ".claude" / "runtime" / "locks" / ".workflow_active"
 
 
-def set_workflow_active(task_type: str = "", workstreams: int = 0) -> None:
-    """Mark a workflow as in progress. Called by the orchestrator recipe."""
+def set_workflow_active(task_type: str = "", workstreams: int = 0, pid: int = 0) -> None:
+    """Mark a workflow as in progress. Called by the orchestrator recipe.
+
+    Args:
+        pid: Process ID to track for liveness. If 0, uses os.getppid()
+             (parent process) which is typically the recipe runner, not
+             the ephemeral bash step.
+    """
     path = _get_workflow_active_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     import json
@@ -162,7 +168,7 @@ def set_workflow_active(task_type: str = "", workstreams: int = 0) -> None:
             "task_type": task_type,
             "workstreams": workstreams,
             "started_at": time.time(),
-            "pid": os.getpid(),
+            "pid": pid or os.getppid(),
         }
     )
     try:
@@ -184,14 +190,28 @@ def is_workflow_active() -> bool:
     path = _get_workflow_active_path()
     if not path.exists():
         return False
-    # Stale check: if the file is older than 30 minutes, consider it stale
     try:
+        import json
         import time
 
         age = time.time() - path.stat().st_mtime
-        if age > 1800:  # 30 min
+
+        # Check PID liveness first (handles normal process termination)
+        try:
+            data = json.loads(path.read_text())
+            pid = data.get("pid", 0)
+            if pid > 0:
+                os.kill(pid, 0)  # raises OSError if process doesn't exist
+        except (json.JSONDecodeError, OSError, ValueError):
+            # Process dead or JSON corrupt — semaphore is orphaned
             path.unlink(missing_ok=True)
             return False
+
+        # Stale timeout as fallback (PID could be recycled)
+        if age > 7200:  # 2 hours
+            path.unlink(missing_ok=True)
+            return False
+
         return True
     except OSError:
         return False
@@ -248,12 +268,12 @@ def should_auto_route(prompt: str) -> tuple[bool, str]:
         if not banner_flag.exists():
             banner_flag.parent.mkdir(parents=True, exist_ok=True)
             banner_flag.write_text("shown\n")
-            # Also ensure the auto-dev semaphore exists so the locks dir
-            # being created doesn't accidentally disable routing (the dir
-            # existing flips from env-var to file-based detection).
-            sem = _get_semaphore_path()
-            if not sem.exists():
-                sem.write_text("enabled\n")
+            # Ensure the auto-dev semaphore exists so the locks dir being
+            # created doesn't accidentally disable routing (the dir existing
+            # flips from env-var to file-based detection). Use enable_auto_dev()
+            # for atomic creation instead of raw write_text.
+            if not _get_semaphore_path().exists():
+                enable_auto_dev()
             injection = _WELCOME_BANNER + "\n\n" + _ROUTING_PROMPT
     except OSError:
         pass  # fail-open: skip banner if we can't write the flag
