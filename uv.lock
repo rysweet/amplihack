@@ -519,7 +519,7 @@ dependencies = [
 
 [[package]]
 name = "amplihack"
-version = "0.5.72"
+version = "0.5.75"
 source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
@@ -669,7 +669,7 @@ dev = [
 [[package]]
 name = "amplihack-agent-eval"
 version = "0.1.0"
-source = { git = "https://github.com/rysweet/amplihack-agent-eval.git?rev=main#ff205863ce7e103f1147b9c99364e99af129cc7d" }
+source = { git = "https://github.com/rysweet/amplihack-agent-eval.git?rev=main#4ec3d9a7556156ce9e9820311f60559f8651dd49" }
 
 [[package]]
 name = "amplihack-memory-lib"
@@ -2161,6 +2161,9 @@ name = "jsonpath-ng"
 version = "1.8.0"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/32/58/250751940d75c8019659e15482d548a4aa3b6ce122c515102a4bfdac50e3/jsonpath_ng-1.8.0.tar.gz", hash = "sha256:54252968134b5e549ea5b872f1df1168bd7defe1a52fed5a358c194e1943ddc3", size = 74513, upload-time = "2026-02-24T14:42:06.182Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/03/99/33c7d78a3fb70d545fd5411ac67a651c81602cc09c9cf0df383733f068c5/jsonpath_ng-1.8.0-py3-none-any.whl", hash = "sha256:b8dde192f8af58d646fc031fac9c99fe4d00326afc4148f1f043c601a8cfe138", size = 67844, upload-time = "2026-02-28T00:53:19.637Z" },
+]
 
 [[package]]
 name = "jsonpointer"

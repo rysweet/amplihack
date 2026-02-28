@@ -1630,6 +1630,22 @@ class HierarchicalMemory:
                     "query_type": query_type,
                 }
 
+            elif query_type == "list_superseded":
+                result = self.connection.execute(
+                    """
+                    MATCH (newer:SemanticMemory)-[:SUPERSEDES]->(older:SemanticMemory)
+                    WHERE newer.agent_id = $aid
+                    RETURN DISTINCT newer.concept
+                    """,
+                    {"aid": self.agent_name},
+                )
+                items = []
+                while result.has_next():
+                    row = result.get_next()
+                    if row[0]:
+                        items.append(row[0])
+                return {"count": len(items), "items": items, "query_type": query_type}
+
         except Exception as e:
             logger.debug("Aggregation query failed (%s): %s", query_type, e)
 
