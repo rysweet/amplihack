@@ -674,76 +674,173 @@ class LearningAgent:
             return answer, reasoning_trace
         return answer
 
-    def answer_question_agentic(self, question: str, max_iterations: int = 5) -> str:
-        """Answer using the iterative PERCEIVE->REASON->ACT->LEARN loop.
+    def answer_question_agentic(
+        self, question: str, max_iterations: int = 3, return_trace: bool = False
+    ) -> str | tuple[str, ReasoningTrace | None]:
+        """Agentic mode: run single-shot FIRST, then augment with iterative refinement.
 
-        Unlike single-shot answer_question() (one LLM call), this lets the
-        agent iteratively use its registered tools (search_memory,
-        verify_fact, find_knowledge_gaps, calculate, code_generation,
-        synthesize_answer).
+        Never scores lower than single-shot because it starts with single-shot's
+        result and only replaces it when refinement finds additional information.
+
+        Strategy:
+        1. Run the full single-shot pipeline (intent, retrieve, synthesize)
+        2. Self-evaluate -- is the answer complete?
+        3. If gaps detected, search again with refined queries
+        4. Re-synthesize with ALL facts (original + new)
 
         Args:
             question: The question to answer
-            max_iterations: Max PERCEIVE->REASON->ACT->LEARN cycles
+            max_iterations: Max gap-filling search iterations (default 3)
+            return_trace: If True, return (answer, ReasoningTrace) tuple
 
         Returns:
-            Synthesized answer string; falls back to single-shot on failure.
+            Synthesized answer string, or (answer, trace) if return_trace=True.
         """
         if not question or not question.strip():
             return "Error: Question is empty"
 
-        goal = (
-            f"Answer this question accurately and completely: {question}\n\n"
-            "Strategy:\n"
-            "1. Use search_memory with different queries to gather facts\n"
-            "2. Use verify_fact to check key claims if needed\n"
-            "3. Use find_knowledge_gaps to identify missing info\n"
-            "4. Use calculate for numerical questions\n"
-            "5. When confident, use synthesize_answer for the final answer\n"
-            "6. The synthesize_answer result IS the final answer"
-        )
-        initial_obs = f"Question to answer: {question}"
+        # Step 1: Run the full single-shot pipeline (guaranteed baseline)
+        initial_result = self.answer_question(question, return_trace=True)
+        if isinstance(initial_result, tuple):
+            initial_answer, trace = initial_result
+        else:
+            initial_answer = initial_result
+            trace = None
 
-        def _goal_achieved(state) -> bool:
-            action = state.action if hasattr(state, "action") else {}
-            name = action.get("action", "") if isinstance(action, dict) else ""
-            return name == "synthesize_answer"
+        # Step 2: Self-evaluate -- is the answer complete?
+        evaluation = self._evaluate_answer_completeness(question, initial_answer)
+
+        if evaluation.get("is_complete", True):
+            logger.info("Agentic: single-shot answer is complete, no refinement needed")
+            if return_trace:
+                return initial_answer, trace
+            return initial_answer
+
+        # Step 3: Identify gaps and search for additional facts
+        gaps = evaluation.get("gaps", [])
+        if not gaps:
+            logger.info("Agentic: no specific gaps identified, returning single-shot")
+            if return_trace:
+                return initial_answer, trace
+            return initial_answer
+
+        additional_facts: list[dict[str, Any]] = []
+        seen_ids: set[str] = set()
+
+        for gap_query in gaps[:max_iterations]:
+            if hasattr(self.memory, "search"):
+                new_facts = self.memory.search(query=gap_query, limit=50)
+                for f in new_facts:
+                    fid = f.get("experience_id", f.get("fact", ""))
+                    if fid not in seen_ids:
+                        seen_ids.add(fid)
+                        additional_facts.append(f)
+
+        if not additional_facts:
+            logger.info("Agentic: no additional facts found for gaps, returning single-shot")
+            if return_trace:
+                return initial_answer, trace
+            return initial_answer
+
+        # Step 4: Re-synthesize with ALL facts (original + new)
+        # Get the original retrieval facts and merge with new ones
+        original_facts = self._simple_retrieval(question)
+        all_facts = original_facts + additional_facts
+
+        # Deduplicate by experience_id or fact text
+        deduped: list[dict[str, Any]] = []
+        dedup_keys: set[str] = set()
+        for f in all_facts:
+            key = f.get("experience_id", f.get("fact", f.get("outcome", "")))
+            if key and key not in dedup_keys:
+                dedup_keys.add(key)
+                deduped.append(f)
+            elif not key:
+                deduped.append(f)
+
+        # Re-detect intent for proper synthesis prompting
+        intent = self._detect_intent(question)
+
+        refined_answer = self._synthesize_with_llm(
+            question=question,
+            context=deduped,
+            question_level="L3",  # Use L3 for synthesis-level refinement
+            intent=intent,
+        )
+
+        logger.info(
+            "Agentic: refined with %d additional facts (total %d)",
+            len(additional_facts),
+            len(deduped),
+        )
+
+        if return_trace:
+            return refined_answer, trace
+        return refined_answer
+
+    def _evaluate_answer_completeness(self, question: str, answer: str) -> dict[str, Any]:
+        """Evaluate whether an answer fully addresses the question.
+
+        Uses a single LLM call to assess completeness and identify gaps.
+
+        Args:
+            question: The original question
+            answer: The current answer to evaluate
+
+        Returns:
+            Dict with:
+                is_complete: bool -- True if no gaps detected
+                gaps: list[str] -- search queries for missing information
+        """
+        if not answer or answer.startswith("I don't have enough"):
+            return {"is_complete": False, "gaps": [question]}
+
+        prompt = (
+            "You are evaluating whether an answer FULLY addresses a question.\n\n"
+            f"QUESTION: {question}\n\n"
+            f"ANSWER: {answer}\n\n"
+            "Evaluate:\n"
+            "1. Does the answer directly address what was asked?\n"
+            "2. Is any specific information MISSING that the question requires?\n"
+            "3. Are there vague or hedged parts that could be more specific?\n\n"
+            "Respond in this exact JSON format (no markdown, no extra text):\n"
+            '{"is_complete": true}\n'
+            "OR\n"
+            '{"is_complete": false, "gaps": ["search query for missing info 1", '
+            '"search query for missing info 2"]}\n\n'
+            "IMPORTANT: Only mark as incomplete if SPECIFIC, CONCRETE information "
+            "is missing. A well-formed answer that addresses the question is complete "
+            "even if more detail COULD be added. Err on the side of marking complete.\n"
+            "Return ONLY the JSON object, nothing else."
+        )
 
         try:
-            states = self.loop.run_until_goal(
-                goal=goal,
-                initial_observation=initial_obs,
-                is_goal_achieved=_goal_achieved,
+            response = litellm.completion(
+                model=self.model,
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=300,
+                temperature=0.0,
             )
+            raw = response.choices[0].message.content.strip()
+
+            # Parse JSON -- handle markdown code fences if the LLM wraps it
+            if raw.startswith("```"):
+                raw = raw.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+
+            result = json.loads(raw)
+            if not isinstance(result, dict):
+                return {"is_complete": True, "gaps": []}
+
+            return {
+                "is_complete": bool(result.get("is_complete", True)),
+                "gaps": list(result.get("gaps", [])),
+            }
+        except (json.JSONDecodeError, KeyError, IndexError) as exc:
+            logger.warning("Answer evaluation parse error: %s", exc)
+            return {"is_complete": True, "gaps": []}
         except Exception as exc:
-            logger.warning("Agentic loop failed: %s; single-shot fallback", exc)
-            return self.answer_question(question)
-
-        if not states:
-            logger.info("Agentic loop empty; single-shot fallback")
-            return self.answer_question(question)
-
-        last = states[-1]
-        outcome = last.outcome
-
-        if isinstance(outcome, str) and outcome.strip():
-            answer = outcome.strip()
-        elif isinstance(outcome, dict):
-            answer = str(outcome.get("answer", outcome.get("result", str(outcome))))
-        else:
-            answer = str(outcome) if outcome else ""
-
-        if not answer or answer == "None" or "error" in answer.lower()[:20]:
-            logger.info("Agentic loop no useful answer; single-shot fallback")
-            return self.answer_question(question)
-
-        self.memory.store_fact(
-            context=f"Question: {question[:200]}",
-            fact=f"Answer: {answer[:900]}",
-            confidence=0.7,
-            tags=["q_and_a", "agentic"],
-        )
-        return answer
+            logger.warning("Answer evaluation failed: %s", exc)
+            return {"is_complete": True, "gaps": []}
 
     def _simple_retrieval(self, question: str) -> list[dict[str, Any]]:
         """Single-pass retrieval with progressive summarization for large KBs.

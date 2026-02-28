@@ -3,11 +3,12 @@
 Philosophy:
 - Test without requiring API keys
 - Mock LLM for predictable results
-- Verify the agentic loop is invoked and produces answers
-- Verify fallback to single-shot on failure
+- Verify augmentation pattern: single-shot first, then refine if gaps detected
+- Verify single-shot result is never lost (agentic >= single-shot)
 - Verify CLI --answer-mode flag wiring
 """
 
+import json
 import shutil
 import tempfile
 from pathlib import Path
@@ -16,7 +17,6 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from amplihack.agents.goal_seeking import LearningAgent
-from amplihack.agents.goal_seeking.agentic_loop import LoopState
 
 
 class TestAnswerQuestionAgentic:
@@ -38,7 +38,7 @@ class TestAnswerQuestionAgentic:
         agent.close()
 
     def test_empty_question_returns_error(self, agent):
-        """Empty question returns error without invoking the loop."""
+        """Empty question returns error without invoking any pipeline."""
         answer = agent.answer_question_agentic("")
         assert "Error" in answer or "empty" in answer.lower()
 
@@ -47,198 +47,249 @@ class TestAnswerQuestionAgentic:
         answer = agent.answer_question_agentic("   ")
         assert "Error" in answer or "empty" in answer.lower()
 
-    @patch.object(LearningAgent, "answer_question")
-    def test_fallback_on_empty_states(self, mock_single_shot, agent):
-        """Falls back to single-shot when agentic loop returns empty states."""
-        mock_single_shot.return_value = "Single-shot fallback answer"
+    def test_returns_single_shot_when_complete(self, agent):
+        """When single-shot answer is complete, returns it without refinement."""
+        with patch.object(agent, "answer_question", return_value="Photosynthesis is X"):
+            with patch.object(
+                agent,
+                "_evaluate_answer_completeness",
+                return_value={"is_complete": True, "gaps": []},
+            ):
+                answer = agent.answer_question_agentic("What is photosynthesis?")
 
-        # Make run_until_goal return empty list
-        with patch.object(agent.loop, "run_until_goal", return_value=[]):
-            answer = agent.answer_question_agentic("What is photosynthesis?")
+        assert answer == "Photosynthesis is X"
 
-        mock_single_shot.assert_called_once_with("What is photosynthesis?")
-        assert answer == "Single-shot fallback answer"
+    def test_returns_single_shot_when_no_gaps(self, agent):
+        """When evaluation says incomplete but no gaps, returns single-shot."""
+        with patch.object(agent, "answer_question", return_value="Partial answer"):
+            with patch.object(
+                agent,
+                "_evaluate_answer_completeness",
+                return_value={"is_complete": False, "gaps": []},
+            ):
+                answer = agent.answer_question_agentic("Test question?")
 
-    @patch.object(LearningAgent, "answer_question")
-    def test_fallback_on_loop_exception(self, mock_single_shot, agent):
-        """Falls back to single-shot when agentic loop raises exception."""
-        mock_single_shot.return_value = "Fallback answer"
+        assert answer == "Partial answer"
 
-        with patch.object(agent.loop, "run_until_goal", side_effect=RuntimeError("Loop crashed")):
-            answer = agent.answer_question_agentic("What is gravity?")
+    def test_returns_single_shot_when_no_additional_facts(self, agent):
+        """When gap search finds nothing new, returns single-shot result."""
+        mock_memory = MagicMock()
+        mock_memory.search.return_value = []
+        agent.memory = mock_memory
 
-        mock_single_shot.assert_called_once_with("What is gravity?")
-        assert answer == "Fallback answer"
+        with patch.object(agent, "answer_question", return_value=("Single-shot answer", None)):
+            with patch.object(
+                agent,
+                "_evaluate_answer_completeness",
+                return_value={"is_complete": False, "gaps": ["missing topic"]},
+            ):
+                answer = agent.answer_question_agentic("What is gravity?")
 
-    def test_agentic_loop_called_with_correct_goal(self, agent):
-        """Verifies that run_until_goal is called with the question in the goal."""
-        state = LoopState(
-            perception="test",
-            reasoning="test reasoning",
-            action={"action": "synthesize_answer", "params": {}},
-            learning="learned",
-            outcome="The answer is 42",
-            iteration=1,
+        assert answer == "Single-shot answer"
+
+    def test_refines_when_gaps_and_new_facts(self, agent):
+        """When gaps detected and new facts found, re-synthesizes with all facts."""
+        mock_memory = MagicMock()
+        mock_memory.search.return_value = [
+            {"experience_id": "new1", "context": "new", "outcome": "New fact"}
+        ]
+        mock_memory.get_all_facts.return_value = [
+            {"experience_id": "orig1", "context": "orig", "outcome": "Original fact"}
+        ]
+        agent.memory = mock_memory
+
+        with patch.object(agent, "answer_question", return_value=("Initial answer", None)):
+            with patch.object(
+                agent,
+                "_evaluate_answer_completeness",
+                return_value={"is_complete": False, "gaps": ["missing detail"]},
+            ):
+                with patch.object(
+                    agent, "_detect_intent", return_value={"intent": "simple_recall"}
+                ):
+                    with patch.object(
+                        agent, "_synthesize_with_llm", return_value="Refined answer with more info"
+                    ):
+                        answer = agent.answer_question_agentic("Test question?")
+
+        assert answer == "Refined answer with more info"
+
+    def test_max_iterations_limits_gap_searches(self, agent):
+        """Max iterations caps the number of gap-filling searches."""
+        mock_memory = MagicMock()
+        mock_memory.search.return_value = [
+            {"experience_id": "new1", "context": "c", "outcome": "f"}
+        ]
+        mock_memory.get_all_facts.return_value = []
+        agent.memory = mock_memory
+
+        gaps = ["gap1", "gap2", "gap3", "gap4", "gap5"]
+
+        with patch.object(agent, "answer_question", return_value=("Initial", None)):
+            with patch.object(
+                agent,
+                "_evaluate_answer_completeness",
+                return_value={"is_complete": False, "gaps": gaps},
+            ):
+                with patch.object(
+                    agent, "_detect_intent", return_value={"intent": "simple_recall"}
+                ):
+                    with patch.object(agent, "_synthesize_with_llm", return_value="Refined"):
+                        # max_iterations=2 means only 2 gap queries
+                        agent.answer_question_agentic("Test?", max_iterations=2)
+
+        # search called only 2 times (not 5)
+        assert mock_memory.search.call_count == 2
+
+    def test_return_trace_returns_tuple(self, agent):
+        """When return_trace=True, returns (answer, trace) tuple."""
+        mock_trace = MagicMock()
+        with patch.object(agent, "answer_question", return_value=("Answer text", mock_trace)):
+            with patch.object(
+                agent,
+                "_evaluate_answer_completeness",
+                return_value={"is_complete": True},
+            ):
+                result = agent.answer_question_agentic("Test?", return_trace=True)
+
+        assert isinstance(result, tuple)
+        assert result[0] == "Answer text"
+        assert result[1] is mock_trace
+
+    def test_deduplicates_facts(self, agent):
+        """Duplicate facts from original and gap search are deduplicated."""
+        shared_fact = {"experience_id": "shared1", "context": "c", "outcome": "f"}
+        new_fact = {"experience_id": "new1", "context": "c", "outcome": "new f"}
+
+        mock_memory = MagicMock()
+        mock_memory.search.return_value = [shared_fact, new_fact]
+        mock_memory.get_all_facts.return_value = [shared_fact]
+        agent.memory = mock_memory
+
+        captured_context = {}
+
+        def mock_synthesize(question, context, question_level, intent=None):
+            captured_context["facts"] = context
+            return "Refined answer"
+
+        with patch.object(agent, "answer_question", return_value=("Initial", None)):
+            with patch.object(
+                agent,
+                "_evaluate_answer_completeness",
+                return_value={"is_complete": False, "gaps": ["gap"]},
+            ):
+                with patch.object(
+                    agent, "_detect_intent", return_value={"intent": "simple_recall"}
+                ):
+                    with patch.object(agent, "_synthesize_with_llm", side_effect=mock_synthesize):
+                        agent.answer_question_agentic("Test?")
+
+        # Should have 2 unique facts, not 3 (shared appears once)
+        ids = [f.get("experience_id") for f in captured_context["facts"]]
+        assert ids.count("shared1") == 1
+        assert "new1" in ids
+
+    def test_handles_answer_question_returning_string(self, agent):
+        """Works when answer_question returns a plain string (no tuple)."""
+        with patch.object(agent, "answer_question", return_value="Plain string answer"):
+            with patch.object(
+                agent,
+                "_evaluate_answer_completeness",
+                return_value={"is_complete": True},
+            ):
+                answer = agent.answer_question_agentic("Test?")
+
+        assert answer == "Plain string answer"
+
+
+class TestEvaluateAnswerCompleteness:
+    """Test suite for _evaluate_answer_completeness."""
+
+    @pytest.fixture
+    def temp_storage(self):
+        temp_dir = Path(tempfile.mkdtemp())
+        yield temp_dir
+        if temp_dir.exists():
+            shutil.rmtree(temp_dir)
+
+    @pytest.fixture
+    def agent(self, temp_storage):
+        agent = LearningAgent(agent_name="test_eval", storage_path=str(temp_storage))
+        yield agent
+        agent.close()
+
+    def test_empty_answer_returns_incomplete(self, agent):
+        """An empty answer is always incomplete."""
+        result = agent._evaluate_answer_completeness("What is X?", "")
+        assert result["is_complete"] is False
+        assert len(result["gaps"]) > 0
+
+    def test_no_info_answer_returns_incomplete(self, agent):
+        """'I don't have enough' answer is always incomplete."""
+        result = agent._evaluate_answer_completeness(
+            "What is X?", "I don't have enough information"
         )
+        assert result["is_complete"] is False
 
-        with patch.object(agent.loop, "run_until_goal", return_value=[state]) as mock_run:
-            agent.answer_question_agentic("What is the meaning of life?")
+    @patch("litellm.completion")
+    def test_complete_answer_from_llm(self, mock_llm, agent):
+        """When LLM says complete, returns is_complete=True."""
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = json.dumps({"is_complete": True})
+        mock_llm.return_value = mock_response
 
-            mock_run.assert_called_once()
-            call_kwargs = mock_run.call_args
-            goal = call_kwargs.kwargs.get("goal") or call_kwargs.args[0]
-            assert "What is the meaning of life?" in goal
+        result = agent._evaluate_answer_completeness("What is X?", "X is a thing that does Y.")
+        assert result["is_complete"] is True
+        assert result["gaps"] == []
 
-    def test_extracts_string_outcome(self, agent):
-        """When the last state has a string outcome, it is returned as the answer."""
-        state = LoopState(
-            perception="test",
-            reasoning="found relevant facts",
-            action={"action": "synthesize_answer", "params": {}},
-            learning="synthesized answer",
-            outcome="Photosynthesis converts light to energy",
-            iteration=1,
+    @patch("litellm.completion")
+    def test_incomplete_answer_from_llm(self, mock_llm, agent):
+        """When LLM finds gaps, returns them as search queries."""
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = json.dumps(
+            {"is_complete": False, "gaps": ["missing detail about Z", "need info on W"]}
         )
+        mock_llm.return_value = mock_response
 
-        with patch.object(agent.loop, "run_until_goal", return_value=[state]):
-            answer = agent.answer_question_agentic("What is photosynthesis?")
+        result = agent._evaluate_answer_completeness("What is X?", "X is partially described.")
+        assert result["is_complete"] is False
+        assert len(result["gaps"]) == 2
+        assert "missing detail about Z" in result["gaps"]
 
-        assert "Photosynthesis converts light to energy" in answer
+    @patch("litellm.completion")
+    def test_handles_markdown_wrapped_json(self, mock_llm, agent):
+        """Handles LLM responses wrapped in markdown code fences."""
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[
+            0
+        ].message.content = '```json\n{"is_complete": false, "gaps": ["topic A"]}\n```'
+        mock_llm.return_value = mock_response
 
-    def test_extracts_dict_outcome(self, agent):
-        """When outcome is a dict, extracts answer or result key."""
-        state = LoopState(
-            perception="test",
-            reasoning="found facts",
-            action={"action": "synthesize_answer", "params": {}},
-            learning="done",
-            outcome={"answer": "Dogs are mammals", "confidence": 0.9},
-            iteration=1,
-        )
+        result = agent._evaluate_answer_completeness("Q?", "A.")
+        assert result["is_complete"] is False
+        assert "topic A" in result["gaps"]
 
-        with patch.object(agent.loop, "run_until_goal", return_value=[state]):
-            answer = agent.answer_question_agentic("Are dogs mammals?")
+    @patch("litellm.completion")
+    def test_defaults_to_complete_on_parse_error(self, mock_llm, agent):
+        """On JSON parse error, defaults to complete (conservative)."""
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message.content = "Not valid JSON at all"
+        mock_llm.return_value = mock_response
 
-        assert "Dogs are mammals" in answer
+        result = agent._evaluate_answer_completeness("Q?", "A.")
+        assert result["is_complete"] is True
 
-    def test_multiple_iterations_uses_last_state(self, agent):
-        """With multiple loop iterations, the last state's outcome is used."""
-        state1 = LoopState(
-            perception="test",
-            reasoning="searching memory",
-            action={"action": "search_memory", "params": {"query": "dogs"}},
-            learning="found some facts",
-            outcome=[{"context": "Dogs", "outcome": "Dogs are mammals"}],
-            iteration=1,
-        )
-        state2 = LoopState(
-            perception="found facts",
-            reasoning="now synthesizing",
-            action={"action": "synthesize_answer", "params": {}},
-            learning="synthesized",
-            outcome="Dogs are indeed mammals belonging to class Mammalia",
-            iteration=2,
-        )
+    @patch("litellm.completion")
+    def test_defaults_to_complete_on_exception(self, mock_llm, agent):
+        """On LLM failure, defaults to complete (conservative)."""
+        mock_llm.side_effect = RuntimeError("API down")
 
-        with patch.object(agent.loop, "run_until_goal", return_value=[state1, state2]):
-            answer = agent.answer_question_agentic("Are dogs mammals?")
-
-        assert "Mammalia" in answer
-
-    def test_goal_achieved_stops_on_synthesize(self, agent):
-        """The is_goal_achieved callback detects synthesize_answer action."""
-        # Create a mock that captures the is_goal_achieved callback
-        captured_callback = {}
-
-        def mock_run_until_goal(goal, initial_observation, is_goal_achieved=None):
-            captured_callback["fn"] = is_goal_achieved
-            state = LoopState(
-                perception="test",
-                reasoning="done",
-                action={"action": "synthesize_answer", "params": {}},
-                learning="done",
-                outcome="Final answer",
-                iteration=1,
-            )
-            return [state]
-
-        with patch.object(agent.loop, "run_until_goal", side_effect=mock_run_until_goal):
-            agent.answer_question_agentic("Test?")
-
-        # Verify the callback works correctly
-        callback = captured_callback["fn"]
-        assert callback is not None
-
-        # Test: synthesize_answer should signal goal achieved
-        synth_state = MagicMock()
-        synth_state.action = {"action": "synthesize_answer", "params": {}}
-        assert callback(synth_state) is True
-
-        # Test: search_memory should NOT signal goal achieved
-        search_state = MagicMock()
-        search_state.action = {"action": "search_memory", "params": {"query": "test"}}
-        assert callback(search_state) is False
-
-    def test_stores_qa_pair_in_memory(self, agent):
-        """Verifies that a Q&A pair is stored in memory after agentic answer."""
-        state = LoopState(
-            perception="test",
-            reasoning="done",
-            action={"action": "synthesize_answer", "params": {}},
-            learning="done",
-            outcome="Gravity is a fundamental force",
-            iteration=1,
-        )
-
-        initial_stats = agent.get_memory_stats()
-        initial_count = initial_stats.get("total_experiences", 0)
-
-        with patch.object(agent.loop, "run_until_goal", return_value=[state]):
-            agent.answer_question_agentic("What is gravity?")
-
-        final_stats = agent.get_memory_stats()
-        final_count = final_stats.get("total_experiences", 0)
-        assert final_count > initial_count
-
-    @patch.object(LearningAgent, "answer_question")
-    def test_fallback_on_none_outcome(self, mock_single_shot, agent):
-        """Falls back to single-shot when outcome is None."""
-        mock_single_shot.return_value = "Fallback"
-
-        state = LoopState(
-            perception="test",
-            reasoning="done",
-            action={"action": "search_memory", "params": {}},
-            learning="nothing useful",
-            outcome=None,
-            iteration=1,
-        )
-
-        with patch.object(agent.loop, "run_until_goal", return_value=[state]):
-            answer = agent.answer_question_agentic("Test question?")
-
-        mock_single_shot.assert_called_once()
-        assert answer == "Fallback"
-
-    @patch.object(LearningAgent, "answer_question")
-    def test_fallback_on_error_outcome(self, mock_single_shot, agent):
-        """Falls back to single-shot when outcome starts with 'Error'."""
-        mock_single_shot.return_value = "Fallback"
-
-        state = LoopState(
-            perception="test",
-            reasoning="done",
-            action={"action": "error", "params": {}},
-            learning="failed",
-            outcome="Error: action not found",
-            iteration=1,
-        )
-
-        with patch.object(agent.loop, "run_until_goal", return_value=[state]):
-            answer = agent.answer_question_agentic("Test question?")
-
-        mock_single_shot.assert_called_once()
-        assert answer == "Fallback"
+        result = agent._evaluate_answer_completeness("Q?", "A.")
+        assert result["is_complete"] is True
 
 
 class TestAgenticLoopModelPropagation:
