@@ -14,6 +14,7 @@ Philosophy:
 
 import json
 import logging
+import os
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -22,7 +23,7 @@ import litellm
 logger = logging.getLogger(__name__)
 
 # Default LLM model for the agentic loop (override via constructor parameter)
-DEFAULT_MODEL = "gpt-3.5-turbo"
+DEFAULT_MODEL = os.environ.get("EVAL_MODEL", "claude-opus-4-6")
 
 
 @dataclass
@@ -149,7 +150,7 @@ class AgenticLoop:
         ...     agent_name="test_agent",
         ...     action_executor=executor,
         ...     memory_retriever=memory,
-        ...     model="gpt-3.5-turbo"
+        ...     model="claude-opus-4-6"
         ... )
         >>>
         >>> state = loop.run_iteration(

@@ -186,7 +186,7 @@ def run_matrix_eval(
         num_questions: Number of quiz questions
         seed: Random seed for reproducibility
         grader_votes: Number of grading votes per question
-        agent_model: Model for agents (default from env or claude-sonnet-4-5-20250929)
+        agent_model: Model for agents (default from env or claude-opus-4-6)
         grader_model: Model for grading
         output_dir: Directory for results
         agent_names: Optional subset of agent names to run (default: all 5)
@@ -198,8 +198,8 @@ def run_matrix_eval(
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
 
-    agent_model = agent_model or os.environ.get("EVAL_MODEL", "claude-sonnet-4-5-20250929")
-    grader_model = grader_model or os.environ.get("GRADER_MODEL", "claude-sonnet-4-5-20250929")
+    agent_model = agent_model or os.environ.get("EVAL_MODEL", "claude-opus-4-6")
+    grader_model = grader_model or os.environ.get("GRADER_MODEL", "claude-opus-4-6")
 
     # Determine which agents to run
     if agent_names:
@@ -673,13 +673,13 @@ def main() -> None:
         "--model",
         type=str,
         default="",
-        help="Agent model (default: env EVAL_MODEL or claude-sonnet-4-5-20250929)",
+        help="Agent model (default: env EVAL_MODEL or claude-opus-4-6)",
     )
     parser.add_argument(
         "--grader-model",
         type=str,
         default="",
-        help="Grader model (default: env GRADER_MODEL or claude-sonnet-4-5-20250929)",
+        help="Grader model (default: env GRADER_MODEL or claude-opus-4-6)",
     )
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--grader-votes", type=int, default=3, help="Grading votes per question")

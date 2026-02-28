@@ -55,7 +55,7 @@ class TestGetLearningAgentName:
         agent = ClaudeGoalSeekingAgent(
             name="test_agent",
             instructions="",
-            model="claude-sonnet-4-5-20250929",
+            model="claude-opus-4-6",
             storage_path=tmp_path / "memory_db",
             enable_memory=True,
         )
@@ -79,7 +79,7 @@ class TestGetLearningAgentName:
         agent = CopilotGoalSeekingAgent(
             name="test_agent",
             instructions="",
-            model="gpt-4.1",
+            model="claude-opus-4-6",
             storage_path=tmp_path / "memory_db",
             enable_memory=True,
         )
@@ -132,7 +132,7 @@ class TestSDKLoadPrebuiltDB:
         agent = ClaudeGoalSeekingAgent(
             name=agent_name,
             instructions="",
-            model="claude-sonnet-4-5-20250929",
+            model="claude-opus-4-6",
             storage_path=db_path,
             enable_memory=True,
         )
@@ -161,7 +161,7 @@ class TestSDKLoadPrebuiltDB:
         agent = CopilotGoalSeekingAgent(
             name=agent_name,
             instructions="",
-            model="gpt-4.1",
+            model="claude-opus-4-6",
             storage_path=db_path,
             enable_memory=True,
         )
@@ -193,7 +193,7 @@ class TestSDKLoadPrebuiltDB:
         agent = ClaudeGoalSeekingAgent(
             name=agent_name,
             instructions="",
-            model="claude-sonnet-4-5-20250929",
+            model="claude-opus-4-6",
             storage_path=db_path,
             enable_memory=True,
         )
@@ -242,7 +242,7 @@ class TestAnswerQuestionWithPrebuiltDB:
         agent = ClaudeGoalSeekingAgent(
             name="qa_agent",
             instructions="",
-            model="claude-sonnet-4-5-20250929",
+            model="claude-opus-4-6",
             storage_path=prebuilt_db,
             enable_memory=True,
         )

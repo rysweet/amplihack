@@ -134,7 +134,9 @@ class CopilotGoalSeekingAgent(GoalSeekingAgent):
             )
 
         # Resolve model from env or default
-        self._model = model or os.environ.get("COPILOT_MODEL", "gpt-4.1")
+        self._model = model or os.environ.get(
+            "COPILOT_MODEL", os.environ.get("EVAL_MODEL", "claude-opus-4-6")
+        )
         self._streaming = streaming
         self._cli_path = cli_path
 

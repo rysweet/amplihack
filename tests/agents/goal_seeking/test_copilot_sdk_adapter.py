@@ -31,7 +31,7 @@ def _make_agent(**overrides):
     defaults = {
         "name": "test-agent",
         "instructions": "Test instructions",
-        "model": "gpt-4.1",
+        "model": "claude-opus-4-6",
         "enable_memory": False,
         "enable_eval": False,
     }
@@ -70,7 +70,7 @@ class TestCopilotGoalSeekingAgent:
     @patch(f"{_P}.HAS_COPILOT_SDK", True)
     def test_init_model_default(self):
         agent = _make_agent(model=None)
-        assert agent._model == "gpt-4.1"
+        assert agent._model == "claude-opus-4-6"
 
     @patch(f"{_P}.HAS_COPILOT_SDK", True)
     def test_init_model_env(self):
