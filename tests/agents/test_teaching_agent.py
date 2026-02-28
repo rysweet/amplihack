@@ -516,7 +516,7 @@ class TestSerialization:
 
     def test_to_json_is_valid(self, teacher: GeneratorTeacher) -> None:
         data = json.loads(teacher.to_json())
-        assert data["model"] == "claude-sonnet-4-5-20250929"
+        assert data["model"] == "claude-opus-4-6"
         assert len(data["curriculum"]) == 14
         assert data["progress"] == {}
 

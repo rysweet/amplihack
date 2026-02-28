@@ -719,13 +719,13 @@ def _llm_grade(prompt: str, grader_model: str | None = None) -> dict[str, Any]:
 
     Args:
         prompt: Grading prompt expecting JSON response
-        grader_model: Model to use (defaults to env GRADER_MODEL or claude-sonnet-4-5)
+        grader_model: Model to use (defaults to env GRADER_MODEL or claude-opus-4-6)
 
     Returns:
         Parsed JSON dict from grader response
     """
     client = _get_anthropic_client()
-    model = grader_model or os.environ.get("GRADER_MODEL", "claude-sonnet-4-5-20250929")
+    model = grader_model or os.environ.get("GRADER_MODEL", "claude-opus-4-6")
     message = client.messages.create(
         model=model,
         max_tokens=1000,
@@ -1135,7 +1135,7 @@ class GeneralCapabilityEval:
         sdk: SDK type (mini, claude, copilot, microsoft)
         model: LLM model for the agent
         storage_path: Path for agent memory storage
-        grader_model: LLM model for grading (default from env or claude-sonnet-4-5)
+        grader_model: LLM model for grading (default from env or claude-opus-4-6)
         enable_spawning: Whether to enable multi-agent spawning for collaborative eval
     """
 
@@ -1479,8 +1479,7 @@ class GeneralCapabilityEval:
             agent_name=self.agent_name,
             agent_sdk=self.sdk,
             agent_model=self.model or "(default)",
-            grader_model=self.grader_model
-            or os.environ.get("GRADER_MODEL", "claude-sonnet-4-5-20250929"),
+            grader_model=self.grader_model or os.environ.get("GRADER_MODEL", "claude-opus-4-6"),
             timestamp=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         )
 

@@ -403,7 +403,7 @@ def run_long_horizon_self_improve(
     patch_history = PatchHistory()
     start_time = time.time()
 
-    agent_model = config.agent_model or os.environ.get("EVAL_MODEL", "claude-sonnet-4-5-20250929")
+    agent_model = config.agent_model or os.environ.get("EVAL_MODEL", "claude-opus-4-6")
 
     print("=" * 70)
     print("LONG-HORIZON SELF-IMPROVEMENT RUNNER (with A/B Reviewer Voting)")
