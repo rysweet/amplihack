@@ -4,7 +4,7 @@ description: |
   Classifies -> formulates goal -> decomposes into workstreams ->
   executes via recipe runner (single or parallel) -> goal-seeking
   reflection loop (3 rounds max, auto-mode pattern) -> summarizes.
-version: "1.3.0"
+version: "1.4.0"
 author: "Amplihack Team"
 tags: ["orchestration", "routing", "parallel", "auto-classify", "goal-seeking"]
 
@@ -26,10 +26,8 @@ context:
   round_3_result: ""
   reflection_final: ""
   summary: ""
-  depth_limited_notice: ""
   session_complete_status: ""
   force_single_workstream: "false" # set to "true" to prevent parallel decomposition
-  announce_classification: ""
 
 steps:
   # ─────────────────────────────────────────────────────────────────────────
@@ -71,6 +69,9 @@ steps:
       ```
     output: "decomposition_json"
 
+  # parse-decomposition: extract task_type from architect JSON output.
+  # Outputs ONLY the canonical task_type string (e.g. "Development").
+  # Previously also extracted workstream_count here; that moved to activate-workflow.
   - id: "parse-decomposition"
     type: "bash"
     command: |
@@ -108,41 +109,49 @@ steps:
           print(msg)  # also print to stdout so recipe runner captures it visibly
 
       task_type = h.normalise_type(obj.get("task_type", "Development"))
-      count = max(1, len(obj.get("workstreams", [{}])))
-      print(f"task_type={task_type}")
-      print(f"workstream_count={count}")
+      print(task_type)
       PYEOF
-    output: "parse_output"
-
-  - id: "extract-task-type"
-    type: "bash"
-    command: |
-      echo '{{parse_output}}' | grep '^task_type=' | cut -d= -f2 || echo 'Development'
     output: "task_type"
 
-  - id: "extract-workstream-count"
+  # activate-workflow: compute workstream_count, set workflow semaphore, announce.
+  # Replaces the former extract-workstream-count + announce-classification steps.
+  - id: "activate-workflow"
     type: "bash"
     command: |
-      echo '{{parse_output}}' | grep '^workstream_count=' | cut -d= -f2 || echo '1'
-    output: "workstream_count"
-
-  - id: "announce-classification"
-    type: "bash"
-    command: |
+      HELPER_PATH="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/orch_helper.py"
+      DECOMP_JSON='{{decomposition_json}}'
       TASK_TYPE='{{task_type}}'
-      WS_COUNT='{{workstream_count}}'
-      echo ""
-      echo "[dev-orchestrator] Classified as: $TASK_TYPE | Workstreams: $WS_COUNT — starting execution..."
-      # Set workflow-active semaphore so the hook skips injection during execution
       HOOKS_DIR="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/amplihack/hooks"
-      export HOOKS_DIR TASK_TYPE WS_COUNT
+      export DECOMP_JSON HELPER_PATH TASK_TYPE HOOKS_DIR
       python3 - <<'PYEOF'
-      import os, sys
-      sys.path.insert(0, os.environ["HOOKS_DIR"])
-      from dev_intent_router import set_workflow_active
-      set_workflow_active(os.environ.get("TASK_TYPE", ""), int(os.environ.get("WS_COUNT", "1") or "1"))
+      import os, sys, importlib.util
+
+      helper_path = os.environ['HELPER_PATH']
+      decomp_json = os.environ['DECOMP_JSON']
+      task_type = os.environ['TASK_TYPE']
+      hooks_dir = os.environ['HOOKS_DIR']
+
+      # Compute workstream count from decomposition JSON
+      spec = importlib.util.spec_from_file_location('orch_helper', helper_path)
+      h = importlib.util.module_from_spec(spec); spec.loader.exec_module(h)
+      obj = h.extract_json(decomp_json)
+      count = max(1, len(obj.get("workstreams", [{}])))
+
+      # Set workflow-active semaphore so the hook skips injection during execution
+      try:
+          sys.path.insert(0, hooks_dir)
+          from dev_intent_router import set_workflow_active
+          set_workflow_active(task_type, count)
+      except Exception:
+          pass  # Hook may not exist in all environments
+
+      # Announce classification to stderr (visible to user, not captured as output)
+      print(f"[dev-orchestrator] Classified as: {task_type} | Workstreams: {count} — starting execution...", file=sys.stderr)
+
+      # Output workstream count (captured by recipe runner)
+      print(count)
       PYEOF
-    output: "announce_classification"
+    output: "workstream_count"
 
   # ─────────────────────────────────────────────────────────────────────────
   # Setup: register this session in the session tree (atomic check+register)
@@ -227,6 +236,7 @@ steps:
 
   # ─────────────────────────────────────────────────────────────────────────
   # Recursion guard -- derive from session_info (registered atomically in setup-session)
+  # Uses pure shell grep instead of Python subprocess for status extraction.
   # ─────────────────────────────────────────────────────────────────────────
 
   - id: "derive-recursion-guard"
@@ -234,16 +244,17 @@ steps:
     condition: "'Development' in task_type or 'Investigation' in task_type"
     command: |
       SESSION_JSON='{{session_info}}'
-      SESSION_STATUS=$(echo "$SESSION_JSON" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('status','ok'))")
-
-      if [ "$SESSION_STATUS" = "ok" ] || [ "$SESSION_STATUS" = "no_tree_script" ]; then
+      # Extract status using shell grep — no Python subprocess needed
+      if echo "$SESSION_JSON" | grep -qE '"status" *: *"ok"'; then
         echo "ALLOWED"
-      elif [ "$SESSION_STATUS" = "registration_failed" ]; then
+      elif echo "$SESSION_JSON" | grep -qE '"status" *: *"no_tree_script"'; then
+        echo "ALLOWED"
+      elif echo "$SESSION_JSON" | grep -qE '"status" *: *"registration_failed"'; then
         echo "NOTE: Session tree registration was skipped — depth and capacity limits inactive." >&2
         echo "BLOCKED:registration_failed"
-        exit 0
       else
-        echo "BLOCKED:${SESSION_STATUS}"
+        # Unknown status — default to blocked
+        echo "BLOCKED:unknown"
       fi
     output: "recursion_guard"
 
@@ -319,26 +330,36 @@ steps:
       REPO_PATH='{{repo_path}}'
       WS_FILE='{{workstreams_file}}'
       SESSION_JSON='{{session_info}}'
-      # Parse tree_id and depth in one Python subprocess
-      read -r TREE_ID SESSION_DEPTH < <(echo "$SESSION_JSON" | python3 - <<'PYEOF'
+      # Parse tree_id, depth, and validate workstreams file in one Python subprocess
+      read -r TREE_ID SESSION_DEPTH WS_COUNT_CHECK < <(echo "$SESSION_JSON" | python3 - "$WS_FILE" <<'PYEOF'
       import sys, json
       try:
           d = json.loads(sys.stdin.read())
-          print(d.get('tree_id',''), d.get('depth',0))
+          tid = d.get('tree_id', '')
+          depth = d.get('depth', 0)
       except Exception:
-          print('', 0)
+          tid, depth = '', 0
+      # Validate workstreams file
+      ws_file = sys.argv[1] if len(sys.argv) > 1 else ''
+      ws_count = 0
+      if ws_file:
+          try:
+              with open(ws_file) as f:
+                  ws_count = len(json.load(f))
+          except Exception:
+              pass
+      print(tid, depth, ws_count)
       PYEOF
       )
       TREE_ID=${TREE_ID:-}
       SESSION_DEPTH=${SESSION_DEPTH:-0}
+      WS_COUNT_CHECK=${WS_COUNT_CHECK:-0}
 
       if [ -z "$WS_FILE" ] || [ ! -f "$WS_FILE" ]; then
         echo "ERROR: workstreams_file is missing or empty. create-workstreams-config may have failed." >&2
         exit 1
       fi
 
-      # Validate it's a non-empty JSON array
-      WS_COUNT_CHECK=$(python3 -c "import json,sys; data=json.load(open(sys.argv[1])); print(len(data))" "$WS_FILE" 2>/dev/null || echo "0")
       if [ "$WS_COUNT_CHECK" = "0" ]; then
         echo "ERROR: workstreams config has 0 entries — decomposition may have failed." >&2
         exit 1
@@ -356,29 +377,10 @@ steps:
     output: "round_1_result"
 
   # ─────────────────────────────────────────────────────────────────────────
-  # Recursion depth limit: announce and fall back to single-session execution
+  # Recursion depth limit: fall back to single-session execution
+  # The depth-limited notice is included in the agent prompt below so the user
+  # sees it in the agent's response. This replaces the former announce-depth-limited step.
   # ─────────────────────────────────────────────────────────────────────────
-
-  - id: "announce-depth-limited"
-    type: "bash"
-    condition: |
-      ('Development' in task_type or 'Investigation' in task_type) and 'BLOCKED' in recursion_guard and int(str(workstream_count).strip() or '1') > 1
-    command: |
-      GUARD_STATE='{{recursion_guard}}'
-      echo ""
-      echo "NOTE: Parallel workstream spawning is unavailable."
-      echo "  Reason: $GUARD_STATE"
-      echo "  Your task will run as a single-session execution (all workstreams handled sequentially)."
-      echo ""
-      if echo "$GUARD_STATE" | grep -q "max_depth\|depth.*exceeded\|max.*depth"; then
-          echo "  To enable parallel execution: export AMPLIHACK_MAX_DEPTH=5 (add to ~/.bashrc to persist)"
-      elif echo "$GUARD_STATE" | grep -q "registration_failed"; then
-          echo "  Session registration failed. Check /tmp/amplihack-session-trees/ for lock files."
-          echo "  If stuck: rm -f /tmp/amplihack-session-trees/*.lock"
-      else
-          echo "  To investigate: python3 amplifier-bundle/tools/session_tree.py check"
-      fi
-    output: "depth_limited_notice"
 
   - id: "execute-single-fallback-blocked"
     type: "agent"
@@ -392,7 +394,11 @@ steps:
       **Goal**: {{decomposition_json}}
       **Task**: {{task_description}}
       **Repo**: {{repo_path}}
-      **Note**: Parallel workstream spawning was blocked by the recursion guard.
+
+      **NOTE**: Parallel workstream spawning was blocked by the recursion guard
+      (reason: {{recursion_guard}}). Your task will run as a single-session execution
+      with all workstreams handled sequentially.
+
       Execute the full task in this single session following DEFAULT_WORKFLOW.md steps 0-22.
       Create a PR. Report PR URL.
       End with "STATUS: COMPLETE" or "STATUS: CONTINUE".
@@ -595,31 +601,39 @@ steps:
   # ─────────────────────────────────────────────────────────────────────────
   # Teardown: mark this session complete in the session tree
   # Runs unconditionally so the slot is freed even on partial/failed runs.
+  # Combines session completion + workflow semaphore clearing in one Python call.
   # ─────────────────────────────────────────────────────────────────────────
 
   - id: "complete-session"
     type: "bash"
     command: |
       SESSION_JSON='{{session_info}}'
-      # Parse all fields in one Python subprocess
+      TREE_SCRIPT="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/session_tree.py"
+      HOOKS_DIR="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/amplihack/hooks"
+      export HOOKS_DIR
+      # Parse session fields and clear workflow semaphore in one Python subprocess
       read -r SESSION_ID TREE_ID STATUS < <(echo "$SESSION_JSON" | python3 - <<'PYEOF'
-      import sys, json
+      import sys, json, os
       try:
           d = json.loads(sys.stdin.read())
-          print(d.get('session_id',''), d.get('tree_id',''), d.get('status',''))
+          sid, tid, status = d.get('session_id',''), d.get('tree_id',''), d.get('status','')
       except Exception:
-          print('', '', '')
+          sid, tid, status = '', '', ''
+      # Clear workflow-active semaphore so the hook resumes injection
+      try:
+          hooks_dir = os.environ.get('HOOKS_DIR', '')
+          if hooks_dir:
+              sys.path.insert(0, hooks_dir)
+              from dev_intent_router import clear_workflow_active
+              clear_workflow_active()
+      except Exception:
+          pass
+      print(sid, tid, status)
       PYEOF
       )
       SESSION_ID=${SESSION_ID:-}
       TREE_ID=${TREE_ID:-}
       STATUS=${STATUS:-}
-      TREE_SCRIPT="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/session_tree.py"
-
-      # Clear workflow-active semaphore so the hook resumes injection
-      HOOKS_DIR="${AMPLIHACK_HOME:-$(git rev-parse --show-toplevel 2>/dev/null || echo '.')}/amplifier-bundle/tools/amplihack/hooks"
-      export HOOKS_DIR
-      python3 -c "import os,sys; sys.path.insert(0,os.environ['HOOKS_DIR']); from dev_intent_router import clear_workflow_active; clear_workflow_active()" 2>/dev/null || true
 
       if [ -n "$SESSION_ID" ] && [ "$STATUS" = "ok" ] && [ -f "$TREE_SCRIPT" ]; then
         AMPLIHACK_TREE_ID="$TREE_ID" python3 "$TREE_SCRIPT" complete "$SESSION_ID"
@@ -643,4 +657,4 @@ output:
     {{summary}}
 
     ---
-    *amplihack dev-orchestrator v1.3.0 (smart-orchestrator)*
+    *amplihack dev-orchestrator v1.4.0 (smart-orchestrator)*
