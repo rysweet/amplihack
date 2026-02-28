@@ -81,8 +81,17 @@ class TestInjectionSkips(unittest.TestCase):
     def test_multitask_command(self):      self._assert_skips("/multitask - run 3 tasks")
     def test_amplihack_command(self):      self._assert_skips("/amplihack:ddd:1-plan")
 
-    # Empty/whitespace
+    # Empty/whitespace/type guards
     def test_empty(self):                  self._assert_skips("")
+    def test_whitespace_only(self):        self._assert_skips("   ")
+    def test_newlines_only(self):          self._assert_skips("\n\n\n")
+    def test_none_input(self):
+        ok, ctx = should_auto_route(None)
+        self.assertFalse(ok)
+    def test_int_input(self):
+        ok, ctx = should_auto_route(123)
+        self.assertFalse(ok)
+    def test_slash_with_whitespace(self):  self._assert_skips("   /dev fix the bug   ")
     def test_whitespace_slash(self):
         # Only actual slash prefix skips; whitespace-then-text injects
         ok, _ = should_auto_route("   hello")

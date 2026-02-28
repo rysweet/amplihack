@@ -51,9 +51,11 @@ def should_auto_route(prompt: str) -> tuple[bool, str]:
     """
     Returns (should_inject, injection_text).
 
-    Only two reasons NOT to inject:
+    Returns (False, "") when:
     1. Disabled via AMPLIHACK_AUTO_DEV=false/0/no/off
-    2. Prompt starts with / (existing slash command — Claude handles these natively)
+    2. Prompt is not a string
+    3. Prompt is empty or whitespace-only
+    4. Prompt starts with / (existing slash command)
     """
     # Check disable flag
     auto_dev = os.environ.get("AMPLIHACK_AUTO_DEV", "true").lower().strip()
