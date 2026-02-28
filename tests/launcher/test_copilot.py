@@ -16,6 +16,7 @@ from amplihack.launcher.copilot import (
     generate_copilot_instructions,
     prompt_user_to_update,
     register_awesome_copilot_marketplace,
+    register_copilot_plugin,
     stage_agents,
     stage_directory,
 )
@@ -755,3 +756,116 @@ class TestRegisterAwesomeCopilotMarketplace:
 
             marker = tmp_path / ".copilot" / "awesome-copilot-marketplace-registered"
             assert marker.exists()
+
+
+class TestRegisterCopilotPlugin:
+    """Tests for register_copilot_plugin (issue #2686 - proper plugin packaging)."""
+
+    def test_registers_plugin_in_config_json(self, tmp_path):
+        """Plugin must be registered in ~/.copilot/config.json under installed_plugins."""
+        source_commands = tmp_path / "commands" / "amplihack"
+        source_commands.mkdir(parents=True)
+        (source_commands / "dev.md").write_text("# Dev command")
+        (source_commands / "plugin.json").write_text(
+            '{"name": "amplihack", "version": "1.0.0", "commands": ["./commands"]}'
+        )
+
+        copilot_home = tmp_path / "copilot"
+
+        result = register_copilot_plugin(source_commands, copilot_home)
+
+        assert result is True
+        config_file = copilot_home / "config.json"
+        assert config_file.exists()
+        config = json.loads(config_file.read_text())
+        assert "installed_plugins" in config
+        plugin = next(p for p in config["installed_plugins"] if p["name"] == "amplihack")
+        assert plugin["marketplace"] == "local"
+        assert plugin["enabled"] is True
+        assert plugin["source"] == "local"
+
+    def test_copies_commands_to_installed_plugins(self, tmp_path):
+        """Command .md files must be copied to installed-plugins/amplihack@local/commands/."""
+        source_commands = tmp_path / "commands" / "amplihack"
+        source_commands.mkdir(parents=True)
+        (source_commands / "dev.md").write_text("# Dev")
+        (source_commands / "analyze.md").write_text("# Analyze")
+
+        copilot_home = tmp_path / "copilot"
+
+        register_copilot_plugin(source_commands, copilot_home)
+
+        plugin_commands = copilot_home / "installed-plugins" / "amplihack@local" / "commands"
+        assert (plugin_commands / "dev.md").exists()
+        assert (plugin_commands / "analyze.md").exists()
+
+    def test_copies_plugin_json_to_plugin_root(self, tmp_path):
+        """plugin.json must be copied to installed-plugins/amplihack@local/."""
+        source_commands = tmp_path / "commands" / "amplihack"
+        source_commands.mkdir(parents=True)
+        (source_commands / "dev.md").write_text("# Dev")
+        (source_commands / "plugin.json").write_text('{"name": "amplihack"}')
+
+        copilot_home = tmp_path / "copilot"
+
+        register_copilot_plugin(source_commands, copilot_home)
+
+        plugin_root = copilot_home / "installed-plugins" / "amplihack@local"
+        assert (plugin_root / "plugin.json").exists()
+        data = json.loads((plugin_root / "plugin.json").read_text())
+        assert data["name"] == "amplihack"
+
+    def test_idempotent_registration(self, tmp_path):
+        """Calling register twice must not duplicate plugin entry."""
+        source_commands = tmp_path / "commands" / "amplihack"
+        source_commands.mkdir(parents=True)
+        (source_commands / "dev.md").write_text("# Dev")
+
+        copilot_home = tmp_path / "copilot"
+
+        register_copilot_plugin(source_commands, copilot_home)
+        register_copilot_plugin(source_commands, copilot_home)
+
+        config = json.loads((copilot_home / "config.json").read_text())
+        amplihack_entries = [p for p in config["installed_plugins"] if p["name"] == "amplihack"]
+        assert len(amplihack_entries) == 1
+
+    def test_preserves_existing_plugins(self, tmp_path):
+        """Must not remove other plugins from config.json."""
+        source_commands = tmp_path / "commands" / "amplihack"
+        source_commands.mkdir(parents=True)
+        (source_commands / "dev.md").write_text("# Dev")
+
+        copilot_home = tmp_path / "copilot"
+        copilot_home.mkdir(parents=True)
+        existing_config = {"installed_plugins": [{"name": "other-plugin", "enabled": True}]}
+        (copilot_home / "config.json").write_text(json.dumps(existing_config))
+
+        register_copilot_plugin(source_commands, copilot_home)
+
+        config = json.loads((copilot_home / "config.json").read_text())
+        names = [p["name"] for p in config["installed_plugins"]]
+        assert "other-plugin" in names
+        assert "amplihack" in names
+
+    def test_returns_false_for_missing_source(self, tmp_path):
+        """Returns False if source directory does not exist."""
+        source_commands = tmp_path / "nonexistent"
+        copilot_home = tmp_path / "copilot"
+
+        result = register_copilot_plugin(source_commands, copilot_home)
+
+        assert result is False
+
+    def test_returns_false_for_empty_source(self, tmp_path):
+        """Returns False if source directory has no .md files."""
+        source_commands = tmp_path / "commands" / "amplihack"
+        source_commands.mkdir(parents=True)
+        # No .md files — only plugin.json
+        (source_commands / "plugin.json").write_text('{"name": "amplihack"}')
+
+        copilot_home = tmp_path / "copilot"
+
+        result = register_copilot_plugin(source_commands, copilot_home)
+
+        assert result is False

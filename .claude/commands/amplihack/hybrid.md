@@ -1,5 +1,5 @@
 ---
-name: amplihack:hybrid
+name: hybrid
 version: 1.0.0
 description: Hybrid workflow - investigation first, then development
 aliases: [amplihack:run]

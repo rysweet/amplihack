@@ -1,5 +1,5 @@
 ---
-name: amplihack:install
+name: install
 version: 1.0.0
 description: Install amplihack framework and tools
 triggers:
