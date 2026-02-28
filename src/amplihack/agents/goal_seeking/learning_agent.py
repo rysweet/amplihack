@@ -743,9 +743,16 @@ class LearningAgent:
             return initial_answer
 
         # Step 4: Re-synthesize with ALL facts (original + new)
-        # Get the original retrieval facts and merge with new ones
+        # Include original single-shot answer as a fact so re-synthesis can't lose info
         original_facts = self._simple_retrieval(question)
-        all_facts = original_facts + additional_facts
+        original_answer_fact = {
+            "context": "PREVIOUS_ANSWER",
+            "outcome": f"A previous analysis answered: {initial_answer}",
+            "confidence": 0.95,
+            "tags": ["previous_answer"],
+            "metadata": {"is_previous_answer": True},
+        }
+        all_facts = [original_answer_fact] + original_facts + additional_facts
 
         # Deduplicate by experience_id or fact text
         deduped: list[dict[str, Any]] = []
@@ -792,8 +799,24 @@ class LearningAgent:
                 is_complete: bool -- True if no gaps detected
                 gaps: list[str] -- search queries for missing information
         """
-        if not answer or answer.startswith("I don't have enough"):
+        # Short-circuit: only consider incomplete if answer is empty or explicit "don't know"
+        if not answer or not answer.strip():
             return {"is_complete": False, "gaps": [question]}
+        answer_lower = answer.lower().strip()
+        no_info_phrases = [
+            "i don't have enough",
+            "i don't have information",
+            "i cannot answer",
+            "no information available",
+            "not enough context",
+        ]
+        if any(answer_lower.startswith(p) for p in no_info_phrases):
+            return {"is_complete": False, "gaps": [question]}
+        # If the answer is substantive (>50 chars and doesn't say "don't know"),
+        # it's likely complete enough. Re-synthesis tends to LOSE details,
+        # so we only evaluate short/uncertain answers.
+        if len(answer.strip()) > 50:
+            return {"is_complete": True, "gaps": []}
 
         prompt = (
             "You are evaluating whether an answer FULLY addresses a question.\n\n"
