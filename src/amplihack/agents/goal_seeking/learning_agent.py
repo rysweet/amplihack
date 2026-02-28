@@ -442,6 +442,35 @@ class LearningAgent:
         # This is critical for temporal/multi-source questions where completeness matters.
         reasoning_trace = None
 
+        # Detect enumeration keywords that need broader retrieval even if
+        # the LLM classified as a different intent. These questions ask about
+        # ALL items ("list all", "which topics", "how many different") and
+        # need high retrieval limits to avoid missing entries.
+        _q_lower = question.lower()
+        _ENUMERATION_KEYWORDS = (
+            "list all",
+            "which topics",
+            "how many different",
+            "enumerate",
+            "what are all",
+            "name all",
+            "show all",
+            "count all",
+            "every incident",
+            "all incidents",
+            "all cve",
+        )
+        is_enumeration = any(kw in _q_lower for kw in _ENUMERATION_KEYWORDS)
+        if is_enumeration and intent_type not in self.AGGREGATION_INTENTS:
+            # Force aggregation routing for enumeration questions that were
+            # misclassified as simple_recall or other intents.
+            logger.info(
+                "Enumeration keywords detected in '%s'; routing to aggregation retrieval",
+                question[:60],
+            )
+            intent_type = "meta_memory"
+            intent["intent"] = "meta_memory"
+
         # Route meta-memory questions to Cypher aggregation
         if intent_type in self.AGGREGATION_INTENTS:
             relevant_facts = self._aggregation_retrieval(question, intent)
@@ -857,15 +886,42 @@ class LearningAgent:
                         }
                     )
 
-        # CVE/incident cross-reference queries: search for CVE patterns
-        if "cve" in q_lower or "vulnerabilit" in q_lower:
-            cve_facts = (
-                self.memory.search(query="CVE incident", limit=50)
-                if hasattr(self.memory, "search")
-                else []
-            )
-            if cve_facts:
-                results.extend(cve_facts)
+        # CVE/incident cross-reference queries: use graph JOIN to find ALL
+        # facts mentioning CVE or incident IDs, including edge-linked facts
+        if "cve" in q_lower or "vulnerabilit" in q_lower or "incident" in q_lower:
+            if hasattr(self.memory, "execute_aggregation"):
+                incident_cve_agg = self.memory.execute_aggregation("list_incident_cves")
+                if incident_cve_agg.get("contents"):
+                    for content_text in incident_cve_agg["contents"]:
+                        results.append(
+                            {
+                                "context": "Graph JOIN: Incident/CVE cross-reference",
+                                "outcome": content_text,
+                                "confidence": 0.9,
+                                "timestamp": "",
+                                "tags": ["incident_cve", "graph_join"],
+                                "metadata": {"aggregation": True},
+                            }
+                        )
+                if incident_cve_agg.get("items"):
+                    topics = list(set(incident_cve_agg["items"]))
+                    results.append(
+                        {
+                            "context": "Meta-memory: Incident/CVE topics",
+                            "outcome": f"Incident/CVE related topics ({len(topics)}): {', '.join(topics[:30])}",
+                            "confidence": 1.0,
+                            "timestamp": "",
+                            "tags": ["meta_memory", "incident_cve"],
+                            "metadata": {"aggregation": True},
+                        }
+                    )
+            # Also do text search as fallback/supplement
+            if hasattr(self.memory, "search"):
+                cve_facts = self.memory.search(query="CVE incident", limit=50)
+                existing_outcomes = {r.get("outcome", "") for r in results}
+                for f in cve_facts:
+                    if f.get("outcome", f.get("fact", "")) not in existing_outcomes:
+                        results.append(f)
 
         # General aggregation: count all entities and concepts
         if not results:
@@ -1149,6 +1205,10 @@ class LearningAgent:
         This catches related facts stored under different context tags
         (e.g. CVE details stored separately from incident timeline).
 
+        For incident/CVE questions, uses deeper retrieval limits (200 instead
+        of 30) and performs a second targeted search per entity ID to capture
+        ALL associated facts that may be stored under different contexts.
+
         Args:
             question: The question text
             existing_facts: Already-retrieved facts to merge with
@@ -1165,10 +1225,17 @@ class LearningAgent:
         }
         new_facts: list[dict[str, Any]] = []
 
+        # Deeper limits for incident/CVE queries to capture ALL associations
+        q_lower = question.lower()
+        is_incident_query = any(
+            kw in q_lower for kw in ("incident", "cve", "vulnerability", "security")
+        )
+        search_limit = 200 if is_incident_query else 100
+
         for entity_id in entity_ids:
             # Search by text content for any fact mentioning the entity ID
             if hasattr(self.memory, "search"):
-                results = self.memory.search(query=entity_id, limit=30)
+                results = self.memory.search(query=entity_id, limit=search_limit)
                 for fact in results:
                     fid = fact.get("experience_id", "")
                     if fid and fid not in existing_ids:
@@ -1177,18 +1244,44 @@ class LearningAgent:
 
             # Also try entity retrieval if available (different index path)
             if hasattr(self.memory, "retrieve_by_entity"):
-                results = self.memory.retrieve_by_entity(entity_id, limit=30)
+                results = self.memory.retrieve_by_entity(entity_id, limit=search_limit)
                 for fact in results:
                     fid = fact.get("experience_id", "")
                     if fid and fid not in existing_ids:
                         existing_ids.add(fid)
                         new_facts.append(fact)
 
+            # Second targeted search: search for JUST the entity ID as an
+            # exact string to find facts where the ID appears in a different
+            # field (e.g., a CVE referenced in an incident fact's outcome).
+            # This catches cross-entity associations that the first search
+            # may miss due to embedding-based similarity ranking.
+            if is_incident_query and hasattr(self.memory, "search"):
+                # Use concept search if available for exact matching
+                if hasattr(self.memory, "search_by_concept"):
+                    concept_results = self.memory.search_by_concept(keywords=[entity_id], limit=50)
+                    for node in concept_results:
+                        # Convert KnowledgeNode to fact dict
+                        fid = getattr(node, "node_id", "")
+                        if fid and fid not in existing_ids:
+                            existing_ids.add(fid)
+                            new_facts.append(
+                                {
+                                    "context": getattr(node, "concept", ""),
+                                    "outcome": getattr(node, "content", ""),
+                                    "confidence": getattr(node, "confidence", 0.8),
+                                    "experience_id": fid,
+                                    "tags": getattr(node, "tags", []),
+                                    "metadata": getattr(node, "metadata", {}),
+                                }
+                            )
+
         if new_facts:
             logger.info(
-                "Entity-linked retrieval: %d IDs -> %d new facts for '%s'",
+                "Entity-linked retrieval: %d IDs -> %d new facts (limit=%d) for '%s'",
                 len(entity_ids),
                 len(new_facts),
+                search_limit,
                 question[:60],
             )
 
