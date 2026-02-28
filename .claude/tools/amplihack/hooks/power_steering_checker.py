@@ -2027,23 +2027,42 @@ class PowerSteeringChecker:
         - MAINTENANCE: Documentation and configuration updates only
         - INVESTIGATION: Exploration, analysis, troubleshooting, and debugging
 
-        Detection Priority (UPDATED for Issue #2196):
-        1. Environment override (AMPLIHACK_SESSION_TYPE)
-        2. Simple task keywords (cleanup, fetch, workspace) - highest priority heuristic
-        3. Tool usage patterns (code changes, tests, etc.) - CONCRETE EVIDENCE
-        4. Investigation keywords in user messages - TIEBREAKER ONLY
+        Detection Priority (UPDATED for Issue #2196, documented in Issue #2633):
+        1. Environment override (AMPLIHACK_SESSION_TYPE) - absolute override
+        2. Empty transcript -> INFORMATIONAL (fail-open)
+        3. SIMPLE keywords (cleanup, fetch, sync, workspace) - highest keyword priority
+        4. DEVELOPMENT signals via tool usage (code file Write/Edit, test execution,
+           PR creation/edit) - concrete evidence overrides investigation keywords
+        5. INVESTIGATION keywords (investigate, analyze, debug, etc.) - only when
+           NO code modifications are present
+        6. INFORMATIONAL indicators (high question density, no Write/Edit tools)
+        7. INVESTIGATION via tool patterns (multiple Read/Grep without Write/Edit)
+        8. MAINTENANCE indicators (doc/config-only modifications, git-only operations)
+        9. Default: INFORMATIONAL (fail-open, conservative)
 
-        Tool usage patterns now take priority over keywords because they provide
-        concrete evidence of the session's actual work. Keywords like "analyze and fix"
-        are ambiguous, but Write/Edit tools with code changes are definitive signals
-        of DEVELOPMENT work. Investigation keywords are only checked as a fallback
-        when tool patterns are ambiguous (fixes #2196).
+        Multi-Keyword Priority (Issue #2633):
+        When a user message contains keywords from multiple session types, the
+        priority above determines the winner. Key rules:
+        - SIMPLE keywords ALWAYS win over other keywords (checked first)
+        - DEVELOPMENT is determined by tool usage, NOT keywords. Words like
+          "implement" or "build" do not trigger DEVELOPMENT without actual
+          code-modifying tool usage (Write/Edit of .py/.js/.ts/etc files)
+        - INVESTIGATION keywords only apply when there are no code modifications.
+          Code changes (even with "investigate" in the message) -> DEVELOPMENT
+        - Investigation keywords DO take priority over doc/config-only changes
+          (writing to .md files with "investigate" keyword -> INVESTIGATION)
+
+        Tool usage patterns take priority over keywords because they provide
+        concrete evidence of the session's actual work. Keywords like "analyze
+        and fix" are ambiguous, but Write/Edit tools with code changes are
+        definitive signals of DEVELOPMENT work (fixes #2196).
 
         Args:
             transcript: List of message dictionaries
 
         Returns:
-            Session type string: "SIMPLE", "DEVELOPMENT", "INFORMATIONAL", "MAINTENANCE", or "INVESTIGATION"
+            Session type string: "SIMPLE", "DEVELOPMENT", "INFORMATIONAL",
+            "MAINTENANCE", or "INVESTIGATION"
         """
         # Check for environment override first
         env_override = os.getenv("AMPLIHACK_SESSION_TYPE", "").upper()
