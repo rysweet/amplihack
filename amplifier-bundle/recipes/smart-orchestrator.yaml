@@ -505,7 +505,67 @@ steps:
     output: "reflection_final"
 
   # ─────────────────────────────────────────────────────────────────────────
-  # Phase 4: Summary
+  # Phase 4: Outside-In Testing Validation
+  # Runs only when at least one workstream produced a PR.
+  # Checks that the outside-in-testing skill was used for every PR.
+  # ─────────────────────────────────────────────────────────────────────────
+
+  - id: "validate-outside-in-testing"
+    type: "agent"
+    condition: "'Q&A' not in task_type and 'Operations' not in task_type and round_1_result and ('pull/' in round_1_result or 'pull/' in round_2_result or 'pull/' in round_3_result)"
+    agent: "amplihack:core:reviewer"
+    prompt: |
+      Outside-in testing validation check.
+
+      **Task**: {{task_description}}
+
+      **Execution results**:
+      - Round 1: {{round_1_result}}
+      - Round 2 (if any): {{round_2_result}}
+      - Round 3 (if any): {{round_3_result}}
+
+      One or more workstreams produced a GitHub PR. Before the workflow can be
+      marked complete, you must verify that outside-in testing was performed.
+
+      ## Validation Steps
+
+      1. Scan the round results above for any PR URLs (lines containing
+         `https://github.com/...pull/...`).
+
+      2. For each PR-producing workstream, determine whether the
+         `outside-in-testing` skill was invoked AND whether a
+         "Step 13: Local Testing Results" section with at least 2 test
+         scenarios appears in the results.
+
+      3. Report your findings in this format:
+
+         ```
+         OUTSIDE-IN TESTING VALIDATION REPORT
+         =====================================
+         PR(s) found: <list PR URLs>
+
+         For each PR:
+           - PR URL: <url>
+           - outside-in-testing skill invoked: YES / NO
+           - Step 13 results documented: YES / NO
+           - Test scenarios executed: <count>
+           - VERDICT: PASS / FAIL
+         ```
+
+      4. If ALL PR-producing workstreams have PASS verdict, end with:
+         `OUTSIDE_IN_VALIDATION: PASSED`
+
+      5. If ANY workstream has FAIL verdict, end with:
+         `OUTSIDE_IN_VALIDATION: FAILED -- <list the PR URLs that are missing outside-in testing>`
+
+         When FAILED, state clearly: "The following PRs require outside-in
+         testing to be completed before this workflow is marked done: <PR URLs>"
+         and list the exact `uvx --from git+...@<branch> amplihack` command
+         the developer should run.
+    output: "outside_in_validation"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Phase 5: Summary
   # ─────────────────────────────────────────────────────────────────────────
 
   - id: "summarize"
@@ -517,6 +577,7 @@ steps:
 
       **Task**: {{task_description}}
       **Final Reflection**: {{reflection_final}}
+      **Outside-In Testing Validation**: {{outside_in_validation}}
       **Round 1**: {{round_1_result}}
       **Round 2 (if any)**: {{round_2_result}}
       **Round 3 (if any)**: {{round_3_result}}
@@ -526,8 +587,9 @@ steps:
       Provide:
       1. What was accomplished (2-3 sentences)
       2. PR links (if any)
-      3. Goal status (ACHIEVED / PARTIAL / NOT_ACHIEVED)
-      4. Remaining work if PARTIAL
+      3. Outside-in testing status (PASSED / FAILED / N/A — not applicable when no PR was created)
+      4. Goal status (ACHIEVED / PARTIAL / NOT_ACHIEVED)
+      5. Remaining work if PARTIAL or if outside-in testing FAILED
     output: "summary"
 
   # ─────────────────────────────────────────────────────────────────────────
