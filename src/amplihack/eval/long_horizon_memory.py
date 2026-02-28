@@ -390,7 +390,7 @@ def _grade_with_llm(
     import anthropic  # type: ignore[import-untyped]
 
     if not grader_model:
-        grader_model = os.environ.get("GRADER_MODEL", "claude-sonnet-4-5-20250929")
+        grader_model = os.environ.get("GRADER_MODEL", "claude-opus-4-6")
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
@@ -1000,8 +1000,9 @@ class _SDKAgentWrapper:
     and get_memory_stats() compatibility.
     """
 
-    def __init__(self, sdk_agent: Any):
+    def __init__(self, sdk_agent: Any, answer_mode: str = "single-shot"):
         self._agent = sdk_agent
+        self._answer_mode = answer_mode
 
     def learn_from_content(self, content: str) -> dict[str, Any]:
         """Forward to the SDK agent's learn_from_content method."""
@@ -1009,11 +1010,54 @@ class _SDKAgentWrapper:
 
     def answer_question(self, question: str) -> str:
         """Forward to the SDK agent's answer_question method."""
-        return self._agent.answer_question(question)
+        return self._agent.answer_question(question, answer_mode=self._answer_mode)
 
     def get_memory_stats(self) -> dict[str, Any]:
         """Get memory statistics."""
         return self._agent.get_memory_stats()
+
+    def close(self) -> None:
+        """Close the underlying agent."""
+        if hasattr(self._agent, "close"):
+            try:
+                self._agent.close()
+            except Exception:
+                pass
+
+
+class _MiniAgentWrapper:
+    """Thin wrapper around LearningAgent that routes answer_mode.
+
+    When answer_mode is ``"agentic"``, calls ``answer_question_agentic()``
+    instead of the default single-shot ``answer_question()``.  All other
+    methods delegate directly to the underlying LearningAgent.
+    """
+
+    def __init__(self, learning_agent: Any, answer_mode: str = "single-shot"):
+        self._agent = learning_agent
+        self._answer_mode = answer_mode
+
+    def learn_from_content(self, content: str) -> dict[str, Any]:
+        """Forward to the LearningAgent's learn_from_content method."""
+        return self._agent.learn_from_content(content)
+
+    def answer_question(self, question: str) -> str:
+        """Route to single-shot or agentic answer based on mode."""
+        if self._answer_mode == "agentic":
+            return self._agent.answer_question_agentic(question)
+        result = self._agent.answer_question(question)
+        if isinstance(result, tuple):
+            return result[0]
+        return result
+
+    def get_memory_stats(self) -> dict[str, Any]:
+        """Get memory statistics."""
+        return self._agent.get_memory_stats()
+
+    def flush_memory(self) -> None:
+        """Forward flush_memory to underlying agent."""
+        if hasattr(self._agent, "flush_memory"):
+            self._agent.flush_memory()
 
     def close(self) -> None:
         """Close the underlying agent."""
@@ -1106,7 +1150,7 @@ def _run_segmented_learning(args: argparse.Namespace) -> None:
     total = args.turns
     seg_size = args.segment_size
     num_segments = (total + seg_size - 1) // seg_size
-    agent_model = args.model or os.environ.get("EVAL_MODEL", "claude-sonnet-4-5-20250929")
+    agent_model = args.model or os.environ.get("EVAL_MODEL", "claude-opus-4-6")
 
     logger.info(
         "Segmented learning: %d turns in %d segments of %d",
@@ -1252,6 +1296,11 @@ def _run_segmented_learning(args: argparse.Namespace) -> None:
         questions_cmd.append("--use-hierarchical")
     if args.verbose:
         questions_cmd.append("--verbose")
+    answer_mode = getattr(args, "answer_mode", "single-shot")
+    if answer_mode != "single-shot":
+        questions_cmd.extend(["--answer-mode", answer_mode])
+    if getattr(args, "memory_type", "auto") != "auto":
+        questions_cmd.extend(["--memory-type", args.memory_type])
 
     result = subprocess.run(questions_cmd)
     if result.returncode != 0:
@@ -1276,7 +1325,7 @@ def _run_segment_worker(args: argparse.Namespace) -> None:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     db_path = output_dir / "memory_db"
-    agent_model = args.model or os.environ.get("EVAL_MODEL", "claude-sonnet-4-5-20250929")
+    agent_model = args.model or os.environ.get("EVAL_MODEL", "claude-opus-4-6")
 
     # Load dialogue slice from JSON
     dialogue_path = Path(args.dialogue_json) if args.dialogue_json else output_dir / "dialogue.json"
@@ -1403,13 +1452,13 @@ def main() -> None:
         "--model",
         type=str,
         default="",
-        help="LLM model for the agent (default: env EVAL_MODEL or claude-sonnet-4-5-20250929)",
+        help="LLM model for the agent (default: env EVAL_MODEL or claude-opus-4-6)",
     )
     parser.add_argument(
         "--grader-model",
         type=str,
         default="",
-        help="LLM model for grading (default: env GRADER_MODEL or claude-sonnet-4-5-20250929)",
+        help="LLM model for grading (default: env GRADER_MODEL or claude-opus-4-6)",
     )
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
     parser.add_argument(
@@ -1501,6 +1550,15 @@ def main() -> None:
         default=False,
         help="Skip the questioning phase (learn only). Used by segment workers.",
     )
+    parser.add_argument(
+        "--answer-mode",
+        type=str,
+        default="single-shot",
+        choices=["single-shot", "agentic"],
+        help="Answer mode: single-shot (default, proven at 97.8%%) uses optimized "
+        "intent/retrieve/synthesize pipeline. agentic uses iterative "
+        "PERCEIVE->REASON->ACT->LEARN loop with tool use.",
+    )
 
     args = parser.parse_args()
 
@@ -1529,7 +1587,7 @@ def main() -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Set model if provided
-    agent_model = args.model or os.environ.get("EVAL_MODEL", "claude-sonnet-4-5-20250929")
+    agent_model = args.model or os.environ.get("EVAL_MODEL", "claude-opus-4-6")
 
     # Create agent based on --sdk choice
     logger.info(
@@ -1623,7 +1681,9 @@ def main() -> None:
                 agent.use_hierarchical = True
                 logger.info("Forced CognitiveMemory via --memory-type=cognitive")
 
-            return agent
+            # Wrap mini agent to support answer_mode
+            answer_mode = getattr(args, "answer_mode", "single-shot")
+            return _MiniAgentWrapper(agent, answer_mode=answer_mode)
         from amplihack.agents.goal_seeking.sdk_adapters.factory import create_agent
 
         sdk_agent = create_agent(
@@ -1633,7 +1693,8 @@ def main() -> None:
             storage_path=db_path,
             enable_memory=True,
         )
-        return _SDKAgentWrapper(sdk_agent)
+        answer_mode = getattr(args, "answer_mode", "single-shot")
+        return _SDKAgentWrapper(sdk_agent, answer_mode=answer_mode)
 
     agent = _create_agent()
 
