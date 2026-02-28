@@ -153,9 +153,9 @@ class TestSessionReasonerDecisionParsing:
 
 
 class TestSessionReasonerStatusInference:
-    """Tests for tmux output status inference."""
+    """Tests for tmux output status inference — especially thinking detection."""
 
-    def test_infer_waiting_input(self):
+    def test_infer_waiting_input_yn(self):
         reasoner = SessionReasoner(dry_run=True)
         assert reasoner._infer_status("Continue? [Y/n]") == "waiting_input"
 
@@ -163,17 +163,84 @@ class TestSessionReasonerStatusInference:
         reasoner = SessionReasoner(dry_run=True)
         assert reasoner._infer_status("Traceback (most recent call last):") == "error"
 
-    def test_infer_completed(self):
+    def test_infer_completed_pr_created(self):
         reasoner = SessionReasoner(dry_run=True)
         assert reasoner._infer_status("PR #42 created successfully") == "completed"
 
-    def test_infer_idle(self):
+    def test_infer_idle_shell_prompt(self):
         reasoner = SessionReasoner(dry_run=True)
         assert reasoner._infer_status("azureuser@vm:~/code$ ") == "idle"
 
-    def test_infer_running(self):
+    def test_infer_running_output(self):
         reasoner = SessionReasoner(dry_run=True)
-        assert reasoner._infer_status("Building the authentication module...") == "running"
+        # Needs >50 chars of content to distinguish from unknown
+        tmux = "Step 5: Building the authentication module\nReading file src/auth/handler.py"
+        assert reasoner._infer_status(tmux) == "running"
+
+    # --- Thinking detection (critical for not interrupting agents) ---
+
+    def test_thinking_claude_tool_call(self):
+        """Claude Code shows ● for active tool calls."""
+        reasoner = SessionReasoner(dry_run=True)
+        tmux = "● Reading file src/auth.py"
+        assert reasoner._infer_status(tmux) == "thinking"
+
+    def test_thinking_claude_streaming_output(self):
+        """Claude Code shows ⎿ for streaming tool output."""
+        reasoner = SessionReasoner(dry_run=True)
+        tmux = "● Bash(git status)\n  ⎿  M src/auth.py"
+        assert reasoner._infer_status(tmux) == "thinking"
+
+    def test_thinking_claude_processing(self):
+        """Claude Code shows ✻ Sautéed for processing time."""
+        reasoner = SessionReasoner(dry_run=True)
+        tmux = "✻ Sautéed for 2m 28s"
+        assert reasoner._infer_status(tmux) == "thinking"
+
+    def test_thinking_claude_bash_tool(self):
+        """Claude Code actively running a Bash tool."""
+        reasoner = SessionReasoner(dry_run=True)
+        tmux = "some prior output\n● Bash(uv run python -m pytest tests/ -v)"
+        assert reasoner._infer_status(tmux) == "thinking"
+
+    def test_thinking_copilot(self):
+        """Copilot shows Thinking... indicator."""
+        reasoner = SessionReasoner(dry_run=True)
+        assert reasoner._infer_status("Thinking...") == "thinking"
+
+    def test_waiting_claude_permission_prompt(self):
+        """Claude Code permission prompt with ⏵⏵."""
+        reasoner = SessionReasoner(dry_run=True)
+        tmux = "❯ \n──────\n  ~/src/repo  ⏵⏵ bypass permissions on"
+        assert reasoner._infer_status(tmux) == "waiting_input"
+
+    def test_waiting_claude_idle_with_status_bar(self):
+        """Claude Code at ❯ prompt but with status bar = waiting for input."""
+        reasoner = SessionReasoner(dry_run=True)
+        tmux = "❯ \n──────\n  ~/src  Opus 4.6  ⏵⏵ bypass permissions"
+        assert reasoner._infer_status(tmux) == "waiting_input"
+
+    def test_thinking_fast_path_skips_llm(self):
+        """When status is thinking, the LLM call is skipped entirely."""
+        mock = MockBackend(response='{"action":"wait","reasoning":"ok","confidence":0.8}')
+
+        reasoner = SessionReasoner(backend=mock, dry_run=True)
+
+        with patch.object(reasoner, "_gather_context") as mock_gather:
+            mock_gather.return_value = SessionContext(
+                vm_name="vm-1",
+                session_name="sess-1",
+                tmux_capture="● Reading file main.py",
+                agent_status="thinking",
+            )
+
+            decision = reasoner.reason_about_session("vm-1", "sess-1")
+
+            assert decision.action == "wait"
+            assert decision.confidence == 1.0
+            assert "thinking" in decision.reasoning.lower()
+            # Key: LLM backend was NOT called
+            assert len(mock.calls) == 0
 
 
 class TestSessionReasonerDryRun:
