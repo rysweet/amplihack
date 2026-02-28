@@ -191,8 +191,11 @@ def _deterministic_grade(
 
     Scoring logic:
     - Start with keyword match ratio (required_keywords found / total required)
-    - Bonus +0.1 for each acceptable_paraphrase found (capped at 1.0)
-    - Score 0.0 if any incorrect_pattern matches
+    - Bonus +0.25 for each acceptable_paraphrase found (capped at 1.0)
+    - incorrect_patterns only zero the score when NONE of the required keywords
+      or paraphrases match. When the correct answer IS present alongside an
+      incorrect pattern (e.g. "increased from $1.2M to $1.4M"), the answer is
+      providing historical context, not a wrong answer.
     """
     answer_lower = actual_answer.lower()
     scores: dict[str, DimensionScore] = {}
@@ -201,20 +204,8 @@ def _deterministic_grade(
         if dim not in _DETERMINISTIC_DIMENSIONS:
             continue
 
-        # Check incorrect patterns first -- instant 0
-        if rubric.incorrect_patterns:
-            found_incorrect = any(
-                re.search(re.escape(pat.lower()), answer_lower) for pat in rubric.incorrect_patterns
-            )
-            if found_incorrect:
-                scores[dim] = DimensionScore(
-                    dimension=dim,
-                    score=0.0,
-                    reasoning="Answer contains incorrect pattern from rubric",
-                )
-                continue
-
         # Keyword matching
+        matched = 0
         if rubric.required_keywords:
             matched = sum(
                 1
@@ -229,6 +220,7 @@ def _deterministic_grade(
         # a valid answer form, so it should carry significant weight). When NO
         # keywords matched (ratio=0) but paraphrases did, the answer is still
         # semantically correct.
+        paraphrase_hits = 0
         if rubric.acceptable_paraphrases:
             paraphrase_hits = sum(
                 1
@@ -236,6 +228,23 @@ def _deterministic_grade(
                 if re.search(re.escape(p.lower()), answer_lower)
             )
             ratio = min(1.0, ratio + paraphrase_hits * 0.25)
+
+        # Check incorrect patterns AFTER keyword matching. Only skip incorrect
+        # check when ALL required keywords match (full correct answer present).
+        # Partial matches (some keywords) still get checked for incorrect patterns.
+        all_keywords_matched = rubric.required_keywords and matched == len(rubric.required_keywords)
+        has_full_correct = all_keywords_matched or paraphrase_hits > 0
+        if rubric.incorrect_patterns and not has_full_correct:
+            found_incorrect = any(
+                re.search(re.escape(pat.lower()), answer_lower) for pat in rubric.incorrect_patterns
+            )
+            if found_incorrect:
+                scores[dim] = DimensionScore(
+                    dimension=dim,
+                    score=0.0,
+                    reasoning="Answer contains incorrect pattern without correct keywords",
+                )
+                continue
 
         reasoning_parts = []
         if rubric.required_keywords:
@@ -381,7 +390,7 @@ def _grade_with_llm(
     import anthropic  # type: ignore[import-untyped]
 
     if not grader_model:
-        grader_model = os.environ.get("GRADER_MODEL", "claude-sonnet-4-5-20250929")
+        grader_model = os.environ.get("GRADER_MODEL", "claude-opus-4-6")
 
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
@@ -991,8 +1000,9 @@ class _SDKAgentWrapper:
     and get_memory_stats() compatibility.
     """
 
-    def __init__(self, sdk_agent: Any):
+    def __init__(self, sdk_agent: Any, answer_mode: str = "single-shot"):
         self._agent = sdk_agent
+        self._answer_mode = answer_mode
 
     def learn_from_content(self, content: str) -> dict[str, Any]:
         """Forward to the SDK agent's learn_from_content method."""
@@ -1000,11 +1010,54 @@ class _SDKAgentWrapper:
 
     def answer_question(self, question: str) -> str:
         """Forward to the SDK agent's answer_question method."""
-        return self._agent.answer_question(question)
+        return self._agent.answer_question(question, answer_mode=self._answer_mode)
 
     def get_memory_stats(self) -> dict[str, Any]:
         """Get memory statistics."""
         return self._agent.get_memory_stats()
+
+    def close(self) -> None:
+        """Close the underlying agent."""
+        if hasattr(self._agent, "close"):
+            try:
+                self._agent.close()
+            except Exception:
+                pass
+
+
+class _MiniAgentWrapper:
+    """Thin wrapper around LearningAgent that routes answer_mode.
+
+    When answer_mode is ``"agentic"``, calls ``answer_question_agentic()``
+    instead of the default single-shot ``answer_question()``.  All other
+    methods delegate directly to the underlying LearningAgent.
+    """
+
+    def __init__(self, learning_agent: Any, answer_mode: str = "single-shot"):
+        self._agent = learning_agent
+        self._answer_mode = answer_mode
+
+    def learn_from_content(self, content: str) -> dict[str, Any]:
+        """Forward to the LearningAgent's learn_from_content method."""
+        return self._agent.learn_from_content(content)
+
+    def answer_question(self, question: str) -> str:
+        """Route to single-shot or agentic answer based on mode."""
+        if self._answer_mode == "agentic":
+            return self._agent.answer_question_agentic(question)
+        result = self._agent.answer_question(question)
+        if isinstance(result, tuple):
+            return result[0]
+        return result
+
+    def get_memory_stats(self) -> dict[str, Any]:
+        """Get memory statistics."""
+        return self._agent.get_memory_stats()
+
+    def flush_memory(self) -> None:
+        """Forward flush_memory to underlying agent."""
+        if hasattr(self._agent, "flush_memory"):
+            self._agent.flush_memory()
 
     def close(self) -> None:
         """Close the underlying agent."""
@@ -1049,6 +1102,27 @@ def _load_dialogue_slice(path: Path, start: int, end: int) -> list[dict[str, Any
     return all_turns[start:end]
 
 
+def _count_facts_in_db(db_path: Path) -> int:
+    """Count semantic facts in the Kuzu DB for early failure detection."""
+    try:
+        import kuzu  # type: ignore[import-not-found]
+
+        kuzu_path = db_path / "kuzu_db"
+        if not kuzu_path.exists():
+            kuzu_path = db_path
+        db = kuzu.Database(str(kuzu_path))
+        conn = kuzu.Connection(db)
+        result = conn.execute("MATCH (n:SemanticMemory) RETURN count(n)")
+        count = 0
+        if result.has_next():
+            count = result.get_next()[0]
+        del conn, db
+        return count
+    except Exception as e:
+        logger.warning("Could not count facts in DB at %s: %s", db_path, e)
+        return 0
+
+
 def _run_segmented_learning(args: argparse.Namespace) -> None:
     """Orchestrate segmented learning by spawning subprocess workers.
 
@@ -1076,7 +1150,7 @@ def _run_segmented_learning(args: argparse.Namespace) -> None:
     total = args.turns
     seg_size = args.segment_size
     num_segments = (total + seg_size - 1) // seg_size
-    agent_model = args.model or os.environ.get("EVAL_MODEL", "claude-sonnet-4-5-20250929")
+    agent_model = args.model or os.environ.get("EVAL_MODEL", "claude-opus-4-6")
 
     logger.info(
         "Segmented learning: %d turns in %d segments of %d",
@@ -1156,6 +1230,24 @@ def _run_segmented_learning(args: argparse.Namespace) -> None:
             )
             failed_segments.append(seg_idx + 1)
 
+        # Early failure detection: after first segment completes, verify
+        # facts were actually stored. Catches schema mismatches silently
+        # swallowing store_fact errors (issue #2655).
+        if seg_idx == 0 and succeeded and args.sdk == "mini":
+            fact_count = _count_facts_in_db(db_path)
+            if fact_count == 0:
+                raise RuntimeError(
+                    f"ABORTING: First segment completed but 0 facts stored "
+                    f"in DB at {db_path}. This indicates a fundamental issue "
+                    f"with the memory backend (schema mismatch, silent store "
+                    f"failures, or wrong db_path). Check --memory-type "
+                    f"setting and ensure the DB schema is compatible."
+                )
+            logger.info(
+                "Early check: %d facts after first segment -- storage OK",
+                fact_count,
+            )
+
     if failed_segments:
         logger.warning(
             "%d of %d segments failed and were skipped: %s",
@@ -1204,6 +1296,11 @@ def _run_segmented_learning(args: argparse.Namespace) -> None:
         questions_cmd.append("--use-hierarchical")
     if args.verbose:
         questions_cmd.append("--verbose")
+    answer_mode = getattr(args, "answer_mode", "single-shot")
+    if answer_mode != "single-shot":
+        questions_cmd.extend(["--answer-mode", answer_mode])
+    if getattr(args, "memory_type", "auto") != "auto":
+        questions_cmd.extend(["--memory-type", args.memory_type])
 
     result = subprocess.run(questions_cmd)
     if result.returncode != 0:
@@ -1228,7 +1325,7 @@ def _run_segment_worker(args: argparse.Namespace) -> None:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     db_path = output_dir / "memory_db"
-    agent_model = args.model or os.environ.get("EVAL_MODEL", "claude-sonnet-4-5-20250929")
+    agent_model = args.model or os.environ.get("EVAL_MODEL", "claude-opus-4-6")
 
     # Load dialogue slice from JSON
     dialogue_path = Path(args.dialogue_json) if args.dialogue_json else output_dir / "dialogue.json"
@@ -1249,27 +1346,41 @@ def _run_segment_worker(args: argparse.Namespace) -> None:
     if args.sdk == "mini":
         from amplihack.agents.goal_seeking.learning_agent import LearningAgent
 
+        # When --memory-type is explicitly set, bypass auto-detection in
+        # LearningAgent.__init__ by passing use_hierarchical=False. This
+        # prevents CognitiveAdapter from polluting the Kuzu schema before
+        # we override with FlatRetrieverAdapter (schema mismatch = 0 facts).
+        memory_type = getattr(args, "memory_type", "auto")
+        init_hierarchical = args.use_hierarchical and memory_type == "auto"
+
         agent = LearningAgent(
             agent_name=agent_name,
             model=agent_model,
             storage_path=db_path,
-            use_hierarchical=args.use_hierarchical,
+            use_hierarchical=init_hierarchical,
         )
 
         # Override memory backend if --memory-type specified
-        memory_type = getattr(args, "memory_type", "auto")
         if memory_type == "hierarchical":
             from amplihack.agents.goal_seeking.flat_retriever_adapter import (
                 FlatRetrieverAdapter,
             )
 
-            agent.memory = FlatRetrieverAdapter(
-                agent_name=agent_name, db_path=db_path
-            )
+            try:
+                agent.memory.close()
+            except Exception:
+                pass
+            agent.memory = FlatRetrieverAdapter(agent_name=agent_name, db_path=db_path)
+            agent.use_hierarchical = True
         elif memory_type == "cognitive":
             from amplihack.agents.goal_seeking.cognitive_adapter import CognitiveAdapter
 
+            try:
+                agent.memory.close()
+            except Exception:
+                pass
             agent.memory = CognitiveAdapter(agent_name=agent_name, db_path=db_path)
+            agent.use_hierarchical = True
     else:
         from amplihack.agents.goal_seeking.sdk_adapters.factory import create_agent
 
@@ -1341,13 +1452,13 @@ def main() -> None:
         "--model",
         type=str,
         default="",
-        help="LLM model for the agent (default: env EVAL_MODEL or claude-sonnet-4-5-20250929)",
+        help="LLM model for the agent (default: env EVAL_MODEL or claude-opus-4-6)",
     )
     parser.add_argument(
         "--grader-model",
         type=str,
         default="",
-        help="LLM model for grading (default: env GRADER_MODEL or claude-sonnet-4-5-20250929)",
+        help="LLM model for grading (default: env GRADER_MODEL or claude-opus-4-6)",
     )
     parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
     parser.add_argument(
@@ -1439,6 +1550,15 @@ def main() -> None:
         default=False,
         help="Skip the questioning phase (learn only). Used by segment workers.",
     )
+    parser.add_argument(
+        "--answer-mode",
+        type=str,
+        default="single-shot",
+        choices=["single-shot", "agentic"],
+        help="Answer mode: single-shot (default, proven at 97.8%%) uses optimized "
+        "intent/retrieve/synthesize pipeline. agentic uses iterative "
+        "PERCEIVE->REASON->ACT->LEARN loop with tool use.",
+    )
 
     args = parser.parse_args()
 
@@ -1467,7 +1587,7 @@ def main() -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Set model if provided
-    agent_model = args.model or os.environ.get("EVAL_MODEL", "claude-sonnet-4-5-20250929")
+    agent_model = args.model or os.environ.get("EVAL_MODEL", "claude-opus-4-6")
 
     # Create agent based on --sdk choice
     logger.info(
@@ -1523,35 +1643,47 @@ def main() -> None:
         if args.sdk == "mini":
             from amplihack.agents.goal_seeking.learning_agent import LearningAgent
 
+            # Same fix as _run_segment_worker: bypass auto-detection when
+            # --memory-type is explicitly set to prevent schema conflicts.
+            memory_type = getattr(args, "memory_type", "auto")
+            init_hierarchical = args.use_hierarchical and memory_type == "auto"
+
             agent = LearningAgent(
                 agent_name=agent_name,
                 model=agent_model,
                 storage_path=db_path,
-                use_hierarchical=args.use_hierarchical,
+                use_hierarchical=init_hierarchical,
             )
 
             # Override memory backend if --memory-type specified
-            memory_type = getattr(args, "memory_type", "auto")
             if memory_type == "hierarchical":
                 from amplihack.agents.goal_seeking.flat_retriever_adapter import (
                     FlatRetrieverAdapter,
                 )
 
-                agent.memory = FlatRetrieverAdapter(
-                    agent_name=agent_name, db_path=db_path
-                )
+                try:
+                    agent.memory.close()
+                except Exception:
+                    pass
+                agent.memory = FlatRetrieverAdapter(agent_name=agent_name, db_path=db_path)
+                agent.use_hierarchical = True
                 logger.info("Forced HierarchicalMemory via --memory-type=hierarchical")
             elif memory_type == "cognitive":
                 from amplihack.agents.goal_seeking.cognitive_adapter import (
                     CognitiveAdapter,
                 )
 
-                agent.memory = CognitiveAdapter(
-                    agent_name=agent_name, db_path=db_path
-                )
+                try:
+                    agent.memory.close()
+                except Exception:
+                    pass
+                agent.memory = CognitiveAdapter(agent_name=agent_name, db_path=db_path)
+                agent.use_hierarchical = True
                 logger.info("Forced CognitiveMemory via --memory-type=cognitive")
 
-            return agent
+            # Wrap mini agent to support answer_mode
+            answer_mode = getattr(args, "answer_mode", "single-shot")
+            return _MiniAgentWrapper(agent, answer_mode=answer_mode)
         from amplihack.agents.goal_seeking.sdk_adapters.factory import create_agent
 
         sdk_agent = create_agent(
@@ -1561,7 +1693,8 @@ def main() -> None:
             storage_path=db_path,
             enable_memory=True,
         )
-        return _SDKAgentWrapper(sdk_agent)
+        answer_mode = getattr(args, "answer_mode", "single-shot")
+        return _SDKAgentWrapper(sdk_agent, answer_mode=answer_mode)
 
     agent = _create_agent()
 

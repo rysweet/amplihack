@@ -91,8 +91,27 @@ class TestDeterministicGrading:
         scores = _deterministic_grade(rubric, "march 15th", ["factual_accuracy"])
         assert scores["factual_accuracy"].score == 1.0
 
-    def test_incorrect_pattern_overrides(self):
-        """Score 0.0 when incorrect pattern found, even with keyword matches."""
+    def test_incorrect_pattern_without_correct_keywords(self):
+        """Score 0.0 when incorrect pattern found and NO correct keywords present."""
+        rubric = GradingRubric(
+            required_keywords=["September", "20"],
+            incorrect_patterns=["June 15"],
+        )
+        scores = _deterministic_grade(
+            rubric,
+            "The deadline is June 15",
+            ["factual_accuracy"],
+        )
+        assert scores["factual_accuracy"].score == 0.0
+        assert "incorrect pattern" in scores["factual_accuracy"].reasoning.lower()
+
+    def test_incorrect_pattern_with_correct_keywords_not_zeroed(self):
+        """Score NOT zeroed when answer has both correct keywords AND incorrect pattern.
+
+        This tests the fix for false negatives: when an agent provides historical
+        context (e.g. 'changed from June 15 to September 20'), the old value
+        should not cause a zero score if the correct value is also present.
+        """
         rubric = GradingRubric(
             required_keywords=["September", "20"],
             incorrect_patterns=["June 15"],
@@ -102,8 +121,59 @@ class TestDeterministicGrading:
             "The deadline is September 20 (originally June 15)",
             ["factual_accuracy"],
         )
-        assert scores["factual_accuracy"].score == 0.0
-        assert "incorrect pattern" in scores["factual_accuracy"].reasoning.lower()
+        assert scores["factual_accuracy"].score == 1.0
+
+    def test_temporal_budget_with_history(self):
+        """Budget answer mentioning old value as context should score correctly.
+
+        Regression test for: 'Current budget for Delta?' -> '$1.4M (increased
+        from $1.2M)' was scored 0% because $1.2M matched incorrect pattern.
+        """
+        rubric = GradingRubric(
+            required_keywords=["1.4"],
+            acceptable_paraphrases=["$1,400,000", "$1.4 million"],
+            incorrect_patterns=["$1.2M"],
+        )
+        scores = _deterministic_grade(
+            rubric,
+            "The current budget for Project Delta is $1.4M, increased from $1.2M",
+            ["factual_accuracy"],
+        )
+        assert scores["factual_accuracy"].score == 1.0
+
+    def test_temporal_rollout_with_history(self):
+        """Rollout answer mentioning intermediate values should score correctly.
+
+        Regression test for: 'Current rollout for Atlas?' -> '100% (went from
+        30% to 70% to 100%)' was scored 0% because 30% matched incorrect.
+        """
+        rubric = GradingRubric(
+            required_keywords=["100%"],
+            incorrect_patterns=["30%", "70%"],
+        )
+        scores = _deterministic_grade(
+            rubric,
+            "The rollout is at 100%, having progressed from 30% to 70% to 100%",
+            ["factual_accuracy"],
+        )
+        assert scores["factual_accuracy"].score == 1.0
+
+    def test_temporal_lead_with_history(self):
+        """Leader answer mentioning predecessor should score correctly.
+
+        Regression test for: 'Who leads Project Echo?' -> 'Yuki Tanaka
+        (replaced Fatima)' was scored 0% because Fatima matched incorrect.
+        """
+        rubric = GradingRubric(
+            required_keywords=["Yuki", "Tanaka"],
+            incorrect_patterns=["Fatima"],
+        )
+        scores = _deterministic_grade(
+            rubric,
+            "Yuki Tanaka currently leads Project Echo, replacing Fatima Al-Hassan",
+            ["factual_accuracy"],
+        )
+        assert scores["factual_accuracy"].score == 1.0
 
     def test_paraphrase_bonus(self):
         """Paraphrase matches add bonus to score."""

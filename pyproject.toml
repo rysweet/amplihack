@@ -5,7 +5,7 @@ backend-path = ["."]
 
 [project]
 name = "amplihack"
-version = "0.5.74"
+version = "0.5.78"
 description = "Amplifier bundle for agentic coding with comprehensive skills, recipes, and workflows"
 requires-python = ">=3.11"
 dependencies = [
@@ -17,6 +17,9 @@ dependencies = [
     "litellm>=1.0.0",
     "python-dotenv>=0.19.0",
 
+    # agent-framework is optional because it requires pre-release Azure deps
+    # that break uv resolution outside the project. Install separately:
+    #   pip install "agent-framework>=1.0.0rc1" --prerelease=allow
     "claude-agent-sdk>=0.1.0", # Claude Python Agent SDK for auto mode streaming
     "github-copilot-sdk>=0.1.0", # GitHub Copilot SDK for embedding Copilot in applications
     "rich>=13.0.0", # Required for --ui interactive TUI mode
@@ -40,7 +43,7 @@ dependencies = [
     "tree-sitter-php>=0.23.4", # PHP grammar
     "tree-sitter-ruby>=0.23.0", # Ruby grammar
     "psutil>=7.0.0", # Process utilities for blarify
-    "protobuf==6.31.1", # Protobuf for SCIP index format
+    "protobuf>=5.29.0", # Protobuf for SCIP index format (relaxed for agent-framework compat)
     "typing-extensions>=4.12.2", # Backport for Python 3.10 (NotRequired, etc.)
     "falkordb>=1.0.10", # FalkorDB graph database (blarify vendored code imports)
     "neo4j>=5.25.0", # Neo4j graph database (blarify vendored code imports)
@@ -52,6 +55,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Microsoft Agent Framework requires pre-release Azure deps
+microsoft-sdk = [
+    "agent-framework>=1.0.0rc1",
+    "opentelemetry-semantic-conventions-ai>=0.4.1,<0.4.14",
+]
 # When running as an Amplifier bundle, hook modules need amplifier-core
 amplifier = [
     "amplifier-core @ git+https://github.com/microsoft/amplifier-core@main",
@@ -186,6 +194,14 @@ filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",
 ]
+
+[tool.uv]
+# agent-framework and its transitive deps (azure-ai-projects, sqlalchemy, etc.)
+# are only published as pre-release versions. Allow them explicitly so that
+# `uv sync` works without --prerelease=allow.
+prerelease = "if-necessary-or-explicit"
+
+[tool.uv.sources]
 
 [dependency-groups]
 dev = [

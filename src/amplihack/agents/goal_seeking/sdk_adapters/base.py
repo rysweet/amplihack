@@ -88,7 +88,7 @@ class GoalSeekingAgent(ABC):
         self.name = name.strip()
         self.instructions = instructions
         self.sdk_type = sdk_type
-        self.model = model or os.environ.get("EVAL_MODEL", "gpt-4o")
+        self.model = model or os.environ.get("EVAL_MODEL", "claude-opus-4-6")
         self.storage_path = storage_path or Path.home() / ".amplihack" / "agents" / name
         self.enable_memory = enable_memory
         self.enable_eval = enable_eval
@@ -348,9 +348,13 @@ class GoalSeekingAgent(ABC):
 
                 # Use Anthropic model for fact extraction regardless of SDK's native model,
                 # since ANTHROPIC_API_KEY is reliably available
-                eval_model = os.environ.get("EVAL_MODEL", "claude-sonnet-4-5-20250929")
+                eval_model = os.environ.get("EVAL_MODEL", "claude-opus-4-6")
+                # Use self.name (not f"{self.name}_learning") so the
+                # LearningAgent opens the same CognitiveMemory namespace
+                # as the pre-built DB.  Appending '_learning' caused
+                # agent_id mismatch in skip-learning mode (#2661).
                 self._learning_agent_cache: Any = LearningAgent(
-                    agent_name=f"{self.name}_learning",
+                    agent_name=self.name,
                     model=eval_model,
                     storage_path=self.storage_path,
                     use_hierarchical=True,
@@ -427,15 +431,24 @@ class GoalSeekingAgent(ABC):
         """
         return self._tool_learn(content)
 
-    def answer_question(self, question: str) -> str:
+    def answer_question(self, question: str, answer_mode: str = "single-shot") -> str:
         """Answer a question using memory retrieval and LLM synthesis.
 
         Public method matching LearningAgent's interface. Delegates to the
         internal LearningAgent for intent detection, retrieval strategy
         selection, and answer synthesis.
+
+        Args:
+            question: The question to answer.
+            answer_mode: ``"single-shot"`` (default, proven at 97.8%) uses the
+                optimized intent-detect/retrieve/synthesize pipeline.
+                ``"agentic"`` uses the iterative PERCEIVE->REASON->ACT->LEARN
+                loop where the agent autonomously picks tools.
         """
         la = self._get_learning_agent()
         if la:
+            if answer_mode == "agentic":
+                return la.answer_question_agentic(question)
             result = la.answer_question(question)
             if isinstance(result, tuple):
                 return result[0]

@@ -15,11 +15,14 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from dataclasses import dataclass
 
 import litellm  # type: ignore[import-unresolved]
 
 logger = logging.getLogger(__name__)
+
+_DEFAULT_MODEL = os.environ.get("EVAL_MODEL", "claude-opus-4-6")
 
 
 @dataclass
@@ -34,7 +37,12 @@ class TeachingConfig:
     """
 
     max_turns: int = 6
-    model: str = "claude-sonnet-4-5-20250929"
+    model: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.model:
+            self.model = _DEFAULT_MODEL
+
     teacher_system_prompt: str = (
         "You are an expert teacher. Your job is to teach the student about a topic "
         "using the knowledge base provided. Each turn, teach one or two key concepts. "

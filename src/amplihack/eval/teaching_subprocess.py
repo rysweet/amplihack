@@ -35,7 +35,7 @@ def teaching_phase(knowledge_base: list[str], agent_name: str, max_turns: int = 
     storage_path = Path(tempfile.gettempdir()) / "amplihack_eval" / agent_name
     storage_path.mkdir(parents=True, exist_ok=True)
 
-    model = os.environ.get("EVAL_MODEL", "anthropic/claude-sonnet-4-5-20250929")
+    model = os.environ.get("EVAL_MODEL", "claude-opus-4-6")
 
     # Create learning agent - same agent that will be used in testing phase
     agent = LearningAgent(

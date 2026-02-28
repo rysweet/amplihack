@@ -61,7 +61,7 @@ def test_claude_sdk_adapter_creates_options_object():
     from amplihack.recipes.adapters.claude_sdk import ClaudeSDKAdapter
 
     # Create adapter with custom model
-    custom_model = "claude-sonnet-4-5-20250929"
+    custom_model = "claude-opus-4-6"
     adapter = ClaudeSDKAdapter(model=custom_model)
 
     # Mock the SDK

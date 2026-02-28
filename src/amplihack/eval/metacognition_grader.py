@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from dataclasses import dataclass
 
 import litellm  # type: ignore[import-unresolved]
@@ -81,8 +82,8 @@ class MetacognitionGrader:
         >>> print(score.overall_score)  # 0.8125
     """
 
-    def __init__(self, model: str = "claude-sonnet-4-5-20250929") -> None:
-        self.model = model
+    def __init__(self, model: str = "") -> None:
+        self.model = model or os.environ.get("EVAL_MODEL", "claude-opus-4-6")
 
     def grade(
         self,
@@ -277,7 +278,7 @@ def grade_metacognition(
     trace: dict | str,
     answer_score: float,
     level: str,
-    model: str = "claude-sonnet-4-5-20250929",
+    model: str = "",
 ) -> ReasoningTraceScore:
     """Grade metacognition from a reasoning trace (convenience function).
 

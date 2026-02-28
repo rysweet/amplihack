@@ -28,7 +28,7 @@ def _make_agent(**overrides):
     defaults = {
         "name": "test-agent",
         "instructions": "Test instructions",
-        "model": "claude-sonnet-4-5-20250929",
+        "model": "claude-opus-4-6",
         "enable_memory": False,
     }
     defaults.update(overrides)
