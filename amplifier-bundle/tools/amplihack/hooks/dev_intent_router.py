@@ -11,13 +11,21 @@ The LLM already processes every message — making it classify intent is
 essentially free (happens during existing thinking) and infinitely more
 accurate than any regex pattern.
 
-Disable: export AMPLIHACK_AUTO_DEV=false (also: 0, no, off)
+Toggle during a session:
+    Create  .claude/runtime/locks/.auto_dev_active  → enabled (default)
+    Delete  .claude/runtime/locks/.auto_dev_active  → disabled
+    Or use /amplihack:auto-dev and /amplihack:no-auto-dev commands.
+
+Legacy env var still respected: export AMPLIHACK_AUTO_DEV=false
 """
 
 import os
+from pathlib import Path
 
-# The classification prompt injected as additionalContext.
-# Claude reads this BEFORE processing the user's message.
+# ---------------------------------------------------------------------------
+# Routing prompt (injected as additionalContext)
+# ---------------------------------------------------------------------------
+
 _ROUTING_PROMPT = """\
 <system-reminder source="auto-intent-router">
 Before responding, classify this prompt into one of these categories and act accordingly:
@@ -46,30 +54,138 @@ Key: "make sure it works" = DEV. "write docs" = DEV. "review this PR" = DEV.
      "investigate X then fix Y" = HYBRID. "what is OAuth?" = Q&A.
 </system-reminder>"""
 
+_WELCOME_BANNER = (
+    "NOTE: amplihack auto-routing is active. Development tasks automatically "
+    "use the smart orchestrator. "
+    "Disable: /amplihack:no-auto-dev  |  "
+    'One-time bypass: include "just answer" in your message.'
+)
+
+# Minimum prompt length to inject routing (saves ~400 tokens on trivial turns)
+_MIN_PROMPT_LENGTH = 10
+
+
+# ---------------------------------------------------------------------------
+# Semaphore file helpers
+# ---------------------------------------------------------------------------
+
+
+def _get_semaphore_path() -> Path:
+    """Return the path to the auto-dev semaphore file."""
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
+    if project_dir:
+        return Path(project_dir) / ".claude" / "runtime" / "locks" / ".auto_dev_active"
+    return Path.cwd() / ".claude" / "runtime" / "locks" / ".auto_dev_active"
+
+
+def _get_banner_flag_path() -> Path:
+    """Return the path to the per-session welcome-banner-shown flag."""
+    project_dir = os.environ.get("CLAUDE_PROJECT_DIR", "")
+    base = Path(project_dir) if project_dir else Path.cwd()
+    return base / ".claude" / "runtime" / "locks" / ".auto_dev_banner_shown"
+
+
+def is_auto_dev_enabled() -> bool:
+    """Check whether auto-routing is enabled.
+
+    Priority order:
+    1. Semaphore file absent  → disabled (explicit opt-out via command)
+    2. Semaphore file present → enabled
+    3. If no semaphore has ever been created, check legacy env var
+       AMPLIHACK_AUTO_DEV (default: enabled).
+    """
+    sem = _get_semaphore_path()
+
+    # If the locks dir exists, the semaphore system is active — use file presence.
+    if sem.parent.exists():
+        return sem.exists()
+
+    # Locks dir doesn't exist yet → fall back to env var (legacy / first run).
+    auto_dev = os.environ.get("AMPLIHACK_AUTO_DEV", "true").lower().strip()
+    return auto_dev not in ("false", "0", "no", "off")
+
+
+def enable_auto_dev() -> str:
+    """Create the semaphore file. Returns a status message."""
+    sem = _get_semaphore_path()
+    sem.parent.mkdir(parents=True, exist_ok=True)
+    if sem.exists():
+        return "Auto-routing was already enabled."
+    try:
+        fd = os.open(str(sem), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        os.write(fd, b"enabled\n")
+        os.close(fd)
+    except FileExistsError:
+        pass  # race — another call created it first
+    return "Auto-routing enabled. Development tasks will use the smart orchestrator."
+
+
+def disable_auto_dev() -> str:
+    """Remove the semaphore file. Returns a status message."""
+    sem = _get_semaphore_path()
+    # Ensure locks dir exists so future checks use file-based detection.
+    sem.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        sem.unlink()
+    except FileNotFoundError:
+        pass
+    # Also clear the banner flag so it re-shows if re-enabled.
+    try:
+        _get_banner_flag_path().unlink()
+    except FileNotFoundError:
+        pass
+    return "Auto-routing disabled. Type /amplihack:auto-dev to re-enable."
+
+
+# ---------------------------------------------------------------------------
+# Main entry point
+# ---------------------------------------------------------------------------
+
 
 def should_auto_route(prompt: str) -> tuple[bool, str]:
     """
     Returns (should_inject, injection_text).
 
     Returns (False, "") when:
-    1. Disabled via AMPLIHACK_AUTO_DEV=false/0/no/off
+    1. Disabled via semaphore file or AMPLIHACK_AUTO_DEV env var
     2. Prompt is not a string
     3. Prompt is empty or whitespace-only
     4. Prompt starts with / (existing slash command)
+    5. Prompt is very short (< 10 chars) — likely conversational, not a task
+
+    When injecting for the first time in a session, prepends a one-line
+    welcome banner explaining auto-routing and how to disable it.
     """
-    # Check disable flag
-    auto_dev = os.environ.get("AMPLIHACK_AUTO_DEV", "true").lower().strip()
-    if auto_dev in ("false", "0", "no", "off"):
+    # 1. Check disable flag (semaphore file or env var)
+    if not is_auto_dev_enabled():
         return False, ""
 
-    # Type guard — prompt must be a string
+    # 2. Type guard
     if not isinstance(prompt, str):
         return False, ""
 
-    # Don't inject for empty prompts or existing slash commands
-    if not prompt or not prompt.strip():
-        return False, ""
-    if prompt.strip().startswith("/"):
+    # 3. Empty / whitespace
+    stripped = prompt.strip()
+    if not stripped:
         return False, ""
 
-    return True, _ROUTING_PROMPT
+    # 4. Slash commands
+    if stripped.startswith("/"):
+        return False, ""
+
+    # 5. Short conversational messages (saves ~400 tokens per turn)
+    if len(stripped) < _MIN_PROMPT_LENGTH:
+        return False, ""
+
+    # 6. Build injection text — prepend welcome banner on first injection
+    injection = _ROUTING_PROMPT
+    banner_flag = _get_banner_flag_path()
+    try:
+        if not banner_flag.exists():
+            banner_flag.parent.mkdir(parents=True, exist_ok=True)
+            banner_flag.write_text("shown\n")
+            injection = _WELCOME_BANNER + "\n\n" + _ROUTING_PROMPT
+    except OSError:
+        pass  # fail-open: skip banner if we can't write the flag
+
+    return True, injection

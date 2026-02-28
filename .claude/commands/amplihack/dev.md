@@ -103,11 +103,13 @@ When you run `/dev fix the login bug`, here is what you will see:
 ## Auto-Routing (Without Typing /dev)
 
 The `UserPromptSubmit` hook automatically injects intent-routing guidance on
-every message (except slash commands). Claude classifies your intent and invokes
-`/dev` when appropriate — no prefix needed.
+every message (except slash commands and short conversational turns). Claude
+classifies your intent and invokes `dev-orchestrator` when appropriate.
 
-- **Disable**: `export AMPLIHACK_AUTO_DEV=false`
+- **Disable**: `/amplihack:no-auto-dev` (toggles instantly, no restart needed)
+- **Re-enable**: `/amplihack:auto-dev`
 - **Override for one prompt**: Include "just answer" or "without workflow"
+- **Legacy env var**: `export AMPLIHACK_AUTO_DEV=false` (still works)
 - **Details**: See the [auto-routing tutorial section](../../../docs/tutorials/dev-orchestrator-tutorial.md#auto-routing-how-it-works)
 
 ## How It Works
