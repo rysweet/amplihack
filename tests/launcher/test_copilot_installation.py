@@ -26,10 +26,12 @@ class TestCopilotInstallationLogic:
     @patch("amplihack.launcher.copilot.get_copilot_directories")
     @patch("amplihack.launcher.copilot.stage_agents")
     @patch("amplihack.launcher.copilot.stage_directory")
+    @patch("amplihack.launcher.copilot.register_copilot_plugin")
     @patch("amplihack.launcher.copilot.generate_copilot_instructions")
     def test_installation_succeeds_no_redundant_check(
         self,
         mock_gen_instructions,
+        mock_register_plugin,
         mock_stage_dir,
         mock_stage_agents,
         mock_get_dirs,
@@ -59,6 +61,7 @@ class TestCopilotInstallationLogic:
         mock_disable_mcp.return_value = False
         mock_stage_agents.return_value = 0
         mock_stage_dir.return_value = 0
+        mock_register_plugin.return_value = False
 
         # Initial check: not installed
         # After install: DO NOT call check again
@@ -127,10 +130,12 @@ class TestCopilotInstallationLogic:
     @patch("amplihack.launcher.copilot.get_copilot_directories")
     @patch("amplihack.launcher.copilot.stage_agents")
     @patch("amplihack.launcher.copilot.stage_directory")
+    @patch("amplihack.launcher.copilot.register_copilot_plugin")
     @patch("amplihack.launcher.copilot.generate_copilot_instructions")
     def test_already_installed_skips_installation(
         self,
         mock_gen_instructions,
+        mock_register_plugin,
         mock_stage_dir,
         mock_stage_agents,
         mock_get_dirs,
@@ -153,6 +158,7 @@ class TestCopilotInstallationLogic:
         mock_disable_mcp.return_value = False
         mock_stage_agents.return_value = 0
         mock_stage_dir.return_value = 0
+        mock_register_plugin.return_value = False
 
         # Already installed
         mock_check.return_value = True
@@ -273,10 +279,12 @@ class TestBugReproduction:
     @patch("amplihack.launcher.copilot.get_copilot_directories")
     @patch("amplihack.launcher.copilot.stage_agents")
     @patch("amplihack.launcher.copilot.stage_directory")
+    @patch("amplihack.launcher.copilot.register_copilot_plugin")
     @patch("amplihack.launcher.copilot.generate_copilot_instructions")
     def test_bug_false_negative_after_successful_install(
         self,
         mock_gen_instructions,
+        mock_register_plugin,
         mock_stage_dir,
         mock_stage_agents,
         mock_get_dirs,
@@ -307,6 +315,7 @@ class TestBugReproduction:
         mock_disable_mcp.return_value = False
         mock_stage_agents.return_value = 0
         mock_stage_dir.return_value = 0
+        mock_register_plugin.return_value = False
 
         # Simulate bug scenario:
         # - First check: not installed

@@ -1,5 +1,5 @@
 ---
-name: amplihack:analyze
+name: analyze
 version: 1.0.0
 description: Comprehensive code analysis and philosophy compliance review
 triggers:

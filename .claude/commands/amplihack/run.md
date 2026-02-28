@@ -1,5 +1,5 @@
 ---
-name: amplihack:run
+name: run
 version: 1.0.0
 description: Alias for /amplihack:hybrid - Investigation then development workflow
 aliases_for: amplihack:hybrid

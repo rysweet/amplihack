@@ -1,5 +1,5 @@
 ---
-name: amplihack:ultrathink
+name: ultrathink
 version: 3.0.0
 description: |
   DEPRECATED — Use /dev instead. This command redirects to dev-orchestrator

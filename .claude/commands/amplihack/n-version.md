@@ -1,5 +1,5 @@
 ---
-name: amplihack:n-version
+name: n-version
 version: 1.0.0
 description: N-version programming for Byzantine-robust critical implementations
 triggers:

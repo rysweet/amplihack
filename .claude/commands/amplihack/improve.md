@@ -1,5 +1,5 @@
 ---
-name: amplihack:improve
+name: improve
 version: 2.0.0
 description: Continuous self-improvement with simplicity validation
 triggers:
