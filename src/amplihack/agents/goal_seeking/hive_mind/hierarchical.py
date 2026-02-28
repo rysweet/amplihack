@@ -20,6 +20,7 @@ Public API:
 
 from __future__ import annotations
 
+import threading
 import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -571,6 +572,7 @@ class HierarchicalKnowledgeGraph:
 
     def __init__(self, promotion_policy: PromotionPolicy | None = None) -> None:
         self._policy = promotion_policy or PromotionPolicy()
+        self._lock = threading.RLock()
         self._agents: set[str] = set()
         # Local facts: agent_id -> {fact_id -> LocalFact}
         self._local_stores: dict[str, dict[str, LocalFact]] = {}
@@ -588,9 +590,10 @@ class HierarchicalKnowledgeGraph:
         Args:
             agent_id: Unique agent identifier
         """
-        self._agents.add(agent_id)
-        if agent_id not in self._local_stores:
-            self._local_stores[agent_id] = {}
+        with self._lock:
+            self._agents.add(agent_id)
+            if agent_id not in self._local_stores:
+                self._local_stores[agent_id] = {}
 
     def _ensure_agent(self, agent_id: str) -> None:
         """Raise ValueError if agent is not registered."""
@@ -615,16 +618,17 @@ class HierarchicalKnowledgeGraph:
         Returns:
             fact_id of the stored local fact
         """
-        self._ensure_agent(agent_id)
-        fact_id = str(uuid.uuid4())
-        local_fact = LocalFact(
-            fact_id=fact_id,
-            content=fact,
-            confidence=confidence,
-            tags=tags or [],
-        )
-        self._local_stores[agent_id][fact_id] = local_fact
-        return fact_id
+        with self._lock:
+            self._ensure_agent(agent_id)
+            fact_id = str(uuid.uuid4())
+            local_fact = LocalFact(
+                fact_id=fact_id,
+                content=fact,
+                confidence=confidence,
+                tags=tags or [],
+            )
+            self._local_stores[agent_id][fact_id] = local_fact
+            return fact_id
 
     def promote_fact(
         self,
@@ -649,18 +653,19 @@ class HierarchicalKnowledgeGraph:
         Returns:
             fact_id of the pending (or immediately promoted) fact
         """
-        self._ensure_agent(agent_id)
-        fact_id = self._promotion_mgr.propose_promotion(
-            agent_id,
-            fact_content,
-            confidence,
-            tags=tags,
-        )
-        # Try immediate promotion (works if consensus_required == 1)
-        result = self._promotion_mgr.check_and_promote(fact_id)
-        if result is not None:
-            self._hive_store[result.fact_id] = result
-        return fact_id
+        with self._lock:
+            self._ensure_agent(agent_id)
+            fact_id = self._promotion_mgr.propose_promotion(
+                agent_id,
+                fact_content,
+                confidence,
+                tags=tags,
+            )
+            # Try immediate promotion (works if consensus_required == 1)
+            result = self._promotion_mgr.check_and_promote(fact_id)
+            if result is not None:
+                self._hive_store[result.fact_id] = result
+            return fact_id
 
     def vote_on_promotion(self, agent_id: str, fact_id: str, vote: bool) -> HiveFact | None:
         """Vote on a pending promotion and auto-check if it qualifies.
@@ -673,14 +678,15 @@ class HierarchicalKnowledgeGraph:
         Returns:
             HiveFact if the vote caused promotion, None otherwise
         """
-        self._ensure_agent(agent_id)
-        recorded = self._promotion_mgr.vote_on_promotion(agent_id, fact_id, vote)
-        if not recorded:
-            return None
-        result = self._promotion_mgr.check_and_promote(fact_id)
-        if result is not None:
-            self._hive_store[result.fact_id] = result
-        return result
+        with self._lock:
+            self._ensure_agent(agent_id)
+            recorded = self._promotion_mgr.vote_on_promotion(agent_id, fact_id, vote)
+            if not recorded:
+                return None
+            result = self._promotion_mgr.check_and_promote(fact_id)
+            if result is not None:
+                self._hive_store[result.fact_id] = result
+            return result
 
     def get_pending_promotions(self) -> list[PendingPromotion]:
         """Get all facts awaiting consensus votes.
@@ -706,20 +712,21 @@ class HierarchicalKnowledgeGraph:
         Returns:
             List of LocalFact sorted by relevance
         """
-        self._ensure_agent(agent_id)
-        local_facts = self._local_stores.get(agent_id, {})
-        if not local_facts or not query:
-            return []
+        with self._lock:
+            self._ensure_agent(agent_id)
+            local_facts = self._local_stores.get(agent_id, {})
+            if not local_facts or not query:
+                return []
 
-        scored: list[tuple[float, LocalFact]] = []
-        for lf in local_facts.values():
-            searchable = lf.content + " " + " ".join(lf.tags)
-            relevance = _query_relevance(query, searchable)
-            if relevance > 0.0:
-                scored.append((relevance, lf))
+            scored: list[tuple[float, LocalFact]] = []
+            for lf in local_facts.values():
+                searchable = lf.content + " " + " ".join(lf.tags)
+                relevance = _query_relevance(query, searchable)
+                if relevance > 0.0:
+                    scored.append((relevance, lf))
 
-        scored.sort(key=lambda x: -x[0])
-        return [lf for _, lf in scored[:limit]]
+            scored.sort(key=lambda x: -x[0])
+            return [lf for _, lf in scored[:limit]]
 
     def query_hive(self, query: str, limit: int = 10) -> list[HiveFact]:
         """Query the shared hive facts by relevance.
@@ -731,7 +738,8 @@ class HierarchicalKnowledgeGraph:
         Returns:
             List of HiveFact sorted by relevance
         """
-        return self._pull_mgr.query_hive(query, limit=limit)
+        with self._lock:
+            return self._pull_mgr.query_hive(query, limit=limit)
 
     def pull_hive_fact(self, agent_id: str, fact_id: str) -> LocalFact | None:
         """Pull a hive fact into an agent's local store.
@@ -745,26 +753,27 @@ class HierarchicalKnowledgeGraph:
         Returns:
             LocalFact copy if successful, None if fact not found
         """
-        self._ensure_agent(agent_id)
-        hive_fact = self._pull_mgr.pull_to_local(agent_id, fact_id)
-        if hive_fact is None:
-            return None
+        with self._lock:
+            self._ensure_agent(agent_id)
+            hive_fact = self._pull_mgr.pull_to_local(agent_id, fact_id)
+            if hive_fact is None:
+                return None
 
-        # Check if already pulled (avoid duplicates)
-        for lf in self._local_stores[agent_id].values():
-            if lf.hive_fact_id == fact_id:
-                return lf
+            # Check if already pulled (avoid duplicates)
+            for lf in self._local_stores[agent_id].values():
+                if lf.hive_fact_id == fact_id:
+                    return lf
 
-        local_fact = LocalFact(
-            fact_id=str(uuid.uuid4()),
-            content=hive_fact.content,
-            confidence=hive_fact.confidence,
-            tags=list(hive_fact.tags),
-            from_hive=True,
-            hive_fact_id=hive_fact.fact_id,
-        )
-        self._local_stores[agent_id][local_fact.fact_id] = local_fact
-        return local_fact
+            local_fact = LocalFact(
+                fact_id=str(uuid.uuid4()),
+                content=hive_fact.content,
+                confidence=hive_fact.confidence,
+                tags=list(hive_fact.tags),
+                from_hive=True,
+                hive_fact_id=hive_fact.fact_id,
+            )
+            self._local_stores[agent_id][local_fact.fact_id] = local_fact
+            return local_fact
 
     def query_combined(
         self,
@@ -784,49 +793,50 @@ class HierarchicalKnowledgeGraph:
         Returns:
             List of dicts with keys: source, fact_id, content, confidence, tags, relevance
         """
-        self._ensure_agent(agent_id)
-        results: list[dict[str, Any]] = []
+        with self._lock:
+            self._ensure_agent(agent_id)
+            results: list[dict[str, Any]] = []
 
-        # Score local facts
-        local_facts = self._local_stores.get(agent_id, {})
-        for lf in local_facts.values():
-            searchable = lf.content + " " + " ".join(lf.tags)
-            relevance = _query_relevance(query, searchable)
-            if relevance > 0.0:
-                results.append(
-                    {
-                        "source": "local",
-                        "fact_id": lf.fact_id,
-                        "content": lf.content,
-                        "confidence": lf.confidence,
-                        "tags": lf.tags,
-                        "relevance": relevance,
-                    }
-                )
+            # Score local facts
+            local_facts = self._local_stores.get(agent_id, {})
+            for lf in local_facts.values():
+                searchable = lf.content + " " + " ".join(lf.tags)
+                relevance = _query_relevance(query, searchable)
+                if relevance > 0.0:
+                    results.append(
+                        {
+                            "source": "local",
+                            "fact_id": lf.fact_id,
+                            "content": lf.content,
+                            "confidence": lf.confidence,
+                            "tags": lf.tags,
+                            "relevance": relevance,
+                        }
+                    )
 
-        # Score hive facts (avoid duplicates already pulled)
-        pulled_hive_ids = {
-            lf.hive_fact_id for lf in local_facts.values() if lf.from_hive and lf.hive_fact_id
-        }
-        for hf in self._hive_store.values():
-            if hf.fact_id in pulled_hive_ids:
-                continue  # Already in local via pull
-            searchable = hf.content + " " + " ".join(hf.tags)
-            relevance = _query_relevance(query, searchable)
-            if relevance > 0.0:
-                results.append(
-                    {
-                        "source": "hive",
-                        "fact_id": hf.fact_id,
-                        "content": hf.content,
-                        "confidence": hf.confidence,
-                        "tags": hf.tags,
-                        "relevance": relevance,
-                    }
-                )
+            # Score hive facts (avoid duplicates already pulled)
+            pulled_hive_ids = {
+                lf.hive_fact_id for lf in local_facts.values() if lf.from_hive and lf.hive_fact_id
+            }
+            for hf in self._hive_store.values():
+                if hf.fact_id in pulled_hive_ids:
+                    continue  # Already in local via pull
+                searchable = hf.content + " " + " ".join(hf.tags)
+                relevance = _query_relevance(query, searchable)
+                if relevance > 0.0:
+                    results.append(
+                        {
+                            "source": "hive",
+                            "fact_id": hf.fact_id,
+                            "content": hf.content,
+                            "confidence": hf.confidence,
+                            "tags": hf.tags,
+                            "relevance": relevance,
+                        }
+                    )
 
-        results.sort(key=lambda x: -x["relevance"])
-        return results[:limit]
+            results.sort(key=lambda x: -x["relevance"])
+            return results[:limit]
 
     def get_stats(self) -> dict[str, Any]:
         """Get statistics about the knowledge graph.
@@ -840,20 +850,23 @@ class HierarchicalKnowledgeGraph:
                 promotion_rate: fraction of proposals that were promoted
                 total_local_facts: sum across all agents
         """
-        local_counts = {aid: len(facts) for aid, facts in self._local_stores.items()}
-        total_local = sum(local_counts.values())
-        promoted_count = len(self._hive_store)
-        pending_count = len(self._promotion_mgr.get_pending_promotions())
-        total_proposals = promoted_count + pending_count
+        with self._lock:
+            local_counts = {aid: len(facts) for aid, facts in self._local_stores.items()}
+            total_local = sum(local_counts.values())
+            promoted_count = len(self._hive_store)
+            pending_count = len(self._promotion_mgr.get_pending_promotions())
+            total_proposals = promoted_count + pending_count
 
-        return {
-            "registered_agents": len(self._agents),
-            "local_facts_per_agent": local_counts,
-            "hive_facts": promoted_count,
-            "pending_promotions": pending_count,
-            "promotion_rate": (promoted_count / total_proposals if total_proposals > 0 else 0.0),
-            "total_local_facts": total_local,
-        }
+            return {
+                "registered_agents": len(self._agents),
+                "local_facts_per_agent": local_counts,
+                "hive_facts": promoted_count,
+                "pending_promotions": pending_count,
+                "promotion_rate": (
+                    promoted_count / total_proposals if total_proposals > 0 else 0.0
+                ),
+                "total_local_facts": total_local,
+            }
 
 
 __all__ = [

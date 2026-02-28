@@ -250,9 +250,14 @@ class EventLog:
         1
     """
 
-    def __init__(self, persist_path: Path | str | None = None) -> None:
+    def __init__(
+        self,
+        persist_path: Path | str | None = None,
+        max_events: int = 10_000,
+    ) -> None:
         self._lock = threading.Lock()
         self._events: list[HiveEvent] = []
+        self._max_events = max_events
         self._persist_path: Path | None = None
         if persist_path is not None:
             self._persist_path = Path(persist_path)
@@ -286,9 +291,13 @@ class EventLog:
         """Append an event to the log.
 
         Thread-safe. Persists to disk if a persist_path was configured.
+        Trims oldest 10% of events when max_events is exceeded.
         """
         with self._lock:
             self._events.append(event)
+            if len(self._events) > self._max_events:
+                trim_count = self._max_events // 10
+                self._events = self._events[trim_count:]
             self._persist_event(event)
 
     def replay(self, since: int = 0) -> list[HiveEvent]:
@@ -387,7 +396,7 @@ class EventSourcedMemory:
         self._incorporated: set[str] = set()
 
         # Domain keywords for relevance scoring -- populated from stored facts
-        self._domain_keywords: str = ""
+        self._domain_keywords: set[str] = set()
 
     def _next_seq(self) -> int:
         with self._lock:
@@ -420,7 +429,8 @@ class EventSourcedMemory:
         )
 
         # Update domain keywords for relevance scoring
-        self._domain_keywords += f" {context} {fact}"
+        self._domain_keywords.update(context.lower().split())
+        self._domain_keywords.update(fact.lower().split())
 
         event = HiveEvent(
             event_type=FACT_LEARNED,
@@ -532,10 +542,11 @@ class EventSourcedMemory:
         Uses word-similarity from the existing similarity module.
         If the agent has no domain keywords yet, return 1.0 (accept everything).
         """
-        if not self._domain_keywords.strip():
+        if not self._domain_keywords:
             return 1.0
+        domain_text = " ".join(self._domain_keywords)
         combined = f"{context} {fact}"
-        return compute_word_similarity(self._domain_keywords, combined)
+        return compute_word_similarity(domain_text, combined)
 
     @property
     def incorporated_count(self) -> int:

@@ -17,11 +17,12 @@ Public API:
 
 from __future__ import annotations
 
-import hashlib
 import logging
+import threading
 from dataclasses import dataclass
 from typing import Any
 
+from ._utils import content_hash
 from .event_sourced import (
     FACT_LEARNED,
     EventLog,
@@ -83,13 +84,13 @@ class HiveMindConfig:
 
 
 # ---------------------------------------------------------------------------
-# Content-hash helper (mirrors blackboard._content_hash / gossip.content_hash)
+# Content-hash helper -- delegates to shared _utils.content_hash
 # ---------------------------------------------------------------------------
 
 
 def _content_hash(text: str) -> str:
     """SHA-256 of lowercased, stripped text for deduplication."""
-    return hashlib.sha256(text.strip().lower().encode()).hexdigest()
+    return content_hash(text)
 
 
 # ---------------------------------------------------------------------------
@@ -116,6 +117,7 @@ class UnifiedHiveMind:
 
     def __init__(self, config: HiveMindConfig | None = None) -> None:
         self.config = config or HiveMindConfig()
+        self._lock = threading.RLock()
 
         # Layer 1: Storage
         policy = PromotionPolicy(
@@ -153,36 +155,37 @@ class UnifiedHiveMind:
         Raises:
             ValueError: If agent_id is already registered.
         """
-        if agent_id in self._agents:
-            raise ValueError(f"Agent '{agent_id}' is already registered")
+        with self._lock:
+            if agent_id in self._agents:
+                raise ValueError(f"Agent '{agent_id}' is already registered")
 
-        self._agents.add(agent_id)
+            self._agents.add(agent_id)
 
-        # Layer 1
-        self._graph.register_agent(agent_id)
+            # Layer 1
+            self._graph.register_agent(agent_id)
 
-        # Layer 2
-        self._event_bus.subscribe(agent_id)
+            # Layer 2
+            self._event_bus.subscribe(agent_id)
 
-        # Layer 3
-        other_agents = [a for a in self._agents if a != agent_id]
-        proto = GossipProtocol(
-            agent_id=agent_id,
-            peers=other_agents,
-            fanout=self.config.gossip_fanout,
-            top_k=self.config.gossip_top_k,
-        )
-        self._gossip_protocols[agent_id] = proto
-        self._gossip_net.register_agent(agent_id, proto)
+            # Layer 3
+            other_agents = [a for a in self._agents if a != agent_id]
+            proto = GossipProtocol(
+                agent_id=agent_id,
+                peers=other_agents,
+                fanout=self.config.gossip_fanout,
+                top_k=self.config.gossip_top_k,
+            )
+            self._gossip_protocols[agent_id] = proto
+            self._gossip_net.register_agent(agent_id, proto)
 
-        # Update existing protocols' peer lists to include the new agent
-        for aid, p in self._gossip_protocols.items():
-            if aid != agent_id:
-                if agent_id not in p.peers:
-                    p.peers.append(agent_id)
+            # Update existing protocols' peer lists to include the new agent
+            for aid, p in self._gossip_protocols.items():
+                if aid != agent_id:
+                    if agent_id not in p.peers:
+                        p.peers.append(agent_id)
 
-        self._round_counters[agent_id] = 0
-        self._seq_counters[agent_id] = 0
+            self._round_counters[agent_id] = 0
+            self._seq_counters[agent_id] = 0
 
     # ------------------------------------------------------------------
     # Fact storage (local)
@@ -206,15 +209,16 @@ class UnifiedHiveMind:
         Returns:
             fact_id of the stored local fact.
         """
-        self._ensure_agent(agent_id)
-        fact_id = self._graph.store_local_fact(agent_id, content, confidence, tags)
+        with self._lock:
+            self._ensure_agent(agent_id)
+            fact_id = self._graph.store_local_fact(agent_id, content, confidence, tags)
 
-        # Also feed the gossip protocol so gossip can share it
-        proto = self._gossip_protocols.get(agent_id)
-        if proto is not None:
-            proto.add_local_fact(content, confidence)
+            # Also feed the gossip protocol so gossip can share it
+            proto = self._gossip_protocols.get(agent_id)
+            if proto is not None:
+                proto.add_local_fact(content, confidence)
 
-        return fact_id
+            return fact_id
 
     # ------------------------------------------------------------------
     # Promotion (local -> hive)
@@ -240,25 +244,26 @@ class UnifiedHiveMind:
         Returns:
             fact_id (pending or promoted, depending on consensus config).
         """
-        self._ensure_agent(agent_id)
-        fact_id = self._graph.promote_fact(agent_id, content, confidence, tags)
+        with self._lock:
+            self._ensure_agent(agent_id)
+            fact_id = self._graph.promote_fact(agent_id, content, confidence, tags)
 
-        if self.config.enable_events:
-            self._seq_counters[agent_id] = self._seq_counters.get(agent_id, 0) + 1
-            event = HiveEvent(
-                event_type="FACT_PROMOTED",
-                source_agent_id=agent_id,
-                payload={
-                    "fact_id": fact_id,
-                    "content": content,
-                    "confidence": confidence,
-                    "tags": tags or [],
-                },
-                sequence_number=self._seq_counters[agent_id],
-            )
-            self._event_bus.publish(event)
+            if self.config.enable_events:
+                self._seq_counters[agent_id] = self._seq_counters.get(agent_id, 0) + 1
+                event = HiveEvent(
+                    event_type="FACT_PROMOTED",
+                    source_agent_id=agent_id,
+                    payload={
+                        "fact_id": fact_id,
+                        "content": content,
+                        "confidence": confidence,
+                        "tags": tags or [],
+                    },
+                    sequence_number=self._seq_counters[agent_id],
+                )
+                self._event_bus.publish(event)
 
-        return fact_id
+            return fact_id
 
     # ------------------------------------------------------------------
     # Query methods
@@ -275,18 +280,19 @@ class UnifiedHiveMind:
         Returns:
             List of dicts with keys: fact_id, content, confidence, tags, source.
         """
-        self._ensure_agent(agent_id)
-        local_facts = self._graph.query_local(agent_id, query, limit=limit)
-        return [
-            {
-                "fact_id": lf.fact_id,
-                "content": lf.content,
-                "confidence": lf.confidence,
-                "tags": lf.tags,
-                "source": "local",
-            }
-            for lf in local_facts
-        ]
+        with self._lock:
+            self._ensure_agent(agent_id)
+            local_facts = self._graph.query_local(agent_id, query, limit=limit)
+            return [
+                {
+                    "fact_id": lf.fact_id,
+                    "content": lf.content,
+                    "confidence": lf.confidence,
+                    "tags": lf.tags,
+                    "source": "local",
+                }
+                for lf in local_facts
+            ]
 
     def query_hive(
         self,
@@ -298,17 +304,18 @@ class UnifiedHiveMind:
         Returns:
             List of dicts with keys: fact_id, content, confidence, tags, source.
         """
-        hive_facts = self._graph.query_hive(query, limit=limit)
-        return [
-            {
-                "fact_id": hf.fact_id,
-                "content": hf.content,
-                "confidence": hf.confidence,
-                "tags": hf.tags,
-                "source": "hive",
-            }
-            for hf in hive_facts
-        ]
+        with self._lock:
+            hive_facts = self._graph.query_hive(query, limit=limit)
+            return [
+                {
+                    "fact_id": hf.fact_id,
+                    "content": hf.content,
+                    "confidence": hf.confidence,
+                    "tags": hf.tags,
+                    "source": "hive",
+                }
+                for hf in hive_facts
+            ]
 
     def query_all(
         self,
@@ -330,47 +337,48 @@ class UnifiedHiveMind:
         Returns:
             Deduplicated list of fact dicts sorted by relevance.
         """
-        self._ensure_agent(agent_id)
+        with self._lock:
+            self._ensure_agent(agent_id)
 
-        # Start with the hierarchical combined query
-        raw_combined = self._graph.query_combined(agent_id, query, limit=limit * 2)
+            # Start with the hierarchical combined query
+            raw_combined = self._graph.query_combined(agent_id, query, limit=limit * 2)
 
-        # Deduplicate by content hash across local + hive results
-        seen_hashes: set[str] = set()
-        combined: list[dict[str, Any]] = []
-        for item in raw_combined:
-            ch = _content_hash(item["content"])
-            if ch not in seen_hashes:
-                seen_hashes.add(ch)
-                combined.append(item)
+            # Deduplicate by content hash across local + hive results
+            seen_hashes: set[str] = set()
+            combined: list[dict[str, Any]] = []
+            for item in raw_combined:
+                ch = _content_hash(item["content"])
+                if ch not in seen_hashes:
+                    seen_hashes.add(ch)
+                    combined.append(item)
 
-        # Add gossip-received facts that are not already present
-        proto = self._gossip_protocols.get(agent_id)
-        if proto is not None:
-            from .hierarchical import _query_relevance
+            # Add gossip-received facts that are not already present
+            proto = self._gossip_protocols.get(agent_id)
+            if proto is not None:
+                from .hierarchical import _query_relevance
 
-            for gf in proto.get_all_facts():
-                ch = _content_hash(gf.content)
-                if ch in seen_hashes:
-                    continue
-                seen_hashes.add(ch)
-                searchable = gf.content
-                relevance = _query_relevance(query, searchable)
-                if relevance > 0.0:
-                    combined.append(
-                        {
-                            "source": "gossip",
-                            "fact_id": gf.fact_id,
-                            "content": gf.content,
-                            "confidence": gf.confidence,
-                            "tags": [f"gossip:from:{gf.source_agent_id}"],
-                            "relevance": relevance,
-                        }
-                    )
+                for gf in proto.get_all_facts():
+                    ch = _content_hash(gf.content)
+                    if ch in seen_hashes:
+                        continue
+                    seen_hashes.add(ch)
+                    searchable = gf.content
+                    relevance = _query_relevance(query, searchable)
+                    if relevance > 0.0:
+                        combined.append(
+                            {
+                                "source": "gossip",
+                                "fact_id": gf.fact_id,
+                                "content": gf.content,
+                                "confidence": gf.confidence,
+                                "tags": [f"gossip:from:{gf.source_agent_id}"],
+                                "relevance": relevance,
+                            }
+                        )
 
-        # Sort by relevance descending
-        combined.sort(key=lambda x: -x.get("relevance", 0.0))
-        return combined[:limit]
+            # Sort by relevance descending
+            combined.sort(key=lambda x: -x.get("relevance", 0.0))
+            return combined[:limit]
 
     # ------------------------------------------------------------------
     # Gossip
@@ -382,17 +390,8 @@ class UnifiedHiveMind:
         Returns:
             Stats dict from GossipNetwork.run_gossip_round().
         """
-        stats = self._gossip_net.run_gossip_round()
-
-        # Publish gossip-received facts as events so the event log captures them
-        if self.config.enable_events:
-            for agent_id, proto in self._gossip_protocols.items():
-                for gf in proto.get_all_facts():
-                    # Only publish facts not originated by this agent
-                    if gf.source_agent_id != agent_id:
-                        self._seq_counters[agent_id] = self._seq_counters.get(agent_id, 0) + 1
-
-        return stats
+        with self._lock:
+            return self._gossip_net.run_gossip_round()
 
     # ------------------------------------------------------------------
     # Event processing
@@ -408,34 +407,35 @@ class UnifiedHiveMind:
         Returns:
             Dict of agent_id -> number of events processed.
         """
-        results: dict[str, int] = {}
-        if not self.config.enable_events:
-            return results
+        with self._lock:
+            results: dict[str, int] = {}
+            if not self.config.enable_events:
+                return results
 
-        for agent_id in self._agents:
-            events = self._event_bus.poll(agent_id)
-            processed = 0
-            for event in events:
-                if event.event_type == "FACT_PROMOTED":
-                    payload = event.payload
-                    content = payload.get("content", "")
-                    confidence = payload.get("confidence", 0.9)
-                    tags = list(payload.get("tags", []))
-                    if content:
-                        # Pull into local store with provenance
-                        provenance_tags = tags + [f"hive:from:{event.source_agent_id}"]
-                        self._graph.store_local_fact(
-                            agent_id,
-                            content,
-                            confidence * 0.9,  # slight discount for peer knowledge
-                            provenance_tags,
-                        )
+            for agent_id in self._agents:
+                events = self._event_bus.poll(agent_id)
+                processed = 0
+                for event in events:
+                    if event.event_type == "FACT_PROMOTED":
+                        payload = event.payload
+                        content = payload.get("content", "")
+                        confidence = payload.get("confidence", 0.9)
+                        tags = list(payload.get("tags", []))
+                        if content:
+                            # Pull into local store with provenance
+                            provenance_tags = tags + [f"hive:from:{event.source_agent_id}"]
+                            self._graph.store_local_fact(
+                                agent_id,
+                                content,
+                                confidence * 0.9,  # slight discount for peer knowledge
+                                provenance_tags,
+                            )
+                            processed += 1
+                    elif event.event_type == FACT_LEARNED:
                         processed += 1
-                elif event.event_type == FACT_LEARNED:
-                    processed += 1
-            results[agent_id] = processed
+                results[agent_id] = processed
 
-        return results
+            return results
 
     # ------------------------------------------------------------------
     # Tick (per-agent round counter with auto-gossip)
@@ -453,19 +453,20 @@ class UnifiedHiveMind:
         Returns:
             Dict with current_round and gossip_triggered flag.
         """
-        self._ensure_agent(agent_id)
-        self._round_counters[agent_id] = self._round_counters.get(agent_id, 0) + 1
-        current = self._round_counters[agent_id]
-        gossip_triggered = False
+        with self._lock:
+            self._ensure_agent(agent_id)
+            self._round_counters[agent_id] = self._round_counters.get(agent_id, 0) + 1
+            current = self._round_counters[agent_id]
+            gossip_triggered = False
 
-        if self.config.enable_gossip and current % self.config.gossip_interval_rounds == 0:
-            self.run_gossip_round()
-            gossip_triggered = True
+            if self.config.enable_gossip and current % self.config.gossip_interval_rounds == 0:
+                self.run_gossip_round()
+                gossip_triggered = True
 
-        return {
-            "current_round": current,
-            "gossip_triggered": gossip_triggered,
-        }
+            return {
+                "current_round": current,
+                "gossip_triggered": gossip_triggered,
+            }
 
     # ------------------------------------------------------------------
     # Stats
@@ -477,20 +478,21 @@ class UnifiedHiveMind:
         Returns:
             Dict covering agents, graph, events, and gossip statistics.
         """
-        graph_stats = self._graph.get_stats()
-        gossip_stats = self._gossip_net.get_network_stats()
+        with self._lock:
+            graph_stats = self._graph.get_stats()
+            gossip_stats = self._gossip_net.get_network_stats()
 
-        return {
-            "registered_agents": list(self._agents),
-            "agent_count": len(self._agents),
-            "graph": graph_stats,
-            "events": {
-                "total_events": self._event_log.size,
-                "bus_subscribers": self._event_bus.subscriber_count,
-            },
-            "gossip": gossip_stats,
-            "round_counters": dict(self._round_counters),
-        }
+            return {
+                "registered_agents": list(self._agents),
+                "agent_count": len(self._agents),
+                "graph": graph_stats,
+                "events": {
+                    "total_events": self._event_log.size,
+                    "bus_subscribers": self._event_bus.subscriber_count,
+                },
+                "gossip": gossip_stats,
+                "round_counters": dict(self._round_counters),
+            }
 
     def get_agent_knowledge_summary(self, agent_id: str) -> dict[str, Any]:
         """Summary of what a specific agent knows across all layers.
@@ -501,31 +503,32 @@ class UnifiedHiveMind:
         Returns:
             Dict with local_facts, hive_facts, gossip_facts counts and details.
         """
-        self._ensure_agent(agent_id)
+        with self._lock:
+            self._ensure_agent(agent_id)
 
-        # Access the internal store directly (query_local with empty string
-        # returns [] because _query_relevance returns 0.0 for empty query).
-        local_store = self._graph._local_stores.get(agent_id, {})
-        local_count = len(local_store)
+            # Access the internal store directly (query_local with empty string
+            # returns [] because _query_relevance returns 0.0 for empty query).
+            local_store = self._graph._local_stores.get(agent_id, {})
+            local_count = len(local_store)
 
-        # Hive facts
-        hive_count = self._graph.get_stats()["hive_facts"]
+            # Hive facts
+            hive_count = self._graph.get_stats()["hive_facts"]
 
-        # Gossip facts
-        proto = self._gossip_protocols.get(agent_id)
-        gossip_total = proto.fact_count if proto else 0
-        gossip_local = proto.local_fact_count if proto else 0
-        gossip_received = gossip_total - gossip_local
+            # Gossip facts
+            proto = self._gossip_protocols.get(agent_id)
+            gossip_total = proto.fact_count if proto else 0
+            gossip_local = proto.local_fact_count if proto else 0
+            gossip_received = gossip_total - gossip_local
 
-        return {
-            "agent_id": agent_id,
-            "local_facts": local_count,
-            "hive_facts_available": hive_count,
-            "gossip_facts_total": gossip_total,
-            "gossip_facts_local": gossip_local,
-            "gossip_facts_received": gossip_received,
-            "learning_round": self._round_counters.get(agent_id, 0),
-        }
+            return {
+                "agent_id": agent_id,
+                "local_facts": local_count,
+                "hive_facts_available": hive_count,
+                "gossip_facts_total": gossip_total,
+                "gossip_facts_local": gossip_local,
+                "gossip_facts_received": gossip_received,
+                "learning_round": self._round_counters.get(agent_id, 0),
+            }
 
     # ------------------------------------------------------------------
     # Internal helpers

@@ -16,7 +16,6 @@ Public API:
 
 from __future__ import annotations
 
-import hashlib
 import json
 import logging
 import time
@@ -27,6 +26,8 @@ from pathlib import Path
 from typing import Any
 
 import kuzu
+
+from ._utils import content_hash
 
 logger = logging.getLogger(__name__)
 
@@ -75,8 +76,11 @@ class SharedFact:
 
 
 def _content_hash(content: str) -> str:
-    """Compute SHA-256 hash of content for dedup."""
-    return hashlib.sha256(content.strip().lower().encode()).hexdigest()
+    """Compute SHA-256 hash of content for dedup.
+
+    Delegates to the shared content_hash in _utils for consistency.
+    """
+    return content_hash(content)
 
 
 def _new_id(prefix: str = "hive") -> str:
