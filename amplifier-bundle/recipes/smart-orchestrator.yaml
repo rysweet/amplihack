@@ -80,7 +80,7 @@ steps:
           echo "Set AMPLIHACK_HOME to your amplihack repo root, or run from within the repo." >&2
           exit 1
       fi
-      DECOMP_JSON={{decomposition_json}}
+      DECOMP_JSON='{{decomposition_json}}'
       export DECOMP_JSON HELPER_PATH
       python3 - <<'PYEOF'
       import sys, json, os, importlib.util
@@ -93,12 +93,19 @@ steps:
       obj = h.extract_json(decomp_json)
 
       if not obj:
-          print(
-              "WARNING: Could not parse decomposition JSON from architect agent response.",
-              "Defaulting to: task_type=Development, workstream_count=1.",
-              "The goal specification may be incomplete. Consider re-running /dev.",
-              sep="\n", file=sys.stderr
+          msg = (
+              "\n"
+              "╔══════════════════════════════════════════════════════════════════╗\n"
+              "║  WARNING: decomposition JSON parse failed                        ║\n"
+              "║  The architect agent returned non-JSON prose instead of the      ║\n"
+              "║  expected structured plan. Defaulting to:                        ║\n"
+              "║    task_type=Development, workstream_count=1 (no goal spec).     ║\n"
+              "║  The goal specification will be EMPTY — execution quality may    ║\n"
+              "║  be degraded. Consider re-running /dev if results are wrong.     ║\n"
+              "╚══════════════════════════════════════════════════════════════════╝\n"
           )
+          print(msg, file=sys.stderr)
+          print(msg)  # also print to stdout so recipe runner captures it visibly
 
       task_type = h.normalise_type(obj.get("task_type", "Development"))
       count = max(1, len(obj.get("workstreams", [{}])))
@@ -110,20 +117,20 @@ steps:
   - id: "extract-task-type"
     type: "bash"
     command: |
-      echo {{parse_output}} | grep '^task_type=' | cut -d= -f2 || echo 'Development'
+      echo '{{parse_output}}' | grep '^task_type=' | cut -d= -f2 || echo 'Development'
     output: "task_type"
 
   - id: "extract-workstream-count"
     type: "bash"
     command: |
-      echo {{parse_output}} | grep '^workstream_count=' | cut -d= -f2 || echo '1'
+      echo '{{parse_output}}' | grep '^workstream_count=' | cut -d= -f2 || echo '1'
     output: "workstream_count"
 
   - id: "announce-classification"
     type: "bash"
     command: |
-      TASK_TYPE={{task_type}}
-      WS_COUNT={{workstream_count}}
+      TASK_TYPE='{{task_type}}'
+      WS_COUNT='{{workstream_count}}'
       echo ""
       echo "[dev-orchestrator] Classified as: $TASK_TYPE | Workstreams: $WS_COUNT — starting execution..."
       # Set workflow-active semaphore so the hook skips injection during execution
@@ -226,7 +233,7 @@ steps:
     type: "bash"
     condition: "'Development' in task_type or 'Investigation' in task_type"
     command: |
-      SESSION_JSON={{session_info}}
+      SESSION_JSON='{{session_info}}'
       SESSION_STATUS=$(echo "$SESSION_JSON" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print(d.get('status','ok'))")
 
       if [ "$SESSION_STATUS" = "ok" ] || [ "$SESSION_STATUS" = "no_tree_script" ]; then
@@ -278,7 +285,7 @@ steps:
           echo "Set AMPLIHACK_HOME to your amplihack repo root, or run from within the repo." >&2
           exit 1
       fi
-      DECOMP_JSON={{decomposition_json}}
+      DECOMP_JSON='{{decomposition_json}}'
       export DECOMP_JSON HELPER_PATH
       python3 - <<'PYEOF'
       import json, os, re, tempfile, sys
@@ -309,9 +316,9 @@ steps:
     condition: |
       ('Development' in task_type or 'Investigation' in task_type) and int(str(workstream_count).strip() or '1') > 1 and 'ALLOWED' in recursion_guard and force_single_workstream != 'true'
     command: |
-      REPO_PATH={{repo_path}}
-      WS_FILE={{workstreams_file}}
-      SESSION_JSON={{session_info}}
+      REPO_PATH='{{repo_path}}'
+      WS_FILE='{{workstreams_file}}'
+      SESSION_JSON='{{session_info}}'
       # Parse tree_id and depth in one Python subprocess
       read -r TREE_ID SESSION_DEPTH < <(echo "$SESSION_JSON" | python3 - <<'PYEOF'
       import sys, json
@@ -357,7 +364,7 @@ steps:
     condition: |
       ('Development' in task_type or 'Investigation' in task_type) and 'BLOCKED' in recursion_guard and int(str(workstream_count).strip() or '1') > 1
     command: |
-      GUARD_STATE={{recursion_guard}}
+      GUARD_STATE='{{recursion_guard}}'
       echo ""
       echo "NOTE: Parallel workstream spawning is unavailable."
       echo "  Reason: $GUARD_STATE"
@@ -395,7 +402,7 @@ steps:
   - id: "cleanup-helper"
     type: "bash"
     command: |
-      WS_FILE={{workstreams_file}}
+      WS_FILE='{{workstreams_file}}'
       [ -f "$WS_FILE" ] && rm -f "$WS_FILE"
       echo "ok"
     output: "cleanup_status"
@@ -531,7 +538,7 @@ steps:
   - id: "complete-session"
     type: "bash"
     command: |
-      SESSION_JSON={{session_info}}
+      SESSION_JSON='{{session_info}}'
       # Parse all fields in one Python subprocess
       read -r SESSION_ID TREE_ID STATUS < <(echo "$SESSION_JSON" | python3 - <<'PYEOF'
       import sys, json
