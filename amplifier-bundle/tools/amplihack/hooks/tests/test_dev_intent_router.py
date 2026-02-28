@@ -22,6 +22,8 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from dev_intent_router import (
     _MIN_PROMPT_LENGTH,
     _ROUTING_PROMPT,
+    _TEMPLATE_DIR,
+    _load_routing_prompt,
     clear_workflow_active,
     disable_auto_dev,
     enable_auto_dev,
@@ -296,11 +298,11 @@ class TestRoutingPromptContent(unittest.TestCase):
 
     def test_contains_investigate_category(self):
         self.assertIn("INVESTIGATE", _ROUTING_PROMPT)
-        self.assertIn("INVESTIGATION_WORKFLOW", _ROUTING_PROMPT)
+        self.assertIn("dev-orchestrator", _ROUTING_PROMPT)
 
     def test_contains_hybrid_category(self):
         self.assertIn("HYBRID", _ROUTING_PROMPT)
-        self.assertIn("parallel workstreams", _ROUTING_PROMPT)
+        self.assertIn("Investigate/understand THEN implement/fix", _ROUTING_PROMPT)
 
     def test_contains_qa_category(self):
         self.assertIn("Q&A", _ROUTING_PROMPT)
@@ -316,37 +318,59 @@ class TestRoutingPromptContent(unittest.TestCase):
 
     def test_contains_system_reminder_tags(self):
         self.assertTrue(_ROUTING_PROMPT.startswith("<system-reminder"))
-        self.assertTrue(_ROUTING_PROMPT.endswith("</system-reminder>"))
+        self.assertTrue(_ROUTING_PROMPT.strip().endswith("</system-reminder>"))
 
     def test_mentions_key_disambiguation_examples(self):
         self.assertIn("make sure it works", _ROUTING_PROMPT)
         self.assertIn("write docs", _ROUTING_PROMPT)
-        self.assertIn("tests are failing", _ROUTING_PROMPT)
         self.assertIn("review this PR", _ROUTING_PROMPT)
         self.assertIn("run tests", _ROUTING_PROMPT)
+        self.assertIn("what is OAuth?", _ROUTING_PROMPT)
 
     def test_prompt_is_concise(self):
-        # Raised from 1900 to 2700 after adding mandatory code-edit rule,
-        # deceptive examples, and "when in doubt choose DEV" guidance.
-        self.assertLess(len(_ROUTING_PROMPT), 2700)
-
-    def test_contains_mandatory_code_edit_rule(self):
-        """Verify the mandatory rule that code file edits are always DEV."""
-        self.assertIn("Code File Edits Are ALWAYS DEV", _ROUTING_PROMPT)
-        self.assertIn("never Q&A or OPS", _ROUTING_PROMPT)
-
-    def test_contains_deceptive_examples(self):
-        """Verify deceptive 'trivial edit' examples route to DEV."""
-        self.assertIn("change the default model", _ROUTING_PROMPT)
-        self.assertIn("update a config value", _ROUTING_PROMPT)
-        self.assertIn("just change one line", _ROUTING_PROMPT)
-
-    def test_contains_when_in_doubt_rule(self):
-        """Verify 'when in doubt choose DEV' guidance is present."""
-        self.assertIn("When in doubt, choose DEV", _ROUTING_PROMPT)
+# New prompt is longer due to MANDATORY RULE section for code/docs changes
+        self.assertLess(len(_ROUTING_PROMPT), 2500)
 
     def test_auto_routed_announcement(self):
         self.assertIn("[auto-routed]", _ROUTING_PROMPT)
+
+    def test_contains_mandatory_code_edit_rule(self):
+        """The prompt must enforce that ALL file changes use DEV workflow."""
+        self.assertIn("MANDATORY RULE", _ROUTING_PROMPT)
+        self.assertIn("ALWAYS DEV", _ROUTING_PROMPT)
+        self.assertIn("NO exceptions", _ROUTING_PROMPT)
+
+    def test_routing_prompt_is_not_empty(self):
+        """The prompt must load from external template file successfully."""
+        self.assertTrue(len(_ROUTING_PROMPT) > 0, "Routing prompt should not be empty")
+
+
+class TestRoutingPromptFileLoading(unittest.TestCase):
+    """Verify the prompt loads from external template file correctly."""
+
+    def test_template_file_exists(self):
+        """The routing_prompt.txt template file must exist."""
+        prompt_file = _TEMPLATE_DIR / "routing_prompt.txt"
+        self.assertTrue(prompt_file.exists(), f"Template file not found: {prompt_file}")
+
+    def test_template_loads_matching_content(self):
+        """The loaded prompt must match the file content."""
+        prompt_file = _TEMPLATE_DIR / "routing_prompt.txt"
+        file_content = prompt_file.read_text()
+        loaded = _load_routing_prompt()
+        self.assertEqual(loaded, file_content)
+
+    def test_load_handles_missing_file(self):
+        """_load_routing_prompt returns empty string when template file is missing."""
+        import dev_intent_router
+
+        saved = dev_intent_router._TEMPLATE_DIR
+        try:
+            dev_intent_router._TEMPLATE_DIR = Path("/nonexistent/path")
+            result = dev_intent_router._load_routing_prompt()
+            self.assertEqual(result, "")
+        finally:
+            dev_intent_router._TEMPLATE_DIR = saved
 
 
 class TestWorkflowActiveSemaphore(unittest.TestCase):
