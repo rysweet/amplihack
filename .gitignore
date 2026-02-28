@@ -169,6 +169,7 @@ secrets.yml
 # Git worktrees (keep README.md only)
 worktrees/*
 !worktrees/README.md
+.claude/worktrees/
 wave16-dedup/
 wave17-dedup/
 wave*-dedup/
