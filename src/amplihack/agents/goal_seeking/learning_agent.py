@@ -844,6 +844,29 @@ Rules:
                     }
                 )
 
+        # Conflicting/contradicting topic queries: use SUPERSEDES edges
+        if any(kw in q_lower for kw in ("conflict", "contradict", "disagree", "different sources")):
+            if hasattr(self.memory, "execute_aggregation"):
+                superseded = self.memory.execute_aggregation("list_superseded")
+                if superseded.get("items"):
+                    topics = list(set(superseded["items"]))
+                    results.append(
+                        {
+                            "context": "Meta-memory: Conflicting topics",
+                            "outcome": f"Topics with conflicting/updated information: {', '.join(topics[:20])}",
+                            "confidence": 1.0,
+                            "timestamp": "",
+                            "tags": ["meta_memory", "contradictions"],
+                            "metadata": {"aggregation": True},
+                        }
+                    )
+
+        # CVE/incident cross-reference queries: search for CVE patterns
+        if "cve" in q_lower or "vulnerabilit" in q_lower:
+            cve_facts = self.memory.search(query="CVE incident", limit=50) if hasattr(self.memory, "search") else []
+            if cve_facts:
+                results.extend(cve_facts)
+
         # General aggregation: count all entities and concepts
         if not results:
             entity_agg = self.memory.execute_aggregation("list_entities")
