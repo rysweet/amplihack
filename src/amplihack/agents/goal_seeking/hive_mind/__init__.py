@@ -18,21 +18,24 @@ Public API (the "studs"):
 __all__: list[str] = []
 
 # Shared blackboard module (Experiment 1)
-from .blackboard import (
-    HiveMemoryBridge,
-    HiveMemoryStore,
-    HiveRetrieval,
-    MultiAgentHive,
-    SharedFact,
-)
+try:
+    from .blackboard import (
+        HiveMemoryBridge,
+        HiveMemoryStore,
+        HiveRetrieval,
+        MultiAgentHive,
+        SharedFact,
+    )
 
-__all__ += [
-    "HiveMemoryStore",
-    "HiveMemoryBridge",
-    "HiveRetrieval",
-    "MultiAgentHive",
-    "SharedFact",
-]
+    __all__ += [
+        "HiveMemoryStore",
+        "HiveMemoryBridge",
+        "HiveRetrieval",
+        "MultiAgentHive",
+        "SharedFact",
+    ]
+except ImportError:
+    pass
 
 # Event-sourced module (Experiment 2)
 try:
@@ -108,6 +111,26 @@ try:
         "HiveMindAgent",
         "HiveMindConfig",
         "UnifiedHiveMind",
+    ]
+except ImportError:
+    pass
+
+# Learning Agent Bridge (Experiment 6 - Integration)
+try:
+    from .learning_agent_bridge import (
+        AgentConfig,
+        HiveAwareLearningAgent,
+        HiveAwareMemoryAdapter,
+        HiveBridgeConfig,
+        create_hive_swarm,
+    )
+
+    __all__ += [
+        "AgentConfig",
+        "HiveAwareLearningAgent",
+        "HiveAwareMemoryAdapter",
+        "HiveBridgeConfig",
+        "create_hive_swarm",
     ]
 except ImportError:
     pass

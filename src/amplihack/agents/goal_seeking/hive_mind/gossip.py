@@ -17,13 +17,14 @@ Public API (the "studs"):
 
 from __future__ import annotations
 
-import hashlib
 import logging
 import random
 import threading
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
+
+from ._utils import content_hash
 
 logger = logging.getLogger(__name__)
 
@@ -87,16 +88,7 @@ class GossipMessage:
     round_number: int
 
 
-def content_hash(text: str) -> str:
-    """Compute SHA-256 hash of fact text for deduplication.
-
-    Args:
-        text: The fact text to hash.
-
-    Returns:
-        Hex-encoded SHA-256 digest.
-    """
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+# content_hash is imported from ._utils and re-exported for backward compatibility
 
 
 class GossipProtocol:
@@ -379,6 +371,18 @@ class GossipProtocol:
         for msg in messages:
             total_new += self.receive_gossip(msg)
         return total_new
+
+    def is_local_fact(self, fact_id: str) -> bool:
+        """Check if a fact originated locally (not received via gossip).
+
+        Args:
+            fact_id: The fact's content hash identifier.
+
+        Returns:
+            True if the fact was created locally by this agent.
+        """
+        with self._lock:
+            return fact_id in self._local_fact_ids
 
     def get_all_facts(self) -> list[GossipFact]:
         """Return all known facts.
@@ -735,10 +739,7 @@ class GossipMemoryAdapter:
 
         for gf in all_facts:
             # Skip locally-originated facts (already in memory)
-            with self.protocol._lock:
-                is_local = gf.fact_id in self.protocol._local_fact_ids
-
-            if is_local:
+            if self.protocol.is_local_fact(gf.fact_id):
                 continue
 
             # Parse context from "[Context] fact" format
