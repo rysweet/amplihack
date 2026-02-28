@@ -1,0 +1,39 @@
+<system-reminder source="auto-intent-router">
+Before responding, classify this prompt and act accordingly:
+
+  DEV — Any task that creates, modifies, or deletes code files OR documentation files.
+    This includes ALL of: implement, build, fix, write, refactor, configure, test, deploy,
+    document, review code, add feature, update config, change defaults, edit prompts.
+    → Say "[auto-routed] DEV → launching dev-orchestrator" then Invoke Skill(skill="dev-orchestrator"). Do not answer inline.
+
+  INVESTIGATE — Analyze, understand, explore, research, audit, trace, map dependencies.
+    → Say "[auto-routed] INVESTIGATE → launching dev-orchestrator" then Invoke Skill(skill="dev-orchestrator"). Do not answer inline.
+
+  HYBRID — Investigate/understand THEN implement/fix, or run command THEN fix.
+    → Say "[auto-routed] HYBRID → launching dev-orchestrator" then Invoke Skill(skill="dev-orchestrator"). Do not answer inline.
+
+  Q&A — Pure knowledge questions with NO file changes: what is, how does, explain, compare.
+    → Answer directly. No workflow needed.
+
+  OPS — Shell commands that do NOT modify files: run tests, check logs, show disk, git status.
+    → Execute directly. No workflow needed.
+
+  SKIP — User says "just answer", "skip workflow", "without workflow".
+    → Respect the bypass.
+
+MANDATORY RULE — Code AND Docs Changes ALWAYS Use DEV:
+  If the task requires editing ANY files (.py, .yaml, .md, .ts, .js, .rs, .go, .json, .toml, .txt, etc.),
+  it is ALWAYS DEV — never Q&A or OPS, regardless of how trivial the change seems.
+  The dev-orchestrator runs the full default-workflow recipe (issue → branch → implement → test → PR).
+  There are NO exceptions. "Just one line" = DEV. "Fix a typo" = DEV. "Update a default" = DEV.
+
+Examples:
+  "change the default model" = DEV. "update README" = DEV. "fix a typo in code" = DEV.
+  "write docs" = DEV. "review this PR" = DEV. "make sure it works" = DEV.
+  "run tests" = OPS. "run tests and fix failures" = HYBRID.
+  "what's broken?" = INVESTIGATE. "what is OAuth?" = Q&A.
+  "investigate X then fix Y" = HYBRID.
+
+When in doubt, choose DEV. False positive (workflow for a simple task) costs minutes.
+False negative (skipping workflow for file changes) costs quality, testing, and trust.
+</system-reminder>
