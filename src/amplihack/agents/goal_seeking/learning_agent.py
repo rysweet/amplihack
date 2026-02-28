@@ -27,9 +27,26 @@ from .agentic_loop import AgenticLoop, ReasoningTrace
 from .cognitive_adapter import HAS_COGNITIVE_MEMORY, CognitiveAdapter
 from .flat_retriever_adapter import FlatRetrieverAdapter
 from .memory_retrieval import MemoryRetriever
+from .prompts import load_prompt, render_prompt
 from .similarity import rerank_facts_by_query
 
 logger = logging.getLogger(__name__)
+
+
+def _load_prompt(name: str, **kwargs: str) -> str:
+    """Load a prompt template from prompts/{name}.md and substitute placeholders.
+
+    Uses {{variable}} double-brace syntax so that literal JSON braces in
+    the prompt templates are preserved.
+
+    Args:
+        name: Prompt file name without .md extension
+        **kwargs: Values to substitute for {{variable}} placeholders
+
+    Returns:
+        Rendered prompt string
+    """
+    return render_prompt(name, **kwargs)
 
 
 class LearningAgent:
@@ -270,22 +287,14 @@ class LearningAgent:
             f"- [{f.get('context', 'General')}] {f.get('fact', '')}" for f in facts[:15]
         )
 
-        prompt = f"""Given these extracted facts, create a brief summary of the topics covered.
-List the main themes/categories and how they relate to each other.
-
-Facts:
-{fact_list}
-
-Return a concise summary (2-4 sentences) describing what topics this content covers
-and how they connect. Format: "This content covers: 1) ..., 2) ..., 3) ..."
-"""
+        prompt = _load_prompt("concept_map_user", fact_list=fact_list)
         try:
             response = litellm.completion(
                 model=self.model,
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are a knowledge organizer. Create brief, clear summaries.",
+                        "content": load_prompt("concept_map_system"),
                     },
                     {"role": "user", "content": prompt},
                 ],
@@ -324,25 +333,12 @@ and how they connect. Format: "This content covers: 1) ..., 2) ..., 3) ..."
                 - temporal_order: Ordering label (e.g., "Day 7", "February 13")
                 - temporal_index: Numeric index for sorting (e.g., 7 for Day 7)
         """
-        prompt = f"""Analyze this content for temporal markers (dates, day numbers, time references).
-Extract any date or time ordering information.
-
-Content (first 500 chars):
-{content[:500]}
-
-Return ONLY a JSON object:
-{{"source_date": "YYYY-MM-DD or empty string", "temporal_order": "brief label like Day 7 or February 13 or empty string", "temporal_index": 0}}
-
-Rules:
-- source_date: The primary date mentioned (ISO format YYYY-MM-DD), or "" if none
-- temporal_order: A brief label for ordering (e.g., "Day 7", "After Day 9"), or "" if none
-- temporal_index: A numeric value for chronological sorting (e.g., day number 7, 9, 10), or 0 if none
-"""
+        prompt = _load_prompt("temporal_detection_user", content=content[:500])
         try:
             response = litellm.completion(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "Extract temporal metadata as JSON. Be precise."},
+                    {"role": "system", "content": load_prompt("temporal_detection_system")},
                     {"role": "user", "content": prompt},
                 ],
                 temperature=0.0,
@@ -863,7 +859,11 @@ Rules:
 
         # CVE/incident cross-reference queries: search for CVE patterns
         if "cve" in q_lower or "vulnerabilit" in q_lower:
-            cve_facts = self.memory.search(query="CVE incident", limit=50) if hasattr(self.memory, "search") else []
+            cve_facts = (
+                self.memory.search(query="CVE incident", limit=50)
+                if hasattr(self.memory, "search")
+                else []
+            )
             if cve_facts:
                 results.extend(cve_facts)
 
@@ -1363,46 +1363,7 @@ Rules:
                 - needs_temporal: bool
                 - reasoning: str
         """
-        prompt = f"""Classify this question. Does it require:
-(a) simple recall - direct fact lookup
-(b) mathematical computation - arithmetic, counting, differences
-(c) temporal comparison/ordering - comparing values across time periods, tracking changes, describing trends
-(d) multi-source synthesis - combining information from different sources
-(e) contradiction resolution - handling conflicting information
-(f) incremental update - finding the MOST RECENT or UPDATED information. Use this when the question asks about a SINGLE entity's current state or history (keywords: "how many now", "current", "latest", "updated", "changed", "how did X change", "trajectory", "complete history", "describe X's achievement/record/progress")
-(g) causal_counterfactual - reasoning about causes, root causes, "why did X happen", OR hypothetical/counterfactual scenarios like "what if X", "if X had not happened", "without X", "would X still", "in a world where". These questions require reasoning from known facts to explore causes or alternate scenarios - they are NOT simple recall even though they may involve hypotheticals not in the data.
-(h) ratio_trend_analysis - computing ratios or percentages AND analyzing whether they improve or worsen over time. Use when the question asks about "ratio", "rate", "per", "trend", "improving vs worsening"
-(i) meta_memory - questions ABOUT the knowledge itself: "how many projects", "list all people", "count the teams", "what topics do you know about". These ask about the STRUCTURE or QUANTITY of stored knowledge, not about specific facts.
-
-FEW-SHOT EXAMPLES:
-Q: "Which country's individual athletes won the most medals mentioned in the athlete achievements article?"
-A: {{"intent": "multi_source_synthesis", "needs_math": false, "needs_temporal": false, "reasoning": "Asks about individuals from a specific article - needs source-specific synthesis"}}
-
-Q: "How many medals did Norway win between Day 7 and Day 9?"
-A: {{"intent": "temporal_comparison", "needs_math": true, "needs_temporal": true, "reasoning": "Requires comparing numbers across time periods"}}
-
-Q: "What caused Italy to improve from 3 golds in 2018 to 8 golds in 2026?"
-A: {{"intent": "causal_counterfactual", "needs_math": false, "needs_temporal": false, "reasoning": "Asks about causal chain of events"}}
-
-Q: "Which framework has the best bug-fix-to-feature ratio trend?"
-A: {{"intent": "ratio_trend_analysis", "needs_math": true, "needs_temporal": true, "reasoning": "Requires computing ratios and analyzing trend direction"}}
-
-Q: "How does Italy's 2026 gold medal performance compare to their previous best?"
-A: {{"intent": "multi_source_synthesis", "needs_math": false, "needs_temporal": false, "reasoning": "Comparing performance across sources/events, not computing temporal differences"}}
-
-Q: "How many projects are being tracked?"
-A: {{"intent": "meta_memory", "needs_math": false, "needs_temporal": false, "math_type": "none", "reasoning": "Asks about the count of stored entities, not about specific project details"}}
-
-Q: "List all team members you know about."
-A: {{"intent": "meta_memory", "needs_math": false, "needs_temporal": false, "math_type": "none", "reasoning": "Asks for enumeration of stored knowledge, not specific facts"}}
-
-Q: "By what percentage did the estimate exceed the actual cost?"
-A: {{"intent": "mathematical_computation", "needs_math": true, "needs_temporal": false, "math_type": "percentage", "reasoning": "Requires computing a percentage difference between two values"}}
-
-Question: {question}
-
-Return ONLY a JSON object:
-{{"intent": "one of: simple_recall, mathematical_computation, temporal_comparison, multi_source_synthesis, contradiction_resolution, incremental_update, causal_counterfactual, ratio_trend_analysis, meta_memory", "needs_math": true/false, "needs_temporal": true/false, "math_type": "none|percentage|delta|ratio|comparison", "reasoning": "brief explanation"}}"""
+        prompt = _load_prompt("intent_classification_user", question=question)
 
         try:
             response = litellm.completion(
@@ -1410,7 +1371,7 @@ Return ONLY a JSON object:
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are a question classifier. Return only JSON.",
+                        "content": load_prompt("intent_classification_system"),
                     },
                     {"role": "user", "content": prompt},
                 ],
@@ -1525,29 +1486,12 @@ Return ONLY a JSON object:
         math_type = intent.get("math_type", "none")
         facts_text = "\n".join(f"- {f.get('outcome', f.get('fact', ''))}" for f in facts[:120])
 
-        prompt = f"""Extract the numbers needed to answer this math question.
-
-Question: {question}
-Math type: {math_type}
-
-Facts:
-{facts_text}
-
-Return ONLY a JSON object:
-{{
-  "numbers": {{"label1": number1, "label2": number2}},
-  "expression": "arithmetic expression using the numbers (e.g., '(2.3 - 2.0) / 2.0 * 100')",
-  "description": "brief description of what the expression computes"
-}}
-
-Rules:
-- Use ONLY numbers that appear explicitly in the facts
-- For percentage: (new - old) / old * 100
-- For delta: new - old
-- For ratio: numerator / denominator
-- For comparison: list the values being compared
-- The expression must use ONLY digits, +, -, *, /, parentheses, and decimal points
-- If you cannot find the needed numbers, return {{"numbers": {{}}, "expression": "", "description": "insufficient data"}}"""
+        prompt = _load_prompt(
+            "number_extraction_user",
+            question=question,
+            math_type=math_type,
+            facts_text=facts_text,
+        )
 
         try:
             response = litellm.completion(
@@ -1555,7 +1499,7 @@ Rules:
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are a precise number extractor. Return only JSON.",
+                        "content": load_prompt("number_extraction_system"),
                     },
                     {"role": "user", "content": prompt},
                 ],
@@ -1612,12 +1556,7 @@ Rules:
         Returns:
             Merged list of facts (existing + newly found), deduplicated by experience_id.
         """
-        prompt = f"""Generate 3-5 short search phrases to find facts relevant to this question.
-Each phrase should be a different angle or keyword combination.
-
-Question: {question}
-
-Return ONLY a JSON array of strings, e.g.: ["phrase 1", "phrase 2", "phrase 3"]"""
+        prompt = _load_prompt("keyword_expansion_user", question=question)
 
         try:
             response = litellm.completion(
@@ -1625,7 +1564,7 @@ Return ONLY a JSON array of strings, e.g.: ["phrase 1", "phrase 2", "phrase 3"]"
                 messages=[
                     {
                         "role": "system",
-                        "content": "You generate search keywords. Return only a JSON array.",
+                        "content": load_prompt("keyword_expansion_system"),
                     },
                     {"role": "user", "content": prompt},
                 ],
@@ -1724,38 +1663,18 @@ Return ONLY a JSON array of strings, e.g.: ["phrase 1", "phrase 2", "phrase 3"]"
                 "4. Preserve the EXACT commands mentioned (e.g., 'flutter pub get', not just 'install deps')\n"
             )
 
-        prompt = f"""Extract key facts from this content. For each fact, provide:
-1. Context (what topic it relates to)
-2. The fact itself (MUST include specific names, numbers, and entities)
-3. Confidence (0.0-1.0)
-4. Tags (relevant keywords)
-
-CRITICAL RULES for fact extraction:
-- Each NAMED PERSON must appear in at least one fact with their FULL NAME and COUNTRY
-- Each SPECIFIC NUMBER must be preserved exactly (medals, dates, records)
-- Extract ONE FACT PER PERSON mentioned, even if brief
-- Never summarize multiple people as "various athletes" - name them individually
-{temporal_hint}{procedural_hint}
-
-Content:
-{content[:2000]}
-
-Respond with a JSON list like:
-[
-  {{
-    "context": "Topic name",
-    "fact": "The fact itself",
-    "confidence": 0.9,
-    "tags": ["tag1", "tag2"]
-  }}
-]
-"""
+        prompt = _load_prompt(
+            "fact_extraction_user",
+            temporal_hint=temporal_hint,
+            procedural_hint=procedural_hint,
+            content=content[:2000],
+        )
 
         try:
             response = litellm.completion(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "You are a fact extraction expert."},
+                    {"role": "system", "content": load_prompt("fact_extraction_system")},
                     {"role": "user", "content": prompt},
                 ],
                 temperature=0.3,
@@ -1909,6 +1828,8 @@ Respond with a JSON list like:
                 "Scan ALL facts below (including summaries) to enumerate every distinct item.\n"
                 "List each one by name. Do NOT stop at the first few facts.\n"
                 "Read EVERY fact before answering. Count precisely -- do NOT estimate.\n"
+                "IMPORTANT: When asked to LIST or ENUMERATE items, include EVERY item from "
+                "the facts. Do not summarize or skip any. Count them explicitly.\n"
             ),
             "temporal_comparison": (
                 "\n\nIMPORTANT - TEMPORAL COMPARISON:\n"
@@ -1916,6 +1837,51 @@ Respond with a JSON list like:
                 "State what changed from the previous value and by how much.\n"
             ),
         }
+
+        # Detect incident-tracking questions (CVEs, APTs, timeline events)
+        _incident_cues = (
+            "incident",
+            "cve-",
+            "cve ",
+            "apt-",
+            "apt ",
+            "breach",
+            "attack",
+            "vulnerability",
+            "timeline",
+            "forensic",
+        )
+        if any(cue in question_lower for cue in _incident_cues):
+            extra_instructions += (
+                "\n\nIMPORTANT - INCIDENT TRACKING:\n"
+                "For incident questions: include ALL related details - CVEs, timeline events, "
+                "APT attributions, affected systems. Cross-reference between incidents when "
+                "relevant.\n"
+                "List each CVE, each affected system, and each timeline event separately.\n"
+                "Do NOT omit any cross-referenced details even if they seem tangential.\n"
+            )
+
+        # Detect multi-hop reasoning questions (multiple entities needing connection)
+        _multi_hop_cues = (
+            "how are",
+            "relationship between",
+            "connect",
+            "in common",
+            "relate to",
+            "link between",
+            "both",
+            "and also",
+        )
+        if any(cue in question_lower for cue in _multi_hop_cues):
+            extra_instructions += (
+                "\n\nIMPORTANT - MULTI-HOP REASONING:\n"
+                "For questions mentioning multiple entities: address EACH entity separately, "
+                "then explain the CONNECTION between them. Do not skip any entity mentioned "
+                "in the question.\n"
+                "Step 1: Identify ALL entities referenced in the question.\n"
+                "Step 2: State what you know about EACH entity individually.\n"
+                "Step 3: Explain the relationship or connection between them.\n"
+            )
 
         if is_complex_intent and intent_type in _category_instructions:
             extra_instructions += _category_instructions[intent_type]
@@ -2271,18 +2237,24 @@ Knowledge Overview (what was learned):
                 "Label each. Show each arithmetic step. Double-check result.\n"
             )
 
-        prompt = f"""Answer this question using the provided facts.
-
-Question: {question}
-Level: {question_level} - {instruction}
-{extra_instructions}{contradiction_instructions}{counterfactual_instructions}{ratio_trend_instructions}{novel_skill_instructions}{cross_ref_instructions}{adversarial_instructions}{aggregation_instructions}{numerical_instructions}
-{summary_section}
-{source_specific_section}
-{context_str}
-
-Answer DIRECTLY based on the facts. You have the information needed.
-Do NOT say "I don't have enough information" unless zero relevant facts exist above.
-"""
+        prompt = _load_prompt(
+            "synthesis_user",
+            question=question,
+            question_level=question_level,
+            instruction=instruction,
+            extra_instructions=extra_instructions,
+            contradiction_instructions=contradiction_instructions,
+            counterfactual_instructions=counterfactual_instructions,
+            ratio_trend_instructions=ratio_trend_instructions,
+            novel_skill_instructions=novel_skill_instructions,
+            cross_ref_instructions=cross_ref_instructions,
+            adversarial_instructions=adversarial_instructions,
+            aggregation_instructions=aggregation_instructions,
+            numerical_instructions=numerical_instructions,
+            summary_section=summary_section,
+            source_specific_section=source_specific_section,
+            context_str=context_str,
+        )
 
         try:
             response = litellm.completion(
@@ -2290,9 +2262,7 @@ Do NOT say "I don't have enough information" unless zero relevant facts exist ab
                 messages=[
                     {
                         "role": "system",
-                        "content": "You are a knowledgeable assistant that synthesizes information from a knowledge base. "
-                        "Answer confidently and precisely. When doing math, show your work. "
-                        "Never say you cannot answer unless zero relevant facts exist.",
+                        "content": load_prompt("synthesis_system"),
                     },
                     {"role": "user", "content": prompt},
                 ],
@@ -2339,19 +2309,18 @@ Do NOT say "I don't have enough information" unless zero relevant facts exist ab
             "comprehensive": "Provide a comprehensive explanation covering all key aspects.",
         }
 
-        prompt = f"""Explain the topic '{topic}' using ONLY the facts below.
-{depth_instructions.get(depth, depth_instructions["overview"])}
-
-Available facts:
-{facts_text}
-
-Be factual and specific. Do not add information beyond what the facts support."""
+        prompt = _load_prompt(
+            "explanation_user",
+            topic=topic,
+            depth_instruction=depth_instructions.get(depth, depth_instructions["overview"]),
+            facts_text=facts_text,
+        )
 
         try:
             response = litellm.completion(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "You are a knowledgeable explainer."},
+                    {"role": "system", "content": load_prompt("explanation_system")},
                     {"role": "user", "content": prompt},
                 ],
                 temperature=0.3,
@@ -2396,13 +2365,7 @@ Be factual and specific. Do not add information beyond what the facts support.""
             for f in facts[:15]
         )
 
-        prompt = f"""Given these facts about '{topic}', what important information is MISSING?
-
-Facts:
-{facts_text}
-
-List 2-4 specific gaps (things we don't know but should).
-Return ONLY a JSON object: {{"gaps": ["gap1", "gap2"], "overall_coverage": "low/medium/high"}}"""
+        prompt = _load_prompt("knowledge_gaps_user", topic=topic, facts_text=facts_text)
 
         gaps = ["Unable to analyze gaps"]
         coverage = "unknown"
@@ -2410,7 +2373,7 @@ Return ONLY a JSON object: {{"gaps": ["gap1", "gap2"], "overall_coverage": "low/
             response = litellm.completion(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "Identify knowledge gaps. Return JSON."},
+                    {"role": "system", "content": load_prompt("knowledge_gaps_system")},
                     {"role": "user", "content": prompt},
                 ],
                 temperature=0.2,
@@ -2462,21 +2425,13 @@ Return ONLY a JSON object: {{"gaps": ["gap1", "gap2"], "overall_coverage": "low/
 
         facts_text = "\n".join(f"- {f.get('outcome', '')[:150]}" for f in related[:15])
 
-        prompt = f"""Verify this fact against the stored knowledge:
-
-Fact to verify: {fact}
-
-Stored knowledge:
-{facts_text}
-
-Is the fact consistent with stored knowledge? Return ONLY a JSON object:
-{{"verified": true/false, "confidence": 0.8, "supporting": ["fact1"], "contradicting": ["fact2"], "reasoning": "explanation"}}"""
+        prompt = _load_prompt("verify_fact_user", fact=fact, facts_text=facts_text)
 
         try:
             response = litellm.completion(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "Verify facts against knowledge. Return JSON."},
+                    {"role": "system", "content": load_prompt("verify_fact_system")},
                     {"role": "user", "content": prompt},
                 ],
                 temperature=0.1,
@@ -2698,23 +2653,13 @@ Is the fact consistent with stored knowledge? Return ONLY a JSON object:
             Dict with generated code and result
         """
         # Extract entity and field from question using LLM
-        prompt = f"""Extract the entity and field from this temporal question.
-
-Question: {question}
-
-Return ONLY a JSON object:
-{{"entity": "the entity name", "field": "the field/attribute being asked about"}}
-
-Examples:
-- "What WAS the Atlas deadline BEFORE the first change?" -> {{"entity": "Atlas", "field": "deadline"}}
-- "What was the original team size?" -> {{"entity": "team", "field": "size"}}
-- "Who led the project BEFORE the leadership change?" -> {{"entity": "project", "field": "leader"}}"""
+        prompt = _load_prompt("entity_field_extraction_user", question=question)
 
         try:
             response = litellm.completion(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "Extract entity and field. Return JSON."},
+                    {"role": "system", "content": load_prompt("entity_field_extraction_system")},
                     {"role": "user", "content": prompt},
                 ],
                 temperature=0.0,
