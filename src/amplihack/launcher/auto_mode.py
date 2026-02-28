@@ -174,6 +174,17 @@ class AutoMode:
         # JSON logger for structured event logging
         self.json_logger = JsonLogger(self.log_dir)
 
+        # Agent memory (optional -- degrades gracefully if unavailable)
+        self.memory = None
+        try:
+            from amplihack.launcher.agent_memory import AgentMemory
+
+            self.memory = AgentMemory.create(agent_name=f"auto_{sdk}")
+            if self.memory:
+                self.log("Memory system initialized")
+        except Exception:
+            pass  # Memory is optional
+
         # Create directories for prompt injection feature
         self.append_dir = self.log_dir / "append"
         self.appended_dir = self.log_dir / "appended"
@@ -1164,6 +1175,14 @@ Current Turn: {self.turn}/{self.max_turns}"""
 
         self.run_hook("session_start")
 
+        # Memory: store initial goal
+        if self.memory:
+            self.memory.store_goal(self.prompt)
+            # Inject past experiences into context
+            past_context = self.memory.recall_relevant(self.prompt)
+            if past_context:
+                self.log(f"Memory: recalled {past_context.count(chr(10))} past experiences")
+
         try:
             # Turn 1: Clarify objective
             self.turn = 1
@@ -1188,6 +1207,10 @@ User Request:
                 if self.ui_enabled and hasattr(self, "state"):
                     self.state.update_status("error")
                 return 1
+
+            # Memory: store clarified objective
+            if self.memory:
+                self.memory.store_objective(objective)
 
             # Turn 2: Create plan
             self.turn = 2
@@ -1224,6 +1247,10 @@ Objective:
                 if self.ui_enabled and hasattr(self, "state"):
                     self.state.update_status("error")
                 return 1
+
+            # Memory: store execution plan
+            if self.memory:
+                self.memory.store_plan(plan)
 
             # Turns 3+: Execute and evaluate
             for turn in range(3, self.max_turns + 1):
@@ -1262,6 +1289,10 @@ Current Turn: {turn}/{self.max_turns}"""
                 if code != 0:
                     self.log(f"Warning: Execution returned exit code {code}")
 
+                # Memory: store execution result
+                if self.memory:
+                    self.memory.store_turn_result(turn, execution_output)
+
                 # Evaluate
                 self.log(f"--- {self._progress_str('Evaluating')} Evaluate ---")
                 eval_prompt = f"""{self._build_philosophy_context()}
@@ -1287,6 +1318,10 @@ Objective:
 Current Turn: {turn}/{self.max_turns}"""
 
                 code, eval_result = self.run_sdk(eval_prompt)
+
+                # Memory: store evaluation
+                if self.memory:
+                    self.memory.store_evaluation(turn, eval_result)
 
                 # Calculate and log turn duration
                 turn_duration = time.time() - turn_start_time
@@ -1330,10 +1365,16 @@ Current Turn: {turn}/{self.max_turns}"""
             )
             if code == 0:
                 print(summary)
+                # Memory: store session learning
+                if self.memory:
+                    self.memory.store_learning(summary)
             else:
                 self.log(f"Warning: Summary generation failed (exit {code})")
 
         finally:
+            # Memory: cleanup
+            if self.memory:
+                self.memory.close()
             self.run_hook("stop")
 
         return 0
@@ -1363,6 +1404,10 @@ Current Turn: {turn}/{self.max_turns}"""
             self.log(f"Transformed prompt for temp staging (target: {self.original_cwd_from_env})")
 
         self.run_hook("session_start")
+
+        # Memory: store initial goal + recall past experiences
+        if self.memory:
+            self.memory.store_goal(self.prompt)
 
         # Initialize options for potential forking
         options = ClaudeAgentOptions(
@@ -1412,6 +1457,10 @@ User Request:
                 if self.ui_enabled and hasattr(self, "state"):
                     self.state.update_status("error")
                 return 1
+
+            # Memory: store clarified objective
+            if self.memory:
+                self.memory.store_objective(objective)
 
             # Turn 2: Create plan
             self.turn = 2
@@ -1464,6 +1513,10 @@ Objective:
                 if self.ui_enabled and hasattr(self, "state"):
                     self.state.update_status("error")
                 return 1
+
+            # Memory: store execution plan
+            if self.memory:
+                self.memory.store_plan(plan)
 
             # Turns 3+: Execute and evaluate
             for turn in range(3, self.max_turns + 1):
@@ -1539,6 +1592,10 @@ Current Turn: {turn}/{self.max_turns}"""
                 if code != 0:
                     self.log(f"Warning: Execution returned exit code {code}")
 
+                # Memory: store execution result
+                if self.memory:
+                    self.memory.store_turn_result(turn, execution_output)
+
                 # Evaluate
                 self.message_capture.set_phase(
                     "evaluating", self.turn
@@ -1547,6 +1604,10 @@ Current Turn: {turn}/{self.max_turns}"""
                 eval_prompt = self._build_evaluation_prompt(self.message_capture)
 
                 code, eval_result = await self._run_turn_with_retry(eval_prompt, max_retries=3)
+
+                # Memory: store evaluation
+                if self.memory:
+                    self.memory.store_evaluation(turn, eval_result)
 
                 # Calculate and log turn duration
                 turn_duration = time.time() - turn_start_time
@@ -1599,10 +1660,17 @@ Current Turn: {turn}/{self.max_turns}"""
             )
             if code == 0:
                 print(summary)
+                # Memory: store session learning
+                if self.memory:
+                    self.memory.store_learning(summary)
             else:
                 self.log(f"Warning: Summary generation failed (exit {code})")
 
         finally:
+            # Memory: cleanup
+            if self.memory:
+                self.memory.close()
+
             # Export session transcript before stop hook
             self._export_session_transcript()
 
