@@ -186,12 +186,14 @@ class TestRoutingPromptContent(unittest.TestCase):
         self.assertIn("make sure it works", _ROUTING_PROMPT)
         self.assertIn("write docs", _ROUTING_PROMPT)
         self.assertIn("tests are failing", _ROUTING_PROMPT)
+        self.assertIn("review this PR", _ROUTING_PROMPT)
+        self.assertIn("run tests", _ROUTING_PROMPT)
 
     def test_prompt_is_concise(self):
         """The routing prompt should not be excessively long."""
         self.assertLess(
             len(_ROUTING_PROMPT),
-            1500,
+            1700,
             "Routing prompt should be concise to minimize token overhead",
         )
 
