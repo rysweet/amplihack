@@ -145,10 +145,10 @@ For each session, you analyze the current terminal output and transcript to deci
 
 Your options:
 1. SEND_INPUT: Type text into the session to answer a question, provide guidance, or continue work
-2. WAIT: The agent is working fine, no intervention needed
+2. WAIT: The agent is working fine or actively thinking — no intervention needed
 3. ESCALATE: The situation needs human attention (complex decision, credentials needed, etc.)
 4. MARK_COMPLETE: The agent has finished its task (PR created, tests passing)
-5. RESTART: The agent is stuck or errored, kill and restart the session
+5. RESTART: The agent is genuinely stuck or errored after multiple attempts
 
 Respond in this exact JSON format:
 {
@@ -158,13 +158,19 @@ Respond in this exact JSON format:
   "confidence": 0.0 to 1.0
 }
 
+CRITICAL — Thinking Detection:
+- If status is "thinking", the agent is actively processing (LLM call or tool running). ALWAYS choose WAIT.
+- Claude Code shows "●" for active tool calls, "✻" for processing time, streaming "⎿" for output.
+- Copilot shows "Thinking..." or "Running:" for active work.
+- DO NOT interrupt a thinking agent. DO NOT mark a thinking agent as stuck.
+- A thinking agent may appear to have no new output for minutes — this is normal for complex reasoning.
+
 Guidelines:
 - If the agent is asking a question, answer it based on the task and project priorities
 - If the agent is waiting for permission (Y/n prompts), approve unless it's destructive
 - If the agent produced a PR and tests pass, mark as complete
-- If the agent has been showing the same output for a long time, consider restarting
 - If you need more context or the decision has high stakes, escalate to the human
-- NEVER approve destructive operations (force push, drop database, delete production)
+- NEVER approve destructive operations (force push, drop database, delete production data)
 - Prefer the simplest answer that keeps the agent moving forward
 - For coding questions, prefer quality over speed"""
 
@@ -206,8 +212,17 @@ class SessionReasoner:
         # 1. PERCEIVE
         context = self._gather_context(vm_name, session_name, task_prompt, project_priorities)
 
-        # 2. REASON
-        decision = self._reason(context)
+        # 2. REASON — fast-path: skip LLM call if agent is actively thinking
+        if context.agent_status == "thinking":
+            decision = SessionDecision(
+                session_name=session_name,
+                vm_name=vm_name,
+                action="wait",
+                reasoning="Agent is actively thinking/processing — do not interrupt",
+                confidence=1.0,
+            )
+        else:
+            decision = self._reason(context)
 
         # 3. ACT
         if self.dry_run:
@@ -365,21 +380,101 @@ echo '===END==='
                             context.pr_url = line[11:]
 
     def _infer_status(self, tmux_text: str) -> str:
-        """Quick status inference from tmux capture."""
-        last_lines = tmux_text.strip().split("\n")[-5:]
-        combined = "\n".join(last_lines).lower()
-        last_line = last_lines[-1].strip().lower() if last_lines else ""
+        """Infer agent status from tmux capture.
 
-        if any(p in combined for p in ["y/n]", "yes/no", "press", "enter", "?"]):
+        Critically distinguishes between:
+        - THINKING: Agent is actively processing (LLM call in flight, tool running)
+        - WAITING_INPUT: Agent needs user input to proceed
+        - IDLE: No agent running (bare shell prompt)
+        - RUNNING: Agent actively producing output
+        - ERROR/COMPLETED: Terminal states
+
+        Claude Code indicators:
+        - "●" (filled circle) = tool call in progress or result
+        - "✻" = processing/cooking indicator
+        - "⏵⏵" = status bar (present when Claude Code is active)
+        - "❯" at end of line = Claude Code prompt (idle within agent)
+        - Streaming "⎿" = tool output being written
+
+        Copilot CLI indicators:
+        - "Thinking..." or spinner characters
+        - "Running:" prefix for tool execution
+        """
+        last_lines = tmux_text.strip().split("\n")[-10:]
+        combined = "\n".join(last_lines)
+        combined_lower = combined.lower()
+        last_line = last_lines[-1].strip() if last_lines else ""
+        last_line_lower = last_line.lower()
+
+        # --- THINKING/WORKING detection (highest priority) ---
+        # Claude Code: filled circle means tool call active
+        # Check if the LAST substantial line has a tool indicator
+        for line in reversed(last_lines):
+            stripped = line.strip()
+            if not stripped:
+                continue
+            # Active tool call (Claude Code)
+            if stripped.startswith("●") and not stripped.startswith("● Bash("):
+                return "thinking"
+            # Tool is executing with output streaming
+            if stripped.startswith("⎿"):
+                return "thinking"
+            # Processing indicator
+            if "✻" in stripped and ("for" in stripped.lower() or "saut" in stripped.lower()):
+                return "thinking"
+            break  # Only check the last non-empty line for these
+
+        # Copilot: explicit thinking indicators
+        if any(p in combined_lower for p in ["thinking...", "running:", "loading"]):
+            return "thinking"
+
+        # Claude Code actively streaming (tool call with output)
+        if "● Bash(" in combined or "● Read(" in combined or "● Write(" in combined or "● Edit(" in combined:
+            # Check if it's a recently completed tool vs actively running
+            # If the status bar is on the very last line, agent is idle at prompt
+            if "⏵⏵" in last_line:
+                return "waiting_input"
+            return "thinking"
+
+        # --- WAITING_INPUT detection ---
+        if any(p in combined_lower for p in ["y/n]", "yes/no", "[y/n", "(yes/no)"]):
             return "waiting_input"
-        if any(p in combined for p in ["error:", "traceback", "fatal", "panic"]):
+        # Claude Code permission prompt
+        if "⏵⏵" in combined and ("bypass" in combined_lower or "allow" in combined_lower):
+            return "waiting_input"
+        # Generic question at end
+        if last_line_lower.endswith("?"):
+            return "waiting_input"
+
+        # --- ERROR detection ---
+        if any(p in combined_lower for p in ["error:", "traceback", "fatal:", "panic:"]):
             return "error"
-        if any(p in combined for p in ["pr #", "pull request", "goal_status: achieved"]):
+
+        # --- COMPLETED detection ---
+        if any(p in combined for p in ["GOAL_STATUS: ACHIEVED", "Workflow Complete"]):
             return "completed"
-        # Check if last line is a shell prompt (idle)
-        if last_line.endswith("$ ") or last_line.endswith("$") or last_line.endswith("❯ ") or last_line.endswith("❯"):
+        # PR created (but not just mentioned in output)
+        if any(p in combined for p in ["gh pr create", "PR #", "pull request"]):
+            # Only if it looks like a recent action, not historical output
+            if any(p in combined_lower for p in ["created", "opened", "merged"]):
+                return "completed"
+
+        # --- IDLE detection (bare shell prompt, no agent) ---
+        if last_line_lower.endswith("$ ") or last_line_lower.endswith("$"):
             return "idle"
-        return "running"
+        # Claude Code idle prompt
+        if last_line.strip() == "❯" or last_line.strip().endswith("❯"):
+            # But only if no status bar nearby (status bar = agent session active)
+            if not any("⏵⏵" in l for l in last_lines[-3:]):
+                return "idle"
+            else:
+                return "waiting_input"  # Agent is at prompt, waiting for next command
+
+        # --- Default: assume running if substantial output ---
+        if len(combined.strip()) > 50:
+            return "running"
+
+        return "unknown"
 
     def _reason(self, context: SessionContext) -> SessionDecision:
         """REASON: Call LLM backend to decide what to do.
