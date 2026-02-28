@@ -525,7 +525,7 @@ class ClaudeLauncher:
                 cmd.extend(["--model", f"azure/{azure_model}"])
             # Add default model if not using proxy and user hasn't specified one
             elif not self._has_model_arg():
-                default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "sonnet[1m]")
+                default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "opus[1m]")
                 cmd.extend(["--model", default_model])
 
             # Add forwarded arguments
@@ -572,7 +572,7 @@ class ClaudeLauncher:
             cmd.extend(["--model", f"azure/{azure_model}"])
         # Add default model if not using proxy and user hasn't specified one
         elif not self._has_model_arg():
-            default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "sonnet[1m]")
+            default_model = os.getenv("AMPLIHACK_DEFAULT_MODEL", "opus[1m]")
             cmd.extend(["--model", default_model])
 
         # Add forwarded arguments
