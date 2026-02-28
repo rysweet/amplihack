@@ -44,7 +44,6 @@ class ActionType(Enum):
     MARK_COMPLETE = "mark_complete"
     MARK_FAILED = "mark_failed"
     REPORT = "report"
-    PROVISION_VM = "provision_vm"
     PROPAGATE_AUTH = "propagate_auth"
 
 

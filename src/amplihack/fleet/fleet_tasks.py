@@ -165,7 +165,7 @@ class TaskQueue:
     def add(self, task: FleetTask) -> FleetTask:
         """Add a task to the queue."""
         self.tasks.append(task)
-        self._save()
+        self.save()
         return task
 
     def add_task(
@@ -238,10 +238,6 @@ class TaskQueue:
         self.persist_path.parent.mkdir(parents=True, exist_ok=True)
         data = [t.to_dict() for t in self.tasks]
         self.persist_path.write_text(json.dumps(data, indent=2))
-
-    def _save(self) -> None:
-        """Internal save — called after add()."""
-        self.save()
 
     def load(self) -> None:
         """Load queue from JSON file."""

@@ -1,14 +1,19 @@
-"""Auth propagation across VMs.
+"""Auth propagation across VMs with multi-identity support.
 
 Copies authentication tokens from source machine to target VMs:
-- GitHub CLI auth (~/.config/gh/hosts.yml)
+- GitHub CLI auth (~/.config/gh/hosts.yml) with multi-account support
 - Azure CLI tokens (~/.azure/)
 - Claude Code API key (~/.claude.json)
 
-Uses azlin cp for secure file transfer.
+Supports multiple GitHub identities — each VM/project can use a different
+GitHub account via `gh auth switch --user <account>`.
+
+Uses azlin cp for secure file transfer, with shared NFS as recommended
+transport for credential files that azlin blocks by design.
 
 Public API:
     AuthPropagator: Copies auth tokens to target VMs
+    GitHubIdentity: GitHub account identity for a VM
 """
 
 from __future__ import annotations
@@ -21,7 +26,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-__all__ = ["AuthPropagator"]
+__all__ = ["AuthPropagator", "GitHubIdentity"]
 
 # Auth files to propagate, organized by service
 AUTH_FILES = {
@@ -46,6 +51,21 @@ AUTH_FILES = {
         {"src": "~/.claude.json", "dest": "~/.claude.json", "mode": "600"},
     ],
 }
+
+
+@dataclass
+class GitHubIdentity:
+    """GitHub account identity for a VM/project.
+
+    Supports gh auth switch to use different accounts per VM.
+    """
+
+    username: str
+    hostname: str = "github.com"
+
+    def switch_command(self) -> str:
+        """Command to switch to this identity on a remote VM."""
+        return f"gh auth switch --user {shlex.quote(self.username)} --hostname {shlex.quote(self.hostname)}"
 
 
 @dataclass
@@ -271,6 +291,71 @@ class AuthPropagator:
             error="; ".join(errors) if errors else None,
             duration_seconds=duration,
         )
+
+    def switch_github_identity(self, vm_name: str, identity: GitHubIdentity) -> AuthResult:
+        """Switch GitHub identity on a remote VM.
+
+        Requires that gh auth has multiple accounts configured on the VM.
+        The hosts.yml must already contain credentials for both accounts
+        (propagated via shared NFS or manual `gh auth login`).
+
+        Args:
+            vm_name: Target VM name
+            identity: GitHub identity to switch to
+        """
+        start = time.monotonic()
+
+        try:
+            result = self._remote_exec(vm_name, identity.switch_command())
+            success = result.returncode == 0
+
+            if not success:
+                return AuthResult(
+                    service="github-identity",
+                    vm_name=vm_name,
+                    success=False,
+                    error=f"gh auth switch failed: {(result.stderr or '').strip()[:200]}",
+                    duration_seconds=time.monotonic() - start,
+                )
+
+            # Verify the switch worked
+            verify = self._remote_exec(
+                vm_name,
+                f"gh auth status --hostname {shlex.quote(identity.hostname)} 2>&1 | grep -i 'active account'",
+            )
+
+            return AuthResult(
+                service="github-identity",
+                vm_name=vm_name,
+                success=True,
+                files_copied=[f"switched to {identity.username}@{identity.hostname}"],
+                duration_seconds=time.monotonic() - start,
+            )
+
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError) as e:
+            return AuthResult(
+                service="github-identity",
+                vm_name=vm_name,
+                success=False,
+                error=str(e),
+                duration_seconds=time.monotonic() - start,
+            )
+
+    def list_github_identities(self, vm_name: str) -> list[str]:
+        """List available GitHub identities on a remote VM.
+
+        Returns list of usernames that have tokens in gh auth.
+        """
+        try:
+            result = self._remote_exec(
+                vm_name,
+                "gh auth status 2>&1 | grep 'Logged in to' | sed 's/.*account //' | sed 's/ .*//'",
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return [u.strip() for u in result.stdout.strip().split("\n") if u.strip()]
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError):
+            pass
+        return []
 
     def _remote_exec(self, vm_name: str, command: str) -> subprocess.CompletedProcess:
         """Execute command on remote VM via azlin."""
