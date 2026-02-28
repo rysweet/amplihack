@@ -37,11 +37,12 @@ Before responding, classify this prompt into one of these categories and act acc
   OPS (run git, show disk, delete temp files, restart service — admin/shell tasks)
     → Execute directly. No workflow invocation needed.
 
-  SKIP (prompt starts with / — existing slash command; or "just answer"/"skip workflow" bypass)
+  SKIP (prompt starts with / — existing slash command; or bypass phrases like
+        "just answer", "skip workflow", "skip orchestration", "without workflow")
     → Respect the existing command or bypass. Do not override.
 
 Key: "make sure it works" = DEV (verification). "write docs" = DEV (documentation).
-     "tests are failing" with no action verb = Q&A (observation, not a task).
+     "tests are failing" without a clear action request = ask if they want you to investigate/fix.
      "investigate X then fix Y" = HYBRID. "what is OAuth?" = Q&A.
 </system-reminder>"""
 
@@ -57,6 +58,10 @@ def should_auto_route(prompt: str) -> tuple[bool, str]:
     # Check disable flag
     auto_dev = os.environ.get("AMPLIHACK_AUTO_DEV", "true").lower().strip()
     if auto_dev in ("false", "0", "no", "off"):
+        return False, ""
+
+    # Type guard — prompt must be a string
+    if not isinstance(prompt, str):
         return False, ""
 
     # Don't inject for empty prompts or existing slash commands

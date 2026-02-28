@@ -278,7 +278,8 @@ class UserPromptSubmitHook(HookProcessor):
             self.log("No USER_PREFERENCES.md found - skipping preference injection")
 
         # Auto-route development intent to /dev (dev-orchestrator).
-        # Classifies prompts in <1ms using contextual keyword heuristics.
+        # Injects LLM-based intent routing prompt as additionalContext.
+        # Claude classifies intent using its natural language understanding.
         # Disable: export AMPLIHACK_AUTO_DEV=false
         try:
             from dev_intent_router import should_auto_route

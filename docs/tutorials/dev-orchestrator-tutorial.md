@@ -255,40 +255,33 @@ expected — those task types respond directly and do not generate summaries.
 
 ---
 
-## Auto-Routing: `/dev` Without Typing It
+## Auto-Routing: How It Works
 
-amplihack automatically routes development-intent prompts to the dev-orchestrator
-even when you don't type `/dev`. The `UserPromptSubmit` hook classifies every
-prompt in <1ms and injects a directive for development tasks.
+The `UserPromptSubmit` hook injects a short routing prompt on every message
+(except slash commands like `/dev` or `/analyze`). This prompt tells Claude
+which workflow to use based on your intent:
 
-**It fires for prompts like:**
-```
-fix the login timeout bug      → auto-routes to dev-orchestrator
-add OAuth support              → auto-routes
-how do I add pagination?       → auto-routes (action + explanation detected)
-investigate the slow queries   → auto-routes
-```
+| Your intent | What Claude does |
+|-------------|-----------------|
+| Build, fix, write, test, deploy | Invokes `dev-orchestrator` (DEFAULT_WORKFLOW) |
+| Investigate, analyze, understand | Invokes `dev-orchestrator` (INVESTIGATION_WORKFLOW) |
+| Both investigate AND implement | Invokes `dev-orchestrator` (creates parallel workstreams) |
+| Knowledge question (what is, how does) | Answers directly — no workflow |
+| Shell/admin command (git, ls, restart) | Executes directly — no workflow |
+| Existing `/command` or "just answer" bypass | Respects your explicit intent |
 
-**It routes Q&A and Ops with lightweight signals (no workflow overhead):**
-```
-what is OAuth?                 → Q&A signal (answer directly, no workflow)
-/analyze the auth module       → your explicit command respected (no injection)
-run git status                 → Ops signal (execute directly, no workflow)
-```
+The hook itself does NOT classify — it injects the same routing guidance for
+every message. Claude's natural language understanding handles the rest.
 
 **Disable auto-routing:**
 ```bash
-# For one session
-export AMPLIHACK_AUTO_DEV=false
-
-# Add to ~/.bashrc to disable permanently
-echo 'export AMPLIHACK_AUTO_DEV=false' >> ~/.bashrc
+export AMPLIHACK_AUTO_DEV=false   # for one session
+echo 'export AMPLIHACK_AUTO_DEV=false' >> ~/.bashrc  # permanent
 ```
 
-**Override for a single prompt** — add one of these phrases:
-- "just answer briefly..."
-- "without workflow..."
-- "skip orchestration..."
+**Override for a single prompt:** Include "just answer" or "without workflow"
+anywhere in your message. Claude reads these phrases in the routing prompt's
+SKIP category and responds directly.
 
 ---
 
@@ -330,15 +323,18 @@ task can take 10–15 minutes. Output resumes when the current agent call
 completes.
 
 **"Dev Orchestrator started when I didn't type /dev"**
-The auto-routing hook classified your prompt as a development task.
+The auto-routing hook injected a routing prompt, and Claude classified your
+message as a development task.
 - To disable for this session: `export AMPLIHACK_AUTO_DEV=false`
 - To override for one prompt: prefix with "just answer", "without workflow", or "skip orchestration"
 - To check what the classifier decides: use Python directly:
   ```python
   import sys
   sys.path.insert(0, 'amplifier-bundle/tools/amplihack/hooks')
-  from dev_intent_router import classify
-  print(classify("your prompt here"))
+  from dev_intent_router import should_auto_route
+  ok, ctx = should_auto_route("your prompt here")
+  print(f"would_inject={ok}")
+  print(f"injection_length={len(ctx)} chars")
   ```
 
 ---
