@@ -191,8 +191,11 @@ def _deterministic_grade(
 
     Scoring logic:
     - Start with keyword match ratio (required_keywords found / total required)
-    - Bonus +0.1 for each acceptable_paraphrase found (capped at 1.0)
-    - Score 0.0 if any incorrect_pattern matches
+    - Bonus +0.25 for each acceptable_paraphrase found (capped at 1.0)
+    - incorrect_patterns only zero the score when NONE of the required keywords
+      or paraphrases match. When the correct answer IS present alongside an
+      incorrect pattern (e.g. "increased from $1.2M to $1.4M"), the answer is
+      providing historical context, not a wrong answer.
     """
     answer_lower = actual_answer.lower()
     scores: dict[str, DimensionScore] = {}
@@ -201,20 +204,8 @@ def _deterministic_grade(
         if dim not in _DETERMINISTIC_DIMENSIONS:
             continue
 
-        # Check incorrect patterns first -- instant 0
-        if rubric.incorrect_patterns:
-            found_incorrect = any(
-                re.search(re.escape(pat.lower()), answer_lower) for pat in rubric.incorrect_patterns
-            )
-            if found_incorrect:
-                scores[dim] = DimensionScore(
-                    dimension=dim,
-                    score=0.0,
-                    reasoning="Answer contains incorrect pattern from rubric",
-                )
-                continue
-
         # Keyword matching
+        matched = 0
         if rubric.required_keywords:
             matched = sum(
                 1
@@ -229,6 +220,7 @@ def _deterministic_grade(
         # a valid answer form, so it should carry significant weight). When NO
         # keywords matched (ratio=0) but paraphrases did, the answer is still
         # semantically correct.
+        paraphrase_hits = 0
         if rubric.acceptable_paraphrases:
             paraphrase_hits = sum(
                 1
@@ -236,6 +228,24 @@ def _deterministic_grade(
                 if re.search(re.escape(p.lower()), answer_lower)
             )
             ratio = min(1.0, ratio + paraphrase_hits * 0.25)
+
+        # Check incorrect patterns AFTER keyword matching. Only zero the score
+        # when the correct keywords/paraphrases are NOT present. When the answer
+        # contains BOTH the correct value and an incorrect pattern (e.g.
+        # "budget increased from $1.2M to $1.4M"), the answer is providing
+        # historical context, not stating the wrong value.
+        has_correct = matched > 0 or paraphrase_hits > 0
+        if rubric.incorrect_patterns and not has_correct:
+            found_incorrect = any(
+                re.search(re.escape(pat.lower()), answer_lower) for pat in rubric.incorrect_patterns
+            )
+            if found_incorrect:
+                scores[dim] = DimensionScore(
+                    dimension=dim,
+                    score=0.0,
+                    reasoning="Answer contains incorrect pattern without correct keywords",
+                )
+                continue
 
         reasoning_parts = []
         if rubric.required_keywords:
