@@ -326,7 +326,24 @@ class TestRoutingPromptContent(unittest.TestCase):
         self.assertIn("run tests", _ROUTING_PROMPT)
 
     def test_prompt_is_concise(self):
-        self.assertLess(len(_ROUTING_PROMPT), 1900)
+        # Raised from 1900 to 2700 after adding mandatory code-edit rule,
+        # deceptive examples, and "when in doubt choose DEV" guidance.
+        self.assertLess(len(_ROUTING_PROMPT), 2700)
+
+    def test_contains_mandatory_code_edit_rule(self):
+        """Verify the mandatory rule that code file edits are always DEV."""
+        self.assertIn("Code File Edits Are ALWAYS DEV", _ROUTING_PROMPT)
+        self.assertIn("never Q&A or OPS", _ROUTING_PROMPT)
+
+    def test_contains_deceptive_examples(self):
+        """Verify deceptive 'trivial edit' examples route to DEV."""
+        self.assertIn("change the default model", _ROUTING_PROMPT)
+        self.assertIn("update a config value", _ROUTING_PROMPT)
+        self.assertIn("just change one line", _ROUTING_PROMPT)
+
+    def test_contains_when_in_doubt_rule(self):
+        """Verify 'when in doubt choose DEV' guidance is present."""
+        self.assertIn("When in doubt, choose DEV", _ROUTING_PROMPT)
 
     def test_auto_routed_announcement(self):
         self.assertIn("[auto-routed]", _ROUTING_PROMPT)
