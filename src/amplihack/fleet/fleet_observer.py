@@ -1,0 +1,232 @@
+"""Fleet observer — detects agent state via tmux pane capture.
+
+Uses tmux capture-pane to read agent output and classify state:
+- RUNNING: agent producing output, no error indicators
+- IDLE: tmux session exists but no agent running
+- COMPLETED: agent finished (PR created, "complete" indicators)
+- STUCK: no output change for N minutes
+- ERROR: error messages detected in output
+- WAITING_INPUT: agent waiting for user input
+
+Public API:
+    FleetObserver: Observes and classifies agent state in tmux sessions
+"""
+
+from __future__ import annotations
+
+import re
+import subprocess
+import time
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Optional
+
+from amplihack.fleet.fleet_state import AgentStatus, TmuxSessionInfo
+
+__all__ = ["FleetObserver"]
+
+# Patterns that indicate specific agent states
+COMPLETION_PATTERNS = [
+    r"PR.*created",
+    r"pull request.*created",
+    r"GOAL_STATUS:\s*ACHIEVED",
+    r"Workflow Complete",
+    r"All \d+ steps completed",
+    r"pushed to.*branch",
+    r"gh pr create",
+]
+
+ERROR_PATTERNS = [
+    r"ERROR:",
+    r"Traceback \(most recent",
+    r"FATAL:",
+    r"panic:",
+    r"GOAL_STATUS:\s*NOT_ACHIEVED",
+    r"Failed to",
+    r"Permission denied",
+    r"Authentication failed",
+]
+
+WAITING_PATTERNS = [
+    r"\?\s*$",  # Ends with question mark
+    r"Press .* to continue",
+    r"Do you want to",
+    r"Y/n\]",
+    r"y/N\]",
+    r"\(yes/no\)",
+    r"Enter.*:",
+    r"waiting for.*input",
+]
+
+RUNNING_PATTERNS = [
+    r"Step \d+",
+    r"Task.*in_progress",
+    r"Building",
+    r"Implementing",
+    r"Analyzing",
+    r"Reading file",
+    r"Writing file",
+    r"Running tests",
+    r"Creating.*commit",
+]
+
+# Shell prompt patterns indicating idle state (no agent running)
+IDLE_PATTERNS = [
+    r"\$\s*$",  # Bare shell prompt
+    r"azureuser@.*:\~.*\$",
+    r"❯\s*$",
+]
+
+
+@dataclass
+class ObservationResult:
+    """Result of observing a single tmux session."""
+
+    session_name: str
+    vm_name: str
+    status: AgentStatus
+    last_output_lines: list[str] = field(default_factory=list)
+    confidence: float = 0.0
+    matched_pattern: str = ""
+    observed_at: Optional[datetime] = None
+
+
+@dataclass
+class FleetObserver:
+    """Observes agent state by capturing tmux pane content.
+
+    Uses tmux capture-pane to read the visible terminal output and
+    classifies the agent's state using pattern matching.
+    """
+
+    azlin_path: str = "/home/azureuser/src/azlin/.venv/bin/azlin"
+    capture_lines: int = 50  # Number of lines to capture from pane
+    _previous_captures: dict[str, str] = field(default_factory=dict)
+    _last_change_time: dict[str, float] = field(default_factory=dict)
+    stuck_threshold_seconds: float = 300.0  # 5 minutes without change = stuck
+
+    def observe_session(self, vm_name: str, session_name: str) -> ObservationResult:
+        """Observe a single tmux session and classify agent state.
+
+        Args:
+            vm_name: VM hosting the session
+            session_name: tmux session name
+
+        Returns:
+            ObservationResult with classified status
+        """
+        pane_content = self._capture_pane(vm_name, session_name)
+
+        if pane_content is None:
+            return ObservationResult(
+                session_name=session_name,
+                vm_name=vm_name,
+                status=AgentStatus.UNKNOWN,
+                confidence=0.0,
+                observed_at=datetime.now(),
+            )
+
+        lines = pane_content.strip().split("\n")
+        # Focus on last N non-empty lines
+        recent_lines = [l for l in lines[-20:] if l.strip()]
+
+        status, confidence, pattern = self._classify_output(
+            recent_lines, vm_name, session_name
+        )
+
+        return ObservationResult(
+            session_name=session_name,
+            vm_name=vm_name,
+            status=status,
+            last_output_lines=recent_lines[-10:],
+            confidence=confidence,
+            matched_pattern=pattern,
+            observed_at=datetime.now(),
+        )
+
+    def observe_all(
+        self, sessions: list[TmuxSessionInfo],
+    ) -> list[ObservationResult]:
+        """Observe multiple sessions and return classified results."""
+        results = []
+        for sess in sessions:
+            result = self.observe_session(sess.vm_name, sess.session_name)
+            results.append(result)
+        return results
+
+    def _capture_pane(self, vm_name: str, session_name: str) -> Optional[str]:
+        """Capture tmux pane content from a remote VM."""
+        cmd = (
+            f"tmux capture-pane -t {session_name} -p -S -{self.capture_lines} 2>/dev/null"
+        )
+        try:
+            result = subprocess.run(
+                [self.azlin_path, "connect", vm_name, "--no-tmux", "--", cmd],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if result.returncode == 0:
+                return result.stdout
+        except (subprocess.TimeoutExpired, subprocess.SubprocessError):
+            pass
+        return None
+
+    def _classify_output(
+        self, lines: list[str], vm_name: str, session_name: str,
+    ) -> tuple[AgentStatus, float, str]:
+        """Classify agent state from recent output lines.
+
+        Returns (status, confidence, matched_pattern).
+        """
+        if not lines:
+            return AgentStatus.UNKNOWN, 0.0, ""
+
+        combined = "\n".join(lines)
+        key = f"{vm_name}:{session_name}"
+
+        # Check for stuck (no output change)
+        now = time.monotonic()
+        prev = self._previous_captures.get(key, "")
+        if combined == prev:
+            last_change = self._last_change_time.get(key, now)
+            if now - last_change > self.stuck_threshold_seconds:
+                self._previous_captures[key] = combined
+                return AgentStatus.STUCK, 0.8, "no_output_change"
+        else:
+            self._last_change_time[key] = now
+        self._previous_captures[key] = combined
+
+        # Check patterns in priority order (most specific first)
+
+        # 1. Completion patterns
+        for pattern in COMPLETION_PATTERNS:
+            if re.search(pattern, combined, re.IGNORECASE):
+                return AgentStatus.COMPLETED, 0.9, pattern
+
+        # 2. Error patterns
+        for pattern in ERROR_PATTERNS:
+            if re.search(pattern, combined, re.IGNORECASE):
+                return AgentStatus.ERROR, 0.85, pattern
+
+        # 3. Waiting for input
+        for pattern in WAITING_PATTERNS:
+            if re.search(pattern, combined, re.IGNORECASE):
+                return AgentStatus.WAITING_INPUT, 0.8, pattern
+
+        # 4. Idle (shell prompt, no agent)
+        last_line = lines[-1].strip() if lines else ""
+        for pattern in IDLE_PATTERNS:
+            if re.search(pattern, last_line):
+                return AgentStatus.IDLE, 0.7, pattern
+
+        # 5. Running patterns
+        for pattern in RUNNING_PATTERNS:
+            if re.search(pattern, combined, re.IGNORECASE):
+                return AgentStatus.RUNNING, 0.8, pattern
+
+        # Default: if there's recent output, assume running
+        if len(combined.strip()) > 50:
+            return AgentStatus.RUNNING, 0.5, "has_output"
+
+        return AgentStatus.UNKNOWN, 0.3, ""
