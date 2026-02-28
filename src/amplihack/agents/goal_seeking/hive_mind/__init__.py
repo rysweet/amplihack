@@ -99,6 +99,28 @@ try:
 except ImportError:
     pass
 
+# Transport-agnostic Event Bus (Experiment 4b)
+try:
+    from .event_bus import (
+        AzureServiceBusEventBus,
+        BusEvent,
+        EventBus,
+        LocalEventBus,
+        RedisEventBus,
+        create_event_bus,
+    )
+
+    __all__ += [
+        "BusEvent",
+        "EventBus",
+        "LocalEventBus",
+        "AzureServiceBusEventBus",
+        "RedisEventBus",
+        "create_event_bus",
+    ]
+except ImportError:
+    pass
+
 # Unified hive mind module (Experiment 5)
 try:
     from .unified import (
@@ -131,6 +153,24 @@ try:
         "HiveAwareMemoryAdapter",
         "HiveBridgeConfig",
         "create_hive_swarm",
+    ]
+except ImportError:
+    pass
+
+# Kuzu-backed Hive Mind (Experiment 7 - Real Graph DB)
+try:
+    from .kuzu_hive import (
+        AgentRegistry,
+        HiveGateway,
+        HiveKuzuSchema,
+        KuzuHiveMind,
+    )
+
+    __all__ += [
+        "AgentRegistry",
+        "HiveGateway",
+        "HiveKuzuSchema",
+        "KuzuHiveMind",
     ]
 except ImportError:
     pass
